@@ -10,8 +10,6 @@ namespace VERMAXION.Windows;
 public class ConfigWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
-    private string newAccountAlias = "";
-    private string editAccountAlias = "";
 
     public ConfigWindow(Plugin plugin)
         : base("Vermaxion Configuration##Config", ImGuiWindowFlags.None)
@@ -105,47 +103,6 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndCombo();
         }
 
-        ImGui.SameLine();
-        if (ImGui.Button("+##NewAccount"))
-            ImGui.OpenPopup("NewAccountPopup");
-
-        if (ImGui.BeginPopup("NewAccountPopup"))
-        {
-            ImGui.Text("New Account Alias:");
-            ImGui.InputText("##NewAlias", ref newAccountAlias, 64);
-            if (ImGui.Button("Create") && !string.IsNullOrWhiteSpace(newAccountAlias))
-            {
-                var newId = configManager.CreateNewAccount(newAccountAlias);
-                configManager.CurrentAccountId = newId;
-                newAccountAlias = "";
-                ImGui.CloseCurrentPopup();
-            }
-            ImGui.EndPopup();
-        }
-
-        // Edit alias
-        var account = configManager.GetCurrentAccount();
-        if (account != null)
-        {
-            ImGui.SameLine();
-            if (ImGui.Button("Rename##EditAccount"))
-            {
-                editAccountAlias = account.AccountAlias;
-                ImGui.OpenPopup("EditAccountPopup");
-            }
-
-            if (ImGui.BeginPopup("EditAccountPopup"))
-            {
-                ImGui.Text("Account Alias:");
-                ImGui.InputText("##EditAlias", ref editAccountAlias, 64);
-                if (ImGui.Button("Save") && !string.IsNullOrWhiteSpace(editAccountAlias))
-                {
-                    configManager.UpdateAccountAlias(editAccountAlias);
-                    ImGui.CloseCurrentPopup();
-                }
-                ImGui.EndPopup();
-            }
-        }
     }
 
     private void DrawCharacterList(ConfigManager configManager)
@@ -173,15 +130,6 @@ public class ConfigWindow : Window, IDisposable
                 configManager.SelectedCharacterKey = charKey;
             }
 
-            // Right-click context menu
-            if (ImGui.BeginPopupContextItem($"CharContext_{charKey}"))
-            {
-                if (ImGui.MenuItem("Reset to Default"))
-                    configManager.ResetCharacterToDefault(charKey);
-                if (ImGui.MenuItem("Delete"))
-                    configManager.DeleteCharacter(charKey);
-                ImGui.EndPopup();
-            }
         }
     }
 
