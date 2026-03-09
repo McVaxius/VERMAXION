@@ -130,6 +130,15 @@ public class ConfigWindow : Window, IDisposable
                 configManager.SelectedCharacterKey = charKey;
             }
 
+            // Right-click context menu
+            if (ImGui.BeginPopupContextItem($"CharContext_{charKey}"))
+            {
+                if (ImGui.MenuItem("Reset to Default"))
+                    configManager.ResetCharacterToDefault(charKey);
+                if (ImGui.MenuItem("Delete"))
+                    configManager.DeleteCharacter(charKey);
+                ImGui.EndPopup();
+            }
         }
     }
 
