@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using VERMAXION.Services;
 
 namespace VERMAXION.Windows;
 
@@ -30,7 +31,7 @@ public class MainWindow : Window, IDisposable
         var displayName = string.IsNullOrEmpty(charKey) ? "(Default)" : charKey;
 
         if (plugin.Configuration.KrangleEnabled && !string.IsNullOrEmpty(charKey))
-            displayName = Services.KrangleService.KrangleName(charKey);
+            displayName = KrangleService.KrangleName(charKey);
 
         ImGui.Text($"Character: {displayName}");
         ImGui.SameLine();
