@@ -3,19 +3,23 @@
 <Project Sdk="Dalamud.NET.Sdk/14.0.2">
 
   <PropertyGroup>
-
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Version>0.0.0.1</Version>
-
     <PackageProjectUrl>https://github.com/McVaxius/VERMAXION</PackageProjectUrl>
-
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
-
     <IsPackable>false</IsPackable>
+  </PropertyGroup>
 
+  <PropertyGroup>
+    <DalamudLibPath Condition="$(DALAMUD_HOME) != ''">$(DALAMUD_HOME)/</DalamudLibPath>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ECommons" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="images\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="CopyPluginArtifacts" AfterTargets="Build">
@@ -34,6 +38,10 @@
 
       <PluginFiles Include="$(ProjectDir)$(AssemblyName).json" />
 
+    </ItemGroup>
+
+    <ItemGroup>
+      <DalamudPackagerFile Include="images\icon.png" />
     </ItemGroup>
 
     <Copy SourceFiles="@(PluginFiles)"
