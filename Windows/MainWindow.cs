@@ -12,7 +12,7 @@ public class MainWindow : Window, IDisposable
     private readonly Configuration _config;
 
     public MainWindow(VerminionService service, Configuration config) 
-        : base("Vermaxion Plugin##MainWindow")
+        : base("VM Plugin##MainWindow")
     {
         _service = service;
         _config = config;
@@ -24,7 +24,7 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
-        ImGui.Text("Vermaxion Plugin");
+        ImGui.Text("VM Plugin");
         ImGui.Separator();
         ImGui.Spacing();
 
