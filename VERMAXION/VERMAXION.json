@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json",
+  "Name": "Vermaxion",
+  "Author": "McVaxius",
+  "Punchline": "ARPostProcess automation for weekly/daily tasks.",
+  "Description": "Automates weekly and daily tasks triggered by AutoRetainer post-processing. Configurable per character: Verminion queue, Cactpot, Chocobo Racing, FC buff refill, and Henchman management.",
+  "Tags": [ "automation", "autoretainer", "postprocess", "verminion", "cactpot" ],
+  "CategoryTags": [ "other" ],
+  "InternalName": "VERMAXION",
+  "AssemblyVersion": "0.0.0.1",
+  "RepoUrl": "https://github.com/McVaxius/VERMAXION",
+  "ApplicableVersion": "any",
+  "DalamudApiLevel": 11
+}

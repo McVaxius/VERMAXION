@@ -1,20 +1,43 @@
 # VERMAXION
 
-VERMAXION - Varminion Duty Roulette Automation
+AutoRetainer post-process automation for weekly and daily tasks, configured per character.
 
-## Description
-FFXIV Dalamud plugin for automating Varminion duty roulette with intentional failure mode.
+## Features
 
-## Status
-Phase 1: Basic Plugin Structure
+- **FC Buff Refill** — Seal Sweetener II purchase/cast on every AR run
+- **Lord of Verminion** — Queue 5 intentional fails per week
+- **Mini Cactpot** — 3x daily via Saucy plugin
+- **Jumbo Cactpot** — Weekly submission (Saturdays)
+- **Chocobo Racing** — Configurable daily races via Chocoholic plugin
+- **Henchman Management** — Stop/start around task execution
+
+## How It Works
+
+1. AutoRetainer finishes retainers/subs on a character
+2. AR fires post-process event → Vermaxion picks it up
+3. Disables Henchman → runs enabled tasks → re-enables Henchman
+4. Signals AR to continue to next character
+
+## Requirements
+
+- **AutoRetainer** (required for post-process hook)
+- Saucy (Mini Cactpot), Chocoholic (Chocobo Racing), Henchman, Lifestream — optional per feature
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/vermaxion` | Open main window |
+| `/vmx` | Open main window |
+| `/vmx on/off` | Enable/disable for current character |
+| `/vmx run` | Manual trigger |
+| `/vmx cancel` | Cancel current run |
+| `/vmx config` | Open config window |
 
 ## Installation
-1. Build the project
-2. Copy `VERMAXION.dll` to your Dalamud devPlugins folder
-3. Load in-game via /xlplugins
 
-## Configuration
-Basic settings available in plugin UI.
+See [how-to-import-plugins.md](how-to-import-plugins.md)
 
-## Support
-Issues and feature requests on GitHub.
+## Status
+
+v0.0.0.1 — Initial scaffold. Core architecture complete, game interaction stubs need in-game testing.
