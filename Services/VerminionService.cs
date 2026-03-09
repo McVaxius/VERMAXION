@@ -1,8 +1,6 @@
-using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using System;
 using System.Threading.Tasks;
-using Vermaxion.Models;
 
 namespace Vermaxion.Services;
 
@@ -13,111 +11,97 @@ public class VerminionService : IDisposable
     private bool _isRunning = false;
     private int _currentAttempt = 0;
     private DateTime _lastActionTime = DateTime.MinValue;
-    private CharacterConfig? _currentCharacter;
+    private VerminionState _currentState = VerminionState.Idle;
 
     public bool IsRunning => _isRunning;
     public int CurrentAttempt => _currentAttempt;
     public VerminionState CurrentState
     {
-        get => _config.CurrentState;
-        private set => _config.CurrentState = value;
+        get => _currentState;
+        private set => _currentState = value;
     }
+    public int MaxAttempts => _config.MaxAttempts;
 
     public VerminionService(Configuration config, IPluginLog log)
     {
         _config = config;
         _log = log;
-        _log.Information("VerminionService initialized");
+        _log.Information("[Vermaxion] VerminionService initialized");
     }
 
-    public async Task ExecuteAutomation(CharacterConfig character)
+    public void StartAutomation()
     {
         if (_isRunning)
         {
-            _log.Warning("Verminion automation already running");
+            _log.Warning("[Vermaxion] Automation already running");
             return;
         }
 
-        if (!character.VarminionEnabled)
-        {
-            _log.Warning("Varminion automation not enabled for this character");
-            return;
-        }
-
-        _currentCharacter = character;
         _isRunning = true;
         _currentAttempt = 0;
         CurrentState = VerminionState.Queuing;
         _lastActionTime = DateTime.Now;
 
-        _log.Information($"Starting Verminion automation for {character.GetDisplayName()}");
+        _log.Information("[Vermaxion] Starting Verminion automation");
 
-        try
+        // Start async update loop
+        _ = Task.Run(async () =>
         {
-            // Main automation loop
-            while (_isRunning && _currentAttempt < character.VarminionAttempts)
+            try
             {
-                Update();
-                await Task.Delay(100); // Update every 100ms
-            }
+                while (_isRunning && _currentAttempt < _config.MaxAttempts)
+                {
+                    Update();
+                    await Task.Delay(100);
+                }
 
-            if (_currentAttempt >= character.VarminionAttempts)
-            {
-                await HandleCompleted();
+                if (_currentAttempt >= _config.MaxAttempts)
+                {
+                    HandleCompleted();
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            _log.Error(ex, $"Error during Verminion automation for {character.GetDisplayName()}");
-            CurrentState = VerminionState.Error;
-        }
-        finally
-        {
-            StopAutomation();
-        }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "[Vermaxion] Error during automation");
+                CurrentState = VerminionState.Error;
+            }
+        });
     }
 
     public void StopAutomation()
     {
         if (!_isRunning)
         {
-            _log.Warning("Verminion automation not running");
+            _log.Warning("[Vermaxion] Automation not running");
             return;
         }
 
         _isRunning = false;
         CurrentState = VerminionState.Idle;
         _currentAttempt = 0;
-        _currentCharacter = null;
 
-        _log.Information("Stopping Verminion automation");
+        _log.Information("[Vermaxion] Stopping automation");
     }
 
-    public bool CanExecute(CharacterConfig character)
+    public void ResetAutomation()
     {
-        if (!character.VarminionEnabled) return false;
-
-        // TODO: Add availability checks
-        // Check if character is in appropriate location, has sufficient level, etc.
-        return true;
+        StopAutomation();
+        _currentAttempt = 0;
+        CurrentState = VerminionState.Idle;
+        _log.Information("[Vermaxion] Reset automation");
     }
 
-    public string GetStatus(CharacterConfig character)
+    public string GetStatusText()
     {
-        if (!character.VarminionEnabled)
-            return "Disabled";
+        if (!_isRunning)
+            return "Idle";
 
-        if (_isRunning && _currentCharacter?.CharacterId == character.CharacterId)
-        {
-            return $"Running: {CurrentState} (Attempt {_currentAttempt + 1}/{character.VarminionAttempts})";
-        }
-
-        return "Available";
+        return $"{CurrentState}";
     }
 
     private void Update()
     {
-        if (!_isRunning || _currentCharacter == null)
+        if (!_isRunning)
             return;
 
         try
@@ -149,7 +133,7 @@ public class VerminionService : IDisposable
                     break;
 
                 case VerminionState.Completed:
-                    HandleCompleted().Wait();
+                    HandleCompleted();
                     break;
 
                 case VerminionState.Error:
@@ -166,102 +150,79 @@ public class VerminionService : IDisposable
 
     private void HandleQueuing()
     {
-        // TODO: Implement queue logic
-        _log.Debug("Handling queuing state");
-        
-        // For now, just simulate queue pop after delay
-        if (DateTime.Now - _lastActionTime > TimeSpan.FromMilliseconds(_currentCharacter!.VarminionQueueDelay))
+        // Phase 1: Simulated queue
+        if (DateTime.Now - _lastActionTime > TimeSpan.FromMilliseconds(_config.QueueRetryDelay))
         {
             CurrentState = VerminionState.InQueuePop;
             _lastActionTime = DateTime.Now;
-            _log.Information("Queue popped (simulated)");
+            _log.Information("[Vermaxion] Queue popped (simulated)");
         }
     }
 
     private void HandleQueuePop()
     {
-        // TODO: Implement queue pop acceptance
-        _log.Debug("Handling queue pop state");
-        
-        // For now, just accept after delay
-        if (DateTime.Now - _lastActionTime > TimeSpan.FromMilliseconds(_currentCharacter!.VarminionQueueDelay / 2))
+        // Phase 1: Simulated acceptance
+        if (DateTime.Now - _lastActionTime > TimeSpan.FromMilliseconds(_config.QueueRetryDelay / 2))
         {
             CurrentState = VerminionState.InDuty;
             _lastActionTime = DateTime.Now;
-            _log.Information("Accepted queue pop (simulated)");
+            _log.Information("[Vermaxion] Accepted queue pop (simulated)");
         }
     }
 
     private void HandleInDuty()
     {
-        // TODO: Implement duty detection and failure logic
-        _log.Debug("Handling in-duty state");
-        
-        // For now, just fail after delay
+        // Phase 1: Simulated duty
         if (DateTime.Now - _lastActionTime > TimeSpan.FromSeconds(5))
         {
             CurrentState = VerminionState.Failing;
             _lastActionTime = DateTime.Now;
-            _log.Information("Starting failure process (simulated)");
+            _log.Information("[Vermaxion] Starting failure process (simulated)");
         }
     }
 
     private void HandleFailing()
     {
-        // TODO: Implement failure detection
-        _log.Debug("Handling failure state");
-        
-        // For now, just transition to exiting after delay
-        if (DateTime.Now - _lastActionTime > TimeSpan.FromMilliseconds(_currentCharacter!.VarminionFailureDelay))
+        // Phase 1: Simulated failure
+        if (DateTime.Now - _lastActionTime > TimeSpan.FromMilliseconds(_config.FailureDelay))
         {
             _currentAttempt++;
             CurrentState = VerminionState.Exiting;
             _lastActionTime = DateTime.Now;
-            _log.Information($"Attempt {_currentAttempt} failed (simulated)");
+            _log.Information($"[Vermaxion] Attempt {_currentAttempt} failed (simulated)");
         }
     }
 
     private void HandleExiting()
     {
-        // TODO: Implement duty exit
-        _log.Debug("Handling exiting state");
-        
-        // For now, just transition to next state after delay
+        // Phase 1: Simulated exit
         if (DateTime.Now - _lastActionTime > TimeSpan.FromSeconds(2))
         {
-            if (_currentAttempt >= _currentCharacter!.VarminionAttempts)
+            if (_currentAttempt >= _config.MaxAttempts)
             {
                 CurrentState = VerminionState.Completed;
-                _log.Information("All attempts completed");
+                _log.Information("[Vermaxion] All attempts completed");
             }
             else
             {
                 CurrentState = VerminionState.Queuing;
-                _log.Information($"Starting next attempt ({_currentAttempt + 1}/{_currentCharacter.VarminionAttempts})");
+                _log.Information($"[Vermaxion] Starting next attempt ({_currentAttempt + 1}/{_config.MaxAttempts})");
             }
             _lastActionTime = DateTime.Now;
         }
     }
 
-    private async Task HandleCompleted()
+    private void HandleCompleted()
     {
-        // TODO: Implement AutoRetainer re-enable
-        _log.Debug("Handling completed state");
+        // Phase 1: Simulated completion
+        _log.Information("[Vermaxion] Automation completed successfully");
         
-        // Update statistics
-        if (_currentCharacter != null)
+        if (_config.EnableAutoRetainer)
         {
-            _currentCharacter.Statistics.VarminionAttempts++;
-            _currentCharacter.Statistics.VarminionCompletions++;
-            _currentCharacter.Statistics.LastVarminion = DateTime.Now;
+            _log.Information("[Vermaxion] AutoRetainer re-enable would happen here (Phase 5)");
         }
         
-        // For now, just stop automation after delay
-        if (DateTime.Now - _lastActionTime > TimeSpan.FromSeconds(2))
-        {
-            _log.Information("Varminion automation completed successfully");
-            StopAutomation();
-        }
+        StopAutomation();
     }
 
     private void HandleError()
@@ -275,6 +236,6 @@ public class VerminionService : IDisposable
     public void Dispose()
     {
         StopAutomation();
-        _log.Information("VerminionService disposed");
+        _log.Information("[Vermaxion] VerminionService disposed");
     }
 }
