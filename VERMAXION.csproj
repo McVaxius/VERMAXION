@@ -1,0 +1,53 @@
+<Project Sdk="Dalamud.NET.Sdk/14.0.2">
+
+  <PropertyGroup>
+    <Version>0.0.1.0</Version>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <OutputType>Library</OutputType>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageId>Vermaxion</PackageId>
+    <Title>Vermaxion</Title>
+    <Description>Multi-character Gold Saucer automation with ARPostprocess triggers</Description>
+    <Authors>McVaxius</Authors>
+    <Copyright>Copyright © 2026 McVaxius</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/McVaxius/Vermaxion</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <RepositoryUrl>https://github.com/McVaxius/Vermaxion</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>ffxiv,dalamud,plugin,automation,goldsaucer,cactpot,chocobo,varminion</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DalamudLibPath>$(appdata)\XIVLauncher\addon\hooks\dev\</DalamudLibPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dalamud.NET.Sdk" Version="14.0.2" />
+    <PackageReference Include="ECommons" Version="2.3.0" />
+    <PackageReference Include="ImGui.NET" Version="1.87.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Dalamud">
+      <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Lumina">
+      <HintPath>$(DalamudLibPath)Lumina.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Lumina.Excel">
+      <HintPath>$(DalamudLibPath)Lumina.Excel.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="VERMAXION.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
