@@ -73,40 +73,44 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
 
-        // Manual trigger button
-        if (!engine.IsRunning)
-        {
-            if (ImGui.Button("Run Now (Manual)"))
-                engine.ManualStart();
-
-            ImGui.SameLine();
-            if (ImGui.Button("Config"))
-                plugin.ToggleConfigUi();
-        }
-
+        // Manual Task Testing
+        ImGui.Text("Manual Task Testing:");
         ImGui.Separator();
 
-        // Status overview
-        if (ImGui.BeginTable("StatusTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.Button("FC Buff Refill"))
+            plugin.FCBuffService.RunTask();
+        ImGui.SameLine();
+        if (ImGui.Button("Verminion (5x)"))
+            plugin.VerminionService.RunTask();
+        ImGui.SameLine();
+        if (ImGui.Button("Mini Cactpot"))
+            plugin.CactpotService.RunMiniCactpot();
+
+        if (ImGui.Button("Jumbo Cactpot"))
+            plugin.CactpotService.RunJumboCactpot();
+        ImGui.SameLine();
+        if (ImGui.Button("Chocobo Racing"))
+            plugin.ChocoboRaceService.RunTask();
+        ImGui.SameLine();
+        if (ImGui.Button("Henchman Off"))
+            plugin.HenchmanService.StopHenchman();
+
+        ImGui.SameLine();
+        if (ImGui.Button("Henchman On"))
+            plugin.HenchmanService.StartHenchman();
+
+        ImGui.Spacing();
+        ImGui.Separator();
+
+        // Quick Actions
+        ImGui.Text("Quick Actions:");
+        if (ImGui.Button("Run All Tasks"))
         {
-            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 60);
-            ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableHeadersRow();
-
-            DrawStatusRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run");
-            DrawStatusRow("Verminion (5x)", config.EnableVerminionQueue,
-                config.VerminionCompletedThisWeek ? "Done this week" : "Pending");
-            DrawStatusRow("Mini Cactpot", config.EnableMiniCactpot,
-                config.MiniCactpotCompletedToday ? "Done today" : "Pending");
-            DrawStatusRow("Jumbo Cactpot", config.EnableJumboCactpot,
-                config.JumboCactpotCompletedThisWeek ? "Done this week" : "Pending (Sat)");
-            DrawStatusRow("Chocobo Racing", config.EnableChocoboRacing,
-                config.ChocoboRacingCompletedToday ? "Done today" : "Pending");
-            DrawStatusRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start");
-
-            ImGui.EndTable();
+            engine.ManualStart();
         }
+        ImGui.SameLine();
+        if (ImGui.Button("Config"))
+            plugin.ToggleConfigUi();
 
         ImGui.Spacing();
 
@@ -119,7 +123,19 @@ public class MainWindow : Window, IDisposable
 
         ImGui.TextDisabled($"Next daily reset: {untilDaily.Hours}h {untilDaily.Minutes}m");
         ImGui.TextDisabled($"Next weekly reset: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m");
-        ImGui.TextDisabled($"Saturday: {(now.DayOfWeek == DayOfWeek.Saturday ? "Yes" : "No")} ({now.DayOfWeek})");
+        
+        // Saturday timer
+        var daysUntilSaturday = ((DayOfWeek.Saturday - now.DayOfWeek + 7) % 7);
+        if (daysUntilSaturday == 0 && now.Hour >= 15) // After Saturday reset, count to next Saturday
+            daysUntilSaturday = 7;
+        var nextSaturday = now.AddDays(daysUntilSaturday);
+        var saturdayResetTime = new DateTime(nextSaturday.Year, nextSaturday.Month, nextSaturday.Day, 15, 0, 0);
+        if (now.Hour >= 15 && now.DayOfWeek == DayOfWeek.Saturday)
+            saturdayResetTime = saturdayResetTime.AddDays(7);
+        var untilSaturday = saturdayResetTime - now;
+        
+        ImGui.TextDisabled($"Saturday reset: {untilSaturday.Days}d {untilSaturday.Hours}h {untilSaturday.Minutes}m");
+        ImGui.TextDisabled($"Current day: {now.DayOfWeek}");
 
         ImGui.Spacing();
 

@@ -50,6 +50,20 @@ public class CactpotService
         log.Information("[Cactpot] Starting Jumbo Cactpot");
     }
 
+    public void RunMiniCactpot()
+    {
+        log.Information($"[VERMAXION] Manual Mini Cactpot triggered");
+        // TODO: Implement Mini Cactpot logic via Saucy
+        log.Information("[VERMAXION] Mini Cactpot: Stub - not implemented yet");
+    }
+
+    public void RunJumboCactpot()
+    {
+        log.Information($"[VERMAXION] Manual Jumbo Cactpot triggered");
+        // TODO: Implement Jumbo Cactpot logic
+        log.Information("[VERMAXION] Jumbo Cactpot: Stub - not implemented yet");
+    }
+
     public void Reset()
     {
         SetState(CactpotState.Idle);

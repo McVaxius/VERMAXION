@@ -46,6 +46,13 @@ public class VerminionService
         log.Information($"[Verminion] Starting Verminion queue cycle (0/{MaxAttempts})");
     }
 
+    public void RunTask()
+    {
+        log.Information($"[VERMAXION] Manual Verminion queue triggered");
+        // TODO: Implement Verminion duty queue logic
+        log.Information("[VERMAXION] Verminion: Stub - not implemented yet");
+    }
+
     public void Reset()
     {
         currentAttempt = 0;

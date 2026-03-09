@@ -45,6 +45,18 @@ public class ChocoboRaceService
         SetState(ChocoboState.Idle);
     }
 
+    public void RunTask()
+    {
+        log.Information($"[VERMAXION] Manual Chocobo Racing triggered");
+        // TODO: Implement Chocobo Racing logic via Chocoholic
+        log.Information("[VERMAXION] Chocobo Racing: Stub - not implemented yet");
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+
     public void Update()
     {
         if (state == ChocoboState.Idle || state == ChocoboState.Complete || state == ChocoboState.Failed)

@@ -53,9 +53,21 @@ public class FCBuffService
         log.Information($"[FCBuff] Starting FC buff check (max {maxAttempts} purchase attempts)");
     }
 
+    public void RunTask()
+    {
+        log.Information($"[VERMAXION] Manual FC Buff Refill triggered");
+        // TODO: Implement FC buff refill logic
+        log.Information("[VERMAXION] FC Buff Refill: Stub - not implemented yet");
+    }
+
     public void Reset()
     {
         SetState(FCBuffState.Idle);
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
     }
 
     public unsafe void Update()
