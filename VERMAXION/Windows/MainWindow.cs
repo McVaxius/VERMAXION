@@ -42,6 +42,15 @@ public class MainWindow : Window, IDisposable
             plugin.ConfigManager.SaveCurrentAccount();
         }
 
+        ImGui.SameLine();
+        var krangleEnabled = plugin.Configuration.KrangleEnabled;
+        if (ImGui.Checkbox("Krangle", ref krangleEnabled))
+        {
+            plugin.Configuration.KrangleEnabled = krangleEnabled;
+            if (!krangleEnabled) KrangleService.ClearCache();
+            plugin.Configuration.Save();
+        }
+
         ImGui.Separator();
 
         // Engine Status
