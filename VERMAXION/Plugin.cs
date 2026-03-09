@@ -7,6 +7,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using VERMAXION.IPC;
 using VERMAXION.Services;
 using VERMAXION.Windows;
 
@@ -38,6 +39,10 @@ public sealed class Plugin : IDalamudPlugin
     public CactpotService CactpotService { get; init; }
     public ChocoboRaceService ChocoboRaceService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
+    public MinionRouletteService MinionRouletteService { get; init; }
+    public SeasonalGearService SeasonalGearService { get; init; }
+    public GearUpdaterService GearUpdaterService { get; init; }
+    public YesAlreadyIPC YesAlreadyIPC { get; init; }
     public VermaxionEngine Engine { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
@@ -61,8 +66,12 @@ public sealed class Plugin : IDalamudPlugin
         HenchmanService = new HenchmanService(CommandManager, Log);
         FCBuffService = new FCBuffService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
-        CactpotService = new CactpotService(CommandManager, Log);
+        CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
+        MinionRouletteService = new MinionRouletteService(CommandManager, Log);
+        SeasonalGearService = new SeasonalGearService(CommandManager, Log);
+        GearUpdaterService = new GearUpdaterService(CommandManager, Log);
+        YesAlreadyIPC = new YesAlreadyIPC(Log);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady);
@@ -123,6 +132,7 @@ public sealed class Plugin : IDalamudPlugin
         ConfigWindow.Dispose();
         MainWindow.Dispose();
 
+        YesAlreadyIPC.Dispose();
         ARPostProcessService.Dispose();
 
         dtrEntry?.Remove();

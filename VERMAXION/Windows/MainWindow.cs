@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Reflection;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 using VERMAXION.Services;
@@ -16,8 +17,8 @@ public class MainWindow : Window, IDisposable
         this.plugin = plugin;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(400, 300),
-            MaximumSize = new Vector2(800, 600),
+            MinimumSize = new Vector2(520, 480),
+            MaximumSize = new Vector2(800, 700),
         };
     }
 
@@ -29,6 +30,12 @@ public class MainWindow : Window, IDisposable
         var engine = plugin.Engine;
         var charKey = plugin.ConfigManager.SelectedCharacterKey;
         var displayName = string.IsNullOrEmpty(charKey) ? "(Default)" : charKey;
+
+        // Version header
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0.0";
+        ImGui.Text($"Vermaxion v{version}");
+        ImGui.Separator();
+        ImGui.Spacing();
 
         if (plugin.Configuration.KrangleEnabled && !string.IsNullOrEmpty(charKey))
             displayName = KrangleService.KrangleName(charKey);
@@ -56,57 +63,21 @@ public class MainWindow : Window, IDisposable
         // Engine Status
         var stateColor = engine.State switch
         {
-            Services.VermaxionEngine.EngineState.Idle => new Vector4(0.5f, 0.5f, 0.5f, 1f),
-            Services.VermaxionEngine.EngineState.Complete => new Vector4(0f, 1f, 0f, 1f),
-            Services.VermaxionEngine.EngineState.Error => new Vector4(1f, 0f, 0f, 1f),
+            VermaxionEngine.EngineState.Idle => new Vector4(0.5f, 0.5f, 0.5f, 1f),
+            VermaxionEngine.EngineState.Complete => new Vector4(0f, 1f, 0f, 1f),
+            VermaxionEngine.EngineState.Error => new Vector4(1f, 0f, 0f, 1f),
             _ => new Vector4(1f, 0.8f, 0f, 1f),
         };
 
         ImGui.TextColored(stateColor, $"Engine: {engine.StatusText}");
-
+        ImGui.SameLine();
+        if (ImGui.Button("Run All"))
+            engine.ManualStart();
         if (engine.IsRunning)
         {
             ImGui.SameLine();
             if (ImGui.Button("Cancel"))
                 engine.Cancel();
-        }
-
-        ImGui.Spacing();
-
-        // Manual Task Testing
-        ImGui.Text("Manual Task Testing:");
-        ImGui.Separator();
-
-        if (ImGui.Button("FC Buff Refill"))
-            plugin.FCBuffService.RunTask();
-        ImGui.SameLine();
-        if (ImGui.Button("Verminion (5x)"))
-            plugin.VerminionService.RunTask();
-        ImGui.SameLine();
-        if (ImGui.Button("Mini Cactpot"))
-            plugin.CactpotService.RunMiniCactpot();
-
-        if (ImGui.Button("Jumbo Cactpot"))
-            plugin.CactpotService.RunJumboCactpot();
-        ImGui.SameLine();
-        if (ImGui.Button("Chocobo Racing"))
-            plugin.ChocoboRaceService.RunTask();
-        ImGui.SameLine();
-        if (ImGui.Button("Henchman Off"))
-            plugin.HenchmanService.StopHenchman();
-
-        ImGui.SameLine();
-        if (ImGui.Button("Henchman On"))
-            plugin.HenchmanService.StartHenchman();
-
-        ImGui.Spacing();
-        ImGui.Separator();
-
-        // Quick Actions
-        ImGui.Text("Quick Actions:");
-        if (ImGui.Button("Run All Tasks"))
-        {
-            engine.ManualStart();
         }
         ImGui.SameLine();
         if (ImGui.Button("Config"))
@@ -114,37 +85,70 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
 
-        // Reset info
-        var now = DateTime.UtcNow;
-        var nextDaily = Services.ResetDetectionService.GetLastDailyReset(now).AddDays(1);
-        var nextWeekly = Services.ResetDetectionService.GetLastWeeklyReset(now).AddDays(7);
-        var untilDaily = nextDaily - now;
-        var untilWeekly = nextWeekly - now;
+        // Task table with test buttons
+        if (ImGui.BeginTable("TaskTable", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        {
+            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthFixed, 180);
+            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 50);
+            ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 120);
+            ImGui.TableSetupColumn("Test", ImGuiTableColumnFlags.WidthFixed, 80);
+            ImGui.TableHeadersRow();
 
-        ImGui.TextDisabled($"Next daily reset: {untilDaily.Hours}h {untilDaily.Minutes}m");
-        ImGui.TextDisabled($"Next weekly reset: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m");
-        
-        // Saturday timer
-        var daysUntilSaturday = ((DayOfWeek.Saturday - now.DayOfWeek + 7) % 7);
-        if (daysUntilSaturday == 0 && now.Hour >= 15) // After Saturday reset, count to next Saturday
-            daysUntilSaturday = 7;
-        var nextSaturday = now.AddDays(daysUntilSaturday);
-        var saturdayResetTime = new DateTime(nextSaturday.Year, nextSaturday.Month, nextSaturday.Day, 15, 0, 0);
-        if (now.Hour >= 15 && now.DayOfWeek == DayOfWeek.Saturday)
-            saturdayResetTime = saturdayResetTime.AddDays(7);
-        var untilSaturday = saturdayResetTime - now;
-        
-        ImGui.TextDisabled($"Saturday reset: {untilSaturday.Days}d {untilSaturday.Hours}h {untilSaturday.Minutes}m");
-        ImGui.TextDisabled($"Current day: {now.DayOfWeek}");
+            // --- Every AR PostProcess ---
+            DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
+                "Test##FCBuff", () => plugin.FCBuffService.RunTask());
+            DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
+                "Off##Hench", () => plugin.HenchmanService.StopHenchman());
+            DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
+                "Test##Minion", () => plugin.MinionRouletteService.RunTask());
+            DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
+                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask());
+            DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
+                "Test##GearUpd", () => plugin.GearUpdaterService.RunTask());
+
+            // --- Weekly Tasks ---
+            DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
+                config.VerminionCompletedThisWeek ? "Done this week" : "Pending",
+                "Test##Verm", () => plugin.VerminionService.RunTask());
+            DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
+                config.JumboCactpotCompletedThisWeek ? "Done this week" : "Pending (Sat)",
+                "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot());
+
+            // --- Daily Tasks ---
+            DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
+                config.MiniCactpotCompletedToday ? "Done today" : "Pending",
+                "Test##Mini", () => plugin.CactpotService.RunMiniCactpot());
+            DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
+                config.ChocoboRacingCompletedToday ? "Done today" : "Pending",
+                "Test##Choco", () => plugin.ChocoboRaceService.RunTask());
+
+            ImGui.EndTable();
+        }
 
         ImGui.Spacing();
 
-        // AR connection status
+        // Timers
+        var now = DateTime.UtcNow;
+        var nextDaily = ResetDetectionService.GetLastDailyReset(now).AddDays(1);
+        var nextWeekly = ResetDetectionService.GetLastWeeklyReset(now).AddDays(7);
+        var untilDaily = nextDaily - now;
+        var untilWeekly = nextWeekly - now;
+
+        // Saturday timer
+        var daysUntilSaturday = ((int)(DayOfWeek.Saturday - now.DayOfWeek + 7) % 7);
+        if (daysUntilSaturday == 0 && now.Hour >= 15)
+            daysUntilSaturday = 7;
+        var saturdayResetTime = now.Date.AddDays(daysUntilSaturday).AddHours(15);
+        var untilSaturday = saturdayResetTime - now;
+
+        ImGui.TextDisabled($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m  |  Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m  |  Saturday: {untilSaturday.Days}d {untilSaturday.Hours}h {untilSaturday.Minutes}m");
+
+        // AR status
         var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
-        ImGui.TextDisabled($"AR PostProcess: {arStatus}");
+        ImGui.TextDisabled($"AR PostProcess: {arStatus}  |  {now.DayOfWeek}");
     }
 
-    private void DrawStatusRow(string task, bool enabled, string status)
+    private void DrawTaskRow(string task, bool enabled, string status, string buttonLabel, Action onClick)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -153,5 +157,8 @@ public class MainWindow : Window, IDisposable
         ImGui.TextColored(enabled ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1), enabled ? "On" : "Off");
         ImGui.TableSetColumnIndex(2);
         ImGui.TextDisabled(status);
+        ImGui.TableSetColumnIndex(3);
+        if (ImGui.SmallButton(buttonLabel))
+            onClick();
     }
 }

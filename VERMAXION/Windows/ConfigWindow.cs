@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 using VERMAXION.Services;
@@ -10,6 +11,7 @@ namespace VERMAXION.Windows;
 public class ConfigWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
+    private string editAccountAlias = "";
 
     public ConfigWindow(Plugin plugin)
         : base("Vermaxion Configuration##Config", ImGuiWindowFlags.None)
@@ -25,6 +27,24 @@ public class ConfigWindow : Window, IDisposable
     public void Dispose() { }
 
     public override void Draw()
+    {
+        if (ImGui.BeginTabBar("ConfigTabs"))
+        {
+            if (ImGui.BeginTabItem("Settings"))
+            {
+                DrawSettingsTab();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("About"))
+            {
+                DrawAboutTab();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+    }
+
+    private void DrawSettingsTab()
     {
         var configManager = plugin.ConfigManager;
         var config = plugin.Configuration;
@@ -77,6 +97,63 @@ public class ConfigWindow : Window, IDisposable
         ImGui.EndChild();
     }
 
+    private void DrawAboutTab()
+    {
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0.0";
+        ImGui.Text($"Vermaxion v{version}");
+        ImGui.TextDisabled("Automates weekly and daily tasks triggered by AutoRetainer post-processing.");
+        ImGui.Spacing();
+        ImGui.Separator();
+
+        ImGui.Text("Dependencies");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Overall:");
+        ImGui.BulletText("AutoRetainer - Triggers post-processing via IPC");
+        ImGui.BulletText("YesAlready - Paused during operations to prevent interference");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Mini Cactpot:");
+        ImGui.BulletText("Saucy - Handles Mini Cactpot solving (/saucy -> Other Games -> Enable Auto Mini-Cactpot)");
+        ImGui.BulletText("Teleporter - /tp gold (teleport to Gold Saucer)");
+        ImGui.BulletText("vnavmesh - Navigation to Cactpot Board");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Jumbo Cactpot:");
+        ImGui.BulletText("Lifestream - /li Cactpot (navigate to Jumbo Cactpot area)");
+        ImGui.BulletText("vnavmesh - Navigation to Broker/Cashier NPCs");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Chocobo Racing:");
+        ImGui.BulletText("Chocoholic - Handles chocobo race automation");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Lord of Verminion:");
+        ImGui.BulletText("(Self-contained) - Duty queue via ContentsFinder");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("FC Buff Refill:");
+        ImGui.BulletText("(Self-contained) - Checks Seal Sweetener status, purchases if needed");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Gear Updater:");
+        ImGui.BulletText("(Self-contained) - Cycles gearsets, auto-equips, saves");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Minion Roulette:");
+        ImGui.BulletText("(Self-contained) - /minion command");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Seasonal Gear Roulette:");
+        ImGui.BulletText("(Self-contained) - Random seasonal gear equip from predefined list");
+        ImGui.Spacing();
+
+        ImGui.Separator();
+        ImGui.Text("Links");
+        ImGui.BulletText("GitHub: https://github.com/McVaxius/VERMAXION");
+        ImGui.BulletText("Author: McVaxius");
+    }
+
     private void DrawAccountSelector(ConfigManager configManager)
     {
         var accounts = configManager.Accounts;
@@ -103,6 +180,29 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndCombo();
         }
 
+        // Rename button
+        var account = configManager.GetCurrentAccount();
+        if (account != null)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Rename##EditAccount"))
+            {
+                editAccountAlias = account.AccountAlias;
+                ImGui.OpenPopup("EditAccountPopup");
+            }
+
+            if (ImGui.BeginPopup("EditAccountPopup"))
+            {
+                ImGui.Text("Account Alias:");
+                ImGui.InputText("##EditAlias", ref editAccountAlias, 64);
+                if (ImGui.Button("Save") && !string.IsNullOrWhiteSpace(editAccountAlias))
+                {
+                    configManager.UpdateAccountAlias(editAccountAlias);
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.EndPopup();
+            }
+        }
     }
 
     private void DrawCharacterList(ConfigManager configManager)
@@ -200,6 +300,39 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Stop Henchman before tasks, restart after");
+
+            var minionRoulette = cc.EnableMinionRoulette;
+            if (ImGui.Checkbox("Minion Roulette", ref minionRoulette))
+            {
+                cc.EnableMinionRoulette = minionRoulette;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Fire off /minion roulette once per AR postprocess");
+
+            var seasonalGear = cc.EnableSeasonalGearRoulette;
+            if (ImGui.Checkbox("Seasonal Gear Roulette", ref seasonalGear))
+            {
+                cc.EnableSeasonalGearRoulette = seasonalGear;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Randomly equip seasonal event gear for a fun ensemble each AR run");
+
+            var gearUpdater = cc.EnableGearUpdater;
+            if (ImGui.Checkbox("Gear Updater", ref gearUpdater))
+            {
+                cc.EnableGearUpdater = gearUpdater;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)");
         }
 
         if (ImGui.CollapsingHeader("Weekly Tasks", ImGuiTreeNodeFlags.DefaultOpen))
@@ -232,11 +365,15 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.CollapsingHeader("Daily Tasks", ImGuiTreeNodeFlags.DefaultOpen))
         {
             var mini = cc.EnableMiniCactpot;
-            if (ImGui.Checkbox("Mini Cactpot (3x via Saucy)", ref mini))
+            if (ImGui.Checkbox("Mini Cactpot", ref mini))
             {
                 cc.EnableMiniCactpot = mini;
                 changed = true;
             }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("To enable: type /saucy, go to \"Other Games\" -> [x] Enable Auto Mini-Cactpot.\nVermaxion will teleport to Gold Saucer, walk to the Cactpot Board, and start the interaction.\nSaucy handles the actual mini-game solving.");
             if (cc.MiniCactpotCompletedToday)
             {
                 ImGui.SameLine();

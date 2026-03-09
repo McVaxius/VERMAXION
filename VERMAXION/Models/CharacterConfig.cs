@@ -12,6 +12,9 @@ public class CharacterConfig
     public bool EnableChocoboRacing { get; set; } = false;
     public bool EnableFCBuffRefill { get; set; } = false;
     public bool EnableHenchmanManagement { get; set; } = false;
+    public bool EnableMinionRoulette { get; set; } = false;
+    public bool EnableSeasonalGearRoulette { get; set; } = false;
+    public bool EnableGearUpdater { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -38,6 +41,9 @@ public class CharacterConfig
             EnableChocoboRacing = EnableChocoboRacing,
             EnableFCBuffRefill = EnableFCBuffRefill,
             EnableHenchmanManagement = EnableHenchmanManagement,
+            EnableMinionRoulette = EnableMinionRoulette,
+            EnableSeasonalGearRoulette = EnableSeasonalGearRoulette,
+            EnableGearUpdater = EnableGearUpdater,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             LastWeeklyReset = LastWeeklyReset,
