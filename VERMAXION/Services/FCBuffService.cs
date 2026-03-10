@@ -483,7 +483,7 @@ public class FCBuffService : IDisposable
                         log.Information("[FCBuff] Navigating to Limsa Quartermaster via VNavmesh IPC");
                         plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(93, 40f, 68f));
                         break;
-                    case 129: // Gridania
+                    case 132: // Gridania
                         log.Information("[FCBuff] Navigating to Gridania Quartermaster via VNavmesh IPC");
                         plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-71, -0.5f, -5f));
                         break;
@@ -513,7 +513,7 @@ public class FCBuffService : IDisposable
                 var targetPos = targetGCTerritory switch
                 {
                     128 => new Vector3(93, 40f, 68f),  // Limsa
-                    129 => new Vector3(-71, -0.5f, -5f), // Gridania
+                    132 => new Vector3(-71, -0.5f, -5f), // Gridania
                     130 => new Vector3(-144, 4f, -100f), // Ul'dah
                     _ => Vector3.Zero
                 };
