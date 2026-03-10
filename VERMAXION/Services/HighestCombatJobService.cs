@@ -158,33 +158,19 @@ public class HighestCombatJobService : IDisposable
                 return currentLevel;
             }
 
-            // For other jobs, try to get level from character data
-            // This attempts to replicate FUTA's Player.GetJob(i).Level
-            var player = objectTable?.LocalPlayer;
-            if (player == null)
-            {
-                log.Debug($"[HighestCombatJob] No local player available for job {jobId}");
-                return 0;
-            }
-
-            // Try to access job levels through the player's character data
-            // This is experimental - looking for the right API
-            try
-            {
-                // Method: Try to get job level from character sheet data
-                // This may need to be adjusted based on the actual Dalamud API
-                log.Debug($"[HighestCombatJob] Attempting to get level for job {jobId} from character data");
-                
-                // For now, we'll need to implement a different approach
-                // The key is finding the equivalent to FUTA's Player.GetJob(i).Level
-                log.Debug($"[HighestCombatJob] Job {jobId} level detection not yet implemented");
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                log.Debug($"[HighestCombatJob] Job level detection failed for {jobId}: {ex.Message}");
-                return 0;
-            }
+            // For other jobs, implement a simple working approach
+            // Since we can't easily access Player.GetJob(i).Level directly,
+            // let's use a practical approach for now
+            
+            log.Debug($"[HighestCombatJob] Job {jobId} not current, returning 0 for now");
+            
+            // TODO: Implement proper SND-style Player.GetJob(i).Level access
+            // This would require either:
+            // 1. Direct FFXIVClientStructs access to character job data
+            // 2. SND command execution and result parsing
+            // 3. Memory reading techniques
+            
+            return 0;
         }
         catch (Exception ex)
         {
