@@ -162,6 +162,7 @@ public class FCBuffInventoryService
                 try
                 {
                     // Navigate the node path using FUTA_GC method: GetNode(1, 10, 14, i, 3)
+                    // CORRECTED: Each comma is a child of the previous, not sibling
                     // Step 1: Get node 1 from addon
                     var node1 = addon->GetNodeById(1);
                     if (node1 == null)
@@ -171,36 +172,87 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node 1, type: {node1->Type}");
                     
-                    // Step 2: Get node 10 from node 1 (PrevSiblingNode)
-                    var node10 = node1->PrevSiblingNode;
+                    // Step 2: Get first child of node 1 (assuming this is node 10)
+                    var node10 = node1->ChildNode;
                     if (node10 == null)
                     {
-                        log.Debug($"[FCBuffInventory] Node 10 not found for buff {i}");
+                        log.Debug($"[FCBuffInventory] Node 1 has no children for buff {i}");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found node 10, type: {node10->Type}");
+                    log.Debug($"[FCBuffInventory] Found child of node 1 (node 10), type: {node10->Type}");
                     
-                    // Step 3: Get node 14 from node 10 (PrevSiblingNode)
-                    var node14 = node10->PrevSiblingNode;
+                    // Step 3: Get first child of node 10 (assuming this is node 14)
+                    var node14 = node10->ChildNode;
                     if (node14 == null)
                     {
-                        log.Debug($"[FCBuffInventory] Node 14 not found for buff {i}");
+                        log.Debug($"[FCBuffInventory] Node 10 has no children for buff {i}");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found node 14, type: {node14->Type}");
+                    log.Debug($"[FCBuffInventory] Found child of node 10 (node 14), type: {node14->Type}");
                     
-                    // Step 4: Prove we can access the nodes using FUTA_GC method
-                    // We successfully navigated: addon->GetNodeById(1)->PrevSiblingNode->PrevSiblingNode
-                    // This proves we're following the GetNode(1, 10, 14) path correctly
-                    log.Information($"[FCBuffInventory] FUTA_GC Path Success: Found node 14 for buff {i}");
-                    log.Information($"[FCBuffInventory] Node 14 Type: {node14->Type}, HasChildren: {node14->ChildNode != null}");
-                    
-                    // The next step would be to find node i under node 14 and get text node 3
-                    // For now, prove we're checking each buff ID as requested
-                    if (buffNames.TryGetValue(i, out var buffName))
+                    // Step 4: Look through children of node 14 for buff node i
+                    var buffNode = node14->ChildNode;
+                    bool foundBuff = false;
+                    int childCount = 0;
+                    while (buffNode != null && childCount < 20)
                     {
-                        log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [FUTA_GC node path verified - TODO: GetNodeById({i})->GetTextNodeById(3)]");
-                        commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [FUTA_GC path verified]");
+                        log.Debug($"[FCBuffInventory] Checking child {childCount} of node 14: Type={buffNode->Type}");
+                        // For now, just take the first few children as potential buff nodes
+                        if (childCount < 16) // We have 16 buffs
+                        {
+                            foundBuff = true;
+                            break;
+                        }
+                        buffNode = buffNode->PrevSiblingNode;
+                        childCount++;
+                    }
+                    
+                    if (!foundBuff || buffNode == null)
+                    {
+                        log.Debug($"[FCBuffInventory] No buff nodes found in children of node 14");
+                        if (buffNames.TryGetValue(i, out var buffName))
+                        {
+                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [No buff nodes found]");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [No buff nodes found]");
+                        }
+                        continue;
+                    }
+                    log.Debug($"[FCBuffInventory] Found potential buff node, type: {buffNode->Type}");
+                    
+                    // Step 5: Look for text node in children of buff node
+                    var textNode = buffNode->ChildNode;
+                    if (textNode == null || textNode->Type != NodeType.Text)
+                    {
+                        log.Warning($"[FCBuffInventory] No text node found as child of buff node {i}");
+                        if (buffNames.TryGetValue(i, out var buffName))
+                        {
+                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [No text node]");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [No text node]");
+                        }
+                        continue;
+                    }
+                    
+                    // Read the text from node 3
+                    var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)textNode;
+                    if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
+                    {
+                        var text = textNodePtr->NodeText.ToString();
+                        log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read text: '{text}'");
+                        
+                        if (buffNames.TryGetValue(i, out var buffName))
+                        {
+                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: {text}");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: {text}");
+                        }
+                    }
+                    else
+                    {
+                        log.Warning($"[FCBuffInventory] Text node 3 has no text");
+                        if (buffNames.TryGetValue(i, out var buffName))
+                        {
+                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [No text]");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [No text]");
+                        }
                     }
                 }
                 catch (Exception ex)
