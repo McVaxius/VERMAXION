@@ -181,14 +181,29 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node 10 (child of 1), type: {node10->Type}");
                     
-                    // Step 3: Get child node 14 from node 10 (List Component Node)
+                    // Step 3: Find node 14 from children of node 10 (List Component Node)
                     var node14 = node10->ChildNode;
-                    if (node14 == null)
+                    bool found14 = false;
+                    int childCount = 0;
+                    
+                    while (node14 != null && childCount < 20)
                     {
-                        log.Debug($"[FCBuffInventory] Node 14 (child of 10) not found for buff {i}");
+                        log.Debug($"[FCBuffInventory] Checking child {childCount} of node 10: Type={node14->Type}");
+                        if ((int)node14->Type >= 1000) // Component nodes have type >= 1000
+                        {
+                            found14 = true;
+                            break;
+                        }
+                        node14 = node14->PrevSiblingNode;
+                        childCount++;
+                    }
+                    
+                    if (!found14 || node14 == null)
+                    {
+                        log.Debug($"[FCBuffInventory] Node 14 (component) not found in children of node 10 for buff {i}");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found node 14 (child of 10), type: {node14->Type}");
+                    log.Debug($"[FCBuffInventory] Found node 14 (component) at child {childCount}, type: {node14->Type}");
                     
                     // Node 14 is a List Component Node - need to access it as a component
                     var componentNode14 = node14->GetAsAtkComponentNode();
