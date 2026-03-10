@@ -65,8 +65,7 @@ public class ConfigManager
             return account.DefaultConfig;
         }
 
-        log.Debug($"[ConfigManager] Loaded config for character '{SelectedCharacterKey}' in account {CurrentAccountId}");
-        return cc;
+                return cc;
     }
 
     public CharacterConfig GetCurrentCharacterConfig(string charKey)
