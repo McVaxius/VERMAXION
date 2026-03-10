@@ -115,9 +115,6 @@ public sealed class Plugin : IDalamudPlugin
         // Login detection
         ClientState.Login += OnLoginEvent;
         Framework.Update += OnFrameworkUpdate;
-        
-        // Chat message handler for minion roulette detection
-        ChatGui.ChatMessage += OnChatMessage;
 
         if (ClientState.IsLoggedIn)
         {
@@ -132,7 +129,6 @@ public sealed class Plugin : IDalamudPlugin
     {
         Framework.Update -= OnFrameworkUpdate;
         ClientState.Login -= OnLoginEvent;
-        ChatGui.ChatMessage -= OnChatMessage;
 
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
@@ -319,13 +315,6 @@ public sealed class Plugin : IDalamudPlugin
                 : config.Enabled
                     ? "Vermaxion ready - waiting for AR postprocess"
                     : "Vermaxion disabled"));
-    }
-    
-    private void OnChatMessage(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender, ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
-    {
-        // Forward chat messages to MinionRouletteService for XL log detection
-        var messageText = message.TextValue;
-        MinionRouletteService.OnXLLogMessage(messageText);
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
