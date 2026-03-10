@@ -305,6 +305,8 @@ public class ConfigWindow : Window, IDisposable
                 {
                     cc.FCBuffPurchaseAttempts = attempts;
                     changed = true;
+                    // Save immediately on slider change
+                    configManager.SaveCurrentAccount();
                 }
                 
                 // FC Points threshold
@@ -313,6 +315,8 @@ public class ConfigWindow : Window, IDisposable
                 {
                     cc.FCBuffMinPoints = Math.Max(0, minPoints);
                     changed = true;
+                    // Save immediately on input change
+                    configManager.SaveCurrentAccount();
                 }
                 
                 // Gil threshold
@@ -321,6 +325,8 @@ public class ConfigWindow : Window, IDisposable
                 {
                     cc.FCBuffMinGil = Math.Max(0, minGil);
                     changed = true;
+                    // Save immediately on input change
+                    configManager.SaveCurrentAccount();
                 }
                 
                 ImGui.Unindent();
@@ -430,6 +436,8 @@ public class ConfigWindow : Window, IDisposable
                 {
                     cc.ChocoboRacesPerDay = races;
                     changed = true;
+                    // Save immediately on slider change
+                    configManager.SaveCurrentAccount();
                 }
                 ImGui.Unindent();
             }
