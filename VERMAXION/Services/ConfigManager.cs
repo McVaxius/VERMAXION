@@ -53,11 +53,7 @@ public class ConfigManager
             return new CharacterConfig();
         }
 
-        log.Debug($"[ConfigManager] Account {CurrentAccountId} has {account.Characters.Count} characters");
-        if (account.Characters.Count > 0)
-        {
-            log.Debug($"[ConfigManager] Available characters: {string.Join(", ", account.Characters.Keys)}");
-        }
+        // Removed debug logs that were spamming every frame
 
         if (string.IsNullOrEmpty(SelectedCharacterKey))
         {
@@ -71,7 +67,7 @@ public class ConfigManager
             return account.DefaultConfig;
         }
 
-        log.Debug($"[ConfigManager] Found character config for '{SelectedCharacterKey}' with FCBuffMinPoints={cc.FCBuffMinPoints}, FCBuffPurchaseAttempts={cc.FCBuffPurchaseAttempts}");
+        // Removed debug log that was spamming every frame
         return cc;
     }
 
