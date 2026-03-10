@@ -18,37 +18,40 @@ public class HighestCombatJobService : IDisposable
     private DateTime lastAction = DateTime.MinValue;
     private bool isRunning = false;
     
-    // Combat job IDs (DOW/DOM only - actual combat jobs)
+    // Combat job IDs (DOW/DOM only - matching FUTA's which_cj() approach)
     private static readonly uint[] CombatJobs = new uint[]
     {
-        // Disciples of War (DOW)
-        1,  // GLA -> Paladin (26)
-        2,  // PGL -> Monk (27)
-        3,  // MRD -> Warrior (28)
-        4,  // LNC -> Dragoon (29)
-        5,  // ARC -> Bard (30)
+        // First loop: 0-7 (base classes)
+        0,  // ADV (Adventurer)
+        1,  // GLA (Paladin)
+        2,  // PGL (Monk)
+        3,  // MRD (Warrior)
+        4,  // ARC (Bard)
+        5,  // LNC (Dragoon)
+        6,  // CNJ (White Mage)
+        7,  // THM (Black Mage)
         
-        // Disciples of Magic (DOM)
-        6,  // CNJ -> White Mage (31)
-        7,  // THM -> Black Mage (32)
-        26, // Paladin
-        27, // Monk
-        28, // Warrior
-        29, // Dragoon
-        30, // Bard
-        31, // White Mage
-        32, // Black Mage
-        33, // Arcanist -> Summoner (34) / Scholar (35)
-        34, // Summoner
-        35, // Scholar
-        36, // ROG -> Ninja (37)
-        37, // Ninja
-        38, // Machinist
-        39, // Dark Knight
-        40, // Astrologian
-        41, // Samurai
-        42, // Reaper
-        43, // Sage
+        // Second loop: 19-29 (expanded jobs)
+        19, // PLD (Paladin)
+        20, // MNK (Monk)
+        21, // WAR (Warrior)
+        22, // DRG (Dragoon)
+        23, // BRD (Bard)
+        24, // WHM (White Mage)
+        25, // BLM (Black Mage)
+        26, // ACN (Arcanist)
+        27, // SMN (Summoner)
+        28, // SCH (Scholar)
+        29, // ROG (Ninja)
+        
+        // Additional combat jobs (not in FUTA but needed)
+        30, // NIN (Ninja)
+        31, // MCH (Machinist)
+        32, // DRK (Dark Knight)
+        33, // AST (Astrologian)
+        34, // SAM (Samurai)
+        35, // RPR (Reaper)
+        36, // SGE (Sage)
     };
 
     public HighestCombatJobService(ICommandManager commandManager, IPluginLog log, IPlayerState playerState, IClientState clientState, IObjectTable objectTable)
@@ -138,34 +141,32 @@ public class HighestCombatJobService : IDisposable
     {
         try
         {
-            // Use PlayerState to get current job level
-            // For now, we can only get the current job's level reliably
+            // Use ClientState to get job levels like FUTA
+            var localPlayer = clientState?.LocalPlayer;
+            if (localPlayer == null)
+            {
+                log.Warning("[HighestCombatJob] Could not get local player");
+                return 0;
+            }
+
+            // Try to get job level - this might need a different approach
+            // For now, let's try to get it from the player's class data
+            log.Debug($"[HighestCombatJob] Checking job {jobId}");
+            
+            // FUTA uses Player.GetJob(i).Level but this might be a different API
+            // Let's try a simpler approach first
             var currentClassJob = playerState?.ClassJob;
             if (currentClassJob?.RowId == jobId)
             {
-                log.Debug($"[HighestCombatJob] Current job {jobId} level: {playerState.Level}");
-                return (int)playerState.Level;
+                var level = (int)playerState.Level;
+                log.Debug($"[HighestCombatJob] Current job {jobId} level: {level}");
+                return level;
             }
 
-            // For other jobs, we need a different approach
-            // Let's try using ObjectTable to find the player and get job levels
-            if (objectTable == null)
-            {
-                log.Warning("[HighestCombatJob] Could not get ObjectTable");
-                return 0;
-            }
-
-            var player = objectTable[0];
-            if (player == null)
-            {
-                log.Warning("[HighestCombatJob] Could not get player from ObjectTable");
-                return 0;
-            }
-
-            // Try to get job levels from player character
-            // This is a simplified approach - may need refinement
-            log.Debug($"[HighestCombatJob] Job {jobId} not current, returning 0 for now");
-            return 0; // Will only detect current job for now
+            // For other jobs, we need to find the right API
+            // Let's return 0 for now and log that we need to implement this
+            log.Debug($"[HighestCombatJob] Job {jobId} not current, need to implement multi-job level detection");
+            return 0;
         }
         catch (Exception ex)
         {
