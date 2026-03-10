@@ -232,7 +232,9 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniComplete:
-                log.Information("[Cactpot] Mini Cactpot sequence finished");
+                log.Information("[Cactpot] Mini Cactpot sequence finished, exiting with NUMPAD+");
+                // Exit with NUMPAD+ like FC buff purchasing
+                GameHelpers.SendNumpadPlus();
                 SetState(CactpotState.Complete);
                 break;
 
