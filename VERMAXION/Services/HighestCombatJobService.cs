@@ -87,9 +87,9 @@ public class HighestCombatJobService : IDisposable
         {
             log.Information($"[HighestCombatJob] Current job {currentJobId} is DoL/DoH, switching to combat job first");
             
-            // Switch to a known combat job (PLD job 1) to access combat job levels
-            CommandHelper.SendCommand("/job 1");
-            log.Information("[HighestCombatJob] Sent command to switch to Paladin (job 1)");
+            // Switch to a known combat job (PLD) using equipjob command
+            CommandHelper.SendCommand("/equipjob pld");
+            log.Information("[HighestCombatJob] Sent command to switch to Paladin (/equipjob pld)");
             
             // Wait a moment for job switch, then continue
             // The next Update() call will handle the actual logic
@@ -119,11 +119,10 @@ public class HighestCombatJobService : IDisposable
 
         log.Information($"[HighestCombatJob] Highest combat job: {highestJob.Name} (Level {highestJob.Level}, ID {highestJob.JobId})");
         
-        // Use SimpleTweaks command to switch to highest job
-        // This requires SimpleTweaks plugin with job switching functionality
-        CommandHelper.SendCommand($"/job {highestJob.JobId}");
-        
-        log.Information($"[HighestCombatJob] Sent command to switch to job {highestJob.JobId}");
+        // Send command to switch to the highest combat job using equipjob
+        var jobCommand = GetEquipJobCommand(highestJob.JobId);
+        CommandHelper.SendCommand($"/equipjob {jobCommand}");
+        log.Information($"[HighestCombatJob] Sent command to switch to {highestJob.Name} (/equipjob {jobCommand})");
     }
 
     private CombatJobInfo? GetHighestCombatJob()
@@ -198,6 +197,32 @@ public class HighestCombatJobService : IDisposable
             log.Error($"[HighestCombatJob] Error getting job level for {jobId}: {ex.Message}");
             return 0;
         }
+    }
+
+    private string GetEquipJobCommand(uint jobId)
+    {
+        return jobId switch
+        {
+            1 or 26 or 19 => "pld",
+            2 or 27 or 20 => "mnk", 
+            3 or 28 or 21 => "war",
+            4 or 29 or 22 => "drg",
+            5 or 30 or 23 => "brd",
+            6 or 31 or 24 => "whm",
+            7 or 32 or 25 => "blm",
+            33 => "acn",
+            34 => "smn",
+            35 => "sch",
+            36 => "rog",
+            37 => "nin",
+            38 => "mch",
+            39 => "drk",
+            40 => "ast",
+            41 => "sam",
+            42 => "rpr",
+            43 => "sge",
+            _ => "pld" // fallback
+        };
     }
 
     private bool IsCombatJob(uint jobId)
