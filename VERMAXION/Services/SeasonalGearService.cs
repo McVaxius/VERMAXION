@@ -141,7 +141,7 @@ public class SeasonalGearService : IDisposable
                             log.Debug($"[SeasonalGear] Item details: Quantity={slot->Quantity}, Flags={slot->Flags}, Condition={slot->Condition}");
                             
                             // Determine target equipment slot based on item
-                            var targetContainer = (InventoryType)0; // EquippedItems
+                            var targetContainer = (InventoryType)1000; // EquippedItems (not Inventory1!)
                             var targetSlot = GetEquipmentSlotForItem(itemId);
                             
                             if (targetSlot == -1)
