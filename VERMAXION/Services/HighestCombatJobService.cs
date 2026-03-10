@@ -140,41 +140,35 @@ public class HighestCombatJobService : IDisposable
     {
         try
         {
-            // Direct approach: Player.GetJob(i).Level using SVC wrapper
-            // This is exactly what FUTA does
+            // Use the same pattern as getting current job ID
+            // This should be equivalent to FUTA's Player.GetJob(i).Level
             log.Debug($"[HighestCombatJob] Getting level for job {jobId}");
             
-            // Try to access job level through the character data
-            var player = objectTable?.LocalPlayer;
-            if (player == null)
+            // Check if this is the current job first
+            uint currentJobId = 0;
+            var classJob = playerState?.ClassJob;
+            if (classJob.HasValue)
             {
-                log.Debug($"[HighestCombatJob] No local player available");
-                return 0;
+                currentJobId = classJob.Value.RowId;
             }
-
-            // Use unsafe code to access the character's job level data
-            // This should be equivalent to FUTA's Player.GetJob(i).Level
-            unsafe
+            
+            if (currentJobId == jobId)
             {
-                var character = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)player.Address;
-                if (character == null)
-                {
-                    log.Debug($"[HighestCombatJob] Character object null for job {jobId}");
-                    return 0;
-                }
-
-                // Try to access job level data through the character's structure
-                // The job levels are typically stored in a specific offset
-                
-                // Try to access the character's job level data
-                // This might be at a specific offset in the character structure
-                
-                // For now, let's try to access it through a simple approach
-                // We'll need to find the correct offset for the job level array
-                
-                // Return 0 for now - need to find the correct memory offset
-                return 0;
+                // This is the current job, get its level
+                var currentLevel = (int)(playerState?.Level ?? 0);
+                log.Debug($"[HighestCombatJob] Job {jobId} is current, level: {currentLevel}");
+                return currentLevel;
             }
+            
+            // For other jobs, we need to access the character's job level data
+            // This should be similar to how we access ClassJob data
+            
+            // Try to access the character's job level data
+            // This might be stored in the character's job data structure
+            
+            // For now, return 0 until we find the correct pattern
+            log.Debug($"[HighestCombatJob] Job {jobId} not current, level access not implemented");
+            return 0;
         }
         catch (Exception ex)
         {
