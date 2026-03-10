@@ -97,6 +97,10 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
         
+        // Force save current config to ensure values are written
+        configManager.SaveCurrentAccount();
+        log.Information("[FCBuff] Forced config save - check if values persist after reload");
+        
         purchaseAttempts = maxAttempts;
         buyCount = 0;
         isSealSweetenerTwo = true; // Start with Seal Sweetener II

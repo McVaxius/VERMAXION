@@ -170,6 +170,14 @@ public class MainWindow : Window, IDisposable
             {
                 plugin.FCBuffService.TestFreeCompanyGC();
             }
+            
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Force Config Save"))
+            {
+                var activeConfig = plugin.ConfigManager.GetActiveConfig();
+                plugin.ConfigManager.SaveCurrentAccount();
+                Plugin.Log.Information($"[UI] Forced config save: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
+            }
         }
 
         ImGui.Spacing();
