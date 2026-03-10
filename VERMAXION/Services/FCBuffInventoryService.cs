@@ -181,29 +181,30 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node 10 (child of 1), type: {node10->Type}");
                     
-                    // Step 3: Find node 14 from children of node 10 (List Component Node)
+                    // Step 3: Find the actual List Component Node 14 from children of node 10
                     var node14 = node10->ChildNode;
-                    bool found14 = false;
-                    int childCount = 0;
+                    bool foundComponent = false;
+                    int childIndex = 0;
                     
-                    while (node14 != null && childCount < 20)
+                    while (node14 != null && childIndex < 50)
                     {
-                        log.Debug($"[FCBuffInventory] Checking child {childCount} of node 10: Type={node14->Type}");
-                        if ((int)node14->Type >= 1000) // Component nodes have type >= 1000
+                        log.Debug($"[FCBuffInventory] Checking child {childIndex} of node 10: Type={node14->Type}");
+                        // Look for component node (type >= 1000) which should be the List Component
+                        if ((int)node14->Type >= 1000)
                         {
-                            found14 = true;
+                            foundComponent = true;
                             break;
                         }
                         node14 = node14->PrevSiblingNode;
-                        childCount++;
+                        childIndex++;
                     }
                     
-                    if (!found14 || node14 == null)
+                    if (!foundComponent || node14 == null)
                     {
-                        log.Debug($"[FCBuffInventory] Node 14 (component) not found in children of node 10 for buff {i}");
+                        log.Debug($"[FCBuffInventory] List Component Node not found in children of node 10 for buff {i}");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found node 14 (component) at child {childCount}, type: {node14->Type}");
+                    log.Debug($"[FCBuffInventory] Found List Component Node at child {childIndex}, type: {node14->Type}");
                     
                     // Node 14 is a List Component Node - need to access it as a component
                     var componentNode14 = node14->GetAsAtkComponentNode();
