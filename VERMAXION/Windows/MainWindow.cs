@@ -70,11 +70,23 @@ public class MainWindow : Window, IDisposable
         };
 
         ImGui.TextColored(stateColor, $"Engine: {engine.StatusText}");
+        
+        // Task count
+        var pendingTasks = engine.GetPendingTaskCount();
+        if (pendingTasks > 0)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), $"({pendingTasks} pending)");
+        }
+        
         ImGui.SameLine();
         if (ImGui.Button("Run All"))
             engine.ManualStart();
         if (engine.IsRunning)
         {
+            ImGui.SameLine();
+            if (ImGui.Button("Stop"))
+                engine.Stop();
             ImGui.SameLine();
             if (ImGui.Button("Cancel"))
                 engine.Cancel();

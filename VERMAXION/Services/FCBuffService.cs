@@ -1,10 +1,12 @@
 using System;
 using System.Linq;
+using System.Text;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -120,7 +122,13 @@ public class FCBuffService : IDisposable
             case FCBuffState.OpeningFCWindow:
                 if (elapsed < 1) return;
                 log.Information("[FCBuff] Opening FC window: /freecompanycmd");
-                commandManager.ProcessCommand("/freecompanycmd");
+                
+                // Try plugin command first
+                if (!commandManager.ProcessCommand("/freecompanycmd"))
+                {
+                    log.Error("[FCBuff] Failed to process /freecompanycmd command");
+                }
+                
                 SetState(FCBuffState.WaitingForFCWindow);
                 break;
 

@@ -106,6 +106,26 @@ public class VermaxionEngine
         SetState(EngineState.Idle);
     }
 
+    public void Stop()
+    {
+        log.Information("[Engine] Stopped by user");
+        SetState(EngineState.Idle);
+    }
+
+    public int GetPendingTaskCount()
+    {
+        if (activeConfig == null) return 0;
+        
+        int count = 0;
+        if (activeConfig.EnableFCBuffRefill && !fcBuffService.IsComplete) count++;
+        if (activeConfig.EnableVerminionQueue && !verminionService.IsComplete) count++;
+        if (activeConfig.EnableMiniCactpot && !cactpotService.IsComplete) count++;
+        if (activeConfig.EnableJumboCactpot && !cactpotService.IsComplete) count++;
+        if (activeConfig.EnableChocoboRacing && !chocoboRaceService.IsComplete) count++;
+        
+        return count;
+    }
+
     public void Update()
     {
         if (state == EngineState.Idle || state == EngineState.Complete || state == EngineState.Error)

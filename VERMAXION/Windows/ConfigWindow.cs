@@ -217,8 +217,18 @@ public class ConfigWindow : Window, IDisposable
             configManager.SelectedCharacterKey = "";
         }
 
-        // Character entries
-        foreach (var charKey in configManager.GetSortedCharacterKeys())
+        // Character entries - current character first
+        var allChars = configManager.GetSortedCharacterKeys().ToList();
+        var currentChar = Plugin.ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        
+        // If current character exists, move it to top
+        if (!string.IsNullOrEmpty(currentChar) && allChars.Contains(currentChar))
+        {
+            allChars.Remove(currentChar);
+            allChars.Insert(0, currentChar);
+        }
+        
+        foreach (var charKey in allChars)
         {
             var displayName = plugin.Configuration.KrangleEnabled
                 ? KrangleService.KrangleName(charKey)
@@ -287,6 +297,23 @@ public class ConfigWindow : Window, IDisposable
                     cc.FCBuffPurchaseAttempts = attempts;
                     changed = true;
                 }
+                
+                // FC Points threshold
+                var minPoints = cc.FCBuffMinPoints;
+                if (ImGui.InputInt("Min FC Points", ref minPoints))
+                {
+                    cc.FCBuffMinPoints = Math.Max(0, minPoints);
+                    changed = true;
+                }
+                
+                // Gil threshold
+                var minGil = cc.FCBuffMinGil;
+                if (ImGui.InputInt("Min Gil", ref minGil))
+                {
+                    cc.FCBuffMinGil = Math.Max(0, minGil);
+                    changed = true;
+                }
+                
                 ImGui.Unindent();
             }
 
