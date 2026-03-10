@@ -151,7 +151,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Text("Links");
         ImGui.BulletText("GitHub: https://github.com/McVaxius/VERMAXION");
-        ImGui.BulletText("Author: McVaxius");
+        ImGui.BulletText("Author: DhogGPT");
     }
 
     private void DrawAccountSelector(ConfigManager configManager)
@@ -383,6 +383,28 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(UIConstants.Tooltips.GearUpdater);
+
+            var highestCombatJob = cc.EnableHighestCombatJob;
+            if (ImGui.Checkbox("Highest Combat Job Selector", ref highestCombatJob))
+            {
+                cc.EnableHighestCombatJob = highestCombatJob;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Selects the highest level combat job (DOW/DOM only). Requires SimpleTweaks.");
+
+            var currentJobEquipment = cc.EnableCurrentJobEquipment;
+            if (ImGui.Checkbox("Current Job Equipment Updater", ref currentJobEquipment))
+            {
+                cc.EnableCurrentJobEquipment = currentJobEquipment;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Updates equipment for current job only. No job cycling. Requires SimpleTweaks.");
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WeeklyTasks, ImGuiTreeNodeFlags.DefaultOpen))

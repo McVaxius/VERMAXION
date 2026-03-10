@@ -134,7 +134,7 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
                 "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "-");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
-                "Test##Gear", () => plugin.GearUpdaterService.RunTask(), "WIP");
+                "Test##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
 
             // --- Weekly Tasks ---
             DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
@@ -151,6 +151,12 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 config.ChocoboRacingCompletedToday ? "Done today" : "Pending",
                 "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "-");
+
+            // --- Utility Tasks ---
+            DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Manual trigger",
+                "Test##Highest", () => plugin.HighestCombatJobService.RunTask(), "WIP");
+            DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Manual trigger",
+                "Test##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "WIP");
 
             ImGui.EndTable();
 

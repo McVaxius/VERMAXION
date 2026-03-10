@@ -45,6 +45,8 @@ public sealed class Plugin : IDalamudPlugin
     public MinionRouletteService MinionRouletteService { get; init; }
     public SeasonalGearService SeasonalGearService { get; init; }
     public GearUpdaterService GearUpdaterService { get; init; }
+    public HighestCombatJobService HighestCombatJobService { get; init; }
+    public CurrentJobEquipmentService CurrentJobEquipmentService { get; init; }
     public YesAlreadyIPC YesAlreadyIPC { get; init; }
     public VNavmeshIPC VNavmeshIPC { get; init; }
     public VermaxionEngine Engine { get; init; }
@@ -76,6 +78,8 @@ public sealed class Plugin : IDalamudPlugin
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
         GearUpdaterService = new GearUpdaterService(CommandManager, Log, ClientState, PlayerState);
+        HighestCombatJobService = new HighestCombatJobService(CommandManager, Log, PlayerState);
+        CurrentJobEquipmentService = new CurrentJobEquipmentService(CommandManager, Log, PlayerState);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
 
@@ -141,6 +145,8 @@ public sealed class Plugin : IDalamudPlugin
         YesAlreadyIPC.Dispose();
         VNavmeshIPC.Dispose();
         ARPostProcessService.Dispose();
+        HighestCombatJobService.Dispose();
+        CurrentJobEquipmentService.Dispose();
 
         dtrEntry?.Remove();
 
@@ -268,6 +274,8 @@ public sealed class Plugin : IDalamudPlugin
             MinionRouletteService.Update();
             SeasonalGearService.Update();
             GearUpdaterService.Update();
+            HighestCombatJobService.Update();
+            CurrentJobEquipmentService.Update();
         }
     }
 

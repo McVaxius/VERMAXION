@@ -15,6 +15,8 @@ public class CharacterConfig
     public bool EnableMinionRoulette { get; set; } = false;
     public bool EnableSeasonalGearRoulette { get; set; } = false;
     public bool EnableGearUpdater { get; set; } = false;
+    public bool EnableHighestCombatJob { get; set; } = false;
+    public bool EnableCurrentJobEquipment { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -52,6 +54,8 @@ public class CharacterConfig
             EnableMinionRoulette = EnableMinionRoulette,
             EnableSeasonalGearRoulette = EnableSeasonalGearRoulette,
             EnableGearUpdater = EnableGearUpdater,
+            EnableHighestCombatJob = EnableHighestCombatJob,
+            EnableCurrentJobEquipment = EnableCurrentJobEquipment,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
