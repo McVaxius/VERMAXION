@@ -92,26 +92,28 @@ public class FCBuffService : IDisposable
     {
         if (IsActive) return;
         
-        // Log configuration at task start
+        // Force load config from file to get latest values
+        configManager.LoadAllAccounts();
+        log.Information("[FCBuff] Forced config load - getting latest values from file");
+        
+        // Get config AFTER loading to ensure we have the latest values
         var config = configManager.GetActiveConfig();
+        log.Information($"[FCBuff] Config Debug: CurrentAccountId='{configManager.CurrentAccountId}', SelectedCharacterKey='{configManager.SelectedCharacterKey}'");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
         
-        // Force save current config to ensure values are written
-        configManager.SaveCurrentAccount();
-        log.Information("[FCBuff] Forced config save - check if values persist after reload");
-        
-        purchaseAttempts = maxAttempts;
+        purchaseAttempts = config.FCBuffPurchaseAttempts;
         buyCount = 0;
         isSealSweetenerTwo = true; // Start with Seal Sweetener II
         SetState(FCBuffState.CheckingFCPoints);
-        log.Information($"[FCBuff] Starting FC buff refill (max attempts: {maxAttempts})");
+        log.Information($"[FCBuff] Starting FC buff refill (max attempts: {config.FCBuffPurchaseAttempts})");
     }
 
     public void RunTask()
     {
         log.Information("[VERMAXION] Manual FC Buff Refill triggered");
-        Start(15);
+        var config = configManager.GetActiveConfig();
+        Start(config.FCBuffPurchaseAttempts);
     }
 
     public unsafe void TestFreeCompanyGC()
@@ -164,31 +166,85 @@ public class FCBuffService : IDisposable
         }
     }
 
-    private int GetCurrentGCTerritory()
+    private unsafe int GetCurrentGCTerritory()
     {
-        // Get player's Grand Company from PlayerState
+        // Get Free Company's Grand Company for teleportation
         try
         {
-            // Try PlayerState first
+            var infoProxyFreeCompany = InfoProxyFreeCompany.Instance();
+            if (infoProxyFreeCompany != null)
+            {
+                var fcGrandCompany = infoProxyFreeCompany->GrandCompany;
+                var gcString = fcGrandCompany.ToString();
+                
+                log.Information($"[FCBuff] FC Grand Company: {gcString}");
+                
+                // GC names mapping from Jaksuhn's SND
+                var gcNames = new Dictionary<string, int>
+                {
+                    { "Maelstrom", 1 },
+                    { "TwinAdder", 2 },
+                    { "ImmortalFlames", 3 }
+                };
+                
+                int gcChoice = 1; // Default to Maelstrom
+                foreach (var gc in gcNames)
+                {
+                    if (gc.Key == gcString)
+                    {
+                        gcChoice = gc.Value;
+                        break;
+                    }
+                }
+                
+                log.Information($"[FCBuff] Using FC GC Choice: {gcChoice} ({gcString})");
+                
+                // Convert GC ID to territory ID
+                return gcChoice switch
+                {
+                    1 => 129, // Maelstrom (Limsa - Upper Decks/Aft)
+                    2 => 132, // Order of the Twin Adder (Gridania) - territory 132
+                    3 => 130, // Immortal Flames (Ul'dah)
+                    _ => 129, // Default to Limsa
+                };
+            }
+            else
+            {
+                log.Warning("[FCBuff] InfoProxyFreeCompany is null, using player GC");
+                // Fallback to player's GC
+                return GetPlayerGCTerritory();
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[FCBuff] Failed to get FC GC: {ex.Message}, using player GC");
+            return GetPlayerGCTerritory();
+        }
+    }
+
+    private int GetPlayerGCTerritory()
+    {
+        // Get player's Grand Company from PlayerState (fallback)
+        try
+        {
             if (Plugin.PlayerState != null)
             {
                 var gc = Plugin.PlayerState.GrandCompany;
-                // GrandCompany.RowId gives us the GC ID (1=Maelstrom, 2=TwinAdder, 3=ImmortalFlames)
                 var gcId = gc.RowId;
                 return gcId switch
                 {
-                    1 => 128, // Maelstrom (Limsa)
+                    1 => 129, // Maelstrom (Limsa - Upper Decks/Aft)
                     2 => 132, // Order of the Twin Adder (Gridania) - territory 132
                     3 => 130, // Immortal Flames (Ul'dah)
-                    _ => 128, // Default to Limsa
+                    _ => 129, // Default to Limsa
                 };
             }
         }
         catch
         {
-            log.Warning("[FCBuff] Failed to get GC from PlayerState, defaulting to Limsa");
+            log.Warning("[FCBuff] Failed to get player GC, defaulting to Limsa");
         }
-        return 128; // Default to Limsa
+        return 129; // Default to Limsa
     }
 
     public void Reset() => SetState(FCBuffState.Idle);
@@ -326,8 +382,8 @@ public class FCBuffService : IDisposable
                 // Check if we're already in the right GC territory
                 switch (currentGCTerritory)
                 {
-                    case 128: // Limsa Lominsa
-                        if (currentTerritory == 128)
+                    case 129: // Limsa Lominsa (Upper Decks/Aft)
+                        if (currentTerritory == 129)
                         {
                             log.Information("[FCBuff] Already in Limsa GC territory, skipping teleport");
                             SetState(FCBuffState.NavigatingToQuartermaster);
@@ -339,7 +395,7 @@ public class FCBuffService : IDisposable
                             SetState(FCBuffState.WaitingForAftArrival);
                         }
                         break;
-                    case 129: // Gridania
+                    case 132: // Gridania
                         if (currentTerritory == 132) // Gridania is territory 132
                         {
                             log.Information("[FCBuff] Already in Gridania GC territory, skipping teleport");
@@ -380,7 +436,7 @@ public class FCBuffService : IDisposable
                     log.Information("[FCBuff] Still teleporting to Aft...");
                     return;
                 }
-                if (clientState.TerritoryType == 128 && elapsed >= 3)
+                if (clientState.TerritoryType == 129 && elapsed >= 3)
                 {
                     log.Information("[FCBuff] Arrived at Limsa Aft, navigating to Quartermaster");
                     SetState(FCBuffState.NavigatingToQuartermaster);
@@ -423,11 +479,11 @@ public class FCBuffService : IDisposable
                 var gcTerritory = GetCurrentGCTerritory();
                 switch (gcTerritory)
                 {
-                    case 128: // Limsa - Upper Decks
+                    case 129: // Limsa - Upper Decks (Aft)
                         log.Information("[FCBuff] Navigating to Limsa Quartermaster via VNavmesh IPC");
                         plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(93, 40f, 68f));
                         break;
-                    case 129: // Gridania
+                    case 132: // Gridania
                         log.Information("[FCBuff] Navigating to Gridania Quartermaster via VNavmesh IPC");
                         plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-71, -0.5f, -5f));
                         break;
@@ -456,8 +512,8 @@ public class FCBuffService : IDisposable
                 var targetGCTerritory = GetCurrentGCTerritory();
                 var targetPos = targetGCTerritory switch
                 {
-                    128 => new Vector3(93, 40f, 68f),  // Limsa
-                    129 => new Vector3(-71, -0.5f, -5f), // Gridania
+                    129 => new Vector3(93, 40f, 68f),  // Limsa (Upper Decks/Aft)
+                    132 => new Vector3(-71, -0.5f, -5f), // Gridania
                     130 => new Vector3(-144, 4f, -100f), // Ul'dah
                     _ => Vector3.Zero
                 };
@@ -587,9 +643,35 @@ public class FCBuffService : IDisposable
             case FCBuffState.ClosingWindows:
                 if (elapsed < 0.5) return;
                 log.Information("[FCBuff] Closing windows");
-                GameHelpers.CloseCurrentAddon();
-                if (elapsed > 2)
+                
+                // Use NUMPAD+ as primary method for FC buff purchase windows
+                if (elapsed > 0.5 && elapsed < 1.0)
                 {
+                    log.Information("[FCBuff] Pressing NUMPAD+ to close FC buff purchase window");
+                    GameHelpers.SendNumpadPlus();
+                }
+                
+                // Fallback to Escape after 1.5 seconds
+                if (elapsed > 1.5 && elapsed < 2.0)
+                {
+                    log.Information("[FCBuff] Pressing Escape as fallback");
+                    GameHelpers.CloseCurrentAddon();
+                }
+                
+                // Check if all relevant windows are closed
+                var fcAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompany");
+                var exchangeAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompanyExchange");
+                var selectAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("SelectString");
+                var yesnoAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("SelectYesno");
+                
+                bool allClosed = (fcAddon == null || !fcAddon->IsVisible) &&
+                               (exchangeAddon == null || !exchangeAddon->IsVisible) &&
+                               (selectAddon == null || !selectAddon->IsVisible) &&
+                               (yesnoAddon == null || !yesnoAddon->IsVisible);
+                
+                if (allClosed || elapsed > 3)
+                {
+                    log.Information("[FCBuff] All windows closed, task complete");
                     SetState(FCBuffState.Complete);
                 }
                 break;

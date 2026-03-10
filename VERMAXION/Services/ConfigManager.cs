@@ -48,14 +48,22 @@ public class ConfigManager
     {
         var account = GetCurrentAccount();
         if (account == null)
+        {
+            log.Warning("[ConfigManager] GetCurrentAccount returned null - using default config");
             return new CharacterConfig();
+        }
 
         if (string.IsNullOrEmpty(SelectedCharacterKey))
+        {
             return account.DefaultConfig;
+        }
 
-        return account.Characters.TryGetValue(SelectedCharacterKey, out var cc)
-            ? cc
-            : account.DefaultConfig;
+        if (!account.Characters.TryGetValue(SelectedCharacterKey, out var cc))
+        {
+            return account.DefaultConfig;
+        }
+
+        return cc;
     }
 
     public CharacterConfig GetCurrentCharacterConfig(string charKey)
@@ -251,7 +259,7 @@ public class ConfigManager
         SaveCurrentAccount();
     }
 
-    private void LoadAllAccounts()
+    public void LoadAllAccounts()
     {
         try
         {
@@ -265,7 +273,6 @@ public class ConfigManager
                     if (account != null && !string.IsNullOrEmpty(account.AccountId))
                     {
                         accounts[account.AccountId] = account;
-                        log.Information($"Loaded account {account.AccountId} ({account.AccountAlias}) with {account.Characters.Count} characters");
                     }
                 }
                 catch (Exception ex)

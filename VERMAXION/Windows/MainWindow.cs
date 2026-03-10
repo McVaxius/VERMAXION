@@ -126,11 +126,11 @@ public class MainWindow : Window, IDisposable
 
             // --- Every AR PostProcess ---
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
-                "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "WIP");
+                "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
-            DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
-                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "-");
+            DrawTaskRow("Minion Roullette", config.EnableMinionRoulette, "Every AR run",
+                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "WIP");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
                 "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "-");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
@@ -147,7 +147,7 @@ public class MainWindow : Window, IDisposable
             // --- Daily Tasks ---
             DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
                 config.MiniCactpotCompletedToday ? "Done today" : "Pending",
-                "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "-");
+                "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "WIP");
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 config.ChocoboRacingCompletedToday ? "Done today" : "Pending",
                 "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "-");
@@ -178,11 +178,30 @@ public class MainWindow : Window, IDisposable
             }
             
             ImGui.SameLine();
-            if (ImGui.SmallButton("Force Config Save"))
+            if (ImGui.SmallButton("Force Config Load"))
             {
+                plugin.ConfigManager.LoadAllAccounts();
+                // Get config AFTER loading to ensure we have the latest values
                 var activeConfig = plugin.ConfigManager.GetActiveConfig();
-                plugin.ConfigManager.SaveCurrentAccount();
-                Plugin.Log.Information($"[UI] Forced config save: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
+                Plugin.Log.Information($"[UI] Forced config load: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
+            }
+            
+            // BUTTON PRESSES
+            ImGui.Spacing();
+            ImGui.Text("Button Presses");
+            ImGui.Separator();
+            
+            if (ImGui.SmallButton("[ESC]"))
+            {
+                Plugin.Log.Information("[UI] Testing ESC key press");
+                GameHelpers.CloseCurrentAddon();
+            }
+            
+            ImGui.SameLine();
+            if (ImGui.SmallButton("[NUMPAD+]"))
+            {
+                Plugin.Log.Information("[UI] Testing NUMPAD+ key press");
+                GameHelpers.SendNumpadPlus();
             }
         }
 

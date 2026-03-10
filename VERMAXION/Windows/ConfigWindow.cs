@@ -50,10 +50,10 @@ public class ConfigWindow : Window, IDisposable
         var config = plugin.Configuration;
 
         // --- Global Settings ---
-        if (ImGui.CollapsingHeader("Global Settings", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.GlobalSettings, ImGuiTreeNodeFlags.DefaultOpen))
         {
             var krangleEnabled = config.KrangleEnabled;
-            if (ImGui.Checkbox("Krangle Names", ref krangleEnabled))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
             {
                 config.KrangleEnabled = krangleEnabled;
                 if (!krangleEnabled) KrangleService.ClearCache();
@@ -62,10 +62,10 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Replace character names with exercise words for screenshots");
+                ImGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
 
             var dtrEnabled = config.DtrBarEnabled;
-            if (ImGui.Checkbox("DTR Bar Entry", ref dtrEnabled))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
             {
                 config.DtrBarEnabled = dtrEnabled;
                 config.Save();
@@ -159,7 +159,7 @@ public class ConfigWindow : Window, IDisposable
         var accounts = configManager.Accounts;
         var currentId = configManager.CurrentAccountId;
 
-        ImGui.Text("Account:");
+        ImGui.Text(UIConstants.ConfigLabels.Account);
         ImGui.SameLine();
 
         if (ImGui.BeginCombo("##AccountCombo", GetAccountDisplayName(configManager, currentId)))
@@ -193,9 +193,9 @@ public class ConfigWindow : Window, IDisposable
 
             if (ImGui.BeginPopup("EditAccountPopup"))
             {
-                ImGui.Text("Account Alias:");
+                ImGui.Text(UIConstants.ConfigLabels.AccountAlias);
                 ImGui.InputText("##EditAlias", ref editAccountAlias, 64);
-                if (ImGui.Button("Save") && !string.IsNullOrWhiteSpace(editAccountAlias))
+                if (ImGui.Button(UIConstants.ConfigLabels.Save) && !string.IsNullOrWhiteSpace(editAccountAlias))
                 {
                     configManager.UpdateAccountAlias(editAccountAlias);
                     ImGui.CloseCurrentPopup();
@@ -207,7 +207,7 @@ public class ConfigWindow : Window, IDisposable
 
     private void DrawCharacterList(ConfigManager configManager)
     {
-        ImGui.Text("Characters");
+        ImGui.Text(UIConstants.ConfigLabels.Characters);
         ImGui.Separator();
 
         // Default config entry
@@ -218,7 +218,11 @@ public class ConfigWindow : Window, IDisposable
         }
 
         // Current character (if exists and not default)
-        var currentChar = Plugin.ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        var charName = Plugin.ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        var worldName = Plugin.ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString() ?? "";
+        var currentChar = !string.IsNullOrEmpty(charName) && !string.IsNullOrEmpty(worldName) 
+            ? $"{charName}@{worldName}" 
+            : "";
         if (!string.IsNullOrEmpty(currentChar))
         {
             var isCurrentSelected = configManager.SelectedCharacterKey == currentChar;
@@ -267,16 +271,16 @@ public class ConfigWindow : Window, IDisposable
         if (plugin.Configuration.KrangleEnabled && !isDefault)
             displayName = KrangleService.KrangleName(charKey);
 
-        ImGui.Text($"Settings: {displayName}");
+        ImGui.Text($"{UIConstants.ConfigLabels.Settings}: {displayName}");
         if (isDefault)
-            ImGui.TextDisabled("New characters inherit these settings");
+            ImGui.TextDisabled(UIConstants.ConfigLabels.NewCharactersInheritThese);
         ImGui.Separator();
 
         var changed = false;
 
         // Master enable
         var enabled = cc.Enabled;
-        if (ImGui.Checkbox("Enabled##CharEnabled", ref enabled))
+        if (ImGui.Checkbox($"{UIConstants.ConfigLabels.Enabled}##CharEnabled", ref enabled))
         {
             cc.Enabled = enabled;
             changed = true;
@@ -285,10 +289,10 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
 
         // --- Feature Toggles ---
-        if (ImGui.CollapsingHeader("Every AR PostProcess", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.EveryARPostProcess, ImGuiTreeNodeFlags.DefaultOpen))
         {
             var fcBuff = cc.EnableFCBuffRefill;
-            if (ImGui.Checkbox("FC Buff Refill (Seal Sweetener)", ref fcBuff))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.FCBuffRefill, ref fcBuff))
             {
                 cc.EnableFCBuffRefill = fcBuff;
                 changed = true;
@@ -297,33 +301,39 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.Indent();
                 var attempts = cc.FCBuffPurchaseAttempts;
-                if (ImGui.SliderInt("Max Purchase Attempts", ref attempts, 1, 30))
+                if (ImGui.SliderInt(UIConstants.ConfigLabels.MaxPurchaseAttempts, ref attempts, 1, 30))
                 {
                     cc.FCBuffPurchaseAttempts = attempts;
                     changed = true;
+                    // Save immediately on slider change
+                    configManager.SaveCurrentAccount();
                 }
                 
                 // FC Points threshold
                 var minPoints = cc.FCBuffMinPoints;
-                if (ImGui.InputInt("Min FC Points", ref minPoints))
+                if (ImGui.InputInt(UIConstants.ConfigLabels.MinFCPoints, ref minPoints))
                 {
                     cc.FCBuffMinPoints = Math.Max(0, minPoints);
                     changed = true;
+                    // Save immediately on input change
+                    configManager.SaveCurrentAccount();
                 }
                 
                 // Gil threshold
                 var minGil = cc.FCBuffMinGil;
-                if (ImGui.InputInt("Min Gil", ref minGil))
+                if (ImGui.InputInt(UIConstants.ConfigLabels.MinGil, ref minGil))
                 {
                     cc.FCBuffMinGil = Math.Max(0, minGil);
                     changed = true;
+                    // Save immediately on input change
+                    configManager.SaveCurrentAccount();
                 }
                 
                 ImGui.Unindent();
             }
 
             var henchman = cc.EnableHenchmanManagement;
-            if (ImGui.Checkbox("Henchman Disable/Enable", ref henchman))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.HenchmanManagement, ref henchman))
             {
                 cc.EnableHenchmanManagement = henchman;
                 changed = true;
@@ -331,10 +341,10 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Stop Henchman before tasks, restart after");
+                ImGui.SetTooltip(UIConstants.Tooltips.HenchmanManagement);
 
             var minionRoulette = cc.EnableMinionRoulette;
-            if (ImGui.Checkbox("Minion Roulette", ref minionRoulette))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.MinionRoulette, ref minionRoulette))
             {
                 cc.EnableMinionRoulette = minionRoulette;
                 changed = true;
@@ -342,10 +352,10 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Fire off /minion roulette once per AR postprocess");
+                ImGui.SetTooltip(UIConstants.Tooltips.MinionRoulette);
 
             var seasonalGear = cc.EnableSeasonalGearRoulette;
-            if (ImGui.Checkbox("Seasonal Gear Roulette", ref seasonalGear))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.SeasonalGearRoulette, ref seasonalGear))
             {
                 cc.EnableSeasonalGearRoulette = seasonalGear;
                 changed = true;
@@ -353,10 +363,10 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Randomly equip seasonal event gear for a fun ensemble each AR run");
+                ImGui.SetTooltip(UIConstants.Tooltips.SeasonalGearRoulette);
 
             var gearUpdater = cc.EnableGearUpdater;
-            if (ImGui.Checkbox("Gear Updater", ref gearUpdater))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.GearUpdater, ref gearUpdater))
             {
                 cc.EnableGearUpdater = gearUpdater;
                 changed = true;
@@ -364,13 +374,13 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)");
+                ImGui.SetTooltip(UIConstants.Tooltips.GearUpdater);
         }
 
-        if (ImGui.CollapsingHeader("Weekly Tasks", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WeeklyTasks, ImGuiTreeNodeFlags.DefaultOpen))
         {
             var verminion = cc.EnableVerminionQueue;
-            if (ImGui.Checkbox("Lord of Verminion (5 fails)", ref verminion))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.VerminionQueue, ref verminion))
             {
                 cc.EnableVerminionQueue = verminion;
                 changed = true;
@@ -382,7 +392,7 @@ public class ConfigWindow : Window, IDisposable
             }
 
             var jumbo = cc.EnableJumboCactpot;
-            if (ImGui.Checkbox("Jumbo Cactpot (Saturday)", ref jumbo))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.JumboCactpot, ref jumbo))
             {
                 cc.EnableJumboCactpot = jumbo;
                 changed = true;
@@ -394,10 +404,10 @@ public class ConfigWindow : Window, IDisposable
             }
         }
 
-        if (ImGui.CollapsingHeader("Daily Tasks", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.DailyTasks, ImGuiTreeNodeFlags.DefaultOpen))
         {
             var mini = cc.EnableMiniCactpot;
-            if (ImGui.Checkbox("Mini Cactpot", ref mini))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.MiniCactpot, ref mini))
             {
                 cc.EnableMiniCactpot = mini;
                 changed = true;
@@ -413,7 +423,7 @@ public class ConfigWindow : Window, IDisposable
             }
 
             var chocobo = cc.EnableChocoboRacing;
-            if (ImGui.Checkbox("Chocobo Racing (via Chocoholic)", ref chocobo))
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.ChocoboRacing, ref chocobo))
             {
                 cc.EnableChocoboRacing = chocobo;
                 changed = true;
@@ -422,10 +432,12 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.Indent();
                 var races = cc.ChocoboRacesPerDay;
-                if (ImGui.SliderInt("Races Per Day", ref races, 1, 20))
+                if (ImGui.SliderInt(UIConstants.ConfigLabels.RacesPerDay, ref races, 1, 20))
                 {
                     cc.ChocoboRacesPerDay = races;
                     changed = true;
+                    // Save immediately on slider change
+                    configManager.SaveCurrentAccount();
                 }
                 ImGui.Unindent();
             }

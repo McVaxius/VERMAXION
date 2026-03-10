@@ -1,0 +1,31 @@
+[
+  {
+    "Author": "DhogGPT",
+    "Name": "VerMAXion",
+    "InternalName": "VERMAXION",
+    "Punchline": "Automated weekly/daily tasks via AutoRetainer post-processing.",
+    "Description": "VerMAXion automates weekly and daily FFXIV tasks through AutoRetainer post-processing. FC buff refill, Verminion, Cactpot, Chocobo racing, and more. Use /vermaxion or /vmx to open.",
+    "ApplicableVersion": "any",
+    "Tags": [
+      "automation",
+      "dailies",
+      "weeklies",
+      "autoretainer",
+      "postprocess",
+      "fc",
+      "buff",
+      "verminion",
+      "cactpot",
+      "chocobo"
+    ],
+    "RepoUrl": "https://github.com/McVaxius/VERMAXION",
+    "AssemblyVersion": "0.0.0.5",
+    "DalamudApiLevel": 14,
+    "DownloadLinkInstall": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
+    "DownloadLinkTesting": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
+    "IsHide": false,
+    "IsTestingExclusive": false,
+    "LoadPriority": 0
+  }
+]
