@@ -395,7 +395,7 @@ public class FCBuffService : IDisposable
                             SetState(FCBuffState.WaitingForAftArrival);
                         }
                         break;
-                    case 129: // Gridania
+                    case 132: // Gridania
                         if (currentTerritory == 132) // Gridania is territory 132
                         {
                             log.Information("[FCBuff] Already in Gridania GC territory, skipping teleport");
