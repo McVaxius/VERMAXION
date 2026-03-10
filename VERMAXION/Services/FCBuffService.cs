@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text;
+using System.Numerics;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
@@ -51,6 +52,7 @@ public class FCBuffService : IDisposable
         WaitingForGridaniaArrival,
         WaitingForDahArrival,
         NavigatingToQuartermaster,
+        WaitingForQuartermasterArrival,
         TargetingQuartermaster,
         InteractingQuartermaster,
         WaitingForSelectString1,
@@ -340,8 +342,42 @@ public class FCBuffService : IDisposable
                         commandManager.ProcessCommand("/vnav moveto -141.7, 4.1, -106.8");
                         break;
                 }
-                SetState(FCBuffState.TargetingQuartermaster);
+                SetState(FCBuffState.WaitingForQuartermasterArrival);
                 break;
+
+            case FCBuffState.WaitingForQuartermasterArrival:
+                // Wait for vnav navigation to complete (60s timeout)
+                if (elapsed > 60)
+                {
+                    log.Error("[FCBuff] Timeout waiting for Quartermaster arrival");
+                    SetState(FCBuffState.Failed);
+                    return;
+                }
+                
+                // Check if we're close to the target coordinates
+                var player = Plugin.ObjectTable.LocalPlayer;
+                if (player == null) return;
+                
+                var targetGCTerritory = GetCurrentGCTerritory();
+                var targetPos = targetGCTerritory switch
+                {
+                    128 => new Vector3(94, 40.5f, 74.5f),  // Limsa
+                    129 => new Vector3(-68.5f, -0.5f, -8.5f), // Gridania
+                    130 => new Vector3(-141.7f, 4.1f, -106.8f), // Ul'dah
+                    _ => Vector3.Zero
+                };
+                
+                var distance = Vector3.Distance(player.Position, targetPos);
+                if (distance < 5f) // Within 5 yalms of target
+                {
+                    log.Information($"[FCBuff] Arrived at Quartermaster location (distance: {distance:F1}y)");
+                    SetState(FCBuffState.TargetingQuartermaster);
+                }
+                else if (elapsed % 5 == 0) // Log every 5 seconds
+                {
+                    log.Information($"[FCBuff] Still navigating to Quartermaster... ({elapsed}s elapsed, distance: {distance:F1}y)");
+                }
+                return;
 
             case FCBuffState.TargetingQuartermaster:
                 if (elapsed < 1) return;
