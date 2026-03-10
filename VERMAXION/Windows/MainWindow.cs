@@ -127,8 +127,6 @@ public class MainWindow : Window, IDisposable
             // --- Every AR PostProcess ---
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
                 "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "WIP");
-            DrawTaskRow("FC GC Test", false, "Test Only",
-                "Test##FCGC", () => plugin.FCBuffService.TestFreeCompanyGC(), "TEST");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
@@ -165,6 +163,12 @@ public class MainWindow : Window, IDisposable
             if (ImGui.SmallButton("Check FC Buff Inventory"))
             {
                 plugin.FCBuffInventoryService.Start();
+            }
+            
+            ImGui.SameLine();
+            if (ImGui.SmallButton("FC GC Test"))
+            {
+                plugin.FCBuffService.TestFreeCompanyGC();
             }
         }
 
