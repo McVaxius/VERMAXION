@@ -47,7 +47,10 @@ public class FCBuffService : IDisposable
         CheckingFCPointsInWindow,
         CheckingIfRefillNeeded,
         NavigatingToGC,
-        WaitingForGCArrival,
+        WaitingForAftArrival,
+        WaitingForGridaniaArrival,
+        WaitingForDahArrival,
+        NavigatingToQuartermaster,
         TargetingQuartermaster,
         InteractingQuartermaster,
         WaitingForSelectString1,
@@ -101,6 +104,13 @@ public class FCBuffService : IDisposable
     {
         log.Information("[VERMAXION] Manual FC Buff Refill triggered");
         Start(15);
+    }
+
+    private int GetCurrentGCTerritory()
+    {
+        // TODO: Get player's actual Grand Company affiliation
+        // For now, default to Gridania (territory 129) based on logs
+        return 129;
     }
 
     public void Reset() => SetState(FCBuffState.Idle);
@@ -219,40 +229,99 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.NavigatingToGC:
                 if (elapsed < 1) return;
-                // Navigate to current GC
-                log.Information("[FCBuff] Navigating to GC: /li gc");
-                commandManager.ProcessCommand("/li gc");
-                SetState(FCBuffState.WaitingForGCArrival);
+                
+                // Get current GC territory to determine navigation
+                var currentGCTerritory = GetCurrentGCTerritory();
+                switch (currentGCTerritory)
+                {
+                    case 128: // Limsa Lominsa
+                        log.Information("[FCBuff] Navigating to Limsa GC: /li aft");
+                        commandManager.ProcessCommand("/li aft");
+                        SetState(FCBuffState.WaitingForAftArrival);
+                        break;
+                    case 129: // Gridania
+                        log.Information("[FCBuff] Navigating to Gridania GC: /li gridania");
+                        commandManager.ProcessCommand("/li gridania");
+                        SetState(FCBuffState.WaitingForGridaniaArrival);
+                        break;
+                    case 130: // Ul'dah
+                        log.Information("[FCBuff] Navigating to Ul'dah GC: /li dah");
+                        commandManager.ProcessCommand("/li dah");
+                        SetState(FCBuffState.WaitingForDahArrival);
+                        break;
+                    default:
+                        log.Error($"[FCBuff] Unknown GC territory: {currentGCTerritory}");
+                        SetState(FCBuffState.Failed);
+                        break;
+                }
                 break;
 
-            case FCBuffState.WaitingForGCArrival:
-                // Wait for territory change + 3 seconds to ensure navmesh is ready
+            case FCBuffState.WaitingForAftArrival:
+                if (elapsed < 1) return;
+                // Wait for arrival at Aft (Upper Decks)
                 if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    log.Information("[FCBuff] Still teleporting (BetweenAreas)...");
+                    log.Information("[FCBuff] Still teleporting to Aft...");
                     return;
                 }
-                
-                // Check if we're in a GC territory (IDs 128, 129, 130)
-                var territory = clientState.TerritoryType;
-                if (territory >= 128 && territory <= 130)
+                if (clientState.TerritoryType == 128 && elapsed >= 3)
                 {
-                    // Wait 3 seconds after territory change to ensure navmesh is ready
-                    if (elapsed >= 3)
-                    {
-                        log.Information($"[FCBuff] Arrived at GC territory: {territory}, waited for navmesh");
-                        SetState(FCBuffState.TargetingQuartermaster);
-                    }
-                    else
-                    {
-                        log.Information($"[FCBuff] In GC territory {territory}, waiting {3 - elapsed:F1}s for navmesh");
-                    }
-                }
-                else if (elapsed % 5 == 0) // Log every 5 seconds
-                {
-                    log.Information($"[FCBuff] Still waiting for GC arrival... ({elapsed}s elapsed, current territory: {territory})");
+                    log.Information("[FCBuff] Arrived at Limsa Aft, navigating to Quartermaster");
+                    SetState(FCBuffState.NavigatingToQuartermaster);
                 }
                 return;
+
+            case FCBuffState.WaitingForGridaniaArrival:
+                if (elapsed < 1) return;
+                // Wait for arrival at Gridania
+                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+                {
+                    log.Information("[FCBuff] Still teleporting to Gridania...");
+                    return;
+                }
+                if (clientState.TerritoryType == 129 && elapsed >= 3)
+                {
+                    log.Information("[FCBuff] Arrived at Gridania, navigating to Quartermaster");
+                    SetState(FCBuffState.NavigatingToQuartermaster);
+                }
+                return;
+
+            case FCBuffState.WaitingForDahArrival:
+                if (elapsed < 1) return;
+                // Wait for arrival at Dah (Ul'dah)
+                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+                {
+                    log.Information("[FCBuff] Still teleporting to Dah...");
+                    return;
+                }
+                if (clientState.TerritoryType == 130 && elapsed >= 3)
+                {
+                    log.Information("[FCBuff] Arrived at Ul'dah, navigating to Quartermaster");
+                    SetState(FCBuffState.NavigatingToQuartermaster);
+                }
+                return;
+
+            case FCBuffState.NavigatingToQuartermaster:
+                if (elapsed < 1) return;
+                // Navigate to Quartermaster location based on GC
+                var gcTerritory = GetCurrentGCTerritory();
+                switch (gcTerritory)
+                {
+                    case 128: // Limsa - Upper Decks
+                        log.Information("[FCBuff] Navigating to Limsa Quartermaster: /vnav moveto 94, 40.5, 74.5");
+                        commandManager.ProcessCommand("/vnav moveto 94, 40.5, 74.5");
+                        break;
+                    case 129: // Gridania
+                        log.Information("[FCBuff] Navigating to Gridania Quartermaster: /vnav moveto -68.5, -0.5, -8.5");
+                        commandManager.ProcessCommand("/vnav moveto -68.5, -0.5, -8.5");
+                        break;
+                    case 130: // Ul'dah
+                        log.Information("[FCBuff] Navigating to Ul'dah Quartermaster: /vnav moveto -141.7, 4.1, -106.8");
+                        commandManager.ProcessCommand("/vnav moveto -141.7, 4.1, -106.8");
+                        break;
+                }
+                SetState(FCBuffState.TargetingQuartermaster);
+                break;
 
             case FCBuffState.TargetingQuartermaster:
                 if (elapsed < 1) return;
