@@ -249,6 +249,18 @@ public sealed class Plugin : IDalamudPlugin
 
         // Update engine (runs the state machine)
         Engine.Update();
+
+        // Update individual services for manual testing (when not running through engine)
+        if (!Engine.IsRunning)
+        {
+            FCBuffService.Update();
+            VerminionService.Update();
+            CactpotService.Update();
+            ChocoboRaceService.Update();
+            MinionRouletteService.Update();
+            SeasonalGearService.Update();
+            GearUpdaterService.Update();
+        }
     }
 
     public void SetupDtrBar()
