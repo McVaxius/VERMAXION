@@ -239,22 +239,49 @@ public class FCBuffService : IDisposable
                 
                 // Get current GC territory to determine navigation
                 var currentGCTerritory = GetCurrentGCTerritory();
+                var currentTerritory = clientState.TerritoryType;
+                
+                // Check if we're already in the right GC territory
                 switch (currentGCTerritory)
                 {
                     case 128: // Limsa Lominsa
-                        log.Information("[FCBuff] Navigating to Limsa GC: /li aft");
-                        CommandHelper.SendCommand("/li aft");
-                        SetState(FCBuffState.WaitingForAftArrival);
+                        if (currentTerritory == 128)
+                        {
+                            log.Information("[FCBuff] Already in Limsa GC territory, skipping teleport");
+                            SetState(FCBuffState.NavigatingToQuartermaster);
+                        }
+                        else
+                        {
+                            log.Information("[FCBuff] Navigating to Limsa GC: /li aft");
+                            CommandHelper.SendCommand("/li aft");
+                            SetState(FCBuffState.WaitingForAftArrival);
+                        }
                         break;
                     case 129: // Gridania
-                        log.Information("[FCBuff] Navigating to Gridania GC: /li gridania");
-                        CommandHelper.SendCommand("/li gridania");
-                        SetState(FCBuffState.WaitingForGridaniaArrival);
+                        if (currentTerritory == 132) // Gridania is territory 132
+                        {
+                            log.Information("[FCBuff] Already in Gridania GC territory, skipping teleport");
+                            SetState(FCBuffState.NavigatingToQuartermaster);
+                        }
+                        else
+                        {
+                            log.Information("[FCBuff] Navigating to Gridania GC: /li gridania");
+                            CommandHelper.SendCommand("/li gridania");
+                            SetState(FCBuffState.WaitingForGridaniaArrival);
+                        }
                         break;
                     case 130: // Ul'dah
-                        log.Information("[FCBuff] Navigating to Ul'dah GC: /li dah");
-                        CommandHelper.SendCommand("/li dah");
-                        SetState(FCBuffState.WaitingForDahArrival);
+                        if (currentTerritory == 130)
+                        {
+                            log.Information("[FCBuff] Already in Ul'dah GC territory, skipping teleport");
+                            SetState(FCBuffState.NavigatingToQuartermaster);
+                        }
+                        else
+                        {
+                            log.Information("[FCBuff] Navigating to Ul'dah GC: /li dah");
+                            CommandHelper.SendCommand("/li dah");
+                            SetState(FCBuffState.WaitingForDahArrival);
+                        }
                         break;
                     default:
                         log.Error($"[FCBuff] Unknown GC territory: {currentGCTerritory}");
@@ -427,17 +454,30 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForSelectString2:
-                if (elapsed < 5)
+                if (elapsed < 10) // Increased wait time for second dialog
                 {
+                    // Wait for the first SelectString to disappear and the second to appear
                     if (GameHelpers.IsAddonVisible("SelectString"))
                     {
-                        log.Information("[FCBuff] Second SelectString appeared, selecting buff type");
-                        GameHelpers.FireAddonCallback("SelectString", true, 0);
-                        SetState(FCBuffState.WaitingForExchange);
+                        // Check if this is the second SelectString (first one should be gone)
+                        if (elapsed > 1) // Give it at least 1 second after the first callback
+                        {
+                            log.Information("[FCBuff] Second SelectString appeared, selecting buff type");
+                            GameHelpers.FireAddonCallback("SelectString", true, 0);
+                            SetState(FCBuffState.WaitingForExchange);
+                        }
+                        else
+                        {
+                            log.Debug($"[FCBuff] SelectString still visible, might be first one... ({elapsed}s elapsed)");
+                        }
+                    }
+                    else if (elapsed % 2 == 0) // Log every 2 seconds
+                    {
+                        log.Debug($"[FCBuff] Waiting for second SelectString... ({elapsed}s elapsed)");
                     }
                     return;
                 }
-                log.Error("[FCBuff] Second SelectString did not appear");
+                log.Error("[FCBuff] Second SelectString did not appear after 10 seconds");
                 SetState(FCBuffState.Failed);
                 break;
 
