@@ -316,15 +316,15 @@ public class FCBuffService : IDisposable
                 {
                     case 128: // Limsa - Upper Decks
                         log.Information("[FCBuff] Navigating to Limsa Quartermaster via VNavmesh IPC");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(94, 40.5f, 74.5f));
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(93, 40f, 68f));
                         break;
                     case 129: // Gridania
                         log.Information("[FCBuff] Navigating to Gridania Quartermaster via VNavmesh IPC");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-68.5f, -0.5f, -8.5f));
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-71, -0.5f, -5f));
                         break;
                     case 130: // Ul'dah
                         log.Information("[FCBuff] Navigating to Ul'dah Quartermaster via VNavmesh IPC");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-141.7f, 4.1f, -106.8f));
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-144, 4f, -100f));
                         break;
                 }
                 SetState(FCBuffState.WaitingForQuartermasterArrival);
@@ -347,14 +347,14 @@ public class FCBuffService : IDisposable
                 var targetGCTerritory = GetCurrentGCTerritory();
                 var targetPos = targetGCTerritory switch
                 {
-                    128 => new Vector3(94, 40.5f, 74.5f),  // Limsa
-                    129 => new Vector3(-68.5f, -0.5f, -8.5f), // Gridania
-                    130 => new Vector3(-141.7f, 4.1f, -106.8f), // Ul'dah
+                    128 => new Vector3(93, 40f, 68f),  // Limsa
+                    129 => new Vector3(-71, -0.5f, -5f), // Gridania
+                    130 => new Vector3(-144, 4f, -100f), // Ul'dah
                     _ => Vector3.Zero
                 };
                 
                 var distance = Vector3.Distance(player.Position, targetPos);
-                if (distance < 10f) // Within 10 yalms of target
+                if (distance < 5f) // Within 5 yalms of target
                 {
                     log.Information($"[FCBuff] Arrived at Quartermaster location (distance: {distance:F1}y)");
                     SetState(FCBuffState.TargetingQuartermaster);
