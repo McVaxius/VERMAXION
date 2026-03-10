@@ -4,6 +4,7 @@ using Dalamud.Plugin.Services;
 
 namespace VERMAXION.Services;
 
+// [OK] - Complete implementation using CommandHelper for proper chat command execution
 public class MinionRouletteService : IDisposable
 {
     private readonly ICommandManager commandManager;

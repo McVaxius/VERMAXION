@@ -7,6 +7,7 @@ using Dalamud.Game.ClientState.Objects;
 
 namespace VERMAXION.Services;
 
+// [WIP] - Implementation following pseudocode with job change detection, needs SimpleTweaks testing
 public class GearUpdaterService : IDisposable
 {
     private readonly ICommandManager commandManager;

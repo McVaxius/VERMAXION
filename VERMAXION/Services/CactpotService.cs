@@ -5,6 +5,7 @@ using Dalamud.Plugin.Services;
 
 namespace VERMAXION.Services;
 
+// [OK] - Complete implementation with 3-ticket sequence and NUMPAD+ exit
 public class CactpotService : IDisposable
 {
     private readonly ICommandManager commandManager;
