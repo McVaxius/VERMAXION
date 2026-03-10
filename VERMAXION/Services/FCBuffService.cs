@@ -643,7 +643,16 @@ public class FCBuffService : IDisposable
             case FCBuffState.ClosingWindows:
                 if (elapsed < 0.5) return;
                 log.Information("[FCBuff] Closing windows");
+                
+                // Try multiple methods to close windows
                 GameHelpers.CloseCurrentAddon();
+                
+                // Press Escape key again after 1 second to force close any remaining windows
+                if (elapsed > 1.0 && elapsed < 1.5)
+                {
+                    log.Information("[FCBuff] Pressing Escape again to force close windows");
+                    ECommons.Automation.WindowsKeypress.SendKeypress(Dalamud.Game.ClientState.Keys.VirtualKey.ESCAPE, null);
+                }
                 
                 // Check if all relevant windows are closed
                 var fcAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompany");
@@ -656,7 +665,7 @@ public class FCBuffService : IDisposable
                                (selectAddon == null || !selectAddon->IsVisible) &&
                                (yesnoAddon == null || !yesnoAddon->IsVisible);
                 
-                if (allClosed || elapsed > 5)
+                if (allClosed || elapsed > 3)
                 {
                     log.Information("[FCBuff] All windows closed, task complete");
                     SetState(FCBuffState.Complete);
