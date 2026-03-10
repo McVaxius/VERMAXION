@@ -37,6 +37,7 @@ public sealed class Plugin : IDalamudPlugin
     public ResetDetectionService ResetDetectionService { get; init; }
     public HenchmanService HenchmanService { get; init; }
     public FCBuffService FCBuffService { get; init; }
+    public FCBuffInventoryService FCBuffInventoryService { get; init; }
     public VerminionService VerminionService { get; init; }
     public CactpotService CactpotService { get; init; }
     public ChocoboRaceService ChocoboRaceService { get; init; }
@@ -68,6 +69,7 @@ public sealed class Plugin : IDalamudPlugin
         ResetDetectionService = new ResetDetectionService(Log);
         HenchmanService = new HenchmanService(CommandManager, Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
+        FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
@@ -257,6 +259,7 @@ public sealed class Plugin : IDalamudPlugin
         if (!Engine.IsRunning)
         {
             FCBuffService.Update();
+            FCBuffInventoryService.Update();
             VerminionService.Update();
             CactpotService.Update();
             ChocoboRaceService.Update();

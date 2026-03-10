@@ -152,6 +152,17 @@ public class MainWindow : Window, IDisposable
                 "Test##Choco", () => plugin.ChocoboRaceService.RunTask());
 
             ImGui.EndTable();
+
+            ImGui.Spacing();
+
+            // Test Functions
+            ImGui.Text("Test Functions");
+            ImGui.Separator();
+            
+            if (ImGui.SmallButton("Check FC Buff Inventory"))
+            {
+                plugin.FCBuffInventoryService.Start();
+            }
         }
 
         ImGui.Spacing();
