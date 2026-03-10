@@ -66,7 +66,7 @@ public sealed class Plugin : IDalamudPlugin
         // Initialize services
         ResetDetectionService = new ResetDetectionService(Log);
         HenchmanService = new HenchmanService(CommandManager, Log);
-        FCBuffService = new FCBuffService(CommandManager, Log, GameGui);
+        FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);

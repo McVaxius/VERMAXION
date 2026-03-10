@@ -1,14 +1,22 @@
 using System;
 using System.Linq;
+using System.Numerics;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkUnitManager;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ECommons.UIHelpers.AddonMasterImplementations;
+using ECommons.Automation;
 
 namespace VERMAXION.Services;
 
@@ -22,20 +30,19 @@ public static class GameHelpers
     {
         try
         {
-            Plugin.Log.Information($"[INTERACT] Interacting with {obj.Name.TextValue}");
-            Plugin.TargetManager.Target = obj;
+            if (obj == null) return false;
 
             var ts = TargetSystem.Instance();
             if (ts == null)
             {
-                Plugin.Log.Error("[INTERACT] TargetSystem null");
+                Plugin.Log.Error("[INTERACT] TargetSystem is null");
                 return false;
             }
 
-            var gameObjPtr = (GameObject*)obj.Address;
+            var gameObjPtr = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
             if (gameObjPtr == null)
             {
-                Plugin.Log.Error("[INTERACT] GameObject ptr null");
+                Plugin.Log.Error($"[INTERACT] GameObject pointer is null for {obj.Name.TextValue}");
                 return false;
             }
 
@@ -45,7 +52,7 @@ public static class GameHelpers
         }
         catch (Exception ex)
         {
-            Plugin.Log.Error($"[INTERACT] Failed: {ex.Message}");
+            Plugin.Log.Error($"[INTERACT] Exception: {ex.Message}");
             return false;
         }
     }
@@ -206,13 +213,13 @@ public static class GameHelpers
     /// <summary>
     /// Get the count of an item in the player's inventory (NQ + HQ).
     /// </summary>
-    public static unsafe int GetInventoryItemCount(uint itemId)
+    public static unsafe uint GetInventoryItemCount(uint itemId)
     {
         try
         {
             var im = InventoryManager.Instance();
             if (im == null) return 0;
-            return im->GetInventoryItemCount(itemId) + im->GetInventoryItemCount(itemId, true);
+            return (uint)(im->GetInventoryItemCount(itemId) + im->GetInventoryItemCount(itemId, true));
         }
         catch
         {
@@ -235,5 +242,28 @@ public static class GameHelpers
     public static void SendConfirm()
     {
         ECommons.Automation.WindowsKeypress.SendKeypress(Dalamud.Game.ClientState.Keys.VirtualKey.NUMPAD0, null);
+    }
+
+    /// <summary>
+    /// Get FC points from the FC window.
+    /// Simplified implementation - returns a dummy value for now.
+    /// TODO: Implement proper FC points parsing from UI node 1,4,16,17
+    /// </summary>
+    public static unsafe int? GetFCPointsNode()
+    {
+        try
+        {
+            // For now, just check if FC window is open and return a high value
+            // This will be implemented properly later
+            var addon = Instance()->GetAddonByName("FreeCompany");
+            if (addon == null) return null;
+            
+            // Return dummy value to trigger the refill logic
+            return 500000;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

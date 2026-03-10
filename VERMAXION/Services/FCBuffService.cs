@@ -1,7 +1,11 @@
 using System;
+using System.Linq;
 using Dalamud.Game.Command;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
@@ -9,47 +13,48 @@ public class FCBuffService : IDisposable
 {
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
+    private readonly IClientState clientState;
+    private readonly ICondition condition;
+    private readonly IObjectTable objects;
+    private readonly ITargetManager targetManager;
 
     private FCBuffState state = FCBuffState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private int purchaseAttempts = 0;
-    private int maxPurchaseAttempts = 15;
     private int buyCount = 0;
     private int buyMax = 15;
+    private int maxPurchaseAttempts = 2; // Try SS2 first, then SS1
+    private bool isSealSweetenerTwo = true; // Try Seal Sweetener II first
 
-    // Status ID 414 = Seal Sweetener (I or II) from FUTA_GC.lua
-    private const uint SealSweetenerStatusId = 414;
+    // FC points threshold from FUTA_GC.lua
+    private const int MinFCPoints = 500000;
+    // Gil requirement from FUTA_GC.lua
+    private const int MinGil = 16000;
 
     public enum FCBuffState
     {
         Idle,
-        CheckingStatus,
+        CheckingFCPoints,
         OpeningFCWindow,
         WaitingForFCWindow,
-        ClickingActionsTab,
-        WaitingForActionsTab,
-        SearchingForBuff,
-        CastingBuff,
-        WaitingForContextMenu,
-        ConfirmingCast,
-        CheckingAfterCast,
-        // Purchase flow (if cast fails)
+        CheckingFCPointsInWindow,
+        CheckingIfRefillNeeded,
         NavigatingToGC,
         WaitingForGCArrival,
         TargetingQuartermaster,
         InteractingQuartermaster,
         WaitingForSelectString1,
-        SelectingOption1,
+        SelectingPurchaseOption,
         WaitingForSelectString2,
-        SelectingOption2,
+        SelectingBuffType,
         WaitingForExchange,
-        PurchasingItem,
+        PurchasingBuff,
         WaitingForPurchaseConfirm,
         ConfirmingPurchase,
         PurchaseLoop,
         ClosingWindows,
         Complete,
-        Failed,
+        Failed
     }
 
     public FCBuffState State => state;
@@ -58,20 +63,30 @@ public class FCBuffService : IDisposable
     public bool IsFailed => state == FCBuffState.Failed;
     public string StatusText => state.ToString();
 
-    public FCBuffService(ICommandManager commandManager, IPluginLog log, IGameGui gameGui)
+    public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager)
     {
         this.commandManager = commandManager;
         this.log = log;
+        this.clientState = clientState;
+        this.condition = condition;
+        this.objects = objects;
+        this.targetManager = targetManager;
     }
 
-    public void Start(int maxAttempts)
+    public void Start(int maxAttempts = 2)
     {
+        if (IsActive)
+        {
+            log.Warning("[FCBuff] Service already active");
+            return;
+        }
+
         maxPurchaseAttempts = maxAttempts;
         purchaseAttempts = 0;
         buyCount = 0;
-        buyMax = 15;
-        SetState(FCBuffState.CheckingStatus);
-        log.Information($"[FCBuff] Starting FC buff check (max {maxAttempts} purchase attempts)");
+        isSealSweetenerTwo = true; // Start with Seal Sweetener II
+        SetState(FCBuffState.CheckingFCPoints);
+        log.Information($"[FCBuff] Starting FC buff refill (max attempts: {maxAttempts})");
     }
 
     public void RunTask()
@@ -85,37 +100,18 @@ public class FCBuffService : IDisposable
 
     public unsafe void Update()
     {
-        if (state == FCBuffState.Idle || state == FCBuffState.Complete || state == FCBuffState.Failed)
-            return;
+        if (!IsActive) return;
 
         var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
 
         switch (state)
         {
-            // ====== CHECK IF BUFF IS ALREADY ACTIVE ======
-            case FCBuffState.CheckingStatus:
-                var fcProxy = InfoProxyFreeCompany.Instance();
-                if (fcProxy == null || fcProxy->Id == 0)
-                {
-                    log.Information("[FCBuff] Not in an FC - skipping");
-                    SetState(FCBuffState.Complete);
-                    return;
-                }
-
-                var remaining = GameHelpers.GetStatusTimeRemaining(SealSweetenerStatusId);
-                if (remaining > 0)
-                {
-                    log.Information($"[FCBuff] Seal Sweetener already active ({remaining:F0}s remaining) - done");
-                    SetState(FCBuffState.Complete);
-                    return;
-                }
-
-                log.Information("[FCBuff] No Seal Sweetener active, attempting to cast from FC actions");
+            case FCBuffState.CheckingFCPoints:
+                if (elapsed < 1) return;
+                log.Information("[FCBuff] Checking if we have enough FC points for refill");
                 SetState(FCBuffState.OpeningFCWindow);
                 break;
 
-            // ====== TRY TO CAST BUFF FROM FC WINDOW ======
-            // FUTA_GC.lua: /freecompanycmd -> wait -> /callback FreeCompany false 0 4u -> search nodes -> cast
             case FCBuffState.OpeningFCWindow:
                 if (elapsed < 1) return;
                 log.Information("[FCBuff] Opening FC window: /freecompanycmd");
@@ -124,254 +120,202 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForFCWindow:
-                if (GameHelpers.IsAddonVisible("FreeCompany"))
+                if (elapsed < 3)
                 {
-                    SetState(FCBuffState.ClickingActionsTab);
+                    // Check if FC window is ready
+                    if (GameHelpers.IsAddonVisible("FreeCompany"))
+                    {
+                        log.Information("[FCBuff] FC window is ready");
+                        SetState(FCBuffState.CheckingFCPointsInWindow);
+                    }
+                    return;
                 }
-                else if (elapsed > 5)
+                // Try opening again if first attempt failed
+                if (elapsed < 6)
                 {
-                    log.Warning("[FCBuff] FreeCompany addon didn't open, trying purchase route");
-                    SetState(FCBuffState.NavigatingToGC);
+                    log.Information("[FCBuff] First attempt failed, trying again");
+                    commandManager.ProcessCommand("/freecompanycmd");
+                    SetState(FCBuffState.WaitingForFCWindow);
+                    return;
                 }
+                log.Error("[FCBuff] Failed to open FC window");
+                SetState(FCBuffState.Failed);
                 break;
 
-            case FCBuffState.ClickingActionsTab:
-                if (elapsed < 0.5) return;
-                // FUTA_GC.lua: /callback FreeCompany false 0 4u  (click Actions tab)
-                log.Information("[FCBuff] Clicking FC Actions tab");
-                GameHelpers.FireAddonCallback("FreeCompany", false, 0, 4u);
-                SetState(FCBuffState.WaitingForActionsTab);
-                break;
-
-            case FCBuffState.WaitingForActionsTab:
-                if (elapsed < 1.5) return;
-                if (GameHelpers.IsAddonVisible("FreeCompanyAction"))
+            case FCBuffState.CheckingFCPointsInWindow:
+                if (elapsed < 1) return;
+                // Get FC points from the window
+                var fcProxy = InfoProxyFreeCompany.Instance();
+                if (fcProxy != null && fcProxy->Id != 0)
                 {
-                    SetState(FCBuffState.SearchingForBuff);
-                }
-                else if (elapsed > 5)
-                {
-                    log.Warning("[FCBuff] FreeCompanyAction addon didn't open, closing and trying purchase");
-                    GameHelpers.CloseCurrentAddon();
-                    SetState(FCBuffState.NavigatingToGC);
-                }
-                break;
-
-            case FCBuffState.SearchingForBuff:
-                // FUTA_GC.lua: scan nodes 51001-51016 in FreeCompanyAction for "Seal Sweetener II"
-                // then: /callback FreeCompanyAction false 1 {index}u
-                // We try index 1 first (common position for Seal Sweetener II)
-                // The exact index varies per FC setup, so we try a few
-                log.Information("[FCBuff] Attempting to cast Seal Sweetener II from FC actions");
-                // Try casting - the callback with index sends the cast request
-                // FUTA_GC.lua uses dynamic search, but for our first attempt we try common indices
-                GameHelpers.FireAddonCallback("FreeCompanyAction", false, 1, 1u);
-                SetState(FCBuffState.WaitingForContextMenu);
-                break;
-
-            case FCBuffState.WaitingForContextMenu:
-                if (GameHelpers.IsAddonVisible("ContextMenu"))
-                {
-                    // FUTA_GC.lua: /callback ContextMenu true 0 0 1u 0 0
-                    log.Information("[FCBuff] ContextMenu visible, selecting cast option");
-                    GameHelpers.FireAddonCallback("ContextMenu", true, 0, 0, 1u, 0, 0);
-                    SetState(FCBuffState.ConfirmingCast);
-                }
-                else if (elapsed > 3)
-                {
-                    log.Warning("[FCBuff] No ContextMenu appeared, buff may not be available to cast");
-                    purchaseAttempts++;
-                    // Close FreeCompanyAction window
-                    GameHelpers.CloseCurrentAddon();
-                    SetState(FCBuffState.NavigatingToGC);
-                }
-                break;
-
-            case FCBuffState.ConfirmingCast:
-                if (elapsed < 0.5) return;
-                // FUTA_GC.lua: /callback SelectYesno true 0
-                if (GameHelpers.IsAddonVisible("SelectYesno"))
-                {
-                    GameHelpers.ClickYesIfVisible();
-                    SetState(FCBuffState.CheckingAfterCast);
-                }
-                else if (elapsed > 3)
-                {
-                    SetState(FCBuffState.CheckingAfterCast);
-                }
-                break;
-
-            case FCBuffState.CheckingAfterCast:
-                if (elapsed < 2) return;
-                var afterCast = GameHelpers.GetStatusTimeRemaining(SealSweetenerStatusId);
-                if (afterCast > 0)
-                {
-                    log.Information($"[FCBuff] Seal Sweetener is now active ({afterCast:F0}s)! Closing windows.");
-                    // Close any remaining FC windows
-                    if (GameHelpers.IsAddonVisible("FreeCompanyAction")) GameHelpers.CloseCurrentAddon();
-                    if (GameHelpers.IsAddonVisible("FreeCompany")) GameHelpers.CloseCurrentAddon();
-                    SetState(FCBuffState.Complete);
+                    // FC points are at node 1,4,16,17 in the FC window
+                    var fcPointsNode = GameHelpers.GetFCPointsNode();
+                    var fcPoints = fcPointsNode ?? 0;
+                    log.Information($"[FCBuff] Current FC points: {fcPoints:N0}");
+                    if (fcPoints >= MinFCPoints)
+                    {
+                        SetState(FCBuffState.CheckingIfRefillNeeded);
+                    }
+                    else
+                    {
+                        log.Information($"[FCBuff] Not enough FC points ({fcPoints:N0} < {MinFCPoints:N0}), skipping refill");
+                        SetState(FCBuffState.Complete);
+                    }
                 }
                 else
                 {
-                    log.Information("[FCBuff] Cast didn't work, trying purchase route");
-                    if (GameHelpers.IsAddonVisible("FreeCompanyAction")) GameHelpers.CloseCurrentAddon();
-                    if (GameHelpers.IsAddonVisible("FreeCompany")) GameHelpers.CloseCurrentAddon();
-                    SetState(FCBuffState.NavigatingToGC);
+                    log.Error("[FCBuff] Failed to get FC points");
+                    SetState(FCBuffState.Failed);
                 }
                 break;
 
-            // ====== PURCHASE BUFF FROM OIC QUARTERMASTER ======
-            // FUTA_GC.lua: /li gc -> target OIC Quartermaster -> /interact -> SelectString x2 -> FreeCompanyExchange
+            case FCBuffState.CheckingIfRefillNeeded:
+                if (elapsed < 1) return;
+                // Check if we have enough gil
+                var gil = GameHelpers.GetInventoryItemCount(1);
+                log.Information($"[FCBuff] Current gil: {gil:N0}");
+                if (gil < MinGil)
+                {
+                    log.Information($"[FCBuff] Not enough gil ({gil:N0} < {MinGil:N0}), skipping refill");
+                    SetState(FCBuffState.Complete);
+                    return;
+                }
+                log.Information("[FCBuff] Proceeding with FC buff refill");
+                SetState(FCBuffState.NavigatingToGC);
+                break;
+
             case FCBuffState.NavigatingToGC:
                 if (elapsed < 1) return;
-                log.Information("[FCBuff] Navigating to GC via /li gc");
+                // Navigate to current GC
+                log.Information("[FCBuff] Navigating to GC: /li gc");
                 commandManager.ProcessCommand("/li gc");
                 SetState(FCBuffState.WaitingForGCArrival);
                 break;
 
             case FCBuffState.WaitingForGCArrival:
-                if (elapsed < 8) return; // Wait for Lifestream teleport
-                if (GameHelpers.IsPlayerAvailable() || elapsed > 20)
+                if (elapsed < 10)
                 {
-                    log.Information("[FCBuff] Arrived at GC, targeting OIC Quartermaster");
-                    SetState(FCBuffState.TargetingQuartermaster);
+                    // Wait for territory change
+                    if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+                        return;
+                    // Check if we're in a GC territory (IDs 128, 129, 130)
+                    var territory = clientState.TerritoryType;
+                    if (territory >= 128 && territory <= 130)
+                    {
+                        log.Information($"[FCBuff] Arrived at GC territory: {territory}");
+                        SetState(FCBuffState.TargetingQuartermaster);
+                    }
+                    return;
                 }
+                log.Error("[FCBuff] Failed to arrive at GC");
+                SetState(FCBuffState.Failed);
                 break;
 
             case FCBuffState.TargetingQuartermaster:
-                if (elapsed < 2) return;
-                // FUTA_GC.lua: darget("OIC Quartermaster") then /interact
-                var qm = GameHelpers.FindObjectByName("OIC Quartermaster");
-                if (qm != null)
+                if (elapsed < 1) return;
+                log.Information("[FCBuff] Targeting OIC Quartermaster");
+                var quartermaster = GameHelpers.FindObjectByName("OIC Quartermaster");
+                if (quartermaster != null)
                 {
-                    log.Information("[FCBuff] Found OIC Quartermaster, interacting");
-                    GameHelpers.InteractWithObject(qm);
-                    SetState(FCBuffState.WaitingForSelectString1);
+                    targetManager.Target = quartermaster;
+                    SetState(FCBuffState.InteractingQuartermaster);
                 }
                 else
                 {
-                    log.Warning("[FCBuff] OIC Quartermaster not found - may need to walk closer");
-                    // Try /target command as fallback
-                    commandManager.ProcessCommand("/target \"OIC Quartermaster\"");
-                    SetState(FCBuffState.InteractingQuartermaster);
+                    log.Error("[FCBuff] Could not find OIC Quartermaster");
+                    SetState(FCBuffState.Failed);
                 }
                 break;
 
             case FCBuffState.InteractingQuartermaster:
-                if (elapsed < 2) return;
-                // Try interact via NUMPAD0 (like SND /send NUMPAD0)
-                GameHelpers.SendConfirm();
-                SetState(FCBuffState.WaitingForSelectString1);
+                if (elapsed < 1) return;
+                log.Information("[FCBuff] Interacting with OIC Quartermaster");
+                if (targetManager.Target != null && GameHelpers.InteractWithObject(targetManager.Target))
+                {
+                    SetState(FCBuffState.WaitingForSelectString1);
+                }
+                else
+                {
+                    log.Error("[FCBuff] Failed to interact with OIC Quartermaster");
+                    SetState(FCBuffState.Failed);
+                }
                 break;
 
             case FCBuffState.WaitingForSelectString1:
-                if (GameHelpers.IsAddonVisible("SelectString"))
+                if (elapsed < 5)
                 {
-                    SetState(FCBuffState.SelectingOption1);
+                    if (GameHelpers.IsAddonVisible("SelectString"))
+                    {
+                        log.Information("[FCBuff] SelectString appeared, selecting purchase option");
+                        GameHelpers.FireAddonCallback("SelectString", true, 0);
+                        SetState(FCBuffState.WaitingForSelectString2);
+                    }
+                    return;
                 }
-                else if (elapsed > 5)
-                {
-                    log.Warning("[FCBuff] SelectString didn't appear after QM interact");
-                    SetState(FCBuffState.Failed);
-                }
-                break;
-
-            case FCBuffState.SelectingOption1:
-                if (elapsed < 0.5) return;
-                // FUTA_GC.lua: /callback SelectString true 0
-                log.Information("[FCBuff] Selecting first option in QM menu");
-                GameHelpers.FireAddonCallback("SelectString", true, 0);
-                SetState(FCBuffState.WaitingForSelectString2);
+                log.Error("[FCBuff] SelectString did not appear");
+                SetState(FCBuffState.Failed);
                 break;
 
             case FCBuffState.WaitingForSelectString2:
-                if (elapsed < 1) return;
-                if (GameHelpers.IsAddonVisible("SelectString"))
+                if (elapsed < 5)
                 {
-                    SetState(FCBuffState.SelectingOption2);
+                    if (GameHelpers.IsAddonVisible("SelectString"))
+                    {
+                        log.Information("[FCBuff] Second SelectString appeared, selecting buff type");
+                        GameHelpers.FireAddonCallback("SelectString", true, 0);
+                        SetState(FCBuffState.WaitingForExchange);
+                    }
+                    return;
                 }
-                else if (GameHelpers.IsAddonVisible("FreeCompanyExchange"))
-                {
-                    // Went directly to exchange
-                    SetState(FCBuffState.WaitingForExchange);
-                }
-                else if (elapsed > 5)
-                {
-                    log.Warning("[FCBuff] Second SelectString didn't appear");
-                    SetState(FCBuffState.Failed);
-                }
-                break;
-
-            case FCBuffState.SelectingOption2:
-                if (elapsed < 0.5) return;
-                // FUTA_GC.lua: /callback SelectString true 0
-                log.Information("[FCBuff] Selecting first option again");
-                GameHelpers.FireAddonCallback("SelectString", true, 0);
-                SetState(FCBuffState.WaitingForExchange);
+                log.Error("[FCBuff] Second SelectString did not appear");
+                SetState(FCBuffState.Failed);
                 break;
 
             case FCBuffState.WaitingForExchange:
-                if (GameHelpers.IsAddonVisible("FreeCompanyExchange"))
+                if (elapsed < 5)
                 {
-                    buyCount = 0;
-                    SetState(FCBuffState.PurchasingItem);
+                    if (GameHelpers.IsAddonVisible("FreeCompanyExchange"))
+                    {
+                        log.Information("[FCBuff] FreeCompanyExchange appeared, starting purchase loop");
+                        buyCount = 0;
+                        buyMax = isSealSweetenerTwo ? 15 : 1; // Buy 15 of SS2, only 1 of SS1
+                        SetState(FCBuffState.PurchasingBuff);
+                    }
+                    return;
                 }
-                else if (elapsed > 5)
-                {
-                    log.Warning("[FCBuff] FreeCompanyExchange didn't appear");
-                    SetState(FCBuffState.Failed);
-                }
+                log.Error("[FCBuff] FreeCompanyExchange did not appear");
+                SetState(FCBuffState.Failed);
                 break;
 
-            case FCBuffState.PurchasingItem:
-                if (elapsed < 0.5) return;
+            case FCBuffState.PurchasingBuff:
+                if (elapsed < 1) return;
                 if (buyCount >= buyMax)
                 {
-                    log.Information($"[FCBuff] Purchased {buyMax} Seal Sweetener items");
+                    log.Information($"[FCBuff] Purchase complete: {buyCount} buffs bought");
                     SetState(FCBuffState.ClosingWindows);
                     return;
                 }
-                // FUTA_GC.lua: /callback FreeCompanyExchange false 2 22u  (Seal Sweetener II = index 22)
-                // If first purchase attempt failed, fallback to Seal Sweetener I = index 5
-                var itemIndex = purchaseAttempts < 2 ? 22u : 5u;
-                log.Information($"[FCBuff] Purchasing item index {itemIndex} (buy {buyCount + 1}/{buyMax})");
-                GameHelpers.FireAddonCallback("FreeCompanyExchange", false, 2, itemIndex);
+                
+                var buffIndex = isSealSweetenerTwo ? 22 : 5; // 22u for SS2, 5u for SS1
+                log.Information($"[FCBuff] Purchasing buff {buyCount + 1}/{buyMax} (index: {buffIndex})");
+                GameHelpers.FireAddonCallback("FreeCompanyExchange", false, 2, (uint)buffIndex);
                 SetState(FCBuffState.WaitingForPurchaseConfirm);
                 break;
 
             case FCBuffState.WaitingForPurchaseConfirm:
-                if (elapsed < 1) return;
-                if (GameHelpers.IsAddonVisible("SelectYesno"))
+                if (elapsed < 5)
                 {
-                    SetState(FCBuffState.ConfirmingPurchase);
+                    if (GameHelpers.IsAddonVisible("SelectYesno"))
+                    {
+                        log.Information("[FCBuff] Confirming purchase");
+                        GameHelpers.FireAddonCallback("SelectYesno", true, 0);
+                        buyCount++;
+                        SetState(FCBuffState.PurchasingBuff);
+                    }
+                    return;
                 }
-                else if (elapsed > 3)
-                {
-                    // No confirmation needed or item couldn't be purchased
-                    buyCount++;
-                    SetState(FCBuffState.PurchaseLoop);
-                }
-                break;
-
-            case FCBuffState.ConfirmingPurchase:
-                if (elapsed < 0.3) return;
-                // FUTA_GC.lua: /callback SelectYesno true 0
-                GameHelpers.ClickYesIfVisible();
-                buyCount++;
-                SetState(FCBuffState.PurchaseLoop);
-                break;
-
-            case FCBuffState.PurchaseLoop:
-                if (elapsed < 1) return;
-                if (buyCount < buyMax && GameHelpers.IsAddonVisible("FreeCompanyExchange"))
-                {
-                    SetState(FCBuffState.PurchasingItem);
-                }
-                else
-                {
-                    SetState(FCBuffState.ClosingWindows);
-                }
+                log.Error("[FCBuff] Purchase confirmation did not appear");
+                SetState(FCBuffState.Failed);
                 break;
 
             case FCBuffState.ClosingWindows:
