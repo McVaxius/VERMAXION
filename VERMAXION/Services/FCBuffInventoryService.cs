@@ -222,37 +222,45 @@ public class FCBuffInventoryService
                         continue;
                     }
                     
-                    // Get the i-th list item (ListItemRenderer Component Node) using GetNodeById
-                    var listItemNode = component->GetNodeById(i); // Use the actual buff ID
+                    // Step 4: Get list item renderer i from the list component using UldManager.NodeList
+                    // Based on XA docs: [32]→[N] where [32] is list component and [N] are ListItemRenderer nodes
+                    var listComponent = componentNode14->GetComponent();
+                    var nodeList = listComponent->UldManager.NodeList;
+                    
+                    // Find the i-th ListItemRenderer (using index, not buff ID)
+                    int listIndex = (int)(i - 51001) + 1; // List items start at index 1, not 0
+                    
+                    // NodeList is a pointer array, access via pointer arithmetic
+                    var listItemNode = nodeList[listIndex];
                     if (listItemNode == null)
                     {
-                        log.Debug($"[FCBuffInventory] List item {i} not found");
+                        log.Debug($"[FCBuffInventory] List item at index {listIndex} is null");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found list item {i}, type: {listItemNode->Type}");
+                    log.Debug($"[FCBuffInventory] Found list item at index {listIndex}, type: {listItemNode->Type}");
                     
-                    // Step 5: Get text node 3 from the list item renderer using GetComponent()->GetTextNodeById(3)
+                    // Step 5: Get text node 3 from the ListItemRenderer using its component
                     var listItemComponent = listItemNode->GetAsAtkComponentNode();
                     if (listItemComponent == null)
                     {
-                        log.Warning($"[FCBuffInventory] List item {i} is not a component node");
+                        log.Warning($"[FCBuffInventory] List item at index {listIndex} is not a component node");
                         continue;
                     }
                     
                     var listItemComp = listItemComponent->GetComponent();
                     if (listItemComp == null)
                     {
-                        log.Warning($"[FCBuffInventory] Cannot get component from list item {i}");
+                        log.Warning($"[FCBuffInventory] Cannot get component from list item at index {listIndex}");
                         continue;
                     }
                     
                     var textNode = listItemComp->GetTextNodeById(3);
                     if (textNode == null)
                     {
-                        log.Warning($"[FCBuffInventory] Text node 3 not found in list item {i}");
+                        log.Warning($"[FCBuffInventory] Text node 3 not found in list item at index {listIndex}");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found text node 3 in list item {i}");
+                    log.Debug($"[FCBuffInventory] Found text node 3 in list item at index {listIndex}");
                     
                     // Read the text from node 3
                     var text = textNode->NodeText.ToString();
