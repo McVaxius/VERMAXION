@@ -209,25 +209,50 @@ public class FCBuffInventoryService
                     
                     // Step 5: Get child node 3 from node i (this has the text)
                     var textNode = nodeI->ChildNode;
-                    if (textNode == null || textNode->Type != NodeType.Text)
+                    if (textNode == null)
                     {
-                        log.Warning($"[FCBuffInventory] Text node 3 (child of {i}) not found or not text type");
+                        log.Warning($"[FCBuffInventory] Text node 3 (child of {i}) not found");
                         continue;
                     }
                     log.Debug($"[FCBuffInventory] Found text node 3 (child of {i}), type: {textNode->Type}");
                     
-                    // Read the text from node 3
-                    var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)textNode;
-                    if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
+                    // Check if this is actually node 3 by looking for more children
+                    var node3 = textNode;
+                    log.Debug($"[FCBuffInventory] Checking if this is node 3 - has children: {node3->ChildNode != null}");
+                    
+                    if (node3->ChildNode != null)
                     {
-                        var text = textNodePtr->NodeText.ToString();
-                        log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read text: '{text}'");
-                        commandManager.ProcessCommand($"/echo {i:D5}: {text}");
+                        log.Debug($"[FCBuffInventory] Found child of node 3, type: {node3->ChildNode->Type}");
+                        // Try reading from the child of node 3
+                        var actualTextNode = node3->ChildNode;
+                        var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)actualTextNode;
+                        if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
+                        {
+                            var text = textNodePtr->NodeText.ToString();
+                            log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from child of node 3: '{text}'");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {text}");
+                        }
+                        else
+                        {
+                            log.Warning($"[FCBuffInventory] Child of node 3 has no text for buff {i}");
+                            commandManager.ProcessCommand($"/echo {i:D5}: [No text in child]");
+                        }
                     }
                     else
                     {
-                        log.Warning($"[FCBuffInventory] Text node 3 has no text for buff {i}");
-                        commandManager.ProcessCommand($"/echo {i:D5}: [No text]");
+                        // Read directly from node 3
+                        var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)node3;
+                        if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
+                        {
+                            var text = textNodePtr->NodeText.ToString();
+                            log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from node 3 directly: '{text}'");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {text}");
+                        }
+                        else
+                        {
+                            log.Warning($"[FCBuffInventory] Node 3 has no text for buff {i}");
+                            commandManager.ProcessCommand($"/echo {i:D5}: [No text]");
+                        }
                     }
                 }
                 catch (Exception ex)
