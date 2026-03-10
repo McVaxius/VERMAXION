@@ -172,88 +172,74 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node 1, type: {node1->Type}");
                     
-                    // Step 2: Get first child of node 1 (assuming this is node 10)
+                    // Step 2: Get child node 10 from node 1
                     var node10 = node1->ChildNode;
                     if (node10 == null)
                     {
-                        log.Debug($"[FCBuffInventory] Node 1 has no children for buff {i}");
+                        log.Debug($"[FCBuffInventory] Node 10 (child of 1) not found for buff {i}");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found child of node 1 (node 10), type: {node10->Type}");
+                    log.Debug($"[FCBuffInventory] Found node 10 (child of 1), type: {node10->Type}");
                     
-                    // Step 3: Get the i-th child of node 10 (this is node 14 for slot i)
-                    // We need to navigate to the i-th position in the children list
-                    var buffNode = node10->ChildNode;
-                    int slotIndex = (int)(i - 51001); // Convert buff ID to 0-based index (51001 = 0, 51002 = 1, etc.)
-                    int currentIndex = 0;
-                    
-                    while (buffNode != null && currentIndex < slotIndex)
+                    // Step 3: Get child node 14 from node 10
+                    var node14 = node10->ChildNode;
+                    if (node14 == null)
                     {
+                        log.Debug($"[FCBuffInventory] Node 14 (child of 10) not found for buff {i}");
+                        continue;
+                    }
+                    log.Debug($"[FCBuffInventory] Found node 14 (child of 10), type: {node14->Type}");
+                    
+                    // Step 4: Get child node i from node 14 (the specific buff node)
+                    var buffNode = node14->ChildNode;
+                    bool foundBuffNode = false;
+                    int childIndex = 0;
+                    
+                    while (buffNode != null && childIndex < 50) // Safety limit
+                    {
+                        log.Debug($"[FCBuffInventory] Checking child {childIndex} of node 14: Type={buffNode->Type}");
+                        // Look for the buff node with matching ID or just take the i-th child
+                        if (childIndex == (i - 51001)) // Use index for now
+                        {
+                            foundBuffNode = true;
+                            break;
+                        }
                         buffNode = buffNode->PrevSiblingNode;
-                        currentIndex++;
+                        childIndex++;
                     }
                     
-                    if (buffNode == null)
+                    if (!foundBuffNode || buffNode == null)
                     {
-                        log.Debug($"[FCBuffInventory] Slot {slotIndex} (buff {i}) not found in children of node 10");
+                        log.Debug($"[FCBuffInventory] Buff node {i} (child of 14) not found");
                         if (buffNames.TryGetValue(i, out var buffName))
                         {
-                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [Slot not found]");
-                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [Slot not found]");
+                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [Buff node not found]");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [Buff node not found]");
                         }
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found slot {slotIndex} (buff {i}), type: {buffNode->Type}");
+                    log.Debug($"[FCBuffInventory] Found buff node {i} (child of 14), type: {buffNode->Type}");
                     
-                    // Step 4: Get child node 14 (text node) from the buff slot
+                    // Step 5: Get child node 3 from buff node i (this contains the text)
                     var textNode = buffNode->ChildNode;
                     if (textNode == null || textNode->Type != NodeType.Text)
                     {
-                        log.Warning($"[FCBuffInventory] No text node (node 14) found in slot {slotIndex} for buff {i}");
+                        log.Warning($"[FCBuffInventory] Text node 3 (child of {i}) not found or not text type");
                         if (buffNames.TryGetValue(i, out var buffName))
                         {
-                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [No text node]");
-                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [No text node]");
+                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [Text node not found]");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [Text node not found]");
                         }
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found text node (node 14) in slot {slotIndex}, type: {textNode->Type}");
+                    log.Debug($"[FCBuffInventory] Found text node 3 (child of {i}), type: {textNode->Type}");
                     
-                    // Step 5: Get child node 3 from text node 14 (this should contain the actual text)
-                    var contentNode = textNode->ChildNode;
-                    if (contentNode == null || contentNode->Type != NodeType.Text)
+                    // Read the text from node 3
+                    var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)textNode;
+                    if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
                     {
-                        log.Warning($"[FCBuffInventory] No content node (node 3) found in text node for buff {i}");
-                        // Try reading directly from textNode instead
-                        var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)textNode;
-                        if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
-                        {
-                            var text = textNodePtr->NodeText.ToString();
-                            log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from text node: '{text}'");
-                            
-                            if (buffNames.TryGetValue(i, out var buffName))
-                            {
-                                log.Information($"[FCBuffInventory] {i:D5}: {buffName}: {text}");
-                                commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: {text}");
-                            }
-                        }
-                        else
-                        {
-                            if (buffNames.TryGetValue(i, out var buffName))
-                            {
-                                log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [No content]");
-                                commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [No content]");
-                            }
-                        }
-                        continue;
-                    }
-                    
-                    // Read the text from content node 3
-                    var contentNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)contentNode;
-                    if (contentNodePtr != null && contentNodePtr->NodeText.StringPtr != null)
-                    {
-                        var text = contentNodePtr->NodeText.ToString();
-                        log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from content node: '{text}'");
+                        var text = textNodePtr->NodeText.ToString();
+                        log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read text: '{text}'");
                         
                         if (buffNames.TryGetValue(i, out var buffName))
                         {
@@ -263,11 +249,11 @@ public class FCBuffInventoryService
                     }
                     else
                     {
-                        log.Warning($"[FCBuffInventory] Content node 3 has no text for buff {i}");
+                        log.Warning($"[FCBuffInventory] Text node 3 has no text for buff {i}");
                         if (buffNames.TryGetValue(i, out var buffName))
                         {
-                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [No text content]");
-                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [No text content]");
+                            log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [No text]");
+                            commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [No text]");
                         }
                     }
                 }
