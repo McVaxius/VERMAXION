@@ -4,6 +4,7 @@ using System.Linq;
 using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace VERMAXION.Services;
 
@@ -84,8 +85,8 @@ public class SeasonalGearService : IDisposable
     {
         try
         {
-            // Use simple /equipitem command like SND examples
-            // if GetItemCount(itemId) > 0 then yield("/equipitem "..itemId)
+            // Use ActionManager.UseAction() like SND - NOT a chat command!
+            // /equipitem is a special SND command, not a game chat command
             if (!HasItemInInventory(itemId))
             {
                 log.Warning($"[SeasonalGear] Item {itemId} ({itemName}) not found in inventory");
@@ -93,8 +94,21 @@ public class SeasonalGearService : IDisposable
             }
 
             log.Information($"[SeasonalGear] Equipping {itemName} (ItemID: {itemId})");
-            commandManager.ProcessCommand($"/equipitem {itemId}");
-            return true;
+            
+            unsafe
+            {
+                var actionManager = ActionManager.Instance();
+                if (actionManager == null)
+                {
+                    log.Warning("[SeasonalGear] ActionManager.Instance() is null");
+                    return false;
+                }
+
+                // Use ActionManager.UseAction() for items (ActionType.Item)
+                var result = actionManager->UseAction(ActionType.Item, itemId);
+                log.Debug($"[SeasonalGear] UseAction(ActionType.Item, {itemId}) result: {result}");
+                return result;
+            }
         }
         catch (Exception ex)
         {
