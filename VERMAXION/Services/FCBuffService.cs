@@ -166,16 +166,70 @@ public class FCBuffService : IDisposable
         }
     }
 
-    private int GetCurrentGCTerritory()
+    private unsafe int GetCurrentGCTerritory()
     {
-        // Get player's Grand Company from PlayerState
+        // Get Free Company's Grand Company for teleportation
         try
         {
-            // Try PlayerState first
+            var infoProxyFreeCompany = InfoProxyFreeCompany.Instance();
+            if (infoProxyFreeCompany != null)
+            {
+                var fcGrandCompany = infoProxyFreeCompany->GrandCompany;
+                var gcString = fcGrandCompany.ToString();
+                
+                log.Information($"[FCBuff] FC Grand Company: {gcString}");
+                
+                // GC names mapping from Jaksuhn's SND
+                var gcNames = new Dictionary<string, int>
+                {
+                    { "Maelstrom", 1 },
+                    { "TwinAdder", 2 },
+                    { "ImmortalFlames", 3 }
+                };
+                
+                int gcChoice = 1; // Default to Maelstrom
+                foreach (var gc in gcNames)
+                {
+                    if (gc.Key == gcString)
+                    {
+                        gcChoice = gc.Value;
+                        break;
+                    }
+                }
+                
+                log.Information($"[FCBuff] Using FC GC Choice: {gcChoice} ({gcString})");
+                
+                // Convert GC ID to territory ID
+                return gcChoice switch
+                {
+                    1 => 128, // Maelstrom (Limsa)
+                    2 => 132, // Order of the Twin Adder (Gridania) - territory 132
+                    3 => 130, // Immortal Flames (Ul'dah)
+                    _ => 128, // Default to Limsa
+                };
+            }
+            else
+            {
+                log.Warning("[FCBuff] InfoProxyFreeCompany is null, using player GC");
+                // Fallback to player's GC
+                return GetPlayerGCTerritory();
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[FCBuff] Failed to get FC GC: {ex.Message}, using player GC");
+            return GetPlayerGCTerritory();
+        }
+    }
+
+    private int GetPlayerGCTerritory()
+    {
+        // Get player's Grand Company from PlayerState (fallback)
+        try
+        {
             if (Plugin.PlayerState != null)
             {
                 var gc = Plugin.PlayerState.GrandCompany;
-                // GrandCompany.RowId gives us the GC ID (1=Maelstrom, 2=TwinAdder, 3=ImmortalFlames)
                 var gcId = gc.RowId;
                 return gcId switch
                 {
@@ -188,7 +242,7 @@ public class FCBuffService : IDisposable
         }
         catch
         {
-            log.Warning("[FCBuff] Failed to get GC from PlayerState, defaulting to Limsa");
+            log.Warning("[FCBuff] Failed to get player GC, defaulting to Limsa");
         }
         return 128; // Default to Limsa
     }
