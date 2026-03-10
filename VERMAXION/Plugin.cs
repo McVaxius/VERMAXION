@@ -215,7 +215,7 @@ public sealed class Plugin : IDalamudPlugin
             {
                 var contentId = PlayerState.ContentId;
                 Log.Information($"OnLogin: Character={charName}@{worldName}, ContentId={contentId:X16}");
-                ConfigManager.EnsureAccountSelected(contentId, charName);
+                ConfigManager.EnsureAccountSelected(contentId, null);
                 ConfigManager.EnsureCharacterExists(charName, worldName);
                 Configuration.LastAccountId = ConfigManager.CurrentAccountId;
                 Configuration.Save();
