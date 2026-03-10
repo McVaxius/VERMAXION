@@ -32,7 +32,7 @@ public class SeasonalGearService : IDisposable
     private enum GearState { Idle, SelectingGear, EquippingItem, WaitingForEquip, Complete, Failed }
     private GearState state = GearState.Idle;
     private DateTime stateEnteredAt;
-    private readonly HashSet<string> attemptedSlots = new();
+    private readonly HashSet<uint> attemptedItems = new(); // Track by ItemId, not slot
     private (uint ItemId, string Name, string Slot) selectedItem;
 
     public bool IsComplete => state == GearState.Complete;
@@ -141,7 +141,7 @@ public class SeasonalGearService : IDisposable
 
     public void Start()
     {
-        attemptedSlots.Clear();
+        attemptedItems.Clear();
         SetState(GearState.SelectingGear);
         log.Information("[SeasonalGear] Starting seasonal gear roulette");
     }
@@ -154,7 +154,7 @@ public class SeasonalGearService : IDisposable
 
     public void Reset()
     {
-        attemptedSlots.Clear();
+        attemptedItems.Clear();
         SetState(GearState.Idle);
     }
 
@@ -168,23 +168,26 @@ public class SeasonalGearService : IDisposable
         switch (state)
         {
             case GearState.SelectingGear:
-                // Find items in slots we haven't attempted yet
+                // Find items we haven't attempted yet AND that actually exist in inventory
                 var candidates = new List<(uint ItemId, string Name, string Slot)>();
                 foreach (var item in SeasonalGearList)
                 {
-                    if (!attemptedSlots.Contains(item.Slot))
+                    if (!attemptedItems.Contains(item.ItemId) && HasItemInInventory(item.ItemId))
+                    {
                         candidates.Add(item);
+                        log.Debug($"[SeasonalGear] Found available item: {item.Name} (ID:{item.ItemId})");
+                    }
                 }
 
                 if (candidates.Count == 0)
                 {
-                    log.Information("[SeasonalGear] No more slots to try, complete");
+                    log.Information("[SeasonalGear] No more available items to try, complete");
                     SetState(GearState.Complete);
                     return;
                 }
 
                 selectedItem = candidates[rng.Next(candidates.Count)];
-                attemptedSlots.Add(selectedItem.Slot);
+                attemptedItems.Add(selectedItem.ItemId);
                 log.Information($"[SeasonalGear] Selected: {selectedItem.Name} (ID:{selectedItem.ItemId}, Slot:{selectedItem.Slot})");
                 SetState(GearState.EquippingItem);
                 break;
@@ -200,7 +203,7 @@ public class SeasonalGearService : IDisposable
                 }
                 else
                 {
-                    log.Warning($"[SeasonalGear] Failed to equip {selectedItem.Name}, trying next slot");
+                    log.Warning($"[SeasonalGear] Failed to equip {selectedItem.Name}, trying next item");
                     SetState(GearState.SelectingGear);
                 }
                 break;
@@ -209,7 +212,7 @@ public class SeasonalGearService : IDisposable
                 if (elapsed > 3.5) // SND waits 3.5 seconds after equipitem
                 {
                     log.Information($"[SeasonalGear] Equip wait done for {selectedItem.Name}");
-                    // Only one change per slot per ARpostprocess, try next slot
+                    // Try next available item
                     SetState(GearState.SelectingGear);
                 }
                 break;
