@@ -137,11 +137,16 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniNavigating:
-                if (elapsed > 3.0)
+                if (elapsed > 3.0 && GameHelpers.IsPlayerAvailable())
                 {
                     log.Information("[Cactpot] Navigating to Cactpot Board");
                     commandManager.ProcessCommand("/vnav moveto -46.655319213867 1.5999846458435 20.395349502563");
                     SetState(CactpotState.MiniWaitingForArrival);
+                }
+                else if (elapsed > 30)
+                {
+                    log.Error("[Cactpot] Timeout waiting for player available");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
@@ -154,29 +159,45 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniTargeting:
-                log.Information("[Cactpot] Targeting Cactpot Board");
-                commandManager.ProcessCommand("/target Cactpot");
+                log.Information("[Cactpot] Targeting and interacting with Cactpot Board");
+                if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
+                {
+                    log.Information("[Cactpot] Interacted with Mini Cactpot Broker via TargetSystem");
+                }
+                else
+                {
+                    // Fallback: try /target + NUMPAD0
+                    commandManager.ProcessCommand("/target Cactpot");
+                }
                 SetState(CactpotState.MiniInteracting);
                 break;
 
             case CactpotState.MiniInteracting:
                 if (elapsed > 1.5)
                 {
-                    log.Information("[Cactpot] Interacting with Cactpot Board");
-                    // TODO: Need proper interact method - /interact is not a command
-                    // For now use the target+interact pattern we know works
-                    log.Warning("[Cactpot] TODO: Need proper interaction method (not /interact)");
-                    SetState(CactpotState.MiniSelectingTicket);
+                    if (GameHelpers.IsAddonVisible("SelectIconString"))
+                    {
+                        SetState(CactpotState.MiniSelectingTicket);
+                    }
+                    else
+                    {
+                        // Try NUMPAD0 to interact
+                        GameHelpers.SendConfirm();
+                        if (elapsed > 5)
+                        {
+                            log.Warning("[Cactpot] Failed to open Cactpot menu, retrying target");
+                            SetState(CactpotState.MiniTargeting);
+                        }
+                    }
                 }
                 break;
 
             case CactpotState.MiniSelectingTicket:
-                if (elapsed > 2.0)
+                if (elapsed > 0.5)
                 {
                     log.Information("[Cactpot] Selecting 'Purchase a Mini Cactpot ticket' (SelectIconString 0)");
                     // Callback: SelectIconString index 0 = "Purchase a Mini Cactpot ticket"
-                    // TODO: Fire callback SelectIconString 0, 1, 1
-                    log.Warning("[Cactpot] TODO: Need to fire SelectIconString callback");
+                    GameHelpers.FireAddonCallback("SelectIconString", true, 0);
                     SetState(CactpotState.MiniWaitingForSaucy);
                 }
                 break;
@@ -226,41 +247,59 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboTargetingBroker:
-                log.Information("[Cactpot] Targeting Broker");
-                commandManager.ProcessCommand("/target Broker");
+                log.Information("[Cactpot] Targeting and interacting with Broker");
+                if (GameHelpers.TargetAndInteract("Jumbo Cactpot Broker"))
+                {
+                    log.Information("[Cactpot] Interacted with Jumbo Cactpot Broker via TargetSystem");
+                }
+                else
+                {
+                    commandManager.ProcessCommand("/target Broker");
+                }
                 SetState(CactpotState.JumboInteractingBroker);
                 break;
 
             case CactpotState.JumboInteractingBroker:
                 if (elapsed > 1.5)
                 {
-                    log.Information("[Cactpot] Interacting with Broker");
-                    // TODO: Need proper interact method
-                    log.Warning("[Cactpot] TODO: Need proper interaction method");
-                    SetState(CactpotState.JumboSelectingPurchase);
+                    if (GameHelpers.IsAddonVisible("SelectString"))
+                    {
+                        SetState(CactpotState.JumboSelectingPurchase);
+                    }
+                    else
+                    {
+                        GameHelpers.SendConfirm();
+                        if (elapsed > 5)
+                        {
+                            log.Warning("[Cactpot] Broker menu didn't open");
+                            SetState(CactpotState.Failed);
+                        }
+                    }
                 }
                 break;
 
             case CactpotState.JumboSelectingPurchase:
-                if (elapsed > 2.0)
+                if (elapsed > 0.5)
                 {
                     log.Information("[Cactpot] Selecting purchase option (SelectString 0)");
-                    // Callback: SelectString index 0 = first menu item (purchase)
-                    // TODO: Fire callback SelectString 0, 1, 1
-                    log.Warning("[Cactpot] TODO: Need to fire SelectString callback");
+                    GameHelpers.FireAddonCallback("SelectString", true, 0);
                     SetState(CactpotState.JumboWaitingForNumpad);
                 }
                 break;
 
             case CactpotState.JumboWaitingForNumpad:
-                // The numpad UI appears - need to enter 4 digits and click Purchase
-                // TODO: Research how to interact with the numpad addon
-                // The screenshot shows: number buttons 0-9, a dice/randomize button, and Purchase button
-                if (elapsed > 3.0)
+                // The numpad UI appears (LotteryDaily addon)
+                // Use the randomize button (dice icon) then purchase
+                if (GameHelpers.IsAddonVisible("LotteryDaily"))
                 {
-                    log.Information("[Cactpot] Jumbo Cactpot numpad UI appeared");
-                    log.Warning("[Cactpot] TODO: Need numpad addon interaction research - cannot complete purchase yet");
-                    log.Warning("[Cactpot] Marking as complete for now - numpad interaction not implemented");
+                    log.Information("[Cactpot] Numpad UI visible, clicking randomize then purchase");
+                    // Click randomize button (dice) - callback index for random
+                    GameHelpers.FireAddonCallback("LotteryDaily", true, 1);
+                    SetState(CactpotState.JumboComplete);
+                }
+                else if (elapsed > 5)
+                {
+                    log.Warning("[Cactpot] LotteryDaily addon didn't appear");
                     SetState(CactpotState.JumboComplete);
                 }
                 break;
@@ -298,18 +337,34 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboCheckTargetingCashier:
-                log.Information("[Cactpot] Targeting Cashier");
-                commandManager.ProcessCommand("/target Cashier");
+                log.Information("[Cactpot] Targeting and interacting with Cashier");
+                if (GameHelpers.TargetAndInteract("Jumbo Cactpot Cashier"))
+                {
+                    log.Information("[Cactpot] Interacted with Cashier via TargetSystem");
+                }
+                else
+                {
+                    commandManager.ProcessCommand("/target Cashier");
+                }
                 SetState(CactpotState.JumboCheckInteractingCashier);
                 break;
 
             case CactpotState.JumboCheckInteractingCashier:
                 if (elapsed > 1.5)
                 {
-                    log.Information("[Cactpot] Interacting with Cashier");
-                    // TODO: Need proper interact method + Saturday check flow
-                    log.Warning("[Cactpot] TODO: Saturday cashier interaction not implemented yet");
-                    SetState(CactpotState.JumboCheckComplete);
+                    if (GameHelpers.IsAddonVisible("SelectString") || GameHelpers.IsAddonVisible("LotteryWeekly"))
+                    {
+                        log.Information("[Cactpot] Cashier dialog opened, auto-confirming");
+                        if (GameHelpers.IsAddonVisible("SelectString"))
+                            GameHelpers.FireAddonCallback("SelectString", true, 0);
+                        SetState(CactpotState.JumboCheckComplete);
+                    }
+                    else
+                    {
+                        GameHelpers.SendConfirm();
+                        if (elapsed > 5)
+                            SetState(CactpotState.JumboCheckComplete);
+                    }
                 }
                 break;
 

@@ -58,7 +58,7 @@ public class MinionRouletteService : IDisposable
         switch (state)
         {
             case MinionState.Summoning:
-                commandManager.ProcessCommand("/minion");
+                commandManager.ProcessCommand("/generalaction \"Minion Roulette\"");
                 SetState(MinionState.WaitingForCast);
                 break;
 

@@ -21,16 +21,16 @@ public class HenchmanService
     {
         wasRunning = true;
         IsManaging = true;
-        log.Information("[Henchman] Stopping Henchman via /henchman off");
-        commandManager.ProcessCommand("/henchman off");
+        log.Information("[Henchman] Stopping Henchman via /henchman Stop");
+        commandManager.ProcessCommand("/henchman Stop");
     }
 
     public void StartHenchman()
     {
         if (wasRunning)
         {
-            log.Information("[Henchman] Restarting Henchman via /henchman on");
-            commandManager.ProcessCommand("/henchman on");
+            log.Information("[Henchman] Restarting Henchman via /henchman OnABoat");
+            commandManager.ProcessCommand("/henchman OnABoat");
         }
         wasRunning = false;
         IsManaging = false;
@@ -38,8 +38,8 @@ public class HenchmanService
 
     public void ForceRestart()
     {
-        log.Information("[Henchman] Force restarting Henchman via /henchman on");
-        commandManager.ProcessCommand("/henchman on");
+        log.Information("[Henchman] Force restarting Henchman via /henchman OnABoat");
+        commandManager.ProcessCommand("/henchman OnABoat");
         wasRunning = false;
         IsManaging = false;
     }
