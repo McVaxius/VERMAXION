@@ -155,24 +155,7 @@ public class FCBuffService : IDisposable
             case FCBuffState.OpeningFCWindow:
                 if (elapsed < 1) return;
                 log.Information("[FCBuff] Opening FC window: /freecompanycmd");
-                
-                // Send command directly via UIModule (like LootGoblin)
-                unsafe
-                {
-                    var uiModule = UIModule.Instance();
-                    if (uiModule != null)
-                    {
-                        var bytes = Encoding.UTF8.GetBytes("/freecompanycmd");
-                        var utf8String = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String.FromSequence(bytes);
-                        uiModule->ProcessChatBoxEntry(utf8String, nint.Zero);
-                        log.Information("[FCBuff] Sent /freecompanycmd via UIModule");
-                    }
-                    else
-                    {
-                        log.Error("[FCBuff] UIModule is null, cannot send command");
-                    }
-                }
-                
+                CommandHelper.SendCommand("/freecompanycmd");
                 SetState(FCBuffState.WaitingForFCWindow);
                 break;
 
@@ -258,17 +241,17 @@ public class FCBuffService : IDisposable
                 {
                     case 128: // Limsa Lominsa
                         log.Information("[FCBuff] Navigating to Limsa GC: /li aft");
-                        commandManager.ProcessCommand("/li aft");
+                        CommandHelper.SendCommand("/li aft");
                         SetState(FCBuffState.WaitingForAftArrival);
                         break;
                     case 129: // Gridania
                         log.Information("[FCBuff] Navigating to Gridania GC: /li gridania");
-                        commandManager.ProcessCommand("/li gridania");
+                        CommandHelper.SendCommand("/li gridania");
                         SetState(FCBuffState.WaitingForGridaniaArrival);
                         break;
                     case 130: // Ul'dah
                         log.Information("[FCBuff] Navigating to Ul'dah GC: /li dah");
-                        commandManager.ProcessCommand("/li dah");
+                        CommandHelper.SendCommand("/li dah");
                         SetState(FCBuffState.WaitingForDahArrival);
                         break;
                     default:
@@ -331,15 +314,15 @@ public class FCBuffService : IDisposable
                 {
                     case 128: // Limsa - Upper Decks
                         log.Information("[FCBuff] Navigating to Limsa Quartermaster: /vnav moveto 94, 40.5, 74.5");
-                        commandManager.ProcessCommand("/vnav moveto 94, 40.5, 74.5");
+                        CommandHelper.SendCommand("/vnav moveto 94, 40.5, 74.5");
                         break;
                     case 129: // Gridania
                         log.Information("[FCBuff] Navigating to Gridania Quartermaster: /vnav moveto -68.5, -0.5, -8.5");
-                        commandManager.ProcessCommand("/vnav moveto -68.5, -0.5, -8.5");
+                        CommandHelper.SendCommand("/vnav moveto -68.5, -0.5, -8.5");
                         break;
                     case 130: // Ul'dah
                         log.Information("[FCBuff] Navigating to Ul'dah Quartermaster: /vnav moveto -141.7, 4.1, -106.8");
-                        commandManager.ProcessCommand("/vnav moveto -141.7, 4.1, -106.8");
+                        CommandHelper.SendCommand("/vnav moveto -141.7, 4.1, -106.8");
                         break;
                 }
                 SetState(FCBuffState.WaitingForQuartermasterArrival);
