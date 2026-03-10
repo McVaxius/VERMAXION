@@ -92,15 +92,15 @@ public class FCBuffService : IDisposable
     {
         if (IsActive) return;
         
-        // Log configuration at task start
+        // Force load config from file to get latest values
+        configManager.LoadAllAccounts();
+        log.Information("[FCBuff] Forced config load - getting latest values from file");
+        
+        // Get config AFTER loading to ensure we have the latest values
         var config = configManager.GetActiveConfig();
         log.Information($"[FCBuff] Config Debug: CurrentAccountId='{configManager.CurrentAccountId}', SelectedCharacterKey='{configManager.SelectedCharacterKey}'");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
-        
-        // Force load config from file to get latest values
-        configManager.LoadAllAccounts();
-        log.Information("[FCBuff] Forced config load - getting latest values from file");
         
         purchaseAttempts = maxAttempts;
         buyCount = 0;

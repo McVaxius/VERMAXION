@@ -175,6 +175,7 @@ public class MainWindow : Window, IDisposable
             if (ImGui.SmallButton("Force Config Load"))
             {
                 plugin.ConfigManager.LoadAllAccounts();
+                // Get config AFTER loading to ensure we have the latest values
                 var activeConfig = plugin.ConfigManager.GetActiveConfig();
                 Plugin.Log.Information($"[UI] Forced config load: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
             }
