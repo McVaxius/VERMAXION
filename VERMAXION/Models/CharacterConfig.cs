@@ -29,6 +29,12 @@ public class CharacterConfig
     public bool JumboCactpotCompletedThisWeek { get; set; } = false;
     public bool MiniCactpotCompletedToday { get; set; } = false;
     public bool ChocoboRacingCompletedToday { get; set; } = false;
+    
+    // --- Enhanced State Tracking ---
+    public int MiniCactpotTicketsToday { get; set; } = 0;
+    public int MinionRouletteAttemptsToday { get; set; } = 0;
+    public DateTime LastMinionRouletteReset { get; set; } = DateTime.MinValue;
+    public bool RequireSaucyForMiniCactpot { get; set; } = true;
 
     // --- Plugin State ---
     public bool Enabled { get; set; } = true;
@@ -56,6 +62,10 @@ public class CharacterConfig
             JumboCactpotCompletedThisWeek = JumboCactpotCompletedThisWeek,
             MiniCactpotCompletedToday = MiniCactpotCompletedToday,
             ChocoboRacingCompletedToday = ChocoboRacingCompletedToday,
+            MiniCactpotTicketsToday = MiniCactpotTicketsToday,
+            MinionRouletteAttemptsToday = MinionRouletteAttemptsToday,
+            LastMinionRouletteReset = LastMinionRouletteReset,
+            RequireSaucyForMiniCactpot = RequireSaucyForMiniCactpot,
             Enabled = Enabled,
         };
     }

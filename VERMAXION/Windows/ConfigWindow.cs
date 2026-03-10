@@ -353,6 +353,14 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(UIConstants.Tooltips.MinionRoulette);
+            
+            // Minion Roulette state display
+            if (cc.EnableMinionRoulette)
+            {
+                ImGui.Indent();
+                ImGui.Text($"Attempts today: {cc.MinionRouletteAttemptsToday}");
+                ImGui.Unindent();
+            }
 
             var seasonalGear = cc.EnableSeasonalGearRoulette;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.SeasonalGearRoulette, ref seasonalGear))
@@ -420,6 +428,26 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
+            }
+            
+            // Mini Cactpot additional options
+            if (cc.EnableMiniCactpot)
+            {
+                ImGui.Indent();
+                
+                var requireSaucy = cc.RequireSaucyForMiniCactpot;
+                if (ImGui.Checkbox("Require Saucy", ref requireSaucy))
+                {
+                    cc.RequireSaucyForMiniCactpot = requireSaucy;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                ImGui.TextDisabled("(?)");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("If enabled, Vermaxion will fail if Saucy is not available.\nIf disabled, Vermaxion will attempt to run without Saucy (may not work properly).");
+                
+                ImGui.Text($"Tickets today: {cc.MiniCactpotTicketsToday}/3");
+                ImGui.Unindent();
             }
 
             var chocobo = cc.EnableChocoboRacing;
