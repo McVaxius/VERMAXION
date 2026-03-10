@@ -102,17 +102,18 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
         
-        purchaseAttempts = maxAttempts;
+        purchaseAttempts = config.FCBuffPurchaseAttempts;
         buyCount = 0;
         isSealSweetenerTwo = true; // Start with Seal Sweetener II
         SetState(FCBuffState.CheckingFCPoints);
-        log.Information($"[FCBuff] Starting FC buff refill (max attempts: {maxAttempts})");
+        log.Information($"[FCBuff] Starting FC buff refill (max attempts: {config.FCBuffPurchaseAttempts})");
     }
 
     public void RunTask()
     {
         log.Information("[VERMAXION] Manual FC Buff Refill triggered");
-        Start(15);
+        var config = configManager.GetActiveConfig();
+        Start(config.FCBuffPurchaseAttempts);
     }
 
     public unsafe void TestFreeCompanyGC()
