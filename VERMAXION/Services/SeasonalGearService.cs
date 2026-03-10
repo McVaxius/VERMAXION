@@ -138,6 +138,7 @@ public class SeasonalGearService : IDisposable
                         if (slot != null && slot->ItemId == itemId && slot->Quantity > 0)
                         {
                             log.Debug($"[SeasonalGear] Found item {itemId} in container {containerType} slot {i}");
+                            log.Debug($"[SeasonalGear] Item details: Quantity={slot->Quantity}, Flags={slot->Flags}, Condition={slot->Condition}");
                             
                             // Determine target equipment slot based on item
                             var targetContainer = (InventoryType)0; // EquippedItems
@@ -149,11 +150,50 @@ public class SeasonalGearService : IDisposable
                                 return false;
                             }
 
-                            log.Debug($"[SeasonalGear] Moving to equipped slot {targetSlot}");
+                            log.Debug($"[SeasonalGear] Target: Container={targetContainer}, Slot={targetSlot}");
+                            
+                            // Check target slot before moving
+                            var equippedContainer = im->GetInventoryContainer(targetContainer);
+                            if (equippedContainer != null)
+                            {
+                                log.Debug($"[SeasonalGear] Target container size: {equippedContainer->Size}");
+                                if (targetSlot < equippedContainer->Size)
+                                {
+                                    var targetSlotItem = equippedContainer->GetInventorySlot(targetSlot);
+                                    if (targetSlotItem != null)
+                                    {
+                                        log.Debug($"[SeasonalGear] Target slot currently has: ItemId={targetSlotItem->ItemId}, Quantity={targetSlotItem->Quantity}");
+                                    }
+                                    else
+                                    {
+                                        log.Debug($"[SeasonalGear] Target slot is empty");
+                                    }
+                                }
+                                else
+                                {
+                                    log.Warning($"[SeasonalGear] Target slot {targetSlot} exceeds container size {equippedContainer->Size}");
+                                }
+                            }
+                            else
+                            {
+                                log.Warning($"[SeasonalGear] Target container {targetContainer} is null");
+                            }
+                            
+                            log.Debug($"[SeasonalGear] Attempting MoveItemSlot: sourceContainer={containerType}, sourceSlot={i}, targetContainer={targetContainer}, targetSlot={targetSlot}");
                             
                             // Use MoveItemSlot like SND implements /equipitem
                             var result = im->MoveItemSlot((InventoryType)containerType, (ushort)i, targetContainer, (ushort)targetSlot);
                             log.Debug($"[SeasonalGear] MoveItemSlot result: {result}");
+                            
+                            // Log common error codes
+                            if (result != 0)
+                            {
+                                log.Warning($"[SeasonalGear] MoveItemSlot failed with error code {result}");
+                                if (result == 10) log.Warning("[SeasonalGear] Error 10: Item cannot be equipped (wrong slot/class/etc)");
+                                if (result == 11) log.Warning("[SeasonalGear] Error 11: Source slot is empty");
+                                if (result == 12) log.Warning("[SeasonalGear] Error 12: Target slot is full");
+                            }
+                            
                             return result == 0; // 0 = success for MoveItemSlot
                         }
                     }
