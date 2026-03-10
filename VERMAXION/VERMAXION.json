@@ -4,7 +4,7 @@
   "Author": "DhogGPT",
   "Punchline": "ARPostProcess automation for weekly/daily tasks.",
   "Description": "Automates weekly and daily tasks triggered by AutoRetainer post-processing. Configurable per character: Verminion queue, Cactpot, Chocobo Racing, FC buff refill, and Henchman management.",
-  "IconUrl": "images/icon.png",
+  "IconUrl": "https://raw.githubusercontent.com/McVaxius/VERMAXION/refs/heads/master/VERMAXION/images/icon.png",
   "Tags": [ "automation", "autoretainer", "postprocess", "verminion", "cactpot" ],
   "CategoryTags": [ "other" ],
   "InternalName": "VERMAXION",
