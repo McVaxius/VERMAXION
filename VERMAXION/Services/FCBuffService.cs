@@ -90,14 +90,14 @@ public class FCBuffService : IDisposable
 
     public void Start(int maxAttempts = 2)
     {
-        if (IsActive)
-        {
-            log.Warning("[FCBuff] Service already active");
-            return;
-        }
-
-        maxPurchaseAttempts = maxAttempts;
-        purchaseAttempts = 0;
+        if (IsActive) return;
+        
+        // Log configuration at task start
+        var config = configManager.GetActiveConfig();
+        log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
+        log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
+        
+        purchaseAttempts = maxAttempts;
         buyCount = 0;
         isSealSweetenerTwo = true; // Start with Seal Sweetener II
         SetState(FCBuffState.CheckingFCPoints);
