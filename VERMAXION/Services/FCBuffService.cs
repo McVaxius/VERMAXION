@@ -202,10 +202,10 @@ public class FCBuffService : IDisposable
                 // Convert GC ID to territory ID
                 return gcChoice switch
                 {
-                    1 => 128, // Maelstrom (Limsa)
+                    1 => 129, // Maelstrom (Limsa - Upper Decks/Aft)
                     2 => 132, // Order of the Twin Adder (Gridania) - territory 132
                     3 => 130, // Immortal Flames (Ul'dah)
-                    _ => 128, // Default to Limsa
+                    _ => 129, // Default to Limsa
                 };
             }
             else
@@ -233,10 +233,10 @@ public class FCBuffService : IDisposable
                 var gcId = gc.RowId;
                 return gcId switch
                 {
-                    1 => 128, // Maelstrom (Limsa)
+                    1 => 129, // Maelstrom (Limsa - Upper Decks/Aft)
                     2 => 132, // Order of the Twin Adder (Gridania) - territory 132
                     3 => 130, // Immortal Flames (Ul'dah)
-                    _ => 128, // Default to Limsa
+                    _ => 129, // Default to Limsa
                 };
             }
         }
@@ -244,7 +244,7 @@ public class FCBuffService : IDisposable
         {
             log.Warning("[FCBuff] Failed to get player GC, defaulting to Limsa");
         }
-        return 128; // Default to Limsa
+        return 129; // Default to Limsa
     }
 
     public void Reset() => SetState(FCBuffState.Idle);
@@ -382,8 +382,8 @@ public class FCBuffService : IDisposable
                 // Check if we're already in the right GC territory
                 switch (currentGCTerritory)
                 {
-                    case 128: // Limsa Lominsa
-                        if (currentTerritory == 128)
+                    case 129: // Limsa Lominsa (Upper Decks/Aft)
+                        if (currentTerritory == 129)
                         {
                             log.Information("[FCBuff] Already in Limsa GC territory, skipping teleport");
                             SetState(FCBuffState.NavigatingToQuartermaster);
@@ -436,7 +436,7 @@ public class FCBuffService : IDisposable
                     log.Information("[FCBuff] Still teleporting to Aft...");
                     return;
                 }
-                if (clientState.TerritoryType == 128 && elapsed >= 3)
+                if (clientState.TerritoryType == 129 && elapsed >= 3)
                 {
                     log.Information("[FCBuff] Arrived at Limsa Aft, navigating to Quartermaster");
                     SetState(FCBuffState.NavigatingToQuartermaster);
@@ -479,7 +479,7 @@ public class FCBuffService : IDisposable
                 var gcTerritory = GetCurrentGCTerritory();
                 switch (gcTerritory)
                 {
-                    case 128: // Limsa - Upper Decks
+                    case 129: // Limsa - Upper Decks (Aft)
                         log.Information("[FCBuff] Navigating to Limsa Quartermaster via VNavmesh IPC");
                         plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(93, 40f, 68f));
                         break;
@@ -512,7 +512,7 @@ public class FCBuffService : IDisposable
                 var targetGCTerritory = GetCurrentGCTerritory();
                 var targetPos = targetGCTerritory switch
                 {
-                    128 => new Vector3(93, 40f, 68f),  // Limsa
+                    129 => new Vector3(93, 40f, 68f),  // Limsa (Upper Decks/Aft)
                     132 => new Vector3(-71, -0.5f, -5f), // Gridania
                     130 => new Vector3(-144, 4f, -100f), // Ul'dah
                     _ => Vector3.Zero
