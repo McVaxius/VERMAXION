@@ -124,9 +124,10 @@ public class FCBuffInventoryService
 
     private unsafe void ReadBuffsFromWindow()
     {
+        FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase* addon = null;
         try
         {
-            var addon = Instance()->GetAddonByName("FreeCompanyAction");
+            addon = Instance()->GetAddonByName("FreeCompanyAction");
             if (addon == null || !addon->IsVisible)
             {
                 log.Error("[FCBuffInventory] FreeCompanyAction addon not found or not visible");
@@ -155,6 +156,9 @@ public class FCBuffInventoryService
                 { 51016, "FC Sprawling Synthetics" }
             };
 
+            // Count occurrences of specific buff names
+            int sealSweetenerCount = 0;
+            
             // Using the path from Jaksuhn's SND: GetNode(1, 10, 14, i, 3)
             // This translates to: addon->GetNodeById(1)->PrevSiblingNode->PrevSiblingNode->GetNodeById(i)->GetComponent()->GetTextNodeById(3)
             for (uint i = 51001; i <= 51016; i++)
@@ -267,21 +271,42 @@ public class FCBuffInventoryService
                     var text = textNode->NodeText.ToString();
                     log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from node 3: '{text}'");
                     commandManager.ProcessCommand($"/echo {i:D5}: {text}");
+                    
+                    // Count Seal Sweetener II occurrences
+                    if (text == "Seal Sweetener II")
+                    {
+                        sealSweetenerCount++;
+                    }
                 }
                 catch (Exception ex)
                 {
                     log.Debug($"[FCBuffInventory] Error reading buff {i}: {ex.Message}");
                 }
             }
+            
+            // Output the final count
+            log.Information($"[FCBuffInventory] Seal Sweetener II count: {sealSweetenerCount}");
+            commandManager.ProcessCommand($"/echo Seal Sweetener II count: {sealSweetenerCount}");
         }
         catch (Exception ex)
         {
             log.Error($"[FCBuffInventory] Error reading buffs: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            // Close the FC window
+            try
+            {
+                addon->Close(true);
+            }
+            catch (Exception ex)
+            {
+                log.Warning($"[FCBuffInventory] Error closing FC window: {ex.Message}");
+            }
         }
     }
 
-    
-    
     private void SetState(FCBuffInventoryState newState)
     {
         if (state == newState) return;
