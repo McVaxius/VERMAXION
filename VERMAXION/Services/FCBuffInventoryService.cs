@@ -190,7 +190,7 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node 14 (child of 10), type: {node14->Type}");
                     
-                    // Step 4: Get child node i from node 14
+                    // Step 4: Get child node i from node 14 (node i is a Res node)
                     var nodeI = node14->ChildNode;
                     int childIndex = 0;
                     
@@ -207,45 +207,23 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node {i} (child of 14), type: {nodeI->Type}");
                     
-                    // Step 5: Get child node 3 from node i (this has the text)
-                    var textNode = nodeI->ChildNode;
-                    if (textNode == null)
+                    // Step 5: Get child node 3 from node i (node 3 is a Text node)
+                    var node3 = nodeI->ChildNode;
+                    if (node3 == null)
                     {
-                        log.Warning($"[FCBuffInventory] Text node 3 (child of {i}) not found");
+                        log.Warning($"[FCBuffInventory] Node 3 (child of {i}) not found");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found text node 3 (child of {i}), type: {textNode->Type}");
+                    log.Debug($"[FCBuffInventory] Found node 3 (child of {i}), type: {node3->Type}");
                     
-                    // Check if this is actually node 3 by looking for more children
-                    var node3 = textNode;
-                    log.Debug($"[FCBuffInventory] Checking if this is node 3 - has children: {node3->ChildNode != null}");
-                    
-                    if (node3->ChildNode != null)
+                    // Node 3 is the final Text node - read its text
+                    if (node3->Type == NodeType.Text)
                     {
-                        log.Debug($"[FCBuffInventory] Found child of node 3, type: {node3->ChildNode->Type}");
-                        // Try reading from the child of node 3
-                        var actualTextNode = node3->ChildNode;
-                        var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)actualTextNode;
-                        if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
-                        {
-                            var text = textNodePtr->NodeText.ToString();
-                            log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from child of node 3: '{text}'");
-                            commandManager.ProcessCommand($"/echo {i:D5}: {text}");
-                        }
-                        else
-                        {
-                            log.Warning($"[FCBuffInventory] Child of node 3 has no text for buff {i}");
-                            commandManager.ProcessCommand($"/echo {i:D5}: [No text in child]");
-                        }
-                    }
-                    else
-                    {
-                        // Read directly from node 3
                         var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)node3;
                         if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
                         {
                             var text = textNodePtr->NodeText.ToString();
-                            log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from node 3 directly: '{text}'");
+                            log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from node 3: '{text}'");
                             commandManager.ProcessCommand($"/echo {i:D5}: {text}");
                         }
                         else
@@ -253,6 +231,11 @@ public class FCBuffInventoryService
                             log.Warning($"[FCBuffInventory] Node 3 has no text for buff {i}");
                             commandManager.ProcessCommand($"/echo {i:D5}: [No text]");
                         }
+                    }
+                    else
+                    {
+                        log.Warning($"[FCBuffInventory] Node 3 is not a Text node, it's: {node3->Type}");
+                        commandManager.ProcessCommand($"/echo {i:D5}: [Node 3 not Text]");
                     }
                 }
                 catch (Exception ex)
