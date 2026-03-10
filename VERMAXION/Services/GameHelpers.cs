@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -232,7 +233,7 @@ public static class GameHelpers
     /// </summary>
     public static void CloseCurrentAddon()
     {
-        ECommons.Automation.WindowsKeypress.SendKeypress(Dalamud.Game.ClientState.Keys.VirtualKey.ESCAPE, null);
+        PressKey(0x1B); // VK_ESCAPE = 0x1B
     }
 
     /// <summary>
@@ -240,7 +241,7 @@ public static class GameHelpers
     /// </summary>
     public static void SendConfirm()
     {
-        ECommons.Automation.WindowsKeypress.SendKeypress(Dalamud.Game.ClientState.Keys.VirtualKey.NUMPAD0, null);
+        PressKey(0x60); // VK_NUMPAD0 = 0x60
     }
 
     /// <summary>
@@ -248,8 +249,32 @@ public static class GameHelpers
     /// </summary>
     public static void SendNumpadPlus()
     {
-        // VK_ADD = 0x6B - standard Windows Virtual Key for NUMPAD+
-        ECommons.Automation.WindowsKeypress.SendKeypress((Dalamud.Game.ClientState.Keys.VirtualKey)0x6B, null);
+        PressKey(0x6B); // VK_ADD = 0x6B (NUMPAD+)
+    }
+
+    /// <summary>
+    /// Direct Win32 keybd_event implementation (following xa docs pattern).
+    /// </summary>
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    /// <summary>
+    /// Press a key (down + up) using Win32 keybd_event.
+    /// </summary>
+    /// <param name="vk">Virtual Key code</param>
+    public static void PressKey(byte vk)
+    {
+        try
+        {
+            keybd_event(vk, 0, 0, UIntPtr.Zero);        // Key down
+            keybd_event(vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Key up
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[GameHelpers] Failed to press key 0x{vk:X2}: {ex.Message}");
+        }
     }
 
     /// <summary>

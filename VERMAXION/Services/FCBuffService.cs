@@ -651,7 +651,7 @@ public class FCBuffService : IDisposable
                 if (elapsed > 1.0 && elapsed < 1.5)
                 {
                     log.Information("[FCBuff] Pressing Escape to force close windows");
-                    ECommons.Automation.WindowsKeypress.SendKeypress(Dalamud.Game.ClientState.Keys.VirtualKey.ESCAPE, null);
+                    GameHelpers.CloseCurrentAddon();
                 }
                 
                 // Press NUMPAD+ after 2 seconds as alternative window close method
