@@ -209,34 +209,19 @@ public class FCBuffInventoryService
                     
                     // Step 5: Get child node 3 from node i (node 3 is a Text node)
                     var node3 = nodeI->ChildNode;
-                    if (node3 == null)
+                    if (node3 == null || node3->Type != NodeType.Text)
                     {
-                        log.Warning($"[FCBuffInventory] Node 3 (child of {i}) not found");
+                        log.Warning($"[FCBuffInventory] Node 3 (child of {i}) not found or not text type");
                         continue;
                     }
                     log.Debug($"[FCBuffInventory] Found node 3 (child of {i}), type: {node3->Type}");
                     
-                    // Node 3 is the final Text node - read its text
-                    if (node3->Type == NodeType.Text)
-                    {
-                        var textNodePtr = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)node3;
-                        if (textNodePtr != null && textNodePtr->NodeText.StringPtr != null)
-                        {
-                            var text = textNodePtr->NodeText.ToString();
-                            log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from node 3: '{text}'");
-                            commandManager.ProcessCommand($"/echo {i:D5}: {text}");
-                        }
-                        else
-                        {
-                            log.Warning($"[FCBuffInventory] Node 3 has no text for buff {i}");
-                            commandManager.ProcessCommand($"/echo {i:D5}: [No text]");
-                        }
-                    }
-                    else
-                    {
-                        log.Warning($"[FCBuffInventory] Node 3 is not a Text node, it's: {node3->Type}");
-                        commandManager.ProcessCommand($"/echo {i:D5}: [Node 3 not Text]");
-                    }
+                    // Read the text from node 3 using the exact same pattern as FC points
+                    var textNode = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)node3;
+                    var text = textNode->NodeText.ToString();
+                    
+                    log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from node 3: '{text}'");
+                    commandManager.ProcessCommand($"/echo {i:D5}: {text}");
                 }
                 catch (Exception ex)
                 {
