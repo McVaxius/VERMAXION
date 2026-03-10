@@ -70,16 +70,34 @@ public class FCBuffInventoryService
         {
             case FCBuffInventoryState.OpeningFCCommand:
                 if (elapsed.TotalSeconds < 1) return;
-                log.Information("[FCBuffInventory] Opening FC command window");
-                commandManager.ProcessCommand("/freecompanycmd");
+                log.Information("[FCBuffInventory] Opening FC window: /freecompanycmd");
+                CommandHelper.SendCommand("/freecompanycmd");
                 SetState(FCBuffInventoryState.WaitingForFCCommand);
                 break;
 
             case FCBuffInventoryState.WaitingForFCCommand:
-                if (elapsed.TotalSeconds < 1) return;
-                log.Information("[FCBuffInventory] Opening FC window");
-                GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
-                SetState(FCBuffInventoryState.WaitingForFCWindow);
+                if (elapsed.TotalSeconds < 3)
+                {
+                    // Check if FC window is ready
+                    if (GameHelpers.IsAddonVisible("FreeCompany"))
+                    {
+                        log.Information("[FCBuffInventory] FC window is ready, switching to Actions tab");
+                        log.Information("[FCBuffInventory] [Callback] Firing FreeCompany with args (true, 0, 4)");
+                        GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
+                        SetState(FCBuffInventoryState.WaitingForFCWindow);
+                    }
+                    return;
+                }
+                // Try opening again if first attempt failed
+                if (elapsed.TotalSeconds < 6)
+                {
+                    log.Information("[FCBuffInventory] First attempt failed, trying again");
+                    CommandHelper.SendCommand("/freecompanycmd");
+                    SetState(FCBuffInventoryState.WaitingForFCCommand);
+                    return;
+                }
+                log.Error("[FCBuffInventory] Failed to open FC window");
+                SetState(FCBuffInventoryState.Failed);
                 break;
 
             case FCBuffInventoryState.WaitingForFCWindow:
@@ -167,15 +185,17 @@ public class FCBuffInventoryService
                     //         var text = textNode->NodeText.ToString();
                     //         if (buffNames.TryGetValue(i, out var buffName))
                     //         {
-                    //             log.Information($"[FCBuffInventory] {buffName}: {text}");
+                    //             log.Information($"[FCBuffInventory] {i:D5}: {buffName}: {text}");
                     //         }
                     //     }
                     // }
                     
-                    // For now, just log the buff name
+                    // For now, just log the buff name and output to chat
                     if (buffNames.TryGetValue(i, out var buffName))
                     {
-                        log.Information($"[FCBuffInventory] {buffName}: [TODO: Read count]");
+                        log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [TODO: Read count]");
+                        // Also output to chat so user can see it
+                        commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [TODO: Read count]");
                     }
                 }
                 catch (Exception ex)
