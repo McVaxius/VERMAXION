@@ -181,7 +181,7 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node 10 (child of 1), type: {node10->Type}");
                     
-                    // Step 3: Get child node 14 from node 10
+                    // Step 3: Get child node 14 from node 10 (List Component Node)
                     var node14 = node10->ChildNode;
                     if (node14 == null)
                     {
@@ -190,36 +190,57 @@ public class FCBuffInventoryService
                     }
                     log.Debug($"[FCBuffInventory] Found node 14 (child of 10), type: {node14->Type}");
                     
-                    // Step 4: Get child node i from node 14 (node i is a Res node)
-                    var nodeI = node14->ChildNode;
-                    int childIndex = 0;
-                    
-                    while (nodeI != null && childIndex < (i - 51001))
+                    // Node 14 is a List Component Node - need to access it as a component
+                    var componentNode14 = node14->GetAsAtkComponentNode();
+                    if (componentNode14 == null)
                     {
-                        nodeI = nodeI->PrevSiblingNode;
-                        childIndex++;
-                    }
-                    
-                    if (nodeI == null)
-                    {
-                        log.Debug($"[FCBuffInventory] Node {i} (child of 14) not found");
+                        log.Warning($"[FCBuffInventory] Node 14 is not a component node");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found node {i} (child of 14), type: {nodeI->Type}");
+                    log.Debug($"[FCBuffInventory] Node 14 is a component node");
                     
-                    // Step 5: Get child node 3 from node i (node 3 is a Text node)
-                    var node3 = nodeI->ChildNode;
-                    if (node3 == null || node3->Type != NodeType.Text)
+                    // Step 4: Get list item renderer i from the list component
+                    var component = componentNode14->GetComponent();
+                    if (component == null)
                     {
-                        log.Warning($"[FCBuffInventory] Node 3 (child of {i}) not found or not text type");
+                        log.Warning($"[FCBuffInventory] Cannot get component from node 14");
                         continue;
                     }
-                    log.Debug($"[FCBuffInventory] Found node 3 (child of {i}), type: {node3->Type}");
                     
-                    // Read the text from node 3 using the exact same pattern as FC points
-                    var textNode = (FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*)node3;
+                    // Get the i-th list item (ListItemRenderer Component Node) using GetNodeById
+                    var listItemNode = component->GetNodeById(i); // Use the actual buff ID
+                    if (listItemNode == null)
+                    {
+                        log.Debug($"[FCBuffInventory] List item {i} not found");
+                        continue;
+                    }
+                    log.Debug($"[FCBuffInventory] Found list item {i}, type: {listItemNode->Type}");
+                    
+                    // Step 5: Get text node 3 from the list item renderer using GetComponent()->GetTextNodeById(3)
+                    var listItemComponent = listItemNode->GetAsAtkComponentNode();
+                    if (listItemComponent == null)
+                    {
+                        log.Warning($"[FCBuffInventory] List item {i} is not a component node");
+                        continue;
+                    }
+                    
+                    var listItemComp = listItemComponent->GetComponent();
+                    if (listItemComp == null)
+                    {
+                        log.Warning($"[FCBuffInventory] Cannot get component from list item {i}");
+                        continue;
+                    }
+                    
+                    var textNode = listItemComp->GetTextNodeById(3);
+                    if (textNode == null)
+                    {
+                        log.Warning($"[FCBuffInventory] Text node 3 not found in list item {i}");
+                        continue;
+                    }
+                    log.Debug($"[FCBuffInventory] Found text node 3 in list item {i}");
+                    
+                    // Read the text from node 3
                     var text = textNode->NodeText.ToString();
-                    
                     log.Information($"[FCBuffInventory] SUCCESS: {i:D5} - Read from node 3: '{text}'");
                     commandManager.ProcessCommand($"/echo {i:D5}: {text}");
                 }
