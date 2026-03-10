@@ -57,9 +57,6 @@ public class FCBuffService : IDisposable
         TargetingQuartermaster,
         InteractingQuartermaster,
         WaitingForSelectString1,
-        SelectingPurchaseOption,
-        WaitingForSelectString2,
-        SelectingBuffType,
         WaitingForExchange,
         PurchasingBuff,
         WaitingForPurchaseConfirm,
@@ -445,39 +442,11 @@ public class FCBuffService : IDisposable
                     {
                         log.Information("[FCBuff] SelectString appeared, selecting purchase option");
                         GameHelpers.FireAddonCallback("SelectString", true, 0);
-                        SetState(FCBuffState.WaitingForSelectString2);
+                        SetState(FCBuffState.WaitingForExchange);
                     }
                     return;
                 }
                 log.Error("[FCBuff] SelectString did not appear");
-                SetState(FCBuffState.Failed);
-                break;
-
-            case FCBuffState.WaitingForSelectString2:
-                if (elapsed < 10) // Increased wait time for second dialog
-                {
-                    // Wait for the first SelectString to disappear and the second to appear
-                    if (GameHelpers.IsAddonVisible("SelectString"))
-                    {
-                        // Check if this is the second SelectString (first one should be gone)
-                        if (elapsed > 1) // Give it at least 1 second after the first callback
-                        {
-                            log.Information("[FCBuff] Second SelectString appeared, selecting buff type");
-                            GameHelpers.FireAddonCallback("SelectString", true, 0);
-                            SetState(FCBuffState.WaitingForExchange);
-                        }
-                        else
-                        {
-                            log.Debug($"[FCBuff] SelectString still visible, might be first one... ({elapsed}s elapsed)");
-                        }
-                    }
-                    else if (elapsed % 2 == 0) // Log every 2 seconds
-                    {
-                        log.Debug($"[FCBuff] Waiting for second SelectString... ({elapsed}s elapsed)");
-                    }
-                    return;
-                }
-                log.Error("[FCBuff] Second SelectString did not appear after 10 seconds");
                 SetState(FCBuffState.Failed);
                 break;
 
