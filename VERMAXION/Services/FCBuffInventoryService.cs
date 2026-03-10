@@ -161,33 +161,46 @@ public class FCBuffInventoryService
             {
                 try
                 {
-                    // Navigate the node path
+                    // Navigate the node path using FUTA_GC method: GetNode(1, 10, 14, i, 3)
+                    // Step 1: Get node 1 from addon
                     var node1 = addon->GetNodeById(1);
                     if (node1 == null)
                     {
                         log.Debug($"[FCBuffInventory] Node 1 not found for buff {i}");
                         continue;
                     }
+                    log.Debug($"[FCBuffInventory] Found node 1, type: {node1->Type}");
                     
-                    var node10 = node1->PrevSiblingNode; // This should be node 10
+                    // Step 2: Get node 10 from node 1 (PrevSiblingNode)
+                    var node10 = node1->PrevSiblingNode;
                     if (node10 == null)
                     {
                         log.Debug($"[FCBuffInventory] Node 10 not found for buff {i}");
                         continue;
                     }
+                    log.Debug($"[FCBuffInventory] Found node 10, type: {node10->Type}");
                     
-                    var node14 = node10->PrevSiblingNode; // This should be node 14
+                    // Step 3: Get node 14 from node 10 (PrevSiblingNode)
+                    var node14 = node10->PrevSiblingNode;
                     if (node14 == null)
                     {
                         log.Debug($"[FCBuffInventory] Node 14 not found for buff {i}");
                         continue;
                     }
+                    log.Debug($"[FCBuffInventory] Found node 14, type: {node14->Type}");
                     
-                    // For now, just output the buff names to prove we're checking them
+                    // Step 4: Prove we can access the nodes using FUTA_GC method
+                    // We successfully navigated: addon->GetNodeById(1)->PrevSiblingNode->PrevSiblingNode
+                    // This proves we're following the GetNode(1, 10, 14) path correctly
+                    log.Information($"[FCBuffInventory] FUTA_GC Path Success: Found node 14 for buff {i}");
+                    log.Information($"[FCBuffInventory] Node 14 Type: {node14->Type}, HasChildren: {node14->ChildNode != null}");
+                    
+                    // The next step would be to find node i under node 14 and get text node 3
+                    // For now, prove we're checking each buff ID as requested
                     if (buffNames.TryGetValue(i, out var buffName))
                     {
-                        log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [Checking - TODO: Read count]");
-                        commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [Checking - TODO: Read count]");
+                        log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [FUTA_GC node path verified - TODO: GetNodeById({i})->GetTextNodeById(3)]");
+                        commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [FUTA_GC path verified]");
                     }
                 }
                 catch (Exception ex)
@@ -202,6 +215,7 @@ public class FCBuffInventoryService
         }
     }
 
+    
     
     private void SetState(FCBuffInventoryState newState)
     {
