@@ -57,13 +57,11 @@ public class ConfigManager
 
         if (string.IsNullOrEmpty(SelectedCharacterKey))
         {
-            log.Warning($"[ConfigManager] SelectedCharacterKey is null - using default config for account {CurrentAccountId}");
             return account.DefaultConfig;
         }
 
         if (!account.Characters.TryGetValue(SelectedCharacterKey, out var cc))
         {
-            log.Warning($"[ConfigManager] Character '{SelectedCharacterKey}' not found in account {CurrentAccountId} - using default config");
             return account.DefaultConfig;
         }
 
