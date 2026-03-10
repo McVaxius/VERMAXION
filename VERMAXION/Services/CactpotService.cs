@@ -10,16 +10,13 @@ public class CactpotService : IDisposable
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
     private readonly IClientState clientState;
-    private readonly IDalamudPluginInterface pluginInterface;
 
     private const ushort GoldSaucerTerritoryId = 144;
-    private const int MaxMiniCactpotTicketsPerDay = 3;
 
     private CactpotState state = CactpotState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private int currentTicket = 1;
     private int totalTickets = 3;
-    private bool saucyAvailable = false;
 
     public enum CactpotState
     {
@@ -63,30 +60,20 @@ public class CactpotService : IDisposable
     public bool IsFailed => state == CactpotState.Failed;
     public string StatusText => state.ToString();
 
-    public CactpotService(ICommandManager commandManager, IPluginLog log, IClientState clientState, IDalamudPluginInterface pluginInterface)
+    public CactpotService(ICommandManager commandManager, IPluginLog log, IClientState clientState)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.clientState = clientState;
-        this.pluginInterface = pluginInterface;
-        CheckSaucyAvailability();
     }
 
     public void StartMiniCactpot()
     {
         log.Information("[Cactpot] Starting Mini Cactpot sequence");
         
-        // Check Saucy availability if required
-        if (RequireSaucyForMiniCactpot && !saucyAvailable)
-        {
-            log.Warning("[Cactpot] Saucy is required but not available. Enable Saucy or disable RequireSaucyForMiniCactpot setting.");
-            SetState(CactpotState.Failed);
-            return;
-        }
-        
         // Initialize multi-ticket sequence
         currentTicket = 1;
-        totalTickets = MaxMiniCactpotTicketsPerDay;
+        totalTickets = 3;
         
         if (clientState.TerritoryType == GoldSaucerTerritoryId)
         {
@@ -224,11 +211,10 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniWaitingForSaucy:
-                // Saucy handles the actual mini-game solving
-                // Wait 8 seconds for Saucy to complete
-                if (elapsed > 8.0)
+                // Just wait a moment then continue to next ticket
+                if (elapsed > 2.0)
                 {
-                    log.Information($"[Cactpot] Mini Cactpot ticket {currentTicket} complete (Saucy should have handled the game)");
+                    log.Information($"[Cactpot] Mini Cactpot ticket {currentTicket} complete");
                     
                     // Check if we have more tickets to process
                     if (currentTicket < totalTickets)
@@ -413,34 +399,6 @@ public class CactpotService : IDisposable
         log.Information($"[Cactpot] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
-    }
-    
-    private bool RequireSaucyForMiniCactpot => true; // TODO: Get from config
-    
-    private void CheckSaucyAvailability()
-    {
-        try
-        {
-            // Check if Saucy plugin is available
-            var saucyInterface = pluginInterface.GetPluginConfig();
-            if (saucyInterface != null)
-            {
-                // Try to get Saucy IPC subscriber
-                var saucyIpc = pluginInterface.GetIpcSubscriber<object, bool>("Saucy.IsAutoMiniCactpotEnabled");
-                saucyAvailable = saucyIpc != null;
-                log.Information($"[Cactpot] Saucy availability: {saucyAvailable}");
-            }
-            else
-            {
-                saucyAvailable = false;
-                log.Information("[Cactpot] Saucy not installed");
-            }
-        }
-        catch (Exception ex)
-        {
-            saucyAvailable = false;
-            log.Warning($"[Cactpot] Error checking Saucy availability: {ex.Message}");
-        }
     }
 
     public void Dispose() { }

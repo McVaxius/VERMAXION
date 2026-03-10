@@ -71,9 +71,9 @@ public sealed class Plugin : IDalamudPlugin
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
-        CactpotService = new CactpotService(CommandManager, Log, ClientState, PluginInterface);
+        CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
-        MinionRouletteService = new MinionRouletteService(CommandManager, Log, ClientState, ChatGui);
+        MinionRouletteService = new MinionRouletteService(CommandManager, Log);
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
         GearUpdaterService = new GearUpdaterService(CommandManager, Log);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
