@@ -14,6 +14,7 @@ public class HighestCombatJobService : IDisposable
     private readonly IPlayerState playerState;
     private readonly IClientState clientState;
     private readonly IObjectTable objectTable;
+    private readonly IDataManager dataManager;
     
     private DateTime lastAction = DateTime.MinValue;
     private bool isRunning = false;
@@ -54,13 +55,14 @@ public class HighestCombatJobService : IDisposable
         36, // SGE (Sage)
     };
 
-    public HighestCombatJobService(ICommandManager commandManager, IPluginLog log, IPlayerState playerState, IClientState clientState, IObjectTable objectTable)
+    public HighestCombatJobService(ICommandManager commandManager, IPluginLog log, IPlayerState playerState, IClientState clientState, IObjectTable objectTable, IDataManager dataManager)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.playerState = playerState;
         this.clientState = clientState;
         this.objectTable = objectTable;
+        this.dataManager = dataManager;
     }
 
     public void RunTask()
@@ -75,30 +77,10 @@ public class HighestCombatJobService : IDisposable
         isRunning = true;
         lastAction = DateTime.UtcNow;
 
-        // Check if current job is a DoL/DoH job
-        uint currentJobId = 0;
-        var classJob = playerState?.ClassJob;
-        if (classJob.HasValue)
-        {
-            currentJobId = classJob.Value.RowId;
-        }
-        
-        if (IsDoLorDoH(currentJobId))
-        {
-            log.Information($"[HighestCombatJob] Current job {currentJobId} is DoL/DoH, switching to combat job first");
-            
-            // Switch to a known combat job (PLD) using equipjob command
-            CommandHelper.SendCommand("/equipjob pld");
-            log.Information("[HighestCombatJob] Sent command to switch to Paladin (/equipjob pld)");
-            
-            // Wait a moment for job switch, then continue
-            // The next Update() call will handle the actual logic
-            return;
-        }
-
-        // If already on combat job, proceed normally
+        // Direct detection - no job switching needed
         SelectHighestCombatJob();
         isRunning = false;
+        log.Information("[HighestCombatJob] Task complete");
     }
 
     private bool IsDoLorDoH(uint jobId)
@@ -176,21 +158,33 @@ public class HighestCombatJobService : IDisposable
                 return currentLevel;
             }
 
-            // For other jobs, we need to access the full job list
-            // This is the key challenge - FUTA uses Player.GetJob(i).Level but we need the Dalamud equivalent
-            
-            // Try using ClientState to get character data
-            var localPlayer = clientState?.LocalPlayer;
-            if (localPlayer == null)
+            // For other jobs, try to get level from character data
+            // This attempts to replicate FUTA's Player.GetJob(i).Level
+            var player = objectTable?.LocalPlayer;
+            if (player == null)
             {
                 log.Debug($"[HighestCombatJob] No local player available for job {jobId}");
                 return 0;
             }
 
-            // Experimental: Try to access job levels through character data
-            // This is where we need the right API like FUTA's Player.GetJob(i)
-            log.Debug($"[HighestCombatJob] Job {jobId} not current, multi-job detection not yet implemented");
-            return 0;
+            // Try to access job levels through the player's character data
+            // This is experimental - looking for the right API
+            try
+            {
+                // Method: Try to get job level from character sheet data
+                // This may need to be adjusted based on the actual Dalamud API
+                log.Debug($"[HighestCombatJob] Attempting to get level for job {jobId} from character data");
+                
+                // For now, we'll need to implement a different approach
+                // The key is finding the equivalent to FUTA's Player.GetJob(i).Level
+                log.Debug($"[HighestCombatJob] Job {jobId} level detection not yet implemented");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                log.Debug($"[HighestCombatJob] Job level detection failed for {jobId}: {ex.Message}");
+                return 0;
+            }
         }
         catch (Exception ex)
         {
@@ -259,23 +253,6 @@ public class HighestCombatJobService : IDisposable
     public void Dispose()
     {
         isRunning = false;
-    }
-
-    public void Update()
-    {
-        if (!isRunning) return;
-
-        var elapsed = (DateTime.UtcNow - lastAction).TotalSeconds;
-        
-        // Check if we're waiting for a job switch to complete
-        if (elapsed > 3.0) // 3 second wait for job switch
-        {
-            // Job switch should be complete, now proceed with combat job detection
-            log.Information("[HighestCombatJob] Job switch wait completed, proceeding with combat job detection");
-            SelectHighestCombatJob();
-            isRunning = false;
-            log.Information("[HighestCombatJob] Task complete");
-        }
     }
 }
 

@@ -78,7 +78,7 @@ public sealed class Plugin : IDalamudPlugin
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
         GearUpdaterService = new GearUpdaterService(CommandManager, Log, ClientState, PlayerState);
-        HighestCombatJobService = new HighestCombatJobService(CommandManager, Log, PlayerState, ClientState, ObjectTable);
+        HighestCombatJobService = new HighestCombatJobService(CommandManager, Log, PlayerState, ClientState, ObjectTable, DataManager);
         CurrentJobEquipmentService = new CurrentJobEquipmentService(CommandManager, Log, PlayerState);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
@@ -274,7 +274,6 @@ public sealed class Plugin : IDalamudPlugin
             MinionRouletteService.Update();
             SeasonalGearService.Update();
             GearUpdaterService.Update();
-            HighestCombatJobService.Update();
             CurrentJobEquipmentService.Update();
         }
     }

@@ -146,7 +146,7 @@ public class MainWindow : Window, IDisposable
 
             // --- Daily Tasks ---
             DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
-                config.MiniCactpotCompletedToday ? "Done today" : "Pending",
+                config.MiniCactpotCompletedToday ? "Done today" : "Daily",
                 "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 config.ChocoboRacingCompletedToday ? "Done today" : "Pending",
