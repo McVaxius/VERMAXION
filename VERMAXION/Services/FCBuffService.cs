@@ -644,21 +644,18 @@ public class FCBuffService : IDisposable
                 if (elapsed < 0.5) return;
                 log.Information("[FCBuff] Closing windows");
                 
-                // Try multiple methods to close windows
-                GameHelpers.CloseCurrentAddon();
-                
-                // Press Escape key after 1 second to force close any remaining windows
-                if (elapsed > 1.0 && elapsed < 1.5)
+                // Use NUMPAD+ as primary method for FC buff purchase windows
+                if (elapsed > 0.5 && elapsed < 1.0)
                 {
-                    log.Information("[FCBuff] Pressing Escape to force close windows");
-                    GameHelpers.CloseCurrentAddon();
+                    log.Information("[FCBuff] Pressing NUMPAD+ to close FC buff purchase window");
+                    GameHelpers.SendNumpadPlus();
                 }
                 
-                // Press NUMPAD+ after 2 seconds as alternative window close method
-                if (elapsed > 2.0 && elapsed < 2.5)
+                // Fallback to Escape after 1.5 seconds
+                if (elapsed > 1.5 && elapsed < 2.0)
                 {
-                    log.Information("[FCBuff] Pressing NUMPAD+ to force close windows");
-                    GameHelpers.SendNumpadPlus();
+                    log.Information("[FCBuff] Pressing Escape as fallback");
+                    GameHelpers.CloseCurrentAddon();
                 }
                 
                 // Check if all relevant windows are closed
