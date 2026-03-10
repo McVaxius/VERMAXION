@@ -22,6 +22,7 @@ public class FCBuffService : IDisposable
     private readonly IObjectTable objects;
     private readonly ITargetManager targetManager;
     private readonly ConfigManager configManager;
+    private readonly Plugin plugin;
 
     private const int BaseMinGil = 16000; // Base minimum gil required
     private const int MaxPurchaseAttempts = 15;
@@ -75,7 +76,7 @@ public class FCBuffService : IDisposable
     public bool IsFailed => state == FCBuffState.Failed;
     public string StatusText => state.ToString();
 
-    public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager, ConfigManager configManager)
+    public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager, ConfigManager configManager, Plugin plugin)
     {
         this.commandManager = commandManager;
         this.log = log;
@@ -84,6 +85,7 @@ public class FCBuffService : IDisposable
         this.objects = objects;
         this.targetManager = targetManager;
         this.configManager = configManager;
+        this.plugin = plugin;
     }
 
     public void Start(int maxAttempts = 2)
@@ -313,16 +315,16 @@ public class FCBuffService : IDisposable
                 switch (gcTerritory)
                 {
                     case 128: // Limsa - Upper Decks
-                        log.Information("[FCBuff] Navigating to Limsa Quartermaster: /vnav moveto 94, 40.5, 74.5");
-                        CommandHelper.SendCommand("/vnav moveto 94, 40.5, 74.5");
+                        log.Information("[FCBuff] Navigating to Limsa Quartermaster via VNavmesh IPC");
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(94, 40.5f, 74.5f));
                         break;
                     case 129: // Gridania
-                        log.Information("[FCBuff] Navigating to Gridania Quartermaster: /vnav moveto -68.5, -0.5, -8.5");
-                        CommandHelper.SendCommand("/vnav moveto -68.5, -0.5, -8.5");
+                        log.Information("[FCBuff] Navigating to Gridania Quartermaster via VNavmesh IPC");
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-68.5f, -0.5f, -8.5f));
                         break;
                     case 130: // Ul'dah
-                        log.Information("[FCBuff] Navigating to Ul'dah Quartermaster: /vnav moveto -141.7, 4.1, -106.8");
-                        CommandHelper.SendCommand("/vnav moveto -141.7, 4.1, -106.8");
+                        log.Information("[FCBuff] Navigating to Ul'dah Quartermaster via VNavmesh IPC");
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-141.7f, 4.1f, -106.8f));
                         break;
                 }
                 SetState(FCBuffState.WaitingForQuartermasterArrival);
@@ -333,12 +335,13 @@ public class FCBuffService : IDisposable
                 if (elapsed > 60)
                 {
                     log.Error("[FCBuff] Timeout waiting for Quartermaster arrival");
+                    plugin.VNavmeshIPC.Stop();
                     SetState(FCBuffState.Failed);
                     return;
                 }
                 
-                // Check if we're close to the target coordinates
-                var player = Plugin.ObjectTable.LocalPlayer;
+                // Check if we're close enough to target
+                var player = objects.LocalPlayer;
                 if (player == null) return;
                 
                 var targetGCTerritory = GetCurrentGCTerritory();
@@ -351,7 +354,7 @@ public class FCBuffService : IDisposable
                 };
                 
                 var distance = Vector3.Distance(player.Position, targetPos);
-                if (distance < 5f) // Within 5 yalms of target
+                if (distance < 10f) // Within 10 yalms of target
                 {
                     log.Information($"[FCBuff] Arrived at Quartermaster location (distance: {distance:F1}y)");
                     SetState(FCBuffState.TargetingQuartermaster);

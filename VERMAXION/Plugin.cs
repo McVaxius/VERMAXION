@@ -45,6 +45,7 @@ public sealed class Plugin : IDalamudPlugin
     public SeasonalGearService SeasonalGearService { get; init; }
     public GearUpdaterService GearUpdaterService { get; init; }
     public YesAlreadyIPC YesAlreadyIPC { get; init; }
+    public VNavmeshIPC VNavmeshIPC { get; init; }
     public VermaxionEngine Engine { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
@@ -66,7 +67,7 @@ public sealed class Plugin : IDalamudPlugin
         // Initialize services
         ResetDetectionService = new ResetDetectionService(Log);
         HenchmanService = new HenchmanService(CommandManager, Log);
-        FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager);
+        FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
@@ -74,6 +75,7 @@ public sealed class Plugin : IDalamudPlugin
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
         GearUpdaterService = new GearUpdaterService(CommandManager, Log);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
+        VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady);
@@ -135,6 +137,7 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Dispose();
 
         YesAlreadyIPC.Dispose();
+        VNavmeshIPC.Dispose();
         ARPostProcessService.Dispose();
 
         dtrEntry?.Remove();
