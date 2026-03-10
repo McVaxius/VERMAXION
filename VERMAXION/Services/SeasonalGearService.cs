@@ -206,13 +206,31 @@ public class SeasonalGearService : IDisposable
                             var result = im->MoveItemSlot((InventoryType)containerType, (ushort)i, targetContainer, (ushort)targetSlot);
                             log.Debug($"[SeasonalGear] MoveItemSlot result: {result}");
                             
-                            // Log common error codes
-                            if (result != 0)
+                            if (result == 0)
                             {
-                                log.Warning($"[SeasonalGear] MoveItemSlot failed with error code {result}");
-                                if (result == 10) log.Warning("[SeasonalGear] Error 10: Item cannot be equipped (wrong slot/class/etc)");
-                                if (result == 11) log.Warning("[SeasonalGear] Error 11: Source slot is empty");
-                                if (result == 12) log.Warning("[SeasonalGear] Error 12: Target slot is full");
+                                // SUCCESS: Now finalize the equipment change like SND does
+                                log.Information($"[SeasonalGear] Equip command sent for {itemName}");
+                                
+                                // SND finalization sequence to make equipment change server-side persistent
+                                // This prevents visual-only changes that revert on zone change
+                                try
+                                {
+                                    log.Debug("[SeasonalGear] Finalizing equipment change with character window and gearset update");
+                                    
+                                    // Open character window to trigger equipment refresh
+                                    CommandHelper.SendCommand("/character");
+                                    
+                                    // Wait a moment for character window to open, then update gearset
+                                    // This makes the equipment change server-side persistent
+                                    System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                                        CommandHelper.SendCommand("/updategearset");
+                                        log.Debug("[SeasonalGear] Gearset update sent - equipment should now be persistent");
+                                    });
+                                }
+                                catch (Exception finalizeEx)
+                                {
+                                    log.Warning($"[SeasonalGear] Error finalizing equipment: {finalizeEx.Message}");
+                                }
                             }
                             
                             return result == 0; // 0 = success for MoveItemSlot
