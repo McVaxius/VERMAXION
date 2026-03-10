@@ -542,7 +542,9 @@ public class FCBuffService : IDisposable
                     {
                         log.Information("[FCBuff] FreeCompanyExchange appeared, starting purchase loop");
                         buyCount = 0;
-                        buyMax = isSealSweetenerTwo ? 15 : 1; // Buy 15 of SS2, only 1 of SS1
+                        var config = configManager.GetActiveConfig();
+                        buyMax = isSealSweetenerTwo ? config.FCBuffPurchaseAttempts : 1; // Buy configured amount of SS2, only 1 of SS1
+                        log.Information($"[FCBuff] Purchase setup: buyMax={buyMax}, isSealSweetenerTwo={isSealSweetenerTwo}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
                         SetState(FCBuffState.PurchasingBuff);
                     }
                     return;
