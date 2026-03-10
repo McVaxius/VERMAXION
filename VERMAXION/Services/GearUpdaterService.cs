@@ -93,15 +93,20 @@ public class GearUpdaterService : IDisposable
                     return;
                 }
                 
-                // Check if job changed (stop condition)
+                // Check if job hasn't changed (stop condition - we're done)
                 if (currentGearsetIndex > 1 && lastJobId.HasValue)
                 {
                     var currentJobId = GetCurrentJobId();
-                    if (currentJobId != lastJobId.Value)
+                    if (currentJobId == lastJobId.Value)
                     {
-                        log.Information($"[GearUpdater] Job changed from {lastJobId} to {currentJobId}, stopping loop");
+                        log.Information($"[GearUpdater] Job hasn't changed from {lastJobId} to {currentJobId}, stopping loop - we're done");
                         SetState(UpdaterState.Complete);
                         return;
+                    }
+                    else
+                    {
+                        log.Information($"[GearUpdater] Job changed from {lastJobId} to {currentJobId}, continuing loop");
+                        lastJobId = currentJobId; // Update for next iteration
                     }
                 }
                 
