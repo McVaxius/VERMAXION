@@ -74,20 +74,38 @@ public class HighestCombatJobService : IDisposable
         log.Information("[HighestCombatJob] Starting highest combat job selection");
         isRunning = true;
         lastAction = DateTime.UtcNow;
+
+        // Check if current job is a DoL/DoH job
+        uint currentJobId = 0;
+        var classJob = playerState?.ClassJob;
+        if (classJob.HasValue)
+        {
+            currentJobId = classJob.Value.RowId;
+        }
         
-        try
+        if (IsDoLorDoH(currentJobId))
         {
-            SelectHighestCombatJob();
+            log.Information($"[HighestCombatJob] Current job {currentJobId} is DoL/DoH, switching to combat job first");
+            
+            // Switch to a known combat job (PLD job 1) to access combat job levels
+            CommandHelper.SendCommand("/job 1");
+            log.Information("[HighestCombatJob] Sent command to switch to Paladin (job 1)");
+            
+            // Wait a moment for job switch, then continue
+            // The next Update() call will handle the actual logic
+            return;
         }
-        catch (Exception ex)
-        {
-            log.Error($"[HighestCombatJob] Error: {ex.Message}");
-        }
-        finally
-        {
-            isRunning = false;
-            log.Information("[HighestCombatJob] Task complete");
-        }
+
+        // If already on combat job, proceed normally
+        SelectHighestCombatJob();
+        isRunning = false;
+    }
+
+    private bool IsDoLorDoH(uint jobId)
+    {
+        // DoL jobs: 16 (MIN), 17 (BOT), 18 (FSH)
+        // DoH jobs: 8 (CRP), 9 (BSM), 10 (ARM), 11 (GSM), 12 (LTW), 13 (WVR), 14 (ALC), 15 (CUL)
+        return (jobId >= 8 && jobId <= 18);
     }
 
     private void SelectHighestCombatJob()
@@ -141,9 +159,13 @@ public class HighestCombatJobService : IDisposable
     {
         try
         {
-            // Get current job info
-            var currentClassJob = playerState?.ClassJob;
-            var currentJobId = currentClassJob?.RowId ?? 0;
+            // Get current job info for logging
+            uint currentJobId = 0;
+            var classJob = playerState?.ClassJob;
+            if (classJob.HasValue)
+            {
+                currentJobId = classJob.Value.RowId;
+            }
             var currentLevel = (int)(playerState?.Level ?? 0);
             
             log.Debug($"[HighestCombatJob] Current job: ID={currentJobId}, Level={currentLevel}");
@@ -155,8 +177,20 @@ public class HighestCombatJobService : IDisposable
                 return currentLevel;
             }
 
-            // For other jobs, we need a different approach
-            log.Debug($"[HighestCombatJob] Job {jobId} not current, need to implement multi-job level detection");
+            // For other jobs, we need to access the full job list
+            // This is the key challenge - FUTA uses Player.GetJob(i).Level but we need the Dalamud equivalent
+            
+            // Try using ClientState to get character data
+            var localPlayer = clientState?.LocalPlayer;
+            if (localPlayer == null)
+            {
+                log.Debug($"[HighestCombatJob] No local player available for job {jobId}");
+                return 0;
+            }
+
+            // Experimental: Try to access job levels through character data
+            // This is where we need the right API like FUTA's Player.GetJob(i)
+            log.Debug($"[HighestCombatJob] Job {jobId} not current, multi-job detection not yet implemented");
             return 0;
         }
         catch (Exception ex)
@@ -164,6 +198,12 @@ public class HighestCombatJobService : IDisposable
             log.Error($"[HighestCombatJob] Error getting job level for {jobId}: {ex.Message}");
             return 0;
         }
+    }
+
+    private bool IsCombatJob(uint jobId)
+    {
+        // Check if this is a combat job (DOW/DOM)
+        return CombatJobs.Contains(jobId);
     }
 
     private string GetJobName(uint jobId)
@@ -198,8 +238,19 @@ public class HighestCombatJobService : IDisposable
 
     public void Update()
     {
-        // This service doesn't need continuous updates - it's a one-shot operation
-        // The Update() method is required for consistency with other services
+        if (!isRunning) return;
+
+        var elapsed = (DateTime.UtcNow - lastAction).TotalSeconds;
+        
+        // Check if we're waiting for a job switch to complete
+        if (elapsed > 3.0) // 3 second wait for job switch
+        {
+            // Job switch should be complete, now proceed with combat job detection
+            log.Information("[HighestCombatJob] Job switch wait completed, proceeding with combat job detection");
+            SelectHighestCombatJob();
+            isRunning = false;
+            log.Information("[HighestCombatJob] Task complete");
+        }
     }
 }
 
