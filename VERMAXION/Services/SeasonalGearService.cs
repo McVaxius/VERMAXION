@@ -139,6 +139,7 @@ public class SeasonalGearService : IDisposable
                         {
                             log.Debug($"[SeasonalGear] Found item {itemId} in container {containerType} slot {i}");
                             log.Debug($"[SeasonalGear] Item details: Quantity={slot->Quantity}, Flags={slot->Flags}, Condition={slot->Condition}");
+                            log.Debug($"[SeasonalGear] Target slot mapping: ItemId={itemId} -> Slot={GetEquipmentSlotForItem(itemId)}");
                             
                             // Determine target equipment slot based on item
                             var targetContainer = (InventoryType)1000; // EquippedItems (not Inventory1!)
@@ -180,6 +181,14 @@ public class SeasonalGearService : IDisposable
                             }
                             
                             log.Debug($"[SeasonalGear] Attempting MoveItemSlot: sourceContainer={containerType}, sourceSlot={i}, targetContainer={targetContainer}, targetSlot={targetSlot}");
+                            
+                            // Re-check source slot to prevent race condition (Error 11)
+                            var sourceSlotCheck = container->GetInventorySlot(i);
+                            if (sourceSlotCheck == null || sourceSlotCheck->ItemId != itemId || sourceSlotCheck->Quantity <= 0)
+                            {
+                                log.Warning($"[SeasonalGear] Source slot changed between check and move (race condition)");
+                                return false;
+                            }
                             
                             // Use MoveItemSlot like SND implements /equipitem
                             var result = im->MoveItemSlot((InventoryType)containerType, (ushort)i, targetContainer, (ushort)targetSlot);
