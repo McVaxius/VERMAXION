@@ -17,6 +17,10 @@ public class FCBuffService : IDisposable
     private readonly ICondition condition;
     private readonly IObjectTable objects;
     private readonly ITargetManager targetManager;
+    private readonly ConfigManager configManager;
+
+    private const int BaseMinGil = 16000; // Base minimum gil required
+    private const int MaxPurchaseAttempts = 15;
 
     private FCBuffState state = FCBuffState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -63,7 +67,7 @@ public class FCBuffService : IDisposable
     public bool IsFailed => state == FCBuffState.Failed;
     public string StatusText => state.ToString();
 
-    public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager)
+    public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager, ConfigManager configManager)
     {
         this.commandManager = commandManager;
         this.log = log;
@@ -71,6 +75,7 @@ public class FCBuffService : IDisposable
         this.condition = condition;
         this.objects = objects;
         this.targetManager = targetManager;
+        this.configManager = configManager;
     }
 
     public void Start(int maxAttempts = 2)
@@ -154,9 +159,11 @@ public class FCBuffService : IDisposable
                     log.Information($"[FCBuff] Current FC points: {fcPoints:N0}");
                     
                     // Check if we have enough FC points
-                    if (fcPoints < MinFCPoints)
+                    var config = configManager.GetActiveConfig();
+                    var minFCPoints = config.FCBuffMinPoints;
+                    if (fcPoints < minFCPoints)
                     {
-                        log.Information($"[FCBuff] Not enough FC points ({fcPoints:N0} < {MinFCPoints:N0}), skipping refill");
+                        log.Information($"[FCBuff] Not enough FC points ({fcPoints:N0} < {minFCPoints:N0}), skipping refill");
                         SetState(FCBuffState.Complete);
                         return;
                     }
@@ -175,12 +182,14 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.CheckingIfRefillNeeded:
                 if (elapsed < 1) return;
-                // Check if we have enough gil
+                // Check gil
+                var activeConfig = configManager.GetActiveConfig();
+                var minGil = Math.Max(BaseMinGil, activeConfig.FCBuffMinGil);
                 var gil = GameHelpers.GetInventoryItemCount(1);
                 log.Information($"[FCBuff] Current gil: {gil:N0}");
-                if (gil < MinGil)
+                if (gil < minGil)
                 {
-                    log.Information($"[FCBuff] Not enough gil ({gil:N0} < {MinGil:N0}), skipping refill");
+                    log.Information($"[FCBuff] Not enough gil ({gil:N0} < {minGil:N0}), skipping refill");
                     SetState(FCBuffState.Complete);
                     return;
                 }
@@ -197,17 +206,24 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForGCArrival:
-                if (elapsed < 10)
+                if (elapsed < 30) // Increased wait time for lifestream
                 {
                     // Wait for territory change
                     if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+                    {
+                        log.Information("[FCBuff] Still teleporting (BetweenAreas)...");
                         return;
+                    }
                     // Check if we're in a GC territory (IDs 128, 129, 130)
                     var territory = clientState.TerritoryType;
                     if (territory >= 128 && territory <= 130)
                     {
                         log.Information($"[FCBuff] Arrived at GC territory: {territory}");
                         SetState(FCBuffState.TargetingQuartermaster);
+                    }
+                    else if (elapsed > 5)
+                    {
+                        log.Information($"[FCBuff] Not in GC territory yet (current: {territory}), waiting...");
                     }
                     return;
                 }

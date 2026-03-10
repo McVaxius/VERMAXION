@@ -246,8 +246,7 @@ public static class GameHelpers
 
     /// <summary>
     /// Get FC points from the FC window.
-    /// For now, returns a reasonable value for testing.
-    /// TODO: Implement proper UI node parsing from FreeCompany addon node 1,4,16,17
+    /// For now, returns a test value. TODO: Implement proper UI parsing.
     /// </summary>
     public static unsafe int? GetFCPointsNode()
     {
@@ -256,9 +255,8 @@ public static class GameHelpers
             var addon = Instance()->GetAddonByName("FreeCompany");
             if (addon == null) return null;
             
-            // Return a value that meets the threshold for testing
-            // User can verify actual FC points in game
-            Plugin.Log.Information("[GameHelpers] Using test FC points value");
+            // Return test value for now - user can verify actual FC points
+            Plugin.Log.Information("[GameHelpers] Using test FC points value (UI parsing not implemented)");
             return 500000;
         }
         catch

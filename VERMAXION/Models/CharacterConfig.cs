@@ -19,6 +19,8 @@ public class CharacterConfig
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
     public int FCBuffPurchaseAttempts { get; set; } = 15;
+    public int FCBuffMinPoints { get; set; } = 500000;
+    public int FCBuffMinGil { get; set; } = 16000;
 
     // --- State Tracking (runtime, persisted per reset cycle) ---
     public DateTime LastWeeklyReset { get; set; } = DateTime.MinValue;
@@ -46,6 +48,8 @@ public class CharacterConfig
             EnableGearUpdater = EnableGearUpdater,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
+            FCBuffMinPoints = FCBuffMinPoints,
+            FCBuffMinGil = FCBuffMinGil,
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,
             VerminionCompletedThisWeek = VerminionCompletedThisWeek,
