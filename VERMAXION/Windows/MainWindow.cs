@@ -162,12 +162,18 @@ public class MainWindow : Window, IDisposable
             
             if (ImGui.SmallButton("Check FC Buff Inventory"))
             {
+                // Force config save before test
+                plugin.ConfigManager.SaveCurrentAccount();
+                Plugin.Log.Information("[UI] Forced config save before FC Buff Inventory test");
                 plugin.FCBuffInventoryService.Start();
             }
             
             ImGui.SameLine();
             if (ImGui.SmallButton("FC GC Test"))
             {
+                // Force config save before test
+                plugin.ConfigManager.SaveCurrentAccount();
+                Plugin.Log.Information("[UI] Forced config save before FC GC test");
                 plugin.FCBuffService.TestFreeCompanyGC();
             }
             
