@@ -53,19 +53,23 @@ public class ConfigManager
             return new CharacterConfig();
         }
 
-        // Removed debug logs that were spamming every frame
+        // Debug logging to troubleshoot config selection
+        log.Information($"[ConfigManager] SelectedCharacterKey: '{SelectedCharacterKey}'");
+        log.Information($"[ConfigManager] Available characters: {string.Join(", ", account.Characters.Keys)}");
 
         if (string.IsNullOrEmpty(SelectedCharacterKey))
         {
+            log.Warning("[ConfigManager] SelectedCharacterKey is null - using default config");
             return account.DefaultConfig;
         }
 
         if (!account.Characters.TryGetValue(SelectedCharacterKey, out var cc))
         {
+            log.Warning($"[ConfigManager] Character '{SelectedCharacterKey}' not found - using default config");
             return account.DefaultConfig;
         }
 
-        // Removed debug log that was spamming every frame
+        log.Information($"[ConfigManager] Using character config for '{SelectedCharacterKey}': FCBuffMinPoints={cc.FCBuffMinPoints}, FCBuffPurchaseAttempts={cc.FCBuffPurchaseAttempts}");
         return cc;
     }
 
