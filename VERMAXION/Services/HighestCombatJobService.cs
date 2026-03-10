@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Logging;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 
 namespace VERMAXION.Services;
 
@@ -140,11 +141,10 @@ public class HighestCombatJobService : IDisposable
     {
         try
         {
-            // Use the same pattern as getting current job ID
-            // This should be equivalent to FUTA's Player.GetJob(i).Level
             log.Debug($"[HighestCombatJob] Getting level for job {jobId}");
             
-            // Check if this is the current job first
+            // For now, use current job detection as fallback
+            // TODO: Implement proper multi-job level detection via ClassJobLevelArray
             uint currentJobId = 0;
             var classJob = playerState?.ClassJob;
             if (classJob.HasValue)
@@ -160,14 +160,9 @@ public class HighestCombatJobService : IDisposable
                 return currentLevel;
             }
             
-            // For other jobs, we need to access the character's job level data
-            // This should be similar to how we access ClassJob data
-            
-            // Try to access the character's job level data
-            // This might be stored in the character's job data structure
-            
-            // For now, return 0 until we find the correct pattern
-            log.Debug($"[HighestCombatJob] Job {jobId} not current, level access not implemented");
+            // For non-current jobs, we need to implement ClassJobLevelArray access
+            // This is a placeholder until we find the correct FFXIVClientStructs API
+            log.Debug($"[HighestCombatJob] Job {jobId} is not current, returning 0 (ClassJobLevelArray access needed)");
             return 0;
         }
         catch (Exception ex)
