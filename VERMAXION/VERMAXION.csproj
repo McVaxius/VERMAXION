@@ -16,9 +16,6 @@
 
   <ItemGroup>
     <PackageReference Include="ECommons" Version="2.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="images\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
