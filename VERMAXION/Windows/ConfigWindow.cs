@@ -218,7 +218,11 @@ public class ConfigWindow : Window, IDisposable
         }
 
         // Current character (if exists and not default)
-        var currentChar = Plugin.ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        var charName = Plugin.ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        var worldName = Plugin.ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString() ?? "";
+        var currentChar = !string.IsNullOrEmpty(charName) && !string.IsNullOrEmpty(worldName) 
+            ? $"{charName}@{worldName}" 
+            : "";
         if (!string.IsNullOrEmpty(currentChar))
         {
             var isCurrentSelected = configManager.SelectedCharacterKey == currentChar;
