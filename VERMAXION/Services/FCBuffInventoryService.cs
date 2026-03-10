@@ -163,39 +163,31 @@ public class FCBuffInventoryService
                 {
                     // Navigate the node path
                     var node1 = addon->GetNodeById(1);
-                    if (node1 == null) continue;
+                    if (node1 == null)
+                    {
+                        log.Debug($"[FCBuffInventory] Node 1 not found for buff {i}");
+                        continue;
+                    }
                     
                     var node10 = node1->PrevSiblingNode; // This should be node 10
-                    if (node10 == null) continue;
+                    if (node10 == null)
+                    {
+                        log.Debug($"[FCBuffInventory] Node 10 not found for buff {i}");
+                        continue;
+                    }
                     
                     var node14 = node10->PrevSiblingNode; // This should be node 14
-                    if (node14 == null) continue;
+                    if (node14 == null)
+                    {
+                        log.Debug($"[FCBuffInventory] Node 14 not found for buff {i}");
+                        continue;
+                    }
                     
-                    var componentNode = node14->GetAsAtkComponentNode();
-                    if (componentNode == null) continue;
-                    
-                    // TODO: Implement buff node finding
-                    // Try to find the specific buff node
-                    // var buffNode = FindBuffNode(componentNode, i);
-                    // if (buffNode != null)
-                    // {
-                    //     var textNode = buffNode->GetComponent()->GetTextNodeById(3);
-                    //     if (textNode != null && textNode->NodeText.StringPtr != null)
-                    //     {
-                    //         var text = textNode->NodeText.ToString();
-                    //         if (buffNames.TryGetValue(i, out var buffName))
-                    //         {
-                    //             log.Information($"[FCBuffInventory] {i:D5}: {buffName}: {text}");
-                    //         }
-                    //     }
-                    // }
-                    
-                    // For now, just log the buff name and output to chat
+                    // For now, just output the buff names to prove we're checking them
                     if (buffNames.TryGetValue(i, out var buffName))
                     {
-                        log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [TODO: Read count]");
-                        // Also output to chat so user can see it
-                        commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [TODO: Read count]");
+                        log.Information($"[FCBuffInventory] {i:D5}: {buffName}: [Checking - TODO: Read count]");
+                        commandManager.ProcessCommand($"/echo {i:D5}: {buffName}: [Checking - TODO: Read count]");
                     }
                 }
                 catch (Exception ex)
@@ -210,31 +202,7 @@ public class FCBuffInventoryService
         }
     }
 
-    // TODO: Fix AtkNode pointer issue
-    /*
-    private unsafe AtkNode* FindBuffNode(AtkComponentNode* parent, uint componentId)
-    {
-        if (parent == null) return null;
-        
-        var node = (AtkNode*)parent;
-        if (node->ComponentId == componentId)
-        {
-            return node;
-        }
-        
-        // Check child nodes recursively
-        var child = node->ChildNode;
-        while (child != null)
-        {
-            var found = FindBuffNode(child->AsAtkComponentNode(), componentId);
-            if (found != null) return found;
-            child = child->PrevSiblingNode;
-        }
-        
-        return null;
-    }
-    */
-
+    
     private void SetState(FCBuffInventoryState newState)
     {
         if (state == newState) return;
