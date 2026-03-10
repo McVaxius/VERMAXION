@@ -83,7 +83,7 @@ public class CurrentJobEquipmentService : IDisposable
                 break;
 
             case EquipmentState.WaitingForUpdate:
-                if (elapsed > 1.0)
+                if (elapsed > 2.0) // Increased wait time from 1s to 2s
                 {
                     log.Information("[CurrentJobEquipment] Equipment update complete");
                     SetState(EquipmentState.Complete);

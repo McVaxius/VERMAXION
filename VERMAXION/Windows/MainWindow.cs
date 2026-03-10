@@ -153,9 +153,9 @@ public class MainWindow : Window, IDisposable
                 "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "-");
 
             // --- Utility Tasks ---
-            DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Manual trigger",
+            DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
                 "Test##Highest", () => plugin.HighestCombatJobService.RunTask(), "WIP");
-            DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Manual trigger",
+            DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Every AR run",
                 "Test##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "WIP");
 
             ImGui.EndTable();
