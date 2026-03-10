@@ -75,7 +75,7 @@ public sealed class Plugin : IDalamudPlugin
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
-        GearUpdaterService = new GearUpdaterService(CommandManager, Log);
+        GearUpdaterService = new GearUpdaterService(CommandManager, Log, ClientState, PlayerState);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
 

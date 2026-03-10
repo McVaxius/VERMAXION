@@ -1,6 +1,9 @@
 using System;
 using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
+using Dalamud.Game.ClientState.JobGauge.Types;
+using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects;
 
 namespace VERMAXION.Services;
 
@@ -8,22 +11,27 @@ public class GearUpdaterService : IDisposable
 {
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
+    private readonly IClientState clientState;
+    private readonly IPlayerState playerState;
 
-    private enum UpdaterState { Idle, SwitchingJob, WaitingForSwitch, AutoEquipping, WaitingForEquip, SavingGearset, WaitingForSave, Complete, Failed }
+    private enum UpdaterState { Idle, SwitchingJob, WaitingForSwitch, AutoEquipping, WaitingForEquip, OpeningCharacter, WaitingForCharacter, UpdatingGearset, WaitingForUpdate, Complete, Failed }
     private UpdaterState state = UpdaterState.Idle;
     private DateTime stateEnteredAt;
     private int currentGearsetIndex;
-    private int maxGearsets = 30;
+    private int maxGearsets = 40;
+    private uint? lastJobId;
 
     public bool IsComplete => state == UpdaterState.Complete;
     public bool IsFailed => state == UpdaterState.Failed;
     public bool IsIdle => state == UpdaterState.Idle;
     public string StatusText => state == UpdaterState.Idle ? "Idle" : $"{state} ({currentGearsetIndex}/{maxGearsets})";
 
-    public GearUpdaterService(ICommandManager commandManager, IPluginLog log)
+    public GearUpdaterService(ICommandManager commandManager, IPluginLog log, IClientState clientState, IPlayerState playerState)
     {
         this.commandManager = commandManager;
         this.log = log;
+        this.clientState = clientState;
+        this.playerState = playerState;
     }
 
     private void SetState(UpdaterState newState)
@@ -33,11 +41,25 @@ public class GearUpdaterService : IDisposable
         stateEnteredAt = DateTime.UtcNow;
     }
 
+    private uint GetCurrentJobId()
+    {
+        try
+        {
+            var classJob = playerState?.ClassJob;
+            return classJob?.RowId ?? 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     public void Start()
     {
         currentGearsetIndex = 1;
+        lastJobId = GetCurrentJobId();
         SetState(UpdaterState.SwitchingJob);
-        log.Information("[GearUpdater] Starting gear updater - cycling through all gearsets");
+        log.Information("[GearUpdater] Starting gear updater - cycling through gearsets 1-40");
     }
 
     public void RunTask()
@@ -49,6 +71,7 @@ public class GearUpdaterService : IDisposable
     public void Reset()
     {
         currentGearsetIndex = 0;
+        lastJobId = null;
         SetState(UpdaterState.Idle);
     }
 
@@ -68,8 +91,21 @@ public class GearUpdaterService : IDisposable
                     SetState(UpdaterState.Complete);
                     return;
                 }
+                
+                // Check if job changed (stop condition)
+                if (currentGearsetIndex > 1 && lastJobId.HasValue)
+                {
+                    var currentJobId = GetCurrentJobId();
+                    if (currentJobId != lastJobId.Value)
+                    {
+                        log.Information($"[GearUpdater] Job changed from {lastJobId} to {currentJobId}, stopping loop");
+                        SetState(UpdaterState.Complete);
+                        return;
+                    }
+                }
+                
                 log.Information($"[GearUpdater] Switching to gearset {currentGearsetIndex}");
-                commandManager.ProcessCommand($"/gearset change {currentGearsetIndex}");
+                CommandHelper.SendCommand($"/gs change {currentGearsetIndex}");
                 SetState(UpdaterState.WaitingForSwitch);
                 break;
 
@@ -82,25 +118,38 @@ public class GearUpdaterService : IDisposable
 
             case UpdaterState.AutoEquipping:
                 log.Information($"[GearUpdater] Auto-equipping recommended gear for gearset {currentGearsetIndex}");
-                commandManager.ProcessCommand("/gearset equip");
+                CommandHelper.SendCommand("/equiprecommended"); // SimpleTweaks required
                 SetState(UpdaterState.WaitingForEquip);
                 break;
 
             case UpdaterState.WaitingForEquip:
-                if (elapsed > 2.0)
+                if (elapsed > 1.0)
                 {
-                    SetState(UpdaterState.SavingGearset);
+                    SetState(UpdaterState.OpeningCharacter);
                 }
                 break;
 
-            case UpdaterState.SavingGearset:
-                log.Information($"[GearUpdater] Saving gearset {currentGearsetIndex}");
-                commandManager.ProcessCommand($"/gearset save {currentGearsetIndex}");
-                SetState(UpdaterState.WaitingForSave);
+            case UpdaterState.OpeningCharacter:
+                log.Information($"[GearUpdater] Opening character window for gearset {currentGearsetIndex}");
+                CommandHelper.SendCommand("/character");
+                SetState(UpdaterState.WaitingForCharacter);
                 break;
 
-            case UpdaterState.WaitingForSave:
-                if (elapsed > 2.0)
+            case UpdaterState.WaitingForCharacter:
+                if (elapsed > 1.0)
+                {
+                    SetState(UpdaterState.UpdatingGearset);
+                }
+                break;
+
+            case UpdaterState.UpdatingGearset:
+                log.Information($"[GearUpdater] Updating gearset {currentGearsetIndex}");
+                CommandHelper.SendCommand("/updategearset"); // SimpleTweaks required
+                SetState(UpdaterState.WaitingForUpdate);
+                break;
+
+            case UpdaterState.WaitingForUpdate:
+                if (elapsed > 1.0)
                 {
                     currentGearsetIndex++;
                     SetState(UpdaterState.SwitchingJob);
