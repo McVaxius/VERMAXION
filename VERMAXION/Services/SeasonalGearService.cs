@@ -86,8 +86,8 @@ public class SeasonalGearService : IDisposable
     {
         try
         {
-            // Use UIModule.ProcessChatBoxEntry() for native game commands like /equipitem
-            // /equipitem is a special SND command that goes through the chat system
+            // Use InventoryManager.MoveItemSlot() like SND actually implements /equipitem
+            // /equipitem is a special SND command that moves items to equipped slots
             if (!HasItemInInventory(itemId))
             {
                 log.Warning($"[SeasonalGear] Item {itemId} ({itemName}) not found in inventory");
@@ -98,27 +98,69 @@ public class SeasonalGearService : IDisposable
             
             unsafe
             {
-                var uiModule = FFXIVClientStructs.FFXIV.Client.UI.UIModule.Instance();
-                if (uiModule == null)
+                var im = InventoryManager.Instance();
+                if (im == null)
                 {
-                    log.Warning("[SeasonalGear] UIModule.Instance() is null");
+                    log.Warning("[SeasonalGear] InventoryManager.Instance() is null");
                     return false;
                 }
 
-                // Use UIModule.ProcessChatBoxEntry() for native game commands
-                var command = $"/equipitem {itemId}";
-                var utf8String = Utf8String.FromString(command);
-                
-                try
+                // Find the item in inventory containers
+                var containers = new ushort[]
                 {
-                    uiModule->ProcessChatBoxEntry(utf8String, (nint)0, false);
-                    log.Debug($"[SeasonalGear] ProcessChatBoxEntry('{command}') sent");
-                    return true; // Success if no exception
-                }
-                finally
+                    2001, // ArmoryHead
+                    2002, // ArmoryBody
+                    2003, // ArmoryHands
+                    2004, // ArmoryLegs
+                    2005, // ArmoryFeet
+                    2006, // ArmoryEar
+                    2007, // ArmoryNeck
+                    2008, // ArmoryWrist
+                    2009, // ArmoryRing
+                    2010, // ArmoryMainHand
+                    2011, // ArmoryOffHand
+                    2012, // ArmorySoulCrystal
+                    // Also check regular inventory bags
+                    3200, // Inventory1
+                    3201, // Inventory2
+                    3202, // Inventory3
+                    3203  // Inventory4
+                };
+
+                foreach (var containerType in containers)
                 {
-                    utf8String->Dtor(true);
+                    var container = im->GetInventoryContainer((InventoryType)containerType);
+                    if (container == null) continue;
+
+                    for (int i = 0; i < container->Size; i++)
+                    {
+                        var slot = container->GetInventorySlot(i);
+                        if (slot != null && slot->ItemId == itemId && slot->Quantity > 0)
+                        {
+                            log.Debug($"[SeasonalGear] Found item {itemId} in container {containerType} slot {i}");
+                            
+                            // Determine target equipment slot based on item
+                            var targetContainer = (InventoryType)0; // EquippedItems
+                            var targetSlot = GetEquipmentSlotForItem(itemId);
+                            
+                            if (targetSlot == -1)
+                            {
+                                log.Warning($"[SeasonalGear] Unknown equipment slot for item {itemId}");
+                                return false;
+                            }
+
+                            log.Debug($"[SeasonalGear] Moving to equipped slot {targetSlot}");
+                            
+                            // Use MoveItemSlot like SND implements /equipitem
+                            var result = im->MoveItemSlot((InventoryType)containerType, (ushort)i, targetContainer, (ushort)targetSlot);
+                            log.Debug($"[SeasonalGear] MoveItemSlot result: {result}");
+                            return result == 0; // 0 = success for MoveItemSlot
+                        }
+                    }
                 }
+
+                log.Warning($"[SeasonalGear] Item {itemId} not found in any container");
+                return false;
             }
         }
         catch (Exception ex)
@@ -126,6 +168,23 @@ public class SeasonalGearService : IDisposable
             log.Error($"[SeasonalGear] Error equipping item {itemId}: {ex.Message}");
             return false;
         }
+    }
+
+    private int GetEquipmentSlotForItem(uint itemId)
+    {
+        // Map item to equipment slot (same as SND /equipitem logic)
+        // Head items
+        if (itemId == 47924 || itemId == 47623 || itemId == 43471) return 0;  // Head
+        // Body items  
+        if (itemId == 50851 || itemId == 50850 || itemId == 43472) return 1;  // Body
+        // Hands items
+        if (itemId == 43473) return 2;  // Hands
+        // Legs items
+        if (itemId == 43474) return 3;  // Legs
+        // Feet items
+        if (itemId == 43475) return 4;  // Feet
+        
+        return -1; // Unknown slot
     }
 
     public void Start()
