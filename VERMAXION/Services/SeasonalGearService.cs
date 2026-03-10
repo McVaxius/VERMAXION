@@ -158,6 +158,18 @@ public class SeasonalGearService : IDisposable
                             if (equippedContainer != null)
                             {
                                 log.Debug($"[SeasonalGear] Target container size: {equippedContainer->Size}");
+                                
+                                // Log all equipped slots to understand the structure
+                                log.Debug("[SeasonalGear] Current equipped items:");
+                                for (int eqSlot = 0; eqSlot < equippedContainer->Size && eqSlot < 14; eqSlot++)
+                                {
+                                    var eqItem = equippedContainer->GetInventorySlot(eqSlot);
+                                    if (eqItem != null && eqItem->ItemId > 0)
+                                    {
+                                        log.Debug($"[SeasonalGear]  Slot {eqSlot}: ItemId={eqItem->ItemId}, Quantity={eqItem->Quantity}");
+                                    }
+                                }
+                                
                                 if (targetSlot < equippedContainer->Size)
                                 {
                                     var targetSlotItem = equippedContainer->GetInventorySlot(targetSlot);
@@ -221,11 +233,12 @@ public class SeasonalGearService : IDisposable
 
     private int GetEquipmentSlotForItem(uint itemId)
     {
-        // Map item to equipment slot (same as SND /equipitem logic)
+        // Map item to equipment slot (FFXIV equipped slot indices)
+        // Based on FFXIV equipment structure - need to verify correct indices
         // Head items
-        if (itemId == 47924 || itemId == 47623 || itemId == 43471) return 0;  // Head
+        if (itemId == 47924 || itemId == 47623 || itemId == 43471) return 0;  // Head (MainHand?)
         // Body items  
-        if (itemId == 50851 || itemId == 50850 || itemId == 43472) return 1;  // Body
+        if (itemId == 50851 || itemId == 50850 || itemId == 43472) return 1;  // Body (OffHand?)
         // Hands items
         if (itemId == 43473) return 2;  // Hands
         // Legs items
