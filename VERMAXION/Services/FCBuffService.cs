@@ -47,6 +47,7 @@ public class FCBuffService : IDisposable
         OpeningFCWindow,
         WaitingForFCWindow,
         CheckingFCPointsInWindow,
+        CheckingBuffInventory,
         CheckingIfRefillNeeded,
         NavigatingToGC,
         WaitingForAftArrival,
@@ -202,7 +203,7 @@ public class FCBuffService : IDisposable
                         return;
                     }
                     
-                    SetState(FCBuffState.CheckingIfRefillNeeded);
+                    SetState(FCBuffState.CheckingBuffInventory);
                 }
                 else
                 {
@@ -211,6 +212,34 @@ public class FCBuffService : IDisposable
                         log.Error("[FCBuff] Timeout waiting for FC window");
                         SetState(FCBuffState.Failed);
                     }
+                }
+                break;
+
+            case FCBuffState.CheckingBuffInventory:
+                if (elapsed < 1) return;
+                log.Information("[FCBuff] Checking FC buff inventory for Seal Sweetener II");
+                
+                try
+                {
+                    // Use the FCBuffInventoryService to count buffs
+                    var sealSweetenerCount = CountSealSweetenerBuffs();
+                    log.Information($"[FCBuff] Seal Sweetener II count: {sealSweetenerCount}");
+                    
+                    if (sealSweetenerCount == 0)
+                    {
+                        log.Information("[FCBuff] No Seal Sweetener II found, proceeding with refill");
+                        SetState(FCBuffState.CheckingIfRefillNeeded);
+                    }
+                    else
+                    {
+                        log.Information($"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II, skipping refill");
+                        SetState(FCBuffState.Complete);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.Error($"[FCBuff] Error checking buff inventory: {ex.Message}");
+                    SetState(FCBuffState.Failed);
                 }
                 break;
 
@@ -506,6 +535,104 @@ public class FCBuffService : IDisposable
                     SetState(FCBuffState.Complete);
                 }
                 break;
+        }
+    }
+
+    private unsafe int CountSealSweetenerBuffs()
+    {
+        try
+        {
+            var addon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompanyAction");
+            if (addon == null || !addon->IsVisible)
+            {
+                log.Error("[FCBuff] FreeCompanyAction addon not found or not visible for buff counting");
+                return 0;
+            }
+
+            // Switch to Actions tab (index 4)
+            GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
+            
+            // Wait a moment for tab switch
+            System.Threading.Thread.Sleep(500);
+            
+            // Count occurrences of specific buff names
+            int sealSweetenerCount = 0;
+            
+            // Navigate the node path: GetNode(1, 10, 14, i, 3)
+            for (uint i = 51001; i <= 51016; i++)
+            {
+                try
+                {
+                    // Step 1: Get node 1 from addon
+                    var node1 = addon->GetNodeById(1);
+                    if (node1 == null) continue;
+                    
+                    // Step 2: Get child node 10 from node 1
+                    var node10 = node1->ChildNode;
+                    if (node10 == null) continue;
+                    
+                    // Step 3: Find the actual List Component Node 14 from children of node 10
+                    var node14 = node10->ChildNode;
+                    bool foundComponent = false;
+                    int childIndex = 0;
+                    
+                    while (node14 != null && childIndex < 50)
+                    {
+                        if ((int)node14->Type >= 1000)
+                        {
+                            foundComponent = true;
+                            break;
+                        }
+                        node14 = node14->PrevSiblingNode;
+                        childIndex++;
+                    }
+                    
+                    if (!foundComponent || node14 == null) continue;
+                    
+                    // Step 4: Get list item renderer i from the list component using UldManager.NodeList
+                    var componentNode14 = node14->GetAsAtkComponentNode();
+                    if (componentNode14 == null) continue;
+                    
+                    var listComponent = componentNode14->GetComponent();
+                    var nodeList = listComponent->UldManager.NodeList;
+                    
+                    // Find the i-th ListItemRenderer (using index, not buff ID)
+                    int listIndex = (int)(i - 51001) + 1;
+                    
+                    var listItemNode = nodeList[listIndex];
+                    if (listItemNode == null) continue;
+                    
+                    // Step 5: Get text node 3 from the ListItemRenderer using its component
+                    var listItemComponent = listItemNode->GetAsAtkComponentNode();
+                    if (listItemComponent == null) continue;
+                    
+                    var listItemComp = listItemComponent->GetComponent();
+                    if (listItemComp == null) continue;
+                    
+                    var textNode = listItemComp->GetTextNodeById(3);
+                    if (textNode == null) continue;
+                    
+                    // Read the text from node 3
+                    var text = textNode->NodeText.ToString();
+                    
+                    // Count Seal Sweetener II occurrences
+                    if (text == "Seal Sweetener II")
+                    {
+                        sealSweetenerCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.Debug($"[FCBuff] Error reading buff {i}: {ex.Message}");
+                }
+            }
+            
+            return sealSweetenerCount;
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[FCBuff] Error counting Seal Sweetener buffs: {ex.Message}");
+            return 0;
         }
     }
 
