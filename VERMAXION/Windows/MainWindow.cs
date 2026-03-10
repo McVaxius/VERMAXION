@@ -132,7 +132,7 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
                 "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
-                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "-");
+                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "[WIP]");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
                 "Test##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
 
@@ -154,7 +154,7 @@ public class MainWindow : Window, IDisposable
 
             // --- Utility Tasks ---
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
-                "Test##Highest", () => plugin.HighestCombatJobService.RunTask(), "WIP");
+                "Test##Highest", () => plugin.HighestCombatJobService.RunTask(), "[OK]");
             DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Every AR run",
                 "Test##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
 
