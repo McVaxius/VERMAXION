@@ -141,30 +141,21 @@ public class HighestCombatJobService : IDisposable
     {
         try
         {
-            // Use ClientState to get job levels like FUTA
-            var localPlayer = clientState?.LocalPlayer;
-            if (localPlayer == null)
-            {
-                log.Warning("[HighestCombatJob] Could not get local player");
-                return 0;
-            }
-
-            // Try to get job level - this might need a different approach
-            // For now, let's try to get it from the player's class data
-            log.Debug($"[HighestCombatJob] Checking job {jobId}");
-            
-            // FUTA uses Player.GetJob(i).Level but this might be a different API
-            // Let's try a simpler approach first
+            // Get current job info
             var currentClassJob = playerState?.ClassJob;
-            if (currentClassJob?.RowId == jobId)
+            var currentJobId = currentClassJob?.RowId ?? 0;
+            var currentLevel = (int)(playerState?.Level ?? 0);
+            
+            log.Debug($"[HighestCombatJob] Current job: ID={currentJobId}, Level={currentLevel}");
+            
+            // If this is the current job, return its level
+            if (currentJobId == jobId)
             {
-                var level = (int)playerState.Level;
-                log.Debug($"[HighestCombatJob] Current job {jobId} level: {level}");
-                return level;
+                log.Debug($"[HighestCombatJob] Job {jobId} is current, level: {currentLevel}");
+                return currentLevel;
             }
 
-            // For other jobs, we need to find the right API
-            // Let's return 0 for now and log that we need to implement this
+            // For other jobs, we need a different approach
             log.Debug($"[HighestCombatJob] Job {jobId} not current, need to implement multi-job level detection");
             return 0;
         }
