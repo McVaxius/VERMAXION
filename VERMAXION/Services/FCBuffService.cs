@@ -94,6 +94,7 @@ public class FCBuffService : IDisposable
         
         // Log configuration at task start
         var config = configManager.GetActiveConfig();
+        log.Information($"[FCBuff] Config Debug: CurrentAccountId='{configManager.CurrentAccountId}', SelectedCharacterKey='{configManager.SelectedCharacterKey}'");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
         

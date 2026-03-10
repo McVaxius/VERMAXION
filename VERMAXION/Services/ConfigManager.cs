@@ -48,14 +48,25 @@ public class ConfigManager
     {
         var account = GetCurrentAccount();
         if (account == null)
+        {
+            log.Warning("[ConfigManager] GetCurrentAccount returned null - using default config");
             return new CharacterConfig();
+        }
 
         if (string.IsNullOrEmpty(SelectedCharacterKey))
+        {
+            log.Warning($"[ConfigManager] SelectedCharacterKey is null - using default config for account {CurrentAccountId}");
             return account.DefaultConfig;
+        }
 
-        return account.Characters.TryGetValue(SelectedCharacterKey, out var cc)
-            ? cc
-            : account.DefaultConfig;
+        if (!account.Characters.TryGetValue(SelectedCharacterKey, out var cc))
+        {
+            log.Warning($"[ConfigManager] Character '{SelectedCharacterKey}' not found in account {CurrentAccountId} - using default config");
+            return account.DefaultConfig;
+        }
+
+        log.Debug($"[ConfigManager] Loaded config for character '{SelectedCharacterKey}' in account {CurrentAccountId}");
+        return cc;
     }
 
     public CharacterConfig GetCurrentCharacterConfig(string charKey)
