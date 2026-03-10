@@ -83,14 +83,21 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"[IsRunning: {engine.IsRunning}]");
         
+        // Global Stop button (always visible when running)
+        if (engine.IsRunning)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1f, 0.2f, 0.2f, 1f));
+            if (ImGui.Button("STOP"))
+                engine.Stop();
+            ImGui.PopStyleColor();
+            ImGui.SameLine();
+        }
+        
         ImGui.SameLine();
         if (ImGui.Button("Run All"))
             engine.ManualStart();
         if (engine.IsRunning)
         {
-            ImGui.SameLine();
-            if (ImGui.Button("Stop"))
-                engine.Stop();
             ImGui.SameLine();
             if (ImGui.Button("Cancel"))
                 engine.Cancel();

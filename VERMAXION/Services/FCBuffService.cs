@@ -226,32 +226,33 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForGCArrival:
-                if (elapsed < 60) // Increased wait time for lifestream (30s -> 60s)
+                // Wait for territory change + 3 seconds to ensure navmesh is ready
+                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    // Wait for territory change
-                    if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
-                    {
-                        log.Information("[FCBuff] Still teleporting (BetweenAreas)...");
-                        return;
-                    }
-                    // Check if we're in a GC territory (IDs 128, 129, 130)
-                    var territory = clientState.TerritoryType;
-                    if (territory >= 128 && territory <= 130)
-                    {
-                        log.Information($"[FCBuff] Arrived at GC territory: {territory}");
-                        SetState(FCBuffState.TargetingQuartermaster);
-                    }
-                    else if (elapsed % 10 == 0) // Log every 10 seconds
-                    {
-                        var currentTerritory = clientState.TerritoryType;
-                        log.Information($"[FCBuff] Still waiting for GC arrival... ({elapsed}s elapsed, current territory: {currentTerritory})");
-                    }
+                    log.Information("[FCBuff] Still teleporting (BetweenAreas)...");
                     return;
                 }
-                var finalTerritory = clientState.TerritoryType;
-                log.Error($"[FCBuff] Failed to arrive at GC after 60s. Current territory: {finalTerritory}");
-                SetState(FCBuffState.Failed);
-                break;
+                
+                // Check if we're in a GC territory (IDs 128, 129, 130)
+                var territory = clientState.TerritoryType;
+                if (territory >= 128 && territory <= 130)
+                {
+                    // Wait 3 seconds after territory change to ensure navmesh is ready
+                    if (elapsed >= 3)
+                    {
+                        log.Information($"[FCBuff] Arrived at GC territory: {territory}, waited for navmesh");
+                        SetState(FCBuffState.TargetingQuartermaster);
+                    }
+                    else
+                    {
+                        log.Information($"[FCBuff] In GC territory {territory}, waiting {3 - elapsed:F1}s for navmesh");
+                    }
+                }
+                else if (elapsed % 5 == 0) // Log every 5 seconds
+                {
+                    log.Information($"[FCBuff] Still waiting for GC arrival... ({elapsed}s elapsed, current territory: {territory})");
+                }
+                return;
 
             case FCBuffState.TargetingQuartermaster:
                 if (elapsed < 1) return;
