@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Numerics;
@@ -9,6 +10,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -106,6 +108,56 @@ public class FCBuffService : IDisposable
     {
         log.Information("[VERMAXION] Manual FC Buff Refill triggered");
         Start(15);
+    }
+
+    public unsafe void TestFreeCompanyGC()
+    {
+        log.Information("[VERMAXION] Testing Free Company Grand Company detection");
+        
+        try
+        {
+            // Using the pattern from Jaksuhn's SND and XA docs
+            var infoProxyFreeCompany = InfoProxyFreeCompany.Instance();
+            if (infoProxyFreeCompany != null)
+            {
+                var fcGrandCompany = infoProxyFreeCompany->GrandCompany;
+                var gcString = fcGrandCompany.ToString();
+                
+                log.Information($"[FCBuff] Free Company Grand Company: {gcString}");
+                
+                // GC names mapping from Jaksuhn's SND
+                var gcNames = new Dictionary<string, int>
+                {
+                    { "Maelstrom", 1 },
+                    { "TwinAdder", 2 },
+                    { "ImmortalFlames", 3 }
+                };
+                
+                int gcChoice = 1; // Default to Maelstrom
+                foreach (var gc in gcNames)
+                {
+                    if (gc.Key == gcString)
+                    {
+                        gcChoice = gc.Value;
+                        break;
+                    }
+                }
+                
+                log.Information($"[FCBuff] GC Choice: {gcChoice} ({gcString})");
+                
+                // Also log player's current Grand Company for reference
+                var playerState = PlayerState.Instance();
+                log.Information($"[FCBuff] Player Grand Company: {playerState->GrandCompany}");
+            }
+            else
+            {
+                log.Error("[FCBuff] InfoProxyFreeCompany is null");
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[FCBuff] Error testing Free Company GC: {ex.Message}");
+        }
     }
 
     private int GetCurrentGCTerritory()
