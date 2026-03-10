@@ -208,28 +208,63 @@ public class SeasonalGearService : IDisposable
                             
                             if (result == 0)
                             {
-                                // SUCCESS: Now finalize the equipment change like SND does
+                                // SUCCESS: Follow exact SND force_equip pattern for persistence
                                 log.Information($"[SeasonalGear] Equip command sent for {itemName}");
                                 
-                                // SND finalization sequence to make equipment change server-side persistent
-                                // This prevents visual-only changes that revert on zone change
+                                // SND force_equip pattern: /character -> callback Character true 15 -> /updategearset
+                                // This sequence makes equipment changes server-side persistent
                                 try
                                 {
-                                    log.Debug("[SeasonalGear] Finalizing equipment change with character window and gearset update");
+                                    log.Debug("[SeasonalGear] Starting SND equipment finalization sequence");
                                     
-                                    // Open character window to trigger equipment refresh
+                                    // Step 1: Open character window
                                     CommandHelper.SendCommand("/character");
                                     
-                                    // Wait a moment for character window to open, then update gearset
-                                    // This makes the equipment change server-side persistent
+                                    // Step 2: Wait for character window, then click button 15
                                     System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                                        log.Debug("[SeasonalGear] Firing Character callback true 15");
+                                        GameHelpers.FireAddonCallback("Character", true, 15);
+                                    });
+                                    
+                                    // Step 3: Handle SelectYesno dialog if it appears
+                                    System.Threading.Tasks.Task.Delay(1000).ContinueWith(_ => {
+                                        if (GameHelpers.IsAddonVisible("SelectYesno"))
+                                        {
+                                            log.Debug("[SeasonalGear] Confirming SelectYesno dialog");
+                                            GameHelpers.FireAddonCallback("SelectYesno", true, 0);
+                                        }
+                                    });
+                                    
+                                    // Step 4: Second character window interaction
+                                    System.Threading.Tasks.Task.Delay(1500).ContinueWith(_ => {
+                                        CommandHelper.SendCommand("/character");
+                                        log.Debug("[SeasonalGear] Second character window opened");
+                                    });
+                                    
+                                    // Step 5: Second callback and dialog handling
+                                    System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
+                                        log.Debug("[SeasonalGear] Firing second Character callback true 15");
+                                        GameHelpers.FireAddonCallback("Character", true, 15);
+                                    });
+                                    
+                                    // Step 6: Handle second SelectYesno dialog
+                                    System.Threading.Tasks.Task.Delay(2500).ContinueWith(_ => {
+                                        if (GameHelpers.IsAddonVisible("SelectYesno"))
+                                        {
+                                            log.Debug("[SeasonalGear] Confirming second SelectYesno dialog");
+                                            GameHelpers.FireAddonCallback("SelectYesno", true, 0);
+                                        }
+                                    });
+                                    
+                                    // Step 7: Update gearset
+                                    System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ => {
                                         CommandHelper.SendCommand("/updategearset");
-                                        log.Debug("[SeasonalGear] Gearset update sent - equipment should now be persistent");
+                                        log.Debug("[SeasonalGear] Gearset update sent - SND force_equip pattern complete");
                                     });
                                 }
                                 catch (Exception finalizeEx)
                                 {
-                                    log.Warning($"[SeasonalGear] Error finalizing equipment: {finalizeEx.Message}");
+                                    log.Warning($"[SeasonalGear] Error in SND finalization: {finalizeEx.Message}");
                                 }
                             }
                             
