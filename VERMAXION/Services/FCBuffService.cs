@@ -108,9 +108,29 @@ public class FCBuffService : IDisposable
 
     private int GetCurrentGCTerritory()
     {
-        // TODO: Get player's actual Grand Company affiliation
-        // For now, default to Gridania (territory 129) based on logs
-        return 129;
+        // Get player's Grand Company from PlayerState
+        try
+        {
+            // Try PlayerState first
+            if (Plugin.PlayerState != null)
+            {
+                var gc = Plugin.PlayerState.GrandCompany;
+                // GrandCompany.RowId gives us the GC ID (1=Maelstrom, 2=TwinAdder, 3=ImmortalFlames)
+                var gcId = gc.RowId;
+                return gcId switch
+                {
+                    1 => 128, // Maelstrom (Limsa)
+                    2 => 132, // Order of the Twin Adder (Gridania) - territory 132
+                    3 => 130, // Immortal Flames (Ul'dah)
+                    _ => 128, // Default to Limsa
+                };
+            }
+        }
+        catch
+        {
+            log.Warning("[FCBuff] Failed to get GC from PlayerState, defaulting to Limsa");
+        }
+        return 128; // Default to Limsa
     }
 
     public void Reset() => SetState(FCBuffState.Idle);
@@ -279,7 +299,7 @@ public class FCBuffService : IDisposable
                     log.Information("[FCBuff] Still teleporting to Gridania...");
                     return;
                 }
-                if (clientState.TerritoryType == 129 && elapsed >= 3)
+                if (clientState.TerritoryType == 132 && elapsed >= 3)
                 {
                     log.Information("[FCBuff] Arrived at Gridania, navigating to Quartermaster");
                     SetState(FCBuffState.NavigatingToQuartermaster);
