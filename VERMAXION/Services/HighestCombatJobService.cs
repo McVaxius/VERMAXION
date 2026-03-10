@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Logging;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game.Character;
 
 namespace VERMAXION.Services;
 
@@ -143,8 +142,7 @@ public class HighestCombatJobService : IDisposable
         {
             log.Debug($"[HighestCombatJob] Getting level for job {jobId}");
             
-            // For now, use current job detection as fallback
-            // TODO: Implement proper multi-job level detection via ClassJobLevelArray
+            // Method 1: Try to access through PlayerState (current job only)
             uint currentJobId = 0;
             var classJob = playerState?.ClassJob;
             if (classJob.HasValue)
@@ -154,14 +152,14 @@ public class HighestCombatJobService : IDisposable
             
             if (currentJobId == jobId)
             {
-                // This is the current job, get its level
                 var currentLevel = (int)(playerState?.Level ?? 0);
                 log.Debug($"[HighestCombatJob] Job {jobId} is current, level: {currentLevel}");
                 return currentLevel;
             }
             
-            // For non-current jobs, we need to implement ClassJobLevelArray access
-            // This is a placeholder until we find the correct FFXIVClientStructs API
+            // Method 2: For non-current jobs, we need to find the correct API
+            // TODO: Research proper FFXIVClientStructs API for ClassJobLevelArray
+            // For now, return 0 to indicate "not implemented yet"
             log.Debug($"[HighestCombatJob] Job {jobId} is not current, returning 0 (ClassJobLevelArray access needed)");
             return 0;
         }
