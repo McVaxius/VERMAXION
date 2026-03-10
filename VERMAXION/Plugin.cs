@@ -220,6 +220,8 @@ public sealed class Plugin : IDalamudPlugin
                 Configuration.LastAccountId = ConfigManager.CurrentAccountId;
                 Configuration.Save();
                 Log.Information($"Character detected: {charName}@{worldName} -> Account {ConfigManager.CurrentAccountId}");
+                // Force reload config after character selection to ensure we have the right character config
+                ConfigManager.LoadAllAccounts();
             }
         }
         catch (Exception ex)
