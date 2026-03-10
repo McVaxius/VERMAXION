@@ -53,6 +53,12 @@ public class ConfigManager
             return new CharacterConfig();
         }
 
+        log.Debug($"[ConfigManager] Account {CurrentAccountId} has {account.Characters.Count} characters");
+        if (account.Characters.Count > 0)
+        {
+            log.Debug($"[ConfigManager] Available characters: {string.Join(", ", account.Characters.Keys)}");
+        }
+
         if (string.IsNullOrEmpty(SelectedCharacterKey))
         {
             log.Warning($"[ConfigManager] SelectedCharacterKey is null - using default config for account {CurrentAccountId}");
@@ -65,7 +71,8 @@ public class ConfigManager
             return account.DefaultConfig;
         }
 
-                return cc;
+        log.Debug($"[ConfigManager] Found character config for '{SelectedCharacterKey}' with FCBuffMinPoints={cc.FCBuffMinPoints}, FCBuffPurchaseAttempts={cc.FCBuffPurchaseAttempts}");
+        return cc;
     }
 
     public CharacterConfig GetCurrentCharacterConfig(string charKey)
@@ -266,6 +273,7 @@ public class ConfigManager
         try
         {
             var files = Directory.GetFiles(configDir, "*_Vermaxion.json");
+            log.Information($"[ConfigManager] Loading {files.Length} config files from {configDir}");
             foreach (var file in files)
             {
                 try
