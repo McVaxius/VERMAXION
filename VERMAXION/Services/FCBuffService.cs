@@ -647,11 +647,18 @@ public class FCBuffService : IDisposable
                 // Try multiple methods to close windows
                 GameHelpers.CloseCurrentAddon();
                 
-                // Press Escape key again after 1 second to force close any remaining windows
+                // Press Escape key after 1 second to force close any remaining windows
                 if (elapsed > 1.0 && elapsed < 1.5)
                 {
-                    log.Information("[FCBuff] Pressing Escape again to force close windows");
+                    log.Information("[FCBuff] Pressing Escape to force close windows");
                     ECommons.Automation.WindowsKeypress.SendKeypress(Dalamud.Game.ClientState.Keys.VirtualKey.ESCAPE, null);
+                }
+                
+                // Press NUMPAD+ after 2 seconds as alternative window close method
+                if (elapsed > 2.0 && elapsed < 2.5)
+                {
+                    log.Information("[FCBuff] Pressing NUMPAD+ to force close windows");
+                    GameHelpers.SendNumpadPlus();
                 }
                 
                 // Check if all relevant windows are closed

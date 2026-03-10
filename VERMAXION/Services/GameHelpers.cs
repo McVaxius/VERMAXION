@@ -236,12 +236,20 @@ public static class GameHelpers
     }
 
     /// <summary>
-    /// Send NUMPAD0 (confirm/interact in controller mode).
-    /// SND equivalent: /send NUMPAD0
+    /// Send NUMPAD0 key (confirm/accept).
     /// </summary>
     public static void SendConfirm()
     {
         ECommons.Automation.WindowsKeypress.SendKeypress(Dalamud.Game.ClientState.Keys.VirtualKey.NUMPAD0, null);
+    }
+
+    /// <summary>
+    /// Send NUMPAD+ key (often used to close windows).
+    /// </summary>
+    public static void SendNumpadPlus()
+    {
+        // VK_ADD = 0x6B - standard Windows Virtual Key for NUMPAD+
+        ECommons.Automation.WindowsKeypress.SendKeypress((Dalamud.Game.ClientState.Keys.VirtualKey)0x6B, null);
     }
 
     /// <summary>
