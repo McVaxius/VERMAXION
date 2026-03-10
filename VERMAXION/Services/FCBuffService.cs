@@ -152,20 +152,24 @@ public class FCBuffService : IDisposable
                     var fcPointsNode = GameHelpers.GetFCPointsNode();
                     var fcPoints = fcPointsNode ?? 0;
                     log.Information($"[FCBuff] Current FC points: {fcPoints:N0}");
-                    if (fcPoints >= MinFCPoints)
-                    {
-                        SetState(FCBuffState.CheckingIfRefillNeeded);
-                    }
-                    else
+                    
+                    // Check if we have enough FC points
+                    if (fcPoints < MinFCPoints)
                     {
                         log.Information($"[FCBuff] Not enough FC points ({fcPoints:N0} < {MinFCPoints:N0}), skipping refill");
                         SetState(FCBuffState.Complete);
+                        return;
                     }
+                    
+                    SetState(FCBuffState.CheckingIfRefillNeeded);
                 }
                 else
                 {
-                    log.Error("[FCBuff] Failed to get FC points");
-                    SetState(FCBuffState.Failed);
+                    if (elapsed > 5)
+                    {
+                        log.Error("[FCBuff] Timeout waiting for FC window");
+                        SetState(FCBuffState.Failed);
+                    }
                 }
                 break;
 
@@ -214,16 +218,32 @@ public class FCBuffService : IDisposable
             case FCBuffState.TargetingQuartermaster:
                 if (elapsed < 1) return;
                 log.Information("[FCBuff] Targeting OIC Quartermaster");
-                var quartermaster = GameHelpers.FindObjectByName("OIC Quartermaster");
+                
+                // Try to target "Quartermaster" first (more specific)
+                var quartermaster = GameHelpers.FindObjectByName("Quartermaster");
                 if (quartermaster != null)
                 {
+                    log.Information("[FCBuff] Found Quartermaster, targeting...");
                     targetManager.Target = quartermaster;
                     SetState(FCBuffState.InteractingQuartermaster);
                 }
                 else
                 {
-                    log.Error("[FCBuff] Could not find OIC Quartermaster");
-                    SetState(FCBuffState.Failed);
+                    // Fallback: try "OIC Quartermaster"
+                    var oicQuartermaster = GameHelpers.FindObjectByName("OIC Quartermaster");
+                    if (oicQuartermaster != null)
+                    {
+                        log.Information("[FCBuff] Found OIC Quartermaster, targeting...");
+                        targetManager.Target = oicQuartermaster;
+                        SetState(FCBuffState.InteractingQuartermaster);
+                    }
+                    else
+                    {
+                        // Last resort: use /target command
+                        log.Information("[FCBuff] NPC not found, using /target Quartermaster");
+                        commandManager.ProcessCommand("/target Quartermaster");
+                        SetState(FCBuffState.InteractingQuartermaster);
+                    }
                 }
                 break;
 
