@@ -5,6 +5,7 @@ using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.System.String;
 
 namespace VERMAXION.Services;
 
@@ -85,8 +86,8 @@ public class SeasonalGearService : IDisposable
     {
         try
         {
-            // Use ActionManager.UseAction() like SND - NOT a chat command!
-            // /equipitem is a special SND command, not a game chat command
+            // Use UIModule.ProcessChatBoxEntry() for native game commands like /equipitem
+            // /equipitem is a special SND command that goes through the chat system
             if (!HasItemInInventory(itemId))
             {
                 log.Warning($"[SeasonalGear] Item {itemId} ({itemName}) not found in inventory");
@@ -97,17 +98,27 @@ public class SeasonalGearService : IDisposable
             
             unsafe
             {
-                var actionManager = ActionManager.Instance();
-                if (actionManager == null)
+                var uiModule = FFXIVClientStructs.FFXIV.Client.UI.UIModule.Instance();
+                if (uiModule == null)
                 {
-                    log.Warning("[SeasonalGear] ActionManager.Instance() is null");
+                    log.Warning("[SeasonalGear] UIModule.Instance() is null");
                     return false;
                 }
 
-                // Use ActionManager.UseAction() for items (ActionType.Item)
-                var result = actionManager->UseAction(ActionType.Item, itemId);
-                log.Debug($"[SeasonalGear] UseAction(ActionType.Item, {itemId}) result: {result}");
-                return result;
+                // Use UIModule.ProcessChatBoxEntry() for native game commands
+                var command = $"/equipitem {itemId}";
+                var utf8String = Utf8String.FromString(command);
+                
+                try
+                {
+                    uiModule->ProcessChatBoxEntry(utf8String, (nint)0, false);
+                    log.Debug($"[SeasonalGear] ProcessChatBoxEntry('{command}') sent");
+                    return true; // Success if no exception
+                }
+                finally
+                {
+                    utf8String->Dtor(true);
+                }
             }
         }
         catch (Exception ex)
