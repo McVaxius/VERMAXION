@@ -58,7 +58,7 @@ public class MinionRouletteService : IDisposable
         switch (state)
         {
             case MinionState.Executing:
-                commandManager.ProcessCommand("/generalaction Minion Roulette");
+                commandManager.ProcessCommand("/generalaction \"Minion Roulette\"");
                 log.Information("[MinionRoulette] Minion roulette command executed");
                 SetState(MinionState.Complete);
                 break;
