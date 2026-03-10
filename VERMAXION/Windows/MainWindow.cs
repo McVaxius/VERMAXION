@@ -156,7 +156,7 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
                 "Test##Highest", () => plugin.HighestCombatJobService.RunTask(), "WIP");
             DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Every AR run",
-                "Test##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "WIP");
+                "Test##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
 
             ImGui.EndTable();
 

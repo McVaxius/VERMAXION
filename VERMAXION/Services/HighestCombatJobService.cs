@@ -12,60 +12,52 @@ public class HighestCombatJobService : IDisposable
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
     private readonly IPlayerState playerState;
-    private readonly IDataManager dataManager;
+    private readonly IClientState clientState;
+    private readonly IObjectTable objectTable;
     
     private DateTime lastAction = DateTime.MinValue;
     private bool isRunning = false;
     
-    // Combat job IDs (DOW/DOM only)
+    // Combat job IDs (DOW/DOM only - actual combat jobs)
     private static readonly uint[] CombatJobs = new uint[]
     {
         // Disciples of War (DOW)
-        1,  // GLA (Paladin)
-        2,  // PGL (Monk) 
-        3,  // MRD (Warrior)
-        4,  // LNC (Dragoon)
-        5,  // ARC (Bard)
-        6,  // CNJ (White Mage - also DOW)
-        7,  // THM (Black Mage - also DOW)
-        8,  // CRP (Carpenter - DoL, excluded)
-        9,  // BSM (Blacksmith - DoL, excluded)
-        10, // ARM (Armorer - DoL, excluded)
-        11, // GSM (Goldsmith - DoL, excluded)
-        12, // LTW (Leatherworker - DoL, excluded)
-        13, // WVR (Weaver - DoL, excluded)
-        14, // ALC (Alchemist - DoL, excluded)
-        15, // CUL (Culinary - DoL, excluded)
-        16, // MIN (Miner - DoL, excluded)
-        17, // BOT (Botanist - DoL, excluded)
-        18, // FSH (Fisher - DoL, excluded)
+        1,  // GLA -> Paladin (26)
+        2,  // PGL -> Monk (27)
+        3,  // MRD -> Warrior (28)
+        4,  // LNC -> Dragoon (29)
+        5,  // ARC -> Bard (30)
+        
         // Disciples of Magic (DOM)
-        26, // PLD (Paladin)
-        27, // MNK (Monk)
-        28, // WAR (Warrior)
-        29, // DRG (Dragoon)
-        30, // BRD (Bard)
-        31, // WHM (White Mage)
-        32, // BLM (Black Mage)
-        33, // ACN (Arcanist)
-        34, // SMN (Summoner)
-        35, // SCH (Scholar)
-        36, // ROG (Ninja)
-        37, // NIN (Ninja)
-        38, // MCH (Machinist)
-        39, // DRK (Dark Knight)
-        40, // AST (Astrologian)
-        41, // SAM (Samurai)
-        42, // RPR (Reaper)
-        43, // SGE (Sage)
+        6,  // CNJ -> White Mage (31)
+        7,  // THM -> Black Mage (32)
+        26, // Paladin
+        27, // Monk
+        28, // Warrior
+        29, // Dragoon
+        30, // Bard
+        31, // White Mage
+        32, // Black Mage
+        33, // Arcanist -> Summoner (34) / Scholar (35)
+        34, // Summoner
+        35, // Scholar
+        36, // ROG -> Ninja (37)
+        37, // Ninja
+        38, // Machinist
+        39, // Dark Knight
+        40, // Astrologian
+        41, // Samurai
+        42, // Reaper
+        43, // Sage
     };
 
-    public HighestCombatJobService(ICommandManager commandManager, IPluginLog log, IPlayerState playerState, IDataManager dataManager)
+    public HighestCombatJobService(ICommandManager commandManager, IPluginLog log, IPlayerState playerState, IClientState clientState, IObjectTable objectTable)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.playerState = playerState;
-        this.dataManager = dataManager;
+        this.clientState = clientState;
+        this.objectTable = objectTable;
     }
 
     public void RunTask()
@@ -146,19 +138,34 @@ public class HighestCombatJobService : IDisposable
     {
         try
         {
-            // For now, use a simplified approach that gets current job level
-            // TODO: Implement proper job level detection using DataManager or ClientState
+            // Use PlayerState to get current job level
+            // For now, we can only get the current job's level reliably
             var currentClassJob = playerState?.ClassJob;
             if (currentClassJob?.RowId == jobId)
             {
                 log.Debug($"[HighestCombatJob] Current job {jobId} level: {playerState.Level}");
                 return (int)playerState.Level;
             }
-            
-            // For other jobs, we'll need to implement proper job level detection
-            // For now, return a reasonable default for testing
-            log.Debug($"[HighestCombatJob] Job {jobId} not current, returning default level 70 for testing");
-            return 70; // Default for testing - should be replaced with actual detection
+
+            // For other jobs, we need a different approach
+            // Let's try using ObjectTable to find the player and get job levels
+            if (objectTable == null)
+            {
+                log.Warning("[HighestCombatJob] Could not get ObjectTable");
+                return 0;
+            }
+
+            var player = objectTable[0];
+            if (player == null)
+            {
+                log.Warning("[HighestCombatJob] Could not get player from ObjectTable");
+                return 0;
+            }
+
+            // Try to get job levels from player character
+            // This is a simplified approach - may need refinement
+            log.Debug($"[HighestCombatJob] Job {jobId} not current, returning 0 for now");
+            return 0; // Will only detect current job for now
         }
         catch (Exception ex)
         {
