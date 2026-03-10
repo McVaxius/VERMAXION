@@ -79,21 +79,19 @@ public class MainWindow : Window, IDisposable
             ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), $"({pendingTasks} pending)");
         }
         
-        // Debug info
-        ImGui.SameLine();
-        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"[IsRunning: {engine.IsRunning}]");
+        ImGui.Spacing();
         
-        // Global Stop button (always visible when running)
+        // Control buttons row
+        // ALWAYS visible STOP button (red, prominent)
         if (engine.IsRunning)
         {
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1f, 0.2f, 0.2f, 1f));
-            if (ImGui.Button("STOP"))
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1f, 0.1f, 0.1f, 1f));
+            if (ImGui.Button("🛑 STOP ALL TASKS"))
                 engine.Stop();
             ImGui.PopStyleColor();
             ImGui.SameLine();
         }
         
-        ImGui.SameLine();
         if (ImGui.Button("Run All"))
             engine.ManualStart();
         if (engine.IsRunning)
