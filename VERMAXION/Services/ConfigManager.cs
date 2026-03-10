@@ -269,7 +269,6 @@ public class ConfigManager
         try
         {
             var files = Directory.GetFiles(configDir, "*_Vermaxion.json");
-            log.Information($"[ConfigManager] Loading {files.Length} config files from {configDir}");
             foreach (var file in files)
             {
                 try
@@ -279,7 +278,6 @@ public class ConfigManager
                     if (account != null && !string.IsNullOrEmpty(account.AccountId))
                     {
                         accounts[account.AccountId] = account;
-                        log.Information($"Loaded account {account.AccountId} ({account.AccountAlias}) with {account.Characters.Count} characters");
                     }
                 }
                 catch (Exception ex)
