@@ -226,7 +226,7 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForGCArrival:
-                if (elapsed < 30) // Increased wait time for lifestream
+                if (elapsed < 60) // Increased wait time for lifestream (30s -> 60s)
                 {
                     // Wait for territory change
                     if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
@@ -241,13 +241,15 @@ public class FCBuffService : IDisposable
                         log.Information($"[FCBuff] Arrived at GC territory: {territory}");
                         SetState(FCBuffState.TargetingQuartermaster);
                     }
-                    else if (elapsed > 5)
+                    else if (elapsed % 10 == 0) // Log every 10 seconds
                     {
-                        log.Information($"[FCBuff] Not in GC territory yet (current: {territory}), waiting...");
+                        var currentTerritory = clientState.TerritoryType;
+                        log.Information($"[FCBuff] Still waiting for GC arrival... ({elapsed}s elapsed, current territory: {currentTerritory})");
                     }
                     return;
                 }
-                log.Error("[FCBuff] Failed to arrive at GC");
+                var finalTerritory = clientState.TerritoryType;
+                log.Error($"[FCBuff] Failed to arrive at GC after 60s. Current territory: {finalTerritory}");
                 SetState(FCBuffState.Failed);
                 break;
 

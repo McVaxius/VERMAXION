@@ -42,6 +42,8 @@ public class VermaxionEngine
     public EngineState State => state;
     public bool IsRunning => state != EngineState.Idle && state != EngineState.Complete && state != EngineState.Error;
     public string StatusText { get; private set; } = "Idle";
+    
+    public bool IsRunningDebug => IsRunning; // For debugging
 
     public VermaxionEngine(
         IPluginLog log,

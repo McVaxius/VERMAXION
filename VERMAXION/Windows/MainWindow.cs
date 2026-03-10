@@ -69,7 +69,7 @@ public class MainWindow : Window, IDisposable
             _ => new Vector4(1f, 0.8f, 0f, 1f),
         };
 
-        ImGui.TextColored(stateColor, $"Engine: {engine.StatusText}");
+        ImGui.TextColored(stateColor, $"Engine: {engine.StatusText} (State: {engine.State})");
         
         // Task count
         var pendingTasks = engine.GetPendingTaskCount();
@@ -78,6 +78,10 @@ public class MainWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), $"({pendingTasks} pending)");
         }
+        
+        // Debug info
+        ImGui.SameLine();
+        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"[IsRunning: {engine.IsRunning}]");
         
         ImGui.SameLine();
         if (ImGui.Button("Run All"))
