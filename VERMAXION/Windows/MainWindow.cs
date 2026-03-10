@@ -179,6 +179,24 @@ public class MainWindow : Window, IDisposable
                 var activeConfig = plugin.ConfigManager.GetActiveConfig();
                 Plugin.Log.Information($"[UI] Forced config load: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
             }
+            
+            // BUTTON PRESSES
+            ImGui.Spacing();
+            ImGui.Text("Button Presses");
+            ImGui.Separator();
+            
+            if (ImGui.SmallButton("[ESC]"))
+            {
+                Plugin.Log.Information("[UI] Testing ESC key press");
+                GameHelpers.CloseCurrentAddon();
+            }
+            
+            ImGui.SameLine();
+            if (ImGui.SmallButton("[NUMPAD+]"))
+            {
+                Plugin.Log.Information("[UI] Testing NUMPAD+ key press");
+                GameHelpers.SendNumpadPlus();
+            }
         }
 
         ImGui.Spacing();
