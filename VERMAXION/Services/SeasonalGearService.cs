@@ -233,18 +233,18 @@ public class SeasonalGearService : IDisposable
 
     private int GetEquipmentSlotForItem(uint itemId)
     {
-        // Map item to equipment slot (FFXIV equipped slot indices)
-        // Based on FFXIV equipment structure - need to verify correct indices
+        // Map item to equipment slot (Correct FFXIV equipped slot indices)
+        // Based on actual equipped structure from logs
         // Head items
-        if (itemId == 47924 || itemId == 47623 || itemId == 43471) return 0;  // Head (MainHand?)
+        if (itemId == 47924 || itemId == 47623 || itemId == 43471) return 2;  // Head -> Slot 2
         // Body items  
-        if (itemId == 50851 || itemId == 50850 || itemId == 43472) return 1;  // Body (OffHand?)
+        if (itemId == 50851 || itemId == 50850 || itemId == 43472) return 3;  // Body -> Slot 3
         // Hands items
-        if (itemId == 43473) return 2;  // Hands
+        if (itemId == 43473) return 4;  // Hands -> Slot 4
         // Legs items
-        if (itemId == 43474) return 3;  // Legs
+        if (itemId == 43474) return 6;  // Legs -> Slot 6
         // Feet items
-        if (itemId == 43475) return 4;  // Feet
+        if (itemId == 43475) return 7;  // Feet -> Slot 7
         
         return -1; // Unknown slot
     }
