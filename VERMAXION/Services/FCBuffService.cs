@@ -644,8 +644,21 @@ public class FCBuffService : IDisposable
                 if (elapsed < 0.5) return;
                 log.Information("[FCBuff] Closing windows");
                 GameHelpers.CloseCurrentAddon();
-                if (elapsed > 2)
+                
+                // Check if all relevant windows are closed
+                var fcAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompany");
+                var exchangeAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompanyExchange");
+                var selectAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("SelectString");
+                var yesnoAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("SelectYesno");
+                
+                bool allClosed = (fcAddon == null || !fcAddon->IsVisible) &&
+                               (exchangeAddon == null || !exchangeAddon->IsVisible) &&
+                               (selectAddon == null || !selectAddon->IsVisible) &&
+                               (yesnoAddon == null || !yesnoAddon->IsVisible);
+                
+                if (allClosed || elapsed > 5)
                 {
+                    log.Information("[FCBuff] All windows closed, task complete");
                     SetState(FCBuffState.Complete);
                 }
                 break;
