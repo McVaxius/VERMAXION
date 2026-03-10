@@ -115,41 +115,42 @@ public class MainWindow : Window, IDisposable
         ImGui.Spacing();
 
         // Task table with test buttons
-        if (ImGui.BeginTable("TaskTable", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable("TasksTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
         {
-            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthFixed, 180);
-            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 50);
+            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthFixed, 200);
+            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableSetupColumn("Test", ImGuiTableColumnFlags.WidthFixed, 80);
+            ImGui.TableSetupColumn("Test", ImGuiTableColumnFlags.WidthFixed, 60);
+            ImGui.TableSetupColumn("Maturity", ImGuiTableColumnFlags.WidthFixed, 80);
             ImGui.TableHeadersRow();
 
             // --- Every AR PostProcess ---
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
-                "Test##FCBuff", () => plugin.FCBuffService.RunTask());
+                "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "WIP");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
-                "Off##Hench", () => plugin.HenchmanService.StopHenchman());
+                "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
-                "Test##Minion", () => plugin.MinionRouletteService.RunTask());
+                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "-");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
-                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask());
+                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "-");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
-                "Test##GearUpd", () => plugin.GearUpdaterService.RunTask());
+                "Test##Gear", () => plugin.GearUpdaterService.RunTask(), "-");
 
             // --- Weekly Tasks ---
             DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
                 config.VerminionCompletedThisWeek ? "Done this week" : "Pending",
-                "Test##Verm", () => plugin.VerminionService.RunTask());
+                "Test##Verm", () => plugin.VerminionService.RunTask(), "-");
             DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
                 config.JumboCactpotCompletedThisWeek ? "Done this week" : "Pending (Sat)",
-                "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot());
+                "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "-");
 
             // --- Daily Tasks ---
             DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
                 config.MiniCactpotCompletedToday ? "Done today" : "Pending",
-                "Test##Mini", () => plugin.CactpotService.RunMiniCactpot());
+                "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "-");
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 config.ChocoboRacingCompletedToday ? "Done today" : "Pending",
-                "Test##Choco", () => plugin.ChocoboRaceService.RunTask());
+                "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "-");
 
             ImGui.EndTable();
 
@@ -188,7 +189,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TextDisabled($"AR PostProcess: {arStatus}  |  {now.DayOfWeek}");
     }
 
-    private void DrawTaskRow(string task, bool enabled, string status, string buttonLabel, Action onClick)
+    private void DrawTaskRow(string task, bool enabled, string status, string buttonLabel, Action onClick, string maturity = "-")
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -200,5 +201,22 @@ public class MainWindow : Window, IDisposable
         ImGui.TableSetColumnIndex(3);
         if (ImGui.SmallButton(buttonLabel))
             onClick();
+        ImGui.TableSetColumnIndex(4);
+        
+        // Color code maturity
+        Vector4 color;
+        switch (maturity)
+        {
+            case "OK":
+                color = new Vector4(0, 1, 0, 1); // Green
+                break;
+            case "WIP":
+                color = new Vector4(1, 1, 0, 1); // Yellow
+                break;
+            default:
+                color = new Vector4(1, 0, 0, 1); // Red
+                break;
+        }
+        ImGui.TextColored(color, maturity);
     }
 }

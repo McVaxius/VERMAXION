@@ -18,7 +18,6 @@ public class FCBuffInventoryService
         Idle,
         OpeningFCCommand,
         WaitingForFCCommand,
-        OpeningFCWindow,
         WaitingForFCWindow,
         ReadingBuffs,
         Complete,
@@ -79,13 +78,6 @@ public class FCBuffInventoryService
             case FCBuffInventoryState.WaitingForFCCommand:
                 if (elapsed.TotalSeconds < 1) return;
                 log.Information("[FCBuffInventory] Opening FC window");
-                GameHelpers.FireAddonCallback("FreeCompanyTopics", false, -2);
-                SetState(FCBuffInventoryState.WaitingForFCWindow);
-                break;
-
-            case FCBuffInventoryState.OpeningFCWindow:
-                if (elapsed.TotalSeconds < 1) return;
-                log.Information("[FCBuffInventory] Opening FC action window");
                 GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
                 SetState(FCBuffInventoryState.WaitingForFCWindow);
                 break;
@@ -123,18 +115,105 @@ public class FCBuffInventoryService
                 return;
             }
 
-            log.Information("[FCBuffInventory] FC Action window opened successfully");
-            log.Information("[FCBuffInventory] TODO: Implement buff reading from nodes 51001-51016");
-            log.Information("[FCBuffInventory] For now, manually check the window for buff counts");
+            log.Information("[FCBuffInventory] Reading FC buff inventory:");
             
-            // TODO: Implement proper node traversal to read buff counts
-            // The path from Jaksuhn's SND: GetNode(1, 10, 14, i, 3) where i = 51001 to 51016
+            var buffNames = new Dictionary<uint, string>
+            {
+                { 51001, "Seal Sweetener I" },
+                { 51002, "Seal Sweetener II" },
+                { 51003, "Seal Sweetener III" },
+                { 51004, "FC Heat of Battle I" },
+                { 51005, "FC Heat of Battle II" },
+                { 51006, "FC Heat of Battle III" },
+                { 51007, "FC Stand Stand I" },
+                { 51008, "FC Stand Stand II" },
+                { 51009, "FC Stand Stand III" },
+                { 51010, "FC Up in Arms I" },
+                { 51011, "FC Up in Arms II" },
+                { 51012, "FC Up in Arms III" },
+                { 51013, "FC Back on Your Feet I" },
+                { 51014, "FC Back on Your Feet II" },
+                { 51015, "FC Back on Your Feet III" },
+                { 51016, "FC Sprawling Synthetics" }
+            };
+
+            // Using the path from Jaksuhn's SND: GetNode(1, 10, 14, i, 3)
+            // This translates to: addon->GetNodeById(1)->PrevSiblingNode->PrevSiblingNode->GetNodeById(i)->GetComponent()->GetTextNodeById(3)
+            for (uint i = 51001; i <= 51016; i++)
+            {
+                try
+                {
+                    // Navigate the node path
+                    var node1 = addon->GetNodeById(1);
+                    if (node1 == null) continue;
+                    
+                    var node10 = node1->PrevSiblingNode; // This should be node 10
+                    if (node10 == null) continue;
+                    
+                    var node14 = node10->PrevSiblingNode; // This should be node 14
+                    if (node14 == null) continue;
+                    
+                    var componentNode = node14->GetAsAtkComponentNode();
+                    if (componentNode == null) continue;
+                    
+                    // TODO: Implement buff node finding
+                    // Try to find the specific buff node
+                    // var buffNode = FindBuffNode(componentNode, i);
+                    // if (buffNode != null)
+                    // {
+                    //     var textNode = buffNode->GetComponent()->GetTextNodeById(3);
+                    //     if (textNode != null && textNode->NodeText.StringPtr != null)
+                    //     {
+                    //         var text = textNode->NodeText.ToString();
+                    //         if (buffNames.TryGetValue(i, out var buffName))
+                    //         {
+                    //             log.Information($"[FCBuffInventory] {buffName}: {text}");
+                    //         }
+                    //     }
+                    // }
+                    
+                    // For now, just log the buff name
+                    if (buffNames.TryGetValue(i, out var buffName))
+                    {
+                        log.Information($"[FCBuffInventory] {buffName}: [TODO: Read count]");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.Debug($"[FCBuffInventory] Error reading buff {i}: {ex.Message}");
+                }
+            }
         }
         catch (Exception ex)
         {
             log.Error($"[FCBuffInventory] Error reading buffs: {ex.Message}");
         }
     }
+
+    // TODO: Fix AtkNode pointer issue
+    /*
+    private unsafe AtkNode* FindBuffNode(AtkComponentNode* parent, uint componentId)
+    {
+        if (parent == null) return null;
+        
+        var node = (AtkNode*)parent;
+        if (node->ComponentId == componentId)
+        {
+            return node;
+        }
+        
+        // Check child nodes recursively
+        var child = node->ChildNode;
+        while (child != null)
+        {
+            var found = FindBuffNode(child->AsAtkComponentNode(), componentId);
+            if (found != null) return found;
+            child = child->PrevSiblingNode;
+        }
+        
+        return null;
+    }
+    */
 
     private void SetState(FCBuffInventoryState newState)
     {
