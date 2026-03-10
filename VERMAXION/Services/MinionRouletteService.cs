@@ -1,7 +1,6 @@
 using System;
 using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace VERMAXION.Services;
 
@@ -35,7 +34,7 @@ public class MinionRouletteService : IDisposable
     public void Start()
     {
         SetState(MinionState.Executing);
-        log.Information("[MinionRoulette] Executing minion roulette action");
+        log.Information("[MinionRoulette] Executing minion roulette command");
     }
 
     public void RunTask()
@@ -59,29 +58,9 @@ public class MinionRouletteService : IDisposable
         switch (state)
         {
             case MinionState.Executing:
-                unsafe
-                {
-                    try
-                    {
-                        var am = ActionManager.Instance();
-                        if (am == null)
-                        {
-                            log.Warning("[MinionRoulette] ActionManager is null");
-                            SetState(MinionState.Failed);
-                            break;
-                        }
-
-                        // Use General Action for Minion Roulette (ID 39)
-                        var result = am->UseAction(ActionType.GeneralAction, 39);
-                        log.Information($"[MinionRoulette] UseAction result={result}");
-                        SetState(MinionState.Complete);
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error($"[MinionRoulette] UseAction failed: {ex.Message}");
-                        SetState(MinionState.Failed);
-                    }
-                }
+                commandManager.ProcessCommand("/generalaction Minion Roulette");
+                log.Information("[MinionRoulette] Minion roulette command executed");
+                SetState(MinionState.Complete);
                 break;
         }
     }
