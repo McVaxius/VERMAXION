@@ -57,7 +57,7 @@ public class SeasonalGearService : IDisposable
     {
         try
         {
-            // Use actual inventory check like SND examples: GetItemCount(itemId) > 0
+            // Use built-in GetInventoryItemCount like SND examples: GetItemCount(itemId) > 0
             unsafe
             {
                 var im = InventoryManager.Instance();
@@ -67,46 +67,10 @@ public class SeasonalGearService : IDisposable
                     return false;
                 }
 
-                // Search all inventory containers for the item
-                var containers = new ushort[]
-                {
-                    2001, // ArmoryHead
-                    2002, // ArmoryBody
-                    2003, // ArmoryHands
-                    2004, // ArmoryLegs
-                    2005, // ArmoryFeet
-                    2006, // ArmoryEar
-                    2007, // ArmoryNeck
-                    2008, // ArmoryWrist
-                    2009, // ArmoryRing
-                    2010, // ArmoryMainHand
-                    2011, // ArmoryOffHand
-                    2012, // ArmorySoulCrystal
-                    // Also check regular inventory bags
-                    3200, // Inventory1
-                    3201, // Inventory2
-                    3202, // Inventory3
-                    3203  // Inventory4
-                };
-
-                foreach (var containerType in containers)
-                {
-                    var container = im->GetInventoryContainer((InventoryType)containerType);
-                    if (container == null) continue;
-
-                    for (int i = 0; i < container->Size; i++)
-                    {
-                        var slot = container->GetInventorySlot(i);
-                        if (slot != null && slot->ItemId == itemId && slot->Quantity > 0)
-                        {
-                            log.Debug($"[SeasonalGear] Found item {itemId} in container {containerType} slot {i}, quantity: {slot->Quantity}");
-                            return true; // Found the item
-                        }
-                    }
-                }
-
-                log.Debug($"[SeasonalGear] Item {itemId} not found in any inventory container");
-                return false; // Item not found
+                // Built-in method that searches all containers automatically (SND pattern)
+                var count = im->GetInventoryItemCount(itemId);
+                log.Debug($"[SeasonalGear] GetInventoryItemCount({itemId}) = {count}");
+                return count > 0;
             }
         }
         catch (Exception ex)
