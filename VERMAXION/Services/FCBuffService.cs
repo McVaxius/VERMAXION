@@ -7,6 +7,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -123,10 +124,21 @@ public class FCBuffService : IDisposable
                 if (elapsed < 1) return;
                 log.Information("[FCBuff] Opening FC window: /freecompanycmd");
                 
-                // Try plugin command first
-                if (!commandManager.ProcessCommand("/freecompanycmd"))
+                // Send command directly via UIModule (like LootGoblin)
+                unsafe
                 {
-                    log.Error("[FCBuff] Failed to process /freecompanycmd command");
+                    var uiModule = UIModule.Instance();
+                    if (uiModule != null)
+                    {
+                        var bytes = Encoding.UTF8.GetBytes("/freecompanycmd");
+                        var utf8String = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String.FromSequence(bytes);
+                        uiModule->ProcessChatBoxEntry(utf8String, nint.Zero);
+                        log.Information("[FCBuff] Sent /freecompanycmd via UIModule");
+                    }
+                    else
+                    {
+                        log.Error("[FCBuff] UIModule is null, cannot send command");
+                    }
                 }
                 
                 SetState(FCBuffState.WaitingForFCWindow);

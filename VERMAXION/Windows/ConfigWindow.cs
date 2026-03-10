@@ -217,19 +217,24 @@ public class ConfigWindow : Window, IDisposable
             configManager.SelectedCharacterKey = "";
         }
 
-        // Character entries - current character first
-        var allChars = configManager.GetSortedCharacterKeys().ToList();
+        // Current character (if exists and not default)
         var currentChar = Plugin.ObjectTable.LocalPlayer?.Name.ToString() ?? "";
-        
-        // If current character exists, move it to top
-        if (!string.IsNullOrEmpty(currentChar) && allChars.Contains(currentChar))
+        if (!string.IsNullOrEmpty(currentChar))
         {
-            allChars.Remove(currentChar);
-            allChars.Insert(0, currentChar);
+            var isCurrentSelected = configManager.SelectedCharacterKey == currentChar;
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 1f, 0.4f, 1)); // Green text
+            if (ImGui.Selectable(currentChar, isCurrentSelected))
+            {
+                configManager.SelectedCharacterKey = currentChar;
+            }
+            ImGui.PopStyleColor();
+            ImGui.Spacing();
         }
-        
-        foreach (var charKey in allChars)
+
+        // Other characters sorted alphabetically
+        foreach (var charKey in configManager.GetSortedCharacterKeys())
         {
+            if (charKey == currentChar) continue; // Skip current char, already shown
             var displayName = plugin.Configuration.KrangleEnabled
                 ? KrangleService.KrangleName(charKey)
                 : charKey;

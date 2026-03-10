@@ -246,7 +246,7 @@ public static class GameHelpers
 
     /// <summary>
     /// Get FC points from the FC window.
-    /// For now, returns a test value. TODO: Implement proper UI node parsing.
+    /// Reads from node #17 as per XA docs.
     /// </summary>
     public static unsafe int? GetFCPointsNode()
     {
@@ -255,12 +255,27 @@ public static class GameHelpers
             var addon = Instance()->GetAddonByName("FreeCompany");
             if (addon == null) return null;
             
-            // Return test value for now - UI node parsing needs more research
-            Plugin.Log.Information("[GameHelpers] Using test FC points value (UI parsing not implemented)");
-            return 500000;
+            // Navigate to node #17 where FC points are stored (per XA docs)
+            var node = addon->GetNodeById(17u);
+            if (node == null || node->Type != NodeType.Text) return null;
+            
+            var textNode = (AtkTextNode*)node;
+            var text = textNode->NodeText.ToString();
+            
+            // Remove commas and parse (same as FUTA_GC.lua)
+            var cleanText = text.Replace(",", "");
+            if (int.TryParse(cleanText, out var points))
+            {
+                Plugin.Log.Information($"[GameHelpers] FC points from UI node #17: {points:N0}");
+                return points;
+            }
+            
+            Plugin.Log.Warning($"[GameHelpers] Failed to parse FC points from node #17: '{text}'");
+            return null;
         }
-        catch
+        catch (Exception ex)
         {
+            Plugin.Log.Error($"[GameHelpers] Error reading FC points: {ex.Message}");
             return null;
         }
     }
