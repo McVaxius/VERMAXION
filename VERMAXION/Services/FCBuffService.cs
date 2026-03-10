@@ -98,9 +98,9 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
         
-        // Force save current config to ensure values are written
-        configManager.SaveCurrentAccount();
-        log.Information("[FCBuff] Forced config save - check if values persist after reload");
+        // Force load config from file to get latest values
+        configManager.LoadAllAccounts();
+        log.Information("[FCBuff] Forced config load - getting latest values from file");
         
         purchaseAttempts = maxAttempts;
         buyCount = 0;

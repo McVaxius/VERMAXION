@@ -261,7 +261,7 @@ public class ConfigManager
         SaveCurrentAccount();
     }
 
-    private void LoadAllAccounts()
+    public void LoadAllAccounts()
     {
         try
         {

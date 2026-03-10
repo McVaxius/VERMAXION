@@ -172,11 +172,11 @@ public class MainWindow : Window, IDisposable
             }
             
             ImGui.SameLine();
-            if (ImGui.SmallButton("Force Config Save"))
+            if (ImGui.SmallButton("Force Config Load"))
             {
+                plugin.ConfigManager.LoadAllAccounts();
                 var activeConfig = plugin.ConfigManager.GetActiveConfig();
-                plugin.ConfigManager.SaveCurrentAccount();
-                Plugin.Log.Information($"[UI] Forced config save: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
+                Plugin.Log.Information($"[UI] Forced config load: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
             }
         }
 
