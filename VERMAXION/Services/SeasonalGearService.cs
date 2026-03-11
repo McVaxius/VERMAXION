@@ -342,7 +342,7 @@ public class SeasonalGearService : IDisposable
                     log.Information("[SeasonalGear] Starting final equipment finalization");
                     try
                     {
-                        // Safe finalization: character window -> updategearset (NO equiprecommended)
+                        // Correct sequence: character window -> callback 15 -> SelectYesno -> updategearset
                         CommandHelper.SendCommand("/character");
                         log.Debug("[SeasonalGear] Character window opened");
                     }
@@ -352,7 +352,22 @@ public class SeasonalGearService : IDisposable
                         SetState(GearState.Failed);
                     }
                 }
-                else if (elapsed > 2.0)
+                else if (elapsed > 2.0 && elapsed < 2.1)
+                {
+                    // Use game's own recommendation system (button 15)
+                    GameHelpers.FireAddonCallback("Character", true, 15);
+                    log.Debug("[SeasonalGear] Fired Character callback true 15 (game recommendation)");
+                    
+                    // Handle SelectYesno dialog if it appears
+                    System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                        if (GameHelpers.IsAddonVisible("SelectYesno"))
+                        {
+                            log.Debug("[SeasonalGear] Confirming SelectYesno dialog");
+                            GameHelpers.FireAddonCallback("SelectYesno", true, 0);
+                        }
+                    });
+                }
+                else if (elapsed > 3.0)
                 {
                     CommandHelper.SendCommand("/updategearset");
                     log.Debug("[SeasonalGear] Gearset update sent - finalization complete");
