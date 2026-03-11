@@ -31,6 +31,7 @@ public class VerminionService : IDisposable
     private bool joinAttempted = false;
     private bool dutySelected = false;
     private DateTime lastJoinRetry = DateTime.MinValue;
+    private int dutySelectionAttempts = 0;
 
     public enum VerminionState
     {
@@ -86,13 +87,14 @@ public class VerminionService : IDisposable
         {
             SetState(VerminionState.Idle);
         }
-        
         isActive = false;
+        state = VerminionState.Idle;
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
         joinAttempted = false;
         dutySelected = false;
         lastJoinRetry = DateTime.MinValue;
+        dutySelectionAttempts = 0;
     }
 
     public void Dispose() { }
@@ -142,6 +144,7 @@ public class VerminionService : IDisposable
                     joinAttempted = false;
                     dutySelected = false;
                     lastJoinRetry = DateTime.MinValue;
+                    dutySelectionAttempts = 0;
                     SetState(VerminionState.QueueingForDuty);
                 }
                 else
@@ -160,11 +163,22 @@ public class VerminionService : IDisposable
                 {
                     if (!dutySelected)
                     {
-                        log.Information("[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP)");
-                        // User confirmed: callback 3, 3 selects the correct duty
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 3);
-                        dutySelected = true;
-                        return; // Give it a moment to process
+                        // Try duty selection multiple times if needed
+                        if (dutySelectionAttempts < 3)
+                        {
+                            log.Information($"[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP) (attempt {dutySelectionAttempts + 1}/3)");
+                            // User confirmed: callback 3, 3 selects the correct duty
+                            // Format: /callback ContentsFinder true 3 3
+                            GameHelpers.FireAddonCallback("ContentsFinder", true, 3, 3);
+                            dutySelectionAttempts++;
+                            return; // Give it a moment to process
+                        }
+                        else
+                        {
+                            log.Warning("[Verminion] Failed to select duty after 3 attempts, retrying from start");
+                            SetState(VerminionState.OpeningDutyFinder);
+                            return;
+                        }
                     }
                     else if (!joinAttempted && elapsed > 8)
                     {
