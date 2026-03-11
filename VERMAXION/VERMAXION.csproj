@@ -30,17 +30,15 @@
     <MakeDir Directories="$(PluginOutput)" />
 
     <ItemGroup>
-
       <PluginFiles Include="$(TargetPath)" />
-
       <PluginFiles Include="$(ProjectDir)$(AssemblyName).json" />
-
+      <PluginFiles Include="images\icon.png" />
+      <PluginFiles Include="images\carrying chest of gold.png" />
+      <PluginFiles Include="images\carrying chest of gold cleaned.png" />
+      <PluginFiles Include="images\source image ai generated.png" />
     </ItemGroup>
 
-    <ItemGroup>
-      <DalamudPackagerFile Include="images\icon.png" />
-    </ItemGroup>
-
+    
     <Copy SourceFiles="@(PluginFiles)"
 
           DestinationFolder="$(PluginOutput)" />
