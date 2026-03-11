@@ -167,9 +167,9 @@ public class VerminionService : IDisposable
                         if (dutySelectionAttempts < 3)
                         {
                             log.Information($"[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP) (attempt {dutySelectionAttempts + 1}/3)");
-                            // User confirmed: callback 3, 3 selects the correct duty
-                            // Format: /callback ContentsFinder true 3 3
-                            GameHelpers.FireAddonCallback("ContentsFinder", true, 3, 3);
+                            // User confirmed: callback 3, 5 selects the correct duty
+                            // Format: /callback ContentsFinder true 3 5
+                            GameHelpers.FireAddonCallback("ContentsFinder", true, 3, 5);
                             
                             // Also try Join after each selection attempt
                             // Format: /callback ContentsFinder True 12 0
