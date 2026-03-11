@@ -204,7 +204,15 @@ public class SeasonalGearService : IDisposable
                     3200, // Inventory1
                     3201, // Inventory2
                     3202, // Inventory3
-                    3203  // Inventory4
+                    3203, // Inventory4
+                    1400, // SaddleBag1
+                    1401, // SaddleBag2
+                    1402, // SaddleBag3 - Premium Bag 1
+                    1403, // SaddleBag4 - Premium Bag 2
+                    1404, // SaddleBag5 - Premium Bag 3
+                    1405, // SaddleBag6 - Premium Bag 4
+                    1406, // SaddleBag7 - Premium Bag 5
+                    1407, // SaddleBag8 - Premium Bag 6
                 };
 
                 foreach (var containerType in containers)
@@ -429,7 +437,7 @@ public class SeasonalGearService : IDisposable
                 break;
 
             case GearState.Finalizing:
-                if (elapsed > 1.0 && elapsed < 1.1)
+                if (elapsed > 2.0 && elapsed < 2.1) // Increased delay to 2.0s
                 {
                     log.Information("[SeasonalGear] Starting final equipment finalization");
                     try
@@ -444,7 +452,7 @@ public class SeasonalGearService : IDisposable
                         SetState(GearState.Failed);
                     }
                 }
-                else if (elapsed > 2.0 && elapsed < 2.1)
+                else if (elapsed > 3.5 && elapsed < 3.6) // Increased delay to 3.5s for window load
                 {
                     // Use callback 12 (Recommend button) - corrected number
                     GameHelpers.FireAddonCallback("Character", true, 12);
@@ -459,7 +467,7 @@ public class SeasonalGearService : IDisposable
                         }
                     });
                 }
-                else if (elapsed > 4.0)  // Adjusted timing to account for 2s delay
+                else if (elapsed > 6.0)  // Increased to 6.0s to account for longer delays
                 {
                     CommandHelper.SendCommand("/updategearset");
                     log.Debug("[SeasonalGear] Gearset update sent - finalization complete");
