@@ -20,41 +20,24 @@ public class HighestCombatJobService : IDisposable
     private DateTime lastAction = DateTime.MinValue;
     private bool isRunning = false;
     
-    // Combat job IDs (DOW/DOM only - matching FUTA's which_cj() approach)
-    private static readonly uint[] CombatJobs = new uint[]
+    // Combat job IDs (DOW/DOM only - all combat jobs 1-100 excluding DOH/DOL)
+    private static readonly uint[] CombatJobs = GenerateCombatJobIds();
+    
+    private static uint[] GenerateCombatJobIds()
     {
-        // First loop: 0-7 (base classes)
-        0,  // ADV (Adventurer)
-        1,  // GLA (Paladin)
-        2,  // PGL (Monk)
-        3,  // MRD (Warrior)
-        4,  // ARC (Bard)
-        5,  // LNC (Dragoon)
-        6,  // CNJ (White Mage)
-        7,  // THM (Black Mage)
+        var jobs = new List<uint>();
         
-        // Second loop: 19-29 (expanded jobs)
-        19, // PLD (Paladin)
-        20, // MNK (Monk)
-        21, // WAR (Warrior)
-        22, // DRG (Dragoon)
-        23, // BRD (Bard)
-        24, // WHM (White Mage)
-        25, // BLM (Black Mage)
-        26, // ACN (Arcanist)
-        27, // SMN (Summoner)
-        28, // SCH (Scholar)
-        29, // ROG (Ninja)
+        // Add all job IDs 1-100, excluding DOH/DOL
+        for (uint i = 1; i <= 100; i++)
+        {
+            if (!IsDoLorDoH(i))
+            {
+                jobs.Add(i);
+            }
+        }
         
-        // Additional combat jobs (not in FUTA but needed)
-        30, // NIN (Ninja)
-        31, // MCH (Machinist)
-        32, // DRK (Dark Knight)
-        33, // AST (Astrologian)
-        34, // SAM (Samurai)
-        35, // RPR (Reaper)
-        36, // SGE (Sage)
-    };
+        return jobs.ToArray();
+    }
 
     public HighestCombatJobService(ICommandManager commandManager, IPluginLog log, IPlayerState playerState, IClientState clientState, IObjectTable objectTable, IDataManager dataManager)
     {
@@ -84,7 +67,7 @@ public class HighestCombatJobService : IDisposable
         log.Information("[HighestCombatJob] Task complete");
     }
 
-    private bool IsDoLorDoH(uint jobId)
+    private static bool IsDoLorDoH(uint jobId)
     {
         // DoL jobs: 16 (MIN), 17 (BOT), 18 (FSH)
         // DoH jobs: 8 (CRP), 9 (BSM), 10 (ARM), 11 (GSM), 12 (LTW), 13 (WVR), 14 (ALC), 15 (CUL)
@@ -101,6 +84,22 @@ public class HighestCombatJobService : IDisposable
         }
 
         log.Information($"[HighestCombatJob] Highest combat job: {highestJob.Name} (Level {highestJob.Level}, ID {highestJob.JobId})");
+        
+        // Check if this is a job stone (IDs >= 19) and try base class first
+        if (highestJob.JobId >= 19)
+        {
+            var baseClassId = GetBaseClassId(highestJob.JobId);
+            if (baseClassId.HasValue)
+            {
+                var baseCommand = GetEquipJobCommand(baseClassId.Value);
+                log.Information($"[HighestCombatJob] Trying base class first: {GetJobName(baseClassId.Value)} (/equipjob {baseCommand})");
+                CommandHelper.SendCommand($"/equipjob {baseCommand}");
+                
+                // Wait 2 seconds before trying job stone
+                System.Threading.Thread.Sleep(2000);
+                log.Information($"[HighestCombatJob] Now trying job stone: {highestJob.Name} (/equipjob {GetEquipJobCommand(highestJob.JobId)})");
+            }
+        }
         
         // Send command to switch to the highest combat job using equipjob
         var jobCommand = GetEquipJobCommand(highestJob.JobId);
@@ -187,25 +186,53 @@ public class HighestCombatJobService : IDisposable
     {
         return jobId switch
         {
-            1 or 26 or 19 => "pld",
-            2 or 27 or 20 => "mnk", 
-            3 or 28 or 21 => "war",
-            4 or 29 or 22 => "drg",
-            5 or 30 or 23 => "brd",
-            6 or 31 or 24 => "whm",
-            7 or 32 or 25 => "blm",
-            33 => "acn",
-            34 => "smn",
-            35 => "sch",
-            36 => "rog",
-            37 => "nin",
-            38 => "mch",
-            39 => "drk",
-            40 => "ast",
-            41 => "sam",
-            42 => "rpr",
-            43 => "sge",
+            // Base classes and their job stones
+            1 or 19 => "pld",  // GLA -> PLD
+            2 or 20 => "mnk",  // PGL -> MNK
+            3 or 21 => "war",  // MRD -> WAR
+            4 or 22 => "drg",  // ARC -> DRG
+            5 or 23 => "brd",  // LNC -> BRD
+            6 or 24 => "whm",  // CNJ -> WHM
+            7 or 25 => "blm",  // THM -> BLM
+            26 => "acn",      // Arcanist
+            27 => "smn",      // Summoner
+            28 => "sch",      // Scholar
+            29 or 37 => "nin", // ROG -> NIN
+            30 => "mch",      // Machinist
+            31 => "drk",      // Dark Knight
+            32 => "ast",      // Astrologian
+            33 => "sam",      // Samurai
+            34 => "rpr",      // Reaper
+            35 => "sge",      // Sage
+            
+            // Other jobs (if any)
+            36 => "pld",      // Fallback for any other
+            38 => "mnk",
+            39 => "war",
+            40 => "drg",
+            41 => "brd",
+            42 => "whm",
+            43 => "blm",
+            
             _ => "pld" // fallback
+        };
+    }
+    
+    private uint? GetBaseClassId(uint jobId)
+    {
+        return jobId switch
+        {
+            19 => 1,  // PLD -> GLA
+            20 => 2,  // MNK -> PGL
+            21 => 3,  // WAR -> MRD
+            22 => 4,  // DRG -> ARC
+            23 => 5,  // BRD -> LNC
+            24 => 6,  // WHM -> CNJ
+            25 => 7,  // BLM -> THM
+            27 => 26, // SMN -> ACN
+            28 => 26, // SCH -> ACN
+            37 => 29, // NIN -> ROG
+            _ => null // No base class or already a base class
         };
     }
 
