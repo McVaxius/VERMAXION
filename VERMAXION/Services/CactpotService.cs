@@ -212,10 +212,19 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniWaitingForSaucy:
-                // Just wait a moment then continue to next ticket
-                if (elapsed > 2.0)
+                // Handle Yes/No confirmation dialog - keep clicking as long as it's visible
+                if (GameHelpers.ClickYesIfVisible())
                 {
-                    log.Information($"[Cactpot] Mini Cactpot ticket {currentTicket} complete");
+                    log.Information("[Cactpot] Confirmed Mini Cactpot purchase/action");
+                    // Reset timer when we click yes to allow more time for next dialog
+                    stateEnteredAt = DateTime.UtcNow;
+                }
+                
+                // Wait for Saucy to complete, but extend wait time if we keep clicking yes
+                var maxWaitTime = 10.0; // Allow up to 10 seconds for multiple Yes clicks
+                if (elapsed > maxWaitTime)
+                {
+                    log.Information($"[Cactpot] Mini Cactpot ticket {currentTicket} complete (timeout after {maxWaitTime}s)");
                     
                     // Check if we have more tickets to process
                     if (currentTicket < totalTickets)

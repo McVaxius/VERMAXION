@@ -18,29 +18,25 @@ public class ResetDetectionService
         var now = DateTime.UtcNow;
         var lastReset = GetLastWeeklyReset(now);
 
-        // Check for actual reset
+        // Only trigger weekly reset detection if weekly timestamp was manually reset
+        if (config.LastWeeklyReset == DateTime.MinValue)
+        {
+            config.VerminionCompletedThisWeek = false;
+            config.JumboCactpotCompletedThisWeek = false;
+            log.Information($"Weekly reset detected (manual reset). Last reset: {lastReset:u}");
+            return true;
+        }
+        
+        // Check for actual weekly reset (not manual)
         if (config.LastWeeklyReset < lastReset)
         {
-            var wasMinValue = config.LastWeeklyReset == DateTime.MinValue;
-            
-            // Only update timestamp if it's not a manual reset (DateTime.MinValue)
-            if (!wasMinValue)
-            {
-                config.LastWeeklyReset = lastReset;
-                config.VerminionCompletedThisWeek = false;
-                config.JumboCactpotCompletedThisWeek = false;
-                log.Information($"Weekly reset detected. Last reset: {lastReset:u}");
-                return true;
-            }
-            else
-            {
-                // Manual reset - don't update timestamp, just clear completion flags
-                config.VerminionCompletedThisWeek = false;
-                config.JumboCactpotCompletedThisWeek = false;
-                log.Information($"Weekly reset detected (manual reset). Last reset: {lastReset:u}");
-                return true;
-            }
+            config.LastWeeklyReset = lastReset;
+            config.VerminionCompletedThisWeek = false;
+            config.JumboCactpotCompletedThisWeek = false;
+            log.Information($"Weekly reset detected. Last reset: {lastReset:u}");
+            return true;
         }
+        
         return false;
     }
 
@@ -49,29 +45,25 @@ public class ResetDetectionService
         var now = DateTime.UtcNow;
         var lastReset = GetLastDailyReset(now);
 
-        // Check for actual reset
+        // Only trigger daily reset detection if daily timestamp was manually reset
+        if (config.LastDailyReset == DateTime.MinValue)
+        {
+            config.MiniCactpotCompletedToday = false;
+            config.ChocoboRacingCompletedToday = false;
+            log.Information($"Daily reset detected (manual reset). Last reset: {lastReset:u}");
+            return true;
+        }
+        
+        // Check for actual daily reset (not manual)
         if (config.LastDailyReset < lastReset)
         {
-            var wasMinValue = config.LastDailyReset == DateTime.MinValue;
-            
-            // Only update timestamp if it's not a manual reset (DateTime.MinValue)
-            if (!wasMinValue)
-            {
-                config.LastDailyReset = lastReset;
-                config.MiniCactpotCompletedToday = false;
-                config.ChocoboRacingCompletedToday = false;
-                log.Information($"Daily reset detected. Last reset: {lastReset:u}");
-                return true;
-            }
-            else
-            {
-                // Manual reset - don't update timestamp, just clear completion flags
-                config.MiniCactpotCompletedToday = false;
-                config.ChocoboRacingCompletedToday = false;
-                log.Information($"Daily reset detected (manual reset). Last reset: {lastReset:u}");
-                return true;
-            }
+            config.LastDailyReset = lastReset;
+            config.MiniCactpotCompletedToday = false;
+            config.ChocoboRacingCompletedToday = false;
+            log.Information($"Daily reset detected. Last reset: {lastReset:u}");
+            return true;
         }
+        
         return false;
     }
 
