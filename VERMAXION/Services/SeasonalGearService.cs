@@ -16,20 +16,99 @@ public class SeasonalGearService : IDisposable
     private readonly IPluginLog log;
     private readonly Random rng = new();
 
-    // Seed list of seasonal gear items (user will expand later)
+    // Complete seasonal gear database (71 items from 2021-2024 research)
     // ItemID, Name, Slot
     public static readonly List<(uint ItemId, string Name, string Slot)> SeasonalGearList = new()
     {
-        (47924, "Maritime Mirrored Sunglasses", "Head"),
-        (47623, "Cozy Valentione Beret", "Head"),
-        (50851, "Oversized Picot Neotunic", "Body"),
-        (50850, "Oversized Narumi Neotunic", "Body"),
-        // Night of Devilry set (user requested)
+        // 2024 Sets
         (43471, "Night of Devilry", "Head"),
         (43472, "Night of Devilry", "Body"),
         (43473, "Night of Devilry", "Hands"),
         (43474, "Night of Devilry", "Legs"),
         (43475, "Night of Devilry", "Feet"),
+        
+        (38261, "Heavensturn Domaru", "Body"),
+        (38262, "Heavensturn Kote", "Hands"),
+        (38263, "Heavensturn Haidate", "Legs"),
+        (38264, "Heavensturn Sune-ate", "Feet"),
+        (38260, "Usagi Kabuto", "Head"),
+        
+        (36837, "Moonfire Bandana", "Head"),
+        (36838, "Moonfire Beach Cover-up", "Body"),
+        (36839, "Moonfire Wrist Torques", "Hands"),
+        (36840, "Moonfire Bottoms", "Legs"),
+        (36841, "Moonfire Sandals", "Feet"),
+        
+        (47924, "Maritime Mirrored Sunglasses", "Head"),
+        (47925, "Maritime Top", "Body"),
+        (47926, "Maritime Shorts", "Legs"),
+        (47927, "Maritime Sandals", "Feet"),
+        
+        (41565, "Imp Head", "Head"),
+        (41566, "Imp Suit", "Body"),
+        
+        // 2023 Sets
+        (38233, "Tonberry Head", "Head"),
+        (38234, "Tonberry Body", "Body"),
+        (38235, "Tonberry Hands", "Hands"),
+        (38236, "Tonberry Culottes", "Legs"),
+        (38237, "Tonberry Boots", "Feet"),
+        
+        (39245, "Phoenix Riser Helmet", "Head"),
+        (39246, "Phoenix Riser Suit", "Body"),
+        
+        (38257, "Valentione Emissary's Dress Hat", "Head"),
+        (38258, "Valentione Emissary's Ruffled Dress", "Body"),
+        (38259, "Valentione Emissary's Culottes", "Legs"),
+        (38260, "Valentione Emissary's Dress Boots", "Feet"),
+        
+        (43154, "Witch's Hat", "Head"),
+        (43155, "Witch's Coat", "Body"),
+        (43156, "Witch's Gloves", "Hands"),
+        (43157, "Witch's Boots", "Feet"),
+        
+        (43149, "Starlight Robe", "Body"),
+        (43150, "Starlight Boots", "Feet"),
+        (43151, "Starlight Tights", "Legs"),
+        (43152, "Starlight Hat", "Head"),
+        
+        // 2022 Sets
+        (43189, "Valentione Emissary's Hat", "Head"),
+        (43190, "Valentione Emissary's Jacket", "Body"),
+        (43191, "Valentione Emissary's Gloves", "Hands"),
+        (43192, "Valentione Emissary's Trousers", "Legs"),
+        (43193, "Valentione Emissary's Shoes", "Feet"),
+        
+        (36832, "Summer Sunset Bandana", "Head"),
+        (36833, "Summer Sunset Beach Cover-up", "Body"),
+        (36834, "Summer Sunset Wrist Torques", "Hands"),
+        (36835, "Summer Sunset Bottoms", "Legs"),
+        (36836, "Summer Sunset Sandals", "Feet"),
+        
+        (35857, "Little Lady's Crown", "Head"),
+        
+        (43198, "Berserker's Helm", "Head"),
+        (43199, "Berserker's Mail", "Body"),
+        (43200, "Berserker's Vambraces", "Hands"),
+        (43201, "Berserker's Flanchard", "Legs"),
+        
+        (38265, "Tora Kabuto", "Head"),
+        (38266, "Tora Tekko", "Hands"),
+        
+        // 2021 Sets
+        (43149, "Unorthodox Saint's Cap", "Head"),
+        (43150, "Unorthodox Saint's Halfrobe", "Body"),
+        (43151, "Unorthodox Saint's Gloves", "Hands"),
+        (43152, "Unorthodox Saint's Bottoms", "Legs"),
+        (43153, "Unorthodox Saint's Longboots", "Feet"),
+        
+        (28556, "Crimson Ushi Kabuto", "Head"),
+        (28557, "Black Ushi Kabuto", "Head"),
+        
+        (33653, "Chicken Head", "Head"),
+        (33654, "Chicken Suit", "Body"),
+        
+        (32803, "Lovely Moogle Cap", "Head"),
     };
 
     private enum GearState { Idle, SelectingGear, EquippingItem, WaitingForEquip, Finalizing, Complete, Failed }
@@ -238,15 +317,28 @@ public class SeasonalGearService : IDisposable
         // Map item to equipment slot (Correct FFXIV equipped slot indices)
         // Based on actual equipped structure from logs
         // Head items
-        if (itemId == 47924 || itemId == 47623 || itemId == 43471) return 2;  // Head -> Slot 2
+        if (itemId == 47924 || itemId == 47623 || itemId == 43471 || itemId == 38260 || itemId == 39245 || 
+            itemId == 38257 || itemId == 43154 || itemId == 43152 || itemId == 43189 || itemId == 35857 ||
+            itemId == 43198 || itemId == 38265 || itemId == 43149 || itemId == 28556 || itemId == 28557 ||
+            itemId == 33653 || itemId == 32803) return 2;  // Head -> Slot 2
+        
         // Body items  
-        if (itemId == 50851 || itemId == 50850 || itemId == 43472) return 3;  // Body -> Slot 3
+        if (itemId == 50851 || itemId == 50850 || itemId == 43472 || itemId == 38261 || itemId == 43470 ||
+            itemId == 36838 || itemId == 47925 || itemId == 41566 || itemId == 38234 || itemId == 39246 ||
+            itemId == 38258 || itemId == 43155 || itemId == 43149 || itemId == 43190 || itemId == 36833 ||
+            itemId == 43199 || itemId == 43150 || itemId == 33654) return 3;  // Body -> Slot 3
+        
         // Hands items
-        if (itemId == 43473) return 4;  // Hands -> Slot 4
+        if (itemId == 43473 || itemId == 38262 || itemId == 36839 || itemId == 38235 || itemId == 43156 ||
+            itemId == 43191 || itemId == 36834 || itemId == 43200 || itemId == 38266 || itemId == 43151) return 4;  // Hands -> Slot 4
+        
         // Legs items
-        if (itemId == 43474) return 6;  // Legs -> Slot 6
+        if (itemId == 43474 || itemId == 38263 || itemId == 36840 || itemId == 47926 || itemId == 38236 ||
+            itemId == 38259 || itemId == 43151 || itemId == 43192 || itemId == 36835 || itemId == 43201) return 6;  // Legs -> Slot 6
+        
         // Feet items
-        if (itemId == 43475) return 7;  // Feet -> Slot 7
+        if (itemId == 43475 || itemId == 38264 || itemId == 36841 || itemId == 47927 || itemId == 38237 ||
+            itemId == 38260 || itemId == 43157 || itemId == 43150 || itemId == 43193 || itemId == 36836 || itemId == 43153) return 7;  // Feet -> Slot 7
         
         return -1; // Unknown slot
     }
