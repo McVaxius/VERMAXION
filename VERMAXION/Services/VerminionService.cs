@@ -23,12 +23,14 @@ public class VerminionService : IDisposable
     // ContentFinderCondition row ID for Lord of Verminion (Normal)
     private const uint LovNormalCfcId = 576;
 
+    private bool isActive = false;
+    private VerminionState state = VerminionState.Idle;
+    private DateTime stateEnteredAt = DateTime.MinValue;
     private int currentAttempt = 0;
     private const int MaxAttempts = 5;
-    private DateTime stateEnteredAt = DateTime.MinValue;
-    private VerminionState state = VerminionState.Idle;
     private bool joinAttempted = false;
     private bool dutySelected = false;
+    private DateTime lastJoinRetry = DateTime.MinValue;
 
     public enum VerminionState
     {
@@ -74,10 +76,23 @@ public class VerminionService : IDisposable
 
     public void Reset()
     {
+        // If we're being reset while active, mark as Complete to clear pending count
+        if (isActive)
+        {
+            log.Information("[Verminion] Reset called while active, marking as Complete");
+            SetState(VerminionState.Complete);
+        }
+        else
+        {
+            SetState(VerminionState.Idle);
+        }
+        
+        isActive = false;
+        stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
         joinAttempted = false;
         dutySelected = false;
-        SetState(VerminionState.Idle);
+        lastJoinRetry = DateTime.MinValue;
     }
 
     public void Dispose() { }
@@ -126,6 +141,7 @@ public class VerminionService : IDisposable
                 {
                     joinAttempted = false;
                     dutySelected = false;
+                    lastJoinRetry = DateTime.MinValue;
                     SetState(VerminionState.QueueingForDuty);
                 }
                 else
@@ -144,11 +160,9 @@ public class VerminionService : IDisposable
                     if (!dutySelected)
                     {
                         log.Information("[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP)");
-                        // Navigate to the duty list and select "Player Battle (Non-RP)"
-                        // This typically requires clicking on the specific duty entry
-                        // The exact callback depends on the duty's position in the list
-                        // For LoV, it's usually the first entry, so we try callback true 1
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 1);
+                        // Try different callbacks for duty selection
+                        // Callback 2 might be the first selectable duty entry
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 2);
                         dutySelected = true;
                         return; // Give it a moment to process
                     }
@@ -159,10 +173,10 @@ public class VerminionService : IDisposable
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
                         joinAttempted = true;
                     }
-                    else if (elapsed > 8)
+                    else if (elapsed > 8 && elapsed % 5 < 0.1) // Rate limit retries to every 5 seconds
                     {
-                        // If still showing after 8s, try clicking Join again
-                        log.Information("[Verminion] ContentsFinder still visible, retrying Join");
+                        // If still showing after 8s, try clicking Join again (rate limited)
+                        log.Information($"[Verminion] ContentsFinder still visible after {elapsed:F1}s, retrying Join");
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
                     }
                 }
