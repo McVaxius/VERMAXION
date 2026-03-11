@@ -342,7 +342,7 @@ public class SeasonalGearService : IDisposable
                     log.Information("[SeasonalGear] Starting final equipment finalization");
                     try
                     {
-                        // User's solution: character window -> equiprecommended -> updategearset
+                        // Safe finalization: character window -> updategearset (NO equiprecommended)
                         CommandHelper.SendCommand("/character");
                         log.Debug("[SeasonalGear] Character window opened");
                     }
@@ -352,12 +352,7 @@ public class SeasonalGearService : IDisposable
                         SetState(GearState.Failed);
                     }
                 }
-                else if (elapsed > 2.0 && elapsed < 2.1)
-                {
-                    CommandHelper.SendCommand("/equiprecommended");
-                    log.Debug("[SeasonalGear] Equip recommended command sent");
-                }
-                else if (elapsed > 3.0)
+                else if (elapsed > 2.0)
                 {
                     CommandHelper.SendCommand("/updategearset");
                     log.Debug("[SeasonalGear] Gearset update sent - finalization complete");
