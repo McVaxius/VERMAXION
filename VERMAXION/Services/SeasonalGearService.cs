@@ -208,35 +208,17 @@ public class SeasonalGearService : IDisposable
                             
                             if (result == 0)
                             {
-                                // SUCCESS: Use MINIMAL safe finalization (NO RECOMMEND GEAR)
+                                // SUCCESS: NO finalization (CRASH INVESTIGATION)
                                 log.Information($"[SeasonalGear] Equip command sent for {itemName}");
                                 
-                                // MINIMAL finalization: No addon callbacks, just basic commands
-                                // Avoid Recommend button (equips random optimized gear) and dangerous button 15
-                                try
-                                {
-                                    log.Debug("[SeasonalGear] Starting MINIMAL safe equipment finalization");
-                                    
-                                    // Step 1: Open character window to trigger equipment refresh
-                                    CommandHelper.SendCommand("/character");
-                                    log.Debug("[SeasonalGear] Character window opened - equipment should refresh");
-                                    
-                                    // Step 2: Wait a moment, then close character window
-                                    System.Threading.Tasks.Task.Delay(1000).ContinueWith(_ => {
-                                        CommandHelper.SendCommand("/character");
-                                        log.Debug("[SeasonalGear] Character window closed");
-                                    });
-                                    
-                                    // Step 3: Update gearset after character window interaction
-                                    System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
-                                        CommandHelper.SendCommand("/updategearset");
-                                        log.Debug("[SeasonalGear] Gearset update sent - MINIMAL finalization complete");
-                                    });
-                                }
-                                catch (Exception finalizeEx)
-                                {
-                                    log.Warning($"[SeasonalGear] Error in minimal finalization: {finalizeEx.Message}");
-                                }
+                                // NO FINALIZATION: Investigating crashes with /character commands
+                                // MoveItemSlot result: 0 = success, but all finalization attempts crash
+                                // Testing if basic MoveItemSlot alone is sufficient for now
+                                log.Debug("[SeasonalGear] NO finalization - crash investigation mode");
+                                
+                                // TODO: Research safe finalization method that doesn't crash
+                                // Current crash pattern: /character command causes immediate crash
+                                // Previous crashes: button 15 (memory corruption), button 12 (random gear)
                             }
                             
                             return result == 0; // 0 = success for MoveItemSlot
