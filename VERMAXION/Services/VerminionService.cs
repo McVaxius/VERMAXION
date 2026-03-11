@@ -153,39 +153,39 @@ public class VerminionService : IDisposable
 
             case VerminionState.QueueingForDuty:
                 // Wait for ContentsFinder addon to appear, select duty, then click Join
-                if (elapsed < 2) return;
+                // Need to wait 5-8 seconds for DF window to fully load
+                if (elapsed < 6) return;
                 
                 if (GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
                     if (!dutySelected)
                     {
                         log.Information("[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP)");
-                        // Try different callbacks for duty selection
-                        // Callback 2 might be the first selectable duty entry
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 2);
+                        // User confirmed: callback 3, 3 selects the correct duty
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 3);
                         dutySelected = true;
                         return; // Give it a moment to process
                     }
-                    else if (!joinAttempted && elapsed > 3)
+                    else if (!joinAttempted && elapsed > 8)
                     {
                         log.Information("[Verminion] Duty selected, clicking Join");
                         // ContentsFinder Join button = callback true 12 (Register for duty)
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
                         joinAttempted = true;
                     }
-                    else if (elapsed > 8 && elapsed % 5 < 0.1) // Rate limit retries to every 5 seconds
+                    else if (elapsed > 15 && elapsed % 5 < 0.1) // Rate limit retries to every 5 seconds
                     {
-                        // If still showing after 8s, try clicking Join again (rate limited)
+                        // If still showing after 15s, try clicking Join again (rate limited)
                         log.Information($"[Verminion] ContentsFinder still visible after {elapsed:F1}s, retrying Join");
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
                     }
                 }
-                if (elapsed > 3 && !GameHelpers.IsAddonVisible("ContentsFinder"))
+                if (elapsed > 8 && !GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
                     log.Information("[Verminion] ContentsFinder closed, waiting for duty pop");
                     SetState(VerminionState.WaitingForDutyPop);
                 }
-                else if (elapsed > 20)
+                else if (elapsed > 30)
                 {
                     log.Warning("[Verminion] Timeout waiting for queue registration, retrying");
                     SetState(VerminionState.OpeningDutyFinder);
