@@ -358,8 +358,8 @@ public class SeasonalGearService : IDisposable
                     GameHelpers.FireAddonCallback("Character", true, 15);
                     log.Debug("[SeasonalGear] Fired Character callback true 15 (game recommendation)");
                     
-                    // Handle SelectYesno dialog if it appears
-                    System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                    // Handle SelectYesno dialog if it appears (2 second delay as specified)
+                    System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
                         if (GameHelpers.IsAddonVisible("SelectYesno"))
                         {
                             log.Debug("[SeasonalGear] Confirming SelectYesno dialog");
@@ -367,7 +367,7 @@ public class SeasonalGearService : IDisposable
                         }
                     });
                 }
-                else if (elapsed > 3.0)
+                else if (elapsed > 4.0)  // Adjusted timing to account for 2s delay
                 {
                     CommandHelper.SendCommand("/updategearset");
                     log.Debug("[SeasonalGear] Gearset update sent - finalization complete");
