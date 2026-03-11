@@ -354,9 +354,9 @@ public class SeasonalGearService : IDisposable
                 }
                 else if (elapsed > 2.0 && elapsed < 2.1)
                 {
-                    // Use game's own recommendation system (button 15)
-                    GameHelpers.FireAddonCallback("Character", true, 15);
-                    log.Debug("[SeasonalGear] Fired Character callback true 15 (game recommendation)");
+                    // Use callback 12 (Recommend button) - corrected number
+                    GameHelpers.FireAddonCallback("Character", true, 12);
+                    log.Debug("[SeasonalGear] Fired Character callback true 12 (Recommend button)");
                     
                     // Handle SelectYesno dialog if it appears (2 second delay as specified)
                     System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
