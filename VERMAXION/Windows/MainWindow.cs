@@ -131,7 +131,7 @@ public class MainWindow : Window, IDisposable
 
             // --- Weekly Tasks ---
             DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
-                config.VerminionCompletedThisWeek ? "Done this week" : "Pending",
+                config.VerminionCompletedThisWeek ? "Done this week" : "Weekly",
                 "Test##Verm", () => plugin.VerminionService.RunTask(), "OK");
             DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
                 config.JumboCactpotCompletedThisWeek ? "Done this week" : "Pending (Sat)",
@@ -142,7 +142,7 @@ public class MainWindow : Window, IDisposable
                 config.MiniCactpotCompletedToday ? "Done today" : "Daily",
                 "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
-                config.ChocoboRacingCompletedToday ? "Done today" : "Pending",
+                config.ChocoboRacingCompletedToday ? "Done today" : "Daily",
                 "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "WIP");
 
             // --- Utility Tasks ---
