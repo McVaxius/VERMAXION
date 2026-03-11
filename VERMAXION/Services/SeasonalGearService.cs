@@ -208,52 +208,34 @@ public class SeasonalGearService : IDisposable
                             
                             if (result == 0)
                             {
-                                // SUCCESS: Use SAFE Character button 12 finalization (CRASH-FIXED)
+                                // SUCCESS: Use MINIMAL safe finalization (NO RECOMMEND GEAR)
                                 log.Information($"[SeasonalGear] Equip command sent for {itemName}");
                                 
-                                // SAFE finalization: Use button 12 (Recommend) instead of dangerous button 15
-                                // Based on SND research: button 12 opens RecommendEquip addon safely
+                                // MINIMAL finalization: No addon callbacks, just basic commands
+                                // Avoid Recommend button (equips random optimized gear) and dangerous button 15
                                 try
                                 {
-                                    log.Debug("[SeasonalGear] Starting SAFE button 12 equipment finalization sequence");
+                                    log.Debug("[SeasonalGear] Starting MINIMAL safe equipment finalization");
                                     
-                                    // Step 1: Open character window
+                                    // Step 1: Open character window to trigger equipment refresh
                                     CommandHelper.SendCommand("/character");
-                                    log.Debug("[SeasonalGear] Character window opened");
+                                    log.Debug("[SeasonalGear] Character window opened - equipment should refresh");
                                     
-                                    // Step 2: Wait for character window, then click button 12 (Recommend)
-                                    System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
-                                        log.Debug("[SeasonalGear] Firing Character callback true 12 (Recommend button)");
-                                        GameHelpers.FireAddonCallback("Character", true, 12);
-                                    });
-                                    
-                                    // Step 3: Wait for RecommendEquip addon, then click button 0
+                                    // Step 2: Wait a moment, then close character window
                                     System.Threading.Tasks.Task.Delay(1000).ContinueWith(_ => {
-                                        if (GameHelpers.IsAddonVisible("RecommendEquip"))
-                                        {
-                                            log.Debug("[SeasonalGear] Firing RecommendEquip callback true 0");
-                                            GameHelpers.FireAddonCallback("RecommendEquip", true, 0);
-                                        }
-                                        else
-                                        {
-                                            log.Debug("[SeasonalGear] RecommendEquip addon not visible, skipping");
-                                        }
-                                    });
-                                    
-                                    // Step 4: Close character window and update gearset
-                                    System.Threading.Tasks.Task.Delay(1500).ContinueWith(_ => {
                                         CommandHelper.SendCommand("/character");
                                         log.Debug("[SeasonalGear] Character window closed");
                                     });
                                     
+                                    // Step 3: Update gearset after character window interaction
                                     System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
                                         CommandHelper.SendCommand("/updategearset");
-                                        log.Debug("[SeasonalGear] Gearset update sent - SAFE button 12 finalization complete");
+                                        log.Debug("[SeasonalGear] Gearset update sent - MINIMAL finalization complete");
                                     });
                                 }
                                 catch (Exception finalizeEx)
                                 {
-                                    log.Warning($"[SeasonalGear] Error in safe button 12 finalization: {finalizeEx.Message}");
+                                    log.Warning($"[SeasonalGear] Error in minimal finalization: {finalizeEx.Message}");
                                 }
                             }
                             
