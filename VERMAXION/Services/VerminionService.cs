@@ -170,6 +170,13 @@ public class VerminionService : IDisposable
                             // User confirmed: callback 3, 3 selects the correct duty
                             // Format: /callback ContentsFinder true 3 3
                             GameHelpers.FireAddonCallback("ContentsFinder", true, 3, 3);
+                            
+                            // Also try Join after each selection attempt
+                            // Format: /callback ContentsFinder True 12 0
+                            log.Information($"[Verminion] Attempting Join after selection (attempt {dutySelectionAttempts + 1})");
+                            GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
+                            
+                            dutySelected = true; // Mark as selected since we tried
                             dutySelectionAttempts++;
                             return; // Give it a moment to process
                         }
@@ -183,15 +190,15 @@ public class VerminionService : IDisposable
                     else if (!joinAttempted && elapsed > 8)
                     {
                         log.Information("[Verminion] Duty selected, clicking Join");
-                        // ContentsFinder Join button = callback true 12 (Register for duty)
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
+                        // ContentsFinder Join button = callback true 12 0 (Register for duty)
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
                         joinAttempted = true;
                     }
                     else if (elapsed > 15 && elapsed % 5 < 0.1) // Rate limit retries to every 5 seconds
                     {
                         // If still showing after 15s, try clicking Join again (rate limited)
                         log.Information($"[Verminion] ContentsFinder still visible after {elapsed:F1}s, retrying Join");
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
                     }
                 }
                 if (elapsed > 8 && !GameHelpers.IsAddonVisible("ContentsFinder"))
