@@ -129,17 +129,17 @@ public class MainWindow : Window, IDisposable
                 "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
-            DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
-                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
-                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "WIP");
+                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
+            DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
+                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "WIP");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
                 "Test##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
 
             // --- Weekly Tasks ---
             DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
                 config.VerminionCompletedThisWeek ? "Done this week" : "Pending",
-                "Test##Verm", () => plugin.VerminionService.RunTask(), "-");
+                "Test##Verm", () => plugin.VerminionService.RunTask(), "WIP");
             DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
                 config.JumboCactpotCompletedThisWeek ? "Done this week" : "Pending (Sat)",
                 "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "-");
