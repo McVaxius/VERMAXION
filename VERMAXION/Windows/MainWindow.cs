@@ -132,7 +132,7 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
                 "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
-                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "WIP");
+                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
                 "Test##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
 
