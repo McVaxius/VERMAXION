@@ -6,6 +6,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.System.String;
+using VERMAXION.Services;
 
 namespace VERMAXION.Services;
 
@@ -31,7 +32,7 @@ public class SeasonalGearService : IDisposable
         (43475, "Night of Devilry", "Feet"),
     };
 
-    private enum GearState { Idle, SelectingGear, EquippingItem, WaitingForEquip, Complete, Failed }
+    private enum GearState { Idle, SelectingGear, EquippingItem, WaitingForEquip, Finalizing, Complete, Failed }
     private GearState state = GearState.Idle;
     private DateTime stateEnteredAt;
     private readonly HashSet<uint> attemptedItems = new(); // Track by ItemId, not slot
@@ -208,17 +209,12 @@ public class SeasonalGearService : IDisposable
                             
                             if (result == 0)
                             {
-                                // SUCCESS: NO finalization (CRASH INVESTIGATION)
+                                // SUCCESS: MoveItemSlot worked, no finalization yet
                                 log.Information($"[SeasonalGear] Equip command sent for {itemName}");
+                                log.Debug("[SeasonalGear] MoveItemSlot successful - waiting for finalization");
                                 
-                                // NO FINALIZATION: Investigating crashes with /character commands
-                                // MoveItemSlot result: 0 = success, but all finalization attempts crash
-                                // Testing if basic MoveItemSlot alone is sufficient for now
-                                log.Debug("[SeasonalGear] NO finalization - crash investigation mode");
-                                
-                                // TODO: Research safe finalization method that doesn't crash
-                                // Current crash pattern: /character command causes immediate crash
-                                // Previous crashes: button 15 (memory corruption), button 12 (random gear)
+                                // NO individual finalization - will finalize all at once at the end
+                                // This avoids crashes and ensures all equipment changes persist together
                             }
                             
                             return result == 0; // 0 = success for MoveItemSlot
@@ -284,27 +280,34 @@ public class SeasonalGearService : IDisposable
         switch (state)
         {
             case GearState.SelectingGear:
-                // Find items we haven't attempted yet AND that actually exist in inventory
-                var candidates = new List<(uint ItemId, string Name, string Slot)>();
+                // Group items by slot and randomize selection per slot (only 1 attempt per slot)
+                var slotGroups = new Dictionary<string, List<(uint ItemId, string Name, string Slot)>>();
                 foreach (var item in SeasonalGearList)
                 {
                     if (!attemptedItems.Contains(item.ItemId) && HasItemInInventory(item.ItemId))
                     {
-                        candidates.Add(item);
-                        log.Debug($"[SeasonalGear] Found available item: {item.Name} (ID:{item.ItemId})");
+                        if (!slotGroups.ContainsKey(item.Slot))
+                            slotGroups[item.Slot] = new List<(uint, string, string)>();
+                        slotGroups[item.Slot].Add(item);
+                        log.Debug($"[SeasonalGear] Found available item: {item.Name} (ID:{item.ItemId}) for slot {item.Slot}");
                     }
                 }
 
-                if (candidates.Count == 0)
+                if (slotGroups.Count == 0)
                 {
-                    log.Information("[SeasonalGear] No more available items to try, complete");
-                    SetState(GearState.Complete);
+                    log.Information("[SeasonalGear] No more available items to try, starting finalization");
+                    SetState(GearState.Finalizing);
                     return;
                 }
 
-                selectedItem = candidates[rng.Next(candidates.Count)];
+                // Pick a random slot, then random item from that slot
+                var slots = slotGroups.Keys.ToList();
+                var selectedSlot = slots[rng.Next(slots.Count)];
+                var slotItems = slotGroups[selectedSlot];
+                selectedItem = slotItems[rng.Next(slotItems.Count)];
                 attemptedItems.Add(selectedItem.ItemId);
-                log.Information($"[SeasonalGear] Selected: {selectedItem.Name} (ID:{selectedItem.ItemId}, Slot:{selectedItem.Slot})");
+                
+                log.Information($"[SeasonalGear] Selected: {selectedItem.Name} (ID:{selectedItem.ItemId}, Slot:{selectedSlot})");
                 SetState(GearState.EquippingItem);
                 break;
 
@@ -330,6 +333,35 @@ public class SeasonalGearService : IDisposable
                     log.Information($"[SeasonalGear] Equip wait done for {selectedItem.Name}");
                     // Try next available item
                     SetState(GearState.SelectingGear);
+                }
+                break;
+
+            case GearState.Finalizing:
+                if (elapsed > 1.0)
+                {
+                    log.Information("[SeasonalGear] Starting final equipment finalization");
+                    try
+                    {
+                        // User's solution: character window -> equiprecommended -> updategearset
+                        CommandHelper.SendCommand("/character");
+                        log.Debug("[SeasonalGear] Character window opened");
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error($"[SeasonalGear] Error during finalization: {ex.Message}");
+                        SetState(GearState.Failed);
+                    }
+                }
+                else if (elapsed > 2.0)
+                {
+                    CommandHelper.SendCommand("/equiprecommended");
+                    log.Debug("[SeasonalGear] Equip recommended command sent");
+                }
+                else if (elapsed > 3.0)
+                {
+                    CommandHelper.SendCommand("/updategearset");
+                    log.Debug("[SeasonalGear] Gearset update sent - finalization complete");
+                    SetState(GearState.Complete);
                 }
                 break;
         }
