@@ -191,6 +191,10 @@ public sealed class Plugin : IDalamudPlugin
                 }
                 break;
 
+            case "stop":
+                FullStop();
+                break;
+
             case "cancel":
                 Engine.Cancel();
                 ChatGui.Print("[Vermaxion] Cancelled");
@@ -322,6 +326,38 @@ public sealed class Plugin : IDalamudPlugin
                 : config.Enabled
                     ? "Vermaxion ready - waiting for AR postprocess"
                     : "Vermaxion disabled"));
+    }
+
+    /// <summary>
+    /// FULL STOP - Immediately halts ALL plugin operations, services, and navigation.
+    /// </summary>
+    public void FullStop()
+    {
+        Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
+
+        // Stop engine
+        if (Engine.IsRunning)
+        {
+            Engine.Stop();
+            Log.Information("[FULL STOP] Engine stopped");
+        }
+
+        // Stop all services that have state machines
+        FCBuffService.Reset();
+        VerminionService.Reset();
+        CactpotService.Reset();
+        ChocoboRaceService.Reset();
+        MinionRouletteService.Reset();
+        SeasonalGearService.Reset();
+        GearUpdaterService.Reset();
+        Log.Information("[FULL STOP] All services reset");
+
+        // Stop VNavmesh navigation
+        VNavmeshIPC.Stop();
+        Log.Information("[FULL STOP] VNavmesh stopped");
+
+        Log.Information("[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
+        ChatGui.Print("[Vermaxion] FULL STOP - All operations halted.");
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();

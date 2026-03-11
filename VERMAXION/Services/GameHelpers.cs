@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -252,24 +253,51 @@ public static class GameHelpers
         PressKey(0x6B); // VK_ADD = 0x6B (NUMPAD+)
     }
 
-    /// <summary>
-    /// Direct Win32 keybd_event implementation (following xa docs pattern).
-    /// </summary>
+    // ─── Targeted Key Input (PostMessage to FFXIV window only) ───────────────
+    // CRITICAL: Using PostMessage instead of keybd_event to confine keypresses
+    // to the FFXIV game window. keybd_event is GLOBAL and sends to whatever
+    // window is focused, which leaks keypresses to other applications.
+
     [DllImport("user32.dll")]
-    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
-    private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const uint WM_KEYDOWN = 0x0100;
+    private const uint WM_KEYUP = 0x0101;
 
     /// <summary>
-    /// Press a key (down + up) using Win32 keybd_event.
+    /// Get the FFXIV game window handle.
+    /// </summary>
+    private static IntPtr GetGameWindowHandle()
+    {
+        try
+        {
+            return Process.GetCurrentProcess().MainWindowHandle;
+        }
+        catch
+        {
+            return IntPtr.Zero;
+        }
+    }
+
+    /// <summary>
+    /// Press a key (down + up) using PostMessage targeted at the FFXIV game window.
+    /// This ensures keypresses are confined to the game client and never leak
+    /// to other focused windows.
     /// </summary>
     /// <param name="vk">Virtual Key code</param>
     public static void PressKey(byte vk)
     {
         try
         {
-            keybd_event(vk, 0, 0, UIntPtr.Zero);        // Key down
-            keybd_event(vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Key up
+            var hwnd = GetGameWindowHandle();
+            if (hwnd == IntPtr.Zero)
+            {
+                Plugin.Log.Error($"[GameHelpers] Cannot find FFXIV window handle for key 0x{vk:X2}");
+                return;
+            }
+
+            PostMessage(hwnd, WM_KEYDOWN, (IntPtr)vk, IntPtr.Zero);
+            PostMessage(hwnd, WM_KEYUP, (IntPtr)vk, IntPtr.Zero);
         }
         catch (Exception ex)
         {

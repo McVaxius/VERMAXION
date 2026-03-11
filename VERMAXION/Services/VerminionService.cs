@@ -139,8 +139,8 @@ public class VerminionService : IDisposable
         {
             log.Information("[Verminion] Using AutoDuty IPC to queue for LoV Normal");
             
-            // Configure AutoDuty for LoV (unsynced regular mode)
-            _setConfig.InvokeAction("Unsynced", "true");
+            // Configure AutoDuty for LoV (normal synced mode - unsync not needed for LoV)
+            _setConfig.InvokeAction("Unsynced", "false");
             _setConfig.InvokeAction("dutyModeEnum", "Regular");
             
             // Start the duty (territoryId, count, bareMode)

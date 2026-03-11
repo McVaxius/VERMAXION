@@ -82,23 +82,16 @@ public class MainWindow : Window, IDisposable
         ImGui.Spacing();
         
         // Control buttons row
-        // ALWAYS visible STOP button (red, prominent)
-        if (engine.IsRunning || plugin.FCBuffService.IsActive || plugin.VerminionService.IsActive || plugin.CactpotService.IsActive || plugin.ChocoboRaceService.IsActive)
+        // ALWAYS visible FULL STOP button (red, prominent) - stops everything
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0f, 0f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 0.2f, 0.2f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0f, 0f, 1f));
+        if (ImGui.Button("FULL STOP", new Vector2(100, 30)))
         {
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1f, 0.1f, 0.1f, 1f));
-            if (ImGui.Button("🛑 STOP ALL TASKS"))
-            {
-                // Stop engine if running
-                if (engine.IsRunning) engine.Stop();
-                // Stop all individual services
-                plugin.FCBuffService.Reset();
-                plugin.VerminionService.Reset();
-                plugin.CactpotService.Reset();
-                plugin.ChocoboRaceService.Reset();
-            }
-            ImGui.PopStyleColor();
-            ImGui.SameLine();
+            plugin.FullStop();
         }
+        ImGui.PopStyleColor(3);
+        ImGui.SameLine();
         
         if (ImGui.Button("Run All"))
             engine.ManualStart();

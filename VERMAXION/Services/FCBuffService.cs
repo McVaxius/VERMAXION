@@ -36,6 +36,8 @@ public class FCBuffService : IDisposable
     private int buyMax = 15;
     private int maxPurchaseAttempts = 2; // Try SS2 first, then SS1
     private bool isSealSweetenerTwo = true; // Try Seal Sweetener II first
+    private int pathRetryCount = 0;
+    private DateTime lastPathRetryTime = DateTime.MinValue;
 
     // FC points threshold from FUTA_GC.lua
     private const int MinFCPoints = 500000;
@@ -245,6 +247,17 @@ public class FCBuffService : IDisposable
             log.Warning("[FCBuff] Failed to get player GC, defaulting to Limsa");
         }
         return 129; // Default to Limsa
+    }
+
+    private Vector3 GetQuartermasterPosition(int gcTerritory)
+    {
+        return gcTerritory switch
+        {
+            129 => new Vector3(93, 40f, 68f),     // Limsa (Upper Decks/Aft)
+            132 => new Vector3(-71, -0.5f, -5f),   // Gridania
+            130 => new Vector3(-144, 4f, -100f),   // Ul'dah
+            _ => Vector3.Zero
+        };
     }
 
     public void Reset() => SetState(FCBuffState.Idle);
@@ -480,32 +493,42 @@ public class FCBuffService : IDisposable
                 return;
 
             case FCBuffState.NavigatingToQuartermaster:
-                if (elapsed < 1) return;
+                if (elapsed < 2) return;
+                
+                // Don't try to path during zone transitions
+                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+                {
+                    log.Debug("[FCBuff] Waiting for zone transition to complete before pathing...");
+                    return;
+                }
+                
+                // Reset retry counter for fresh navigation
+                pathRetryCount = 0;
+                lastPathRetryTime = DateTime.UtcNow;
+                
                 // Navigate to Quartermaster location based on GC
                 var gcTerritory = GetCurrentGCTerritory();
-                switch (gcTerritory)
+                var navTarget = GetQuartermasterPosition(gcTerritory);
+                if (navTarget != Vector3.Zero)
                 {
-                    case 129: // Limsa - Upper Decks (Aft)
-                        log.Information("[FCBuff] Navigating to Limsa Quartermaster via VNavmesh IPC");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(93, 40f, 68f));
-                        break;
-                    case 132: // Gridania
-                        log.Information("[FCBuff] Navigating to Gridania Quartermaster via VNavmesh IPC");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-71, -0.5f, -5f));
-                        break;
-                    case 130: // Ul'dah
-                        log.Information("[FCBuff] Navigating to Ul'dah Quartermaster via VNavmesh IPC");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(new Vector3(-144, 4f, -100f));
-                        break;
+                    log.Information($"[FCBuff] Navigating to Quartermaster (attempt 1) via VNavmesh IPC");
+                    plugin.VNavmeshIPC.PathfindAndMoveTo(navTarget);
                 }
                 SetState(FCBuffState.WaitingForQuartermasterArrival);
                 break;
 
             case FCBuffState.WaitingForQuartermasterArrival:
-                // Wait for vnav navigation to complete (60s timeout)
-                if (elapsed > 60)
+                // Don't check during zone transitions
+                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    log.Error("[FCBuff] Timeout waiting for Quartermaster arrival");
+                    log.Debug("[FCBuff] Zone transition detected during navigation, waiting...");
+                    return;
+                }
+                
+                // Final timeout after extended retries (90s total)
+                if (elapsed > 90)
+                {
+                    log.Error("[FCBuff] Timeout waiting for Quartermaster arrival after retries");
                     plugin.VNavmeshIPC.Stop();
                     SetState(FCBuffState.Failed);
                     return;
@@ -516,23 +539,27 @@ public class FCBuffService : IDisposable
                 if (player == null) return;
                 
                 var targetGCTerritory = GetCurrentGCTerritory();
-                var targetPos = targetGCTerritory switch
-                {
-                    129 => new Vector3(93, 40f, 68f),  // Limsa (Upper Decks/Aft)
-                    132 => new Vector3(-71, -0.5f, -5f), // Gridania
-                    130 => new Vector3(-144, 4f, -100f), // Ul'dah
-                    _ => Vector3.Zero
-                };
+                var targetPos = GetQuartermasterPosition(targetGCTerritory);
                 
                 var distance = Vector3.Distance(player.Position, targetPos);
                 if (distance < 5f) // Within 5 yalms of target
                 {
                     log.Information($"[FCBuff] Arrived at Quartermaster location (distance: {distance:F1}y)");
+                    plugin.VNavmeshIPC.Stop();
                     SetState(FCBuffState.TargetingQuartermaster);
                 }
-                else if (elapsed % 5 == 0) // Log every 5 seconds
+                // Retry pathfinding every 5 seconds if we haven't arrived (max 3 retries)
+                else if (pathRetryCount < 3 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
                 {
-                    log.Information($"[FCBuff] Still navigating to Quartermaster... ({elapsed}s elapsed, distance: {distance:F1}y)");
+                    pathRetryCount++;
+                    lastPathRetryTime = DateTime.UtcNow;
+                    log.Information($"[FCBuff] Re-attempting pathfinding to Quartermaster (retry {pathRetryCount}/3, distance: {distance:F1}y)");
+                    plugin.VNavmeshIPC.Stop();
+                    plugin.VNavmeshIPC.PathfindAndMoveTo(targetPos);
+                }
+                else if ((int)elapsed % 10 == 0 && elapsed > 1) // Log every 10 seconds
+                {
+                    log.Information($"[FCBuff] Still navigating to Quartermaster... ({elapsed:F0}s elapsed, distance: {distance:F1}y, retries: {pathRetryCount}/3)");
                 }
                 return;
 
