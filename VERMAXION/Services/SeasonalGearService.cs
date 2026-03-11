@@ -358,12 +358,12 @@ public class SeasonalGearService : IDisposable
                     GameHelpers.FireAddonCallback("Character", true, 12);
                     log.Debug("[SeasonalGear] Fired Character callback true 12 (Recommend button)");
                     
-                    // Handle SelectYesno dialog if it appears (2 second delay as specified)
+                    // Handle RecommendEquip dialog if it appears (2 second delay as specified)
                     System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
-                        if (GameHelpers.IsAddonVisible("SelectYesno"))
+                        if (GameHelpers.IsAddonVisible("RecommendEquip"))
                         {
-                            log.Debug("[SeasonalGear] Confirming SelectYesno dialog");
-                            GameHelpers.FireAddonCallback("SelectYesno", true, 0);
+                            log.Debug("[SeasonalGear] Confirming RecommendEquip dialog");
+                            GameHelpers.FireAddonCallback("RecommendEquip", true, 0);
                         }
                     });
                 }
