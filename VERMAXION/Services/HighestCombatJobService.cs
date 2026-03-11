@@ -199,20 +199,27 @@ public class HighestCombatJobService : IDisposable
             28 => "sch",      // Scholar
             29 or 37 => "nin", // ROG -> NIN
             30 => "mch",      // Machinist
-            31 => "drk",      // Dark Knight
-            32 => "ast",      // Astrologian
-            33 => "sam",      // Samurai
-            34 => "rpr",      // Reaper
-            35 => "sge",      // Sage
+            31 => "drk",      // Dark Knight (WRONG - should be 38)
+            32 => "ast",      // Astrologian (WRONG - should be 40)
+            33 => "sam",      // Samurai (WRONG - should be 41)
+            34 => "rpr",      // Reaper (WRONG - should be 39)
+            35 => "sge",      // Sage (WRONG - should be 42)
+            
+            // Correct job IDs based on logs
+            38 => "drk",      // Dark Knight
+            39 => "rpr",      // Reaper
+            40 => "ast",      // Astrologian
+            41 => "sam",      // Samurai
+            42 => "sge",      // Sage
             
             // Other jobs (if any)
             36 => "pld",      // Fallback for any other
-            38 => "mnk",
-            39 => "war",
-            40 => "drg",
-            41 => "brd",
-            42 => "whm",
-            43 => "blm",
+            43 => "mnk",
+            44 => "war",
+            45 => "drg",
+            46 => "brd",
+            47 => "whm",
+            48 => "blm",
             
             _ => "pld" // fallback
         };
@@ -232,6 +239,8 @@ public class HighestCombatJobService : IDisposable
             27 => 26, // SMN -> ACN
             28 => 26, // SCH -> ACN
             37 => 29, // NIN -> ROG
+            38 => 3,  // DRK -> MRD
+            39 => 26, // RPR -> ACN
             _ => null // No base class or already a base class
         };
     }
@@ -246,23 +255,23 @@ public class HighestCombatJobService : IDisposable
     {
         return jobId switch
         {
-            1 or 26 => "Paladin",
-            2 or 27 => "Monk", 
-            3 or 28 => "Warrior",
-            4 or 29 => "Dragoon",
-            5 or 30 => "Bard",
-            6 or 31 => "White Mage",
-            7 or 32 => "Black Mage",
-            33 => "Arcanist",
-            34 => "Summoner",
-            35 => "Scholar",
-            36 or 37 => "Ninja",
-            38 => "Machinist",
-            39 => "Dark Knight",
+            1 or 19 => "Paladin",
+            2 or 20 => "Monk", 
+            3 or 21 => "Warrior",
+            4 or 22 => "Dragoon",
+            5 or 23 => "Bard",
+            6 or 24 => "White Mage",
+            7 or 25 => "Black Mage",
+            26 => "Arcanist",
+            27 => "Summoner",
+            28 => "Scholar",
+            29 or 37 => "Ninja",
+            30 => "Machinist",
+            38 => "Dark Knight",
+            39 => "Reaper",
             40 => "Astrologian",
             41 => "Samurai",
-            42 => "Reaper",
-            43 => "Sage",
+            42 => "Sage",
             _ => $"Job{jobId}"
         };
     }
