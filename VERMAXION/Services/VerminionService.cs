@@ -1,44 +1,33 @@
 using System;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Plugin;
-using Dalamud.Plugin.Ipc;
-using Dalamud.Plugin.Ipc.Exceptions;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 
 namespace VERMAXION.Services;
 
 /// <summary>
 /// Lord of Verminion queue service.
-/// Uses AutoDuty IPC for reliable duty queuing.
+/// Uses AgentContentsFinder.OpenRegularDuty() for direct duty queuing.
 /// LoV.lua: QueueDuty(576) for Normal mode, wait for Condition[14] (playingLordOfVerminion),
 /// click ContentsFinderConfirm Commence, wait for LovmResult, callback LovmResult false -2 then true -1.
+/// This pattern is reusable for Chocobo Racing and other Gold Saucer duties.
 /// </summary>
 public class VerminionService : IDisposable
 {
     private readonly ICommandManager commandManager;
     private readonly ICondition condition;
     private readonly IPluginLog log;
-    private readonly IDalamudPluginInterface pluginInterface;
 
     // LoV.lua: ModeIDs = { Normal = 576, Hard = 577, Extreme = 578 }
-    private const int LovNormalDutyId = 576;
-    private const uint LovNormalTerritoryId = 576; // Territory ID matches duty ID for LoV
-    // LoV.lua: CharacterCondition.playingLordOfVerminion = 14
-    // ConditionFlag index 14 = Condition[14] in SND
-
-    // AutoDuty IPC channels
-    private readonly ICallGateSubscriber<uint, bool> _contentHasPath;
-    private readonly ICallGateSubscriber<string, string, object> _setConfig;
-    private readonly ICallGateSubscriber<uint, int, bool, object> _run;
-    private readonly ICallGateSubscriber<bool> _isStopped;
-    private readonly ICallGateSubscriber<object> _stop;
+    // ContentFinderCondition row ID for Lord of Verminion (Normal)
+    private const uint LovNormalCfcId = 576;
 
     private int currentAttempt = 0;
     private const int MaxAttempts = 5;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private VerminionState state = VerminionState.Idle;
-    private bool autoDutyAvailable = false;
+    private bool joinAttempted = false;
 
     public enum VerminionState
     {
@@ -62,38 +51,11 @@ public class VerminionService : IDisposable
     public bool IsFailed => state == VerminionState.Failed;
     public string StatusText => state == VerminionState.Idle ? "Idle" : $"{state} ({currentAttempt}/{MaxAttempts})";
 
-    public VerminionService(ICommandManager commandManager, ICondition condition, IPluginLog log, IDalamudPluginInterface pluginInterface)
+    public VerminionService(ICommandManager commandManager, ICondition condition, IPluginLog log)
     {
         this.commandManager = commandManager;
         this.condition = condition;
         this.log = log;
-        this.pluginInterface = pluginInterface;
-
-        // Initialize AutoDuty IPC channels
-        try
-        {
-            _contentHasPath = pluginInterface.GetIpcSubscriber<uint, bool>("AutoDuty.ContentHasPath");
-            _setConfig = pluginInterface.GetIpcSubscriber<string, string, object>("AutoDuty.SetConfig");
-            _run = pluginInterface.GetIpcSubscriber<uint, int, bool, object>("AutoDuty.Run");
-            _isStopped = pluginInterface.GetIpcSubscriber<bool>("AutoDuty.IsStopped");
-            _stop = pluginInterface.GetIpcSubscriber<object>("AutoDuty.Stop");
-
-            // Test if AutoDuty is available
-            autoDutyAvailable = TestAutoDutyAvailability();
-            if (autoDutyAvailable)
-            {
-                log.Information("[Verminion] AutoDuty IPC available - will use for duty queuing");
-            }
-            else
-            {
-                log.Warning("[Verminion] AutoDuty IPC not available - falling back to manual queue");
-            }
-        }
-        catch (Exception ex)
-        {
-            log.Warning($"[Verminion] Failed to initialize AutoDuty IPC: {ex.Message}");
-            autoDutyAvailable = false;
-        }
     }
 
     public void Start()
@@ -117,41 +79,28 @@ public class VerminionService : IDisposable
 
     public void Dispose() { }
 
-    private bool TestAutoDutyAvailability()
+    /// <summary>
+    /// Open the Duty Finder to a specific duty using AgentContentsFinder.
+    /// Reusable for LoV, Chocobo Racing, and other Gold Saucer duties.
+    /// </summary>
+    /// <param name="contentFinderConditionId">ContentFinderCondition row ID</param>
+    public static unsafe bool OpenDutyFinder(uint contentFinderConditionId)
     {
         try
         {
-            // Try to call ContentHasPath for LoV territory
-            var hasPath = _contentHasPath.InvokeFunc(LovNormalTerritoryId);
-            log.Debug($"[Verminion] AutoDuty ContentHasPath for LoV: {hasPath}");
+            var agent = AgentContentsFinder.Instance();
+            if (agent == null)
+            {
+                Plugin.Log.Error("[DutyQueue] AgentContentsFinder is null");
+                return false;
+            }
+            agent->OpenRegularDuty(contentFinderConditionId);
+            Plugin.Log.Information($"[DutyQueue] Opened duty finder for CFC ID {contentFinderConditionId}");
             return true;
         }
-        catch (IpcError ex)
+        catch (Exception ex)
         {
-            log.Debug($"[Verminion] AutoDuty IPC test failed: {ex.Message}");
-            return false;
-        }
-    }
-
-    private bool QueueWithAutoDuty()
-    {
-        try
-        {
-            log.Information("[Verminion] Using AutoDuty IPC to queue for LoV Normal");
-            
-            // Configure AutoDuty for LoV (normal synced mode - unsync not needed for LoV)
-            _setConfig.InvokeAction("Unsynced", "false");
-            _setConfig.InvokeAction("dutyModeEnum", "Regular");
-            
-            // Start the duty (territoryId, count, bareMode)
-            _run.InvokeAction(LovNormalTerritoryId, 1, true);
-            
-            log.Information("[Verminion] AutoDuty queue command sent successfully");
-            return true;
-        }
-        catch (IpcError ex)
-        {
-            log.Error($"[Verminion] AutoDuty queue failed: {ex.Message}");
+            Plugin.Log.Error($"[DutyQueue] Failed to open duty finder: {ex.Message}");
             return false;
         }
     }
@@ -166,50 +115,53 @@ public class VerminionService : IDisposable
         switch (state)
         {
             case VerminionState.OpeningDutyFinder:
+                if (elapsed < 1) return;
                 log.Information($"[Verminion] Starting LoV queue (attempt {currentAttempt + 1}/{MaxAttempts})");
                 
-                if (autoDutyAvailable)
+                // Use AgentContentsFinder to open DF directly to LoV Normal
+                if (OpenDutyFinder(LovNormalCfcId))
                 {
-                    // Use AutoDuty IPC for reliable queuing
-                    if (QueueWithAutoDuty())
-                    {
-                        SetState(VerminionState.WaitingForDutyPop);
-                    }
-                    else
-                    {
-                        log.Warning("[Verminion] AutoDuty queue failed, retrying");
-                        SetState(VerminionState.OpeningDutyFinder);
-                    }
+                    joinAttempted = false;
+                    SetState(VerminionState.QueueingForDuty);
                 }
                 else
                 {
-                    // Fallback to manual ContentsFinder method
-                    log.Information("[Verminion] AutoDuty not available, using manual queue");
-                    commandManager.ProcessCommand("/dutyfinder");
-                    SetState(VerminionState.QueueingForDuty);
+                    log.Error("[Verminion] Failed to open duty finder");
+                    SetState(VerminionState.Failed);
                 }
                 break;
 
             case VerminionState.QueueingForDuty:
-                if (elapsed < 1.5) return;
-                // Queue for Lord of Verminion (Normal) via ContentsFinder addon
-                // LoV.lua sets IsUnrestrictedParty=false, IsLevelSync=false
+                // Wait for ContentsFinder addon to appear, then click Join
+                if (elapsed < 2) return;
+                
                 if (GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
-                    log.Information("[Verminion] ContentsFinder open, queueing for LoV Normal (ID 576)");
-                    // Use the join command - /contentroulette won't work for specific duties
-                    // Try direct duty join via chat command
-                    // Close ContentsFinder first, then use /join
-                    GameHelpers.CloseCurrentAddon();
+                    if (!joinAttempted)
+                    {
+                        log.Information("[Verminion] ContentsFinder visible, clicking Join");
+                        // ContentsFinder Join button = callback true 12 (Register for duty)
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
+                        joinAttempted = true;
+                    }
+                    else if (elapsed > 5)
+                    {
+                        // If still showing after 5s, try clicking again
+                        log.Information("[Verminion] ContentsFinder still visible, retrying Join");
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
+                    }
                 }
-                // Direct queue approach: use /dutyfinder with specific duty
-                // Alternative: fire callback on ContentsFinder to select and join
-                // Most reliable: just use the SND approach translated
-                if (elapsed > 2)
+                
+                // Check if we got queued (ContentsFinder should close)
+                if (elapsed > 3 && !GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
-                    // Queue via game systems - attempt to join LoV directly
-                    log.Information("[Verminion] Attempting to queue for LoV via duty system");
+                    log.Information("[Verminion] ContentsFinder closed, waiting for duty pop");
                     SetState(VerminionState.WaitingForDutyPop);
+                }
+                else if (elapsed > 15)
+                {
+                    log.Warning("[Verminion] Timeout waiting for queue registration, retrying");
+                    SetState(VerminionState.OpeningDutyFinder);
                 }
                 break;
 

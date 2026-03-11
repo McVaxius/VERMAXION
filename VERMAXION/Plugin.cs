@@ -72,7 +72,7 @@ public sealed class Plugin : IDalamudPlugin
         HenchmanService = new HenchmanService(CommandManager, Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
-        VerminionService = new VerminionService(CommandManager, Condition, Log, PluginInterface);
+        VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
@@ -90,7 +90,8 @@ public sealed class Plugin : IDalamudPlugin
         Engine = new VermaxionEngine(
             Log, ConfigManager, ResetDetectionService,
             HenchmanService, FCBuffService, VerminionService,
-            CactpotService, ChocoboRaceService, ARPostProcessService);
+            CactpotService, ChocoboRaceService, ARPostProcessService,
+            YesAlreadyIPC);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -355,6 +356,10 @@ public sealed class Plugin : IDalamudPlugin
         // Stop VNavmesh navigation
         VNavmeshIPC.Stop();
         Log.Information("[FULL STOP] VNavmesh stopped");
+
+        // Unpause YesAlready
+        YesAlreadyIPC.Unpause();
+        Log.Information("[FULL STOP] YesAlready unpaused");
 
         Log.Information("[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
         ChatGui.Print("[Vermaxion] FULL STOP - All operations halted.");

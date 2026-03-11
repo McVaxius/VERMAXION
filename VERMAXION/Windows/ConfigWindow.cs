@@ -516,6 +516,23 @@ public class ConfigWindow : Window, IDisposable
             changed = true;
         }
 
+        ImGui.Spacing();
+
+        // Apply Default to All button (only visible when editing default config)
+        if (isDefault)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.5f, 0.8f, 1));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.6f, 0.9f, 1));
+            if (ImGui.Button("Apply Default Settings to ALL Characters", new Vector2(-1, 30)))
+            {
+                var count = configManager.ApplyDefaultToAllCharacters();
+                Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
+                Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
+            }
+            ImGui.PopStyleColor(2);
+            ImGui.TextDisabled("Copies all toggles and values from Default to every character. Preserves completion flags.");
+        }
+
         if (changed)
             configManager.SaveCurrentAccount();
     }

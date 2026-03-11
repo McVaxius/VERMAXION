@@ -1,5 +1,6 @@
 using System;
 using Dalamud.Plugin.Services;
+using VERMAXION.IPC;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -15,6 +16,7 @@ public class VermaxionEngine
     private readonly CactpotService cactpotService;
     private readonly ChocoboRaceService chocoboRaceService;
     private readonly ARPostProcessService arService;
+    private readonly YesAlreadyIPC yesAlreadyIPC;
 
     private EngineState state = EngineState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -54,7 +56,8 @@ public class VermaxionEngine
         VerminionService verminionService,
         CactpotService cactpotService,
         ChocoboRaceService chocoboRaceService,
-        ARPostProcessService arService)
+        ARPostProcessService arService,
+        YesAlreadyIPC yesAlreadyIPC)
     {
         this.log = log;
         this.configManager = configManager;
@@ -65,6 +68,7 @@ public class VermaxionEngine
         this.cactpotService = cactpotService;
         this.chocoboRaceService = chocoboRaceService;
         this.arService = arService;
+        this.yesAlreadyIPC = yesAlreadyIPC;
     }
 
     public void StartPostProcess()
@@ -105,6 +109,7 @@ public class VermaxionEngine
         verminionService.Reset();
         cactpotService.Reset();
         chocoboRaceService.Reset();
+        yesAlreadyIPC.Unpause();
         SetState(EngineState.Idle);
     }
 
@@ -139,6 +144,7 @@ public class VermaxionEngine
         {
             case EngineState.Starting:
                 if (elapsed < 1.5) return; // AR settle delay
+                yesAlreadyIPC.Pause();
                 SetState(EngineState.DisablingHenchman);
                 break;
 
@@ -324,6 +330,7 @@ public class VermaxionEngine
                     arService.FinishPostProcess();
                     log.Information("[Engine] Signaled AR to continue");
                 }
+                yesAlreadyIPC.Unpause();
                 SetState(EngineState.Complete);
                 log.Information("[Engine] === Vermaxion post-processing complete ===");
                 break;

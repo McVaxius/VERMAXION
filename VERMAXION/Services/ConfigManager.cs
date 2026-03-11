@@ -244,6 +244,43 @@ public class ConfigManager
         return true;
     }
 
+    public int ApplyDefaultToAllCharacters()
+    {
+        var account = GetCurrentAccount();
+        if (account == null) return 0;
+
+        var defaultConfig = account.DefaultConfig;
+        int count = 0;
+
+        foreach (var charKey in account.Characters.Keys.ToList())
+        {
+            var cc = account.Characters[charKey];
+            // Copy settings (toggles + values) but preserve state tracking
+            cc.Enabled = defaultConfig.Enabled;
+            cc.EnableVerminionQueue = defaultConfig.EnableVerminionQueue;
+            cc.EnableJumboCactpot = defaultConfig.EnableJumboCactpot;
+            cc.EnableMiniCactpot = defaultConfig.EnableMiniCactpot;
+            cc.EnableChocoboRacing = defaultConfig.EnableChocoboRacing;
+            cc.EnableFCBuffRefill = defaultConfig.EnableFCBuffRefill;
+            cc.EnableHenchmanManagement = defaultConfig.EnableHenchmanManagement;
+            cc.EnableMinionRoulette = defaultConfig.EnableMinionRoulette;
+            cc.EnableSeasonalGearRoulette = defaultConfig.EnableSeasonalGearRoulette;
+            cc.EnableGearUpdater = defaultConfig.EnableGearUpdater;
+            cc.EnableHighestCombatJob = defaultConfig.EnableHighestCombatJob;
+            cc.EnableCurrentJobEquipment = defaultConfig.EnableCurrentJobEquipment;
+            cc.ChocoboRacesPerDay = defaultConfig.ChocoboRacesPerDay;
+            cc.FCBuffPurchaseAttempts = defaultConfig.FCBuffPurchaseAttempts;
+            cc.FCBuffMinPoints = defaultConfig.FCBuffMinPoints;
+            cc.FCBuffMinGil = defaultConfig.FCBuffMinGil;
+            cc.RequireSaucyForMiniCactpot = defaultConfig.RequireSaucyForMiniCactpot;
+            count++;
+        }
+
+        SaveCurrentAccount();
+        log.Information($"[ConfigManager] Applied default settings to {count} characters");
+        return count;
+    }
+
     public IEnumerable<string> GetSortedCharacterKeys()
     {
         var account = GetCurrentAccount();

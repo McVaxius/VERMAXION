@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -234,7 +233,7 @@ public static class GameHelpers
     /// </summary>
     public static void CloseCurrentAddon()
     {
-        PressKey(0x1B); // VK_ESCAPE = 0x1B
+        PressKey(VirtualKey.ESCAPE);
     }
 
     /// <summary>
@@ -242,7 +241,7 @@ public static class GameHelpers
     /// </summary>
     public static void SendConfirm()
     {
-        PressKey(0x60); // VK_NUMPAD0 = 0x60
+        PressKey(VirtualKey.NUMPAD0);
     }
 
     /// <summary>
@@ -250,59 +249,37 @@ public static class GameHelpers
     /// </summary>
     public static void SendNumpadPlus()
     {
-        PressKey(0x6B); // VK_ADD = 0x6B (NUMPAD+)
+        PressKey(VirtualKey.ADD);
     }
 
-    // ─── Targeted Key Input (PostMessage to FFXIV window only) ───────────────
-    // CRITICAL: Using PostMessage instead of keybd_event to confine keypresses
-    // to the FFXIV game window. keybd_event is GLOBAL and sends to whatever
-    // window is focused, which leaks keypresses to other applications.
-
-    [DllImport("user32.dll")]
-    private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    private const uint WM_KEYDOWN = 0x0100;
-    private const uint WM_KEYUP = 0x0101;
+    // ─── Keyboard Input (ECommons WindowsKeypress - same pattern as LootGoblin) ─────
+    // Uses ECommons.Automation.WindowsKeypress which sends PostMessage with proper
+    // scan codes to the game window handle. This confines keypresses to the FFXIV
+    // client and does NOT leak to other windows.
+    // Previous keybd_event approach was GLOBAL and leaked to any focused window.
 
     /// <summary>
-    /// Get the FFXIV game window handle.
+    /// Press and release a key using ECommons WindowsKeypress.
+    /// Sends PostMessage to the FFXIV game window with proper scan codes.
     /// </summary>
-    private static IntPtr GetGameWindowHandle()
+    public static void PressKey(VirtualKey key)
     {
         try
         {
-            return Process.GetCurrentProcess().MainWindowHandle;
-        }
-        catch
-        {
-            return IntPtr.Zero;
-        }
-    }
-
-    /// <summary>
-    /// Press a key (down + up) using PostMessage targeted at the FFXIV game window.
-    /// This ensures keypresses are confined to the game client and never leak
-    /// to other focused windows.
-    /// </summary>
-    /// <param name="vk">Virtual Key code</param>
-    public static void PressKey(byte vk)
-    {
-        try
-        {
-            var hwnd = GetGameWindowHandle();
-            if (hwnd == IntPtr.Zero)
-            {
-                Plugin.Log.Error($"[GameHelpers] Cannot find FFXIV window handle for key 0x{vk:X2}");
-                return;
-            }
-
-            PostMessage(hwnd, WM_KEYDOWN, (IntPtr)vk, IntPtr.Zero);
-            PostMessage(hwnd, WM_KEYUP, (IntPtr)vk, IntPtr.Zero);
+            WindowsKeypress.SendKeypress(key, null);
         }
         catch (Exception ex)
         {
-            Plugin.Log.Error($"[GameHelpers] Failed to press key 0x{vk:X2}: {ex.Message}");
+            Plugin.Log.Error($"[GameHelpers] Failed to press key {key}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Press a key by VK byte code (legacy compatibility).
+    /// </summary>
+    public static void PressKey(byte vk)
+    {
+        PressKey((VirtualKey)vk);
     }
 
     /// <summary>
