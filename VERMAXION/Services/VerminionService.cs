@@ -28,6 +28,7 @@ public class VerminionService : IDisposable
     private DateTime stateEnteredAt = DateTime.MinValue;
     private VerminionState state = VerminionState.Idle;
     private bool joinAttempted = false;
+    private bool dutySelected = false;
 
     public enum VerminionState
     {
@@ -74,6 +75,8 @@ public class VerminionService : IDisposable
     public void Reset()
     {
         currentAttempt = 0;
+        joinAttempted = false;
+        dutySelected = false;
         SetState(VerminionState.Idle);
     }
 
@@ -122,6 +125,7 @@ public class VerminionService : IDisposable
                 if (OpenDutyFinder(LovNormalCfcId))
                 {
                     joinAttempted = false;
+                    dutySelected = false;
                     SetState(VerminionState.QueueingForDuty);
                 }
                 else
@@ -132,33 +136,42 @@ public class VerminionService : IDisposable
                 break;
 
             case VerminionState.QueueingForDuty:
-                // Wait for ContentsFinder addon to appear, then click Join
+                // Wait for ContentsFinder addon to appear, select duty, then click Join
                 if (elapsed < 2) return;
                 
                 if (GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
-                    if (!joinAttempted)
+                    if (!dutySelected)
                     {
-                        log.Information("[Verminion] ContentsFinder visible, clicking Join");
+                        log.Information("[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP)");
+                        // Navigate to the duty list and select "Player Battle (Non-RP)"
+                        // This typically requires clicking on the specific duty entry
+                        // The exact callback depends on the duty's position in the list
+                        // For LoV, it's usually the first entry, so we try callback true 1
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 1);
+                        dutySelected = true;
+                        return; // Give it a moment to process
+                    }
+                    else if (!joinAttempted && elapsed > 3)
+                    {
+                        log.Information("[Verminion] Duty selected, clicking Join");
                         // ContentsFinder Join button = callback true 12 (Register for duty)
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
                         joinAttempted = true;
                     }
-                    else if (elapsed > 5)
+                    else if (elapsed > 8)
                     {
-                        // If still showing after 5s, try clicking again
+                        // If still showing after 8s, try clicking Join again
                         log.Information("[Verminion] ContentsFinder still visible, retrying Join");
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12);
                     }
                 }
-                
-                // Check if we got queued (ContentsFinder should close)
                 if (elapsed > 3 && !GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
                     log.Information("[Verminion] ContentsFinder closed, waiting for duty pop");
                     SetState(VerminionState.WaitingForDutyPop);
                 }
-                else if (elapsed > 15)
+                else if (elapsed > 20)
                 {
                     log.Warning("[Verminion] Timeout waiting for queue registration, retrying");
                     SetState(VerminionState.OpeningDutyFinder);
