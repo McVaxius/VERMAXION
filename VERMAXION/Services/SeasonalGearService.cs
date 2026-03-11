@@ -337,7 +337,7 @@ public class SeasonalGearService : IDisposable
                 break;
 
             case GearState.Finalizing:
-                if (elapsed > 1.0)
+                if (elapsed > 1.0 && elapsed < 1.1)
                 {
                     log.Information("[SeasonalGear] Starting final equipment finalization");
                     try
@@ -352,7 +352,7 @@ public class SeasonalGearService : IDisposable
                         SetState(GearState.Failed);
                     }
                 }
-                else if (elapsed > 2.0)
+                else if (elapsed > 2.0 && elapsed < 2.1)
                 {
                     CommandHelper.SendCommand("/equiprecommended");
                     log.Debug("[SeasonalGear] Equip recommended command sent");
