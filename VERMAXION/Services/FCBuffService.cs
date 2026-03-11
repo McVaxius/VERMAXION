@@ -266,6 +266,12 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.OpeningFCWindow:
                 if (elapsed < 1) return;
+                log.Information("[FCBuff] Closing any open FC windows with NUMPAD+");
+                GameHelpers.SendNumpadPlus();
+                
+                // Small delay to ensure window is closed
+                if (elapsed < 1.5) return;
+                
                 log.Information("[FCBuff] Opening FC window: /freecompanycmd");
                 CommandHelper.SendCommand("/freecompanycmd");
                 SetState(FCBuffState.WaitingForFCWindow);
