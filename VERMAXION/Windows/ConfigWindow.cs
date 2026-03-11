@@ -506,6 +506,7 @@ public class ConfigWindow : Window, IDisposable
         {
             cc.VerminionCompletedThisWeek = false;
             cc.JumboCactpotCompletedThisWeek = false;
+            cc.LastWeeklyReset = DateTime.MinValue;
             changed = true;
         }
         ImGui.SameLine();
@@ -513,6 +514,7 @@ public class ConfigWindow : Window, IDisposable
         {
             cc.MiniCactpotCompletedToday = false;
             cc.ChocoboRacingCompletedToday = false;
+            cc.LastDailyReset = DateTime.MinValue;
             changed = true;
         }
 

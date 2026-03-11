@@ -49,6 +49,7 @@ public class FCBuffService : IDisposable
         Idle,
         CheckingFCPoints,
         OpeningFCWindow,
+        WaitingForFCCommand,
         WaitingForFCWindow,
         CheckingFCPointsInWindow,
         CheckingBuffInventory,
@@ -253,7 +254,7 @@ public class FCBuffService : IDisposable
     {
         return gcTerritory switch
         {
-            129 => new Vector3(93, 40f, 68f),     // Limsa (Upper Decks/Aft)
+            129 => new Vector3(94, 40f, 68f),     // Limsa (Upper Decks/Aft)
             132 => new Vector3(-71, -0.5f, -5f),   // Gridania
             130 => new Vector3(-144, 4f, -100f),   // Ul'dah
             _ => Vector3.Zero
@@ -279,30 +280,21 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.OpeningFCWindow:
                 if (elapsed < 1) return;
-                if (elapsed < 1.5)
-                {
-                    // Send NUMPAD+ once at ~1s to close any open FC windows
-                    if (elapsed >= 1 && elapsed < 1.1)
-                    {
-                        log.Information("[FCBuff] Closing any open FC windows with NUMPAD+");
-                        GameHelpers.SendNumpadPlus();
-                    }
-                    return;
-                }
-                
                 log.Information("[FCBuff] Opening FC window: /freecompanycmd");
                 CommandHelper.SendCommand("/freecompanycmd");
-                SetState(FCBuffState.WaitingForFCWindow);
+                SetState(FCBuffState.WaitingForFCCommand);
                 break;
 
-            case FCBuffState.WaitingForFCWindow:
+            case FCBuffState.WaitingForFCCommand:
                 if (elapsed < 3)
                 {
                     // Check if FC window is ready
                     if (GameHelpers.IsAddonVisible("FreeCompany"))
                     {
-                        log.Information("[FCBuff] FC window is ready");
-                        SetState(FCBuffState.CheckingFCPointsInWindow);
+                        log.Information("[FCBuff] FC window is ready, switching to Actions tab");
+                        log.Information("[FCBuff] [Callback] Firing FreeCompany with args (true, 0, 4)");
+                        GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
+                        SetState(FCBuffState.WaitingForFCWindow);
                     }
                     return;
                 }
@@ -310,12 +302,26 @@ public class FCBuffService : IDisposable
                 if (elapsed < 6)
                 {
                     log.Information("[FCBuff] First attempt failed, trying again");
-                    commandManager.ProcessCommand("/freecompanycmd");
-                    SetState(FCBuffState.WaitingForFCWindow);
+                    CommandHelper.SendCommand("/freecompanycmd");
+                    SetState(FCBuffState.WaitingForFCCommand);
                     return;
                 }
                 log.Error("[FCBuff] Failed to open FC window");
                 SetState(FCBuffState.Failed);
+                break;
+
+            case FCBuffState.WaitingForFCWindow:
+                if (elapsed < 2) return;
+                if (GameHelpers.IsAddonVisible("FreeCompanyAction"))
+                {
+                    log.Information("[FCBuff] FC Action window appeared, ready for buff counting");
+                    SetState(FCBuffState.CheckingBuffInventory);
+                }
+                else if (elapsed > 5)
+                {
+                    log.Error("[FCBuff] FC Action window did not appear");
+                    SetState(FCBuffState.Failed);
+                }
                 break;
 
             case FCBuffState.CheckingFCPointsInWindow:
@@ -720,6 +726,8 @@ public class FCBuffService : IDisposable
     {
         try
         {
+            // At this point, FreeCompanyAction window should already be open and visible
+            // thanks to the state machine (OpeningFCWindow -> WaitingForFCCommand -> WaitingForFCWindow)
             var addon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompanyAction");
             if (addon == null || !addon->IsVisible)
             {
@@ -727,18 +735,6 @@ public class FCBuffService : IDisposable
                 return 0;
             }
 
-            // Switch to Actions tab (index 4)
-            GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);// Wait a moment for tab switch
-            System.Threading.Thread.Sleep(500);
-            GameHelpers.FireAddonCallback("FreeCompany", true, 0, -2);// Wait a moment for tab switch
-            System.Threading.Thread.Sleep(500);
-
-            GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);// Wait a moment for tab switch
-            System.Threading.Thread.Sleep(500);
-            GameHelpers.FireAddonCallback("FreeCompany", true, 0, -2);// Wait a moment for tab switch
-            System.Threading.Thread.Sleep(500);
-
-            
             // Count occurrences of specific buff names
             int sealSweetenerCount = 0;
             
@@ -758,35 +754,26 @@ public class FCBuffService : IDisposable
                     // Step 3: Find the actual List Component Node 14 from children of node 10
                     var node14 = node10->ChildNode;
                     bool foundComponent = false;
-                    int childIndex = 0;
                     
-                    while (node14 != null && childIndex < 50)
+                    // Search for List Component Node (type >= 1000)
+                    while (node14 != null && (int)node14->Type < 1000)
                     {
-                        if ((int)node14->Type >= 1000)
-                        {
-                            foundComponent = true;
-                            break;
-                        }
                         node14 = node14->PrevSiblingNode;
-                        childIndex++;
                     }
                     
-                    if (!foundComponent || node14 == null) continue;
+                    if (node14 == null) continue;
                     
-                    // Step 4: Get list item renderer i from the list component using UldManager.NodeList
-                    var componentNode14 = node14->GetAsAtkComponentNode();
-                    if (componentNode14 == null) continue;
+                    // Step 4: Access ListItemRenderer via UldManager.NodeList
+                    var listComponent = node14->GetComponent();
+                    if (listComponent == null) continue;
                     
-                    var listComponent = componentNode14->GetComponent();
                     var nodeList = listComponent->UldManager.NodeList;
-                    
-                    // Find the i-th ListItemRenderer (using index, not buff ID)
-                    int listIndex = (int)(i - 51001) + 1;
+                    int listIndex = (int)(i - 51001) + 1; // List items start at index 1
                     
                     var listItemNode = nodeList[listIndex];
                     if (listItemNode == null) continue;
                     
-                    // Step 5: Get text node 3 from the ListItemRenderer using its component
+                    // Step 5: Get text from node 3
                     var listItemComponent = listItemNode->GetAsAtkComponentNode();
                     if (listItemComponent == null) continue;
                     
@@ -796,20 +783,21 @@ public class FCBuffService : IDisposable
                     var textNode = listItemComp->GetTextNodeById(3);
                     if (textNode == null) continue;
                     
-                    // Read the text from node 3
                     var text = textNode->NodeText.ToString();
-                    
-                    // Count Seal Sweetener II occurrences
                     if (text == "Seal Sweetener II")
                     {
                         sealSweetenerCount++;
+                        log.Debug($"[FCBuff] Found Seal Sweetener II at slot {i}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    log.Debug($"[FCBuff] Error reading buff {i}: {ex.Message}");
+                    log.Debug($"[FCBuff] Error checking buff slot {i}: {ex.Message}");
                 }
             }
+            
+            log.Information($"[FCBuff] Seal Sweetener II count: {sealSweetenerCount}");
+            commandManager.ProcessCommand($"/echo Seal Sweetener II count: {sealSweetenerCount}");
             
             return sealSweetenerCount;
         }
