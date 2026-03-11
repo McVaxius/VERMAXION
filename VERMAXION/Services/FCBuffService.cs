@@ -728,10 +728,16 @@ public class FCBuffService : IDisposable
             }
 
             // Switch to Actions tab (index 4)
-            GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
-            
-            // Wait a moment for tab switch
+            GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);// Wait a moment for tab switch
             System.Threading.Thread.Sleep(500);
+            GameHelpers.FireAddonCallback("FreeCompany", true, 0, -2);// Wait a moment for tab switch
+            System.Threading.Thread.Sleep(500);
+
+            GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);// Wait a moment for tab switch
+            System.Threading.Thread.Sleep(500);
+            GameHelpers.FireAddonCallback("FreeCompany", true, 0, -2);// Wait a moment for tab switch
+            System.Threading.Thread.Sleep(500);
+
             
             // Count occurrences of specific buff names
             int sealSweetenerCount = 0;
