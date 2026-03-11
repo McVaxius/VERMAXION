@@ -72,7 +72,7 @@ public sealed class Plugin : IDalamudPlugin
         HenchmanService = new HenchmanService(CommandManager, Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
-        VerminionService = new VerminionService(CommandManager, Condition, Log);
+        VerminionService = new VerminionService(CommandManager, Condition, Log, PluginInterface);
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
