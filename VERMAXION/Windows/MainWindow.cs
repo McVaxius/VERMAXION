@@ -120,6 +120,8 @@ public class MainWindow : Window, IDisposable
             // --- Every AR PostProcess ---
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
                 "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
+            DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
+                "Test##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",

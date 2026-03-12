@@ -16,6 +16,7 @@ public class VermaxionEngine
     private readonly CactpotService cactpotService;
     private readonly ChocoboRaceService chocoboRaceService;
     private readonly FashionReportService fashionReportService;
+    private readonly RegisterRegistrablesService registerRegistrablesService;
     private readonly ARPostProcessService arService;
     private readonly YesAlreadyIPC yesAlreadyIPC;
 
@@ -32,6 +33,7 @@ public class VermaxionEngine
         DisablingHenchman,
         CheckingResets,
         RunningFCBuff,
+        RunningRegisterRegistrables,
         RunningVerminion,
         RunningMiniCactpot,
         RunningJumboCactpot,
@@ -59,6 +61,7 @@ public class VermaxionEngine
         CactpotService cactpotService,
         ChocoboRaceService chocoboRaceService,
         FashionReportService fashionReportService,
+        RegisterRegistrablesService registerRegistrablesService,
         ARPostProcessService arService,
         YesAlreadyIPC yesAlreadyIPC)
     {
@@ -71,6 +74,7 @@ public class VermaxionEngine
         this.cactpotService = cactpotService;
         this.chocoboRaceService = chocoboRaceService;
         this.fashionReportService = fashionReportService;
+        this.registerRegistrablesService = registerRegistrablesService;
         this.arService = arService;
         this.yesAlreadyIPC = yesAlreadyIPC;
     }
@@ -192,6 +196,37 @@ public class VermaxionEngine
                 else
                 {
                     AdvanceToNextTask(EngineState.RunningFCBuff);
+                }
+                break;
+
+            case EngineState.RunningRegisterRegistrables:
+                if (activeConfig!.EnableRegisterRegistrables)
+                {
+                    if (!registerRegistrablesService.IsActive && !registerRegistrablesService.IsComplete && !registerRegistrablesService.IsFailed)
+                    {
+                        log.Information("[Engine] Starting Register Registrables");
+                        registerRegistrablesService.Start();
+                        return;
+                    }
+
+                    registerRegistrablesService.Update();
+
+                    if (registerRegistrablesService.IsComplete)
+                    {
+                        log.Information("[Engine] Register Registrables completed");
+                        registerRegistrablesService.Reset();
+                        AdvanceToNextTask(EngineState.RunningRegisterRegistrables);
+                    }
+                    else if (registerRegistrablesService.IsFailed)
+                    {
+                        log.Warning("[Engine] Register Registrables failed - continuing");
+                        registerRegistrablesService.Reset();
+                        AdvanceToNextTask(EngineState.RunningRegisterRegistrables);
+                    }
+                }
+                else
+                {
+                    AdvanceToNextTask(EngineState.RunningRegisterRegistrables);
                 }
                 break;
 
@@ -378,7 +413,8 @@ public class VermaxionEngine
     {
         var next = currentTask switch
         {
-            EngineState.RunningFCBuff => EngineState.RunningVerminion,
+            EngineState.RunningFCBuff => EngineState.RunningRegisterRegistrables,
+            EngineState.RunningRegisterRegistrables => EngineState.RunningVerminion,
             EngineState.RunningVerminion => EngineState.RunningMiniCactpot,
             EngineState.RunningMiniCactpot => EngineState.RunningJumboCactpot,
             EngineState.RunningJumboCactpot => EngineState.RunningFashionReport,
@@ -403,6 +439,7 @@ public class VermaxionEngine
             EngineState.DisablingHenchman => "Disabling Henchman",
             EngineState.CheckingResets => "Checking resets",
             EngineState.RunningFCBuff => "FC Buff Refill",
+            EngineState.RunningRegisterRegistrables => "Register Registrables",
             EngineState.RunningVerminion => "Verminion Queue",
             EngineState.RunningMiniCactpot => "Mini Cactpot",
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",

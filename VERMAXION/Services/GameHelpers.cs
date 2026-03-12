@@ -18,6 +18,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using ECommons.Automation;
+using Lumina.Excel.Sheets;
 
 namespace VERMAXION.Services;
 
@@ -208,6 +209,101 @@ public static class GameHelpers
         catch
         {
             return 0f;
+        }
+    }
+
+    /// <summary>
+    /// Use an item from inventory by item ID.
+    /// Mirrors FrenRider's approach: uses extraParam 65535 and checks for casting/occupied state.
+    /// </summary>
+    public static unsafe bool UseItem(uint itemId)
+    {
+        try
+        {
+            var player = Plugin.ObjectTable.LocalPlayer;
+            if (player == null)
+            {
+                Plugin.Log.Warning($"UseItem({itemId}): LocalPlayer is null");
+                return false;
+            }
+
+            // Check if player is casting
+            if (player.IsCasting)
+            {
+                Plugin.Log.Debug($"UseItem({itemId}): Player is casting, skipping");
+                return false;
+            }
+
+            // Check if player is occupied (in cutscene, etc)
+            if (Plugin.Condition[ConditionFlag.OccupiedInQuestEvent] ||
+                Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
+                Plugin.Condition[ConditionFlag.Occupied33] ||
+                Plugin.Condition[ConditionFlag.Occupied39])
+            {
+                Plugin.Log.Debug($"UseItem({itemId}): Player is occupied, skipping");
+                return false;
+            }
+
+            var am = ActionManager.Instance();
+            if (am == null)
+            {
+                Plugin.Log.Warning($"UseItem({itemId}): ActionManager is null");
+                return false;
+            }
+
+            // Check if the action is ready
+            var status = am->GetActionStatus(ActionType.Item, itemId);
+            if (status != 0)
+            {
+                Plugin.Log.Debug($"UseItem({itemId}): ActionStatus={status}, not ready");
+                return false;
+            }
+
+            // Use item with extraParam 65535 (required for item usage)
+            var result = am->UseAction(ActionType.Item, itemId, extraParam: 65535);
+            Plugin.Log.Information($"UseItem({itemId}): UseAction result={result}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"UseItem({itemId}) failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Get item name from game data.
+    /// </summary>
+    public static string GetItemName(uint itemId)
+    {
+        try
+        {
+            var itemSheet = Plugin.DataManager.GetExcelSheet<Item>();
+            if (itemSheet == null) return $"Unknown Item {itemId}";
+
+            if (!itemSheet.TryGetRow(itemId, out var item)) return $"Unknown Item {itemId}";
+            return item.Name.ToString() ?? $"Unknown Item {itemId}";
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"GetItemName({itemId}) failed: {ex.Message}");
+            return $"Unknown Item {itemId}";
+        }
+    }
+
+    /// <summary>
+    /// Check if player is alive.
+    /// </summary>
+    public static bool IsPlayerAlive()
+    {
+        try
+        {
+            var player = Plugin.ObjectTable.LocalPlayer;
+            return player != null && player.CurrentHp > 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 

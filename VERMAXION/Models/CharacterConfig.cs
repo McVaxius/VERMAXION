@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace VERMAXION.Models;
 
@@ -18,12 +19,16 @@ public class CharacterConfig
     public bool EnableHighestCombatJob { get; set; } = false;
     public bool EnableCurrentJobEquipment { get; set; } = false;
     public bool EnableFashionReport { get; set; } = false;
+    public bool EnableRegisterRegistrables { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
     public int FCBuffPurchaseAttempts { get; set; } = 15;
     public int FCBuffMinPoints { get; set; } = 500000;
     public int FCBuffMinGil { get; set; } = 16000;
+    
+    // --- Personal Registrable Items ---
+    public List<uint> PersonalRegistrableItems { get; set; } = new();
 
     // --- State Tracking (runtime, persisted per reset cycle) ---
     public DateTime LastWeeklyReset { get; set; } = DateTime.MinValue;
@@ -59,10 +64,12 @@ public class CharacterConfig
             EnableHighestCombatJob = EnableHighestCombatJob,
             EnableCurrentJobEquipment = EnableCurrentJobEquipment,
             EnableFashionReport = EnableFashionReport,
+            EnableRegisterRegistrables = EnableRegisterRegistrables,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
             FCBuffMinGil = FCBuffMinGil,
+            PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,
             VerminionCompletedThisWeek = VerminionCompletedThisWeek,

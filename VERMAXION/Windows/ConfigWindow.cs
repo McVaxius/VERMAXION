@@ -205,6 +205,13 @@ public class ConfigWindow : Window, IDisposable
         }
     }
 
+    private static string CleanLuminaText(string text)
+    {
+        if (string.IsNullOrEmpty(text) || !text.Contains('\u0001'))
+            return text;
+        return text.Split('\u0001')[1] ?? text;
+    }
+
     private void DrawCharacterList(ConfigManager configManager)
     {
         ImGui.Text(UIConstants.ConfigLabels.Characters);
@@ -227,7 +234,13 @@ public class ConfigWindow : Window, IDisposable
         {
             var isCurrentSelected = configManager.SelectedCharacterKey == currentChar;
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 1f, 0.4f, 1)); // Green text
-            if (ImGui.Selectable(currentChar, isCurrentSelected))
+            
+            // Apply krangle to current character display
+            var displayCurrentChar = plugin.Configuration.KrangleEnabled 
+                ? KrangleService.KrangleName(CleanLuminaText(currentChar))
+                : currentChar;
+                
+            if (ImGui.Selectable(displayCurrentChar, isCurrentSelected))
             {
                 configManager.SelectedCharacterKey = currentChar;
             }
@@ -240,7 +253,7 @@ public class ConfigWindow : Window, IDisposable
         {
             if (charKey == currentChar) continue; // Skip current char, already shown
             var displayName = plugin.Configuration.KrangleEnabled
-                ? KrangleService.KrangleName(charKey)
+                ? KrangleService.KrangleName(CleanLuminaText(charKey))
                 : charKey;
 
             var isSelected = configManager.SelectedCharacterKey == charKey;
@@ -269,7 +282,7 @@ public class ConfigWindow : Window, IDisposable
 
         var displayName = isDefault ? "Default Config" : charKey;
         if (plugin.Configuration.KrangleEnabled && !isDefault)
-            displayName = KrangleService.KrangleName(charKey);
+            displayName = KrangleService.KrangleName(CleanLuminaText(charKey));
 
         ImGui.Text($"{UIConstants.ConfigLabels.Settings}: {displayName}");
         if (isDefault)
@@ -444,6 +457,18 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
             }
+
+            var register = cc.EnableRegisterRegistrables;
+            if (ImGui.Checkbox("Register Registrables", ref register))
+            {
+                cc.EnableRegisterRegistrables = register;
+                changed = true;
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Configure##RegistrableConfig"))
+            {
+                plugin.RegistrableConfigWindow.IsOpen = true;
+            }
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.DailyTasks, ImGuiTreeNodeFlags.DefaultOpen))
@@ -558,7 +583,7 @@ public class ConfigWindow : Window, IDisposable
 
         var alias = acc.AccountAlias;
         if (plugin.Configuration.KrangleEnabled && !string.IsNullOrEmpty(alias))
-            alias = KrangleService.KrangleName(alias);
+            alias = KrangleService.KrangleName(CleanLuminaText(alias));
 
         return string.IsNullOrWhiteSpace(alias) ? accountId : $"{alias} ({accountId})";
     }

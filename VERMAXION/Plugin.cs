@@ -9,6 +9,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
 using VERMAXION.Services;
+using VERMAXION.Models;
 using VERMAXION.Windows;
 
 namespace VERMAXION;
@@ -42,7 +43,9 @@ public sealed class Plugin : IDalamudPlugin
     public CactpotService CactpotService { get; init; }
     public ChocoboRaceService ChocoboRaceService { get; init; }
     public FashionReportService FashionReportService { get; init; }
+    public RegisterRegistrablesService RegisterRegistrablesService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
+    public RegistrableConfigManager RegistrableConfigManager { get; init; }
     public MinionRouletteService MinionRouletteService { get; init; }
     public SeasonalGearService SeasonalGearService { get; init; }
     public GearUpdaterService GearUpdaterService { get; init; }
@@ -53,8 +56,9 @@ public sealed class Plugin : IDalamudPlugin
     public VermaxionEngine Engine { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
-    private ConfigWindow ConfigWindow { get; init; }
-    private MainWindow MainWindow { get; init; }
+    public ConfigWindow ConfigWindow { get; init; }
+    public MainWindow MainWindow { get; init; }
+    public RegistrableConfigWindow RegistrableConfigWindow { get; init; }
 
     private IDtrBarEntry? dtrEntry;
     private bool wasLoggedIn;
@@ -64,6 +68,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ConfigManager = new ConfigManager(PluginInterface, Log);
+        RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
 
         if (!string.IsNullOrEmpty(Configuration.LastAccountId))
             ConfigManager.CurrentAccountId = Configuration.LastAccountId;
@@ -77,6 +82,7 @@ public sealed class Plugin : IDalamudPlugin
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
         FashionReportService = new FashionReportService(CommandManager, Condition, ObjectTable, Log, TargetManager);
+        RegisterRegistrablesService = new RegisterRegistrablesService(CommandManager, ObjectTable, Log, ConfigManager);
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
         GearUpdaterService = new GearUpdaterService(CommandManager, Log, ClientState, PlayerState);
@@ -93,13 +99,15 @@ public sealed class Plugin : IDalamudPlugin
             Log, ConfigManager, ResetDetectionService,
             HenchmanService, FCBuffService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
-            ARPostProcessService, YesAlreadyIPC);
+            RegisterRegistrablesService, ARPostProcessService, YesAlreadyIPC);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
+        RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager);
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(RegistrableConfigWindow);
 
         // Commands
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
@@ -246,13 +254,12 @@ public sealed class Plugin : IDalamudPlugin
                 Configuration.LastAccountId = ConfigManager.CurrentAccountId;
                 Configuration.Save();
                 Log.Information($"Character detected: {charName}@{worldName} -> Account {ConfigManager.CurrentAccountId}");
-                // Force reload config after character selection to ensure we have the right character config
                 ConfigManager.LoadAllAccounts();
             }
         }
         catch (Exception ex)
         {
-            Log.Error($"Error during login detection: {ex.Message}");
+            Log.Error($"Error in OnLogin: {ex.Message}");
         }
     }
 
@@ -291,6 +298,7 @@ public sealed class Plugin : IDalamudPlugin
             VerminionService.Update();
             CactpotService.Update();
             ChocoboRaceService.Update();
+            RegisterRegistrablesService.Update();
             MinionRouletteService.Update();
             SeasonalGearService.Update();
             GearUpdaterService.Update();
