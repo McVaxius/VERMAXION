@@ -361,7 +361,7 @@ public class VermaxionEngine
                 {
                     if (!chocoboRaceService.IsActive && !chocoboRaceService.IsComplete && !chocoboRaceService.IsFailed)
                     {
-                        chocoboRaceService.StartRaces(activeConfig.ChocoboRacesPerDay);
+                        chocoboRaceService.Start();
                         return;
                     }
 

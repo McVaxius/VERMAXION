@@ -1,35 +1,49 @@
 using System;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
 /// <summary>
-/// Chocobo Racing service.
-/// Based on ChocoboRacing.lua SND script: QueueRoulette(22) for Sagolii Road,
-/// click ContentsFinderConfirm Commence, wait for race, spam abilities,
-/// wait for RaceChocoboResult, callback RaceChocoboResult true 1.
+/// Chocobo Racing queue service.
+/// Uses AgentContentsFinder.OpenRegularDuty() for direct duty queuing.
+/// Based on ChocoboRacing.lua: QueueRoulette(22) for Sagolii Road,
+/// click ContentsFinderConfirm Commence, wait for race, wait for RaceChocoboResult.
+/// This mirrors the VerminionService structure for consistency.
 /// </summary>
 public class ChocoboRaceService : IDisposable
 {
     private readonly ICommandManager commandManager;
-    private readonly IPluginLog log;
     private readonly ICondition condition;
+    private readonly IPluginLog log;
+    private readonly ConfigManager configManager;
 
+    // Use same CFC as Verminion since we're using the same tab
+    // ContentFinderCondition row ID for Lord of Verminion (Normal) - shared tab access
+    private const uint ChocoboRacingCfcId = 576;
+
+    private bool isActive = false;
     private ChocoboState state = ChocoboState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
-    private int racesCompleted = 0;
-    private int racesRequested = 5;
+    private int currentAttempt = 0;
+    private int maxAttempts = 5;
+    private bool joinAttempted = false;
+    private bool dutySelected = false;
+    private DateTime lastJoinRetry = DateTime.MinValue;
+    private int dutySelectionAttempts = 0;
 
     public enum ChocoboState
     {
         Idle,
-        QueueingForRace,
+        OpeningDutyFinder,
+        QueueingForDuty,
         WaitingForDutyPop,
         ClickingCommence,
-        WaitingForRaceStart,
-        Racing,
+        InDuty,
         WaitingForResult,
         DismissingResult,
         WaitingForPlayerAvailable,
@@ -38,35 +52,86 @@ public class ChocoboRaceService : IDisposable
     }
 
     public ChocoboState State => state;
+    public int CurrentAttempt => currentAttempt;
     public bool IsActive => state != ChocoboState.Idle && state != ChocoboState.Complete && state != ChocoboState.Failed;
     public bool IsComplete => state == ChocoboState.Complete;
     public bool IsFailed => state == ChocoboState.Failed;
-    public string StatusText => state == ChocoboState.Idle ? "Idle" : $"{state} ({racesCompleted}/{racesRequested})";
+    public string StatusText => state == ChocoboState.Idle ? "Idle" : $"{state} ({currentAttempt}/{maxAttempts})";
 
-    public ChocoboRaceService(ICommandManager commandManager, IPluginLog log)
+    public ChocoboRaceService(ICommandManager commandManager, IPluginLog log, ConfigManager configManager)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.condition = Plugin.Condition;
+        this.configManager = configManager;
     }
 
-    public void StartRaces(int count)
+    public void Start()
     {
-        racesRequested = count;
-        racesCompleted = 0;
-        SetState(ChocoboState.QueueingForRace);
-        log.Information($"[ChocoboRace] Starting {count} races");
+        // Get configured number of races from active character config
+        var activeConfig = configManager?.GetActiveConfig();
+        maxAttempts = activeConfig?.ChocoboRacesPerDay ?? 5;
+        
+        currentAttempt = 0;
+        SetState(ChocoboState.OpeningDutyFinder);
+        log.Information($"[ChocoboRace] Starting Chocobo Racing cycle (0/{maxAttempts})");
     }
-
-    public void Reset() => SetState(ChocoboState.Idle);
 
     public void RunTask()
     {
         log.Information("[VERMAXION] Manual Chocobo Racing triggered");
-        StartRaces(5);
+        Start();
+    }
+
+    public void Reset()
+    {
+        // If we're being reset while active, mark as Complete to clear pending count
+        if (isActive)
+        {
+            log.Information("[ChocoboRace] Reset called while active, marking as Complete");
+            SetState(ChocoboState.Complete);
+        }
+        else
+        {
+            SetState(ChocoboState.Idle);
+        }
+        isActive = false;
+        state = ChocoboState.Idle;
+        stateEnteredAt = DateTime.MinValue;
+        currentAttempt = 0;
+        joinAttempted = false;
+        dutySelected = false;
+        lastJoinRetry = DateTime.MinValue;
+        dutySelectionAttempts = 0;
     }
 
     public void Dispose() { }
+
+    /// <summary>
+    /// Open the Duty Finder to a specific duty using AgentContentsFinder.
+    /// Reusable for LoV, Chocobo Racing, and other Gold Saucer duties.
+    /// </summary>
+    /// <param name="contentFinderConditionId">ContentFinderCondition row ID</param>
+    public static unsafe bool OpenDutyFinder(uint contentFinderConditionId)
+    {
+        try
+        {
+            var agent = AgentContentsFinder.Instance();
+            if (agent == null)
+            {
+                Plugin.Log.Error("[DutyQueue] AgentContentsFinder is null");
+                return false;
+            }
+            agent->OpenRegularDuty(contentFinderConditionId);
+            Plugin.Log.Information($"[DutyQueue] Opened duty finder for CFC ID {contentFinderConditionId}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[DutyQueue] Failed to open duty finder: {ex.Message}");
+            return false;
+        }
+    }
 
     public void Update()
     {
@@ -77,78 +142,178 @@ public class ChocoboRaceService : IDisposable
 
         switch (state)
         {
-            case ChocoboState.QueueingForRace:
-                // ChocoboRacing.lua: Instances.DutyFinder:QueueRoulette(22)
-                log.Information($"[ChocoboRace] Queueing for Chocobo Race (race {racesCompleted + 1}/{racesRequested})");
-                // Open duty finder for chocobo racing
-                commandManager.ProcessCommand("/dutyfinder");
-                SetState(ChocoboState.WaitingForDutyPop);
+            case ChocoboState.OpeningDutyFinder:
+                if (elapsed < 1) return;
+                log.Information($"[ChocoboRace] Starting Chocobo Racing queue (attempt {currentAttempt + 1}/{maxAttempts})");
+                
+                // Use AgentContentsFinder to open DF directly to Chocobo Racing
+                if (OpenDutyFinder(ChocoboRacingCfcId))
+                {
+                    joinAttempted = false;
+                    dutySelected = false;
+                    lastJoinRetry = DateTime.MinValue;
+                    dutySelectionAttempts = 0;
+                    SetState(ChocoboState.QueueingForDuty);
+                }
+                else
+                {
+                    log.Error("[ChocoboRace] Failed to open duty finder");
+                    SetState(ChocoboState.Failed);
+                }
+                break;
+
+            case ChocoboState.QueueingForDuty:
+                // Wait for ContentsFinder addon to appear, select duty, then click Join
+                // Need to wait 5-8 seconds for DF window to fully load
+                if (elapsed < 6) return;
+                
+                if (GameHelpers.IsAddonVisible("ContentsFinder"))
+                {
+                    // Clear duty selection on first run (currentAttempt == 0)
+                    if (currentAttempt == 0 && elapsed < 6.5)
+                    {
+                        log.Information("[ChocoboRace] Clearing duty selection for first run");
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 1);
+                        return; // Give it a moment to process
+                    }
+                    
+                    if (!dutySelected)
+                    {
+                        // Skip duty selection for 2nd+ attempts (currentAttempt > 0)
+                        if (currentAttempt > 0)
+                        {
+                            log.Information($"[ChocoboRace] Skipping duty selection for attempt {currentAttempt + 1}, directly joining");
+                            dutySelected = true;
+                            return;
+                        }
+                        
+                        // Try duty selection multiple times if needed (only for first attempt)
+                        if (dutySelectionAttempts < 3)
+                        {
+                            log.Information($"[ChocoboRace] ContentsFinder visible, selecting Chocobo Racing (attempt {dutySelectionAttempts + 1}/3)");
+                            // TODO: You'll need to edit these callback parameters for Chocobo Racing
+                            // Format: /callback ContentsFinder true [callback] [param]
+                            GameHelpers.FireAddonCallback("ContentsFinder", true, 3, 10); // Example - you'll edit this
+                            
+                            // Also try Join after each selection attempt
+                            log.Information($"[ChocoboRace] Attempting Join after selection (attempt {dutySelectionAttempts + 1})");
+                            GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
+                            
+                            dutySelected = true; // Mark as selected since we tried
+                            dutySelectionAttempts++;
+                            return; // Give it a moment to process
+                        }
+                        else
+                        {
+                            log.Warning("[ChocoboRace] Failed to select duty after 3 attempts, retrying from start");
+                            SetState(ChocoboState.OpeningDutyFinder);
+                            return;
+                        }
+                    }
+                    else if (!joinAttempted && elapsed > 8)
+                    {
+                        log.Information("[ChocoboRace] Duty selected, clicking Join");
+                        // ContentsFinder Join button = callback true 12 0 (Register for duty)
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
+                        joinAttempted = true;
+                    }
+                    else if (elapsed > 15 && elapsed % 5 < 0.1) // Rate limit retries to every 5 seconds
+                    {
+                        // If still showing after 15s, try clicking Join again (rate limited)
+                        log.Information($"[ChocoboRace] ContentsFinder still visible after {elapsed:F1}s, retrying Join");
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
+                    }
+                }
+                if (elapsed > 8 && !GameHelpers.IsAddonVisible("ContentsFinder"))
+                {
+                    log.Information("[ChocoboRace] ContentsFinder closed, waiting for duty pop");
+                    SetState(ChocoboState.WaitingForDutyPop);
+                }
+                else if (elapsed > 30)
+                {
+                    log.Warning("[ChocoboRace] Timeout waiting for queue registration, retrying");
+                    SetState(ChocoboState.OpeningDutyFinder);
+                }
                 break;
 
             case ChocoboState.WaitingForDutyPop:
-                // ChocoboRacing.lua: wait for ContentsFinderConfirm
+                // Check for ContentsFinderConfirm addon (duty pop)
                 if (GameHelpers.IsAddonVisible("ContentsFinderConfirm"))
                 {
                     log.Information("[ChocoboRace] Race pop! Clicking Commence");
                     SetState(ChocoboState.ClickingCommence);
                 }
-                else if (condition[ConditionFlag.OccupiedInCutSceneEvent])
+                // Also check if already in duty
+                else if (condition[ConditionFlag.BoundByDuty])
                 {
-                    log.Information("[ChocoboRace] In cutscene (race starting)");
-                    SetState(ChocoboState.WaitingForRaceStart);
+                    log.Information("[ChocoboRace] Already in duty");
+                    SetState(ChocoboState.InDuty);
                 }
-                else if (elapsed > 120)
+                else if (elapsed > 120) // 2 min timeout
                 {
-                    log.Warning("[ChocoboRace] Queue timeout, retrying");
-                    SetState(ChocoboState.QueueingForRace);
+                    log.Warning("[ChocoboRace] Duty queue timeout - retrying");
+                    SetState(ChocoboState.OpeningDutyFinder);
                 }
                 break;
 
             case ChocoboState.ClickingCommence:
                 if (elapsed < 1) return;
-                // ChocoboRacing.lua: /click ContentsFinderConfirm Commence
                 if (GameHelpers.IsAddonVisible("ContentsFinderConfirm"))
                 {
-                    log.Information("[ChocoboRace] Clicking Commence");
+                    log.Information("[ChocoboRace] Clicking Commence on ContentsFinderConfirm");
+                    // Fire commence callback - typically callback index 8 = Commence button
                     GameHelpers.FireAddonCallback("ContentsFinderConfirm", true, 8);
+                    SetState(ChocoboState.InDuty);
                 }
-                SetState(ChocoboState.WaitingForRaceStart);
-                break;
-
-            case ChocoboState.WaitingForRaceStart:
-                // ChocoboRacing.lua: wait for cutscene to end, then wait 6s, then use Super Sprint
-                if (!condition[ConditionFlag.OccupiedInCutSceneEvent] && elapsed > 3)
+                else
                 {
-                    log.Information("[ChocoboRace] Race started, racing...");
-                    SetState(ChocoboState.Racing);
-                }
-                else if (elapsed > 60)
-                {
-                    SetState(ChocoboState.Racing);
+                    SetState(ChocoboState.WaitingForDutyPop);
                 }
                 break;
 
-            case ChocoboState.Racing:
-                // ChocoboRacing.lua: spam KEY_1 and KEY_2 during race, wait for RaceChocoboResult
+            case ChocoboState.InDuty:
+                // Press W during the race and wait for RaceChocoboResult addon to appear
                 if (GameHelpers.IsAddonVisible("RaceChocoboResult"))
                 {
-                    log.Information("[ChocoboRace] Race finished, result screen visible");
+                    log.Information("[ChocoboRace] Race ended, RaceChocoboResult addon visible");
                     SetState(ChocoboState.WaitingForResult);
                 }
-                else if (elapsed > 300) // 5 min timeout per race
+                else if (!condition[ConditionFlag.BoundByDuty] && elapsed > 10)
+                {
+                    // Duty ended without result screen
+                    log.Information("[ChocoboRace] Duty ended");
+                    SetState(ChocoboState.WaitingForPlayerAvailable);
+                }
+                else if (elapsed > 600) // 10 min timeout
                 {
                     log.Warning("[ChocoboRace] Race timeout");
                     SetState(ChocoboState.Failed);
+                }
+                else if (elapsed > 5 && elapsed < 7) // Hold W key after 5 seconds
+                {
+                    GameHelpers.KeyDown(VirtualKey.W);
                 }
                 break;
 
             case ChocoboState.WaitingForResult:
                 if (elapsed < 1) return;
-                // ChocoboRacing.lua: /callback RaceChocoboResult true 1
-                if (GameHelpers.IsAddonVisible("RaceChocoboResult"))
+                // Release W key when race ends
+                GameHelpers.KeyUp(VirtualKey.W);
+                
+                // Check both possible addon names and log which one we're using
+                bool raceResult = GameHelpers.IsAddonVisible("RaceChocoboResult");
+                bool chocoboResult = GameHelpers.IsAddonVisible("ChocoboResult");
+                
+                if (raceResult)
                 {
-                    log.Information("[ChocoboRace] Dismissing race result");
+                    log.Information("[ChocoboRace] Dismissing RaceChocoboResult screen");
                     GameHelpers.FireAddonCallback("RaceChocoboResult", true, 1);
+                    SetState(ChocoboState.DismissingResult);
+                }
+                else if (chocoboResult)
+                {
+                    log.Information("[ChocoboRace] Dismissing ChocoboResult screen");
+                    GameHelpers.FireAddonCallback("ChocoboResult", true, 1);
                     SetState(ChocoboState.DismissingResult);
                 }
                 else
@@ -158,26 +323,40 @@ public class ChocoboRaceService : IDisposable
                 break;
 
             case ChocoboState.DismissingResult:
-                if (elapsed < 2) return;
+                if (elapsed < 1) return;
+                bool raceResultCheck = GameHelpers.IsAddonVisible("RaceChocoboResult");
+                bool chocoboResultCheck = GameHelpers.IsAddonVisible("ChocoboResult");
+                
+                if (raceResultCheck)
+                {
+                    // Try again to dismiss RaceChocoboResult
+                    GameHelpers.FireAddonCallback("RaceChocoboResult", true, 1);
+                }
+                else if (chocoboResultCheck)
+                {
+                    // Try again to dismiss ChocoboResult
+                    GameHelpers.FireAddonCallback("ChocoboResult", true, 1);
+                }
                 SetState(ChocoboState.WaitingForPlayerAvailable);
                 break;
 
             case ChocoboState.WaitingForPlayerAvailable:
-                // ChocoboRacing.lua: repeat until Player.Available and not Player.IsBusy
+                // Wait until player is available for next race
                 if (elapsed < 2) return;
                 if (GameHelpers.IsPlayerAvailable() || elapsed > 30)
                 {
-                    racesCompleted++;
-                    log.Information($"[ChocoboRace] Race {racesCompleted}/{racesRequested} complete");
+                    currentAttempt++;
+                    log.Information($"[ChocoboRace] Race {currentAttempt}/{maxAttempts} complete");
 
-                    if (racesCompleted >= racesRequested)
+                    if (currentAttempt >= maxAttempts)
                     {
-                        log.Information($"[ChocoboRace] All {racesRequested} races complete!");
+                        log.Information($"[ChocoboRace] All {maxAttempts} races complete!");
                         SetState(ChocoboState.Complete);
                     }
                     else
                     {
-                        SetState(ChocoboState.QueueingForRace);
+                        log.Information($"[ChocoboRace] Starting race {currentAttempt + 1}/{maxAttempts}");
+                        SetState(ChocoboState.OpeningDutyFinder);
                     }
                 }
                 break;

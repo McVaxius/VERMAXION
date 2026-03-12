@@ -82,15 +82,21 @@ public class MainWindow : Window, IDisposable
         ImGui.Spacing();
         
         // Control buttons row
-        // ALWAYS visible FULL STOP button (red, prominent) - stops everything
-        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0f, 0f, 1f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 0.2f, 0.2f, 1f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0f, 0f, 1f));
-        if (ImGui.Button("FULL STOP", new Vector2(100, 30)))
+        // FULL STOP button - red only when plugin is in operation
+        if (engine.IsRunning)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0f, 0f, 1f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 0.2f, 0.2f, 1f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0f, 0f, 1f));
+        }
+        if (ImGui.Button("FULL STOP"))
         {
             plugin.FullStop();
         }
-        ImGui.PopStyleColor(3);
+        if (engine.IsRunning)
+        {
+            ImGui.PopStyleColor(3);
+        }
         ImGui.SameLine();
         
         if (ImGui.Button("Run All"))
@@ -148,7 +154,7 @@ public class MainWindow : Window, IDisposable
                 "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 config.ChocoboRacingCompletedToday ? "Done today" : "Daily",
-                "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "WIP");
+                "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
 
             // --- Utility Tasks ---
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",

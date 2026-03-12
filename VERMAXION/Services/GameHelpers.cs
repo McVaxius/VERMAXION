@@ -371,6 +371,36 @@ public static class GameHelpers
     }
 
     /// <summary>
+    /// Press and hold a key down using ECommons WindowsKeypress.
+    /// </summary>
+    public static void KeyDown(VirtualKey key)
+    {
+        try
+        {
+            WindowsKeypress.SendKeyHold(key, null);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[GameHelpers] Failed to press key down {key}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Release a key using ECommons WindowsKeypress.
+    /// </summary>
+    public static void KeyUp(VirtualKey key)
+    {
+        try
+        {
+            WindowsKeypress.SendKeyRelease(key, null);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[GameHelpers] Failed to release key {key}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Press a key by VK byte code (legacy compatibility).
     /// </summary>
     public static void PressKey(byte vk)

@@ -161,9 +161,25 @@ public class VerminionService : IDisposable
                 
                 if (GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
+                    // Clear duty selection on first run (currentAttempt == 0)
+                    if (currentAttempt == 0 && elapsed < 6.5)
+                    {
+                        log.Information("[Verminion] Clearing duty selection for first run");
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 1);
+                        return; // Give it a moment to process
+                    }
+                    
                     if (!dutySelected)
                     {
-                        // Try duty selection multiple times if needed
+                        // Skip duty selection for 2nd+ attempts (currentAttempt > 0)
+                        if (currentAttempt > 0)
+                        {
+                            log.Information($"[Verminion] Skipping duty selection for attempt {currentAttempt + 1}, directly joining");
+                            dutySelected = true;
+                            return;
+                        }
+                        
+                        // Try duty selection multiple times if needed (only for first attempt)
                         if (dutySelectionAttempts < 3)
                         {
                             log.Information($"[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP) (attempt {dutySelectionAttempts + 1}/3)");

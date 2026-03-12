@@ -519,11 +519,15 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.Indent();
                 var races = cc.ChocoboRacesPerDay;
-                if (ImGui.SliderInt(UIConstants.ConfigLabels.RacesPerDay, ref races, 1, 20))
+                ImGui.Text($"{UIConstants.ConfigLabels.RacesPerDay}:");
+                ImGui.SameLine();
+                if (ImGui.InputInt("##ChocoboRacesPerDay", ref races, 1, 5))
                 {
+                    // Clamp between 1 and 69420
+                    races = Math.Clamp(races, 1, 69420);
                     cc.ChocoboRacesPerDay = races;
                     changed = true;
-                    // Save immediately on slider change
+                    // Save immediately on change
                     configManager.SaveCurrentAccount();
                 }
                 ImGui.Unindent();
