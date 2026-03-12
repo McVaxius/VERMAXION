@@ -74,9 +74,9 @@ public class ResetDetectionService
 
     public static DateTime GetLastWeeklyReset(DateTime now)
     {
-        // Weekly Reset: Every Tuesday at 8:00 AM UTC
+        // Weekly Reset: Every Tuesday at 9:00 AM UTC (DST compensation)
         var daysSinceTuesday = ((int)now.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
-        var lastTuesday = now.Date.AddDays(-daysSinceTuesday).AddHours(8);
+        var lastTuesday = now.Date.AddDays(-daysSinceTuesday).AddHours(9);
 
         if (now < lastTuesday)
             lastTuesday = lastTuesday.AddDays(-7);
@@ -86,8 +86,8 @@ public class ResetDetectionService
 
     public static DateTime GetLastDailyReset(DateTime now)
     {
-        // Daily Reset: Every day at 3:00 PM UTC (15:00 UTC)
-        var todayReset = now.Date.AddHours(15);
+        // Daily Reset: Every day at 4:00 PM UTC (16:00 UTC) (DST compensation)
+        var todayReset = now.Date.AddHours(16);
 
         if (now < todayReset)
             todayReset = todayReset.AddDays(-1);
