@@ -205,6 +205,19 @@ public sealed class Plugin : IDalamudPlugin
                 ConfigWindow.Toggle();
                 break;
 
+            case "fcpoints":
+                Log.Information("[FC POINTS] Testing FC points reading...");
+                var fcPoints = GameHelpers.GetFCPointsNode();
+                if (fcPoints.HasValue)
+                {
+                    Log.Information($"[FC POINTS] SUCCESS: FC points = {fcPoints.Value:N0}");
+                }
+                else
+                {
+                    Log.Information("[FC POINTS] FAILED: Could not read FC points");
+                }
+                break;
+
             default:
                 MainWindow.Toggle();
                 break;

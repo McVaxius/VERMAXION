@@ -177,6 +177,21 @@ public class MainWindow : Window, IDisposable
             }
             
             ImGui.SameLine();
+            if (ImGui.SmallButton("Test FC Points"))
+            {
+                Plugin.Log.Information("[FC POINTS] Testing FC points reading from UI...");
+                var fcPoints = GameHelpers.GetFCPointsNode();
+                if (fcPoints.HasValue)
+                {
+                    Plugin.Log.Information($"[FC POINTS] SUCCESS: FC points = {fcPoints.Value:N0}");
+                }
+                else
+                {
+                    Plugin.Log.Information("[FC POINTS] FAILED: Could not read FC points from UI node #17");
+                }
+            }
+            
+            ImGui.SameLine();
             if (ImGui.SmallButton("Force Config Load"))
             {
                 plugin.ConfigManager.LoadAllAccounts();

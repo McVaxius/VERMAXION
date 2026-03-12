@@ -291,7 +291,43 @@ public class FCBuffService : IDisposable
                     // Check if FC window is ready
                     if (GameHelpers.IsAddonVisible("FreeCompany"))
                     {
-                        log.Information("[FCBuff] FC window is ready, switching to Actions tab");
+                        if (elapsed < 1)
+                        {
+                            // Wait 1 second for window data to populate
+                            return;
+                        }
+                        
+                        log.Information("[FCBuff] FC window is ready, checking FC points before switching to Actions tab");
+                        
+                        // Get FC points from the window
+                        var fcProxyPoints = InfoProxyFreeCompany.Instance();
+                        if (fcProxyPoints != null && fcProxyPoints->Id != 0)
+                        {
+                            // FC points are at node 1,4,16,17 in the FC window
+                            var fcPointsNode = GameHelpers.GetFCPointsNode();
+                            var fcPoints = fcPointsNode ?? 0;
+                            log.Information($"[FCBuff] Current FC points: {fcPoints:N0}");
+                            
+                            // Check if we have enough FC points
+                            var config = configManager.GetActiveConfig();
+                            var minFCPoints = config.FCBuffMinPoints;
+                            if (fcPoints < minFCPoints)
+                            {
+                                log.Information($"[FCBuff] Not enough FC points ({fcPoints:N0} < {minFCPoints:N0}), skipping refill");
+                                SetState(FCBuffState.Complete);
+                                return;
+                            }
+                            
+                            log.Information("[FCBuff] Sufficient FC points, proceeding to switch to Actions tab");
+                        }
+                        else
+                        {
+                            log.Error("[FCBuff] Failed to get FC points from InfoProxy");
+                            SetState(FCBuffState.Failed);
+                            return;
+                        }
+                        
+                        log.Information("[FCBuff] Switching to Actions tab");
                         log.Information("[FCBuff] [Callback] Firing FreeCompany with args (true, 0, 4)");
                         GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
                         SetState(FCBuffState.WaitingForFCWindow);
@@ -308,6 +344,7 @@ public class FCBuffService : IDisposable
                 }
                 log.Error("[FCBuff] Failed to open FC window");
                 SetState(FCBuffState.Failed);
+                break;
                 break;
 
             case FCBuffState.WaitingForFCWindow:
