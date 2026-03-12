@@ -15,6 +15,7 @@ public class VermaxionEngine
     private readonly VerminionService verminionService;
     private readonly CactpotService cactpotService;
     private readonly ChocoboRaceService chocoboRaceService;
+    private readonly FashionReportService fashionReportService;
     private readonly ARPostProcessService arService;
     private readonly YesAlreadyIPC yesAlreadyIPC;
 
@@ -34,6 +35,7 @@ public class VermaxionEngine
         RunningVerminion,
         RunningMiniCactpot,
         RunningJumboCactpot,
+        RunningFashionReport,
         RunningChocoboRacing,
         EnablingHenchman,
         SignalingARDone,
@@ -56,6 +58,7 @@ public class VermaxionEngine
         VerminionService verminionService,
         CactpotService cactpotService,
         ChocoboRaceService chocoboRaceService,
+        FashionReportService fashionReportService,
         ARPostProcessService arService,
         YesAlreadyIPC yesAlreadyIPC)
     {
@@ -67,6 +70,7 @@ public class VermaxionEngine
         this.verminionService = verminionService;
         this.cactpotService = cactpotService;
         this.chocoboRaceService = chocoboRaceService;
+        this.fashionReportService = fashionReportService;
         this.arService = arService;
         this.yesAlreadyIPC = yesAlreadyIPC;
     }
@@ -254,11 +258,12 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningJumboCactpot:
-                if (activeConfig!.EnableJumboCactpot && weeklyResetDetected && resetService.IsSaturday() && !activeConfig.JumboCactpotCompletedThisWeek)
+                if (activeConfig!.EnableJumboCactpot && weeklyResetDetected && resetService.IsSaturdayAfterReset() && !activeConfig.JumboCactpotCompletedThisWeek)
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
-                        cactpotService.StartJumboCactpot();
+                        log.Information("[Engine] Starting Jumbo Cactpot (Saturday)");
+                        cactpotService.StartJumboCactpotCheck();
                         return;
                     }
 
@@ -281,6 +286,38 @@ public class VermaxionEngine
                 else
                 {
                     AdvanceToNextTask(EngineState.RunningJumboCactpot);
+                }
+                break;
+
+            case EngineState.RunningFashionReport:
+                if (activeConfig!.EnableFashionReport && weeklyResetDetected && resetService.IsFriday() && !activeConfig.FashionReportCompletedThisWeek)
+                {
+                    if (!fashionReportService.IsActive && !fashionReportService.IsComplete && !fashionReportService.IsFailed)
+                    {
+                        log.Information("[Engine] Starting Fashion Report (Friday)");
+                        fashionReportService.Start();
+                        return;
+                    }
+
+                    fashionReportService.Update();
+
+                    if (fashionReportService.IsComplete)
+                    {
+                        activeConfig.FashionReportCompletedThisWeek = true;
+                        configManager.SaveCurrentAccount();
+                        fashionReportService.Reset();
+                        AdvanceToNextTask(EngineState.RunningFashionReport);
+                    }
+                    else if (fashionReportService.IsFailed)
+                    {
+                        log.Warning("[Engine] Fashion Report failed - continuing");
+                        fashionReportService.Reset();
+                        AdvanceToNextTask(EngineState.RunningFashionReport);
+                    }
+                }
+                else
+                {
+                    AdvanceToNextTask(EngineState.RunningFashionReport);
                 }
                 break;
 
@@ -344,7 +381,8 @@ public class VermaxionEngine
             EngineState.RunningFCBuff => EngineState.RunningVerminion,
             EngineState.RunningVerminion => EngineState.RunningMiniCactpot,
             EngineState.RunningMiniCactpot => EngineState.RunningJumboCactpot,
-            EngineState.RunningJumboCactpot => EngineState.RunningChocoboRacing,
+            EngineState.RunningJumboCactpot => EngineState.RunningFashionReport,
+            EngineState.RunningFashionReport => EngineState.RunningChocoboRacing,
             EngineState.RunningChocoboRacing => EngineState.EnablingHenchman,
             _ => EngineState.EnablingHenchman,
         };
@@ -368,6 +406,7 @@ public class VermaxionEngine
             EngineState.RunningVerminion => "Verminion Queue",
             EngineState.RunningMiniCactpot => "Mini Cactpot",
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",
+            EngineState.RunningFashionReport => "Fashion Report",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
             EngineState.EnablingHenchman => "Enabling Henchman",
             EngineState.SignalingARDone => "Signaling AR",

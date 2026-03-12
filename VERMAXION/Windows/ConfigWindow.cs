@@ -432,6 +432,18 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
             }
+
+            var fashion = cc.EnableFashionReport;
+            if (ImGui.Checkbox("Fashion Report", ref fashion))
+            {
+                cc.EnableFashionReport = fashion;
+                changed = true;
+            }
+            if (cc.FashionReportCompletedThisWeek)
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
+            }
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.DailyTasks, ImGuiTreeNodeFlags.DefaultOpen))

@@ -17,6 +17,7 @@ public class CharacterConfig
     public bool EnableGearUpdater { get; set; } = false;
     public bool EnableHighestCombatJob { get; set; } = false;
     public bool EnableCurrentJobEquipment { get; set; } = false;
+    public bool EnableFashionReport { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -31,6 +32,7 @@ public class CharacterConfig
     public bool JumboCactpotCompletedThisWeek { get; set; } = false;
     public bool MiniCactpotCompletedToday { get; set; } = false;
     public bool ChocoboRacingCompletedToday { get; set; } = false;
+    public bool FashionReportCompletedThisWeek { get; set; } = false;
     
     // --- Enhanced State Tracking ---
     public int MiniCactpotTicketsToday { get; set; } = 0;
@@ -56,6 +58,7 @@ public class CharacterConfig
             EnableGearUpdater = EnableGearUpdater,
             EnableHighestCombatJob = EnableHighestCombatJob,
             EnableCurrentJobEquipment = EnableCurrentJobEquipment,
+            EnableFashionReport = EnableFashionReport,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
@@ -66,6 +69,7 @@ public class CharacterConfig
             JumboCactpotCompletedThisWeek = JumboCactpotCompletedThisWeek,
             MiniCactpotCompletedToday = MiniCactpotCompletedToday,
             ChocoboRacingCompletedToday = ChocoboRacingCompletedToday,
+            FashionReportCompletedThisWeek = FashionReportCompletedThisWeek,
             MiniCactpotTicketsToday = MiniCactpotTicketsToday,
             MinionRouletteAttemptsToday = MinionRouletteAttemptsToday,
             LastMinionRouletteReset = LastMinionRouletteReset,

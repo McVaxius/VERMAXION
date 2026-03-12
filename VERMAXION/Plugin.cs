@@ -41,6 +41,7 @@ public sealed class Plugin : IDalamudPlugin
     public VerminionService VerminionService { get; init; }
     public CactpotService CactpotService { get; init; }
     public ChocoboRaceService ChocoboRaceService { get; init; }
+    public FashionReportService FashionReportService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
     public MinionRouletteService MinionRouletteService { get; init; }
     public SeasonalGearService SeasonalGearService { get; init; }
@@ -75,6 +76,7 @@ public sealed class Plugin : IDalamudPlugin
         VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log);
+        FashionReportService = new FashionReportService(CommandManager, Condition, ObjectTable, Log, TargetManager);
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
         GearUpdaterService = new GearUpdaterService(CommandManager, Log, ClientState, PlayerState);
@@ -90,8 +92,8 @@ public sealed class Plugin : IDalamudPlugin
         Engine = new VermaxionEngine(
             Log, ConfigManager, ResetDetectionService,
             HenchmanService, FCBuffService, VerminionService,
-            CactpotService, ChocoboRaceService, ARPostProcessService,
-            YesAlreadyIPC);
+            CactpotService, ChocoboRaceService, FashionReportService,
+            ARPostProcessService, YesAlreadyIPC);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);

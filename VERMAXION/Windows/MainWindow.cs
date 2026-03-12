@@ -136,6 +136,9 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
                 config.JumboCactpotCompletedThisWeek ? "Done this week" : "Pending (Sat)",
                 "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "-");
+            DrawTaskRow("Fashion Report", config.EnableFashionReport,
+                config.FashionReportCompletedThisWeek ? "Done this week" : "Weekly (Fri)",
+                "Test##Fashion", () => plugin.FashionReportService.Start(), "WIP");
 
             // --- Daily Tasks ---
             DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
