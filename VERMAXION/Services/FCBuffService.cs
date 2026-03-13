@@ -255,8 +255,8 @@ public class FCBuffService : IDisposable
         return gcTerritory switch
         {
             129 => new Vector3(94, 40f, 68f),     // Limsa (Upper Decks/Aft)
-            132 => new Vector3(-71, -0.5f, -3f),   // Gridania
-            130 => new Vector3(-144, 4f, -100f),   // Ul'dah
+            132 => new Vector3(-72.8, -0.5f, -5.7f),   // Gridania
+            130 => new Vector3(-145, 4f, -101f),   // Ul'dah
             _ => Vector3.Zero
         };
     }
