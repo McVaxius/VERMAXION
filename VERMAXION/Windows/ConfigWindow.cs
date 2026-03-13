@@ -70,6 +70,57 @@ public class ConfigWindow : Window, IDisposable
                 config.DtrBarEnabled = dtrEnabled;
                 config.Save();
             }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Show/hide the DTR bar entry (server info bar).");
+            
+            ImGui.SameLine();
+            
+            var dtrMode = config.DtrBarMode;
+            var dtrModes = new[] { "Text Only", "Icon+Text", "Icon Only" };
+            ImGui.SetNextItemWidth(150);
+            if (ImGui.Combo("DTR Mode", ref dtrMode, dtrModes, dtrModes.Length))
+            {
+                config.DtrBarMode = dtrMode;
+                config.Save();
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("DTR bar display mode:\nText Only: 'VMX: On/Off'\nIcon+Text: '⚫ VMX'\nIcon Only: '⚫'");
+
+            ImGui.Spacing();
+            ImGui.Text("DTR Icons (max 3 characters)");
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Customize the glyphs used for enabled/disabled icon modes.");
+            ImGui.SameLine();
+            if (ImGui.Button("Open Lodestone Glyphs"))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://na.finalfantasyxiv.com/lodestone/topics/detail/5c7b8d8e6c8",
+                    UseShellExecute = true
+                });
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Opens Lodestone blog with available glyph codes");
+
+            var enabledIcon = config.DtrIconEnabled;
+            if (DrawIconInputs("Enabled", ref enabledIcon, "\uE03C"))
+            {
+                config.DtrIconEnabled = enabledIcon;
+                config.Save();
+            }
+
+            var disabledIcon = config.DtrIconDisabled;
+            if (DrawIconInputs("Disabled", ref disabledIcon, "\uE03D"))
+            {
+                config.DtrIconDisabled = disabledIcon;
+                config.Save();
+            }
         }
 
         ImGui.Separator();
@@ -590,5 +641,63 @@ public class ConfigWindow : Window, IDisposable
             alias = KrangleService.KrangleName(CleanLuminaText(alias));
 
         return string.IsNullOrWhiteSpace(alias) ? accountId : $"{alias} ({accountId})";
+    }
+
+    private static bool DrawIconInputs(string label, ref string icon, string defaultIcon)
+    {
+        var changed = false;
+        
+        var tempIcon = icon;
+        ImGui.SetNextItemWidth(80);
+        if (ImGui.InputText($"##{label}Icon", ref tempIcon, 10))
+        {
+            icon = tempIcon;
+            changed = true;
+        }
+        ImGui.SameLine();
+        if (ImGui.Button($"Reset##{label}Reset"))
+        {
+            icon = defaultIcon;
+            changed = true;
+        }
+        ImGui.SameLine();
+        ImGui.TextDisabled($"({defaultIcon})");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Default icon. Enter Unicode like \\uE03C or paste glyphs directly");
+        
+        // Add code field next to symbol field
+        ImGui.SameLine();
+        ImGui.Text("Code:");
+        ImGui.SameLine();
+        var iconCode = GetUnicodeCode(icon);
+        ImGui.SetNextItemWidth(60);
+        if (ImGui.InputText($"##{label}Code", ref iconCode, 10))
+        {
+            // Convert code back to Unicode character
+            if (iconCode.StartsWith("\\u") && iconCode.Length >= 6)
+            {
+                try
+                {
+                    var code = Convert.ToInt32(iconCode.Substring(2), 16);
+                    icon = char.ConvertFromUtf32(code);
+                    changed = true;
+                }
+                catch
+                {
+                    // Invalid code, keep original
+                }
+            }
+        }
+        
+        return changed;
+    }
+
+    private static string GetUnicodeCode(string icon)
+    {
+        if (string.IsNullOrEmpty(icon) || icon.Length != 1)
+            return "\\uE03C";
+        
+        var code = (int)icon[0];
+        return $"\\u{code:X4}";
     }
 }

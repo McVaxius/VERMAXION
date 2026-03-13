@@ -332,24 +332,53 @@ public sealed class Plugin : IDalamudPlugin
         if (!Configuration.DtrBarEnabled) return;
 
         var config = ConfigManager.GetActiveConfig();
-        string statusText;
+        var isEnabled = config?.Enabled ?? false;
+        
+        // DTR modes: 0=text-only, 1=icon+text, 2=icon-only
+        var iconEnabled = string.IsNullOrEmpty(Configuration.DtrIconEnabled) ? "\uE03C" : Configuration.DtrIconEnabled;
+        var iconDisabled = string.IsNullOrEmpty(Configuration.DtrIconDisabled) ? "\uE03D" : Configuration.DtrIconDisabled;
+        var glyph = isEnabled ? iconEnabled : iconDisabled;
 
-        if (Engine.IsRunning)
+        string statusText;
+        string tooltipText;
+
+        switch (Configuration.DtrBarMode)
         {
-            statusText = $"VMX: {Engine.StatusText}";
-        }
-        else
-        {
-            statusText = config.Enabled ? "VMX: Ready" : "VMX: Off";
+            case 1: // icon+text
+                statusText = $"{glyph} VMX";
+                tooltipText = Engine.IsRunning
+                    ? $"Vermaxion running: {Engine.StatusText}"
+                    : isEnabled
+                        ? "Vermaxion ready - waiting for AR postprocess"
+                        : "Vermaxion disabled";
+                break;
+            case 2: // icon-only
+                statusText = glyph;
+                tooltipText = Engine.IsRunning
+                    ? $"Vermaxion: {Engine.StatusText}"
+                    : isEnabled
+                        ? "Vermaxion ready"
+                        : "Vermaxion disabled";
+                break;
+            default: // text-only
+                if (Engine.IsRunning)
+                {
+                    statusText = $"VMX: {Engine.StatusText}";
+                }
+                else
+                {
+                    statusText = isEnabled ? "VMX: Ready" : "VMX: Off";
+                }
+                tooltipText = Engine.IsRunning
+                    ? $"Vermaxion running: {Engine.StatusText}"
+                    : isEnabled
+                        ? "Vermaxion ready - waiting for AR postprocess"
+                        : "Vermaxion disabled";
+                break;
         }
 
         dtrEntry.Text = new SeString(new TextPayload(statusText));
-        dtrEntry.Tooltip = new SeString(new TextPayload(
-            Engine.IsRunning
-                ? $"Vermaxion running: {Engine.StatusText}"
-                : config.Enabled
-                    ? "Vermaxion ready - waiting for AR postprocess"
-                    : "Vermaxion disabled"));
+        dtrEntry.Tooltip = new SeString(new TextPayload(tooltipText));
     }
 
     /// <summary>
