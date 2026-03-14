@@ -594,7 +594,7 @@ public class FCBuffService : IDisposable
                 var targetPos = GetQuartermasterPosition(targetGCTerritory);
                 
                 var distance = Vector3.Distance(player.Position, targetPos);
-                if (distance < 1f) // Within 1 yalm of target
+                if (distance < 0.3f) // Within 0.3 yalms of target - close enough for interaction
                 {
                     log.Information($"[FCBuff] Arrived at Quartermaster location (distance: {distance:F1}y)");
                     plugin.VNavmeshIPC.Stop();
