@@ -470,7 +470,7 @@ public class VermaxionEngine
         {
             log.Information($"[Engine] Territory changed to {territoryType} - pressing numpad+ to close menus");
             
-            // Press numpad+ to close any menus that might be stuck after teleporting
+            // Press numpad+ to close any menus that might be opened+stuck after teleporting
             // This prevents pathing services from getting stuck when they try to start navigation
             SendNumpadPlus();
         }
