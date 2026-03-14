@@ -550,19 +550,23 @@ public class FCBuffService : IDisposable
                     return;
                 }
                 
-                // Reset retry counter for fresh navigation
-                pathRetryCount = 0;
-                lastPathRetryTime = DateTime.UtcNow;
-                
-                // Navigate to Quartermaster location based on GC
-                var gcTerritory = GetCurrentGCTerritory();
-                var navTarget = GetQuartermasterPosition(gcTerritory);
-                if (navTarget != Vector3.Zero)
+                // Only initialize navigation on first entry
+                if (pathRetryCount == 0)
                 {
-                    log.Information($"[FCBuff] Navigating to Quartermaster (attempt 1) via VNavmesh IPC");
-                    plugin.VNavmeshIPC.PathfindAndMoveTo(navTarget);
+                    // Reset retry counter for fresh navigation
+                    pathRetryCount = 1;
+                    lastPathRetryTime = DateTime.UtcNow;
+                    
+                    // Navigate to Quartermaster location based on GC
+                    var gcTerritory = GetCurrentGCTerritory();
+                    var navTarget = GetQuartermasterPosition(gcTerritory);
+                    if (navTarget != Vector3.Zero)
+                    {
+                        log.Information($"[FCBuff] Navigating to Quartermaster (attempt 1) via VNavmesh IPC");
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(navTarget);
+                    }
+                    SetState(FCBuffState.WaitingForQuartermasterArrival);
                 }
-                SetState(FCBuffState.WaitingForQuartermasterArrival);
                 break;
 
             case FCBuffState.WaitingForQuartermasterArrival:
@@ -596,18 +600,33 @@ public class FCBuffService : IDisposable
                     plugin.VNavmeshIPC.Stop();
                     SetState(FCBuffState.TargetingQuartermaster);
                 }
-                // Retry pathfinding every 5 seconds if we haven't arrived (max 3 retries)
-                else if (pathRetryCount < 3 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
+                // Retry pathfinding every 5 seconds if we haven't arrived (max 10 retries)
+                else if (pathRetryCount < 10 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
                 {
                     pathRetryCount++;
                     lastPathRetryTime = DateTime.UtcNow;
-                    log.Information($"[FCBuff] Re-attempting pathfinding to Quartermaster (retry {pathRetryCount}/3, distance: {distance:F1}y)");
+                    log.Information($"[FCBuff] Re-attempting pathfinding to Quartermaster (retry {pathRetryCount}/10, distance: {distance:F1}y)");
                     plugin.VNavmeshIPC.Stop();
                     plugin.VNavmeshIPC.PathfindAndMoveTo(targetPos);
                 }
+                else if (pathRetryCount >= 10 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
+                {
+                    // All retries exhausted, try alternative approach
+                    log.Warning($"[FCBuff] All navigation retries exhausted (distance: {distance:F1}y), trying direct approach");
+                    plugin.VNavmeshIPC.Stop();
+                    
+                    // Try moving to a nearby position instead
+                    var nearbyPos = targetPos + new Vector3(2, 0, 2); // Offset by 2 yalms
+                    log.Information($"[FCBuff] Trying nearby position: {nearbyPos}");
+                    plugin.VNavmeshIPC.PathfindAndMoveTo(nearbyPos);
+                    
+                    // Reset retry counter for the new attempt
+                    pathRetryCount = 1;
+                    lastPathRetryTime = DateTime.UtcNow;
+                }
                 else if ((int)elapsed % 10 == 0 && elapsed > 1) // Log every 10 seconds
                 {
-                    log.Information($"[FCBuff] Still navigating to Quartermaster... ({elapsed:F0}s elapsed, distance: {distance:F1}y, retries: {pathRetryCount}/3)");
+                    log.Information($"[FCBuff] Still navigating to Quartermaster... ({elapsed:F0}s elapsed, distance: {distance:F1}y, retries: {pathRetryCount}/10)");
                 }
                 return;
 
