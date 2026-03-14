@@ -550,11 +550,18 @@ public class FCBuffService : IDisposable
                     return;
                 }
                 
-                // Only initialize navigation on first entry
+                // Try to start pathfinding with retries for slow city loading
                 if (pathRetryCount == 0)
                 {
-                    // Reset retry counter for fresh navigation
+                    // First attempt - reset retry counter
                     pathRetryCount = 1;
+                    lastPathRetryTime = DateTime.UtcNow;
+                }
+                
+                // Retry pathfinding every 3 seconds if we haven't started yet (max 5 attempts)
+                if (pathRetryCount <= 5 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 3)
+                {
+                    pathRetryCount++;
                     lastPathRetryTime = DateTime.UtcNow;
                     
                     // Navigate to Quartermaster location based on GC
@@ -562,10 +569,21 @@ public class FCBuffService : IDisposable
                     var navTarget = GetQuartermasterPosition(gcTerritory);
                     if (navTarget != Vector3.Zero)
                     {
-                        log.Information($"[FCBuff] Navigating to Quartermaster (attempt 1) via VNavmesh IPC");
+                        log.Information($"[FCBuff] Attempting to start navigation to Quartermaster (attempt {pathRetryCount}/5) via VNavmesh IPC");
                         plugin.VNavmeshIPC.PathfindAndMoveTo(navTarget);
+                        SetState(FCBuffState.WaitingForQuartermasterArrival);
                     }
-                    SetState(FCBuffState.WaitingForQuartermasterArrival);
+                    else
+                    {
+                        log.Error("[FCBuff] Failed to get Quartermaster position");
+                        SetState(FCBuffState.Failed);
+                    }
+                }
+                else if (pathRetryCount > 5)
+                {
+                    // All attempts failed, give up
+                    log.Error("[FCBuff] Failed to start pathfinding after 5 attempts - city may be loading too slowly");
+                    SetState(FCBuffState.Failed);
                 }
                 break;
 
@@ -869,5 +887,13 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        
+        // Reset pathfinding retry counter when starting navigation
+        if (newState == FCBuffState.NavigatingToQuartermaster)
+        {
+            pathRetryCount = 0;
+            lastPathRetryTime = DateTime.MinValue;
+            log.Debug("[FCBuff] Reset pathfinding retry counters for navigation start");
+        }
     }
 }
