@@ -162,6 +162,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextDisabled("Overall:");
         ImGui.BulletText("AutoRetainer - Triggers post-processing via IPC");
         ImGui.BulletText("YesAlready - Paused during operations to prevent interference");
+        ImGui.BulletText("TextAdvance - Enables automatic text progression during dialogue");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Mini Cactpot:");
