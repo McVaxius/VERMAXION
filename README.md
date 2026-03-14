@@ -1,5 +1,13 @@
 # VERMAXION
 
+---
+
+**Help fund my AI overlords' coffee addiction so they can keep generating more plugins instead of taking over the world**
+
+[☕ Support development on Ko-fi](https://ko-fi.com/mcvaxius)
+
+---
+
 AutoRetainer post-process automation for weekly and daily tasks, configured per character.
 
 ## Features

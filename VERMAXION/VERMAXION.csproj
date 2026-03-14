@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>0.0.0.37</Version>
+    <Version>0.0.0.38</Version>
     <PackageProjectUrl>https://github.com/McVaxius/VERMAXION</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
@@ -37,6 +37,7 @@
       <PluginFiles Include="images\carrying chest of gold.png" />
       <PluginFiles Include="images\carrying chest of gold cleaned.png" />
       <PluginFiles Include="images\source image ai generated.png" />
+      <PluginFiles Include="images\kofi-logo.png" />
     </ItemGroup>
 
     

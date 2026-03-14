@@ -101,7 +101,7 @@ public class ConfigWindow : Window, IDisposable
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "https://na.finalfantasyxiv.com/lodestone/topics/detail/5c7b8d8e6c8",
+                    FileName = "https://na.finalfantasyxiv.com/lodestone/character/22423564/blog/4393835",
                     UseShellExecute = true
                 });
             }

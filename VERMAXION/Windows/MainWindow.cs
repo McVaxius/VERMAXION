@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
 using Dalamud.Interface.Windowing;
@@ -34,6 +35,22 @@ public class MainWindow : Window, IDisposable
         // Version header
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0.0";
         ImGui.Text($"Vermaxion v{version}");
+        
+        // Ko-fi donation button in upper right
+        ImGui.SameLine(ImGui.GetWindowWidth() - 120);
+        if (ImGui.SmallButton("\u2661 Ko-fi \u2661"))
+        {
+            System.Diagnostics.Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://ko-fi.com/mcvaxius",
+                UseShellExecute = true
+            });
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Support development on Ko-fi");
+        }
+        
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -251,6 +268,26 @@ public class MainWindow : Window, IDisposable
         // AR status
         var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
         ImGui.TextDisabled($"AR PostProcess: {arStatus}  |  {now.DayOfWeek}");
+        
+        ImGui.Spacing();
+        ImGui.Separator();
+        
+        // Support section
+        ImGui.Text("Support VERMAXION");
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Buy me a coffee"))
+        {
+            System.Diagnostics.Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://ko-fi.com/mcvaxius",
+                UseShellExecute = true
+            });
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Support continued development on Ko-fi");
+        }
+        ImGui.TextDisabled("Every donation helps keep these plugins free and updated!");
     }
 
     private void DrawTaskRow(string task, bool enabled, string status, string buttonLabel, Action onClick, string maturity = "-")
