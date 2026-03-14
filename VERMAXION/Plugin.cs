@@ -99,7 +99,8 @@ public sealed class Plugin : IDalamudPlugin
             Log, ConfigManager, ResetDetectionService,
             HenchmanService, FCBuffService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
-            RegisterRegistrablesService, ARPostProcessService, YesAlreadyIPC);
+            RegisterRegistrablesService, ARPostProcessService, YesAlreadyIPC,
+            ClientState);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);

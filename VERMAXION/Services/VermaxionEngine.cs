@@ -2,6 +2,7 @@ using System;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
 using VERMAXION.Models;
+using static VERMAXION.Services.GameHelpers;
 
 namespace VERMAXION.Services;
 
@@ -19,6 +20,7 @@ public class VermaxionEngine
     private readonly RegisterRegistrablesService registerRegistrablesService;
     private readonly ARPostProcessService arService;
     private readonly YesAlreadyIPC yesAlreadyIPC;
+    private readonly IClientState clientState;
 
     private EngineState state = EngineState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -63,7 +65,8 @@ public class VermaxionEngine
         FashionReportService fashionReportService,
         RegisterRegistrablesService registerRegistrablesService,
         ARPostProcessService arService,
-        YesAlreadyIPC yesAlreadyIPC)
+        YesAlreadyIPC yesAlreadyIPC,
+        IClientState clientState)
     {
         this.log = log;
         this.configManager = configManager;
@@ -77,6 +80,10 @@ public class VermaxionEngine
         this.registerRegistrablesService = registerRegistrablesService;
         this.arService = arService;
         this.yesAlreadyIPC = yesAlreadyIPC;
+        this.clientState = clientState;
+
+        // Subscribe to territory change events to close menus after teleporting
+        clientState.TerritoryChanged += OnTerritoryChanged;
     }
 
     public void StartPostProcess()
@@ -451,5 +458,25 @@ public class VermaxionEngine
             EngineState.Error => "Error",
             _ => "Unknown",
         };
+    }
+
+    /// <summary>
+    /// Handle territory changes to close menus that might be stuck after teleporting.
+    /// This prevents pathing issues when services try to navigate after area changes.
+    /// </summary>
+    private void OnTerritoryChanged(ushort territoryType)
+    {
+        try
+        {
+            log.Information($"[Engine] Territory changed to {territoryType} - pressing numpad+ to close menus");
+            
+            // Press numpad+ to close any menus that might be stuck after teleporting
+            // This prevents pathing services from getting stuck when they try to start navigation
+            SendNumpadPlus();
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[Engine] Error handling territory change: {ex.Message}");
+        }
     }
 }
