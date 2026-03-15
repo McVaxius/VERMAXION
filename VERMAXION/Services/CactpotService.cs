@@ -111,6 +111,93 @@ public class CactpotService : IDisposable
         StartJumboCactpot();
     }
 
+    private DateTime lastTargetAttempt = DateTime.MinValue;
+    private int targetAttempts = 0;
+    private const int MaxTargetAttempts = 5;
+    private const double TargetRetryInterval = 2.0; // seconds between attempts
+
+    /// <summary>
+    /// Enhanced targeting method with multiple attempts and fallback strategies.
+    /// Tries multiple targeting approaches to ensure NPC interaction succeeds.
+    /// </summary>
+    private bool TargetAndInteractWithRetry()
+    {
+        var now = DateTime.UtcNow;
+        
+        // Check if it's time for another attempt
+        if ((now - lastTargetAttempt).TotalSeconds < TargetRetryInterval)
+            return false; // Still waiting for retry interval
+        
+        lastTargetAttempt = now;
+        targetAttempts++;
+        
+        log.Information($"[Cactpot] Targeting attempt {targetAttempts}/{MaxTargetAttempts}");
+        
+        // Try different targeting strategies in order of preference
+        bool success = false;
+        
+        // Strategy 1: Exact name match
+        if (targetAttempts == 1)
+        {
+            log.Information("[Cactpot] Attempt 1: Targeting by exact name 'Mini Cactpot Broker'");
+            success = GameHelpers.TargetAndInteract("Mini Cactpot Broker");
+        }
+        // Strategy 2: Partial name match - Cactpot
+        else if (targetAttempts == 2)
+        {
+            log.Information("[Cactpot] Attempt 2: Targeting by partial name 'Cactpot'");
+            success = GameHelpers.TargetAndInteract("Cactpot");
+        }
+        // Strategy 3: Partial name match - Broker
+        else if (targetAttempts == 3)
+        {
+            log.Information("[Cactpot] Attempt 3: Targeting by partial name 'Broker'");
+            success = GameHelpers.TargetAndInteract("Broker");
+        }
+        // Strategy 4: Target command with Cactpot
+        else if (targetAttempts == 4)
+        {
+            log.Information("[Cactpot] Attempt 4: Using /target Cactpot command");
+            commandManager.ProcessCommand("/target Cactpot");
+            // Give it a moment to process, then try interaction
+            System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                GameHelpers.SendConfirm();
+            });
+            success = true; // Assume success, let the interaction state verify
+        }
+        // Strategy 5: Target command with Mini
+        else if (targetAttempts == 5)
+        {
+            log.Information("[Cactpot] Attempt 5: Using /target Mini command");
+            commandManager.ProcessCommand("/target Mini");
+            // Give it a moment to process, then try interaction
+            System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                GameHelpers.SendConfirm();
+            });
+            success = true; // Assume success, let the interaction state verify
+        }
+        
+        if (success)
+        {
+            log.Information($"[Cactpot] Targeting strategy {targetAttempts} succeeded");
+            return true;
+        }
+        else
+        {
+            log.Warning($"[Cactpot] Targeting strategy {targetAttempts} failed");
+            
+            // If we've exhausted all attempts, return false
+            if (targetAttempts >= MaxTargetAttempts)
+            {
+                log.Error("[Cactpot] All targeting strategies failed");
+                return false;
+            }
+            
+            // Continue trying
+            return false;
+        }
+    }
+
     public void Reset()
     {
         SetState(CactpotState.Idle);
@@ -169,16 +256,16 @@ public class CactpotService : IDisposable
 
             case CactpotState.MiniTargeting:
                 log.Information("[Cactpot] Targeting and interacting with Cactpot Board");
-                if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
+                if (TargetAndInteractWithRetry())
                 {
-                    log.Information("[Cactpot] Interacted with Mini Cactpot Broker via TargetSystem");
+                    log.Information("[Cactpot] Successfully interacted with Mini Cactpot Broker");
+                    SetState(CactpotState.MiniInteracting);
                 }
-                else
+                else if (elapsed > 30)
                 {
-                    // Fallback: try /target + NUMPAD0
-                    commandManager.ProcessCommand("/target Cactpot");
+                    log.Error("[Cactpot] Failed to target and interact with Mini Cactpot Broker after 30 seconds");
+                    SetState(CactpotState.Failed);
                 }
-                SetState(CactpotState.MiniInteracting);
                 break;
 
             case CactpotState.MiniInteracting:
@@ -409,6 +496,14 @@ public class CactpotService : IDisposable
     private void SetState(CactpotState newState)
     {
         log.Information($"[Cactpot] {state} -> {newState}");
+        
+        // Reset targeting counters when entering targeting state
+        if (newState == CactpotState.MiniTargeting)
+        {
+            lastTargetAttempt = DateTime.MinValue;
+            targetAttempts = 0;
+        }
+        
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
     }
