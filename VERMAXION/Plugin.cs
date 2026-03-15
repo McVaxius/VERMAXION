@@ -73,6 +73,9 @@ public sealed class Plugin : IDalamudPlugin
         if (!string.IsNullOrEmpty(Configuration.LastAccountId))
             ConfigManager.CurrentAccountId = Configuration.LastAccountId;
 
+        // Subscribe to character change events
+        ConfigManager.OnCharacterChanged += OnCharacterChanged;
+
         // Initialize services
         ResetDetectionService = new ResetDetectionService(Log);
         HenchmanService = new HenchmanService(CommandManager, Log);
@@ -145,6 +148,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Framework.Update -= OnFrameworkUpdate;
         ClientState.Login -= OnLoginEvent;
+        ConfigManager.OnCharacterChanged -= OnCharacterChanged;
 
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
@@ -170,6 +174,40 @@ public sealed class Plugin : IDalamudPlugin
     {
         Log.Information($"[Plugin] AR signaled character ready for postprocess");
         Engine.StartPostProcess();
+    }
+
+    private void OnCharacterChanged(string oldCharacterKey, string newCharacterKey)
+    {
+        Log.Information($"[Plugin] Character changed: '{oldCharacterKey}' -> '{newCharacterKey}'");
+        
+        // Reset all services to prevent state persistence between characters
+        try
+        {
+            Log.Information("[Plugin] Resetting all services due to character change");
+            
+            FCBuffService.Reset();
+            VerminionService.Reset();
+            CactpotService.Reset();
+            ChocoboRaceService.Reset();
+            FashionReportService.Reset();
+            RegisterRegistrablesService.Reset();
+            MinionRouletteService.Reset();
+            SeasonalGearService.Reset();
+            GearUpdaterService.Reset();
+            
+            // Reset engine state if running
+            if (Engine.IsRunning)
+            {
+                Log.Information("[Plugin] Stopping engine due to character change");
+                Engine.Stop();
+            }
+            
+            Log.Information("[Plugin] All services reset successfully");
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[Plugin] Error resetting services on character change: {ex.Message}");
+        }
     }
 
     private void OnCommand(string command, string args)

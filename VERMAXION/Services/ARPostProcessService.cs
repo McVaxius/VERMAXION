@@ -77,7 +77,7 @@ public class ARPostProcessService : IDisposable
         IsProcessing = true;
 
         // Force enable textadvance at the start of every PostARprocess
-        CommandHelper.SendCommand("/textadvance enable");
+        CommandHelper.SendCommand("/at enable");
         log.Information("[AR] Textadvance enabled for postprocess");
 
         try

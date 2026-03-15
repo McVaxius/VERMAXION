@@ -18,7 +18,22 @@ public class ConfigManager
     private readonly Dictionary<string, AccountConfig> accounts = new();
 
     public string CurrentAccountId { get; set; } = "";
-    public string SelectedCharacterKey { get; set; } = "";
+    private string _selectedCharacterKey = "";
+    public string SelectedCharacterKey 
+    { 
+        get => _selectedCharacterKey;
+        set
+        {
+            if (_selectedCharacterKey != value)
+            {
+                var oldKey = _selectedCharacterKey;
+                _selectedCharacterKey = value;
+                OnCharacterChanged?.Invoke(oldKey, value);
+            }
+        }
+    }
+
+    public event Action<string, string>? OnCharacterChanged;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
