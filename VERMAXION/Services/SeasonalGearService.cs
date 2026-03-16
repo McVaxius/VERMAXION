@@ -522,12 +522,19 @@ public class SeasonalGearService : IDisposable
                     
                     // Handle RecommendEquip dialog if it appears (2 second delay as specified)
                     System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
-                        if (GameHelpers.IsAddonVisible("RecommendEquip"))
+                        try
                         {
-                            log.Debug("[SeasonalGear] Confirming RecommendEquip dialog");
-                            GameHelpers.FireAddonCallback("RecommendEquip", true, 0);
+                            if (GameHelpers.IsAddonVisible("RecommendEquip"))
+                            {
+                                log.Debug("[SeasonalGear] Confirming RecommendEquip dialog");
+                                GameHelpers.FireAddonCallback("RecommendEquip", true, 0);
+                            }
                         }
-                    });
+                        catch (Exception ex)
+                        {
+                            Plugin.Log.Error($"[SeasonalGear] ContinueWith exception in RecommendEquip dialog: {ex.Message}");
+                        }
+                    }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
                 }
                 else if (elapsed > 6.0)  // Increased to 6.0s to account for longer delays
                 {

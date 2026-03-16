@@ -165,8 +165,15 @@ public class CactpotService : IDisposable
             commandManager.ProcessCommand("/target Cactpot");
             // Give it a moment to process, then try interaction
             System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
-                GameHelpers.SendConfirm();
-            });
+                try
+                {
+                    GameHelpers.SendConfirm();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Error($"[Cactpot] ContinueWith exception in SendConfirm: {ex.Message}");
+                }
+            }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
             success = true; // Assume success, let the interaction state verify
         }
         // Strategy 5: Target command with Mini
@@ -176,8 +183,15 @@ public class CactpotService : IDisposable
             commandManager.ProcessCommand("/target Mini");
             // Give it a moment to process, then try interaction
             System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
-                GameHelpers.SendConfirm();
-            });
+                try
+                {
+                    GameHelpers.SendConfirm();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Error($"[Cactpot] ContinueWith exception in SendConfirm (Mini): {ex.Message}");
+                }
+            }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
             success = true; // Assume success, let the interaction state verify
         }
         
