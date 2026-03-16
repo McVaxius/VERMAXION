@@ -29,6 +29,7 @@ public class FashionReportService : IDisposable
     private const int MaxAttempts = 3;
     private DateTime lastJumpTime = DateTime.MinValue;
     private const double JumpInterval = 0.5; // 500ms jump interval as requested
+    private const float JumpStopDistance = 10f; // Stop jumping when within 10 yalms
 
     public enum FashionReportState
     {
@@ -152,7 +153,7 @@ public class FashionReportService : IDisposable
                     return;
                 }
                 // Send periodic jumps during navigation to help with pathing
-                SendPeriodicJump();
+                SendPeriodicJump(MaskedRosePosition);
                 break;
 
             case FashionReportState.InteractingWithMaskedRose:
@@ -292,12 +293,25 @@ public class FashionReportService : IDisposable
     /// <summary>
     /// Send periodic jump commands during navigation to help with pathing when stuck on aetheryte.
     /// Jumps every 500ms as requested to help the bot reach its destination.
+    /// Stops jumping when within 10 yalms of target position.
     /// </summary>
-    private void SendPeriodicJump()
+    private void SendPeriodicJump(Vector3 targetPosition)
     {
         var now = DateTime.UtcNow;
         if ((now - lastJumpTime).TotalSeconds >= JumpInterval)
         {
+            // Check distance to target - stop jumping if we're close
+            var player = objectTable.LocalPlayer;
+            if (player != null)
+            {
+                var distance = Vector3.Distance(player.Position, targetPosition);
+                if (distance <= JumpStopDistance)
+                {
+                    log.Debug($"[FashionReport] Stopping jumps - within {distance:F1} yalms of target (stop at {JumpStopDistance})");
+                    return;
+                }
+            }
+            
             GameHelpers.SendJump();
             lastJumpTime = now;
         }

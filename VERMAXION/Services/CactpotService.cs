@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -117,6 +118,7 @@ public class CactpotService : IDisposable
     private const double TargetRetryInterval = 2.0; // seconds between attempts
     private DateTime lastJumpTime = DateTime.MinValue;
     private const double JumpInterval = 0.5; // 500ms jump interval as requested
+    private const float JumpStopDistance = 10f; // Stop jumping when within 10 yalms
 
     /// <summary>
     /// Enhanced targeting method with multiple attempts and fallback strategies.
@@ -247,7 +249,7 @@ public class CactpotService : IDisposable
                     SetState(CactpotState.Failed);
                 }
                 // Send periodic jumps to help with pathing if stuck on aetheryte
-                SendPeriodicJump();
+                SendPeriodicJump(new Vector3(-46.655319213867f, 1.5999846458435f, 20.395349502563f));
                 break;
 
             case CactpotState.MiniWaitingForArrival:
@@ -257,7 +259,7 @@ public class CactpotService : IDisposable
                     SetState(CactpotState.MiniTargeting);
                 }
                 // Send periodic jumps during arrival wait to help with pathing
-                SendPeriodicJump();
+                SendPeriodicJump(new Vector3(-46.655319213867f, 1.5999846458435f, 20.395349502563f));
                 break;
 
             case CactpotState.MiniTargeting:
@@ -369,7 +371,7 @@ public class CactpotService : IDisposable
                     SetState(CactpotState.JumboTargetingBroker);
                 }
                 // Send periodic jumps during arrival wait to help with pathing
-                SendPeriodicJump();
+                SendPeriodicJump(new Vector3(121.13345336914f, 13.001298904419f, -11.011554718018f));
                 break;
 
             case CactpotState.JumboTargetingBroker:
@@ -461,7 +463,7 @@ public class CactpotService : IDisposable
                     SetState(CactpotState.JumboCheckTargetingCashier);
                 }
                 // Send periodic jumps during arrival wait to help with pathing
-                SendPeriodicJump();
+                SendPeriodicJump(new Vector3(124.05115509033f, 13.002527236938f, -19.590528488159f));
                 break;
 
             case CactpotState.JumboCheckTargetingCashier:
@@ -521,12 +523,25 @@ public class CactpotService : IDisposable
     /// <summary>
     /// Send periodic jump commands during navigation to help with pathing when stuck on aetheryte.
     /// Jumps every 500ms as requested to help the bot reach its destination.
+    /// Stops jumping when within 10 yalms of target position.
     /// </summary>
-    private void SendPeriodicJump()
+    private void SendPeriodicJump(Vector3 targetPosition)
     {
         var now = DateTime.UtcNow;
         if ((now - lastJumpTime).TotalSeconds >= JumpInterval)
         {
+            // Check distance to target - stop jumping if we're close
+            var player = Plugin.ObjectTable.LocalPlayer;
+            if (player != null)
+            {
+                var distance = Vector3.Distance(player.Position, targetPosition);
+                if (distance <= JumpStopDistance)
+                {
+                    log.Debug($"[Cactpot] Stopping jumps - within {distance:F1} yalms of target (stop at {JumpStopDistance})");
+                    return;
+                }
+            }
+            
             GameHelpers.SendJump();
             lastJumpTime = now;
         }
