@@ -115,6 +115,8 @@ public class CactpotService : IDisposable
     private int targetAttempts = 0;
     private const int MaxTargetAttempts = 5;
     private const double TargetRetryInterval = 2.0; // seconds between attempts
+    private DateTime lastJumpTime = DateTime.MinValue;
+    private const double JumpInterval = 0.5; // 500ms jump interval as requested
 
     /// <summary>
     /// Enhanced targeting method with multiple attempts and fallback strategies.
@@ -244,6 +246,8 @@ public class CactpotService : IDisposable
                     log.Error("[Cactpot] Timeout waiting for player available");
                     SetState(CactpotState.Failed);
                 }
+                // Send periodic jumps to help with pathing if stuck on aetheryte
+                SendPeriodicJump();
                 break;
 
             case CactpotState.MiniWaitingForArrival:
@@ -252,6 +256,8 @@ public class CactpotService : IDisposable
                     log.Information("[Cactpot] Arrived at Cactpot Board area");
                     SetState(CactpotState.MiniTargeting);
                 }
+                // Send periodic jumps during arrival wait to help with pathing
+                SendPeriodicJump();
                 break;
 
             case CactpotState.MiniTargeting:
@@ -362,6 +368,8 @@ public class CactpotService : IDisposable
                     log.Information("[Cactpot] Arrived at Broker");
                     SetState(CactpotState.JumboTargetingBroker);
                 }
+                // Send periodic jumps during arrival wait to help with pathing
+                SendPeriodicJump();
                 break;
 
             case CactpotState.JumboTargetingBroker:
@@ -452,6 +460,8 @@ public class CactpotService : IDisposable
                 {
                     SetState(CactpotState.JumboCheckTargetingCashier);
                 }
+                // Send periodic jumps during arrival wait to help with pathing
+                SendPeriodicJump();
                 break;
 
             case CactpotState.JumboCheckTargetingCashier:
@@ -506,6 +516,20 @@ public class CactpotService : IDisposable
         
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Send periodic jump commands during navigation to help with pathing when stuck on aetheryte.
+    /// Jumps every 500ms as requested to help the bot reach its destination.
+    /// </summary>
+    private void SendPeriodicJump()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastJumpTime).TotalSeconds >= JumpInterval)
+        {
+            GameHelpers.SendJump();
+            lastJumpTime = now;
+        }
     }
 
     public void Dispose() { }

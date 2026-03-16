@@ -443,4 +443,20 @@ public static class GameHelpers
             return null;
         }
     }
+
+    /// <summary>
+    /// Send jump command to help with pathing when stuck.
+    /// Uses /gaction jump for vertical movement assistance.
+    /// </summary>
+    public static void SendJump()
+    {
+        try
+        {
+            CommandHelper.SendCommand("/gaction jump");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[GameHelpers] Failed to send jump: {ex.Message}");
+        }
+    }
 }

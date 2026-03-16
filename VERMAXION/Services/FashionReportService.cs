@@ -27,6 +27,8 @@ public class FashionReportService : IDisposable
     private DateTime stateEnteredAt = DateTime.MinValue;
     private int currentAttempt = 0;
     private const int MaxAttempts = 3;
+    private DateTime lastJumpTime = DateTime.MinValue;
+    private const double JumpInterval = 0.5; // 500ms jump interval as requested
 
     public enum FashionReportState
     {
@@ -149,6 +151,8 @@ public class FashionReportService : IDisposable
                     SetState(FashionReportState.WaitingForTarget);
                     return;
                 }
+                // Send periodic jumps during navigation to help with pathing
+                SendPeriodicJump();
                 break;
 
             case FashionReportState.InteractingWithMaskedRose:
@@ -282,6 +286,20 @@ public class FashionReportService : IDisposable
                 log.Information("[FashionReport] Fashion Report completed successfully");
                 isActive = false;
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Send periodic jump commands during navigation to help with pathing when stuck on aetheryte.
+    /// Jumps every 500ms as requested to help the bot reach its destination.
+    /// </summary>
+    private void SendPeriodicJump()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastJumpTime).TotalSeconds >= JumpInterval)
+        {
+            GameHelpers.SendJump();
+            lastJumpTime = now;
         }
     }
 
