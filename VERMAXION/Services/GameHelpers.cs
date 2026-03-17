@@ -84,7 +84,17 @@ public static class GameHelpers
             Plugin.Log.Warning($"[INTERACT] Object '{objectName}' not found");
             return false;
         }
-        return InteractWithObject(obj);
+
+        try
+        {
+            GameHelpers.SendEnd();
+            return InteractWithObject(obj);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[INTERACT] Failed to interact with '{objectName}': {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>
@@ -346,6 +356,14 @@ public static class GameHelpers
     public static void SendNumpadPlus()
     {
         PressKey(VirtualKey.ADD);
+    }
+
+    /// <summary>
+    /// Send END key.
+    /// </summary>
+    public static void SendEnd()
+    {
+        PressKey(VirtualKey.END);
     }
 
     // ─── Keyboard Input (ECommons WindowsKeypress - same pattern as LootGoblin) ─────

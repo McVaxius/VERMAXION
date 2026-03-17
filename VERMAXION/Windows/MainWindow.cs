@@ -245,6 +245,13 @@ public class MainWindow : Window, IDisposable
                 Plugin.Log.Information("[UI] Testing NUMPAD+ key press");
                 GameHelpers.SendNumpadPlus();
             }
+            
+            ImGui.SameLine();
+            if (ImGui.SmallButton("[END]"))
+            {
+                Plugin.Log.Information("[UI] Testing END key press");
+                GameHelpers.SendEnd();
+            }
         }
 
         ImGui.Spacing();

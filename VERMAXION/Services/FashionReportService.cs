@@ -246,6 +246,7 @@ public class FashionReportService : IDisposable
             {
                 if (obj != null && obj.Name.ToString().Equals(MaskedRoseName, StringComparison.OrdinalIgnoreCase))
                 {
+                    GameHelpers.SendEnd();
                     targetManager.Target = obj;
                     return true;
                 }

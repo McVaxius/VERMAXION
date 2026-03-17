@@ -390,12 +390,17 @@ public class CactpotService : IDisposable
 
             case CactpotState.JumboTargetingBroker:
                 log.Information("[Cactpot] Targeting and interacting with Broker");
-                if (GameHelpers.TargetAndInteract("Jumbo Cactpot Broker"))
+                try
                 {
-                    log.Information("[Cactpot] Interacted with Jumbo Cactpot Broker via TargetSystem");
+                    GameHelpers.SendEnd();
+                    if (GameHelpers.TargetAndInteract("Jumbo Cactpot Broker"))
+                    {
+                        log.Information("[Cactpot] Interacted with Jumbo Cactpot Broker via TargetSystem");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
+                    log.Error($"[Cactpot] Failed to target and interact with Jumbo Cactpot Broker: {ex.Message}");
                     commandManager.ProcessCommand("/target Broker");
                 }
                 SetState(CactpotState.JumboInteractingBroker);
@@ -482,12 +487,17 @@ public class CactpotService : IDisposable
 
             case CactpotState.JumboCheckTargetingCashier:
                 log.Information("[Cactpot] Targeting and interacting with Cashier");
-                if (GameHelpers.TargetAndInteract("Jumbo Cactpot Cashier"))
+                try
                 {
-                    log.Information("[Cactpot] Interacted with Cashier via TargetSystem");
+                    GameHelpers.SendEnd();
+                    if (GameHelpers.TargetAndInteract("Jumbo Cactpot Cashier"))
+                    {
+                        log.Information("[Cactpot] Interacted with Cashier via TargetSystem");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
+                    log.Error($"[Cactpot] Failed to target and interact with Jumbo Cactpot Cashier: {ex.Message}");
                     commandManager.ProcessCommand("/target Cashier");
                 }
                 SetState(CactpotState.JumboCheckInteractingCashier);

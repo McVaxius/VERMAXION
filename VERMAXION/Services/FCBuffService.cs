@@ -657,7 +657,15 @@ public class FCBuffService : IDisposable
                 if (quartermaster != null)
                 {
                     log.Information("[FCBuff] Found Quartermaster, targeting...");
-                    targetManager.Target = quartermaster;
+                    try
+                    {
+                        GameHelpers.SendEnd();
+                        targetManager.Target = quartermaster;
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error($"[FCBuff] Failed to set target for Quartermaster: {ex.Message}");
+                    }
                     SetState(FCBuffState.InteractingQuartermaster);
                 }
                 else
@@ -667,7 +675,15 @@ public class FCBuffService : IDisposable
                     if (oicQuartermaster != null)
                     {
                         log.Information("[FCBuff] Found OIC Quartermaster, targeting...");
-                        targetManager.Target = oicQuartermaster;
+                        try
+                        {
+                            GameHelpers.SendEnd();
+                            targetManager.Target = oicQuartermaster;
+                        }
+                        catch (Exception ex)
+                        {
+                            log.Error($"[FCBuff] Failed to set target for OIC Quartermaster: {ex.Message}");
+                        }
                         SetState(FCBuffState.InteractingQuartermaster);
                     }
                     else
@@ -683,14 +699,19 @@ public class FCBuffService : IDisposable
             case FCBuffState.InteractingQuartermaster:
                 if (elapsed < 1) return;
                 log.Information("[FCBuff] Interacting with OIC Quartermaster");
-                if (targetManager.Target != null && GameHelpers.InteractWithObject(targetManager.Target))
+                if (targetManager.Target != null)
                 {
-                    SetState(FCBuffState.WaitingForSelectString1);
-                }
-                else
-                {
-                    log.Error("[FCBuff] Failed to interact with OIC Quartermaster");
-                    SetState(FCBuffState.Failed);
+                    try
+                    {
+                        GameHelpers.SendEnd();
+                        GameHelpers.InteractWithObject(targetManager.Target);
+                        SetState(FCBuffState.WaitingForSelectString1);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error($"[FCBuff] Failed to interact with Quartermaster: {ex.Message}");
+                        SetState(FCBuffState.Failed);
+                    }
                 }
                 break;
 
