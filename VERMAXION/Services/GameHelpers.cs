@@ -61,11 +61,17 @@ public static class GameHelpers
 
     /// <summary>
     /// Find an NPC/EventObj by name in the object table.
+    /// Excludes only player characters to avoid targeting other players.
     /// </summary>
     public static IGameObject? FindObjectByName(string name)
     {
         foreach (var obj in Plugin.ObjectTable)
         {
+            // Skip ONLY player characters, allow NPCs and battle NPCs
+            // Compare with LocalPlayer to identify player characters
+            if (obj == Plugin.ObjectTable.LocalPlayer)
+                continue;
+                
             if (obj.Name.TextValue.Equals(name, StringComparison.OrdinalIgnoreCase))
                 return obj;
         }
