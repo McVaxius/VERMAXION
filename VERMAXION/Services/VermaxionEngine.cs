@@ -186,6 +186,11 @@ public class VermaxionEngine
                 {
                     if (!fcBuffService.IsActive && !fcBuffService.IsComplete && !fcBuffService.IsFailed)
                     {
+                        // Clean slate before starting FC Buff
+                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before FC Buff");
+                        SendNumpadPlus();
+                        SendNumpadPlus();
+                        
                         fcBuffService.Start(activeConfig.FCBuffPurchaseAttempts);
                         return;
                     }
@@ -242,6 +247,11 @@ public class VermaxionEngine
                 {
                     if (!verminionService.IsActive && !verminionService.IsComplete && !verminionService.IsFailed)
                     {
+                        // Clean slate before starting Verminion
+                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Verminion");
+                        SendNumpadPlus();
+                        SendNumpadPlus();
+                        
                         verminionService.Start();
                         return;
                     }
@@ -273,6 +283,11 @@ public class VermaxionEngine
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
+                        // Clean slate before starting Mini Cactpot
+                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Mini Cactpot");
+                        SendNumpadPlus();
+                        SendNumpadPlus();
+                        
                         cactpotService.StartMiniCactpot();
                         return;
                     }
@@ -304,6 +319,11 @@ public class VermaxionEngine
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
+                        // Clean slate before starting Jumbo Cactpot
+                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Jumbo Cactpot");
+                        SendNumpadPlus();
+                        SendNumpadPlus();
+                        
                         log.Information("[Engine] Starting Jumbo Cactpot (Saturday)");
                         cactpotService.StartJumboCactpotCheck();
                         return;
@@ -336,6 +356,11 @@ public class VermaxionEngine
                 {
                     if (!fashionReportService.IsActive && !fashionReportService.IsComplete && !fashionReportService.IsFailed)
                     {
+                        // Clean slate before starting Fashion Report
+                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Fashion Report");
+                        SendNumpadPlus();
+                        SendNumpadPlus();
+                        
                         log.Information("[Engine] Starting Fashion Report (Friday)");
                         fashionReportService.Start();
                         return;
@@ -368,6 +393,11 @@ public class VermaxionEngine
                 {
                     if (!chocoboRaceService.IsActive && !chocoboRaceService.IsComplete && !chocoboRaceService.IsFailed)
                     {
+                        // Clean slate before starting Chocobo Racing
+                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Chocobo Racing");
+                        SendNumpadPlus();
+                        SendNumpadPlus();
+                        
                         chocoboRaceService.Start();
                         return;
                     }
