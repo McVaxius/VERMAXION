@@ -61,24 +61,30 @@ public static class GameHelpers
 
     /// <summary>
     /// Find an NPC/EventObj by name in the object table.
+    /// Uses AutoRetainer's proven targeting pattern: ObjectKind filtering first, then name matching.
     /// Excludes all player characters to avoid targeting other players.
     /// </summary>
     public static IGameObject? FindObjectByName(string name)
     {
         foreach (var obj in Plugin.ObjectTable)
         {
-            // Skip ALL player characters to avoid targeting other players
-            if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player)
-                continue;
-                
-            if (obj.Name.TextValue.Equals(name, StringComparison.OrdinalIgnoreCase))
-                return obj;
+            // AutoRetainer pattern: Filter by ObjectKind FIRST to avoid players entirely
+            if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc ||
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj ||
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Housing)
+            {
+                // Then check name matching (case-insensitive like AutoRetainer)
+                if (obj.Name.TextValue.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    return obj;
+            }
         }
         return null;
     }
 
     /// <summary>
     /// Target an object by name, then interact with it.
+    /// Uses AutoRetainer's proven targeting pattern: direct TargetManager targeting.
     /// Returns true if interaction was initiated.
     /// </summary>
     public static bool TargetAndInteract(string objectName)
@@ -92,7 +98,13 @@ public static class GameHelpers
 
         try
         {
-            GameHelpers.SendEnd();
+            // AutoRetainer pattern: Use TargetManager directly instead of /target commands
+            Plugin.Targets.SetTarget(obj);
+            Plugin.Log.Information($"[INTERACT] Set target to {objectName}");
+            
+            // Small delay to let targeting settle
+            System.Threading.Tasks.Task.Delay(100).Wait();
+            
             return InteractWithObject(obj);
         }
         catch (Exception ex)

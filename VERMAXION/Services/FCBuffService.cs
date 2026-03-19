@@ -688,10 +688,8 @@ public class FCBuffService : IDisposable
                     }
                     else
                     {
-                        // Last resort: use /target command
-                        log.Information("[FCBuff] NPC not found, using /target Quartermaster");
-                        commandManager.ProcessCommand("/target Quartermaster");
-                        SetState(FCBuffState.InteractingQuartermaster);
+                        log.Error("[FCBuff] Quartermaster not found with improved targeting");
+                        SetState(FCBuffState.Failed);
                     }
                 }
                 break;

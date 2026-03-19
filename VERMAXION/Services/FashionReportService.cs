@@ -241,14 +241,19 @@ public class FashionReportService : IDisposable
     {
         try
         {
-            // Search for Masked Rose in object table
+            // AutoRetainer pattern: Filter by ObjectKind FIRST to avoid players entirely
             foreach (var obj in objectTable)
             {
-                if (obj != null && obj.Name.ToString().Equals(MaskedRoseName, StringComparison.OrdinalIgnoreCase))
+                if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
+                    obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc)
                 {
-                    GameHelpers.SendEnd();
-                    targetManager.Target = obj;
-                    return true;
+                    if (obj != null && obj.Name.ToString().Equals(MaskedRoseName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        GameHelpers.SendEnd();
+                        targetManager.Target = obj;
+                        log.Information($"[FashionReport] Set target to {MaskedRoseName}");
+                        return true;
+                    }
                 }
             }
             return false;
