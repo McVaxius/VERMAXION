@@ -99,7 +99,7 @@ public static class GameHelpers
         try
         {
             // AutoRetainer pattern: Use TargetManager directly instead of /target commands
-            Plugin.Targets.SetTarget(obj);
+            Plugin.targetManager.Target = obj;
             Plugin.Log.Information($"[INTERACT] Set target to {objectName}");
             
             // Small delay to let targeting settle
