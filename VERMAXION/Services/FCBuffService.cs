@@ -650,64 +650,25 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.TargetingQuartermaster:
                 if (elapsed < 1) return;
-                log.Information("[FCBuff] Targeting OIC Quartermaster");
+                log.Information("[FCBuff] Targeting and interacting with OIC Quartermaster");
                 
-                // Try to target "Quartermaster" first (more specific)
-                var quartermaster = GameHelpers.FindObjectByName("Quartermaster");
-                if (quartermaster != null)
+                // AutoRetainer pattern: Use TargetAndInteract for same-frame targeting and interaction
+                if (GameHelpers.TargetAndInteract("Quartermaster"))
                 {
-                    log.Information("[FCBuff] Found Quartermaster, targeting...");
-                    try
-                    {
-                        GameHelpers.SendEnd();
-                        targetManager.Target = quartermaster;
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error($"[FCBuff] Failed to set target for Quartermaster: {ex.Message}");
-                    }
-                    SetState(FCBuffState.InteractingQuartermaster);
+                    log.Information("[FCBuff] Successfully interacted with Quartermaster");
+                    SetState(FCBuffState.WaitingForSelectString1);
                 }
                 else
                 {
-                    // Fallback: try "OIC Quartermaster"
-                    var oicQuartermaster = GameHelpers.FindObjectByName("OIC Quartermaster");
-                    if (oicQuartermaster != null)
+                    // Try fallback with "OIC Quartermaster"
+                    if (GameHelpers.TargetAndInteract("OIC Quartermaster"))
                     {
-                        log.Information("[FCBuff] Found OIC Quartermaster, targeting...");
-                        try
-                        {
-                            GameHelpers.SendEnd();
-                            targetManager.Target = oicQuartermaster;
-                        }
-                        catch (Exception ex)
-                        {
-                            log.Error($"[FCBuff] Failed to set target for OIC Quartermaster: {ex.Message}");
-                        }
-                        SetState(FCBuffState.InteractingQuartermaster);
+                        log.Information("[FCBuff] Successfully interacted with OIC Quartermaster");
+                        SetState(FCBuffState.WaitingForSelectString1);
                     }
                     else
                     {
-                        log.Error("[FCBuff] Quartermaster not found with improved targeting");
-                        SetState(FCBuffState.Failed);
-                    }
-                }
-                break;
-
-            case FCBuffState.InteractingQuartermaster:
-                if (elapsed < 1) return;
-                log.Information("[FCBuff] Interacting with OIC Quartermaster");
-                if (targetManager.Target != null)
-                {
-                    try
-                    {
-                        GameHelpers.SendEnd();
-                        GameHelpers.InteractWithObject(targetManager.Target);
-                        SetState(FCBuffState.WaitingForSelectString1);
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error($"[FCBuff] Failed to interact with Quartermaster: {ex.Message}");
+                        log.Error("[FCBuff] Failed to interact with Quartermaster");
                         SetState(FCBuffState.Failed);
                     }
                 }

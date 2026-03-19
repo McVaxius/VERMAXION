@@ -18,6 +18,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using ECommons.Automation;
+using ECommons.GameHelpers;
 using Lumina.Excel.Sheets;
 
 namespace VERMAXION.Services;
@@ -58,17 +59,21 @@ public static class GameHelpers
             if (obj == null) return false;
 
             // AutoRetainer pattern: Check animation lock before interaction
-            var player = Plugin.ObjectTable.LocalPlayer;
-            if (player != null && player.IsCasting)
+            if(Player.IsAnimationLocked) 
             {
-                Plugin.Log.Debug($"[INTERACT] Player is casting, skipping interaction with {obj.Name.TextValue}");
+                Plugin.Log.Debug($"[INTERACT] Player is animation locked, skipping interaction with {obj.Name.TextValue}");
                 return false;
             }
 
-            // Additional animation check using Condition flags
-            if (Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] || Plugin.Condition[ConditionFlag.WatchingCutscene])
+            // AutoRetainer pattern: Comprehensive occupation checks
+            if (Plugin.Condition[ConditionFlag.Occupied] || 
+                Plugin.Condition[ConditionFlag.OccupiedInQuestEvent] ||
+                Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
+                Plugin.Condition[ConditionFlag.WatchingCutscene] ||
+                Plugin.Condition[ConditionFlag.BetweenAreas] ||
+                Plugin.Condition[ConditionFlag.BetweenAreas51])
             {
-                Plugin.Log.Debug($"[INTERACT] Player is in cutscene, skipping interaction with {obj.Name.TextValue}");
+                Plugin.Log.Debug($"[INTERACT] Player is occupied, skipping interaction with {obj.Name.TextValue}");
                 return false;
             }
 
@@ -84,6 +89,26 @@ public static class GameHelpers
             {
                 Plugin.Log.Error("[INTERACT] TargetSystem is null");
                 return false;
+            }
+
+            // AutoRetainer pattern: Validate target before interaction
+            if (!obj.IsTargetable)
+            {
+                Plugin.Log.Debug($"[INTERACT] Target is not targetable: {obj.Name.TextValue}");
+                return false;
+            }
+
+            // AutoRetainer pattern: Distance validation using GetValidInteractionDistance
+            var localPlayer = Plugin.ObjectTable.LocalPlayer;
+            if (localPlayer != null)
+            {
+                var distance = Vector3.Distance(localPlayer.Position, obj.Position);
+                var maxDistance = GetValidInteractionDistance(obj);
+                if (distance > maxDistance)
+                {
+                    Plugin.Log.Debug($"[INTERACT] Target too far: {distance:F1}y (max: {maxDistance:F1}y) for {obj.Name.TextValue}");
+                    return false;
+                }
             }
 
             var gameObjPtr = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
@@ -527,6 +552,25 @@ public static class GameHelpers
             Plugin.Log.Error($"[GameHelpers] Error reading FC points: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// AutoRetainer pattern: Get valid interaction distance for different object types.
+    /// Based on FFXIV standard interaction distances in yalms.
+    /// </summary>
+    public static float GetValidInteractionDistance(IGameObject obj)
+    {
+        if (obj == null) return 2.0f; // Default safe distance
+        
+        // AutoRetainer distance logic based on ObjectKind
+        return obj.ObjectKind switch
+        {
+            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc => 2.5f,  // NPCs like summoning bells, vendors
+            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc => 3.0f,  // Battle NPCs (enemies, retainers)
+            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj => 2.0f,   // Event objects (chests, aetherytes)
+            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Housing => 2.0f,   // Housing objects
+            _ => 2.0f // Default distance for unknown types
+        };
     }
 
     /// <summary>
