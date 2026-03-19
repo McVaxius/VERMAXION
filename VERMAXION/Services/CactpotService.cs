@@ -143,20 +143,65 @@ public class CactpotService : IDisposable
         // Strategy 1: Exact name match
         if (targetAttempts == 1)
         {
-            log.Information("[Cactpot] Attempt 1: Targeting by exact name 'Mini Cactpot Broker'");
-            success = GameHelpers.TargetAndInteract("Mini Cactpot Broker");
+            log.Information("[Cactpot] Attempt 1: /target \"Mini Cactpot Broker\" before targeting");
+            commandManager.ProcessCommand("/target \"Mini Cactpot Broker\"");
+            // Give it a moment to process, then try existing targeting
+            System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                try
+                {
+                    log.Information("[Cactpot] Attempt 1: Now using GameHelpers.TargetAndInteract");
+                    GameHelpers.TargetAndInteract("Mini Cactpot Broker");
+                    // Replace interaction with ECommons NUMPAD0
+                    GameHelpers.SendConfirm();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Error($"[Cactpot] ContinueWith exception in attempt 1: {ex.Message}");
+                }
+            }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
+            success = true; // Assume success, let the interaction state verify
         }
         // Strategy 2: Partial name match - Cactpot
         else if (targetAttempts == 2)
         {
-            log.Information("[Cactpot] Attempt 2: Targeting by partial name 'Cactpot'");
-            success = GameHelpers.TargetAndInteract("Cactpot");
+            log.Information("[Cactpot] Attempt 2: /target \"Cactpot\" before targeting");
+            commandManager.ProcessCommand("/target \"Cactpot\"");
+            // Give it a moment to process, then try existing targeting
+            System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                try
+                {
+                    log.Information("[Cactpot] Attempt 2: Now using GameHelpers.TargetAndInteract");
+                    GameHelpers.TargetAndInteract("Cactpot");
+                    // Replace interaction with ECommons NUMPAD0
+                    GameHelpers.SendConfirm();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Error($"[Cactpot] ContinueWith exception in attempt 2: {ex.Message}");
+                }
+            }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
+            success = true; // Assume success, let the interaction state verify
         }
         // Strategy 3: Partial name match - Broker
         else if (targetAttempts == 3)
         {
-            log.Information("[Cactpot] Attempt 3: Targeting by partial name 'Broker'");
-            success = GameHelpers.TargetAndInteract("Broker");
+            log.Information("[Cactpot] Attempt 3: /target \"Broker\" before targeting");
+            commandManager.ProcessCommand("/target \"Broker\"");
+            // Give it a moment to process, then try existing targeting
+            System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
+                try
+                {
+                    log.Information("[Cactpot] Attempt 3: Now using GameHelpers.TargetAndInteract");
+                    GameHelpers.TargetAndInteract("Broker");
+                    // Replace interaction with ECommons NUMPAD0
+                    GameHelpers.SendConfirm();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Error($"[Cactpot] ContinueWith exception in attempt 3: {ex.Message}");
+                }
+            }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
+            success = true; // Assume success, let the interaction state verify
         }
         // Strategy 4: Target command with Cactpot
         else if (targetAttempts == 4)
