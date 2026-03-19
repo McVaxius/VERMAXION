@@ -146,8 +146,7 @@ public class CactpotService : IDisposable
             log.Information("[Cactpot] Attempt 1: Using improved TargetAndInteract");
             if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
             {
-                // Replace interaction with ECommons NUMPAD0
-                GameHelpers.SendConfirm();
+                // AutoRetainer pattern: TargetAndInteract already handles interaction
                 success = true;
             }
         }
@@ -157,8 +156,7 @@ public class CactpotService : IDisposable
             log.Information("[Cactpot] Attempt 2: Using improved TargetAndInteract");
             if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
             {
-                // Replace interaction with ECommons NUMPAD0
-                GameHelpers.SendConfirm();
+                // AutoRetainer pattern: TargetAndInteract already handles interaction
                 success = true;
             }
         }
@@ -168,8 +166,7 @@ public class CactpotService : IDisposable
             log.Information("[Cactpot] Attempt 3: Using improved TargetAndInteract");
             if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
             {
-                // Replace interaction with ECommons NUMPAD0
-                GameHelpers.SendConfirm();
+                // AutoRetainer pattern: TargetAndInteract already handles interaction
                 success = true;
             }
         }
@@ -179,7 +176,7 @@ public class CactpotService : IDisposable
             log.Information("[Cactpot] Attempt 4: Using improved TargetAndInteract");
             if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
             {
-                GameHelpers.SendConfirm();
+                // AutoRetainer pattern: TargetAndInteract already handles interaction
                 success = true;
             }
         }
@@ -189,7 +186,7 @@ public class CactpotService : IDisposable
             log.Information("[Cactpot] Attempt 5: Using improved TargetAndInteract");
             if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
             {
-                GameHelpers.SendConfirm();
+                // AutoRetainer pattern: TargetAndInteract already handles interaction
                 success = true;
             }
         }
@@ -298,8 +295,7 @@ public class CactpotService : IDisposable
                     }
                     else
                     {
-                        // Try NUMPAD0 to interact
-                        GameHelpers.SendConfirm();
+                        // AutoRetainer pattern: TargetAndInteract already handled interaction
                         if (elapsed > 5)
                         {
                             log.Warning("[Cactpot] Failed to open Cactpot menu, retrying target");
@@ -416,7 +412,7 @@ public class CactpotService : IDisposable
                     }
                     else
                     {
-                        GameHelpers.SendConfirm();
+                        // AutoRetainer pattern: TargetAndInteract already handled interaction
                         if (elapsed > 5)
                         {
                             log.Warning("[Cactpot] Broker menu didn't open");
@@ -518,7 +514,7 @@ public class CactpotService : IDisposable
                     }
                     else
                     {
-                        GameHelpers.SendConfirm();
+                        // AutoRetainer pattern: TargetAndInteract already handled interaction
                         if (elapsed > 5)
                             SetState(CactpotState.JumboCheckComplete);
                     }

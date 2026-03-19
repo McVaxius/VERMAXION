@@ -25,6 +25,29 @@ namespace VERMAXION.Services;
 public static class GameHelpers
 {
     /// <summary>
+    /// AutoRetainer pattern: DateTime-based throttling for interaction timing
+    /// </summary>
+    private static DateTime lastInteractionTime = DateTime.MinValue;
+    
+    /// <summary>
+    /// AutoRetainer pattern: Check if interaction is throttled (5-second cooldown like AutoRetainer)
+    /// </summary>
+    internal static bool CanInteract(string targetName)
+    {
+        var now = DateTime.Now;
+        var timeSinceLastInteraction = now - lastInteractionTime;
+        
+        // 5-second cooldown per target like AutoRetainer
+        if (timeSinceLastInteraction.TotalSeconds >= 5.0)
+        {
+            lastInteractionTime = now;
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
     /// Interact with a targeted game object via TargetSystem.
     /// Pattern from LootGoblin GameHelpers.
     /// </summary>
@@ -33,6 +56,28 @@ public static class GameHelpers
         try
         {
             if (obj == null) return false;
+
+            // AutoRetainer pattern: Check animation lock before interaction
+            var player = Plugin.ObjectTable.LocalPlayer;
+            if (player != null && player.IsCasting)
+            {
+                Plugin.Log.Debug($"[INTERACT] Player is casting, skipping interaction with {obj.Name.TextValue}");
+                return false;
+            }
+
+            // Additional animation check using Condition flags
+            if (Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] || Plugin.Condition[ConditionFlag.WatchingCutscene])
+            {
+                Plugin.Log.Debug($"[INTERACT] Player is in cutscene, skipping interaction with {obj.Name.TextValue}");
+                return false;
+            }
+
+            // AutoRetainer pattern: Check throttling before interaction
+            if (!CanInteract(obj.Name.TextValue))
+            {
+                Plugin.Log.Debug($"[INTERACT] Throttled interaction with {obj.Name.TextValue} (5-second cooldown)");
+                return false;
+            }
 
             var ts = TargetSystem.Instance();
             if (ts == null)
@@ -48,7 +93,7 @@ public static class GameHelpers
                 return false;
             }
 
-            ts->InteractWithObject(gameObjPtr, true);
+            ts->InteractWithObject(gameObjPtr, false);
             Plugin.Log.Information($"[INTERACT] Success: {obj.Name.TextValue}");
             return true;
         }
@@ -102,8 +147,13 @@ public static class GameHelpers
             Plugin.TargetManager.Target = obj;
             Plugin.Log.Information($"[INTERACT] Set target to {objectName}");
             
-            // Small delay to let targeting settle
-            System.Threading.Tasks.Task.Delay(100).Wait();
+            // AutoRetainer pattern: Use frame-based timing instead of fixed delay
+            // Give the game a few frames to process the target change
+            for (int i = 0; i < 3; i++)
+            {
+                Plugin.Framework.RunOnFrameworkThread(() => { });
+                System.Threading.Tasks.Task.Delay(50).Wait(); // 50ms per frame
+            }
             
             return InteractWithObject(obj);
         }
