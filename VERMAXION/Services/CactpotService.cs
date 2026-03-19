@@ -161,17 +161,17 @@ public class CactpotService : IDisposable
             }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
             success = true; // Assume success, let the interaction state verify
         }
-        // Strategy 2: Partial name match - Cactpot
+        // Strategy 2: Retry with exact name
         else if (targetAttempts == 2)
         {
-            log.Information("[Cactpot] Attempt 2: /target \"Cactpot\" before targeting");
-            commandManager.ProcessCommand("/target \"Cactpot\"");
+            log.Information("[Cactpot] Attempt 2: /target \"Mini Cactpot Broker\" before targeting");
+            commandManager.ProcessCommand("/target \"Mini Cactpot Broker\"");
             // Give it a moment to process, then try existing targeting
             System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
                 try
                 {
                     log.Information("[Cactpot] Attempt 2: Now using GameHelpers.TargetAndInteract");
-                    GameHelpers.TargetAndInteract("Cactpot");
+                    GameHelpers.TargetAndInteract("Mini Cactpot Broker");
                     // Replace interaction with ECommons NUMPAD0
                     GameHelpers.SendConfirm();
                 }
@@ -182,17 +182,17 @@ public class CactpotService : IDisposable
             }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
             success = true; // Assume success, let the interaction state verify
         }
-        // Strategy 3: Partial name match - Broker
+        // Strategy 3: Retry with exact name
         else if (targetAttempts == 3)
         {
-            log.Information("[Cactpot] Attempt 3: /target \"Broker\" before targeting");
-            commandManager.ProcessCommand("/target \"Broker\"");
+            log.Information("[Cactpot] Attempt 3: /target \"Mini Cactpot Broker\" before targeting");
+            commandManager.ProcessCommand("/target \"Mini Cactpot Broker\"");
             // Give it a moment to process, then try existing targeting
             System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
                 try
                 {
                     log.Information("[Cactpot] Attempt 3: Now using GameHelpers.TargetAndInteract");
-                    GameHelpers.TargetAndInteract("Broker");
+                    GameHelpers.TargetAndInteract("Mini Cactpot Broker");
                     // Replace interaction with ECommons NUMPAD0
                     GameHelpers.SendConfirm();
                 }
@@ -203,15 +203,16 @@ public class CactpotService : IDisposable
             }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
             success = true; // Assume success, let the interaction state verify
         }
-        // Strategy 4: Target command with Cactpot
+        // Strategy 4: Retry with exact name
         else if (targetAttempts == 4)
         {
-            log.Information("[Cactpot] Attempt 4: Using /target Cactpot command");
-            commandManager.ProcessCommand("/target Cactpot");
+            log.Information("[Cactpot] Attempt 4: Using /target \"Mini Cactpot Broker\" command");
+            commandManager.ProcessCommand("/target \"Mini Cactpot Broker\"");
             // Give it a moment to process, then try interaction
             System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
                 try
                 {
+                    GameHelpers.TargetAndInteract("Mini Cactpot Broker");
                     GameHelpers.SendConfirm();
                 }
                 catch (Exception ex)
@@ -221,20 +222,21 @@ public class CactpotService : IDisposable
             }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
             success = true; // Assume success, let the interaction state verify
         }
-        // Strategy 5: Target command with Mini
+        // Strategy 5: Final retry with exact name
         else if (targetAttempts == 5)
         {
-            log.Information("[Cactpot] Attempt 5: Using /target Mini command");
-            commandManager.ProcessCommand("/target Mini");
+            log.Information("[Cactpot] Attempt 5: Using /target \"Mini Cactpot Broker\" command");
+            commandManager.ProcessCommand("/target \"Mini Cactpot Broker\"");
             // Give it a moment to process, then try interaction
             System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => {
                 try
                 {
+                    GameHelpers.TargetAndInteract("Mini Cactpot Broker");
                     GameHelpers.SendConfirm();
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Log.Error($"[Cactpot] ContinueWith exception in SendConfirm (Mini): {ex.Message}");
+                    Plugin.Log.Error($"[Cactpot] ContinueWith exception in SendConfirm (Mini Cactpot Broker): {ex.Message}");
                 }
             }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
             success = true; // Assume success, let the interaction state verify
