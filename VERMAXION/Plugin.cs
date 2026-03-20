@@ -444,18 +444,6 @@ public sealed class Plugin : IDalamudPlugin
         GearUpdaterService.Reset();
         Log.Information("[FULL STOP] All services reset");
 
-        // Clear completion flags to reset yellow text status
-        var config = ConfigManager.GetActiveConfig();
-        if (config != null)
-        {
-            config.VerminionCompletedThisWeek = false;
-            config.JumboCactpotCompletedThisWeek = false;
-            config.MiniCactpotCompletedToday = false;
-            config.ChocoboRacingCompletedToday = false;
-            ConfigManager.SaveCurrentAccount();
-            Log.Information("[FULL STOP] Completion flags cleared");
-        }
-
         // Stop VNavmesh navigation
         VNavmeshIPC.Stop();
         Log.Information("[FULL STOP] VNavmesh stopped");

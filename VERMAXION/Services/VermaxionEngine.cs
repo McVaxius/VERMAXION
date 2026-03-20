@@ -243,7 +243,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningVerminion:
-                if (activeConfig!.EnableVerminionQueue && weeklyResetDetected && !activeConfig.VerminionCompletedThisWeek)
+                if (activeConfig!.EnableVerminionQueue && !activeConfig.VerminionCompletedThisWeek)
                 {
                     if (!verminionService.IsActive && !verminionService.IsComplete && !verminionService.IsFailed)
                     {
@@ -279,7 +279,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningMiniCactpot:
-                if (activeConfig!.EnableMiniCactpot && dailyResetDetected && !activeConfig.MiniCactpotCompletedToday)
+                if (activeConfig!.EnableMiniCactpot && !activeConfig.MiniCactpotCompletedToday)
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
@@ -315,7 +315,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningJumboCactpot:
-                if (activeConfig!.EnableJumboCactpot && weeklyResetDetected && resetService.IsSaturdayAfterReset() && !activeConfig.JumboCactpotCompletedThisWeek)
+                if (activeConfig!.EnableJumboCactpot && resetService.IsSaturdayAfterReset() && !activeConfig.JumboCactpotCompletedThisWeek)
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
@@ -352,7 +352,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningFashionReport:
-                if (activeConfig!.EnableFashionReport && weeklyResetDetected && resetService.IsFriday() && !activeConfig.FashionReportCompletedThisWeek)
+                if (activeConfig!.EnableFashionReport && resetService.IsFriday() && !activeConfig.FashionReportCompletedThisWeek)
                 {
                     if (!fashionReportService.IsActive && !fashionReportService.IsComplete && !fashionReportService.IsFailed)
                     {
@@ -389,7 +389,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningChocoboRacing:
-                if (activeConfig!.EnableChocoboRacing && dailyResetDetected && !activeConfig.ChocoboRacingCompletedToday)
+                if (activeConfig!.EnableChocoboRacing && !activeConfig.ChocoboRacingCompletedToday)
                 {
                     if (!chocoboRaceService.IsActive && !chocoboRaceService.IsComplete && !chocoboRaceService.IsFailed)
                     {
