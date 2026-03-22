@@ -562,7 +562,7 @@ public static class GameHelpers
         // AutoRetainer distance logic based on ObjectKind
         return obj.ObjectKind switch
         {
-            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc => 2.5f,  // NPCs like summoning bells, vendors
+            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc => 4.0f,  // NPCs like summoning bells, vendors
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc => 3.0f,  // Battle NPCs (enemies, retainers)
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj => 2.0f,   // Event objects (chests, aetherytes)
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Housing => 2.0f,   // Housing objects

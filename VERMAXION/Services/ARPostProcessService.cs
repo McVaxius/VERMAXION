@@ -16,7 +16,6 @@ public class ARPostProcessService : IDisposable
     private Dalamud.Plugin.Ipc.ICallGateSubscriber<object>? finishPostprocessSub;
 
     private const string PluginName = "Vermaxion";
-    private bool isRegistered = false;
 
     public bool IsProcessing { get; private set; } = false;
 
@@ -45,14 +44,12 @@ public class ARPostProcessService : IDisposable
             requestPostprocessSub = pluginInterface.GetIpcSubscriber<string, object>("AutoRetainer.RequestCharacterPostprocess");
             finishPostprocessSub = pluginInterface.GetIpcSubscriber<object>("AutoRetainer.FinishCharacterPostprocessRequest");
 
-            isRegistered = true;
             log.Information("[AR] AutoRetainer IPC registered successfully");
         }
         catch (Exception ex)
         {
             log.Warning($"[AR] Failed to register AutoRetainer IPC: {ex.Message}");
             log.Warning("[AR] AutoRetainer may not be installed. Plugin will work in manual mode only.");
-            isRegistered = false;
         }
     }
 
@@ -126,7 +123,5 @@ public class ARPostProcessService : IDisposable
         {
             log.Warning($"[AR] Error during IPC cleanup: {ex.Message}");
         }
-
-        isRegistered = false;
     }
 }

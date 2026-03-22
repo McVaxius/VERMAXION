@@ -34,7 +34,6 @@ public class FCBuffService : IDisposable
     private int purchaseAttempts = 0;
     private int buyCount = 0;
     private int buyMax = 15;
-    private int maxPurchaseAttempts = 2; // Try SS2 first, then SS1
     private bool isSealSweetenerTwo = true; // Try Seal Sweetener II first
     private int pathRetryCount = 0;
     private DateTime lastPathRetryTime = DateTime.MinValue;
@@ -344,7 +343,6 @@ public class FCBuffService : IDisposable
                 }
                 log.Error("[FCBuff] Failed to open FC window");
                 SetState(FCBuffState.Failed);
-                break;
                 break;
 
             case FCBuffState.WaitingForFCWindow:
@@ -807,7 +805,6 @@ public class FCBuffService : IDisposable
                     
                     // Step 3: Find the actual List Component Node 14 from children of node 10
                     var node14 = node10->ChildNode;
-                    bool foundComponent = false;
                     
                     // Search for List Component Node (type >= 1000)
                     while (node14 != null && (int)node14->Type < 1000)
