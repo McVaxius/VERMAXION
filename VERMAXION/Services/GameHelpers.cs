@@ -173,12 +173,9 @@ public static class GameHelpers
             Plugin.Log.Information($"[INTERACT] Set target to {objectName}");
             
             // AutoRetainer pattern: Use frame-based timing instead of fixed delay
-            // Give the game a few frames to process the target change
-            for (int i = 0; i < 3; i++)
-            {
-                Plugin.Framework.RunOnFrameworkThread(() => { });
-                System.Threading.Tasks.Task.Delay(50).Wait(); // 50ms per frame
-            }
+            // Give the game one frame to process the target change
+            Plugin.Framework.RunOnFrameworkThread(() => { });
+            System.Threading.Tasks.Task.Delay(50).Wait();
             
             return InteractWithObject(obj);
         }
