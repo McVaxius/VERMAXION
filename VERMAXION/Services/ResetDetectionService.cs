@@ -136,4 +136,140 @@ public class ResetDetectionService
         var saturdayReset = now.Date.AddHours(9); // Today at 9 AM UTC
         return now.DayOfWeek == DayOfWeek.Saturday && now >= saturdayReset;
     }
+
+    // --- NEW: Per-Task Reset System Methods ---
+
+    /// <summary>
+    /// Check if a task needs to run based on its NextReset time.
+    /// Tasks with NextReset == MinValue are treated as needing to run (migration state).
+    /// </summary>
+    public static bool TaskNeedsRun(DateTime nextReset)
+    {
+        return nextReset == DateTime.MinValue || DateTime.UtcNow >= nextReset;
+    }
+
+    /// <summary>
+    /// Check if a task is currently completed (before its next reset).
+    /// </summary>
+    public static bool TaskIsCompleted(DateTime lastCompleted, DateTime nextReset)
+    {
+        return lastCompleted != DateTime.MinValue && DateTime.UtcNow < nextReset;
+    }
+
+    /// <summary>
+    /// Get the next weekly reset time (Tuesday 9:00 AM UTC).
+    /// </summary>
+    public static DateTime GetNextWeeklyReset(DateTime now)
+    {
+        var daysSinceTuesday = ((int)now.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        var nextTuesday = now.Date.AddDays(daysSinceTuesday).AddHours(9);
+
+        if (now >= nextTuesday)
+            nextTuesday = nextTuesday.AddDays(7);
+
+        return nextTuesday;
+    }
+
+    /// <summary>
+    /// Get the next daily reset time (9:00 AM UTC).
+    /// </summary>
+    public static DateTime GetNextDailyReset(DateTime now)
+    {
+        var todayReset = now.Date.AddHours(9);
+
+        if (now >= todayReset)
+            todayReset = todayReset.AddDays(1);
+
+        return todayReset;
+    }
+
+    /// <summary>
+    /// Migrate from legacy boolean flags to the new DateTime system.
+    /// Called once during engine startup for backward compatibility.
+    /// </summary>
+    public void MigrateFromLegacyFlags(CharacterConfig config)
+    {
+        var now = DateTime.UtcNow;
+        var migrated = false;
+
+        // Migrate Verminion (weekly)
+        if (config.VerminionCompletedThisWeek && config.VerminionLastCompleted == DateTime.MinValue)
+        {
+            config.VerminionLastCompleted = GetLastWeeklyReset(now).AddHours(1); // Assume completed after last reset
+            config.VerminionNextReset = GetNextWeeklyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Verminion from legacy flags");
+        }
+        else if (!config.VerminionCompletedThisWeek && config.VerminionNextReset == DateTime.MinValue)
+        {
+            config.VerminionNextReset = GetNextWeeklyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Verminion (incomplete) from legacy flags");
+        }
+
+        // Migrate Jumbo Cactpot (weekly)
+        if (config.JumboCactpotCompletedThisWeek && config.JumboCactpotLastCompleted == DateTime.MinValue)
+        {
+            config.JumboCactpotLastCompleted = GetLastWeeklyReset(now).AddHours(1);
+            config.JumboCactpotNextReset = GetNextWeeklyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Jumbo Cactpot from legacy flags");
+        }
+        else if (!config.JumboCactpotCompletedThisWeek && config.JumboCactpotNextReset == DateTime.MinValue)
+        {
+            config.JumboCactpotNextReset = GetNextWeeklyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Jumbo Cactpot (incomplete) from legacy flags");
+        }
+
+        // Migrate Fashion Report (weekly)
+        if (config.FashionReportCompletedThisWeek && config.FashionReportLastCompleted == DateTime.MinValue)
+        {
+            config.FashionReportLastCompleted = GetLastWeeklyReset(now).AddHours(1);
+            config.FashionReportNextReset = GetNextWeeklyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Fashion Report from legacy flags");
+        }
+        else if (!config.FashionReportCompletedThisWeek && config.FashionReportNextReset == DateTime.MinValue)
+        {
+            config.FashionReportNextReset = GetNextWeeklyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Fashion Report (incomplete) from legacy flags");
+        }
+
+        // Migrate Mini Cactpot (daily)
+        if (config.MiniCactpotCompletedToday && config.MiniCactpotLastCompleted == DateTime.MinValue)
+        {
+            config.MiniCactpotLastCompleted = GetLastDailyReset(now).AddHours(1);
+            config.MiniCactpotNextReset = GetNextDailyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Mini Cactpot from legacy flags");
+        }
+        else if (!config.MiniCactpotCompletedToday && config.MiniCactpotNextReset == DateTime.MinValue)
+        {
+            config.MiniCactpotNextReset = GetNextDailyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Mini Cactpot (incomplete) from legacy flags");
+        }
+
+        // Migrate Chocobo Racing (daily)
+        if (config.ChocoboRacingCompletedToday && config.ChocoboRacingLastCompleted == DateTime.MinValue)
+        {
+            config.ChocoboRacingLastCompleted = GetLastDailyReset(now).AddHours(1);
+            config.ChocoboRacingNextReset = GetNextDailyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Chocobo Racing from legacy flags");
+        }
+        else if (!config.ChocoboRacingCompletedToday && config.ChocoboRacingNextReset == DateTime.MinValue)
+        {
+            config.ChocoboRacingNextReset = GetNextDailyReset(now);
+            migrated = true;
+            log.Information("[ResetDetection] Migrated Chocobo Racing (incomplete) from legacy flags");
+        }
+
+        if (migrated)
+        {
+            log.Information("[ResetDetection] Legacy migration completed");
+        }
+    }
 }

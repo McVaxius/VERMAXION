@@ -175,6 +175,10 @@ public class VermaxionEngine
             case EngineState.CheckingResets:
                 weeklyResetDetected = resetService.CheckWeeklyReset(activeConfig!);
                 dailyResetDetected = resetService.CheckDailyReset(activeConfig!);
+                
+                // NEW: Migrate from legacy flags if needed
+                resetService.MigrateFromLegacyFlags(activeConfig!);
+                
                 configManager.SaveCurrentAccount();
 
                 log.Information($"[Engine] Weekly reset: {weeklyResetDetected}, Daily reset: {dailyResetDetected}, Saturday: {resetService.IsSaturday()}");
@@ -243,7 +247,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningVerminion:
-                if (activeConfig!.EnableVerminionQueue && !activeConfig.VerminionCompletedThisWeek)
+                if (activeConfig!.EnableVerminionQueue && ResetDetectionService.TaskNeedsRun(activeConfig.VerminionNextReset))
                 {
                     if (!verminionService.IsActive && !verminionService.IsComplete && !verminionService.IsFailed)
                     {
@@ -260,6 +264,11 @@ public class VermaxionEngine
 
                     if (verminionService.IsComplete)
                     {
+                        // NEW: Update new DateTime system
+                        activeConfig.VerminionLastCompleted = DateTime.UtcNow;
+                        activeConfig.VerminionNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
+                        
+                        // Keep legacy flags for compatibility
                         activeConfig.VerminionCompletedThisWeek = true;
                         configManager.SaveCurrentAccount();
                         verminionService.Reset();
@@ -279,7 +288,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningMiniCactpot:
-                if (activeConfig!.EnableMiniCactpot && !activeConfig.MiniCactpotCompletedToday)
+                if (activeConfig!.EnableMiniCactpot && ResetDetectionService.TaskNeedsRun(activeConfig.MiniCactpotNextReset))
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
@@ -296,6 +305,11 @@ public class VermaxionEngine
 
                     if (cactpotService.IsComplete)
                     {
+                        // NEW: Update new DateTime system
+                        activeConfig.MiniCactpotLastCompleted = DateTime.UtcNow;
+                        activeConfig.MiniCactpotNextReset = ResetDetectionService.GetNextDailyReset(DateTime.UtcNow);
+                        
+                        // Keep legacy flags for compatibility
                         activeConfig.MiniCactpotCompletedToday = true;
                         configManager.SaveCurrentAccount();
                         cactpotService.Reset();
@@ -315,7 +329,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningJumboCactpot:
-                if (activeConfig!.EnableJumboCactpot && resetService.IsSaturdayAfterReset() && !activeConfig.JumboCactpotCompletedThisWeek)
+                if (activeConfig!.EnableJumboCactpot && resetService.IsSaturdayAfterReset() && ResetDetectionService.TaskNeedsRun(activeConfig.JumboCactpotNextReset))
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
@@ -333,6 +347,11 @@ public class VermaxionEngine
 
                     if (cactpotService.IsComplete)
                     {
+                        // NEW: Update new DateTime system
+                        activeConfig.JumboCactpotLastCompleted = DateTime.UtcNow;
+                        activeConfig.JumboCactpotNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
+                        
+                        // Keep legacy flags for compatibility
                         activeConfig.JumboCactpotCompletedThisWeek = true;
                         configManager.SaveCurrentAccount();
                         cactpotService.Reset();
@@ -352,7 +371,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningFashionReport:
-                if (activeConfig!.EnableFashionReport && resetService.IsFriday() && !activeConfig.FashionReportCompletedThisWeek)
+                if (activeConfig!.EnableFashionReport && resetService.IsFriday() && ResetDetectionService.TaskNeedsRun(activeConfig.FashionReportNextReset))
                 {
                     if (!fashionReportService.IsActive && !fashionReportService.IsComplete && !fashionReportService.IsFailed)
                     {
@@ -370,6 +389,11 @@ public class VermaxionEngine
 
                     if (fashionReportService.IsComplete)
                     {
+                        // NEW: Update new DateTime system
+                        activeConfig.FashionReportLastCompleted = DateTime.UtcNow;
+                        activeConfig.FashionReportNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
+                        
+                        // Keep legacy flags for compatibility
                         activeConfig.FashionReportCompletedThisWeek = true;
                         configManager.SaveCurrentAccount();
                         fashionReportService.Reset();
@@ -389,7 +413,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningChocoboRacing:
-                if (activeConfig!.EnableChocoboRacing && !activeConfig.ChocoboRacingCompletedToday)
+                if (activeConfig!.EnableChocoboRacing && ResetDetectionService.TaskNeedsRun(activeConfig.ChocoboRacingNextReset))
                 {
                     if (!chocoboRaceService.IsActive && !chocoboRaceService.IsComplete && !chocoboRaceService.IsFailed)
                     {
@@ -406,6 +430,11 @@ public class VermaxionEngine
 
                     if (chocoboRaceService.IsComplete)
                     {
+                        // NEW: Update new DateTime system
+                        activeConfig.ChocoboRacingLastCompleted = DateTime.UtcNow;
+                        activeConfig.ChocoboRacingNextReset = ResetDetectionService.GetNextDailyReset(DateTime.UtcNow);
+                        
+                        // Keep legacy flags for compatibility
                         activeConfig.ChocoboRacingCompletedToday = true;
                         configManager.SaveCurrentAccount();
                         chocoboRaceService.Reset();

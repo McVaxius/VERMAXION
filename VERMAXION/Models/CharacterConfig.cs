@@ -39,6 +39,21 @@ public class CharacterConfig
     public bool ChocoboRacingCompletedToday { get; set; } = false;
     public bool FashionReportCompletedThisWeek { get; set; } = false;
     
+    // --- NEW: Per-Task Reset System (LastCompleted/NextReset) ---
+    // Weekly Tasks (Tuesday 9:00 UTC)
+    public DateTime VerminionLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime VerminionNextReset { get; set; } = DateTime.MinValue;
+    public DateTime JumboCactpotLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime JumboCactpotNextReset { get; set; } = DateTime.MinValue;
+    public DateTime FashionReportLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime FashionReportNextReset { get; set; } = DateTime.MinValue;
+    
+    // Daily Tasks (9:00 UTC)
+    public DateTime MiniCactpotLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime MiniCactpotNextReset { get; set; } = DateTime.MinValue;
+    public DateTime ChocoboRacingLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime ChocoboRacingNextReset { get; set; } = DateTime.MinValue;
+    
     // --- Enhanced State Tracking ---
     public int MiniCactpotTicketsToday { get; set; } = 0;
     public int MinionRouletteAttemptsToday { get; set; } = 0;
@@ -77,6 +92,17 @@ public class CharacterConfig
             MiniCactpotCompletedToday = MiniCactpotCompletedToday,
             ChocoboRacingCompletedToday = ChocoboRacingCompletedToday,
             FashionReportCompletedThisWeek = FashionReportCompletedThisWeek,
+            // NEW: Per-Task Reset System
+            VerminionLastCompleted = VerminionLastCompleted,
+            VerminionNextReset = VerminionNextReset,
+            JumboCactpotLastCompleted = JumboCactpotLastCompleted,
+            JumboCactpotNextReset = JumboCactpotNextReset,
+            FashionReportLastCompleted = FashionReportLastCompleted,
+            FashionReportNextReset = FashionReportNextReset,
+            MiniCactpotLastCompleted = MiniCactpotLastCompleted,
+            MiniCactpotNextReset = MiniCactpotNextReset,
+            ChocoboRacingLastCompleted = ChocoboRacingLastCompleted,
+            ChocoboRacingNextReset = ChocoboRacingNextReset,
             MiniCactpotTicketsToday = MiniCactpotTicketsToday,
             MinionRouletteAttemptsToday = MinionRouletteAttemptsToday,
             LastMinionRouletteReset = LastMinionRouletteReset,

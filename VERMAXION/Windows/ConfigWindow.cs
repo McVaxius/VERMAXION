@@ -480,10 +480,10 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableVerminionQueue = verminion;
                 changed = true;
             }
-            if (cc.VerminionCompletedThisWeek)
+            if (ResetDetectionService.TaskIsCompleted(cc.VerminionLastCompleted, cc.VerminionNextReset))
             {
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
 
             var jumbo = cc.EnableJumboCactpot;
@@ -492,10 +492,10 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableJumboCactpot = jumbo;
                 changed = true;
             }
-            if (cc.JumboCactpotCompletedThisWeek)
+            if (ResetDetectionService.TaskIsCompleted(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
             {
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
 
             var fashion = cc.EnableFashionReport;
@@ -504,10 +504,10 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableFashionReport = fashion;
                 changed = true;
             }
-            if (cc.FashionReportCompletedThisWeek)
+            if (ResetDetectionService.TaskIsCompleted(cc.FashionReportLastCompleted, cc.FashionReportNextReset))
             {
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
 
             var register = cc.EnableRegisterRegistrables;
@@ -535,10 +535,10 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("To enable: type /saucy, go to \"Other Games\" -> [x] Enable Auto Mini-Cactpot.\nVermaxion will teleport to Gold Saucer, walk to the Cactpot Board, and start the interaction.\nSaucy handles the actual mini-game solving.");
-            if (cc.MiniCactpotCompletedToday)
+            if (ResetDetectionService.TaskIsCompleted(cc.MiniCactpotLastCompleted, cc.MiniCactpotNextReset))
             {
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
             
             // Mini Cactpot additional options
@@ -584,10 +584,10 @@ public class ConfigWindow : Window, IDisposable
                 }
                 ImGui.Unindent();
             }
-            if (cc.ChocoboRacingCompletedToday)
+            if (ResetDetectionService.TaskIsCompleted(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset))
             {
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 1, 0, 1), "[Done]");
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
         }
 
@@ -597,17 +597,36 @@ public class ConfigWindow : Window, IDisposable
         // Reset buttons
         if (ImGui.Button("Reset Weekly Flags"))
         {
+            // Reset legacy flags
             cc.VerminionCompletedThisWeek = false;
             cc.JumboCactpotCompletedThisWeek = false;
+            cc.FashionReportCompletedThisWeek = false;
             cc.LastWeeklyReset = DateTime.MinValue;
+            
+            // Reset new DateTime system
+            cc.VerminionLastCompleted = DateTime.MinValue;
+            cc.VerminionNextReset = DateTime.MinValue;
+            cc.JumboCactpotLastCompleted = DateTime.MinValue;
+            cc.JumboCactpotNextReset = DateTime.MinValue;
+            cc.FashionReportLastCompleted = DateTime.MinValue;
+            cc.FashionReportNextReset = DateTime.MinValue;
+            
             changed = true;
         }
         ImGui.SameLine();
         if (ImGui.Button("Reset Daily Flags"))
         {
+            // Reset legacy flags
             cc.MiniCactpotCompletedToday = false;
             cc.ChocoboRacingCompletedToday = false;
             cc.LastDailyReset = DateTime.MinValue;
+            
+            // Reset new DateTime system
+            cc.MiniCactpotLastCompleted = DateTime.MinValue;
+            cc.MiniCactpotNextReset = DateTime.MinValue;
+            cc.ChocoboRacingLastCompleted = DateTime.MinValue;
+            cc.ChocoboRacingNextReset = DateTime.MinValue;
+            
             changed = true;
         }
 
