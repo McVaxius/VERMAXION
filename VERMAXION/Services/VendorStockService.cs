@@ -11,7 +11,7 @@ public sealed class VendorStockService
 {
     private const uint GysahlGreensItemId = 4868;
     private const uint Grade8DarkMatterItemId = 33916;
-    private const float TargetInteractDistance = 3.0f;
+    private const float TargetInteractDistance = 4.0f;
 
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
@@ -146,6 +146,9 @@ public sealed class VendorStockService
                 break;
 
             case VendorStockState.GysahlInteractingVendor:
+                if (!EnsureVendorInRange("Maisenta"))
+                    break;
+
                 if (GameHelpers.IsAddonVisible("Shop"))
                 {
                     SetState(VendorStockState.GysahlPurchasing);
@@ -158,7 +161,7 @@ public sealed class VendorStockService
                 {
                     // Wait for menu to appear.
                 }
-                else if (elapsed > 15)
+                else if (elapsed > 30)
                 {
                     Fail("[VendorStock] Timed out opening Maisenta's menu");
                 }
@@ -189,10 +192,10 @@ public sealed class VendorStockService
                     GetGysahlTarget(),
                     ref observedGysahlCount,
                     "[VendorStock] Gysahl Greens",
-                    0.9,
+                    1.5,
+                    99,
                     0,
-                    5,
-                    1))
+                    5))
                 {
                     FinishGysahlPhase();
                 }
@@ -231,6 +234,9 @@ public sealed class VendorStockService
                 break;
 
             case VendorStockState.DarkMatterInteractingVendor:
+                if (!EnsureVendorInRange("Alaric"))
+                    break;
+
                 if (GameHelpers.IsAddonVisible("Shop"))
                 {
                     SetState(VendorStockState.DarkMatterPurchasing);
@@ -239,7 +245,7 @@ public sealed class VendorStockService
                 {
                     // Wait for shop to appear.
                 }
-                else if (elapsed > 15)
+                else if (elapsed > 30)
                 {
                     Fail("[VendorStock] Timed out opening Alaric's shop");
                 }
@@ -251,8 +257,9 @@ public sealed class VendorStockService
                     GetDarkMatterTarget(),
                     ref observedDarkMatterCount,
                     "[VendorStock] Grade 8 Dark Matter",
-                    0.9,
-                    6,
+                    2.0,
+                    99,
+                    0,
                     40))
                 {
                     FinishDarkMatterPhase();
@@ -290,13 +297,14 @@ public sealed class VendorStockService
             return false;
 
         var distance = GetDistanceTo(npc);
-        if (distance <= TargetInteractDistance)
+        var maxInteractDistance = Math.Max(TargetInteractDistance, GameHelpers.GetValidInteractionDistance(npc));
+        if (distance <= maxInteractDistance)
         {
             vnavmesh.Stop();
             return true;
         }
 
-        if ((DateTime.UtcNow - lastNavigationCommandAt).TotalSeconds >= 4)
+        if ((DateTime.UtcNow - lastNavigationCommandAt).TotalSeconds >= 2)
         {
             lastNavigationCommandAt = DateTime.UtcNow;
             log.Information($"[VendorStock] Navigating to {npcName} ({distance:F1}y)");
@@ -308,7 +316,7 @@ public sealed class VendorStockService
 
     private bool TryInteract(string npcName)
     {
-        if ((DateTime.UtcNow - lastInteractionAttemptAt).TotalSeconds < 2)
+        if ((DateTime.UtcNow - lastInteractionAttemptAt).TotalSeconds < 5.25)
             return false;
 
         lastInteractionAttemptAt = DateTime.UtcNow;
@@ -322,7 +330,8 @@ public sealed class VendorStockService
         ref int observedCount,
         string label,
         double repeatDelaySeconds,
-        params object[] purchaseArgs)
+        int maxPurchaseQuantity,
+        params object[] purchaseArgPrefix)
     {
         var currentCount = (int)GameHelpers.GetInventoryItemCount(itemId);
         if (currentCount > observedCount)
@@ -345,7 +354,13 @@ public sealed class VendorStockService
         if (!TryFirePurchaseAction(repeatDelaySeconds))
             return false;
 
-        log.Information($"{label} below target ({currentCount}/{targetCount}), purchasing one more");
+        var remaining = Math.Max(1, targetCount - currentCount);
+        var purchaseQuantity = Math.Clamp(remaining, 1, maxPurchaseQuantity);
+        var purchaseArgs = new object[purchaseArgPrefix.Length + 1];
+        Array.Copy(purchaseArgPrefix, purchaseArgs, purchaseArgPrefix.Length);
+        purchaseArgs[^1] = purchaseQuantity;
+
+        log.Information($"{label} below target ({currentCount}/{targetCount}), purchasing {purchaseQuantity}");
         GameHelpers.FireAddonCallback("Shop", true, purchaseArgs);
         return false;
     }
@@ -399,5 +414,20 @@ public sealed class VendorStockService
             return float.MaxValue;
 
         return Vector3.Distance(player.Position, npc.Position);
+    }
+
+    private bool EnsureVendorInRange(string npcName)
+    {
+        var npc = GameHelpers.FindObjectByName(npcName);
+        if (npc == null)
+            return false;
+
+        var maxInteractDistance = Math.Max(TargetInteractDistance, GameHelpers.GetValidInteractionDistance(npc));
+        var distance = GetDistanceTo(npc);
+        if (distance <= maxInteractDistance)
+            return true;
+
+        AdvanceToVendor(npcName);
+        return false;
     }
 }
