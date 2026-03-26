@@ -20,12 +20,15 @@ public class CharacterConfig
     public bool EnableCurrentJobEquipment { get; set; } = false;
     public bool EnableFashionReport { get; set; } = false;
     public bool EnableRegisterRegistrables { get; set; } = false;
+    public bool EnableVendorStock { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
     public int FCBuffPurchaseAttempts { get; set; } = 15;
     public int FCBuffMinPoints { get; set; } = 500000;
     public int FCBuffMinGil { get; set; } = 16000;
+    public int VendorStockGysahlGreensTarget { get; set; } = 0;
+    public int VendorStockGrade8DarkMatterTarget { get; set; } = 0;
     
     // --- Personal Registrable Items ---
     public List<uint> PersonalRegistrableItems { get; set; } = new();
@@ -80,10 +83,13 @@ public class CharacterConfig
             EnableCurrentJobEquipment = EnableCurrentJobEquipment,
             EnableFashionReport = EnableFashionReport,
             EnableRegisterRegistrables = EnableRegisterRegistrables,
+            EnableVendorStock = EnableVendorStock,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
             FCBuffMinGil = FCBuffMinGil,
+            VendorStockGysahlGreensTarget = VendorStockGysahlGreensTarget,
+            VendorStockGrade8DarkMatterTarget = VendorStockGrade8DarkMatterTarget,
             PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,

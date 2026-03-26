@@ -44,6 +44,7 @@ public sealed class Plugin : IDalamudPlugin
     public ChocoboRaceService ChocoboRaceService { get; init; }
     public FashionReportService FashionReportService { get; init; }
     public RegisterRegistrablesService RegisterRegistrablesService { get; init; }
+    public VendorStockService VendorStockService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
     public RegistrableConfigManager RegistrableConfigManager { get; init; }
     public MinionRouletteService MinionRouletteService { get; init; }
@@ -93,6 +94,7 @@ public sealed class Plugin : IDalamudPlugin
         CurrentJobEquipmentService = new CurrentJobEquipmentService(CommandManager, Log, PlayerState);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
+        VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady);
@@ -102,6 +104,7 @@ public sealed class Plugin : IDalamudPlugin
             Log, ConfigManager, ResetDetectionService,
             HenchmanService, FCBuffService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
+            VendorStockService,
             RegisterRegistrablesService, ARPostProcessService, YesAlreadyIPC,
             ClientState);
 
@@ -190,6 +193,7 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService.Reset();
             ChocoboRaceService.Reset();
             FashionReportService.Reset();
+            VendorStockService.Reset();
             RegisterRegistrablesService.Reset();
             MinionRouletteService.Reset();
             SeasonalGearService.Reset();
@@ -338,6 +342,7 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService.Update();
             ChocoboRaceService.Update();
             FashionReportService.Update();
+            VendorStockService.Update();
             RegisterRegistrablesService.Update();
             MinionRouletteService.Update();
             SeasonalGearService.Update();
@@ -441,6 +446,7 @@ public sealed class Plugin : IDalamudPlugin
         CactpotService.Reset();
         ChocoboRaceService.Reset();
         FashionReportService.Reset();
+        VendorStockService.Reset();
         RegisterRegistrablesService.Reset();
         MinionRouletteService.Reset();
         SeasonalGearService.Reset();

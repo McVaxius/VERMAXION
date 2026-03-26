@@ -292,10 +292,13 @@ public class ConfigManager
             cc.EnableCurrentJobEquipment = defaultConfig.EnableCurrentJobEquipment;
             cc.EnableFashionReport = defaultConfig.EnableFashionReport;
             cc.EnableRegisterRegistrables = defaultConfig.EnableRegisterRegistrables;
+            cc.EnableVendorStock = defaultConfig.EnableVendorStock;
             cc.ChocoboRacesPerDay = defaultConfig.ChocoboRacesPerDay;
             cc.FCBuffPurchaseAttempts = defaultConfig.FCBuffPurchaseAttempts;
             cc.FCBuffMinPoints = defaultConfig.FCBuffMinPoints;
             cc.FCBuffMinGil = defaultConfig.FCBuffMinGil;
+            cc.VendorStockGysahlGreensTarget = defaultConfig.VendorStockGysahlGreensTarget;
+            cc.VendorStockGrade8DarkMatterTarget = defaultConfig.VendorStockGrade8DarkMatterTarget;
             cc.RequireSaucyForMiniCactpot = defaultConfig.RequireSaucyForMiniCactpot;
             count++;
         }

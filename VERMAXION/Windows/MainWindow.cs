@@ -144,6 +144,8 @@ public class MainWindow : Window, IDisposable
             // --- Every AR PostProcess ---
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
                 "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
+            DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
+                "Test##Vendor", () => plugin.VendorStockService.RunTask(), "WIP");
             DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
                 "Test##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
@@ -354,5 +356,16 @@ public class MainWindow : Window, IDisposable
         var now = DateTime.UtcNow;
         var saturdayReset = now.Date.AddHours(9);
         return now.DayOfWeek == DayOfWeek.Saturday && now >= saturdayReset ? "Ready now" : "Pending (Sat)";
+    }
+
+    private static string GetVendorStockStatus(Models.CharacterConfig config)
+    {
+        if (!config.EnableVendorStock)
+            return "Off";
+
+        if (config.VendorStockGysahlGreensTarget <= 0 && config.VendorStockGrade8DarkMatterTarget <= 0)
+            return "Set targets";
+
+        return "Every AR run";
     }
 }

@@ -472,6 +472,40 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Updates equipment for current job only. No job cycling. Requires SimpleTweaks.");
+
+            var vendorStock = cc.EnableVendorStock;
+            if (ImGui.Checkbox("Vendor Stock", ref vendorStock))
+            {
+                cc.EnableVendorStock = vendorStock;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Restocks configured consumables and Dark Matter after AR post-processing when inventory falls below the target amounts.");
+            if (vendorStock)
+            {
+                ImGui.Indent();
+
+                var gysahlTarget = cc.VendorStockGysahlGreensTarget;
+                if (ImGui.InputInt("Gysahl Greens target", ref gysahlTarget))
+                {
+                    cc.VendorStockGysahlGreensTarget = Math.Max(0, gysahlTarget);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+
+                var darkMatterTarget = cc.VendorStockGrade8DarkMatterTarget;
+                if (ImGui.InputInt("Grade 8 Dark Matter target", ref darkMatterTarget))
+                {
+                    cc.VendorStockGrade8DarkMatterTarget = Math.Max(0, darkMatterTarget);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+
+                ImGui.TextDisabled("Gridania: Maisenta for Gysahl Greens. Khetto's Amphitheatre: Alaric for Grade 8 Dark Matter.");
+                ImGui.Unindent();
+            }
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WeeklyTasks, ImGuiTreeNodeFlags.DefaultOpen))

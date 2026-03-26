@@ -17,6 +17,7 @@ public class VermaxionEngine
     private readonly CactpotService cactpotService;
     private readonly ChocoboRaceService chocoboRaceService;
     private readonly FashionReportService fashionReportService;
+    private readonly VendorStockService vendorStockService;
     private readonly RegisterRegistrablesService registerRegistrablesService;
     private readonly ARPostProcessService arService;
     private readonly YesAlreadyIPC yesAlreadyIPC;
@@ -35,6 +36,7 @@ public class VermaxionEngine
         DisablingHenchman,
         CheckingResets,
         RunningFCBuff,
+        RunningVendorStock,
         RunningRegisterRegistrables,
         RunningVerminion,
         RunningMiniCactpot,
@@ -63,6 +65,7 @@ public class VermaxionEngine
         CactpotService cactpotService,
         ChocoboRaceService chocoboRaceService,
         FashionReportService fashionReportService,
+        VendorStockService vendorStockService,
         RegisterRegistrablesService registerRegistrablesService,
         ARPostProcessService arService,
         YesAlreadyIPC yesAlreadyIPC,
@@ -77,6 +80,7 @@ public class VermaxionEngine
         this.cactpotService = cactpotService;
         this.chocoboRaceService = chocoboRaceService;
         this.fashionReportService = fashionReportService;
+        this.vendorStockService = vendorStockService;
         this.registerRegistrablesService = registerRegistrablesService;
         this.arService = arService;
         this.yesAlreadyIPC = yesAlreadyIPC;
@@ -121,6 +125,7 @@ public class VermaxionEngine
         if (arService.IsProcessing)
             arService.FinishPostProcess();
         fcBuffService.Reset();
+        vendorStockService.Reset();
         verminionService.Reset();
         cactpotService.Reset();
         chocoboRaceService.Reset();
@@ -140,6 +145,7 @@ public class VermaxionEngine
         
         int count = 0;
         if (activeConfig.EnableFCBuffRefill && !fcBuffService.IsComplete) count++;
+        if (activeConfig.EnableVendorStock && !vendorStockService.IsComplete) count++;
         if (activeConfig.EnableVerminionQueue && !verminionService.IsComplete) count++;
         if (activeConfig.EnableMiniCactpot && !cactpotService.IsComplete) count++;
         if (activeConfig.EnableJumboCactpot && !cactpotService.IsComplete) count++;
@@ -211,6 +217,38 @@ public class VermaxionEngine
                 else
                 {
                     AdvanceToNextTask(EngineState.RunningFCBuff);
+                }
+                break;
+
+            case EngineState.RunningVendorStock:
+                if (activeConfig!.EnableVendorStock)
+                {
+                    if (!vendorStockService.IsActive && !vendorStockService.IsComplete && !vendorStockService.IsFailed)
+                    {
+                        log.Information("[Engine] Starting Vendor Stock");
+                        ResetInteractionState();
+                        vendorStockService.Start();
+                        return;
+                    }
+
+                    vendorStockService.Update();
+
+                    if (vendorStockService.IsComplete)
+                    {
+                        log.Information("[Engine] Vendor Stock completed");
+                        vendorStockService.Reset();
+                        AdvanceToNextTask(EngineState.RunningVendorStock);
+                    }
+                    else if (vendorStockService.IsFailed)
+                    {
+                        log.Warning("[Engine] Vendor Stock failed - continuing");
+                        vendorStockService.Reset();
+                        AdvanceToNextTask(EngineState.RunningVendorStock);
+                    }
+                }
+                else
+                {
+                    AdvanceToNextTask(EngineState.RunningVendorStock);
                 }
                 break;
 
@@ -489,7 +527,8 @@ public class VermaxionEngine
     {
         var next = currentTask switch
         {
-            EngineState.RunningFCBuff => EngineState.RunningRegisterRegistrables,
+            EngineState.RunningFCBuff => EngineState.RunningVendorStock,
+            EngineState.RunningVendorStock => EngineState.RunningRegisterRegistrables,
             EngineState.RunningRegisterRegistrables => EngineState.RunningVerminion,
             EngineState.RunningVerminion => EngineState.RunningMiniCactpot,
             EngineState.RunningMiniCactpot => EngineState.RunningJumboCactpot,
@@ -515,6 +554,7 @@ public class VermaxionEngine
             EngineState.DisablingHenchman => "Disabling Henchman",
             EngineState.CheckingResets => "Checking resets",
             EngineState.RunningFCBuff => "FC Buff Refill",
+            EngineState.RunningVendorStock => "Vendor Stock",
             EngineState.RunningRegisterRegistrables => "Register Registrables",
             EngineState.RunningVerminion => "Verminion Queue",
             EngineState.RunningMiniCactpot => "Mini Cactpot",
