@@ -140,12 +140,11 @@ public class ResetDetectionService
     // --- NEW: Per-Task Reset System Methods ---
 
     /// <summary>
-    /// Check if a task needs to run based on its NextReset time.
-    /// Tasks with NextReset == MinValue are treated as needing to run (migration state).
+    /// Check if a task needs to run based on its completion timestamp and next reset time.
     /// </summary>
-    public static bool TaskNeedsRun(DateTime nextReset)
+    public static bool TaskNeedsRun(DateTime lastCompleted, DateTime nextReset)
     {
-        return nextReset == DateTime.MinValue || DateTime.UtcNow >= nextReset;
+        return lastCompleted == DateTime.MinValue || nextReset == DateTime.MinValue || DateTime.UtcNow >= nextReset;
     }
 
     /// <summary>
@@ -161,13 +160,49 @@ public class ResetDetectionService
     /// </summary>
     public static DateTime GetNextWeeklyReset(DateTime now)
     {
-        var daysSinceTuesday = ((int)now.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
-        var nextTuesday = now.Date.AddDays(daysSinceTuesday).AddHours(9);
+        var daysUntilTuesday = ((int)DayOfWeek.Tuesday - (int)now.DayOfWeek + 7) % 7;
+        var nextTuesday = now.Date.AddDays(daysUntilTuesday).AddHours(9);
 
         if (now >= nextTuesday)
             nextTuesday = nextTuesday.AddDays(7);
 
         return nextTuesday;
+    }
+
+    public static DateTime GetNextFridayAvailability(DateTime now)
+    {
+        var daysUntilFriday = ((int)DayOfWeek.Friday - (int)now.DayOfWeek + 7) % 7;
+        var nextFriday = now.Date.AddDays(daysUntilFriday).AddHours(9);
+
+        if (now >= nextFriday)
+            nextFriday = nextFriday.AddDays(7);
+
+        return nextFriday;
+    }
+
+    public static DateTime GetNextSaturdayAvailability(DateTime now)
+    {
+        var daysUntilSaturday = ((int)DayOfWeek.Saturday - (int)now.DayOfWeek + 7) % 7;
+        var nextSaturday = now.Date.AddDays(daysUntilSaturday).AddHours(9);
+
+        if (now >= nextSaturday)
+            nextSaturday = nextSaturday.AddDays(7);
+
+        return nextSaturday;
+    }
+
+    public static bool IsFashionReportAvailable(DateTime now)
+    {
+        var lastFridayReset = GetLastFridayReset(now);
+        var nextWeeklyReset = GetNextWeeklyReset(now);
+        return now >= lastFridayReset && now < nextWeeklyReset;
+    }
+
+    public static bool IsJumboCactpotPayoutAvailable(DateTime now)
+    {
+        var lastSaturdayReset = GetLastSaturdayReset(now);
+        var nextWeeklyReset = GetNextWeeklyReset(now);
+        return now >= lastSaturdayReset && now < nextWeeklyReset;
     }
 
     /// <summary>

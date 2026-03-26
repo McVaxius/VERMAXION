@@ -191,9 +191,8 @@ public class VermaxionEngine
                     if (!fcBuffService.IsActive && !fcBuffService.IsComplete && !fcBuffService.IsFailed)
                     {
                         // Clean slate before starting FC Buff
-                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before FC Buff");
-                        SendNumpadPlus();
-                        SendNumpadPlus();
+                        log.Information("[Engine] Clean slate: clearing open UI before FC Buff");
+                        ResetInteractionState();
                         
                         fcBuffService.Start(activeConfig.FCBuffPurchaseAttempts);
                         return;
@@ -247,14 +246,14 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningVerminion:
-                if (activeConfig!.EnableVerminionQueue && ResetDetectionService.TaskNeedsRun(activeConfig.VerminionNextReset))
+                if (activeConfig!.EnableVerminionQueue &&
+                    ResetDetectionService.TaskNeedsRun(activeConfig.VerminionLastCompleted, activeConfig.VerminionNextReset))
                 {
                     if (!verminionService.IsActive && !verminionService.IsComplete && !verminionService.IsFailed)
                     {
                         // Clean slate before starting Verminion
-                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Verminion");
-                        SendNumpadPlus();
-                        SendNumpadPlus();
+                        log.Information("[Engine] Clean slate: clearing open UI before Verminion");
+                        ResetInteractionState();
                         
                         verminionService.Start();
                         return;
@@ -288,14 +287,14 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningMiniCactpot:
-                if (activeConfig!.EnableMiniCactpot && ResetDetectionService.TaskNeedsRun(activeConfig.MiniCactpotNextReset))
+                if (activeConfig!.EnableMiniCactpot &&
+                    ResetDetectionService.TaskNeedsRun(activeConfig.MiniCactpotLastCompleted, activeConfig.MiniCactpotNextReset))
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
                         // Clean slate before starting Mini Cactpot
-                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Mini Cactpot");
-                        SendNumpadPlus();
-                        SendNumpadPlus();
+                        log.Information("[Engine] Clean slate: clearing open UI before Mini Cactpot");
+                        ResetInteractionState();
                         
                         cactpotService.StartMiniCactpot();
                         return;
@@ -329,17 +328,28 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningJumboCactpot:
-                if (activeConfig!.EnableJumboCactpot && resetService.IsSaturdayAfterReset() && ResetDetectionService.TaskNeedsRun(activeConfig.JumboCactpotNextReset))
+                if (activeConfig!.EnableJumboCactpot &&
+                    ResetDetectionService.TaskNeedsRun(activeConfig.JumboCactpotLastCompleted, activeConfig.JumboCactpotNextReset))
                 {
+                    var now = DateTime.UtcNow;
+                    var runSaturdayPayout = ResetDetectionService.IsJumboCactpotPayoutAvailable(now);
+
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
                         // Clean slate before starting Jumbo Cactpot
-                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Jumbo Cactpot");
-                        SendNumpadPlus();
-                        SendNumpadPlus();
-                        
-                        log.Information("[Engine] Starting Jumbo Cactpot (Saturday)");
-                        cactpotService.StartJumboCactpotCheck();
+                        log.Information("[Engine] Clean slate: clearing open UI before Jumbo Cactpot");
+                        ResetInteractionState();
+
+                        if (runSaturdayPayout)
+                        {
+                            log.Information("[Engine] Starting Jumbo Cactpot payout check");
+                            cactpotService.StartJumboCactpotCheck();
+                        }
+                        else
+                        {
+                            log.Information("[Engine] Starting Jumbo Cactpot ticket purchase");
+                            cactpotService.StartJumboCactpot();
+                        }
                         return;
                     }
 
@@ -347,12 +357,11 @@ public class VermaxionEngine
 
                     if (cactpotService.IsComplete)
                     {
-                        // NEW: Update new DateTime system
-                        activeConfig.JumboCactpotLastCompleted = DateTime.UtcNow;
-                        activeConfig.JumboCactpotNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
-                        
-                        // Keep legacy flags for compatibility
-                        activeConfig.JumboCactpotCompletedThisWeek = true;
+                        activeConfig.JumboCactpotLastCompleted = now;
+                        activeConfig.JumboCactpotNextReset = runSaturdayPayout
+                            ? ResetDetectionService.GetNextWeeklyReset(now)
+                            : ResetDetectionService.GetNextSaturdayAvailability(now);
+                        activeConfig.JumboCactpotCompletedThisWeek = runSaturdayPayout;
                         configManager.SaveCurrentAccount();
                         cactpotService.Reset();
                         AdvanceToNextTask(EngineState.RunningJumboCactpot);
@@ -371,14 +380,15 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningFashionReport:
-                if (activeConfig!.EnableFashionReport && resetService.IsFriday() && ResetDetectionService.TaskNeedsRun(activeConfig.FashionReportNextReset))
+                if (activeConfig!.EnableFashionReport &&
+                    ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) &&
+                    ResetDetectionService.TaskNeedsRun(activeConfig.FashionReportLastCompleted, activeConfig.FashionReportNextReset))
                 {
                     if (!fashionReportService.IsActive && !fashionReportService.IsComplete && !fashionReportService.IsFailed)
                     {
                         // Clean slate before starting Fashion Report
-                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Fashion Report");
-                        SendNumpadPlus();
-                        SendNumpadPlus();
+                        log.Information("[Engine] Clean slate: clearing open UI before Fashion Report");
+                        ResetInteractionState();
                         
                         log.Information("[Engine] Starting Fashion Report (Friday)");
                         fashionReportService.Start();
@@ -413,14 +423,14 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningChocoboRacing:
-                if (activeConfig!.EnableChocoboRacing && ResetDetectionService.TaskNeedsRun(activeConfig.ChocoboRacingNextReset))
+                if (activeConfig!.EnableChocoboRacing &&
+                    ResetDetectionService.TaskNeedsRun(activeConfig.ChocoboRacingLastCompleted, activeConfig.ChocoboRacingNextReset))
                 {
                     if (!chocoboRaceService.IsActive && !chocoboRaceService.IsComplete && !chocoboRaceService.IsFailed)
                     {
                         // Clean slate before starting Chocobo Racing
-                        log.Information("[Engine] Clean slate: Sending NUMPAD+ before Chocobo Racing");
-                        SendNumpadPlus();
-                        SendNumpadPlus();
+                        log.Information("[Engine] Clean slate: clearing open UI before Chocobo Racing");
+                        ResetInteractionState();
                         
                         chocoboRaceService.Start();
                         return;
@@ -527,11 +537,8 @@ public class VermaxionEngine
     {
         try
         {
-            log.Information($"[Engine] Territory changed to {territoryType} - pressing numpad+ to close menus");
-            
-            // Press numpad+ to close any menus that might be opened+stuck after teleporting
-            // This prevents pathing services from getting stuck when they try to start navigation
-            SendNumpadPlus();
+            log.Information($"[Engine] Territory changed to {territoryType} - clearing open UI");
+            ResetInteractionState();
         }
         catch (Exception ex)
         {

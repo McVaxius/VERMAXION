@@ -157,7 +157,7 @@ public class RegistrableConfigWindow : Window
     private void DrawHeader()
     {
         ImGui.Text($"Total items available: {allGameItems.Count:N0}");
-        ImGui.Text($"Items in personal list: {characterConfigManager.GetActiveConfig()?.PersonalRegistrableItems.Count ?? 0}");
+        ImGui.Text($"Items in personal list: {characterConfigManager.GetSelectedConfig()?.PersonalRegistrableItems.Count ?? 0}");
         
         if (ImGui.Button("Reload Items"))
         {
@@ -224,7 +224,7 @@ public class RegistrableConfigWindow : Window
             // Show more search results (no scrolling, just bigger visual area)
             var maxResultsToShow = 20; // Show up to 20 results instead of 10
             
-            var activeConfig = characterConfigManager.GetActiveConfig();
+            var activeConfig = characterConfigManager.GetSelectedConfig();
             var personalItems = activeConfig?.PersonalRegistrableItems ?? new List<uint>();
             var resultsShown = 0;
             
@@ -316,7 +316,7 @@ public class RegistrableConfigWindow : Window
     {
         ImGui.Text("Character's Personal Items:");
         
-        var activeConfig = characterConfigManager.GetActiveConfig();
+        var activeConfig = characterConfigManager.GetSelectedConfig();
         if (activeConfig != null && activeConfig.PersonalRegistrableItems.Count > 0)
         {
             ImGui.Text($"Count: {activeConfig.PersonalRegistrableItems.Count}");
@@ -374,7 +374,7 @@ public class RegistrableConfigWindow : Window
         // Export personal list
         if (ImGui.Button("Export Personal List"))
         {
-            var activeConfig = characterConfigManager.GetActiveConfig();
+            var activeConfig = characterConfigManager.GetSelectedConfig();
             if (activeConfig != null && activeConfig.PersonalRegistrableItems.Count > 0)
             {
                 var personalItemsJson = JsonSerializer.Serialize(activeConfig.PersonalRegistrableItems, new JsonSerializerOptions { WriteIndented = true });
@@ -401,7 +401,7 @@ public class RegistrableConfigWindow : Window
                     var importedIds = JsonSerializer.Deserialize<List<uint>>(clipboardText);
                     if (importedIds != null)
                     {
-                        var activeConfig = characterConfigManager.GetActiveConfig();
+                        var activeConfig = characterConfigManager.GetSelectedConfig();
                         if (activeConfig != null)
                         {
                             activeConfig.PersonalRegistrableItems.Clear();
@@ -432,7 +432,7 @@ public class RegistrableConfigWindow : Window
         // Clear All button
         if (ImGui.Button("Clear All Personal Items"))
         {
-            var activeConfig = characterConfigManager.GetActiveConfig();
+            var activeConfig = characterConfigManager.GetSelectedConfig();
             if (activeConfig != null)
             {
                 var count = activeConfig.PersonalRegistrableItems.Count;
@@ -451,7 +451,7 @@ public class RegistrableConfigWindow : Window
         if (ImGui.Button("Load Default List"))
         {
             var defaultItems = new List<uint> { 6001, 6006, 6269, 6994, 7553, 7844, 7845, 7846 };
-            var activeConfig = characterConfigManager.GetActiveConfig();
+            var activeConfig = characterConfigManager.GetSelectedConfig();
             if (activeConfig != null)
             {
                 activeConfig.PersonalRegistrableItems.Clear();

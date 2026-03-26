@@ -329,7 +329,7 @@ public class ConfigWindow : Window, IDisposable
     private void DrawCharacterSettings(ConfigManager configManager)
     {
         var charKey = configManager.SelectedCharacterKey;
-        var cc = configManager.GetActiveConfig();
+        var cc = configManager.GetSelectedConfig();
         var isDefault = string.IsNullOrEmpty(charKey);
 
         var displayName = isDefault ? "Default Config" : charKey;
@@ -339,6 +339,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Text($"{UIConstants.ConfigLabels.Settings}: {displayName}");
         if (isDefault)
             ImGui.TextDisabled(UIConstants.ConfigLabels.NewCharactersInheritThese);
+        else if (!string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
+            ImGui.TextDisabled($"Runtime character is {configManager.CurrentCharacterKey}");
         ImGui.Separator();
 
         var changed = false;
@@ -485,6 +487,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
+            DrawWeeklyTaskHint(cc.VerminionLastCompleted, cc.VerminionNextReset, "Available during the current weekly window.");
 
             var jumbo = cc.EnableJumboCactpot;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.JumboCactpot, ref jumbo))
@@ -492,11 +495,17 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableJumboCactpot = jumbo;
                 changed = true;
             }
-            if (ResetDetectionService.TaskIsCompleted(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
+            if (IsJumboPurchasePendingPayout(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1), "[Ticket Purchased]");
+            }
+            else if (ResetDetectionService.TaskIsCompleted(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
             {
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
+            DrawJumboTaskHint(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset);
 
             var fashion = cc.EnableFashionReport;
             if (ImGui.Checkbox("Fashion Report", ref fashion))
@@ -509,6 +518,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
+            DrawFashionTaskHint(cc.FashionReportLastCompleted, cc.FashionReportNextReset);
 
             var register = cc.EnableRegisterRegistrables;
             if (ImGui.Checkbox("Register Registrables", ref register))
@@ -540,6 +550,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
+            DrawDailyTaskHint(cc.MiniCactpotLastCompleted, cc.MiniCactpotNextReset, "Runs once per daily reset. Returns with /li home before the next task.");
             
             // Mini Cactpot additional options
             if (cc.EnableMiniCactpot)
@@ -589,6 +600,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
+            DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
         }
 
         ImGui.Spacing();
@@ -719,5 +731,92 @@ public class ConfigWindow : Window, IDisposable
         
         var code = (int)icon[0];
         return $"\\u{code:X4}";
+    }
+
+    private static void DrawWeeklyTaskHint(DateTime lastCompleted, DateTime nextReset, string pendingText)
+    {
+        if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
+        {
+            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+        }
+        else
+        {
+            ImGui.TextDisabled(pendingText);
+        }
+    }
+
+    private static void DrawDailyTaskHint(DateTime lastCompleted, DateTime nextReset, string pendingText)
+    {
+        if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
+        {
+            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+        }
+        else
+        {
+            ImGui.TextDisabled(pendingText);
+        }
+    }
+
+    private static void DrawFashionTaskHint(DateTime lastCompleted, DateTime nextReset)
+    {
+        if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
+        {
+            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if (ResetDetectionService.IsFashionReportAvailable(now))
+        {
+            ImGui.TextDisabled($"Ready now. Weekly reset at {FormatUtc(ResetDetectionService.GetNextWeeklyReset(now))}");
+        }
+        else
+        {
+            ImGui.TextDisabled($"Available Friday at {FormatUtc(ResetDetectionService.GetNextFridayAvailability(now))}");
+        }
+    }
+
+    private static void DrawJumboTaskHint(DateTime lastCompleted, DateTime nextReset)
+    {
+        if (IsJumboPurchasePendingPayout(lastCompleted, nextReset))
+        {
+            ImGui.TextDisabled($"Ticket purchased. Payout available at {FormatUtc(nextReset)}");
+            return;
+        }
+
+        if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
+        {
+            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var saturdayReset = now.Date.AddHours(9);
+        if (now.DayOfWeek == DayOfWeek.Saturday && now >= saturdayReset)
+        {
+            ImGui.TextDisabled("Ready now.");
+        }
+        else
+        {
+            ImGui.TextDisabled($"Available Saturday at {FormatUtc(ResetDetectionService.GetNextSaturdayAvailability(now))}");
+        }
+    }
+
+    private static bool IsJumboPurchasePendingPayout(DateTime lastCompleted, DateTime nextReset)
+    {
+        if (!ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
+            return false;
+
+        var now = DateTime.UtcNow;
+        return nextReset > now &&
+               nextReset <= ResetDetectionService.GetNextSaturdayAvailability(now) &&
+               nextReset.DayOfWeek == DayOfWeek.Saturday;
+    }
+
+    private static string FormatUtc(DateTime timestamp)
+    {
+        return timestamp == DateTime.MinValue
+            ? "unknown"
+            : timestamp.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'");
     }
 }

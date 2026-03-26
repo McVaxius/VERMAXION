@@ -432,6 +432,16 @@ public static class GameHelpers
     }
 
     /// <summary>
+    /// Safer general-purpose UI cleanup for task transitions.
+    /// END advances/accepts many dialogue states, then ESC closes the remaining top-level addon.
+    /// </summary>
+    public static void ResetInteractionState()
+    {
+        SendEnd();
+        CloseCurrentAddon();
+    }
+
+    /// <summary>
     /// Send NUMPAD0 key (confirm/accept).
     /// </summary>
     public static void SendConfirm()

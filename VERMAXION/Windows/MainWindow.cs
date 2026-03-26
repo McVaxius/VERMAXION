@@ -29,7 +29,7 @@ public class MainWindow : Window, IDisposable
     {
         var config = plugin.ConfigManager.GetActiveConfig();
         var engine = plugin.Engine;
-        var charKey = plugin.ConfigManager.SelectedCharacterKey;
+        var charKey = plugin.ConfigManager.CurrentCharacterKey;
         var displayName = string.IsNullOrEmpty(charKey) ? "(Default)" : charKey;
 
         // Version header
@@ -100,7 +100,8 @@ public class MainWindow : Window, IDisposable
         
         // Control buttons row
         // FULL STOP button - red only when plugin is in operation
-        if (engine.IsRunning)
+        var highlightFullStop = engine.IsRunning;
+        if (highlightFullStop)
         {
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0f, 0f, 1f));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 0.2f, 0.2f, 1f));
@@ -110,7 +111,7 @@ public class MainWindow : Window, IDisposable
         {
             plugin.FullStop();
         }
-        if (engine.IsRunning)
+        if (highlightFullStop)
         {
             ImGui.PopStyleColor(3);
         }
@@ -156,21 +157,21 @@ public class MainWindow : Window, IDisposable
 
             // --- Weekly Tasks ---
             DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
-                config.VerminionCompletedThisWeek ? "Done this week" : "Weekly",
+                GetWeeklyTaskStatus(config.VerminionLastCompleted, config.VerminionNextReset, "Done this week", "Weekly"),
                 "Test##Verm", () => plugin.VerminionService.RunTask(), "OK");
             DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
-                config.JumboCactpotCompletedThisWeek ? "Done this week" : "Pending (Sat)",
+                GetJumboCactpotStatus(config),
                 "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "-");
             DrawTaskRow("Fashion Report", config.EnableFashionReport,
-                config.FashionReportCompletedThisWeek ? "Done this week" : "Weekly (Fri)",
-                "Test##Fashion", () => plugin.FashionReportService.Start(), "WIP");
+                GetFashionReportStatus(config),
+                "Test##Fashion", () => plugin.FashionReportService.Start(), "OK");
 
             // --- Daily Tasks ---
             DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
-                config.MiniCactpotCompletedToday ? "Done today" : "Daily",
+                GetDailyTaskStatus(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset, "Done today", "Daily"),
                 "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
-                config.ChocoboRacingCompletedToday ? "Done today" : "Daily",
+                GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
                 "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
 
             // --- Utility Tasks ---
@@ -262,15 +263,14 @@ public class MainWindow : Window, IDisposable
         var nextWeekly = ResetDetectionService.GetLastWeeklyReset(now).AddDays(7);
         var untilDaily = nextDaily - now;
         var untilWeekly = nextWeekly - now;
+        var nextFriday = ResetDetectionService.GetNextFridayAvailability(now);
+        var untilFriday = nextFriday - now;
 
         // Saturday timer
-        var daysUntilSaturday = ((int)(DayOfWeek.Saturday - now.DayOfWeek + 7) % 7);
-        if (daysUntilSaturday == 0 && now.Hour >= 15)
-            daysUntilSaturday = 7;
-        var saturdayResetTime = now.Date.AddDays(daysUntilSaturday).AddHours(15);
-        var untilSaturday = saturdayResetTime - now;
+        var nextSaturday = ResetDetectionService.GetNextSaturdayAvailability(now);
+        var untilSaturday = nextSaturday - now;
 
-        ImGui.TextDisabled($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m  |  Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m  |  Saturday: {untilSaturday.Days}d {untilSaturday.Hours}h {untilSaturday.Minutes}m");
+        ImGui.TextDisabled($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m  |  Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m  |  Fashion: {untilFriday.Days}d {untilFriday.Hours}h {untilFriday.Minutes}m  |  Jumbo: {untilSaturday.Days}d {untilSaturday.Hours}h {untilSaturday.Minutes}m");
 
         // AR status
         var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
@@ -326,5 +326,33 @@ public class MainWindow : Window, IDisposable
                 break;
         }
         ImGui.TextColored(color, maturity);
+    }
+
+    private static string GetWeeklyTaskStatus(DateTime lastCompleted, DateTime nextReset, string completedText, string pendingText)
+    {
+        return ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset) ? completedText : pendingText;
+    }
+
+    private static string GetDailyTaskStatus(DateTime lastCompleted, DateTime nextReset, string completedText, string pendingText)
+    {
+        return ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset) ? completedText : pendingText;
+    }
+
+    private static string GetFashionReportStatus(Models.CharacterConfig config)
+    {
+        if (ResetDetectionService.TaskIsCompleted(config.FashionReportLastCompleted, config.FashionReportNextReset))
+            return "Done this week";
+
+        return ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) ? "Ready (Fri-Tue)" : "Pending (Fri)";
+    }
+
+    private static string GetJumboCactpotStatus(Models.CharacterConfig config)
+    {
+        if (ResetDetectionService.TaskIsCompleted(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset))
+            return "Done this week";
+
+        var now = DateTime.UtcNow;
+        var saturdayReset = now.Date.AddHours(9);
+        return now.DayOfWeek == DayOfWeek.Saturday && now >= saturdayReset ? "Ready now" : "Pending (Sat)";
     }
 }

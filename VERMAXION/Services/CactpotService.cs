@@ -33,6 +33,8 @@ public class CactpotService : IDisposable
         MiniSelectingTicket,
         MiniWaitingForSaucy,
         MiniComplete,
+        MiniReturningHome,
+        MiniWaitingForHome,
         // Jumbo Cactpot Buy states
         JumboLifestreaming,
         JumboWaitingForZone,
@@ -346,10 +348,36 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniComplete:
-                log.Information("[Cactpot] Mini Cactpot sequence finished, exiting with NUMPAD+");
-                // Exit with NUMPAD+ like FC buff purchasing
+                log.Information("[Cactpot] Mini Cactpot sequence finished, closing menus and returning home");
                 GameHelpers.SendNumpadPlus();
-                SetState(CactpotState.Complete);
+                SetState(CactpotState.MiniReturningHome);
+                break;
+
+            case CactpotState.MiniReturningHome:
+                if (elapsed < 0.5)
+                    return;
+
+                log.Information("[Cactpot] Returning home after Mini Cactpot: /li home");
+                commandManager.ProcessCommand("/li home");
+                SetState(CactpotState.MiniWaitingForHome);
+                break;
+
+            case CactpotState.MiniWaitingForHome:
+                if (clientState.TerritoryType != GoldSaucerTerritoryId && GameHelpers.IsPlayerAvailable())
+                {
+                    log.Information("[Cactpot] Returned home after Mini Cactpot");
+                    SetState(CactpotState.Complete);
+                }
+                else if (elapsed > 12 && GameHelpers.IsPlayerAvailable())
+                {
+                    log.Information("[Cactpot] /li home settled without a territory change, continuing");
+                    SetState(CactpotState.Complete);
+                }
+                else if (elapsed > 25)
+                {
+                    log.Warning("[Cactpot] Timed out waiting for /li home to settle, continuing");
+                    SetState(CactpotState.Complete);
+                }
                 break;
 
             // ==================== JUMBO CACTPOT BUY ====================

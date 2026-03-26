@@ -18,19 +18,13 @@ public class ConfigManager
     private readonly Dictionary<string, AccountConfig> accounts = new();
 
     public string CurrentAccountId { get; set; } = "";
-    private string _selectedCharacterKey = "";
-    public string SelectedCharacterKey 
-    { 
-        get => _selectedCharacterKey;
-        set
-        {
-            if (_selectedCharacterKey != value)
-            {
-                var oldKey = _selectedCharacterKey;
-                _selectedCharacterKey = value;
-                OnCharacterChanged?.Invoke(oldKey, value);
-            }
-        }
+    public string CurrentCharacterKey { get; private set; } = "";
+
+    private string selectedCharacterKey = "";
+    public string SelectedCharacterKey
+    {
+        get => selectedCharacterKey;
+        set => selectedCharacterKey = value;
     }
 
     public event Action<string, string>? OnCharacterChanged;
@@ -61,6 +55,16 @@ public class ConfigManager
 
     public CharacterConfig GetActiveConfig()
     {
+        return GetConfigForKey(CurrentCharacterKey);
+    }
+
+    public CharacterConfig GetSelectedConfig()
+    {
+        return GetConfigForKey(SelectedCharacterKey);
+    }
+
+    public CharacterConfig GetConfigForKey(string charKey)
+    {
         var account = GetCurrentAccount();
         if (account == null)
         {
@@ -68,12 +72,12 @@ public class ConfigManager
             return new CharacterConfig();
         }
 
-        if (string.IsNullOrEmpty(SelectedCharacterKey))
+        if (string.IsNullOrEmpty(charKey))
         {
             return account.DefaultConfig;
         }
 
-        if (!account.Characters.TryGetValue(SelectedCharacterKey, out var cc))
+        if (!account.Characters.TryGetValue(charKey, out var cc))
         {
             return account.DefaultConfig;
         }
@@ -83,10 +87,7 @@ public class ConfigManager
 
     public CharacterConfig GetCurrentCharacterConfig(string charKey)
     {
-        var account = GetCurrentAccount();
-        if (account == null) return new CharacterConfig();
-        if (string.IsNullOrEmpty(charKey)) return account.DefaultConfig;
-        return account.Characters.TryGetValue(charKey, out var cc) ? cc : account.DefaultConfig;
+        return GetConfigForKey(charKey);
     }
 
     public void EnsureAccountSelected(ulong contentId, string? aliasHint = null)
@@ -175,7 +176,9 @@ public class ConfigManager
             if (kvp.Value.Characters.ContainsKey(charKey))
             {
                 CurrentAccountId = kvp.Key;
-                SelectedCharacterKey = charKey;
+                SetCurrentCharacterKey(charKey);
+                if (string.IsNullOrEmpty(SelectedCharacterKey))
+                    SelectedCharacterKey = charKey;
                 return;
             }
         }
@@ -203,7 +206,9 @@ public class ConfigManager
         }
 
         accountForChar.Characters[charKey] = accountForChar.DefaultConfig.Clone();
-        SelectedCharacterKey = charKey;
+        SetCurrentCharacterKey(charKey);
+        if (string.IsNullOrEmpty(SelectedCharacterKey))
+            SelectedCharacterKey = charKey;
         SaveAccount(CurrentAccountId);
         log.Information($"Added character {charKey} to account {CurrentAccountId}");
     }
@@ -253,6 +258,8 @@ public class ConfigManager
         account.Characters.Remove(charKey);
         if (SelectedCharacterKey == charKey)
             SelectedCharacterKey = "";
+        if (CurrentCharacterKey == charKey)
+            SetCurrentCharacterKey("");
 
         SaveCurrentAccount();
         log.Information($"Deleted character config: {charKey}");
@@ -283,6 +290,8 @@ public class ConfigManager
             cc.EnableGearUpdater = defaultConfig.EnableGearUpdater;
             cc.EnableHighestCombatJob = defaultConfig.EnableHighestCombatJob;
             cc.EnableCurrentJobEquipment = defaultConfig.EnableCurrentJobEquipment;
+            cc.EnableFashionReport = defaultConfig.EnableFashionReport;
+            cc.EnableRegisterRegistrables = defaultConfig.EnableRegisterRegistrables;
             cc.ChocoboRacesPerDay = defaultConfig.ChocoboRacesPerDay;
             cc.FCBuffPurchaseAttempts = defaultConfig.FCBuffPurchaseAttempts;
             cc.FCBuffMinPoints = defaultConfig.FCBuffMinPoints;
@@ -374,5 +383,15 @@ public class ConfigManager
             serverPart = char.ToUpper(serverPart[0]) + (serverPart.Length > 1 ? serverPart[1..].ToLower() : "");
 
         return serverPart.Length > 0 ? $"{charPart}@{serverPart}" : charPart;
+    }
+
+    private void SetCurrentCharacterKey(string charKey)
+    {
+        if (CurrentCharacterKey == charKey)
+            return;
+
+        var previousCharacterKey = CurrentCharacterKey;
+        CurrentCharacterKey = charKey;
+        OnCharacterChanged?.Invoke(previousCharacterKey, charKey);
     }
 }

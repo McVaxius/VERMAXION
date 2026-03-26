@@ -84,7 +84,7 @@ public sealed class Plugin : IDalamudPlugin
         VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager);
-        FashionReportService = new FashionReportService(CommandManager, Condition, ObjectTable, Log, TargetManager);
+        FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log);
         RegisterRegistrablesService = new RegisterRegistrablesService(CommandManager, ObjectTable, Log, ConfigManager);
         MinionRouletteService = new MinionRouletteService(CommandManager, Log);
         SeasonalGearService = new SeasonalGearService(CommandManager, Log);
@@ -337,6 +337,7 @@ public sealed class Plugin : IDalamudPlugin
             VerminionService.Update();
             CactpotService.Update();
             ChocoboRaceService.Update();
+            FashionReportService.Update();
             RegisterRegistrablesService.Update();
             MinionRouletteService.Update();
             SeasonalGearService.Update();
@@ -439,6 +440,8 @@ public sealed class Plugin : IDalamudPlugin
         VerminionService.Reset();
         CactpotService.Reset();
         ChocoboRaceService.Reset();
+        FashionReportService.Reset();
+        RegisterRegistrablesService.Reset();
         MinionRouletteService.Reset();
         SeasonalGearService.Reset();
         GearUpdaterService.Reset();

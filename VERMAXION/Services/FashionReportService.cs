@@ -1,326 +1,260 @@
 using System;
 using System.Globalization;
 using System.Numerics;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
 /// <summary>
 /// Fashion Report automation service.
-/// Weekly task that starts Friday 9 AM UTC and available until weekly reset.
-/// Navigates to Gold Saucer, finds Masked Rose, and interacts for Fashion Report.
+/// Travels to the Gold Saucer, interacts with Masked Rose, then closes the dialogue so the engine can continue.
 /// </summary>
 public class FashionReportService : IDisposable
 {
     private readonly ICommandManager commandManager;
-    private readonly ICondition condition;
+    private readonly IClientState clientState;
     private readonly IObjectTable objectTable;
     private readonly IPluginLog log;
-    private readonly ITargetManager targetManager;
 
-    private bool isActive = false;
     private FashionReportState state = FashionReportState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
-    private int currentAttempt = 0;
+    private int currentAttempt;
+
     private const int MaxAttempts = 3;
+    private const ushort GoldSaucerTerritoryId = 144;
+    private const string MaskedRoseName = "Masked Rose";
+    private static readonly Vector3 MaskedRosePosition = new(55.864311218262f, 3.9997265338898f, 64.584785461426f);
+
     private DateTime lastJumpTime = DateTime.MinValue;
-    private const double JumpInterval = 0.5; // 500ms jump interval as requested
-    private const float JumpStopDistance = 10f; // Stop jumping when within 10 yalms
+    private const double JumpIntervalSeconds = 0.5;
+    private const float JumpStopDistance = 10f;
 
     public enum FashionReportState
     {
         Idle,
-        NavigatingToSaucer,
+        TeleportingToSaucer,
         WaitingForSaucerZone,
         NavigatingToMaskedRose,
-        WaitingForTarget,
+        WaitingForArrival,
         InteractingWithMaskedRose,
         WaitingForDialogue,
+        ClosingDialogue,
         Complete,
         Failed,
     }
 
     public FashionReportState State => state;
-    public bool IsActive => isActive;
+    public bool IsActive => state != FashionReportState.Idle && state != FashionReportState.Complete && state != FashionReportState.Failed;
     public bool IsComplete => state == FashionReportState.Complete;
     public bool IsFailed => state == FashionReportState.Failed;
 
-    private static readonly Vector3 MaskedRosePosition = new(55.864311218262f, 3.9997265338898f, 64.584785461426f);
-    private const string MaskedRoseName = "Masked Rose";
-    private const string GoldSaucerTerritoryId = "144"; // Gold Saucer territory ID
-
-    public FashionReportService(ICommandManager commandManager, ICondition condition, IObjectTable objectTable, IPluginLog log, ITargetManager targetManager)
+    public FashionReportService(ICommandManager commandManager, IClientState clientState, IObjectTable objectTable, IPluginLog log)
     {
         this.commandManager = commandManager;
-        this.condition = condition;
+        this.clientState = clientState;
         this.objectTable = objectTable;
         this.log = log;
-        this.targetManager = targetManager;
     }
 
     public void Start()
     {
-        if (isActive)
+        if (IsActive)
         {
             log.Warning("[FashionReport] Service already active");
             return;
         }
 
-        log.Information("[FashionReport] Starting Fashion Report automation");
-        isActive = true;
         currentAttempt = 1;
-        SetState(FashionReportState.NavigatingToSaucer);
+        if (clientState.TerritoryType == GoldSaucerTerritoryId)
+        {
+            log.Information("[FashionReport] Already in Gold Saucer, skipping teleport");
+            SetState(FashionReportState.NavigatingToMaskedRose);
+        }
+        else
+        {
+            SetState(FashionReportState.TeleportingToSaucer);
+        }
     }
 
     public void Reset()
     {
-        log.Information("[FashionReport] Resetting service");
-        isActive = false;
         state = FashionReportState.Idle;
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
+        lastJumpTime = DateTime.MinValue;
     }
 
     public void Update()
     {
-        if (!isActive)
+        if (!IsActive)
             return;
 
-        var elapsed = DateTime.UtcNow - stateEnteredAt;
+        var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
 
         switch (state)
         {
-            case FashionReportState.NavigatingToSaucer:
-                if (elapsed.TotalSeconds < 2)
-                {
-                    log.Information("[FashionReport] Teleporting to Gold Saucer: /li saucer");
-                    commandManager.ProcessCommand("/li saucer");
-                    SetState(FashionReportState.WaitingForSaucerZone);
+            case FashionReportState.TeleportingToSaucer:
+                if (elapsed < 0.5)
                     return;
-                }
-                log.Error("[FashionReport] Failed to teleport to Gold Saucer");
-                SetState(FashionReportState.Failed);
+
+                log.Information("[FashionReport] Teleporting to Gold Saucer: /li saucer");
+                commandManager.ProcessCommand("/li saucer");
+                SetState(FashionReportState.WaitingForSaucerZone);
                 break;
 
             case FashionReportState.WaitingForSaucerZone:
-                if (elapsed.TotalSeconds > 10)
+                if (clientState.TerritoryType == GoldSaucerTerritoryId && GameHelpers.IsPlayerAvailable())
                 {
-                    log.Error("[FashionReport] Timeout waiting for Gold Saucer zone");
-                    SetState(FashionReportState.Failed);
-                    return;
-                }
-
-                // Check if we're in Gold Saucer
-                if (IsInGoldSaucer())
-                {
-                    log.Information("[FashionReport] Arrived at Gold Saucer, navigating to Masked Rose");
+                    log.Information("[FashionReport] Arrived at Gold Saucer");
                     SetState(FashionReportState.NavigatingToMaskedRose);
-                    return;
+                }
+                else if (elapsed > 30)
+                {
+                    RetryOrFail("Timed out waiting for Gold Saucer zone");
                 }
                 break;
 
             case FashionReportState.NavigatingToMaskedRose:
-                if (elapsed.TotalSeconds < 2)
-                {
-                    log.Information($"[FashionReport] Navigating to Masked Rose position: {MaskedRosePosition}");
-                    var coords = string.Format(CultureInfo.InvariantCulture, "{0:F8},{1:F8},{2:F8}", 
-                        MaskedRosePosition.X, MaskedRosePosition.Y, MaskedRosePosition.Z);
-                    commandManager.ProcessCommand($"/vnav moveto {coords}");
-                    SetState(FashionReportState.WaitingForTarget);
+                if (elapsed < 0.5)
                     return;
-                }
-                log.Error("[FashionReport] Failed to start navigation to Masked Rose");
-                SetState(FashionReportState.Failed);
+
+                log.Information("[FashionReport] Navigating to Masked Rose");
+                var coords = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0:F8} {1:F8} {2:F8}",
+                    MaskedRosePosition.X,
+                    MaskedRosePosition.Y,
+                    MaskedRosePosition.Z);
+                commandManager.ProcessCommand($"/vnav moveto {coords}");
+                SetState(FashionReportState.WaitingForArrival);
                 break;
 
-            case FashionReportState.WaitingForTarget:
-                if (elapsed.TotalSeconds > 30)
+            case FashionReportState.WaitingForArrival:
+                if (IsNearPosition(MaskedRosePosition, 4.0f))
                 {
-                    log.Error("[FashionReport] Timeout waiting to reach Masked Rose");
-                    SetState(FashionReportState.Failed);
-                    return;
+                    log.Information("[FashionReport] Reached Masked Rose area");
+                    SetState(FashionReportState.InteractingWithMaskedRose);
                 }
-
-                // Check if we're close to target position
-                if (IsNearPosition(MaskedRosePosition, 5f))
+                else if (elapsed > 35)
                 {
-                    log.Information("[FashionReport] Reached Masked Rose area, looking for target");
-                    SetState(FashionReportState.WaitingForTarget);
-                    return;
+                    RetryOrFail("Timed out navigating to Masked Rose");
                 }
-                // Send periodic jumps during navigation to help with pathing
-                SendPeriodicJump(MaskedRosePosition);
+                else
+                {
+                    SendPeriodicJump(MaskedRosePosition);
+                }
                 break;
 
             case FashionReportState.InteractingWithMaskedRose:
-                if (elapsed.TotalSeconds < 2)
+                if (elapsed < 0.5)
+                    return;
+
+                if (GameHelpers.TargetAndInteract(MaskedRoseName))
                 {
-                    // Try to target Masked Rose
-                    if (TryTargetMaskedRose())
-                    {
-                        log.Information("[FashionReport] Targeted Masked Rose, initiating interaction");
-                        commandManager.ProcessCommand("/interact");
-                        SetState(FashionReportState.WaitingForDialogue);
-                        return;
-                    }
-                    else
-                    {
-                        log.Warning("[FashionReport] Could not find Masked Rose, retrying...");
-                        SetState(FashionReportState.WaitingForTarget);
-                        return;
-                    }
+                    log.Information("[FashionReport] Interacted with Masked Rose");
+                    SetState(FashionReportState.WaitingForDialogue);
                 }
-                log.Error("[FashionReport] Failed to interact with Masked Rose");
-                SetState(FashionReportState.Failed);
+                else if (elapsed > 12)
+                {
+                    RetryOrFail("Timed out targeting Masked Rose");
+                }
                 break;
 
             case FashionReportState.WaitingForDialogue:
-                if (elapsed.TotalSeconds > 15)
-                {
-                    log.Information("[FashionReport] Fashion Report interaction completed (timeout)");
-                    SetState(FashionReportState.Complete);
+                if (elapsed < 1.5)
                     return;
+
+                if (IsFashionReportUiVisible())
+                {
+                    log.Information("[FashionReport] Dialogue visible, closing it so the engine can continue");
+                }
+                else
+                {
+                    log.Information("[FashionReport] No visible dialogue detected after interaction, closing cleanly");
                 }
 
-                // Wait for dialogue to complete
-                // Could add dialogue detection here if needed
+                SetState(FashionReportState.ClosingDialogue);
                 break;
 
-            case FashionReportState.Complete:
-            case FashionReportState.Failed:
-                // Terminal states, nothing to do
+            case FashionReportState.ClosingDialogue:
+                if (elapsed < 0.5)
+                    return;
+
+                GameHelpers.SendEnd();
+                GameHelpers.CloseCurrentAddon();
+                SetState(FashionReportState.Complete);
                 break;
         }
     }
 
-    private bool IsInGoldSaucer()
+    private bool IsNearPosition(Vector3 targetPosition, float threshold)
     {
-        // Check territory ID or zone name
-        // This is a simplified check - may need adjustment based on actual territory detection
-        try
-        {
-            // Could use ClientState.TerritoryType or similar
-            // For now, just check if we can find Gold Saucer objects
-            foreach (var obj in objectTable)
-            {
-                if (obj != null && obj.Name.ToString().Contains("Gold Saucer", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
+        var player = objectTable.LocalPlayer;
+        if (player == null)
             return false;
-        }
-        catch
-        {
-            return false;
-        }
+
+        return Vector3.Distance(player.Position, targetPosition) <= threshold;
     }
 
-    private bool IsNearPosition(Vector3 targetPos, float threshold)
+    private bool IsFashionReportUiVisible()
     {
-        try
-        {
-            var player = objectTable[0];
-            if (player == null) return false;
-
-            var playerPos = player.Position;
-            var distance = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, playerPos.Z), targetPos);
-            return distance <= threshold;
-        }
-        catch
-        {
-            return false;
-        }
+        return GameHelpers.IsAddonVisible("Talk")
+            || GameHelpers.IsAddonVisible("SelectString")
+            || GameHelpers.IsAddonVisible("JournalAccept")
+            || GameHelpers.IsAddonVisible("Request");
     }
 
-    private bool TryTargetMaskedRose()
+    private void RetryOrFail(string reason)
     {
-        try
+        if (currentAttempt >= MaxAttempts)
         {
-            // AutoRetainer pattern: Filter by ObjectKind FIRST to avoid players entirely
-            foreach (var obj in objectTable)
-            {
-                if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
-                    obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc)
-                {
-                    if (obj != null && obj.Name.ToString().Equals(MaskedRoseName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        GameHelpers.SendEnd();
-                        targetManager.Target = obj;
-                        log.Information($"[FashionReport] Set target to {MaskedRoseName}");
-                        return true;
-                    }
-                }
-            }
-            return false;
+            log.Error($"[FashionReport] {reason}. Failed after {MaxAttempts} attempts");
+            SetState(FashionReportState.Failed);
+            return;
         }
-        catch
+
+        currentAttempt++;
+        log.Warning($"[FashionReport] {reason}. Retrying ({currentAttempt}/{MaxAttempts})");
+
+        if (clientState.TerritoryType == GoldSaucerTerritoryId)
         {
-            return false;
+            SetState(FashionReportState.NavigatingToMaskedRose);
+        }
+        else
+        {
+            SetState(FashionReportState.TeleportingToSaucer);
         }
     }
 
     private void SetState(FashionReportState newState)
     {
-        if (state == newState) return;
+        if (state == newState)
+            return;
 
-        log.Information($"[FashionReport] {state} -> {newState} (Attempt {currentAttempt}/{MaxAttempts})");
+        log.Information($"[FashionReport] {state} -> {newState} (Attempt {Math.Max(currentAttempt, 1)}/{MaxAttempts})");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
 
-        // Handle state-specific logic
-        switch (newState)
-        {
-            case FashionReportState.Failed:
-                if (currentAttempt < MaxAttempts)
-                {
-                    currentAttempt++;
-                    log.Information($"[FashionReport] Retrying... (Attempt {currentAttempt}/{MaxAttempts})");
-                    SetState(FashionReportState.NavigatingToSaucer);
-                }
-                else
-                {
-                    log.Error("[FashionReport] Failed after maximum attempts");
-                    isActive = false;
-                }
-                break;
-
-            case FashionReportState.Complete:
-                log.Information("[FashionReport] Fashion Report completed successfully");
-                isActive = false;
-                break;
-        }
+        if (newState == FashionReportState.Complete || newState == FashionReportState.Failed)
+            lastJumpTime = DateTime.MinValue;
     }
 
-    /// <summary>
-    /// Send periodic jump commands during navigation to help with pathing when stuck on aetheryte.
-    /// Jumps every 500ms as requested to help the bot reach its destination.
-    /// Stops jumping when within 10 yalms of target position.
-    /// </summary>
     private void SendPeriodicJump(Vector3 targetPosition)
     {
         var now = DateTime.UtcNow;
-        if ((now - lastJumpTime).TotalSeconds >= JumpInterval)
+        if ((now - lastJumpTime).TotalSeconds < JumpIntervalSeconds)
+            return;
+
+        var player = objectTable.LocalPlayer;
+        if (player != null)
         {
-            // Check distance to target - stop jumping if we're close
-            var player = objectTable.LocalPlayer;
-            if (player != null)
-            {
-                var distance = Vector3.Distance(player.Position, targetPosition);
-                if (distance <= JumpStopDistance)
-                {
-                    log.Debug($"[FashionReport] Stopping jumps - within {distance:F1} yalms of target (stop at {JumpStopDistance})");
-                    return;
-                }
-            }
-            
-            GameHelpers.SendJump();
-            lastJumpTime = now;
+            var distance = Vector3.Distance(player.Position, targetPosition);
+            if (distance <= JumpStopDistance)
+                return;
         }
+
+        GameHelpers.SendJump();
+        lastJumpTime = now;
     }
 
     public void Dispose()
