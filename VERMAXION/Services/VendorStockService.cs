@@ -174,7 +174,7 @@ public sealed class VendorStockService
                     if (TryFirePurchaseAction(0.75))
                     {
                         log.Information("[VendorStock] Opening Maisenta's Gysahl Greens shop");
-                        GameHelpers.FireAddonCallback("SelectIconString", true, 1);
+                        GameHelpers.FireAddonCallback("SelectIconString", true, 0);
                     }
                 }
                 else if (elapsed > 8)
@@ -203,8 +203,8 @@ public sealed class VendorStockService
                 break;
 
             case VendorStockState.DarkMatterLifestreaming:
-                log.Information("[VendorStock] Lifestreaming to Khetto's Amphitheatre: /li khetto");
-                commandManager.ProcessCommand("/li khetto");
+                log.Information("[VendorStock] Lifestreaming to Leatherworkers' Guild: /li leather");
+                commandManager.ProcessCommand("/li leather");
                 SetState(VendorStockState.DarkMatterWaitingForArrival);
                 break;
 
