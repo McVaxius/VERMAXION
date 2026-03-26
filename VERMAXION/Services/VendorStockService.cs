@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
@@ -11,7 +12,7 @@ public sealed class VendorStockService
 {
     private const uint GysahlGreensItemId = 4868;
     private const uint Grade8DarkMatterItemId = 33916;
-    private const float TargetInteractDistance = 4.0f;
+    private const float TargetInteractDistance = 3.0f;
 
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
@@ -23,6 +24,10 @@ public sealed class VendorStockService
     private DateTime lastNavigationCommandAt = DateTime.MinValue;
     private DateTime lastInteractionAttemptAt = DateTime.MinValue;
     private DateTime lastPurchaseAttemptAt = DateTime.MinValue;
+    private DateTime lastCleanupAttemptAt = DateTime.MinValue;
+    private ushort travelOriginTerritory;
+    private bool sawTravelTransition;
+    private VendorStockState cleanupNextState = VendorStockState.Complete;
     private int observedGysahlCount;
     private int observedDarkMatterCount;
 
@@ -36,6 +41,7 @@ public sealed class VendorStockService
         GysahlInteractingVendor,
         GysahlSelectingShopMenu,
         GysahlPurchasing,
+        ClosingVendorUi,
         DarkMatterLifestreaming,
         DarkMatterWaitingForArrival,
         DarkMatterNavigatingToVendor,
@@ -88,6 +94,10 @@ public sealed class VendorStockService
         lastNavigationCommandAt = DateTime.MinValue;
         lastInteractionAttemptAt = DateTime.MinValue;
         lastPurchaseAttemptAt = DateTime.MinValue;
+        lastCleanupAttemptAt = DateTime.MinValue;
+        travelOriginTerritory = 0;
+        sawTravelTransition = false;
+        cleanupNextState = VendorStockState.Complete;
     }
 
     public void Update()
@@ -119,12 +129,13 @@ public sealed class VendorStockService
 
             case VendorStockState.GysahlLifestreaming:
                 log.Information("[VendorStock] Lifestreaming to Gridania: /li gridania");
+                BeginTravelWait();
                 commandManager.ProcessCommand("/li gridania");
                 SetState(VendorStockState.GysahlWaitingForArrival);
                 break;
 
             case VendorStockState.GysahlWaitingForArrival:
-                if (GameHelpers.IsPlayerAvailable() && GameHelpers.FindObjectByName("Maisenta") != null)
+                if (HasArrivedNearVendor("Maisenta", 3.0, 8.0))
                 {
                     SetState(VendorStockState.GysahlNavigatingToVendor);
                 }
@@ -205,14 +216,32 @@ public sealed class VendorStockService
                 }
                 break;
 
+            case VendorStockState.ClosingVendorUi:
+                if (!IsVendorUiStillOpen())
+                {
+                    SetState(cleanupNextState);
+                }
+                else if (TryCloseVendorUi(0.8))
+                {
+                    log.Information("[VendorStock] Closing vendor UI with NUMPAD+");
+                    GameHelpers.SendNumpadPlus();
+                }
+                else if (elapsed > 8)
+                {
+                    log.Warning("[VendorStock] Vendor UI remained open after cleanup attempts, continuing");
+                    SetState(cleanupNextState);
+                }
+                break;
+
             case VendorStockState.DarkMatterLifestreaming:
                 log.Information("[VendorStock] Lifestreaming to Leatherworkers' Guild: /li leather");
+                BeginTravelWait();
                 commandManager.ProcessCommand("/li leather");
                 SetState(VendorStockState.DarkMatterWaitingForArrival);
                 break;
 
             case VendorStockState.DarkMatterWaitingForArrival:
-                if (GameHelpers.IsPlayerAvailable() && GameHelpers.FindObjectByName("Alaric") != null)
+                if (HasArrivedNearVendor("Alaric", 3.0, 8.0))
                 {
                     SetState(VendorStockState.DarkMatterNavigatingToVendor);
                 }
@@ -297,7 +326,7 @@ public sealed class VendorStockService
             return false;
 
         var distance = GetDistanceTo(npc);
-        var maxInteractDistance = Math.Max(TargetInteractDistance, GameHelpers.GetValidInteractionDistance(npc));
+        var maxInteractDistance = GetDesiredInteractDistance(npc);
         if (distance <= maxInteractDistance)
         {
             vnavmesh.Stop();
@@ -383,16 +412,14 @@ public sealed class VendorStockService
         }
         else
         {
-            GameHelpers.SendNumpadPlus();
-            SetState(VendorStockState.Complete);
+            BeginVendorCleanup(VendorStockState.Complete);
         }
     }
 
     private void FinishDarkMatterPhase()
     {
         GameHelpers.ResetInteractionState();
-        GameHelpers.SendNumpadPlus();
-        SetState(VendorStockState.Complete);
+        BeginVendorCleanup(VendorStockState.Complete);
     }
 
     private void Fail(string message)
@@ -409,6 +436,57 @@ public sealed class VendorStockService
         stateEnteredAt = DateTime.UtcNow;
     }
 
+    private void BeginTravelWait()
+    {
+        travelOriginTerritory = Plugin.ClientState.TerritoryType;
+        sawTravelTransition = false;
+    }
+
+    private bool HasArrivedNearVendor(string npcName, double minimumWaitSeconds, double sameTerritoryFallbackSeconds)
+    {
+        if ((DateTime.UtcNow - stateEnteredAt).TotalSeconds < minimumWaitSeconds)
+            return false;
+
+        if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
+        {
+            sawTravelTransition = true;
+            return false;
+        }
+
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        if (!sawTravelTransition &&
+            Plugin.ClientState.TerritoryType == travelOriginTerritory &&
+            (DateTime.UtcNow - stateEnteredAt).TotalSeconds < sameTerritoryFallbackSeconds)
+        {
+            return false;
+        }
+
+        return GameHelpers.FindObjectByName(npcName) != null;
+    }
+
+    private void BeginVendorCleanup(VendorStockState nextState)
+    {
+        cleanupNextState = nextState;
+        lastCleanupAttemptAt = DateTime.MinValue;
+        SetState(VendorStockState.ClosingVendorUi);
+    }
+
+    private bool TryCloseVendorUi(double repeatDelaySeconds)
+    {
+        if ((DateTime.UtcNow - lastCleanupAttemptAt).TotalSeconds < repeatDelaySeconds)
+            return false;
+
+        lastCleanupAttemptAt = DateTime.UtcNow;
+        return true;
+    }
+
+    private static bool IsVendorUiStillOpen()
+        => GameHelpers.IsAddonVisible("Shop")
+           || GameHelpers.IsAddonVisible("SelectIconString")
+           || GameHelpers.IsAddonVisible("SelectYesno");
+
     private static float GetDistanceTo(IGameObject npc)
     {
         var player = Plugin.ObjectTable.LocalPlayer;
@@ -424,7 +502,7 @@ public sealed class VendorStockService
         if (npc == null)
             return false;
 
-        var maxInteractDistance = Math.Max(TargetInteractDistance, GameHelpers.GetValidInteractionDistance(npc));
+        var maxInteractDistance = GetDesiredInteractDistance(npc);
         var distance = GetDistanceTo(npc);
         if (distance <= maxInteractDistance)
             return true;
@@ -432,4 +510,7 @@ public sealed class VendorStockService
         AdvanceToVendor(npcName);
         return false;
     }
+
+    private static float GetDesiredInteractDistance(IGameObject npc)
+        => Math.Min(TargetInteractDistance, GameHelpers.GetValidInteractionDistance(npc));
 }
