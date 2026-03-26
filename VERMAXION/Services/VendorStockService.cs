@@ -383,6 +383,7 @@ public sealed class VendorStockService
         }
         else
         {
+            GameHelpers.SendNumpadPlus();
             SetState(VendorStockState.Complete);
         }
     }
@@ -390,6 +391,7 @@ public sealed class VendorStockService
     private void FinishDarkMatterPhase()
     {
         GameHelpers.ResetInteractionState();
+        GameHelpers.SendNumpadPlus();
         SetState(VendorStockState.Complete);
     }
 
