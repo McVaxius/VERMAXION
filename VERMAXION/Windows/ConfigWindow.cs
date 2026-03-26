@@ -552,6 +552,11 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
+            else
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(1.0f, 0.75f, 0.2f, 1.0f), "[WIP]");
+            }
             DrawFashionTaskHint(cc.FashionReportLastCompleted, cc.FashionReportNextReset);
 
             var register = cc.EnableRegisterRegistrables;

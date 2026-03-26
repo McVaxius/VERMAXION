@@ -30,6 +30,8 @@ public sealed class VendorStockService
     private VendorStockState cleanupNextState = VendorStockState.Complete;
     private int observedGysahlCount;
     private int observedDarkMatterCount;
+    private int gysahlShopMenuIndex;
+    private bool gysahlAlternateShopAttempted;
 
     public enum VendorStockState
     {
@@ -76,6 +78,8 @@ public sealed class VendorStockService
 
         observedGysahlCount = (int)GameHelpers.GetInventoryItemCount(GysahlGreensItemId);
         observedDarkMatterCount = (int)GameHelpers.GetInventoryItemCount(Grade8DarkMatterItemId);
+        gysahlShopMenuIndex = 0;
+        gysahlAlternateShopAttempted = false;
         GameHelpers.ResetInteractionState();
         SetState(VendorStockState.CheckingNeeds);
     }
@@ -98,6 +102,8 @@ public sealed class VendorStockService
         travelOriginTerritory = 0;
         sawTravelTransition = false;
         cleanupNextState = VendorStockState.Complete;
+        gysahlShopMenuIndex = 0;
+        gysahlAlternateShopAttempted = false;
     }
 
     public void Update()
@@ -187,9 +193,19 @@ public sealed class VendorStockService
                 {
                     if (TryFirePurchaseAction(0.75))
                     {
-                        log.Information("[VendorStock] Opening Maisenta's Gysahl Greens shop");
-                        GameHelpers.FireAddonCallback("SelectIconString", true, 0);
+                        log.Information($"[VendorStock] Opening Maisenta's Gysahl Greens shop with menu index {gysahlShopMenuIndex}");
+                        GameHelpers.FireAddonCallback("SelectIconString", true, gysahlShopMenuIndex);
                     }
+                }
+                else if (!gysahlAlternateShopAttempted && gysahlShopMenuIndex == 0 && elapsed > 2.5)
+                {
+                    log.Warning("[VendorStock] Menu index 0 did not open Shop; retrying Maisenta with menu index 1");
+                    gysahlShopMenuIndex = 1;
+                    gysahlAlternateShopAttempted = true;
+                    lastPurchaseAttemptAt = DateTime.MinValue;
+                    lastInteractionAttemptAt = DateTime.MinValue;
+                    GameHelpers.ResetInteractionState();
+                    BeginVendorCleanup(VendorStockState.GysahlInteractingVendor);
                 }
                 else if (elapsed > 8)
                 {
@@ -405,6 +421,8 @@ public sealed class VendorStockService
 
     private void FinishGysahlPhase()
     {
+        gysahlShopMenuIndex = 0;
+        gysahlAlternateShopAttempted = false;
         GameHelpers.ResetInteractionState();
         if (NeedsDarkMatter())
         {
