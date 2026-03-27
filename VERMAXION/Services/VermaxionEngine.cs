@@ -314,6 +314,11 @@ public class VermaxionEngine
                     else if (verminionService.IsFailed)
                     {
                         log.Warning("[Engine] Verminion failed - continuing");
+                        MarkWeeklyTaskFailed(
+                            taskName: "Verminion",
+                            setLastCompleted: value => activeConfig.VerminionLastCompleted = value,
+                            setNextReset: value => activeConfig.VerminionNextReset = value,
+                            clearLegacyFlag: () => activeConfig.VerminionCompletedThisWeek = false);
                         verminionService.Reset();
                         AdvanceToNextTask(EngineState.RunningVerminion);
                     }
@@ -355,6 +360,11 @@ public class VermaxionEngine
                     else if (cactpotService.IsFailed)
                     {
                         log.Warning("[Engine] Mini Cactpot failed - continuing");
+                        MarkDailyTaskFailed(
+                            taskName: "Mini Cactpot",
+                            setLastCompleted: value => activeConfig.MiniCactpotLastCompleted = value,
+                            setNextReset: value => activeConfig.MiniCactpotNextReset = value,
+                            clearLegacyFlag: () => activeConfig.MiniCactpotCompletedToday = false);
                         cactpotService.Reset();
                         AdvanceToNextTask(EngineState.RunningMiniCactpot);
                     }
@@ -407,6 +417,7 @@ public class VermaxionEngine
                     else if (cactpotService.IsFailed)
                     {
                         log.Warning("[Engine] Jumbo Cactpot failed - continuing");
+                        MarkJumboCactpotFailed(runSaturdayPayout);
                         cactpotService.Reset();
                         AdvanceToNextTask(EngineState.RunningJumboCactpot);
                     }
@@ -450,6 +461,11 @@ public class VermaxionEngine
                     else if (fashionReportService.IsFailed)
                     {
                         log.Warning("[Engine] Fashion Report failed - continuing");
+                        MarkWeeklyTaskFailed(
+                            taskName: "Fashion Report",
+                            setLastCompleted: value => activeConfig.FashionReportLastCompleted = value,
+                            setNextReset: value => activeConfig.FashionReportNextReset = value,
+                            clearLegacyFlag: () => activeConfig.FashionReportCompletedThisWeek = false);
                         fashionReportService.Reset();
                         AdvanceToNextTask(EngineState.RunningFashionReport);
                     }
@@ -491,6 +507,11 @@ public class VermaxionEngine
                     else if (chocoboRaceService.IsFailed)
                     {
                         log.Warning("[Engine] Chocobo Racing failed - continuing");
+                        MarkDailyTaskFailed(
+                            taskName: "Chocobo Racing",
+                            setLastCompleted: value => activeConfig.ChocoboRacingLastCompleted = value,
+                            setNextReset: value => activeConfig.ChocoboRacingNextReset = value,
+                            clearLegacyFlag: () => activeConfig.ChocoboRacingCompletedToday = false);
                         chocoboRaceService.Reset();
                         AdvanceToNextTask(EngineState.RunningChocoboRacing);
                     }
@@ -521,6 +542,38 @@ public class VermaxionEngine
                 log.Information("[Engine] === Vermaxion post-processing complete ===");
                 break;
         }
+    }
+
+    private void MarkWeeklyTaskFailed(string taskName, Action<DateTime> setLastCompleted, Action<DateTime> setNextReset, Action clearLegacyFlag)
+    {
+        var now = DateTime.UtcNow;
+        setLastCompleted(now);
+        setNextReset(ResetDetectionService.GetNextWeeklyReset(now));
+        clearLegacyFlag();
+        configManager.SaveCurrentAccount();
+        log.Warning($"[Engine] {taskName} failed and will be suppressed until the next weekly reset.");
+    }
+
+    private void MarkDailyTaskFailed(string taskName, Action<DateTime> setLastCompleted, Action<DateTime> setNextReset, Action clearLegacyFlag)
+    {
+        var now = DateTime.UtcNow;
+        setLastCompleted(now);
+        setNextReset(ResetDetectionService.GetNextDailyReset(now));
+        clearLegacyFlag();
+        configManager.SaveCurrentAccount();
+        log.Warning($"[Engine] {taskName} failed and will be suppressed until the next daily reset.");
+    }
+
+    private void MarkJumboCactpotFailed(bool runSaturdayPayout)
+    {
+        var now = DateTime.UtcNow;
+        activeConfig!.JumboCactpotLastCompleted = now;
+        activeConfig.JumboCactpotNextReset = runSaturdayPayout
+            ? ResetDetectionService.GetNextWeeklyReset(now)
+            : ResetDetectionService.GetNextSaturdayAvailability(now);
+        activeConfig.JumboCactpotCompletedThisWeek = false;
+        configManager.SaveCurrentAccount();
+        log.Warning("[Engine] Jumbo Cactpot failed and will be suppressed until its next reset window.");
     }
 
     private void AdvanceToNextTask(EngineState currentTask)
