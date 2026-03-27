@@ -671,6 +671,7 @@ public class ConfigWindow : Window, IDisposable
             cc.MiniCactpotCompletedToday = false;
             cc.ChocoboRacingCompletedToday = false;
             cc.LastDailyReset = DateTime.MinValue;
+            cc.MiniCactpotTicketsToday = 0;
             
             // Reset new DateTime system
             cc.MiniCactpotLastCompleted = DateTime.MinValue;

@@ -179,6 +179,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.CheckingResets:
+                activeConfig = GetLiveActiveConfig();
                 weeklyResetDetected = resetService.CheckWeeklyReset(activeConfig!);
                 dailyResetDetected = resetService.CheckDailyReset(activeConfig!);
                 
@@ -284,6 +285,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningVerminion:
+                activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableVerminionQueue &&
                     ResetDetectionService.TaskNeedsRun(activeConfig.VerminionLastCompleted, activeConfig.VerminionNextReset))
                 {
@@ -301,13 +303,13 @@ public class VermaxionEngine
 
                     if (verminionService.IsComplete)
                     {
-                        // NEW: Update new DateTime system
-                        activeConfig.VerminionLastCompleted = DateTime.UtcNow;
-                        activeConfig.VerminionNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
-                        
-                        // Keep legacy flags for compatibility
-                        activeConfig.VerminionCompletedThisWeek = true;
-                        configManager.SaveCurrentAccount();
+                        var completedAt = DateTime.UtcNow;
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.VerminionLastCompleted = completedAt;
+                            config.VerminionNextReset = ResetDetectionService.GetNextWeeklyReset(completedAt);
+                            config.VerminionCompletedThisWeek = true;
+                        }, "Verminion completion");
                         verminionService.Reset();
                         AdvanceToNextTask(EngineState.RunningVerminion);
                     }
@@ -316,9 +318,9 @@ public class VermaxionEngine
                         log.Warning("[Engine] Verminion failed - continuing");
                         MarkWeeklyTaskFailed(
                             taskName: "Verminion",
-                            setLastCompleted: value => activeConfig.VerminionLastCompleted = value,
-                            setNextReset: value => activeConfig.VerminionNextReset = value,
-                            clearLegacyFlag: () => activeConfig.VerminionCompletedThisWeek = false);
+                            setLastCompleted: (config, value) => config.VerminionLastCompleted = value,
+                            setNextReset: (config, value) => config.VerminionNextReset = value,
+                            clearLegacyFlag: config => config.VerminionCompletedThisWeek = false);
                         verminionService.Reset();
                         AdvanceToNextTask(EngineState.RunningVerminion);
                     }
@@ -330,7 +332,9 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningMiniCactpot:
+                activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableMiniCactpot &&
+                    activeConfig.MiniCactpotTicketsToday < 3 &&
                     ResetDetectionService.TaskNeedsRun(activeConfig.MiniCactpotLastCompleted, activeConfig.MiniCactpotNextReset))
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
@@ -347,13 +351,14 @@ public class VermaxionEngine
 
                     if (cactpotService.IsComplete)
                     {
-                        // NEW: Update new DateTime system
-                        activeConfig.MiniCactpotLastCompleted = DateTime.UtcNow;
-                        activeConfig.MiniCactpotNextReset = ResetDetectionService.GetNextDailyReset(DateTime.UtcNow);
-                        
-                        // Keep legacy flags for compatibility
-                        activeConfig.MiniCactpotCompletedToday = true;
-                        configManager.SaveCurrentAccount();
+                        var completedAt = DateTime.UtcNow;
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.MiniCactpotLastCompleted = completedAt;
+                            config.MiniCactpotNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
+                            config.MiniCactpotCompletedToday = true;
+                            config.MiniCactpotTicketsToday = Math.Max(config.MiniCactpotTicketsToday, 3);
+                        }, "Mini Cactpot completion");
                         cactpotService.Reset();
                         AdvanceToNextTask(EngineState.RunningMiniCactpot);
                     }
@@ -362,9 +367,9 @@ public class VermaxionEngine
                         log.Warning("[Engine] Mini Cactpot failed - continuing");
                         MarkDailyTaskFailed(
                             taskName: "Mini Cactpot",
-                            setLastCompleted: value => activeConfig.MiniCactpotLastCompleted = value,
-                            setNextReset: value => activeConfig.MiniCactpotNextReset = value,
-                            clearLegacyFlag: () => activeConfig.MiniCactpotCompletedToday = false);
+                            setLastCompleted: (config, value) => config.MiniCactpotLastCompleted = value,
+                            setNextReset: (config, value) => config.MiniCactpotNextReset = value,
+                            clearLegacyFlag: config => config.MiniCactpotCompletedToday = false);
                         cactpotService.Reset();
                         AdvanceToNextTask(EngineState.RunningMiniCactpot);
                     }
@@ -376,6 +381,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningJumboCactpot:
+                activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableJumboCactpot &&
                     ResetDetectionService.TaskNeedsRun(activeConfig.JumboCactpotLastCompleted, activeConfig.JumboCactpotNextReset))
                 {
@@ -405,12 +411,14 @@ public class VermaxionEngine
 
                     if (cactpotService.IsComplete)
                     {
-                        activeConfig.JumboCactpotLastCompleted = now;
-                        activeConfig.JumboCactpotNextReset = runSaturdayPayout
-                            ? ResetDetectionService.GetNextWeeklyReset(now)
-                            : ResetDetectionService.GetNextSaturdayAvailability(now);
-                        activeConfig.JumboCactpotCompletedThisWeek = runSaturdayPayout;
-                        configManager.SaveCurrentAccount();
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.JumboCactpotLastCompleted = now;
+                            config.JumboCactpotNextReset = runSaturdayPayout
+                                ? ResetDetectionService.GetNextWeeklyReset(now)
+                                : ResetDetectionService.GetNextSaturdayAvailability(now);
+                            config.JumboCactpotCompletedThisWeek = runSaturdayPayout;
+                        }, "Jumbo Cactpot completion");
                         cactpotService.Reset();
                         AdvanceToNextTask(EngineState.RunningJumboCactpot);
                     }
@@ -429,6 +437,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningFashionReport:
+                activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableFashionReport &&
                     ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) &&
                     ResetDetectionService.TaskNeedsRun(activeConfig.FashionReportLastCompleted, activeConfig.FashionReportNextReset))
@@ -448,13 +457,13 @@ public class VermaxionEngine
 
                     if (fashionReportService.IsComplete)
                     {
-                        // NEW: Update new DateTime system
-                        activeConfig.FashionReportLastCompleted = DateTime.UtcNow;
-                        activeConfig.FashionReportNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
-                        
-                        // Keep legacy flags for compatibility
-                        activeConfig.FashionReportCompletedThisWeek = true;
-                        configManager.SaveCurrentAccount();
+                        var completedAt = DateTime.UtcNow;
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.FashionReportLastCompleted = completedAt;
+                            config.FashionReportNextReset = ResetDetectionService.GetNextWeeklyReset(completedAt);
+                            config.FashionReportCompletedThisWeek = true;
+                        }, "Fashion Report completion");
                         fashionReportService.Reset();
                         AdvanceToNextTask(EngineState.RunningFashionReport);
                     }
@@ -463,9 +472,9 @@ public class VermaxionEngine
                         log.Warning("[Engine] Fashion Report failed - continuing");
                         MarkWeeklyTaskFailed(
                             taskName: "Fashion Report",
-                            setLastCompleted: value => activeConfig.FashionReportLastCompleted = value,
-                            setNextReset: value => activeConfig.FashionReportNextReset = value,
-                            clearLegacyFlag: () => activeConfig.FashionReportCompletedThisWeek = false);
+                            setLastCompleted: (config, value) => config.FashionReportLastCompleted = value,
+                            setNextReset: (config, value) => config.FashionReportNextReset = value,
+                            clearLegacyFlag: config => config.FashionReportCompletedThisWeek = false);
                         fashionReportService.Reset();
                         AdvanceToNextTask(EngineState.RunningFashionReport);
                     }
@@ -477,6 +486,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.RunningChocoboRacing:
+                activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableChocoboRacing &&
                     ResetDetectionService.TaskNeedsRun(activeConfig.ChocoboRacingLastCompleted, activeConfig.ChocoboRacingNextReset))
                 {
@@ -494,13 +504,13 @@ public class VermaxionEngine
 
                     if (chocoboRaceService.IsComplete)
                     {
-                        // NEW: Update new DateTime system
-                        activeConfig.ChocoboRacingLastCompleted = DateTime.UtcNow;
-                        activeConfig.ChocoboRacingNextReset = ResetDetectionService.GetNextDailyReset(DateTime.UtcNow);
-                        
-                        // Keep legacy flags for compatibility
-                        activeConfig.ChocoboRacingCompletedToday = true;
-                        configManager.SaveCurrentAccount();
+                        var completedAt = DateTime.UtcNow;
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.ChocoboRacingLastCompleted = completedAt;
+                            config.ChocoboRacingNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
+                            config.ChocoboRacingCompletedToday = true;
+                        }, "Chocobo Racing completion");
                         chocoboRaceService.Reset();
                         AdvanceToNextTask(EngineState.RunningChocoboRacing);
                     }
@@ -509,9 +519,9 @@ public class VermaxionEngine
                         log.Warning("[Engine] Chocobo Racing failed - continuing");
                         MarkDailyTaskFailed(
                             taskName: "Chocobo Racing",
-                            setLastCompleted: value => activeConfig.ChocoboRacingLastCompleted = value,
-                            setNextReset: value => activeConfig.ChocoboRacingNextReset = value,
-                            clearLegacyFlag: () => activeConfig.ChocoboRacingCompletedToday = false);
+                            setLastCompleted: (config, value) => config.ChocoboRacingLastCompleted = value,
+                            setNextReset: (config, value) => config.ChocoboRacingNextReset = value,
+                            clearLegacyFlag: config => config.ChocoboRacingCompletedToday = false);
                         chocoboRaceService.Reset();
                         AdvanceToNextTask(EngineState.RunningChocoboRacing);
                     }
@@ -544,35 +554,41 @@ public class VermaxionEngine
         }
     }
 
-    private void MarkWeeklyTaskFailed(string taskName, Action<DateTime> setLastCompleted, Action<DateTime> setNextReset, Action clearLegacyFlag)
+    private void MarkWeeklyTaskFailed(string taskName, Action<CharacterConfig, DateTime> setLastCompleted, Action<CharacterConfig, DateTime> setNextReset, Action<CharacterConfig> clearLegacyFlag)
     {
         var now = DateTime.UtcNow;
-        setLastCompleted(now);
-        setNextReset(ResetDetectionService.GetNextWeeklyReset(now));
-        clearLegacyFlag();
-        configManager.SaveCurrentAccount();
+        PersistCurrentCharacterConfig(config =>
+        {
+            setLastCompleted(config, now);
+            setNextReset(config, ResetDetectionService.GetNextWeeklyReset(now));
+            clearLegacyFlag(config);
+        }, $"{taskName} failure suppression");
         log.Warning($"[Engine] {taskName} failed and will be suppressed until the next weekly reset.");
     }
 
-    private void MarkDailyTaskFailed(string taskName, Action<DateTime> setLastCompleted, Action<DateTime> setNextReset, Action clearLegacyFlag)
+    private void MarkDailyTaskFailed(string taskName, Action<CharacterConfig, DateTime> setLastCompleted, Action<CharacterConfig, DateTime> setNextReset, Action<CharacterConfig> clearLegacyFlag)
     {
         var now = DateTime.UtcNow;
-        setLastCompleted(now);
-        setNextReset(ResetDetectionService.GetNextDailyReset(now));
-        clearLegacyFlag();
-        configManager.SaveCurrentAccount();
+        PersistCurrentCharacterConfig(config =>
+        {
+            setLastCompleted(config, now);
+            setNextReset(config, ResetDetectionService.GetNextDailyReset(now));
+            clearLegacyFlag(config);
+        }, $"{taskName} failure suppression");
         log.Warning($"[Engine] {taskName} failed and will be suppressed until the next daily reset.");
     }
 
     private void MarkJumboCactpotFailed(bool runSaturdayPayout)
     {
         var now = DateTime.UtcNow;
-        activeConfig!.JumboCactpotLastCompleted = now;
-        activeConfig.JumboCactpotNextReset = runSaturdayPayout
-            ? ResetDetectionService.GetNextWeeklyReset(now)
-            : ResetDetectionService.GetNextSaturdayAvailability(now);
-        activeConfig.JumboCactpotCompletedThisWeek = false;
-        configManager.SaveCurrentAccount();
+        PersistCurrentCharacterConfig(config =>
+        {
+            config.JumboCactpotLastCompleted = now;
+            config.JumboCactpotNextReset = runSaturdayPayout
+                ? ResetDetectionService.GetNextWeeklyReset(now)
+                : ResetDetectionService.GetNextSaturdayAvailability(now);
+            config.JumboCactpotCompletedThisWeek = false;
+        }, "Jumbo Cactpot failure suppression");
         log.Warning("[Engine] Jumbo Cactpot failed and will be suppressed until its next reset window.");
     }
 
@@ -620,6 +636,20 @@ public class VermaxionEngine
             EngineState.Error => "Error",
             _ => "Unknown",
         };
+    }
+
+    private CharacterConfig GetLiveActiveConfig()
+    {
+        activeConfig = configManager.GetActiveConfig();
+        return activeConfig;
+    }
+
+    private void PersistCurrentCharacterConfig(Action<CharacterConfig> update, string reason)
+    {
+        var liveConfig = GetLiveActiveConfig();
+        update(liveConfig);
+        configManager.SaveCurrentAccount();
+        log.Information($"[Engine] Persisted {reason} for {configManager.CurrentCharacterKey}");
     }
 
     /// <summary>
