@@ -64,6 +64,7 @@ public class VerminionService : IDisposable
 
     public void Start()
     {
+        isActive = true;
         currentAttempt = 0;
         SetState(VerminionState.OpeningDutyFinder);
         log.Information($"[Verminion] Starting Verminion queue cycle (0/{MaxAttempts})");
@@ -217,7 +218,13 @@ public class VerminionService : IDisposable
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
                     }
                 }
-                if (elapsed > 8 && !GameHelpers.IsAddonVisible("ContentsFinder"))
+                if (joinAttempted &&
+                    (condition[ConditionFlag.WaitingForDutyFinder] || condition[ConditionFlag.WaitingForDuty]))
+                {
+                    log.Information("[Verminion] Duty queue registered, waiting for duty pop");
+                    SetState(VerminionState.WaitingForDutyPop);
+                }
+                else if (elapsed > 8 && !GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
                     log.Information("[Verminion] ContentsFinder closed, waiting for duty pop");
                     SetState(VerminionState.WaitingForDutyPop);
@@ -339,5 +346,8 @@ public class VerminionService : IDisposable
         log.Information($"[Verminion] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        isActive = newState != VerminionState.Idle &&
+                   newState != VerminionState.Complete &&
+                   newState != VerminionState.Failed;
     }
 }
