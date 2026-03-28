@@ -378,6 +378,7 @@ public class ConfigWindow : Window, IDisposable
                 
                 // FC Points threshold
                 var minPoints = cc.FCBuffMinPoints;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
                 if (ImGui.InputInt(UIConstants.ConfigLabels.MinFCPoints, ref minPoints))
                 {
                     cc.FCBuffMinPoints = Math.Max(0, minPoints);
@@ -388,6 +389,7 @@ public class ConfigWindow : Window, IDisposable
                 
                 // Gil threshold
                 var minGil = cc.FCBuffMinGil;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
                 if (ImGui.InputInt(UIConstants.ConfigLabels.MinGil, ref minGil))
                 {
                     cc.FCBuffMinGil = Math.Max(0, minGil);
@@ -488,6 +490,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Indent();
 
                 var gysahlTarget = cc.VendorStockGysahlGreensTarget;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
                 if (ImGui.InputInt("Gysahl Greens target", ref gysahlTarget))
                 {
                     cc.VendorStockGysahlGreensTarget = Math.Max(0, gysahlTarget);
@@ -496,6 +499,7 @@ public class ConfigWindow : Window, IDisposable
                 }
 
                 var darkMatterTarget = cc.VendorStockGrade8DarkMatterTarget;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
                 if (ImGui.InputInt("Grade 8 Dark Matter target", ref darkMatterTarget))
                 {
                     cc.VendorStockGrade8DarkMatterTarget = Math.Max(0, darkMatterTarget);
@@ -623,6 +627,7 @@ public class ConfigWindow : Window, IDisposable
                 var races = cc.ChocoboRacesPerDay;
                 ImGui.Text($"{UIConstants.ConfigLabels.RacesPerDay}:");
                 ImGui.SameLine();
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
                 if (ImGui.InputInt("##ChocoboRacesPerDay", ref races, 1, 5))
                 {
                     // Clamp between 1 and 69420
@@ -796,6 +801,9 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled(pendingText);
         }
     }
+
+    private static float GetCompactNumericInputWidth()
+        => Math.Max(72f, ImGui.CalcTextSize("00000").X + (ImGui.GetStyle().FramePadding.X * 2f) + 18f);
 
     private static void DrawFashionTaskHint(DateTime lastCompleted, DateTime nextReset)
     {

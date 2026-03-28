@@ -32,10 +32,13 @@ public class VerminionService : IDisposable
     private bool dutySelected = false;
     private DateTime lastJoinRetry = DateTime.MinValue;
     private int dutySelectionAttempts = 0;
+    private ushort returnHomeOriginTerritory;
 
     public enum VerminionState
     {
         Idle,
+        ReturningHome,
+        WaitingForHomeReady,
         OpeningDutyFinder,
         QueueingForDuty,
         WaitingForDutyPop,
@@ -66,8 +69,8 @@ public class VerminionService : IDisposable
     {
         isActive = true;
         currentAttempt = 0;
-        SetState(VerminionState.OpeningDutyFinder);
-        log.Information($"[Verminion] Starting Verminion queue cycle (0/{MaxAttempts})");
+        SetState(VerminionState.ReturningHome);
+        log.Information($"[Verminion] Preparing Verminion queue cycle (0/{MaxAttempts}) with /li home");
     }
 
     public void RunTask()
@@ -96,6 +99,7 @@ public class VerminionService : IDisposable
         dutySelected = false;
         lastJoinRetry = DateTime.MinValue;
         dutySelectionAttempts = 0;
+        returnHomeOriginTerritory = 0;
     }
 
     public void Dispose() { }
@@ -135,6 +139,37 @@ public class VerminionService : IDisposable
 
         switch (state)
         {
+            case VerminionState.ReturningHome:
+                if (elapsed < 0.5)
+                    return;
+
+                returnHomeOriginTerritory = Plugin.ClientState.TerritoryType;
+                log.Information("[Verminion] Returning home before opening ContentsFinder: /li home");
+                commandManager.ProcessCommand("/li home");
+                SetState(VerminionState.WaitingForHomeReady);
+                return;
+
+            case VerminionState.WaitingForHomeReady:
+                if (elapsed < 3)
+                    return;
+
+                if (Plugin.ClientState.TerritoryType != returnHomeOriginTerritory && GameHelpers.IsPlayerAvailable())
+                {
+                    log.Information("[Verminion] /li home completed, opening duty finder");
+                    SetState(VerminionState.OpeningDutyFinder);
+                }
+                else if (elapsed > 12 && GameHelpers.IsPlayerAvailable())
+                {
+                    log.Information("[Verminion] /li home settled without a territory change, opening duty finder");
+                    SetState(VerminionState.OpeningDutyFinder);
+                }
+                else if (elapsed > 25)
+                {
+                    log.Warning("[Verminion] Timed out waiting for /li home to settle, opening duty finder anyway");
+                    SetState(VerminionState.OpeningDutyFinder);
+                }
+                return;
+
             case VerminionState.OpeningDutyFinder:
                 if (elapsed < 1) return;
                 log.Information($"[Verminion] Starting LoV queue (attempt {currentAttempt + 1}/{MaxAttempts})");

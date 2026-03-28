@@ -38,6 +38,7 @@ public class ChocoboRaceService : IDisposable
     private int dutySelectionAttempts = 0;
     private DateTime lastChocoholicRetry = DateTime.MinValue;
     private DateTime lastJoinRetry = DateTime.MinValue;
+    private ushort returnHomeOriginTerritory;
     private ICallGateSubscriber<int, object>? chocoholicQueueSubscriber;
     private bool chocoholicLookupAttempted;
 
@@ -45,6 +46,8 @@ public class ChocoboRaceService : IDisposable
     {
         Idle,
         WaitingForChocoholicIpc,
+        ReturningHome,
+        WaitingForHomeReady,
         OpeningDutyFinder,
         QueueingForDuty,
         WaitingForDutyPop,
@@ -96,8 +99,8 @@ public class ChocoboRaceService : IDisposable
         }
         
         currentAttempt = 0;
-        SetState(ChocoboState.OpeningDutyFinder);
-        log.Information($"[ChocoboRace] Starting Chocobo Racing cycle (0/{maxAttempts})");
+        SetState(ChocoboState.ReturningHome);
+        log.Information($"[ChocoboRace] Preparing Chocobo Racing cycle (0/{maxAttempts}) with /li home");
     }
 
     public void RunTask()
@@ -127,6 +130,7 @@ public class ChocoboRaceService : IDisposable
         dutySelectionAttempts = 0;
         lastChocoholicRetry = DateTime.MinValue;
         lastJoinRetry = DateTime.MinValue;
+        returnHomeOriginTerritory = 0;
     }
 
     public void Dispose() { }
@@ -226,8 +230,39 @@ public class ChocoboRaceService : IDisposable
 
                 log.Warning("[ChocoboRace] Chocoholic IPC did not become ready in time, falling back to manual queueing");
                 currentAttempt = 0;
-                SetState(ChocoboState.OpeningDutyFinder);
-                log.Information($"[ChocoboRace] Starting Chocobo Racing cycle (0/{maxAttempts})");
+                SetState(ChocoboState.ReturningHome);
+                log.Information($"[ChocoboRace] Preparing Chocobo Racing cycle (0/{maxAttempts}) with /li home");
+                return;
+
+            case ChocoboState.ReturningHome:
+                if (elapsed < 0.5)
+                    return;
+
+                returnHomeOriginTerritory = Plugin.ClientState.TerritoryType;
+                log.Information("[ChocoboRace] Returning home before opening ContentsFinder: /li home");
+                commandManager.ProcessCommand("/li home");
+                SetState(ChocoboState.WaitingForHomeReady);
+                return;
+
+            case ChocoboState.WaitingForHomeReady:
+                if (elapsed < 3)
+                    return;
+
+                if (Plugin.ClientState.TerritoryType != returnHomeOriginTerritory && GameHelpers.IsPlayerAvailable())
+                {
+                    log.Information("[ChocoboRace] /li home completed, opening duty finder");
+                    SetState(ChocoboState.OpeningDutyFinder);
+                }
+                else if (elapsed > 12 && GameHelpers.IsPlayerAvailable())
+                {
+                    log.Information("[ChocoboRace] /li home settled without a territory change, opening duty finder");
+                    SetState(ChocoboState.OpeningDutyFinder);
+                }
+                else if (elapsed > 25)
+                {
+                    log.Warning("[ChocoboRace] Timed out waiting for /li home to settle, opening duty finder anyway");
+                    SetState(ChocoboState.OpeningDutyFinder);
+                }
                 return;
 
             case ChocoboState.OpeningDutyFinder:
