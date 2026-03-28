@@ -11,7 +11,7 @@ namespace VERMAXION.Services;
 
 /// <summary>
 /// Chocobo Racing queue service.
-/// Uses AgentContentsFinder.OpenRegularDuty() for direct duty queuing.
+/// Uses the older ContentsFinder row-selection path for the normal fully-unlocked case.
 /// Based on ChocoboRacing.lua: QueueRoulette(22) for Sagolii Road,
 /// click ContentsFinderConfirm Commence, wait for race, wait for RaceChocoboResult.
 /// This mirrors the VerminionService structure for consistency.
@@ -23,7 +23,10 @@ public class ChocoboRaceService : IDisposable
     private readonly IPluginLog log;
     private readonly ConfigManager configManager;
 
-    private const byte ChocoboRacingRouletteId = 22;
+    // Open the Gold Saucer duty pane through the same CFC anchor used in the older working path,
+    // then select Chocobo Racing by row for characters that have the full set unlocked.
+    private const uint ChocoboRaceAnchorCfcId = 576;
+    private const int ChocoboRaceSelectionIndex = 10;
 
     private bool isActive = false;
     private ChocoboState state = ChocoboState.Idle;
@@ -31,6 +34,8 @@ public class ChocoboRaceService : IDisposable
     private int currentAttempt = 0;
     private int maxAttempts = 5;
     private bool joinAttempted = false;
+    private bool dutySelected = false;
+    private int dutySelectionAttempts = 0;
     private DateTime lastChocoholicRetry = DateTime.MinValue;
     private DateTime lastJoinRetry = DateTime.MinValue;
     private ICallGateSubscriber<int, object>? chocoholicQueueSubscriber;
@@ -118,6 +123,8 @@ public class ChocoboRaceService : IDisposable
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
         joinAttempted = false;
+        dutySelected = false;
+        dutySelectionAttempts = 0;
         lastChocoholicRetry = DateTime.MinValue;
         lastJoinRetry = DateTime.MinValue;
     }
@@ -161,11 +168,11 @@ public class ChocoboRaceService : IDisposable
     }
 
     /// <summary>
-    /// Open the Duty Finder to a specific roulette using AgentContentsFinder.
-    /// This avoids fragile menu indexing when Verminion or other Gold Saucer duties are locked.
+    /// Open the Duty Finder to a specific duty using AgentContentsFinder.
+    /// The manual Chocobo fallback then selects the Chocobo Racing row from ContentsFinder.
     /// </summary>
-    /// <param name="rouletteId">Content roulette row ID</param>
-    public static unsafe bool OpenDutyRoulette(byte rouletteId)
+    /// <param name="contentFinderConditionId">ContentFinderCondition row ID</param>
+    public static unsafe bool OpenDutyFinder(uint contentFinderConditionId)
     {
         try
         {
@@ -175,13 +182,13 @@ public class ChocoboRaceService : IDisposable
                 Plugin.Log.Error("[DutyQueue] AgentContentsFinder is null");
                 return false;
             }
-            agent->OpenRouletteDuty(rouletteId);
-            Plugin.Log.Information($"[DutyQueue] Opened duty finder for roulette ID {rouletteId}");
+            agent->OpenRegularDuty(contentFinderConditionId);
+            Plugin.Log.Information($"[DutyQueue] Opened duty finder for CFC ID {contentFinderConditionId}");
             return true;
         }
         catch (Exception ex)
         {
-            Plugin.Log.Error($"[DutyQueue] Failed to open duty roulette: {ex.Message}");
+            Plugin.Log.Error($"[DutyQueue] Failed to open duty finder: {ex.Message}");
             return false;
         }
     }
@@ -227,9 +234,11 @@ public class ChocoboRaceService : IDisposable
                 if (elapsed < 1) return;
                 log.Information($"[ChocoboRace] Starting Chocobo Racing queue (attempt {currentAttempt + 1}/{maxAttempts})");
                 
-                if (OpenDutyRoulette(ChocoboRacingRouletteId))
+                if (OpenDutyFinder(ChocoboRaceAnchorCfcId))
                 {
                     joinAttempted = false;
+                    dutySelected = false;
+                    dutySelectionAttempts = 0;
                     lastJoinRetry = DateTime.MinValue;
                     SetState(ChocoboState.QueueingForDuty);
                 }
@@ -241,15 +250,43 @@ public class ChocoboRaceService : IDisposable
                 break;
 
             case ChocoboState.QueueingForDuty:
-                // Wait for ContentsFinder addon to appear, then click Join.
-                // OpenRouletteDuty already selects the correct Chocobo Racing entry.
+                // Restore the older ContentsFinder-driven path for the normal unlocked case:
+                // clear selection, pick the Chocobo Racing row, then press Join.
                 if (elapsed < 6) return;
                 
                 if (GameHelpers.IsAddonVisible("ContentsFinder"))
                 {
+                    if (currentAttempt == 0 && elapsed < 6.5)
+                    {
+                        log.Information("[ChocoboRace] Clearing duty selection for first run");
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 1);
+                        return;
+                    }
+
+                    if (!dutySelected)
+                    {
+                        if (currentAttempt > 0)
+                        {
+                            log.Information($"[ChocoboRace] Reusing prior Chocobo selection for attempt {currentAttempt + 1}");
+                            dutySelected = true;
+                            return;
+                        }
+
+                        log.Information($"[ChocoboRace] Selecting Chocobo Racing row {ChocoboRaceSelectionIndex} from ContentsFinder");
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 3, ChocoboRaceSelectionIndex);
+                        dutySelectionAttempts++;
+                        dutySelected = true;
+
+                        log.Information("[ChocoboRace] Clicking Join after Chocobo selection");
+                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
+                        joinAttempted = true;
+                        lastJoinRetry = DateTime.UtcNow;
+                        return;
+                    }
+
                     if (!joinAttempted && elapsed > 8)
                     {
-                        log.Information("[ChocoboRace] Roulette selected, clicking Join");
+                        log.Information("[ChocoboRace] Duty selected, clicking Join");
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
                         joinAttempted = true;
                         lastJoinRetry = DateTime.UtcNow;
@@ -275,7 +312,7 @@ public class ChocoboRaceService : IDisposable
                 }
                 else if (elapsed > 30)
                 {
-                    log.Warning("[ChocoboRace] Timeout waiting for queue registration, retrying");
+                    log.Warning($"[ChocoboRace] Timeout waiting for queue registration after selection attempts={dutySelectionAttempts}, retrying");
                     SetState(ChocoboState.OpeningDutyFinder);
                 }
                 break;
