@@ -28,6 +28,9 @@ public class FCBuffService : IDisposable
 
     private const int BaseMinGil = 16000; // Base minimum gil required
     private const int MaxPurchaseAttempts = 15;
+    private const float QuartermasterWaypointArrivalDistance = 2.5f;
+    private const float QuartermasterInteractionSlack = 1.0f;
+    private static readonly string[] QuartermasterNames = ["Quartermaster", "OIC Quartermaster"];
 
     private FCBuffState state = FCBuffState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -253,11 +256,46 @@ public class FCBuffService : IDisposable
     {
         return gcTerritory switch
         {
-            129 => new Vector3(94, 40f, 68f),     // Limsa (Upper Decks/Aft)
-            132 => new Vector3(-72.8f, -0.5f, -5.7f),   // Gridania
-            130 => new Vector3(-145, 4f, -101f),   // Ul'dah
+            129 => new Vector3(94f, 40.5f, 74.5f),       // Limsa (Upper Decks/Aft)
+            132 => new Vector3(-68.5f, -0.5f, -8.5f),   // Gridania
+            130 => new Vector3(-141.7f, 4.1f, -106.8f), // Ul'dah
             _ => Vector3.Zero
         };
+    }
+
+    private Dalamud.Game.ClientState.Objects.Types.IGameObject? FindQuartermasterObject()
+    {
+        var player = objects.LocalPlayer;
+
+        return QuartermasterNames
+            .Select(GameHelpers.FindObjectByName)
+            .OfType<Dalamud.Game.ClientState.Objects.Types.IGameObject>()
+            .OrderBy(obj => player != null ? Vector3.Distance(player.Position, obj.Position) : 0f)
+            .FirstOrDefault();
+    }
+
+    private Vector3 GetQuartermasterNavigationTarget(int gcTerritory)
+    {
+        var quartermaster = FindQuartermasterObject();
+        return quartermaster?.Position ?? GetQuartermasterPosition(gcTerritory);
+    }
+
+    private bool TryTransitionToQuartermasterInteraction(string reason)
+    {
+        var player = objects.LocalPlayer;
+        var quartermaster = FindQuartermasterObject();
+        if (player == null || quartermaster == null)
+            return false;
+
+        var distance = Vector3.Distance(player.Position, quartermaster.Position);
+        var maxDistance = GameHelpers.GetValidInteractionDistance(quartermaster) + QuartermasterInteractionSlack;
+        if (distance > maxDistance)
+            return false;
+
+        log.Information($"[FCBuff] Quartermaster visible and within interaction range via {reason} (distance: {distance:F1}y, max: {maxDistance:F1}y)");
+        plugin.VNavmeshIPC.Stop();
+        SetState(FCBuffState.TargetingQuartermaster);
+        return true;
     }
 
     public void Reset() => SetState(FCBuffState.Idle);
@@ -547,6 +585,9 @@ public class FCBuffService : IDisposable
                     log.Debug("[FCBuff] Waiting for zone transition to complete before pathing...");
                     return;
                 }
+
+                if (TryTransitionToQuartermasterInteraction("navigation start"))
+                    return;
                 
                 // Try to start pathfinding with retries for slow city loading
                 if (pathRetryCount == 0)
@@ -564,7 +605,7 @@ public class FCBuffService : IDisposable
                     
                     // Navigate to Quartermaster location based on GC
                     var gcTerritory = GetCurrentGCTerritory();
-                    var navTarget = GetQuartermasterPosition(gcTerritory);
+                    var navTarget = GetQuartermasterNavigationTarget(gcTerritory);
                     if (navTarget != Vector3.Zero)
                     {
                         log.Information($"[FCBuff] Attempting to start navigation to Quartermaster (attempt {pathRetryCount}/5) via VNavmesh IPC");
@@ -605,14 +646,18 @@ public class FCBuffService : IDisposable
                 // Check if we're close enough to target
                 var player = objects.LocalPlayer;
                 if (player == null) return;
+
+                if (TryTransitionToQuartermasterInteraction("live NPC proximity"))
+                    return;
                 
                 var targetGCTerritory = GetCurrentGCTerritory();
-                var targetPos = GetQuartermasterPosition(targetGCTerritory);
+                var quartermaster = FindQuartermasterObject();
+                var targetPos = quartermaster?.Position ?? GetQuartermasterPosition(targetGCTerritory);
                 
                 var distance = Vector3.Distance(player.Position, targetPos);
-                if (distance < 0.3f) // Within 0.3 yalms of target - close enough for interaction
+                if (quartermaster == null && distance <= QuartermasterWaypointArrivalDistance)
                 {
-                    log.Information($"[FCBuff] Arrived at Quartermaster location (distance: {distance:F1}y)");
+                    log.Information($"[FCBuff] Arrived at Quartermaster waypoint (distance: {distance:F1}y), attempting direct interaction");
                     plugin.VNavmeshIPC.Stop();
                     SetState(FCBuffState.TargetingQuartermaster);
                 }
@@ -648,7 +693,19 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.TargetingQuartermaster:
                 if (elapsed < 1) return;
-                log.Information("[FCBuff] Targeting and interacting with OIC Quartermaster");
+                log.Information("[FCBuff] Targeting and interacting with quartermaster");
+
+                var quartermasterTarget = FindQuartermasterObject();
+                if (quartermasterTarget != null)
+                {
+                    targetManager.Target = quartermasterTarget;
+                    if (GameHelpers.InteractWithObject(quartermasterTarget))
+                    {
+                        log.Information($"[FCBuff] Successfully interacted with {quartermasterTarget.Name.TextValue}");
+                        SetState(FCBuffState.WaitingForSelectString1);
+                        break;
+                    }
+                }
                 
                 // AutoRetainer pattern: Use TargetAndInteract for same-frame targeting and interaction
                 if (GameHelpers.TargetAndInteract("Quartermaster"))

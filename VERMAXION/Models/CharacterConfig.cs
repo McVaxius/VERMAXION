@@ -24,6 +24,7 @@ public class CharacterConfig
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
+    public bool SkipChocoboRacingAtRank50 { get; set; } = true;
     public int FCBuffPurchaseAttempts { get; set; } = 15;
     public int FCBuffMinPoints { get; set; } = 500000;
     public int FCBuffMinGil { get; set; } = 16000;
@@ -85,6 +86,7 @@ public class CharacterConfig
             EnableRegisterRegistrables = EnableRegisterRegistrables,
             EnableVendorStock = EnableVendorStock,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
+            SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
             FCBuffMinGil = FCBuffMinGil,

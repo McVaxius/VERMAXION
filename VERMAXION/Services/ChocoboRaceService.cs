@@ -4,6 +4,7 @@ using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using VERMAXION.Models;
 
@@ -27,6 +28,7 @@ public class ChocoboRaceService : IDisposable
     // then select Chocobo Racing by row for characters that have the full set unlocked.
     private const uint ChocoboRaceAnchorCfcId = 576;
     private const int ChocoboRaceSelectionIndex = 10;
+    private const byte MaxRaceChocoboRank = 50;
 
     private bool isActive = false;
     private ChocoboState state = ChocoboState.Idle;
@@ -80,6 +82,14 @@ public class ChocoboRaceService : IDisposable
         // Get configured number of races from active character config
         var activeConfig = configManager?.GetActiveConfig();
         maxAttempts = activeConfig?.ChocoboRacesPerDay ?? 5;
+
+        if (ShouldSkipBecauseRaceChocoboIsMaxRank(out var currentRank))
+        {
+            log.Information($"[ChocoboRace] Racing chocobo is already rank {currentRank}; skipping daily races");
+            SetState(ChocoboState.Complete);
+            return;
+        }
+
         isActive = true;
         lastChocoholicRetry = DateTime.MinValue;
 
@@ -134,6 +144,33 @@ public class ChocoboRaceService : IDisposable
     }
 
     public void Dispose() { }
+
+    private unsafe bool ShouldSkipBecauseRaceChocoboIsMaxRank(out byte currentRank)
+    {
+        currentRank = 0;
+
+        var activeConfig = configManager.GetActiveConfig();
+        if (activeConfig?.SkipChocoboRacingAtRank50 != true)
+            return false;
+
+        try
+        {
+            var manager = RaceChocoboManager.Instance();
+            if (manager == null || manager->State != RaceChocoboManager.RaceChocoboState.Loaded)
+            {
+                log.Debug("[ChocoboRace] RaceChocoboManager is not loaded; cannot pre-skip the rank 50 check");
+                return false;
+            }
+
+            currentRank = manager->Rank;
+            return currentRank >= MaxRaceChocoboRank;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[ChocoboRace] Failed to read RaceChocoboManager rank: {ex.Message}");
+            return false;
+        }
+    }
 
     private enum ChocoholicQueueAttemptResult
     {

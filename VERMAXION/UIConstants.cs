@@ -23,6 +23,7 @@ public static class UIConstants
         public const string MiniCactpot = "Mini Cactpot";
         public const string ChocoboRacing = "Chocobo Racing (via Chocoholic)";
         public const string RacesPerDay = "Races Per Day";
+        public const string SkipChocoboRacingIfLevel50 = "Don't race if racing chocobo is level 50";
         
         // Section Headers
         public const string GlobalSettings = "Global Settings";

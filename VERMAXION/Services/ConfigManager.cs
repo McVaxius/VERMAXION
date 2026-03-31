@@ -294,6 +294,7 @@ public class ConfigManager
             cc.EnableRegisterRegistrables = defaultConfig.EnableRegisterRegistrables;
             cc.EnableVendorStock = defaultConfig.EnableVendorStock;
             cc.ChocoboRacesPerDay = defaultConfig.ChocoboRacesPerDay;
+            cc.SkipChocoboRacingAtRank50 = defaultConfig.SkipChocoboRacingAtRank50;
             cc.FCBuffPurchaseAttempts = defaultConfig.FCBuffPurchaseAttempts;
             cc.FCBuffMinPoints = defaultConfig.FCBuffMinPoints;
             cc.FCBuffMinGil = defaultConfig.FCBuffMinGil;

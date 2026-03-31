@@ -637,6 +637,18 @@ public class ConfigWindow : Window, IDisposable
                     // Save immediately on change
                     configManager.SaveCurrentAccount();
                 }
+
+                var skipChocoboAtRank50 = cc.SkipChocoboRacingAtRank50;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.SkipChocoboRacingIfLevel50, ref skipChocoboAtRank50))
+                {
+                    cc.SkipChocoboRacingAtRank50 = skipChocoboAtRank50;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                ImGui.TextDisabled("(?)");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Uses RaceChocoboManager when the live racing chocobo profile is loaded. If the current racing chocobo rank is 50, Vermaxion skips the daily racing task instead of queueing.");
+
                 ImGui.Unindent();
             }
             if (ResetDetectionService.TaskIsCompleted(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset))
