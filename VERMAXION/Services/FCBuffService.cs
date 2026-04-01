@@ -28,7 +28,10 @@ public class FCBuffService : IDisposable
 
     private const int BaseMinGil = 16000; // Base minimum gil required
     private const int MaxPurchaseAttempts = 15;
+    private const int MaxPurchaseConfirmRetries = 3;
     private const float QuartermasterWaypointArrivalDistance = 2.5f;
+    private static readonly TimeSpan PurchaseConfirmRetryInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan PurchaseConfirmTimeout = TimeSpan.FromSeconds(12);
     private static readonly string[] QuartermasterNames = ["Quartermaster", "OIC Quartermaster"];
 
     private FCBuffState state = FCBuffState.Idle;
@@ -39,6 +42,8 @@ public class FCBuffService : IDisposable
     private bool isSealSweetenerTwo = true; // Try Seal Sweetener II first
     private int pathRetryCount = 0;
     private DateTime lastPathRetryTime = DateTime.MinValue;
+    private int purchaseConfirmRetryCount = 0;
+    private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
 
     // FC points threshold from FUTA_GC.lua
     private const int MinFCPoints = 500000;
@@ -779,6 +784,7 @@ public class FCBuffService : IDisposable
                         buyCount = 0;
                         var config = configManager.GetActiveConfig();
                         buyMax = isSealSweetenerTwo ? config.FCBuffPurchaseAttempts : 1; // Buy configured amount of SS2, only 1 of SS1
+                        ResetPurchaseConfirmRetryState();
                         log.Information($"[FCBuff] Purchase setup: buyMax={buyMax}, isSealSweetenerTwo={isSealSweetenerTwo}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
                         SetState(FCBuffState.PurchasingBuff);
                     }
@@ -798,24 +804,53 @@ public class FCBuffService : IDisposable
                 }
                 
                 var buffIndex = isSealSweetenerTwo ? 22 : 5; // 22u for SS2, 5u for SS1
+                ResetPurchaseConfirmRetryState();
+                lastPurchaseConfirmRetryAt = DateTime.UtcNow;
                 log.Information($"[FCBuff] Purchasing buff {buyCount + 1}/{buyMax} (index: {buffIndex})");
                 GameHelpers.FireAddonCallback("FreeCompanyExchange", false, 2, (uint)buffIndex);
                 SetState(FCBuffState.WaitingForPurchaseConfirm);
                 break;
 
             case FCBuffState.WaitingForPurchaseConfirm:
-                if (elapsed < 5)
+                if (GameHelpers.IsAddonVisible("SelectYesno"))
                 {
-                    if (GameHelpers.IsAddonVisible("SelectYesno"))
-                    {
-                        log.Information("[FCBuff] Confirming purchase");
-                        GameHelpers.FireAddonCallback("SelectYesno", true, 0);
-                        buyCount++;
-                        SetState(FCBuffState.PurchasingBuff);
-                    }
+                    log.Information("[FCBuff] Confirming purchase");
+                    GameHelpers.FireAddonCallback("SelectYesno", true, 0);
+                    buyCount++;
+                    ResetPurchaseConfirmRetryState();
+                    SetState(FCBuffState.PurchasingBuff);
                     return;
                 }
-                log.Error("[FCBuff] Purchase confirmation did not appear");
+
+                var now = DateTime.UtcNow;
+                var exchangeVisible = GameHelpers.IsAddonVisible("FreeCompanyExchange");
+                if (exchangeVisible &&
+                    purchaseConfirmRetryCount < MaxPurchaseConfirmRetries &&
+                    lastPurchaseConfirmRetryAt != DateTime.MinValue &&
+                    now - lastPurchaseConfirmRetryAt >= PurchaseConfirmRetryInterval)
+                {
+                    purchaseConfirmRetryCount++;
+                    lastPurchaseConfirmRetryAt = now;
+
+                    var retryBuffIndex = isSealSweetenerTwo ? 22u : 5u;
+                    log.Warning($"[FCBuff] Purchase confirmation not visible yet for buff {buyCount + 1}/{buyMax}; retrying exchange callback ({purchaseConfirmRetryCount}/{MaxPurchaseConfirmRetries})");
+                    GameHelpers.FireAddonCallback("FreeCompanyExchange", false, 2, retryBuffIndex);
+                }
+
+                if (elapsed < PurchaseConfirmTimeout.TotalSeconds)
+                {
+                    return;
+                }
+
+                ResetPurchaseConfirmRetryState();
+                if (!exchangeVisible)
+                {
+                    log.Error("[FCBuff] FreeCompanyExchange closed before purchase confirmation appeared");
+                }
+                else
+                {
+                    log.Error($"[FCBuff] Purchase confirmation did not appear after {MaxPurchaseConfirmRetries} retries");
+                }
                 SetState(FCBuffState.Failed);
                 break;
 
@@ -955,5 +990,11 @@ public class FCBuffService : IDisposable
             lastPathRetryTime = DateTime.MinValue;
             log.Debug("[FCBuff] Reset pathfinding retry counters for navigation start");
         }
+    }
+
+    private void ResetPurchaseConfirmRetryState()
+    {
+        purchaseConfirmRetryCount = 0;
+        lastPurchaseConfirmRetryAt = DateTime.MinValue;
     }
 }
