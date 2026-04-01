@@ -627,7 +627,7 @@ public class ConfigWindow : Window, IDisposable
                 var races = cc.ChocoboRacesPerDay;
                 ImGui.Text($"{UIConstants.ConfigLabels.RacesPerDay}:");
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
                 if (ImGui.InputInt("##ChocoboRacesPerDay", ref races, 1, 5))
                 {
                     // Clamp between 1 and 69420

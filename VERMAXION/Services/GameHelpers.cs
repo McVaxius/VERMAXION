@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -28,24 +29,26 @@ public static class GameHelpers
     /// <summary>
     /// AutoRetainer pattern: DateTime-based throttling for interaction timing
     /// </summary>
-    private static DateTime lastInteractionTime = DateTime.MinValue;
+    private static readonly Dictionary<string, DateTime> lastInteractionTimes = new(StringComparer.OrdinalIgnoreCase);
     
     /// <summary>
     /// AutoRetainer pattern: Check if interaction is throttled (5-second cooldown like AutoRetainer)
     /// </summary>
     internal static bool CanInteract(string targetName)
     {
-        var now = DateTime.Now;
-        var timeSinceLastInteraction = now - lastInteractionTime;
-        
-        // 5-second cooldown per target like AutoRetainer
-        if (timeSinceLastInteraction.TotalSeconds >= 5.0)
+        if (string.IsNullOrWhiteSpace(targetName))
+            return false;
+
+        var now = DateTime.UtcNow;
+        if (lastInteractionTimes.TryGetValue(targetName, out var lastInteractionTime))
         {
-            lastInteractionTime = now;
-            return true;
+            var timeSinceLastInteraction = now - lastInteractionTime;
+            if (timeSinceLastInteraction.TotalSeconds < 5.0)
+                return false;
         }
-        
-        return false;
+
+        lastInteractionTimes[targetName] = now;
+        return true;
     }
     
     /// <summary>

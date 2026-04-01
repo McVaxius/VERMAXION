@@ -29,7 +29,6 @@ public class FCBuffService : IDisposable
     private const int BaseMinGil = 16000; // Base minimum gil required
     private const int MaxPurchaseAttempts = 15;
     private const float QuartermasterWaypointArrivalDistance = 2.5f;
-    private const float QuartermasterInteractionSlack = 1.0f;
     private static readonly string[] QuartermasterNames = ["Quartermaster", "OIC Quartermaster"];
 
     private FCBuffState state = FCBuffState.Idle;
@@ -280,6 +279,19 @@ public class FCBuffService : IDisposable
         return quartermaster?.Position ?? GetQuartermasterPosition(gcTerritory);
     }
 
+    private bool TryGetQuartermasterInteractionDistance(Dalamud.Game.ClientState.Objects.Types.IGameObject quartermaster, out float distance, out float maxDistance)
+    {
+        distance = float.MaxValue;
+        maxDistance = GameHelpers.GetValidInteractionDistance(quartermaster);
+
+        var player = objects.LocalPlayer;
+        if (player == null)
+            return false;
+
+        distance = Vector3.Distance(player.Position, quartermaster.Position);
+        return true;
+    }
+
     private bool TryTransitionToQuartermasterInteraction(string reason)
     {
         var player = objects.LocalPlayer;
@@ -287,8 +299,9 @@ public class FCBuffService : IDisposable
         if (player == null || quartermaster == null)
             return false;
 
-        var distance = Vector3.Distance(player.Position, quartermaster.Position);
-        var maxDistance = GameHelpers.GetValidInteractionDistance(quartermaster) + QuartermasterInteractionSlack;
+        if (!TryGetQuartermasterInteractionDistance(quartermaster, out var distance, out var maxDistance))
+            return false;
+
         if (distance > maxDistance)
             return false;
 
@@ -698,6 +711,15 @@ public class FCBuffService : IDisposable
                 var quartermasterTarget = FindQuartermasterObject();
                 if (quartermasterTarget != null)
                 {
+                    if (TryGetQuartermasterInteractionDistance(quartermasterTarget, out var directDistance, out var directMaxDistance) &&
+                        directDistance > directMaxDistance)
+                    {
+                        log.Information($"[FCBuff] Quartermaster still too far for direct interaction ({directDistance:F1}y > {directMaxDistance:F1}y); moving closer");
+                        plugin.VNavmeshIPC.PathfindAndMoveTo(quartermasterTarget.Position);
+                        SetState(FCBuffState.WaitingForQuartermasterArrival);
+                        break;
+                    }
+
                     targetManager.Target = quartermasterTarget;
                     if (GameHelpers.InteractWithObject(quartermasterTarget))
                     {
@@ -705,6 +727,10 @@ public class FCBuffService : IDisposable
                         SetState(FCBuffState.WaitingForSelectString1);
                         break;
                     }
+
+                    log.Warning($"[FCBuff] Direct interaction with {quartermasterTarget.Name.TextValue} did not succeed, retrying approach");
+                    SetState(FCBuffState.WaitingForQuartermasterArrival);
+                    break;
                 }
                 
                 // AutoRetainer pattern: Use TargetAndInteract for same-frame targeting and interaction
