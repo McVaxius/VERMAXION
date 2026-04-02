@@ -44,6 +44,7 @@ public class FCBuffService : IDisposable
     private DateTime lastPathRetryTime = DateTime.MinValue;
     private int purchaseConfirmRetryCount = 0;
     private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
+    private int? cachedGCTerritory = null;
 
     // FC points threshold from FUTA_GC.lua
     private const int MinFCPoints = 500000;
@@ -114,6 +115,7 @@ public class FCBuffService : IDisposable
         purchaseAttempts = config.FCBuffPurchaseAttempts;
         buyCount = 0;
         isSealSweetenerTwo = true; // Start with Seal Sweetener II
+        ResetCachedGCTerritory();
         SetState(FCBuffState.CheckingFCPoints);
         log.Information($"[FCBuff] Starting FC buff refill (max attempts: {config.FCBuffPurchaseAttempts})");
     }
@@ -177,6 +179,9 @@ public class FCBuffService : IDisposable
 
     private unsafe int GetCurrentGCTerritory()
     {
+        if (cachedGCTerritory.HasValue)
+            return cachedGCTerritory.Value;
+
         // Get Free Company's Grand Company for teleportation
         try
         {
@@ -185,49 +190,39 @@ public class FCBuffService : IDisposable
             {
                 var fcGrandCompany = infoProxyFreeCompany->GrandCompany;
                 var gcString = fcGrandCompany.ToString();
-                
-                log.Information($"[FCBuff] FC Grand Company: {gcString}");
-                
-                // GC names mapping from Jaksuhn's SND
-                var gcNames = new Dictionary<string, int>
+                var gcChoice = gcString switch
                 {
-                    { "Maelstrom", 1 },
-                    { "TwinAdder", 2 },
-                    { "ImmortalFlames", 3 }
+                    "Maelstrom" => 1,
+                    "TwinAdder" => 2,
+                    "ImmortalFlames" => 3,
+                    _ => 1,
                 };
-                
-                int gcChoice = 1; // Default to Maelstrom
-                foreach (var gc in gcNames)
-                {
-                    if (gc.Key == gcString)
-                    {
-                        gcChoice = gc.Value;
-                        break;
-                    }
-                }
-                
-                log.Information($"[FCBuff] Using FC GC Choice: {gcChoice} ({gcString})");
-                
-                // Convert GC ID to territory ID
-                return gcChoice switch
+
+                cachedGCTerritory = gcChoice switch
                 {
                     1 => 129, // Maelstrom (Limsa - Upper Decks/Aft)
                     2 => 132, // Order of the Twin Adder (Gridania) - territory 132
                     3 => 130, // Immortal Flames (Ul'dah)
                     _ => 129, // Default to Limsa
                 };
+
+                log.Information($"[FCBuff] Using FC GC Choice: {gcChoice} ({gcString}) -> territory {cachedGCTerritory.Value}");
+                return cachedGCTerritory.Value;
             }
             else
             {
                 log.Warning("[FCBuff] InfoProxyFreeCompany is null, using player GC");
-                // Fallback to player's GC
-                return GetPlayerGCTerritory();
+                cachedGCTerritory = GetPlayerGCTerritory();
+                log.Information($"[FCBuff] Using player GC fallback territory {cachedGCTerritory.Value}");
+                return cachedGCTerritory.Value;
             }
         }
         catch (Exception ex)
         {
             log.Error($"[FCBuff] Failed to get FC GC: {ex.Message}, using player GC");
-            return GetPlayerGCTerritory();
+            cachedGCTerritory = GetPlayerGCTerritory();
+            log.Information($"[FCBuff] Using player GC fallback territory {cachedGCTerritory.Value} after FC GC lookup failure");
+            return cachedGCTerritory.Value;
         }
     }
 
@@ -982,6 +977,11 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+
+        if (newState == FCBuffState.Idle || newState == FCBuffState.Complete || newState == FCBuffState.Failed)
+        {
+            ResetCachedGCTerritory();
+        }
         
         // Reset pathfinding retry counter when starting navigation
         if (newState == FCBuffState.NavigatingToQuartermaster)
@@ -996,5 +996,10 @@ public class FCBuffService : IDisposable
     {
         purchaseConfirmRetryCount = 0;
         lastPurchaseConfirmRetryAt = DateTime.MinValue;
+    }
+
+    private void ResetCachedGCTerritory()
+    {
+        cachedGCTerritory = null;
     }
 }
