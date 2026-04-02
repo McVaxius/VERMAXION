@@ -8,6 +8,19 @@ namespace VERMAXION.Services;
 
 public class VermaxionEngine
 {
+    private static readonly string[] RunShutdownCommands =
+    [
+        "/rotation cancel",
+        "/vbmai off",
+        "/bmrai off",
+        "/wrath auto off",
+		"/vnavmesh stop",
+		"/visland stop",
+        "/ad stop",
+        "/sice stop",
+        "/ochillegal off",
+    ];
+
     private readonly IPluginLog log;
     private readonly ConfigManager configManager;
     private readonly ResetDetectionService resetService;
@@ -100,6 +113,7 @@ public class VermaxionEngine
             return;
         }
 
+        SendRunShutdownCommandBundle();
         log.Information("[Engine] === Starting Vermaxion post-processing ===");
         SetState(EngineState.Starting);
     }
@@ -113,6 +127,7 @@ public class VermaxionEngine
             return;
         }
 
+        SendRunShutdownCommandBundle();
         log.Information("[Engine] === Manual start ===");
         SetState(EngineState.Starting);
     }
@@ -137,6 +152,14 @@ public class VermaxionEngine
     {
         log.Information("[Engine] Stopped by user");
         SetState(EngineState.Idle);
+    }
+
+    public void SendRunShutdownCommandBundle()
+    {
+        foreach (var command in RunShutdownCommands)
+            CommandHelper.SendCommand(command);
+
+        log.Information("[Engine] Sent run startup shutdown bundle");
     }
 
     public int GetPendingTaskCount()

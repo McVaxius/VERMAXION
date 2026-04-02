@@ -510,6 +510,16 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextDisabled("Gridania: Maisenta for Gysahl Greens. Khetto's Amphitheatre: Alaric for Grade 8 Dark Matter.");
                 ImGui.Unindent();
             }
+
+            ImGui.Separator();
+            ImGui.Text("Run Shutdown Bundle");
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Send now##ShutdownBundleConfig"))
+            {
+                plugin.Engine.SendRunShutdownCommandBundle();
+            }
+            ImGui.TextDisabled("Always on. Sent once at the start of every AutoRetainer/manual VERMAXION run.");
+            ImGui.TextWrapped("Commands: /rotation cancel, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off.");
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WeeklyTasks, ImGuiTreeNodeFlags.DefaultOpen))
