@@ -301,6 +301,8 @@ public class ConfigManager
             cc.VendorStockGysahlGreensTarget = defaultConfig.VendorStockGysahlGreensTarget;
             cc.VendorStockGrade8DarkMatterTarget = defaultConfig.VendorStockGrade8DarkMatterTarget;
             cc.RequireSaucyForMiniCactpot = defaultConfig.RequireSaucyForMiniCactpot;
+            cc.JumboCactpotNumberMode = defaultConfig.JumboCactpotNumberMode;
+            cc.JumboCactpotFixedNumber = defaultConfig.JumboCactpotFixedNumber;
             count++;
         }
 

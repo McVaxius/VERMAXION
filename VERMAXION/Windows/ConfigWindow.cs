@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Reflection;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using VERMAXION.Models;
 using VERMAXION.Services;
 
 namespace VERMAXION.Windows;
@@ -554,6 +555,48 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
             DrawJumboTaskHint(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset);
+            if (cc.EnableJumboCactpot)
+            {
+                ImGui.Indent();
+
+                var numberMode = cc.JumboCactpotNumberMode;
+                if (ImGui.BeginCombo("Jumbo number mode", FormatJumboNumberMode(numberMode)))
+                {
+                    foreach (var mode in Enum.GetValues<JumboCactpotNumberMode>())
+                    {
+                        var selected = mode == numberMode;
+                        if (ImGui.Selectable(FormatJumboNumberMode(mode), selected))
+                        {
+                            cc.JumboCactpotNumberMode = mode;
+                            changed = true;
+                        }
+
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+
+                    ImGui.EndCombo();
+                }
+
+                if (cc.JumboCactpotNumberMode == JumboCactpotNumberMode.Fixed)
+                {
+                    var fixedNumber = cc.JumboCactpotFixedNumber;
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (ImGui.InputInt("Fixed 4-digit number", ref fixedNumber))
+                    {
+                        cc.JumboCactpotFixedNumber = Math.Clamp(fixedNumber, 0, 9999);
+                        changed = true;
+                    }
+
+                    ImGui.TextDisabled($"Current fixed number: {cc.JumboCactpotFixedNumber:0000}");
+                }
+                else
+                {
+                    ImGui.TextDisabled("Uses a fresh random 4-digit number for each purchase.");
+                }
+
+                ImGui.Unindent();
+            }
 
             var fashion = cc.EnableFashionReport;
             if (ImGui.Checkbox("Fashion Report", ref fashion))
@@ -888,5 +931,14 @@ public class ConfigWindow : Window, IDisposable
         return timestamp == DateTime.MinValue
             ? "unknown"
             : timestamp.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'");
+    }
+
+    private static string FormatJumboNumberMode(JumboCactpotNumberMode mode)
+    {
+        return mode switch
+        {
+            JumboCactpotNumberMode.Fixed => "Fixed",
+            _ => "Random",
+        };
     }
 }

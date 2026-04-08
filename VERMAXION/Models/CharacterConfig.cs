@@ -63,6 +63,8 @@ public class CharacterConfig
     public int MinionRouletteAttemptsToday { get; set; } = 0;
     public DateTime LastMinionRouletteReset { get; set; } = DateTime.MinValue;
     public bool RequireSaucyForMiniCactpot { get; set; } = true;
+    public JumboCactpotNumberMode JumboCactpotNumberMode { get; set; } = JumboCactpotNumberMode.Random;
+    public int JumboCactpotFixedNumber { get; set; } = 1;
 
     // --- Plugin State ---
     public bool Enabled { get; set; } = true;
@@ -115,7 +117,15 @@ public class CharacterConfig
             MinionRouletteAttemptsToday = MinionRouletteAttemptsToday,
             LastMinionRouletteReset = LastMinionRouletteReset,
             RequireSaucyForMiniCactpot = RequireSaucyForMiniCactpot,
+            JumboCactpotNumberMode = JumboCactpotNumberMode,
+            JumboCactpotFixedNumber = JumboCactpotFixedNumber,
             Enabled = Enabled,
         };
     }
+}
+
+public enum JumboCactpotNumberMode
+{
+    Random,
+    Fixed,
 }

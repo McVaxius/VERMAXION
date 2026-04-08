@@ -1,8 +1,10 @@
 using System;
+using System.Globalization;
 using System.Numerics;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
@@ -12,13 +14,28 @@ public class CactpotService : IDisposable
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
     private readonly IClientState clientState;
+    private readonly ConfigManager configManager;
 
     private const ushort GoldSaucerTerritoryId = 144;
+    private static readonly Vector3 JumboBrokerPosition = new(121.13345336914f, 13.001298904419f, -11.011554718018f);
+    private static readonly Vector3 JumboCashierPosition = new(124.05115509033f, 13.002527236938f, -19.590528488159f);
+    private const string JumboBrokerMoveCommand = "/vnav moveto 121.13345336914 13.001298904419 -11.011554718018";
+    private const string JumboCashierMoveCommand = "/vnav moveto 124.05115509033 13.002527236938 -19.590528488159";
+    private const double JumboAetheryteSettleDelay = 8.0;
+    private const double JumboNavigationRetryInterval = 2.0;
+    private const float JumboArrivalDistance = 3.0f;
+    private const double JumboArrivalTimeout = 60.0;
+    private const double JumboCloseApproachTimeout = 20.0;
+    private const double JumboPostNavigationSettleDelay = 0.5;
+    private const double JumboTargetRetryInterval = 0.75;
 
     private CactpotState state = CactpotState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private int currentTicket = 1;
     private int totalTickets = 3;
+    private int currentJumboNumber;
+    private DateTime lastJumboNavigationAttempt = DateTime.MinValue;
+    private DateTime lastJumboTargetAttempt = DateTime.MinValue;
 
     public enum CactpotState
     {
@@ -40,16 +57,19 @@ public class CactpotService : IDisposable
         JumboWaitingForZone,
         JumboNavigatingToBroker,
         JumboWaitingForArrival,
+        JumboClosingToBroker,
         JumboTargetingBroker,
         JumboInteractingBroker,
         JumboSelectingPurchase,
-        JumboWaitingForNumpad,
+        JumboWaitingForInputWindow,
+        JumboWaitingForConfirmation,
         JumboComplete,
         // Jumbo Cactpot Check states (Saturday)
         JumboCheckLifestreaming,
         JumboCheckWaitingForZone,
         JumboCheckNavigatingToCashier,
         JumboCheckWaitingForArrival,
+        JumboCheckClosingToCashier,
         JumboCheckTargetingCashier,
         JumboCheckInteractingCashier,
         JumboCheckComplete,
@@ -64,11 +84,12 @@ public class CactpotService : IDisposable
     public bool IsFailed => state == CactpotState.Failed;
     public string StatusText => state.ToString();
 
-    public CactpotService(ICommandManager commandManager, IPluginLog log, IClientState clientState)
+    public CactpotService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ConfigManager configManager)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.clientState = clientState;
+        this.configManager = configManager;
     }
 
     public void StartMiniCactpot()
@@ -92,7 +113,10 @@ public class CactpotService : IDisposable
 
     public void StartJumboCactpot()
     {
-        log.Information("[Cactpot] Starting Jumbo Cactpot Buy sequence");
+        currentTicket = 1;
+        totalTickets = 3;
+        currentJumboNumber = GetConfiguredJumboNumber();
+        log.Information($"[Cactpot] Starting Jumbo Cactpot Buy sequence using {GetConfiguredJumboModeLabel()} number {currentJumboNumber:0000}");
         SetState(CactpotState.JumboLifestreaming);
     }
 
@@ -388,50 +412,92 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboWaitingForZone:
-                if (elapsed > 10)
+                if (elapsed > JumboAetheryteSettleDelay && GameHelpers.IsPlayerAvailable())
                 {
-                    log.Information("[Cactpot] Assumed arrival near Jumbo Cactpot area");
+                    log.Information("[Cactpot] Jumbo broker aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboNavigatingToBroker);
+                }
+                else if (elapsed > 30)
+                {
+                    log.Error("[Cactpot] Timeout waiting for Jumbo Cactpot lifestream to settle");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
             case CactpotState.JumboNavigatingToBroker:
                 log.Information("[Cactpot] Navigating to Jumbo Cactpot Broker");
-                commandManager.ProcessCommand("/vnav moveto 121.13345336914 13.001298904419 -11.011554718018");
+                IssueJumboNavigation(JumboBrokerMoveCommand, "Jumbo Cactpot Broker");
                 SetState(CactpotState.JumboWaitingForArrival);
                 break;
 
             case CactpotState.JumboWaitingForArrival:
-                if (elapsed > 15)
+                if (TryTransitionJumboWaypointToTargeting(
+                        "Jumbo Cactpot Broker",
+                        JumboBrokerPosition,
+                        CactpotState.JumboTargetingBroker))
                 {
-                    log.Information("[Cactpot] Arrived at Broker");
-                    SetState(CactpotState.JumboTargetingBroker);
+                    break;
                 }
-                // Send periodic jumps during arrival wait to help with pathing
-                SendPeriodicJump(new Vector3(121.13345336914f, 13.001298904419f, -11.011554718018f));
+
+                if (elapsed > JumboArrivalTimeout)
+                {
+                    log.Error("[Cactpot] Timeout waiting to reach Jumbo Cactpot Broker");
+                    SetState(CactpotState.Failed);
+                }
+                else if (RetryJumboNavigationIfNeeded(JumboBrokerMoveCommand, "Jumbo Cactpot Broker"))
+                {
+                    // Keep feeding the original waypoint path until it is time to stop and target.
+                }
+                SendPeriodicJump(JumboBrokerPosition);
+                break;
+
+            case CactpotState.JumboClosingToBroker:
+                if (TryTransitionJumboNpcRangeToTargeting("Jumbo Cactpot Broker", CactpotState.JumboTargetingBroker))
+                {
+                    break;
+                }
+
+                if (elapsed > JumboCloseApproachTimeout)
+                {
+                    log.Error("[Cactpot] Timeout while closing the last few yalms to Jumbo Cactpot Broker");
+                    SetState(CactpotState.Failed);
+                }
+                else if (RetryJumboCloseApproachIfNeeded("Jumbo Cactpot Broker"))
+                {
+                    // Dedicated post-stop movement phase. No targeting happens here.
+                }
                 break;
 
             case CactpotState.JumboTargetingBroker:
-                log.Information("[Cactpot] Targeting and interacting with Broker");
-                try
+                if (elapsed < JumboPostNavigationSettleDelay)
                 {
-                    if (GameHelpers.TargetAndInteract("Jumbo Cactpot Broker"))
-                    {
-                        log.Information("[Cactpot] Interacted with Jumbo Cactpot Broker via improved targeting");
-                    }
-                    else
-                    {
-                        log.Warning("[Cactpot] Failed to target Jumbo Cactpot Broker");
-                    }
+                    break;
                 }
-                catch (Exception ex)
+
+                if (TryBeginJumboCloseApproachIfOutOfRange(
+                        "Jumbo Cactpot Broker",
+                        CactpotState.JumboClosingToBroker))
                 {
-                    log.Error($"[Cactpot] Failed to target and interact with Jumbo Cactpot Broker: {ex.Message}");
+                    break;
                 }
-                SetState(CactpotState.JumboInteractingBroker);
+
+                if (TryTargetAndInteractJumboNpc("Jumbo Cactpot Broker"))
+                    SetState(CactpotState.JumboInteractingBroker);
+                else if (elapsed > 15)
+                {
+                    log.Error("[Cactpot] Failed to target and interact with Jumbo Cactpot Broker after arriving");
+                    SetState(CactpotState.Failed);
+                }
                 break;
 
             case CactpotState.JumboInteractingBroker:
+                if (GameHelpers.ClickYesIfVisible())
+                {
+                    log.Information("[Cactpot] Accepted the broker's Jumbo Cactpot confirmation prompt");
+                    stateEnteredAt = DateTime.UtcNow;
+                    break;
+                }
+
                 if (elapsed > 1.5)
                 {
                     if (GameHelpers.IsAddonVisible("SelectString"))
@@ -441,10 +507,10 @@ public class CactpotService : IDisposable
                     else
                     {
                         // AutoRetainer pattern: TargetAndInteract already handled interaction
-                        if (elapsed > 5)
+                        if (elapsed > 10)
                         {
-                            log.Warning("[Cactpot] Broker menu didn't open");
-                            SetState(CactpotState.Failed);
+                            log.Warning("[Cactpot] Broker menu did not open in time; assuming Jumbo flow is already complete");
+                            SetState(CactpotState.JumboComplete);
                         }
                     }
                 }
@@ -455,29 +521,58 @@ public class CactpotService : IDisposable
                 {
                     log.Information("[Cactpot] Selecting purchase option (SelectString 0)");
                     GameHelpers.FireAddonCallback("SelectString", true, 0);
-                    SetState(CactpotState.JumboWaitingForNumpad);
+                    SetState(CactpotState.JumboWaitingForInputWindow);
                 }
                 break;
 
-            case CactpotState.JumboWaitingForNumpad:
-                // The numpad UI appears (LotteryDaily addon)
-                // Use the randomize button (dice icon) then purchase
-                if (GameHelpers.IsAddonVisible("LotteryDaily"))
+            case CactpotState.JumboWaitingForInputWindow:
+                if (GameHelpers.IsAddonVisible("LotteryWeeklyInput"))
                 {
-                    log.Information("[Cactpot] Numpad UI visible, clicking randomize then purchase");
-                    // Click randomize button (dice) - callback index for random
-                    GameHelpers.FireAddonCallback("LotteryDaily", true, 1);
+                    log.Information($"[Cactpot] LotteryWeeklyInput visible for Jumbo ticket {currentTicket}/{totalTickets}, entering number {currentJumboNumber:0000}");
+                    GameHelpers.FireAddonCallback("LotteryWeeklyInput", true, currentJumboNumber);
+                    SetState(CactpotState.JumboWaitingForConfirmation);
+                }
+                else if (currentTicket > 1 && GameHelpers.IsAddonVisible("SelectYesno") && GameHelpers.ClickYesIfVisible())
+                {
+                    log.Information($"[Cactpot] Accepted follow-up Jumbo Yes/No prompt while waiting for ticket {currentTicket}/{totalTickets}");
+                    stateEnteredAt = DateTime.UtcNow;
+                }
+                else if (currentTicket > 1 && GameHelpers.IsAddonVisible("SelectString"))
+                {
+                    log.Information($"[Cactpot] SelectString returned for Jumbo ticket {currentTicket}/{totalTickets}, selecting purchase option again");
+                    SetState(CactpotState.JumboSelectingPurchase);
+                }
+                else if (elapsed > 10)
+                {
+                    log.Warning($"[Cactpot] LotteryWeeklyInput did not appear for Jumbo ticket {currentTicket}/{totalTickets}; assuming purchase flow is already complete");
                     SetState(CactpotState.JumboComplete);
                 }
-                else if (elapsed > 5)
+                break;
+
+            case CactpotState.JumboWaitingForConfirmation:
+                if (GameHelpers.ClickYesIfVisible())
                 {
-                    log.Warning("[Cactpot] LotteryDaily addon didn't appear");
+                    log.Information($"[Cactpot] Accepted Jumbo Cactpot Yes/No prompt for ticket {currentTicket}/{totalTickets}");
+                    if (currentTicket >= totalTickets)
+                    {
+                        SetState(CactpotState.JumboComplete);
+                    }
+                    else
+                    {
+                        currentTicket++;
+                        SetState(CactpotState.JumboWaitingForInputWindow);
+                    }
+                }
+                else if (elapsed > 10)
+                {
+                    log.Warning($"[Cactpot] Jumbo confirmation stage stalled for ticket {currentTicket}/{totalTickets}; assuming purchase flow completed");
                     SetState(CactpotState.JumboComplete);
                 }
                 break;
 
             case CactpotState.JumboComplete:
                 log.Information("[Cactpot] Jumbo Cactpot Buy sequence finished");
+                GameHelpers.SendNumpadPlus();
                 SetState(CactpotState.Complete);
                 break;
 
@@ -489,45 +584,82 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboCheckWaitingForZone:
-                if (elapsed > 10)
+                if (elapsed > JumboAetheryteSettleDelay && GameHelpers.IsPlayerAvailable())
                 {
+                    log.Information("[Cactpot] Jumbo cashier aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboCheckNavigatingToCashier);
+                }
+                else if (elapsed > 30)
+                {
+                    log.Error("[Cactpot] Timeout waiting for Jumbo Cactpot cashier lifestream to settle");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
             case CactpotState.JumboCheckNavigatingToCashier:
                 log.Information("[Cactpot] Navigating to Jumbo Cactpot Cashier");
-                commandManager.ProcessCommand("/vnav moveto 124.05115509033 13.002527236938 -19.590528488159");
+                IssueJumboNavigation(JumboCashierMoveCommand, "Jumbo Cactpot Cashier");
                 SetState(CactpotState.JumboCheckWaitingForArrival);
                 break;
 
             case CactpotState.JumboCheckWaitingForArrival:
-                if (elapsed > 15)
+                if (TryTransitionJumboWaypointToTargeting(
+                        "Jumbo Cactpot Cashier",
+                        JumboCashierPosition,
+                        CactpotState.JumboCheckTargetingCashier))
                 {
-                    SetState(CactpotState.JumboCheckTargetingCashier);
+                    break;
                 }
-                // Send periodic jumps during arrival wait to help with pathing
-                SendPeriodicJump(new Vector3(124.05115509033f, 13.002527236938f, -19.590528488159f));
+
+                if (elapsed > JumboArrivalTimeout)
+                {
+                    log.Error("[Cactpot] Timeout waiting to reach Jumbo Cactpot Cashier");
+                    SetState(CactpotState.Failed);
+                }
+                else if (RetryJumboNavigationIfNeeded(JumboCashierMoveCommand, "Jumbo Cactpot Cashier"))
+                {
+                    // Keep feeding the original waypoint path until it is time to stop and target.
+                }
+                SendPeriodicJump(JumboCashierPosition);
+                break;
+
+            case CactpotState.JumboCheckClosingToCashier:
+                if (TryTransitionJumboNpcRangeToTargeting("Jumbo Cactpot Cashier", CactpotState.JumboCheckTargetingCashier))
+                {
+                    break;
+                }
+
+                if (elapsed > JumboCloseApproachTimeout)
+                {
+                    log.Error("[Cactpot] Timeout while closing the last few yalms to Jumbo Cactpot Cashier");
+                    SetState(CactpotState.Failed);
+                }
+                else if (RetryJumboCloseApproachIfNeeded("Jumbo Cactpot Cashier"))
+                {
+                    // Dedicated post-stop movement phase. No targeting happens here.
+                }
                 break;
 
             case CactpotState.JumboCheckTargetingCashier:
-                log.Information("[Cactpot] Targeting and interacting with Cashier");
-                try
+                if (elapsed < JumboPostNavigationSettleDelay)
                 {
-                    if (GameHelpers.TargetAndInteract("Jumbo Cactpot Cashier"))
-                    {
-                        log.Information("[Cactpot] Interacted with Cashier via improved targeting");
-                    }
-                    else
-                    {
-                        log.Warning("[Cactpot] Failed to target Jumbo Cactpot Cashier");
-                    }
+                    break;
                 }
-                catch (Exception ex)
+
+                if (TryBeginJumboCloseApproachIfOutOfRange(
+                        "Jumbo Cactpot Cashier",
+                        CactpotState.JumboCheckClosingToCashier))
                 {
-                    log.Error($"[Cactpot] Failed to target and interact with Jumbo Cactpot Cashier: {ex.Message}");
+                    break;
                 }
-                SetState(CactpotState.JumboCheckInteractingCashier);
+
+                if (TryTargetAndInteractJumboNpc("Jumbo Cactpot Cashier"))
+                    SetState(CactpotState.JumboCheckInteractingCashier);
+                else if (elapsed > 15)
+                {
+                    log.Error("[Cactpot] Failed to target and interact with Jumbo Cactpot Cashier after arriving");
+                    SetState(CactpotState.Failed);
+                }
                 break;
 
             case CactpotState.JumboCheckInteractingCashier:
@@ -566,9 +698,198 @@ public class CactpotService : IDisposable
             lastTargetAttempt = DateTime.MinValue;
             targetAttempts = 0;
         }
+        else if (newState == CactpotState.JumboNavigatingToBroker ||
+                 newState == CactpotState.JumboWaitingForArrival ||
+                 newState == CactpotState.JumboClosingToBroker ||
+                 newState == CactpotState.JumboCheckNavigatingToCashier ||
+                 newState == CactpotState.JumboCheckWaitingForArrival ||
+                 newState == CactpotState.JumboCheckClosingToCashier)
+        {
+            lastJumboNavigationAttempt = DateTime.MinValue;
+            lastJumpTime = DateTime.MinValue;
+        }
+        else if (newState == CactpotState.JumboTargetingBroker || newState == CactpotState.JumboCheckTargetingCashier)
+        {
+            lastJumboNavigationAttempt = DateTime.MinValue;
+            lastJumboTargetAttempt = DateTime.MinValue;
+        }
         
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+    }
+
+    private bool HasReachedJumboDestination(Vector3 destination)
+    {
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null || !GameHelpers.IsPlayerAvailable())
+            return false;
+
+        return Vector3.Distance(player.Position, destination) <= JumboArrivalDistance;
+    }
+
+    private void StopJumboNavigation()
+    {
+        commandManager.ProcessCommand("/vnav stop");
+    }
+
+    private bool TryTransitionJumboWaypointToTargeting(string npcName, Vector3 waypointPosition, CactpotState targetingState)
+    {
+        if (!HasReachedJumboDestination(waypointPosition))
+            return false;
+
+        StopJumboNavigation();
+        log.Information($"[Cactpot] Reached {npcName} waypoint, stopping pathfinding before targeting");
+        SetState(targetingState);
+        return true;
+    }
+
+    private bool TryTransitionJumboNpcRangeToTargeting(string npcName, CactpotState targetingState)
+    {
+        if (!TryGetJumboNpcInteractionData(npcName, out _, out var distance, out var maxDistance) ||
+            distance > maxDistance)
+        {
+            return false;
+        }
+
+        StopJumboNavigation();
+        log.Information($"[Cactpot] {npcName} is within interaction range ({distance:F1}y <= {maxDistance:F1}y), stopping pathfinding before targeting");
+        SetState(targetingState);
+        return true;
+    }
+
+    private bool RetryJumboCloseApproachIfNeeded(string npcName)
+    {
+        if (!TryGetJumboNpcInteractionData(npcName, out var npcPosition, out var distance, out var maxDistance))
+        {
+            return false;
+        }
+
+        var dynamicMoveCommand = TryBuildJumboApproachMoveCommand(npcPosition, maxDistance, out var approachMoveCommand)
+            ? approachMoveCommand
+            : BuildJumboMoveCommand(npcPosition);
+
+        return RetryJumboNavigationIfNeeded(
+            dynamicMoveCommand,
+            $"{npcName} ({distance:F1}y > {maxDistance:F1}y, close approach after stop)");
+    }
+
+    private bool TryBeginJumboCloseApproachIfOutOfRange(string npcName, CactpotState movementState)
+    {
+        if (!TryGetJumboNpcInteractionData(npcName, out _, out var distance, out var maxDistance) ||
+            distance <= maxDistance)
+        {
+            return false;
+        }
+
+        log.Information($"[Cactpot] {npcName} is still outside interaction range after stopping pathfinding ({distance:F1}y > {maxDistance:F1}y), entering a dedicated close-in movement phase");
+        SetState(movementState);
+        return true;
+    }
+
+    private static string BuildJumboMoveCommand(Vector3 destination)
+    {
+        var x = destination.X.ToString("0.############", CultureInfo.InvariantCulture);
+        var y = destination.Y.ToString("0.############", CultureInfo.InvariantCulture);
+        var z = destination.Z.ToString("0.############", CultureInfo.InvariantCulture);
+        return $"/vnav moveto {x} {y} {z}";
+    }
+
+    private bool TryBuildJumboApproachMoveCommand(Vector3 npcPosition, float maxDistance, out string command)
+    {
+        command = string.Empty;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null)
+            return false;
+
+        var direction = player.Position - npcPosition;
+        if (direction.LengthSquared() < 0.0001f)
+            return false;
+
+        direction = Vector3.Normalize(direction);
+        var desiredStandOffDistance = MathF.Max(0.5f, maxDistance - 0.35f);
+        var approachPosition = npcPosition + (direction * desiredStandOffDistance);
+        command = BuildJumboMoveCommand(approachPosition);
+        return true;
+    }
+
+    private bool TryGetJumboNpcInteractionData(string npcName, out Vector3 npcPosition, out float distance, out float maxDistance)
+    {
+        npcPosition = Vector3.Zero;
+        distance = float.MaxValue;
+        maxDistance = 0f;
+
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        var target = GameHelpers.FindObjectByName(npcName);
+        if (player == null || target == null)
+            return false;
+
+        npcPosition = target.Position;
+        distance = Vector3.Distance(player.Position, target.Position);
+        maxDistance = GameHelpers.GetValidInteractionDistance(target);
+        return true;
+    }
+
+    private void IssueJumboNavigation(string command, string destinationLabel)
+    {
+        lastJumboNavigationAttempt = DateTime.UtcNow;
+        commandManager.ProcessCommand(command);
+        log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
+    }
+
+    private bool RetryJumboNavigationIfNeeded(string command, string destinationLabel)
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastJumboNavigationAttempt).TotalSeconds < JumboNavigationRetryInterval)
+            return false;
+
+        IssueJumboNavigation(command, destinationLabel);
+        return true;
+    }
+
+    private bool TryTargetAndInteractJumboNpc(string npcName)
+    {
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        var now = DateTime.UtcNow;
+        if ((now - lastJumboTargetAttempt).TotalSeconds < JumboTargetRetryInterval)
+            return false;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        var target = GameHelpers.FindObjectByName(npcName);
+        if (player == null || target == null)
+            return false;
+
+        var distance = Vector3.Distance(player.Position, target.Position);
+        var maxDistance = GameHelpers.GetValidInteractionDistance(target);
+        if (distance > maxDistance)
+            return false;
+
+        lastJumboTargetAttempt = now;
+        log.Information($"[Cactpot] Targeting and interacting with {npcName}");
+        return GameHelpers.TargetAndInteract(npcName);
+    }
+
+    private int GetConfiguredJumboNumber()
+    {
+        var activeConfig = configManager.GetActiveConfig();
+        return activeConfig.JumboCactpotNumberMode switch
+        {
+            JumboCactpotNumberMode.Fixed => Math.Clamp(activeConfig.JumboCactpotFixedNumber, 0, 9999),
+            _ => Random.Shared.Next(0, 10000),
+        };
+    }
+
+    private string GetConfiguredJumboModeLabel()
+    {
+        var activeConfig = configManager.GetActiveConfig();
+        return activeConfig.JumboCactpotNumberMode == JumboCactpotNumberMode.Fixed
+            ? "fixed"
+            : "random";
     }
 
     /// <summary>
