@@ -26,7 +26,8 @@ public class FashionReportService : IDisposable
     private static readonly Vector3 MaskedRosePosition = new(55.864311218262f, 3.9997265338898f, 64.584785461426f);
 
     private DateTime lastJumpTime = DateTime.MinValue;
-    private const double JumpIntervalSeconds = 0.5;
+    //private const double JumpIntervalSeconds = 0.5;
+    private const double JumpIntervalSeconds = 3;
     private const float JumpStopDistance = 10f;
 
     public enum FashionReportState

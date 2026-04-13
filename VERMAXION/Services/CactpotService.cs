@@ -143,7 +143,8 @@ public class CactpotService : IDisposable
     private const int MaxTargetAttempts = 5;
     private const double TargetRetryInterval = 2.0; // seconds between attempts
     private DateTime lastJumpTime = DateTime.MinValue;
-    private const double JumpInterval = 0.5; // 500ms jump interval as requested
+    //private const double JumpInterval = 0.5; // 500ms jump interval as requested
+    private const double JumpInterval = 3; // 3s jump interval as requested
     private const float JumpStopDistance = 10f; // Stop jumping when within 10 yalms
 
     /// <summary>
