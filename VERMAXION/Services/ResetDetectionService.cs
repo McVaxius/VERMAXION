@@ -6,6 +6,10 @@ namespace VERMAXION.Services;
 
 public class ResetDetectionService
 {
+    private const int WeeklyResetHourUtc = 9;
+    private const int DailyResetHourUtc = 9;
+    private const int FashionReportStartHourUtc = 1;
+    private const DayOfWeek FashionReportDay = DayOfWeek.Friday;
     private readonly IPluginLog log;
 
     public ResetDetectionService(IPluginLog log)
@@ -82,49 +86,13 @@ public class ResetDetectionService
 
     public static DateTime GetLastWeeklyReset(DateTime now)
     {
-        // Weekly Reset: Every Tuesday at 9:00 AM UTC (actual FFXIV 8:00 AM UTC + 1 hour DST)
-        var daysSinceTuesday = ((int)now.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
-        var lastTuesday = now.Date.AddDays(-daysSinceTuesday).AddHours(9);
-
-        if (now < lastTuesday)
-            lastTuesday = lastTuesday.AddDays(-7);
-
-        return lastTuesday;
+        return GetLastOccurrence(now, DayOfWeek.Tuesday, WeeklyResetHourUtc);
     }
 
     public static DateTime GetLastDailyReset(DateTime now)
     {
-        // Daily Reset: Every day at 9:00 AM UTC (actual FFXIV 8:00 AM UTC + 1 hour DST)
-        var todayReset = now.Date.AddHours(9);
-
-        if (now < todayReset)
-            todayReset = todayReset.AddDays(-1);
-
-        return todayReset;
-    }
-
-    public static DateTime GetLastFridayReset(DateTime now)
-    {
-        // Friday Reset: Every Friday at 9:00 AM UTC (actual FFXIV 8:00 AM UTC + 1 hour DST) - Fashion Report availability
-        var daysSinceFriday = ((int)now.DayOfWeek - (int)DayOfWeek.Friday + 7) % 7;
-        var lastFriday = now.Date.AddDays(-daysSinceFriday).AddHours(9);
-
-        if (now < lastFriday)
-            lastFriday = lastFriday.AddDays(-7);
-
-        return lastFriday;
-    }
-
-    public static DateTime GetLastSaturdayReset(DateTime now)
-    {
-        // Saturday Reset: Every Saturday at 9:00 AM UTC (actual FFXIV 8:00 AM UTC + 1 hour DST) - Jumbo Cactpot availability
-        var daysSinceSaturday = ((int)now.DayOfWeek - (int)DayOfWeek.Saturday + 7) % 7;
-        var lastSaturday = now.Date.AddDays(-daysSinceSaturday).AddHours(9);
-
-        if (now < lastSaturday)
-            lastSaturday = lastSaturday.AddDays(-7);
-
-        return lastSaturday;
+        var todayReset = now.Date.AddHours(DailyResetHourUtc);
+        return now < todayReset ? todayReset.AddDays(-1) : todayReset;
     }
 
     public bool IsFriday()
@@ -135,7 +103,7 @@ public class ResetDetectionService
     public bool IsSaturdayAfterReset()
     {
         var now = DateTime.UtcNow;
-        var saturdayReset = now.Date.AddHours(9); // Today at 9 AM UTC
+        var saturdayReset = now.Date.AddHours(WeeklyResetHourUtc); // Today at 9 AM UTC
         return now.DayOfWeek == DayOfWeek.Saturday && now >= saturdayReset;
     }
 
@@ -162,49 +130,50 @@ public class ResetDetectionService
     /// </summary>
     public static DateTime GetNextWeeklyReset(DateTime now)
     {
-        var daysUntilTuesday = ((int)DayOfWeek.Tuesday - (int)now.DayOfWeek + 7) % 7;
-        var nextTuesday = now.Date.AddDays(daysUntilTuesday).AddHours(9);
-
-        if (now >= nextTuesday)
-            nextTuesday = nextTuesday.AddDays(7);
-
-        return nextTuesday;
+        return GetNextOccurrence(now, DayOfWeek.Tuesday, WeeklyResetHourUtc);
     }
 
-    public static DateTime GetNextFridayAvailability(DateTime now)
+    public static DateTime GetNextFashionReportAvailability(DateTime now)
     {
-        var daysUntilFriday = ((int)DayOfWeek.Friday - (int)now.DayOfWeek + 7) % 7;
-        var nextFriday = now.Date.AddDays(daysUntilFriday).AddHours(9);
-
-        if (now >= nextFriday)
-            nextFriday = nextFriday.AddDays(7);
-
-        return nextFriday;
+        return GetNextOccurrence(now, FashionReportDay, FashionReportStartHourUtc);
     }
 
-    public static DateTime GetNextSaturdayAvailability(DateTime now)
+    public static DateTime GetCurrentFashionReportWindowEnd(DateTime now)
     {
-        var daysUntilSaturday = ((int)DayOfWeek.Saturday - (int)now.DayOfWeek + 7) % 7;
-        var nextSaturday = now.Date.AddDays(daysUntilSaturday).AddHours(9);
-
-        if (now >= nextSaturday)
-            nextSaturday = nextSaturday.AddDays(7);
-
-        return nextSaturday;
+        var currentWindowStart = GetLastOccurrence(now, FashionReportDay, FashionReportStartHourUtc);
+        return currentWindowStart.Date.AddDays(1);
     }
 
     public static bool IsFashionReportAvailable(DateTime now)
     {
-        var lastFridayReset = GetLastFridayReset(now);
-        var nextWeeklyReset = GetNextWeeklyReset(now);
-        return now >= lastFridayReset && now < nextWeeklyReset;
+        if (now.DayOfWeek != FashionReportDay)
+            return false;
+
+        var windowStart = now.Date.AddHours(FashionReportStartHourUtc);
+        var windowEnd = now.Date.AddDays(1);
+        return now >= windowStart && now < windowEnd;
     }
 
     public static bool IsJumboCactpotPayoutAvailable(DateTime now)
     {
-        var lastSaturdayReset = GetLastSaturdayReset(now);
+        var lastSaturdayReset = GetLastJumboCactpotPayoutAvailability(now);
         var nextWeeklyReset = GetNextWeeklyReset(now);
         return now >= lastSaturdayReset && now < nextWeeklyReset;
+    }
+
+    public static DateTime GetNextJumboCactpotPayoutAvailability(DateTime now)
+    {
+        if (!TryGetJumboCactpotPayoutSchedule(out var dayOfWeek, out var hourUtc, out _))
+            return GetNextOccurrence(now, DayOfWeek.Saturday, WeeklyResetHourUtc);
+
+        return GetNextOccurrence(now, dayOfWeek, hourUtc);
+    }
+
+    public static string GetCurrentCharacterJumboDataCenterName()
+    {
+        return TryGetJumboCactpotPayoutSchedule(out _, out _, out var dataCenterName)
+            ? dataCenterName
+            : "Unknown DC";
     }
 
     /// <summary>
@@ -212,12 +181,8 @@ public class ResetDetectionService
     /// </summary>
     public static DateTime GetNextDailyReset(DateTime now)
     {
-        var todayReset = now.Date.AddHours(9);
-
-        if (now >= todayReset)
-            todayReset = todayReset.AddDays(1);
-
-        return todayReset;
+        var todayReset = now.Date.AddHours(DailyResetHourUtc);
+        return now >= todayReset ? todayReset.AddDays(1) : todayReset;
     }
 
     /// <summary>
@@ -307,6 +272,87 @@ public class ResetDetectionService
         if (migrated)
         {
             log.Information("[ResetDetection] Legacy migration completed");
+        }
+    }
+
+    private static DateTime GetLastJumboCactpotPayoutAvailability(DateTime now)
+    {
+        if (!TryGetJumboCactpotPayoutSchedule(out var dayOfWeek, out var hourUtc, out _))
+            return GetLastOccurrence(now, DayOfWeek.Saturday, WeeklyResetHourUtc);
+
+        return GetLastOccurrence(now, dayOfWeek, hourUtc);
+    }
+
+    private static DateTime GetLastOccurrence(DateTime now, DayOfWeek dayOfWeek, int hourUtc)
+    {
+        var daysSince = ((int)now.DayOfWeek - (int)dayOfWeek + 7) % 7;
+        var occurrence = now.Date.AddDays(-daysSince).AddHours(hourUtc);
+        return now < occurrence ? occurrence.AddDays(-7) : occurrence;
+    }
+
+    private static DateTime GetNextOccurrence(DateTime now, DayOfWeek dayOfWeek, int hourUtc)
+    {
+        var daysUntil = ((int)dayOfWeek - (int)now.DayOfWeek + 7) % 7;
+        var occurrence = now.Date.AddDays(daysUntil).AddHours(hourUtc);
+        return now >= occurrence ? occurrence.AddDays(7) : occurrence;
+    }
+
+    private static bool TryGetJumboCactpotPayoutSchedule(out DayOfWeek payoutDayUtc, out int payoutHourUtc, out string dataCenterName)
+    {
+        dataCenterName = ResolveCurrentCharacterDataCenterName();
+        switch (dataCenterName)
+        {
+            case "Elemental":
+            case "Gaia":
+            case "Mana":
+            case "Meteor":
+                payoutDayUtc = DayOfWeek.Saturday;
+                payoutHourUtc = 12;
+                return true;
+
+            case "Aether":
+            case "Crystal":
+            case "Dynamis":
+            case "Primal":
+                payoutDayUtc = DayOfWeek.Sunday;
+                payoutHourUtc = 2;
+                return true;
+
+            case "Chaos":
+            case "Light":
+                payoutDayUtc = DayOfWeek.Saturday;
+                payoutHourUtc = 19;
+                return true;
+
+            case "Materia":
+                payoutDayUtc = DayOfWeek.Saturday;
+                payoutHourUtc = 9;
+                return true;
+
+            default:
+                payoutDayUtc = DayOfWeek.Saturday;
+                payoutHourUtc = WeeklyResetHourUtc;
+                return false;
+        }
+    }
+
+    private static string ResolveCurrentCharacterDataCenterName()
+    {
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null)
+            return string.Empty;
+
+        try
+        {
+            var homeWorldRow = (object)player.HomeWorld.Value;
+            var dataCenterRef = homeWorldRow.GetType().GetProperty("DataCenter")?.GetValue(homeWorldRow);
+            var dataCenterRow = dataCenterRef?.GetType().GetProperty("Value")?.GetValue(dataCenterRef);
+            var dataCenterName = dataCenterRow?.GetType().GetProperty("Name")?.GetValue(dataCenterRow)?.ToString();
+            return dataCenterName?.Trim() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
         }
     }
 }

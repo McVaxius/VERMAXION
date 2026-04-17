@@ -248,6 +248,19 @@ public static class GameHelpers
     }
 
     /// <summary>
+    /// Fire the standard close callback (-1) for an addon if it is currently visible.
+    /// Mirrors the pattern already used for result windows elsewhere in VERMAXION.
+    /// </summary>
+    public static bool TryCloseAddonByCallback(string addonName)
+    {
+        if (!IsAddonVisible(addonName))
+            return false;
+
+        FireAddonCallback(addonName, true, -1);
+        return true;
+    }
+
+    /// <summary>
     /// Click Yes on any visible SelectYesno dialog.
     /// Pattern from LootGoblin GameHelpers.
     /// </summary>

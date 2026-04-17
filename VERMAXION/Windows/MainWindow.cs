@@ -168,7 +168,7 @@ public class MainWindow : Window, IDisposable
                 "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "WIP");
             DrawTaskRow("Fashion Report", config.EnableFashionReport,
                 GetFashionReportStatus(config),
-                "Test##Fashion", () => plugin.FashionReportService.Start(), "WIP");
+                "Test##Fashion", () => plugin.FashionReportService.Start(), "OK");
 
             // --- Daily Tasks ---
             DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
@@ -267,14 +267,13 @@ public class MainWindow : Window, IDisposable
         var nextWeekly = ResetDetectionService.GetLastWeeklyReset(now).AddDays(7);
         var untilDaily = nextDaily - now;
         var untilWeekly = nextWeekly - now;
-        var nextFriday = ResetDetectionService.GetNextFridayAvailability(now);
+        var nextFriday = ResetDetectionService.GetNextFashionReportAvailability(now);
         var untilFriday = nextFriday - now;
 
-        // Saturday timer
-        var nextSaturday = ResetDetectionService.GetNextSaturdayAvailability(now);
-        var untilSaturday = nextSaturday - now;
+        var nextJumboPayout = ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now);
+        var untilJumboPayout = nextJumboPayout - now;
 
-        ImGui.TextDisabled($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m  |  Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m  |  Fashion: {untilFriday.Days}d {untilFriday.Hours}h {untilFriday.Minutes}m  |  Jumbo: {untilSaturday.Days}d {untilSaturday.Hours}h {untilSaturday.Minutes}m");
+        ImGui.TextDisabled($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m  |  Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m  |  Fashion: {untilFriday.Days}d {untilFriday.Hours}h {untilFriday.Minutes}m  |  Jumbo payout: {untilJumboPayout.Days}d {untilJumboPayout.Hours}h {untilJumboPayout.Minutes}m");
 
         // AR status
         var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
@@ -347,17 +346,26 @@ public class MainWindow : Window, IDisposable
         if (ResetDetectionService.TaskIsCompleted(config.FashionReportLastCompleted, config.FashionReportNextReset))
             return "Done this week";
 
-        return ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) ? "Ready (Fri-Tue)" : "Pending (Fri)";
+        return ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) ? "Ready now" : "Pending (Fri 01 UTC)";
     }
 
     private static string GetJumboCactpotStatus(Models.CharacterConfig config)
     {
+        if (IsJumboPurchasePendingPayout(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset))
+            return "Ticket purchased";
+
         if (ResetDetectionService.TaskIsCompleted(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset))
             return "Done this week";
 
-        var now = DateTime.UtcNow;
-        var saturdayReset = now.Date.AddHours(9);
-        return now.DayOfWeek == DayOfWeek.Saturday && now >= saturdayReset ? "Ready now" : "Pending (Sat)";
+        return ResetDetectionService.IsJumboCactpotPayoutAvailable(DateTime.UtcNow) ? "Ready payout" : "Ready purchase";
+    }
+
+    private static bool IsJumboPurchasePendingPayout(DateTime lastCompleted, DateTime nextReset)
+    {
+        if (!ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
+            return false;
+
+        return nextReset > DateTime.UtcNow && nextReset < ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
     }
 
     private static string GetVendorStockStatus(Models.CharacterConfig config)

@@ -440,7 +440,7 @@ public class VermaxionEngine
                             config.JumboCactpotLastCompleted = now;
                             config.JumboCactpotNextReset = runSaturdayPayout
                                 ? ResetDetectionService.GetNextWeeklyReset(now)
-                                : ResetDetectionService.GetNextSaturdayAvailability(now);
+                                : ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now);
                             config.JumboCactpotCompletedThisWeek = runSaturdayPayout;
                         }, "Jumbo Cactpot completion");
                         cactpotService.Reset();
@@ -472,7 +472,7 @@ public class VermaxionEngine
                         log.Information("[Engine] Clean slate: clearing open UI before Fashion Report");
                         ResetInteractionState();
                         
-                        log.Information("[Engine] Starting Fashion Report (Friday)");
+                        log.Information("[Engine] Starting Fashion Report (Friday 01:00 UTC window)");
                         fashionReportService.Start();
                         return;
                     }
@@ -610,7 +610,7 @@ public class VermaxionEngine
             config.JumboCactpotLastCompleted = now;
             config.JumboCactpotNextReset = runSaturdayPayout
                 ? ResetDetectionService.GetNextWeeklyReset(now)
-                : ResetDetectionService.GetNextSaturdayAvailability(now);
+                : ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now);
             config.JumboCactpotCompletedThisWeek = false;
         }, "Jumbo Cactpot failure suppression");
         log.Warning("[Engine] Jumbo Cactpot failed and will be suppressed until its next reset window.");

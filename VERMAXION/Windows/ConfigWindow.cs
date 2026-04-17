@@ -612,7 +612,7 @@ public class ConfigWindow : Window, IDisposable
             else
             {
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(1.0f, 0.75f, 0.2f, 1.0f), "[WIP]");
+                ImGui.TextColored(new Vector4(0.2f, 1.0f, 0.2f, 1.0f), "[OK]");
             }
             DrawFashionTaskHint(cc.FashionReportLastCompleted, cc.FashionReportNextReset);
 
@@ -881,19 +881,20 @@ public class ConfigWindow : Window, IDisposable
         var now = DateTime.UtcNow;
         if (ResetDetectionService.IsFashionReportAvailable(now))
         {
-            ImGui.TextDisabled($"Ready now. Weekly reset at {FormatUtc(ResetDetectionService.GetNextWeeklyReset(now))}");
+            ImGui.TextDisabled($"Ready now. Window closes at {FormatUtc(ResetDetectionService.GetCurrentFashionReportWindowEnd(now))}.");
         }
         else
         {
-            ImGui.TextDisabled($"Available Friday at {FormatUtc(ResetDetectionService.GetNextFridayAvailability(now))}");
+            ImGui.TextDisabled($"Available Friday at {FormatUtc(ResetDetectionService.GetNextFashionReportAvailability(now))}. Runs only during the Friday UTC window.");
         }
     }
 
     private static void DrawJumboTaskHint(DateTime lastCompleted, DateTime nextReset)
     {
+        var dataCenterName = ResetDetectionService.GetCurrentCharacterJumboDataCenterName();
         if (IsJumboPurchasePendingPayout(lastCompleted, nextReset))
         {
-            ImGui.TextDisabled($"Ticket purchased. Payout available at {FormatUtc(nextReset)}");
+            ImGui.TextDisabled($"Ticket purchased. Payout opens for {dataCenterName} at {FormatUtc(nextReset)}.");
             return;
         }
 
@@ -904,14 +905,13 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var now = DateTime.UtcNow;
-        var saturdayReset = now.Date.AddHours(9);
-        if (now.DayOfWeek == DayOfWeek.Saturday && now >= saturdayReset)
+        if (ResetDetectionService.IsJumboCactpotPayoutAvailable(now))
         {
-            ImGui.TextDisabled("Ready now.");
+            ImGui.TextDisabled($"Ready to turn in now for {dataCenterName}. Weekly reset at {FormatUtc(ResetDetectionService.GetNextWeeklyReset(now))}.");
         }
         else
         {
-            ImGui.TextDisabled($"Available Saturday at {FormatUtc(ResetDetectionService.GetNextSaturdayAvailability(now))}");
+            ImGui.TextDisabled($"Ready to purchase now. Payout opens for {dataCenterName} at {FormatUtc(ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now))}.");
         }
     }
 
@@ -921,9 +921,7 @@ public class ConfigWindow : Window, IDisposable
             return false;
 
         var now = DateTime.UtcNow;
-        return nextReset > now &&
-               nextReset <= ResetDetectionService.GetNextSaturdayAvailability(now) &&
-               nextReset.DayOfWeek == DayOfWeek.Saturday;
+        return nextReset > now && nextReset < ResetDetectionService.GetNextWeeklyReset(now);
     }
 
     private static string FormatUtc(DateTime timestamp)

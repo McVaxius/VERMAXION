@@ -7,7 +7,8 @@ namespace VERMAXION.Services;
 
 /// <summary>
 /// Fashion Report automation service.
-/// Travels to the Gold Saucer, interacts with Masked Rose, then closes the dialogue so the engine can continue.
+/// Travels to the Gold Saucer, interacts with Masked Rose, completes the full judging loop four times,
+/// then returns control to the engine once the player is back in the world with no Fashion Report UI open.
 /// </summary>
 public class FashionReportService : IDisposable
 {
@@ -19,13 +20,21 @@ public class FashionReportService : IDisposable
     private FashionReportState state = FashionReportState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private int currentAttempt;
+    private int completedJudgings;
 
-    private const int MaxAttempts = 3;
+    private const int MaxRetries = 3;
+    private const int RequiredJudgings = 4;
     private const ushort GoldSaucerTerritoryId = 144;
     private const string MaskedRoseName = "Masked Rose";
     private static readonly Vector3 MaskedRosePosition = new(55.864311218262f, 3.9997265338898f, 64.584785461426f);
+    private const double DialogueAdvanceIntervalSeconds = 1.0;
+    private const double FashionCheckCloseIntervalSeconds = 1.0;
+    private const double FashionCheckResultTimeoutSeconds = 75.0;
+    private const double PostJudgingSettleTimeoutSeconds = 30.0;
 
     private DateTime lastJumpTime = DateTime.MinValue;
+    private DateTime lastDialogueAdvanceTime = DateTime.MinValue;
+    private DateTime lastFashionCheckCloseTime = DateTime.MinValue;
     //private const double JumpIntervalSeconds = 0.5;
     private const double JumpIntervalSeconds = 3;
     private const float JumpStopDistance = 10f;
@@ -38,8 +47,11 @@ public class FashionReportService : IDisposable
         NavigatingToMaskedRose,
         WaitingForArrival,
         InteractingWithMaskedRose,
-        WaitingForDialogue,
-        ClosingDialogue,
+        WaitingForDialogueOption,
+        ConfirmingJudging,
+        WaitingForFashionCheck,
+        ClosingFashionCheck,
+        WaitingForPostJudgingReturn,
         Complete,
         Failed,
     }
@@ -66,6 +78,7 @@ public class FashionReportService : IDisposable
         }
 
         currentAttempt = 1;
+        completedJudgings = 0;
         if (clientState.TerritoryType == GoldSaucerTerritoryId)
         {
             log.Information("[FashionReport] Already in Gold Saucer, skipping teleport");
@@ -82,7 +95,10 @@ public class FashionReportService : IDisposable
         state = FashionReportState.Idle;
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
+        completedJudgings = 0;
         lastJumpTime = DateTime.MinValue;
+        lastDialogueAdvanceTime = DateTime.MinValue;
+        lastFashionCheckCloseTime = DateTime.MinValue;
     }
 
     public void Update()
@@ -152,8 +168,8 @@ public class FashionReportService : IDisposable
 
                 if (GameHelpers.TargetAndInteract(MaskedRoseName))
                 {
-                    log.Information("[FashionReport] Interacted with Masked Rose");
-                    SetState(FashionReportState.WaitingForDialogue);
+                    log.Information($"[FashionReport] Interacted with Masked Rose for judging {completedJudgings + 1}/{RequiredJudgings}");
+                    SetState(FashionReportState.WaitingForDialogueOption);
                 }
                 else if (elapsed > 12)
                 {
@@ -161,29 +177,128 @@ public class FashionReportService : IDisposable
                 }
                 break;
 
-            case FashionReportState.WaitingForDialogue:
-                if (elapsed < 1.5)
+            case FashionReportState.WaitingForDialogueOption:
+                if (elapsed < 0.75)
                     return;
 
-                if (IsFashionReportUiVisible())
+                if (GameHelpers.IsAddonVisible("SelectString"))
                 {
-                    log.Information("[FashionReport] Dialogue visible, closing it so the engine can continue");
+                    log.Information($"[FashionReport] Selecting 'Present yourself for judging' ({completedJudgings + 1}/{RequiredJudgings})");
+                    GameHelpers.FireAddonCallback("SelectString", true, 1);
+                    SetState(FashionReportState.ConfirmingJudging);
                 }
-                else
+                else if (GameHelpers.IsAddonVisible("SelectYesno"))
                 {
-                    log.Information("[FashionReport] No visible dialogue detected after interaction, closing cleanly");
+                    SetState(FashionReportState.ConfirmingJudging);
                 }
-
-                SetState(FashionReportState.ClosingDialogue);
+                else if (IsDialogueAdvanceUiVisible())
+                {
+                    TryAdvanceDialogue("initial Masked Rose dialogue");
+                }
+                else if (elapsed > 15)
+                {
+                    RetryOrFail("Timed out waiting for Fashion Report dialogue options");
+                }
                 break;
 
-            case FashionReportState.ClosingDialogue:
+            case FashionReportState.ConfirmingJudging:
+                if (GameHelpers.ClickYesIfVisible())
+                {
+                    log.Information($"[FashionReport] Accepted judging confirmation ({completedJudgings + 1}/{RequiredJudgings})");
+                    SetState(FashionReportState.WaitingForFashionCheck);
+                }
+                else if (IsFashionCheckVisible())
+                {
+                    SetState(FashionReportState.ClosingFashionCheck);
+                }
+                else if (IsDialogueAdvanceUiVisible())
+                {
+                    TryAdvanceDialogue("judging confirmation lead-in");
+                }
+                else if (elapsed > 15)
+                {
+                    RetryOrFail("Timed out waiting for Fashion Report confirmation");
+                }
+                break;
+
+            case FashionReportState.WaitingForFashionCheck:
+                if (IsFashionCheckVisible())
+                {
+                    log.Information($"[FashionReport] FashionCheck result window visible ({completedJudgings + 1}/{RequiredJudgings})");
+                    SetState(FashionReportState.ClosingFashionCheck);
+                }
+                else if (GameHelpers.ClickYesIfVisible())
+                {
+                    log.Information("[FashionReport] Accepted an additional Yes/No prompt while waiting for FashionCheck");
+                    stateEnteredAt = DateTime.UtcNow;
+                }
+                else if (IsDialogueAdvanceUiVisible())
+                {
+                    TryAdvanceDialogue("post-confirmation dialogue");
+                }
+                else if (elapsed > FashionCheckResultTimeoutSeconds)
+                {
+                    RetryOrFail("Timed out waiting for FashionCheck result");
+                }
+                break;
+
+            case FashionReportState.ClosingFashionCheck:
                 if (elapsed < 0.5)
                     return;
 
-                GameHelpers.SendEnd();
-                GameHelpers.CloseCurrentAddon();
-                SetState(FashionReportState.Complete);
+                if (IsFashionCheckVisible())
+                {
+                    TryCloseFashionCheck();
+
+                    if (elapsed > 8 && GameHelpers.IsAddonVisible("FashionCheck"))
+                    {
+                        log.Warning("[FashionReport] FashionCheck still visible after callback close attempts, sending Escape fallback");
+                        GameHelpers.CloseCurrentAddon();
+                    }
+
+                    if (elapsed > 15)
+                    {
+                        RetryOrFail("Timed out closing FashionCheck");
+                    }
+
+                    break;
+                }
+
+                completedJudgings++;
+                log.Information($"[FashionReport] Completed judging {completedJudgings}/{RequiredJudgings}");
+                SetState(FashionReportState.WaitingForPostJudgingReturn);
+                break;
+
+            case FashionReportState.WaitingForPostJudgingReturn:
+                if (IsFashionCheckVisible())
+                {
+                    SetState(FashionReportState.ClosingFashionCheck);
+                }
+                else if (IsDialogueAdvanceUiVisible())
+                {
+                    TryAdvanceDialogue("post-judging dialogue");
+                }
+                else if (GameHelpers.IsPlayerAvailable() && !IsBlockingUiVisible())
+                {
+                    if (completedJudgings >= RequiredJudgings)
+                    {
+                        log.Information("[FashionReport] All four Fashion Report judgings complete");
+                        SetState(FashionReportState.Complete);
+                    }
+                    else
+                    {
+                        log.Information($"[FashionReport] Preparing next judging {completedJudgings + 1}/{RequiredJudgings}");
+                        SetState(FashionReportState.InteractingWithMaskedRose);
+                    }
+                }
+                else if (elapsed > PostJudgingSettleTimeoutSeconds)
+                {
+                    log.Warning("[FashionReport] Post-judging settle timed out, continuing with best-effort state transition");
+                    if (completedJudgings >= RequiredJudgings)
+                        SetState(FashionReportState.Complete);
+                    else
+                        SetState(FashionReportState.InteractingWithMaskedRose);
+                }
                 break;
         }
     }
@@ -201,21 +316,66 @@ public class FashionReportService : IDisposable
     {
         return GameHelpers.IsAddonVisible("Talk")
             || GameHelpers.IsAddonVisible("SelectString")
+            || GameHelpers.IsAddonVisible("SelectYesno")
+            || GameHelpers.IsAddonVisible("JournalAccept")
+            || GameHelpers.IsAddonVisible("Request")
+            || IsFashionCheckVisible();
+    }
+
+    private bool IsDialogueAdvanceUiVisible()
+    {
+        return GameHelpers.IsAddonVisible("Talk")
             || GameHelpers.IsAddonVisible("JournalAccept")
             || GameHelpers.IsAddonVisible("Request");
     }
 
+    private bool IsFashionCheckVisible()
+    {
+        return GameHelpers.IsAddonVisible("FashionCheck")
+            || GameHelpers.IsAddonVisible("FashionCheckScoreGauge");
+    }
+
+    private bool IsBlockingUiVisible()
+    {
+        return IsFashionReportUiVisible();
+    }
+
+    private void TryAdvanceDialogue(string reason)
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastDialogueAdvanceTime).TotalSeconds < DialogueAdvanceIntervalSeconds)
+            return;
+
+        log.Information($"[FashionReport] Advancing {reason}");
+        GameHelpers.SendEnd();
+        lastDialogueAdvanceTime = now;
+    }
+
+    private void TryCloseFashionCheck()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastFashionCheckCloseTime).TotalSeconds < FashionCheckCloseIntervalSeconds)
+            return;
+
+        if (GameHelpers.TryCloseAddonByCallback("FashionCheck"))
+        {
+            log.Information("[FashionReport] Closing FashionCheck via callback");
+        }
+
+        lastFashionCheckCloseTime = now;
+    }
+
     private void RetryOrFail(string reason)
     {
-        if (currentAttempt >= MaxAttempts)
+        if (currentAttempt >= MaxRetries)
         {
-            log.Error($"[FashionReport] {reason}. Failed after {MaxAttempts} attempts");
+            log.Error($"[FashionReport] {reason}. Failed after {MaxRetries} attempts");
             SetState(FashionReportState.Failed);
             return;
         }
 
         currentAttempt++;
-        log.Warning($"[FashionReport] {reason}. Retrying ({currentAttempt}/{MaxAttempts})");
+        log.Warning($"[FashionReport] {reason}. Retrying ({currentAttempt}/{MaxRetries})");
 
         if (clientState.TerritoryType == GoldSaucerTerritoryId)
         {
@@ -232,9 +392,11 @@ public class FashionReportService : IDisposable
         if (state == newState)
             return;
 
-        log.Information($"[FashionReport] {state} -> {newState} (Attempt {Math.Max(currentAttempt, 1)}/{MaxAttempts})");
+        log.Information($"[FashionReport] {state} -> {newState} (Retry {Math.Max(currentAttempt, 1)}/{MaxRetries}, Judging {completedJudgings}/{RequiredJudgings})");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        lastDialogueAdvanceTime = DateTime.MinValue;
+        lastFashionCheckCloseTime = DateTime.MinValue;
 
         if (newState == FashionReportState.Complete || newState == FashionReportState.Failed)
             lastJumpTime = DateTime.MinValue;
