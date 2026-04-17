@@ -19,6 +19,7 @@ public class VermaxionEngine
         "/ad stop",
         "/sice stop",
         "/ochillegal off",
+        "/fr off",
     ];
 
     private readonly IPluginLog log;

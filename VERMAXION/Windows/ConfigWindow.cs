@@ -520,7 +520,7 @@ public class ConfigWindow : Window, IDisposable
                 plugin.Engine.SendRunShutdownCommandBundle();
             }
             ImGui.TextDisabled("Always on. Sent once at the start of every AutoRetainer/manual VERMAXION run.");
-            ImGui.TextWrapped("Commands: /rotation cancel, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off.");
+            ImGui.TextWrapped("Commands: /rotation cancel, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off");
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WeeklyTasks, ImGuiTreeNodeFlags.DefaultOpen))
