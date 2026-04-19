@@ -359,21 +359,13 @@ public class MainWindow : Window, IDisposable
 
     private static string GetJumboCactpotStatus(Models.CharacterConfig config)
     {
-        if (IsJumboPurchasePendingPayout(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset))
+        if (ResetDetectionService.IsJumboPurchasePendingPayout(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset))
             return "Ticket purchased";
 
         if (ResetDetectionService.TaskIsCompleted(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset))
             return "Done this week";
 
         return ResetDetectionService.IsJumboCactpotPayoutAvailable(DateTime.UtcNow) ? "Ready payout" : "Ready purchase";
-    }
-
-    private static bool IsJumboPurchasePendingPayout(DateTime lastCompleted, DateTime nextReset)
-    {
-        if (!ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
-            return false;
-
-        return nextReset > DateTime.UtcNow && nextReset < ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
     }
 
     private static string GetVendorStockStatus(Models.CharacterConfig config)

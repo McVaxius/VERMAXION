@@ -545,7 +545,7 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableJumboCactpot = jumbo;
                 changed = true;
             }
-            if (IsJumboPurchasePendingPayout(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
+            if (ResetDetectionService.IsJumboPurchasePendingPayout(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
             {
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1), "[Ticket Purchased]");
@@ -952,7 +952,7 @@ public class ConfigWindow : Window, IDisposable
     private static void DrawJumboTaskHint(DateTime lastCompleted, DateTime nextReset)
     {
         var dataCenterName = ResetDetectionService.GetCurrentCharacterJumboDataCenterName();
-        if (IsJumboPurchasePendingPayout(lastCompleted, nextReset))
+        if (ResetDetectionService.IsJumboPurchasePendingPayout(lastCompleted, nextReset))
         {
             ImGui.TextDisabled($"Ticket purchased. Payout opens for {dataCenterName} at {FormatUtc(nextReset)}.");
             return;
@@ -973,15 +973,6 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.TextDisabled($"Ready to purchase now. Payout opens for {dataCenterName} at {FormatUtc(ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now))}.");
         }
-    }
-
-    private static bool IsJumboPurchasePendingPayout(DateTime lastCompleted, DateTime nextReset)
-    {
-        if (!ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
-            return false;
-
-        var now = DateTime.UtcNow;
-        return nextReset > now && nextReset < ResetDetectionService.GetNextWeeklyReset(now);
     }
 
     private static string FormatUtc(DateTime timestamp)

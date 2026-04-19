@@ -161,6 +161,15 @@ public class ResetDetectionService
         return now >= lastSaturdayReset && now < nextWeeklyReset;
     }
 
+    public static bool IsJumboPurchasePendingPayout(DateTime lastCompleted, DateTime nextReset)
+    {
+        if (!TaskIsCompleted(lastCompleted, nextReset))
+            return false;
+
+        var now = DateTime.UtcNow;
+        return nextReset > now && nextReset < GetNextWeeklyReset(now);
+    }
+
     public static DateTime GetNextJumboCactpotPayoutAvailability(DateTime now)
     {
         if (!TryGetJumboCactpotPayoutSchedule(out var dayOfWeek, out var hourUtc, out _))
