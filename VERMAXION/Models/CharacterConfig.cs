@@ -21,6 +21,7 @@ public class CharacterConfig
     public bool EnableFashionReport { get; set; } = false;
     public bool EnableRegisterRegistrables { get; set; } = false;
     public bool EnableVendorStock { get; set; } = false;
+    public bool EnableNagYourMom { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -30,6 +31,11 @@ public class CharacterConfig
     public int FCBuffMinGil { get; set; } = 16000;
     public int VendorStockGysahlGreensTarget { get; set; } = 0;
     public int VendorStockGrade8DarkMatterTarget { get; set; } = 0;
+    public int NagYourMomRunsPerDay { get; set; } = 1;
+    public string NagYourMomJob { get; set; } = "";
+    public string NagYourMomWindowStartLocal { get; set; } = "00:00";
+    public string NagYourMomWindowEndLocal { get; set; } = "23:59";
+    public bool NagYourMomStopAtSeriesRank25 { get; set; } = true;
     
     // --- Personal Registrable Items ---
     public List<uint> PersonalRegistrableItems { get; set; } = new();
@@ -62,6 +68,8 @@ public class CharacterConfig
     public int MiniCactpotTicketsToday { get; set; } = 0;
     public int MinionRouletteAttemptsToday { get; set; } = 0;
     public DateTime LastMinionRouletteReset { get; set; } = DateTime.MinValue;
+    public int NagYourMomAttemptsToday { get; set; } = 0;
+    public DateTime NagYourMomLastLocalDate { get; set; } = DateTime.MinValue;
     public bool RequireSaucyForMiniCactpot { get; set; } = true;
     public JumboCactpotNumberMode JumboCactpotNumberMode { get; set; } = JumboCactpotNumberMode.Random;
     public int JumboCactpotFixedNumber { get; set; } = 1;
@@ -87,6 +95,7 @@ public class CharacterConfig
             EnableFashionReport = EnableFashionReport,
             EnableRegisterRegistrables = EnableRegisterRegistrables,
             EnableVendorStock = EnableVendorStock,
+            EnableNagYourMom = EnableNagYourMom,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
@@ -94,6 +103,11 @@ public class CharacterConfig
             FCBuffMinGil = FCBuffMinGil,
             VendorStockGysahlGreensTarget = VendorStockGysahlGreensTarget,
             VendorStockGrade8DarkMatterTarget = VendorStockGrade8DarkMatterTarget,
+            NagYourMomRunsPerDay = NagYourMomRunsPerDay,
+            NagYourMomJob = NagYourMomJob,
+            NagYourMomWindowStartLocal = NagYourMomWindowStartLocal,
+            NagYourMomWindowEndLocal = NagYourMomWindowEndLocal,
+            NagYourMomStopAtSeriesRank25 = NagYourMomStopAtSeriesRank25,
             PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,
@@ -116,6 +130,8 @@ public class CharacterConfig
             MiniCactpotTicketsToday = MiniCactpotTicketsToday,
             MinionRouletteAttemptsToday = MinionRouletteAttemptsToday,
             LastMinionRouletteReset = LastMinionRouletteReset,
+            NagYourMomAttemptsToday = NagYourMomAttemptsToday,
+            NagYourMomLastLocalDate = NagYourMomLastLocalDate,
             RequireSaucyForMiniCactpot = RequireSaucyForMiniCactpot,
             JumboCactpotNumberMode = JumboCactpotNumberMode,
             JumboCactpotFixedNumber = JumboCactpotFixedNumber,

@@ -164,6 +164,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.BulletText("AutoRetainer - Triggers post-processing via IPC");
         ImGui.BulletText("YesAlready - Paused during operations to prevent interference");
         ImGui.BulletText("TextAdvance - Enables automatic text progression during dialogue");
+        ImGui.BulletText("mom - Private CC runner/rank reader for nag your mom");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Mini Cactpot:");
@@ -710,6 +711,63 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
             DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
+
+            var nagYourMom = cc.EnableNagYourMom;
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMom, ref nagYourMom))
+            {
+                cc.EnableNagYourMom = nagYourMom;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(UIConstants.Tooltips.NagYourMom);
+            if (cc.EnableNagYourMom)
+            {
+                ImGui.Indent();
+
+                var momRunsPerDay = cc.NagYourMomRunsPerDay;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
+                {
+                    cc.NagYourMomRunsPerDay = Math.Max(0, momRunsPerDay);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+
+                var momJob = cc.NagYourMomJob;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomJob, ref momJob, 16))
+                {
+                    cc.NagYourMomJob = momJob.Trim().ToUpperInvariant();
+                    changed = true;
+                }
+
+                var localStart = cc.NagYourMomWindowStartLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowStartLocal, ref localStart, 16))
+                {
+                    cc.NagYourMomWindowStartLocal = localStart.Trim();
+                    changed = true;
+                }
+
+                var localEnd = cc.NagYourMomWindowEndLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowEndLocal, ref localEnd, 16))
+                {
+                    cc.NagYourMomWindowEndLocal = localEnd.Trim();
+                    changed = true;
+                }
+
+                var stopAt25 = cc.NagYourMomStopAtSeriesRank25;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomStopAtSeriesRank25, ref stopAt25))
+                {
+                    cc.NagYourMomStopAtSeriesRank25 = stopAt25;
+                    changed = true;
+                }
+
+                ImGui.TextDisabled($"Attempts today: {cc.NagYourMomAttemptsToday}/{cc.NagYourMomRunsPerDay}");
+                ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourMomStatusText}");
+                ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, reads the mom rank gate, and then asks mom for one full CC run.");
+                ImGui.Unindent();
+            }
         }
 
         ImGui.Spacing();
@@ -742,6 +800,8 @@ public class ConfigWindow : Window, IDisposable
             cc.ChocoboRacingCompletedToday = false;
             cc.LastDailyReset = DateTime.MinValue;
             cc.MiniCactpotTicketsToday = 0;
+            cc.NagYourMomAttemptsToday = 0;
+            cc.NagYourMomLastLocalDate = DateTime.MinValue;
             
             // Reset new DateTime system
             cc.MiniCactpotLastCompleted = DateTime.MinValue;

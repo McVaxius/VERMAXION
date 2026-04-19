@@ -36,12 +36,14 @@ public class VermaxionEngine
     private readonly ARPostProcessService arService;
     private readonly YesAlreadyIPC yesAlreadyIPC;
     private readonly IClientState clientState;
+    private readonly MomIPCClient momIPCClient;
 
     private EngineState state = EngineState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private CharacterConfig? activeConfig = null;
     private bool weeklyResetDetected = false;
     private bool dailyResetDetected = false;
+    private bool nagYourMomRequestIssued = false;
 
     public enum EngineState
     {
@@ -57,6 +59,7 @@ public class VermaxionEngine
         RunningJumboCactpot,
         RunningFashionReport,
         RunningChocoboRacing,
+        RunningNagYourMom,
         EnablingHenchman,
         SignalingARDone,
         Complete,
@@ -66,6 +69,7 @@ public class VermaxionEngine
     public EngineState State => state;
     public bool IsRunning => state != EngineState.Idle && state != EngineState.Complete && state != EngineState.Error;
     public string StatusText { get; private set; } = "Idle";
+    public string NagYourMomStatusText { get; private set; } = "Idle";
     
     public bool IsRunningDebug => IsRunning; // For debugging
 
@@ -83,7 +87,8 @@ public class VermaxionEngine
         RegisterRegistrablesService registerRegistrablesService,
         ARPostProcessService arService,
         YesAlreadyIPC yesAlreadyIPC,
-        IClientState clientState)
+        IClientState clientState,
+        MomIPCClient momIPCClient)
     {
         this.log = log;
         this.configManager = configManager;
@@ -99,6 +104,7 @@ public class VermaxionEngine
         this.arService = arService;
         this.yesAlreadyIPC = yesAlreadyIPC;
         this.clientState = clientState;
+        this.momIPCClient = momIPCClient;
 
         // Subscribe to territory change events to close menus after teleporting
         clientState.TerritoryChanged += OnTerritoryChanged;
@@ -115,6 +121,7 @@ public class VermaxionEngine
         }
 
         SendRunShutdownCommandBundle();
+        NagYourMomStatusText = "Idle";
         log.Information("[Engine] === Starting Vermaxion post-processing ===");
         SetState(EngineState.Starting);
     }
@@ -129,6 +136,7 @@ public class VermaxionEngine
         }
 
         SendRunShutdownCommandBundle();
+        NagYourMomStatusText = "Idle";
         log.Information("[Engine] === Manual start ===");
         SetState(EngineState.Starting);
     }
@@ -145,6 +153,8 @@ public class VermaxionEngine
         verminionService.Reset();
         cactpotService.Reset();
         chocoboRaceService.Reset();
+        momIPCClient.CancelActiveRun();
+        NagYourMomStatusText = "Cancelled";
         yesAlreadyIPC.Unpause();
         SetState(EngineState.Idle);
     }
@@ -152,6 +162,8 @@ public class VermaxionEngine
     public void Stop()
     {
         log.Information("[Engine] Stopped by user");
+        momIPCClient.CancelActiveRun();
+        NagYourMomStatusText = "Stopped";
         SetState(EngineState.Idle);
     }
 
@@ -174,6 +186,7 @@ public class VermaxionEngine
         if (activeConfig.EnableMiniCactpot && !cactpotService.IsComplete) count++;
         if (activeConfig.EnableJumboCactpot && !cactpotService.IsComplete) count++;
         if (activeConfig.EnableChocoboRacing && !chocoboRaceService.IsComplete) count++;
+        if (ShouldCountNagYourMom(activeConfig)) count++;
         
         return count;
     }
@@ -556,6 +569,82 @@ public class VermaxionEngine
                 }
                 break;
 
+            case EngineState.RunningNagYourMom:
+                activeConfig = GetLiveActiveConfig();
+                RollNagYourMomLocalDay(activeConfig!);
+                if (!ShouldRunNagYourMomNow(activeConfig!, out var nagSkipReason))
+                {
+                    NagYourMomStatusText = nagSkipReason;
+                    AdvanceToNextTask(EngineState.RunningNagYourMom);
+                    break;
+                }
+
+                if (!nagYourMomRequestIssued)
+                {
+                    if (!momIPCClient.IsReady())
+                    {
+                        ConsumeNagYourMomAttempt(activeConfig!, "mom IPC is not ready.");
+                        log.Warning("[Engine] mom IPC is not ready - deferring until the next AR opportunity");
+                        AdvanceToNextTask(EngineState.RunningNagYourMom);
+                        break;
+                    }
+
+                    if (activeConfig!.NagYourMomStopAtSeriesRank25)
+                    {
+                        var rankSnapshot = momIPCClient.GetSeriesRank();
+                        if (!rankSnapshot.Success)
+                        {
+                            ConsumeNagYourMomAttempt(activeConfig!, $"Series rank read failed: {rankSnapshot.FailureReason}");
+                            log.Warning($"[Engine] nag your mom rank read failed: {rankSnapshot.FailureReason}");
+                            AdvanceToNextTask(EngineState.RunningNagYourMom);
+                            break;
+                        }
+
+                        if (rankSnapshot.Rank >= 25)
+                        {
+                            NagYourMomStatusText = "Series rank 25 reached";
+                            log.Information("[Engine] nag your mom skipped because series rank is already 25");
+                            AdvanceToNextTask(EngineState.RunningNagYourMom);
+                            break;
+                        }
+                    }
+
+                    ConsumeNagYourMomAttempt(activeConfig!, $"Requested 1 mom run on {activeConfig!.NagYourMomJob}.");
+                    var startResult = momIPCClient.StartCcRuns(1, activeConfig!.NagYourMomJob);
+                    NagYourMomStatusText = startResult.Summary;
+
+                    if (startResult.Status is MomRunStatus.Rejected or MomRunStatus.Failed or MomRunStatus.Cancelled)
+                    {
+                        log.Warning($"[Engine] nag your mom start failed: {startResult.Summary}");
+                        AdvanceToNextTask(EngineState.RunningNagYourMom);
+                        break;
+                    }
+
+                    if (startResult.Status == MomRunStatus.Completed)
+                    {
+                        log.Information("[Engine] nag your mom completed immediately");
+                        AdvanceToNextTask(EngineState.RunningNagYourMom);
+                        break;
+                    }
+
+                    nagYourMomRequestIssued = true;
+                    return;
+                }
+
+                var currentMomStatus = momIPCClient.GetStatus();
+                NagYourMomStatusText = currentMomStatus.Summary;
+                if (currentMomStatus.Status is MomRunStatus.Queued or MomRunStatus.Running)
+                    return;
+
+                nagYourMomRequestIssued = false;
+                if (currentMomStatus.Status == MomRunStatus.Completed)
+                    log.Information("[Engine] nag your mom completed successfully");
+                else
+                    log.Warning($"[Engine] nag your mom ended with status {currentMomStatus.Status}: {currentMomStatus.Summary}");
+
+                AdvanceToNextTask(EngineState.RunningNagYourMom);
+                break;
+
             case EngineState.EnablingHenchman:
                 if (activeConfig!.EnableHenchmanManagement)
                 {
@@ -627,7 +716,8 @@ public class VermaxionEngine
             EngineState.RunningMiniCactpot => EngineState.RunningJumboCactpot,
             EngineState.RunningJumboCactpot => EngineState.RunningFashionReport,
             EngineState.RunningFashionReport => EngineState.RunningChocoboRacing,
-            EngineState.RunningChocoboRacing => EngineState.EnablingHenchman,
+            EngineState.RunningChocoboRacing => EngineState.RunningNagYourMom,
+            EngineState.RunningNagYourMom => EngineState.EnablingHenchman,
             _ => EngineState.EnablingHenchman,
         };
 
@@ -654,12 +744,16 @@ public class VermaxionEngine
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",
             EngineState.RunningFashionReport => "Fashion Report",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
+            EngineState.RunningNagYourMom => "nag your mom",
             EngineState.EnablingHenchman => "Enabling Henchman",
             EngineState.SignalingARDone => "Signaling AR",
             EngineState.Complete => "Complete",
             EngineState.Error => "Error",
             _ => "Unknown",
         };
+
+        if (newState != EngineState.RunningNagYourMom)
+            nagYourMomRequestIssued = false;
     }
 
     private CharacterConfig GetLiveActiveConfig()
@@ -674,6 +768,92 @@ public class VermaxionEngine
         update(liveConfig);
         configManager.SaveCurrentAccount();
         log.Information($"[Engine] Persisted {reason} for {configManager.CurrentCharacterKey}");
+    }
+
+    private static bool TryParseLocalTime(string value, out TimeSpan result)
+    {
+        return TimeSpan.TryParse(value, out result);
+    }
+
+    private static bool IsWithinLocalWindow(TimeSpan now, TimeSpan start, TimeSpan end)
+    {
+        return start <= end
+            ? now >= start && now <= end
+            : now >= start || now <= end;
+    }
+
+    private void RollNagYourMomLocalDay(CharacterConfig config)
+    {
+        var localToday = DateTime.Now.Date;
+        if (config.NagYourMomLastLocalDate.Date == localToday)
+            return;
+
+        PersistCurrentCharacterConfig(current =>
+        {
+            current.NagYourMomAttemptsToday = 0;
+            current.NagYourMomLastLocalDate = localToday;
+        }, "nag your mom local-day rollover");
+    }
+
+    private bool ShouldCountNagYourMom(CharacterConfig config)
+    {
+        if (!config.EnableNagYourMom || config.NagYourMomRunsPerDay <= 0 || string.IsNullOrWhiteSpace(config.NagYourMomJob))
+            return false;
+
+        RollNagYourMomLocalDay(config);
+        return config.NagYourMomAttemptsToday < config.NagYourMomRunsPerDay;
+    }
+
+    private bool ShouldRunNagYourMomNow(CharacterConfig config, out string reason)
+    {
+        reason = "nag your mom disabled";
+
+        if (!config.EnableNagYourMom)
+            return false;
+
+        if (config.NagYourMomRunsPerDay <= 0)
+        {
+            reason = "mom runs/day is 0";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(config.NagYourMomJob))
+        {
+            reason = "Set a mom job";
+            return false;
+        }
+
+        if (config.NagYourMomAttemptsToday >= config.NagYourMomRunsPerDay)
+        {
+            reason = $"mom daily cap hit ({config.NagYourMomAttemptsToday}/{config.NagYourMomRunsPerDay})";
+            return false;
+        }
+
+        if (!TryParseLocalTime(config.NagYourMomWindowStartLocal, out var start) || !TryParseLocalTime(config.NagYourMomWindowEndLocal, out var end))
+        {
+            reason = "Invalid mom local-time window";
+            return false;
+        }
+
+        if (!IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end))
+        {
+            reason = $"Outside mom window ({config.NagYourMomWindowStartLocal}-{config.NagYourMomWindowEndLocal})";
+            return false;
+        }
+
+        reason = "Ready";
+        return true;
+    }
+
+    private void ConsumeNagYourMomAttempt(CharacterConfig config, string statusText)
+    {
+        PersistCurrentCharacterConfig(current =>
+        {
+            current.NagYourMomAttemptsToday++;
+            current.NagYourMomLastLocalDate = DateTime.Now.Date;
+        }, "nag your mom attempt");
+
+        NagYourMomStatusText = statusText;
     }
 
     /// <summary>

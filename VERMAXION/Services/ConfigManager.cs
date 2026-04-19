@@ -293,6 +293,7 @@ public class ConfigManager
             cc.EnableFashionReport = defaultConfig.EnableFashionReport;
             cc.EnableRegisterRegistrables = defaultConfig.EnableRegisterRegistrables;
             cc.EnableVendorStock = defaultConfig.EnableVendorStock;
+            cc.EnableNagYourMom = defaultConfig.EnableNagYourMom;
             cc.ChocoboRacesPerDay = defaultConfig.ChocoboRacesPerDay;
             cc.SkipChocoboRacingAtRank50 = defaultConfig.SkipChocoboRacingAtRank50;
             cc.FCBuffPurchaseAttempts = defaultConfig.FCBuffPurchaseAttempts;
@@ -300,6 +301,11 @@ public class ConfigManager
             cc.FCBuffMinGil = defaultConfig.FCBuffMinGil;
             cc.VendorStockGysahlGreensTarget = defaultConfig.VendorStockGysahlGreensTarget;
             cc.VendorStockGrade8DarkMatterTarget = defaultConfig.VendorStockGrade8DarkMatterTarget;
+            cc.NagYourMomRunsPerDay = defaultConfig.NagYourMomRunsPerDay;
+            cc.NagYourMomJob = defaultConfig.NagYourMomJob;
+            cc.NagYourMomWindowStartLocal = defaultConfig.NagYourMomWindowStartLocal;
+            cc.NagYourMomWindowEndLocal = defaultConfig.NagYourMomWindowEndLocal;
+            cc.NagYourMomStopAtSeriesRank25 = defaultConfig.NagYourMomStopAtSeriesRank25;
             cc.RequireSaucyForMiniCactpot = defaultConfig.RequireSaucyForMiniCactpot;
             cc.JumboCactpotNumberMode = defaultConfig.JumboCactpotNumberMode;
             cc.JumboCactpotFixedNumber = defaultConfig.JumboCactpotFixedNumber;

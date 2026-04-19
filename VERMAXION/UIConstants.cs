@@ -22,6 +22,12 @@ public static class UIConstants
         public const string JumboCactpot = "Jumbo Cactpot (auto DC timing)";
         public const string MiniCactpot = "Mini Cactpot";
         public const string ChocoboRacing = "Chocobo Racing (via Chocoholic)";
+        public const string NagYourMom = "nag your mom";
+        public const string NagYourMomRunsPerDay = "mom runs per day";
+        public const string NagYourMomJob = "mom job";
+        public const string NagYourMomWindowStartLocal = "Local start (HH:mm)";
+        public const string NagYourMomWindowEndLocal = "Local end (HH:mm)";
+        public const string NagYourMomStopAtSeriesRank25 = "Stop at series rank 25";
         public const string RacesPerDay = "Races Per Day";
         public const string SkipChocoboRacingIfLevel50 = "Don't race if racing chocobo is level 50";
         
@@ -47,5 +53,6 @@ public static class UIConstants
         public const string MinionRoulette = "Fire off /minion roulette once per AR postprocess";
         public const string SeasonalGearRoulette = "Randomly equip seasonal event gear for a fun ensemble each AR run";
         public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";
+        public const string NagYourMom = "AR-only mom task. Evaluated only during the normal VERMAXION post-process flow, gated by a local time window and daily attempt count.";
     }
 }

@@ -54,6 +54,7 @@ public sealed class Plugin : IDalamudPlugin
     public CurrentJobEquipmentService CurrentJobEquipmentService { get; init; }
     public YesAlreadyIPC YesAlreadyIPC { get; init; }
     public VNavmeshIPC VNavmeshIPC { get; init; }
+    public MomIPCClient MomIPCClient { get; init; }
     public VermaxionEngine Engine { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
@@ -94,6 +95,7 @@ public sealed class Plugin : IDalamudPlugin
         CurrentJobEquipmentService = new CurrentJobEquipmentService(CommandManager, Log, PlayerState);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
+        MomIPCClient = new MomIPCClient(PluginInterface, Log);
         VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
@@ -106,7 +108,7 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService,
             RegisterRegistrablesService, ARPostProcessService, YesAlreadyIPC,
-            ClientState);
+            ClientState, MomIPCClient);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -439,6 +441,9 @@ public sealed class Plugin : IDalamudPlugin
             Engine.Stop();
             Log.Information("[FULL STOP] Engine stopped");
         }
+
+        MomIPCClient.CancelActiveRun();
+        Log.Information("[FULL STOP] mom IPC cancel requested");
 
         // Stop all services that have state machines
         FCBuffService.Reset();

@@ -177,6 +177,13 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
                 "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
+            DrawTaskRow("nag your mom", config.EnableNagYourMom,
+                GetNagYourMomStatus(config, engine.NagYourMomStatusText),
+                "Test##Mom", () =>
+                {
+                    var result = plugin.MomIPCClient.StartCcRuns(1, config.NagYourMomJob);
+                    Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
+                }, "WIP");
 
             // --- Utility Tasks ---
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
@@ -278,6 +285,7 @@ public class MainWindow : Window, IDisposable
         // AR status
         var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
         ImGui.TextDisabled($"AR PostProcess: {arStatus}  |  {now.DayOfWeek}");
+        ImGui.TextDisabled($"mom IPC: {(plugin.MomIPCClient.IsReady() ? "Ready" : "Unavailable")}  |  nag your mom: {engine.NagYourMomStatusText}");
         
         ImGui.Spacing();
         ImGui.Separator();
@@ -377,5 +385,35 @@ public class MainWindow : Window, IDisposable
             return "Set targets";
 
         return "Every AR run";
+    }
+
+    private static string GetNagYourMomStatus(Models.CharacterConfig config, string engineStatus)
+    {
+        if (!config.EnableNagYourMom)
+            return "Off";
+
+        if (config.NagYourMomRunsPerDay <= 0)
+            return "Set runs/day";
+
+        if (string.IsNullOrWhiteSpace(config.NagYourMomJob))
+            return "Set job";
+
+        if (config.NagYourMomAttemptsToday >= config.NagYourMomRunsPerDay)
+            return "Daily cap hit";
+
+        if (!TimeSpan.TryParse(config.NagYourMomWindowStartLocal, out var start) || !TimeSpan.TryParse(config.NagYourMomWindowEndLocal, out var end))
+            return "Bad local window";
+
+        var now = DateTime.Now.TimeOfDay;
+        var inWindow = start <= end
+            ? now >= start && now <= end
+            : now >= start || now <= end;
+
+        if (!inWindow)
+            return "Outside local window";
+
+        return string.IsNullOrWhiteSpace(engineStatus) || engineStatus == "Idle"
+            ? "Ready on AR"
+            : engineStatus;
     }
 }
