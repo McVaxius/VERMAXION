@@ -183,7 +183,7 @@ public class MainWindow : Window, IDisposable
                 {
                     var result = plugin.MomIPCClient.StartCcRuns(1, config.NagYourMomJob);
                     Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
-                }, "WIP");
+                }, "OK");
 
             // --- Utility Tasks ---
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
