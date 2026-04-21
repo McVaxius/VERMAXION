@@ -1015,7 +1015,8 @@ public class VermaxionEngine
         if (!config.EnableNagYourDad)
             return false;
 
-        if (config.NagYourDadDungeonCount > 0 && string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        if (config.NagYourDadDungeonCount > 0 &&
+            (string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) || config.NagYourDadDungeonContentFinderConditionId == 0))
         {
             reason = "Set a dad dungeon";
             return false;
@@ -1055,7 +1056,9 @@ public class VermaxionEngine
 
     private static bool HasNagYourDadConfiguredWork(CharacterConfig config)
     {
-        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        if (config.NagYourDadDungeonCount > 0 &&
+            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
+            config.NagYourDadDungeonContentFinderConditionId != 0)
             return true;
 
         if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
@@ -1077,14 +1080,19 @@ public class VermaxionEngine
             RequestedBy = "VERMAXION",
         };
 
-        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        if (config.NagYourDadDungeonCount > 0 &&
+            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
+            config.NagYourDadDungeonContentFinderConditionId != 0)
         {
             request.Dungeon = new DadDungeonTask
             {
                 Count = Math.Max(1, config.NagYourDadDungeonCount),
-                Frequency = string.IsNullOrWhiteSpace(config.NagYourDadDungeonFrequency) ? "per AR" : config.NagYourDadDungeonFrequency.Trim(),
+                Frequency = DadRunRequestOptions.NormalizeFrequency(config.NagYourDadDungeonFrequency),
+                ContentFinderConditionId = config.NagYourDadDungeonContentFinderConditionId,
                 SelectedDungeon = config.NagYourDadDungeonName.Trim(),
                 SelectedJob = config.NagYourDadDungeonJob.Trim().ToUpperInvariant(),
+                ExecutionPreference = DadRunRequestOptions.TrustThenDutySupport,
+                QueueViaLanParty = config.NagYourDadQueueViaLanParty,
                 Unsynced = config.NagYourDadDungeonUnsynced,
             };
         }
@@ -1110,7 +1118,6 @@ public class VermaxionEngine
             request.Astrope = new DadAstropeTask
             {
                 Attempts = config.NagYourDadAstropeAttempts,
-                CoordinateWithAuraFarmer = config.NagYourDadCoordinateWithAuraFarmer,
                 ValidLocalTimeWindow = new DadTimeWindow
                 {
                     StartLocal = config.NagYourDadWindowStartLocal,

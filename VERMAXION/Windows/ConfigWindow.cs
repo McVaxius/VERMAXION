@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using Dalamud.Game;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using Lumina.Excel.Sheets;
 using VERMAXION.Models;
 using VERMAXION.Services;
 
@@ -13,6 +16,20 @@ public class ConfigWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
     private string editAccountAlias = "";
+    private readonly List<DadDutyOption> dadDutyOptions = new();
+    private string dadDungeonSearch = "";
+    private bool dadDutyOptionsLoaded;
+    private string[] dadLanPartyPresetOptions = DadRunRequestOptions.LanPartyPresetStubs;
+    private DateTime dadLanPartyPresetRefreshUtc = DateTime.MinValue;
+
+    private sealed class DadDutyOption
+    {
+        public uint Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string ContentType { get; init; } = string.Empty;
+        public string DisplayName => $"{Name} ({Id})";
+        public string SearchText => $"{Name} {Id} {ContentType}";
+    }
 
     public ConfigWindow(Plugin plugin)
         : base("Vermaxion Configuration##Config", ImGuiWindowFlags.None)
@@ -165,7 +182,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.BulletText("YesAlready - Paused during operations to prevent interference");
         ImGui.BulletText("TextAdvance - Enables automatic text progression during dialogue");
         ImGui.BulletText("mom - Private CC runner/rank reader for nag your mom");
-        ImGui.BulletText("dad - Private bootstrap shell for nag your dad");
+        ImGui.BulletText("dad - Private task structure for nag your dad");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Mini Cactpot:");
@@ -185,7 +202,7 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.TextDisabled("dad / Astrope:");
         ImGui.BulletText("dad - Receives combined dungeon, MSQ, commendation, and Astrope task payloads");
-        ImGui.BulletText("AuraFarmer - Future coordination seam when Astrope intent is enabled");
+        ImGui.BulletText("LAN Party - Future queue routing seam when LAN Party queue mode is enabled");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Lord of Verminion:");
@@ -789,6 +806,7 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.Indent();
 
+                ImGui.TextWrapped("Dungeon count tells dad how many times to run the selected Duty Finder duty.");
                 var dadDungeonCount = cc.NagYourDadDungeonCount;
                 ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
                 if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadDungeonCount, ref dadDungeonCount))
@@ -798,27 +816,45 @@ public class ConfigWindow : Window, IDisposable
                     configManager.SaveCurrentAccount();
                 }
 
-                var dadDungeonFrequency = cc.NagYourDadDungeonFrequency;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadDungeonFrequency, ref dadDungeonFrequency, 32))
+                ImGui.TextWrapped("Dungeon frequency controls when dad should queue the selected duty from AR-triggered VERMAXION runs.");
+                var dadDungeonFrequencyIndex = DadRunRequestOptions.GetFrequencyIndex(cc.NagYourDadDungeonFrequency);
+                if (ImGui.Combo(UIConstants.ConfigLabels.NagYourDadDungeonFrequency, ref dadDungeonFrequencyIndex, DadRunRequestOptions.DungeonFrequencies, DadRunRequestOptions.DungeonFrequencies.Length))
                 {
-                    cc.NagYourDadDungeonFrequency = dadDungeonFrequency.Trim();
+                    cc.NagYourDadDungeonFrequency = DadRunRequestOptions.DungeonFrequencies[dadDungeonFrequencyIndex];
                     changed = true;
                 }
 
-                var dadDungeonName = cc.NagYourDadDungeonName;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadDungeonName, ref dadDungeonName, 64))
-                {
-                    cc.NagYourDadDungeonName = dadDungeonName.Trim();
-                    changed = true;
-                }
+                ImGui.TextWrapped("Dungeon is the Duty Finder duty dad should run. Search by name or row id.");
+                DrawDadDutySelector(cc, ref changed);
 
+                ImGui.TextWrapped("Dungeon job is the job hint dad should use. Leave blank for current job.");
                 var dadDungeonJob = cc.NagYourDadDungeonJob;
                 if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadDungeonJob, ref dadDungeonJob, 16))
                 {
                     cc.NagYourDadDungeonJob = dadDungeonJob.Trim().ToUpperInvariant();
                     changed = true;
                 }
+                ImGui.TextDisabled($"Examples: {string.Join(" ", DadRunRequestOptions.JobHintExamples)}");
 
+                ImGui.TextWrapped("dad will prefer Trust when available, then fall back to Duty Support when Trust is not possible.");
+                ImGui.TextDisabled("Execution preference: Trust, then Duty Support");
+
+                ImGui.TextWrapped("LAN Party queue mode lets dad route queue setup through a selected LAN Party preset when that transport is implemented.");
+                var dadQueueViaLanParty = cc.NagYourDadQueueViaLanParty;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadQueueViaLanParty, ref dadQueueViaLanParty))
+                {
+                    cc.NagYourDadQueueViaLanParty = dadQueueViaLanParty;
+                    changed = true;
+                }
+                if (cc.NagYourDadQueueViaLanParty)
+                {
+                    ImGui.Indent();
+                    ImGui.TextWrapped("LAN Party preset is the Dad-provided queue preset for this dungeon queue path.");
+                    DrawDadLanPartyPresetSelector(cc, ref changed);
+                    ImGui.Unindent();
+                }
+
+                ImGui.TextWrapped("Unsynced is a dad hint for duties that cannot use Trust or Duty Support.");
                 var dadDungeonUnsynced = cc.NagYourDadDungeonUnsynced;
                 if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDungeonUnsynced, ref dadDungeonUnsynced))
                 {
@@ -826,20 +862,29 @@ public class ConfigWindow : Window, IDisposable
                     changed = true;
                 }
 
+                ImGui.TextWrapped("Daily MSQ asks dad to schedule the configured LAN Party preset for a daily MSQ run.");
                 var dadDailyMsq = cc.NagYourDadDailyMsq;
                 if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDailyMsq, ref dadDailyMsq))
                 {
                     cc.NagYourDadDailyMsq = dadDailyMsq;
                     changed = true;
                 }
-
-                var dadLanPartyPreset = cc.NagYourDadLanPartyPreset;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadLanPartyPreset, ref dadLanPartyPreset, 64))
+                if (cc.NagYourDadDailyMsq)
                 {
-                    cc.NagYourDadLanPartyPreset = dadLanPartyPreset.Trim();
-                    changed = true;
+                    ImGui.Indent();
+                    if (cc.NagYourDadQueueViaLanParty)
+                    {
+                        ImGui.TextDisabled($"Uses LAN Party preset selected above: {cc.NagYourDadLanPartyPreset}");
+                    }
+                    else
+                    {
+                        ImGui.TextWrapped("LAN Party preset is the Dad-provided queue preset for daily MSQ.");
+                        DrawDadLanPartyPresetSelector(cc, ref changed);
+                    }
+                    ImGui.Unindent();
                 }
 
+                ImGui.TextWrapped("Commendation attempts tells dad how many commendation-focused runs to attempt.");
                 var dadCommendationAttempts = cc.NagYourDadCommendationAttempts;
                 ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
                 if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadCommendationAttempts, ref dadCommendationAttempts))
@@ -849,6 +894,7 @@ public class ConfigWindow : Window, IDisposable
                     configManager.SaveCurrentAccount();
                 }
 
+                ImGui.TextWrapped("Astrope attempts tells dad how many Astrope commendation attempts to schedule inside the local time window.");
                 var dadAstropeAttempts = cc.NagYourDadAstropeAttempts;
                 ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
                 if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadAstropeAttempts, ref dadAstropeAttempts))
@@ -858,6 +904,7 @@ public class ConfigWindow : Window, IDisposable
                     configManager.SaveCurrentAccount();
                 }
 
+                ImGui.TextWrapped("Astrope local start is the first local machine time dad may run Astrope attempts.");
                 var dadWindowStart = cc.NagYourDadWindowStartLocal;
                 if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowStartLocal, ref dadWindowStart, 16))
                 {
@@ -865,17 +912,11 @@ public class ConfigWindow : Window, IDisposable
                     changed = true;
                 }
 
+                ImGui.TextWrapped("Astrope local end is the last local machine time dad may run Astrope attempts.");
                 var dadWindowEnd = cc.NagYourDadWindowEndLocal;
                 if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowEndLocal, ref dadWindowEnd, 16))
                 {
                     cc.NagYourDadWindowEndLocal = dadWindowEnd.Trim();
-                    changed = true;
-                }
-
-                var dadCoordinateWithAuraFarmer = cc.NagYourDadCoordinateWithAuraFarmer;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadCoordinateWithAuraFarmer, ref dadCoordinateWithAuraFarmer))
-                {
-                    cc.NagYourDadCoordinateWithAuraFarmer = dadCoordinateWithAuraFarmer;
                     changed = true;
                 }
 
@@ -946,6 +987,135 @@ public class ConfigWindow : Window, IDisposable
 
         if (changed)
             configManager.SaveCurrentAccount();
+    }
+
+    private void DrawDadDutySelector(CharacterConfig cc, ref bool changed)
+    {
+        LoadDadDutyOptions();
+
+        var selected = dadDutyOptions.FirstOrDefault(option => option.Id == cc.NagYourDadDungeonContentFinderConditionId);
+        var selectedLabel = selected?.DisplayName ?? "Select Duty Finder duty";
+
+        ImGui.SetNextItemWidth(420f);
+        if (!ImGui.BeginCombo(UIConstants.ConfigLabels.NagYourDadDungeonName, selectedLabel))
+            return;
+
+        ImGui.Text("Search:");
+        ImGui.SetNextItemWidth(390f);
+        ImGui.InputText("##DadDutySearch", ref dadDungeonSearch, 80);
+        ImGui.Separator();
+
+        if (dadDutyOptions.Count == 0)
+        {
+            ImGui.TextDisabled("Duty Finder list unavailable from Lumina.");
+            ImGui.EndCombo();
+            return;
+        }
+
+        var filter = dadDungeonSearch.Trim();
+        var shown = 0;
+        foreach (var option in dadDutyOptions)
+        {
+            if (!string.IsNullOrWhiteSpace(filter) &&
+                option.SearchText.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                continue;
+            }
+
+            var isSelected = option.Id == cc.NagYourDadDungeonContentFinderConditionId;
+            if (ImGui.Selectable(option.DisplayName, isSelected))
+            {
+                cc.NagYourDadDungeonContentFinderConditionId = option.Id;
+                cc.NagYourDadDungeonName = option.Name;
+                changed = true;
+            }
+
+            if (isSelected)
+                ImGui.SetItemDefaultFocus();
+
+            shown++;
+            if (shown >= 40)
+                break;
+        }
+
+        if (shown == 0)
+            ImGui.TextDisabled("No matching Duty Finder duties.");
+
+        ImGui.EndCombo();
+    }
+
+    private void DrawDadLanPartyPresetSelector(CharacterConfig cc, ref bool changed)
+    {
+        var presets = GetDadLanPartyPresetOptions(cc.NagYourDadLanPartyPreset);
+        var presetIndex = DadRunRequestOptions.GetLanPartyPresetIndex(cc.NagYourDadLanPartyPreset, presets);
+        if (ImGui.Combo(UIConstants.ConfigLabels.NagYourDadLanPartyPreset, ref presetIndex, presets, presets.Length))
+        {
+            cc.NagYourDadLanPartyPreset = presets[presetIndex];
+            changed = true;
+        }
+    }
+
+    private string[] GetDadLanPartyPresetOptions(string selectedPreset)
+    {
+        if (DateTime.UtcNow - dadLanPartyPresetRefreshUtc > TimeSpan.FromSeconds(10))
+        {
+            dadLanPartyPresetRefreshUtc = DateTime.UtcNow;
+            var dadPresets = plugin.DadIPCClient.GetLanPartyPresets();
+            if (dadPresets.Length > 0)
+                dadLanPartyPresetOptions = dadPresets;
+        }
+
+        if (string.IsNullOrWhiteSpace(selectedPreset) ||
+            dadLanPartyPresetOptions.Any(option => string.Equals(option, selectedPreset, StringComparison.OrdinalIgnoreCase)))
+        {
+            return dadLanPartyPresetOptions;
+        }
+
+        return dadLanPartyPresetOptions.Concat([selectedPreset]).ToArray();
+    }
+
+    private void LoadDadDutyOptions()
+    {
+        if (dadDutyOptionsLoaded)
+            return;
+
+        dadDutyOptionsLoaded = true;
+        dadDutyOptions.Clear();
+
+        try
+        {
+            var sheet = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>(ClientLanguage.English);
+            if (sheet is null)
+                return;
+
+            foreach (var row in sheet)
+            {
+                if (row.RowId == 0 || row.ContentType.ValueNullable is null || row.TerritoryType.ValueNullable is null)
+                    continue;
+
+                var name = CleanLuminaText(row.Name.ToString()).Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    continue;
+
+                var contentType = CleanLuminaText(row.ContentType.Value.Name.ToString()).Trim();
+                dadDutyOptions.Add(new DadDutyOption
+                {
+                    Id = row.RowId,
+                    Name = name,
+                    ContentType = contentType,
+                });
+            }
+
+            dadDutyOptions.Sort((left, right) =>
+            {
+                var nameComparison = string.Compare(left.Name, right.Name, StringComparison.OrdinalIgnoreCase);
+                return nameComparison != 0 ? nameComparison : left.Id.CompareTo(right.Id);
+            });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Config] Failed to load dad Duty Finder list: {ex.Message}");
+        }
     }
 
     private string GetAccountDisplayName(ConfigManager configManager, string accountId)

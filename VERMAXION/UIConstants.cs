@@ -33,14 +33,14 @@ public static class UIConstants
         public const string NagYourDadDungeonFrequency = "dad dungeon frequency";
         public const string NagYourDadDungeonName = "dad dungeon";
         public const string NagYourDadDungeonJob = "dad dungeon job";
+        public const string NagYourDadQueueViaLanParty = "QUEUE via LAN PARTY module";
         public const string NagYourDadDungeonUnsynced = "Run dungeon unsynced";
-        public const string NagYourDadDailyMsq = "Run daily MSQ via Lan Party";
-        public const string NagYourDadLanPartyPreset = "Lan Party preset";
+        public const string NagYourDadDailyMsq = "Run daily MSQ via LAN Party";
+        public const string NagYourDadLanPartyPreset = "LAN Party preset";
         public const string NagYourDadCommendationAttempts = "Commendation attempts";
         public const string NagYourDadAstropeAttempts = "Astrope attempts";
         public const string NagYourDadWindowStartLocal = "Astrope local start (HH:mm)";
         public const string NagYourDadWindowEndLocal = "Astrope local end (HH:mm)";
-        public const string NagYourDadCoordinateWithAuraFarmer = "Coordinate with Aura Farmer";
         public const string RacesPerDay = "Races Per Day";
         public const string SkipChocoboRacingIfLevel50 = "Don't race if racing chocobo is level 50";
         

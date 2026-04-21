@@ -38,9 +38,11 @@ public class CharacterConfig
     public string NagYourMomWindowEndLocal { get; set; } = "23:59";
     public bool NagYourMomStopAtSeriesRank25 { get; set; } = true;
     public int NagYourDadDungeonCount { get; set; } = 0;
-    public string NagYourDadDungeonFrequency { get; set; } = "per AR";
+    public string NagYourDadDungeonFrequency { get; set; } = DadRunRequestOptions.FrequencyPerArRun;
+    public uint NagYourDadDungeonContentFinderConditionId { get; set; } = 0;
     public string NagYourDadDungeonName { get; set; } = "";
     public string NagYourDadDungeonJob { get; set; } = "";
+    public bool NagYourDadQueueViaLanParty { get; set; } = false;
     public bool NagYourDadDungeonUnsynced { get; set; } = false;
     public bool NagYourDadDailyMsq { get; set; } = false;
     public string NagYourDadLanPartyPreset { get; set; } = "Daily MSQ";
@@ -48,7 +50,6 @@ public class CharacterConfig
     public int NagYourDadAstropeAttempts { get; set; } = 0;
     public string NagYourDadWindowStartLocal { get; set; } = "00:00";
     public string NagYourDadWindowEndLocal { get; set; } = "23:59";
-    public bool NagYourDadCoordinateWithAuraFarmer { get; set; } = true;
     
     // --- Personal Registrable Items ---
     public List<uint> PersonalRegistrableItems { get; set; } = new();
@@ -123,9 +124,11 @@ public class CharacterConfig
             NagYourMomWindowEndLocal = NagYourMomWindowEndLocal,
             NagYourMomStopAtSeriesRank25 = NagYourMomStopAtSeriesRank25,
             NagYourDadDungeonCount = NagYourDadDungeonCount,
-            NagYourDadDungeonFrequency = NagYourDadDungeonFrequency,
+            NagYourDadDungeonFrequency = DadRunRequestOptions.NormalizeFrequency(NagYourDadDungeonFrequency),
+            NagYourDadDungeonContentFinderConditionId = NagYourDadDungeonContentFinderConditionId,
             NagYourDadDungeonName = NagYourDadDungeonName,
             NagYourDadDungeonJob = NagYourDadDungeonJob,
+            NagYourDadQueueViaLanParty = NagYourDadQueueViaLanParty,
             NagYourDadDungeonUnsynced = NagYourDadDungeonUnsynced,
             NagYourDadDailyMsq = NagYourDadDailyMsq,
             NagYourDadLanPartyPreset = NagYourDadLanPartyPreset,
@@ -133,7 +136,6 @@ public class CharacterConfig
             NagYourDadAstropeAttempts = NagYourDadAstropeAttempts,
             NagYourDadWindowStartLocal = NagYourDadWindowStartLocal,
             NagYourDadWindowEndLocal = NagYourDadWindowEndLocal,
-            NagYourDadCoordinateWithAuraFarmer = NagYourDadCoordinateWithAuraFarmer,
             PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,

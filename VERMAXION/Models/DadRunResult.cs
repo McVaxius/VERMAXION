@@ -9,6 +9,11 @@ public sealed class DadRunResult
     public string RequestedBy { get; set; } = string.Empty;
     public int RequestedTaskCount { get; set; }
     public int CompletedTaskCount { get; set; }
+    public int ActiveTaskIndex { get; set; }
+    public int TotalTaskCount { get; set; }
+    public string ActiveTaskName { get; set; } = string.Empty;
+    public string ActiveTaskStatus { get; set; } = string.Empty;
+    public string BlockedReason { get; set; } = string.Empty;
     public string FailureReason { get; set; } = string.Empty;
     public string Summary { get; set; } = "Idle";
     public DadRunRequest? Request { get; set; }

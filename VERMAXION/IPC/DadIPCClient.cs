@@ -13,6 +13,7 @@ public sealed class DadIPCClient
     private readonly JsonSerializerOptions jsonOptions = new(JsonSerializerDefaults.Web);
     private readonly ICallGateSubscriber<bool> isReadySubscriber;
     private readonly ICallGateSubscriber<string> statusSubscriber;
+    private readonly ICallGateSubscriber<string> lanPartyPresetsSubscriber;
     private readonly ICallGateSubscriber<string, string> startTasksSubscriber;
     private readonly ICallGateSubscriber<string> cancelSubscriber;
 
@@ -21,6 +22,7 @@ public sealed class DadIPCClient
         this.log = log;
         isReadySubscriber = pluginInterface.GetIpcSubscriber<bool>("dad.IsReady");
         statusSubscriber = pluginInterface.GetIpcSubscriber<string>("dad.GetStatus");
+        lanPartyPresetsSubscriber = pluginInterface.GetIpcSubscriber<string>("dad.GetLanPartyPresets");
         startTasksSubscriber = pluginInterface.GetIpcSubscriber<string, string>("dad.StartTasks");
         cancelSubscriber = pluginInterface.GetIpcSubscriber<string>("dad.CancelActiveRun");
     }
@@ -40,6 +42,9 @@ public sealed class DadIPCClient
 
     public DadRunResult GetStatus()
         => InvokeJson(statusSubscriber, DadRunResult.Idle(), "[dad IPC] GetStatus failed");
+
+    public string[] GetLanPartyPresets()
+        => InvokeJson(lanPartyPresetsSubscriber, DadRunRequestOptions.LanPartyPresetStubs, "[dad IPC] GetLanPartyPresets failed");
 
     public DadRunResult StartTasks(DadRunRequest request)
     {

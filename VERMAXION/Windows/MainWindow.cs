@@ -422,7 +422,8 @@ public class MainWindow : Window, IDisposable
         if (!config.EnableNagYourDad)
             return "Off";
 
-        if (config.NagYourDadDungeonCount > 0 && string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        if (config.NagYourDadDungeonCount > 0 &&
+            (string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) || config.NagYourDadDungeonContentFinderConditionId == 0))
             return "Set dungeon";
 
         if (config.NagYourDadDailyMsq && string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
@@ -455,7 +456,9 @@ public class MainWindow : Window, IDisposable
 
     private static bool HasNagYourDadConfiguredWork(Models.CharacterConfig config)
     {
-        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        if (config.NagYourDadDungeonCount > 0 &&
+            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
+            config.NagYourDadDungeonContentFinderConditionId != 0)
             return true;
 
         if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
@@ -477,14 +480,19 @@ public class MainWindow : Window, IDisposable
             RequestedBy = "VERMAXION UI",
         };
 
-        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        if (config.NagYourDadDungeonCount > 0 &&
+            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
+            config.NagYourDadDungeonContentFinderConditionId != 0)
         {
             request.Dungeon = new Models.DadDungeonTask
             {
                 Count = Math.Max(1, config.NagYourDadDungeonCount),
-                Frequency = string.IsNullOrWhiteSpace(config.NagYourDadDungeonFrequency) ? "per AR" : config.NagYourDadDungeonFrequency.Trim(),
+                Frequency = Models.DadRunRequestOptions.NormalizeFrequency(config.NagYourDadDungeonFrequency),
+                ContentFinderConditionId = config.NagYourDadDungeonContentFinderConditionId,
                 SelectedDungeon = config.NagYourDadDungeonName.Trim(),
                 SelectedJob = config.NagYourDadDungeonJob.Trim().ToUpperInvariant(),
+                ExecutionPreference = Models.DadRunRequestOptions.TrustThenDutySupport,
+                QueueViaLanParty = config.NagYourDadQueueViaLanParty,
                 Unsynced = config.NagYourDadDungeonUnsynced,
             };
         }
@@ -510,7 +518,6 @@ public class MainWindow : Window, IDisposable
             request.Astrope = new Models.DadAstropeTask
             {
                 Attempts = config.NagYourDadAstropeAttempts,
-                CoordinateWithAuraFarmer = config.NagYourDadCoordinateWithAuraFarmer,
                 ValidLocalTimeWindow = new Models.DadTimeWindow
                 {
                     StartLocal = config.NagYourDadWindowStartLocal,
