@@ -184,6 +184,13 @@ public class MainWindow : Window, IDisposable
                     var result = plugin.MomIPCClient.StartCcRuns(1, config.NagYourMomJob);
                     Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
                 }, "OK");
+            DrawTaskRow("nag your dad", config.EnableNagYourDad,
+                GetNagYourDadStatus(config, engine.NagYourDadStatusText),
+                "Test##Dad", () =>
+                {
+                    var result = plugin.DadIPCClient.StartTasks(BuildDadRunRequest(config));
+                    Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
+                }, "WIP");
 
             // --- Utility Tasks ---
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
@@ -286,6 +293,7 @@ public class MainWindow : Window, IDisposable
         var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
         ImGui.TextDisabled($"AR PostProcess: {arStatus}  |  {now.DayOfWeek}");
         ImGui.TextDisabled($"mom IPC: {(plugin.MomIPCClient.IsReady() ? "Ready" : "Unavailable")}  |  nag your mom: {engine.NagYourMomStatusText}");
+        ImGui.TextDisabled($"dad IPC: {(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")}  |  nag your dad: {engine.NagYourDadStatusText}");
         
         ImGui.Spacing();
         ImGui.Separator();
@@ -407,5 +415,110 @@ public class MainWindow : Window, IDisposable
         return string.IsNullOrWhiteSpace(engineStatus) || engineStatus == "Idle"
             ? "Ready on AR"
             : engineStatus;
+    }
+
+    private static string GetNagYourDadStatus(Models.CharacterConfig config, string engineStatus)
+    {
+        if (!config.EnableNagYourDad)
+            return "Off";
+
+        if (config.NagYourDadDungeonCount > 0 && string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+            return "Set dungeon";
+
+        if (config.NagYourDadDailyMsq && string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
+            return "Set Lan Party preset";
+
+        if (!HasNagYourDadConfiguredWork(config))
+            return "Set dad tasks";
+
+        if (config.NagYourDadAstropeAttempts > 0)
+        {
+            if (!TimeSpan.TryParse(config.NagYourDadWindowStartLocal, out var start) ||
+                !TimeSpan.TryParse(config.NagYourDadWindowEndLocal, out var end))
+            {
+                return "Bad Astrope window";
+            }
+
+            var now = DateTime.Now.TimeOfDay;
+            var inWindow = start <= end
+                ? now >= start && now <= end
+                : now >= start || now <= end;
+
+            if (!inWindow)
+                return "Outside Astrope window";
+        }
+
+        return string.IsNullOrWhiteSpace(engineStatus) || engineStatus == "Idle"
+            ? "Ready on AR"
+            : engineStatus;
+    }
+
+    private static bool HasNagYourDadConfiguredWork(Models.CharacterConfig config)
+    {
+        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+            return true;
+
+        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
+            return true;
+
+        if (config.NagYourDadCommendationAttempts > 0)
+            return true;
+
+        if (config.NagYourDadAstropeAttempts > 0)
+            return true;
+
+        return false;
+    }
+
+    private static Models.DadRunRequest BuildDadRunRequest(Models.CharacterConfig config)
+    {
+        var request = new Models.DadRunRequest
+        {
+            RequestedBy = "VERMAXION UI",
+        };
+
+        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        {
+            request.Dungeon = new Models.DadDungeonTask
+            {
+                Count = Math.Max(1, config.NagYourDadDungeonCount),
+                Frequency = string.IsNullOrWhiteSpace(config.NagYourDadDungeonFrequency) ? "per AR" : config.NagYourDadDungeonFrequency.Trim(),
+                SelectedDungeon = config.NagYourDadDungeonName.Trim(),
+                SelectedJob = config.NagYourDadDungeonJob.Trim().ToUpperInvariant(),
+                Unsynced = config.NagYourDadDungeonUnsynced,
+            };
+        }
+
+        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
+        {
+            request.DailyMsq = new Models.DadDailyMsqTask
+            {
+                LanPartyPreset = config.NagYourDadLanPartyPreset.Trim(),
+            };
+        }
+
+        if (config.NagYourDadCommendationAttempts > 0)
+        {
+            request.Commendation = new Models.DadCommendationTask
+            {
+                Attempts = config.NagYourDadCommendationAttempts,
+            };
+        }
+
+        if (config.NagYourDadAstropeAttempts > 0)
+        {
+            request.Astrope = new Models.DadAstropeTask
+            {
+                Attempts = config.NagYourDadAstropeAttempts,
+                CoordinateWithAuraFarmer = config.NagYourDadCoordinateWithAuraFarmer,
+                ValidLocalTimeWindow = new Models.DadTimeWindow
+                {
+                    StartLocal = config.NagYourDadWindowStartLocal,
+                    EndLocal = config.NagYourDadWindowEndLocal,
+                },
+            };
+        }
+
+        return request;
     }
 }

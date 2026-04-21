@@ -1,4 +1,5 @@
 using System;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
 using VERMAXION.Models;
@@ -37,6 +38,7 @@ public class VermaxionEngine
     private readonly YesAlreadyIPC yesAlreadyIPC;
     private readonly IClientState clientState;
     private readonly MomIPCClient momIPCClient;
+    private readonly DadIPCClient dadIPCClient;
 
     private EngineState state = EngineState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -44,6 +46,10 @@ public class VermaxionEngine
     private bool weeklyResetDetected = false;
     private bool dailyResetDetected = false;
     private bool nagYourMomRequestIssued = false;
+    private bool nagYourDadRequestIssued = false;
+    private bool taskStartHoldLogged = false;
+    private EngineState taskStartHoldState = EngineState.Idle;
+    private bool? activeJumboCactpotPayoutRoute = null;
 
     public enum EngineState
     {
@@ -60,6 +66,7 @@ public class VermaxionEngine
         RunningFashionReport,
         RunningChocoboRacing,
         RunningNagYourMom,
+        RunningNagYourDad,
         EnablingHenchman,
         SignalingARDone,
         Complete,
@@ -70,6 +77,7 @@ public class VermaxionEngine
     public bool IsRunning => state != EngineState.Idle && state != EngineState.Complete && state != EngineState.Error;
     public string StatusText { get; private set; } = "Idle";
     public string NagYourMomStatusText { get; private set; } = "Idle";
+    public string NagYourDadStatusText { get; private set; } = "Idle";
     
     public bool IsRunningDebug => IsRunning; // For debugging
 
@@ -88,7 +96,8 @@ public class VermaxionEngine
         ARPostProcessService arService,
         YesAlreadyIPC yesAlreadyIPC,
         IClientState clientState,
-        MomIPCClient momIPCClient)
+        MomIPCClient momIPCClient,
+        DadIPCClient dadIPCClient)
     {
         this.log = log;
         this.configManager = configManager;
@@ -105,6 +114,7 @@ public class VermaxionEngine
         this.yesAlreadyIPC = yesAlreadyIPC;
         this.clientState = clientState;
         this.momIPCClient = momIPCClient;
+        this.dadIPCClient = dadIPCClient;
 
         // Subscribe to territory change events to close menus after teleporting
         clientState.TerritoryChanged += OnTerritoryChanged;
@@ -122,6 +132,7 @@ public class VermaxionEngine
 
         SendRunShutdownCommandBundle();
         NagYourMomStatusText = "Idle";
+        NagYourDadStatusText = "Idle";
         log.Information("[Engine] === Starting Vermaxion post-processing ===");
         SetState(EngineState.Starting);
     }
@@ -137,6 +148,7 @@ public class VermaxionEngine
 
         SendRunShutdownCommandBundle();
         NagYourMomStatusText = "Idle";
+        NagYourDadStatusText = "Idle";
         log.Information("[Engine] === Manual start ===");
         SetState(EngineState.Starting);
     }
@@ -154,7 +166,9 @@ public class VermaxionEngine
         cactpotService.Reset();
         chocoboRaceService.Reset();
         momIPCClient.CancelActiveRun();
+        dadIPCClient.CancelActiveRun();
         NagYourMomStatusText = "Cancelled";
+        NagYourDadStatusText = "Cancelled";
         yesAlreadyIPC.Unpause();
         SetState(EngineState.Idle);
     }
@@ -163,7 +177,9 @@ public class VermaxionEngine
     {
         log.Information("[Engine] Stopped by user");
         momIPCClient.CancelActiveRun();
+        dadIPCClient.CancelActiveRun();
         NagYourMomStatusText = "Stopped";
+        NagYourDadStatusText = "Stopped";
         SetState(EngineState.Idle);
     }
 
@@ -187,6 +203,7 @@ public class VermaxionEngine
         if (activeConfig.EnableJumboCactpot && !cactpotService.IsComplete) count++;
         if (activeConfig.EnableChocoboRacing && !chocoboRaceService.IsComplete) count++;
         if (ShouldCountNagYourMom(activeConfig)) count++;
+        if (ShouldCountNagYourDad(activeConfig)) count++;
         
         return count;
     }
@@ -376,6 +393,9 @@ public class VermaxionEngine
                 {
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
+                        if (ShouldHoldNonDutyTaskStart("Mini Cactpot"))
+                            return;
+
                         // Clean slate before starting Mini Cactpot
                         log.Information("[Engine] Clean slate: clearing open UI before Mini Cactpot");
                         ResetInteractionState();
@@ -423,10 +443,16 @@ public class VermaxionEngine
                     ResetDetectionService.TaskNeedsRun(activeConfig.JumboCactpotLastCompleted, activeConfig.JumboCactpotNextReset))
                 {
                     var now = DateTime.UtcNow;
-                    var runSaturdayPayout = ResetDetectionService.IsJumboCactpotPayoutAvailable(now);
 
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
+                        if (ShouldHoldNonDutyTaskStart("Jumbo Cactpot"))
+                            return;
+
+                        var runSaturdayPayout = ResetDetectionService.IsJumboCactpotPayoutAvailable(now);
+                        activeJumboCactpotPayoutRoute = runSaturdayPayout;
+                        log.Information($"[Engine] Jumbo Cactpot routing decision: now={now:u}, dc={ResetDetectionService.GetCurrentCharacterJumboDataCenterName()}, payoutAvailable={runSaturdayPayout}");
+
                         // Clean slate before starting Jumbo Cactpot
                         log.Information("[Engine] Clean slate: clearing open UI before Jumbo Cactpot");
                         ResetInteractionState();
@@ -444,26 +470,30 @@ public class VermaxionEngine
                         return;
                     }
 
+                    var routeWasPayout = activeJumboCactpotPayoutRoute ?? ResetDetectionService.IsJumboCactpotPayoutAvailable(now);
                     cactpotService.Update();
 
                     if (cactpotService.IsComplete)
                     {
+                        var completedAt = DateTime.UtcNow;
                         PersistCurrentCharacterConfig(config =>
                         {
-                            config.JumboCactpotLastCompleted = now;
-                            config.JumboCactpotNextReset = runSaturdayPayout
-                                ? ResetDetectionService.GetNextWeeklyReset(now)
-                                : ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now);
-                            config.JumboCactpotCompletedThisWeek = runSaturdayPayout;
+                            config.JumboCactpotLastCompleted = completedAt;
+                            config.JumboCactpotNextReset = routeWasPayout
+                                ? ResetDetectionService.GetNextWeeklyReset(completedAt)
+                                : ResetDetectionService.GetNextJumboCactpotPayoutAvailability(completedAt);
+                            config.JumboCactpotCompletedThisWeek = routeWasPayout;
                         }, "Jumbo Cactpot completion");
                         cactpotService.Reset();
+                        activeJumboCactpotPayoutRoute = null;
                         AdvanceToNextTask(EngineState.RunningJumboCactpot);
                     }
                     else if (cactpotService.IsFailed)
                     {
                         log.Warning("[Engine] Jumbo Cactpot failed - continuing");
-                        MarkJumboCactpotFailed(runSaturdayPayout);
+                        MarkJumboCactpotFailed(routeWasPayout);
                         cactpotService.Reset();
+                        activeJumboCactpotPayoutRoute = null;
                         AdvanceToNextTask(EngineState.RunningJumboCactpot);
                     }
                 }
@@ -645,6 +675,68 @@ public class VermaxionEngine
                 AdvanceToNextTask(EngineState.RunningNagYourMom);
                 break;
 
+            case EngineState.RunningNagYourDad:
+                activeConfig = GetLiveActiveConfig();
+                if (!ShouldRunNagYourDadNow(activeConfig!, out var dadSkipReason))
+                {
+                    NagYourDadStatusText = dadSkipReason;
+                    AdvanceToNextTask(EngineState.RunningNagYourDad);
+                    break;
+                }
+
+                if (!nagYourDadRequestIssued)
+                {
+                    if (!dadIPCClient.IsReady())
+                    {
+                        NagYourDadStatusText = "dad IPC is not ready.";
+                        log.Warning("[Engine] dad IPC is not ready - deferring until the next AR opportunity");
+                        AdvanceToNextTask(EngineState.RunningNagYourDad);
+                        break;
+                    }
+
+                    var dadRequest = BuildDadRunRequest(activeConfig!);
+                    if (dadRequest.GetConfiguredTaskCount() == 0)
+                    {
+                        NagYourDadStatusText = "No dad tasks configured.";
+                        AdvanceToNextTask(EngineState.RunningNagYourDad);
+                        break;
+                    }
+
+                    var dadStartResult = dadIPCClient.StartTasks(dadRequest);
+                    NagYourDadStatusText = dadStartResult.Summary;
+
+                    if (dadStartResult.Status is DadRunStatus.Rejected or DadRunStatus.Failed or DadRunStatus.Cancelled)
+                    {
+                        log.Warning($"[Engine] nag your dad start failed: {dadStartResult.Summary}");
+                        AdvanceToNextTask(EngineState.RunningNagYourDad);
+                        break;
+                    }
+
+                    if (dadStartResult.Status == DadRunStatus.Completed)
+                    {
+                        log.Information("[Engine] nag your dad completed immediately");
+                        AdvanceToNextTask(EngineState.RunningNagYourDad);
+                        break;
+                    }
+
+                    nagYourDadRequestIssued = true;
+                    return;
+                }
+
+                var currentDadStatus = dadIPCClient.GetStatus();
+                NagYourDadStatusText = currentDadStatus.Summary;
+                if (currentDadStatus.Status is DadRunStatus.Queued or DadRunStatus.Running)
+                    return;
+
+                nagYourDadRequestIssued = false;
+                if (currentDadStatus.Status == DadRunStatus.Completed)
+                    log.Information("[Engine] nag your dad completed successfully");
+                else
+                    log.Warning($"[Engine] nag your dad ended with status {currentDadStatus.Status}: {currentDadStatus.Summary}");
+
+                AdvanceToNextTask(EngineState.RunningNagYourDad);
+                break;
+
             case EngineState.EnablingHenchman:
                 if (activeConfig!.EnableHenchmanManagement)
                 {
@@ -705,6 +797,47 @@ public class VermaxionEngine
         log.Warning("[Engine] Jumbo Cactpot failed and will be suppressed until its next reset window.");
     }
 
+    private bool ShouldHoldNonDutyTaskStart(string taskName)
+    {
+        var blockReason = GetNonDutyTaskStartBlockReason();
+        if (blockReason == null)
+        {
+            taskStartHoldLogged = false;
+            taskStartHoldState = EngineState.Idle;
+            return false;
+        }
+
+        StatusText = $"Waiting for duty/queue before {taskName}";
+        if (!taskStartHoldLogged || taskStartHoldState != state)
+        {
+            log.Warning($"[Engine] Holding {taskName} start until duty/queue clears: {blockReason}");
+            taskStartHoldLogged = true;
+            taskStartHoldState = state;
+        }
+
+        return true;
+    }
+
+    private static string? GetNonDutyTaskStartBlockReason()
+    {
+        if (Plugin.Condition[ConditionFlag.BoundByDuty])
+            return "BoundByDuty condition is active";
+        if (Plugin.Condition[ConditionFlag.InDutyQueue])
+            return "InDutyQueue condition is active";
+        if (Plugin.Condition[ConditionFlag.WaitingForDuty])
+            return "WaitingForDuty condition is active";
+        if (Plugin.Condition[ConditionFlag.WaitingForDutyFinder])
+            return "WaitingForDutyFinder condition is active";
+        if (IsAddonVisible("ContentsFinderConfirm"))
+            return "ContentsFinderConfirm is visible";
+        if (IsAddonVisible("ContentsFinder"))
+            return "ContentsFinder is visible";
+        if (!IsPlayerAvailable())
+            return "player is not available";
+
+        return null;
+    }
+
     private void AdvanceToNextTask(EngineState currentTask)
     {
         var next = currentTask switch
@@ -717,7 +850,8 @@ public class VermaxionEngine
             EngineState.RunningJumboCactpot => EngineState.RunningFashionReport,
             EngineState.RunningFashionReport => EngineState.RunningChocoboRacing,
             EngineState.RunningChocoboRacing => EngineState.RunningNagYourMom,
-            EngineState.RunningNagYourMom => EngineState.EnablingHenchman,
+            EngineState.RunningNagYourMom => EngineState.RunningNagYourDad,
+            EngineState.RunningNagYourDad => EngineState.EnablingHenchman,
             _ => EngineState.EnablingHenchman,
         };
 
@@ -745,6 +879,7 @@ public class VermaxionEngine
             EngineState.RunningFashionReport => "Fashion Report",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
             EngineState.RunningNagYourMom => "nag your mom",
+            EngineState.RunningNagYourDad => "nag your dad",
             EngineState.EnablingHenchman => "Enabling Henchman",
             EngineState.SignalingARDone => "Signaling AR",
             EngineState.Complete => "Complete",
@@ -754,6 +889,15 @@ public class VermaxionEngine
 
         if (newState != EngineState.RunningNagYourMom)
             nagYourMomRequestIssued = false;
+        if (newState != EngineState.RunningNagYourDad)
+            nagYourDadRequestIssued = false;
+        if (newState != EngineState.RunningJumboCactpot)
+            activeJumboCactpotPayoutRoute = null;
+        if (newState != EngineState.RunningMiniCactpot && newState != EngineState.RunningJumboCactpot)
+        {
+            taskStartHoldLogged = false;
+            taskStartHoldState = EngineState.Idle;
+        }
     }
 
     private CharacterConfig GetLiveActiveConfig()
@@ -854,6 +998,128 @@ public class VermaxionEngine
         }, "nag your mom attempt");
 
         NagYourMomStatusText = statusText;
+    }
+
+    private bool ShouldCountNagYourDad(CharacterConfig config)
+    {
+        if (!config.EnableNagYourDad)
+            return false;
+
+        return HasNagYourDadConfiguredWork(config);
+    }
+
+    private bool ShouldRunNagYourDadNow(CharacterConfig config, out string reason)
+    {
+        reason = "nag your dad disabled";
+
+        if (!config.EnableNagYourDad)
+            return false;
+
+        if (config.NagYourDadDungeonCount > 0 && string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        {
+            reason = "Set a dad dungeon";
+            return false;
+        }
+
+        if (config.NagYourDadDailyMsq && string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
+        {
+            reason = "Set a Lan Party preset";
+            return false;
+        }
+
+        if (!HasNagYourDadConfiguredWork(config))
+        {
+            reason = "Set dad tasks";
+            return false;
+        }
+
+        if (config.NagYourDadAstropeAttempts > 0)
+        {
+            if (!TryParseLocalTime(config.NagYourDadWindowStartLocal, out var start) ||
+                !TryParseLocalTime(config.NagYourDadWindowEndLocal, out var end))
+            {
+                reason = "Invalid dad Astrope local-time window";
+                return false;
+            }
+
+            if (!IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end))
+            {
+                reason = $"Outside dad Astrope window ({config.NagYourDadWindowStartLocal}-{config.NagYourDadWindowEndLocal})";
+                return false;
+            }
+        }
+
+        reason = "Ready";
+        return true;
+    }
+
+    private static bool HasNagYourDadConfiguredWork(CharacterConfig config)
+    {
+        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+            return true;
+
+        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
+            return true;
+
+        if (config.NagYourDadCommendationAttempts > 0)
+            return true;
+
+        if (config.NagYourDadAstropeAttempts > 0)
+            return true;
+
+        return false;
+    }
+
+    private static DadRunRequest BuildDadRunRequest(CharacterConfig config)
+    {
+        var request = new DadRunRequest
+        {
+            RequestedBy = "VERMAXION",
+        };
+
+        if (config.NagYourDadDungeonCount > 0 && !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName))
+        {
+            request.Dungeon = new DadDungeonTask
+            {
+                Count = Math.Max(1, config.NagYourDadDungeonCount),
+                Frequency = string.IsNullOrWhiteSpace(config.NagYourDadDungeonFrequency) ? "per AR" : config.NagYourDadDungeonFrequency.Trim(),
+                SelectedDungeon = config.NagYourDadDungeonName.Trim(),
+                SelectedJob = config.NagYourDadDungeonJob.Trim().ToUpperInvariant(),
+                Unsynced = config.NagYourDadDungeonUnsynced,
+            };
+        }
+
+        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
+        {
+            request.DailyMsq = new DadDailyMsqTask
+            {
+                LanPartyPreset = config.NagYourDadLanPartyPreset.Trim(),
+            };
+        }
+
+        if (config.NagYourDadCommendationAttempts > 0)
+        {
+            request.Commendation = new DadCommendationTask
+            {
+                Attempts = config.NagYourDadCommendationAttempts,
+            };
+        }
+
+        if (config.NagYourDadAstropeAttempts > 0)
+        {
+            request.Astrope = new DadAstropeTask
+            {
+                Attempts = config.NagYourDadAstropeAttempts,
+                CoordinateWithAuraFarmer = config.NagYourDadCoordinateWithAuraFarmer,
+                ValidLocalTimeWindow = new DadTimeWindow
+                {
+                    StartLocal = config.NagYourDadWindowStartLocal,
+                    EndLocal = config.NagYourDadWindowEndLocal,
+                },
+            };
+        }
+
+        return request;
     }
 
     /// <summary>

@@ -165,6 +165,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.BulletText("YesAlready - Paused during operations to prevent interference");
         ImGui.BulletText("TextAdvance - Enables automatic text progression during dialogue");
         ImGui.BulletText("mom - Private CC runner/rank reader for nag your mom");
+        ImGui.BulletText("dad - Private bootstrap shell for nag your dad");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Mini Cactpot:");
@@ -180,6 +181,11 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.TextDisabled("Chocobo Racing:");
         ImGui.BulletText("Chocoholic - Handles chocobo race automation");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("dad / Astrope:");
+        ImGui.BulletText("dad - Receives combined dungeon, MSQ, commendation, and Astrope task payloads");
+        ImGui.BulletText("AuraFarmer - Future coordination seam when Astrope intent is enabled");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Lord of Verminion:");
@@ -766,6 +772,115 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextDisabled($"Attempts today: {cc.NagYourMomAttemptsToday}/{cc.NagYourMomRunsPerDay}");
                 ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourMomStatusText}");
                 ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, reads the mom rank gate, and then asks mom for one full CC run.");
+                ImGui.Unindent();
+            }
+
+            var nagYourDad = cc.EnableNagYourDad;
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDad, ref nagYourDad))
+            {
+                cc.EnableNagYourDad = nagYourDad;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(UIConstants.Tooltips.NagYourDad);
+            if (cc.EnableNagYourDad)
+            {
+                ImGui.Indent();
+
+                var dadDungeonCount = cc.NagYourDadDungeonCount;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadDungeonCount, ref dadDungeonCount))
+                {
+                    cc.NagYourDadDungeonCount = Math.Max(0, dadDungeonCount);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+
+                var dadDungeonFrequency = cc.NagYourDadDungeonFrequency;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadDungeonFrequency, ref dadDungeonFrequency, 32))
+                {
+                    cc.NagYourDadDungeonFrequency = dadDungeonFrequency.Trim();
+                    changed = true;
+                }
+
+                var dadDungeonName = cc.NagYourDadDungeonName;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadDungeonName, ref dadDungeonName, 64))
+                {
+                    cc.NagYourDadDungeonName = dadDungeonName.Trim();
+                    changed = true;
+                }
+
+                var dadDungeonJob = cc.NagYourDadDungeonJob;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadDungeonJob, ref dadDungeonJob, 16))
+                {
+                    cc.NagYourDadDungeonJob = dadDungeonJob.Trim().ToUpperInvariant();
+                    changed = true;
+                }
+
+                var dadDungeonUnsynced = cc.NagYourDadDungeonUnsynced;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDungeonUnsynced, ref dadDungeonUnsynced))
+                {
+                    cc.NagYourDadDungeonUnsynced = dadDungeonUnsynced;
+                    changed = true;
+                }
+
+                var dadDailyMsq = cc.NagYourDadDailyMsq;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDailyMsq, ref dadDailyMsq))
+                {
+                    cc.NagYourDadDailyMsq = dadDailyMsq;
+                    changed = true;
+                }
+
+                var dadLanPartyPreset = cc.NagYourDadLanPartyPreset;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadLanPartyPreset, ref dadLanPartyPreset, 64))
+                {
+                    cc.NagYourDadLanPartyPreset = dadLanPartyPreset.Trim();
+                    changed = true;
+                }
+
+                var dadCommendationAttempts = cc.NagYourDadCommendationAttempts;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadCommendationAttempts, ref dadCommendationAttempts))
+                {
+                    cc.NagYourDadCommendationAttempts = Math.Max(0, dadCommendationAttempts);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+
+                var dadAstropeAttempts = cc.NagYourDadAstropeAttempts;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadAstropeAttempts, ref dadAstropeAttempts))
+                {
+                    cc.NagYourDadAstropeAttempts = Math.Max(0, dadAstropeAttempts);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+
+                var dadWindowStart = cc.NagYourDadWindowStartLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowStartLocal, ref dadWindowStart, 16))
+                {
+                    cc.NagYourDadWindowStartLocal = dadWindowStart.Trim();
+                    changed = true;
+                }
+
+                var dadWindowEnd = cc.NagYourDadWindowEndLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowEndLocal, ref dadWindowEnd, 16))
+                {
+                    cc.NagYourDadWindowEndLocal = dadWindowEnd.Trim();
+                    changed = true;
+                }
+
+                var dadCoordinateWithAuraFarmer = cc.NagYourDadCoordinateWithAuraFarmer;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadCoordinateWithAuraFarmer, ref dadCoordinateWithAuraFarmer))
+                {
+                    cc.NagYourDadCoordinateWithAuraFarmer = dadCoordinateWithAuraFarmer;
+                    changed = true;
+                }
+
+                ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourDadStatusText}");
+                ImGui.TextWrapped("AR-only task. VERMAXION builds one combined dad payload from the configured dungeon, MSQ, commendation, and Astrope asks. If dad is unavailable or rejects the payload, VERMAXION moves on and retries on the next AR pass.");
                 ImGui.Unindent();
             }
         }

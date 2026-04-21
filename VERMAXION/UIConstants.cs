@@ -28,6 +28,19 @@ public static class UIConstants
         public const string NagYourMomWindowStartLocal = "Local start (HH:mm)";
         public const string NagYourMomWindowEndLocal = "Local end (HH:mm)";
         public const string NagYourMomStopAtSeriesRank25 = "Stop at series rank 25";
+        public const string NagYourDad = "nag your dad";
+        public const string NagYourDadDungeonCount = "dad dungeon count";
+        public const string NagYourDadDungeonFrequency = "dad dungeon frequency";
+        public const string NagYourDadDungeonName = "dad dungeon";
+        public const string NagYourDadDungeonJob = "dad dungeon job";
+        public const string NagYourDadDungeonUnsynced = "Run dungeon unsynced";
+        public const string NagYourDadDailyMsq = "Run daily MSQ via Lan Party";
+        public const string NagYourDadLanPartyPreset = "Lan Party preset";
+        public const string NagYourDadCommendationAttempts = "Commendation attempts";
+        public const string NagYourDadAstropeAttempts = "Astrope attempts";
+        public const string NagYourDadWindowStartLocal = "Astrope local start (HH:mm)";
+        public const string NagYourDadWindowEndLocal = "Astrope local end (HH:mm)";
+        public const string NagYourDadCoordinateWithAuraFarmer = "Coordinate with Aura Farmer";
         public const string RacesPerDay = "Races Per Day";
         public const string SkipChocoboRacingIfLevel50 = "Don't race if racing chocobo is level 50";
         
@@ -54,5 +67,6 @@ public static class UIConstants
         public const string SeasonalGearRoulette = "Randomly equip seasonal event gear for a fun ensemble each AR run";
         public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";
         public const string NagYourMom = "AR-only mom task. Evaluated only during the normal VERMAXION post-process flow, gated by a local time window and daily attempt count.";
+        public const string NagYourDad = "AR-only dad task. VERMAXION packages configured dungeon, MSQ, commendation, and Astrope asks into one IPC payload and retries on the next AR pass if dad is unavailable.";
     }
 }

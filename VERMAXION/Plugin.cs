@@ -55,6 +55,7 @@ public sealed class Plugin : IDalamudPlugin
     public YesAlreadyIPC YesAlreadyIPC { get; init; }
     public VNavmeshIPC VNavmeshIPC { get; init; }
     public MomIPCClient MomIPCClient { get; init; }
+    public DadIPCClient DadIPCClient { get; init; }
     public VermaxionEngine Engine { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
@@ -96,6 +97,7 @@ public sealed class Plugin : IDalamudPlugin
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
         MomIPCClient = new MomIPCClient(PluginInterface, Log);
+        DadIPCClient = new DadIPCClient(PluginInterface, Log);
         VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
@@ -108,7 +110,7 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService,
             RegisterRegistrablesService, ARPostProcessService, YesAlreadyIPC,
-            ClientState, MomIPCClient);
+            ClientState, MomIPCClient, DadIPCClient);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);

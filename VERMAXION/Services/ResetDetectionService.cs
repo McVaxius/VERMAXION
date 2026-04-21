@@ -156,9 +156,9 @@ public class ResetDetectionService
 
     public static bool IsJumboCactpotPayoutAvailable(DateTime now)
     {
-        var lastSaturdayReset = GetLastJumboCactpotPayoutAvailability(now);
-        var nextWeeklyReset = GetNextWeeklyReset(now);
-        return now >= lastSaturdayReset && now < nextWeeklyReset;
+        var lastPayoutAvailability = GetLastJumboCactpotPayoutAvailability(now);
+        var payoutWindowEnd = GetNextWeeklyReset(lastPayoutAvailability);
+        return now >= lastPayoutAvailability && now < payoutWindowEnd;
     }
 
     public static bool IsJumboPurchasePendingPayout(DateTime lastCompleted, DateTime nextReset)

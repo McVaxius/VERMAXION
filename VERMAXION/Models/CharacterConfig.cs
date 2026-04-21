@@ -22,6 +22,7 @@ public class CharacterConfig
     public bool EnableRegisterRegistrables { get; set; } = false;
     public bool EnableVendorStock { get; set; } = false;
     public bool EnableNagYourMom { get; set; } = false;
+    public bool EnableNagYourDad { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -36,6 +37,18 @@ public class CharacterConfig
     public string NagYourMomWindowStartLocal { get; set; } = "00:00";
     public string NagYourMomWindowEndLocal { get; set; } = "23:59";
     public bool NagYourMomStopAtSeriesRank25 { get; set; } = true;
+    public int NagYourDadDungeonCount { get; set; } = 0;
+    public string NagYourDadDungeonFrequency { get; set; } = "per AR";
+    public string NagYourDadDungeonName { get; set; } = "";
+    public string NagYourDadDungeonJob { get; set; } = "";
+    public bool NagYourDadDungeonUnsynced { get; set; } = false;
+    public bool NagYourDadDailyMsq { get; set; } = false;
+    public string NagYourDadLanPartyPreset { get; set; } = "Daily MSQ";
+    public int NagYourDadCommendationAttempts { get; set; } = 0;
+    public int NagYourDadAstropeAttempts { get; set; } = 0;
+    public string NagYourDadWindowStartLocal { get; set; } = "00:00";
+    public string NagYourDadWindowEndLocal { get; set; } = "23:59";
+    public bool NagYourDadCoordinateWithAuraFarmer { get; set; } = true;
     
     // --- Personal Registrable Items ---
     public List<uint> PersonalRegistrableItems { get; set; } = new();
@@ -96,6 +109,7 @@ public class CharacterConfig
             EnableRegisterRegistrables = EnableRegisterRegistrables,
             EnableVendorStock = EnableVendorStock,
             EnableNagYourMom = EnableNagYourMom,
+            EnableNagYourDad = EnableNagYourDad,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
@@ -108,6 +122,18 @@ public class CharacterConfig
             NagYourMomWindowStartLocal = NagYourMomWindowStartLocal,
             NagYourMomWindowEndLocal = NagYourMomWindowEndLocal,
             NagYourMomStopAtSeriesRank25 = NagYourMomStopAtSeriesRank25,
+            NagYourDadDungeonCount = NagYourDadDungeonCount,
+            NagYourDadDungeonFrequency = NagYourDadDungeonFrequency,
+            NagYourDadDungeonName = NagYourDadDungeonName,
+            NagYourDadDungeonJob = NagYourDadDungeonJob,
+            NagYourDadDungeonUnsynced = NagYourDadDungeonUnsynced,
+            NagYourDadDailyMsq = NagYourDadDailyMsq,
+            NagYourDadLanPartyPreset = NagYourDadLanPartyPreset,
+            NagYourDadCommendationAttempts = NagYourDadCommendationAttempts,
+            NagYourDadAstropeAttempts = NagYourDadAstropeAttempts,
+            NagYourDadWindowStartLocal = NagYourDadWindowStartLocal,
+            NagYourDadWindowEndLocal = NagYourDadWindowEndLocal,
+            NagYourDadCoordinateWithAuraFarmer = NagYourDadCoordinateWithAuraFarmer,
             PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,
