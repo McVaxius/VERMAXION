@@ -67,6 +67,6 @@ public static class UIConstants
         public const string SeasonalGearRoulette = "Randomly equip seasonal event gear for a fun ensemble each AR run";
         public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";
         public const string NagYourMom = "AR-only mom task. Evaluated only during the normal VERMAXION post-process flow, gated by a local time window and daily attempt count.";
-        public const string NagYourDad = "AR-only dad task. VERMAXION packages configured dungeon, MSQ, commendation, and Astrope asks into one IPC payload and retries on the next AR pass if dad is unavailable.";
+        public const string NagYourDad = "AR-only dad task. VERMAXION packages configured dungeon, MSQ, commendation, and Astrope asks into one IPC payload, then Dad owns readiness waits, claims, party assembly, and module routing.";
     }
 }

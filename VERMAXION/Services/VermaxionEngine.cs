@@ -725,7 +725,7 @@ public class VermaxionEngine
 
                 var currentDadStatus = dadIPCClient.GetStatus();
                 NagYourDadStatusText = currentDadStatus.Summary;
-                if (currentDadStatus.Status is DadRunStatus.Queued or DadRunStatus.Running)
+                if (currentDadStatus.Status is DadRunStatus.Queued or DadRunStatus.WaitingForParticipants or DadRunStatus.Running)
                     return;
 
                 nagYourDadRequestIssued = false;
@@ -1126,6 +1126,7 @@ public class VermaxionEngine
             };
         }
 
+        request.ApplyOrchestrationDefaults();
         return request;
     }
 

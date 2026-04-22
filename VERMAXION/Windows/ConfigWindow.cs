@@ -182,7 +182,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.BulletText("YesAlready - Paused during operations to prevent interference");
         ImGui.BulletText("TextAdvance - Enables automatic text progression during dialogue");
         ImGui.BulletText("mom - Private CC runner/rank reader for nag your mom");
-        ImGui.BulletText("dad - Private task structure for nag your dad");
+        ImGui.BulletText("dad - Private orchestrator for nag your dad");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Mini Cactpot:");
@@ -201,8 +201,9 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
 
         ImGui.TextDisabled("dad / Astrope:");
-        ImGui.BulletText("dad - Receives combined dungeon, MSQ, commendation, and Astrope task payloads");
-        ImGui.BulletText("LAN Party - Future queue routing seam when LAN Party queue mode is enabled");
+        ImGui.BulletText("dad - Receives one combined task payload and owns orchestration, readiness, claims, and routing");
+        ImGui.BulletText("DadLanPartyModule - Internal Dad module lane for premade duty and Daily MSQ routing");
+        ImGui.BulletText("DadAuraFarmerModule - Internal Dad module lane for commendation and Astrope routing");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Lord of Verminion:");
@@ -839,7 +840,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextWrapped("dad will prefer Trust when available, then fall back to Duty Support when Trust is not possible.");
                 ImGui.TextDisabled("Execution preference: Trust, then Duty Support");
 
-                ImGui.TextWrapped("LAN Party queue mode lets dad route queue setup through a selected LAN Party preset when that transport is implemented.");
+                ImGui.TextWrapped("LAN Party queue mode tells dad to use DadLanPartyModule with the selected LAN Party-style preset for premade duty routing.");
                 var dadQueueViaLanParty = cc.NagYourDadQueueViaLanParty;
                 if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadQueueViaLanParty, ref dadQueueViaLanParty))
                 {
@@ -849,7 +850,7 @@ public class ConfigWindow : Window, IDisposable
                 if (cc.NagYourDadQueueViaLanParty)
                 {
                     ImGui.Indent();
-                    ImGui.TextWrapped("LAN Party preset is the Dad-provided queue preset for this dungeon queue path.");
+                    ImGui.TextWrapped("LAN Party preset is the Dad-provided preset consumed by DadLanPartyModule for this dungeon queue path.");
                     DrawDadLanPartyPresetSelector(cc, ref changed);
                     ImGui.Unindent();
                 }
@@ -862,7 +863,7 @@ public class ConfigWindow : Window, IDisposable
                     changed = true;
                 }
 
-                ImGui.TextWrapped("Daily MSQ asks dad to schedule the configured LAN Party preset for a daily MSQ run.");
+                ImGui.TextWrapped("Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset.");
                 var dadDailyMsq = cc.NagYourDadDailyMsq;
                 if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDailyMsq, ref dadDailyMsq))
                 {
@@ -878,7 +879,7 @@ public class ConfigWindow : Window, IDisposable
                     }
                     else
                     {
-                        ImGui.TextWrapped("LAN Party preset is the Dad-provided queue preset for daily MSQ.");
+                        ImGui.TextWrapped("LAN Party preset is the Dad-provided preset for DadLanPartyModule Daily MSQ routing.");
                         DrawDadLanPartyPresetSelector(cc, ref changed);
                     }
                     ImGui.Unindent();
@@ -921,7 +922,7 @@ public class ConfigWindow : Window, IDisposable
                 }
 
                 ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourDadStatusText}");
-                ImGui.TextWrapped("AR-only task. VERMAXION builds one combined dad payload from the configured dungeon, MSQ, commendation, and Astrope asks. If dad is unavailable or rejects the payload, VERMAXION moves on and retries on the next AR pass.");
+                ImGui.TextWrapped("AR-only task. VERMAXION builds one combined dad payload from the configured dungeon, MSQ, commendation, and Astrope asks. Dad then owns cross-account orchestration. If dad is unavailable or rejects the payload, VERMAXION moves on and retries on the next AR pass.");
                 ImGui.Unindent();
             }
         }

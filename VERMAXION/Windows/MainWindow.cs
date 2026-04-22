@@ -526,6 +526,7 @@ public class MainWindow : Window, IDisposable
             };
         }
 
+        request.ApplyOrchestrationDefaults();
         return request;
     }
 }
