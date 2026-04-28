@@ -21,6 +21,7 @@ public class VermaxionEngine
         "/sice stop",
         "/ochillegal off",
         "/fr off",
+		"/rotation Settings StartOnCountdown False",
     ];
 
     private readonly IPluginLog log;
