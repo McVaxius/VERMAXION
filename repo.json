@@ -19,14 +19,14 @@
       "chocobo"
     ],
     "RepoUrl": "https://github.com/McVaxius/VERMAXION",
-    "AssemblyVersion": "0.0.2.7",
+    "AssemblyVersion": "0.0.2.8",
     "DalamudApiLevel": 15,
-    "DownloadLinkInstall": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
+    "DownloadLinkInstall": "https://github.com/McVaxius/VERMAXION/releases/download/v0.0.2.8/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/McVaxius/VERMAXION/releases/download/v0.0.2.8/latest.zip",
     "DownloadLinkTesting": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
     "LoadPriority": 0,
-    "IconUrl": "https://raw.githubusercontent.com/McVaxius/VERMAXION/refs/heads/master/VERMAXION/images/icon.png"
+    "IconUrl": "https://raw.githubusercontent.com/McVaxius/VERMAXION/master/VERMAXION/images/icon.png"
   }
 ]

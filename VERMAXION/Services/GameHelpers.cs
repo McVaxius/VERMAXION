@@ -145,7 +145,7 @@ public static class GameHelpers
             if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
                 obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc ||
                 obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj ||
-                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Housing)
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.HousingEventObject)
             {
                 // Then check name matching (case-insensitive like AutoRetainer)
                 if (obj.Name.TextValue.Equals(name, StringComparison.OrdinalIgnoreCase))
@@ -591,7 +591,7 @@ public static class GameHelpers
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc => 4.0f,  // NPCs like summoning bells, vendors
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc => 3.0f,  // Battle NPCs (enemies, retainers)
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj => 2.0f,   // Event objects (chests, aetherytes)
-            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Housing => 2.0f,   // Housing objects
+            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.HousingEventObject => 2.0f,   // Housing objects
             _ => 2.0f // Default distance for unknown types
         };
     }
