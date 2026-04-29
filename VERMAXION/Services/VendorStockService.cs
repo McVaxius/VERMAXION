@@ -25,7 +25,7 @@ public sealed class VendorStockService
     private DateTime lastInteractionAttemptAt = DateTime.MinValue;
     private DateTime lastPurchaseAttemptAt = DateTime.MinValue;
     private DateTime lastCleanupAttemptAt = DateTime.MinValue;
-    private ushort travelOriginTerritory;
+    private uint travelOriginTerritory;
     private bool sawTravelTransition;
     private VendorStockState cleanupNextState = VendorStockState.Complete;
     private int observedGysahlCount;

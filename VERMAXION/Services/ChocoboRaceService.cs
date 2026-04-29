@@ -40,7 +40,7 @@ public class ChocoboRaceService : IDisposable
     private int dutySelectionAttempts = 0;
     private DateTime lastChocoholicRetry = DateTime.MinValue;
     private DateTime lastJoinRetry = DateTime.MinValue;
-    private ushort returnHomeOriginTerritory;
+    private uint returnHomeOriginTerritory;
     private ICallGateSubscriber<int, object>? chocoholicQueueSubscriber;
     private bool chocoholicLookupAttempted;
 

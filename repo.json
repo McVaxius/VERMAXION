@@ -19,8 +19,8 @@
       "chocobo"
     ],
     "RepoUrl": "https://github.com/McVaxius/VERMAXION",
-    "AssemblyVersion": "0.0.2.6",
-    "DalamudApiLevel": 14,
+    "AssemblyVersion": "0.0.2.7",
+    "DalamudApiLevel": 15,
     "DownloadLinkInstall": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
     "DownloadLinkUpdate": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",
     "DownloadLinkTesting": "https://github.com/McVaxius/VERMAXION/releases/latest/download/latest.zip",

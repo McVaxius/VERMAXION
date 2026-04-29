@@ -16,8 +16,8 @@
     "other"
   ],
   "InternalName": "VERMAXION",
-  "AssemblyVersion": "0.0.2.6",
+  "AssemblyVersion": "0.0.2.7",
   "RepoUrl": "https://github.com/McVaxius/VERMAXION",
   "ApplicableVersion": "any",
-  "DalamudApiLevel": 14
+  "DalamudApiLevel": 15
 }

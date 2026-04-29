@@ -1136,6 +1136,9 @@ public class VermaxionEngine
     /// This prevents pathing issues when services try to navigate after area changes.
     /// </summary>
     private void OnTerritoryChanged(ushort territoryType)
+        => OnTerritoryChanged((uint)territoryType);
+
+    private void OnTerritoryChanged(uint territoryType)
     {
         try
         {

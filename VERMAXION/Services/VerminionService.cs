@@ -32,7 +32,7 @@ public class VerminionService : IDisposable
     private bool dutySelected = false;
     private DateTime lastJoinRetry = DateTime.MinValue;
     private int dutySelectionAttempts = 0;
-    private ushort returnHomeOriginTerritory;
+    private uint returnHomeOriginTerritory;
 
     public enum VerminionState
     {
