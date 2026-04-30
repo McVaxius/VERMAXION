@@ -191,6 +191,20 @@ public class MainWindow : Window, IDisposable
                     var result = plugin.DadIPCClient.StartTasks(BuildDadRunRequest(config));
                     Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
                 }, "WIP");
+            DrawTaskRow("Adventurer Activity (Evercold)", config.EnableEvercoldAdventurerActivity,
+                GetEvercoldAdventurerActivityStatus(config),
+                "Stub##EvercoldActivity", () =>
+                {
+                    Plugin.Log.Information("[EvercoldActivity] WIP stub requested from main window.");
+                    Plugin.ChatGui.Print("[Vermaxion] Adventurer Activity (Evercold) is WIP. Progress is config-only for now.");
+                }, "WIP");
+            DrawTaskRow("Visit Florida", config.EnableVisitFlorida,
+                GetVisitFloridaStatus(config),
+                "Stub##VisitFlorida", () =>
+                {
+                    Plugin.Log.Information("[VisitFlorida] WIP Frontline automation stub requested from main window.");
+                    Plugin.ChatGui.Print("[Vermaxion] Visit Florida is WIP. Frontline automation bot is not wired yet.");
+                }, "WIP");
 
             // --- Utility Tasks ---
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
@@ -246,6 +260,16 @@ public class MainWindow : Window, IDisposable
                 var activeConfig = plugin.ConfigManager.GetActiveConfig();
                 Plugin.Log.Information($"[UI] Forced config load: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
             }
+
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Test Chocobo Rank"))
+            {
+                Plugin.Log.Information("[UI] Testing racing chocobo rank from GoldSaucerInfo node 21");
+                plugin.ChocoboRaceService.RequestGoldSaucerRankTest();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Opens /goldsaucer and reads GoldSaucerInfo node 21 text for the rank-50 skip check.");
+            ImGui.TextDisabled($"Chocobo rank test: {plugin.ChocoboRaceService.GoldSaucerRankTestStatus}");
             
             // BUTTON PRESSES
             ImGui.Spacing();
@@ -452,6 +476,32 @@ public class MainWindow : Window, IDisposable
         return string.IsNullOrWhiteSpace(engineStatus) || engineStatus == "Idle"
             ? "Ready on AR"
             : engineStatus;
+    }
+
+    private static string GetEvercoldAdventurerActivityStatus(Models.CharacterConfig config)
+    {
+        if (!config.EnableEvercoldAdventurerActivity)
+            return "Off";
+
+        if (config.EvercoldAdventurerActivityCompleted)
+            return "Done";
+
+        if (config.EvercoldAdventurerActivityTargetPoints <= 0)
+            return "Set point cap";
+
+        var current = Math.Clamp(config.EvercoldAdventurerActivityCurrentPoints, 0, config.EvercoldAdventurerActivityTargetPoints);
+        if (current >= config.EvercoldAdventurerActivityTargetPoints)
+            return "Done";
+
+        return $"{current}/{config.EvercoldAdventurerActivityTargetPoints} pts";
+    }
+
+    private static string GetVisitFloridaStatus(Models.CharacterConfig config)
+    {
+        if (!config.EnableVisitFlorida)
+            return "Off";
+
+        return config.VisitFloridaCompleted ? "Done" : "Frontline WIP";
     }
 
     private static bool HasNagYourDadConfiguredWork(Models.CharacterConfig config)

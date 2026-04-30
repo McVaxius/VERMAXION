@@ -23,6 +23,8 @@ public class CharacterConfig
     public bool EnableVendorStock { get; set; } = false;
     public bool EnableNagYourMom { get; set; } = false;
     public bool EnableNagYourDad { get; set; } = false;
+    public bool EnableEvercoldAdventurerActivity { get; set; } = false;
+    public bool EnableVisitFlorida { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -50,6 +52,10 @@ public class CharacterConfig
     public int NagYourDadAstropeAttempts { get; set; } = 0;
     public string NagYourDadWindowStartLocal { get; set; } = "00:00";
     public string NagYourDadWindowEndLocal { get; set; } = "23:59";
+    public int EvercoldAdventurerActivityCurrentPoints { get; set; } = 0;
+    public int EvercoldAdventurerActivityTargetPoints { get; set; } = 0;
+    public bool EvercoldAdventurerActivityCompleted { get; set; } = false;
+    public bool VisitFloridaCompleted { get; set; } = false;
     
     // --- Personal Registrable Items ---
     public List<uint> PersonalRegistrableItems { get; set; } = new();
@@ -111,6 +117,8 @@ public class CharacterConfig
             EnableVendorStock = EnableVendorStock,
             EnableNagYourMom = EnableNagYourMom,
             EnableNagYourDad = EnableNagYourDad,
+            EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
+            EnableVisitFlorida = EnableVisitFlorida,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
@@ -136,6 +144,10 @@ public class CharacterConfig
             NagYourDadAstropeAttempts = NagYourDadAstropeAttempts,
             NagYourDadWindowStartLocal = NagYourDadWindowStartLocal,
             NagYourDadWindowEndLocal = NagYourDadWindowEndLocal,
+            EvercoldAdventurerActivityCurrentPoints = EvercoldAdventurerActivityCurrentPoints,
+            EvercoldAdventurerActivityTargetPoints = EvercoldAdventurerActivityTargetPoints,
+            EvercoldAdventurerActivityCompleted = EvercoldAdventurerActivityCompleted,
+            VisitFloridaCompleted = VisitFloridaCompleted,
             PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,

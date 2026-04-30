@@ -736,6 +736,69 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
 
+            ImGui.Separator();
+            ImGui.TextDisabled("WIP tasks");
+
+            var evercoldActivity = cc.EnableEvercoldAdventurerActivity;
+            if (ImGui.Checkbox("Adventurer Activity (Evercold) [WIP]", ref evercoldActivity))
+            {
+                cc.EnableEvercoldAdventurerActivity = evercoldActivity;
+                changed = true;
+            }
+            if (cc.EnableEvercoldAdventurerActivity)
+            {
+                ImGui.Indent();
+
+                var currentPoints = cc.EvercoldAdventurerActivityCurrentPoints;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
+                if (ImGui.InputInt("Current points", ref currentPoints))
+                {
+                    cc.EvercoldAdventurerActivityCurrentPoints = Math.Max(0, currentPoints);
+                    if (cc.EvercoldAdventurerActivityTargetPoints > 0)
+                        cc.EvercoldAdventurerActivityCurrentPoints = Math.Min(cc.EvercoldAdventurerActivityCurrentPoints, cc.EvercoldAdventurerActivityTargetPoints);
+                    changed = true;
+                }
+
+                var targetPoints = cc.EvercoldAdventurerActivityTargetPoints;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
+                if (ImGui.InputInt("Point cap", ref targetPoints))
+                {
+                    cc.EvercoldAdventurerActivityTargetPoints = Math.Max(0, targetPoints);
+                    if (cc.EvercoldAdventurerActivityTargetPoints > 0)
+                        cc.EvercoldAdventurerActivityCurrentPoints = Math.Min(cc.EvercoldAdventurerActivityCurrentPoints, cc.EvercoldAdventurerActivityTargetPoints);
+                    changed = true;
+                }
+
+                var evercoldDone = cc.EvercoldAdventurerActivityCompleted;
+                if (ImGui.Checkbox("Done##EvercoldActivityDone", ref evercoldDone))
+                {
+                    cc.EvercoldAdventurerActivityCompleted = evercoldDone;
+                    changed = true;
+                }
+
+                ImGui.TextDisabled("Config-only WIP entry. Automation will stop at the point cap when real Evercold logic is added.");
+                ImGui.Unindent();
+            }
+
+            var visitFlorida = cc.EnableVisitFlorida;
+            if (ImGui.Checkbox("Visit Florida [WIP]", ref visitFlorida))
+            {
+                cc.EnableVisitFlorida = visitFlorida;
+                changed = true;
+            }
+            if (cc.EnableVisitFlorida)
+            {
+                ImGui.Indent();
+                var visitFloridaDone = cc.VisitFloridaCompleted;
+                if (ImGui.Checkbox("Done##VisitFloridaDone", ref visitFloridaDone))
+                {
+                    cc.VisitFloridaCompleted = visitFloridaDone;
+                    changed = true;
+                }
+                ImGui.TextDisabled("Frontline automation stub only. No bot is wired yet.");
+                ImGui.Unindent();
+            }
+
             var nagYourMom = cc.EnableNagYourMom;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMom, ref nagYourMom))
             {

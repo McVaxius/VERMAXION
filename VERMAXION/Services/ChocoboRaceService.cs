@@ -58,6 +58,8 @@ public class ChocoboRaceService : IDisposable
         WaitingForResult,
         DismissingResult,
         WaitingForPlayerAvailable,
+        TestingGoldSaucerOpen,
+        TestingGoldSaucerRank,
         Complete,
         Failed,
     }
@@ -68,6 +70,7 @@ public class ChocoboRaceService : IDisposable
     public bool IsComplete => state == ChocoboState.Complete;
     public bool IsFailed => state == ChocoboState.Failed;
     public string StatusText => state == ChocoboState.Idle ? "Idle" : $"{state} ({currentAttempt}/{maxAttempts})";
+    public string GoldSaucerRankTestStatus { get; private set; } = "Not tested yet.";
 
     public ChocoboRaceService(ICommandManager commandManager, IPluginLog log, ConfigManager configManager)
     {
@@ -117,6 +120,26 @@ public class ChocoboRaceService : IDisposable
     {
         log.Information("[VERMAXION] Manual Chocobo Racing triggered");
         Start();
+    }
+
+    public void RequestGoldSaucerRankTest()
+    {
+        if (IsActive)
+        {
+            GoldSaucerRankTestStatus = $"Busy: {state}.";
+            Plugin.ChatGui.Print($"[Vermaxion] Chocobo rank test busy: {state}.");
+            return;
+        }
+
+        currentAttempt = 0;
+        maxAttempts = 1;
+        joinAttempted = false;
+        dutySelected = false;
+        dutySelectionAttempts = 0;
+        GoldSaucerRankTestStatus = "Opening GoldSaucerInfo for rank test...";
+        log.Information("[ChocoboRankTest] Opening GoldSaucerInfo with /goldsaucer");
+        CommandHelper.SendCommand("/goldsaucer");
+        SetState(ChocoboState.TestingGoldSaucerOpen);
     }
 
     public void Reset()
@@ -512,6 +535,55 @@ public class ChocoboRaceService : IDisposable
                         SetState(ChocoboState.OpeningDutyFinder);
                     }
                 }
+                break;
+
+            case ChocoboState.TestingGoldSaucerOpen:
+                if (elapsed < 0.5)
+                    return;
+
+                if (GameHelpers.IsAddonVisible("GoldSaucerInfo"))
+                {
+                    log.Information("[ChocoboRankTest] GoldSaucerInfo visible; reading node 21");
+                    SetState(ChocoboState.TestingGoldSaucerRank);
+                    return;
+                }
+
+                if (elapsed > 10)
+                {
+                    GoldSaucerRankTestStatus = "Failed: GoldSaucerInfo did not open.";
+                    log.Warning("[ChocoboRankTest] GoldSaucerInfo did not open within 10 seconds");
+                    Plugin.ChatGui.Print("[Vermaxion] Chocobo rank test failed: GoldSaucerInfo did not open.");
+                    SetState(ChocoboState.Failed);
+                }
+                break;
+
+            case ChocoboState.TestingGoldSaucerRank:
+                if (elapsed < 0.2)
+                    return;
+
+                if (!GameHelpers.TryGetAddonText("GoldSaucerInfo", 21u, out var rawText))
+                {
+                    GoldSaucerRankTestStatus = "Failed: GoldSaucerInfo node 21 unavailable.";
+                    log.Warning("[ChocoboRankTest] GoldSaucerInfo node 21 text was unavailable");
+                    Plugin.ChatGui.Print("[Vermaxion] Chocobo rank test failed: GoldSaucerInfo node 21 unavailable.");
+                    SetState(ChocoboState.Failed);
+                    return;
+                }
+
+                if (!int.TryParse(rawText.Trim(), out var rank))
+                {
+                    GoldSaucerRankTestStatus = $"Failed: could not parse node 21 text '{rawText}'.";
+                    log.Warning($"[ChocoboRankTest] Could not parse GoldSaucerInfo node 21 text '{rawText}'");
+                    Plugin.ChatGui.Print($"[Vermaxion] Chocobo rank test failed: node 21 text '{rawText}' was not a number.");
+                    SetState(ChocoboState.Failed);
+                    return;
+                }
+
+                var maxRank = rank >= MaxRaceChocoboRank;
+                GoldSaucerRankTestStatus = $"GoldSaucerInfo node 21 rank={rank}. Rank 50 skip={(maxRank ? "YES" : "NO")}.";
+                log.Information($"[ChocoboRankTest] GoldSaucerInfo node 21 text='{rawText}', parsed rank={rank}, rank50={maxRank}");
+                Plugin.ChatGui.Print($"[Vermaxion] Chocobo rank test: node 21 rank={rank}; rank 50 skip={(maxRank ? "YES" : "NO")}.");
+                SetState(ChocoboState.Complete);
                 break;
         }
     }

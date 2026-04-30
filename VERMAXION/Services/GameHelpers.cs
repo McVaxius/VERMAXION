@@ -21,6 +21,7 @@ using ECommons.UIHelpers.AddonMasterImplementations;
 using ECommons.Automation;
 using ECommons.GameHelpers;
 using Lumina.Excel.Sheets;
+using AtkValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
 
 namespace VERMAXION.Services;
 
@@ -144,8 +145,7 @@ public static class GameHelpers
             // AutoRetainer pattern: Filter by ObjectKind FIRST to avoid players entirely
             if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
                 obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc ||
-                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj ||
-                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.HousingEventObject)
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj)
             {
                 // Then check name matching (case-insensitive like AutoRetainer)
                 if (obj.Name.TextValue.Equals(name, StringComparison.OrdinalIgnoreCase))
@@ -227,10 +227,10 @@ public static class GameHelpers
             {
                 atkValues[i] = args[i] switch
                 {
-                    int intVal => new AtkValue { Type = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.Int, Int = intVal },
-                    uint uintVal => new AtkValue { Type = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.UInt, UInt = uintVal },
-                    bool boolVal => new AtkValue { Type = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.Bool, Byte = (byte)(boolVal ? 1 : 0) },
-                    _ => new AtkValue { Type = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType.Int, Int = Convert.ToInt32(args[i]) },
+                    int intVal => new AtkValue { Type = AtkValueType.Int, Int = intVal },
+                    uint uintVal => new AtkValue { Type = AtkValueType.UInt, UInt = uintVal },
+                    bool boolVal => new AtkValue { Type = AtkValueType.Bool, Byte = (byte)(boolVal ? 1 : 0) },
+                    _ => new AtkValue { Type = AtkValueType.Int, Int = Convert.ToInt32(args[i]) },
                 };
             }
 
@@ -577,6 +577,31 @@ public static class GameHelpers
         }
     }
 
+    public static unsafe bool TryGetAddonText(string addonName, uint nodeId, out string text)
+    {
+        text = string.Empty;
+
+        try
+        {
+            var addon = Instance()->GetAddonByName(addonName);
+            if (addon == null || !addon->IsVisible)
+                return false;
+
+            var node = addon->GetNodeById(nodeId);
+            if (node == null || node->Type != NodeType.Text)
+                return false;
+
+            var textNode = (AtkTextNode*)node;
+            text = textNode->NodeText.ToString();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[GameHelpers] Failed to read {addonName} node {nodeId}: {ex.Message}");
+            return false;
+        }
+    }
+
     /// <summary>
     /// AutoRetainer pattern: Get valid interaction distance for different object types.
     /// Based on FFXIV standard interaction distances in yalms.
@@ -591,7 +616,6 @@ public static class GameHelpers
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc => 4.0f,  // NPCs like summoning bells, vendors
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc => 3.0f,  // Battle NPCs (enemies, retainers)
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj => 2.0f,   // Event objects (chests, aetherytes)
-            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.HousingEventObject => 2.0f,   // Housing objects
             _ => 2.0f // Default distance for unknown types
         };
     }
