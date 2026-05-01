@@ -454,6 +454,8 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.Indent();
                 ImGui.Text($"Attempts today: {cc.MinionRouletteAttemptsToday}");
+                if (DrawResetButton("MinionRouletteDaily", cc.ResetMinionRouletteDailyState))
+                    changed = true;
                 ImGui.Unindent();
             }
 
@@ -556,6 +558,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableVerminionQueue = verminion;
                 changed = true;
             }
+            if (DrawResetButton("VerminionState", cc.ResetVerminionState))
+                changed = true;
             if (ResetDetectionService.TaskIsCompleted(cc.VerminionLastCompleted, cc.VerminionNextReset))
             {
                 ImGui.SameLine();
@@ -569,6 +573,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableJumboCactpot = jumbo;
                 changed = true;
             }
+            if (DrawResetButton("JumboCactpotState", cc.ResetJumboCactpotState))
+                changed = true;
             if (ResetDetectionService.IsJumboPurchasePendingPayout(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
             {
                 ImGui.SameLine();
@@ -629,6 +635,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableFashionReport = fashion;
                 changed = true;
             }
+            if (DrawResetButton("FashionReportState", cc.ResetFashionReportState))
+                changed = true;
             if (ResetDetectionService.TaskIsCompleted(cc.FashionReportLastCompleted, cc.FashionReportNextReset))
             {
                 ImGui.SameLine();
@@ -666,6 +674,8 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("To enable: type /saucy, go to \"Other Games\" -> [x] Enable Auto Mini-Cactpot.\nVermaxion will teleport to Gold Saucer, walk to the Cactpot Board, and start the interaction.\nSaucy handles the actual mini-game solving.");
+            if (DrawResetButton("MiniCactpotState", cc.ResetMiniCactpotState))
+                changed = true;
             if (ResetDetectionService.TaskIsCompleted(cc.MiniCactpotLastCompleted, cc.MiniCactpotNextReset))
             {
                 ImGui.SameLine();
@@ -699,6 +709,14 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableChocoboRacing = chocobo;
                 changed = true;
             }
+            if (DrawResetButton("ChocoboRacingState", cc.ResetChocoboRacingState))
+                changed = true;
+            if (ResetDetectionService.TaskIsCompleted(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset))
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+            }
+            DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
             if (chocobo)
             {
                 ImGui.Indent();
@@ -729,12 +747,6 @@ public class ConfigWindow : Window, IDisposable
 
                 ImGui.Unindent();
             }
-            if (ResetDetectionService.TaskIsCompleted(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset))
-            {
-                ImGui.SameLine();
-                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
-            }
-            DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
 
             ImGui.Separator();
             ImGui.TextDisabled("WIP tasks");
@@ -775,27 +787,10 @@ public class ConfigWindow : Window, IDisposable
                     cc.EvercoldAdventurerActivityCompleted = evercoldDone;
                     changed = true;
                 }
+                if (DrawResetButton("EvercoldAdventurerActivityState", cc.ResetEvercoldAdventurerActivityState))
+                    changed = true;
 
                 ImGui.TextDisabled("Config-only WIP entry. Automation will stop at the point cap when real Evercold logic is added.");
-                ImGui.Unindent();
-            }
-
-            var visitFlorida = cc.EnableVisitFlorida;
-            if (ImGui.Checkbox("Visit Florida [WIP]", ref visitFlorida))
-            {
-                cc.EnableVisitFlorida = visitFlorida;
-                changed = true;
-            }
-            if (cc.EnableVisitFlorida)
-            {
-                ImGui.Indent();
-                var visitFloridaDone = cc.VisitFloridaCompleted;
-                if (ImGui.Checkbox("Done##VisitFloridaDone", ref visitFloridaDone))
-                {
-                    cc.VisitFloridaCompleted = visitFloridaDone;
-                    changed = true;
-                }
-                ImGui.TextDisabled("Frontline automation stub only. No bot is wired yet.");
                 ImGui.Unindent();
             }
 
@@ -809,6 +804,8 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(UIConstants.Tooltips.NagYourMom);
+            if (DrawResetButton("NagYourMomDailyState", cc.ResetNagYourMomDailyState))
+                changed = true;
             if (cc.EnableNagYourMom)
             {
                 ImGui.Indent();
@@ -852,7 +849,7 @@ public class ConfigWindow : Window, IDisposable
 
                 ImGui.TextDisabled($"Attempts today: {cc.NagYourMomAttemptsToday}/{cc.NagYourMomRunsPerDay}");
                 ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourMomStatusText}");
-                ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, reads the mom rank gate, and then asks mom for one full CC run.");
+                ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, and then asks mom for one full casual CC run.");
                 ImGui.Unindent();
             }
 
@@ -994,41 +991,20 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
 
         // Reset buttons
-        if (ImGui.Button("Reset Weekly Flags"))
+        if (ImGui.Button("Reset Weekly Section"))
         {
-            // Reset legacy flags
-            cc.VerminionCompletedThisWeek = false;
-            cc.JumboCactpotCompletedThisWeek = false;
-            cc.FashionReportCompletedThisWeek = false;
-            cc.LastWeeklyReset = DateTime.MinValue;
-            
-            // Reset new DateTime system
-            cc.VerminionLastCompleted = DateTime.MinValue;
-            cc.VerminionNextReset = DateTime.MinValue;
-            cc.JumboCactpotLastCompleted = DateTime.MinValue;
-            cc.JumboCactpotNextReset = DateTime.MinValue;
-            cc.FashionReportLastCompleted = DateTime.MinValue;
-            cc.FashionReportNextReset = DateTime.MinValue;
-            
+            cc.ResetWeeklySectionState();
             changed = true;
         }
         ImGui.SameLine();
-        if (ImGui.Button("Reset Daily Flags"))
+        if (ImGui.Button("Reset Daily Section"))
         {
-            // Reset legacy flags
-            cc.MiniCactpotCompletedToday = false;
-            cc.ChocoboRacingCompletedToday = false;
-            cc.LastDailyReset = DateTime.MinValue;
-            cc.MiniCactpotTicketsToday = 0;
-            cc.NagYourMomAttemptsToday = 0;
-            cc.NagYourMomLastLocalDate = DateTime.MinValue;
-            
-            // Reset new DateTime system
-            cc.MiniCactpotLastCompleted = DateTime.MinValue;
-            cc.MiniCactpotNextReset = DateTime.MinValue;
-            cc.ChocoboRacingLastCompleted = DateTime.MinValue;
-            cc.ChocoboRacingNextReset = DateTime.MinValue;
-            
+            cc.ResetDailySectionState();
+            changed = true;
+        }
+        if (ImGui.Button("Reset All Character Task State"))
+        {
+            cc.ResetAllTaskState();
             changed = true;
         }
 
@@ -1278,6 +1254,16 @@ public class ConfigWindow : Window, IDisposable
 
     private static float GetCompactNumericInputWidth()
         => Math.Max(72f, ImGui.CalcTextSize("00000").X + (ImGui.GetStyle().FramePadding.X * 2f) + 18f);
+
+    private static bool DrawResetButton(string id, System.Action reset)
+    {
+        ImGui.SameLine();
+        if (!ImGui.SmallButton($"Reset##{id}"))
+            return false;
+
+        reset();
+        return true;
+    }
 
     private static void DrawFashionTaskHint(DateTime lastCompleted, DateTime nextReset)
     {

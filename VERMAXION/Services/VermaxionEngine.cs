@@ -612,44 +612,30 @@ public class VermaxionEngine
 
                 if (!nagYourMomRequestIssued)
                 {
-                    if (!momIPCClient.IsReady())
+                    var momReadiness = momIPCClient.GetReadiness(useCache: false);
+                    if (!momReadiness.IpcRegistered)
                     {
-                        ConsumeNagYourMomAttempt(activeConfig!, "mom IPC is not ready.");
-                        log.Warning("[Engine] mom IPC is not ready - deferring until the next AR opportunity");
+                        NagYourMomStatusText = momReadiness.Summary;
+                        log.Warning($"[Engine] nag your mom unavailable - mom IPC missing: {momReadiness.Summary}");
                         AdvanceToNextTask(EngineState.RunningNagYourMom);
                         break;
                     }
 
-                    if (activeConfig!.NagYourMomStopAtSeriesRank25)
-                    {
-                        var rankSnapshot = momIPCClient.GetSeriesRank();
-                        if (!rankSnapshot.Success)
-                        {
-                            ConsumeNagYourMomAttempt(activeConfig!, $"Series rank read failed: {rankSnapshot.FailureReason}");
-                            log.Warning($"[Engine] nag your mom rank read failed: {rankSnapshot.FailureReason}");
-                            AdvanceToNextTask(EngineState.RunningNagYourMom);
-                            break;
-                        }
-
-                        if (rankSnapshot.Rank >= 25)
-                        {
-                            NagYourMomStatusText = "Series rank 25 reached";
-                            log.Information("[Engine] nag your mom skipped because series rank is already 25");
-                            AdvanceToNextTask(EngineState.RunningNagYourMom);
-                            break;
-                        }
-                    }
-
-                    ConsumeNagYourMomAttempt(activeConfig!, $"Requested 1 mom run on {activeConfig!.NagYourMomJob}.");
-                    var startResult = momIPCClient.StartCcRuns(1, activeConfig!.NagYourMomJob);
+                    var stopAtSeriesRank25 = activeConfig!.NagYourMomStopAtSeriesRank25;
+                    var startResult = momIPCClient.StartRun(1, activeConfig!.NagYourMomJob, stopAtSeriesRank25);
                     NagYourMomStatusText = startResult.Summary;
 
-                    if (startResult.Status is MomRunStatus.Rejected or MomRunStatus.Failed or MomRunStatus.Cancelled)
+                    if (startResult.Status is not (MomRunStatus.Queued or MomRunStatus.Running or MomRunStatus.Completed))
                     {
-                        log.Warning($"[Engine] nag your mom start failed: {startResult.Summary}");
+                        var rejectionReadiness = momIPCClient.GetReadiness(useCache: false);
+                        log.Warning(
+                            $"[Engine] nag your mom start rejected: status={startResult.Status}, summary={startResult.Summary}, route={startResult.Route}, pluginEnabled={rejectionReadiness.PluginEnabled}, ipcReady={rejectionReadiness.IpcReady}, canStart={rejectionReadiness.CanStart}, blockReason={rejectionReadiness.BlockReason}, startupSummary={rejectionReadiness.StartupSummary}");
                         AdvanceToNextTask(EngineState.RunningNagYourMom);
                         break;
                     }
+
+                    ConsumeNagYourMomAttempt(activeConfig!, startResult.Summary);
+                    log.Information($"[Engine] nag your mom accepted: route={startResult.Route}, job={activeConfig!.NagYourMomJob}, stopAtSeriesRank25={stopAtSeriesRank25}, status={startResult.Status}");
 
                     if (startResult.Status == MomRunStatus.Completed)
                     {

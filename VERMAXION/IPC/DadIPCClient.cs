@@ -9,6 +9,9 @@ namespace VERMAXION.IPC;
 
 public sealed class DadIPCClient
 {
+    private static readonly TimeSpan IsReadyCacheDuration = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan IsReadyFailureLogThrottle = TimeSpan.FromSeconds(30);
+
     private readonly IPluginLog log;
     private readonly JsonSerializerOptions jsonOptions = new(JsonSerializerDefaults.Web);
     private readonly ICallGateSubscriber<bool> isReadySubscriber;
@@ -16,6 +19,10 @@ public sealed class DadIPCClient
     private readonly ICallGateSubscriber<string> lanPartyPresetsSubscriber;
     private readonly ICallGateSubscriber<string, string> startTasksSubscriber;
     private readonly ICallGateSubscriber<string> cancelSubscriber;
+    private bool cachedIsReady;
+    private DateTime cachedIsReadyAtUtc = DateTime.MinValue;
+    private string lastIsReadyFailureMessage = string.Empty;
+    private DateTime lastIsReadyFailureLoggedAtUtc = DateTime.MinValue;
 
     public DadIPCClient(IDalamudPluginInterface pluginInterface, IPluginLog log)
     {
@@ -27,15 +34,28 @@ public sealed class DadIPCClient
         cancelSubscriber = pluginInterface.GetIpcSubscriber<string>("dad.CancelActiveRun");
     }
 
-    public bool IsReady()
+    public bool IsReady(bool useCache = true)
     {
+        var now = DateTime.UtcNow;
+        if (useCache &&
+            cachedIsReadyAtUtc != DateTime.MinValue &&
+            now - cachedIsReadyAtUtc < IsReadyCacheDuration)
+        {
+            return cachedIsReady;
+        }
+
         try
         {
-            return isReadySubscriber.InvokeFunc();
+            cachedIsReady = isReadySubscriber.InvokeFunc();
+            cachedIsReadyAtUtc = now;
+            ClearIsReadyFailure();
+            return cachedIsReady;
         }
         catch (Exception ex)
         {
-            log.Debug($"[dad IPC] IsReady failed: {ex.Message}");
+            cachedIsReady = false;
+            cachedIsReadyAtUtc = now;
+            LogIsReadyFailure(ex.Message, now);
             return false;
         }
     }
@@ -113,5 +133,27 @@ public sealed class DadIPCClient
             log.Warning($"[dad IPC] Failed to deserialize payload: {ex.Message}");
             return fallback;
         }
+    }
+
+    private void LogIsReadyFailure(string message, DateTime now)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return;
+
+        if (message == lastIsReadyFailureMessage &&
+            now - lastIsReadyFailureLoggedAtUtc < IsReadyFailureLogThrottle)
+        {
+            return;
+        }
+
+        log.Debug($"[dad IPC] IsReady failed: {message}");
+        lastIsReadyFailureMessage = message;
+        lastIsReadyFailureLoggedAtUtc = now;
+    }
+
+    private void ClearIsReadyFailure()
+    {
+        lastIsReadyFailureMessage = string.Empty;
+        lastIsReadyFailureLoggedAtUtc = DateTime.MinValue;
     }
 }

@@ -24,7 +24,6 @@ public class CharacterConfig
     public bool EnableNagYourMom { get; set; } = false;
     public bool EnableNagYourDad { get; set; } = false;
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
-    public bool EnableVisitFlorida { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -55,7 +54,6 @@ public class CharacterConfig
     public int EvercoldAdventurerActivityCurrentPoints { get; set; } = 0;
     public int EvercoldAdventurerActivityTargetPoints { get; set; } = 0;
     public bool EvercoldAdventurerActivityCompleted { get; set; } = false;
-    public bool VisitFloridaCompleted { get; set; } = false;
     
     // --- Personal Registrable Items ---
     public List<uint> PersonalRegistrableItems { get; set; } = new();
@@ -97,6 +95,84 @@ public class CharacterConfig
     // --- Plugin State ---
     public bool Enabled { get; set; } = true;
 
+    public void ResetVerminionState()
+    {
+        VerminionCompletedThisWeek = false;
+        VerminionLastCompleted = DateTime.MinValue;
+        VerminionNextReset = DateTime.MinValue;
+    }
+
+    public void ResetJumboCactpotState()
+    {
+        JumboCactpotCompletedThisWeek = false;
+        JumboCactpotLastCompleted = DateTime.MinValue;
+        JumboCactpotNextReset = DateTime.MinValue;
+    }
+
+    public void ResetFashionReportState()
+    {
+        FashionReportCompletedThisWeek = false;
+        FashionReportLastCompleted = DateTime.MinValue;
+        FashionReportNextReset = DateTime.MinValue;
+    }
+
+    public void ResetMiniCactpotState()
+    {
+        MiniCactpotCompletedToday = false;
+        MiniCactpotLastCompleted = DateTime.MinValue;
+        MiniCactpotNextReset = DateTime.MinValue;
+        MiniCactpotTicketsToday = 0;
+    }
+
+    public void ResetChocoboRacingState()
+    {
+        ChocoboRacingCompletedToday = false;
+        ChocoboRacingLastCompleted = DateTime.MinValue;
+        ChocoboRacingNextReset = DateTime.MinValue;
+    }
+
+    public void ResetNagYourMomDailyState()
+    {
+        NagYourMomAttemptsToday = 0;
+        NagYourMomLastLocalDate = DateTime.MinValue;
+    }
+
+    public void ResetMinionRouletteDailyState()
+    {
+        MinionRouletteAttemptsToday = 0;
+        LastMinionRouletteReset = DateTime.MinValue;
+    }
+
+    public void ResetEvercoldAdventurerActivityState()
+    {
+        EvercoldAdventurerActivityCurrentPoints = 0;
+        EvercoldAdventurerActivityCompleted = false;
+    }
+
+    public void ResetWeeklySectionState()
+    {
+        LastWeeklyReset = DateTime.MinValue;
+        ResetVerminionState();
+        ResetJumboCactpotState();
+        ResetFashionReportState();
+    }
+
+    public void ResetDailySectionState()
+    {
+        LastDailyReset = DateTime.MinValue;
+        ResetMiniCactpotState();
+        ResetChocoboRacingState();
+        ResetNagYourMomDailyState();
+        ResetMinionRouletteDailyState();
+    }
+
+    public void ResetAllTaskState()
+    {
+        ResetWeeklySectionState();
+        ResetDailySectionState();
+        ResetEvercoldAdventurerActivityState();
+    }
+
     public CharacterConfig Clone()
     {
         return new CharacterConfig
@@ -118,7 +194,6 @@ public class CharacterConfig
             EnableNagYourMom = EnableNagYourMom,
             EnableNagYourDad = EnableNagYourDad,
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
-            EnableVisitFlorida = EnableVisitFlorida,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
@@ -147,7 +222,6 @@ public class CharacterConfig
             EvercoldAdventurerActivityCurrentPoints = EvercoldAdventurerActivityCurrentPoints,
             EvercoldAdventurerActivityTargetPoints = EvercoldAdventurerActivityTargetPoints,
             EvercoldAdventurerActivityCompleted = EvercoldAdventurerActivityCompleted,
-            VisitFloridaCompleted = VisitFloridaCompleted,
             PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,

@@ -181,7 +181,7 @@ public class MainWindow : Window, IDisposable
                 GetNagYourMomStatus(config, engine.NagYourMomStatusText),
                 "Test##Mom", () =>
                 {
-                    var result = plugin.MomIPCClient.StartCcRuns(1, config.NagYourMomJob);
+                    var result = plugin.MomIPCClient.StartRun(1, config.NagYourMomJob, config.NagYourMomStopAtSeriesRank25);
                     Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
                 }, "OK");
             DrawTaskRow("nag your dad", config.EnableNagYourDad,
@@ -197,13 +197,6 @@ public class MainWindow : Window, IDisposable
                 {
                     Plugin.Log.Information("[EvercoldActivity] WIP stub requested from main window.");
                     Plugin.ChatGui.Print("[Vermaxion] Adventurer Activity (Evercold) is WIP. Progress is config-only for now.");
-                }, "WIP");
-            DrawTaskRow("Visit Florida", config.EnableVisitFlorida,
-                GetVisitFloridaStatus(config),
-                "Stub##VisitFlorida", () =>
-                {
-                    Plugin.Log.Information("[VisitFlorida] WIP Frontline automation stub requested from main window.");
-                    Plugin.ChatGui.Print("[Vermaxion] Visit Florida is WIP. Frontline automation bot is not wired yet.");
                 }, "WIP");
 
             // --- Utility Tasks ---
@@ -315,8 +308,9 @@ public class MainWindow : Window, IDisposable
 
         // AR status
         var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
+        var momIpcStatus = plugin.MomIPCClient.GetReadiness();
         ImGui.TextDisabled($"AR PostProcess: {arStatus}  |  {now.DayOfWeek}");
-        ImGui.TextDisabled($"mom IPC: {(plugin.MomIPCClient.IsReady() ? "Ready" : "Unavailable")}  |  nag your mom: {engine.NagYourMomStatusText}");
+        ImGui.TextDisabled($"mom IPC: {momIpcStatus.Summary}  |  nag your mom: {engine.NagYourMomStatusText}");
         ImGui.TextDisabled($"dad IPC: {(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")}  |  nag your dad: {engine.NagYourDadStatusText}");
         
         ImGui.Spacing();
@@ -494,14 +488,6 @@ public class MainWindow : Window, IDisposable
             return "Done";
 
         return $"{current}/{config.EvercoldAdventurerActivityTargetPoints} pts";
-    }
-
-    private static string GetVisitFloridaStatus(Models.CharacterConfig config)
-    {
-        if (!config.EnableVisitFlorida)
-            return "Off";
-
-        return config.VisitFloridaCompleted ? "Done" : "Frontline WIP";
     }
 
     private static bool HasNagYourDadConfiguredWork(Models.CharacterConfig config)
