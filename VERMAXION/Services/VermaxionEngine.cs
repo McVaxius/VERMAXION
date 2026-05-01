@@ -9,6 +9,9 @@ namespace VERMAXION.Services;
 
 public class VermaxionEngine
 {
+    private static readonly TimeSpan NagYourMomLostStatusGrace = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan NagYourMomLostStatusLogThrottle = TimeSpan.FromSeconds(30);
+
     private static readonly string[] RunShutdownCommands =
     [
         "/rotation cancel",
@@ -47,6 +50,11 @@ public class VermaxionEngine
     private bool weeklyResetDetected = false;
     private bool dailyResetDetected = false;
     private bool nagYourMomRequestIssued = false;
+    private string nagYourMomActiveRequestId = string.Empty;
+    private int nagYourMomRequestedRuns = 0;
+    private int nagYourMomLastCompletedRuns = 0;
+    private DateTime nagYourMomLostStatusSince = DateTime.MinValue;
+    private DateTime nagYourMomLostStatusLastLoggedAt = DateTime.MinValue;
     private bool nagYourDadRequestIssued = false;
     private bool taskStartHoldLogged = false;
     private EngineState taskStartHoldState = EngineState.Idle;
@@ -603,7 +611,7 @@ public class VermaxionEngine
             case EngineState.RunningNagYourMom:
                 activeConfig = GetLiveActiveConfig();
                 RollNagYourMomLocalDay(activeConfig!);
-                if (!ShouldRunNagYourMomNow(activeConfig!, out var nagSkipReason))
+                if (!nagYourMomRequestIssued && !ShouldRunNagYourMomNow(activeConfig!, out var nagSkipReason))
                 {
                     NagYourMomStatusText = nagSkipReason;
                     AdvanceToNextTask(EngineState.RunningNagYourMom);
@@ -612,6 +620,7 @@ public class VermaxionEngine
 
                 if (!nagYourMomRequestIssued)
                 {
+                    var remainingMomRuns = GetRemainingNagYourMomRuns(activeConfig!);
                     var momReadiness = momIPCClient.GetReadiness(useCache: false);
                     if (!momReadiness.IpcRegistered)
                     {
@@ -622,7 +631,7 @@ public class VermaxionEngine
                     }
 
                     var stopAtSeriesRank25 = activeConfig!.NagYourMomStopAtSeriesRank25;
-                    var startResult = momIPCClient.StartRun(1, activeConfig!.NagYourMomJob, stopAtSeriesRank25);
+                    var startResult = momIPCClient.StartRun(remainingMomRuns, activeConfig!.NagYourMomJob, stopAtSeriesRank25);
                     NagYourMomStatusText = startResult.Summary;
 
                     if (startResult.Status is not (MomRunStatus.Queued or MomRunStatus.Running or MomRunStatus.Completed))
@@ -634,11 +643,13 @@ public class VermaxionEngine
                         break;
                     }
 
-                    ConsumeNagYourMomAttempt(activeConfig!, startResult.Summary);
-                    log.Information($"[Engine] nag your mom accepted: route={startResult.Route}, job={activeConfig!.NagYourMomJob}, stopAtSeriesRank25={stopAtSeriesRank25}, status={startResult.Status}");
+                    TrackAcceptedNagYourMomRequest(startResult, remainingMomRuns);
+                    log.Information($"[Engine] nag your mom accepted: route={startResult.Route}, job={activeConfig!.NagYourMomJob}, requestedRuns={nagYourMomRequestedRuns}, stopAtSeriesRank25={stopAtSeriesRank25}, status={startResult.Status}");
 
                     if (startResult.Status == MomRunStatus.Completed)
                     {
+                        CreditNagYourMomTerminalResult(startResult);
+                        ClearNagYourMomTracking();
                         log.Information("[Engine] nag your mom completed immediately");
                         AdvanceToNextTask(EngineState.RunningNagYourMom);
                         break;
@@ -648,16 +659,49 @@ public class VermaxionEngine
                     return;
                 }
 
-                var currentMomStatus = momIPCClient.GetStatus();
+                if (!momIPCClient.TryGetStatus(out var currentMomStatus))
+                {
+                    NagYourMomStatusText = currentMomStatus.Summary;
+                    if (ShouldWaitForLostNagYourMomStatus(currentMomStatus.Summary))
+                        return;
+
+                    var creditedAfterLostStatus = CreditNagYourMomRunCount(nagYourMomLastCompletedRuns, currentMomStatus.Summary);
+                    log.Warning($"[Engine] nag your mom status lost after active request; advancing as failed after grace. reason={currentMomStatus.FailureReason}, creditedRuns={creditedAfterLostStatus}, requestedRuns={nagYourMomRequestedRuns}");
+                    ClearNagYourMomTracking();
+                    AdvanceToNextTask(EngineState.RunningNagYourMom);
+                    break;
+                }
+
                 NagYourMomStatusText = currentMomStatus.Summary;
+                nagYourMomLostStatusSince = DateTime.MinValue;
+                nagYourMomLastCompletedRuns = Math.Max(nagYourMomLastCompletedRuns, currentMomStatus.CompletedRunCount);
                 if (currentMomStatus.Status is MomRunStatus.Queued or MomRunStatus.Running)
                     return;
 
-                nagYourMomRequestIssued = false;
+                if (currentMomStatus.Status == MomRunStatus.Idle)
+                {
+                    if (ShouldWaitForLostNagYourMomStatus("mom returned Idle during an active Nag Mom request."))
+                        return;
+
+                    var creditedAfterIdle = CreditNagYourMomRunCount(nagYourMomLastCompletedRuns, currentMomStatus.Summary);
+                    log.Warning($"[Engine] nag your mom returned Idle during active request; advancing as failed after grace. creditedRuns={creditedAfterIdle}, requestedRuns={nagYourMomRequestedRuns}");
+                    ClearNagYourMomTracking();
+                    AdvanceToNextTask(EngineState.RunningNagYourMom);
+                    break;
+                }
+
                 if (currentMomStatus.Status == MomRunStatus.Completed)
-                    log.Information("[Engine] nag your mom completed successfully");
+                {
+                    var creditedRuns = CreditNagYourMomTerminalResult(currentMomStatus);
+                    ClearNagYourMomTracking();
+                    log.Information($"[Engine] nag your mom completed successfully: route={currentMomStatus.Route}, creditedRuns={creditedRuns}, completedRuns={currentMomStatus.CompletedRunCount}, requestedRuns={currentMomStatus.RequestedRunCount}");
+                }
                 else
-                    log.Warning($"[Engine] nag your mom ended with status {currentMomStatus.Status}: {currentMomStatus.Summary}");
+                {
+                    var creditedRuns = CreditNagYourMomTerminalResult(currentMomStatus);
+                    ClearNagYourMomTracking();
+                    log.Warning($"[Engine] nag your mom ended with status {currentMomStatus.Status}: {currentMomStatus.Summary}; creditedRuns={creditedRuns}, completedRuns={currentMomStatus.CompletedRunCount}, requestedRuns={currentMomStatus.RequestedRunCount}");
+                }
 
                 AdvanceToNextTask(EngineState.RunningNagYourMom);
                 break;
@@ -875,7 +919,7 @@ public class VermaxionEngine
         };
 
         if (newState != EngineState.RunningNagYourMom)
-            nagYourMomRequestIssued = false;
+            ClearNagYourMomTracking();
         if (newState != EngineState.RunningNagYourDad)
             nagYourDadRequestIssued = false;
         if (newState != EngineState.RunningJumboCactpot)
@@ -976,15 +1020,123 @@ public class VermaxionEngine
         return true;
     }
 
-    private void ConsumeNagYourMomAttempt(CharacterConfig config, string statusText)
+    private static int GetRemainingNagYourMomRuns(CharacterConfig config)
+        => Math.Max(0, config.NagYourMomRunsPerDay - config.NagYourMomAttemptsToday);
+
+    private void TrackAcceptedNagYourMomRequest(MomRunResult result, int requestedRuns)
     {
+        nagYourMomActiveRequestId = result.RequestId ?? string.Empty;
+        nagYourMomRequestedRuns = result.RequestedRunCount > 0 ? result.RequestedRunCount : requestedRuns;
+        nagYourMomLastCompletedRuns = Math.Max(0, result.CompletedRunCount);
+        nagYourMomLostStatusSince = DateTime.MinValue;
+        nagYourMomLostStatusLastLoggedAt = DateTime.MinValue;
+    }
+
+    private void ClearNagYourMomTracking()
+    {
+        nagYourMomRequestIssued = false;
+        nagYourMomActiveRequestId = string.Empty;
+        nagYourMomRequestedRuns = 0;
+        nagYourMomLastCompletedRuns = 0;
+        nagYourMomLostStatusSince = DateTime.MinValue;
+        nagYourMomLostStatusLastLoggedAt = DateTime.MinValue;
+    }
+
+    private int CreditNagYourMomTerminalResult(MomRunResult result)
+    {
+        var observedCompletedRuns = Math.Max(nagYourMomLastCompletedRuns, result.CompletedRunCount);
+        var runsToCredit = result.Status == MomRunStatus.Completed
+            ? Math.Max(result.RequestedRunCount > 0 ? result.RequestedRunCount : nagYourMomRequestedRuns, observedCompletedRuns)
+            : observedCompletedRuns;
+
+        return CreditNagYourMomRunCount(runsToCredit, result.Summary);
+    }
+
+    private int CreditNagYourMomRunCount(int runCount, string statusText)
+    {
+        var creditableRuns = Math.Max(0, runCount);
+        if (creditableRuns == 0)
+        {
+            NagYourMomStatusText = statusText;
+            return 0;
+        }
+
+        var liveConfig = GetLiveActiveConfig();
+        var runsToCredit = Math.Min(creditableRuns, GetRemainingNagYourMomRuns(liveConfig));
+        if (runsToCredit <= 0)
+        {
+            NagYourMomStatusText = statusText;
+            return 0;
+        }
+
         PersistCurrentCharacterConfig(current =>
         {
-            current.NagYourMomAttemptsToday++;
+            current.NagYourMomAttemptsToday = Math.Min(
+                current.NagYourMomRunsPerDay,
+                current.NagYourMomAttemptsToday + runsToCredit);
             current.NagYourMomLastLocalDate = DateTime.Now.Date;
-        }, "nag your mom attempt");
+        }, $"nag your mom run credit ({runsToCredit})");
 
         NagYourMomStatusText = statusText;
+        return runsToCredit;
+    }
+
+    private bool ShouldWaitForLostNagYourMomStatus(string reason)
+    {
+        var now = DateTime.UtcNow;
+        var dutyOrQueueActive = IsNagYourMomDutyOrQueueActive();
+
+        if (dutyOrQueueActive)
+        {
+            nagYourMomLostStatusSince = DateTime.MinValue;
+            NagYourMomStatusText = $"{reason} Waiting for active duty/queue to clear.";
+            LogNagYourMomLostStatusWait(reason, dutyOrQueueActive, now);
+            return true;
+        }
+
+        if (nagYourMomLostStatusSince == DateTime.MinValue)
+        {
+            nagYourMomLostStatusSince = now;
+            LogNagYourMomLostStatusWait(reason, dutyOrQueueActive, now);
+        }
+
+        if (now - nagYourMomLostStatusSince < NagYourMomLostStatusGrace)
+        {
+            NagYourMomStatusText = $"{reason} Waiting for mom status recovery.";
+            return true;
+        }
+
+        return false;
+    }
+
+    private void LogNagYourMomLostStatusWait(string reason, bool dutyOrQueueActive, DateTime now)
+    {
+        if (nagYourMomLostStatusLastLoggedAt != DateTime.MinValue &&
+            now - nagYourMomLostStatusLastLoggedAt < NagYourMomLostStatusLogThrottle)
+        {
+            return;
+        }
+
+        log.Warning($"[Engine] nag your mom status unavailable during active request; waiting. reason={reason}, dutyOrQueueActive={dutyOrQueueActive}, requestId={nagYourMomActiveRequestId}, completedRuns={nagYourMomLastCompletedRuns}, requestedRuns={nagYourMomRequestedRuns}");
+        nagYourMomLostStatusLastLoggedAt = now;
+    }
+
+    private static bool IsNagYourMomDutyOrQueueActive()
+    {
+        if (Plugin.Condition[ConditionFlag.BoundByDuty] || Plugin.Condition[ConditionFlag.BoundByDuty56])
+            return true;
+        if (Plugin.Condition[ConditionFlag.InDutyQueue])
+            return true;
+        if (Plugin.Condition[ConditionFlag.WaitingForDuty])
+            return true;
+        if (Plugin.Condition[ConditionFlag.WaitingForDutyFinder])
+            return true;
+        if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
+            return true;
+        if (IsAddonVisible("ContentsFinderConfirm") || IsAddonVisible("ContentsFinder"))
+            return true;
+
+        return false;
     }
 
     private bool ShouldCountNagYourDad(CharacterConfig config)

@@ -181,8 +181,9 @@ public class MainWindow : Window, IDisposable
                 GetNagYourMomStatus(config, engine.NagYourMomStatusText),
                 "Test##Mom", () =>
                 {
-                    var result = plugin.MomIPCClient.StartRun(1, config.NagYourMomJob, config.NagYourMomStopAtSeriesRank25);
-                    Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
+                    var remainingRuns = Math.Max(1, config.NagYourMomRunsPerDay - config.NagYourMomAttemptsToday);
+                    var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, config.NagYourMomStopAtSeriesRank25);
+                    Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
                 }, "OK");
             DrawTaskRow("nag your dad", config.EnableNagYourDad,
                 GetNagYourDadStatus(config, engine.NagYourDadStatusText),

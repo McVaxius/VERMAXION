@@ -58,7 +58,34 @@ public sealed class MomIPCClient
     }
 
     public MomRunResult GetStatus()
-        => InvokeJson(statusSubscriber, MomRunResult.Idle(), "[mom IPC] GetStatus failed");
+    {
+        TryGetStatus(out var result);
+        return result;
+    }
+
+    public bool TryGetStatus(out MomRunResult result)
+    {
+        try
+        {
+            var json = statusSubscriber.InvokeFunc();
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                result = StatusUnavailableResult("mom.GetStatus returned an empty payload.");
+                return false;
+            }
+
+            result = JsonSerializer.Deserialize<MomRunResult>(json, jsonOptions)
+                ?? StatusUnavailableResult("mom.GetStatus returned a null payload.");
+            return !IsStatusUnavailableResult(result);
+        }
+        catch (Exception ex)
+        {
+            var reason = $"mom.GetStatus failed: {ex.Message}";
+            log.Debug($"[mom IPC] {reason}");
+            result = StatusUnavailableResult(reason);
+            return false;
+        }
+    }
 
     public MomRunResult StartCcRuns(int runCount, string job)
         => StartRun(runCount, job, stopAtSeriesRank25: false);
@@ -260,6 +287,18 @@ public sealed class MomIPCClient
             Summary = reason,
             FailureReason = reason,
         };
+
+    private static MomRunResult StatusUnavailableResult(string reason)
+        => new()
+        {
+            Status = MomRunStatus.Failed,
+            Summary = $"mom status unavailable: {reason}",
+            FailureReason = reason,
+        };
+
+    private static bool IsStatusUnavailableResult(MomRunResult result)
+        => result.Status == MomRunStatus.Failed
+            && result.Summary.StartsWith("mom status unavailable:", StringComparison.Ordinal);
 }
 
 public sealed class MomIpcReadiness
