@@ -165,7 +165,7 @@ public class MainWindow : Window, IDisposable
                 "Test##Verm", () => plugin.VerminionService.RunTask(), "OK");
             DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
                 GetJumboCactpotStatus(config),
-                "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "WIP");
+                "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");
             DrawTaskRow("Fashion Report", config.EnableFashionReport,
                 GetFashionReportStatus(config),
                 "Test##Fashion", () => plugin.FashionReportService.Start(), "OK");
