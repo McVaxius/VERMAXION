@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using Dalamud.Game.Command;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
@@ -48,6 +50,7 @@ public sealed class Plugin : IDalamudPlugin
     public VendorStockService VendorStockService { get; init; }
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
+    public AutoRetainerIPC AutoRetainerIPC { get; init; }
     public RegistrableConfigManager RegistrableConfigManager { get; init; }
     public MinionRouletteService MinionRouletteService { get; init; }
     public SeasonalGearService SeasonalGearService { get; init; }
@@ -56,8 +59,10 @@ public sealed class Plugin : IDalamudPlugin
     public CurrentJobEquipmentService CurrentJobEquipmentService { get; init; }
     public YesAlreadyIPC YesAlreadyIPC { get; init; }
     public VNavmeshIPC VNavmeshIPC { get; init; }
+    public LifestreamIPC LifestreamIPC { get; init; }
     public MomIPCClient MomIPCClient { get; init; }
     public DadIPCClient DadIPCClient { get; init; }
+    public WorkshopBellService WorkshopBellService { get; init; }
     public VermaxionEngine Engine { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
@@ -67,7 +72,14 @@ public sealed class Plugin : IDalamudPlugin
 
     private IDtrBarEntry? dtrEntry;
     private bool wasLoggedIn;
-    private int loginDetectionDelay;
+    private bool pendingBeforeArLogin;
+    private bool beforeArStartedThisLogin;
+    private bool beforeArArmedByPostprocess;
+    private DateTime beforeArLoginPendingSince = DateTime.MinValue;
+    private DateTime beforeArLoginLastDiagnosticAt = DateTime.MinValue;
+    private DateTime beforeArWorldReadySince = DateTime.MinValue;
+    private const int BeforeArLoginTimeoutSeconds = 120;
+    private const double BeforeArWorldReadyStableSeconds = 2.0;
 
     public Plugin()
     {
@@ -76,9 +88,16 @@ public sealed class Plugin : IDalamudPlugin
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ConfigManager = new ConfigManager(PluginInterface, Log);
         RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
+        AutoRetainerIPC = new AutoRetainerIPC(PluginInterface, Log);
 
         if (!string.IsNullOrEmpty(Configuration.LastAccountId))
             ConfigManager.CurrentAccountId = Configuration.LastAccountId;
+
+        if (ClientState.IsLoggedIn)
+        {
+            wasLoggedIn = true;
+            BeginBeforeArLoginPendingFromPluginLoad();
+        }
 
         // Subscribe to character change events
         ConfigManager.OnCharacterChanged += OnCharacterChanged;
@@ -100,13 +119,15 @@ public sealed class Plugin : IDalamudPlugin
         CurrentJobEquipmentService = new CurrentJobEquipmentService(CommandManager, Log, PlayerState);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
+        LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         MomIPCClient = new MomIPCClient(PluginInterface, Log);
         DadIPCClient = new DadIPCClient(PluginInterface, Log);
         VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
-        RetainerListingRefillService = new RetainerListingRefillService(Log, ConfigManager, VNavmeshIPC);
+        WorkshopBellService = new WorkshopBellService(Log, LifestreamIPC, VNavmeshIPC);
+        RetainerListingRefillService = new RetainerListingRefillService(Log, ConfigManager, VNavmeshIPC, WorkshopBellService, AutoRetainerIPC);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
-        ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady);
+        ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady, ArmBeforeArSuppressionFromPostprocess);
 
         // Engine - orchestrates all tasks
         Engine = new VermaxionEngine(
@@ -115,7 +136,7 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService,
             RegisterRegistrablesService, RetainerListingRefillService, ARPostProcessService, YesAlreadyIPC,
-            ClientState, MomIPCClient, DadIPCClient);
+            ClientState, MomIPCClient, DadIPCClient, AutoRetainerIPC);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -147,12 +168,6 @@ public sealed class Plugin : IDalamudPlugin
         ClientState.Login += OnLoginEvent;
         Framework.Update += OnFrameworkUpdate;
 
-        if (ClientState.IsLoggedIn)
-        {
-            wasLoggedIn = true;
-            loginDetectionDelay = 3;
-        }
-
         Log.Information("===Vermaxion loaded!===");
     }
 
@@ -170,9 +185,10 @@ public sealed class Plugin : IDalamudPlugin
         ConfigWindow.Dispose();
         MainWindow.Dispose();
 
+        ARPostProcessService.Dispose();
+        AutoRetainerIPC.ReleaseSuppressionIfOwned();
         YesAlreadyIPC.Dispose();
         VNavmeshIPC.Dispose();
-        ARPostProcessService.Dispose();
         HighestCombatJobService.Dispose();
         CurrentJobEquipmentService.Dispose();
 
@@ -206,6 +222,7 @@ public sealed class Plugin : IDalamudPlugin
             FashionReportService.Reset();
             VendorStockService.Reset();
             RetainerListingRefillService.Reset();
+            WorkshopBellService.Reset();
             RegisterRegistrablesService.Reset();
             MinionRouletteService.Reset();
             SeasonalGearService.Reset();
@@ -216,6 +233,14 @@ public sealed class Plugin : IDalamudPlugin
             {
                 Log.Information("[Plugin] Stopping engine due to character change");
                 Engine.Stop();
+            }
+            else if (pendingBeforeArLogin)
+            {
+                Log.Information("[Plugin] Preserving AutoRetainer suppression during pending before-AR login resolution");
+            }
+            else
+            {
+                AutoRetainerIPC.ReleaseSuppressionIfOwned();
             }
             
             Log.Information("[Plugin] All services reset successfully");
@@ -291,31 +316,239 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnLoginEvent()
     {
-        loginDetectionDelay = 3;
+        beforeArStartedThisLogin = false;
+        BeginBeforeArLoginPending("ClientState.Login");
     }
 
-    private void OnLogin()
+    private void BeginBeforeArLoginPendingFromPluginLoad()
     {
+        var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
+        var currentSuppressed = AutoRetainerIPC.GetSuppressed();
+        var arBusy = AutoRetainerIPC.IsBusy();
+        Log.Information($"[AR] Plugin-load before-AR check: configuredBeforeArCount={configuredCount}, owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={currentSuppressed}, arBusy={arBusy}");
+
+        if (configuredCount == 0)
+            return;
+
+        if (arBusy || currentSuppressed)
+        {
+            Log.Warning($"[AR] Late before-AR skip on plugin load: AutoRetainer already active/queued or suppressed; reason=arBusy:{arBusy}, currentSuppressed:{currentSuppressed}. VMX will arm next login from character postprocess handoff.");
+            beforeArStartedThisLogin = true;
+            return;
+        }
+
+        BeginBeforeArLoginPending("plugin load while logged in");
+    }
+
+    private void BeginBeforeArLoginPending(string reason)
+    {
+        if (beforeArStartedThisLogin)
+        {
+            Log.Information($"[AR] Ignoring before-AR login trigger after start this login: reason={reason}");
+            return;
+        }
+
+        var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
+        Log.Information($"[AR] Before-AR login trigger: reason={reason}, configuredBeforeArCount={configuredCount}");
+        if (configuredCount == 0)
+            return;
+
+        if (!beforeArArmedByPostprocess && !AutoRetainerIPC.SuppressionOwnedByVermaxion && AutoRetainerIPC.IsBusy())
+        {
+            Log.Warning($"[AR] Late before-AR skip on login: AutoRetainer already active/queued; reason={reason}. VMX will arm next login from character postprocess handoff.");
+            beforeArStartedThisLogin = true;
+            return;
+        }
+
+        if (!pendingBeforeArLogin)
+        {
+            pendingBeforeArLogin = true;
+            beforeArLoginPendingSince = DateTime.UtcNow;
+            beforeArLoginLastDiagnosticAt = DateTime.MinValue;
+        }
+
+        var suppressed = AutoRetainerIPC.GetSuppressed();
+        Log.Information($"[AR] Before-AR login pending: reason={reason}, owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={suppressed}");
+    }
+
+    private void ArmBeforeArSuppressionFromPostprocess()
+    {
+        var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
+        var currentSuppressedBefore = AutoRetainerIPC.GetSuppressed();
+        Log.Information($"[AR] Postprocess before-AR arm check: configuredBeforeArCount={configuredCount}, owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={currentSuppressedBefore}");
+
+        if (configuredCount == 0)
+            return;
+
+        var acquired = AutoRetainerIPC.TryAcquireSuppression();
+        var currentSuppressedAfter = AutoRetainerIPC.GetSuppressed();
+        beforeArArmedByPostprocess = AutoRetainerIPC.SuppressionOwnedByVermaxion;
+        Log.Information($"[AR] Postprocess before-AR suppression arm: acquired={acquired}, armedByPostprocess={beforeArArmedByPostprocess}, owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={currentSuppressedAfter}");
+    }
+
+    private void ProcessPendingBeforeArLogin()
+    {
+        if (!pendingBeforeArLogin)
+            return;
+
         try
         {
-            var charName = ObjectTable.LocalPlayer?.Name.ToString() ?? "";
-            var worldName = ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString() ?? "";
-            if (!string.IsNullOrEmpty(charName) && !string.IsNullOrEmpty(worldName))
+            if (!ClientState.IsLoggedIn)
             {
-                var contentId = PlayerState.ContentId;
-                Log.Information($"OnLogin: Character={charName}@{worldName}, ContentId={contentId:X16}");
-                ConfigManager.EnsureAccountSelected(contentId, null);
-                ConfigManager.EnsureCharacterExists(charName, worldName);
-                Configuration.LastAccountId = ConfigManager.CurrentAccountId;
-                Configuration.Save();
-                Log.Information($"Character detected: {charName}@{worldName} -> Account {ConfigManager.CurrentAccountId}");
-                ConfigManager.LoadAllAccounts();
+                ClearPendingBeforeArLogin("logged out");
+                return;
             }
+
+            if (beforeArStartedThisLogin)
+            {
+                ClearPendingBeforeArLogin("before-AR already started this login");
+                return;
+            }
+
+            var elapsed = DateTime.UtcNow - beforeArLoginPendingSince;
+            if (elapsed.TotalSeconds >= BeforeArLoginTimeoutSeconds)
+            {
+                Log.Warning($"[AR] Timed out waiting for world-ready login after {BeforeArLoginTimeoutSeconds}s; releasing VMX-owned suppression.");
+                AutoRetainerIPC.ReleaseSuppressionIfOwned();
+                beforeArArmedByPostprocess = false;
+                ClearPendingBeforeArLogin("login resolution timeout");
+                return;
+            }
+
+            if (!TryGetWorldReadyCharacter(out var charName, out var worldName, out var contentId, out var notReadyReason))
+            {
+                LogPendingBeforeArDiagnostic(notReadyReason);
+                return;
+            }
+
+            Log.Information($"[AR] Login world-ready resolved: character={charName}@{worldName}, contentId={contentId:X16}");
+            ConfigManager.EnsureAccountSelected(contentId, null);
+            ConfigManager.EnsureCharacterExists(charName, worldName);
+            Configuration.LastAccountId = ConfigManager.CurrentAccountId;
+            Configuration.Save();
+            ConfigManager.LoadAllAccounts();
+
+            var activeConfig = ConfigManager.GetActiveConfig();
+            var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
+            var dueTaskIds = Engine.GetRunnableTaskIdsForPhase(PostProcessTaskPhase.BeforeAR).ToList();
+            var currentSuppressed = AutoRetainerIPC.GetSuppressed();
+            Log.Information($"[AR] Before-AR gate: accountId={ConfigManager.CurrentAccountId}, characterKey='{ConfigManager.CurrentCharacterKey}', configuredBeforeArCount={configuredCount}, dueBeforeArTaskIds=[{string.Join(", ", dueTaskIds)}], owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={currentSuppressed}, configEnabled={activeConfig.Enabled}");
+
+            if (configuredCount == 0)
+            {
+                Log.Information("[AR] Releasing before-AR suppression: no tasks configured for BeforeAR.");
+                AutoRetainerIPC.ReleaseSuppressionIfOwned();
+                beforeArArmedByPostprocess = false;
+                ClearPendingBeforeArLogin("no BeforeAR tasks configured");
+                return;
+            }
+
+            if (!activeConfig.Enabled || dueTaskIds.Count == 0)
+            {
+                Log.Information($"[AR] Releasing before-AR suppression: enabled={activeConfig.Enabled}, dueBeforeArTaskCount={dueTaskIds.Count}.");
+                AutoRetainerIPC.ReleaseSuppressionIfOwned();
+                beforeArArmedByPostprocess = false;
+                ClearPendingBeforeArLogin("no enabled/due BeforeAR tasks");
+                return;
+            }
+
+            var acquiredSuppression = AutoRetainerIPC.TryAcquireSuppression();
+            currentSuppressed = AutoRetainerIPC.GetSuppressed();
+            Log.Information($"[AR] Before-AR world-ready suppression acquire: acquired={acquiredSuppression}, owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={currentSuppressed}");
+            if (!acquiredSuppression || !AutoRetainerIPC.SuppressionOwnedByVermaxion)
+            {
+                Log.Warning($"[AR] Skipping before-AR tasks because VMX could not acquire AutoRetainer suppression after world-ready gate; currentSuppressed={currentSuppressed}.");
+                beforeArArmedByPostprocess = false;
+                ClearPendingBeforeArLogin("suppression not owned by VMX");
+                return;
+            }
+
+            beforeArStartedThisLogin = true;
+            beforeArArmedByPostprocess = false;
+            ClearPendingBeforeArLogin("starting before-AR engine");
+            Engine.StartBeforeAutoRetainer();
         }
         catch (Exception ex)
         {
-            Log.Error($"Error in OnLogin: {ex.Message}");
+            Log.Error($"Error in pending before-AR login processing: {ex.Message}");
+            AutoRetainerIPC.ReleaseSuppressionIfOwned();
+            beforeArArmedByPostprocess = false;
+            ClearPendingBeforeArLogin("exception");
         }
+    }
+
+    private void ClearPendingBeforeArLogin(string reason)
+    {
+        if (!pendingBeforeArLogin)
+            return;
+
+        Log.Information($"[AR] Clearing pending before-AR login: reason={reason}, owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={AutoRetainerIPC.GetSuppressed()}");
+        pendingBeforeArLogin = false;
+        beforeArLoginPendingSince = DateTime.MinValue;
+        beforeArLoginLastDiagnosticAt = DateTime.MinValue;
+        beforeArWorldReadySince = DateTime.MinValue;
+    }
+
+    private void LogPendingBeforeArDiagnostic(string reason)
+    {
+        var now = DateTime.UtcNow;
+        if (beforeArLoginLastDiagnosticAt != DateTime.MinValue &&
+            (now - beforeArLoginLastDiagnosticAt).TotalSeconds < 2)
+        {
+            return;
+        }
+
+        beforeArLoginLastDiagnosticAt = now;
+        Log.Information($"[AR] Pending before-AR login: {reason}, elapsed={(now - beforeArLoginPendingSince).TotalSeconds:F1}s, owned={AutoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={AutoRetainerIPC.GetSuppressed()}");
+    }
+
+    private bool TryGetWorldReadyCharacter(out string charName, out string worldName, out ulong contentId, out string reason)
+    {
+        charName = ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        worldName = ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString() ?? "";
+        contentId = PlayerState.ContentId;
+
+        var loggedIn = ClientState.IsLoggedIn;
+        var hasLocalPlayer = ObjectTable.LocalPlayer != null;
+        var betweenAreas = Condition[ConditionFlag.BetweenAreas];
+        var betweenAreas51 = Condition[ConditionFlag.BetweenAreas51];
+        var playerAvailable = GameHelpers.IsPlayerAvailable();
+
+        if (!loggedIn ||
+            !hasLocalPlayer ||
+            string.IsNullOrEmpty(charName) ||
+            string.IsNullOrEmpty(worldName) ||
+            contentId == 0 ||
+            betweenAreas ||
+            betweenAreas51 ||
+            !playerAvailable)
+        {
+            beforeArWorldReadySince = DateTime.MinValue;
+            reason = $"waiting for world-ready: loggedIn={loggedIn}, hasLocalPlayer={hasLocalPlayer}, character='{charName}', world='{worldName}', contentId={contentId:X16}, BetweenAreas={betweenAreas}, BetweenAreas51={betweenAreas51}, playerAvailable={playerAvailable}";
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (beforeArWorldReadySince == DateTime.MinValue)
+            beforeArWorldReadySince = now;
+
+        var stableSeconds = (now - beforeArWorldReadySince).TotalSeconds;
+        if (stableSeconds < BeforeArWorldReadyStableSeconds)
+        {
+            reason = $"waiting for world-ready stability: stable={stableSeconds:F1}/{BeforeArWorldReadyStableSeconds:F1}s, character='{charName}', world='{worldName}', contentId={contentId:X16}, BetweenAreas={betweenAreas}, BetweenAreas51={betweenAreas51}, playerAvailable={playerAvailable}";
+            return false;
+        }
+
+        reason = "world-ready";
+        return true;
+    }
+
+    private int GetConfiguredBeforeAutoRetainerTaskCount()
+    {
+        if (PostProcessTaskOrder.Normalize(Configuration))
+            Configuration.Save();
+
+        return Configuration.PostProcessTaskPlacement.Values.Count(phase => phase == PostProcessTaskPhase.BeforeAR);
     }
 
     private void OnFrameworkUpdate(IFramework fw)
@@ -324,20 +557,24 @@ public sealed class Plugin : IDalamudPlugin
         if (ClientState.IsLoggedIn && !wasLoggedIn)
         {
             wasLoggedIn = true;
-            loginDetectionDelay = 3;
+            beforeArStartedThisLogin = false;
+            BeginBeforeArLoginPending("framework login transition");
         }
         else if (!ClientState.IsLoggedIn && wasLoggedIn)
         {
             wasLoggedIn = false;
-            loginDetectionDelay = 0;
+            beforeArStartedThisLogin = false;
+            if (beforeArArmedByPostprocess)
+                Log.Information("[AR] Preserving postprocess-armed before-AR suppression across logout transition.");
+            else
+            {
+                AutoRetainerIPC.ReleaseSuppressionIfOwned();
+                beforeArArmedByPostprocess = false;
+            }
+            ClearPendingBeforeArLogin("framework logout transition");
         }
 
-        if (loginDetectionDelay > 0)
-        {
-            loginDetectionDelay--;
-            if (loginDetectionDelay == 0)
-                OnLogin();
-        }
+        ProcessPendingBeforeArLogin();
 
         // Update DTR bar
         UpdateDtrBar();
@@ -356,6 +593,7 @@ public sealed class Plugin : IDalamudPlugin
             FashionReportService.Update();
             VendorStockService.Update();
             RetainerListingRefillService.Update();
+            WorkshopBellService.Update();
             RegisterRegistrablesService.Update();
             MinionRouletteService.Update();
             SeasonalGearService.Update();
@@ -464,6 +702,7 @@ public sealed class Plugin : IDalamudPlugin
         FashionReportService.Reset();
         VendorStockService.Reset();
         RetainerListingRefillService.Reset();
+        WorkshopBellService.Reset();
         RegisterRegistrablesService.Reset();
         MinionRouletteService.Reset();
         SeasonalGearService.Reset();
@@ -477,6 +716,10 @@ public sealed class Plugin : IDalamudPlugin
         // Unpause YesAlready
         YesAlreadyIPC.Unpause();
         Log.Information("[FULL STOP] YesAlready unpaused");
+
+        AutoRetainerIPC.ReleaseSuppressionIfOwned();
+        beforeArArmedByPostprocess = false;
+        Log.Information("[FULL STOP] AutoRetainer suppression released if owned");
 
         Log.Information("[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
         ChatGui.Print("[Vermaxion] FULL STOP - All operations halted.");

@@ -74,7 +74,7 @@ public class ConfigWindow : Window, IDisposable
             config.Save();
 
         ImGui.Text("Global post-process order");
-        ImGui.TextDisabled("Disabled or unavailable tasks remain listed. The engine skips them at runtime.");
+        ImGui.TextDisabled("Before AR runs while AutoRetainer is suppressed after login. After AR runs in the normal postprocess slot.");
         ImGui.Spacing();
 
         if (ImGui.Button("Reset to default"))
@@ -116,6 +116,23 @@ public class ConfigWindow : Window, IDisposable
 
             ImGui.SameLine();
             ImGui.Text($"{index + 1}. {PostProcessTaskOrder.GetLabel(order[index])}");
+
+            ImGui.SameLine(360f);
+            var phase = config.PostProcessTaskPlacement.TryGetValue(order[index], out var configuredPhase)
+                ? configuredPhase
+                : PostProcessTaskOrder.GetDefaultPhase(order[index]);
+            var beforeAr = phase == PostProcessTaskPhase.BeforeAR;
+            if (ImGui.RadioButton("Before AR", beforeAr))
+            {
+                config.PostProcessTaskPlacement[order[index]] = PostProcessTaskPhase.BeforeAR;
+                config.Save();
+            }
+            ImGui.SameLine();
+            if (ImGui.RadioButton("After AR", !beforeAr))
+            {
+                config.PostProcessTaskPlacement[order[index]] = PostProcessTaskPhase.AfterAR;
+                config.Save();
+            }
 
             ImGui.PopID();
         }
@@ -874,7 +891,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Must start near a summoning bell. Withdraws current retainer market listings back into player inventory on the selected schedule.");
+                ImGui.SetTooltip("Routes to the selected retainer bell if none is nearby. Withdraws current retainer market listings back into player inventory on the selected schedule.");
             if (cc.EnableRefillFromListings)
             {
                 ImGui.Indent();
@@ -924,6 +941,23 @@ public class ConfigWindow : Window, IDisposable
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListingsSelectionMode", "Refill from listings selection",
                     (source, target) => target.RefillFromListingsSelectionMode = source.RefillFromListingsSelectionMode);
+
+                ImGui.Text("Route:");
+                ImGui.SameLine();
+                var refillRoute = cc.RefillFromListingsRoute;
+                if (ImGui.RadioButton("Workshop (/li ws)##RefillListingsWorkshop", refillRoute == RefillFromListingsRoute.Workshop))
+                {
+                    cc.RefillFromListingsRoute = RefillFromListingsRoute.Workshop;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Inn (/li inn)##RefillListingsInn", refillRoute == RefillFromListingsRoute.Inn))
+                {
+                    cc.RefillFromListingsRoute = RefillFromListingsRoute.Inn;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListingsRoute", "Refill from listings route",
+                    (source, target) => target.RefillFromListingsRoute = source.RefillFromListingsRoute);
 
                 DrawRefillFromListingsHint(cc);
                 if (DrawResetButton("RefillFromListingsState", cc.ResetRefillFromListingsState))

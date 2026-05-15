@@ -65,8 +65,10 @@ public class VermaxionEngine
     private readonly IClientState clientState;
     private readonly MomIPCClient momIPCClient;
     private readonly DadIPCClient dadIPCClient;
+    private readonly AutoRetainerIPC autoRetainerIPC;
 
     private EngineState state = EngineState.Idle;
+    private RunTaskPhaseFilter activePhaseFilter = RunTaskPhaseFilter.All;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private CharacterConfig? activeConfig = null;
     private bool weeklyResetDetected = false;
@@ -105,6 +107,13 @@ public class VermaxionEngine
         Error,
     }
 
+    private enum RunTaskPhaseFilter
+    {
+        All,
+        BeforeAR,
+        AfterAR,
+    }
+
     public EngineState State => state;
     public bool IsRunning => state != EngineState.Idle && state != EngineState.Complete && state != EngineState.Error;
     public string StatusText { get; private set; } = "Idle";
@@ -131,7 +140,8 @@ public class VermaxionEngine
         YesAlreadyIPC yesAlreadyIPC,
         IClientState clientState,
         MomIPCClient momIPCClient,
-        DadIPCClient dadIPCClient)
+        DadIPCClient dadIPCClient,
+        AutoRetainerIPC autoRetainerIPC)
     {
         this.log = log;
         this.configuration = configuration;
@@ -151,6 +161,7 @@ public class VermaxionEngine
         this.clientState = clientState;
         this.momIPCClient = momIPCClient;
         this.dadIPCClient = dadIPCClient;
+        this.autoRetainerIPC = autoRetainerIPC;
 
         // Subscribe to territory change events to close menus after teleporting
         clientState.TerritoryChanged += OnTerritoryChanged;
@@ -158,6 +169,7 @@ public class VermaxionEngine
 
     public void StartPostProcess()
     {
+        activePhaseFilter = RunTaskPhaseFilter.AfterAR;
         activeConfig = configManager.GetActiveConfig();
         if (activeConfig == null || !activeConfig.Enabled)
         {
@@ -173,6 +185,75 @@ public class VermaxionEngine
         SetState(EngineState.Starting);
     }
 
+    public void StartBeforeAutoRetainer()
+    {
+        if (IsRunning)
+        {
+            log.Information("[Engine] Before-AR start ignored because engine is already running");
+            return;
+        }
+
+        if (!TryGetBeforeArWorldReady(out var worldReadyReason))
+        {
+            log.Warning($"[Engine] Refusing before-AR start because world is not ready: {worldReadyReason}");
+            autoRetainerIPC.ReleaseSuppressionIfOwned();
+            return;
+        }
+
+        activeConfig = configManager.GetActiveConfig();
+        if (activeConfig == null || !activeConfig.Enabled)
+        {
+            log.Information("[Engine] Config not found or disabled - skipping before-AR tasks");
+            autoRetainerIPC.ReleaseSuppressionIfOwned();
+            return;
+        }
+
+        var dueTaskIds = GetRunnableTaskIdsForPhase(activeConfig, PostProcessTaskPhase.BeforeAR).ToList();
+        log.Information($"[Engine] Before-AR runnable tasks: accountId={configManager.CurrentAccountId}, characterKey='{configManager.CurrentCharacterKey}', dueBeforeArTaskIds=[{string.Join(", ", dueTaskIds)}], owned={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+        if (dueTaskIds.Count == 0)
+        {
+            log.Information("[Engine] No due/enabled before-AR tasks - releasing AutoRetainer suppression");
+            autoRetainerIPC.ReleaseSuppressionIfOwned();
+            return;
+        }
+
+        SendRunShutdownCommandBundle();
+        NagYourMomStatusText = "Idle";
+        NagYourDadStatusText = "Idle";
+        activePhaseFilter = RunTaskPhaseFilter.BeforeAR;
+        log.Information("[Engine] === Starting Vermaxion before-AR tasks ===");
+        SetState(EngineState.Starting);
+    }
+
+    private bool TryGetBeforeArWorldReady(out string reason)
+    {
+        var localPlayer = Plugin.ObjectTable.LocalPlayer;
+        var charName = localPlayer?.Name.ToString() ?? "";
+        var worldName = localPlayer?.HomeWorld.Value.Name.ToString() ?? "";
+        var contentId = Plugin.PlayerState.ContentId;
+        var loggedIn = clientState.IsLoggedIn;
+        var hasLocalPlayer = localPlayer != null;
+        var betweenAreas = Plugin.Condition[ConditionFlag.BetweenAreas];
+        var betweenAreas51 = Plugin.Condition[ConditionFlag.BetweenAreas51];
+        var playerAvailable = IsPlayerAvailable();
+
+        if (loggedIn &&
+            hasLocalPlayer &&
+            !string.IsNullOrEmpty(charName) &&
+            !string.IsNullOrEmpty(worldName) &&
+            contentId != 0 &&
+            !betweenAreas &&
+            !betweenAreas51 &&
+            playerAvailable)
+        {
+            reason = $"character={charName}@{worldName}, contentId={contentId:X16}";
+            return true;
+        }
+
+        reason = $"loggedIn={loggedIn}, hasLocalPlayer={hasLocalPlayer}, character='{charName}', world='{worldName}', contentId={contentId:X16}, BetweenAreas={betweenAreas}, BetweenAreas51={betweenAreas51}, playerAvailable={playerAvailable}";
+        return false;
+    }
+
     public void ManualStart()
     {
         activeConfig = configManager.GetActiveConfig();
@@ -185,6 +266,7 @@ public class VermaxionEngine
         SendRunShutdownCommandBundle();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";
+        activePhaseFilter = RunTaskPhaseFilter.All;
         log.Information("[Engine] === Manual start ===");
         SetState(EngineState.Starting);
     }
@@ -207,6 +289,7 @@ public class VermaxionEngine
         NagYourMomStatusText = "Cancelled";
         NagYourDadStatusText = "Cancelled";
         yesAlreadyIPC.Unpause();
+        autoRetainerIPC.ReleaseSuppressionIfOwned();
         SetState(EngineState.Idle);
     }
 
@@ -218,6 +301,7 @@ public class VermaxionEngine
         dadIPCClient.CancelActiveRun();
         NagYourMomStatusText = "Stopped";
         NagYourDadStatusText = "Stopped";
+        autoRetainerIPC.ReleaseSuppressionIfOwned();
         SetState(EngineState.Idle);
     }
 
@@ -842,11 +926,14 @@ public class VermaxionEngine
                 break;
 
             case EngineState.SignalingARDone:
+                var wasArPostprocess = arService.IsProcessing;
                 if (arService.IsProcessing)
                 {
                     arService.FinishPostProcess();
                     log.Information("[Engine] Signaled AR to continue");
                 }
+                if (activePhaseFilter != RunTaskPhaseFilter.AfterAR || !wasArPostprocess)
+                    autoRetainerIPC.ReleaseSuppressionIfOwned();
                 yesAlreadyIPC.Unpause();
                 SetState(EngineState.Complete);
                 log.Information("[Engine] === Vermaxion post-processing complete ===");
@@ -1034,7 +1121,62 @@ public class VermaxionEngine
         if (PostProcessTaskOrder.Normalize(configuration))
             configuration.Save();
 
-        return configuration.PostProcessTaskOrder;
+        if (activePhaseFilter == RunTaskPhaseFilter.All)
+            return configuration.PostProcessTaskOrder;
+
+        var phase = activePhaseFilter == RunTaskPhaseFilter.BeforeAR
+            ? PostProcessTaskPhase.BeforeAR
+            : PostProcessTaskPhase.AfterAR;
+
+        return configuration.PostProcessTaskOrder
+            .Where(id => configuration.PostProcessTaskPlacement.TryGetValue(id, out var placement) && placement == phase)
+            .ToList();
+    }
+
+    private bool HasRunnableTaskForPhase(CharacterConfig config, PostProcessTaskPhase phase)
+    {
+        return GetRunnableTaskIdsForPhase(config, phase).Any();
+    }
+
+    public IReadOnlyList<string> GetRunnableTaskIdsForPhase(PostProcessTaskPhase phase)
+    {
+        return GetRunnableTaskIdsForPhase(configManager.GetActiveConfig(), phase);
+    }
+
+    private List<string> GetRunnableTaskIdsForPhase(CharacterConfig config, PostProcessTaskPhase phase)
+    {
+        if (PostProcessTaskOrder.Normalize(configuration))
+            configuration.Save();
+
+        return configuration.PostProcessTaskOrder
+            .Where(id => configuration.PostProcessTaskPlacement.TryGetValue(id, out var placement) && placement == phase)
+            .Where(id => ShouldRunTask(id, config))
+            .ToList();
+    }
+
+    private bool ShouldRunTask(string id, CharacterConfig config)
+    {
+        return id switch
+        {
+            PostProcessTaskOrder.RefillListings => ShouldRunRefillFromListings(config),
+            PostProcessTaskOrder.FCBuffRefill => config.EnableFCBuffRefill,
+            PostProcessTaskOrder.VendorStock => config.EnableVendorStock,
+            PostProcessTaskOrder.RegisterRegistrables => config.EnableRegisterRegistrables,
+            PostProcessTaskOrder.VerminionQueue => config.EnableVerminionQueue &&
+                ResetDetectionService.TaskNeedsRun(config.VerminionLastCompleted, config.VerminionNextReset),
+            PostProcessTaskOrder.MiniCactpot => config.EnableMiniCactpot &&
+                config.MiniCactpotTicketsToday < 3 &&
+                ResetDetectionService.TaskNeedsRun(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset),
+            PostProcessTaskOrder.JumboCactpot => config.EnableJumboCactpot &&
+                ResetDetectionService.TaskNeedsRun(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset),
+            PostProcessTaskOrder.FashionReport => config.EnableFashionReport &&
+                ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset),
+            PostProcessTaskOrder.ChocoboRacing => config.EnableChocoboRacing &&
+                ResetDetectionService.TaskNeedsRun(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset),
+            PostProcessTaskOrder.NagYourMom => ShouldCountNagYourMom(config),
+            PostProcessTaskOrder.NagYourDad => ShouldCountNagYourDad(config),
+            _ => false,
+        };
     }
 
     private void SetState(EngineState newState)

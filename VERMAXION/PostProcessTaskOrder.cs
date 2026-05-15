@@ -3,6 +3,12 @@ using System.Linq;
 
 namespace VERMAXION;
 
+public enum PostProcessTaskPhase
+{
+    BeforeAR,
+    AfterAR,
+}
+
 public static class PostProcessTaskOrder
 {
     public const string RefillListings = "refill_listings";
@@ -73,23 +79,49 @@ public static class PostProcessTaskOrder
 
     public static bool Normalize(Configuration config)
     {
+        var changed = false;
         var normalized = Normalize(config.PostProcessTaskOrder);
-        if (config.PostProcessTaskOrder != null && config.PostProcessTaskOrder.SequenceEqual(normalized))
-            return false;
+        if (config.PostProcessTaskOrder == null || !config.PostProcessTaskOrder.SequenceEqual(normalized))
+        {
+            config.PostProcessTaskOrder = normalized;
+            changed = true;
+        }
 
-        config.PostProcessTaskOrder = normalized;
-        return true;
+        config.PostProcessTaskPlacement ??= new Dictionary<string, PostProcessTaskPhase>();
+        foreach (var id in config.PostProcessTaskPlacement.Keys.Where(id => !KnownIds.Contains(id)).ToList())
+        {
+            config.PostProcessTaskPlacement.Remove(id);
+            changed = true;
+        }
+
+        foreach (var id in DefaultOrder)
+        {
+            if (config.PostProcessTaskPlacement.ContainsKey(id))
+                continue;
+
+            config.PostProcessTaskPlacement[id] = GetDefaultPhase(id);
+            changed = true;
+        }
+
+        return changed;
     }
 
     public static void ResetToDefault(Configuration config)
     {
         config.PostProcessTaskOrder = DefaultOrder.ToList();
+        config.PostProcessTaskPlacement = CreateDefaultPlacement();
     }
 
     public static string GetLabel(string id)
     {
         return Definitions.FirstOrDefault(definition => definition.Id == id)?.Label ?? id;
     }
+
+    public static PostProcessTaskPhase GetDefaultPhase(string id)
+        => id == RefillListings ? PostProcessTaskPhase.BeforeAR : PostProcessTaskPhase.AfterAR;
+
+    public static Dictionary<string, PostProcessTaskPhase> CreateDefaultPlacement()
+        => DefaultOrder.ToDictionary(id => id, GetDefaultPhase);
 
     public sealed record TaskDefinition(string Id, string Label);
 }

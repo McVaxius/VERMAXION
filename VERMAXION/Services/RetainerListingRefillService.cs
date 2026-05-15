@@ -22,6 +22,7 @@ public sealed class RetainerListingRefillService
     {
         Idle,
         PreparingTargets,
+        OpeningWorkshopBell,
         MovingToBell,
         InteractingBell,
         SelectingRetainer,
@@ -41,7 +42,7 @@ public sealed class RetainerListingRefillService
     private sealed record RetainerListEntry(int Index, string Name);
     private sealed record ListingSlot(int Slot, uint ItemId, int Quantity, bool IsHq, string ItemName);
     private sealed record ListingSignature(uint ItemId, int Quantity, bool IsHq, string ItemName);
-    private sealed record RetainerSellListRow(int RowIndex, ListingSlot Listing, string Text);
+    private sealed record RetainerSellListRow(int RowIndex, ListingSlot Listing);
 
     private const string RetainerListAddonName = "RetainerList";
     private const string RetainerSellListAddonName = "RetainerSellList";
@@ -78,6 +79,8 @@ public sealed class RetainerListingRefillService
     private readonly IPluginLog log;
     private readonly ConfigManager configManager;
     private readonly VNavmeshIPC vnavmesh;
+    private readonly WorkshopBellService workshopBellService;
+    private readonly AutoRetainerIPC autoRetainerIPC;
 
     private RefillState state = RefillState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -102,6 +105,7 @@ public sealed class RetainerListingRefillService
     private bool sellMenuSelected;
     private bool confirmationClicked;
     private RefillFromListingsSelectionMode selectionMode = RefillFromListingsSelectionMode.All;
+    private RefillFromListingsRoute route = RefillFromListingsRoute.Workshop;
     private List<RetainerTarget> targets = new();
     private List<ListingSlot> listingPlan = new();
     private Dictionary<ListingSignature, int> selectedListingCounts = new();
@@ -122,11 +126,15 @@ public sealed class RetainerListingRefillService
     public RetainerListingRefillService(
         IPluginLog log,
         ConfigManager configManager,
-        VNavmeshIPC vnavmesh)
+        VNavmeshIPC vnavmesh,
+        WorkshopBellService workshopBellService,
+        AutoRetainerIPC autoRetainerIPC)
     {
         this.log = log;
         this.configManager = configManager;
         this.vnavmesh = vnavmesh;
+        this.workshopBellService = workshopBellService;
+        this.autoRetainerIPC = autoRetainerIPC;
     }
 
     public void Start(CharacterConfig config)
@@ -136,12 +144,21 @@ public sealed class RetainerListingRefillService
 
         Reset();
         selectionMode = config.RefillFromListingsSelectionMode;
+        route = config.RefillFromListingsRoute;
         SetState(RefillState.PreparingTargets, "Reading retainer listings...");
         TickPreparingTargets();
     }
 
     private void TickPreparingTargets()
     {
+        if (!GameHelpers.IsAddonVisible(RetainerListAddonName))
+        {
+            log.Information($"[Listings] Routing to {GetRouteLabel(route)} bell: route={route}, state={state}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+            workshopBellService.Start(route);
+            SetState(RefillState.OpeningWorkshopBell, $"Routing to {GetRouteLabel(route)} bell...");
+            return;
+        }
+
         if (!TryBuildRetainerTargets(out targets, out var error))
         {
             StatusText = error;
@@ -151,29 +168,13 @@ public sealed class RetainerListingRefillService
 
         if (targets.Count == 0)
         {
-            log.Information("[Listings] No retainers have market listings.");
+            log.Information("[Listings] No retainers have market listings after bell open.");
             SetState(RefillState.Complete, "No retainer listings found.");
             return;
         }
 
         log.Information($"[Listings] Starting refill from listings. targets={targets.Count}, mode={selectionMode}");
-        if (GameHelpers.IsAddonVisible(RetainerListAddonName))
-        {
-            SetState(RefillState.SelectingRetainer, "Selecting retainer...");
-            return;
-        }
-
-        if (!TryFindNearestBell(out _, out var bellDistance))
-        {
-            LogBellSearchDiagnostics("start");
-            Fail($"No Summoning Bell within {MaxBellSearchDistance:F0}y. Refill from listings must start near a bell.", closeRetainerUi: false);
-            return;
-        }
-
-        if (bellDistance > BellInteractionDistance)
-            SetState(RefillState.MovingToBell, $"Moving to retainer bell... ({bellDistance:F1}y)");
-        else
-            SetState(RefillState.InteractingBell, "Opening retainer bell...");
+        SetState(RefillState.SelectingRetainer, "Selecting retainer...");
     }
 
     public void RunTask()
@@ -185,6 +186,7 @@ public sealed class RetainerListingRefillService
     public void Reset()
     {
         vnavmesh.Stop();
+        workshopBellService.Reset();
         state = RefillState.Idle;
         stateEnteredAt = DateTime.MinValue;
         nextActionAt = DateTime.MinValue;
@@ -223,6 +225,9 @@ public sealed class RetainerListingRefillService
         {
             case RefillState.PreparingTargets:
                 TickPreparingTargets();
+                break;
+            case RefillState.OpeningWorkshopBell:
+                TickOpeningWorkshopBell();
                 break;
             case RefillState.MovingToBell:
                 TickMovingToBell();
@@ -269,6 +274,26 @@ public sealed class RetainerListingRefillService
         }
 
         TickClosingRetainerUi();
+    }
+
+    private void TickOpeningWorkshopBell()
+    {
+        workshopBellService.Update();
+
+        if (workshopBellService.IsComplete)
+        {
+            SetState(RefillState.PreparingTargets, "Reading retainer listings after bell open...");
+            return;
+        }
+
+        if (workshopBellService.IsFailed)
+        {
+            Fail($"Retainer bell route failed: {workshopBellService.LastError}", closeRetainerUi: false);
+            return;
+        }
+
+        StatusText = workshopBellService.StatusText;
+        nextActionAt = DateTime.UtcNow.AddMilliseconds(250);
     }
 
     private void TickMovingToBell()
@@ -627,7 +652,9 @@ public sealed class RetainerListingRefillService
             if (!TryFindNearestBell(out _, out var bellDistance))
             {
                 LogBellSearchDiagnostics("next-retainer");
-                Fail($"No Summoning Bell within {MaxBellSearchDistance:F0}y before opening the next retainer.", closeRetainerUi: false);
+                log.Information($"[Listings] No nearby Summoning Bell before next retainer. Routing to {GetRouteLabel(route)} bell.");
+                workshopBellService.Start(route);
+                SetState(RefillState.OpeningWorkshopBell, $"Routing to {GetRouteLabel(route)} bell...");
                 return;
             }
 
@@ -681,11 +708,11 @@ public sealed class RetainerListingRefillService
             pendingMarketItemCount = GetActiveRetainerMarketItemCount();
             if (!GameHelpers.TryFireAddonCallback(RetainerSellListAddonName, true, 0, row.RowIndex, 1))
             {
-                detail = $"Failed to fire {RetainerSellListAddonName} callback true 0 {row.RowIndex} 1 for RetainerMarket[{listing.Slot}] {FormatListing(listing)}. Row text: {row.Text}. {FormatVisibleAddonDiagnostics()}";
+                detail = $"Failed to fire {RetainerSellListAddonName} callback true 0 {row.RowIndex} 1 for RetainerMarket[{listing.Slot}] {FormatListing(listing)}. listingCount={pendingListingCount}, marketItemCount={pendingMarketItemCount}. {FormatVisibleAddonDiagnostics()}";
                 return false;
             }
 
-            detail = $"callback={RetainerSellListAddonName} true 0 {row.RowIndex} 1, row={row.RowIndex}, slot={listing.Slot}, item={listing.ItemId}, qty={listing.Quantity}, hq={listing.IsHq}, text='{row.Text}'";
+            detail = $"callback={RetainerSellListAddonName} true 0 {row.RowIndex} 1, row={row.RowIndex}, slot={listing.Slot}, item={listing.ItemId}, qty={listing.Quantity}, hq={listing.IsHq}, listingCount={pendingListingCount}, marketItemCount={pendingMarketItemCount}";
             return true;
         }
     }
@@ -693,7 +720,7 @@ public sealed class RetainerListingRefillService
     private string BuildContextMenuOpenFailure(ListingSlot listing)
     {
         var rowDetail = TryFindRetainerSellListRow(listing, out var row, out var detail)
-            ? $"row={row.RowIndex}, rowText='{row.Text}', proof='{detail}'"
+            ? $"row={row.RowIndex}, proof='{detail}'"
             : $"row=unproved, proof='{detail}'";
 
         return $"ContextMenu did not open for RetainerMarket[{listing.Slot}] {FormatListing(listing)} after callback true 0 row 1. {rowDetail}. {FormatVisibleAddonDiagnostics()}";
@@ -934,99 +961,17 @@ public sealed class RetainerListingRefillService
             return false;
         }
 
-        var rowTexts = TryReadRetainerSellListRowTexts(out var texts)
-            ? texts
-            : new List<string>();
-
         for (var i = 0; i < slots.Count; i++)
-        {
-            var text = i < rowTexts.Count && !string.IsNullOrWhiteSpace(rowTexts[i])
-                ? rowTexts[i]
-                : "(row text unavailable)";
-            rows.Add(new RetainerSellListRow(i, slots[i], text));
-        }
+            rows.Add(new RetainerSellListRow(i, slots[i]));
 
-        var uiCount = rowTexts.Count == 0 ? "unreadable" : rowTexts.Count.ToString();
-        detail = $"{scanDetail} {RetainerSellListAddonName} visibleRows={uiCount}. Rows: {FormatRetainerSellListRows(rows)}";
+        detail = $"{scanDetail} {RetainerSellListAddonName} inventoryRows={rows.Count}. Rows: {FormatRetainerSellListRows(rows)}";
         return true;
-    }
-
-    private unsafe bool TryReadRetainerSellListRowTexts(out List<string> rows)
-    {
-        rows = new List<string>();
-
-        nint addonPtr = Plugin.GameGui.GetAddonByName(RetainerSellListAddonName, 1);
-        if (addonPtr == 0)
-            return false;
-
-        var addon = (AtkUnitBase*)addonPtr;
-        if (!addon->IsVisible)
-            return false;
-
-        var componentList = FindFirstComponentList(addon);
-        if (componentList == null || componentList->ListLength <= 0)
-            return false;
-
-        var count = Math.Min((int)componentList->ListLength, 20);
-        for (var i = 0; i < count; i++)
-        {
-            var renderer = componentList->ItemRendererList[i].AtkComponentListItemRenderer;
-            rows.Add(ReadListRendererText(renderer));
-        }
-
-        return rows.Count > 0;
-    }
-
-    private static unsafe AtkComponentList* FindFirstComponentList(AtkUnitBase* addon)
-    {
-        for (var i = 0; i < addon->UldManager.NodeListCount; i++)
-        {
-            var node = addon->UldManager.NodeList[i];
-            if (node == null || (int)node->Type < 1000)
-                continue;
-
-            var componentNode = node->GetAsAtkComponentNode();
-            var component = componentNode == null ? null : componentNode->GetComponent();
-            if (component == null)
-                continue;
-
-            var list = (AtkComponentList*)component;
-            if (list->ListLength > 0 && list->ListLength <= 100)
-                return list;
-        }
-
-        return null;
-    }
-
-    private static unsafe string ReadListRendererText(AtkComponentListItemRenderer* renderer)
-    {
-        if (renderer == null)
-            return string.Empty;
-
-        var component = (AtkComponentBase*)renderer;
-        var values = new List<string>();
-        for (var i = 0; i < component->UldManager.NodeListCount; i++)
-        {
-            var node = component->UldManager.NodeList[i];
-            if (node == null || node->Type != NodeType.Text)
-                continue;
-
-            var textNode = node->GetAsAtkTextNode();
-            if (textNode == null)
-                continue;
-
-            var text = CleanAddonText(textNode->NodeText.ToString());
-            if (!string.IsNullOrWhiteSpace(text))
-                values.Add(text);
-        }
-
-        return values.Count == 0 ? string.Empty : string.Join(" | ", values.Distinct());
     }
 
     private static string FormatRetainerSellListRows(IReadOnlyCollection<RetainerSellListRow> rows)
         => rows.Count == 0
             ? "none"
-            : string.Join("; ", rows.Select(row => $"{row.RowIndex}:RetainerMarket[{row.Listing.Slot}] {FormatListing(row.Listing)} text='{row.Text}'"));
+            : string.Join("; ", rows.Select(row => $"{row.RowIndex}:RetainerMarket[{row.Listing.Slot}] {FormatListing(row.Listing)}"));
 
     private static string FormatListing(ListingSlot? listing)
         => listing == null
@@ -1114,6 +1059,7 @@ public sealed class RetainerListingRefillService
             else
                 retainerTargets = retainerTargets.OrderBy(target => target.DisplayOrder).ToList();
 
+            log.Information($"[Listings] Retainer target scan after bell open: targets={retainerTargets.Count}, retainers={FormatRetainerMarketItemCounts()}");
             foreach (var target in retainerTargets)
                 log.Information($"[Listings] Target retainer: {target.Name}, id={target.RetainerId}, market listings={target.MarketItemCount}, displayOrder={target.DisplayOrder}");
 
@@ -1123,6 +1069,39 @@ public sealed class RetainerListingRefillService
         {
             error = $"Failed to read RetainerManager listing counts: {ex.Message}";
             return false;
+        }
+    }
+
+    private static unsafe string FormatRetainerMarketItemCounts()
+    {
+        try
+        {
+            var manager = RetainerManager.Instance();
+            if (manager == null)
+                return "RetainerManager null";
+
+            if (!manager->IsReady)
+                return "RetainerManager not ready";
+
+            var entries = new List<string>();
+            for (var i = 0; i < manager->Retainers.Length; i++)
+            {
+                var retainer = manager->Retainers[i];
+                if (retainer.RetainerId == 0)
+                    continue;
+
+                var name = retainer.NameString.Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    name = $"#{i}";
+
+                entries.Add($"{name}:{retainer.MarketItemCount}");
+            }
+
+            return entries.Count == 0 ? "none" : string.Join(", ", entries);
+        }
+        catch (Exception ex)
+        {
+            return $"unreadable: {ex.Message}";
         }
     }
 
@@ -1753,11 +1732,15 @@ public sealed class RetainerListingRefillService
         BeginClosingRetainerUi(true, $"Failure: {message}. Closing retainer UI...");
     }
 
+    private static string GetRouteLabel(RefillFromListingsRoute route)
+        => route == RefillFromListingsRoute.Inn ? "inn" : "workshop";
+
     private bool IsTimedOut()
     {
         var elapsed = DateTime.UtcNow - stateEnteredAt;
         return state switch
         {
+            RefillState.OpeningWorkshopBell => elapsed > BellMoveTimeout,
             RefillState.MovingToBell => elapsed > BellMoveTimeout,
             RefillState.OpeningContextMenu or RefillState.SelectingReturnToInventory or RefillState.ConfirmingReturn or RefillState.VerifyingWithdrawal => elapsed > WithdrawalTimeout,
             RefillState.ClosingRetainerUi => elapsed > DefaultStepTimeout,
@@ -1770,6 +1753,7 @@ public sealed class RetainerListingRefillService
         return state switch
         {
             RefillState.PreparingTargets => $"Timed out waiting for RetainerManager readiness. {StatusText}",
+            RefillState.OpeningWorkshopBell => $"Timed out opening retainer bell. {workshopBellService.StatusText}",
             RefillState.OpeningSellList => $"Timed out opening retainer sell-items menu. Visible SelectString entries: {FormatSelectStringEntries()}",
             RefillState.ScanningListings => $"Timed out waiting for RetainerMarket inventory. {lastRetainerMarketScanDetail}",
             RefillState.SelectingRetainer => $"Timed out selecting retainer {CurrentTarget?.Name ?? "unknown"}. Visible RetainerList: {FormatRetainerListNames()}",

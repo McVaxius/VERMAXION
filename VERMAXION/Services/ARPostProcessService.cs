@@ -9,6 +9,7 @@ public class ARPostProcessService : IDisposable
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly IPluginLog log;
     private readonly Action<string> onCharacterReady;
+    private readonly Action beforeFinishPostprocess;
 
     private Dalamud.Plugin.Ipc.ICallGateSubscriber<object>? onAdditionalTaskSub;
     private Dalamud.Plugin.Ipc.ICallGateSubscriber<string, object>? onReadyForPostprocessSub;
@@ -19,11 +20,12 @@ public class ARPostProcessService : IDisposable
 
     public bool IsProcessing { get; private set; } = false;
 
-    public ARPostProcessService(IDalamudPluginInterface pluginInterface, IPluginLog log, Action<string> onCharacterReady)
+    public ARPostProcessService(IDalamudPluginInterface pluginInterface, IPluginLog log, Action<string> onCharacterReady, Action beforeFinishPostprocess)
     {
         this.pluginInterface = pluginInterface;
         this.log = log;
         this.onCharacterReady = onCharacterReady;
+        this.beforeFinishPostprocess = beforeFinishPostprocess;
 
         Initialize();
     }
@@ -92,6 +94,15 @@ public class ARPostProcessService : IDisposable
     {
         try
         {
+            try
+            {
+                beforeFinishPostprocess();
+            }
+            catch (Exception ex)
+            {
+                log.Error($"[AR] Error before finish postprocess callback: {ex.Message}");
+            }
+
             log.Information("[AR] Signaling AR to continue (FinishCharacterPostprocessRequest)");
             finishPostprocessSub?.InvokeAction();
         }

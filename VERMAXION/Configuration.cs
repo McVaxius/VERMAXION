@@ -19,6 +19,7 @@ public class Configuration : IPluginConfiguration
     public bool KrangleEnabled { get; set; } = false;
     public float LeftPanelWidth { get; set; } = 240f;
     public List<string> PostProcessTaskOrder { get; set; } = VERMAXION.PostProcessTaskOrder.DefaultOrder.ToList();
+    public Dictionary<string, PostProcessTaskPhase> PostProcessTaskPlacement { get; set; } = VERMAXION.PostProcessTaskOrder.CreateDefaultPlacement();
 
     // --- Account Tracking ---
     public string LastAccountId { get; set; } = "";

@@ -157,6 +157,12 @@ public class MainWindow : Window, IDisposable
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.RetainerListingRefillService.Start(activeConfig);
                 }, "OK");
+            DrawTaskRow("Retainer Bell", true, plugin.WorkshopBellService.StatusText,
+                "[Bell]##WorkshopBell", () =>
+                {
+                    plugin.ConfigManager.SaveCurrentAccount();
+                    plugin.WorkshopBellService.Start(plugin.ConfigManager.GetActiveConfig().RefillFromListingsRoute);
+                }, "OK");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",

@@ -36,6 +36,7 @@ public class CharacterConfig
     public int VendorStockGrade8DarkMatterTarget { get; set; } = 0;
     public RefillFromListingsFrequency RefillFromListingsFrequency { get; set; } = RefillFromListingsFrequency.Weekly;
     public RefillFromListingsSelectionMode RefillFromListingsSelectionMode { get; set; } = RefillFromListingsSelectionMode.All;
+    public RefillFromListingsRoute RefillFromListingsRoute { get; set; } = RefillFromListingsRoute.Workshop;
     public int NagYourMomRunsPerDay { get; set; } = 1;
     public string NagYourMomJob { get; set; } = "";
     public string NagYourMomWindowStartLocal { get; set; } = "00:00";
@@ -216,6 +217,7 @@ public class CharacterConfig
             VendorStockGrade8DarkMatterTarget = VendorStockGrade8DarkMatterTarget,
             RefillFromListingsFrequency = RefillFromListingsFrequency,
             RefillFromListingsSelectionMode = RefillFromListingsSelectionMode,
+            RefillFromListingsRoute = RefillFromListingsRoute,
             NagYourMomRunsPerDay = NagYourMomRunsPerDay,
             NagYourMomJob = NagYourMomJob,
             NagYourMomWindowStartLocal = NagYourMomWindowStartLocal,
@@ -289,4 +291,10 @@ public enum RefillFromListingsSelectionMode
 {
     All,
     Random,
+}
+
+public enum RefillFromListingsRoute
+{
+    Workshop,
+    Inn,
 }
