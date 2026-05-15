@@ -110,7 +110,7 @@ public sealed class Plugin : IDalamudPlugin
 
         // Engine - orchestrates all tasks
         Engine = new VermaxionEngine(
-            Log, ConfigManager, ResetDetectionService,
+            Log, Configuration, ConfigManager, ResetDetectionService,
             HenchmanService, FCBuffService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService,

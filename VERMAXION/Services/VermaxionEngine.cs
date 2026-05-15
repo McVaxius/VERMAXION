@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
@@ -27,7 +29,26 @@ public class VermaxionEngine
 		"/rotation Settings StartOnCountdown False",
     ];
 
+    private static readonly Dictionary<string, EngineState> TaskStateById = new()
+    {
+        [PostProcessTaskOrder.RefillListings] = EngineState.RunningRetainerListingRefill,
+        [PostProcessTaskOrder.FCBuffRefill] = EngineState.RunningFCBuff,
+        [PostProcessTaskOrder.VendorStock] = EngineState.RunningVendorStock,
+        [PostProcessTaskOrder.RegisterRegistrables] = EngineState.RunningRegisterRegistrables,
+        [PostProcessTaskOrder.VerminionQueue] = EngineState.RunningVerminion,
+        [PostProcessTaskOrder.MiniCactpot] = EngineState.RunningMiniCactpot,
+        [PostProcessTaskOrder.JumboCactpot] = EngineState.RunningJumboCactpot,
+        [PostProcessTaskOrder.FashionReport] = EngineState.RunningFashionReport,
+        [PostProcessTaskOrder.ChocoboRacing] = EngineState.RunningChocoboRacing,
+        [PostProcessTaskOrder.NagYourMom] = EngineState.RunningNagYourMom,
+        [PostProcessTaskOrder.NagYourDad] = EngineState.RunningNagYourDad,
+    };
+
+    private static readonly Dictionary<EngineState, string> TaskIdByState =
+        TaskStateById.ToDictionary(pair => pair.Value, pair => pair.Key);
+
     private readonly IPluginLog log;
+    private readonly Configuration configuration;
     private readonly ConfigManager configManager;
     private readonly ResetDetectionService resetService;
     private readonly HenchmanService henchmanService;
@@ -94,6 +115,7 @@ public class VermaxionEngine
 
     public VermaxionEngine(
         IPluginLog log,
+        Configuration configuration,
         ConfigManager configManager,
         ResetDetectionService resetService,
         HenchmanService henchmanService,
@@ -112,6 +134,7 @@ public class VermaxionEngine
         DadIPCClient dadIPCClient)
     {
         this.log = log;
+        this.configuration = configuration;
         this.configManager = configManager;
         this.resetService = resetService;
         this.henchmanService = henchmanService;
@@ -259,7 +282,7 @@ public class VermaxionEngine
                 configManager.SaveCurrentAccount();
 
                 log.Information($"[Engine] Weekly reset: {weeklyResetDetected}, Daily reset: {dailyResetDetected}, Saturday: {resetService.IsSaturday()}");
-                SetState(EngineState.RunningFCBuff);
+                SetState(GetFirstOrderedTaskState());
                 break;
 
             case EngineState.RunningFCBuff:
@@ -973,23 +996,45 @@ public class VermaxionEngine
 
     private void AdvanceToNextTask(EngineState currentTask)
     {
-        var next = currentTask switch
-        {
-            EngineState.RunningFCBuff => EngineState.RunningVendorStock,
-            EngineState.RunningVendorStock => EngineState.RunningRegisterRegistrables,
-            EngineState.RunningRegisterRegistrables => EngineState.RunningRetainerListingRefill,
-            EngineState.RunningRetainerListingRefill => EngineState.RunningVerminion,
-            EngineState.RunningVerminion => EngineState.RunningMiniCactpot,
-            EngineState.RunningMiniCactpot => EngineState.RunningJumboCactpot,
-            EngineState.RunningJumboCactpot => EngineState.RunningFashionReport,
-            EngineState.RunningFashionReport => EngineState.RunningChocoboRacing,
-            EngineState.RunningChocoboRacing => EngineState.RunningNagYourMom,
-            EngineState.RunningNagYourMom => EngineState.RunningNagYourDad,
-            EngineState.RunningNagYourDad => EngineState.EnablingHenchman,
-            _ => EngineState.EnablingHenchman,
-        };
+        SetState(GetNextOrderedTaskState(currentTask));
+    }
 
-        SetState(next);
+    private EngineState GetFirstOrderedTaskState()
+    {
+        foreach (var id in GetNormalizedTaskOrder())
+        {
+            if (TaskStateById.TryGetValue(id, out var taskState))
+                return taskState;
+        }
+
+        return EngineState.EnablingHenchman;
+    }
+
+    private EngineState GetNextOrderedTaskState(EngineState currentTask)
+    {
+        if (!TaskIdByState.TryGetValue(currentTask, out var currentId))
+            return EngineState.EnablingHenchman;
+
+        var order = GetNormalizedTaskOrder();
+        var currentIndex = order.IndexOf(currentId);
+        if (currentIndex < 0)
+            return EngineState.EnablingHenchman;
+
+        for (var index = currentIndex + 1; index < order.Count; index++)
+        {
+            if (TaskStateById.TryGetValue(order[index], out var taskState))
+                return taskState;
+        }
+
+        return EngineState.EnablingHenchman;
+    }
+
+    private List<string> GetNormalizedTaskOrder()
+    {
+        if (PostProcessTaskOrder.Normalize(configuration))
+            configuration.Save();
+
+        return configuration.PostProcessTaskOrder;
     }
 
     private void SetState(EngineState newState)

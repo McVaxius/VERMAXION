@@ -1,5 +1,7 @@
 using Dalamud.Configuration;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace VERMAXION;
 
@@ -16,6 +18,7 @@ public class Configuration : IPluginConfiguration
     public string DtrIconDisabled { get; set; } = "\uE03D";
     public bool KrangleEnabled { get; set; } = false;
     public float LeftPanelWidth { get; set; } = 240f;
+    public List<string> PostProcessTaskOrder { get; set; } = VERMAXION.PostProcessTaskOrder.DefaultOrder.ToList();
 
     // --- Account Tracking ---
     public string LastAccountId { get; set; } = "";

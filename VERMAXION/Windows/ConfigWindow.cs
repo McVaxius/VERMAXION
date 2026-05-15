@@ -53,12 +53,71 @@ public class ConfigWindow : Window, IDisposable
                 DrawSettingsTab();
                 ImGui.EndTabItem();
             }
+            if (ImGui.BeginTabItem("Task Order"))
+            {
+                DrawTaskOrderTab();
+                ImGui.EndTabItem();
+            }
             if (ImGui.BeginTabItem("About"))
             {
                 DrawAboutTab();
                 ImGui.EndTabItem();
             }
             ImGui.EndTabBar();
+        }
+    }
+
+    private void DrawTaskOrderTab()
+    {
+        var config = plugin.Configuration;
+        if (PostProcessTaskOrder.Normalize(config))
+            config.Save();
+
+        ImGui.Text("Global post-process order");
+        ImGui.TextDisabled("Disabled or unavailable tasks remain listed. The engine skips them at runtime.");
+        ImGui.Spacing();
+
+        if (ImGui.Button("Reset to default"))
+        {
+            PostProcessTaskOrder.ResetToDefault(config);
+            config.Save();
+        }
+
+        ImGui.Separator();
+
+        var order = config.PostProcessTaskOrder;
+        for (var index = 0; index < order.Count; index++)
+        {
+            ImGui.PushID($"TaskOrder_{order[index]}_{index}");
+
+            var canMoveUp = index > 0;
+            if (!canMoveUp)
+                ImGui.BeginDisabled();
+            if (ImGui.SmallButton("Up"))
+            {
+                (order[index - 1], order[index]) = (order[index], order[index - 1]);
+                config.Save();
+            }
+            if (!canMoveUp)
+                ImGui.EndDisabled();
+
+            ImGui.SameLine();
+
+            var canMoveDown = index < order.Count - 1;
+            if (!canMoveDown)
+                ImGui.BeginDisabled();
+            if (ImGui.SmallButton("Down"))
+            {
+                (order[index + 1], order[index]) = (order[index], order[index + 1]);
+                config.Save();
+            }
+            if (!canMoveDown)
+                ImGui.EndDisabled();
+
+            ImGui.SameLine();
+            ImGui.Text($"{index + 1}. {PostProcessTaskOrder.GetLabel(order[index])}");
+
+            ImGui.PopID();
         }
     }
 
