@@ -11,6 +11,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using ECommons.UIHelpers.AddonMasterImplementations;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -33,7 +34,13 @@ public class FCBuffService : IDisposable
     private static readonly TimeSpan PurchaseConfirmRetryInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PurchaseConfirmTimeout = TimeSpan.FromSeconds(12);
     private static readonly TimeSpan NavigationLogThrottle = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan WindowCloseRetryInterval = TimeSpan.FromMilliseconds(750);
+    private static readonly TimeSpan WindowCloseLogThrottle = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan WindowCloseEscapeFallbackDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan WindowCloseTimeout = TimeSpan.FromSeconds(20);
     private static readonly string[] QuartermasterNames = ["Quartermaster", "OIC Quartermaster"];
+    private static readonly string[] FcCleanupAddonNames = ["SelectYesno", "FreeCompanyExchange", "FreeCompanyAction", "SelectString", "FreeCompany"];
+    private static readonly string[] FcCallbackCloseAddonNames = ["FreeCompanyAction", "SelectString", "FreeCompany"];
 
     private FCBuffState state = FCBuffState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -46,7 +53,12 @@ public class FCBuffService : IDisposable
     private DateTime lastNavigationLogTime = DateTime.MinValue;
     private int purchaseConfirmRetryCount = 0;
     private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
+    private DateTime lastWindowCloseAttemptAt = DateTime.MinValue;
+    private DateTime lastWindowCloseLogAt = DateTime.MinValue;
+    private DateTime windowCloseTargetStartedAt = DateTime.MinValue;
     private int? cachedGCTerritory = null;
+    private string? windowCloseTargetName = null;
+    private bool failAfterClosingWindows = false;
 
     // FC points threshold from FUTA_GC.lua
     private const int MinFCPoints = 500000;
@@ -117,6 +129,8 @@ public class FCBuffService : IDisposable
         purchaseAttempts = config.FCBuffPurchaseAttempts;
         buyCount = 0;
         isSealSweetenerTwo = true; // Start with Seal Sweetener II
+        failAfterClosingWindows = false;
+        ResetWindowCloseTracking();
         ResetCachedGCTerritory();
         SetState(FCBuffState.CheckingFCPoints);
         log.Information($"[FCBuff] Starting FC buff refill (max attempts: {config.FCBuffPurchaseAttempts})");
@@ -804,11 +818,7 @@ public class FCBuffService : IDisposable
             case FCBuffState.WaitingForPurchaseConfirm:
                 if (GameHelpers.IsAddonVisible("SelectYesno"))
                 {
-                    log.Information("[FCBuff] Confirming purchase");
-                    GameHelpers.FireAddonCallback("SelectYesno", true, 0);
-                    buyCount++;
-                    ResetPurchaseConfirmRetryState();
-                    SetState(FCBuffState.PurchasingBuff);
+                    TryHandlePurchaseConfirmation();
                     return;
                 }
 
@@ -845,41 +855,204 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.ClosingWindows:
-                if (elapsed < 0.5) return;
-                log.Information("[FCBuff] Closing windows");
-                
-                // Use NUMPAD+ as primary method for FC buff purchase windows
-                if (elapsed > 0.5 && elapsed < 1.0)
-                {
-                    log.Information("[FCBuff] Pressing NUMPAD+ to close FC buff purchase window");
-                    GameHelpers.SendNumpadPlus();
-                }
-                
-                // Fallback to Escape after 1.5 seconds
-                if (elapsed > 1.5 && elapsed < 2.0)
-                {
-                    log.Information("[FCBuff] Pressing Escape as fallback");
-                    GameHelpers.CloseCurrentAddon();
-                }
-                
-                // Check if all relevant windows are closed
-                var fcAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompany");
-                var exchangeAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("FreeCompanyExchange");
-                var selectAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("SelectString");
-                var yesnoAddon = RaptureAtkUnitManager.Instance()->GetAddonByName("SelectYesno");
-                
-                bool allClosed = (fcAddon == null || !fcAddon->IsVisible) &&
-                               (exchangeAddon == null || !exchangeAddon->IsVisible) &&
-                               (selectAddon == null || !selectAddon->IsVisible) &&
-                               (yesnoAddon == null || !yesnoAddon->IsVisible);
-                
-                if (allClosed || elapsed > 3)
-                {
-                    log.Information("[FCBuff] All windows closed, task complete");
-                    SetState(FCBuffState.Complete);
-                }
+                TickClosingWindows(elapsed);
                 break;
         }
+    }
+
+    private unsafe void TryHandlePurchaseConfirmation()
+    {
+        try
+        {
+            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
+            if (addonPtr == 0)
+                return;
+
+            var addon = (AddonSelectYesno*)addonPtr;
+            if (!addon->AtkUnitBase.IsVisible)
+                return;
+
+            var yesNo = new AddonMaster.SelectYesno(&addon->AtkUnitBase);
+            var promptText = NormalizeAddonText(yesNo.Text);
+            var expectedActionName = GetExpectedPurchaseActionName();
+
+            if (promptText.Contains(expectedActionName, StringComparison.OrdinalIgnoreCase))
+            {
+                log.Information($"[FCBuff] Confirming purchase prompt for {expectedActionName}");
+                yesNo.Yes();
+                buyCount++;
+                ResetPurchaseConfirmRetryState();
+                SetState(FCBuffState.PurchasingBuff);
+                return;
+            }
+
+            log.Error($"[FCBuff] Purchase prompt mismatch. Expected '{expectedActionName}', got '{promptText}'. Clicking No and failing cleanup.");
+            yesNo.No();
+            failAfterClosingWindows = true;
+            ResetPurchaseConfirmRetryState();
+            SetState(FCBuffState.ClosingWindows);
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[FCBuff] Failed to validate purchase confirmation: {ex.Message}");
+            failAfterClosingWindows = true;
+            SetState(FCBuffState.ClosingWindows);
+        }
+    }
+
+    private string GetExpectedPurchaseActionName() => isSealSweetenerTwo ? "Seal Sweetener II" : "Seal Sweetener I";
+
+    private unsafe void TickClosingWindows(double elapsed)
+    {
+        if (elapsed < 0.25)
+            return;
+
+        var visibleAddons = GetVisibleFcCleanupAddons();
+        if (visibleAddons.Count == 0)
+        {
+            log.Information(failAfterClosingWindows
+                ? "[FCBuff] FC windows closed after failure"
+                : "[FCBuff] All FC windows closed, task complete");
+            SetState(failAfterClosingWindows ? FCBuffState.Failed : FCBuffState.Complete);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        LogWindowCloseStatusThrottled(visibleAddons, now);
+
+        if (elapsed > WindowCloseTimeout.TotalSeconds)
+        {
+            log.Error($"[FCBuff] Timeout closing FC windows: {string.Join(", ", visibleAddons)}");
+            SetState(FCBuffState.Failed);
+            return;
+        }
+
+        if (lastWindowCloseAttemptAt != DateTime.MinValue &&
+            now - lastWindowCloseAttemptAt < WindowCloseRetryInterval)
+        {
+            return;
+        }
+
+        lastWindowCloseAttemptAt = now;
+
+        var closeTarget = GetNextFcCleanupTarget();
+        if (closeTarget == null)
+            return;
+
+        TrackWindowCloseTarget(closeTarget, now);
+
+        if (closeTarget == "SelectYesno")
+        {
+            TryClickSelectYesnoNo("cleanup");
+            return;
+        }
+
+        if (now - windowCloseTargetStartedAt > WindowCloseEscapeFallbackDelay)
+        {
+            log.Warning($"[FCBuff] Callback cleanup fallback for {closeTarget}. Pressing Escape.");
+            GameHelpers.CloseCurrentAddon();
+            return;
+        }
+
+        if (closeTarget == "FreeCompanyExchange")
+        {
+            log.Information("[FCBuff] Closing FreeCompanyExchange with callback true -1");
+            GameHelpers.FireAddonCallback("FreeCompanyExchange", true, -1);
+            return;
+        }
+
+        log.Information($"[FCBuff] Closing {closeTarget} with callback true -1");
+        GameHelpers.FireAddonCallback(closeTarget, true, -1);
+    }
+
+    private unsafe bool TryClickSelectYesnoNo(string reason)
+    {
+        try
+        {
+            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
+            if (addonPtr == 0)
+                return false;
+
+            var addon = (AddonSelectYesno*)addonPtr;
+            if (!addon->AtkUnitBase.IsVisible)
+                return false;
+
+            var yesNo = new AddonMaster.SelectYesno(&addon->AtkUnitBase);
+            var promptText = NormalizeAddonText(yesNo.Text);
+            log.Warning($"[FCBuff] Closing SelectYesno with No during {reason}: '{promptText}'");
+            yesNo.No();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[FCBuff] Failed to click No on SelectYesno during {reason}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private unsafe List<string> GetVisibleFcCleanupAddons()
+    {
+        var visibleAddons = new List<string>();
+        var manager = RaptureAtkUnitManager.Instance();
+
+        foreach (var addonName in FcCleanupAddonNames)
+        {
+            var addon = manager->GetAddonByName(addonName);
+            if (addon != null && addon->IsVisible)
+                visibleAddons.Add(addonName);
+        }
+
+        return visibleAddons;
+    }
+
+    private string? GetNextFcCleanupTarget()
+    {
+        if (GameHelpers.IsAddonVisible("SelectYesno"))
+            return "SelectYesno";
+
+        if (GameHelpers.IsAddonVisible("FreeCompanyExchange"))
+            return "FreeCompanyExchange";
+
+        return FcCallbackCloseAddonNames.FirstOrDefault(GameHelpers.IsAddonVisible);
+    }
+
+    private void TrackWindowCloseTarget(string closeTarget, DateTime now)
+    {
+        if (string.Equals(windowCloseTargetName, closeTarget, StringComparison.Ordinal))
+            return;
+
+        windowCloseTargetName = closeTarget;
+        windowCloseTargetStartedAt = now;
+    }
+
+    private void LogWindowCloseStatusThrottled(IReadOnlyCollection<string> visibleAddons, DateTime now)
+    {
+        if (now - lastWindowCloseLogAt < WindowCloseLogThrottle)
+            return;
+
+        lastWindowCloseLogAt = now;
+        log.Information($"[FCBuff] Closing FC windows: {string.Join(", ", visibleAddons)}");
+    }
+
+    private static string NormalizeAddonText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var builder = new StringBuilder(text.Length);
+        foreach (var c in text)
+        {
+            if (char.IsControl(c))
+            {
+                if (builder.Length > 0 && builder[^1] != ' ')
+                    builder.Append(' ');
+                continue;
+            }
+
+            builder.Append(c);
+        }
+
+        return builder.ToString().Trim();
     }
 
     private unsafe int CountSealSweetenerBuffs()
@@ -974,9 +1147,16 @@ public class FCBuffService : IDisposable
         stateEnteredAt = DateTime.UtcNow;
         lastNavigationLogTime = DateTime.MinValue;
 
+        if (newState == FCBuffState.ClosingWindows)
+        {
+            ResetWindowCloseTracking();
+        }
+
         if (newState == FCBuffState.Idle || newState == FCBuffState.Complete || newState == FCBuffState.Failed)
         {
             ResetCachedGCTerritory();
+            ResetWindowCloseTracking();
+            failAfterClosingWindows = false;
         }
         
         // Reset pathfinding retry counter when starting navigation
@@ -1005,6 +1185,14 @@ public class FCBuffService : IDisposable
     {
         purchaseConfirmRetryCount = 0;
         lastPurchaseConfirmRetryAt = DateTime.MinValue;
+    }
+
+    private void ResetWindowCloseTracking()
+    {
+        lastWindowCloseAttemptAt = DateTime.MinValue;
+        lastWindowCloseLogAt = DateTime.MinValue;
+        windowCloseTargetStartedAt = DateTime.MinValue;
+        windowCloseTargetName = null;
     }
 
     private void ResetCachedGCTerritory()

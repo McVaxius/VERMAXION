@@ -293,6 +293,7 @@ public class ConfigManager
             cc.EnableFashionReport = defaultConfig.EnableFashionReport;
             cc.EnableRegisterRegistrables = defaultConfig.EnableRegisterRegistrables;
             cc.EnableVendorStock = defaultConfig.EnableVendorStock;
+            cc.EnableRefillFromListings = defaultConfig.EnableRefillFromListings;
             cc.EnableNagYourMom = defaultConfig.EnableNagYourMom;
             cc.ChocoboRacesPerDay = defaultConfig.ChocoboRacesPerDay;
             cc.SkipChocoboRacingAtRank50 = defaultConfig.SkipChocoboRacingAtRank50;
@@ -301,6 +302,8 @@ public class ConfigManager
             cc.FCBuffMinGil = defaultConfig.FCBuffMinGil;
             cc.VendorStockGysahlGreensTarget = defaultConfig.VendorStockGysahlGreensTarget;
             cc.VendorStockGrade8DarkMatterTarget = defaultConfig.VendorStockGrade8DarkMatterTarget;
+            cc.RefillFromListingsFrequency = defaultConfig.RefillFromListingsFrequency;
+            cc.RefillFromListingsSelectionMode = defaultConfig.RefillFromListingsSelectionMode;
             cc.NagYourMomRunsPerDay = defaultConfig.NagYourMomRunsPerDay;
             cc.NagYourMomJob = defaultConfig.NagYourMomJob;
             cc.NagYourMomWindowStartLocal = defaultConfig.NagYourMomWindowStartLocal;

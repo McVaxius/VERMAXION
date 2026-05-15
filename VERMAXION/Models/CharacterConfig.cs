@@ -21,6 +21,7 @@ public class CharacterConfig
     public bool EnableFashionReport { get; set; } = false;
     public bool EnableRegisterRegistrables { get; set; } = false;
     public bool EnableVendorStock { get; set; } = false;
+    public bool EnableRefillFromListings { get; set; } = false;
     public bool EnableNagYourMom { get; set; } = false;
     public bool EnableNagYourDad { get; set; } = false;
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
@@ -33,6 +34,8 @@ public class CharacterConfig
     public int FCBuffMinGil { get; set; } = 16000;
     public int VendorStockGysahlGreensTarget { get; set; } = 0;
     public int VendorStockGrade8DarkMatterTarget { get; set; } = 0;
+    public RefillFromListingsFrequency RefillFromListingsFrequency { get; set; } = RefillFromListingsFrequency.Weekly;
+    public RefillFromListingsSelectionMode RefillFromListingsSelectionMode { get; set; } = RefillFromListingsSelectionMode.All;
     public int NagYourMomRunsPerDay { get; set; } = 1;
     public string NagYourMomJob { get; set; } = "";
     public string NagYourMomWindowStartLocal { get; set; } = "00:00";
@@ -81,6 +84,8 @@ public class CharacterConfig
     public DateTime MiniCactpotNextReset { get; set; } = DateTime.MinValue;
     public DateTime ChocoboRacingLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime ChocoboRacingNextReset { get; set; } = DateTime.MinValue;
+    public DateTime RefillFromListingsLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime RefillFromListingsNextReset { get; set; } = DateTime.MinValue;
     
     // --- Enhanced State Tracking ---
     public int MiniCactpotTicketsToday { get; set; } = 0;
@@ -149,6 +154,12 @@ public class CharacterConfig
         EvercoldAdventurerActivityCompleted = false;
     }
 
+    public void ResetRefillFromListingsState()
+    {
+        RefillFromListingsLastCompleted = DateTime.MinValue;
+        RefillFromListingsNextReset = DateTime.MinValue;
+    }
+
     public void ResetWeeklySectionState()
     {
         LastWeeklyReset = DateTime.MinValue;
@@ -171,6 +182,7 @@ public class CharacterConfig
         ResetWeeklySectionState();
         ResetDailySectionState();
         ResetEvercoldAdventurerActivityState();
+        ResetRefillFromListingsState();
     }
 
     public CharacterConfig Clone()
@@ -191,6 +203,7 @@ public class CharacterConfig
             EnableFashionReport = EnableFashionReport,
             EnableRegisterRegistrables = EnableRegisterRegistrables,
             EnableVendorStock = EnableVendorStock,
+            EnableRefillFromListings = EnableRefillFromListings,
             EnableNagYourMom = EnableNagYourMom,
             EnableNagYourDad = EnableNagYourDad,
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
@@ -201,6 +214,8 @@ public class CharacterConfig
             FCBuffMinGil = FCBuffMinGil,
             VendorStockGysahlGreensTarget = VendorStockGysahlGreensTarget,
             VendorStockGrade8DarkMatterTarget = VendorStockGrade8DarkMatterTarget,
+            RefillFromListingsFrequency = RefillFromListingsFrequency,
+            RefillFromListingsSelectionMode = RefillFromListingsSelectionMode,
             NagYourMomRunsPerDay = NagYourMomRunsPerDay,
             NagYourMomJob = NagYourMomJob,
             NagYourMomWindowStartLocal = NagYourMomWindowStartLocal,
@@ -241,6 +256,8 @@ public class CharacterConfig
             MiniCactpotNextReset = MiniCactpotNextReset,
             ChocoboRacingLastCompleted = ChocoboRacingLastCompleted,
             ChocoboRacingNextReset = ChocoboRacingNextReset,
+            RefillFromListingsLastCompleted = RefillFromListingsLastCompleted,
+            RefillFromListingsNextReset = RefillFromListingsNextReset,
             MiniCactpotTicketsToday = MiniCactpotTicketsToday,
             MinionRouletteAttemptsToday = MinionRouletteAttemptsToday,
             LastMinionRouletteReset = LastMinionRouletteReset,
@@ -258,4 +275,18 @@ public enum JumboCactpotNumberMode
 {
     Random,
     Fixed,
+}
+
+public enum RefillFromListingsFrequency
+{
+    EveryAR,
+    Daily,
+    Weekly,
+    Monthly,
+}
+
+public enum RefillFromListingsSelectionMode
+{
+    All,
+    Random,
 }

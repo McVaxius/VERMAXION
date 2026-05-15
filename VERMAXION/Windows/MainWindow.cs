@@ -150,6 +150,13 @@ public class MainWindow : Window, IDisposable
                 "Test##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
             DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
                 "Test##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
+            DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
+                "Test##Listings", () =>
+                {
+                    plugin.ConfigManager.SaveCurrentAccount();
+                    var activeConfig = plugin.ConfigManager.GetActiveConfig();
+                    plugin.RetainerListingRefillService.Start(activeConfig);
+                }, "WIP");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
@@ -404,6 +411,44 @@ public class MainWindow : Window, IDisposable
             return "Set targets";
 
         return "Every AR run";
+    }
+
+    private static string GetRefillFromListingsStatus(Models.CharacterConfig config)
+    {
+        if (!config.EnableRefillFromListings)
+            return "Off";
+
+        return config.RefillFromListingsFrequency switch
+        {
+            Models.RefillFromListingsFrequency.EveryAR => $"Every AR / {FormatRefillSelection(config.RefillFromListingsSelectionMode)}",
+            Models.RefillFromListingsFrequency.Daily => ResetDetectionService.TaskIsCompleted(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset)
+                ? "Done today"
+                : $"Daily / {FormatRefillSelection(config.RefillFromListingsSelectionMode)}",
+            Models.RefillFromListingsFrequency.Monthly => IsRefillFromListingsMonthlyComplete(config)
+                ? "Done this month"
+                : $"Monthly / {FormatRefillSelection(config.RefillFromListingsSelectionMode)}",
+            _ => ResetDetectionService.TaskIsCompleted(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset)
+                ? "Done this week"
+                : $"Weekly / {FormatRefillSelection(config.RefillFromListingsSelectionMode)}",
+        };
+    }
+
+    private static bool IsRefillFromListingsMonthlyComplete(Models.CharacterConfig config)
+    {
+        if (config.RefillFromListingsLastCompleted == DateTime.MinValue)
+            return false;
+
+        var now = DateTime.UtcNow;
+        var lastCompleted = config.RefillFromListingsLastCompleted.ToUniversalTime();
+        if (lastCompleted.Year != now.Year || lastCompleted.Month != now.Month)
+            return false;
+
+        return config.RefillFromListingsNextReset == DateTime.MinValue || now < config.RefillFromListingsNextReset.ToUniversalTime();
+    }
+
+    private static string FormatRefillSelection(Models.RefillFromListingsSelectionMode mode)
+    {
+        return mode == Models.RefillFromListingsSelectionMode.Random ? "Random" : "All";
     }
 
     private static string GetNagYourMomStatus(Models.CharacterConfig config, string engineStatus)

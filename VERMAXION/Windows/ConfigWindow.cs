@@ -539,6 +539,69 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Unindent();
             }
 
+            var refillListings = cc.EnableRefillFromListings;
+            if (ImGui.Checkbox("Refill from listings", ref refillListings))
+            {
+                cc.EnableRefillFromListings = refillListings;
+                changed = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Withdraws current market listings from retainers back into player inventory on the selected schedule.");
+            if (cc.EnableRefillFromListings)
+            {
+                ImGui.Indent();
+
+                ImGui.Text("Frequency:");
+                ImGui.SameLine();
+                var refillFrequency = cc.RefillFromListingsFrequency;
+                if (ImGui.RadioButton("AR##RefillListingsEveryAR", refillFrequency == RefillFromListingsFrequency.EveryAR))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.EveryAR;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Daily##RefillListingsDaily", refillFrequency == RefillFromListingsFrequency.Daily))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Daily;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Weekly##RefillListingsWeekly", refillFrequency == RefillFromListingsFrequency.Weekly))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Weekly;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Monthly##RefillListingsMonthly", refillFrequency == RefillFromListingsFrequency.Monthly))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Monthly;
+                    changed = true;
+                }
+
+                ImGui.Text("Selection:");
+                ImGui.SameLine();
+                var refillSelection = cc.RefillFromListingsSelectionMode;
+                if (ImGui.RadioButton("All##RefillListingsAll", refillSelection == RefillFromListingsSelectionMode.All))
+                {
+                    cc.RefillFromListingsSelectionMode = RefillFromListingsSelectionMode.All;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Random##RefillListingsRandom", refillSelection == RefillFromListingsSelectionMode.Random))
+                {
+                    cc.RefillFromListingsSelectionMode = RefillFromListingsSelectionMode.Random;
+                    changed = true;
+                }
+
+                DrawRefillFromListingsHint(cc);
+                if (DrawResetButton("RefillFromListingsState", cc.ResetRefillFromListingsState))
+                    changed = true;
+
+                ImGui.Unindent();
+            }
+
             ImGui.Separator();
             ImGui.Text("Run Shutdown Bundle");
             ImGui.SameLine();
@@ -1250,6 +1313,45 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.TextDisabled(pendingText);
         }
+    }
+
+    private static void DrawRefillFromListingsHint(CharacterConfig config)
+    {
+        switch (config.RefillFromListingsFrequency)
+        {
+            case RefillFromListingsFrequency.EveryAR:
+                ImGui.TextDisabled("Runs every AutoRetainer/manual VERMAXION run.");
+                return;
+
+            case RefillFromListingsFrequency.Monthly:
+                if (IsRefillFromListingsMonthlyComplete(config))
+                    ImGui.TextDisabled($"Completed until {FormatUtc(config.RefillFromListingsNextReset)}");
+                else
+                    ImGui.TextDisabled("Runs once per UTC calendar month.");
+                return;
+
+            case RefillFromListingsFrequency.Daily:
+                DrawDailyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per daily reset.");
+                return;
+
+            case RefillFromListingsFrequency.Weekly:
+            default:
+                DrawWeeklyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per weekly reset.");
+                return;
+        }
+    }
+
+    private static bool IsRefillFromListingsMonthlyComplete(CharacterConfig config)
+    {
+        if (config.RefillFromListingsLastCompleted == DateTime.MinValue)
+            return false;
+
+        var now = DateTime.UtcNow;
+        var lastCompleted = config.RefillFromListingsLastCompleted.ToUniversalTime();
+        if (lastCompleted.Year != now.Year || lastCompleted.Month != now.Month)
+            return false;
+
+        return config.RefillFromListingsNextReset == DateTime.MinValue || now < config.RefillFromListingsNextReset.ToUniversalTime();
     }
 
     private static float GetCompactNumericInputWidth()

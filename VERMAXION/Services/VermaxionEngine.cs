@@ -38,6 +38,7 @@ public class VermaxionEngine
     private readonly FashionReportService fashionReportService;
     private readonly VendorStockService vendorStockService;
     private readonly RegisterRegistrablesService registerRegistrablesService;
+    private readonly RetainerListingRefillService retainerListingRefillService;
     private readonly ARPostProcessService arService;
     private readonly YesAlreadyIPC yesAlreadyIPC;
     private readonly IClientState clientState;
@@ -69,6 +70,7 @@ public class VermaxionEngine
         RunningFCBuff,
         RunningVendorStock,
         RunningRegisterRegistrables,
+        RunningRetainerListingRefill,
         RunningVerminion,
         RunningMiniCactpot,
         RunningJumboCactpot,
@@ -102,6 +104,7 @@ public class VermaxionEngine
         FashionReportService fashionReportService,
         VendorStockService vendorStockService,
         RegisterRegistrablesService registerRegistrablesService,
+        RetainerListingRefillService retainerListingRefillService,
         ARPostProcessService arService,
         YesAlreadyIPC yesAlreadyIPC,
         IClientState clientState,
@@ -119,6 +122,7 @@ public class VermaxionEngine
         this.fashionReportService = fashionReportService;
         this.vendorStockService = vendorStockService;
         this.registerRegistrablesService = registerRegistrablesService;
+        this.retainerListingRefillService = retainerListingRefillService;
         this.arService = arService;
         this.yesAlreadyIPC = yesAlreadyIPC;
         this.clientState = clientState;
@@ -171,6 +175,7 @@ public class VermaxionEngine
             arService.FinishPostProcess();
         fcBuffService.Reset();
         vendorStockService.Reset();
+        retainerListingRefillService.Reset();
         verminionService.Reset();
         cactpotService.Reset();
         chocoboRaceService.Reset();
@@ -185,6 +190,7 @@ public class VermaxionEngine
     public void Stop()
     {
         log.Information("[Engine] Stopped by user");
+        retainerListingRefillService.Reset();
         momIPCClient.CancelActiveRun();
         dadIPCClient.CancelActiveRun();
         NagYourMomStatusText = "Stopped";
@@ -207,6 +213,7 @@ public class VermaxionEngine
         int count = 0;
         if (activeConfig.EnableFCBuffRefill && !fcBuffService.IsComplete) count++;
         if (activeConfig.EnableVendorStock && !vendorStockService.IsComplete) count++;
+        if (ShouldRunRefillFromListings(activeConfig)) count++;
         if (activeConfig.EnableVerminionQueue && !verminionService.IsComplete) count++;
         if (activeConfig.EnableMiniCactpot && !cactpotService.IsComplete) count++;
         if (activeConfig.EnableJumboCactpot && !cactpotService.IsComplete) count++;
@@ -344,6 +351,40 @@ public class VermaxionEngine
                 else
                 {
                     AdvanceToNextTask(EngineState.RunningRegisterRegistrables);
+                }
+                break;
+
+            case EngineState.RunningRetainerListingRefill:
+                activeConfig = GetLiveActiveConfig();
+                if (ShouldRunRefillFromListings(activeConfig!))
+                {
+                    if (!retainerListingRefillService.IsActive && !retainerListingRefillService.IsComplete && !retainerListingRefillService.IsFailed)
+                    {
+                        log.Information("[Engine] Starting Retainer Listing Refill");
+                        ResetInteractionState();
+                        retainerListingRefillService.Start(activeConfig!);
+                        return;
+                    }
+
+                    retainerListingRefillService.Update();
+
+                    if (retainerListingRefillService.IsComplete)
+                    {
+                        log.Information("[Engine] Retainer Listing Refill completed");
+                        PersistRefillFromListingsCompletion(activeConfig!.RefillFromListingsFrequency);
+                        retainerListingRefillService.Reset();
+                        AdvanceToNextTask(EngineState.RunningRetainerListingRefill);
+                    }
+                    else if (retainerListingRefillService.IsFailed)
+                    {
+                        log.Warning($"[Engine] Retainer Listing Refill failed - continuing: {retainerListingRefillService.LastError}");
+                        retainerListingRefillService.Reset();
+                        AdvanceToNextTask(EngineState.RunningRetainerListingRefill);
+                    }
+                }
+                else
+                {
+                    AdvanceToNextTask(EngineState.RunningRetainerListingRefill);
                 }
                 break;
 
@@ -828,6 +869,67 @@ public class VermaxionEngine
         log.Warning("[Engine] Jumbo Cactpot failed and will be suppressed until its next reset window.");
     }
 
+    private void PersistRefillFromListingsCompletion(RefillFromListingsFrequency frequency)
+    {
+        if (frequency == RefillFromListingsFrequency.EveryAR)
+            return;
+
+        var completedAt = DateTime.UtcNow;
+        PersistCurrentCharacterConfig(config =>
+        {
+            config.RefillFromListingsLastCompleted = completedAt;
+            config.RefillFromListingsNextReset = GetNextRefillFromListingsReset(frequency, completedAt);
+        }, "Retainer Listing Refill completion");
+    }
+
+    private static bool ShouldRunRefillFromListings(CharacterConfig config)
+    {
+        if (!config.EnableRefillFromListings)
+            return false;
+
+        var now = DateTime.UtcNow;
+        return config.RefillFromListingsFrequency switch
+        {
+            RefillFromListingsFrequency.EveryAR => true,
+            RefillFromListingsFrequency.Daily => ResetDetectionService.TaskNeedsRun(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset),
+            RefillFromListingsFrequency.Weekly => ResetDetectionService.TaskNeedsRun(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset),
+            RefillFromListingsFrequency.Monthly => ShouldRunMonthlyRefill(config, now),
+            _ => ResetDetectionService.TaskNeedsRun(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset),
+        };
+    }
+
+    private static bool ShouldRunMonthlyRefill(CharacterConfig config, DateTime now)
+    {
+        if (config.RefillFromListingsLastCompleted == DateTime.MinValue)
+            return true;
+
+        var lastCompleted = config.RefillFromListingsLastCompleted.ToUniversalTime();
+        if (lastCompleted.Year != now.Year || lastCompleted.Month != now.Month)
+            return true;
+
+        return config.RefillFromListingsNextReset != DateTime.MinValue && now >= config.RefillFromListingsNextReset;
+    }
+
+    private static DateTime GetNextRefillFromListingsReset(RefillFromListingsFrequency frequency, DateTime now)
+    {
+        return frequency switch
+        {
+            RefillFromListingsFrequency.Daily => ResetDetectionService.GetNextDailyReset(now),
+            RefillFromListingsFrequency.Weekly => ResetDetectionService.GetNextWeeklyReset(now),
+            RefillFromListingsFrequency.Monthly => GetFirstDayOfNextUtcMonth(now),
+            _ => DateTime.MinValue,
+        };
+    }
+
+    private static DateTime GetFirstDayOfNextUtcMonth(DateTime now)
+    {
+        var utc = now.ToUniversalTime();
+        var nextMonth = utc.Month == 12
+            ? new DateTime(utc.Year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            : new DateTime(utc.Year, utc.Month + 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        return nextMonth;
+    }
+
     private bool ShouldHoldNonDutyTaskStart(string taskName)
     {
         var blockReason = GetNonDutyTaskStartBlockReason();
@@ -875,7 +977,8 @@ public class VermaxionEngine
         {
             EngineState.RunningFCBuff => EngineState.RunningVendorStock,
             EngineState.RunningVendorStock => EngineState.RunningRegisterRegistrables,
-            EngineState.RunningRegisterRegistrables => EngineState.RunningVerminion,
+            EngineState.RunningRegisterRegistrables => EngineState.RunningRetainerListingRefill,
+            EngineState.RunningRetainerListingRefill => EngineState.RunningVerminion,
             EngineState.RunningVerminion => EngineState.RunningMiniCactpot,
             EngineState.RunningMiniCactpot => EngineState.RunningJumboCactpot,
             EngineState.RunningJumboCactpot => EngineState.RunningFashionReport,
@@ -904,6 +1007,7 @@ public class VermaxionEngine
             EngineState.RunningFCBuff => "FC Buff Refill",
             EngineState.RunningVendorStock => "Vendor Stock",
             EngineState.RunningRegisterRegistrables => "Register Registrables",
+            EngineState.RunningRetainerListingRefill => "Retainer Listing Refill",
             EngineState.RunningVerminion => "Verminion Queue",
             EngineState.RunningMiniCactpot => "Mini Cactpot",
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",
