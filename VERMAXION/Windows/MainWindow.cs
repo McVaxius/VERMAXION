@@ -156,7 +156,7 @@ public class MainWindow : Window, IDisposable
                     plugin.ConfigManager.SaveCurrentAccount();
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.RetainerListingRefillService.Start(activeConfig);
-                }, "WIP");
+                }, "OK");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
