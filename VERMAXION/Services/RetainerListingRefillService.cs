@@ -40,6 +40,7 @@ public sealed class RetainerListingRefillService
     private sealed record RetainerTarget(string Name, ulong RetainerId, int RetainerIndex, int DisplayOrder, int MarketItemCount);
     private sealed record RetainerListEntry(int Index, string Name);
     private sealed record ListingSlot(int Slot, uint ItemId, int Quantity, bool IsHq, string ItemName);
+    private sealed record ListingSignature(uint ItemId, int Quantity, bool IsHq, string ItemName);
     private sealed record RetainerSellListRow(int RowIndex, ListingSlot Listing, string Text);
 
     private const string RetainerListAddonName = "RetainerList";
@@ -52,6 +53,7 @@ public sealed class RetainerListingRefillService
     private static readonly TimeSpan BellMoveTimeout = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan WithdrawalTimeout = TimeSpan.FromSeconds(12);
     private static readonly TimeSpan CloseRetryInterval = TimeSpan.FromMilliseconds(750);
+    private static readonly TimeSpan CloseNoSurfaceGrace = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RetainerListCloseSecondCallbackDelay = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan CloseSignatureLogInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StallDiagnosticLogInterval = TimeSpan.FromSeconds(5);
@@ -91,6 +93,8 @@ public sealed class RetainerListingRefillService
     private string closeVisibleAddonSignature = string.Empty;
     private bool retainerListCloseSecondPending;
     private DateTime retainerListCloseSecondReadyAt = DateTime.MinValue;
+    private DateTime closeNoSurfaceSince = DateTime.MinValue;
+    private int retainerListCallbackCycles;
     private int closeAttemptCount;
     private bool closeThenFail;
     private bool bellInteracted;
@@ -100,8 +104,8 @@ public sealed class RetainerListingRefillService
     private RefillFromListingsSelectionMode selectionMode = RefillFromListingsSelectionMode.All;
     private List<RetainerTarget> targets = new();
     private List<ListingSlot> listingPlan = new();
+    private Dictionary<ListingSignature, int> selectedListingCounts = new();
     private int targetIndex;
-    private int listingIndex;
     private ListingSlot? pendingListing;
     private int pendingListingCount;
     private int pendingMarketItemCount;
@@ -189,8 +193,8 @@ public sealed class RetainerListingRefillService
         StatusText = "Idle.";
         targets = new List<RetainerTarget>();
         listingPlan = new List<ListingSlot>();
+        selectedListingCounts = new Dictionary<ListingSignature, int>();
         targetIndex = 0;
-        listingIndex = 0;
         pendingListing = null;
         pendingListingCount = 0;
         pendingMarketItemCount = 0;
@@ -438,7 +442,7 @@ public sealed class RetainerListingRefillService
         }
 
         listingPlan = BuildListingPlan(slots);
-        listingIndex = 0;
+        selectedListingCounts = BuildSelectedListingCounts(listingPlan);
         log.Information($"[Listings] {CurrentTarget?.Name}: scanned {slots.Count} listing(s), selected {listingPlan.Count}, mode={selectionMode}, order={FormatListingSlotOrder(listingPlan)}.");
 
         if (listingPlan.Count == 0)
@@ -462,20 +466,21 @@ public sealed class RetainerListingRefillService
             return;
         }
 
-        while (listingIndex < listingPlan.Count)
+        if (!TryScanRetainerMarketListings(out var slots, out var detail))
         {
-            var listing = listingPlan[listingIndex];
-            var current = GetListingSlotSnapshot(listing.Slot);
-            if (current == null ||
-                current.ItemId != listing.ItemId ||
-                current.Quantity != listing.Quantity ||
-                current.IsHq != listing.IsHq)
-            {
-                log.Information($"[Listings] Slot {listing.Slot} changed before withdrawal; skipping planned listing {FormatListing(listing)}.");
-                listingIndex++;
-                continue;
-            }
+            lastRetainerMarketScanDetail = detail;
+            LogRetainerMarketDiagnostics(detail);
+            StatusText = detail;
+            nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
+            return;
+        }
 
+        var listing = selectionMode == RefillFromListingsSelectionMode.All
+            ? OrderListings(slots).FirstOrDefault()
+            : FindNextSelectedLiveListing(slots);
+
+        if (listing != null)
+        {
             pendingListing = listing;
             SetState(RefillState.OpeningContextMenu, $"Opening context menu for {listing.ItemName}...");
             return;
@@ -582,7 +587,7 @@ public sealed class RetainerListingRefillService
         if (IsWithdrawalVerified(pendingListing, out var detail))
         {
             log.Information(detail);
-            listingIndex++;
+            MarkSelectedListingWithdrawn(pendingListing);
             pendingListing = null;
             if (GameHelpers.IsAddonVisible(RetainerSellListAddonName))
             {
@@ -799,6 +804,49 @@ public sealed class RetainerListingRefillService
 
         return selected;
     }
+
+    private static Dictionary<ListingSignature, int> BuildSelectedListingCounts(IEnumerable<ListingSlot> listings)
+    {
+        var counts = new Dictionary<ListingSignature, int>();
+        foreach (var listing in listings)
+        {
+            var signature = GetListingSignature(listing);
+            counts.TryGetValue(signature, out var count);
+            counts[signature] = count + 1;
+        }
+
+        return counts;
+    }
+
+    private ListingSlot? FindNextSelectedLiveListing(IEnumerable<ListingSlot> slots)
+    {
+        foreach (var listing in OrderListings(slots))
+        {
+            var signature = GetListingSignature(listing);
+            if (selectedListingCounts.TryGetValue(signature, out var count) && count > 0)
+                return listing;
+        }
+
+        return null;
+    }
+
+    private void MarkSelectedListingWithdrawn(ListingSlot listing)
+    {
+        if (selectionMode == RefillFromListingsSelectionMode.All)
+            return;
+
+        var signature = GetListingSignature(listing);
+        if (!selectedListingCounts.TryGetValue(signature, out var count) || count <= 0)
+            return;
+
+        if (count == 1)
+            selectedListingCounts.Remove(signature);
+        else
+            selectedListingCounts[signature] = count - 1;
+    }
+
+    private static ListingSignature GetListingSignature(ListingSlot listing)
+        => new(listing.ItemId, listing.Quantity, listing.IsHq, listing.ItemName);
 
     private unsafe bool TryScanRetainerMarketListings(out List<ListingSlot> slots, out string detail)
     {
@@ -1568,6 +1616,7 @@ public sealed class RetainerListingRefillService
                 LogRetainerCloseAction(closeAttemptCount + 1, RetainerListAddonName, "RetainerList true -2", GetVisibleRetainerCloseAddons());
                 GameHelpers.FireAddonCallback(RetainerListAddonName, true, -2);
                 closeAttemptCount++;
+                retainerListCallbackCycles++;
             }
 
             lastRetainerCloseAttemptAt = now;
@@ -1577,10 +1626,24 @@ public sealed class RetainerListingRefillService
         var visibleAddons = GetVisibleRetainerCloseAddons();
         if (visibleAddons.Count == 0)
         {
+            if (closeNoSurfaceSince == DateTime.MinValue)
+            {
+                closeNoSurfaceSince = now;
+                nextActionAt = now.AddMilliseconds(150);
+                return true;
+            }
+
+            if (now - closeNoSurfaceSince < CloseNoSurfaceGrace)
+            {
+                nextActionAt = now.AddMilliseconds(150);
+                return true;
+            }
+
             ResetCloseTracking();
             return false;
         }
 
+        closeNoSurfaceSince = DateTime.MinValue;
         LogVisibleCloseAddons(visibleAddons, now);
         status = $"Closing retainer UI... ({string.Join(", ", visibleAddons)})";
 
@@ -1593,10 +1656,19 @@ public sealed class RetainerListingRefillService
         var addonToClose = visibleAddons[0];
         if (addonToClose == RetainerListAddonName)
         {
-            LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "RetainerList true -1", visibleAddons);
-            GameHelpers.FireAddonCallback(RetainerListAddonName, true, -1);
-            retainerListCloseSecondPending = true;
-            retainerListCloseSecondReadyAt = now.Add(RetainerListCloseSecondCallbackDelay);
+            if (retainerListCallbackCycles >= 3)
+            {
+                LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "CloseCurrentAddon fallback", visibleAddons);
+                GameHelpers.CloseCurrentAddon();
+                retainerListCallbackCycles = 0;
+            }
+            else
+            {
+                LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "RetainerList true -1", visibleAddons);
+                GameHelpers.FireAddonCallback(RetainerListAddonName, true, -1);
+                retainerListCloseSecondPending = true;
+                retainerListCloseSecondReadyAt = now.Add(RetainerListCloseSecondCallbackDelay);
+            }
         }
         else
         {
@@ -1751,7 +1823,7 @@ public sealed class RetainerListingRefillService
         sellMenuSelected = false;
         confirmationClicked = false;
         listingPlan.Clear();
-        listingIndex = 0;
+        selectedListingCounts.Clear();
         pendingListing = null;
         pendingListingCount = 0;
         pendingMarketItemCount = 0;
@@ -1768,6 +1840,8 @@ public sealed class RetainerListingRefillService
         closeVisibleAddonSignature = string.Empty;
         retainerListCloseSecondPending = false;
         retainerListCloseSecondReadyAt = DateTime.MinValue;
+        closeNoSurfaceSince = DateTime.MinValue;
+        retainerListCallbackCycles = 0;
         lastSelectStringDiagnosticAt = DateTime.MinValue;
         lastRetainerListDiagnosticAt = DateTime.MinValue;
         lastRetainerMarketDiagnosticAt = DateTime.MinValue;
