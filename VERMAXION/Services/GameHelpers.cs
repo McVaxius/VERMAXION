@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Game.ClientState.Conditions;
@@ -184,15 +185,21 @@ public static class GameHelpers
     /// Pattern from LootGoblin GameHelpers.
     /// SND equivalent: /callback AddonName true/false arg1 arg2 ...
     /// </summary>
-    public static unsafe void FireAddonCallback(string addonName, bool updateState, params object[] args)
+    public static void FireAddonCallback(string addonName, bool updateState, params object[] args)
     {
+        TryFireAddonCallback(addonName, updateState, args);
+    }
+
+    public static unsafe bool TryFireAddonCallback(string addonName, bool updateState, params object[] args)
+    {
+        var formattedArgs = FormatCallbackArgs(updateState, args);
         try
         {
             var addon = RaptureAtkUnitManager.Instance()->GetAddonByName(addonName);
             if (addon == null || !addon->IsVisible)
             {
-                Plugin.Log.Warning($"[Callback] Addon '{addonName}' not found or not visible");
-                return;
+                Plugin.Log.Warning($"[Callback] Addon '{addonName}' not found or not visible. Args: {formattedArgs}");
+                return false;
             }
 
             var atkValues = new AtkValue[args.Length];
@@ -212,13 +219,26 @@ public static class GameHelpers
                 addon->FireCallback((uint)atkValues.Length, ptr, updateState);
             }
 
-            Plugin.Log.Information($"[Callback] Fired on '{addonName}' with {args.Length} args, updateState={updateState}");
+            Plugin.Log.Information($"[Callback] Fired on '{addonName}'. Args: {formattedArgs}");
+            return true;
         }
         catch (Exception ex)
         {
-            Plugin.Log.Error($"[Callback] Failed for '{addonName}': {ex.Message}");
+            Plugin.Log.Error($"[Callback] Failed for '{addonName}'. Args: {formattedArgs}. Error: {ex.Message}");
+            return false;
         }
     }
+
+    private static string FormatCallbackArgs(bool updateState, IReadOnlyList<object> args)
+        => $"{updateState.ToString().ToLowerInvariant()}{(args.Count == 0 ? string.Empty : " " + string.Join(" ", args.Select(FormatCallbackArg)))}";
+
+    private static string FormatCallbackArg(object arg)
+        => arg switch
+        {
+            bool value => value.ToString().ToLowerInvariant(),
+            null => "null",
+            _ => Convert.ToString(arg, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+        };
 
     /// <summary>
     /// Fire the standard close callback (-1) for an addon if it is currently visible.

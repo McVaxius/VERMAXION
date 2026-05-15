@@ -96,7 +96,6 @@ public sealed class RetainerListingRefillService
     private bool bellInteracted;
     private bool retainerSelected;
     private bool sellMenuSelected;
-    private bool contextOpened;
     private bool confirmationClicked;
     private RefillFromListingsSelectionMode selectionMode = RefillFromListingsSelectionMode.All;
     private List<RetainerTarget> targets = new();
@@ -104,8 +103,11 @@ public sealed class RetainerListingRefillService
     private int targetIndex;
     private int listingIndex;
     private ListingSlot? pendingListing;
-    private int pendingInventoryCount;
+    private int pendingListingCount;
+    private int pendingMarketItemCount;
     private string lastRetainerMarketScanDetail = string.Empty;
+    private bool reopenSellListForCurrentPlan;
+    private bool contextOpenRequested;
 
     public string StatusText { get; private set; } = "Idle.";
     public string LastError { get; private set; } = string.Empty;
@@ -190,7 +192,10 @@ public sealed class RetainerListingRefillService
         targetIndex = 0;
         listingIndex = 0;
         pendingListing = null;
-        pendingInventoryCount = 0;
+        pendingListingCount = 0;
+        pendingMarketItemCount = 0;
+        reopenSellListForCurrentPlan = false;
+        contextOpenRequested = false;
         closeThenFail = false;
         ResetRetainerPhaseFlags();
         ResetCloseTracking();
@@ -380,7 +385,15 @@ public sealed class RetainerListingRefillService
     {
         if (GameHelpers.IsAddonVisible(RetainerSellListAddonName))
         {
-            SetState(RefillState.ScanningListings, "Scanning retainer market listings...");
+            if (reopenSellListForCurrentPlan)
+            {
+                reopenSellListForCurrentPlan = false;
+                SetState(RefillState.WithdrawingNextListing, "Continuing selected listings...");
+            }
+            else
+            {
+                SetState(RefillState.ScanningListings, "Scanning retainer market listings...");
+            }
             return;
         }
 
@@ -426,11 +439,14 @@ public sealed class RetainerListingRefillService
 
         listingPlan = BuildListingPlan(slots);
         listingIndex = 0;
-        log.Information($"[Listings] {CurrentTarget?.Name}: scanned {slots.Count} listing(s), selected {listingPlan.Count} for withdrawal.");
+        log.Information($"[Listings] {CurrentTarget?.Name}: scanned {slots.Count} listing(s), selected {listingPlan.Count}, mode={selectionMode}, order={FormatListingSlotOrder(listingPlan)}.");
 
         if (listingPlan.Count == 0)
         {
-            BeginClosingRetainerUi(false, $"No selected listings for {CurrentTarget?.Name ?? "retainer"}. Closing retainer UI...");
+            var status = selectionMode == RefillFromListingsSelectionMode.Random && slots.Count > 0
+                ? $"No selected listings for {CurrentTarget?.Name ?? "retainer"}. Closing retainer UI..."
+                : $"No listings remain for {CurrentTarget?.Name ?? "retainer"}. Closing retainer UI...";
+            BeginClosingRetainerUi(false, status);
             return;
         }
 
@@ -439,13 +455,23 @@ public sealed class RetainerListingRefillService
 
     private void TickWithdrawingNextListing()
     {
+        if (!GameHelpers.IsAddonVisible(RetainerSellListAddonName))
+        {
+            StatusText = "Waiting for RetainerSellList before choosing listing...";
+            nextActionAt = DateTime.UtcNow.AddSeconds(1);
+            return;
+        }
+
         while (listingIndex < listingPlan.Count)
         {
             var listing = listingPlan[listingIndex];
             var current = GetListingSlotSnapshot(listing.Slot);
-            if (current == null || current.ItemId != listing.ItemId || current.Quantity != listing.Quantity)
+            if (current == null ||
+                current.ItemId != listing.ItemId ||
+                current.Quantity != listing.Quantity ||
+                current.IsHq != listing.IsHq)
             {
-                log.Information($"[Listings] Slot {listing.Slot} already changed before withdrawal; skipping.");
+                log.Information($"[Listings] Slot {listing.Slot} changed before withdrawal; skipping planned listing {FormatListing(listing)}.");
                 listingIndex++;
                 continue;
             }
@@ -460,6 +486,12 @@ public sealed class RetainerListingRefillService
 
     private void TickOpeningContextMenu()
     {
+        if (GameHelpers.IsAddonVisible(ContextMenuAddonName))
+        {
+            SetState(RefillState.SelectingReturnToInventory, "Selecting Return to Inventory...");
+            return;
+        }
+
         if (pendingListing == null)
         {
             SetState(RefillState.WithdrawingNextListing, "Selecting next listing...");
@@ -473,21 +505,21 @@ public sealed class RetainerListingRefillService
             return;
         }
 
-        if (!contextOpened)
+        if (contextOpenRequested)
         {
-            if (!TryOpenContextMenu(pendingListing, out var detail))
-            {
-                Fail(detail);
-                return;
-            }
-
-            log.Information(detail);
-            contextOpened = true;
-            nextActionAt = DateTime.UtcNow.AddMilliseconds(750);
+            Fail(BuildContextMenuOpenFailure(pendingListing));
             return;
         }
 
-        SetState(RefillState.SelectingReturnToInventory, "Selecting Return to Inventory...");
+        if (!TryOpenContextMenu(pendingListing, out var detail))
+        {
+            Fail(detail);
+            return;
+        }
+
+        log.Information(detail);
+        contextOpenRequested = true;
+        nextActionAt = DateTime.UtcNow.AddMilliseconds(750);
     }
 
     private void TickSelectingReturnToInventory()
@@ -511,8 +543,7 @@ public sealed class RetainerListingRefillService
                 break;
             case ContextSelectResult.NotFound:
                 LogContextMenuDiagnostics(detail);
-                StatusText = detail;
-                nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
+                Fail(detail);
                 break;
         }
     }
@@ -553,7 +584,15 @@ public sealed class RetainerListingRefillService
             log.Information(detail);
             listingIndex++;
             pendingListing = null;
-            SetState(RefillState.WithdrawingNextListing, "Selecting next listing...");
+            if (GameHelpers.IsAddonVisible(RetainerSellListAddonName))
+            {
+                SetState(RefillState.WithdrawingNextListing, "Selecting next listing...");
+            }
+            else
+            {
+                reopenSellListForCurrentPlan = true;
+                SetState(RefillState.OpeningSellList, "Reopening retainer market listings...");
+            }
             nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
             return;
         }
@@ -633,11 +672,26 @@ public sealed class RetainerListingRefillService
                 return false;
             }
 
-            pendingInventoryCount = GetPlayerInventoryCount(listing.ItemId, listing.IsHq);
-            GameHelpers.FireAddonCallback(RetainerSellListAddonName, true, 0, row.RowIndex, 1);
-            detail = $"[Listings] Opened native {RetainerSellListAddonName} row {row.RowIndex} context for RetainerMarket[{listing.Slot}] {FormatListing(listing)}. Row text: {row.Text}";
+            pendingListingCount = GetRetainerMarketListingCount();
+            pendingMarketItemCount = GetActiveRetainerMarketItemCount();
+            if (!GameHelpers.TryFireAddonCallback(RetainerSellListAddonName, true, 0, row.RowIndex, 1))
+            {
+                detail = $"Failed to fire {RetainerSellListAddonName} callback true 0 {row.RowIndex} 1 for RetainerMarket[{listing.Slot}] {FormatListing(listing)}. Row text: {row.Text}. {FormatVisibleAddonDiagnostics()}";
+                return false;
+            }
+
+            detail = $"callback={RetainerSellListAddonName} true 0 {row.RowIndex} 1, row={row.RowIndex}, slot={listing.Slot}, item={listing.ItemId}, qty={listing.Quantity}, hq={listing.IsHq}, text='{row.Text}'";
             return true;
         }
+    }
+
+    private string BuildContextMenuOpenFailure(ListingSlot listing)
+    {
+        var rowDetail = TryFindRetainerSellListRow(listing, out var row, out var detail)
+            ? $"row={row.RowIndex}, rowText='{row.Text}', proof='{detail}'"
+            : $"row=unproved, proof='{detail}'";
+
+        return $"ContextMenu did not open for RetainerMarket[{listing.Slot}] {FormatListing(listing)} after callback true 0 row 1. {rowDetail}. {FormatVisibleAddonDiagnostics()}";
     }
 
     private ContextSelectResult TrySelectReturnToInventory(out string detail)
@@ -651,30 +705,33 @@ public sealed class RetainerListingRefillService
         {
             var expected = GetReturnToInventoryTexts();
             var menu = new AddonMaster.ContextMenu(addonPtr);
-            foreach (var entry in menu.Entries)
+            var entries = menu.Entries.ToList();
+            var visibleEntries = FormatContextMenuEntries(entries, includeEnabled: false);
+            var visibleEntriesWithState = FormatContextMenuEntries(entries, includeEnabled: true);
+            for (var i = 0; i < entries.Count; i++)
             {
+                var entry = entries[i];
                 var text = CleanAddonText(entry.Text);
                 if (!MatchesAny(text, expected))
                     continue;
 
                 if (!entry.Enabled)
                 {
-                    detail = $"Return to Inventory is disabled for {pendingListing?.ItemName ?? "listing"}. Inventory may be full.";
+                    detail = $"Return to Inventory context entry {i}:'{text}' is disabled for {FormatPendingListing()}. Inventory may be full. Entries: {visibleEntriesWithState}";
                     return ContextSelectResult.Disabled;
                 }
 
                 if (!entry.Select())
                 {
-                    detail = $"Return to Inventory context entry was found but could not be selected: {text}.";
+                    detail = $"Return to Inventory context entry {i}:'{text}' was found but could not be selected for {FormatPendingListing()}. Entries: {visibleEntriesWithState}";
                     return ContextSelectResult.Disabled;
                 }
 
-                detail = $"[Listings] Selected context entry '{text}' for {pendingListing?.ItemName ?? "listing"}.";
+                detail = $"[Listings] Selected context entry {i}:'{text}' for {FormatPendingListing()}. Entries: {visibleEntries}";
                 return ContextSelectResult.Selected;
             }
 
-            var visible = string.Join(", ", menu.Entries.Select(entry => CleanAddonText(entry.Text)));
-            detail = $"Waiting for Return to Inventory context entry. Visible entries: {visible}";
+            detail = $"Return to Inventory context entry not found for {FormatPendingListing()}. Entries: {visibleEntriesWithState}";
             return ContextSelectResult.NotFound;
         }
         catch (Exception ex)
@@ -693,16 +750,25 @@ public sealed class RetainerListingRefillService
             return true;
         }
 
-        if (current.ItemId != listing.ItemId || current.Quantity != listing.Quantity)
+        if (current.ItemId != listing.ItemId ||
+            current.Quantity != listing.Quantity ||
+            current.IsHq != listing.IsHq)
         {
             detail = $"[Listings] Verified {listing.ItemName}: RetainerMarket[{listing.Slot}] changed.";
             return true;
         }
 
-        var inventoryCount = GetPlayerInventoryCount(listing.ItemId, listing.IsHq);
-        if (inventoryCount > pendingInventoryCount)
+        var listingCount = GetRetainerMarketListingCount();
+        if (listingCount >= 0 && pendingListingCount > 0 && listingCount < pendingListingCount)
         {
-            detail = $"[Listings] Verified {listing.ItemName}: inventory count increased {pendingInventoryCount}->{inventoryCount}.";
+            detail = $"[Listings] Verified {listing.ItemName}: RetainerMarket listing count decreased {pendingListingCount}->{listingCount}.";
+            return true;
+        }
+
+        var marketItemCount = GetActiveRetainerMarketItemCount();
+        if (marketItemCount >= 0 && pendingMarketItemCount > 0 && marketItemCount < pendingMarketItemCount)
+        {
+            detail = $"[Listings] Verified {listing.ItemName}: active retainer MarketItemCount decreased {pendingMarketItemCount}->{marketItemCount}.";
             return true;
         }
 
@@ -710,18 +776,25 @@ public sealed class RetainerListingRefillService
         return false;
     }
 
+    private static IEnumerable<ListingSlot> OrderListings(IEnumerable<ListingSlot> slots)
+        => slots.OrderByDescending(slot => slot.Slot);
+
+    private static string FormatListingSlotOrder(IReadOnlyCollection<ListingSlot> slots)
+        => slots.Count == 0 ? "none" : string.Join(",", slots.Select(slot => slot.Slot));
+
     private List<ListingSlot> BuildListingPlan(IReadOnlyList<ListingSlot> slots)
     {
+        var ordered = OrderListings(slots).ToList();
         if (selectionMode == RefillFromListingsSelectionMode.All)
-            return slots.ToList();
+            return ordered;
 
         var selected = new List<ListingSlot>();
-        foreach (var slot in slots)
+        foreach (var listing in ordered)
         {
             var roll = Random.Shared.Next(2);
-            log.Information($"[Listings] Random roll for {CurrentTarget?.Name} slot {slot.Slot} {slot.ItemName}: {roll}");
+            log.Information($"[Listings] Random roll for {CurrentTarget?.Name} RetainerMarket[{listing.Slot}] {FormatListing(listing)}: {roll}");
             if (roll == 1)
-                selected.Add(slot);
+                selected.Add(listing);
         }
 
         return selected;
@@ -912,12 +985,45 @@ public sealed class RetainerListingRefillService
             ? "empty/unavailable"
             : $"{listing.ItemName} id={listing.ItemId} qty={listing.Quantity} hq={listing.IsHq}";
 
-    private unsafe int GetPlayerInventoryCount(uint itemId, bool isHq)
+    private unsafe int GetRetainerMarketListingCount()
     {
         var manager = InventoryManager.Instance();
-        return manager == null
-            ? 0
-            : manager->GetInventoryItemCount(itemId, isHq, false, false);
+        if (manager == null)
+            return -1;
+
+        var container = manager->GetInventoryContainer(InventoryType.RetainerMarket);
+        if (container == null || !container->IsLoaded)
+            return -1;
+
+        var count = 0;
+        for (var i = 0; i < container->Size; i++)
+        {
+            var item = container->GetInventorySlot(i);
+            if (item != null && item->ItemId != 0 && item->Quantity > 0)
+                count++;
+        }
+
+        return count;
+    }
+
+    private unsafe int GetActiveRetainerMarketItemCount()
+    {
+        var target = CurrentTarget;
+        if (target == null)
+            return -1;
+
+        var manager = RetainerManager.Instance();
+        if (manager == null || !manager->IsReady)
+            return -1;
+
+        for (var i = 0; i < manager->Retainers.Length; i++)
+        {
+            var retainer = manager->Retainers[i];
+            if (retainer.RetainerId == target.RetainerId)
+                return retainer.MarketItemCount;
+        }
+
+        return -1;
     }
 
     private bool TryBuildRetainerTargets(out List<RetainerTarget> retainerTargets, out string error)
@@ -1084,6 +1190,7 @@ public sealed class RetainerListingRefillService
             GetAddonText(1388),
             GetAddonText(6947),
             "Return to Inventory",
+            "Return Items to Inventory",
         }
         .Where(text => !string.IsNullOrWhiteSpace(text))
         .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -1164,17 +1271,50 @@ public sealed class RetainerListingRefillService
         try
         {
             var menu = new AddonMaster.ContextMenu(addonPtr);
-            var entries = menu.Entries
-                .Select((entry, index) => $"{index}:{CleanAddonText(entry.Text)} enabled={entry.Enabled}")
-                .ToList();
-
-            return entries.Count == 0 ? "none parsed" : string.Join(", ", entries);
+            return FormatContextMenuEntries(menu.Entries.ToList(), includeEnabled: true);
         }
         catch (Exception ex)
         {
             return $"read failed: {ex.Message}";
         }
     }
+
+    private static string FormatVisibleAddonDiagnostics()
+    {
+        var addonNames = new[]
+        {
+            RetainerSellListAddonName,
+            ContextMenuAddonName,
+            "SelectYesno",
+            SelectStringAddonName,
+            RetainerListAddonName,
+        };
+
+        var visible = addonNames
+            .Where(GameHelpers.IsAddonVisible)
+            .ToList();
+
+        return $"Visible addons: {(visible.Count == 0 ? "none" : string.Join(", ", visible))}. ContextMenu entries: {FormatContextMenuEntries()}";
+    }
+
+    private static string FormatContextMenuEntries(IReadOnlyList<AddonMaster.ContextMenu.Entry> entries, bool includeEnabled)
+    {
+        if (entries.Count == 0)
+            return "none parsed";
+
+        return string.Join(", ", entries.Select((entry, index) =>
+        {
+            var text = CleanAddonText(entry.Text);
+            return includeEnabled
+                ? $"{index}:{text} enabled={entry.Enabled}"
+                : $"{index}:{text}";
+        }));
+    }
+
+    private string FormatPendingListing()
+        => pendingListing == null
+            ? "listing"
+            : $"RetainerMarket[{pendingListing.Slot}] {FormatListing(pendingListing)}";
 
     private unsafe bool IsExpectedActiveRetainer(RetainerTarget target, out string detail)
     {
@@ -1425,8 +1565,9 @@ public sealed class RetainerListingRefillService
             retainerListCloseSecondPending = false;
             if (GameHelpers.IsAddonVisible(RetainerListAddonName))
             {
-                log.Information("[Listings] Closing RetainerList: -2");
+                LogRetainerCloseAction(closeAttemptCount + 1, RetainerListAddonName, "RetainerList true -2", GetVisibleRetainerCloseAddons());
                 GameHelpers.FireAddonCallback(RetainerListAddonName, true, -2);
+                closeAttemptCount++;
             }
 
             lastRetainerCloseAttemptAt = now;
@@ -1452,7 +1593,7 @@ public sealed class RetainerListingRefillService
         var addonToClose = visibleAddons[0];
         if (addonToClose == RetainerListAddonName)
         {
-            log.Information("[Listings] Closing RetainerList: -1");
+            LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "RetainerList true -1", visibleAddons);
             GameHelpers.FireAddonCallback(RetainerListAddonName, true, -1);
             retainerListCloseSecondPending = true;
             retainerListCloseSecondReadyAt = now.Add(RetainerListCloseSecondCallbackDelay);
@@ -1462,11 +1603,16 @@ public sealed class RetainerListingRefillService
             var useCallback = closeAttemptCount % 2 == 0;
             if (useCallback)
             {
+                LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "TryCloseAddonByCallback", visibleAddons);
                 if (!GameHelpers.TryCloseAddonByCallback(addonToClose))
+                {
+                    LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "CloseCurrentAddon fallback", visibleAddons);
                     GameHelpers.CloseCurrentAddon();
+                }
             }
             else
             {
+                LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "CloseCurrentAddon", visibleAddons);
                 GameHelpers.CloseCurrentAddon();
             }
         }
@@ -1501,6 +1647,12 @@ public sealed class RetainerListingRefillService
         closeVisibleAddonSignature = signature;
         lastCloseSignatureLoggedAt = now;
         log.Information($"[Listings] Retainer close surfaces visible: {signature}.");
+    }
+
+    private void LogRetainerCloseAction(int attempt, string addonName, string action, IReadOnlyCollection<string> visibleAddons)
+    {
+        var visible = visibleAddons.Count == 0 ? "none" : string.Join(", ", visibleAddons);
+        log.Information($"[Listings] Retainer close attempt {attempt}: action={action}, target={addonName}, context={state}, visible={visible}.");
     }
 
     private void BeginClosingRetainerUi(bool failed, string status)
@@ -1580,7 +1732,7 @@ public sealed class RetainerListingRefillService
                 sellMenuSelected = false;
                 break;
             case RefillState.OpeningContextMenu:
-                contextOpened = false;
+                contextOpenRequested = false;
                 confirmationClicked = false;
                 break;
             case RefillState.ConfirmingReturn:
@@ -1597,12 +1749,14 @@ public sealed class RetainerListingRefillService
         bellInteracted = false;
         retainerSelected = false;
         sellMenuSelected = false;
-        contextOpened = false;
         confirmationClicked = false;
         listingPlan.Clear();
         listingIndex = 0;
         pendingListing = null;
-        pendingInventoryCount = 0;
+        pendingListingCount = 0;
+        pendingMarketItemCount = 0;
+        reopenSellListForCurrentPlan = false;
+        contextOpenRequested = false;
         lastRetainerMarketScanDetail = string.Empty;
     }
 
