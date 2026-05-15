@@ -815,7 +815,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Withdraws current market listings from retainers back into player inventory on the selected schedule.");
+                ImGui.SetTooltip("Must start near a summoning bell. Withdraws current retainer market listings back into player inventory on the selected schedule.");
             if (cc.EnableRefillFromListings)
             {
                 ImGui.Indent();
@@ -1427,23 +1427,23 @@ public class ConfigWindow : Window, IDisposable
         switch (config.RefillFromListingsFrequency)
         {
             case RefillFromListingsFrequency.EveryAR:
-                ImGui.TextDisabled("Runs every AutoRetainer/manual VERMAXION run.");
+                ImGui.TextDisabled("Runs every AutoRetainer/manual VERMAXION run near a summoning bell; withdraws current market listings.");
                 return;
 
             case RefillFromListingsFrequency.Monthly:
                 if (IsRefillFromListingsMonthlyComplete(config))
                     ImGui.TextDisabled($"Completed until {FormatUtc(config.RefillFromListingsNextReset)}");
                 else
-                    ImGui.TextDisabled("Runs once per UTC calendar month.");
+                    ImGui.TextDisabled("Runs once per UTC calendar month near a summoning bell.");
                 return;
 
             case RefillFromListingsFrequency.Daily:
-                DrawDailyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per daily reset.");
+                DrawDailyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per daily reset near a summoning bell.");
                 return;
 
             case RefillFromListingsFrequency.Weekly:
             default:
-                DrawWeeklyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per weekly reset.");
+                DrawWeeklyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per weekly reset near a summoning bell.");
                 return;
         }
     }

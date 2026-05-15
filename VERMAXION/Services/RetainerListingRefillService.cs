@@ -9,7 +9,6 @@ using Dalamud.Plugin.Services;
 using ECommons.DalamudServices;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using VERMAXION.IPC;
@@ -22,6 +21,7 @@ public sealed class RetainerListingRefillService
     private enum RefillState
     {
         Idle,
+        PreparingTargets,
         MovingToBell,
         InteractingBell,
         SelectingRetainer,
@@ -37,9 +37,10 @@ public sealed class RetainerListingRefillService
         Failed,
     }
 
-    private sealed record RetainerTarget(string Name, int RetainerIndex, int DisplayOrder, int MarketItemCount);
+    private sealed record RetainerTarget(string Name, ulong RetainerId, int RetainerIndex, int DisplayOrder, int MarketItemCount);
     private sealed record RetainerListEntry(int Index, string Name);
     private sealed record ListingSlot(int Slot, uint ItemId, int Quantity, bool IsHq, string ItemName);
+    private sealed record RetainerSellListRow(int RowIndex, ListingSlot Listing, string Text);
 
     private const string RetainerListAddonName = "RetainerList";
     private const string RetainerSellListAddonName = "RetainerSellList";
@@ -53,6 +54,7 @@ public sealed class RetainerListingRefillService
     private static readonly TimeSpan CloseRetryInterval = TimeSpan.FromMilliseconds(750);
     private static readonly TimeSpan RetainerListCloseSecondCallbackDelay = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan CloseSignatureLogInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan StallDiagnosticLogInterval = TimeSpan.FromSeconds(5);
     private static readonly string[] RetainerCloseAddonPriority =
     {
         "SelectYesno",
@@ -81,6 +83,11 @@ public sealed class RetainerListingRefillService
     private DateTime lastNavigationCommandAt = DateTime.MinValue;
     private DateTime lastRetainerCloseAttemptAt = DateTime.MinValue;
     private DateTime lastCloseSignatureLoggedAt = DateTime.MinValue;
+    private DateTime lastSelectStringDiagnosticAt = DateTime.MinValue;
+    private DateTime lastRetainerListDiagnosticAt = DateTime.MinValue;
+    private DateTime lastRetainerMarketDiagnosticAt = DateTime.MinValue;
+    private DateTime lastRetainerSellListDiagnosticAt = DateTime.MinValue;
+    private DateTime lastContextMenuDiagnosticAt = DateTime.MinValue;
     private string closeVisibleAddonSignature = string.Empty;
     private bool retainerListCloseSecondPending;
     private DateTime retainerListCloseSecondReadyAt = DateTime.MinValue;
@@ -98,6 +105,7 @@ public sealed class RetainerListingRefillService
     private int listingIndex;
     private ListingSlot? pendingListing;
     private int pendingInventoryCount;
+    private string lastRetainerMarketScanDetail = string.Empty;
 
     public string StatusText { get; private set; } = "Idle.";
     public string LastError { get; private set; } = string.Empty;
@@ -122,10 +130,16 @@ public sealed class RetainerListingRefillService
 
         Reset();
         selectionMode = config.RefillFromListingsSelectionMode;
+        SetState(RefillState.PreparingTargets, "Reading retainer listings...");
+        TickPreparingTargets();
+    }
 
+    private void TickPreparingTargets()
+    {
         if (!TryBuildRetainerTargets(out targets, out var error))
         {
-            Fail(error, closeRetainerUi: false);
+            StatusText = error;
+            nextActionAt = DateTime.UtcNow.AddSeconds(1);
             return;
         }
 
@@ -192,12 +206,15 @@ public sealed class RetainerListingRefillService
 
         if (IsTimedOut())
         {
-            Fail($"Timed out during {state}.");
+            Fail(GetTimeoutMessage());
             return;
         }
 
         switch (state)
         {
+            case RefillState.PreparingTargets:
+                TickPreparingTargets();
+                break;
             case RefillState.MovingToBell:
                 TickMovingToBell();
                 break;
@@ -325,26 +342,23 @@ public sealed class RetainerListingRefillService
 
         if (GameHelpers.IsAddonVisible(SelectStringAddonName) && retainerSelected)
         {
-            SetState(RefillState.OpeningSellList, "Opening retainer market listings...");
-            return;
-        }
-
-        if (GameHelpers.IsAddonVisible(SelectStringAddonName) && !retainerSelected)
-        {
-            var selectIndex = FindSelectStringIndex(target.Name);
-            if (selectIndex >= 0)
+            if (!IsExpectedActiveRetainer(target, out var detail))
             {
-                GameHelpers.FireAddonCallback(SelectStringAddonName, true, selectIndex);
-                retainerSelected = true;
-                nextActionAt = DateTime.UtcNow.AddSeconds(2);
+                LogSelectStringDiagnostics($"selected-retainer-wait: {detail}");
+                StatusText = detail;
+                nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
                 return;
             }
+
+            SetState(RefillState.OpeningSellList, "Opening retainer market listings...");
+            return;
         }
 
         if (GameHelpers.IsAddonVisible(RetainerListAddonName) && !retainerSelected)
         {
             if (!TryFindRetainerListIndex(target.Name, out var index, out var visibleNames))
             {
+                LogRetainerListDiagnostics($"target-missing: {target.Name}");
                 var visible = visibleNames.Count == 0 ? "none parsed" : string.Join(", ", visibleNames);
                 Fail($"RetainerList is visible but target retainer '{target.Name}' was not found. Visible: {visible}.");
                 return;
@@ -357,6 +371,7 @@ public sealed class RetainerListingRefillService
             return;
         }
 
+        LogRetainerListDiagnostics($"waiting-select: {target.Name}");
         StatusText = $"Waiting to select retainer {target.Name}...";
         nextActionAt = DateTime.UtcNow.AddSeconds(1);
     }
@@ -374,7 +389,9 @@ public sealed class RetainerListingRefillService
             var index = FindSellItemsMenuIndex();
             if (index < 0)
             {
-                Fail("Could not find retainer sell-items menu entry.");
+                LogSelectStringDiagnostics("sell-menu-missing");
+                StatusText = $"Waiting for retainer sell-items menu entry. Visible: {FormatSelectStringEntries()}";
+                nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
                 return;
             }
 
@@ -384,6 +401,7 @@ public sealed class RetainerListingRefillService
             return;
         }
 
+        LogSelectStringDiagnostics("waiting-retainer-menu");
         StatusText = "Waiting for retainer menu...";
         nextActionAt = DateTime.UtcNow.AddSeconds(1);
     }
@@ -399,7 +417,10 @@ public sealed class RetainerListingRefillService
 
         if (!TryScanRetainerMarketListings(out var slots, out var detail))
         {
-            Fail(detail);
+            lastRetainerMarketScanDetail = detail;
+            LogRetainerMarketDiagnostics(detail);
+            StatusText = detail;
+            nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
             return;
         }
 
@@ -489,6 +510,7 @@ public sealed class RetainerListingRefillService
                 Fail(detail);
                 break;
             case ContextSelectResult.NotFound:
+                LogContextMenuDiagnostics(detail);
                 StatusText = detail;
                 nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
                 break;
@@ -588,16 +610,32 @@ public sealed class RetainerListingRefillService
         unsafe
         {
             var addon = (AtkUnitBase*)addonPtr;
-            var agent = AgentInventoryContext.Instance();
-            if (agent == null)
+            if (!addon->IsVisible)
             {
-                detail = "AgentInventoryContext is unavailable.";
+                detail = "RetainerSellList addon is not visible.";
+                return false;
+            }
+
+            if (!TryFindRetainerSellListRow(listing, out var row, out detail))
+            {
+                LogRetainerSellListDiagnostics(detail);
+                return false;
+            }
+
+            var current = GetListingSlotSnapshot(listing.Slot);
+            if (current == null ||
+                current.ItemId != listing.ItemId ||
+                current.Quantity != listing.Quantity ||
+                current.IsHq != listing.IsHq)
+            {
+                detail = $"Listing changed before row click. Expected RetainerMarket[{listing.Slot}] {FormatListing(listing)}, got {FormatListing(current)}.";
+                LogRetainerSellListDiagnostics(detail);
                 return false;
             }
 
             pendingInventoryCount = GetPlayerInventoryCount(listing.ItemId, listing.IsHq);
-            agent->OpenForItemSlot(InventoryType.RetainerMarket, listing.Slot, 0, addon->Id);
-            detail = $"[Listings] Opened context for {listing.ItemName} in RetainerMarket[{listing.Slot}] via {RetainerSellListAddonName}#{addon->Id}.";
+            GameHelpers.FireAddonCallback(RetainerSellListAddonName, true, 0, row.RowIndex, 1);
+            detail = $"[Listings] Opened native {RetainerSellListAddonName} row {row.RowIndex} context for RetainerMarket[{listing.Slot}] {FormatListing(listing)}. Row text: {row.Text}";
             return true;
         }
     }
@@ -740,6 +778,140 @@ public sealed class RetainerListingRefillService
         return new ListingSlot(slot, item->ItemId, item->Quantity, isHq, GameHelpers.GetItemName(item->ItemId));
     }
 
+    private bool TryFindRetainerSellListRow(ListingSlot listing, out RetainerSellListRow row, out string detail)
+    {
+        row = null!;
+
+        if (!TryReadRetainerSellListRows(out var rows, out detail))
+            return false;
+
+        var match = rows.FirstOrDefault(candidate =>
+            candidate.Listing.Slot == listing.Slot &&
+            candidate.Listing.ItemId == listing.ItemId &&
+            candidate.Listing.Quantity == listing.Quantity &&
+            candidate.Listing.IsHq == listing.IsHq);
+
+        if (match == null)
+        {
+            detail = $"Could not prove {RetainerSellListAddonName} row for RetainerMarket[{listing.Slot}] {FormatListing(listing)}. Rows: {FormatRetainerSellListRows(rows)}";
+            return false;
+        }
+
+        row = match;
+        detail = $"Matched {RetainerSellListAddonName} row {row.RowIndex} for RetainerMarket[{listing.Slot}] {FormatListing(listing)}.";
+        return true;
+    }
+
+    private bool TryReadRetainerSellListRows(out List<RetainerSellListRow> rows, out string detail)
+    {
+        rows = new List<RetainerSellListRow>();
+        detail = string.Empty;
+
+        if (!TryScanRetainerMarketListings(out var slots, out var scanDetail))
+        {
+            detail = scanDetail;
+            return false;
+        }
+
+        var rowTexts = TryReadRetainerSellListRowTexts(out var texts)
+            ? texts
+            : new List<string>();
+
+        for (var i = 0; i < slots.Count; i++)
+        {
+            var text = i < rowTexts.Count && !string.IsNullOrWhiteSpace(rowTexts[i])
+                ? rowTexts[i]
+                : "(row text unavailable)";
+            rows.Add(new RetainerSellListRow(i, slots[i], text));
+        }
+
+        var uiCount = rowTexts.Count == 0 ? "unreadable" : rowTexts.Count.ToString();
+        detail = $"{scanDetail} {RetainerSellListAddonName} visibleRows={uiCount}. Rows: {FormatRetainerSellListRows(rows)}";
+        return true;
+    }
+
+    private unsafe bool TryReadRetainerSellListRowTexts(out List<string> rows)
+    {
+        rows = new List<string>();
+
+        nint addonPtr = Plugin.GameGui.GetAddonByName(RetainerSellListAddonName, 1);
+        if (addonPtr == 0)
+            return false;
+
+        var addon = (AtkUnitBase*)addonPtr;
+        if (!addon->IsVisible)
+            return false;
+
+        var componentList = FindFirstComponentList(addon);
+        if (componentList == null || componentList->ListLength <= 0)
+            return false;
+
+        var count = Math.Min((int)componentList->ListLength, 20);
+        for (var i = 0; i < count; i++)
+        {
+            var renderer = componentList->ItemRendererList[i].AtkComponentListItemRenderer;
+            rows.Add(ReadListRendererText(renderer));
+        }
+
+        return rows.Count > 0;
+    }
+
+    private static unsafe AtkComponentList* FindFirstComponentList(AtkUnitBase* addon)
+    {
+        for (var i = 0; i < addon->UldManager.NodeListCount; i++)
+        {
+            var node = addon->UldManager.NodeList[i];
+            if (node == null || (int)node->Type < 1000)
+                continue;
+
+            var componentNode = node->GetAsAtkComponentNode();
+            var component = componentNode == null ? null : componentNode->GetComponent();
+            if (component == null)
+                continue;
+
+            var list = (AtkComponentList*)component;
+            if (list->ListLength > 0 && list->ListLength <= 100)
+                return list;
+        }
+
+        return null;
+    }
+
+    private static unsafe string ReadListRendererText(AtkComponentListItemRenderer* renderer)
+    {
+        if (renderer == null)
+            return string.Empty;
+
+        var component = (AtkComponentBase*)renderer;
+        var values = new List<string>();
+        for (var i = 0; i < component->UldManager.NodeListCount; i++)
+        {
+            var node = component->UldManager.NodeList[i];
+            if (node == null || node->Type != NodeType.Text)
+                continue;
+
+            var textNode = node->GetAsAtkTextNode();
+            if (textNode == null)
+                continue;
+
+            var text = CleanAddonText(textNode->NodeText.ToString());
+            if (!string.IsNullOrWhiteSpace(text))
+                values.Add(text);
+        }
+
+        return values.Count == 0 ? string.Empty : string.Join(" | ", values.Distinct());
+    }
+
+    private static string FormatRetainerSellListRows(IReadOnlyCollection<RetainerSellListRow> rows)
+        => rows.Count == 0
+            ? "none"
+            : string.Join("; ", rows.Select(row => $"{row.RowIndex}:RetainerMarket[{row.Listing.Slot}] {FormatListing(row.Listing)} text='{row.Text}'"));
+
+    private static string FormatListing(ListingSlot? listing)
+        => listing == null
+            ? "empty/unavailable"
+            : $"{listing.ItemName} id={listing.ItemId} qty={listing.Quantity} hq={listing.IsHq}";
+
     private unsafe int GetPlayerInventoryCount(uint itemId, bool isHq)
     {
         var manager = InventoryManager.Instance();
@@ -776,6 +948,7 @@ public sealed class RetainerListingRefillService
 
                     retainerTargets.Add(new RetainerTarget(
                         name,
+                        retainer.RetainerId,
                         i,
                         manager->DisplayOrder.IndexOf((byte)i),
                         retainer.MarketItemCount));
@@ -788,7 +961,7 @@ public sealed class RetainerListingRefillService
                 retainerTargets = retainerTargets.OrderBy(target => target.DisplayOrder).ToList();
 
             foreach (var target in retainerTargets)
-                log.Information($"[Listings] Target retainer: {target.Name}, market listings={target.MarketItemCount}, displayOrder={target.DisplayOrder}");
+                log.Information($"[Listings] Target retainer: {target.Name}, id={target.RetainerId}, market listings={target.MarketItemCount}, displayOrder={target.DisplayOrder}");
 
             return true;
         }
@@ -955,6 +1128,177 @@ public sealed class RetainerListingRefillService
         }
 
         return -1;
+    }
+
+    private static unsafe string FormatSelectStringEntries()
+    {
+        try
+        {
+            nint addonPtr = Plugin.GameGui.GetAddonByName(SelectStringAddonName, 1);
+            if (addonPtr == 0)
+                return "SelectString not visible";
+
+            var addon = (AtkUnitBase*)addonPtr;
+            if (!addon->IsVisible)
+                return "SelectString not visible";
+
+            var master = new AddonMaster.SelectString(addonPtr);
+            var entries = new List<string>();
+            for (var i = 0; i < master.EntryCount; i++)
+                entries.Add($"{i}:{CleanAddonText(master.Entries[i].Text)}");
+
+            return entries.Count == 0 ? "none parsed" : string.Join(", ", entries);
+        }
+        catch (Exception ex)
+        {
+            return $"read failed: {ex.Message}";
+        }
+    }
+
+    private static string FormatContextMenuEntries()
+    {
+        var addonPtr = Plugin.GameGui.GetAddonByName(ContextMenuAddonName, 1);
+        if (addonPtr == 0)
+            return "ContextMenu not visible";
+
+        try
+        {
+            var menu = new AddonMaster.ContextMenu(addonPtr);
+            var entries = menu.Entries
+                .Select((entry, index) => $"{index}:{CleanAddonText(entry.Text)} enabled={entry.Enabled}")
+                .ToList();
+
+            return entries.Count == 0 ? "none parsed" : string.Join(", ", entries);
+        }
+        catch (Exception ex)
+        {
+            return $"read failed: {ex.Message}";
+        }
+    }
+
+    private unsafe bool IsExpectedActiveRetainer(RetainerTarget target, out string detail)
+    {
+        detail = string.Empty;
+
+        var manager = RetainerManager.Instance();
+        if (manager == null || !manager->IsReady)
+        {
+            detail = "Waiting for RetainerManager after retainer selection...";
+            return false;
+        }
+
+        if (manager->LastSelectedRetainerId != target.RetainerId)
+        {
+            detail = $"Waiting for active retainer {target.Name} ({target.RetainerId}); LastSelectedRetainerId={manager->LastSelectedRetainerId}.";
+            return false;
+        }
+
+        var active = manager->GetActiveRetainer();
+        if (active == null)
+        {
+            detail = $"Waiting for active retainer data for {target.Name} ({target.RetainerId}).";
+            return false;
+        }
+
+        var activeName = active->NameString.Trim();
+        if (active->RetainerId != target.RetainerId)
+        {
+            detail = $"Active retainer mismatch. Expected {target.Name} ({target.RetainerId}), got {activeName} ({active->RetainerId}).";
+            return false;
+        }
+
+        log.Information($"[Listings] Active retainer confirmed: {activeName} ({active->RetainerId}).");
+        return true;
+    }
+
+    private void LogSelectStringDiagnostics(string context)
+    {
+        var now = DateTime.UtcNow;
+        if (now - lastSelectStringDiagnosticAt < StallDiagnosticLogInterval)
+            return;
+
+        lastSelectStringDiagnosticAt = now;
+        log.Information($"[Listings] SelectString stall ({context}). Entries: {FormatSelectStringEntries()}");
+    }
+
+    private void LogRetainerListDiagnostics(string context)
+    {
+        var now = DateTime.UtcNow;
+        if (now - lastRetainerListDiagnosticAt < StallDiagnosticLogInterval)
+            return;
+
+        lastRetainerListDiagnosticAt = now;
+        if (TryReadRetainerListNames(out var names))
+        {
+            var visible = names.Count == 0 ? "none parsed" : string.Join(", ", names);
+            log.Information($"[Listings] RetainerList stall ({context}). Visible: {visible}");
+            return;
+        }
+
+        log.Information($"[Listings] RetainerList stall ({context}). RetainerList not readable.");
+    }
+
+    private void LogRetainerMarketDiagnostics(string detail)
+    {
+        var now = DateTime.UtcNow;
+        if (now - lastRetainerMarketDiagnosticAt < StallDiagnosticLogInterval)
+            return;
+
+        lastRetainerMarketDiagnosticAt = now;
+        log.Information($"[Listings] RetainerMarket stall. {detail}");
+    }
+
+    private void LogRetainerSellListDiagnostics(string detail)
+    {
+        var now = DateTime.UtcNow;
+        if (now - lastRetainerSellListDiagnosticAt < StallDiagnosticLogInterval)
+            return;
+
+        lastRetainerSellListDiagnosticAt = now;
+        if (TryReadRetainerSellListRows(out _, out var rowDetail))
+            log.Information($"[Listings] RetainerSellList stall. {detail} {rowDetail}");
+        else
+            log.Information($"[Listings] RetainerSellList stall. {detail}");
+    }
+
+    private void LogContextMenuDiagnostics(string detail)
+    {
+        var now = DateTime.UtcNow;
+        if (now - lastContextMenuDiagnosticAt < StallDiagnosticLogInterval)
+            return;
+
+        lastContextMenuDiagnosticAt = now;
+        log.Information($"[Listings] Context menu stall. {detail} Entries: {FormatContextMenuEntries()}");
+    }
+
+    private static bool TryReadRetainerListNames(out List<string> names)
+    {
+        names = new List<string>();
+        try
+        {
+            unsafe
+            {
+                nint addonPtr = Plugin.GameGui.GetAddonByName(RetainerListAddonName, 1);
+                if (addonPtr == 0)
+                    return false;
+
+                var addon = (AtkUnitBase*)addonPtr;
+                if (!addon->IsVisible)
+                    return false;
+
+                names = ReadRetainerListEntries(addon)
+                    .Where(entry => !string.IsNullOrWhiteSpace(entry.Name))
+                    .Select(entry => entry.Name)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static unsafe bool TryFindRetainerListIndex(string targetName, out int index, out List<string> visibleNames)
@@ -1197,6 +1541,25 @@ public sealed class RetainerListingRefillService
         };
     }
 
+    private string GetTimeoutMessage()
+    {
+        return state switch
+        {
+            RefillState.PreparingTargets => $"Timed out waiting for RetainerManager readiness. {StatusText}",
+            RefillState.OpeningSellList => $"Timed out opening retainer sell-items menu. Visible SelectString entries: {FormatSelectStringEntries()}",
+            RefillState.ScanningListings => $"Timed out waiting for RetainerMarket inventory. {lastRetainerMarketScanDetail}",
+            RefillState.SelectingRetainer => $"Timed out selecting retainer {CurrentTarget?.Name ?? "unknown"}. Visible RetainerList: {FormatRetainerListNames()}",
+            _ => $"Timed out during {state}.",
+        };
+    }
+
+    private static string FormatRetainerListNames()
+    {
+        return TryReadRetainerListNames(out var names)
+            ? names.Count == 0 ? "none parsed" : string.Join(", ", names)
+            : "RetainerList not readable";
+    }
+
     private void SetState(RefillState newState, string status)
     {
         log.Information($"[Listings] {state} -> {newState}: {status}");
@@ -1240,6 +1603,7 @@ public sealed class RetainerListingRefillService
         listingIndex = 0;
         pendingListing = null;
         pendingInventoryCount = 0;
+        lastRetainerMarketScanDetail = string.Empty;
     }
 
     private void ResetCloseTracking()
@@ -1250,6 +1614,11 @@ public sealed class RetainerListingRefillService
         closeVisibleAddonSignature = string.Empty;
         retainerListCloseSecondPending = false;
         retainerListCloseSecondReadyAt = DateTime.MinValue;
+        lastSelectStringDiagnosticAt = DateTime.MinValue;
+        lastRetainerListDiagnosticAt = DateTime.MinValue;
+        lastRetainerMarketDiagnosticAt = DateTime.MinValue;
+        lastRetainerSellListDiagnosticAt = DateTime.MinValue;
+        lastContextMenuDiagnosticAt = DateTime.MinValue;
     }
 
     private static bool IsPlausibleRetainerName(string text)
