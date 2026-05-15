@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Numerics;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -24,9 +25,12 @@ public class VNavmeshIPC : IDisposable
     {
         try
         {
+            var x = position.X.ToString("F2", CultureInfo.InvariantCulture);
+            var y = position.Y.ToString("F2", CultureInfo.InvariantCulture);
+            var z = position.Z.ToString("F2", CultureInfo.InvariantCulture);
             var cmd = fly 
-                ? $"/vnav flyto {position.X:F2} {position.Y:F2} {position.Z:F2}"
-                : $"/vnav moveto {position.X:F2} {position.Y:F2} {position.Z:F2}";
+                ? $"/vnav flyto {x} {y} {z}"
+                : $"/vnav moveto {x} {y} {z}";
             
             log.Debug($"[VNavmeshIPC] Sending: {cmd}");
             return commandManager.ProcessCommand(cmd);

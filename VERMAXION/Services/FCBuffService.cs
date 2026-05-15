@@ -32,6 +32,7 @@ public class FCBuffService : IDisposable
     private const float QuartermasterWaypointArrivalDistance = 2.5f;
     private static readonly TimeSpan PurchaseConfirmRetryInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PurchaseConfirmTimeout = TimeSpan.FromSeconds(12);
+    private static readonly TimeSpan NavigationLogThrottle = TimeSpan.FromSeconds(10);
     private static readonly string[] QuartermasterNames = ["Quartermaster", "OIC Quartermaster"];
 
     private FCBuffState state = FCBuffState.Idle;
@@ -42,6 +43,7 @@ public class FCBuffService : IDisposable
     private bool isSealSweetenerTwo = true; // Try Seal Sweetener II first
     private int pathRetryCount = 0;
     private DateTime lastPathRetryTime = DateTime.MinValue;
+    private DateTime lastNavigationLogTime = DateTime.MinValue;
     private int purchaseConfirmRetryCount = 0;
     private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
     private int? cachedGCTerritory = null;
@@ -549,7 +551,7 @@ public class FCBuffService : IDisposable
                 // Wait for arrival at Aft (Upper Decks)
                 if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    log.Information("[FCBuff] Still teleporting to Aft...");
+                    LogNavigationStatusThrottled("[FCBuff] Still teleporting to Aft...");
                     return;
                 }
                 if (clientState.TerritoryType == 129 && elapsed >= 3)
@@ -564,7 +566,7 @@ public class FCBuffService : IDisposable
                 // Wait for arrival at Gridania
                 if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    log.Information("[FCBuff] Still teleporting to Gridania...");
+                    LogNavigationStatusThrottled("[FCBuff] Still teleporting to Gridania...");
                     return;
                 }
                 if (clientState.TerritoryType == 132 && elapsed >= 3)
@@ -579,7 +581,7 @@ public class FCBuffService : IDisposable
                 // Wait for arrival at Dah (Ul'dah)
                 if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    log.Information("[FCBuff] Still teleporting to Dah...");
+                    LogNavigationStatusThrottled("[FCBuff] Still teleporting to Dah...");
                     return;
                 }
                 if (clientState.TerritoryType == 130 && elapsed >= 3)
@@ -595,23 +597,16 @@ public class FCBuffService : IDisposable
                 // Don't try to path during zone transitions
                 if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    log.Debug("[FCBuff] Waiting for zone transition to complete before pathing...");
+                    LogNavigationStatusThrottled("[FCBuff] Waiting for zone transition to complete before pathing...", debug: true);
                     return;
                 }
 
                 if (TryTransitionToQuartermasterInteraction("navigation start"))
                     return;
                 
-                // Try to start pathfinding with retries for slow city loading
-                if (pathRetryCount == 0)
-                {
-                    // First attempt - reset retry counter
-                    pathRetryCount = 1;
-                    lastPathRetryTime = DateTime.UtcNow;
-                }
-                
                 // Retry pathfinding every 3 seconds if we haven't started yet (max 5 attempts)
-                if (pathRetryCount <= 5 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 3)
+                if (pathRetryCount < 5 &&
+                    (pathRetryCount == 0 || (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 3))
                 {
                     pathRetryCount++;
                     lastPathRetryTime = DateTime.UtcNow;
@@ -643,7 +638,7 @@ public class FCBuffService : IDisposable
                 // Don't check during zone transitions
                 if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
                 {
-                    log.Debug("[FCBuff] Zone transition detected during navigation, waiting...");
+                    LogNavigationStatusThrottled("[FCBuff] Zone transition detected during navigation, waiting...", debug: true);
                     return;
                 }
                 
@@ -698,9 +693,9 @@ public class FCBuffService : IDisposable
                     pathRetryCount = 1;
                     lastPathRetryTime = DateTime.UtcNow;
                 }
-                else if ((int)elapsed % 10 == 0 && elapsed > 1) // Log every 10 seconds
+                else if (elapsed > 1)
                 {
-                    log.Information($"[FCBuff] Still navigating to Quartermaster... ({elapsed:F0}s elapsed, distance: {distance:F1}y, retries: {pathRetryCount}/10)");
+                    LogNavigationStatusThrottled($"[FCBuff] Still navigating to Quartermaster... ({elapsed:F0}s elapsed, distance: {distance:F1}y, retries: {pathRetryCount}/10)");
                 }
                 return;
 
@@ -977,6 +972,7 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        lastNavigationLogTime = DateTime.MinValue;
 
         if (newState == FCBuffState.Idle || newState == FCBuffState.Complete || newState == FCBuffState.Failed)
         {
@@ -990,6 +986,19 @@ public class FCBuffService : IDisposable
             lastPathRetryTime = DateTime.MinValue;
             log.Debug("[FCBuff] Reset pathfinding retry counters for navigation start");
         }
+    }
+
+    private void LogNavigationStatusThrottled(string message, bool debug = false)
+    {
+        var now = DateTime.UtcNow;
+        if (now - lastNavigationLogTime < NavigationLogThrottle)
+            return;
+
+        lastNavigationLogTime = now;
+        if (debug)
+            log.Debug(message);
+        else
+            log.Information(message);
     }
 
     private void ResetPurchaseConfirmRetryState()
