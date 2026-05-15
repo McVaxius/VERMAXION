@@ -891,7 +891,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Routes to the selected retainer bell if none is nearby. Withdraws current retainer market listings back into player inventory on the selected schedule.");
+                ImGui.SetTooltip("Withdraws current retainer market listings back into player inventory on the selected schedule. If RetainerList is not already open, runs the selected Lifestream route before looking for a Summoning Bell.");
             if (cc.EnableRefillFromListings)
             {
                 ImGui.Indent();
@@ -956,8 +956,19 @@ public class ConfigWindow : Window, IDisposable
                     cc.RefillFromListingsRoute = RefillFromListingsRoute.Inn;
                     changed = true;
                 }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Limsa (/li limsa)##RefillListingsLimsa", refillRoute == RefillFromListingsRoute.Limsa))
+                {
+                    cc.RefillFromListingsRoute = RefillFromListingsRoute.Limsa;
+                    changed = true;
+                }
                 DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListingsRoute", "Refill from listings route",
                     (source, target) => target.RefillFromListingsRoute = source.RefillFromListingsRoute);
+
+                ImGui.SameLine();
+                ImGui.TextDisabled("(?)");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("When RetainerList is closed, VERMAXION runs the selected /li route first, waits for it to settle, then finds and opens the route bell.");
 
                 DrawRefillFromListingsHint(cc);
                 if (DrawResetButton("RefillFromListingsState", cc.ResetRefillFromListingsState))
@@ -1520,23 +1531,23 @@ public class ConfigWindow : Window, IDisposable
         switch (config.RefillFromListingsFrequency)
         {
             case RefillFromListingsFrequency.EveryAR:
-                ImGui.TextDisabled("Runs every AutoRetainer/manual VERMAXION run near a summoning bell; withdraws current market listings.");
+                ImGui.TextDisabled("Runs every AutoRetainer/manual VERMAXION run through the selected Lifestream bell route.");
                 return;
 
             case RefillFromListingsFrequency.Monthly:
                 if (IsRefillFromListingsMonthlyComplete(config))
                     ImGui.TextDisabled($"Completed until {FormatUtc(config.RefillFromListingsNextReset)}");
                 else
-                    ImGui.TextDisabled("Runs once per UTC calendar month near a summoning bell.");
+                    ImGui.TextDisabled("Runs once per UTC calendar month through the selected Lifestream bell route.");
                 return;
 
             case RefillFromListingsFrequency.Daily:
-                DrawDailyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per daily reset near a summoning bell.");
+                DrawDailyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per daily reset through the selected Lifestream bell route.");
                 return;
 
             case RefillFromListingsFrequency.Weekly:
             default:
-                DrawWeeklyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per weekly reset near a summoning bell.");
+                DrawWeeklyTaskHint(config.RefillFromListingsLastCompleted, config.RefillFromListingsNextReset, "Runs once per weekly reset through the selected Lifestream bell route.");
                 return;
         }
     }

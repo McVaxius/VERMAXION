@@ -153,7 +153,7 @@ public sealed class RetainerListingRefillService
     {
         if (!GameHelpers.IsAddonVisible(RetainerListAddonName))
         {
-            log.Information($"[Listings] Routing to {GetRouteLabel(route)} bell: route={route}, state={state}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+            log.Information($"[Listings] Opening retainer bell: route={route}, mode=Lifestream-first, lifestreamSkipped=False, state={state}, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
             workshopBellService.Start(route);
             SetState(RefillState.OpeningWorkshopBell, $"Routing to {GetRouteLabel(route)} bell...");
             return;
@@ -649,19 +649,9 @@ public sealed class RetainerListingRefillService
             }
 
             ResetRetainerPhaseFlags();
-            if (!TryFindNearestBell(out _, out var bellDistance))
-            {
-                LogBellSearchDiagnostics("next-retainer");
-                log.Information($"[Listings] No nearby Summoning Bell before next retainer. Routing to {GetRouteLabel(route)} bell.");
-                workshopBellService.Start(route);
-                SetState(RefillState.OpeningWorkshopBell, $"Routing to {GetRouteLabel(route)} bell...");
-                return;
-            }
-
-            if (bellDistance > BellInteractionDistance)
-                SetState(RefillState.MovingToBell, $"Moving to next retainer: {CurrentTarget?.Name}... ({bellDistance:F1}y)");
-            else
-                SetState(RefillState.InteractingBell, $"Opening next retainer: {CurrentTarget?.Name}...");
+            log.Information($"[Listings] Reopening retainer bell for next retainer via Lifestream-first route. route={route}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+            workshopBellService.Start(route);
+            SetState(RefillState.OpeningWorkshopBell, $"Routing to {GetRouteLabel(route)} bell...");
             return;
         }
 
@@ -1733,7 +1723,12 @@ public sealed class RetainerListingRefillService
     }
 
     private static string GetRouteLabel(RefillFromListingsRoute route)
-        => route == RefillFromListingsRoute.Inn ? "inn" : "workshop";
+        => route switch
+        {
+            RefillFromListingsRoute.Inn => "inn",
+            RefillFromListingsRoute.Limsa => "limsa",
+            _ => "workshop",
+        };
 
     private bool IsTimedOut()
     {

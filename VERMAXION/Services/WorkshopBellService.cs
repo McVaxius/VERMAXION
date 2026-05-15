@@ -60,6 +60,7 @@ public sealed class WorkshopBellService
 
         Reset();
         this.route = route;
+        log.Information($"[WorkshopBell] Start route={route}, mode=Lifestream-first, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}");
         SetState(BellRouteState.Routing, $"Routing to {GetRouteLabel(route)}...");
         TickRouting();
     }
@@ -109,13 +110,10 @@ public sealed class WorkshopBellService
             return;
         }
 
-        if (TryFindNearestBell(out _, out var distance) && distance <= BellInteractionDistance)
-        {
-            SetState(BellRouteState.InteractingBell, "Opening retainer bell...");
-            return;
-        }
-
-        if (!lifestream.ExecuteCommand(GetLifestreamCommand(route)))
+        var command = GetLifestreamCommand(route);
+        log.Information($"[WorkshopBell] Lifestream-first: skipping local bell search before /li route. route={route}, command={command}, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}");
+        log.Information($"[WorkshopBell] Executing selected Lifestream route: /li {command}");
+        if (!lifestream.ExecuteCommand(command))
         {
             Fail($"Failed to execute Lifestream {GetRouteLabel(route)} route.");
             return;
@@ -148,8 +146,7 @@ public sealed class WorkshopBellService
 
         if (!TryFindNearestBell(out var bell, out var distance))
         {
-            StatusText = $"Waiting for {GetRouteLabel(route)} summoning bell...";
-            nextActionAt = DateTime.UtcNow.AddSeconds(1);
+            Fail($"No Summoning Bell found after Lifestream {GetRouteLabel(route)} route.");
             return;
         }
 
@@ -290,8 +287,18 @@ public sealed class WorkshopBellService
     }
 
     private static string GetLifestreamCommand(RefillFromListingsRoute route)
-        => route == RefillFromListingsRoute.Inn ? "inn" : "ws";
+        => route switch
+        {
+            RefillFromListingsRoute.Inn => "inn",
+            RefillFromListingsRoute.Limsa => "limsa",
+            _ => "ws",
+        };
 
     private static string GetRouteLabel(RefillFromListingsRoute route)
-        => route == RefillFromListingsRoute.Inn ? "inn" : "workshop";
+        => route switch
+        {
+            RefillFromListingsRoute.Inn => "inn",
+            RefillFromListingsRoute.Limsa => "limsa",
+            _ => "workshop",
+        };
 }

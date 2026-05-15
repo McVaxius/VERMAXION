@@ -295,6 +295,7 @@ public enum RefillFromListingsSelectionMode
 
 public enum RefillFromListingsRoute
 {
-    Workshop,
-    Inn,
+    Workshop = 0,
+    Inn = 1,
+    Limsa = 2,
 }

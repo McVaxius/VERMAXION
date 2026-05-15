@@ -161,7 +161,8 @@ public class MainWindow : Window, IDisposable
                 "[Bell]##WorkshopBell", () =>
                 {
                     plugin.ConfigManager.SaveCurrentAccount();
-                    plugin.WorkshopBellService.Start(plugin.ConfigManager.GetActiveConfig().RefillFromListingsRoute);
+                    var activeConfig = plugin.ConfigManager.GetActiveConfig();
+                    plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
                 }, "OK");
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
