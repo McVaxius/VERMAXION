@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -10,7 +8,6 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -20,41 +17,17 @@ using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using ECommons.Automation;
 using ECommons.GameHelpers;
+using ECommons.Throttlers;
 using Lumina.Excel.Sheets;
 using AtkValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
+using NativeGameObject = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
 
 namespace VERMAXION.Services;
 
 public static class GameHelpers
 {
     /// <summary>
-    /// AutoRetainer pattern: DateTime-based throttling for interaction timing
-    /// </summary>
-    private static readonly Dictionary<string, DateTime> lastInteractionTimes = new(StringComparer.OrdinalIgnoreCase);
-    
-    /// <summary>
-    /// AutoRetainer pattern: Check if interaction is throttled (5-second cooldown like AutoRetainer)
-    /// </summary>
-    internal static bool CanInteract(string targetName)
-    {
-        if (string.IsNullOrWhiteSpace(targetName))
-            return false;
-
-        var now = DateTime.UtcNow;
-        if (lastInteractionTimes.TryGetValue(targetName, out var lastInteractionTime))
-        {
-            var timeSinceLastInteraction = now - lastInteractionTime;
-            if (timeSinceLastInteraction.TotalSeconds < 5.0)
-                return false;
-        }
-
-        lastInteractionTimes[targetName] = now;
-        return true;
-    }
-    
-    /// <summary>
     /// Interact with a targeted game object via TargetSystem.
-    /// Pattern from LootGoblin GameHelpers.
     /// </summary>
     public static unsafe bool InteractWithObject(IGameObject obj)
     {
@@ -62,15 +35,13 @@ public static class GameHelpers
         {
             if (obj == null) return false;
 
-            // AutoRetainer pattern: Check animation lock before interaction
-            if(Player.IsAnimationLocked) 
+            if (Player.IsAnimationLocked)
             {
                 Plugin.Log.Debug($"[INTERACT] Player is animation locked, skipping interaction with {obj.Name.TextValue}");
                 return false;
             }
 
-            // AutoRetainer pattern: Comprehensive occupation checks
-            if (Plugin.Condition[ConditionFlag.Occupied] || 
+            if (Plugin.Condition[ConditionFlag.Occupied] ||
                 Plugin.Condition[ConditionFlag.OccupiedInQuestEvent] ||
                 Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
                 Plugin.Condition[ConditionFlag.WatchingCutscene] ||
@@ -81,10 +52,9 @@ public static class GameHelpers
                 return false;
             }
 
-            // AutoRetainer pattern: Check throttling before interaction
-            if (!CanInteract(obj.Name.TextValue))
+            if (!obj.IsTargetable)
             {
-                Plugin.Log.Debug($"[INTERACT] Throttled interaction with {obj.Name.TextValue} (5-second cooldown)");
+                Plugin.Log.Debug($"[INTERACT] Target is not targetable: {obj.Name.TextValue}");
                 return false;
             }
 
@@ -92,13 +62,6 @@ public static class GameHelpers
             if (ts == null)
             {
                 Plugin.Log.Error("[INTERACT] TargetSystem is null");
-                return false;
-            }
-
-            // AutoRetainer pattern: Validate target before interaction
-            if (!obj.IsTargetable)
-            {
-                Plugin.Log.Debug($"[INTERACT] Target is not targetable: {obj.Name.TextValue}");
                 return false;
             }
 
@@ -115,10 +78,17 @@ public static class GameHelpers
                 }
             }
 
-            var gameObjPtr = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
+            var gameObjPtr = obj.Struct();
             if (gameObjPtr == null)
             {
                 Plugin.Log.Error($"[INTERACT] GameObject pointer is null for {obj.Name.TextValue}");
+                return false;
+            }
+
+            var throttleKey = $"InteractWithObject.{obj.GameObjectId:X16}";
+            if (!EzThrottler.Throttle(throttleKey, 5000))
+            {
+                Plugin.Log.Debug($"[INTERACT] Throttled interaction with {obj.Name.TextValue} (5-second cooldown)");
                 return false;
             }
 
@@ -132,6 +102,9 @@ public static class GameHelpers
             return false;
         }
     }
+
+    private static unsafe NativeGameObject* Struct(this IGameObject obj)
+        => (NativeGameObject*)obj.Address;
 
     /// <summary>
     /// Find an NPC/EventObj by name in the object table.
@@ -171,10 +144,10 @@ public static class GameHelpers
 
         try
         {
-            // AutoRetainer pattern: Use TargetManager directly instead of /target commands
+            // AutoRetainer pattern: Use TargetManager directly instead of chat targeting.
             Plugin.TargetManager.Target = obj;
             Plugin.Log.Information($"[INTERACT] Set target to {objectName}");
-            
+
             // AutoRetainer pattern: Use frame-based timing instead of fixed delay
             // Give the game one frame to process the target change
             Plugin.Framework.RunOnFrameworkThread(() => { });

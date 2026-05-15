@@ -277,41 +277,7 @@ public class ConfigManager
         foreach (var charKey in account.Characters.Keys.ToList())
         {
             var cc = account.Characters[charKey];
-            // Copy settings (toggles + values) but preserve state tracking
-            cc.Enabled = defaultConfig.Enabled;
-            cc.EnableVerminionQueue = defaultConfig.EnableVerminionQueue;
-            cc.EnableJumboCactpot = defaultConfig.EnableJumboCactpot;
-            cc.EnableMiniCactpot = defaultConfig.EnableMiniCactpot;
-            cc.EnableChocoboRacing = defaultConfig.EnableChocoboRacing;
-            cc.EnableFCBuffRefill = defaultConfig.EnableFCBuffRefill;
-            cc.EnableHenchmanManagement = defaultConfig.EnableHenchmanManagement;
-            cc.EnableMinionRoulette = defaultConfig.EnableMinionRoulette;
-            cc.EnableSeasonalGearRoulette = defaultConfig.EnableSeasonalGearRoulette;
-            cc.EnableGearUpdater = defaultConfig.EnableGearUpdater;
-            cc.EnableHighestCombatJob = defaultConfig.EnableHighestCombatJob;
-            cc.EnableCurrentJobEquipment = defaultConfig.EnableCurrentJobEquipment;
-            cc.EnableFashionReport = defaultConfig.EnableFashionReport;
-            cc.EnableRegisterRegistrables = defaultConfig.EnableRegisterRegistrables;
-            cc.EnableVendorStock = defaultConfig.EnableVendorStock;
-            cc.EnableRefillFromListings = defaultConfig.EnableRefillFromListings;
-            cc.EnableNagYourMom = defaultConfig.EnableNagYourMom;
-            cc.ChocoboRacesPerDay = defaultConfig.ChocoboRacesPerDay;
-            cc.SkipChocoboRacingAtRank50 = defaultConfig.SkipChocoboRacingAtRank50;
-            cc.FCBuffPurchaseAttempts = defaultConfig.FCBuffPurchaseAttempts;
-            cc.FCBuffMinPoints = defaultConfig.FCBuffMinPoints;
-            cc.FCBuffMinGil = defaultConfig.FCBuffMinGil;
-            cc.VendorStockGysahlGreensTarget = defaultConfig.VendorStockGysahlGreensTarget;
-            cc.VendorStockGrade8DarkMatterTarget = defaultConfig.VendorStockGrade8DarkMatterTarget;
-            cc.RefillFromListingsFrequency = defaultConfig.RefillFromListingsFrequency;
-            cc.RefillFromListingsSelectionMode = defaultConfig.RefillFromListingsSelectionMode;
-            cc.NagYourMomRunsPerDay = defaultConfig.NagYourMomRunsPerDay;
-            cc.NagYourMomJob = defaultConfig.NagYourMomJob;
-            cc.NagYourMomWindowStartLocal = defaultConfig.NagYourMomWindowStartLocal;
-            cc.NagYourMomWindowEndLocal = defaultConfig.NagYourMomWindowEndLocal;
-            cc.NagYourMomStopAtSeriesRank25 = defaultConfig.NagYourMomStopAtSeriesRank25;
-            cc.RequireSaucyForMiniCactpot = defaultConfig.RequireSaucyForMiniCactpot;
-            cc.JumboCactpotNumberMode = defaultConfig.JumboCactpotNumberMode;
-            cc.JumboCactpotFixedNumber = defaultConfig.JumboCactpotFixedNumber;
+            CopyDefaultSettings(defaultConfig, cc);
             count++;
         }
 
@@ -319,6 +285,83 @@ public class ConfigManager
         log.Information($"[ConfigManager] Applied default settings to {count} characters");
         return count;
     }
+
+    public int ApplyDefaultSettingToAllCharacters(string label, Action<CharacterConfig, CharacterConfig> copy)
+    {
+        var account = GetCurrentAccount();
+        if (account == null) return 0;
+
+        var defaultConfig = account.DefaultConfig;
+        int count = 0;
+
+        foreach (var charKey in account.Characters.Keys.ToList())
+        {
+            copy(defaultConfig, account.Characters[charKey]);
+            count++;
+        }
+
+        SaveCurrentAccount();
+        log.Information($"[ConfigManager] Applied default setting '{label}' to {count} characters");
+        return count;
+    }
+
+    private static void CopyDefaultSettings(CharacterConfig source, CharacterConfig target)
+    {
+        target.Enabled = source.Enabled;
+        target.EnableVerminionQueue = source.EnableVerminionQueue;
+        target.EnableJumboCactpot = source.EnableJumboCactpot;
+        target.EnableMiniCactpot = source.EnableMiniCactpot;
+        target.EnableChocoboRacing = source.EnableChocoboRacing;
+        target.EnableFCBuffRefill = source.EnableFCBuffRefill;
+        target.EnableHenchmanManagement = source.EnableHenchmanManagement;
+        target.EnableMinionRoulette = source.EnableMinionRoulette;
+        target.EnableSeasonalGearRoulette = source.EnableSeasonalGearRoulette;
+        target.EnableGearUpdater = source.EnableGearUpdater;
+        target.EnableHighestCombatJob = source.EnableHighestCombatJob;
+        target.EnableCurrentJobEquipment = source.EnableCurrentJobEquipment;
+        target.EnableFashionReport = source.EnableFashionReport;
+        target.EnableRegisterRegistrables = source.EnableRegisterRegistrables;
+        target.EnableVendorStock = source.EnableVendorStock;
+        target.EnableRefillFromListings = source.EnableRefillFromListings;
+        target.EnableNagYourMom = source.EnableNagYourMom;
+        target.EnableNagYourDad = source.EnableNagYourDad;
+        target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity;
+        target.ChocoboRacesPerDay = source.ChocoboRacesPerDay;
+        target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50;
+        target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
+        target.FCBuffMinPoints = source.FCBuffMinPoints;
+        target.FCBuffMinGil = source.FCBuffMinGil;
+        target.VendorStockGysahlGreensTarget = source.VendorStockGysahlGreensTarget;
+        target.VendorStockGrade8DarkMatterTarget = source.VendorStockGrade8DarkMatterTarget;
+        target.RefillFromListingsFrequency = source.RefillFromListingsFrequency;
+        target.RefillFromListingsSelectionMode = source.RefillFromListingsSelectionMode;
+        target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay;
+        target.NagYourMomJob = NormalizeJobAbbreviation(source.NagYourMomJob);
+        target.NagYourMomWindowStartLocal = source.NagYourMomWindowStartLocal;
+        target.NagYourMomWindowEndLocal = source.NagYourMomWindowEndLocal;
+        target.NagYourMomStopAtSeriesRank25 = source.NagYourMomStopAtSeriesRank25;
+        target.NagYourDadDungeonCount = source.NagYourDadDungeonCount;
+        target.NagYourDadDungeonFrequency = DadRunRequestOptions.NormalizeFrequency(source.NagYourDadDungeonFrequency);
+        target.NagYourDadDungeonContentFinderConditionId = source.NagYourDadDungeonContentFinderConditionId;
+        target.NagYourDadDungeonName = source.NagYourDadDungeonName;
+        target.NagYourDadDungeonJob = NormalizeJobAbbreviation(source.NagYourDadDungeonJob);
+        target.NagYourDadQueueViaLanParty = source.NagYourDadQueueViaLanParty;
+        target.NagYourDadDungeonUnsynced = source.NagYourDadDungeonUnsynced;
+        target.NagYourDadDailyMsq = source.NagYourDadDailyMsq;
+        target.NagYourDadLanPartyPreset = source.NagYourDadLanPartyPreset;
+        target.NagYourDadCommendationAttempts = source.NagYourDadCommendationAttempts;
+        target.NagYourDadAstropeAttempts = source.NagYourDadAstropeAttempts;
+        target.NagYourDadWindowStartLocal = source.NagYourDadWindowStartLocal;
+        target.NagYourDadWindowEndLocal = source.NagYourDadWindowEndLocal;
+        target.EvercoldAdventurerActivityTargetPoints = source.EvercoldAdventurerActivityTargetPoints;
+        target.RequireSaucyForMiniCactpot = source.RequireSaucyForMiniCactpot;
+        target.JumboCactpotNumberMode = source.JumboCactpotNumberMode;
+        target.JumboCactpotFixedNumber = source.JumboCactpotFixedNumber;
+        target.PersonalRegistrableItems = new List<uint>(source.PersonalRegistrableItems);
+    }
+
+    private static string NormalizeJobAbbreviation(string value)
+        => value?.Trim().ToUpperInvariant() ?? string.Empty;
 
     public IEnumerable<string> GetSortedCharacterKeys()
     {

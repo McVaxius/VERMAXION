@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Memory;
 using Dalamud.Plugin.Services;
+using ECommons.DalamudServices;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -22,7 +22,6 @@ public sealed class RetainerListingRefillService
     private enum RefillState
     {
         Idle,
-        TravelingToBell,
         MovingToBell,
         InteractingBell,
         SelectingRetainer,
@@ -42,14 +41,14 @@ public sealed class RetainerListingRefillService
     private sealed record RetainerListEntry(int Index, string Name);
     private sealed record ListingSlot(int Slot, uint ItemId, int Quantity, bool IsHq, string ItemName);
 
-    private const uint RevenantsTollTerritoryId = 156;
     private const string RetainerListAddonName = "RetainerList";
     private const string RetainerSellListAddonName = "RetainerSellList";
     private const string SelectStringAddonName = "SelectString";
     private const string ContextMenuAddonName = "ContextMenu";
-    private static readonly Vector3 RevenantsTollBellApproachPosition = new(12.188f, 29.000f, -735.430f);
+    private const float MaxBellSearchDistance = 200f;
+    private const float BellInteractionDistance = 2f;
     private static readonly TimeSpan DefaultStepTimeout = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan TravelTimeout = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan BellMoveTimeout = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan WithdrawalTimeout = TimeSpan.FromSeconds(12);
     private static readonly TimeSpan CloseRetryInterval = TimeSpan.FromMilliseconds(750);
     private static readonly TimeSpan RetainerListCloseSecondCallbackDelay = TimeSpan.FromMilliseconds(100);
@@ -126,7 +125,7 @@ public sealed class RetainerListingRefillService
 
         if (!TryBuildRetainerTargets(out targets, out var error))
         {
-            Fail(error);
+            Fail(error, closeRetainerUi: false);
             return;
         }
 
@@ -138,10 +137,23 @@ public sealed class RetainerListingRefillService
         }
 
         log.Information($"[Listings] Starting refill from listings. targets={targets.Count}, mode={selectionMode}");
-        if (TryFindNearestBell(out _))
-            SetState(RefillState.MovingToBell, "Moving to retainer bell...");
+        if (GameHelpers.IsAddonVisible(RetainerListAddonName))
+        {
+            SetState(RefillState.SelectingRetainer, "Selecting retainer...");
+            return;
+        }
+
+        if (!TryFindNearestBell(out _, out var bellDistance))
+        {
+            LogBellSearchDiagnostics("start");
+            Fail($"No Summoning Bell within {MaxBellSearchDistance:F0}y. Refill from listings must start near a bell.", closeRetainerUi: false);
+            return;
+        }
+
+        if (bellDistance > BellInteractionDistance)
+            SetState(RefillState.MovingToBell, $"Moving to retainer bell... ({bellDistance:F1}y)");
         else
-            SetState(RefillState.TravelingToBell, "No nearby bell found. Traveling to Revenant's Toll...");
+            SetState(RefillState.InteractingBell, "Opening retainer bell...");
     }
 
     public void RunTask()
@@ -186,9 +198,6 @@ public sealed class RetainerListingRefillService
 
         switch (state)
         {
-            case RefillState.TravelingToBell:
-                TickTravelingToBell();
-                break;
             case RefillState.MovingToBell:
                 TickMovingToBell();
                 break;
@@ -236,36 +245,9 @@ public sealed class RetainerListingRefillService
         TickClosingRetainerUi();
     }
 
-    private void TickTravelingToBell()
-    {
-        if (IsLoading())
-        {
-            StatusText = "Traveling to retainer bell...";
-            nextActionAt = DateTime.UtcNow.AddSeconds(1);
-            return;
-        }
-
-        if (!bellInteracted)
-        {
-            bellInteracted = true;
-            CommandHelper.SendCommand("/li Revenant's Toll");
-            nextActionAt = DateTime.UtcNow.AddSeconds(5);
-            return;
-        }
-
-        if (Plugin.ClientState.TerritoryType != RevenantsTollTerritoryId)
-        {
-            StatusText = "Waiting for Revenant's Toll arrival...";
-            nextActionAt = DateTime.UtcNow.AddSeconds(1);
-            return;
-        }
-
-        SetState(RefillState.MovingToBell, "Moving to Revenant's Toll retainer bell...");
-    }
-
     private void TickMovingToBell()
     {
-        var player = Plugin.ObjectTable.LocalPlayer;
+        var player = Svc.Objects.LocalPlayer;
         if (player == null)
         {
             StatusText = "Waiting for player before moving to retainer bell...";
@@ -273,28 +255,14 @@ public sealed class RetainerListingRefillService
             return;
         }
 
-        if (Plugin.ClientState.TerritoryType != RevenantsTollTerritoryId && !TryFindNearestBell(out _))
+        if (!TryFindNearestBell(out var bell, out var distance))
         {
-            SetState(RefillState.TravelingToBell, "Traveling to Revenant's Toll retainer bell...");
+            LogBellSearchDiagnostics("move");
+            Fail($"No Summoning Bell within {MaxBellSearchDistance:F0}y. Refill from listings must start near a bell.", closeRetainerUi: false);
             return;
         }
 
-        if (!TryFindNearestBell(out var bell))
-        {
-            var approachDistance = Vector3.Distance(player.Position, RevenantsTollBellApproachPosition);
-            if (Plugin.ClientState.TerritoryType == RevenantsTollTerritoryId && approachDistance > 3f)
-            {
-                MoveTo(RevenantsTollBellApproachPosition, $"Moving to Revenant's Toll bell approach... ({approachDistance:F1}y)");
-                return;
-            }
-
-            StatusText = "Waiting for Summoning Bell object...";
-            nextActionAt = DateTime.UtcNow.AddSeconds(1);
-            return;
-        }
-
-        var distance = Vector3.Distance(player.Position, bell.Position);
-        if (distance > 4f)
+        if (distance > BellInteractionDistance)
         {
             MoveTo(bell.Position, $"Moving to retainer bell... ({distance:F1}y)");
             return;
@@ -314,16 +282,31 @@ public sealed class RetainerListingRefillService
 
         if (!bellInteracted)
         {
-            if (!TryFindNearestBell(out var bell))
+            if (!TryFindNearestBell(out var bell, out var distance))
             {
-                Fail("Retainer bell disappeared before interaction.");
+                LogBellSearchDiagnostics("interaction");
+                Fail($"No Summoning Bell within {MaxBellSearchDistance:F0}y before interaction.", closeRetainerUi: false);
                 return;
             }
 
-            Plugin.TargetManager.Target = bell;
-            GameHelpers.InteractWithObject(bell);
-            bellInteracted = true;
-            nextActionAt = DateTime.UtcNow.AddSeconds(2);
+            if (distance > BellInteractionDistance)
+            {
+                SetState(RefillState.MovingToBell, $"Moving to retainer bell... ({distance:F1}y)");
+                return;
+            }
+
+            vnavmesh.Stop();
+            Svc.Targets.Target = bell;
+            if (GameHelpers.InteractWithObject(bell))
+            {
+                bellInteracted = true;
+                nextActionAt = DateTime.UtcNow.AddSeconds(2);
+            }
+            else
+            {
+                StatusText = "Waiting to interact with retainer bell...";
+                nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
+            }
             return;
         }
 
@@ -575,10 +558,17 @@ public sealed class RetainerListingRefillService
             }
 
             ResetRetainerPhaseFlags();
-            if (TryFindNearestBell(out _))
-                SetState(RefillState.MovingToBell, $"Moving to next retainer: {CurrentTarget?.Name}...");
+            if (!TryFindNearestBell(out _, out var bellDistance))
+            {
+                LogBellSearchDiagnostics("next-retainer");
+                Fail($"No Summoning Bell within {MaxBellSearchDistance:F0}y before opening the next retainer.", closeRetainerUi: false);
+                return;
+            }
+
+            if (bellDistance > BellInteractionDistance)
+                SetState(RefillState.MovingToBell, $"Moving to next retainer: {CurrentTarget?.Name}... ({bellDistance:F1}y)");
             else
-                SetState(RefillState.TravelingToBell, "Traveling to retainer bell...");
+                SetState(RefillState.InteractingBell, $"Opening next retainer: {CurrentTarget?.Name}...");
             return;
         }
 
@@ -812,21 +802,85 @@ public sealed class RetainerListingRefillService
     private RetainerTarget? CurrentTarget
         => targetIndex >= 0 && targetIndex < targets.Count ? targets[targetIndex] : null;
 
-    private bool TryFindNearestBell(out IGameObject bell)
+    private bool TryFindNearestBell(out IGameObject bell, out float distance)
     {
-        var player = Plugin.ObjectTable.LocalPlayer;
+        var player = Svc.Objects.LocalPlayer;
         bell = null!;
+        distance = float.MaxValue;
         if (player == null)
             return false;
 
-        bell = Plugin.ObjectTable
-            .Where(obj => obj != null && obj.ObjectKind == ObjectKind.EventObj)
-            .Where(obj => obj.Name.TextValue.Contains("Summoning Bell", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(obj => Vector3.Distance(player.Position, obj.Position))
-            .FirstOrDefault()!;
+        var currentTarget = Svc.Targets.Target;
+        if (currentTarget != null && IsBellCandidate(currentTarget))
+        {
+            var targetDistance = Vector3.Distance(player.Position, currentTarget.Position);
+            if (targetDistance <= MaxBellSearchDistance)
+            {
+                bell = currentTarget;
+                distance = targetDistance;
+                return true;
+            }
+        }
 
-        return bell != null;
+        var nearest = Svc.Objects
+            .Where(IsBellCandidate)
+            .Select(obj => new
+            {
+                Bell = obj,
+                Distance = Vector3.Distance(player.Position, obj.Position),
+            })
+            .Where(candidate => candidate.Distance <= MaxBellSearchDistance)
+            .OrderBy(candidate => candidate.Distance)
+            .FirstOrDefault();
+
+        if (nearest == null)
+            return false;
+
+        bell = nearest.Bell;
+        distance = nearest.Distance;
+        return true;
     }
+
+    private static bool IsBellCandidate(IGameObject? obj)
+        => obj is { IsTargetable: true } and not IPlayerCharacter &&
+           obj.Name.TextValue.Contains("Summoning Bell", StringComparison.OrdinalIgnoreCase);
+
+    private void LogBellSearchDiagnostics(string context)
+    {
+        var player = Svc.Objects.LocalPlayer;
+        var playerPosition = player?.Position ?? Vector3.Zero;
+        var currentTarget = Svc.Targets.Target;
+        var currentTargetText = currentTarget == null
+            ? "none"
+            : $"{currentTarget.Name.TextValue} kind={currentTarget.ObjectKind} targetable={currentTarget.IsTargetable} distance={DistanceFromPlayer(playerPosition, currentTarget):F1}y";
+
+        var nearbyObjects = player == null
+            ? "player unavailable"
+            : string.Join("; ", Svc.Objects
+                .Where(obj => obj is { IsTargetable: true } and not IPlayerCharacter)
+                .Where(obj => !string.IsNullOrWhiteSpace(obj.Name.TextValue))
+                .Select(obj => new
+                {
+                    Object = obj,
+                    Distance = Vector3.Distance(playerPosition, obj.Position),
+                })
+                .Where(entry => entry.Distance <= 25f)
+                .OrderBy(entry => entry.Distance)
+                .Take(10)
+                .Select(entry => $"{entry.Object.Name.TextValue} kind={entry.Object.ObjectKind} distance={entry.Distance:F1}y"));
+
+        if (string.IsNullOrWhiteSpace(nearbyObjects))
+            nearbyObjects = "none";
+
+        log.Warning(
+            $"[Listings] Bell search failed ({context}). territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}, playerPos={FormatPosition(playerPosition)}, target={currentTargetText}, nearestTargetable={nearbyObjects}");
+    }
+
+    private static float DistanceFromPlayer(Vector3 playerPosition, IGameObject obj)
+        => playerPosition == Vector3.Zero ? float.NaN : Vector3.Distance(playerPosition, obj.Position);
+
+    private static string FormatPosition(Vector3 position)
+        => $"({position.X:F2}, {position.Y:F2}, {position.Z:F2})";
 
     private void MoveTo(Vector3 position, string status)
     {
@@ -1111,10 +1165,17 @@ public sealed class RetainerListingRefillService
         SetState(RefillState.ClosingRetainerUi, status);
     }
 
-    private void Fail(string message)
+    private void Fail(string message, bool closeRetainerUi = true)
     {
         LastError = message;
         log.Warning($"[Listings] {message}");
+        vnavmesh.Stop();
+        if (!closeRetainerUi)
+        {
+            SetState(RefillState.Failed, message);
+            return;
+        }
+
         if (state == RefillState.ClosingRetainerUi)
         {
             SetState(RefillState.Failed, message);
@@ -1129,7 +1190,7 @@ public sealed class RetainerListingRefillService
         var elapsed = DateTime.UtcNow - stateEnteredAt;
         return state switch
         {
-            RefillState.TravelingToBell => elapsed > TravelTimeout,
+            RefillState.MovingToBell => elapsed > BellMoveTimeout,
             RefillState.OpeningContextMenu or RefillState.SelectingReturnToInventory or RefillState.ConfirmingReturn or RefillState.VerifyingWithdrawal => elapsed > WithdrawalTimeout,
             RefillState.ClosingRetainerUi => elapsed > DefaultStepTimeout,
             _ => elapsed > DefaultStepTimeout,
@@ -1146,9 +1207,6 @@ public sealed class RetainerListingRefillService
 
         switch (newState)
         {
-            case RefillState.TravelingToBell:
-                bellInteracted = false;
-                break;
             case RefillState.InteractingBell:
                 bellInteracted = false;
                 break;
@@ -1222,10 +1280,6 @@ public sealed class RetainerListingRefillService
 
         return cleaned.Trim();
     }
-
-    private static bool IsLoading()
-        => Plugin.Condition[ConditionFlag.BetweenAreas] ||
-           Plugin.Condition[ConditionFlag.BetweenAreas51];
 
     private static string GetAddonText(uint rowId)
     {

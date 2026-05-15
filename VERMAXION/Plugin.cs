@@ -7,6 +7,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using ECommons;
 using VERMAXION.IPC;
 using VERMAXION.Services;
 using VERMAXION.Models;
@@ -70,6 +71,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        ECommonsMain.Init(PluginInterface, this);
+
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ConfigManager = new ConfigManager(PluginInterface, Log);
         RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
@@ -177,6 +180,8 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.RemoveHandler(AliasCommandName);
         CommandManager.RemoveHandler(CommandName);
+
+        ECommonsMain.Dispose();
     }
 
     private void OnARCharacterReady(string pluginName)

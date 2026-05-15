@@ -378,6 +378,8 @@ public class ConfigWindow : Window, IDisposable
             cc.Enabled = enabled;
             changed = true;
         }
+        DrawDefaultOverrideButton(isDefault, configManager, "CharEnabled", UIConstants.ConfigLabels.Enabled,
+            (source, target) => target.Enabled = source.Enabled);
 
         ImGui.Spacing();
 
@@ -390,6 +392,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableFCBuffRefill = fcBuff;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "FCBuffRefill", UIConstants.ConfigLabels.FCBuffRefill,
+                (source, target) => target.EnableFCBuffRefill = source.EnableFCBuffRefill);
             if (fcBuff)
             {
                 ImGui.Indent();
@@ -401,7 +405,9 @@ public class ConfigWindow : Window, IDisposable
                     // Save immediately on slider change
                     configManager.SaveCurrentAccount();
                 }
-                
+                DrawDefaultOverrideButton(isDefault, configManager, "FCBuffPurchaseAttempts", UIConstants.ConfigLabels.MaxPurchaseAttempts,
+                    (source, target) => target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts);
+
                 // FC Points threshold
                 var minPoints = cc.FCBuffMinPoints;
                 ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
@@ -412,7 +418,9 @@ public class ConfigWindow : Window, IDisposable
                     // Save immediately on input change
                     configManager.SaveCurrentAccount();
                 }
-                
+                DrawDefaultOverrideButton(isDefault, configManager, "FCBuffMinPoints", UIConstants.ConfigLabels.MinFCPoints,
+                    (source, target) => target.FCBuffMinPoints = source.FCBuffMinPoints);
+
                 // Gil threshold
                 var minGil = cc.FCBuffMinGil;
                 ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
@@ -423,7 +431,9 @@ public class ConfigWindow : Window, IDisposable
                     // Save immediately on input change
                     configManager.SaveCurrentAccount();
                 }
-                
+                DrawDefaultOverrideButton(isDefault, configManager, "FCBuffMinGil", UIConstants.ConfigLabels.MinGil,
+                    (source, target) => target.FCBuffMinGil = source.FCBuffMinGil);
+
                 ImGui.Unindent();
             }
 
@@ -433,6 +443,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableHenchmanManagement = henchman;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "HenchmanManagement", UIConstants.ConfigLabels.HenchmanManagement,
+                (source, target) => target.EnableHenchmanManagement = source.EnableHenchmanManagement);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -444,6 +456,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableMinionRoulette = minionRoulette;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "MinionRoulette", UIConstants.ConfigLabels.MinionRoulette,
+                (source, target) => target.EnableMinionRoulette = source.EnableMinionRoulette);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -465,6 +479,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableSeasonalGearRoulette = seasonalGear;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "SeasonalGearRoulette", UIConstants.ConfigLabels.SeasonalGearRoulette,
+                (source, target) => target.EnableSeasonalGearRoulette = source.EnableSeasonalGearRoulette);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -476,6 +492,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableGearUpdater = gearUpdater;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "GearUpdater", UIConstants.ConfigLabels.GearUpdater,
+                (source, target) => target.EnableGearUpdater = source.EnableGearUpdater);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -487,6 +505,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableHighestCombatJob = highestCombatJob;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "HighestCombatJob", "Highest Combat Job Selector",
+                (source, target) => target.EnableHighestCombatJob = source.EnableHighestCombatJob);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -498,6 +518,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableCurrentJobEquipment = currentJobEquipment;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "CurrentJobEquipment", "Current Job Equipment Updater",
+                (source, target) => target.EnableCurrentJobEquipment = source.EnableCurrentJobEquipment);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -509,6 +531,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableVendorStock = vendorStock;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "VendorStock", "Vendor Stock",
+                (source, target) => target.EnableVendorStock = source.EnableVendorStock);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -525,6 +549,8 @@ public class ConfigWindow : Window, IDisposable
                     changed = true;
                     configManager.SaveCurrentAccount();
                 }
+                DrawDefaultOverrideButton(isDefault, configManager, "VendorStockGysahlGreensTarget", "Gysahl Greens target",
+                    (source, target) => target.VendorStockGysahlGreensTarget = source.VendorStockGysahlGreensTarget);
 
                 var darkMatterTarget = cc.VendorStockGrade8DarkMatterTarget;
                 ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
@@ -534,71 +560,10 @@ public class ConfigWindow : Window, IDisposable
                     changed = true;
                     configManager.SaveCurrentAccount();
                 }
+                DrawDefaultOverrideButton(isDefault, configManager, "VendorStockGrade8DarkMatterTarget", "Grade 8 Dark Matter target",
+                    (source, target) => target.VendorStockGrade8DarkMatterTarget = source.VendorStockGrade8DarkMatterTarget);
 
                 ImGui.TextDisabled("Gridania: Maisenta for Gysahl Greens. Khetto's Amphitheatre: Alaric for Grade 8 Dark Matter.");
-                ImGui.Unindent();
-            }
-
-            var refillListings = cc.EnableRefillFromListings;
-            if (ImGui.Checkbox("Refill from listings", ref refillListings))
-            {
-                cc.EnableRefillFromListings = refillListings;
-                changed = true;
-            }
-            ImGui.SameLine();
-            ImGui.TextDisabled("(?)");
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Withdraws current market listings from retainers back into player inventory on the selected schedule.");
-            if (cc.EnableRefillFromListings)
-            {
-                ImGui.Indent();
-
-                ImGui.Text("Frequency:");
-                ImGui.SameLine();
-                var refillFrequency = cc.RefillFromListingsFrequency;
-                if (ImGui.RadioButton("AR##RefillListingsEveryAR", refillFrequency == RefillFromListingsFrequency.EveryAR))
-                {
-                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.EveryAR;
-                    changed = true;
-                }
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Daily##RefillListingsDaily", refillFrequency == RefillFromListingsFrequency.Daily))
-                {
-                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Daily;
-                    changed = true;
-                }
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Weekly##RefillListingsWeekly", refillFrequency == RefillFromListingsFrequency.Weekly))
-                {
-                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Weekly;
-                    changed = true;
-                }
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Monthly##RefillListingsMonthly", refillFrequency == RefillFromListingsFrequency.Monthly))
-                {
-                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Monthly;
-                    changed = true;
-                }
-
-                ImGui.Text("Selection:");
-                ImGui.SameLine();
-                var refillSelection = cc.RefillFromListingsSelectionMode;
-                if (ImGui.RadioButton("All##RefillListingsAll", refillSelection == RefillFromListingsSelectionMode.All))
-                {
-                    cc.RefillFromListingsSelectionMode = RefillFromListingsSelectionMode.All;
-                    changed = true;
-                }
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Random##RefillListingsRandom", refillSelection == RefillFromListingsSelectionMode.Random))
-                {
-                    cc.RefillFromListingsSelectionMode = RefillFromListingsSelectionMode.Random;
-                    changed = true;
-                }
-
-                DrawRefillFromListingsHint(cc);
-                if (DrawResetButton("RefillFromListingsState", cc.ResetRefillFromListingsState))
-                    changed = true;
-
                 ImGui.Unindent();
             }
 
@@ -621,6 +586,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableVerminionQueue = verminion;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "VerminionQueue", UIConstants.ConfigLabels.VerminionQueue,
+                (source, target) => target.EnableVerminionQueue = source.EnableVerminionQueue);
             if (DrawResetButton("VerminionState", cc.ResetVerminionState))
                 changed = true;
             if (ResetDetectionService.TaskIsCompleted(cc.VerminionLastCompleted, cc.VerminionNextReset))
@@ -636,6 +603,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableJumboCactpot = jumbo;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "JumboCactpot", UIConstants.ConfigLabels.JumboCactpot,
+                (source, target) => target.EnableJumboCactpot = source.EnableJumboCactpot);
             if (DrawResetButton("JumboCactpotState", cc.ResetJumboCactpotState))
                 changed = true;
             if (ResetDetectionService.IsJumboPurchasePendingPayout(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
@@ -671,6 +640,8 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.EndCombo();
                 }
+                DrawDefaultOverrideButton(isDefault, configManager, "JumboCactpotNumberMode", "Jumbo number mode",
+                    (source, target) => target.JumboCactpotNumberMode = source.JumboCactpotNumberMode);
 
                 if (cc.JumboCactpotNumberMode == JumboCactpotNumberMode.Fixed)
                 {
@@ -681,6 +652,8 @@ public class ConfigWindow : Window, IDisposable
                         cc.JumboCactpotFixedNumber = Math.Clamp(fixedNumber, 0, 9999);
                         changed = true;
                     }
+                    DrawDefaultOverrideButton(isDefault, configManager, "JumboCactpotFixedNumber", "Fixed 4-digit number",
+                        (source, target) => target.JumboCactpotFixedNumber = source.JumboCactpotFixedNumber);
 
                     ImGui.TextDisabled($"Current fixed number: {cc.JumboCactpotFixedNumber:0000}");
                 }
@@ -698,6 +671,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableFashionReport = fashion;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "FashionReport", "Fashion Report",
+                (source, target) => target.EnableFashionReport = source.EnableFashionReport);
             if (DrawResetButton("FashionReportState", cc.ResetFashionReportState))
                 changed = true;
             if (ResetDetectionService.TaskIsCompleted(cc.FashionReportLastCompleted, cc.FashionReportNextReset))
@@ -718,11 +693,15 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableRegisterRegistrables = register;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "RegisterRegistrables", "Register Registrables",
+                (source, target) => target.EnableRegisterRegistrables = source.EnableRegisterRegistrables);
             ImGui.SameLine();
             if (ImGui.Button("Configure##RegistrableConfig"))
             {
                 plugin.RegistrableConfigWindow.IsOpen = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "PersonalRegistrableItems", "Registrable personal item list",
+                (source, target) => target.PersonalRegistrableItems = new List<uint>(source.PersonalRegistrableItems));
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.DailyTasks, ImGuiTreeNodeFlags.DefaultOpen))
@@ -733,6 +712,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableMiniCactpot = mini;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "MiniCactpot", UIConstants.ConfigLabels.MiniCactpot,
+                (source, target) => target.EnableMiniCactpot = source.EnableMiniCactpot);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -757,6 +738,8 @@ public class ConfigWindow : Window, IDisposable
                     cc.RequireSaucyForMiniCactpot = requireSaucy;
                     changed = true;
                 }
+                DrawDefaultOverrideButton(isDefault, configManager, "RequireSaucyForMiniCactpot", "Require Saucy",
+                    (source, target) => target.RequireSaucyForMiniCactpot = source.RequireSaucyForMiniCactpot);
                 ImGui.SameLine();
                 ImGui.TextDisabled("(?)");
                 if (ImGui.IsItemHovered())
@@ -772,6 +755,8 @@ public class ConfigWindow : Window, IDisposable
                 cc.EnableChocoboRacing = chocobo;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "ChocoboRacing", UIConstants.ConfigLabels.ChocoboRacing,
+                (source, target) => target.EnableChocoboRacing = source.EnableChocoboRacing);
             if (DrawResetButton("ChocoboRacingState", cc.ResetChocoboRacingState))
                 changed = true;
             if (ResetDetectionService.TaskIsCompleted(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset))
@@ -796,6 +781,8 @@ public class ConfigWindow : Window, IDisposable
                     // Save immediately on change
                     configManager.SaveCurrentAccount();
                 }
+                DrawDefaultOverrideButton(isDefault, configManager, "ChocoboRacesPerDay", UIConstants.ConfigLabels.RacesPerDay,
+                    (source, target) => target.ChocoboRacesPerDay = source.ChocoboRacesPerDay);
 
                 var skipChocoboAtRank50 = cc.SkipChocoboRacingAtRank50;
                 if (ImGui.Checkbox(UIConstants.ConfigLabels.SkipChocoboRacingIfLevel50, ref skipChocoboAtRank50))
@@ -803,6 +790,8 @@ public class ConfigWindow : Window, IDisposable
                     cc.SkipChocoboRacingAtRank50 = skipChocoboAtRank50;
                     changed = true;
                 }
+                DrawDefaultOverrideButton(isDefault, configManager, "SkipChocoboRacingAtRank50", UIConstants.ConfigLabels.SkipChocoboRacingIfLevel50,
+                    (source, target) => target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50);
                 ImGui.SameLine();
                 ImGui.TextDisabled("(?)");
                 if (ImGui.IsItemHovered())
@@ -811,15 +800,323 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Unindent();
             }
 
-            ImGui.Separator();
-            ImGui.TextDisabled("WIP tasks");
+        }
 
+        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.VariableTimeTasks, ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            var refillListings = cc.EnableRefillFromListings;
+            if (ImGui.Checkbox("Refill from listings", ref refillListings))
+            {
+                cc.EnableRefillFromListings = refillListings;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListings", "Refill from listings",
+                (source, target) => target.EnableRefillFromListings = source.EnableRefillFromListings);
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Withdraws current market listings from retainers back into player inventory on the selected schedule.");
+            if (cc.EnableRefillFromListings)
+            {
+                ImGui.Indent();
+
+                ImGui.Text("Frequency:");
+                ImGui.SameLine();
+                var refillFrequency = cc.RefillFromListingsFrequency;
+                if (ImGui.RadioButton("AR##RefillListingsEveryAR", refillFrequency == RefillFromListingsFrequency.EveryAR))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.EveryAR;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Daily##RefillListingsDaily", refillFrequency == RefillFromListingsFrequency.Daily))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Daily;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Weekly##RefillListingsWeekly", refillFrequency == RefillFromListingsFrequency.Weekly))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Weekly;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Monthly##RefillListingsMonthly", refillFrequency == RefillFromListingsFrequency.Monthly))
+                {
+                    cc.RefillFromListingsFrequency = RefillFromListingsFrequency.Monthly;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListingsFrequency", "Refill from listings frequency",
+                    (source, target) => target.RefillFromListingsFrequency = source.RefillFromListingsFrequency);
+
+                ImGui.Text("Selection:");
+                ImGui.SameLine();
+                var refillSelection = cc.RefillFromListingsSelectionMode;
+                if (ImGui.RadioButton("All##RefillListingsAll", refillSelection == RefillFromListingsSelectionMode.All))
+                {
+                    cc.RefillFromListingsSelectionMode = RefillFromListingsSelectionMode.All;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Random##RefillListingsRandom", refillSelection == RefillFromListingsSelectionMode.Random))
+                {
+                    cc.RefillFromListingsSelectionMode = RefillFromListingsSelectionMode.Random;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListingsSelectionMode", "Refill from listings selection",
+                    (source, target) => target.RefillFromListingsSelectionMode = source.RefillFromListingsSelectionMode);
+
+                DrawRefillFromListingsHint(cc);
+                if (DrawResetButton("RefillFromListingsState", cc.ResetRefillFromListingsState))
+                    changed = true;
+
+                ImGui.Unindent();
+            }
+
+            var nagYourMom = cc.EnableNagYourMom;
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMom, ref nagYourMom))
+            {
+                cc.EnableNagYourMom = nagYourMom;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "NagYourMom", UIConstants.ConfigLabels.NagYourMom,
+                (source, target) => target.EnableNagYourMom = source.EnableNagYourMom);
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(UIConstants.Tooltips.NagYourMom);
+            if (DrawResetButton("NagYourMomDailyState", cc.ResetNagYourMomDailyState))
+                changed = true;
+            if (cc.EnableNagYourMom)
+            {
+                ImGui.Indent();
+
+                var momRunsPerDay = cc.NagYourMomRunsPerDay;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
+                {
+                    cc.NagYourMomRunsPerDay = Math.Max(0, momRunsPerDay);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRunsPerDay", UIConstants.ConfigLabels.NagYourMomRunsPerDay,
+                    (source, target) => target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay);
+
+                if (DrawJobCombo(UIConstants.ConfigLabels.NagYourMomJob, cc.NagYourMomJob, false, out var momJob))
+                {
+                    cc.NagYourMomJob = momJob;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomJob", UIConstants.ConfigLabels.NagYourMomJob,
+                    (source, target) => target.NagYourMomJob = NormalizeJobAbbreviation(source.NagYourMomJob));
+
+                var localStart = cc.NagYourMomWindowStartLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowStartLocal, ref localStart, 16))
+                {
+                    cc.NagYourMomWindowStartLocal = localStart.Trim();
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomWindowStartLocal", UIConstants.ConfigLabels.NagYourMomWindowStartLocal,
+                    (source, target) => target.NagYourMomWindowStartLocal = source.NagYourMomWindowStartLocal);
+
+                var localEnd = cc.NagYourMomWindowEndLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowEndLocal, ref localEnd, 16))
+                {
+                    cc.NagYourMomWindowEndLocal = localEnd.Trim();
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomWindowEndLocal", UIConstants.ConfigLabels.NagYourMomWindowEndLocal,
+                    (source, target) => target.NagYourMomWindowEndLocal = source.NagYourMomWindowEndLocal);
+
+                var stopAt25 = cc.NagYourMomStopAtSeriesRank25;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomStopAtSeriesRank25, ref stopAt25))
+                {
+                    cc.NagYourMomStopAtSeriesRank25 = stopAt25;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomStopAtSeriesRank25", UIConstants.ConfigLabels.NagYourMomStopAtSeriesRank25,
+                    (source, target) => target.NagYourMomStopAtSeriesRank25 = source.NagYourMomStopAtSeriesRank25);
+
+                ImGui.TextDisabled($"Attempts today: {cc.NagYourMomAttemptsToday}/{cc.NagYourMomRunsPerDay}");
+                ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourMomStatusText}");
+                ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, and then asks mom for one full casual CC run.");
+                ImGui.Unindent();
+            }
+
+            var nagYourDad = cc.EnableNagYourDad;
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDad, ref nagYourDad))
+            {
+                cc.EnableNagYourDad = nagYourDad;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "NagYourDad", UIConstants.ConfigLabels.NagYourDad,
+                (source, target) => target.EnableNagYourDad = source.EnableNagYourDad);
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(UIConstants.Tooltips.NagYourDad);
+            if (cc.EnableNagYourDad)
+            {
+                ImGui.Indent();
+
+                ImGui.TextWrapped("Dungeon count tells dad how many times to run the selected Duty Finder duty.");
+                var dadDungeonCount = cc.NagYourDadDungeonCount;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadDungeonCount, ref dadDungeonCount))
+                {
+                    cc.NagYourDadDungeonCount = Math.Max(0, dadDungeonCount);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadDungeonCount", UIConstants.ConfigLabels.NagYourDadDungeonCount,
+                    (source, target) => target.NagYourDadDungeonCount = source.NagYourDadDungeonCount);
+
+                ImGui.TextWrapped("Dungeon frequency controls when dad should queue the selected duty from AR-triggered VERMAXION runs.");
+                var dadDungeonFrequencyIndex = DadRunRequestOptions.GetFrequencyIndex(cc.NagYourDadDungeonFrequency);
+                if (ImGui.Combo(UIConstants.ConfigLabels.NagYourDadDungeonFrequency, ref dadDungeonFrequencyIndex, DadRunRequestOptions.DungeonFrequencies, DadRunRequestOptions.DungeonFrequencies.Length))
+                {
+                    cc.NagYourDadDungeonFrequency = DadRunRequestOptions.DungeonFrequencies[dadDungeonFrequencyIndex];
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadDungeonFrequency", UIConstants.ConfigLabels.NagYourDadDungeonFrequency,
+                    (source, target) => target.NagYourDadDungeonFrequency = DadRunRequestOptions.NormalizeFrequency(source.NagYourDadDungeonFrequency));
+
+                ImGui.TextWrapped("Dungeon is the Duty Finder duty dad should run. Search by name or row id.");
+                DrawDadDutySelector(cc, ref changed);
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadDungeonName", UIConstants.ConfigLabels.NagYourDadDungeonName,
+                    (source, target) =>
+                    {
+                        target.NagYourDadDungeonContentFinderConditionId = source.NagYourDadDungeonContentFinderConditionId;
+                        target.NagYourDadDungeonName = source.NagYourDadDungeonName;
+                    });
+
+                ImGui.TextWrapped("Dungeon job is the job hint dad should use. Leave blank for current job.");
+                if (DrawJobCombo(UIConstants.ConfigLabels.NagYourDadDungeonJob, cc.NagYourDadDungeonJob, true, out var dadDungeonJob))
+                {
+                    cc.NagYourDadDungeonJob = dadDungeonJob;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadDungeonJob", UIConstants.ConfigLabels.NagYourDadDungeonJob,
+                    (source, target) => target.NagYourDadDungeonJob = NormalizeJobAbbreviation(source.NagYourDadDungeonJob));
+
+                ImGui.TextWrapped("dad will prefer Trust when available, then fall back to Duty Support when Trust is not possible.");
+                ImGui.TextDisabled("Execution preference: Trust, then Duty Support");
+
+                ImGui.TextWrapped("LAN Party queue mode tells dad to use DadLanPartyModule with the selected LAN Party-style preset for premade duty routing.");
+                var dadQueueViaLanParty = cc.NagYourDadQueueViaLanParty;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadQueueViaLanParty, ref dadQueueViaLanParty))
+                {
+                    cc.NagYourDadQueueViaLanParty = dadQueueViaLanParty;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadQueueViaLanParty", UIConstants.ConfigLabels.NagYourDadQueueViaLanParty,
+                    (source, target) => target.NagYourDadQueueViaLanParty = source.NagYourDadQueueViaLanParty);
+                if (cc.NagYourDadQueueViaLanParty)
+                {
+                    ImGui.Indent();
+                    ImGui.TextWrapped("LAN Party preset is the Dad-provided preset consumed by DadLanPartyModule for this dungeon queue path.");
+                    DrawDadLanPartyPresetSelector(cc, ref changed);
+                    DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadLanPartyPreset", UIConstants.ConfigLabels.NagYourDadLanPartyPreset,
+                        (source, target) => target.NagYourDadLanPartyPreset = source.NagYourDadLanPartyPreset);
+                    ImGui.Unindent();
+                }
+
+                ImGui.TextWrapped("Unsynced is a dad hint for duties that cannot use Trust or Duty Support.");
+                var dadDungeonUnsynced = cc.NagYourDadDungeonUnsynced;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDungeonUnsynced, ref dadDungeonUnsynced))
+                {
+                    cc.NagYourDadDungeonUnsynced = dadDungeonUnsynced;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadDungeonUnsynced", UIConstants.ConfigLabels.NagYourDadDungeonUnsynced,
+                    (source, target) => target.NagYourDadDungeonUnsynced = source.NagYourDadDungeonUnsynced);
+
+                ImGui.TextWrapped("Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset.");
+                var dadDailyMsq = cc.NagYourDadDailyMsq;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDailyMsq, ref dadDailyMsq))
+                {
+                    cc.NagYourDadDailyMsq = dadDailyMsq;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadDailyMsq", UIConstants.ConfigLabels.NagYourDadDailyMsq,
+                    (source, target) => target.NagYourDadDailyMsq = source.NagYourDadDailyMsq);
+                if (cc.NagYourDadDailyMsq)
+                {
+                    ImGui.Indent();
+                    if (cc.NagYourDadQueueViaLanParty)
+                    {
+                        ImGui.TextDisabled($"Uses LAN Party preset selected above: {cc.NagYourDadLanPartyPreset}");
+                    }
+                    else
+                    {
+                        ImGui.TextWrapped("LAN Party preset is the Dad-provided preset for DadLanPartyModule Daily MSQ routing.");
+                        DrawDadLanPartyPresetSelector(cc, ref changed);
+                        DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadLanPartyPresetDailyMsq", UIConstants.ConfigLabels.NagYourDadLanPartyPreset,
+                            (source, target) => target.NagYourDadLanPartyPreset = source.NagYourDadLanPartyPreset);
+                    }
+                    ImGui.Unindent();
+                }
+
+                ImGui.TextWrapped("Commendation attempts tells dad how many commendation-focused runs to attempt.");
+                var dadCommendationAttempts = cc.NagYourDadCommendationAttempts;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadCommendationAttempts, ref dadCommendationAttempts))
+                {
+                    cc.NagYourDadCommendationAttempts = Math.Max(0, dadCommendationAttempts);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadCommendationAttempts", UIConstants.ConfigLabels.NagYourDadCommendationAttempts,
+                    (source, target) => target.NagYourDadCommendationAttempts = source.NagYourDadCommendationAttempts);
+
+                ImGui.TextWrapped("Astrope attempts tells dad how many Astrope commendation attempts to schedule inside the local time window.");
+                var dadAstropeAttempts = cc.NagYourDadAstropeAttempts;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadAstropeAttempts, ref dadAstropeAttempts))
+                {
+                    cc.NagYourDadAstropeAttempts = Math.Max(0, dadAstropeAttempts);
+                    changed = true;
+                    configManager.SaveCurrentAccount();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadAstropeAttempts", UIConstants.ConfigLabels.NagYourDadAstropeAttempts,
+                    (source, target) => target.NagYourDadAstropeAttempts = source.NagYourDadAstropeAttempts);
+
+                ImGui.TextWrapped("Astrope local start is the first local machine time dad may run Astrope attempts.");
+                var dadWindowStart = cc.NagYourDadWindowStartLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowStartLocal, ref dadWindowStart, 16))
+                {
+                    cc.NagYourDadWindowStartLocal = dadWindowStart.Trim();
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadWindowStartLocal", UIConstants.ConfigLabels.NagYourDadWindowStartLocal,
+                    (source, target) => target.NagYourDadWindowStartLocal = source.NagYourDadWindowStartLocal);
+
+                ImGui.TextWrapped("Astrope local end is the last local machine time dad may run Astrope attempts.");
+                var dadWindowEnd = cc.NagYourDadWindowEndLocal;
+                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowEndLocal, ref dadWindowEnd, 16))
+                {
+                    cc.NagYourDadWindowEndLocal = dadWindowEnd.Trim();
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadWindowEndLocal", UIConstants.ConfigLabels.NagYourDadWindowEndLocal,
+                    (source, target) => target.NagYourDadWindowEndLocal = source.NagYourDadWindowEndLocal);
+
+                ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourDadStatusText}");
+                ImGui.TextWrapped("AR-only task. VERMAXION builds one combined dad payload from the configured dungeon, MSQ, commendation, and Astrope asks. Dad then owns cross-account orchestration. If dad is unavailable or rejects the payload, VERMAXION moves on and retries on the next AR pass.");
+                ImGui.Unindent();
+            }
+        }
+
+        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WipTasks, ImGuiTreeNodeFlags.DefaultOpen))
+        {
             var evercoldActivity = cc.EnableEvercoldAdventurerActivity;
             if (ImGui.Checkbox("Adventurer Activity (Evercold) [WIP]", ref evercoldActivity))
             {
                 cc.EnableEvercoldAdventurerActivity = evercoldActivity;
                 changed = true;
             }
+            DrawDefaultOverrideButton(isDefault, configManager, "EvercoldAdventurerActivity", "Adventurer Activity (Evercold)",
+                (source, target) => target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity);
             if (cc.EnableEvercoldAdventurerActivity)
             {
                 ImGui.Indent();
@@ -843,6 +1140,8 @@ public class ConfigWindow : Window, IDisposable
                         cc.EvercoldAdventurerActivityCurrentPoints = Math.Min(cc.EvercoldAdventurerActivityCurrentPoints, cc.EvercoldAdventurerActivityTargetPoints);
                     changed = true;
                 }
+                DrawDefaultOverrideButton(isDefault, configManager, "EvercoldAdventurerActivityTargetPoints", "Evercold point cap",
+                    (source, target) => target.EvercoldAdventurerActivityTargetPoints = source.EvercoldAdventurerActivityTargetPoints);
 
                 var evercoldDone = cc.EvercoldAdventurerActivityCompleted;
                 if (ImGui.Checkbox("Done##EvercoldActivityDone", ref evercoldDone))
@@ -854,198 +1153,6 @@ public class ConfigWindow : Window, IDisposable
                     changed = true;
 
                 ImGui.TextDisabled("Config-only WIP entry. Automation will stop at the point cap when real Evercold logic is added.");
-                ImGui.Unindent();
-            }
-
-            var nagYourMom = cc.EnableNagYourMom;
-            if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMom, ref nagYourMom))
-            {
-                cc.EnableNagYourMom = nagYourMom;
-                changed = true;
-            }
-            ImGui.SameLine();
-            ImGui.TextDisabled("(?)");
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(UIConstants.Tooltips.NagYourMom);
-            if (DrawResetButton("NagYourMomDailyState", cc.ResetNagYourMomDailyState))
-                changed = true;
-            if (cc.EnableNagYourMom)
-            {
-                ImGui.Indent();
-
-                var momRunsPerDay = cc.NagYourMomRunsPerDay;
-                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
-                {
-                    cc.NagYourMomRunsPerDay = Math.Max(0, momRunsPerDay);
-                    changed = true;
-                    configManager.SaveCurrentAccount();
-                }
-
-                var momJob = cc.NagYourMomJob;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomJob, ref momJob, 16))
-                {
-                    cc.NagYourMomJob = momJob.Trim().ToUpperInvariant();
-                    changed = true;
-                }
-
-                var localStart = cc.NagYourMomWindowStartLocal;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowStartLocal, ref localStart, 16))
-                {
-                    cc.NagYourMomWindowStartLocal = localStart.Trim();
-                    changed = true;
-                }
-
-                var localEnd = cc.NagYourMomWindowEndLocal;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowEndLocal, ref localEnd, 16))
-                {
-                    cc.NagYourMomWindowEndLocal = localEnd.Trim();
-                    changed = true;
-                }
-
-                var stopAt25 = cc.NagYourMomStopAtSeriesRank25;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomStopAtSeriesRank25, ref stopAt25))
-                {
-                    cc.NagYourMomStopAtSeriesRank25 = stopAt25;
-                    changed = true;
-                }
-
-                ImGui.TextDisabled($"Attempts today: {cc.NagYourMomAttemptsToday}/{cc.NagYourMomRunsPerDay}");
-                ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourMomStatusText}");
-                ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, and then asks mom for one full casual CC run.");
-                ImGui.Unindent();
-            }
-
-            var nagYourDad = cc.EnableNagYourDad;
-            if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDad, ref nagYourDad))
-            {
-                cc.EnableNagYourDad = nagYourDad;
-                changed = true;
-            }
-            ImGui.SameLine();
-            ImGui.TextDisabled("(?)");
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(UIConstants.Tooltips.NagYourDad);
-            if (cc.EnableNagYourDad)
-            {
-                ImGui.Indent();
-
-                ImGui.TextWrapped("Dungeon count tells dad how many times to run the selected Duty Finder duty.");
-                var dadDungeonCount = cc.NagYourDadDungeonCount;
-                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadDungeonCount, ref dadDungeonCount))
-                {
-                    cc.NagYourDadDungeonCount = Math.Max(0, dadDungeonCount);
-                    changed = true;
-                    configManager.SaveCurrentAccount();
-                }
-
-                ImGui.TextWrapped("Dungeon frequency controls when dad should queue the selected duty from AR-triggered VERMAXION runs.");
-                var dadDungeonFrequencyIndex = DadRunRequestOptions.GetFrequencyIndex(cc.NagYourDadDungeonFrequency);
-                if (ImGui.Combo(UIConstants.ConfigLabels.NagYourDadDungeonFrequency, ref dadDungeonFrequencyIndex, DadRunRequestOptions.DungeonFrequencies, DadRunRequestOptions.DungeonFrequencies.Length))
-                {
-                    cc.NagYourDadDungeonFrequency = DadRunRequestOptions.DungeonFrequencies[dadDungeonFrequencyIndex];
-                    changed = true;
-                }
-
-                ImGui.TextWrapped("Dungeon is the Duty Finder duty dad should run. Search by name or row id.");
-                DrawDadDutySelector(cc, ref changed);
-
-                ImGui.TextWrapped("Dungeon job is the job hint dad should use. Leave blank for current job.");
-                var dadDungeonJob = cc.NagYourDadDungeonJob;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadDungeonJob, ref dadDungeonJob, 16))
-                {
-                    cc.NagYourDadDungeonJob = dadDungeonJob.Trim().ToUpperInvariant();
-                    changed = true;
-                }
-                ImGui.TextDisabled($"Examples: {string.Join(" ", DadRunRequestOptions.JobHintExamples)}");
-
-                ImGui.TextWrapped("dad will prefer Trust when available, then fall back to Duty Support when Trust is not possible.");
-                ImGui.TextDisabled("Execution preference: Trust, then Duty Support");
-
-                ImGui.TextWrapped("LAN Party queue mode tells dad to use DadLanPartyModule with the selected LAN Party-style preset for premade duty routing.");
-                var dadQueueViaLanParty = cc.NagYourDadQueueViaLanParty;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadQueueViaLanParty, ref dadQueueViaLanParty))
-                {
-                    cc.NagYourDadQueueViaLanParty = dadQueueViaLanParty;
-                    changed = true;
-                }
-                if (cc.NagYourDadQueueViaLanParty)
-                {
-                    ImGui.Indent();
-                    ImGui.TextWrapped("LAN Party preset is the Dad-provided preset consumed by DadLanPartyModule for this dungeon queue path.");
-                    DrawDadLanPartyPresetSelector(cc, ref changed);
-                    ImGui.Unindent();
-                }
-
-                ImGui.TextWrapped("Unsynced is a dad hint for duties that cannot use Trust or Duty Support.");
-                var dadDungeonUnsynced = cc.NagYourDadDungeonUnsynced;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDungeonUnsynced, ref dadDungeonUnsynced))
-                {
-                    cc.NagYourDadDungeonUnsynced = dadDungeonUnsynced;
-                    changed = true;
-                }
-
-                ImGui.TextWrapped("Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset.");
-                var dadDailyMsq = cc.NagYourDadDailyMsq;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDailyMsq, ref dadDailyMsq))
-                {
-                    cc.NagYourDadDailyMsq = dadDailyMsq;
-                    changed = true;
-                }
-                if (cc.NagYourDadDailyMsq)
-                {
-                    ImGui.Indent();
-                    if (cc.NagYourDadQueueViaLanParty)
-                    {
-                        ImGui.TextDisabled($"Uses LAN Party preset selected above: {cc.NagYourDadLanPartyPreset}");
-                    }
-                    else
-                    {
-                        ImGui.TextWrapped("LAN Party preset is the Dad-provided preset for DadLanPartyModule Daily MSQ routing.");
-                        DrawDadLanPartyPresetSelector(cc, ref changed);
-                    }
-                    ImGui.Unindent();
-                }
-
-                ImGui.TextWrapped("Commendation attempts tells dad how many commendation-focused runs to attempt.");
-                var dadCommendationAttempts = cc.NagYourDadCommendationAttempts;
-                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadCommendationAttempts, ref dadCommendationAttempts))
-                {
-                    cc.NagYourDadCommendationAttempts = Math.Max(0, dadCommendationAttempts);
-                    changed = true;
-                    configManager.SaveCurrentAccount();
-                }
-
-                ImGui.TextWrapped("Astrope attempts tells dad how many Astrope commendation attempts to schedule inside the local time window.");
-                var dadAstropeAttempts = cc.NagYourDadAstropeAttempts;
-                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadAstropeAttempts, ref dadAstropeAttempts))
-                {
-                    cc.NagYourDadAstropeAttempts = Math.Max(0, dadAstropeAttempts);
-                    changed = true;
-                    configManager.SaveCurrentAccount();
-                }
-
-                ImGui.TextWrapped("Astrope local start is the first local machine time dad may run Astrope attempts.");
-                var dadWindowStart = cc.NagYourDadWindowStartLocal;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowStartLocal, ref dadWindowStart, 16))
-                {
-                    cc.NagYourDadWindowStartLocal = dadWindowStart.Trim();
-                    changed = true;
-                }
-
-                ImGui.TextWrapped("Astrope local end is the last local machine time dad may run Astrope attempts.");
-                var dadWindowEnd = cc.NagYourDadWindowEndLocal;
-                if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowEndLocal, ref dadWindowEnd, 16))
-                {
-                    cc.NagYourDadWindowEndLocal = dadWindowEnd.Trim();
-                    changed = true;
-                }
-
-                ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourDadStatusText}");
-                ImGui.TextWrapped("AR-only task. VERMAXION builds one combined dad payload from the configured dungeon, MSQ, commendation, and Astrope asks. Dad then owns cross-account orchestration. If dad is unavailable or rejects the payload, VERMAXION moves on and retries on the next AR pass.");
                 ImGui.Unindent();
             }
         }
@@ -1366,6 +1473,72 @@ public class ConfigWindow : Window, IDisposable
         reset();
         return true;
     }
+
+    private static void DrawDefaultOverrideButton(
+        bool isDefault,
+        ConfigManager configManager,
+        string id,
+        string label,
+        Action<CharacterConfig, CharacterConfig> copy)
+    {
+        if (!isDefault)
+            return;
+
+        ImGui.SameLine();
+        if (!ImGui.SmallButton($"Override all##{id}"))
+            return;
+
+        var count = configManager.ApplyDefaultSettingToAllCharacters(label, copy);
+        Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
+        Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
+    }
+
+    private static bool DrawJobCombo(string label, string value, bool includeCurrentJobOption, out string selectedJob)
+    {
+        selectedJob = NormalizeJobAbbreviation(value);
+        var preview = selectedJob;
+        if (string.IsNullOrWhiteSpace(preview))
+            preview = includeCurrentJobOption ? "Current job" : "Select job";
+
+        var changed = false;
+        if (!ImGui.BeginCombo(label, preview))
+            return false;
+
+        if (includeCurrentJobOption)
+        {
+            var selected = string.IsNullOrWhiteSpace(selectedJob);
+            if (ImGui.Selectable("Current job", selected))
+            {
+                selectedJob = string.Empty;
+                changed = true;
+            }
+
+            if (selected)
+                ImGui.SetItemDefaultFocus();
+
+            ImGui.Separator();
+        }
+
+        foreach (var job in DadRunRequestOptions.JobHintExamples)
+        {
+            var normalizedJob = NormalizeJobAbbreviation(job);
+            var selected = string.Equals(selectedJob, normalizedJob, StringComparison.Ordinal);
+            if (ImGui.Selectable(normalizedJob, selected))
+            {
+                selectedJob = normalizedJob;
+                changed = true;
+            }
+
+            if (selected)
+                ImGui.SetItemDefaultFocus();
+        }
+
+        ImGui.EndCombo();
+        return changed;
+    }
+
+    private static string NormalizeJobAbbreviation(string value)
+        => value?.Trim().ToUpperInvariant() ?? string.Empty;
 
     private static void DrawFashionTaskHint(DateTime lastCompleted, DateTime nextReset)
     {

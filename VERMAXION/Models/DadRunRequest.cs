@@ -279,6 +279,7 @@ public static class DadRunRequestOptions
         "NIN",
         "SAM",
         "RPR",
+        "VPR",
         "BRD",
         "MCH",
         "DNC",

@@ -49,6 +49,8 @@ public static class UIConstants
         public const string EveryARPostProcess = "Every AR PostProcess";
         public const string WeeklyTasks = "Weekly Tasks";
         public const string DailyTasks = "Daily Tasks";
+        public const string VariableTimeTasks = "Variable time tasks";
+        public const string WipTasks = "WIP tasks";
         
         // Other Labels
         public const string Account = "Account:";
