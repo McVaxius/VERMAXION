@@ -38,6 +38,12 @@ public sealed class RetainerListingRefillService
         Failed,
     }
 
+    private enum RetainerUiCloseMode
+    {
+        FullClose,
+        ReturnToRetainerList,
+    }
+
     private sealed record RetainerTarget(string Name, ulong RetainerId, int RetainerIndex, int DisplayOrder, int MarketItemCount);
     private sealed record RetainerListEntry(int Index, string Name);
     private sealed record ListingSlot(int Slot, uint ItemId, int Quantity, bool IsHq, string ItemName);
@@ -100,6 +106,7 @@ public sealed class RetainerListingRefillService
     private int retainerListCallbackCycles;
     private int closeAttemptCount;
     private bool closeThenFail;
+    private RetainerUiCloseMode closeMode = RetainerUiCloseMode.FullClose;
     private bool bellInteracted;
     private bool retainerSelected;
     private bool sellMenuSelected;
@@ -203,6 +210,7 @@ public sealed class RetainerListingRefillService
         reopenSellListForCurrentPlan = false;
         contextOpenRequested = false;
         closeThenFail = false;
+        closeMode = RetainerUiCloseMode.FullClose;
         ResetRetainerPhaseFlags();
         ResetCloseTracking();
     }
@@ -270,6 +278,7 @@ public sealed class RetainerListingRefillService
         if (state != RefillState.ClosingRetainerUi)
         {
             closeThenFail = true;
+            closeMode = RetainerUiCloseMode.FullClose;
             SetState(RefillState.ClosingRetainerUi, "Closing retainer UI...");
         }
 
@@ -633,7 +642,7 @@ public sealed class RetainerListingRefillService
 
     private void TickClosingRetainerUi()
     {
-        if (!TryCloseVisibleRetainerUi(out var status))
+        if (!TryCloseVisibleRetainerUi(closeMode, out var status))
         {
             if (closeThenFail)
             {
@@ -649,9 +658,15 @@ public sealed class RetainerListingRefillService
             }
 
             ResetRetainerPhaseFlags();
-            log.Information($"[Listings] Reopening retainer bell for next retainer via Lifestream-first route. route={route}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
-            workshopBellService.Start(route);
-            SetState(RefillState.OpeningWorkshopBell, $"Routing to {GetRouteLabel(route)} bell...");
+            if (GameHelpers.IsAddonVisible(RetainerListAddonName))
+            {
+                log.Information($"[Listings] Returning to RetainerList for next target; no Lifestream route. targetIndex={targetIndex}, targets={targets.Count}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+                SetState(RefillState.SelectingRetainer, "Selecting next retainer...");
+                return;
+            }
+
+            log.Information($"[Listings] RetainerList vanished before next target; reopening nearby bell locally without Lifestream route. targetIndex={targetIndex}, targets={targets.Count}, route={route}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+            SetState(RefillState.MovingToBell, "Reopening retainer bell locally...");
             return;
         }
 
@@ -1569,12 +1584,12 @@ public sealed class RetainerListingRefillService
         }
     }
 
-    private bool TryCloseVisibleRetainerUi(out string status)
+    private bool TryCloseVisibleRetainerUi(RetainerUiCloseMode mode, out string status)
     {
         var now = DateTime.UtcNow;
         status = "Closing retainer UI...";
 
-        if (retainerListCloseSecondPending)
+        if (mode == RetainerUiCloseMode.FullClose && retainerListCloseSecondPending)
         {
             if (now < retainerListCloseSecondReadyAt)
                 return true;
@@ -1592,7 +1607,7 @@ public sealed class RetainerListingRefillService
             return true;
         }
 
-        var visibleAddons = GetVisibleRetainerCloseAddons();
+        var visibleAddons = GetVisibleRetainerCloseAddons(mode);
         if (visibleAddons.Count == 0)
         {
             if (closeNoSurfaceSince == DateTime.MinValue)
@@ -1664,11 +1679,14 @@ public sealed class RetainerListingRefillService
         return true;
     }
 
-    private static List<string> GetVisibleRetainerCloseAddons()
+    private static List<string> GetVisibleRetainerCloseAddons(RetainerUiCloseMode mode = RetainerUiCloseMode.FullClose)
     {
         var visibleAddons = new List<string>();
         foreach (var addonName in RetainerCloseAddonPriority)
         {
+            if (mode == RetainerUiCloseMode.ReturnToRetainerList && addonName == RetainerListAddonName)
+                continue;
+
             if (GameHelpers.IsAddonVisible(addonName))
                 visibleAddons.Add(addonName);
         }
@@ -1699,6 +1717,9 @@ public sealed class RetainerListingRefillService
     private void BeginClosingRetainerUi(bool failed, string status)
     {
         closeThenFail = failed;
+        closeMode = failed || targetIndex + 1 >= targets.Count
+            ? RetainerUiCloseMode.FullClose
+            : RetainerUiCloseMode.ReturnToRetainerList;
         SetState(RefillState.ClosingRetainerUi, status);
     }
 
