@@ -1735,7 +1735,7 @@ public sealed class RetainerListingRefillService
         var elapsed = DateTime.UtcNow - stateEnteredAt;
         return state switch
         {
-            RefillState.OpeningWorkshopBell => elapsed > BellMoveTimeout,
+            RefillState.OpeningWorkshopBell => false,
             RefillState.MovingToBell => elapsed > BellMoveTimeout,
             RefillState.OpeningContextMenu or RefillState.SelectingReturnToInventory or RefillState.ConfirmingReturn or RefillState.VerifyingWithdrawal => elapsed > WithdrawalTimeout,
             RefillState.ClosingRetainerUi => elapsed > DefaultStepTimeout,

@@ -27,17 +27,23 @@ public sealed class WorkshopBellService
     private const float MaxBellSearchDistance = 200f;
     private const float BellInteractionDistance = 2f;
     private static readonly TimeSpan RouteSettleDelay = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan RouteTimeout = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan RouteTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan BellMoveTimeout = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan BusyWaitLogInterval = TimeSpan.FromSeconds(10);
 
     private readonly IPluginLog log;
     private readonly LifestreamIPC lifestream;
     private readonly VNavmeshIPC vnavmesh;
     private BellRouteState state = BellRouteState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
+    private DateTime routeStartedAt = DateTime.MinValue;
     private DateTime nextActionAt = DateTime.MinValue;
     private DateTime lastNavigationCommandAt = DateTime.MinValue;
+    private DateTime lastBusyWaitLogAt = DateTime.MinValue;
     private bool bellInteracted;
+    private bool busyWaitLogged;
+    private bool routeDoneLogged;
+    private bool bellFoundLogged;
     private RefillFromListingsRoute route = RefillFromListingsRoute.Workshop;
 
     public bool IsActive => state is not (BellRouteState.Idle or BellRouteState.Complete or BellRouteState.Failed);
@@ -70,9 +76,14 @@ public sealed class WorkshopBellService
         vnavmesh.Stop();
         state = BellRouteState.Idle;
         stateEnteredAt = DateTime.MinValue;
+        routeStartedAt = DateTime.MinValue;
         nextActionAt = DateTime.MinValue;
         lastNavigationCommandAt = DateTime.MinValue;
+        lastBusyWaitLogAt = DateTime.MinValue;
         bellInteracted = false;
+        busyWaitLogged = false;
+        routeDoneLogged = false;
+        bellFoundLogged = false;
         StatusText = "Idle.";
         LastError = string.Empty;
     }
@@ -112,7 +123,8 @@ public sealed class WorkshopBellService
 
         var command = GetLifestreamCommand(route);
         log.Information($"[WorkshopBell] Lifestream-first: skipping local bell search before /li route. route={route}, command={command}, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}");
-        log.Information($"[WorkshopBell] Executing selected Lifestream route: /li {command}");
+        routeStartedAt = DateTime.UtcNow;
+        log.Information($"[WorkshopBell] Executing selected Lifestream route: /li {command}. routeStartUtc={routeStartedAt:O}, timeoutSeconds={RouteTimeout.TotalSeconds:F0}");
         if (!lifestream.ExecuteCommand(command))
         {
             Fail($"Failed to execute Lifestream {GetRouteLabel(route)} route.");
@@ -131,25 +143,34 @@ public sealed class WorkshopBellService
             return;
         }
 
-        if (DateTime.UtcNow - stateEnteredAt > RouteTimeout)
-        {
-            Fail($"Timed out waiting for Lifestream {GetRouteLabel(route)} route.");
-            return;
-        }
-
         if (lifestream.IsBusy())
         {
-            StatusText = "Waiting for Lifestream...";
+            LogBusyWait();
+            StatusText = $"Waiting for Lifestream {GetRouteLabel(route)} route...";
             nextActionAt = DateTime.UtcNow.AddSeconds(1);
             return;
         }
 
+        if (!routeDoneLogged)
+        {
+            routeDoneLogged = true;
+            log.Information($"[WorkshopBell] Lifestream route complete. route={route}, command=/li {GetLifestreamCommand(route)}, elapsedSeconds={GetRouteElapsed().TotalSeconds:F1}");
+        }
+
         if (!TryFindNearestBell(out var bell, out var distance))
         {
-            Fail($"No Summoning Bell found after Lifestream {GetRouteLabel(route)} route.");
+            if (GetRouteElapsed() > RouteTimeout)
+            {
+                Fail($"No Summoning Bell found within {RouteTimeout.TotalSeconds:F0}s after /li {GetLifestreamCommand(route)} route.");
+                return;
+            }
+
+            StatusText = $"Waiting for {GetRouteLabel(route)} bell...";
+            nextActionAt = DateTime.UtcNow.AddSeconds(1);
             return;
         }
 
+        LogBellFound(distance);
         SetState(distance > BellInteractionDistance
             ? BellRouteState.MovingToBell
             : BellRouteState.InteractingBell,
@@ -174,10 +195,18 @@ public sealed class WorkshopBellService
 
         if (!TryFindNearestBell(out var bell, out var distance))
         {
-            Fail($"No Summoning Bell found after {GetRouteLabel(route)} route.");
+            if (GetRouteElapsed() > RouteTimeout)
+            {
+                Fail($"No Summoning Bell found within {RouteTimeout.TotalSeconds:F0}s after /li {GetLifestreamCommand(route)} route.");
+                return;
+            }
+
+            StatusText = $"Waiting for {GetRouteLabel(route)} bell...";
+            nextActionAt = DateTime.UtcNow.AddSeconds(1);
             return;
         }
 
+        LogBellFound(distance);
         if (distance > BellInteractionDistance)
         {
             MoveTo(bell.Position, $"Moving to {GetRouteLabel(route)} bell... ({distance:F1}y)");
@@ -200,10 +229,18 @@ public sealed class WorkshopBellService
         {
             if (!TryFindNearestBell(out var bell, out var distance))
             {
-                Fail("No Summoning Bell found before interaction.");
+                if (GetRouteElapsed() > RouteTimeout)
+                {
+                    Fail($"No Summoning Bell found within {RouteTimeout.TotalSeconds:F0}s after /li {GetLifestreamCommand(route)} route.");
+                    return;
+                }
+
+                StatusText = $"Waiting for {GetRouteLabel(route)} bell...";
+                nextActionAt = DateTime.UtcNow.AddSeconds(1);
                 return;
             }
 
+            LogBellFound(distance);
             if (distance > BellInteractionDistance)
             {
                 SetState(BellRouteState.MovingToBell, $"Moving to {GetRouteLabel(route)} bell... ({distance:F1}y)");
@@ -223,6 +260,31 @@ public sealed class WorkshopBellService
         StatusText = "Waiting for retainer list...";
         nextActionAt = DateTime.UtcNow.AddSeconds(1);
     }
+
+    private void LogBusyWait()
+    {
+        var now = DateTime.UtcNow;
+        if (busyWaitLogged && now - lastBusyWaitLogAt < BusyWaitLogInterval)
+            return;
+
+        busyWaitLogged = true;
+        lastBusyWaitLogAt = now;
+        log.Information($"[WorkshopBell] Waiting for Lifestream busy=false. route={route}, command=/li {GetLifestreamCommand(route)}, elapsedSeconds={GetRouteElapsed().TotalSeconds:F1}");
+    }
+
+    private void LogBellFound(float distance)
+    {
+        if (bellFoundLogged)
+            return;
+
+        bellFoundLogged = true;
+        log.Information($"[WorkshopBell] Summoning Bell found after route. route={route}, command=/li {GetLifestreamCommand(route)}, distance={distance:F1}y, elapsedSeconds={GetRouteElapsed().TotalSeconds:F1}");
+    }
+
+    private TimeSpan GetRouteElapsed()
+        => routeStartedAt == DateTime.MinValue
+            ? TimeSpan.Zero
+            : DateTime.UtcNow - routeStartedAt;
 
     private bool TryFindNearestBell(out IGameObject bell, out float distance)
     {
