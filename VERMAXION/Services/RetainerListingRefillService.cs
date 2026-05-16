@@ -403,7 +403,8 @@ public sealed class RetainerListingRefillService
             {
                 LogRetainerListDiagnostics($"target-missing: {target.Name}");
                 var visible = visibleNames.Count == 0 ? "none parsed" : string.Join(", ", visibleNames);
-                Fail($"RetainerList is visible but target retainer '{target.Name}' was not found. Visible: {visible}.");
+                StatusText = $"Waiting for RetainerList to show {target.Name}... Visible: {visible}.";
+                nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
                 return;
             }
 
