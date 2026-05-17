@@ -30,9 +30,12 @@ public class FCBuffService : IDisposable
     private const int BaseMinGil = 16000; // Base minimum gil required
     private const int MaxPurchaseAttempts = 15;
     private const int MaxPurchaseConfirmRetries = 3;
+    private const int MaxPurchaseConfirmPromptReadRetries = 3;
     private const float QuartermasterWaypointArrivalDistance = 2.5f;
     private static readonly TimeSpan PurchaseConfirmRetryInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PurchaseConfirmTimeout = TimeSpan.FromSeconds(12);
+    private static readonly TimeSpan PurchaseConfirmPromptFallbackDelay = TimeSpan.FromSeconds(1.5);
+    private static readonly TimeSpan PurchaseConfirmPromptReadLogThrottle = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan NavigationLogThrottle = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WindowCloseRetryInterval = TimeSpan.FromMilliseconds(750);
     private static readonly TimeSpan WindowCloseLogThrottle = TimeSpan.FromSeconds(2);
@@ -53,6 +56,9 @@ public class FCBuffService : IDisposable
     private DateTime lastNavigationLogTime = DateTime.MinValue;
     private int purchaseConfirmRetryCount = 0;
     private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
+    private int purchaseConfirmPromptReadFailureCount = 0;
+    private DateTime firstPurchaseConfirmPromptReadFailureAt = DateTime.MinValue;
+    private DateTime lastPurchaseConfirmPromptReadLogAt = DateTime.MinValue;
     private DateTime lastWindowCloseAttemptAt = DateTime.MinValue;
     private DateTime lastWindowCloseLogAt = DateTime.MinValue;
     private DateTime windowCloseTargetStartedAt = DateTime.MinValue;
@@ -873,34 +879,157 @@ public class FCBuffService : IDisposable
                 return;
 
             var yesNo = new AddonMaster.SelectYesno(&addon->AtkUnitBase);
-            var promptText = NormalizeAddonText(yesNo.Text);
             var expectedActionName = GetExpectedPurchaseActionName();
+            var expectedActionIndex = GetExpectedPurchaseActionIndex();
 
-            if (promptText.Contains(expectedActionName, StringComparison.OrdinalIgnoreCase))
+            if (!TryReadPurchaseConfirmPrompt(yesNo, out var promptText, out var promptReadFailure))
             {
-                log.Information($"[FCBuff] Confirming purchase prompt for {expectedActionName}");
-                yesNo.Yes();
-                buyCount++;
-                ResetPurchaseConfirmRetryState();
-                SetState(FCBuffState.PurchasingBuff);
+                HandleUnreadablePurchaseConfirmation(yesNo, expectedActionName, expectedActionIndex, promptReadFailure);
                 return;
             }
 
-            log.Error($"[FCBuff] Purchase prompt mismatch. Expected '{expectedActionName}', got '{promptText}'. Clicking No and failing cleanup.");
-            yesNo.No();
+            if (promptText.Contains(expectedActionName, StringComparison.OrdinalIgnoreCase))
+            {
+                ConfirmPurchaseYes(yesNo, expectedActionName, expectedActionIndex, "validated text", promptText);
+                return;
+            }
+
+            log.Error($"[FCBuff] Purchase prompt mismatch. Expected '{expectedActionName}' index {expectedActionIndex}, got '{promptText}'. Clicking No and failing cleanup.");
+            try
+            {
+                yesNo.No();
+            }
+            catch (Exception noEx)
+            {
+                log.Warning($"[FCBuff] Failed to click No for mismatched purchase prompt: {noEx.Message}");
+            }
+
             failAfterClosingWindows = true;
             ResetPurchaseConfirmRetryState();
             SetState(FCBuffState.ClosingWindows);
+            return;
         }
         catch (Exception ex)
         {
-            log.Error($"[FCBuff] Failed to validate purchase confirmation: {ex.Message}");
-            failAfterClosingWindows = true;
-            SetState(FCBuffState.ClosingWindows);
+            HandleUnreadablePurchaseConfirmationWithoutAddonMaster(GetExpectedPurchaseActionName(), GetExpectedPurchaseActionIndex(), ex.Message);
         }
     }
 
     private string GetExpectedPurchaseActionName() => isSealSweetenerTwo ? "Seal Sweetener II" : "Seal Sweetener I";
+
+    private uint GetExpectedPurchaseActionIndex() => isSealSweetenerTwo ? 22u : 5u;
+
+    private bool TryReadPurchaseConfirmPrompt(AddonMaster.SelectYesno yesNo, out string promptText, out string failureReason)
+    {
+        promptText = string.Empty;
+        failureReason = string.Empty;
+
+        try
+        {
+            promptText = NormalizeAddonText(yesNo.Text);
+            if (!string.IsNullOrWhiteSpace(promptText))
+                return true;
+
+            failureReason = "prompt text was empty";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            failureReason = ex.Message;
+            return false;
+        }
+    }
+
+    private void HandleUnreadablePurchaseConfirmation(
+        AddonMaster.SelectYesno yesNo,
+        string expectedActionName,
+        uint expectedActionIndex,
+        string failureReason)
+    {
+        var now = DateTime.UtcNow;
+        purchaseConfirmPromptReadFailureCount++;
+        if (firstPurchaseConfirmPromptReadFailureAt == DateTime.MinValue)
+            firstPurchaseConfirmPromptReadFailureAt = now;
+
+        if (now - lastPurchaseConfirmPromptReadLogAt >= PurchaseConfirmPromptReadLogThrottle)
+        {
+            lastPurchaseConfirmPromptReadLogAt = now;
+            log.Warning($"[FCBuff] Purchase confirmation prompt unreadable for expected '{expectedActionName}' index {expectedActionIndex}; readFailures={purchaseConfirmPromptReadFailureCount}/{MaxPurchaseConfirmPromptReadRetries}; reason='{failureReason}'");
+        }
+
+        if (!CanUseGuardedPurchaseConfirmYes(now))
+            return;
+
+        log.Warning($"[FCBuff] Confirming purchase for {expectedActionName} index {expectedActionIndex} via guarded fallback after unreadable SelectYesno prompt; readFailures={purchaseConfirmPromptReadFailureCount}, elapsed={(now - stateEnteredAt).TotalSeconds:F1}s");
+
+        ConfirmPurchaseYes(yesNo, expectedActionName, expectedActionIndex, "guarded fallback", $"unreadable: {failureReason}");
+    }
+
+    private void HandleUnreadablePurchaseConfirmationWithoutAddonMaster(
+        string expectedActionName,
+        uint expectedActionIndex,
+        string failureReason)
+    {
+        var now = DateTime.UtcNow;
+        purchaseConfirmPromptReadFailureCount++;
+        if (firstPurchaseConfirmPromptReadFailureAt == DateTime.MinValue)
+            firstPurchaseConfirmPromptReadFailureAt = now;
+
+        if (now - lastPurchaseConfirmPromptReadLogAt >= PurchaseConfirmPromptReadLogThrottle)
+        {
+            lastPurchaseConfirmPromptReadLogAt = now;
+            log.Warning($"[FCBuff] Purchase confirmation prompt unreadable before addon master was ready for expected '{expectedActionName}' index {expectedActionIndex}; readFailures={purchaseConfirmPromptReadFailureCount}/{MaxPurchaseConfirmPromptReadRetries}; reason='{failureReason}'");
+        }
+
+        if (!CanUseGuardedPurchaseConfirmYes(now))
+            return;
+
+        log.Warning($"[FCBuff] Confirming purchase for {expectedActionName} index {expectedActionIndex} via guarded fallback after SelectYesno read exception; readFailures={purchaseConfirmPromptReadFailureCount}, elapsed={(now - stateEnteredAt).TotalSeconds:F1}s");
+
+        if (GameHelpers.ClickYesIfVisible())
+        {
+            buyCount++;
+            ResetPurchaseConfirmRetryState();
+            SetState(FCBuffState.PurchasingBuff);
+            return;
+        }
+
+        log.Warning($"[FCBuff] Guarded purchase confirmation Yes click failed for {expectedActionName} index {expectedActionIndex}; will keep waiting within timeout.");
+    }
+
+    private bool CanUseGuardedPurchaseConfirmYes(DateTime now)
+    {
+        if (state != FCBuffState.WaitingForPurchaseConfirm)
+            return false;
+
+        if (buyCount >= buyMax)
+            return false;
+
+        if (lastPurchaseConfirmRetryAt == DateTime.MinValue)
+            return false;
+
+        if (!GameHelpers.IsAddonVisible("FreeCompanyExchange"))
+            return false;
+
+        if (purchaseConfirmPromptReadFailureCount < MaxPurchaseConfirmPromptReadRetries)
+            return false;
+
+        return now - firstPurchaseConfirmPromptReadFailureAt >= PurchaseConfirmPromptFallbackDelay;
+    }
+
+    private void ConfirmPurchaseYes(
+        AddonMaster.SelectYesno yesNo,
+        string expectedActionName,
+        uint expectedActionIndex,
+        string confirmationSource,
+        string promptText)
+    {
+        log.Information($"[FCBuff] Confirming purchase prompt for {expectedActionName} index {expectedActionIndex} via {confirmationSource}: '{promptText}'");
+        yesNo.Yes();
+        buyCount++;
+        ResetPurchaseConfirmRetryState();
+        SetState(FCBuffState.PurchasingBuff);
+    }
 
     private unsafe void TickClosingWindows(double elapsed)
     {
@@ -1185,6 +1314,9 @@ public class FCBuffService : IDisposable
     {
         purchaseConfirmRetryCount = 0;
         lastPurchaseConfirmRetryAt = DateTime.MinValue;
+        purchaseConfirmPromptReadFailureCount = 0;
+        firstPurchaseConfirmPromptReadFailureAt = DateTime.MinValue;
+        lastPurchaseConfirmPromptReadLogAt = DateTime.MinValue;
     }
 
     private void ResetWindowCloseTracking()
