@@ -326,6 +326,7 @@ public class ConfigManager
         target.EnableNagYourMom = source.EnableNagYourMom;
         target.EnableNagYourDad = source.EnableNagYourDad;
         target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity;
+        target.EnableMiscCmd = source.EnableMiscCmd;
         target.ChocoboRacesPerDay = source.ChocoboRacesPerDay;
         target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50;
         target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;

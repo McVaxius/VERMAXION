@@ -29,6 +29,7 @@ public static class UIConstants
         public const string NagYourMomWindowEndLocal = "Local end (HH:mm)";
         public const string NagYourMomStopAtSeriesRank25 = "Stop at series rank 25";
         public const string NagYourDad = "nag your dad";
+        public const string MiscCmd = "Misc Cmd";
         public const string NagYourDadDungeonCount = "dad dungeon count";
         public const string NagYourDadDungeonFrequency = "dad dungeon frequency";
         public const string NagYourDadDungeonName = "dad dungeon";
@@ -70,5 +71,6 @@ public static class UIConstants
         public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";
         public const string NagYourMom = "AR-only mom task. Evaluated only during the normal VERMAXION post-process flow, gated by a local time window and daily attempt count.";
         public const string NagYourDad = "AR-only dad task. VERMAXION packages configured dungeon, MSQ, commendation, and Astrope asks into one IPC payload, then Dad owns readiness waits, claims, party assembly, and module routing.";
+        public const string MiscCmd = "Sends startup cleanup commands at the start of AutoRetainer and manual VERMAXION runs.";
     }
 }

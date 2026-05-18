@@ -25,6 +25,7 @@ public class CharacterConfig
     public bool EnableNagYourMom { get; set; } = false;
     public bool EnableNagYourDad { get; set; } = false;
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
+    public bool EnableMiscCmd { get; set; } = true;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -208,6 +209,7 @@ public class CharacterConfig
             EnableNagYourMom = EnableNagYourMom,
             EnableNagYourDad = EnableNagYourDad,
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
+            EnableMiscCmd = EnableMiscCmd,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,

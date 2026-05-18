@@ -462,6 +462,25 @@ public class ConfigWindow : Window, IDisposable
         // --- Feature Toggles ---
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.EveryARPostProcess, ImGuiTreeNodeFlags.DefaultOpen))
         {
+            var miscCmd = cc.EnableMiscCmd;
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.MiscCmd, ref miscCmd))
+            {
+                cc.EnableMiscCmd = miscCmd;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "MiscCmd", UIConstants.ConfigLabels.MiscCmd,
+                (source, target) => target.EnableMiscCmd = source.EnableMiscCmd);
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Send now##MiscCmdConfig"))
+            {
+                plugin.Engine.SendRunShutdownCommandBundle();
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(UIConstants.Tooltips.MiscCmd);
+            ImGui.TextWrapped("Commands: /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False");
+
             var fcBuff = cc.EnableFCBuffRefill;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.FCBuffRefill, ref fcBuff))
             {
@@ -644,14 +663,7 @@ public class ConfigWindow : Window, IDisposable
             }
 
             ImGui.Separator();
-            ImGui.Text("Run Shutdown Bundle");
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Send now##ShutdownBundleConfig"))
-            {
-                plugin.Engine.SendRunShutdownCommandBundle();
-            }
-            ImGui.TextDisabled("Always on. Sent once at the start of every AutoRetainer/manual VERMAXION run.");
-            ImGui.TextWrapped("Commands: /rotation cancel, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off");
+            ImGui.TextDisabled("Misc Cmd sends once at the start of every enabled AutoRetainer/manual VERMAXION run.");
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WeeklyTasks, ImGuiTreeNodeFlags.DefaultOpen))

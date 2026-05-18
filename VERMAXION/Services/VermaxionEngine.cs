@@ -14,9 +14,10 @@ public class VermaxionEngine
     private static readonly TimeSpan NagYourMomLostStatusGrace = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusLogThrottle = TimeSpan.FromSeconds(30);
 
-    private static readonly string[] RunShutdownCommands =
+    private static readonly string[] StartupMiscCommands =
     [
-        "/rotation cancel",
+        "/rotation Cancel",
+        "/at enable",
         "/vbmai off",
         "/bmrai off",
         "/wrath auto off",
@@ -178,7 +179,7 @@ public class VermaxionEngine
             return;
         }
 
-        SendRunShutdownCommandBundle();
+        SendStartupMiscCommandBundleIfEnabled();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";
         log.Information("[Engine] === Starting Vermaxion post-processing ===");
@@ -217,7 +218,7 @@ public class VermaxionEngine
             return;
         }
 
-        SendRunShutdownCommandBundle();
+        SendStartupMiscCommandBundleIfEnabled();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";
         activePhaseFilter = RunTaskPhaseFilter.BeforeAR;
@@ -263,7 +264,7 @@ public class VermaxionEngine
             return;
         }
 
-        SendRunShutdownCommandBundle();
+        SendStartupMiscCommandBundleIfEnabled();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";
         activePhaseFilter = RunTaskPhaseFilter.All;
@@ -307,10 +308,21 @@ public class VermaxionEngine
 
     public void SendRunShutdownCommandBundle()
     {
-        foreach (var command in RunShutdownCommands)
+        foreach (var command in StartupMiscCommands)
             CommandHelper.SendCommand(command);
 
-        log.Information("[Engine] Sent run startup shutdown bundle");
+        log.Information("[Engine] Sent Misc Cmd startup bundle");
+    }
+
+    private void SendStartupMiscCommandBundleIfEnabled()
+    {
+        if (activeConfig?.EnableMiscCmd != true)
+        {
+            log.Information("[Engine] Misc Cmd startup bundle disabled for this character");
+            return;
+        }
+
+        SendRunShutdownCommandBundle();
     }
 
     public int GetPendingTaskCount()

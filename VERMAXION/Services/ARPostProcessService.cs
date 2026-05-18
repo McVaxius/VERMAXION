@@ -75,10 +75,6 @@ public class ARPostProcessService : IDisposable
         log.Information($"[AR] Character ready for postprocess — {PluginName}");
         IsProcessing = true;
 
-        // Force enable textadvance at the start of every PostARprocess
-        CommandHelper.SendCommand("/at enable");
-        log.Information("[AR] Textadvance enabled for postprocess");
-
         try
         {
             onCharacterReady(pluginName);

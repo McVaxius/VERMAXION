@@ -142,8 +142,9 @@ public class MainWindow : Window, IDisposable
             ImGui.TableHeadersRow();
 
             // --- Every AR PostProcess ---
-            DrawTaskRow("Run Shutdown Bundle", true, "Every AR + manual run",
-                "Send##ShutdownBundle", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
+            DrawTaskRow("Misc Cmd", config.EnableMiscCmd,
+                config.EnableMiscCmd ? "Every AR + manual run" : "Off",
+                "Send##MiscCmd", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
                 "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
