@@ -59,9 +59,10 @@ public sealed class RetainerListingRefillService
     private static readonly TimeSpan DefaultStepTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan BellMoveTimeout = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan WithdrawalTimeout = TimeSpan.FromSeconds(12);
+    private static readonly TimeSpan RetainerCloseTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan CloseRetryInterval = TimeSpan.FromMilliseconds(750);
-    private static readonly TimeSpan CloseNoSurfaceGrace = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan RetainerListCloseSecondCallbackDelay = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan CloseNoSurfaceGrace = TimeSpan.FromSeconds(2.5);
+    private static readonly TimeSpan RetainerListCloseSecondCallbackDelay = TimeSpan.FromMilliseconds(350);
     private static readonly TimeSpan CloseSignatureLogInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan StallDiagnosticLogInterval = TimeSpan.FromSeconds(5);
     private static readonly string[] RetainerCloseAddonPriority =
@@ -176,7 +177,7 @@ public sealed class RetainerListingRefillService
         if (targets.Count == 0)
         {
             log.Information("[Listings] No retainers have market listings after bell open.");
-            SetState(RefillState.Complete, "No retainer listings found.");
+            BeginClosingRetainerUi(false, "No retainer listings found. Closing retainer UI...");
             return;
         }
 
@@ -1624,6 +1625,9 @@ public sealed class RetainerListingRefillService
                 return true;
             }
 
+            if (mode == RetainerUiCloseMode.FullClose)
+                log.Information($"[Listings] Retainer UI full close confirmed after {CloseNoSurfaceGrace.TotalSeconds:F1}s with no close surfaces visible.");
+
             ResetCloseTracking();
             return false;
         }
@@ -1641,11 +1645,10 @@ public sealed class RetainerListingRefillService
         var addonToClose = visibleAddons[0];
         if (addonToClose == RetainerListAddonName)
         {
-            if (retainerListCallbackCycles >= 3)
+            if (retainerListCallbackCycles >= 5)
             {
-                LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "CloseCurrentAddon fallback", visibleAddons);
+                LogRetainerCloseAction(closeAttemptCount + 1, addonToClose, "CloseCurrentAddon ESC fallback", visibleAddons);
                 GameHelpers.CloseCurrentAddon();
-                retainerListCallbackCycles = 0;
             }
             else
             {
@@ -1760,7 +1763,7 @@ public sealed class RetainerListingRefillService
             RefillState.OpeningWorkshopBell => false,
             RefillState.MovingToBell => elapsed > BellMoveTimeout,
             RefillState.OpeningContextMenu or RefillState.SelectingReturnToInventory or RefillState.ConfirmingReturn or RefillState.VerifyingWithdrawal => elapsed > WithdrawalTimeout,
-            RefillState.ClosingRetainerUi => elapsed > DefaultStepTimeout,
+            RefillState.ClosingRetainerUi => elapsed > RetainerCloseTimeout,
             _ => elapsed > DefaultStepTimeout,
         };
     }

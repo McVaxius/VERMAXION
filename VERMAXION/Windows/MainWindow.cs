@@ -13,13 +13,13 @@ public class MainWindow : Window, IDisposable
     private readonly Plugin plugin;
 
     public MainWindow(Plugin plugin)
-        : base("Vermaxion##Main", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base("Vermaxion##Main")
     {
         this.plugin = plugin;
         SizeConstraints = new WindowSizeConstraints
         {
             MinimumSize = new Vector2(520, 480),
-            MaximumSize = new Vector2(800, 700),
+            MaximumSize = new Vector2(1600, 1200),
         };
     }
 
