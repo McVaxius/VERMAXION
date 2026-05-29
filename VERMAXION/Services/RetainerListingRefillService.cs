@@ -56,6 +56,9 @@ public sealed class RetainerListingRefillService
     private const string ContextMenuAddonName = "ContextMenu";
     private const float MaxBellSearchDistance = 200f;
     private const float BellInteractionDistance = 2f;
+    private const int DefaultMinFreeInventorySlots = 20;
+    private const int MinFreeInventorySlotsFloor = 10;
+    private const int MinFreeInventorySlotsCeiling = 100;
     private static readonly TimeSpan DefaultStepTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan BellMoveTimeout = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan WithdrawalTimeout = TimeSpan.FromSeconds(12);
@@ -82,6 +85,13 @@ public sealed class RetainerListingRefillService
         SelectStringAddonName,
         RetainerListAddonName,
     };
+    private static readonly ushort[] MainInventoryContainerTypes =
+    {
+        3200,
+        3201,
+        3202,
+        3203,
+    };
 
     private readonly IPluginLog log;
     private readonly ConfigManager configManager;
@@ -107,6 +117,7 @@ public sealed class RetainerListingRefillService
     private int retainerListCallbackCycles;
     private int closeAttemptCount;
     private bool closeThenFail;
+    private bool closeThenComplete;
     private RetainerUiCloseMode closeMode = RetainerUiCloseMode.FullClose;
     private bool bellInteracted;
     private bool retainerSelected;
@@ -124,6 +135,7 @@ public sealed class RetainerListingRefillService
     private string lastRetainerMarketScanDetail = string.Empty;
     private bool reopenSellListForCurrentPlan;
     private bool contextOpenRequested;
+    private int minFreeInventorySlots = DefaultMinFreeInventorySlots;
 
     public string StatusText { get; private set; } = "Idle.";
     public string LastError { get; private set; } = string.Empty;
@@ -153,12 +165,16 @@ public sealed class RetainerListingRefillService
         Reset();
         selectionMode = config.RefillFromListingsSelectionMode;
         route = config.RefillFromListingsRoute;
+        minFreeInventorySlots = ClampMinFreeInventorySlots(config.RefillFromListingsMinFreeInventorySlots);
         SetState(RefillState.PreparingTargets, "Reading retainer listings...");
         TickPreparingTargets();
     }
 
     private void TickPreparingTargets()
     {
+        if (!TryContinuePastInventoryFreeSlotGuard("preparing retainer listing refill"))
+            return;
+
         if (!GameHelpers.IsAddonVisible(RetainerListAddonName))
         {
             log.Information($"[Listings] Opening retainer bell: route={route}, mode=Lifestream-first, lifestreamSkipped=False, state={state}, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
@@ -211,7 +227,9 @@ public sealed class RetainerListingRefillService
         reopenSellListForCurrentPlan = false;
         contextOpenRequested = false;
         closeThenFail = false;
+        closeThenComplete = false;
         closeMode = RetainerUiCloseMode.FullClose;
+        minFreeInventorySlots = DefaultMinFreeInventorySlots;
         ResetRetainerPhaseFlags();
         ResetCloseTracking();
     }
@@ -377,6 +395,9 @@ public sealed class RetainerListingRefillService
 
     private void TickSelectingRetainer()
     {
+        if (!TryContinuePastInventoryFreeSlotGuard("selecting retainer target"))
+            return;
+
         var target = CurrentTarget;
         if (target == null)
         {
@@ -502,6 +523,9 @@ public sealed class RetainerListingRefillService
             return;
         }
 
+        if (!TryContinuePastInventoryFreeSlotGuard("withdrawing next listing"))
+            return;
+
         if (!TryScanRetainerMarketListings(out var slots, out var detail))
         {
             lastRetainerMarketScanDetail = detail;
@@ -572,6 +596,9 @@ public sealed class RetainerListingRefillService
             return;
         }
 
+        if (!TryContinuePastInventoryFreeSlotGuard("selecting listing return"))
+            return;
+
         var result = TrySelectReturnToInventory(out var detail);
         switch (result)
         {
@@ -593,6 +620,9 @@ public sealed class RetainerListingRefillService
     {
         if (GameHelpers.IsAddonVisible("SelectYesno"))
         {
+            if (!TryContinuePastInventoryFreeSlotGuard("confirming listing return"))
+                return;
+
             if (!confirmationClicked)
             {
                 GameHelpers.ClickYesIfVisible();
@@ -652,6 +682,15 @@ public sealed class RetainerListingRefillService
                 return;
             }
 
+            if (closeThenComplete)
+            {
+                SetState(RefillState.Complete, "Retainer listing refill complete.");
+                return;
+            }
+
+            if (!TryContinuePastInventoryFreeSlotGuard("before next retainer target"))
+                return;
+
             targetIndex++;
             if (targetIndex >= targets.Count)
             {
@@ -673,6 +712,106 @@ public sealed class RetainerListingRefillService
         }
 
         StatusText = status;
+    }
+
+    private bool TryContinuePastInventoryFreeSlotGuard(string context)
+    {
+        if (!TryGetMainInventoryFreeSlots(out var freeSlots, out var detail))
+        {
+            Fail($"Unable to read main inventory free slots before {context}: {detail}", closeRetainerUi: IsRetainerUiVisible());
+            return false;
+        }
+
+        if (freeSlots > minFreeInventorySlots)
+            return true;
+
+        CompleteDueToInventoryGuard(freeSlots, context, detail);
+        return false;
+    }
+
+    private void CompleteDueToInventoryGuard(int freeSlots, string context, string detail)
+    {
+        var status = $"Main inventory free slots {freeSlots} <= minimum {minFreeInventorySlots}. Refill from listings complete for current cycle.";
+        log.Information($"[Listings] {status} context={context}, {detail}");
+        vnavmesh.Stop();
+        workshopBellService.Reset();
+
+        if (!IsRetainerUiVisible())
+        {
+            SetState(RefillState.Complete, status);
+            return;
+        }
+
+        closeThenFail = false;
+        closeThenComplete = true;
+        closeMode = RetainerUiCloseMode.FullClose;
+        SetState(RefillState.ClosingRetainerUi, $"{status} Closing retainer UI...");
+    }
+
+    private static bool IsRetainerUiVisible()
+        => GetVisibleRetainerCloseAddons().Count > 0;
+
+    private static int ClampMinFreeInventorySlots(int value)
+        => Math.Clamp(value, MinFreeInventorySlotsFloor, MinFreeInventorySlotsCeiling);
+
+    private static unsafe bool TryGetMainInventoryFreeSlots(out int freeSlots, out string detail)
+    {
+        freeSlots = 0;
+        detail = string.Empty;
+
+        try
+        {
+            var manager = InventoryManager.Instance();
+            if (manager == null)
+            {
+                detail = "InventoryManager is unavailable.";
+                return false;
+            }
+
+            var totalSlots = 0;
+            var bagDetails = new List<string>();
+            foreach (var containerType in MainInventoryContainerTypes)
+            {
+                var container = manager->GetInventoryContainer((InventoryType)containerType);
+                if (container == null)
+                {
+                    detail = $"Main inventory container {containerType} is unavailable.";
+                    return false;
+                }
+
+                if (!container->IsLoaded)
+                {
+                    detail = $"Main inventory container {containerType} is not loaded.";
+                    return false;
+                }
+
+                var bagFreeSlots = 0;
+                for (var i = 0; i < container->Size; i++)
+                {
+                    var slot = container->GetInventorySlot(i);
+                    if (slot == null)
+                    {
+                        detail = $"Main inventory container {containerType} slot {i} is unavailable.";
+                        return false;
+                    }
+
+                    if (slot->ItemId == 0)
+                        bagFreeSlots++;
+                }
+
+                freeSlots += bagFreeSlots;
+                totalSlots += container->Size;
+                bagDetails.Add($"{containerType}:{bagFreeSlots}/{container->Size}");
+            }
+
+            detail = $"freeSlots={freeSlots}/{totalSlots}, bags={string.Join(", ", bagDetails)}";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            detail = ex.Message;
+            return false;
+        }
     }
 
     private bool TryOpenContextMenu(ListingSlot listing, out string detail)
@@ -1721,6 +1860,7 @@ public sealed class RetainerListingRefillService
     private void BeginClosingRetainerUi(bool failed, string status)
     {
         closeThenFail = failed;
+        closeThenComplete = false;
         closeMode = failed || targetIndex + 1 >= targets.Count
             ? RetainerUiCloseMode.FullClose
             : RetainerUiCloseMode.ReturnToRetainerList;

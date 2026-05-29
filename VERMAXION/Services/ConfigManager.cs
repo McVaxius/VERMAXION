@@ -337,6 +337,7 @@ public class ConfigManager
         target.RefillFromListingsFrequency = source.RefillFromListingsFrequency;
         target.RefillFromListingsSelectionMode = source.RefillFromListingsSelectionMode;
         target.RefillFromListingsRoute = source.RefillFromListingsRoute;
+        target.RefillFromListingsMinFreeInventorySlots = source.RefillFromListingsMinFreeInventorySlots;
         target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay;
         target.NagYourMomJob = NormalizeJobAbbreviation(source.NagYourMomJob);
         target.NagYourMomWindowStartLocal = source.NagYourMomWindowStartLocal;

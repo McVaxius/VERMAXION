@@ -38,6 +38,7 @@ public class CharacterConfig
     public RefillFromListingsFrequency RefillFromListingsFrequency { get; set; } = RefillFromListingsFrequency.Weekly;
     public RefillFromListingsSelectionMode RefillFromListingsSelectionMode { get; set; } = RefillFromListingsSelectionMode.All;
     public RefillFromListingsRoute RefillFromListingsRoute { get; set; } = RefillFromListingsRoute.Workshop;
+    public int RefillFromListingsMinFreeInventorySlots { get; set; } = 20;
     public int NagYourMomRunsPerDay { get; set; } = 1;
     public string NagYourMomJob { get; set; } = "";
     public string NagYourMomWindowStartLocal { get; set; } = "00:00";
@@ -220,6 +221,7 @@ public class CharacterConfig
             RefillFromListingsFrequency = RefillFromListingsFrequency,
             RefillFromListingsSelectionMode = RefillFromListingsSelectionMode,
             RefillFromListingsRoute = RefillFromListingsRoute,
+            RefillFromListingsMinFreeInventorySlots = RefillFromListingsMinFreeInventorySlots,
             NagYourMomRunsPerDay = NagYourMomRunsPerDay,
             NagYourMomJob = NagYourMomJob,
             NagYourMomWindowStartLocal = NagYourMomWindowStartLocal,

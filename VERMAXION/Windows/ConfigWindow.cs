@@ -982,6 +982,22 @@ public class ConfigWindow : Window, IDisposable
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip("When RetainerList is closed, VERMAXION runs the selected /li route first, waits for it to settle, then finds and opens the route bell.");
 
+                var minFreeInventorySlots = Math.Clamp(cc.RefillFromListingsMinFreeInventorySlots, 10, 100);
+                if (minFreeInventorySlots != cc.RefillFromListingsMinFreeInventorySlots)
+                {
+                    cc.RefillFromListingsMinFreeInventorySlots = minFreeInventorySlots;
+                    changed = true;
+                }
+
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                if (ImGui.InputInt("Minimum free inventory slots##RefillListingsMinFreeInventorySlots", ref minFreeInventorySlots, 1, 5))
+                {
+                    cc.RefillFromListingsMinFreeInventorySlots = Math.Clamp(minFreeInventorySlots, 10, 100);
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListingsMinFreeInventorySlots", "Refill from listings minimum free inventory slots",
+                    (source, target) => target.RefillFromListingsMinFreeInventorySlots = source.RefillFromListingsMinFreeInventorySlots);
+
                 DrawRefillFromListingsHint(cc);
                 if (DrawResetButton("RefillFromListingsState", cc.ResetRefillFromListingsState))
                     changed = true;
