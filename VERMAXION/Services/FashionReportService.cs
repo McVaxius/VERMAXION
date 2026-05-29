@@ -27,17 +27,24 @@ public class FashionReportService : IDisposable
     private const ushort GoldSaucerTerritoryId = 144;
     private const string MaskedRoseName = "Masked Rose";
     private static readonly Vector3 MaskedRosePosition = new(55.864311218262f, 3.9997265338898f, 64.584785461426f);
+    private const string MaskedRoseMoveCommand = "/vnav moveto 55.864311218262 3.9997265338898 64.584785461426";
+    private const double AetheryteSettleDelaySeconds = 8.0;
+    private const double NavigationRetryIntervalSeconds = 5.0;
+    private const float ArrivalDistance = 3.0f;
+    private const double ArrivalTimeoutSeconds = 60.0;
+    private const double CloseApproachTimeoutSeconds = 20.0;
+    private const double PostNavigationSettleDelaySeconds = 0.5;
+    private const double TargetRetryIntervalSeconds = 2.0;
     private const double DialogueAdvanceIntervalSeconds = 1.0;
     private const double FashionCheckCloseIntervalSeconds = 1.0;
     private const double FashionCheckResultTimeoutSeconds = 75.0;
     private const double PostJudgingSettleTimeoutSeconds = 30.0;
 
-    private DateTime lastJumpTime = DateTime.MinValue;
+    private DateTime lastNavigationAttempt = DateTime.MinValue;
+    private DateTime lastTargetAttempt = DateTime.MinValue;
     private DateTime lastDialogueAdvanceTime = DateTime.MinValue;
     private DateTime lastFashionCheckCloseTime = DateTime.MinValue;
-    //private const double JumpIntervalSeconds = 0.5;
-    private const double JumpIntervalSeconds = 3;
-    private const float JumpStopDistance = 10f;
+    private int targetAttempts;
 
     public enum FashionReportState
     {
@@ -46,6 +53,7 @@ public class FashionReportService : IDisposable
         WaitingForSaucerZone,
         NavigatingToMaskedRose,
         WaitingForArrival,
+        ClosingToMaskedRose,
         InteractingWithMaskedRose,
         WaitingForDialogueOption,
         ConfirmingJudging,
@@ -79,6 +87,7 @@ public class FashionReportService : IDisposable
 
         currentAttempt = 1;
         completedJudgings = 0;
+        ResetNavigationState();
         if (clientState.TerritoryType == GoldSaucerTerritoryId)
         {
             log.Information("[FashionReport] Already in Gold Saucer, skipping teleport");
@@ -96,9 +105,11 @@ public class FashionReportService : IDisposable
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
         completedJudgings = 0;
-        lastJumpTime = DateTime.MinValue;
+        lastNavigationAttempt = DateTime.MinValue;
+        lastTargetAttempt = DateTime.MinValue;
         lastDialogueAdvanceTime = DateTime.MinValue;
         lastFashionCheckCloseTime = DateTime.MinValue;
+        targetAttempts = 0;
     }
 
     public void Update()
@@ -132,46 +143,72 @@ public class FashionReportService : IDisposable
                 break;
 
             case FashionReportState.NavigatingToMaskedRose:
-                if (elapsed < 0.5)
-                    return;
-
-                log.Information("[FashionReport] Navigating to Masked Rose");
-                var coords = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0:F8} {1:F8} {2:F8}",
-                    MaskedRosePosition.X,
-                    MaskedRosePosition.Y,
-                    MaskedRosePosition.Z);
-                commandManager.ProcessCommand($"/vnav moveto {coords}");
-                SetState(FashionReportState.WaitingForArrival);
+                if (elapsed > AetheryteSettleDelaySeconds &&
+                    clientState.TerritoryType == GoldSaucerTerritoryId &&
+                    GameHelpers.IsPlayerAvailable())
+                {
+                    log.Information("[FashionReport] Gold Saucer travel settled, starting navigation to Masked Rose");
+                    IssueNavigation(MaskedRoseMoveCommand, MaskedRoseName);
+                    SetState(FashionReportState.WaitingForArrival);
+                }
+                else if (elapsed > 30)
+                {
+                    RetryOrFail("Timed out waiting for player availability before Masked Rose navigation");
+                }
                 break;
 
             case FashionReportState.WaitingForArrival:
-                if (IsNearPosition(MaskedRosePosition, 4.0f))
+                if (TryTransitionWaypointToInteraction())
                 {
-                    log.Information("[FashionReport] Reached Masked Rose area");
-                    SetState(FashionReportState.InteractingWithMaskedRose);
+                    break;
                 }
-                else if (elapsed > 35)
+
+                if (TryTransitionNpcRangeToInteraction())
+                {
+                    break;
+                }
+
+                if (elapsed > ArrivalTimeoutSeconds)
                 {
                     RetryOrFail("Timed out navigating to Masked Rose");
                 }
-                else
+                else if (RetryNavigationIfNeeded(MaskedRoseMoveCommand, MaskedRoseName))
                 {
-                    SendPeriodicJump(MaskedRosePosition);
+                    // Keep feeding the waypoint until arrival is confirmed.
+                }
+                break;
+
+            case FashionReportState.ClosingToMaskedRose:
+                if (TryTransitionNpcRangeToInteraction())
+                {
+                    break;
+                }
+
+                if (elapsed > CloseApproachTimeoutSeconds)
+                {
+                    RetryOrFail("Timed out closing the last few yalms to Masked Rose");
+                }
+                else if (RetryCloseApproachIfNeeded())
+                {
+                    // Dedicated post-stop movement phase. No interaction happens here.
                 }
                 break;
 
             case FashionReportState.InteractingWithMaskedRose:
-                if (elapsed < 0.5)
+                if (elapsed < PostNavigationSettleDelaySeconds)
                     return;
 
-                if (GameHelpers.TargetAndInteract(MaskedRoseName))
+                if (TryBeginCloseApproachIfOutOfRange())
+                {
+                    break;
+                }
+
+                if (TryTargetAndInteractMaskedRose())
                 {
                     log.Information($"[FashionReport] Interacted with Masked Rose for judging {completedJudgings + 1}/{RequiredJudgings}");
                     SetState(FashionReportState.WaitingForDialogueOption);
                 }
-                else if (elapsed > 12)
+                else if (elapsed > 15)
                 {
                     RetryOrFail("Timed out targeting Masked Rose");
                 }
@@ -303,13 +340,179 @@ public class FashionReportService : IDisposable
         }
     }
 
-    private bool IsNearPosition(Vector3 targetPosition, float threshold)
+    private void ResetNavigationState()
     {
+        lastNavigationAttempt = DateTime.MinValue;
+        lastTargetAttempt = DateTime.MinValue;
+        targetAttempts = 0;
+    }
+
+    private bool TryTransitionWaypointToInteraction()
+    {
+        if (!TryGetWaypointDistance(out var distance) || distance > ArrivalDistance)
+            return false;
+
+        StopNavigation();
+        log.Information($"[FashionReport] Reached Masked Rose waypoint ({distance:F1}y <= {ArrivalDistance:F1}y), stopping pathfinding before interaction");
+        SetState(FashionReportState.InteractingWithMaskedRose);
+        return true;
+    }
+
+    private bool TryTransitionNpcRangeToInteraction()
+    {
+        if (!TryGetMaskedRoseInteractionData(out _, out var distance, out var maxDistance) ||
+            distance > maxDistance)
+        {
+            return false;
+        }
+
+        StopNavigation();
+        log.Information($"[FashionReport] Masked Rose is within interaction range ({distance:F1}y <= {maxDistance:F1}y), stopping pathfinding before interaction");
+        SetState(FashionReportState.InteractingWithMaskedRose);
+        return true;
+    }
+
+    private bool TryBeginCloseApproachIfOutOfRange()
+    {
+        if (!TryGetMaskedRoseInteractionData(out _, out var distance, out var maxDistance) ||
+            distance <= maxDistance)
+        {
+            return false;
+        }
+
+        log.Information($"[FashionReport] Masked Rose is still outside interaction range after stopping pathfinding ({distance:F1}y > {maxDistance:F1}y), entering close-in movement");
+        SetState(FashionReportState.ClosingToMaskedRose);
+        return true;
+    }
+
+    private bool RetryCloseApproachIfNeeded()
+    {
+        if (!TryGetMaskedRoseInteractionData(out var npcPosition, out var distance, out var maxDistance))
+        {
+            return false;
+        }
+
+        var dynamicMoveCommand = TryBuildApproachMoveCommand(npcPosition, maxDistance, out var approachMoveCommand)
+            ? approachMoveCommand
+            : BuildMoveCommand(npcPosition);
+
+        return RetryNavigationIfNeeded(
+            dynamicMoveCommand,
+            $"{MaskedRoseName} ({distance:F1}y > {maxDistance:F1}y, close approach after stop)");
+    }
+
+    private bool TryTargetAndInteractMaskedRose()
+    {
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        var now = DateTime.UtcNow;
+        if ((now - lastTargetAttempt).TotalSeconds < TargetRetryIntervalSeconds)
+            return false;
+
+        lastTargetAttempt = now;
+        targetAttempts++;
+        log.Information($"[FashionReport] Masked Rose interaction attempt {targetAttempts}");
+
+        var player = objectTable.LocalPlayer;
+        var target = GameHelpers.FindObjectByName(MaskedRoseName);
+        if (player == null || target == null)
+            return false;
+
+        var distance = Vector3.Distance(player.Position, target.Position);
+        var maxDistance = GameHelpers.GetValidInteractionDistance(target);
+        if (distance > maxDistance)
+        {
+            log.Information($"[FashionReport] Masked Rose interaction attempt {targetAttempts} skipped; still out of range ({distance:F1}y > {maxDistance:F1}y)");
+            return false;
+        }
+
+        log.Information($"[FashionReport] Targeting and interacting with Masked Rose ({distance:F1}y <= {maxDistance:F1}y)");
+        return GameHelpers.TargetAndInteract(MaskedRoseName);
+    }
+
+    private bool TryGetWaypointDistance(out float distance)
+    {
+        distance = float.MaxValue;
+
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
         var player = objectTable.LocalPlayer;
         if (player == null)
             return false;
 
-        return Vector3.Distance(player.Position, targetPosition) <= threshold;
+        distance = Vector3.Distance(player.Position, MaskedRosePosition);
+        return true;
+    }
+
+    private bool TryGetMaskedRoseInteractionData(out Vector3 npcPosition, out float distance, out float maxDistance)
+    {
+        npcPosition = Vector3.Zero;
+        distance = float.MaxValue;
+        maxDistance = 0f;
+
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        var player = objectTable.LocalPlayer;
+        var target = GameHelpers.FindObjectByName(MaskedRoseName);
+        if (player == null || target == null)
+            return false;
+
+        npcPosition = target.Position;
+        distance = Vector3.Distance(player.Position, target.Position);
+        maxDistance = GameHelpers.GetValidInteractionDistance(target);
+        return true;
+    }
+
+    private void StopNavigation()
+    {
+        commandManager.ProcessCommand("/vnav stop");
+    }
+
+    private void IssueNavigation(string command, string destinationLabel)
+    {
+        lastNavigationAttempt = DateTime.UtcNow;
+        commandManager.ProcessCommand(command);
+        log.Debug($"[FashionReport] Issued vnav movement toward {destinationLabel}");
+    }
+
+    private bool RetryNavigationIfNeeded(string command, string destinationLabel)
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastNavigationAttempt).TotalSeconds < NavigationRetryIntervalSeconds)
+            return false;
+
+        IssueNavigation(command, destinationLabel);
+        return true;
+    }
+
+    private bool TryBuildApproachMoveCommand(Vector3 npcPosition, float maxDistance, out string command)
+    {
+        command = string.Empty;
+
+        var player = objectTable.LocalPlayer;
+        if (player == null)
+            return false;
+
+        var direction = player.Position - npcPosition;
+        if (direction.LengthSquared() < 0.0001f)
+            return false;
+
+        direction = Vector3.Normalize(direction);
+        var desiredStandOffDistance = MathF.Max(0.5f, maxDistance - 0.35f);
+        var approachPosition = npcPosition + (direction * desiredStandOffDistance);
+        command = BuildMoveCommand(approachPosition);
+        return true;
+    }
+
+    private static string BuildMoveCommand(Vector3 destination)
+    {
+        var x = destination.X.ToString("0.############", CultureInfo.InvariantCulture);
+        var y = destination.Y.ToString("0.############", CultureInfo.InvariantCulture);
+        var z = destination.Z.ToString("0.############", CultureInfo.InvariantCulture);
+        return $"/vnav moveto {x} {y} {z}";
     }
 
     private bool IsFashionReportUiVisible()
@@ -398,26 +601,21 @@ public class FashionReportService : IDisposable
         lastDialogueAdvanceTime = DateTime.MinValue;
         lastFashionCheckCloseTime = DateTime.MinValue;
 
-        if (newState == FashionReportState.Complete || newState == FashionReportState.Failed)
-            lastJumpTime = DateTime.MinValue;
-    }
-
-    private void SendPeriodicJump(Vector3 targetPosition)
-    {
-        var now = DateTime.UtcNow;
-        if ((now - lastJumpTime).TotalSeconds < JumpIntervalSeconds)
-            return;
-
-        var player = objectTable.LocalPlayer;
-        if (player != null)
+        if (newState == FashionReportState.NavigatingToMaskedRose)
         {
-            var distance = Vector3.Distance(player.Position, targetPosition);
-            if (distance <= JumpStopDistance)
-                return;
+            lastNavigationAttempt = DateTime.MinValue;
+            lastTargetAttempt = DateTime.MinValue;
         }
-
-        GameHelpers.SendJump();
-        lastJumpTime = now;
+        else if (newState == FashionReportState.ClosingToMaskedRose)
+        {
+            lastNavigationAttempt = DateTime.MinValue;
+        }
+        else if (newState == FashionReportState.InteractingWithMaskedRose)
+        {
+            lastNavigationAttempt = DateTime.MinValue;
+            lastTargetAttempt = DateTime.MinValue;
+            targetAttempts = 0;
+        }
     }
 
     public void Dispose()

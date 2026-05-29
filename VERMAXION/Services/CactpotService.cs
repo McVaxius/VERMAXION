@@ -17,6 +17,21 @@ public class CactpotService : IDisposable
     private readonly ConfigManager configManager;
 
     private const ushort GoldSaucerTerritoryId = 144;
+    private const string MiniBrokerNpcName = "Mini Cactpot Broker";
+    private static readonly Vector3 MiniBrokerPosition = new(-46.655319213867f, 1.5999846458435f, 20.395349502563f);
+    private const string MiniBrokerMoveCommand = "/vnav moveto -46.655319213867 1.5999846458435 20.395349502563";
+    private const double MiniAetheryteSettleDelay = 8.0;
+    private const double MiniNavigationRetryInterval = 5.0;
+    private const float MiniArrivalDistance = 3.0f;
+    private const double MiniArrivalTimeout = 60.0;
+    private const double MiniCloseApproachTimeout = 20.0;
+    private const double MiniPostNavigationSettleDelay = 0.5;
+    private const double MiniTargetRetryInterval = 2.0;
+    private const int MiniMaxPathfindsWithJumpAssist = 3;
+    private const int MiniJumpsPerArmedPathfind = 2;
+    private const int MiniMaxJumpsPerRun = 6;
+    private const double MiniJumpInterval = 4.0;
+    private const float MiniJumpStopDistance = 10f;
     private static readonly Vector3 JumboBrokerPosition = new(121.13345336914f, 13.001298904419f, -11.011554718018f);
     private static readonly Vector3 JumboCashierPosition = new(124.05115509033f, 13.002527236938f, -19.590528488159f);
     private const string JumboCashierNpcName = "Cactpot Cashier";
@@ -24,7 +39,7 @@ public class CactpotService : IDisposable
     private const string JumboBrokerMoveCommand = "/vnav moveto 121.13345336914 13.001298904419 -11.011554718018";
     private const string JumboCashierMoveCommand = "/vnav moveto 124.05115509033 13.002527236938 -19.590528488159";
     private const double JumboAetheryteSettleDelay = 8.0;
-    private const double JumboNavigationRetryInterval = 2.0;
+    private const double JumboNavigationRetryInterval = 5.0;
     private const float JumboArrivalDistance = 3.0f;
     private const double JumboArrivalTimeout = 60.0;
     private const double JumboCloseApproachTimeout = 20.0;
@@ -36,6 +51,13 @@ public class CactpotService : IDisposable
     private int currentTicket = 1;
     private int totalTickets = 3;
     private int currentJumboNumber;
+    private DateTime lastMiniNavigationAttempt = DateTime.MinValue;
+    private DateTime lastMiniTargetAttempt = DateTime.MinValue;
+    private DateTime lastMiniJumpTime = DateTime.MinValue;
+    private int miniPathfindAttempts;
+    private int miniTargetAttempts;
+    private int miniJumpAssistAvailableJumps;
+    private int miniJumpAssistTotalJumps;
     private DateTime lastJumboNavigationAttempt = DateTime.MinValue;
     private DateTime lastJumboTargetAttempt = DateTime.MinValue;
 
@@ -47,6 +69,7 @@ public class CactpotService : IDisposable
         MiniWaitingForZone,
         MiniNavigating,
         MiniWaitingForArrival,
+        MiniClosingToBroker,
         MiniTargeting,
         MiniInteracting,
         MiniSelectingTicket,
@@ -101,11 +124,12 @@ public class CactpotService : IDisposable
     public void StartMiniCactpot()
     {
         log.Information("[Cactpot] Starting Mini Cactpot sequence");
-        
+
         // Initialize multi-ticket sequence
         currentTicket = 1;
         totalTickets = 3;
-        
+        ResetMiniNavigationState();
+
         if (clientState.TerritoryType == GoldSaucerTerritoryId)
         {
             log.Information("[Cactpot] Already in Gold Saucer, skipping teleport");
@@ -179,107 +203,6 @@ public class CactpotService : IDisposable
         StartJumboCactpot();
     }
 
-    private DateTime lastTargetAttempt = DateTime.MinValue;
-    private int targetAttempts = 0;
-    private const int MaxTargetAttempts = 5;
-    private const double TargetRetryInterval = 2.0; // seconds between attempts
-    private DateTime lastJumpTime = DateTime.MinValue;
-    //private const double JumpInterval = 0.5; // 500ms jump interval as requested
-    private const double JumpInterval = 3; // 3s jump interval as requested
-    private const float JumpStopDistance = 10f; // Stop jumping when within 10 yalms
-
-    /// <summary>
-    /// Enhanced targeting method with multiple attempts and fallback strategies.
-    /// Tries multiple targeting approaches to ensure NPC interaction succeeds.
-    /// </summary>
-    private bool TargetAndInteractWithRetry()
-    {
-        var now = DateTime.UtcNow;
-        
-        // Check if it's time for another attempt
-        if ((now - lastTargetAttempt).TotalSeconds < TargetRetryInterval)
-            return false; // Still waiting for retry interval
-        
-        lastTargetAttempt = now;
-        targetAttempts++;
-        
-        log.Information($"[Cactpot] Targeting attempt {targetAttempts}/{MaxTargetAttempts}");
-        
-        // Try different targeting strategies in order of preference
-        bool success = false;
-        
-        // Strategy 1: Exact name match
-        if (targetAttempts == 1)
-        {
-            log.Information("[Cactpot] Attempt 1: Using improved TargetAndInteract");
-            if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
-            {
-                // AutoRetainer pattern: TargetAndInteract already handles interaction
-                success = true;
-            }
-        }
-        // Strategy 2: Retry with exact name
-        else if (targetAttempts == 2)
-        {
-            log.Information("[Cactpot] Attempt 2: Using improved TargetAndInteract");
-            if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
-            {
-                // AutoRetainer pattern: TargetAndInteract already handles interaction
-                success = true;
-            }
-        }
-        // Strategy 3: Retry with exact name
-        else if (targetAttempts == 3)
-        {
-            log.Information("[Cactpot] Attempt 3: Using improved TargetAndInteract");
-            if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
-            {
-                // AutoRetainer pattern: TargetAndInteract already handles interaction
-                success = true;
-            }
-        }
-        // Strategy 4: Retry with exact name
-        else if (targetAttempts == 4)
-        {
-            log.Information("[Cactpot] Attempt 4: Using improved TargetAndInteract");
-            if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
-            {
-                // AutoRetainer pattern: TargetAndInteract already handles interaction
-                success = true;
-            }
-        }
-        // Strategy 5: Final retry with exact name
-        else if (targetAttempts == 5)
-        {
-            log.Information("[Cactpot] Attempt 5: Using improved TargetAndInteract");
-            if (GameHelpers.TargetAndInteract("Mini Cactpot Broker"))
-            {
-                // AutoRetainer pattern: TargetAndInteract already handles interaction
-                success = true;
-            }
-        }
-        
-        if (success)
-        {
-            log.Information($"[Cactpot] Targeting strategy {targetAttempts} succeeded");
-            return true;
-        }
-        else
-        {
-            log.Warning($"[Cactpot] Targeting strategy {targetAttempts} failed");
-            
-            // If we've exhausted all attempts, return false
-            if (targetAttempts >= MaxTargetAttempts)
-            {
-                log.Error("[Cactpot] All targeting strategies failed");
-                return false;
-            }
-            
-            // Continue trying
-            return false;
-        }
-    }
-
     public void Reset()
     {
         SetState(CactpotState.Idle);
@@ -315,10 +238,12 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniNavigating:
-                if (elapsed > 3.0 && GameHelpers.IsPlayerAvailable())
+                if (elapsed > MiniAetheryteSettleDelay &&
+                    clientState.TerritoryType == GoldSaucerTerritoryId &&
+                    GameHelpers.IsPlayerAvailable())
                 {
-                    log.Information("[Cactpot] Navigating to Cactpot Board");
-                    commandManager.ProcessCommand("/vnav moveto -46.655319213867 1.5999846458435 20.395349502563");
+                    log.Information("[Cactpot] Mini broker aetheryte travel settled, starting navigation");
+                    IssueMiniNavigation(MiniBrokerMoveCommand, MiniBrokerNpcName, true);
                     SetState(CactpotState.MiniWaitingForArrival);
                 }
                 else if (elapsed > 30)
@@ -326,30 +251,69 @@ public class CactpotService : IDisposable
                     log.Error("[Cactpot] Timeout waiting for player available");
                     SetState(CactpotState.Failed);
                 }
-                // Send periodic jumps to help with pathing if stuck on aetheryte
-                SendPeriodicJump(new Vector3(-46.655319213867f, 1.5999846458435f, 20.395349502563f));
                 break;
 
             case CactpotState.MiniWaitingForArrival:
-                if (elapsed > 15)
+                if (TryTransitionMiniWaypointToTargeting())
                 {
-                    log.Information("[Cactpot] Arrived at Cactpot Board area");
-                    SetState(CactpotState.MiniTargeting);
+                    break;
                 }
-                // Send periodic jumps during arrival wait to help with pathing
-                SendPeriodicJump(new Vector3(-46.655319213867f, 1.5999846458435f, 20.395349502563f));
+
+                if (TryTransitionMiniNpcRangeToTargeting())
+                {
+                    break;
+                }
+
+                if (elapsed > MiniArrivalTimeout)
+                {
+                    log.Error("[Cactpot] Timeout waiting to reach Mini Cactpot Broker");
+                    SetState(CactpotState.Failed);
+                    break;
+                }
+                else if (RetryMiniNavigationIfNeeded(MiniBrokerMoveCommand, MiniBrokerNpcName, true))
+                {
+                    // Keep feeding the broker waypoint until arrival is confirmed.
+                }
+
+                TrySendMiniJumpAssist();
+                break;
+
+            case CactpotState.MiniClosingToBroker:
+                if (TryTransitionMiniNpcRangeToTargeting())
+                {
+                    break;
+                }
+
+                if (elapsed > MiniCloseApproachTimeout)
+                {
+                    log.Error("[Cactpot] Timeout while closing the last few yalms to Mini Cactpot Broker");
+                    SetState(CactpotState.Failed);
+                }
+                else if (RetryMiniCloseApproachIfNeeded())
+                {
+                    // Dedicated post-stop movement phase. No targeting happens here.
+                }
                 break;
 
             case CactpotState.MiniTargeting:
-                log.Information("[Cactpot] Targeting and interacting with Cactpot Board");
-                if (TargetAndInteractWithRetry())
+                if (elapsed < MiniPostNavigationSettleDelay)
+                {
+                    break;
+                }
+
+                if (TryBeginMiniCloseApproachIfOutOfRange())
+                {
+                    break;
+                }
+
+                if (TryTargetAndInteractMiniNpc())
                 {
                     log.Information("[Cactpot] Successfully interacted with Mini Cactpot Broker");
                     SetState(CactpotState.MiniInteracting);
                 }
-                else if (elapsed > 30)
+                else if (elapsed > 15)
                 {
-                    log.Error("[Cactpot] Failed to target and interact with Mini Cactpot Broker after 30 seconds");
+                    log.Error("[Cactpot] Failed to target and interact with Mini Cactpot Broker after arriving");
                     SetState(CactpotState.Failed);
                 }
                 break;
@@ -454,7 +418,9 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboWaitingForZone:
-                if (elapsed > JumboAetheryteSettleDelay && GameHelpers.IsPlayerAvailable())
+                if (elapsed > JumboAetheryteSettleDelay &&
+                    clientState.TerritoryType == GoldSaucerTerritoryId &&
+                    GameHelpers.IsPlayerAvailable())
                 {
                     log.Information("[Cactpot] Jumbo broker aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboNavigatingToBroker);
@@ -481,6 +447,11 @@ public class CactpotService : IDisposable
                     break;
                 }
 
+                if (TryTransitionJumboNpcRangeToTargeting("Jumbo Cactpot Broker", CactpotState.JumboTargetingBroker))
+                {
+                    break;
+                }
+
                 if (elapsed > JumboArrivalTimeout)
                 {
                     log.Error("[Cactpot] Timeout waiting to reach Jumbo Cactpot Broker");
@@ -490,7 +461,6 @@ public class CactpotService : IDisposable
                 {
                     // Keep feeding the original waypoint path until it is time to stop and target.
                 }
-                SendPeriodicJump(JumboBrokerPosition);
                 break;
 
             case CactpotState.JumboClosingToBroker:
@@ -626,7 +596,9 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboCheckWaitingForZone:
-                if (elapsed > JumboAetheryteSettleDelay && GameHelpers.IsPlayerAvailable())
+                if (elapsed > JumboAetheryteSettleDelay &&
+                    clientState.TerritoryType == GoldSaucerTerritoryId &&
+                    GameHelpers.IsPlayerAvailable())
                 {
                     log.Information("[Cactpot] Jumbo cashier aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboCheckNavigatingToCashier);
@@ -653,6 +625,11 @@ public class CactpotService : IDisposable
                     break;
                 }
 
+                if (TryTransitionJumboNpcRangeToTargeting(JumboCashierNpcName, CactpotState.JumboCheckTargetingCashier))
+                {
+                    break;
+                }
+
                 if (elapsed > JumboArrivalTimeout)
                 {
                     log.Error("[Cactpot] Timeout waiting to reach {CashierName}", JumboCashierNpcName);
@@ -662,7 +639,6 @@ public class CactpotService : IDisposable
                 {
                     // Keep feeding the original waypoint path until it is time to stop and target.
                 }
-                SendPeriodicJump(JumboCashierPosition);
                 break;
 
             case CactpotState.JumboCheckClosingToCashier:
@@ -837,21 +813,28 @@ public class CactpotService : IDisposable
     {
         log.Information($"[Cactpot] {state} -> {newState}");
         
-        // Reset targeting counters when entering targeting state
         if (newState == CactpotState.MiniTargeting)
         {
-            lastTargetAttempt = DateTime.MinValue;
-            targetAttempts = 0;
+            lastMiniTargetAttempt = DateTime.MinValue;
+            miniTargetAttempts = 0;
+            miniJumpAssistAvailableJumps = 0;
+        }
+        else if (newState == CactpotState.MiniClosingToBroker)
+        {
+            lastMiniNavigationAttempt = DateTime.MinValue;
+            miniJumpAssistAvailableJumps = 0;
+        }
+        else if (newState == CactpotState.MiniNavigating)
+        {
+            lastMiniNavigationAttempt = DateTime.MinValue;
+            lastMiniTargetAttempt = DateTime.MinValue;
         }
         else if (newState == CactpotState.JumboNavigatingToBroker ||
-                 newState == CactpotState.JumboWaitingForArrival ||
                  newState == CactpotState.JumboClosingToBroker ||
                  newState == CactpotState.JumboCheckNavigatingToCashier ||
-                 newState == CactpotState.JumboCheckWaitingForArrival ||
                  newState == CactpotState.JumboCheckClosingToCashier)
         {
             lastJumboNavigationAttempt = DateTime.MinValue;
-            lastJumpTime = DateTime.MinValue;
         }
         else if (newState == CactpotState.JumboTargetingBroker || newState == CactpotState.JumboCheckTargetingCashier)
         {
@@ -861,6 +844,225 @@ public class CactpotService : IDisposable
         
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+    }
+
+    private void ResetMiniNavigationState()
+    {
+        lastMiniNavigationAttempt = DateTime.MinValue;
+        lastMiniTargetAttempt = DateTime.MinValue;
+        lastMiniJumpTime = DateTime.MinValue;
+        miniPathfindAttempts = 0;
+        miniTargetAttempts = 0;
+        miniJumpAssistAvailableJumps = 0;
+        miniJumpAssistTotalJumps = 0;
+    }
+
+    private bool TryTransitionMiniWaypointToTargeting()
+    {
+        if (!TryGetMiniWaypointDistance(out var distance) || distance > MiniArrivalDistance)
+            return false;
+
+        StopMiniNavigation();
+        log.Information($"[Cactpot] Reached Mini Cactpot Broker waypoint ({distance:F1}y <= {MiniArrivalDistance:F1}y), stopping pathfinding before targeting");
+        SetState(CactpotState.MiniTargeting);
+        return true;
+    }
+
+    private bool TryTransitionMiniNpcRangeToTargeting()
+    {
+        if (!TryGetMiniNpcInteractionData(out _, out var distance, out var maxDistance) ||
+            distance > maxDistance)
+        {
+            return false;
+        }
+
+        StopMiniNavigation();
+        log.Information($"[Cactpot] Mini Cactpot Broker is within interaction range ({distance:F1}y <= {maxDistance:F1}y), stopping pathfinding before targeting");
+        SetState(CactpotState.MiniTargeting);
+        return true;
+    }
+
+    private bool TryBeginMiniCloseApproachIfOutOfRange()
+    {
+        if (!TryGetMiniNpcInteractionData(out _, out var distance, out var maxDistance) ||
+            distance <= maxDistance)
+        {
+            return false;
+        }
+
+        log.Information($"[Cactpot] Mini Cactpot Broker is still outside interaction range after stopping pathfinding ({distance:F1}y > {maxDistance:F1}y), entering close-in movement");
+        SetState(CactpotState.MiniClosingToBroker);
+        return true;
+    }
+
+    private bool RetryMiniCloseApproachIfNeeded()
+    {
+        if (!TryGetMiniNpcInteractionData(out var npcPosition, out var distance, out var maxDistance))
+        {
+            return false;
+        }
+
+        var dynamicMoveCommand = TryBuildMiniApproachMoveCommand(npcPosition, maxDistance, out var approachMoveCommand)
+            ? approachMoveCommand
+            : BuildMoveCommand(npcPosition);
+
+        return RetryMiniNavigationIfNeeded(
+            dynamicMoveCommand,
+            $"{MiniBrokerNpcName} ({distance:F1}y > {maxDistance:F1}y, close approach after stop)",
+            false);
+    }
+
+    private bool TryTargetAndInteractMiniNpc()
+    {
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        var now = DateTime.UtcNow;
+        if ((now - lastMiniTargetAttempt).TotalSeconds < MiniTargetRetryInterval)
+            return false;
+
+        lastMiniTargetAttempt = now;
+        miniTargetAttempts++;
+        log.Information($"[Cactpot] Mini broker interaction attempt {miniTargetAttempts}");
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        var target = GameHelpers.FindObjectByName(MiniBrokerNpcName);
+        if (player == null || target == null)
+            return false;
+
+        var distance = Vector3.Distance(player.Position, target.Position);
+        var maxDistance = GameHelpers.GetValidInteractionDistance(target);
+        if (distance > maxDistance)
+        {
+            log.Information($"[Cactpot] Mini broker interaction attempt {miniTargetAttempts} skipped; still out of range ({distance:F1}y > {maxDistance:F1}y)");
+            return false;
+        }
+
+        log.Information($"[Cactpot] Targeting and interacting with Mini Cactpot Broker ({distance:F1}y <= {maxDistance:F1}y)");
+        return GameHelpers.TargetAndInteract(MiniBrokerNpcName);
+    }
+
+    private bool TryGetMiniWaypointDistance(out float distance)
+    {
+        distance = float.MaxValue;
+
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null)
+            return false;
+
+        distance = Vector3.Distance(player.Position, MiniBrokerPosition);
+        return true;
+    }
+
+    private bool TryGetMiniNpcInteractionData(out Vector3 npcPosition, out float distance, out float maxDistance)
+    {
+        npcPosition = Vector3.Zero;
+        distance = float.MaxValue;
+        maxDistance = 0f;
+
+        if (!GameHelpers.IsPlayerAvailable())
+            return false;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        var target = GameHelpers.FindObjectByName(MiniBrokerNpcName);
+        if (player == null || target == null)
+            return false;
+
+        npcPosition = target.Position;
+        distance = Vector3.Distance(player.Position, target.Position);
+        maxDistance = GameHelpers.GetValidInteractionDistance(target);
+        return true;
+    }
+
+    private void StopMiniNavigation()
+    {
+        commandManager.ProcessCommand("/vnav stop");
+    }
+
+    private void IssueMiniNavigation(string command, string destinationLabel, bool armJumpAssist)
+    {
+        lastMiniNavigationAttempt = DateTime.UtcNow;
+        commandManager.ProcessCommand(command);
+
+        if (!armJumpAssist)
+        {
+            log.Information($"[Cactpot] Mini close-in retry toward {destinationLabel}");
+            return;
+        }
+
+        miniPathfindAttempts++;
+        var addedJumpBudget = 0;
+        if (miniPathfindAttempts <= MiniMaxPathfindsWithJumpAssist &&
+            miniJumpAssistTotalJumps + miniJumpAssistAvailableJumps < MiniMaxJumpsPerRun)
+        {
+            var remainingBudget = MiniMaxJumpsPerRun - miniJumpAssistTotalJumps - miniJumpAssistAvailableJumps;
+            addedJumpBudget = Math.Min(MiniJumpsPerArmedPathfind, remainingBudget);
+            miniJumpAssistAvailableJumps += addedJumpBudget;
+        }
+
+        log.Information($"[Cactpot] Mini pathfind attempt {miniPathfindAttempts} toward {destinationLabel}; jump assist +{addedJumpBudget}, queued {miniJumpAssistAvailableJumps}, used {miniJumpAssistTotalJumps}/{MiniMaxJumpsPerRun}");
+    }
+
+    private bool RetryMiniNavigationIfNeeded(string command, string destinationLabel, bool armJumpAssist)
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastMiniNavigationAttempt).TotalSeconds < MiniNavigationRetryInterval)
+            return false;
+
+        IssueMiniNavigation(command, destinationLabel, armJumpAssist);
+        return true;
+    }
+
+    private void TrySendMiniJumpAssist()
+    {
+        if (miniJumpAssistAvailableJumps <= 0 || miniJumpAssistTotalJumps >= MiniMaxJumpsPerRun)
+            return;
+
+        if (!GameHelpers.IsPlayerAvailable())
+            return;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null)
+            return;
+
+        var distance = Vector3.Distance(player.Position, MiniBrokerPosition);
+        if (distance <= MiniJumpStopDistance)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (lastMiniJumpTime != DateTime.MinValue &&
+            (now - lastMiniJumpTime).TotalSeconds < MiniJumpInterval)
+        {
+            return;
+        }
+
+        GameHelpers.SendJump();
+        lastMiniJumpTime = now;
+        miniJumpAssistAvailableJumps--;
+        miniJumpAssistTotalJumps++;
+        log.Information($"[Cactpot] Mini jump assist {miniJumpAssistTotalJumps}/{MiniMaxJumpsPerRun}; queued {miniJumpAssistAvailableJumps}, broker waypoint {distance:F1}y away");
+    }
+
+    private bool TryBuildMiniApproachMoveCommand(Vector3 npcPosition, float maxDistance, out string command)
+    {
+        command = string.Empty;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null)
+            return false;
+
+        var direction = player.Position - npcPosition;
+        if (direction.LengthSquared() < 0.0001f)
+            return false;
+
+        direction = Vector3.Normalize(direction);
+        var desiredStandOffDistance = MathF.Max(0.5f, maxDistance - 0.35f);
+        var approachPosition = npcPosition + (direction * desiredStandOffDistance);
+        command = BuildMoveCommand(approachPosition);
+        return true;
     }
 
     private bool HasReachedJumboDestination(Vector3 destination)
@@ -932,6 +1134,9 @@ public class CactpotService : IDisposable
     }
 
     private static string BuildJumboMoveCommand(Vector3 destination)
+        => BuildMoveCommand(destination);
+
+    private static string BuildMoveCommand(Vector3 destination)
     {
         var x = destination.X.ToString("0.############", CultureInfo.InvariantCulture);
         var y = destination.Y.ToString("0.############", CultureInfo.InvariantCulture);
@@ -1042,33 +1247,6 @@ public class CactpotService : IDisposable
         return timestamp == DateTime.MinValue
             ? "unknown"
             : timestamp.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'");
-    }
-
-    /// <summary>
-    /// Send periodic jump commands during navigation to help with pathing when stuck on aetheryte.
-    /// Jumps every 500ms as requested to help the bot reach its destination.
-    /// Stops jumping when within 10 yalms of target position.
-    /// </summary>
-    private void SendPeriodicJump(Vector3 targetPosition)
-    {
-        var now = DateTime.UtcNow;
-        if ((now - lastJumpTime).TotalSeconds >= JumpInterval)
-        {
-            // Check distance to target - stop jumping if we're close
-            var player = Plugin.ObjectTable.LocalPlayer;
-            if (player != null)
-            {
-                var distance = Vector3.Distance(player.Position, targetPosition);
-                if (distance <= JumpStopDistance)
-                {
-                    log.Debug($"[Cactpot] Stopping jumps - within {distance:F1} yalms of target (stop at {JumpStopDistance})");
-                    return;
-                }
-            }
-            
-            GameHelpers.SendJump();
-            lastJumpTime = now;
-        }
     }
 
     public void Dispose() { }
