@@ -1671,7 +1671,7 @@ public class ConfigWindow : Window, IDisposable
         }
         else
         {
-            ImGui.TextDisabled($"Available Friday at {FormatUtc(ResetDetectionService.GetNextFashionReportAvailability(now))}. Runs only during the Friday UTC window.");
+            ImGui.TextDisabled($"Available Friday at {FormatUtc(ResetDetectionService.GetNextFashionReportAvailability(now))}. Runs through weekly reset.");
         }
     }
 

@@ -684,7 +684,7 @@ public class VermaxionEngine
                         log.Information("[Engine] Clean slate: clearing open UI before Fashion Report");
                         ResetInteractionState();
                         
-                        log.Information("[Engine] Starting Fashion Report (Friday 01:00 UTC window)");
+                        log.Information("[Engine] Starting Fashion Report (Friday 09:00 UTC through weekly reset)");
                         fashionReportService.Start();
                         return;
                     }

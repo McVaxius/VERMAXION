@@ -8,7 +8,7 @@ public class ResetDetectionService
 {
     private const int WeeklyResetHourUtc = 9;
     private const int DailyResetHourUtc = 9;
-    private const int FashionReportStartHourUtc = 1;
+    private const int FashionReportStartHourUtc = 9;
     private const DayOfWeek FashionReportDay = DayOfWeek.Friday;
     private readonly IPluginLog log;
 
@@ -140,17 +140,13 @@ public class ResetDetectionService
 
     public static DateTime GetCurrentFashionReportWindowEnd(DateTime now)
     {
-        var currentWindowStart = GetLastOccurrence(now, FashionReportDay, FashionReportStartHourUtc);
-        return currentWindowStart.Date.AddDays(1);
+        return GetNextWeeklyReset(now);
     }
 
     public static bool IsFashionReportAvailable(DateTime now)
     {
-        if (now.DayOfWeek != FashionReportDay)
-            return false;
-
-        var windowStart = now.Date.AddHours(FashionReportStartHourUtc);
-        var windowEnd = now.Date.AddDays(1);
+        var windowStart = GetLastOccurrence(now, FashionReportDay, FashionReportStartHourUtc);
+        var windowEnd = GetNextWeeklyReset(windowStart);
         return now >= windowStart && now < windowEnd;
     }
 

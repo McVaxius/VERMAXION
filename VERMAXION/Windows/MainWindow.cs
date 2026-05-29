@@ -396,7 +396,7 @@ public class MainWindow : Window, IDisposable
         if (ResetDetectionService.TaskIsCompleted(config.FashionReportLastCompleted, config.FashionReportNextReset))
             return "Done this week";
 
-        return ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) ? "Ready now" : "Pending (Fri 01 UTC)";
+        return ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) ? "Ready now" : "Pending (Fri 09 UTC)";
     }
 
     private static string GetJumboCactpotStatus(Models.CharacterConfig config)
