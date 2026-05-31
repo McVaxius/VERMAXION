@@ -591,11 +591,11 @@ public class VermaxionEngine
                     else if (cactpotService.IsFailed)
                     {
                         log.Warning("[Engine] Mini Cactpot failed - continuing");
-                        MarkDailyTaskFailed(
-                            taskName: "Mini Cactpot",
-                            setLastCompleted: (config, value) => config.MiniCactpotLastCompleted = value,
-                            setNextReset: (config, value) => config.MiniCactpotNextReset = value,
-                            clearLegacyFlag: config => config.MiniCactpotCompletedToday = false);
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.MiniCactpotCompletedToday = false;
+                            config.MiniCactpotTicketsToday = Math.Clamp(config.MiniCactpotTicketsToday, 0, 3);
+                        }, "Mini Cactpot partial failure");
                         cactpotService.Reset();
                         AdvanceToNextTask(EngineState.RunningMiniCactpot);
                     }

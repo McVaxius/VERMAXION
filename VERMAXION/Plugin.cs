@@ -108,7 +108,7 @@ public sealed class Plugin : IDalamudPlugin
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
-        CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager);
+        CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log));
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log);
         RegisterRegistrablesService = new RegisterRegistrablesService(CommandManager, ObjectTable, Log, ConfigManager);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -276,6 +277,75 @@ public static class GameHelpers
             Plugin.Log.Error($"[YES/NO] Failed: {ex.Message}");
             return false;
         }
+    }
+
+    public static unsafe bool TryClickYesIfPromptContains(
+        IReadOnlyCollection<string> expectedFragments,
+        string reason,
+        bool allowUnreadable,
+        out string promptText)
+    {
+        promptText = string.Empty;
+
+        try
+        {
+            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
+            if (addonPtr == 0)
+                return false;
+
+            var addon = (AddonSelectYesno*)addonPtr;
+            if (!addon->AtkUnitBase.IsVisible)
+                return false;
+
+            var yesNo = new AddonMaster.SelectYesno(&addon->AtkUnitBase);
+            promptText = NormalizeAddonText(yesNo.Text);
+            if (!string.IsNullOrWhiteSpace(promptText))
+            {
+                var readablePromptText = promptText;
+                if (!expectedFragments.Any(fragment => readablePromptText.Contains(fragment, StringComparison.OrdinalIgnoreCase)))
+                {
+                    Plugin.Log.Debug($"[YES/NO] SelectYesno prompt did not match {reason}: '{promptText}'");
+                    return false;
+                }
+
+                yesNo.Yes();
+                Plugin.Log.Information($"[YES/NO] Clicked guarded Yes for {reason}: '{promptText}'");
+                return true;
+            }
+
+            if (!allowUnreadable)
+                return false;
+
+            yesNo.Yes();
+            Plugin.Log.Warning($"[YES/NO] Clicked guarded Yes for {reason} after unreadable prompt text");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[YES/NO] Guarded Yes failed for {reason}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private static string NormalizeAddonText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var builder = new StringBuilder(text.Length);
+        foreach (var c in text)
+        {
+            if (char.IsControl(c))
+            {
+                if (builder.Length > 0 && builder[^1] != ' ')
+                    builder.Append(' ');
+                continue;
+            }
+
+            builder.Append(c);
+        }
+
+        return builder.ToString().Trim();
     }
 
     /// <summary>

@@ -15,9 +15,18 @@ public class CactpotService : IDisposable
     private readonly IPluginLog log;
     private readonly IClientState clientState;
     private readonly ConfigManager configManager;
+    private readonly SaucyMiniCactpotService saucyMiniCactpotService;
 
     private const ushort GoldSaucerTerritoryId = 144;
     private const string MiniBrokerNpcName = "Mini Cactpot Broker";
+    private static readonly string[] MiniCactpotYesPromptFragments =
+    [
+        "Mini Cactpot",
+        "Cactpot ticket",
+        "purchase a ticket",
+        "another ticket",
+        "purchase another",
+    ];
     private static readonly Vector3 MiniBrokerPosition = new(-46.655319213867f, 1.5999846458435f, 20.395349502563f);
     private const string MiniBrokerMoveCommand = "/vnav moveto -46.655319213867 1.5999846458435 20.395349502563";
     private const double MiniAetheryteSettleDelay = 8.0;
@@ -27,6 +36,10 @@ public class CactpotService : IDisposable
     private const double MiniCloseApproachTimeout = 20.0;
     private const double MiniPostNavigationSettleDelay = 0.5;
     private const double MiniTargetRetryInterval = 2.0;
+    private const double MiniTicketConfirmTimeout = 12.0;
+    private const double MiniLotteryDailyOpenTimeout = 20.0;
+    private const double MiniLotteryDailyCloseTimeout = 120.0;
+    private const double MiniNextTicketRetargetDelay = 2.0;
     private const int MiniMaxPathfindsWithJumpAssist = 3;
     private const int MiniJumpsPerArmedPathfind = 2;
     private const int MiniMaxJumpsPerRun = 6;
@@ -50,6 +63,8 @@ public class CactpotService : IDisposable
     private DateTime stateEnteredAt = DateTime.MinValue;
     private int currentTicket = 1;
     private int totalTickets = 3;
+    public int MiniTicketsCompletedThisRun { get; private set; }
+    private bool miniRunActive;
     private int currentJumboNumber;
     private DateTime lastMiniNavigationAttempt = DateTime.MinValue;
     private DateTime lastMiniTargetAttempt = DateTime.MinValue;
@@ -73,7 +88,10 @@ public class CactpotService : IDisposable
         MiniTargeting,
         MiniInteracting,
         MiniSelectingTicket,
-        MiniWaitingForSaucy,
+        MiniConfirmingTicketPurchase,
+        MiniWaitingForLotteryDaily,
+        MiniWaitingForLotteryDailyClose,
+        MiniPreparingNextTicket,
         MiniComplete,
         MiniReturningHome,
         MiniWaitingForHome,
@@ -113,22 +131,54 @@ public class CactpotService : IDisposable
     public bool IsFailed => state == CactpotState.Failed;
     public string StatusText => state.ToString();
 
-    public CactpotService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ConfigManager configManager)
+    public CactpotService(
+        ICommandManager commandManager,
+        IPluginLog log,
+        IClientState clientState,
+        ConfigManager configManager,
+        SaucyMiniCactpotService saucyMiniCactpotService)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.clientState = clientState;
         this.configManager = configManager;
+        this.saucyMiniCactpotService = saucyMiniCactpotService;
     }
 
     public void StartMiniCactpot()
     {
         log.Information("[Cactpot] Starting Mini Cactpot sequence");
 
-        // Initialize multi-ticket sequence
-        currentTicket = 1;
+        var activeConfig = configManager.GetActiveConfig();
         totalTickets = 3;
+        MiniTicketsCompletedThisRun = 0;
+        currentTicket = Math.Clamp(activeConfig.MiniCactpotTicketsToday + 1, 1, totalTickets);
         ResetMiniNavigationState();
+
+        if (activeConfig.MiniCactpotTicketsToday >= totalTickets)
+        {
+            MarkMiniCactpotDailyCompleteIfNeeded(activeConfig, "existing ticket count");
+            log.Information("[Cactpot] Mini Cactpot already has {Tickets}/{TotalTickets} tickets today", activeConfig.MiniCactpotTicketsToday, totalTickets);
+            SetState(CactpotState.Complete);
+            return;
+        }
+
+        if (!saucyMiniCactpotService.BeginMiniCactpotRun(activeConfig.RequireSaucyForMiniCactpot, out var saucyStatus))
+        {
+            log.Error("[Cactpot] Mini Cactpot cannot start because Saucy is unavailable: {SaucyStatus}", saucyStatus);
+            Plugin.ChatGui.Print($"[Vermaxion] Mini Cactpot blocked: {saucyStatus}");
+            SetState(CactpotState.Failed);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(saucyStatus) &&
+            !activeConfig.RequireSaucyForMiniCactpot &&
+            saucyStatus.StartsWith("Saucy unavailable:", StringComparison.OrdinalIgnoreCase))
+        {
+            log.Warning("[Cactpot] Mini Cactpot continuing without required Saucy guarantee: {SaucyStatus}", saucyStatus);
+        }
+
+        miniRunActive = true;
 
         if (clientState.TerritoryType == GoldSaucerTerritoryId)
         {
@@ -205,6 +255,7 @@ public class CactpotService : IDisposable
 
     public void Reset()
     {
+        FinishMiniCactpotRun("reset");
         SetState(CactpotState.Idle);
     }
 
@@ -338,42 +389,142 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.MiniSelectingTicket:
+                if (GameHelpers.IsAddonVisible("LotteryDaily"))
+                {
+                    log.Information("[Cactpot] LotteryDaily already visible for Mini Cactpot ticket {CurrentTicket}/{TotalTickets}", currentTicket, totalTickets);
+                    SetState(CactpotState.MiniWaitingForLotteryDailyClose);
+                    break;
+                }
+
+                if (!GameHelpers.IsAddonVisible("SelectIconString"))
+                {
+                    if (elapsed > 3)
+                    {
+                        log.Warning("[Cactpot] Mini Cactpot ticket menu disappeared before selection; retargeting broker");
+                        SetState(CactpotState.MiniTargeting);
+                    }
+
+                    break;
+                }
+
                 if (elapsed > 0.5)
                 {
-                    log.Information("[Cactpot] Selecting 'Purchase a Mini Cactpot ticket' (SelectIconString 0)");
+                    log.Information("[Cactpot] Selecting 'Purchase a Mini Cactpot ticket' (SelectIconString 0) for ticket {CurrentTicket}/{TotalTickets}", currentTicket, totalTickets);
                     // Callback: SelectIconString index 0 = "Purchase a Mini Cactpot ticket"
-                    GameHelpers.FireAddonCallback("SelectIconString", true, 0);
-                    SetState(CactpotState.MiniWaitingForSaucy);
+                    if (GameHelpers.TryFireAddonCallback("SelectIconString", true, 0))
+                        SetState(CactpotState.MiniConfirmingTicketPurchase);
                 }
                 break;
 
-            case CactpotState.MiniWaitingForSaucy:
-                // Handle Yes/No confirmation dialog - keep clicking as long as it's visible
-                if (GameHelpers.ClickYesIfVisible())
+            case CactpotState.MiniConfirmingTicketPurchase:
+                if (GameHelpers.IsAddonVisible("LotteryDaily"))
                 {
-                    log.Information("[Cactpot] Confirmed Mini Cactpot purchase/action");
-                    // Reset timer when we click yes to allow more time for next dialog
+                    log.Information("[Cactpot] LotteryDaily opened before confirmation prompt handling for ticket {CurrentTicket}/{TotalTickets}", currentTicket, totalTickets);
+                    SetState(CactpotState.MiniWaitingForLotteryDailyClose);
+                    break;
+                }
+
+                if (TryConfirmMiniCactpotYes("Mini Cactpot ticket purchase", allowUnreadable: elapsed > 2.5))
+                {
+                    SetState(CactpotState.MiniWaitingForLotteryDaily);
+                    break;
+                }
+
+                if (GameHelpers.IsAddonVisible("SelectIconString") && elapsed > 3)
+                {
+                    log.Warning("[Cactpot] Mini Cactpot confirmation did not appear; selecting ticket again");
+                    SetState(CactpotState.MiniSelectingTicket);
+                    break;
+                }
+
+                if (elapsed > MiniTicketConfirmTimeout)
+                {
+                    log.Error("[Cactpot] Timeout waiting for guarded Mini Cactpot purchase confirmation");
+                    SetState(CactpotState.Failed);
+                }
+                break;
+
+            case CactpotState.MiniWaitingForLotteryDaily:
+                if (GameHelpers.IsAddonVisible("LotteryDaily"))
+                {
+                    log.Information("[Cactpot] LotteryDaily visible for Mini Cactpot ticket {CurrentTicket}/{TotalTickets}; waiting for Saucy to close it", currentTicket, totalTickets);
+                    SetState(CactpotState.MiniWaitingForLotteryDailyClose);
+                }
+                else if (GameHelpers.IsAddonVisible("SelectYesno") &&
+                         TryConfirmMiniCactpotYes("Mini Cactpot follow-up confirmation", allowUnreadable: elapsed > 2.5))
+                {
                     stateEnteredAt = DateTime.UtcNow;
                 }
-                
-                // Wait for Saucy to complete, but extend wait time if we keep clicking yes
-                var maxWaitTime = 10.0; // Allow up to 10 seconds for multiple Yes clicks
-                if (elapsed > maxWaitTime)
+                else if (GameHelpers.IsAddonVisible("SelectIconString"))
                 {
-                    log.Information($"[Cactpot] Mini Cactpot ticket {currentTicket} complete (timeout after {maxWaitTime}s)");
-                    
-                    // Check if we have more tickets to process
-                    if (currentTicket < totalTickets)
+                    SetState(CactpotState.MiniSelectingTicket);
+                }
+                else if (elapsed > MiniLotteryDailyOpenTimeout)
+                {
+                    log.Error("[Cactpot] Timeout waiting for LotteryDaily to open after Mini Cactpot ticket confirmation");
+                    SetState(CactpotState.Failed);
+                }
+                break;
+
+            case CactpotState.MiniWaitingForLotteryDailyClose:
+                if (GameHelpers.IsAddonVisible("LotteryDaily"))
+                {
+                    if (elapsed > MiniLotteryDailyCloseTimeout)
                     {
-                        currentTicket++;
-                        log.Information($"[Cactpot] Starting ticket {currentTicket}/{totalTickets}");
-                        SetState(CactpotState.MiniTargeting);
+                        log.Error("[Cactpot] Timeout waiting for Saucy to finish and close LotteryDaily for ticket {CurrentTicket}/{TotalTickets}", currentTicket, totalTickets);
+                        SetState(CactpotState.Failed);
                     }
-                    else
+
+                    break;
+                }
+
+                if (elapsed < 0.5)
+                    break;
+
+                RecordMiniCactpotTicketComplete();
+                if (GetMiniCactpotTicketsToday() >= totalTickets)
+                {
+                    log.Information("[Cactpot] All Mini Cactpot tickets completed");
+                    SetState(CactpotState.MiniComplete);
+                }
+                else
+                {
+                    currentTicket = Math.Clamp(GetMiniCactpotTicketsToday() + 1, 1, totalTickets);
+                    log.Information("[Cactpot] Preparing Mini Cactpot ticket {CurrentTicket}/{TotalTickets}", currentTicket, totalTickets);
+                    SetState(CactpotState.MiniPreparingNextTicket);
+                }
+                break;
+
+            case CactpotState.MiniPreparingNextTicket:
+                if (GetMiniCactpotTicketsToday() >= totalTickets)
+                {
+                    SetState(CactpotState.MiniComplete);
+                    break;
+                }
+
+                if (GameHelpers.IsAddonVisible("LotteryDaily"))
+                {
+                    log.Information("[Cactpot] LotteryDaily reopened for Mini Cactpot ticket {CurrentTicket}/{TotalTickets}", currentTicket, totalTickets);
+                    SetState(CactpotState.MiniWaitingForLotteryDailyClose);
+                }
+                else if (GameHelpers.IsAddonVisible("SelectYesno"))
+                {
+                    if (TryConfirmMiniCactpotYes("Mini Cactpot next-ticket prompt", allowUnreadable: elapsed > 2.5))
+                        SetState(CactpotState.MiniWaitingForLotteryDaily);
+                    else if (elapsed > MiniTicketConfirmTimeout)
                     {
-                        log.Information("[Cactpot] All Mini Cactpot tickets completed");
-                        SetState(CactpotState.MiniComplete);
+                        log.Error("[Cactpot] Timeout waiting for guarded Mini Cactpot next-ticket confirmation");
+                        SetState(CactpotState.Failed);
                     }
+                }
+                else if (GameHelpers.IsAddonVisible("SelectIconString"))
+                {
+                    SetState(CactpotState.MiniSelectingTicket);
+                }
+                else if (elapsed > MiniNextTicketRetargetDelay)
+                {
+                    log.Information("[Cactpot] No next-ticket prompt visible; retargeting Mini Cactpot Broker for ticket {CurrentTicket}/{TotalTickets}", currentTicket, totalTickets);
+                    SetState(CactpotState.MiniTargeting);
                 }
                 break;
 
@@ -811,8 +962,9 @@ public class CactpotService : IDisposable
 
     private void SetState(CactpotState newState)
     {
+        var previousState = state;
         log.Information($"[Cactpot] {state} -> {newState}");
-        
+
         if (newState == CactpotState.MiniTargeting)
         {
             lastMiniTargetAttempt = DateTime.MinValue;
@@ -841,9 +993,101 @@ public class CactpotService : IDisposable
             lastJumboNavigationAttempt = DateTime.MinValue;
             lastJumboTargetAttempt = DateTime.MinValue;
         }
+
+        if (miniRunActive &&
+            IsMiniCactpotState(previousState) &&
+            (newState == CactpotState.MiniComplete ||
+             newState == CactpotState.Complete ||
+             newState == CactpotState.Failed ||
+             newState == CactpotState.Idle))
+        {
+            FinishMiniCactpotRun(newState.ToString());
+        }
         
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+    }
+
+    private static bool IsMiniCactpotState(CactpotState value)
+        => value is CactpotState.MiniTeleporting
+            or CactpotState.MiniWaitingForZone
+            or CactpotState.MiniNavigating
+            or CactpotState.MiniWaitingForArrival
+            or CactpotState.MiniClosingToBroker
+            or CactpotState.MiniTargeting
+            or CactpotState.MiniInteracting
+            or CactpotState.MiniSelectingTicket
+            or CactpotState.MiniConfirmingTicketPurchase
+            or CactpotState.MiniWaitingForLotteryDaily
+            or CactpotState.MiniWaitingForLotteryDailyClose
+            or CactpotState.MiniPreparingNextTicket
+            or CactpotState.MiniComplete
+            or CactpotState.MiniReturningHome
+            or CactpotState.MiniWaitingForHome;
+
+    private void FinishMiniCactpotRun(string reason)
+    {
+        if (!miniRunActive)
+            return;
+
+        miniRunActive = false;
+        saucyMiniCactpotService.EndMiniCactpotRun(reason);
+    }
+
+    private bool TryConfirmMiniCactpotYes(string reason, bool allowUnreadable)
+    {
+        if (!GameHelpers.TryClickYesIfPromptContains(MiniCactpotYesPromptFragments, reason, allowUnreadable, out var promptText))
+            return false;
+
+        log.Information("[Cactpot] Confirmed {Reason}{PromptText}",
+            reason,
+            string.IsNullOrWhiteSpace(promptText) ? string.Empty : $": '{promptText}'");
+        return true;
+    }
+
+    private int GetMiniCactpotTicketsToday()
+        => Math.Clamp(configManager.GetActiveConfig().MiniCactpotTicketsToday, 0, totalTickets);
+
+    private void RecordMiniCactpotTicketComplete()
+    {
+        var activeConfig = configManager.GetActiveConfig();
+        var previousTicketsToday = Math.Clamp(activeConfig.MiniCactpotTicketsToday, 0, totalTickets);
+        var ticketsToday = Math.Clamp(Math.Max(previousTicketsToday + 1, currentTicket), 0, totalTickets);
+        activeConfig.MiniCactpotTicketsToday = ticketsToday;
+        MiniTicketsCompletedThisRun++;
+
+        if (ticketsToday >= totalTickets)
+            MarkMiniCactpotDailyCompleteIfNeeded(activeConfig, "ticket count reached 3");
+        else
+            activeConfig.MiniCactpotCompletedToday = false;
+
+        configManager.SaveCurrentAccount();
+        log.Information("[Cactpot] Mini Cactpot ticket {CompletedTicket}/{TotalTickets} complete; tickets today {TicketsToday}/{TotalTickets}; tickets this run {TicketsThisRun}",
+            currentTicket,
+            totalTickets,
+            ticketsToday,
+            totalTickets,
+            MiniTicketsCompletedThisRun);
+    }
+
+    private void MarkMiniCactpotDailyCompleteIfNeeded(CharacterConfig activeConfig, string reason)
+    {
+        if (activeConfig.MiniCactpotCompletedToday &&
+            activeConfig.MiniCactpotLastCompleted != DateTime.MinValue &&
+            activeConfig.MiniCactpotNextReset != DateTime.MinValue)
+        {
+            return;
+        }
+
+        var completedAt = DateTime.UtcNow;
+        activeConfig.MiniCactpotLastCompleted = completedAt;
+        activeConfig.MiniCactpotNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
+        activeConfig.MiniCactpotCompletedToday = true;
+        activeConfig.MiniCactpotTicketsToday = totalTickets;
+        configManager.SaveCurrentAccount();
+        log.Information("[Cactpot] Mini Cactpot daily completion recorded after {Reason}; next reset {NextReset:u}",
+            reason,
+            activeConfig.MiniCactpotNextReset);
     }
 
     private void ResetMiniNavigationState()
@@ -1249,5 +1493,8 @@ public class CactpotService : IDisposable
             : timestamp.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'");
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        FinishMiniCactpotRun("dispose");
+    }
 }
