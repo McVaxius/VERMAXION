@@ -17,6 +17,7 @@ public sealed class MomIPCClient
     private readonly ICallGateSubscriber<string> readinessSubscriber;
     private readonly ICallGateSubscriber<bool> isReadySubscriber;
     private readonly ICallGateSubscriber<string> statusSubscriber;
+    private readonly ICallGateSubscriber<string> rivalWingsAchievementGateSubscriber;
     private readonly ICallGateSubscriber<string, string> startRunSubscriber;
     private readonly ICallGateSubscriber<int, string, string> startRunsSubscriber;
     private readonly ICallGateSubscriber<int, string, bool, string> startRunsWithOptionsSubscriber;
@@ -32,6 +33,7 @@ public sealed class MomIPCClient
         readinessSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetReadiness");
         isReadySubscriber = pluginInterface.GetIpcSubscriber<bool>("mom.IsReady");
         statusSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetStatus");
+        rivalWingsAchievementGateSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetRivalWingsAchievementGate");
         startRunSubscriber = pluginInterface.GetIpcSubscriber<string, string>("mom.StartRun");
         startRunsSubscriber = pluginInterface.GetIpcSubscriber<int, string, string>("mom.StartCcRuns");
         startRunsWithOptionsSubscriber = pluginInterface.GetIpcSubscriber<int, string, bool, string>("mom.StartCcRunsWithOptions");
@@ -62,6 +64,14 @@ public sealed class MomIPCClient
         TryGetStatus(out var result);
         return result;
     }
+
+    public RivalWingsAchievementGateResult GetRivalWingsAchievementGate()
+        => InvokeJson(rivalWingsAchievementGateSubscriber, new RivalWingsAchievementGateResult
+        {
+            Verified = false,
+            Summary = "mom Rival Wings achievement gate unavailable.",
+            FailureReason = "mom.GetRivalWingsAchievementGate failed or is not registered.",
+        }, "[mom IPC] GetRivalWingsAchievementGate failed");
 
     public bool TryGetStatus(out MomRunResult result)
     {

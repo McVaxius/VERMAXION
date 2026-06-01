@@ -324,6 +324,9 @@ public class ConfigManager
         target.EnableVendorStock = source.EnableVendorStock;
         target.EnableRefillFromListings = source.EnableRefillFromListings;
         target.EnableNagYourMom = source.EnableNagYourMom;
+        target.EnableNagYourMomCasualCc = source.EnableNagYourMomCasualCc;
+        target.EnableNagYourMomFrontline = source.EnableNagYourMomFrontline;
+        target.EnableNagYourMomRivalWings = source.EnableNagYourMomRivalWings;
         target.EnableNagYourDad = source.EnableNagYourDad;
         target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity;
         target.EnableMiscCmd = source.EnableMiscCmd;
@@ -339,6 +342,8 @@ public class ConfigManager
         target.RefillFromListingsRoute = source.RefillFromListingsRoute;
         target.RefillFromListingsMinFreeInventorySlots = source.RefillFromListingsMinFreeInventorySlots;
         target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay;
+        target.NagYourMomFrontlineRunsPerDay = source.NagYourMomFrontlineRunsPerDay;
+        target.NagYourMomRivalWingsRunsPerDay = source.NagYourMomRivalWingsRunsPerDay;
         target.NagYourMomJob = NormalizeJobAbbreviation(source.NagYourMomJob);
         target.NagYourMomWindowStartLocal = source.NagYourMomWindowStartLocal;
         target.NagYourMomWindowEndLocal = source.NagYourMomWindowEndLocal;

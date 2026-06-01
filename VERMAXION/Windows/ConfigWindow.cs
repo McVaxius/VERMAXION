@@ -1023,16 +1023,80 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.Indent();
 
-                var momRunsPerDay = cc.NagYourMomRunsPerDay;
-                ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
+                var momCasualCc = cc.EnableNagYourMomCasualCc;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomCasualCc, ref momCasualCc))
                 {
-                    cc.NagYourMomRunsPerDay = Math.Max(0, momRunsPerDay);
+                    cc.EnableNagYourMomCasualCc = momCasualCc;
                     changed = true;
-                    configManager.SaveCurrentAccount();
                 }
-                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRunsPerDay", UIConstants.ConfigLabels.NagYourMomRunsPerDay,
-                    (source, target) => target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay);
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomCasualCc", UIConstants.ConfigLabels.NagYourMomCasualCc,
+                    (source, target) => target.EnableNagYourMomCasualCc = source.EnableNagYourMomCasualCc);
+                if (cc.EnableNagYourMomCasualCc)
+                {
+                    ImGui.Indent();
+                    var momRunsPerDay = cc.NagYourMomRunsPerDay;
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
+                    {
+                        cc.NagYourMomRunsPerDay = Math.Max(0, momRunsPerDay);
+                        changed = true;
+                        configManager.SaveCurrentAccount();
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRunsPerDay", UIConstants.ConfigLabels.NagYourMomRunsPerDay,
+                        (source, target) => target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay);
+                    ImGui.TextDisabled($"CC attempts today: {cc.NagYourMomAttemptsToday}/{cc.NagYourMomRunsPerDay}");
+                    ImGui.Unindent();
+                }
+
+                var momFrontline = cc.EnableNagYourMomFrontline;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomFrontline, ref momFrontline))
+                {
+                    cc.EnableNagYourMomFrontline = momFrontline;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomFrontline", UIConstants.ConfigLabels.NagYourMomFrontline,
+                    (source, target) => target.EnableNagYourMomFrontline = source.EnableNagYourMomFrontline);
+                if (cc.EnableNagYourMomFrontline)
+                {
+                    ImGui.Indent();
+                    var frontlineRuns = cc.NagYourMomFrontlineRunsPerDay;
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomFrontlineRunsPerDay, ref frontlineRuns))
+                    {
+                        cc.NagYourMomFrontlineRunsPerDay = Math.Max(0, frontlineRuns);
+                        changed = true;
+                        configManager.SaveCurrentAccount();
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomFrontlineRunsPerDay", UIConstants.ConfigLabels.NagYourMomFrontlineRunsPerDay,
+                        (source, target) => target.NagYourMomFrontlineRunsPerDay = source.NagYourMomFrontlineRunsPerDay);
+                    ImGui.TextDisabled($"Frontline attempts today: {cc.NagYourMomFrontlineAttemptsToday}/{cc.NagYourMomFrontlineRunsPerDay}");
+                    ImGui.Unindent();
+                }
+
+                var momRivalWings = cc.EnableNagYourMomRivalWings;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomRivalWings, ref momRivalWings))
+                {
+                    cc.EnableNagYourMomRivalWings = momRivalWings;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRivalWings", UIConstants.ConfigLabels.NagYourMomRivalWings,
+                    (source, target) => target.EnableNagYourMomRivalWings = source.EnableNagYourMomRivalWings);
+                if (cc.EnableNagYourMomRivalWings)
+                {
+                    ImGui.Indent();
+                    var rivalWingsRuns = cc.NagYourMomRivalWingsRunsPerDay;
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRivalWingsRunsPerDay, ref rivalWingsRuns))
+                    {
+                        cc.NagYourMomRivalWingsRunsPerDay = Math.Max(0, rivalWingsRuns);
+                        changed = true;
+                        configManager.SaveCurrentAccount();
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRivalWingsRunsPerDay", UIConstants.ConfigLabels.NagYourMomRivalWingsRunsPerDay,
+                        (source, target) => target.NagYourMomRivalWingsRunsPerDay = source.NagYourMomRivalWingsRunsPerDay);
+                    ImGui.TextDisabled($"Rival Wings attempts today: {cc.NagYourMomRivalWingsAttemptsToday}/{cc.NagYourMomRivalWingsRunsPerDay}");
+                    ImGui.Unindent();
+                }
 
                 if (DrawJobCombo(UIConstants.ConfigLabels.NagYourMomJob, cc.NagYourMomJob, false, out var momJob))
                 {
@@ -1069,9 +1133,8 @@ public class ConfigWindow : Window, IDisposable
                 DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomStopAtSeriesRank25", UIConstants.ConfigLabels.NagYourMomStopAtSeriesRank25,
                     (source, target) => target.NagYourMomStopAtSeriesRank25 = source.NagYourMomStopAtSeriesRank25);
 
-                ImGui.TextDisabled($"Attempts today: {cc.NagYourMomAttemptsToday}/{cc.NagYourMomRunsPerDay}");
                 ImGui.TextDisabled($"Engine status: {plugin.Engine.NagYourMomStatusText}");
-                ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, and then asks mom for one full casual CC run.");
+                ImGui.TextWrapped("AR-only task. VERMAXION evaluates this during the normal post-process pass, checks the local machine time window, then asks mom for due routes in order: CC, Frontline, Rival Wings.");
                 ImGui.Unindent();
             }
 

@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Reflection;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using VERMAXION.Models;
 using VERMAXION.Services;
 
 namespace VERMAXION.Windows;
@@ -196,8 +197,9 @@ public class MainWindow : Window, IDisposable
                 GetNagYourMomStatus(config, engine.NagYourMomStatusText),
                 "Test##Mom", () =>
                 {
-                    var remainingRuns = Math.Max(1, config.NagYourMomRunsPerDay - config.NagYourMomAttemptsToday);
-                    var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, config.NagYourMomStopAtSeriesRank25);
+                    var route = GetFirstDueNagYourMomRoute(config);
+                    var remainingRuns = Math.Max(1, GetRemainingNagYourMomRuns(config, route));
+                    var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route);
                     Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
                 }, "OK");
             DrawTaskRow("nag your dad", config.EnableNagYourDad,
@@ -464,14 +466,11 @@ public class MainWindow : Window, IDisposable
         if (!config.EnableNagYourMom)
             return "Off";
 
-        if (config.NagYourMomRunsPerDay <= 0)
-            return "Set runs/day";
-
         if (string.IsNullOrWhiteSpace(config.NagYourMomJob))
             return "Set job";
 
-        if (config.NagYourMomAttemptsToday >= config.NagYourMomRunsPerDay)
-            return "Daily cap hit";
+        if (!IsAnyNagYourMomRouteDue(config))
+            return "Route caps hit";
 
         if (!TimeSpan.TryParse(config.NagYourMomWindowStartLocal, out var start) || !TimeSpan.TryParse(config.NagYourMomWindowEndLocal, out var end))
             return "Bad local window";
@@ -488,6 +487,52 @@ public class MainWindow : Window, IDisposable
             ? "Ready on AR"
             : engineStatus;
     }
+
+    private static bool IsAnyNagYourMomRouteDue(Models.CharacterConfig config)
+        => IsNagYourMomRouteDue(config, MomRunRoutes.CasualCc)
+           || IsNagYourMomRouteDue(config, MomRunRoutes.Frontline)
+           || IsNagYourMomRouteDue(config, MomRunRoutes.RivalWings);
+
+    private static bool IsNagYourMomRouteDue(Models.CharacterConfig config, string route)
+        => IsNagYourMomRouteEnabled(config, route)
+           && GetNagYourMomRouteCap(config, route) > 0
+           && GetRemainingNagYourMomRuns(config, route) > 0;
+
+    private static string GetFirstDueNagYourMomRoute(Models.CharacterConfig config)
+    {
+        if (IsNagYourMomRouteDue(config, MomRunRoutes.CasualCc))
+            return MomRunRoutes.CasualCc;
+        if (IsNagYourMomRouteDue(config, MomRunRoutes.Frontline))
+            return MomRunRoutes.Frontline;
+        return MomRunRoutes.RivalWings;
+    }
+
+    private static int GetRemainingNagYourMomRuns(Models.CharacterConfig config, string route)
+        => Math.Max(0, GetNagYourMomRouteCap(config, route) - GetNagYourMomRouteAttempts(config, route));
+
+    private static bool IsNagYourMomRouteEnabled(Models.CharacterConfig config, string route)
+        => route switch
+        {
+            MomRunRoutes.Frontline => config.EnableNagYourMomFrontline,
+            MomRunRoutes.RivalWings => config.EnableNagYourMomRivalWings,
+            _ => config.EnableNagYourMomCasualCc,
+        };
+
+    private static int GetNagYourMomRouteCap(Models.CharacterConfig config, string route)
+        => route switch
+        {
+            MomRunRoutes.Frontline => config.NagYourMomFrontlineRunsPerDay,
+            MomRunRoutes.RivalWings => config.NagYourMomRivalWingsRunsPerDay,
+            _ => config.NagYourMomRunsPerDay,
+        };
+
+    private static int GetNagYourMomRouteAttempts(Models.CharacterConfig config, string route)
+        => route switch
+        {
+            MomRunRoutes.Frontline => config.NagYourMomFrontlineAttemptsToday,
+            MomRunRoutes.RivalWings => config.NagYourMomRivalWingsAttemptsToday,
+            _ => config.NagYourMomAttemptsToday,
+        };
 
     private static string GetNagYourDadStatus(Models.CharacterConfig config, string engineStatus)
     {

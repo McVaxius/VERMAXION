@@ -23,6 +23,9 @@ public class CharacterConfig
     public bool EnableVendorStock { get; set; } = false;
     public bool EnableRefillFromListings { get; set; } = false;
     public bool EnableNagYourMom { get; set; } = false;
+    public bool EnableNagYourMomCasualCc { get; set; } = true;
+    public bool EnableNagYourMomFrontline { get; set; } = false;
+    public bool EnableNagYourMomRivalWings { get; set; } = false;
     public bool EnableNagYourDad { get; set; } = false;
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
     public bool EnableMiscCmd { get; set; } = true;
@@ -40,6 +43,8 @@ public class CharacterConfig
     public RefillFromListingsRoute RefillFromListingsRoute { get; set; } = RefillFromListingsRoute.Workshop;
     public int RefillFromListingsMinFreeInventorySlots { get; set; } = 20;
     public int NagYourMomRunsPerDay { get; set; } = 1;
+    public int NagYourMomFrontlineRunsPerDay { get; set; } = 1;
+    public int NagYourMomRivalWingsRunsPerDay { get; set; } = 1;
     public string NagYourMomJob { get; set; } = "";
     public string NagYourMomWindowStartLocal { get; set; } = "00:00";
     public string NagYourMomWindowEndLocal { get; set; } = "23:59";
@@ -96,6 +101,10 @@ public class CharacterConfig
     public DateTime LastMinionRouletteReset { get; set; } = DateTime.MinValue;
     public int NagYourMomAttemptsToday { get; set; } = 0;
     public DateTime NagYourMomLastLocalDate { get; set; } = DateTime.MinValue;
+    public int NagYourMomFrontlineAttemptsToday { get; set; } = 0;
+    public DateTime NagYourMomFrontlineLastLocalDate { get; set; } = DateTime.MinValue;
+    public int NagYourMomRivalWingsAttemptsToday { get; set; } = 0;
+    public DateTime NagYourMomRivalWingsLastLocalDate { get; set; } = DateTime.MinValue;
     public bool RequireSaucyForMiniCactpot { get; set; } = true;
     public JumboCactpotNumberMode JumboCactpotNumberMode { get; set; } = JumboCactpotNumberMode.Random;
     public int JumboCactpotFixedNumber { get; set; } = 1;
@@ -143,6 +152,10 @@ public class CharacterConfig
     {
         NagYourMomAttemptsToday = 0;
         NagYourMomLastLocalDate = DateTime.MinValue;
+        NagYourMomFrontlineAttemptsToday = 0;
+        NagYourMomFrontlineLastLocalDate = DateTime.MinValue;
+        NagYourMomRivalWingsAttemptsToday = 0;
+        NagYourMomRivalWingsLastLocalDate = DateTime.MinValue;
     }
 
     public void ResetMinionRouletteDailyState()
@@ -208,6 +221,9 @@ public class CharacterConfig
             EnableVendorStock = EnableVendorStock,
             EnableRefillFromListings = EnableRefillFromListings,
             EnableNagYourMom = EnableNagYourMom,
+            EnableNagYourMomCasualCc = EnableNagYourMomCasualCc,
+            EnableNagYourMomFrontline = EnableNagYourMomFrontline,
+            EnableNagYourMomRivalWings = EnableNagYourMomRivalWings,
             EnableNagYourDad = EnableNagYourDad,
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
             EnableMiscCmd = EnableMiscCmd,
@@ -223,6 +239,8 @@ public class CharacterConfig
             RefillFromListingsRoute = RefillFromListingsRoute,
             RefillFromListingsMinFreeInventorySlots = RefillFromListingsMinFreeInventorySlots,
             NagYourMomRunsPerDay = NagYourMomRunsPerDay,
+            NagYourMomFrontlineRunsPerDay = NagYourMomFrontlineRunsPerDay,
+            NagYourMomRivalWingsRunsPerDay = NagYourMomRivalWingsRunsPerDay,
             NagYourMomJob = NagYourMomJob,
             NagYourMomWindowStartLocal = NagYourMomWindowStartLocal,
             NagYourMomWindowEndLocal = NagYourMomWindowEndLocal,
@@ -269,6 +287,10 @@ public class CharacterConfig
             LastMinionRouletteReset = LastMinionRouletteReset,
             NagYourMomAttemptsToday = NagYourMomAttemptsToday,
             NagYourMomLastLocalDate = NagYourMomLastLocalDate,
+            NagYourMomFrontlineAttemptsToday = NagYourMomFrontlineAttemptsToday,
+            NagYourMomFrontlineLastLocalDate = NagYourMomFrontlineLastLocalDate,
+            NagYourMomRivalWingsAttemptsToday = NagYourMomRivalWingsAttemptsToday,
+            NagYourMomRivalWingsLastLocalDate = NagYourMomRivalWingsLastLocalDate,
             RequireSaucyForMiniCactpot = RequireSaucyForMiniCactpot,
             JumboCactpotNumberMode = JumboCactpotNumberMode,
             JumboCactpotFixedNumber = JumboCactpotFixedNumber,

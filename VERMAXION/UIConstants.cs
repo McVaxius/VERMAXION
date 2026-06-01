@@ -23,7 +23,12 @@ public static class UIConstants
         public const string MiniCactpot = "Mini Cactpot";
         public const string ChocoboRacing = "Chocobo Racing (via Chocoholic)";
         public const string NagYourMom = "nag your mom";
-        public const string NagYourMomRunsPerDay = "mom runs per day";
+        public const string NagYourMomCasualCc = "Casual CC";
+        public const string NagYourMomFrontline = "Frontline";
+        public const string NagYourMomRivalWings = "Rival Wings";
+        public const string NagYourMomRunsPerDay = "CC runs per day";
+        public const string NagYourMomFrontlineRunsPerDay = "Frontline runs per day";
+        public const string NagYourMomRivalWingsRunsPerDay = "Rival Wings runs per day";
         public const string NagYourMomJob = "mom job";
         public const string NagYourMomWindowStartLocal = "Local start (HH:mm)";
         public const string NagYourMomWindowEndLocal = "Local end (HH:mm)";
@@ -69,7 +74,7 @@ public static class UIConstants
         public const string MinionRoulette = "Fire off /minion roulette once per AR postprocess";
         public const string SeasonalGearRoulette = "Randomly equip seasonal event gear for a fun ensemble each AR run";
         public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";
-        public const string NagYourMom = "AR-only mom task. Evaluated only during the normal VERMAXION post-process flow, gated by a local time window and daily attempt count.";
+        public const string NagYourMom = "AR-only mom task. Evaluated during VERMAXION post-process, gated by a local time window and per-route daily attempt counts.";
         public const string NagYourDad = "AR-only dad task. VERMAXION packages configured dungeon, MSQ, commendation, and Astrope asks into one IPC payload, then Dad owns readiness waits, claims, party assembly, and module routing.";
         public const string MiscCmd = "Sends startup cleanup commands at the start of AutoRetainer and manual VERMAXION runs.";
     }
