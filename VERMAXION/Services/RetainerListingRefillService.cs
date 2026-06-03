@@ -1704,7 +1704,7 @@ public sealed class RetainerListingRefillService
             if (value->Type == 0)
                 return string.Empty;
 
-            if (value->Type is not (AtkValueType.String or AtkValueType.ManagedString or AtkValueType.ConstString or AtkValueType.WideString))
+            if (value->Type is not (AtkValueType.String or AtkValueType.ManagedString or AtkValueType.String8 or AtkValueType.WideString))
                 return string.Empty;
 
             return value->String.Value == null
