@@ -273,7 +273,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
 
         ImGui.TextDisabled("Chocobo Racing:");
-        ImGui.BulletText("Chocoholic - Handles chocobo race automation");
+        ImGui.BulletText("Chocoholic - Handles bulk race automation when rank-50 skip is off");
+        ImGui.BulletText("VERMAXION - Handles one-race rank-gated loop when rank-50 skip is on");
         ImGui.Spacing();
 
         ImGui.TextDisabled("dad / Astrope:");
@@ -883,7 +884,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextDisabled("(?)");
                 if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("Uses RaceChocoboManager when the live racing chocobo profile is loaded. If the current racing chocobo rank is 50, Vermaxion skips the daily racing task instead of queueing.");
+                    ImGui.SetTooltip("Checks rank before each race. Uses RaceChocoboManager when loaded, then opens /goldsaucer and reads GoldSaucerInfo node 21 as fallback. Rank 50 stops the daily racing task before another queue.");
 
                 ImGui.Unindent();
             }

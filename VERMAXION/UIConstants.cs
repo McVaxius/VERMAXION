@@ -21,7 +21,7 @@ public static class UIConstants
         public const string VerminionQueue = "Lord of Verminion (5 fails)";
         public const string JumboCactpot = "Jumbo Cactpot (auto DC timing)";
         public const string MiniCactpot = "Mini Cactpot";
-        public const string ChocoboRacing = "Chocobo Racing (via Chocoholic)";
+        public const string ChocoboRacing = "Chocobo Racing";
         public const string NagYourMom = "nag your mom";
         public const string NagYourMomCasualCc = "Casual CC";
         public const string NagYourMomFrontline = "Frontline";
@@ -48,7 +48,7 @@ public static class UIConstants
         public const string NagYourDadWindowStartLocal = "Astrope local start (HH:mm)";
         public const string NagYourDadWindowEndLocal = "Astrope local end (HH:mm)";
         public const string RacesPerDay = "Races Per Day";
-        public const string SkipChocoboRacingIfLevel50 = "Don't race if racing chocobo is level 50";
+        public const string SkipChocoboRacingIfLevel50 = "Don't race if racing chocobo is rank 50";
         
         // Section Headers
         public const string GlobalSettings = "Global Settings";

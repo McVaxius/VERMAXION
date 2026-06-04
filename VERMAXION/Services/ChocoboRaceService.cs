@@ -43,11 +43,15 @@ public class ChocoboRaceService : IDisposable
     private uint returnHomeOriginTerritory;
     private ICallGateSubscriber<int, object>? chocoholicQueueSubscriber;
     private bool chocoholicLookupAttempted;
+    private string rankGateCheckReason = string.Empty;
 
     public enum ChocoboState
     {
         Idle,
         WaitingForChocoholicIpc,
+        CheckingRaceChocoboRank,
+        OpeningGoldSaucerRankCheck,
+        ReadingGoldSaucerRankCheck,
         ReturningHome,
         WaitingForHomeReady,
         OpeningDutyFinder,
@@ -69,7 +73,14 @@ public class ChocoboRaceService : IDisposable
     public bool IsActive => state != ChocoboState.Idle && state != ChocoboState.Complete && state != ChocoboState.Failed;
     public bool IsComplete => state == ChocoboState.Complete;
     public bool IsFailed => state == ChocoboState.Failed;
-    public string StatusText => state == ChocoboState.Idle ? "Idle" : $"{state} ({currentAttempt}/{maxAttempts})";
+    public string StatusText => state switch
+    {
+        ChocoboState.Idle => "Idle",
+        ChocoboState.CheckingRaceChocoboRank => $"Checking rank before race {Math.Min(currentAttempt + 1, maxAttempts)}/{maxAttempts}",
+        ChocoboState.OpeningGoldSaucerRankCheck => $"Opening GoldSaucerInfo rank fallback ({currentAttempt}/{maxAttempts})",
+        ChocoboState.ReadingGoldSaucerRankCheck => $"Reading GoldSaucerInfo rank fallback ({currentAttempt}/{maxAttempts})",
+        _ => $"{state} ({currentAttempt}/{maxAttempts})",
+    };
     public string GoldSaucerRankTestStatus { get; private set; } = "Not tested yet.";
 
     public ChocoboRaceService(ICommandManager commandManager, IPluginLog log, ConfigManager configManager)
@@ -85,16 +96,20 @@ public class ChocoboRaceService : IDisposable
         // Get configured number of races from active character config
         var activeConfig = configManager?.GetActiveConfig();
         maxAttempts = activeConfig?.ChocoboRacesPerDay ?? 5;
+        currentAttempt = 0;
+        joinAttempted = false;
+        dutySelected = false;
+        dutySelectionAttempts = 0;
+        lastChocoholicRetry = DateTime.MinValue;
+        lastJoinRetry = DateTime.MinValue;
+        returnHomeOriginTerritory = 0;
+        isActive = true;
 
-        if (ShouldSkipBecauseRaceChocoboIsMaxRank(out var currentRank))
+        if (IsRankGateEnabled())
         {
-            log.Information($"[ChocoboRace] Racing chocobo is already rank {currentRank}; skipping daily races");
-            SetState(ChocoboState.Complete);
+            BeginRankGateCheckForNextRace();
             return;
         }
-
-        isActive = true;
-        lastChocoholicRetry = DateTime.MinValue;
 
         var chocoholicAttempt = TryQueueWithChocoholic(maxAttempts);
         if (chocoholicAttempt == ChocoholicQueueAttemptResult.Success)
@@ -111,9 +126,7 @@ public class ChocoboRaceService : IDisposable
             return;
         }
         
-        currentAttempt = 0;
-        SetState(ChocoboState.ReturningHome);
-        log.Information($"[ChocoboRace] Preparing Chocobo Racing cycle (0/{maxAttempts}) with /li home");
+        StartFirstManualRace();
     }
 
     public void RunTask()
@@ -164,35 +177,100 @@ public class ChocoboRaceService : IDisposable
         lastChocoholicRetry = DateTime.MinValue;
         lastJoinRetry = DateTime.MinValue;
         returnHomeOriginTerritory = 0;
+        rankGateCheckReason = string.Empty;
     }
 
     public void Dispose() { }
 
-    private unsafe bool ShouldSkipBecauseRaceChocoboIsMaxRank(out byte currentRank)
+    private bool IsRankGateEnabled()
+    {
+        var activeConfig = configManager.GetActiveConfig();
+        return activeConfig?.SkipChocoboRacingAtRank50 == true;
+    }
+
+    private unsafe bool TryReadLoadedRaceChocoboManagerRank(out int currentRank)
     {
         currentRank = 0;
-
-        var activeConfig = configManager.GetActiveConfig();
-        if (activeConfig?.SkipChocoboRacingAtRank50 != true)
-            return false;
-
         try
         {
             var manager = RaceChocoboManager.Instance();
             if (manager == null || manager->State != RaceChocoboManager.RaceChocoboState.Loaded)
             {
-                log.Debug("[ChocoboRace] RaceChocoboManager is not loaded; cannot pre-skip the rank 50 check");
+                log.Debug("[ChocoboRace] RaceChocoboManager is not loaded; using GoldSaucerInfo rank fallback");
                 return false;
             }
 
             currentRank = manager->Rank;
-            return currentRank >= MaxRaceChocoboRank;
+            return true;
         }
         catch (Exception ex)
         {
-            log.Warning($"[ChocoboRace] Failed to read RaceChocoboManager rank: {ex.Message}");
+            log.Warning($"[ChocoboRace] Failed to read RaceChocoboManager rank; using GoldSaucerInfo fallback: {ex.Message}");
             return false;
         }
+    }
+
+    private static bool TryParseRaceChocoboRank(string rawText, out int rank)
+        => int.TryParse(rawText.Trim(), out rank);
+
+    private void BeginRankGateCheckForNextRace()
+    {
+        rankGateCheckReason = currentAttempt == 0
+            ? "before first race"
+            : $"before race {currentAttempt + 1}/{maxAttempts}";
+        log.Information($"[ChocoboRace] Checking racing chocobo rank {rankGateCheckReason}");
+        SetState(ChocoboState.CheckingRaceChocoboRank);
+    }
+
+    private void StartFirstManualRace()
+    {
+        currentAttempt = 0;
+        SetState(ChocoboState.ReturningHome);
+        log.Information($"[ChocoboRace] Preparing Chocobo Racing cycle (0/{maxAttempts}) with /li home");
+    }
+
+    private void ContinueAfterRankGateAllowsRace(int rank, string source)
+    {
+        log.Information($"[ChocoboRace] Racing chocobo rank {rank} from {source}; continuing {rankGateCheckReason}");
+        ContinueToNextRaceQueue();
+    }
+
+    private void ContinueToNextRaceQueue()
+    {
+        if (currentAttempt == 0)
+        {
+            StartFirstManualRace();
+            return;
+        }
+
+        log.Information($"[ChocoboRace] Starting race {currentAttempt + 1}/{maxAttempts}");
+        SetState(ChocoboState.OpeningDutyFinder);
+    }
+
+    private void CompleteBecauseRaceChocoboIsMaxRank(int rank, string source)
+    {
+        log.Information($"[ChocoboRace] Racing chocobo rank {rank} from {source}; completing daily racing task without queueing more races");
+        SetState(ChocoboState.Complete);
+    }
+
+    private void FailRankGate(string reason)
+    {
+        GameHelpers.TryCloseAddonByCallback("GoldSaucerInfo");
+        log.Warning($"[ChocoboRace] Could not read racing chocobo rank {rankGateCheckReason}: {reason}. Rank-50 skip is enabled, so the daily racing task is failing instead of racing blind.");
+        SetState(ChocoboState.Failed);
+    }
+
+    private void EvaluateRankGateResult(int rank, string source)
+    {
+        GameHelpers.TryCloseAddonByCallback("GoldSaucerInfo");
+
+        if (rank >= MaxRaceChocoboRank)
+        {
+            CompleteBecauseRaceChocoboIsMaxRank(rank, source);
+            return;
+        }
+
+        ContinueAfterRankGateAllowsRace(rank, source);
     }
 
     private enum ChocoholicQueueAttemptResult
@@ -270,6 +348,14 @@ public class ChocoboRaceService : IDisposable
                 if (elapsed < 2)
                     return;
 
+                if (IsRankGateEnabled())
+                {
+                    log.Information("[ChocoboRace] Rank-50 skip was enabled while waiting for Chocoholic IPC; switching to one-race rank-gated loop");
+                    currentAttempt = 0;
+                    BeginRankGateCheckForNextRace();
+                    return;
+                }
+
                 if (lastChocoholicRetry != DateTime.MinValue &&
                     (DateTime.UtcNow - lastChocoholicRetry).TotalSeconds < 2)
                 {
@@ -289,9 +375,67 @@ public class ChocoboRaceService : IDisposable
                     return;
 
                 log.Warning("[ChocoboRace] Chocoholic IPC did not become ready in time, falling back to manual queueing");
-                currentAttempt = 0;
-                SetState(ChocoboState.ReturningHome);
-                log.Information($"[ChocoboRace] Preparing Chocobo Racing cycle (0/{maxAttempts}) with /li home");
+                StartFirstManualRace();
+                return;
+
+            case ChocoboState.CheckingRaceChocoboRank:
+                if (elapsed < 0.1)
+                    return;
+
+                if (!IsRankGateEnabled())
+                {
+                    log.Information("[ChocoboRace] Rank-50 skip disabled while checking rank; continuing without rank gate");
+                    ContinueToNextRaceQueue();
+                    return;
+                }
+
+                if (TryReadLoadedRaceChocoboManagerRank(out var managerRank))
+                {
+                    EvaluateRankGateResult(managerRank, "RaceChocoboManager");
+                    return;
+                }
+
+                log.Information("[ChocoboRace] Opening GoldSaucerInfo with /goldsaucer for rank fallback");
+                CommandHelper.SendCommand("/goldsaucer");
+                SetState(ChocoboState.OpeningGoldSaucerRankCheck);
+                return;
+
+            case ChocoboState.OpeningGoldSaucerRankCheck:
+                if (elapsed < 0.5)
+                    return;
+
+                if (GameHelpers.IsAddonVisible("GoldSaucerInfo"))
+                {
+                    log.Information("[ChocoboRace] GoldSaucerInfo visible; reading node 21 for rank fallback");
+                    SetState(ChocoboState.ReadingGoldSaucerRankCheck);
+                    return;
+                }
+
+                if (elapsed > 10)
+                {
+                    FailRankGate("GoldSaucerInfo did not open within 10 seconds");
+                    return;
+                }
+                return;
+
+            case ChocoboState.ReadingGoldSaucerRankCheck:
+                if (elapsed < 0.2)
+                    return;
+
+                if (!GameHelpers.TryGetAddonText("GoldSaucerInfo", 21u, out var rawRankText))
+                {
+                    FailRankGate("GoldSaucerInfo node 21 text was unavailable");
+                    return;
+                }
+
+                if (!TryParseRaceChocoboRank(rawRankText, out var fallbackRank))
+                {
+                    FailRankGate($"GoldSaucerInfo node 21 text '{rawRankText}' was not numeric");
+                    return;
+                }
+
+                log.Information($"[ChocoboRace] GoldSaucerInfo node 21 text='{rawRankText}', parsed rank={fallbackRank}");
+                EvaluateRankGateResult(fallbackRank, "GoldSaucerInfo node 21");
                 return;
 
             case ChocoboState.ReturningHome:
@@ -531,8 +675,15 @@ public class ChocoboRaceService : IDisposable
                     }
                     else
                     {
-                        log.Information($"[ChocoboRace] Starting race {currentAttempt + 1}/{maxAttempts}");
-                        SetState(ChocoboState.OpeningDutyFinder);
+                        if (IsRankGateEnabled())
+                        {
+                            BeginRankGateCheckForNextRace();
+                        }
+                        else
+                        {
+                            log.Information($"[ChocoboRace] Starting race {currentAttempt + 1}/{maxAttempts}");
+                            SetState(ChocoboState.OpeningDutyFinder);
+                        }
                     }
                 }
                 break;
@@ -570,7 +721,7 @@ public class ChocoboRaceService : IDisposable
                     return;
                 }
 
-                if (!int.TryParse(rawText.Trim(), out var rank))
+                if (!TryParseRaceChocoboRank(rawText, out var rank))
                 {
                     GoldSaucerRankTestStatus = $"Failed: could not parse node 21 text '{rawText}'.";
                     log.Warning($"[ChocoboRankTest] Could not parse GoldSaucerInfo node 21 text '{rawText}'");

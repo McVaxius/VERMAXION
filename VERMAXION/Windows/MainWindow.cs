@@ -279,7 +279,7 @@ public class MainWindow : Window, IDisposable
                 plugin.ChocoboRaceService.RequestGoldSaucerRankTest();
             }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Opens /goldsaucer and reads GoldSaucerInfo node 21 text for the rank-50 skip check.");
+                ImGui.SetTooltip("Opens /goldsaucer and reads GoldSaucerInfo node 21, the fallback used when RaceChocoboManager is not loaded.");
             ImGui.TextDisabled($"Chocobo rank test: {plugin.ChocoboRaceService.GoldSaucerRankTestStatus}");
             
             // BUTTON PRESSES
