@@ -512,11 +512,10 @@ public static class GameHelpers
 
     /// <summary>
     /// Safer general-purpose UI cleanup for task transitions.
-    /// END advances/accepts many dialogue states, then ESC closes the remaining top-level addon.
+    /// ESC closes the remaining top-level addon without advancing dialogue or toggling camera state.
     /// </summary>
     public static void ResetInteractionState()
     {
-        SendEnd();
         CloseCurrentAddon();
     }
 
