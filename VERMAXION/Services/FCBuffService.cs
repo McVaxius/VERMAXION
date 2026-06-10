@@ -1271,6 +1271,13 @@ public class FCBuffService : IDisposable
 
     private void SetState(FCBuffState newState)
     {
+        if (newState is FCBuffState.Complete or FCBuffState.Failed &&
+            state != FCBuffState.ClosingWindows)
+        {
+            failAfterClosingWindows = newState == FCBuffState.Failed;
+            newState = FCBuffState.ClosingWindows;
+        }
+
         log.Information($"[FCBuff] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;

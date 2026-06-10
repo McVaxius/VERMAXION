@@ -330,11 +330,8 @@ public class FashionReportService : IDisposable
                 }
                 else if (elapsed > PostJudgingSettleTimeoutSeconds)
                 {
-                    log.Warning("[FashionReport] Post-judging settle timed out, continuing with best-effort state transition");
-                    if (completedJudgings >= RequiredJudgings)
-                        SetState(FashionReportState.Complete);
-                    else
-                        SetState(FashionReportState.InteractingWithMaskedRose);
+                    log.Error("[FashionReport] Post-judging settle timed out before return-to-idle was verified");
+                    SetState(FashionReportState.Failed);
                 }
                 break;
         }

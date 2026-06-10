@@ -60,6 +60,11 @@ public class FCBuffInventoryService
         SetState(FCBuffInventoryState.Failed);
     }
 
+    public void Reset()
+    {
+        SetState(FCBuffInventoryState.Idle);
+    }
+
     public void Update()
     {
         if (!IsActive) return;

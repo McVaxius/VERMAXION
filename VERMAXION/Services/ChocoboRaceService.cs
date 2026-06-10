@@ -2,7 +2,6 @@ using System;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Keys;
-using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -38,17 +37,13 @@ public class ChocoboRaceService : IDisposable
     private bool joinAttempted = false;
     private bool dutySelected = false;
     private int dutySelectionAttempts = 0;
-    private DateTime lastChocoholicRetry = DateTime.MinValue;
     private DateTime lastJoinRetry = DateTime.MinValue;
     private uint returnHomeOriginTerritory;
-    private ICallGateSubscriber<int, object>? chocoholicQueueSubscriber;
-    private bool chocoholicLookupAttempted;
     private string rankGateCheckReason = string.Empty;
 
     public enum ChocoboState
     {
         Idle,
-        WaitingForChocoholicIpc,
         CheckingRaceChocoboRank,
         OpeningGoldSaucerRankCheck,
         ReadingGoldSaucerRankCheck,
@@ -100,7 +95,6 @@ public class ChocoboRaceService : IDisposable
         joinAttempted = false;
         dutySelected = false;
         dutySelectionAttempts = 0;
-        lastChocoholicRetry = DateTime.MinValue;
         lastJoinRetry = DateTime.MinValue;
         returnHomeOriginTerritory = 0;
         isActive = true;
@@ -111,21 +105,7 @@ public class ChocoboRaceService : IDisposable
             return;
         }
 
-        var chocoholicAttempt = TryQueueWithChocoholic(maxAttempts);
-        if (chocoholicAttempt == ChocoholicQueueAttemptResult.Success)
-        {
-            log.Information($"[ChocoboRace] Queued {maxAttempts} races through Chocoholic IPC");
-            SetState(ChocoboState.Complete);
-            return;
-        }
-
-        if (chocoholicAttempt == ChocoholicQueueAttemptResult.NotReady)
-        {
-            log.Information("[ChocoboRace] Chocoholic IPC is not registered yet; waiting briefly before using manual queueing");
-            SetState(ChocoboState.WaitingForChocoholicIpc);
-            return;
-        }
-        
+        log.Information("[ChocoboRace] Using VERMAXION observable one-race loop");
         StartFirstManualRace();
     }
 
@@ -157,24 +137,14 @@ public class ChocoboRaceService : IDisposable
 
     public void Reset()
     {
-        // If we're being reset while active, mark as Complete to clear pending count
-        if (isActive)
-        {
-            log.Information("[ChocoboRace] Reset called while active, marking as Complete");
-            SetState(ChocoboState.Complete);
-        }
-        else
-        {
-            SetState(ChocoboState.Idle);
-        }
+        GameHelpers.KeyUp(VirtualKey.W);
+        SetState(ChocoboState.Idle);
         isActive = false;
-        state = ChocoboState.Idle;
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
         joinAttempted = false;
         dutySelected = false;
         dutySelectionAttempts = 0;
-        lastChocoholicRetry = DateTime.MinValue;
         lastJoinRetry = DateTime.MinValue;
         returnHomeOriginTerritory = 0;
         rankGateCheckReason = string.Empty;
@@ -273,42 +243,6 @@ public class ChocoboRaceService : IDisposable
         ContinueAfterRankGateAllowsRace(rank, source);
     }
 
-    private enum ChocoholicQueueAttemptResult
-    {
-        Success,
-        NotReady,
-        Unavailable,
-    }
-
-    private ChocoholicQueueAttemptResult TryQueueWithChocoholic(int raceCount)
-    {
-        try
-        {
-            if (!chocoholicLookupAttempted)
-            {
-                chocoholicLookupAttempted = true;
-                chocoholicQueueSubscriber = Plugin.PluginInterface.GetIpcSubscriber<int, object>("Chocoholic.QueueRace");
-            }
-
-            if (chocoholicQueueSubscriber == null)
-            {
-                log.Information("[ChocoboRace] Chocoholic IPC not available, falling back to manual queueing");
-                return ChocoholicQueueAttemptResult.Unavailable;
-            }
-
-            chocoholicQueueSubscriber.InvokeAction(raceCount);
-            return ChocoholicQueueAttemptResult.Success;
-        }
-        catch (Exception ex)
-        {
-            if (ex.Message.Contains("not registered yet", StringComparison.OrdinalIgnoreCase))
-                return ChocoholicQueueAttemptResult.NotReady;
-
-            log.Warning($"[ChocoboRace] Chocoholic IPC unavailable or failed ({ex.Message}), falling back to manual queueing");
-            return ChocoholicQueueAttemptResult.Unavailable;
-        }
-    }
-
     /// <summary>
     /// Open the Duty Finder to a specific duty using AgentContentsFinder.
     /// The manual Chocobo fallback then selects the Chocobo Racing row from ContentsFinder.
@@ -344,40 +278,6 @@ public class ChocoboRaceService : IDisposable
 
         switch (state)
         {
-            case ChocoboState.WaitingForChocoholicIpc:
-                if (elapsed < 2)
-                    return;
-
-                if (IsRankGateEnabled())
-                {
-                    log.Information("[ChocoboRace] Rank-50 skip was enabled while waiting for Chocoholic IPC; switching to one-race rank-gated loop");
-                    currentAttempt = 0;
-                    BeginRankGateCheckForNextRace();
-                    return;
-                }
-
-                if (lastChocoholicRetry != DateTime.MinValue &&
-                    (DateTime.UtcNow - lastChocoholicRetry).TotalSeconds < 2)
-                {
-                    return;
-                }
-
-                lastChocoholicRetry = DateTime.UtcNow;
-                var retryResult = TryQueueWithChocoholic(maxAttempts);
-                if (retryResult == ChocoholicQueueAttemptResult.Success)
-                {
-                    log.Information($"[ChocoboRace] Queued {maxAttempts} races through Chocoholic IPC after startup delay");
-                    SetState(ChocoboState.Complete);
-                    return;
-                }
-
-                if (retryResult == ChocoholicQueueAttemptResult.NotReady && elapsed < 20)
-                    return;
-
-                log.Warning("[ChocoboRace] Chocoholic IPC did not become ready in time, falling back to manual queueing");
-                StartFirstManualRace();
-                return;
-
             case ChocoboState.CheckingRaceChocoboRank:
                 if (elapsed < 0.1)
                     return;
@@ -663,7 +563,7 @@ public class ChocoboRaceService : IDisposable
             case ChocoboState.WaitingForPlayerAvailable:
                 // Wait until player is available for next race
                 if (elapsed < 2) return;
-                if (GameHelpers.IsPlayerAvailable() || elapsed > 30)
+                if (GameHelpers.IsPlayerAvailable())
                 {
                     currentAttempt++;
                     log.Information($"[ChocoboRace] Race {currentAttempt}/{maxAttempts} complete");
@@ -685,6 +585,11 @@ public class ChocoboRaceService : IDisposable
                             SetState(ChocoboState.OpeningDutyFinder);
                         }
                     }
+                }
+                else if (elapsed > 30)
+                {
+                    log.Error("[ChocoboRace] Timed out waiting for verified player availability after race");
+                    SetState(ChocoboState.Failed);
                 }
                 break;
 

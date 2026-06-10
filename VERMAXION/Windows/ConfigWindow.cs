@@ -273,8 +273,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
 
         ImGui.TextDisabled("Chocobo Racing:");
-        ImGui.BulletText("Chocoholic - Handles bulk race automation when rank-50 skip is off");
-        ImGui.BulletText("VERMAXION - Handles one-race rank-gated loop when rank-50 skip is on");
+        ImGui.BulletText("VERMAXION - Handles observable one-race queue and completion loop");
         ImGui.Spacing();
 
         ImGui.TextDisabled("dad / Astrope:");

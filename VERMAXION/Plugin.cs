@@ -132,11 +132,11 @@ public sealed class Plugin : IDalamudPlugin
         // Engine - orchestrates all tasks
         Engine = new VermaxionEngine(
             Log, Configuration, ConfigManager, ResetDetectionService,
-            HenchmanService, FCBuffService, VerminionService,
+            HenchmanService, FCBuffService, FCBuffInventoryService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService,
-            RegisterRegistrablesService, RetainerListingRefillService, ARPostProcessService, YesAlreadyIPC,
-            ClientState, MomIPCClient, DadIPCClient, AutoRetainerIPC);
+            RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
+            ClientState, MomIPCClient, DadIPCClient, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -186,7 +186,7 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Dispose();
 
         ARPostProcessService.Dispose();
-        AutoRetainerIPC.ReleaseSuppressionIfOwned();
+        AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         YesAlreadyIPC.Dispose();
         VNavmeshIPC.Dispose();
         HighestCombatJobService.Dispose();
@@ -240,7 +240,7 @@ public sealed class Plugin : IDalamudPlugin
             }
             else
             {
-                AutoRetainerIPC.ReleaseSuppressionIfOwned();
+                Log.Information("[Plugin] Character changed while engine idle; preserving any VMX-owned suppression until Full Stop or a settled handoff.");
             }
             
             Log.Information("[Plugin] All services reset successfully");
@@ -408,11 +408,7 @@ public sealed class Plugin : IDalamudPlugin
             var elapsed = DateTime.UtcNow - beforeArLoginPendingSince;
             if (elapsed.TotalSeconds >= BeforeArLoginTimeoutSeconds)
             {
-                Log.Warning($"[AR] Timed out waiting for world-ready login after {BeforeArLoginTimeoutSeconds}s; releasing VMX-owned suppression.");
-                AutoRetainerIPC.ReleaseSuppressionIfOwned();
-                beforeArArmedByPostprocess = false;
-                ClearPendingBeforeArLogin("login resolution timeout");
-                return;
+                LogPendingBeforeArDiagnostic($"world-ready wait exceeded {BeforeArLoginTimeoutSeconds}s; retaining VMX-owned suppression");
             }
 
             if (!TryGetWorldReadyCharacter(out var charName, out var worldName, out var contentId, out var notReadyReason))
@@ -436,19 +432,21 @@ public sealed class Plugin : IDalamudPlugin
 
             if (configuredCount == 0)
             {
-                Log.Information("[AR] Releasing before-AR suppression: no tasks configured for BeforeAR.");
-                AutoRetainerIPC.ReleaseSuppressionIfOwned();
+                Log.Information("[AR] No BeforeAR tasks configured; starting final settling before suppression release.");
+                beforeArStartedThisLogin = true;
                 beforeArArmedByPostprocess = false;
-                ClearPendingBeforeArLogin("no BeforeAR tasks configured");
+                ClearPendingBeforeArLogin("settling with no BeforeAR tasks configured");
+                Engine.StartBeforeAutoRetainer();
                 return;
             }
 
             if (!activeConfig.Enabled || dueTaskIds.Count == 0)
             {
-                Log.Information($"[AR] Releasing before-AR suppression: enabled={activeConfig.Enabled}, dueBeforeArTaskCount={dueTaskIds.Count}.");
-                AutoRetainerIPC.ReleaseSuppressionIfOwned();
+                Log.Information($"[AR] No enabled/due BeforeAR tasks; starting final settling. enabled={activeConfig.Enabled}, dueBeforeArTaskCount={dueTaskIds.Count}.");
+                beforeArStartedThisLogin = true;
                 beforeArArmedByPostprocess = false;
-                ClearPendingBeforeArLogin("no enabled/due BeforeAR tasks");
+                ClearPendingBeforeArLogin("settling with no enabled/due BeforeAR tasks");
+                Engine.StartBeforeAutoRetainer();
                 return;
             }
 
@@ -471,7 +469,8 @@ public sealed class Plugin : IDalamudPlugin
         catch (Exception ex)
         {
             Log.Error($"Error in pending before-AR login processing: {ex.Message}");
-            AutoRetainerIPC.ReleaseSuppressionIfOwned();
+            if (AutoRetainerIPC.SuppressionOwnedByVermaxion)
+                Engine.Stop();
             beforeArArmedByPostprocess = false;
             ClearPendingBeforeArLogin("exception");
         }
@@ -564,13 +563,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             wasLoggedIn = false;
             beforeArStartedThisLogin = false;
-            if (beforeArArmedByPostprocess)
-                Log.Information("[AR] Preserving postprocess-armed before-AR suppression across logout transition.");
-            else
-            {
-                AutoRetainerIPC.ReleaseSuppressionIfOwned();
-                beforeArArmedByPostprocess = false;
-            }
+            Log.Information("[AR] Preserving VMX ownership across logout transition.");
             ClearPendingBeforeArLogin("framework logout transition");
         }
 
@@ -684,12 +677,8 @@ public sealed class Plugin : IDalamudPlugin
     {
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
 
-        // Stop engine
-        if (Engine.IsRunning)
-        {
-            Engine.Stop();
-            Log.Information("[FULL STOP] Engine stopped");
-        }
+        Engine.ForceStop();
+        Log.Information("[FULL STOP] Engine force-stopped");
 
         MomIPCClient.CancelActiveRun();
         Log.Information("[FULL STOP] mom IPC cancel requested");
@@ -717,7 +706,7 @@ public sealed class Plugin : IDalamudPlugin
         YesAlreadyIPC.Unpause();
         Log.Information("[FULL STOP] YesAlready unpaused");
 
-        AutoRetainerIPC.ReleaseSuppressionIfOwned();
+        AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         beforeArArmedByPostprocess = false;
         Log.Information("[FULL STOP] AutoRetainer suppression released if owned");
 

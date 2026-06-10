@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
@@ -58,6 +59,15 @@ public class CactpotService : IDisposable
     private const double JumboCloseApproachTimeout = 20.0;
     private const double JumboPostNavigationSettleDelay = 0.5;
     private const double JumboTargetRetryInterval = 0.75;
+    private const double JumboUiTimeout = 10.0;
+    private const double JumboCleanupQuietSeconds = 1.0;
+    private static readonly string[] JumboOwnedAddonNames =
+    [
+        "SelectString",
+        "SelectYesno",
+        "LotteryWeeklyInput",
+        "LotteryWeeklyRewardList",
+    ];
 
     private CactpotState state = CactpotState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -75,6 +85,13 @@ public class CactpotService : IDisposable
     private int miniJumpAssistTotalJumps;
     private DateTime lastJumboNavigationAttempt = DateTime.MinValue;
     private DateTime lastJumboTargetAttempt = DateTime.MinValue;
+    private DateTime lastJumboNavigationStopAttempt = DateTime.MinValue;
+    private DateTime lastJumboCleanupAttempt = DateTime.MinValue;
+    private DateTime jumboCleanupQuietSince = DateTime.MinValue;
+    private int jumboPurchasesVerified;
+    private int jumboPayoutClaimsVerified;
+    private bool jumboPayoutUiObserved;
+    private bool failAfterJumboCleanup;
 
     public enum CactpotState
     {
@@ -106,6 +123,9 @@ public class CactpotService : IDisposable
         JumboSelectingPurchase,
         JumboWaitingForInputWindow,
         JumboWaitingForConfirmation,
+        JumboVerifyingPurchase,
+        JumboClosingWindows,
+        JumboSettling,
         JumboComplete,
         // Jumbo Cactpot Check states (Saturday)
         JumboCheckLifestreaming,
@@ -119,6 +139,8 @@ public class CactpotService : IDisposable
         JumboCheckWaitingForRewardList,
         JumboCheckClosingRewardList,
         JumboCheckConfirmingMorePrizes,
+        JumboCheckClosingWindows,
+        JumboCheckSettling,
         JumboCheckComplete,
         // Final
         Complete,
@@ -157,9 +179,14 @@ public class CactpotService : IDisposable
 
         if (activeConfig.MiniCactpotTicketsToday >= totalTickets)
         {
-            MarkMiniCactpotDailyCompleteIfNeeded(activeConfig, "existing ticket count");
-            log.Information("[Cactpot] Mini Cactpot already has {Tickets}/{TotalTickets} tickets today", activeConfig.MiniCactpotTicketsToday, totalTickets);
-            SetState(CactpotState.Complete);
+            log.Information("[Cactpot] Mini Cactpot already has {Tickets}/{TotalTickets} tickets today; verifying return-to-idle before completion",
+                activeConfig.MiniCactpotTicketsToday,
+                totalTickets);
+            SetState(clientState.TerritoryType == GoldSaucerTerritoryId
+                ? CactpotState.MiniComplete
+                : GameHelpers.IsPlayerAvailable()
+                    ? CactpotState.Complete
+                    : CactpotState.Failed);
             return;
         }
 
@@ -195,6 +222,10 @@ public class CactpotService : IDisposable
     {
         currentTicket = 1;
         totalTickets = 3;
+        jumboPurchasesVerified = 0;
+        failAfterJumboCleanup = false;
+        lastJumboNavigationStopAttempt = DateTime.MinValue;
+        ResetJumboCleanupTracking();
         currentJumboNumber = GetConfiguredJumboNumber();
         log.Information($"[Cactpot] Starting Jumbo Cactpot Buy sequence using {GetConfiguredJumboModeLabel()} number {currentJumboNumber:0000}");
         SetState(CactpotState.JumboLifestreaming);
@@ -204,6 +235,11 @@ public class CactpotService : IDisposable
     {
         currentTicket = 1;
         totalTickets = JumboPayoutClaimCount;
+        jumboPayoutClaimsVerified = 0;
+        jumboPayoutUiObserved = false;
+        failAfterJumboCleanup = false;
+        lastJumboNavigationStopAttempt = DateTime.MinValue;
+        ResetJumboCleanupTracking();
         log.Information("[Cactpot] Starting Jumbo Cactpot payout check sequence");
         SetState(CactpotState.JumboCheckLifestreaming);
     }
@@ -256,6 +292,9 @@ public class CactpotService : IDisposable
     public void Reset()
     {
         FinishMiniCactpotRun("reset");
+        failAfterJumboCleanup = false;
+        lastJumboNavigationStopAttempt = DateTime.MinValue;
+        ResetJumboCleanupTracking();
         SetState(CactpotState.Idle);
     }
 
@@ -551,13 +590,13 @@ public class CactpotService : IDisposable
                 }
                 else if (elapsed > 12 && GameHelpers.IsPlayerAvailable())
                 {
-                    log.Information("[Cactpot] /li home settled without a territory change, continuing");
-                    SetState(CactpotState.Complete);
+                    log.Error("[Cactpot] /li home settled without leaving Gold Saucer; Mini Cactpot return-to-idle was not verified");
+                    SetState(CactpotState.Failed);
                 }
                 else if (elapsed > 25)
                 {
-                    log.Warning("[Cactpot] Timed out waiting for /li home to settle, continuing");
-                    SetState(CactpotState.Complete);
+                    log.Error("[Cactpot] Timed out waiting for verified Mini Cactpot return-to-idle");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
@@ -670,10 +709,10 @@ public class CactpotService : IDisposable
                     else
                     {
                         // AutoRetainer pattern: TargetAndInteract already handled interaction
-                        if (elapsed > 10)
+                        if (elapsed > JumboUiTimeout)
                         {
-                            log.Warning("[Cactpot] Broker menu did not open in time; assuming Jumbo flow is already complete");
-                            SetState(CactpotState.JumboComplete);
+                            log.Error("[Cactpot] Broker menu did not open in time; Jumbo purchase completion is ambiguous");
+                            SetState(CactpotState.Failed);
                         }
                     }
                 }
@@ -705,10 +744,10 @@ public class CactpotService : IDisposable
                     log.Information($"[Cactpot] SelectString returned for Jumbo ticket {currentTicket}/{totalTickets}, selecting purchase option again");
                     SetState(CactpotState.JumboSelectingPurchase);
                 }
-                else if (elapsed > 10)
+                else if (elapsed > JumboUiTimeout)
                 {
-                    log.Warning($"[Cactpot] LotteryWeeklyInput did not appear for Jumbo ticket {currentTicket}/{totalTickets}; assuming purchase flow is already complete");
-                    SetState(CactpotState.JumboComplete);
+                    log.Error($"[Cactpot] LotteryWeeklyInput did not appear for Jumbo ticket {currentTicket}/{totalTickets}; purchase was not verified");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
@@ -716,26 +755,66 @@ public class CactpotService : IDisposable
                 if (GameHelpers.ClickYesIfVisible())
                 {
                     log.Information($"[Cactpot] Accepted Jumbo Cactpot Yes/No prompt for ticket {currentTicket}/{totalTickets}");
-                    if (currentTicket >= totalTickets)
-                    {
-                        SetState(CactpotState.JumboComplete);
-                    }
-                    else
-                    {
-                        currentTicket++;
-                        SetState(CactpotState.JumboWaitingForInputWindow);
-                    }
+                    SetState(CactpotState.JumboVerifyingPurchase);
                 }
-                else if (elapsed > 10)
+                else if (elapsed > JumboUiTimeout)
                 {
-                    log.Warning($"[Cactpot] Jumbo confirmation stage stalled for ticket {currentTicket}/{totalTickets}; assuming purchase flow completed");
-                    SetState(CactpotState.JumboComplete);
+                    log.Error($"[Cactpot] Jumbo confirmation stage stalled for ticket {currentTicket}/{totalTickets}; purchase was not verified");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
+            case CactpotState.JumboVerifyingPurchase:
+                if (GameHelpers.IsAddonVisible("SelectYesno"))
+                {
+                    if (elapsed > JumboUiTimeout)
+                    {
+                        log.Error($"[Cactpot] Jumbo purchase confirmation remained open for ticket {currentTicket}/{totalTickets}");
+                        SetState(CactpotState.Failed);
+                    }
+
+                    break;
+                }
+
+                if (elapsed < 0.75)
+                    break;
+
+                jumboPurchasesVerified = Math.Max(jumboPurchasesVerified, currentTicket);
+                log.Information($"[Cactpot] Verified Jumbo purchase {jumboPurchasesVerified}/{totalTickets} after confirmation closed");
+                if (jumboPurchasesVerified >= totalTickets)
+                {
+                    SetState(CactpotState.JumboClosingWindows);
+                }
+                else
+                {
+                    currentTicket++;
+                    if (GameHelpers.IsAddonVisible("LotteryWeeklyInput"))
+                        SetState(CactpotState.JumboWaitingForInputWindow);
+                    else if (GameHelpers.IsAddonVisible("SelectString"))
+                        SetState(CactpotState.JumboSelectingPurchase);
+                    else
+                        SetState(CactpotState.JumboTargetingBroker);
+                }
+                break;
+
+            case CactpotState.JumboClosingWindows:
+                TickJumboCleanup(CactpotState.JumboSettling);
+                break;
+
+            case CactpotState.JumboSettling:
+                if (TickJumboSettling(CactpotState.JumboClosingWindows))
+                    SetState(failAfterJumboCleanup ? CactpotState.Failed : CactpotState.JumboComplete);
+                break;
+
             case CactpotState.JumboComplete:
-                log.Information("[Cactpot] Jumbo Cactpot Buy sequence finished");
-                GameHelpers.SendNumpadPlus();
+                if (jumboPurchasesVerified < totalTickets)
+                {
+                    log.Error($"[Cactpot] Refusing Jumbo purchase success with only {jumboPurchasesVerified}/{totalTickets} verified purchases");
+                    SetState(CactpotState.Failed);
+                    break;
+                }
+
+                log.Information("[Cactpot] Jumbo Cactpot Buy sequence verified and settled");
                 SetState(CactpotState.Complete);
                 break;
 
@@ -834,6 +913,7 @@ public class CactpotService : IDisposable
             case CactpotState.JumboCheckInteractingCashier:
                 if (GameHelpers.IsAddonVisible("LotteryWeeklyRewardList"))
                 {
+                    jumboPayoutUiObserved = true;
                     log.Information("[Cactpot] LotteryWeeklyRewardList opened for payout claim {CurrentClaim}/{TotalClaims}",
                         currentTicket,
                         totalTickets);
@@ -846,8 +926,8 @@ public class CactpotService : IDisposable
                 }
                 else if (elapsed > 6)
                 {
-                    log.Warning("[Cactpot] Cashier interaction did not surface payout UI; finishing Jumbo payout check without a reward loop");
-                    SetState(CactpotState.JumboCheckComplete);
+                    log.Error("[Cactpot] Cashier interaction did not surface payout UI; Jumbo payout completion is ambiguous");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
@@ -864,14 +944,15 @@ public class CactpotService : IDisposable
                 }
                 else if (elapsed > 4)
                 {
-                    log.Warning("[Cactpot] Payout option dialog disappeared before the reward list appeared; finishing Jumbo payout check");
-                    SetState(CactpotState.JumboCheckComplete);
+                    log.Error("[Cactpot] Payout option dialog disappeared before the reward list appeared");
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
             case CactpotState.JumboCheckWaitingForRewardList:
                 if (GameHelpers.IsAddonVisible("LotteryWeeklyRewardList"))
                 {
+                    jumboPayoutUiObserved = true;
                     log.Information("[Cactpot] LotteryWeeklyRewardList visible for payout claim {CurrentClaim}/{TotalClaims}",
                         currentTicket,
                         totalTickets);
@@ -879,28 +960,37 @@ public class CactpotService : IDisposable
                 }
                 else if (GameHelpers.IsAddonVisible("SelectYesno"))
                 {
-                    SetState(CactpotState.JumboCheckConfirmingMorePrizes);
+                    if (GameHelpers.ClickYesIfVisible())
+                    {
+                        log.Information("[Cactpot] Accepted payout confirmation while waiting for reward list");
+                        stateEnteredAt = DateTime.UtcNow;
+                    }
                 }
                 else if (elapsed > 6)
                 {
-                    log.Warning("[Cactpot] Reward list did not appear for payout claim {CurrentClaim}/{TotalClaims}; finishing Jumbo payout check",
+                    log.Error("[Cactpot] Reward list did not appear for payout claim {CurrentClaim}/{TotalClaims}; payout was not verified",
                         currentTicket,
                         totalTickets);
-                    SetState(CactpotState.JumboCheckComplete);
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
             case CactpotState.JumboCheckClosingRewardList:
                 if (GameHelpers.IsAddonVisible("LotteryWeeklyRewardList"))
                 {
+                    jumboPayoutUiObserved = true;
                     log.Information("[Cactpot] Closing LotteryWeeklyRewardList for payout claim {CurrentClaim}/{TotalClaims}",
                         currentTicket,
                         totalTickets);
                     GameHelpers.FireAddonCallback("LotteryWeeklyRewardList", true, -1);
-                    SetState(CactpotState.JumboCheckConfirmingMorePrizes);
+                    stateEnteredAt = DateTime.UtcNow;
                 }
-                else if (elapsed > 2)
+                else if (elapsed > 0.5)
                 {
+                    jumboPayoutClaimsVerified = Math.Max(jumboPayoutClaimsVerified, currentTicket);
+                    log.Information("[Cactpot] Verified Jumbo payout claim {VerifiedClaims}/{TotalClaims} after reward list closed",
+                        jumboPayoutClaimsVerified,
+                        totalTickets);
                     SetState(CactpotState.JumboCheckConfirmingMorePrizes);
                 }
                 break;
@@ -908,15 +998,45 @@ public class CactpotService : IDisposable
             case CactpotState.JumboCheckConfirmingMorePrizes:
                 if (currentTicket >= totalTickets)
                 {
-                    if (!GameHelpers.IsAddonVisible("LotteryWeeklyRewardList") && !GameHelpers.IsAddonVisible("SelectYesno"))
+                    if (GameHelpers.IsAddonVisible("SelectYesno"))
+                    {
+                        if (elapsed > JumboUiTimeout)
+                        {
+                            log.Error("[Cactpot] Final 'Claim more prizes?' prompt did not close after {VerifiedClaims}/{TotalClaims} verified claims",
+                                jumboPayoutClaimsVerified,
+                                totalTickets);
+                            SetState(CactpotState.Failed);
+                            break;
+                        }
+
+                        var now = DateTime.UtcNow;
+                        if (lastJumboCleanupAttempt == DateTime.MinValue ||
+                            (now - lastJumboCleanupAttempt).TotalSeconds >= 0.75)
+                        {
+                            lastJumboCleanupAttempt = now;
+                            log.Information("[Cactpot] Closing final 'Claim more prizes?' prompt after {VerifiedClaims}/{TotalClaims} verified claims",
+                                jumboPayoutClaimsVerified,
+                                totalTickets);
+                            GameHelpers.TryCloseAddonByCallback("SelectYesno");
+                            GameHelpers.CloseCurrentAddon();
+                        }
+                        break;
+                    }
+
+                    if (jumboPayoutUiObserved &&
+                        jumboPayoutClaimsVerified >= totalTickets &&
+                        !GameHelpers.IsAddonVisible("LotteryWeeklyRewardList") &&
+                        !GameHelpers.IsAddonVisible("SelectYesno"))
                     {
                         log.Information("[Cactpot] Finished all expected Jumbo payout claims");
-                        SetState(CactpotState.JumboCheckComplete);
+                        SetState(CactpotState.JumboCheckClosingWindows);
                     }
-                    else if (elapsed > 3)
+                    else if (elapsed > JumboUiTimeout)
                     {
-                        log.Information("[Cactpot] Final Jumbo payout UI settled after the expected claim count");
-                        SetState(CactpotState.JumboCheckComplete);
+                        log.Error("[Cactpot] Final Jumbo payout state did not settle after {VerifiedClaims}/{TotalClaims} verified claims",
+                            jumboPayoutClaimsVerified,
+                            totalTickets);
+                        SetState(CactpotState.Failed);
                     }
 
                     break;
@@ -939,22 +1059,41 @@ public class CactpotService : IDisposable
                 else if (GameHelpers.IsAddonVisible("LotteryWeeklyRewardList"))
                 {
                     currentTicket++;
-                    log.Information("[Cactpot] Reward list advanced without an intermediate Yes/No prompt; continuing to claim {CurrentClaim}/{TotalClaims}",
+                    log.Information("[Cactpot] Reward list advanced without an intermediate Yes/No prompt; closing claim {CurrentClaim}/{TotalClaims}",
                         currentTicket,
                         totalTickets);
                     SetState(CactpotState.JumboCheckClosingRewardList);
                 }
                 else if (elapsed > 6)
                 {
-                    log.Warning("[Cactpot] Follow-up payout prompt did not appear after claim {CurrentClaim}/{TotalClaims}; finishing Jumbo payout check",
+                    log.Error("[Cactpot] Follow-up payout prompt did not appear after claim {CurrentClaim}/{TotalClaims}; payout was not fully verified",
                         currentTicket,
                         totalTickets);
-                    SetState(CactpotState.JumboCheckComplete);
+                    SetState(CactpotState.Failed);
                 }
                 break;
 
+            case CactpotState.JumboCheckClosingWindows:
+                TickJumboCleanup(CactpotState.JumboCheckSettling);
+                break;
+
+            case CactpotState.JumboCheckSettling:
+                if (TickJumboSettling(CactpotState.JumboCheckClosingWindows))
+                    SetState(failAfterJumboCleanup ? CactpotState.Failed : CactpotState.JumboCheckComplete);
+                break;
+
             case CactpotState.JumboCheckComplete:
-                log.Information("[Cactpot] Jumbo Cactpot Check sequence finished");
+                if (!jumboPayoutUiObserved || jumboPayoutClaimsVerified < totalTickets)
+                {
+                    log.Error("[Cactpot] Refusing Jumbo payout success with observedUi={ObservedUi}, verifiedClaims={VerifiedClaims}/{TotalClaims}",
+                        jumboPayoutUiObserved,
+                        jumboPayoutClaimsVerified,
+                        totalTickets);
+                    SetState(CactpotState.Failed);
+                    break;
+                }
+
+                log.Information("[Cactpot] Jumbo Cactpot payout check verified and settled");
                 SetState(CactpotState.Complete);
                 break;
         }
@@ -963,6 +1102,20 @@ public class CactpotService : IDisposable
     private void SetState(CactpotState newState)
     {
         var previousState = state;
+
+        if (newState == CactpotState.Failed &&
+            IsJumboState(previousState) &&
+            previousState is not (CactpotState.JumboClosingWindows
+                or CactpotState.JumboSettling
+                or CactpotState.JumboCheckClosingWindows
+                or CactpotState.JumboCheckSettling))
+        {
+            failAfterJumboCleanup = true;
+            newState = IsJumboCheckState(previousState)
+                ? CactpotState.JumboCheckClosingWindows
+                : CactpotState.JumboClosingWindows;
+        }
+
         log.Information($"[Cactpot] {state} -> {newState}");
 
         if (newState == CactpotState.MiniTargeting)
@@ -993,6 +1146,13 @@ public class CactpotService : IDisposable
             lastJumboNavigationAttempt = DateTime.MinValue;
             lastJumboTargetAttempt = DateTime.MinValue;
         }
+        else if (newState is CactpotState.JumboClosingWindows
+                 or CactpotState.JumboSettling
+                 or CactpotState.JumboCheckClosingWindows
+                 or CactpotState.JumboCheckSettling)
+        {
+            ResetJumboCleanupTracking();
+        }
 
         if (miniRunActive &&
             IsMiniCactpotState(previousState) &&
@@ -1006,6 +1166,9 @@ public class CactpotService : IDisposable
         
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+
+        if (newState is CactpotState.Idle or CactpotState.Complete or CactpotState.Failed)
+            failAfterJumboCleanup = false;
     }
 
     private static bool IsMiniCactpotState(CactpotState value)
@@ -1024,6 +1187,52 @@ public class CactpotService : IDisposable
             or CactpotState.MiniComplete
             or CactpotState.MiniReturningHome
             or CactpotState.MiniWaitingForHome;
+
+    private static bool IsJumboState(CactpotState value)
+        => value is CactpotState.JumboLifestreaming
+            or CactpotState.JumboWaitingForZone
+            or CactpotState.JumboNavigatingToBroker
+            or CactpotState.JumboWaitingForArrival
+            or CactpotState.JumboClosingToBroker
+            or CactpotState.JumboTargetingBroker
+            or CactpotState.JumboInteractingBroker
+            or CactpotState.JumboSelectingPurchase
+            or CactpotState.JumboWaitingForInputWindow
+            or CactpotState.JumboWaitingForConfirmation
+            or CactpotState.JumboVerifyingPurchase
+            or CactpotState.JumboClosingWindows
+            or CactpotState.JumboSettling
+            or CactpotState.JumboComplete
+            or CactpotState.JumboCheckLifestreaming
+            or CactpotState.JumboCheckWaitingForZone
+            or CactpotState.JumboCheckNavigatingToCashier
+            or CactpotState.JumboCheckWaitingForArrival
+            or CactpotState.JumboCheckClosingToCashier
+            or CactpotState.JumboCheckTargetingCashier
+            or CactpotState.JumboCheckInteractingCashier
+            or CactpotState.JumboCheckSelectingPayoutOption
+            or CactpotState.JumboCheckWaitingForRewardList
+            or CactpotState.JumboCheckClosingRewardList
+            or CactpotState.JumboCheckConfirmingMorePrizes
+            or CactpotState.JumboCheckClosingWindows
+            or CactpotState.JumboCheckSettling
+            or CactpotState.JumboCheckComplete;
+
+    private static bool IsJumboCheckState(CactpotState value)
+        => value is CactpotState.JumboCheckLifestreaming
+            or CactpotState.JumboCheckWaitingForZone
+            or CactpotState.JumboCheckNavigatingToCashier
+            or CactpotState.JumboCheckWaitingForArrival
+            or CactpotState.JumboCheckClosingToCashier
+            or CactpotState.JumboCheckTargetingCashier
+            or CactpotState.JumboCheckInteractingCashier
+            or CactpotState.JumboCheckSelectingPayoutOption
+            or CactpotState.JumboCheckWaitingForRewardList
+            or CactpotState.JumboCheckClosingRewardList
+            or CactpotState.JumboCheckConfirmingMorePrizes
+            or CactpotState.JumboCheckClosingWindows
+            or CactpotState.JumboCheckSettling
+            or CactpotState.JumboCheckComplete;
 
     private void FinishMiniCactpotRun(string reason)
     {
@@ -1056,10 +1265,7 @@ public class CactpotService : IDisposable
         activeConfig.MiniCactpotTicketsToday = ticketsToday;
         MiniTicketsCompletedThisRun++;
 
-        if (ticketsToday >= totalTickets)
-            MarkMiniCactpotDailyCompleteIfNeeded(activeConfig, "ticket count reached 3");
-        else
-            activeConfig.MiniCactpotCompletedToday = false;
+        activeConfig.MiniCactpotCompletedToday = false;
 
         configManager.SaveCurrentAccount();
         log.Information("[Cactpot] Mini Cactpot ticket {CompletedTicket}/{TotalTickets} complete; tickets today {TicketsToday}/{TotalTickets}; tickets this run {TicketsThisRun}",
@@ -1068,26 +1274,6 @@ public class CactpotService : IDisposable
             ticketsToday,
             totalTickets,
             MiniTicketsCompletedThisRun);
-    }
-
-    private void MarkMiniCactpotDailyCompleteIfNeeded(CharacterConfig activeConfig, string reason)
-    {
-        if (activeConfig.MiniCactpotCompletedToday &&
-            activeConfig.MiniCactpotLastCompleted != DateTime.MinValue &&
-            activeConfig.MiniCactpotNextReset != DateTime.MinValue)
-        {
-            return;
-        }
-
-        var completedAt = DateTime.UtcNow;
-        activeConfig.MiniCactpotLastCompleted = completedAt;
-        activeConfig.MiniCactpotNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
-        activeConfig.MiniCactpotCompletedToday = true;
-        activeConfig.MiniCactpotTicketsToday = totalTickets;
-        configManager.SaveCurrentAccount();
-        log.Information("[Cactpot] Mini Cactpot daily completion recorded after {Reason}; next reset {NextReset:u}",
-            reason,
-            activeConfig.MiniCactpotNextReset);
     }
 
     private void ResetMiniNavigationState()
@@ -1320,7 +1506,71 @@ public class CactpotService : IDisposable
 
     private void StopJumboNavigation()
     {
+        var now = DateTime.UtcNow;
+        if (lastJumboNavigationStopAttempt != DateTime.MinValue &&
+            (now - lastJumboNavigationStopAttempt).TotalSeconds < 1)
+        {
+            return;
+        }
+
+        lastJumboNavigationStopAttempt = now;
         commandManager.ProcessCommand("/vnav stop");
+    }
+
+    private void TickJumboCleanup(CactpotState settlingState)
+    {
+        StopJumboNavigation();
+
+        var visibleAddons = JumboOwnedAddonNames.Where(GameHelpers.IsAddonVisible).ToList();
+        if (visibleAddons.Count == 0)
+        {
+            SetState(settlingState);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if (lastJumboCleanupAttempt != DateTime.MinValue &&
+            (now - lastJumboCleanupAttempt).TotalSeconds < 0.75)
+        {
+            return;
+        }
+
+        lastJumboCleanupAttempt = now;
+        log.Information("[Cactpot] Closing Jumbo addons: {VisibleAddons}", string.Join(", ", visibleAddons));
+        foreach (var addonName in visibleAddons)
+            GameHelpers.TryCloseAddonByCallback(addonName);
+
+        GameHelpers.CloseCurrentAddon();
+    }
+
+    private bool TickJumboSettling(CactpotState cleanupState)
+    {
+        StopJumboNavigation();
+
+        if (JumboOwnedAddonNames.Any(GameHelpers.IsAddonVisible))
+        {
+            jumboCleanupQuietSince = DateTime.MinValue;
+            SetState(cleanupState);
+            return false;
+        }
+
+        if (!GameHelpers.IsPlayerAvailable())
+        {
+            jumboCleanupQuietSince = DateTime.MinValue;
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (jumboCleanupQuietSince == DateTime.MinValue)
+            jumboCleanupQuietSince = now;
+
+        return (now - jumboCleanupQuietSince).TotalSeconds >= JumboCleanupQuietSeconds;
+    }
+
+    private void ResetJumboCleanupTracking()
+    {
+        lastJumboCleanupAttempt = DateTime.MinValue;
+        jumboCleanupQuietSince = DateTime.MinValue;
     }
 
     private bool TryTransitionJumboWaypointToTargeting(string npcName, Vector3 waypointPosition, CactpotState targetingState)
@@ -1430,6 +1680,7 @@ public class CactpotService : IDisposable
     private void IssueJumboNavigation(string command, string destinationLabel)
     {
         lastJumboNavigationAttempt = DateTime.UtcNow;
+        lastJumboNavigationStopAttempt = DateTime.MinValue;
         commandManager.ProcessCommand(command);
         log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
     }

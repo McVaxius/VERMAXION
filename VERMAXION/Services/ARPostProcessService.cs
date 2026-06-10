@@ -19,6 +19,9 @@ public class ARPostProcessService : IDisposable
     private const string PluginName = "Vermaxion";
 
     public bool IsProcessing { get; private set; } = false;
+    public bool FinishSignaled { get; private set; } = false;
+    private bool finishPreparationDone;
+    private DateTime lastFinishAttemptAt = DateTime.MinValue;
 
     public ARPostProcessService(IDalamudPluginInterface pluginInterface, IPluginLog log, Action<string> onCharacterReady, Action beforeFinishPostprocess)
     {
@@ -74,6 +77,9 @@ public class ARPostProcessService : IDisposable
 
         log.Information($"[AR] Character ready for postprocess — {PluginName}");
         IsProcessing = true;
+        FinishSignaled = false;
+        finishPreparationDone = false;
+        lastFinishAttemptAt = DateTime.MinValue;
 
         try
         {
@@ -82,33 +88,61 @@ public class ARPostProcessService : IDisposable
         catch (Exception ex)
         {
             log.Error($"[AR] Error in postprocess callback: {ex.Message}");
-            FinishPostProcess();
+            log.Error("[AR] Retaining postprocess ownership after callback failure; use Full Stop to force release.");
         }
     }
 
-    public void FinishPostProcess()
+    public bool FinishPostProcess(bool force = false)
     {
+        if (FinishSignaled)
+        {
+            log.Debug("[AR] Ignoring duplicate finish signal.");
+            return true;
+        }
+
+        var now = DateTime.UtcNow;
+        if (!force &&
+            lastFinishAttemptAt != DateTime.MinValue &&
+            now - lastFinishAttemptAt < TimeSpan.FromSeconds(2))
+        {
+            return false;
+        }
+
+        lastFinishAttemptAt = now;
         try
         {
-            try
+            if (!finishPreparationDone)
             {
-                beforeFinishPostprocess();
-            }
-            catch (Exception ex)
-            {
-                log.Error($"[AR] Error before finish postprocess callback: {ex.Message}");
+                finishPreparationDone = true;
+                try
+                {
+                    beforeFinishPostprocess();
+                }
+                catch (Exception ex)
+                {
+                    log.Error($"[AR] Error before finish postprocess callback: {ex.Message}");
+                }
             }
 
             log.Information("[AR] Signaling AR to continue (FinishCharacterPostprocessRequest)");
-            finishPostprocessSub?.InvokeAction();
+            if (finishPostprocessSub == null)
+                throw new InvalidOperationException("FinishCharacterPostprocessRequest IPC is unavailable.");
+
+            finishPostprocessSub.InvokeAction();
+            FinishSignaled = true;
+            IsProcessing = false;
+            return true;
         }
         catch (Exception ex)
         {
             log.Error($"[AR] Failed to signal finish: {ex.Message}");
-        }
-        finally
-        {
-            IsProcessing = false;
+            if (force)
+            {
+                IsProcessing = false;
+                log.Warning("[AR] Full Stop cleared local postprocess ownership after finish-signal failure.");
+            }
+
+            return false;
         }
     }
 
@@ -118,7 +152,7 @@ public class ARPostProcessService : IDisposable
         if (IsProcessing)
         {
             log.Warning("[AR] Plugin unloading while processing - signaling AR to continue");
-            FinishPostProcess();
+            FinishPostProcess(force: true);
         }
 
         try

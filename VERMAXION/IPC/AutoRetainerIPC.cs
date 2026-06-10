@@ -12,6 +12,7 @@ public sealed class AutoRetainerIPC
     private readonly ICallGateSubscriber<bool, object> setSuppressedSubscriber;
     private readonly ICallGateSubscriber<bool> isBusySubscriber;
     private bool suppressionOwnedByVermaxion;
+    private DateTime lastReleaseAttemptAt = DateTime.MinValue;
 
     public bool SuppressionOwnedByVermaxion => suppressionOwnedByVermaxion;
 
@@ -64,6 +65,7 @@ public sealed class AutoRetainerIPC
         {
             setSuppressedSubscriber.InvokeAction(true);
             suppressionOwnedByVermaxion = true;
+            lastReleaseAttemptAt = DateTime.MinValue;
             log.Information("[AR] Suppressed AutoRetainer for before-AR tasks.");
             return true;
         }
@@ -74,23 +76,38 @@ public sealed class AutoRetainerIPC
         }
     }
 
-    public void ReleaseSuppressionIfOwned()
+    public bool ReleaseSuppressionIfOwned(bool force = false)
     {
         if (!suppressionOwnedByVermaxion)
-            return;
+            return true;
 
+        var now = DateTime.UtcNow;
+        if (!force &&
+            lastReleaseAttemptAt != DateTime.MinValue &&
+            now - lastReleaseAttemptAt < TimeSpan.FromSeconds(2))
+        {
+            return false;
+        }
+
+        lastReleaseAttemptAt = now;
         try
         {
             setSuppressedSubscriber.InvokeAction(false);
+            suppressionOwnedByVermaxion = false;
+            lastReleaseAttemptAt = DateTime.MinValue;
             log.Information("[AR] Released VMX AutoRetainer suppression.");
+            return true;
         }
         catch (Exception ex)
         {
             log.Warning($"[AR] SetSuppressed(false) failed: {ex.Message}");
-        }
-        finally
-        {
-            suppressionOwnedByVermaxion = false;
+            if (force)
+            {
+                suppressionOwnedByVermaxion = false;
+                log.Warning("[AR] Full Stop cleared local VMX suppression ownership after release failure.");
+            }
+
+            return false;
         }
     }
 }
