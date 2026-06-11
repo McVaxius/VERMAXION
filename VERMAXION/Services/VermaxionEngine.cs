@@ -32,7 +32,7 @@ public class VermaxionEngine
         "/vbmai off",
         "/bmrai off",
         "/wrath auto off",
-		"/vnavmesh stop",
+		//"/vnavmesh stop",
 		"/visland stop",
         "/ad stop",
         "/sice stop",
@@ -326,7 +326,9 @@ public class VermaxionEngine
         ResetRunTracking();
         activePhaseFilter = phaseFilter;
         requireEnabledConfig = requireEnabled;
-        gateHenchmanTakeover = LifecyclePolicy.ShouldGateHenchmanTakeover(automatedRun);
+        gateHenchmanTakeover = LifecyclePolicy.ShouldGateHenchmanTakeover(
+            automatedRun,
+            afterArPostprocess: phaseFilter == RunTaskPhaseFilter.AfterAR);
         activeConfig = configManager.GetActiveConfig();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";

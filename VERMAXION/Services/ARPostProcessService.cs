@@ -1,6 +1,7 @@
 using System;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
@@ -92,7 +93,7 @@ public class ARPostProcessService : IDisposable
         }
     }
 
-    public bool FinishPostProcess(bool force = false)
+    public bool FinishPostProcess(bool force = false, ARPostProcessFinishMode mode = ARPostProcessFinishMode.Normal)
     {
         if (FinishSignaled)
         {
@@ -111,7 +112,7 @@ public class ARPostProcessService : IDisposable
         lastFinishAttemptAt = now;
         try
         {
-            if (!finishPreparationDone)
+            if (!finishPreparationDone && ARPostProcessFinishPolicy.ShouldRunBeforeFinishCallback(mode))
             {
                 finishPreparationDone = true;
                 try
@@ -124,7 +125,7 @@ public class ARPostProcessService : IDisposable
                 }
             }
 
-            log.Information("[AR] Signaling AR to continue (FinishCharacterPostprocessRequest)");
+            log.Information($"[AR] Signaling AR to continue (FinishCharacterPostprocessRequest, mode={mode})");
             if (finishPostprocessSub == null)
                 throw new InvalidOperationException("FinishCharacterPostprocessRequest IPC is unavailable.");
 

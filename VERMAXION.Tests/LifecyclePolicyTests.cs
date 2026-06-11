@@ -41,6 +41,7 @@ public sealed class LifecyclePolicyTests
     public void AutomatedRunsGateHenchmanTakeoverAndManualRunsBypassIt()
     {
         Assert.True(LifecyclePolicy.ShouldGateHenchmanTakeover(automatedRun: true));
+        Assert.False(LifecyclePolicy.ShouldGateHenchmanTakeover(automatedRun: true, afterArPostprocess: true));
         Assert.False(LifecyclePolicy.ShouldGateHenchmanTakeover(automatedRun: false));
     }
 
