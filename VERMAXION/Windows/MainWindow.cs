@@ -88,6 +88,12 @@ public class MainWindow : Window, IDisposable
         };
 
         ImGui.TextColored(stateColor, $"Engine: {engine.StatusText} (State: {engine.State})");
+        var lastRunTime = engine.LastRunCompletedAtUtc?.ToString("u") ?? "never";
+        ImGui.TextDisabled($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
+        ImGui.TextDisabled($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArGateStatus}");
+        ImGui.TextDisabled($"AR suppression: {plugin.AutoRetainerIPC.LastSnapshot}");
+        if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
+            ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Handoff blocker: {engine.ActiveHandoffBlocker}");
         
         // Task count
         var pendingTasks = engine.GetPendingTaskCount();
@@ -101,7 +107,7 @@ public class MainWindow : Window, IDisposable
         
         // Control buttons row
         // FULL STOP button - red only when plugin is in operation
-        var highlightFullStop = engine.IsRunning;
+        var highlightFullStop = engine.OwnsLiveWork || plugin.ARPostProcessService.IsProcessing || plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
         if (highlightFullStop)
         {
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0f, 0f, 1f));
@@ -118,8 +124,10 @@ public class MainWindow : Window, IDisposable
         }
         ImGui.SameLine();
         
+        ImGui.BeginDisabled(engine.IsRunning);
         if (ImGui.Button("Run All"))
             engine.ManualStart();
+        ImGui.EndDisabled();
         if (engine.IsRunning)
         {
             ImGui.SameLine();

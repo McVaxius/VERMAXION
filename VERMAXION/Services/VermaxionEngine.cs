@@ -12,7 +12,8 @@ namespace VERMAXION.Services;
 public class VermaxionEngine
 {
     private static readonly TimeSpan HandoffQuietPeriod = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan HandoffBlockerLogThrottle = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan HandoffBlockerLogThrottle = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan HandoffBlockerWarningThrottle = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusGrace = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusLogThrottle = TimeSpan.FromSeconds(30);
     private static readonly string[] NagYourMomRouteOrder =
@@ -139,11 +140,20 @@ public class VermaxionEngine
     private bool taskStartHoldLogged = false;
     private EngineState taskStartHoldState = EngineState.Idle;
     private bool? activeJumboCactpotPayoutRoute = null;
-    private EngineState pendingNextState = EngineState.Idle;
     private DateTime handoffQuietSince = DateTime.MinValue;
     private DateTime handoffBlockerLastLoggedAt = DateTime.MinValue;
     private DateTime handoffMovementStopLastIssuedAt = DateTime.MinValue;
     private string handoffBlockerReason = string.Empty;
+    private DateTime handoffBlockerSince = DateTime.MinValue;
+    private DateTime handoffBlockerLastWarningAt = DateTime.MinValue;
+    private readonly List<EngineState> runQueue = [];
+    private int runQueueIndex = -1;
+    private bool currentTaskOwnedWorkStarted;
+    private bool runOwnedWorkStarted;
+    private bool runHadFailure;
+    private RunOutcome pendingRunOutcome = RunOutcome.None;
+    private string pendingRunSummary = string.Empty;
+    private bool requireEnabledConfig;
 
     public enum EngineState
     {
@@ -184,10 +194,15 @@ public class VermaxionEngine
         bool StopAtSeriesRank25);
 
     public EngineState State => state;
-    public bool IsRunning => state != EngineState.Idle && state != EngineState.Complete && state != EngineState.Error;
+    public bool IsRunning => state != EngineState.Idle;
     public string StatusText { get; private set; } = "Idle";
     public string NagYourMomStatusText { get; private set; } = "Idle";
     public string NagYourDadStatusText { get; private set; } = "Idle";
+    public RunOutcome LastRunOutcome { get; private set; } = RunOutcome.None;
+    public string LastRunSummary { get; private set; } = "No run recorded";
+    public DateTime? LastRunCompletedAtUtc { get; private set; }
+    public string ActiveHandoffBlocker => handoffBlockerReason;
+    public bool OwnsLiveWork => IsRunning || runOwnedWorkStarted || arService.IsProcessing || autoRetainerIPC.SuppressionOwnedByVermaxion;
     
     public bool IsRunningDebug => IsRunning; // For debugging
 
@@ -244,63 +259,14 @@ public class VermaxionEngine
         clientState.TerritoryChanged += OnTerritoryChanged;
     }
 
-    public void StartPostProcess()
+    public bool StartPostProcess()
     {
-        activePhaseFilter = RunTaskPhaseFilter.AfterAR;
-        activeConfig = configManager.GetActiveConfig();
-        if (activeConfig == null || !activeConfig.Enabled)
-        {
-            log.Information("[Engine] Config not found or disabled - skipping");
-            BeginFinalHandoffSettling();
-            return;
-        }
-
-        SendStartupMiscCommandBundleIfEnabled();
-        NagYourMomStatusText = "Idle";
-        NagYourDadStatusText = "Idle";
-        log.Information("[Engine] === Starting Vermaxion post-processing ===");
-        SetState(EngineState.Starting);
+        return TryBeginRun(RunTaskPhaseFilter.AfterAR, requireEnabled: true, requireWorldReady: false, "post-processing");
     }
 
-    public void StartBeforeAutoRetainer()
+    public bool StartBeforeAutoRetainer()
     {
-        activePhaseFilter = RunTaskPhaseFilter.BeforeAR;
-
-        if (IsRunning)
-        {
-            log.Information("[Engine] Before-AR start ignored because engine is already running");
-            return;
-        }
-
-        if (!TryGetBeforeArWorldReady(out var worldReadyReason))
-        {
-            log.Warning($"[Engine] Refusing before-AR start because world is not ready: {worldReadyReason}");
-            BeginFinalHandoffSettling();
-            return;
-        }
-
-        activeConfig = configManager.GetActiveConfig();
-        if (activeConfig == null || !activeConfig.Enabled)
-        {
-            log.Information("[Engine] Config not found or disabled - skipping before-AR tasks");
-            BeginFinalHandoffSettling();
-            return;
-        }
-
-        var dueTaskIds = GetRunnableTaskIdsForPhase(activeConfig, PostProcessTaskPhase.BeforeAR).ToList();
-        log.Information($"[Engine] Before-AR runnable tasks: accountId={configManager.CurrentAccountId}, characterKey='{configManager.CurrentCharacterKey}', dueBeforeArTaskIds=[{string.Join(", ", dueTaskIds)}], owned={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
-        if (dueTaskIds.Count == 0)
-        {
-            log.Information("[Engine] No due/enabled before-AR tasks - settling before AutoRetainer release");
-            BeginFinalHandoffSettling();
-            return;
-        }
-
-        SendStartupMiscCommandBundleIfEnabled();
-        NagYourMomStatusText = "Idle";
-        NagYourDadStatusText = "Idle";
-        log.Information("[Engine] === Starting Vermaxion before-AR tasks ===");
-        SetState(EngineState.Starting);
+        return TryBeginRun(RunTaskPhaseFilter.BeforeAR, requireEnabled: true, requireWorldReady: true, "before-AR");
     }
 
     private bool TryGetBeforeArWorldReady(out string reason)
@@ -332,21 +298,49 @@ public class VermaxionEngine
         return false;
     }
 
-    public void ManualStart()
+    public bool ManualStart()
     {
-        activeConfig = configManager.GetActiveConfig();
-        if (activeConfig == null)
+        return TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false, "manual");
+    }
+
+    public void RecordSkippedOpportunity(string summary)
+    {
+        if (!IsRunning)
+            RecordRunCompletion(RunOutcome.Skipped, summary);
+    }
+
+    private bool TryBeginRun(RunTaskPhaseFilter phaseFilter, bool requireEnabled, bool requireWorldReady, string source)
+    {
+        if (!LifecyclePolicy.CanStart(IsRunning))
         {
-            log.Warning("[Engine] No active config for manual start");
-            return;
+            log.Warning($"[Engine] Rejected overlapping {source} start while state={state}");
+            return false;
         }
 
-        SendStartupMiscCommandBundleIfEnabled();
+        ResetRunTracking();
+        activePhaseFilter = phaseFilter;
+        requireEnabledConfig = requireEnabled;
+        activeConfig = configManager.GetActiveConfig();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";
-        activePhaseFilter = RunTaskPhaseFilter.All;
-        log.Information("[Engine] === Manual start ===");
-        SetState(EngineState.Starting);
+
+        if (requireWorldReady && !TryGetBeforeArWorldReady(out var worldReadyReason))
+        {
+            log.Warning($"[Engine] Skipping before-AR start because world is not ready: {worldReadyReason}");
+            BeginImmediateFinalization(RunOutcome.Skipped, "Before-AR world was not ready");
+            return true;
+        }
+
+        if (activeConfig == null || (requireEnabled && !activeConfig.Enabled))
+        {
+            log.Information($"[Engine] Skipping {source}: config missing or disabled");
+            BeginImmediateFinalization(RunOutcome.Skipped, $"{source} config missing or disabled");
+            return true;
+        }
+
+        log.Information($"[Engine] === Starting Vermaxion {source} run ===");
+        SetState(EngineState.CheckingResets);
+        return true;
     }
 
     public void Cancel()
@@ -375,8 +369,9 @@ public class VermaxionEngine
             arService.FinishPostProcess(force: true);
         yesAlreadyIPC.Unpause();
         autoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
-        pendingNextState = EngineState.Idle;
         ResetHandoffTracking();
+        RecordRunCompletion(RunOutcome.ForceStopped, "Full Stop force-released ownership");
+        ResetRunTracking();
         SetState(EngineState.Idle);
     }
 
@@ -401,48 +396,68 @@ public class VermaxionEngine
 
     public int GetPendingTaskCount()
     {
-        if (activeConfig == null) return 0;
-        
-        int count = 0;
-        if (activeConfig.EnableFCBuffRefill && !fcBuffService.IsComplete) count++;
-        if (activeConfig.EnableVendorStock && !vendorStockService.IsComplete) count++;
-        if (ShouldRunRefillFromListings(activeConfig)) count++;
-        if (activeConfig.EnableVerminionQueue && !verminionService.IsComplete) count++;
-        if (activeConfig.EnableMiniCactpot && !cactpotService.IsComplete) count++;
-        if (activeConfig.EnableJumboCactpot && !cactpotService.IsComplete) count++;
-        if (activeConfig.EnableChocoboRacing && !chocoboRaceService.IsComplete) count++;
-        if (ShouldCountNagYourMom(activeConfig)) count++;
-        if (ShouldCountNagYourDad(activeConfig)) count++;
-        
-        return count;
+        return Math.Max(0, runQueue.Count - Math.Max(0, runQueueIndex + 1));
     }
 
     public void Update()
     {
-        if (state == EngineState.Idle || state == EngineState.Complete || state == EngineState.Error)
+        if (state == EngineState.Idle)
             return;
 
+        try
+        {
+            UpdateCore();
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[Engine] Unhandled engine exception while state={state}: {ex}");
+            runHadFailure = true;
+            pendingRunOutcome = RunOutcome.Failed;
+            pendingRunSummary = $"Unhandled exception in {state}: {ex.Message}";
+            if (LifecyclePolicy.RequiresSettling(runOwnedWorkStarted))
+                BeginFinalHandoffSettling();
+            else
+                SetState(EngineState.SignalingARDone);
+        }
+    }
+
+    private void UpdateCore()
+    {
         var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
 
         switch (state)
         {
             case EngineState.Starting:
                 if (elapsed < 1.5) return; // AR settle delay
-                yesAlreadyIPC.Pause();
-                SetState(EngineState.DisablingHenchman);
-                break;
+                RevalidatePlannedQueue();
+                if (runQueue.Count == 0)
+                {
+                    BeginImmediateFinalization(RunOutcome.Skipped, "Planned tasks were no longer runnable before dispatch");
+                    break;
+                }
 
-            case EngineState.DisablingHenchman:
+                SendStartupMiscCommandBundleIfEnabled();
+                yesAlreadyIPC.Pause();
                 if (activeConfig!.EnableHenchmanManagement)
                 {
                     henchmanService.StopHenchman();
                     log.Information("[Engine] Henchman disabled");
                 }
-                SetState(EngineState.CheckingResets);
+                DispatchNextQueuedTask();
+                break;
+
+            case EngineState.DisablingHenchman:
+                DispatchNextQueuedTask();
                 break;
 
             case EngineState.CheckingResets:
                 activeConfig = GetLiveActiveConfig();
+                if (activeConfig == null || (requireEnabledConfig && !activeConfig.Enabled))
+                {
+                    BeginImmediateFinalization(RunOutcome.Skipped, "Config became unavailable or disabled before planning");
+                    break;
+                }
+
                 weeklyResetDetected = resetService.CheckWeeklyReset(activeConfig!);
                 dailyResetDetected = resetService.CheckDailyReset(activeConfig!);
                 
@@ -452,11 +467,15 @@ public class VermaxionEngine
                 configManager.SaveCurrentAccount();
 
                 log.Information($"[Engine] Weekly reset: {weeklyResetDetected}, Daily reset: {dailyResetDetected}, Saturday: {resetService.IsSaturday()}");
-                var firstTaskState = GetFirstOrderedTaskState();
-                if (firstTaskState == EngineState.EnablingHenchman)
-                    BeginFinalHandoffSettling();
-                else
-                    SetState(firstTaskState);
+                BuildRunQueue(activeConfig);
+                if (runQueue.Count == 0)
+                {
+                    BeginImmediateFinalization(RunOutcome.Skipped, "No enabled and due tasks");
+                    break;
+                }
+
+                log.Information($"[Engine] Runnable queue: [{string.Join(", ", runQueue.Select(taskState => TaskIdByState[taskState]))}]");
+                SetState(EngineState.Starting);
                 break;
 
             case EngineState.RunningFCBuff:
@@ -467,7 +486,8 @@ public class VermaxionEngine
                         // Clean slate before starting FC Buff
                         log.Information("[Engine] Clean slate: clearing open UI before FC Buff");
                         ResetInteractionState();
-                        
+
+                        MarkCurrentTaskWorkStarted();
                         fcBuffService.Start(activeConfig.FCBuffPurchaseAttempts);
                         return;
                     }
@@ -477,7 +497,10 @@ public class VermaxionEngine
                     if (fcBuffService.IsComplete || fcBuffService.IsFailed)
                     {
                         if (fcBuffService.IsFailed)
+                        {
                             log.Warning("[Engine] FC buff refill failed - continuing");
+                            runHadFailure = true;
+                        }
                         fcBuffService.Reset();
                         AdvanceToNextTask(EngineState.RunningFCBuff);
                     }
@@ -495,6 +518,7 @@ public class VermaxionEngine
                     {
                         log.Information("[Engine] Starting Vendor Stock");
                         ResetInteractionState();
+                        MarkCurrentTaskWorkStarted();
                         vendorStockService.Start();
                         return;
                     }
@@ -510,6 +534,7 @@ public class VermaxionEngine
                     else if (vendorStockService.IsFailed)
                     {
                         log.Warning("[Engine] Vendor Stock failed - continuing");
+                        runHadFailure = true;
                         vendorStockService.Reset();
                         AdvanceToNextTask(EngineState.RunningVendorStock);
                     }
@@ -526,6 +551,7 @@ public class VermaxionEngine
                     if (!registerRegistrablesService.IsActive && !registerRegistrablesService.IsComplete && !registerRegistrablesService.IsFailed)
                     {
                         log.Information("[Engine] Starting Register Registrables");
+                        MarkCurrentTaskWorkStarted();
                         registerRegistrablesService.Start();
                         return;
                     }
@@ -541,6 +567,7 @@ public class VermaxionEngine
                     else if (registerRegistrablesService.IsFailed)
                     {
                         log.Warning("[Engine] Register Registrables failed - continuing");
+                        runHadFailure = true;
                         registerRegistrablesService.Reset();
                         AdvanceToNextTask(EngineState.RunningRegisterRegistrables);
                     }
@@ -559,6 +586,7 @@ public class VermaxionEngine
                     {
                         log.Information("[Engine] Starting Retainer Listing Refill");
                         ResetInteractionState();
+                        MarkCurrentTaskWorkStarted();
                         retainerListingRefillService.Start(activeConfig!);
                         return;
                     }
@@ -575,6 +603,7 @@ public class VermaxionEngine
                     else if (retainerListingRefillService.IsFailed)
                     {
                         log.Warning($"[Engine] Retainer Listing Refill failed - continuing: {retainerListingRefillService.LastError}");
+                        runHadFailure = true;
                         retainerListingRefillService.Reset();
                         AdvanceToNextTask(EngineState.RunningRetainerListingRefill);
                     }
@@ -595,7 +624,8 @@ public class VermaxionEngine
                         // Clean slate before starting Verminion
                         log.Information("[Engine] Clean slate: clearing open UI before Verminion");
                         ResetInteractionState();
-                        
+
+                        MarkCurrentTaskWorkStarted();
                         verminionService.Start();
                         return;
                     }
@@ -617,6 +647,7 @@ public class VermaxionEngine
                     else if (verminionService.IsFailed)
                     {
                         log.Warning("[Engine] Verminion failed - continuing");
+                        runHadFailure = true;
                         MarkWeeklyTaskFailed(
                             taskName: "Verminion",
                             clearLegacyFlag: config => config.VerminionCompletedThisWeek = false);
@@ -643,7 +674,8 @@ public class VermaxionEngine
                         // Clean slate before starting Mini Cactpot
                         log.Information("[Engine] Clean slate: clearing open UI before Mini Cactpot");
                         ResetInteractionState();
-                        
+
+                        MarkCurrentTaskWorkStarted();
                         cactpotService.StartMiniCactpot();
                         return;
                     }
@@ -666,6 +698,7 @@ public class VermaxionEngine
                     else if (cactpotService.IsFailed)
                     {
                         log.Warning("[Engine] Mini Cactpot failed - continuing");
+                        runHadFailure = true;
                         PersistCurrentCharacterConfig(config =>
                         {
                             config.MiniCactpotCompletedToday = false;
@@ -700,6 +733,7 @@ public class VermaxionEngine
                         // Clean slate before starting Jumbo Cactpot
                         log.Information("[Engine] Clean slate: clearing open UI before Jumbo Cactpot");
                         ResetInteractionState();
+                        MarkCurrentTaskWorkStarted();
 
                         if (runSaturdayPayout)
                         {
@@ -735,6 +769,7 @@ public class VermaxionEngine
                     else if (cactpotService.IsFailed)
                     {
                         log.Warning("[Engine] Jumbo Cactpot failed - continuing");
+                        runHadFailure = true;
                         MarkJumboCactpotFailed(routeWasPayout);
                         cactpotService.Reset();
                         activeJumboCactpotPayoutRoute = null;
@@ -758,8 +793,9 @@ public class VermaxionEngine
                         // Clean slate before starting Fashion Report
                         log.Information("[Engine] Clean slate: clearing open UI before Fashion Report");
                         ResetInteractionState();
-                        
+
                         log.Information("[Engine] Starting Fashion Report (Friday 09:00 UTC through weekly reset)");
+                        MarkCurrentTaskWorkStarted();
                         fashionReportService.Start();
                         return;
                     }
@@ -781,6 +817,7 @@ public class VermaxionEngine
                     else if (fashionReportService.IsFailed)
                     {
                         log.Warning("[Engine] Fashion Report failed - continuing");
+                        runHadFailure = true;
                         MarkWeeklyTaskFailed(
                             taskName: "Fashion Report",
                             clearLegacyFlag: config => config.FashionReportCompletedThisWeek = false);
@@ -804,7 +841,8 @@ public class VermaxionEngine
                         // Clean slate before starting Chocobo Racing
                         log.Information("[Engine] Clean slate: clearing open UI before Chocobo Racing");
                         ResetInteractionState();
-                        
+
+                        MarkCurrentTaskWorkStarted();
                         chocoboRaceService.Start();
                         return;
                     }
@@ -826,6 +864,7 @@ public class VermaxionEngine
                     else if (chocoboRaceService.IsFailed)
                     {
                         log.Warning("[Engine] Chocobo Racing failed - continuing");
+                        runHadFailure = true;
                         MarkDailyTaskFailed(
                             taskName: "Chocobo Racing",
                             clearLegacyFlag: config => config.ChocoboRacingCompletedToday = false);
@@ -892,6 +931,7 @@ public class VermaxionEngine
                     }
 
                     TrackAcceptedNagYourMomRequest(startResult, nagRoutePlan);
+                    MarkCurrentTaskWorkStarted();
                     log.Information($"[Engine] nag your mom accepted: route={startResult.Route}, job={activeConfig!.NagYourMomJob}, requestedRuns={nagYourMomRequestedRuns}, stopAtSeriesRank25={stopAtSeriesRank25}, status={startResult.Status}");
 
                     if (startResult.Status == MomRunStatus.Completed)
@@ -914,6 +954,7 @@ public class VermaxionEngine
                         return;
 
                     var creditedAfterLostStatus = CreditNagYourMomRunCount(nagYourMomActiveRoute, nagYourMomLastCompletedRuns, currentMomStatus.Summary);
+                    runHadFailure = true;
                     log.Warning($"[Engine] nag your mom status lost after active request; advancing as failed after grace. reason={currentMomStatus.FailureReason}, creditedRuns={creditedAfterLostStatus}, requestedRuns={nagYourMomRequestedRuns}");
                     ClearNagYourMomTracking();
                     nagYourMomRouteCursor++;
@@ -933,6 +974,7 @@ public class VermaxionEngine
                         return;
 
                     var creditedAfterIdle = CreditNagYourMomRunCount(nagYourMomActiveRoute, nagYourMomLastCompletedRuns, currentMomStatus.Summary);
+                    runHadFailure = true;
                     log.Warning($"[Engine] nag your mom returned Idle during active request; advancing as failed after grace. creditedRuns={creditedAfterIdle}, requestedRuns={nagYourMomRequestedRuns}");
                     ClearNagYourMomTracking();
                     nagYourMomRouteCursor++;
@@ -949,6 +991,7 @@ public class VermaxionEngine
                 else
                 {
                     var creditedRuns = CreditNagYourMomTerminalResult(currentMomStatus);
+                    runHadFailure = true;
                     ClearNagYourMomTracking();
                     nagYourMomRouteCursor++;
                     log.Warning($"[Engine] nag your mom ended with status {currentMomStatus.Status}: {currentMomStatus.Summary}; creditedRuns={creditedRuns}, completedRuns={currentMomStatus.CompletedRunCount}, requestedRuns={currentMomStatus.RequestedRunCount}");
@@ -995,11 +1038,13 @@ public class VermaxionEngine
 
                     if (dadStartResult.Status == DadRunStatus.Completed)
                     {
+                        MarkCurrentTaskWorkStarted();
                         log.Information("[Engine] nag your dad completed immediately");
                         AdvanceToNextTask(EngineState.RunningNagYourDad);
                         break;
                     }
 
+                    MarkCurrentTaskWorkStarted();
                     nagYourDadRequestIssued = true;
                     return;
                 }
@@ -1013,7 +1058,10 @@ public class VermaxionEngine
                 if (currentDadStatus.Status == DadRunStatus.Completed)
                     log.Information("[Engine] nag your dad completed successfully");
                 else
+                {
+                    runHadFailure = true;
                     log.Warning($"[Engine] nag your dad ended with status {currentDadStatus.Status}: {currentDadStatus.Summary}");
+                }
 
                 AdvanceToNextTask(EngineState.RunningNagYourDad);
                 break;
@@ -1022,13 +1070,8 @@ public class VermaxionEngine
                 if (!TickHandoffSettling("task handoff"))
                     break;
 
-                var nextState = pendingNextState;
-                pendingNextState = EngineState.Idle;
                 ResetHandoffTracking();
-                if (nextState == EngineState.EnablingHenchman)
-                    SetState(EngineState.SettlingFinalHandoff);
-                else
-                    SetState(nextState);
+                DispatchNextQueuedTask();
                 break;
 
             case EngineState.SettlingFinalHandoff:
@@ -1044,7 +1087,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.SignalingARDone:
-                var finalBlocker = GetHandoffBlocker();
+                var finalBlocker = runOwnedWorkStarted ? GetHandoffBlocker() : null;
                 if (finalBlocker != null)
                 {
                     log.Information($"[Engine] Final handoff blocker appeared after quiet period: {finalBlocker}");
@@ -1052,7 +1095,6 @@ public class VermaxionEngine
                     break;
                 }
 
-                var wasArPostprocess = arService.IsProcessing;
                 if (arService.IsProcessing)
                 {
                     if (!arService.FinishPostProcess())
@@ -1063,7 +1105,7 @@ public class VermaxionEngine
 
                     log.Information("[Engine] Signaled AR to continue");
                 }
-                if (activePhaseFilter != RunTaskPhaseFilter.AfterAR || !wasArPostprocess)
+                if (activePhaseFilter == RunTaskPhaseFilter.BeforeAR)
                 {
                     if (!autoRetainerIPC.ReleaseSuppressionIfOwned())
                     {
@@ -1079,8 +1121,7 @@ public class VermaxionEngine
                 }
 
                 yesAlreadyIPC.Unpause();
-                SetState(EngineState.Complete);
-                log.Information("[Engine] === Vermaxion post-processing complete ===");
+                CompleteRun();
                 break;
         }
     }
@@ -1216,14 +1257,30 @@ public class VermaxionEngine
 
     private void AdvanceToNextTask(EngineState currentTask)
     {
-        pendingNextState = GetNextOrderedTaskState(currentTask);
+        if (!currentTaskOwnedWorkStarted)
+        {
+            log.Information($"[Engine] {currentTask} did not start owned work; advancing without settling");
+            DispatchNextQueuedTask();
+            return;
+        }
+
+        currentTaskOwnedWorkStarted = false;
         SetState(EngineState.SettlingTask);
     }
 
     private void BeginFinalHandoffSettling()
     {
-        pendingNextState = EngineState.Idle;
-        SetState(EngineState.SettlingFinalHandoff);
+        if (LifecyclePolicy.RequiresSettling(runOwnedWorkStarted))
+            SetState(EngineState.SettlingFinalHandoff);
+        else
+            SetState(EngineState.SignalingARDone);
+    }
+
+    private void BeginImmediateFinalization(RunOutcome outcome, string summary)
+    {
+        pendingRunOutcome = outcome;
+        pendingRunSummary = summary;
+        BeginFinalHandoffSettling();
     }
 
     private void CancelForSettling(string status)
@@ -1235,7 +1292,15 @@ public class VermaxionEngine
         TryCloseOwnedUiBestEffort();
         NagYourMomStatusText = status;
         NagYourDadStatusText = status;
+        pendingRunOutcome = RunOutcome.Cancelled;
+        pendingRunSummary = status;
         BeginFinalHandoffSettling();
+    }
+
+    private void MarkCurrentTaskWorkStarted()
+    {
+        currentTaskOwnedWorkStarted = true;
+        runOwnedWorkStarted = true;
     }
 
     private void ResetTaskServices()
@@ -1266,12 +1331,27 @@ public class VermaxionEngine
             handoffBlockerReason = blocker;
             StatusText = $"Settling: {blocker}";
 
-            if (blockerChanged ||
-                handoffBlockerLastLoggedAt == DateTime.MinValue ||
-                now - handoffBlockerLastLoggedAt >= HandoffBlockerLogThrottle)
+            if (blockerChanged)
+            {
+                handoffBlockerSince = now;
+                handoffBlockerLastWarningAt = DateTime.MinValue;
+                log.Information($"[Engine] Waiting for {phase}: {blocker}");
+                handoffBlockerLastLoggedAt = now;
+            }
+            else if (handoffBlockerLastLoggedAt == DateTime.MinValue ||
+                     now - handoffBlockerLastLoggedAt >= HandoffBlockerLogThrottle)
             {
                 log.Information($"[Engine] Waiting for {phase}: {blocker}");
                 handoffBlockerLastLoggedAt = now;
+            }
+
+            if (handoffBlockerSince != DateTime.MinValue &&
+                now - handoffBlockerSince >= HandoffBlockerWarningThrottle &&
+                (handoffBlockerLastWarningAt == DateTime.MinValue ||
+                 now - handoffBlockerLastWarningAt >= HandoffBlockerWarningThrottle))
+            {
+                log.Warning($"[Engine] Handoff remains blocked for {(now - handoffBlockerSince).TotalSeconds:F0}s: {blocker}. Ownership retained; Full Stop is the only forced release.");
+                handoffBlockerLastWarningAt = now;
             }
 
             return false;
@@ -1363,6 +1443,8 @@ public class VermaxionEngine
         handoffBlockerLastLoggedAt = DateTime.MinValue;
         handoffMovementStopLastIssuedAt = DateTime.MinValue;
         handoffBlockerReason = string.Empty;
+        handoffBlockerSince = DateTime.MinValue;
+        handoffBlockerLastWarningAt = DateTime.MinValue;
     }
 
     private void StopMovementForHandoff()
@@ -1378,34 +1460,43 @@ public class VermaxionEngine
         vNavmeshIPC.Stop();
     }
 
-    private EngineState GetFirstOrderedTaskState()
+    private void BuildRunQueue(CharacterConfig config)
     {
-        foreach (var id in GetNormalizedTaskOrder())
-        {
-            if (TaskStateById.TryGetValue(id, out var taskState))
-                return taskState;
-        }
-
-        return EngineState.EnablingHenchman;
+        runQueue.Clear();
+        runQueueIndex = -1;
+        var runnableIds = LifecyclePolicy.BuildRunnableQueue(
+            GetNormalizedTaskOrder(),
+            _ => true,
+            id => ShouldRunTask(id, config));
+        runQueue.AddRange(runnableIds.Select(id => TaskStateById[id]));
     }
 
-    private EngineState GetNextOrderedTaskState(EngineState currentTask)
+    private void DispatchNextQueuedTask()
     {
-        if (!TaskIdByState.TryGetValue(currentTask, out var currentId))
-            return EngineState.EnablingHenchman;
-
-        var order = GetNormalizedTaskOrder();
-        var currentIndex = order.IndexOf(currentId);
-        if (currentIndex < 0)
-            return EngineState.EnablingHenchman;
-
-        for (var index = currentIndex + 1; index < order.Count; index++)
+        currentTaskOwnedWorkStarted = false;
+        while (++runQueueIndex < runQueue.Count)
         {
-            if (TaskStateById.TryGetValue(order[index], out var taskState))
-                return taskState;
+            var nextState = runQueue[runQueueIndex];
+            var taskId = TaskIdByState[nextState];
+            var liveConfig = GetLiveActiveConfig();
+            if (!ShouldRunTask(taskId, liveConfig))
+            {
+                log.Information($"[Engine] Skipping queued task after dispatch revalidation: {taskId}");
+                continue;
+            }
+
+            SetState(nextState);
+            return;
         }
 
-        return EngineState.EnablingHenchman;
+        BeginFinalHandoffSettling();
+    }
+
+    private void RevalidatePlannedQueue()
+    {
+        var liveConfig = GetLiveActiveConfig();
+        runQueue.RemoveAll(taskState => !ShouldRunTask(TaskIdByState[taskState], liveConfig));
+        runQueueIndex = -1;
     }
 
     private List<string> GetNormalizedTaskOrder()
@@ -1440,10 +1531,10 @@ public class VermaxionEngine
         if (PostProcessTaskOrder.Normalize(configuration))
             configuration.Save();
 
-        return configuration.PostProcessTaskOrder
-            .Where(id => configuration.PostProcessTaskPlacement.TryGetValue(id, out var placement) && placement == phase)
-            .Where(id => ShouldRunTask(id, config))
-            .ToList();
+        return LifecyclePolicy.BuildRunnableQueue(
+            configuration.PostProcessTaskOrder,
+            id => configuration.PostProcessTaskPlacement.TryGetValue(id, out var placement) && placement == phase,
+            id => ShouldRunTask(id, config));
     }
 
     private bool ShouldRunTask(string id, CharacterConfig config)
@@ -1452,7 +1543,8 @@ public class VermaxionEngine
         {
             PostProcessTaskOrder.RefillListings => ShouldRunRefillFromListings(config),
             PostProcessTaskOrder.FCBuffRefill => config.EnableFCBuffRefill,
-            PostProcessTaskOrder.VendorStock => config.EnableVendorStock,
+            PostProcessTaskOrder.VendorStock => config.EnableVendorStock &&
+                (config.VendorStockGysahlGreensTarget > 0 || config.VendorStockGrade8DarkMatterTarget > 0),
             PostProcessTaskOrder.RegisterRegistrables => config.EnableRegisterRegistrables,
             PostProcessTaskOrder.VerminionQueue => config.EnableVerminionQueue &&
                 ResetDetectionService.TaskNeedsRun(config.VerminionLastCompleted, config.VerminionNextReset),
@@ -1461,13 +1553,60 @@ public class VermaxionEngine
             PostProcessTaskOrder.JumboCactpot => config.EnableJumboCactpot &&
                 ResetDetectionService.TaskNeedsRun(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset),
             PostProcessTaskOrder.FashionReport => config.EnableFashionReport &&
+                ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) &&
                 ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset),
             PostProcessTaskOrder.ChocoboRacing => config.EnableChocoboRacing &&
                 ResetDetectionService.TaskNeedsRun(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset),
-            PostProcessTaskOrder.NagYourMom => ShouldCountNagYourMom(config),
-            PostProcessTaskOrder.NagYourDad => ShouldCountNagYourDad(config),
+            PostProcessTaskOrder.NagYourMom => ShouldRunNagYourMomNow(config) && momIPCClient.GetReadiness().CanStart,
+            PostProcessTaskOrder.NagYourDad => ShouldRunNagYourDadNow(config, out _) && dadIPCClient.IsReady(),
             _ => false,
         };
+    }
+
+    private void CompleteRun()
+    {
+        var outcome = pendingRunOutcome != RunOutcome.None
+            ? pendingRunOutcome
+            : runHadFailure
+                ? RunOutcome.PartialFailure
+                : runOwnedWorkStarted
+                    ? RunOutcome.Succeeded
+                    : RunOutcome.Skipped;
+        var summary = !string.IsNullOrWhiteSpace(pendingRunSummary)
+            ? pendingRunSummary
+            : outcome switch
+            {
+                RunOutcome.Succeeded => "All planned work completed",
+                RunOutcome.PartialFailure => "Run completed with one or more task failures",
+                RunOutcome.Skipped => "No runnable work",
+                _ => outcome.ToString(),
+            };
+
+        RecordRunCompletion(outcome, summary);
+        log.Information($"[Engine] === Vermaxion run complete: outcome={outcome}, summary={summary} ===");
+        ResetRunTracking();
+        SetState(EngineState.Idle);
+    }
+
+    private void RecordRunCompletion(RunOutcome outcome, string summary)
+    {
+        LastRunOutcome = outcome;
+        LastRunSummary = summary;
+        LastRunCompletedAtUtc = DateTime.UtcNow;
+    }
+
+    private void ResetRunTracking()
+    {
+        runQueue.Clear();
+        runQueueIndex = -1;
+        currentTaskOwnedWorkStarted = false;
+        runOwnedWorkStarted = false;
+        runHadFailure = false;
+        pendingRunOutcome = RunOutcome.None;
+        pendingRunSummary = string.Empty;
+        requireEnabledConfig = false;
+        activeConfig = null;
+        activePhaseFilter = RunTaskPhaseFilter.All;
     }
 
     private void SetState(EngineState newState)
@@ -1589,6 +1728,19 @@ public class VermaxionEngine
 
         RollNagYourMomLocalDay(config);
         return NagYourMomRouteOrder.Any(route => IsNagYourMomRouteDue(config, route));
+    }
+
+    private bool ShouldRunNagYourMomNow(CharacterConfig config)
+    {
+        if (!ShouldCountNagYourMom(config))
+            return false;
+        if (!TryParseLocalTime(config.NagYourMomWindowStartLocal, out var start) ||
+            !TryParseLocalTime(config.NagYourMomWindowEndLocal, out var end))
+        {
+            return false;
+        }
+
+        return IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end);
     }
 
     private bool TryGetNextNagYourMomRoute(CharacterConfig config, out NagYourMomRoutePlan plan, out string reason)

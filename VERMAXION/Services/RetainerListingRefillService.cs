@@ -177,7 +177,7 @@ public sealed class RetainerListingRefillService
 
         if (!GameHelpers.IsAddonVisible(RetainerListAddonName))
         {
-            log.Information($"[Listings] Opening retainer bell: route={route}, mode=Lifestream-first, lifestreamSkipped=False, state={state}, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+            log.Information($"[Listings] Opening retainer bell: route={route}, mode=Lifestream-first, lifestreamSkipped=False, state={state}, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}, suppression={autoRetainerIPC.GetSuppressionSnapshot()}");
             workshopBellService.Start(route);
             SetState(RefillState.OpeningWorkshopBell, $"Routing to {GetRouteLabel(route)} bell...");
             return;
@@ -701,12 +701,12 @@ public sealed class RetainerListingRefillService
             ResetRetainerPhaseFlags();
             if (GameHelpers.IsAddonVisible(RetainerListAddonName))
             {
-                log.Information($"[Listings] Returning to RetainerList for next target; no Lifestream route. targetIndex={targetIndex}, targets={targets.Count}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+                log.Information($"[Listings] Returning to RetainerList for next target; no Lifestream route. targetIndex={targetIndex}, targets={targets.Count}, suppression={autoRetainerIPC.GetSuppressionSnapshot()}");
                 SetState(RefillState.SelectingRetainer, "Selecting next retainer...");
                 return;
             }
 
-            log.Information($"[Listings] RetainerList vanished before next target; reopening nearby bell locally without Lifestream route. targetIndex={targetIndex}, targets={targets.Count}, route={route}, suppressionOwnedByVermaxion={autoRetainerIPC.SuppressionOwnedByVermaxion}, currentSuppressed={autoRetainerIPC.GetSuppressed()}");
+            log.Information($"[Listings] RetainerList vanished before next target; reopening nearby bell locally without Lifestream route. targetIndex={targetIndex}, targets={targets.Count}, route={route}, suppression={autoRetainerIPC.GetSuppressionSnapshot()}");
             SetState(RefillState.MovingToBell, "Reopening retainer bell locally...");
             return;
         }
