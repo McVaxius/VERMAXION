@@ -30,8 +30,8 @@ public class VermaxionEngine
         "/vbmai off",
         "/bmrai off",
         "/wrath auto off",
-		"/vnavmesh stop",
-		"/visland stop",
+		//"/vnavmesh stop", //we don't need this actually.
+		//"/visland stop",
         "/ad stop",
         "/sice stop",
         "/ochillegal off",
