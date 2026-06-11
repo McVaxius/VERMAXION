@@ -51,6 +51,8 @@ internal static class LifecyclePolicy
 {
     public static bool CanStart(bool isRunning) => !isRunning;
 
+    public static bool ShouldGateHenchmanTakeover(bool automatedRun) => automatedRun;
+
     public static bool RequiresSettling(bool ownedWorkStarted) => ownedWorkStarted;
 
     public static bool ShouldSkipBeforeArForTimeout(TimeSpan elapsed, bool workStarted, TimeSpan timeout)

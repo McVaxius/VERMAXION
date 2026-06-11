@@ -14,6 +14,8 @@ public class VermaxionEngine
     private static readonly TimeSpan HandoffQuietPeriod = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan HandoffBlockerLogThrottle = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan HandoffBlockerWarningThrottle = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan HenchmanTakeoverPollInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan HenchmanTakeoverLogThrottle = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan NagYourMomLostStatusGrace = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusLogThrottle = TimeSpan.FromSeconds(30);
     private static readonly string[] NagYourMomRouteOrder =
@@ -154,6 +156,10 @@ public class VermaxionEngine
     private RunOutcome pendingRunOutcome = RunOutcome.None;
     private string pendingRunSummary = string.Empty;
     private bool requireEnabledConfig;
+    private bool gateHenchmanTakeover;
+    private DateTime henchmanTakeoverLastCheckedAt = DateTime.MinValue;
+    private DateTime henchmanTakeoverLastLoggedAt = DateTime.MinValue;
+    private HenchmanTakeoverReadiness henchmanTakeoverReadiness;
 
     public enum EngineState
     {
@@ -261,12 +267,12 @@ public class VermaxionEngine
 
     public bool StartPostProcess()
     {
-        return TryBeginRun(RunTaskPhaseFilter.AfterAR, requireEnabled: true, requireWorldReady: false, "post-processing");
+        return TryBeginRun(RunTaskPhaseFilter.AfterAR, requireEnabled: true, requireWorldReady: false, automatedRun: true, "post-processing");
     }
 
     public bool StartBeforeAutoRetainer()
     {
-        return TryBeginRun(RunTaskPhaseFilter.BeforeAR, requireEnabled: true, requireWorldReady: true, "before-AR");
+        return TryBeginRun(RunTaskPhaseFilter.BeforeAR, requireEnabled: true, requireWorldReady: true, automatedRun: true, "before-AR");
     }
 
     private bool TryGetBeforeArWorldReady(out string reason)
@@ -300,7 +306,7 @@ public class VermaxionEngine
 
     public bool ManualStart()
     {
-        return TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false, "manual");
+        return TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false, automatedRun: false, "manual");
     }
 
     public void RecordSkippedOpportunity(string summary)
@@ -309,7 +315,7 @@ public class VermaxionEngine
             RecordRunCompletion(RunOutcome.Skipped, summary);
     }
 
-    private bool TryBeginRun(RunTaskPhaseFilter phaseFilter, bool requireEnabled, bool requireWorldReady, string source)
+    private bool TryBeginRun(RunTaskPhaseFilter phaseFilter, bool requireEnabled, bool requireWorldReady, bool automatedRun, string source)
     {
         if (!LifecyclePolicy.CanStart(IsRunning))
         {
@@ -320,6 +326,7 @@ public class VermaxionEngine
         ResetRunTracking();
         activePhaseFilter = phaseFilter;
         requireEnabledConfig = requireEnabled;
+        gateHenchmanTakeover = LifecyclePolicy.ShouldGateHenchmanTakeover(automatedRun);
         activeConfig = configManager.GetActiveConfig();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";
@@ -435,6 +442,9 @@ public class VermaxionEngine
                     BeginImmediateFinalization(RunOutcome.Skipped, "Planned tasks were no longer runnable before dispatch");
                     break;
                 }
+
+                if (ShouldHoldForHenchmanTakeover())
+                    break;
 
                 SendStartupMiscCommandBundleIfEnabled();
                 yesAlreadyIPC.Pause();
@@ -1605,6 +1615,8 @@ public class VermaxionEngine
         pendingRunOutcome = RunOutcome.None;
         pendingRunSummary = string.Empty;
         requireEnabledConfig = false;
+        gateHenchmanTakeover = false;
+        ResetHenchmanTakeoverTracking();
         activeConfig = null;
         activePhaseFilter = RunTaskPhaseFilter.All;
     }
@@ -1662,6 +1674,48 @@ public class VermaxionEngine
             StopMovementForHandoff();
             yesAlreadyIPC.Pause();
         }
+    }
+
+    private bool ShouldHoldForHenchmanTakeover()
+    {
+        if (!gateHenchmanTakeover)
+            return false;
+
+        var now = DateTime.UtcNow;
+        if (henchmanTakeoverLastCheckedAt == DateTime.MinValue ||
+            now - henchmanTakeoverLastCheckedAt >= HenchmanTakeoverPollInterval)
+        {
+            henchmanTakeoverReadiness = henchmanService.GetTakeoverReadiness();
+            henchmanTakeoverLastCheckedAt = now;
+
+            if (henchmanTakeoverReadiness.AllowTakeover)
+            {
+                if (henchmanTakeoverLastLoggedAt != DateTime.MinValue)
+                    log.Information($"[Engine] Henchman takeover is safe: {henchmanTakeoverReadiness.Reason}");
+                ResetHenchmanTakeoverTracking();
+                return false;
+            }
+
+            if (henchmanTakeoverLastLoggedAt == DateTime.MinValue ||
+                now - henchmanTakeoverLastLoggedAt >= HenchmanTakeoverLogThrottle)
+            {
+                log.Warning($"[Engine] Holding automated run for Henchman: {henchmanTakeoverReadiness.Reason}");
+                henchmanTakeoverLastLoggedAt = now;
+            }
+        }
+
+        if (henchmanTakeoverReadiness.AllowTakeover)
+            return false;
+
+        StatusText = $"Waiting for Henchman: {henchmanTakeoverReadiness.DisplayDescription}";
+        return true;
+    }
+
+    private void ResetHenchmanTakeoverTracking()
+    {
+        henchmanTakeoverLastCheckedAt = DateTime.MinValue;
+        henchmanTakeoverLastLoggedAt = DateTime.MinValue;
+        henchmanTakeoverReadiness = default;
     }
 
     private CharacterConfig GetLiveActiveConfig()

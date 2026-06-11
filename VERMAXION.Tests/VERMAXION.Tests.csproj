@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\VERMAXION\Models\HenchmanTakeoverReadiness.cs" Link="HenchmanTakeoverReadiness.cs" />
     <Compile Include="..\VERMAXION\Models\LifecycleStatus.cs" Link="LifecycleStatus.cs" />
   </ItemGroup>
 </Project>

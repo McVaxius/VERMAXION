@@ -38,6 +38,13 @@ public sealed class LifecyclePolicyTests
     }
 
     [Fact]
+    public void AutomatedRunsGateHenchmanTakeoverAndManualRunsBypassIt()
+    {
+        Assert.True(LifecyclePolicy.ShouldGateHenchmanTakeover(automatedRun: true));
+        Assert.False(LifecyclePolicy.ShouldGateHenchmanTakeover(automatedRun: false));
+    }
+
+    [Fact]
     public void PreRunTimeoutSkipsOnlyBeforeWorkStarts()
     {
         var timeout = TimeSpan.FromSeconds(120);
