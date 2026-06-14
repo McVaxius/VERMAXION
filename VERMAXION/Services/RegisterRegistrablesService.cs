@@ -23,6 +23,8 @@ public class RegisterRegistrablesService : IDisposable
     private RegisterState currentState = RegisterState.Idle;
     private DateTime lastProcessTime = DateTime.MinValue;
     private int currentItemIndex = 0;
+    private int currentItemAttempts = 0;
+    private int exhaustedItemCount = 0;
     private List<(uint ItemId, string ItemName, int Quantity)> foundItems = new();
 
     public enum RegisterState
@@ -75,6 +77,8 @@ public class RegisterRegistrablesService : IDisposable
         isActive = true;
         foundItems.Clear();
         currentItemIndex = 0;
+        currentItemAttempts = 0;
+        exhaustedItemCount = 0;
         SetState(RegisterState.ScanningInventory);
     }
 
@@ -85,6 +89,8 @@ public class RegisterRegistrablesService : IDisposable
         currentState = RegisterState.Idle;
         lastProcessTime = DateTime.MinValue;
         currentItemIndex = 0;
+        currentItemAttempts = 0;
+        exhaustedItemCount = 0;
         foundItems.Clear();
     }
 
@@ -96,6 +102,8 @@ public class RegisterRegistrablesService : IDisposable
         {
             case RegisterState.ScanningInventory:
                 ScanInventory();
+                if (IsComplete)
+                    return;
                 SetState(RegisterState.ProcessingItems);
                 currentItemIndex = 0;
                 break;
@@ -103,18 +111,22 @@ public class RegisterRegistrablesService : IDisposable
             case RegisterState.ProcessingItems:
                 if (currentItemIndex >= foundItems.Count)
                 {
-                    log.Information("[RegisterRegistrables] All items processed successfully");
+                    log.Information(exhaustedItemCount == 0
+                        ? "[RegisterRegistrables] All items processed successfully"
+                        : $"[RegisterRegistrables] Processing complete with {exhaustedItemCount} item(s) exhausted after retry limit");
                     SetState(RegisterState.Complete);
                     return;
                 }
                 
-                ProcessCurrentItem();
-                SetState(RegisterState.WaitingForNextItem);
-                lastProcessTime = DateTime.Now;
+                if (ProcessCurrentItem())
+                {
+                    SetState(RegisterState.WaitingForNextItem);
+                    lastProcessTime = DateTime.UtcNow;
+                }
                 break;
                 
             case RegisterState.WaitingForNextItem:
-                if (DateTime.Now - lastProcessTime >= TimeSpan.FromSeconds(7))
+                if (DateTime.UtcNow - lastProcessTime >= TimeSpan.FromSeconds(7))
                 {
                     // Check if item was consumed
                     var currentQuantity = (int)GameHelpers.GetInventoryItemCount(foundItems[currentItemIndex].ItemId);
@@ -122,10 +134,18 @@ public class RegisterRegistrablesService : IDisposable
                     {
                         log.Information($"[RegisterRegistrables] Item {foundItems[currentItemIndex].ItemName} consumed, moving to next");
                         currentItemIndex++;
+                        currentItemAttempts = 0;
+                    }
+                    else if (RegistrableRetryPolicy.ShouldExhaust(currentItemAttempts, currentQuantity))
+                    {
+                        log.Warning($"[RegisterRegistrables] Item {foundItems[currentItemIndex].ItemName} still has {currentQuantity} after {currentItemAttempts}/{RegistrableRetryPolicy.MaxAttemptsPerItem} attempts; exhausting item and continuing");
+                        exhaustedItemCount++;
+                        currentItemIndex++;
+                        currentItemAttempts = 0;
                     }
                     else
                     {
-                        log.Warning($"[RegisterRegistrables] Item {foundItems[currentItemIndex].ItemName} not consumed (still have {currentQuantity}), retrying");
+                        log.Warning($"[RegisterRegistrables] Item {foundItems[currentItemIndex].ItemName} not consumed (still have {currentQuantity}), retrying attempt {currentItemAttempts + 1}/{RegistrableRetryPolicy.MaxAttemptsPerItem}");
                     }
                     SetState(RegisterState.ProcessingItems);
                 }
@@ -167,9 +187,9 @@ public class RegisterRegistrablesService : IDisposable
         log.Information($"[RegisterRegistrables] Found {foundItems.Count} registrable items to process");
     }
 
-    private void ProcessCurrentItem()
+    private bool ProcessCurrentItem()
     {
-        if (currentItemIndex >= foundItems.Count) return;
+        if (currentItemIndex >= foundItems.Count) return false;
         
         var item = foundItems[currentItemIndex];
         log.Information($"[RegisterRegistrables] Processing {item.ItemName} (ID: {item.ItemId}, Qty: {item.Quantity})");
@@ -178,9 +198,10 @@ public class RegisterRegistrablesService : IDisposable
         if (!GameHelpers.IsPlayerAvailable())
         {
             log.Warning("[RegisterRegistrables] Player not available (casting/occupied), waiting...");
-            return;
+            return false;
         }
-        
+
+        currentItemAttempts++;
         var result = GameHelpers.UseItem(item.ItemId);
         if (result)
         {
@@ -190,6 +211,7 @@ public class RegisterRegistrablesService : IDisposable
         {
             log.Warning($"[RegisterRegistrables] Failed to use {item.ItemName}");
         }
+        return true;
     }
 
     private void SetState(RegisterState newState)

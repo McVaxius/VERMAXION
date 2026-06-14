@@ -64,6 +64,7 @@ public sealed class Plugin : IDalamudPlugin
     public DadIPCClient DadIPCClient { get; init; }
     public WorkshopBellService WorkshopBellService { get; init; }
     public VermaxionEngine Engine { get; init; }
+    public VermaxionIncidentWriter IncidentWriter { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
     public ConfigWindow ConfigWindow { get; init; }
@@ -128,6 +129,7 @@ public sealed class Plugin : IDalamudPlugin
         VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
         WorkshopBellService = new WorkshopBellService(Log, LifestreamIPC, VNavmeshIPC);
         RetainerListingRefillService = new RetainerListingRefillService(Log, ConfigManager, VNavmeshIPC, WorkshopBellService, AutoRetainerIPC);
+        IncidentWriter = new VermaxionIncidentWriter(PluginInterface.ConfigDirectory.FullName);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady, ArmBeforeArSuppressionFromPostprocess);
@@ -139,7 +141,7 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService,
             RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
-            ClientState, MomIPCClient, DadIPCClient, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC);
+            ClientState, MomIPCClient, DadIPCClient, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);

@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <Compile Include="..\VERMAXION\Models\LifecycleStatus.cs" Link="LifecycleStatus.cs" />
+    <Compile Include="..\VERMAXION\Models\RecoveryPolicy.cs" Link="RecoveryPolicy.cs" />
   </ItemGroup>
 </Project>

@@ -121,6 +121,7 @@ public class VermaxionEngine
     private readonly AutoRetainerIPC autoRetainerIPC;
     private readonly VNavmeshIPC vNavmeshIPC;
     private readonly LifestreamIPC lifestreamIPC;
+    private readonly VermaxionIncidentWriter incidentWriter;
 
     private EngineState state = EngineState.Idle;
     private RunTaskPhaseFilter activePhaseFilter = RunTaskPhaseFilter.All;
@@ -154,6 +155,9 @@ public class VermaxionEngine
     private RunOutcome pendingRunOutcome = RunOutcome.None;
     private string pendingRunSummary = string.Empty;
     private bool requireEnabledConfig;
+    private DateTime watchdogLastProgressAt = DateTime.MinValue;
+    private string watchdogLastSignature = string.Empty;
+    private string watchdogPauseReason = string.Empty;
 
     public enum EngineState
     {
@@ -229,7 +233,8 @@ public class VermaxionEngine
         DadIPCClient dadIPCClient,
         AutoRetainerIPC autoRetainerIPC,
         VNavmeshIPC vNavmeshIPC,
-        LifestreamIPC lifestreamIPC)
+        LifestreamIPC lifestreamIPC,
+        VermaxionIncidentWriter incidentWriter)
     {
         this.log = log;
         this.configuration = configuration;
@@ -254,6 +259,7 @@ public class VermaxionEngine
         this.autoRetainerIPC = autoRetainerIPC;
         this.vNavmeshIPC = vNavmeshIPC;
         this.lifestreamIPC = lifestreamIPC;
+        this.incidentWriter = incidentWriter;
 
         // Subscribe to territory change events to close menus after teleporting
         clientState.TerritoryChanged += OnTerritoryChanged;
@@ -406,11 +412,15 @@ public class VermaxionEngine
 
         try
         {
+            if (TickTaskWatchdog())
+                return;
             UpdateCore();
         }
         catch (Exception ex)
         {
             log.Error($"[Engine] Unhandled engine exception while state={state}: {ex}");
+            WriteIncident("engine-exception", ex.Message);
+            CleanupFaultingWork(state, "engine exception");
             runHadFailure = true;
             pendingRunOutcome = RunOutcome.Failed;
             pendingRunSummary = $"Unhandled exception in {state}: {ex.Message}";
@@ -1301,6 +1311,7 @@ public class VermaxionEngine
     {
         currentTaskOwnedWorkStarted = true;
         runOwnedWorkStarted = true;
+        RecordWatchdogProgress("owned work started");
     }
 
     private void ResetTaskServices()
@@ -1315,6 +1326,164 @@ public class VermaxionEngine
         cactpotService.Reset();
         fashionReportService.Reset();
         chocoboRaceService.Reset();
+    }
+
+    private bool TickTaskWatchdog()
+    {
+        if (!TaskIdByState.ContainsKey(state))
+        {
+            ResetWatchdog();
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        var pauseReason = GetTaskWatchdogPauseReason();
+        if (pauseReason != null)
+        {
+            if (!string.Equals(watchdogPauseReason, pauseReason, StringComparison.Ordinal))
+                log.Information($"[Engine][Watchdog] Suspended in {state}: {pauseReason}");
+            watchdogPauseReason = pauseReason;
+            watchdogLastProgressAt = now;
+            watchdogLastSignature = BuildWatchdogSignature();
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(watchdogPauseReason))
+        {
+            log.Information($"[Engine][Watchdog] Re-armed in {state} after {watchdogPauseReason}");
+            watchdogPauseReason = string.Empty;
+            watchdogLastProgressAt = now;
+            watchdogLastSignature = BuildWatchdogSignature();
+            return false;
+        }
+
+        var signature = BuildWatchdogSignature();
+        if (!string.Equals(signature, watchdogLastSignature, StringComparison.Ordinal))
+        {
+            watchdogLastSignature = signature;
+            watchdogLastProgressAt = now;
+            return false;
+        }
+
+        if (watchdogLastProgressAt == DateTime.MinValue)
+        {
+            watchdogLastProgressAt = now;
+            return false;
+        }
+
+        if (!TaskWatchdogPolicy.ShouldTimeout(now, watchdogLastProgressAt, paused: false))
+            return false;
+
+        var timedOutState = state;
+        var taskId = TaskIdByState[timedOutState];
+        var stalledFor = now - watchdogLastProgressAt;
+        var summary = $"{taskId} stalled for {stalledFor.TotalMinutes:F1} minutes without observable progress";
+        log.Error($"[Engine][Watchdog] {summary}; cleaning task and continuing queue");
+        WriteIncident("task-watchdog-timeout", summary);
+        CleanupFaultingWork(timedOutState, "watchdog timeout");
+        runHadFailure = true;
+        AdvanceToNextTask(timedOutState);
+        return true;
+    }
+
+    private string? GetTaskWatchdogPauseReason()
+    {
+        if (!clientState.IsLoggedIn)
+            return "client logged out";
+        if (Plugin.ObjectTable.LocalPlayer == null)
+            return "local player unavailable";
+        if (Plugin.Condition[ConditionFlag.BoundByDuty] || Plugin.Condition[ConditionFlag.BoundByDuty56])
+            return "duty-bound";
+        if (Plugin.Condition[ConditionFlag.InDutyQueue]
+            || Plugin.Condition[ConditionFlag.WaitingForDuty]
+            || Plugin.Condition[ConditionFlag.WaitingForDutyFinder])
+            return "duty queue/wait";
+        if (Plugin.Condition[ConditionFlag.InCombat] || Plugin.Condition[ConditionFlag.Casting])
+            return "combat/casting";
+        if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
+            return "zoning";
+        if (Plugin.Condition[ConditionFlag.Occupied]
+            || Plugin.Condition[ConditionFlag.OccupiedInQuestEvent]
+            || Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent]
+            || Plugin.Condition[ConditionFlag.WatchingCutscene])
+            return "occupied/cutscene";
+        if (!IsPlayerAvailable())
+            return "player unavailable";
+        return null;
+    }
+
+    private string BuildWatchdogSignature()
+        => string.Join(
+            '|',
+            state,
+            runQueueIndex,
+            fcBuffService.State,
+            vendorStockService.IsActive,
+            registerRegistrablesService.State,
+            retainerListingRefillService.IsActive,
+            workshopBellService.IsActive,
+            verminionService.StatusText,
+            cactpotService.IsActive,
+            fashionReportService.State,
+            chocoboRaceService.StatusText,
+            NagYourMomStatusText,
+            NagYourDadStatusText);
+
+    private void RecordWatchdogProgress(string reason)
+    {
+        watchdogLastProgressAt = DateTime.UtcNow;
+        watchdogLastSignature = BuildWatchdogSignature();
+        watchdogPauseReason = string.Empty;
+        log.Debug($"[Engine][Watchdog] Progress: {reason}");
+    }
+
+    private void ResetWatchdog()
+    {
+        watchdogLastProgressAt = DateTime.MinValue;
+        watchdogLastSignature = string.Empty;
+        watchdogPauseReason = string.Empty;
+    }
+
+    private void CleanupFaultingWork(EngineState faultingState, string reason)
+    {
+        switch (faultingState)
+        {
+            case EngineState.RunningFCBuff: fcBuffService.Reset(); break;
+            case EngineState.RunningVendorStock: vendorStockService.Reset(); break;
+            case EngineState.RunningRegisterRegistrables: registerRegistrablesService.Reset(); break;
+            case EngineState.RunningRetainerListingRefill: retainerListingRefillService.Reset(); workshopBellService.Reset(); break;
+            case EngineState.RunningVerminion: verminionService.Reset(); break;
+            case EngineState.RunningMiniCactpot:
+            case EngineState.RunningJumboCactpot: cactpotService.Reset(); break;
+            case EngineState.RunningFashionReport: fashionReportService.Reset(); break;
+            case EngineState.RunningChocoboRacing: chocoboRaceService.Reset(); break;
+            case EngineState.RunningNagYourMom: momIPCClient.CancelActiveRun(); break;
+            case EngineState.RunningNagYourDad: dadIPCClient.CancelActiveRun(); break;
+            default: ResetTaskServices(); break;
+        }
+
+        vNavmeshIPC.Stop();
+        TryCloseOwnedUiBestEffort();
+        log.Warning($"[Engine] Cleaned faulting work in {faultingState} after {reason}");
+    }
+
+    private void WriteIncident(string type, string summary)
+    {
+        try
+        {
+            var taskId = TaskIdByState.TryGetValue(state, out var id) ? id : string.Empty;
+            incidentWriter.Write(new VermaxionIncident(
+                DateTime.UtcNow,
+                type,
+                state.ToString(),
+                taskId,
+                summary,
+                $"queueIndex={runQueueIndex}; queue=[{string.Join(',', runQueue)}]; ownedTask={currentTaskOwnedWorkStarted}; ownedRun={runOwnedWorkStarted}; blocker={GetHandoffBlocker() ?? "none"}; signature={BuildWatchdogSignature()}"));
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[Engine] Failed to write Vermaxion incident: {ex.Message}");
+        }
     }
 
     private bool TickHandoffSettling(string phase)
@@ -1607,6 +1776,7 @@ public class VermaxionEngine
         requireEnabledConfig = false;
         activeConfig = null;
         activePhaseFilter = RunTaskPhaseFilter.All;
+        ResetWatchdog();
     }
 
     private void SetState(EngineState newState)
@@ -1614,6 +1784,7 @@ public class VermaxionEngine
         log.Debug($"[Engine] State: {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        RecordWatchdogProgress($"state entered {newState}");
 
         StatusText = newState switch
         {
