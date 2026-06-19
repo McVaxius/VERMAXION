@@ -24,10 +24,10 @@ public sealed class LootGoblinMapGatherService
     public string StatusText { get; private set; } = "Idle";
     public LootGoblinMapGatherResponse LastResponse { get; private set; } = new();
 
-    public void Start(CharacterConfig config)
+    public LootGoblinMapGatherResponse Start(CharacterConfig config)
     {
         if (IsActive)
-            return;
+            return LastResponse;
 
         State = LootGoblinMapGatherServiceState.Starting;
         StatusText = "Starting LootGoblin map gather...";
@@ -46,19 +46,20 @@ public sealed class LootGoblinMapGatherService
         {
             State = LootGoblinMapGatherServiceState.Failed;
             log.Warning($"[LootGoblinMapGather] Start rejected: {StatusText}");
-            return;
+            return response;
         }
 
         if (response.Terminal)
         {
             State = response.Success ? LootGoblinMapGatherServiceState.Complete : LootGoblinMapGatherServiceState.Failed;
             log.Information($"[LootGoblinMapGather] Start returned terminal status: state={response.State}, success={response.Success}, message={response.Message}");
-            return;
+            return response;
         }
 
         activeRequestId = response.RequestId;
         State = LootGoblinMapGatherServiceState.Running;
         log.Information($"[LootGoblinMapGather] Accepted request {activeRequestId}: map={response.MapName} ({response.ItemId}), runAfterGather={response.RunAfterGather}");
+        return response;
     }
 
     public void Update()
@@ -115,14 +116,4 @@ public sealed class LootGoblinMapGatherService
 
         return null;
     }
-}
-
-public enum LootGoblinMapGatherServiceState
-{
-    Idle,
-    Starting,
-    Running,
-    Complete,
-    Failed,
-    Cancelled,
 }

@@ -107,7 +107,10 @@ public class MainWindow : Window, IDisposable
         
         // Control buttons row
         // FULL STOP button - red only when plugin is in operation
-        var highlightFullStop = engine.OwnsLiveWork || plugin.ARPostProcessService.IsProcessing || plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
+        var highlightFullStop = engine.OwnsLiveWork ||
+                                plugin.LootGoblinMapGatherManualRunCoordinator.IsActive ||
+                                plugin.ARPostProcessService.IsProcessing ||
+                                plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
         if (highlightFullStop)
         {
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0f, 0f, 1f));
@@ -201,13 +204,29 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
                 "run##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
+            var lootGoblinDailyStatus = GetDailyTaskStatus(
+                config.LootGoblinMapGatherLastCompleted,
+                config.LootGoblinMapGatherNextReset,
+                "Done today",
+                "Daily");
+            var lootGoblinStatus = LootGoblinMapGatherRowPolicy.GetStatus(
+                lootGoblinDailyStatus,
+                plugin.LootGoblinMapGatherService.State,
+                plugin.LootGoblinMapGatherService.StatusText);
             DrawTaskRow("LootGoblin Map Gather", config.EnableLootGoblinMapGather,
-                GetDailyTaskStatus(config.LootGoblinMapGatherLastCompleted, config.LootGoblinMapGatherNextReset, "Done today", "Daily"),
+                lootGoblinStatus,
                 "run##LootGoblinMapGather", () =>
                 {
-                    plugin.ConfigManager.SaveCurrentAccount();
-                    plugin.LootGoblinMapGatherService.Start(plugin.ConfigManager.GetActiveConfig());
-                }, "[OK]");
+                    var response = plugin.LootGoblinMapGatherManualRunCoordinator.Start(engine.IsRunning);
+                    var result = response.Accepted
+                        ? response.Terminal && response.Success ? "completed" : "accepted"
+                        : "rejected";
+                    var detail = string.IsNullOrWhiteSpace(response.Message) ? response.State : response.Message;
+                    Plugin.ChatGui.Print($"[Vermaxion] LootGoblin map gather {result}: {detail}");
+                }, "[OK]",
+                statusTooltip: lootGoblinStatus,
+                buttonDisabled: engine.IsRunning,
+                buttonTooltip: "Manual map gather is unavailable while VERMAXION engine is running.");
             DrawTaskRow("nag your mom", config.EnableNagYourMom,
                 GetNagYourMomStatus(config, engine.NagYourMomStatusText),
                 "run##Mom", () =>
@@ -367,7 +386,16 @@ public class MainWindow : Window, IDisposable
         ImGui.TextDisabled("Every donation helps keep these plugins free and updated!");
     }
 
-    private void DrawTaskRow(string task, bool enabled, string status, string buttonLabel, Action onClick, string maturity = "-")
+    private void DrawTaskRow(
+        string task,
+        bool enabled,
+        string status,
+        string buttonLabel,
+        Action onClick,
+        string maturity = "-",
+        string? statusTooltip = null,
+        bool buttonDisabled = false,
+        string? buttonTooltip = null)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -376,9 +404,15 @@ public class MainWindow : Window, IDisposable
         ImGui.TextColored(enabled ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1), enabled ? "On" : "Off");
         ImGui.TableSetColumnIndex(2);
         ImGui.TextDisabled(status);
+        if (!string.IsNullOrWhiteSpace(statusTooltip) && ImGui.IsItemHovered())
+            ImGui.SetTooltip(statusTooltip);
         ImGui.TableSetColumnIndex(3);
+        ImGui.BeginDisabled(buttonDisabled);
         if (ImGui.SmallButton(buttonLabel))
             onClick();
+        ImGui.EndDisabled();
+        if (!string.IsNullOrWhiteSpace(buttonTooltip) && ImGui.IsItemHovered())
+            ImGui.SetTooltip(buttonTooltip);
         ImGui.TableSetColumnIndex(4);
         
         // Color code maturity

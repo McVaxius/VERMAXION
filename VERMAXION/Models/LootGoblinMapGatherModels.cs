@@ -50,6 +50,16 @@ public sealed class LootGoblinMapGatherResponse
             State = "Unavailable",
             Message = message,
         };
+
+    public static LootGoblinMapGatherResponse Rejected(string message)
+        => new()
+        {
+            Accepted = false,
+            Terminal = true,
+            Success = false,
+            State = "Rejected",
+            Message = message,
+        };
 }
 
 public static class LootGoblinMapSafetyPolicy
@@ -58,4 +68,14 @@ public static class LootGoblinMapSafetyPolicy
         => string.Equals(map.Tier, "Solo", StringComparison.OrdinalIgnoreCase) &&
            string.Equals(map.Category, "Outdoor", StringComparison.OrdinalIgnoreCase) &&
            !map.HasDungeon;
+}
+
+public enum LootGoblinMapGatherServiceState
+{
+    Idle,
+    Starting,
+    Running,
+    Complete,
+    Failed,
+    Cancelled,
 }

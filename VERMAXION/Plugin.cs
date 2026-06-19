@@ -64,6 +64,7 @@ public sealed class Plugin : IDalamudPlugin
     public DadIPCClient DadIPCClient { get; init; }
     public LootGoblinIPCClient LootGoblinIPCClient { get; init; }
     public LootGoblinMapGatherService LootGoblinMapGatherService { get; init; }
+    public LootGoblinMapGatherManualRunCoordinator LootGoblinMapGatherManualRunCoordinator { get; init; }
     public WorkshopBellService WorkshopBellService { get; init; }
     public VermaxionEngine Engine { get; init; }
     public VermaxionIncidentWriter IncidentWriter { get; init; }
@@ -130,6 +131,7 @@ public sealed class Plugin : IDalamudPlugin
         DadIPCClient = new DadIPCClient(PluginInterface, Log);
         LootGoblinIPCClient = new LootGoblinIPCClient(PluginInterface, Log);
         LootGoblinMapGatherService = new LootGoblinMapGatherService(Log, LootGoblinIPCClient);
+        LootGoblinMapGatherManualRunCoordinator = new LootGoblinMapGatherManualRunCoordinator(Log, ConfigManager, LootGoblinMapGatherService);
         VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
         WorkshopBellService = new WorkshopBellService(Log, LifestreamIPC, VNavmeshIPC);
         RetainerListingRefillService = new RetainerListingRefillService(Log, ConfigManager, VNavmeshIPC, WorkshopBellService, AutoRetainerIPC);
@@ -223,6 +225,8 @@ public sealed class Plugin : IDalamudPlugin
         try
         {
             Log.Information("[Plugin] Resetting all services due to character change");
+
+            LootGoblinMapGatherManualRunCoordinator.Cancel();
             
             FCBuffService.Reset();
             VerminionService.Reset();
@@ -683,7 +687,7 @@ public sealed class Plugin : IDalamudPlugin
             RetainerListingRefillService.Update();
             WorkshopBellService.Update();
             RegisterRegistrablesService.Update();
-            LootGoblinMapGatherService.Update();
+            LootGoblinMapGatherManualRunCoordinator.Update();
             MinionRouletteService.Update();
             SeasonalGearService.Update();
             GearUpdaterService.Update();
@@ -790,13 +794,14 @@ public sealed class Plugin : IDalamudPlugin
     {
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
 
+        LootGoblinMapGatherManualRunCoordinator.Cancel();
+        Log.Information("[FULL STOP] LootGoblin map gather cancel requested");
+
         Engine.ForceStop();
         Log.Information("[FULL STOP] Engine force-stopped");
 
         MomIPCClient.CancelActiveRun();
         Log.Information("[FULL STOP] mom IPC cancel requested");
-        LootGoblinMapGatherService.Cancel();
-        Log.Information("[FULL STOP] LootGoblin map gather cancel requested");
 
         // Stop all services that have state machines
         FCBuffService.Reset();
@@ -808,7 +813,7 @@ public sealed class Plugin : IDalamudPlugin
         RetainerListingRefillService.Reset();
         WorkshopBellService.Reset();
         RegisterRegistrablesService.Reset();
-        LootGoblinMapGatherService.Reset();
+        LootGoblinMapGatherManualRunCoordinator.Reset();
         MinionRouletteService.Reset();
         SeasonalGearService.Reset();
         GearUpdaterService.Reset();
