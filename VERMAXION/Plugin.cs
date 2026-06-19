@@ -62,6 +62,8 @@ public sealed class Plugin : IDalamudPlugin
     public LifestreamIPC LifestreamIPC { get; init; }
     public MomIPCClient MomIPCClient { get; init; }
     public DadIPCClient DadIPCClient { get; init; }
+    public LootGoblinIPCClient LootGoblinIPCClient { get; init; }
+    public LootGoblinMapGatherService LootGoblinMapGatherService { get; init; }
     public WorkshopBellService WorkshopBellService { get; init; }
     public VermaxionEngine Engine { get; init; }
     public VermaxionIncidentWriter IncidentWriter { get; init; }
@@ -126,6 +128,8 @@ public sealed class Plugin : IDalamudPlugin
         LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         MomIPCClient = new MomIPCClient(PluginInterface, Log);
         DadIPCClient = new DadIPCClient(PluginInterface, Log);
+        LootGoblinIPCClient = new LootGoblinIPCClient(PluginInterface, Log);
+        LootGoblinMapGatherService = new LootGoblinMapGatherService(Log, LootGoblinIPCClient);
         VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
         WorkshopBellService = new WorkshopBellService(Log, LifestreamIPC, VNavmeshIPC);
         RetainerListingRefillService = new RetainerListingRefillService(Log, ConfigManager, VNavmeshIPC, WorkshopBellService, AutoRetainerIPC);
@@ -141,7 +145,7 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService,
             RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
-            ClientState, MomIPCClient, DadIPCClient, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
+            ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -679,6 +683,7 @@ public sealed class Plugin : IDalamudPlugin
             RetainerListingRefillService.Update();
             WorkshopBellService.Update();
             RegisterRegistrablesService.Update();
+            LootGoblinMapGatherService.Update();
             MinionRouletteService.Update();
             SeasonalGearService.Update();
             GearUpdaterService.Update();
@@ -790,6 +795,8 @@ public sealed class Plugin : IDalamudPlugin
 
         MomIPCClient.CancelActiveRun();
         Log.Information("[FULL STOP] mom IPC cancel requested");
+        LootGoblinMapGatherService.Cancel();
+        Log.Information("[FULL STOP] LootGoblin map gather cancel requested");
 
         // Stop all services that have state machines
         FCBuffService.Reset();
@@ -801,6 +808,7 @@ public sealed class Plugin : IDalamudPlugin
         RetainerListingRefillService.Reset();
         WorkshopBellService.Reset();
         RegisterRegistrablesService.Reset();
+        LootGoblinMapGatherService.Reset();
         MinionRouletteService.Reset();
         SeasonalGearService.Reset();
         GearUpdaterService.Reset();

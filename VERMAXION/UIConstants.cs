@@ -22,6 +22,7 @@ public static class UIConstants
         public const string JumboCactpot = "Jumbo Cactpot (auto DC timing)";
         public const string MiniCactpot = "Mini Cactpot";
         public const string ChocoboRacing = "Chocobo Racing";
+        public const string LootGoblinMapGather = "LootGoblin Map Gather";
         public const string NagYourMom = "nag your mom";
         public const string NagYourMomCasualCc = "Casual CC";
         public const string NagYourMomFrontline = "Frontline";

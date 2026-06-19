@@ -20,6 +20,7 @@ public static class PostProcessTaskOrder
     public const string JumboCactpot = "jumbo_cactpot";
     public const string FashionReport = "fashion_report";
     public const string ChocoboRacing = "chocobo_racing";
+    public const string LootGoblinMapGather = "lootgoblin_map_gather";
     public const string NagYourMom = "nag_your_mom";
     public const string NagYourDad = "nag_your_dad";
 
@@ -34,6 +35,7 @@ public static class PostProcessTaskOrder
         new(JumboCactpot, "Jumbo Cactpot"),
         new(FashionReport, "Fashion Report"),
         new(ChocoboRacing, "Chocobo Racing"),
+        new(LootGoblinMapGather, "LootGoblin Map Gather"),
         new(NagYourMom, "nag your mom"),
         new(NagYourDad, "nag your dad"),
     ];
@@ -49,6 +51,7 @@ public static class PostProcessTaskOrder
         JumboCactpot,
         FashionReport,
         ChocoboRacing,
+        LootGoblinMapGather,
         NagYourMom,
         NagYourDad,
     ];

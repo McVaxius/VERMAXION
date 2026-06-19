@@ -91,6 +91,7 @@ public class VermaxionEngine
         [PostProcessTaskOrder.JumboCactpot] = EngineState.RunningJumboCactpot,
         [PostProcessTaskOrder.FashionReport] = EngineState.RunningFashionReport,
         [PostProcessTaskOrder.ChocoboRacing] = EngineState.RunningChocoboRacing,
+        [PostProcessTaskOrder.LootGoblinMapGather] = EngineState.RunningLootGoblinMapGather,
         [PostProcessTaskOrder.NagYourMom] = EngineState.RunningNagYourMom,
         [PostProcessTaskOrder.NagYourDad] = EngineState.RunningNagYourDad,
     };
@@ -118,6 +119,7 @@ public class VermaxionEngine
     private readonly IClientState clientState;
     private readonly MomIPCClient momIPCClient;
     private readonly DadIPCClient dadIPCClient;
+    private readonly LootGoblinMapGatherService lootGoblinMapGatherService;
     private readonly AutoRetainerIPC autoRetainerIPC;
     private readonly VNavmeshIPC vNavmeshIPC;
     private readonly LifestreamIPC lifestreamIPC;
@@ -174,6 +176,7 @@ public class VermaxionEngine
         RunningJumboCactpot,
         RunningFashionReport,
         RunningChocoboRacing,
+        RunningLootGoblinMapGather,
         RunningNagYourMom,
         RunningNagYourDad,
         SettlingTask,
@@ -231,6 +234,7 @@ public class VermaxionEngine
         IClientState clientState,
         MomIPCClient momIPCClient,
         DadIPCClient dadIPCClient,
+        LootGoblinMapGatherService lootGoblinMapGatherService,
         AutoRetainerIPC autoRetainerIPC,
         VNavmeshIPC vNavmeshIPC,
         LifestreamIPC lifestreamIPC,
@@ -256,6 +260,7 @@ public class VermaxionEngine
         this.clientState = clientState;
         this.momIPCClient = momIPCClient;
         this.dadIPCClient = dadIPCClient;
+        this.lootGoblinMapGatherService = lootGoblinMapGatherService;
         this.autoRetainerIPC = autoRetainerIPC;
         this.vNavmeshIPC = vNavmeshIPC;
         this.lifestreamIPC = lifestreamIPC;
@@ -364,9 +369,10 @@ public class VermaxionEngine
     public void ForceStop()
     {
         log.Warning("[Engine] Full Stop force-releasing ownership");
-        ResetTaskServices();
         momIPCClient.CancelActiveRun();
         dadIPCClient.CancelActiveRun();
+        lootGoblinMapGatherService.Cancel();
+        ResetTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
         if (henchmanService.IsManaging)
@@ -888,6 +894,47 @@ public class VermaxionEngine
                 }
                 break;
 
+            case EngineState.RunningLootGoblinMapGather:
+                activeConfig = GetLiveActiveConfig();
+                if (activeConfig!.EnableLootGoblinMapGather &&
+                    ResetDetectionService.TaskNeedsRun(activeConfig.LootGoblinMapGatherLastCompleted, activeConfig.LootGoblinMapGatherNextReset))
+                {
+                    if (!lootGoblinMapGatherService.IsActive && !lootGoblinMapGatherService.IsComplete && !lootGoblinMapGatherService.IsFailed)
+                    {
+                        log.Information("[Engine] Starting LootGoblin Map Gather");
+                        ResetInteractionState();
+                        MarkCurrentTaskWorkStarted();
+                        lootGoblinMapGatherService.Start(activeConfig);
+                        return;
+                    }
+
+                    lootGoblinMapGatherService.Update();
+
+                    if (lootGoblinMapGatherService.IsComplete)
+                    {
+                        var completedAt = DateTime.UtcNow;
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.LootGoblinMapGatherLastCompleted = completedAt;
+                            config.LootGoblinMapGatherNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
+                        }, "LootGoblin Map Gather completion");
+                        lootGoblinMapGatherService.Reset();
+                        AdvanceToNextTask(EngineState.RunningLootGoblinMapGather);
+                    }
+                    else if (lootGoblinMapGatherService.IsFailed)
+                    {
+                        log.Warning($"[Engine] LootGoblin Map Gather failed - will retry later: {lootGoblinMapGatherService.StatusText}");
+                        runHadFailure = true;
+                        lootGoblinMapGatherService.Reset();
+                        AdvanceToNextTask(EngineState.RunningLootGoblinMapGather);
+                    }
+                }
+                else
+                {
+                    AdvanceToNextTask(EngineState.RunningLootGoblinMapGather);
+                }
+                break;
+
             case EngineState.RunningNagYourMom:
                 activeConfig = GetLiveActiveConfig();
                 RollNagYourMomLocalDay(activeConfig!);
@@ -1295,9 +1342,10 @@ public class VermaxionEngine
 
     private void CancelForSettling(string status)
     {
-        ResetTaskServices();
         momIPCClient.CancelActiveRun();
         dadIPCClient.CancelActiveRun();
+        lootGoblinMapGatherService.Cancel();
+        ResetTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
         NagYourMomStatusText = status;
@@ -1322,6 +1370,7 @@ public class VermaxionEngine
         registerRegistrablesService.Reset();
         retainerListingRefillService.Reset();
         workshopBellService.Reset();
+        lootGoblinMapGatherService.Reset();
         verminionService.Reset();
         cactpotService.Reset();
         fashionReportService.Reset();
@@ -1426,6 +1475,7 @@ public class VermaxionEngine
             cactpotService.IsActive,
             fashionReportService.State,
             chocoboRaceService.StatusText,
+            lootGoblinMapGatherService.StatusText,
             NagYourMomStatusText,
             NagYourDadStatusText);
 
@@ -1457,6 +1507,7 @@ public class VermaxionEngine
             case EngineState.RunningJumboCactpot: cactpotService.Reset(); break;
             case EngineState.RunningFashionReport: fashionReportService.Reset(); break;
             case EngineState.RunningChocoboRacing: chocoboRaceService.Reset(); break;
+            case EngineState.RunningLootGoblinMapGather: lootGoblinMapGatherService.Cancel(); break;
             case EngineState.RunningNagYourMom: momIPCClient.CancelActiveRun(); break;
             case EngineState.RunningNagYourDad: dadIPCClient.CancelActiveRun(); break;
             default: ResetTaskServices(); break;
@@ -1726,6 +1777,8 @@ public class VermaxionEngine
                 ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset),
             PostProcessTaskOrder.ChocoboRacing => config.EnableChocoboRacing &&
                 ResetDetectionService.TaskNeedsRun(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset),
+            PostProcessTaskOrder.LootGoblinMapGather => config.EnableLootGoblinMapGather &&
+                ResetDetectionService.TaskNeedsRun(config.LootGoblinMapGatherLastCompleted, config.LootGoblinMapGatherNextReset),
             PostProcessTaskOrder.NagYourMom => ShouldRunNagYourMomNow(config) && momIPCClient.GetReadiness().CanStart,
             PostProcessTaskOrder.NagYourDad => ShouldRunNagYourDadNow(config, out _) && dadIPCClient.IsReady(),
             _ => false,
@@ -1801,6 +1854,7 @@ public class VermaxionEngine
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",
             EngineState.RunningFashionReport => "Fashion Report",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
+            EngineState.RunningLootGoblinMapGather => "LootGoblin Map Gather",
             EngineState.RunningNagYourMom => "nag your mom",
             EngineState.RunningNagYourDad => "nag your dad",
             EngineState.SettlingTask => "Settling task handoff",
@@ -1819,6 +1873,8 @@ public class VermaxionEngine
         }
         if (newState != EngineState.RunningNagYourDad)
             nagYourDadRequestIssued = false;
+        if (newState != EngineState.RunningLootGoblinMapGather && lootGoblinMapGatherService.IsComplete)
+            lootGoblinMapGatherService.Reset();
         if (newState != EngineState.RunningJumboCactpot)
             activeJumboCactpotPayoutRoute = null;
         if (newState != EngineState.RunningMiniCactpot && newState != EngineState.RunningJumboCactpot)

@@ -60,6 +60,7 @@ public class ResetDetectionService
             config.LastDailyReset = lastReset.AddHours(-1);
             config.MiniCactpotCompletedToday = false;
             config.ChocoboRacingCompletedToday = false;
+            config.ResetLootGoblinMapGatherState();
             config.MiniCactpotTicketsToday = 0;
             log.Information($"Daily reset detected (manual reset). Setting completion time to: {config.LastDailyReset:u}");
             return true;
@@ -71,6 +72,7 @@ public class ResetDetectionService
             config.LastDailyReset = now; // Set to now when we detect reset and clear tasks
             config.MiniCactpotCompletedToday = false;
             config.ChocoboRacingCompletedToday = false;
+            config.ResetLootGoblinMapGatherState();
             config.MiniCactpotTicketsToday = 0;
             log.Information($"Daily reset detected. Last reset: {lastReset:u}");
             return true;

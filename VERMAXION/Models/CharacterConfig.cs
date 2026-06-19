@@ -29,6 +29,7 @@ public class CharacterConfig
     public bool EnableNagYourDad { get; set; } = false;
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
     public bool EnableMiscCmd { get; set; } = true;
+    public bool EnableLootGoblinMapGather { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -65,6 +66,8 @@ public class CharacterConfig
     public int EvercoldAdventurerActivityCurrentPoints { get; set; } = 0;
     public int EvercoldAdventurerActivityTargetPoints { get; set; } = 0;
     public bool EvercoldAdventurerActivityCompleted { get; set; } = false;
+    public uint LootGoblinMapGatherItemId { get; set; } = 43556;
+    public bool LootGoblinMapGatherRunAfterGather { get; set; } = false;
     
     // --- Personal Registrable Items ---
     public List<uint> PersonalRegistrableItems { get; set; } = new();
@@ -92,6 +95,8 @@ public class CharacterConfig
     public DateTime MiniCactpotNextReset { get; set; } = DateTime.MinValue;
     public DateTime ChocoboRacingLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime ChocoboRacingNextReset { get; set; } = DateTime.MinValue;
+    public DateTime LootGoblinMapGatherLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime LootGoblinMapGatherNextReset { get; set; } = DateTime.MinValue;
     public DateTime RefillFromListingsLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime RefillFromListingsNextReset { get; set; } = DateTime.MinValue;
     
@@ -148,6 +153,12 @@ public class CharacterConfig
         ChocoboRacingNextReset = DateTime.MinValue;
     }
 
+    public void ResetLootGoblinMapGatherState()
+    {
+        LootGoblinMapGatherLastCompleted = DateTime.MinValue;
+        LootGoblinMapGatherNextReset = DateTime.MinValue;
+    }
+
     public void ResetNagYourMomDailyState()
     {
         NagYourMomAttemptsToday = 0;
@@ -189,6 +200,7 @@ public class CharacterConfig
         LastDailyReset = DateTime.MinValue;
         ResetMiniCactpotState();
         ResetChocoboRacingState();
+        ResetLootGoblinMapGatherState();
         ResetNagYourMomDailyState();
         ResetMinionRouletteDailyState();
     }
@@ -227,6 +239,7 @@ public class CharacterConfig
             EnableNagYourDad = EnableNagYourDad,
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
             EnableMiscCmd = EnableMiscCmd,
+            EnableLootGoblinMapGather = EnableLootGoblinMapGather,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
@@ -261,6 +274,8 @@ public class CharacterConfig
             EvercoldAdventurerActivityCurrentPoints = EvercoldAdventurerActivityCurrentPoints,
             EvercoldAdventurerActivityTargetPoints = EvercoldAdventurerActivityTargetPoints,
             EvercoldAdventurerActivityCompleted = EvercoldAdventurerActivityCompleted,
+            LootGoblinMapGatherItemId = LootGoblinMapGatherItemId,
+            LootGoblinMapGatherRunAfterGather = LootGoblinMapGatherRunAfterGather,
             PersonalRegistrableItems = new List<uint>(PersonalRegistrableItems),
             LastWeeklyReset = LastWeeklyReset,
             LastDailyReset = LastDailyReset,
@@ -280,6 +295,8 @@ public class CharacterConfig
             MiniCactpotNextReset = MiniCactpotNextReset,
             ChocoboRacingLastCompleted = ChocoboRacingLastCompleted,
             ChocoboRacingNextReset = ChocoboRacingNextReset,
+            LootGoblinMapGatherLastCompleted = LootGoblinMapGatherLastCompleted,
+            LootGoblinMapGatherNextReset = LootGoblinMapGatherNextReset,
             RefillFromListingsLastCompleted = RefillFromListingsLastCompleted,
             RefillFromListingsNextReset = RefillFromListingsNextReset,
             MiniCactpotTicketsToday = MiniCactpotTicketsToday,
