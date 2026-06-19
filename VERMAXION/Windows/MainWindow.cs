@@ -213,6 +213,9 @@ public class MainWindow : Window, IDisposable
                 lootGoblinDailyStatus,
                 plugin.LootGoblinMapGatherService.State,
                 plugin.LootGoblinMapGatherService.StatusText);
+            var lootGoblinStatusTooltip = plugin.LootGoblinMapGatherService.State == LootGoblinMapGatherServiceState.Idle
+                ? lootGoblinDailyStatus
+                : $"{plugin.LootGoblinMapGatherService.State}: {plugin.LootGoblinMapGatherService.StatusText}";
             DrawTaskRow("LootGoblin Map Gather", config.EnableLootGoblinMapGather,
                 lootGoblinStatus,
                 "run##LootGoblinMapGather", () =>
@@ -224,7 +227,7 @@ public class MainWindow : Window, IDisposable
                     var detail = string.IsNullOrWhiteSpace(response.Message) ? response.State : response.Message;
                     Plugin.ChatGui.Print($"[Vermaxion] LootGoblin map gather {result}: {detail}");
                 }, "[OK]",
-                statusTooltip: lootGoblinStatus,
+                statusTooltip: lootGoblinStatusTooltip,
                 buttonDisabled: engine.IsRunning,
                 buttonTooltip: "Manual map gather is unavailable while VERMAXION engine is running.");
             DrawTaskRow("nag your mom", config.EnableNagYourMom,
