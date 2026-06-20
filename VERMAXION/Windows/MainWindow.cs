@@ -226,7 +226,7 @@ public class MainWindow : Window, IDisposable
                         : "rejected";
                     var detail = string.IsNullOrWhiteSpace(response.Message) ? response.State : response.Message;
                     Plugin.ChatGui.Print($"[Vermaxion] LootGoblin map gather {result}: {detail}");
-                }, "[OK]",
+                }, "OK",
                 statusTooltip: lootGoblinStatusTooltip,
                 buttonDisabled: engine.IsRunning,
                 buttonTooltip: "Manual map gather is unavailable while VERMAXION engine is running.");
