@@ -107,7 +107,10 @@ public class MainWindow : Window, IDisposable
         
         // Control buttons row
         // FULL STOP button - red only when plugin is in operation
-        var highlightFullStop = engine.OwnsLiveWork || plugin.ARPostProcessService.IsProcessing || plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
+        var highlightFullStop = engine.OwnsLiveWork ||
+                                plugin.LootGoblinMapGatherManualRunCoordinator.IsActive ||
+                                plugin.ARPostProcessService.IsProcessing ||
+                                plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
         if (highlightFullStop)
         {
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0f, 0f, 1f));
@@ -140,35 +143,35 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
 
-        // Task table with test buttons
+        // Task table with run buttons
         if (ImGui.BeginTable("TasksTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
         {
             ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthFixed, 200);
             ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableSetupColumn("Test", ImGuiTableColumnFlags.WidthFixed, 60);
+            ImGui.TableSetupColumn("run", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableSetupColumn("Maturity", ImGuiTableColumnFlags.WidthFixed, 80);
             ImGui.TableHeadersRow();
 
             // --- Every AR PostProcess ---
             DrawTaskRow("Misc Cmd", config.EnableMiscCmd,
                 config.EnableMiscCmd ? "Every AR + manual run" : "Off",
-                "Send##MiscCmd", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
+                "run##MiscCmd", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
-                "Test##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
+                "run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
-                "Test##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
+                "run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
             DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
-                "Test##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
+                "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
-                "Test##Listings", () =>
+                "run##Listings", () =>
                 {
                     plugin.ConfigManager.SaveCurrentAccount();
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.RetainerListingRefillService.Start(activeConfig);
                 }, "OK");
             DrawTaskRow("Retainer Bell", true, plugin.WorkshopBellService.StatusText,
-                "[Bell]##WorkshopBell", () =>
+                "run##WorkshopBell", () =>
                 {
                     plugin.ConfigManager.SaveCurrentAccount();
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
@@ -177,33 +180,59 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
                 "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
-                "Test##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
+                "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
-                "Test##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
+                "run##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
-                "Test##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
+                "run##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
 
             // --- Weekly Tasks ---
             DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
                 GetWeeklyTaskStatus(config.VerminionLastCompleted, config.VerminionNextReset, "Done this week", "Weekly"),
-                "Test##Verm", () => plugin.VerminionService.RunTask(), "OK");
+                "run##Verm", () => plugin.VerminionService.RunTask(), "OK");
             DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
                 GetJumboCactpotStatus(config),
-                "Test##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");
+                "run##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");
             DrawTaskRow("Fashion Report", config.EnableFashionReport,
                 GetFashionReportStatus(config),
-                "Test##Fashion", () => plugin.FashionReportService.Start(), "OK");
+                "run##Fashion", () => plugin.FashionReportService.Start(), "OK");
 
             // --- Daily Tasks ---
             DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
                 GetDailyTaskStatus(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset, "Done today", "Daily"),
-                "Test##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
+                "run##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
-                "Test##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
+                "run##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
+            var lootGoblinDailyStatus = GetDailyTaskStatus(
+                config.LootGoblinMapGatherLastCompleted,
+                config.LootGoblinMapGatherNextReset,
+                "Done today",
+                "Daily");
+            var lootGoblinStatus = LootGoblinMapGatherRowPolicy.GetStatus(
+                lootGoblinDailyStatus,
+                plugin.LootGoblinMapGatherService.State,
+                plugin.LootGoblinMapGatherService.StatusText);
+            var lootGoblinStatusTooltip = plugin.LootGoblinMapGatherService.State == LootGoblinMapGatherServiceState.Idle
+                ? lootGoblinDailyStatus
+                : $"{plugin.LootGoblinMapGatherService.State}: {plugin.LootGoblinMapGatherService.StatusText}";
+            DrawTaskRow("LootGoblin Map Gather", config.EnableLootGoblinMapGather,
+                lootGoblinStatus,
+                "run##LootGoblinMapGather", () =>
+                {
+                    var response = plugin.LootGoblinMapGatherManualRunCoordinator.Start(engine.IsRunning);
+                    var result = response.Accepted
+                        ? response.Terminal && response.Success ? "completed" : "accepted"
+                        : "rejected";
+                    var detail = string.IsNullOrWhiteSpace(response.Message) ? response.State : response.Message;
+                    Plugin.ChatGui.Print($"[Vermaxion] LootGoblin map gather {result}: {detail}");
+                }, "OK",
+                statusTooltip: lootGoblinStatusTooltip,
+                buttonDisabled: engine.IsRunning,
+                buttonTooltip: "Manual map gather is unavailable while VERMAXION engine is running.");
             DrawTaskRow("nag your mom", config.EnableNagYourMom,
                 GetNagYourMomStatus(config, engine.NagYourMomStatusText),
-                "Test##Mom", () =>
+                "run##Mom", () =>
                 {
                     var route = GetFirstDueNagYourMomRoute(config);
                     var remainingRuns = Math.Max(1, GetRemainingNagYourMomRuns(config, route));
@@ -212,7 +241,7 @@ public class MainWindow : Window, IDisposable
                 }, "OK");
             DrawTaskRow("nag your dad", config.EnableNagYourDad,
                 GetNagYourDadStatus(config, engine.NagYourDadStatusText),
-                "Test##Dad", () =>
+                "run##Dad", () =>
                 {
                     var result = plugin.DadIPCClient.StartTasks(BuildDadRunRequest(config));
                     Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
@@ -227,9 +256,9 @@ public class MainWindow : Window, IDisposable
 
             // --- Utility Tasks ---
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
-                "Test##Highest", () => plugin.HighestCombatJobService.RunTask(), "OK");
+                "run##Highest", () => plugin.HighestCombatJobService.RunTask(), "OK");
             DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Every AR run",
-                "Test##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
+                "run##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
 
             ImGui.EndTable();
 
@@ -360,7 +389,16 @@ public class MainWindow : Window, IDisposable
         ImGui.TextDisabled("Every donation helps keep these plugins free and updated!");
     }
 
-    private void DrawTaskRow(string task, bool enabled, string status, string buttonLabel, Action onClick, string maturity = "-")
+    private void DrawTaskRow(
+        string task,
+        bool enabled,
+        string status,
+        string buttonLabel,
+        Action onClick,
+        string maturity = "-",
+        string? statusTooltip = null,
+        bool buttonDisabled = false,
+        string? buttonTooltip = null)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -369,9 +407,15 @@ public class MainWindow : Window, IDisposable
         ImGui.TextColored(enabled ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1), enabled ? "On" : "Off");
         ImGui.TableSetColumnIndex(2);
         ImGui.TextDisabled(status);
+        if (!string.IsNullOrWhiteSpace(statusTooltip) && ImGui.IsItemHovered())
+            ImGui.SetTooltip(statusTooltip);
         ImGui.TableSetColumnIndex(3);
+        ImGui.BeginDisabled(buttonDisabled);
         if (ImGui.SmallButton(buttonLabel))
             onClick();
+        ImGui.EndDisabled();
+        if (!string.IsNullOrWhiteSpace(buttonTooltip) && ImGui.IsItemHovered())
+            ImGui.SetTooltip(buttonTooltip);
         ImGui.TableSetColumnIndex(4);
         
         // Color code maturity
@@ -379,6 +423,7 @@ public class MainWindow : Window, IDisposable
         switch (maturity)
         {
             case "OK":
+            case "[OK]":
                 color = new Vector4(0, 1, 0, 1); // Green
                 break;
             case "WIP":

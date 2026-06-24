@@ -28,7 +28,6 @@ public class FCBuffService : IDisposable
     private readonly Plugin plugin;
 
     private const int BaseMinGil = 16000; // Base minimum gil required
-    private const int MaxPurchaseAttempts = 15;
     private const int MaxPurchaseConfirmRetries = 3;
     private const int MaxPurchaseConfirmPromptReadRetries = 3;
     private const float QuartermasterWaypointArrivalDistance = 2.5f;
@@ -54,6 +53,8 @@ public class FCBuffService : IDisposable
     private int pathRetryCount = 0;
     private DateTime lastPathRetryTime = DateTime.MinValue;
     private DateTime lastNavigationLogTime = DateTime.MinValue;
+    private int teleportRetryCount = 0;
+    private DateTime lastTeleportRetryAt = DateTime.MinValue;
     private int purchaseConfirmRetryCount = 0;
     private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
     private int purchaseConfirmPromptReadFailureCount = 0;
@@ -132,14 +133,14 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
         
-        purchaseAttempts = config.FCBuffPurchaseAttempts;
+        purchaseAttempts = FCBuffRecoveryPolicy.ClampPurchaseAttempts(config.FCBuffPurchaseAttempts);
         buyCount = 0;
         isSealSweetenerTwo = true; // Start with Seal Sweetener II
         failAfterClosingWindows = false;
         ResetWindowCloseTracking();
         ResetCachedGCTerritory();
         SetState(FCBuffState.CheckingFCPoints);
-        log.Information($"[FCBuff] Starting FC buff refill (max attempts: {config.FCBuffPurchaseAttempts})");
+        log.Information($"[FCBuff] Starting FC buff refill (max attempts: {purchaseAttempts})");
     }
 
     public void RunTask()
@@ -567,48 +568,15 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForAftArrival:
-                if (elapsed < 1) return;
-                // Wait for arrival at Aft (Upper Decks)
-                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
-                {
-                    LogNavigationStatusThrottled("[FCBuff] Still teleporting to Aft...");
-                    return;
-                }
-                if (clientState.TerritoryType == 129 && elapsed >= 3)
-                {
-                    log.Information("[FCBuff] Arrived at Limsa Aft, navigating to Quartermaster");
-                    SetState(FCBuffState.NavigatingToQuartermaster);
-                }
+                TickTeleportArrival(elapsed, 129, "/li aft", "Limsa Aft");
                 return;
 
             case FCBuffState.WaitingForGridaniaArrival:
-                if (elapsed < 1) return;
-                // Wait for arrival at Gridania
-                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
-                {
-                    LogNavigationStatusThrottled("[FCBuff] Still teleporting to Gridania...");
-                    return;
-                }
-                if (clientState.TerritoryType == 132 && elapsed >= 3)
-                {
-                    log.Information("[FCBuff] Arrived at Gridania, navigating to Quartermaster");
-                    SetState(FCBuffState.NavigatingToQuartermaster);
-                }
+                TickTeleportArrival(elapsed, 132, "/li gridania", "Gridania");
                 return;
 
             case FCBuffState.WaitingForDahArrival:
-                if (elapsed < 1) return;
-                // Wait for arrival at Dah (Ul'dah)
-                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
-                {
-                    LogNavigationStatusThrottled("[FCBuff] Still teleporting to Dah...");
-                    return;
-                }
-                if (clientState.TerritoryType == 130 && elapsed >= 3)
-                {
-                    log.Information("[FCBuff] Arrived at Ul'dah, navigating to Quartermaster");
-                    SetState(FCBuffState.NavigatingToQuartermaster);
-                }
+                TickTeleportArrival(elapsed, 130, "/li dah", "Ul'dah");
                 return;
 
             case FCBuffState.NavigatingToQuartermaster:
@@ -646,7 +614,7 @@ public class FCBuffService : IDisposable
                         SetState(FCBuffState.Failed);
                     }
                 }
-                else if (pathRetryCount > 5)
+                else if (pathRetryCount >= 5)
                 {
                     // All attempts failed, give up
                     log.Error("[FCBuff] Failed to start pathfinding after 5 attempts - city may be loading too slowly");
@@ -793,7 +761,7 @@ public class FCBuffService : IDisposable
                         log.Information("[FCBuff] FreeCompanyExchange appeared, starting purchase loop");
                         buyCount = 0;
                         var config = configManager.GetActiveConfig();
-                        buyMax = isSealSweetenerTwo ? config.FCBuffPurchaseAttempts : 1; // Buy configured amount of SS2, only 1 of SS1
+                        buyMax = isSealSweetenerTwo ? FCBuffRecoveryPolicy.ClampPurchaseAttempts(config.FCBuffPurchaseAttempts) : 1; // Buy configured amount of SS2, only 1 of SS1
                         ResetPurchaseConfirmRetryState();
                         log.Information($"[FCBuff] Purchase setup: buyMax={buyMax}, isSealSweetenerTwo={isSealSweetenerTwo}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
                         SetState(FCBuffState.PurchasingBuff);
@@ -913,6 +881,47 @@ public class FCBuffService : IDisposable
         {
             HandleUnreadablePurchaseConfirmationWithoutAddonMaster(GetExpectedPurchaseActionName(), GetExpectedPurchaseActionIndex(), ex.Message);
         }
+    }
+
+    private void TickTeleportArrival(double elapsedSeconds, ushort expectedTerritory, string retryCommand, string destination)
+    {
+        if (elapsedSeconds < 1)
+            return;
+
+        if (clientState.TerritoryType == expectedTerritory
+            && !condition[ConditionFlag.BetweenAreas]
+            && !condition[ConditionFlag.BetweenAreas51]
+            && elapsedSeconds >= 3)
+        {
+            log.Information($"[FCBuff] Arrived at {destination}, navigating to Quartermaster");
+            SetState(FCBuffState.NavigatingToQuartermaster);
+            return;
+        }
+
+        var elapsed = TimeSpan.FromSeconds(elapsedSeconds);
+        if (elapsed >= FCBuffRecoveryPolicy.TeleportTimeout)
+        {
+            log.Error($"[FCBuff] Timed out waiting for {destination} after {elapsed.TotalSeconds:F0}s and {teleportRetryCount} retries");
+            SetState(FCBuffState.Failed);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var sinceLastRetry = lastTeleportRetryAt == DateTime.MinValue
+            ? elapsed
+            : now - lastTeleportRetryAt;
+        if (!condition[ConditionFlag.BetweenAreas]
+            && !condition[ConditionFlag.BetweenAreas51]
+            && FCBuffRecoveryPolicy.ShouldRetryTeleport(elapsed, sinceLastRetry, teleportRetryCount))
+        {
+            teleportRetryCount++;
+            lastTeleportRetryAt = now;
+            log.Warning($"[FCBuff] Retrying teleport to {destination} ({teleportRetryCount}/{FCBuffRecoveryPolicy.MaxTeleportRetries})");
+            CommandHelper.SendCommand(retryCommand);
+            return;
+        }
+
+        LogNavigationStatusThrottled($"[FCBuff] Waiting for {destination} arrival ({elapsed.TotalSeconds:F0}s, retries {teleportRetryCount}/{FCBuffRecoveryPolicy.MaxTeleportRetries})");
     }
 
     private string GetExpectedPurchaseActionName() => isSealSweetenerTwo ? "Seal Sweetener II" : "Seal Sweetener I";
@@ -1301,6 +1310,12 @@ public class FCBuffService : IDisposable
             pathRetryCount = 0;
             lastPathRetryTime = DateTime.MinValue;
             log.Debug("[FCBuff] Reset pathfinding retry counters for navigation start");
+        }
+
+        if (newState == FCBuffState.NavigatingToGC)
+        {
+            teleportRetryCount = 0;
+            lastTeleportRetryAt = DateTime.MinValue;
         }
     }
 

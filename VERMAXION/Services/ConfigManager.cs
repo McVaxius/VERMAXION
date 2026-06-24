@@ -330,6 +330,7 @@ public class ConfigManager
         target.EnableNagYourDad = source.EnableNagYourDad;
         target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity;
         target.EnableMiscCmd = source.EnableMiscCmd;
+        target.EnableLootGoblinMapGather = source.EnableLootGoblinMapGather;
         target.ChocoboRacesPerDay = source.ChocoboRacesPerDay;
         target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50;
         target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
@@ -362,6 +363,8 @@ public class ConfigManager
         target.NagYourDadWindowStartLocal = source.NagYourDadWindowStartLocal;
         target.NagYourDadWindowEndLocal = source.NagYourDadWindowEndLocal;
         target.EvercoldAdventurerActivityTargetPoints = source.EvercoldAdventurerActivityTargetPoints;
+        target.LootGoblinMapGatherItemId = source.LootGoblinMapGatherItemId;
+        target.LootGoblinMapGatherRunAfterGather = source.LootGoblinMapGatherRunAfterGather;
         target.RequireSaucyForMiniCactpot = source.RequireSaucyForMiniCactpot;
         target.JumboCactpotNumberMode = source.JumboCactpotNumberMode;
         target.JumboCactpotFixedNumber = source.JumboCactpotFixedNumber;

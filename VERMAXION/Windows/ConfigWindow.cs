@@ -888,6 +888,45 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Unindent();
             }
 
+            var lootGoblinMapGather = cc.EnableLootGoblinMapGather;
+            if (ImGui.Checkbox(UIConstants.ConfigLabels.LootGoblinMapGather, ref lootGoblinMapGather))
+            {
+                cc.EnableLootGoblinMapGather = lootGoblinMapGather;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "LootGoblinMapGather", UIConstants.ConfigLabels.LootGoblinMapGather,
+                (source, target) => target.EnableLootGoblinMapGather = source.EnableLootGoblinMapGather);
+            if (DrawResetButton("LootGoblinMapGatherState", cc.ResetLootGoblinMapGatherState))
+                changed = true;
+            if (ResetDetectionService.TaskIsCompleted(cc.LootGoblinMapGatherLastCompleted, cc.LootGoblinMapGatherNextReset))
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+            }
+            DrawDailyTaskHint(cc.LootGoblinMapGatherLastCompleted, cc.LootGoblinMapGatherNextReset, "Runs once per daily reset through LootGoblin IPC.");
+            if (cc.EnableLootGoblinMapGather)
+            {
+                ImGui.Indent();
+                if (DrawLootGoblinMapDropdown(cc))
+                    changed = true;
+                DrawDefaultOverrideButton(isDefault, configManager, "LootGoblinMapGatherItemId", "LootGoblin map",
+                    (source, target) => target.LootGoblinMapGatherItemId = source.LootGoblinMapGatherItemId);
+
+                var runAfterGather = cc.LootGoblinMapGatherRunAfterGather;
+                if (ImGui.Checkbox("Run map after gather", ref runAfterGather))
+                {
+                    cc.LootGoblinMapGatherRunAfterGather = runAfterGather;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "LootGoblinMapGatherRunAfterGather", "Run map after gather",
+                    (source, target) => target.LootGoblinMapGatherRunAfterGather = source.LootGoblinMapGatherRunAfterGather);
+
+                if (cc.LootGoblinMapGatherRunAfterGather && !IsSelectedLootGoblinMapSafe(cc))
+                    ImGui.TextColored(new Vector4(1f, 0.25f, 0.25f, 1f), "Warning: run-after is safest only for solo outdoor maps without dungeons.");
+
+                ImGui.Unindent();
+            }
+
         }
 
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.VariableTimeTasks, ImGuiTreeNodeFlags.DefaultOpen))
@@ -1603,6 +1642,49 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.TextDisabled(pendingText);
         }
+    }
+
+    private bool DrawLootGoblinMapDropdown(CharacterConfig config)
+    {
+        var maps = plugin.LootGoblinIPCClient.GetGatherableMaps();
+        var selected = maps.FirstOrDefault(map => map.ItemId == config.LootGoblinMapGatherItemId);
+        var preview = selected?.DisplayName ?? $"Map {config.LootGoblinMapGatherItemId}";
+        var changed = false;
+
+        ImGui.Text("Map:");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(320f);
+        if (ImGui.BeginCombo("##LootGoblinMapGatherItemId", preview))
+        {
+            foreach (var map in maps)
+            {
+                var isSelected = map.ItemId == config.LootGoblinMapGatherItemId;
+                if (ImGui.Selectable(map.DisplayName, isSelected))
+                {
+                    config.LootGoblinMapGatherItemId = map.ItemId;
+                    changed = true;
+                }
+
+                if (isSelected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            if (maps.Count == 0)
+                ImGui.TextDisabled("LootGoblin IPC unavailable or no gatherable maps exported.");
+
+            ImGui.EndCombo();
+        }
+
+        return changed;
+    }
+
+    private bool IsSelectedLootGoblinMapSafe(CharacterConfig config)
+    {
+        var selected = plugin.LootGoblinIPCClient
+            .GetGatherableMaps()
+            .FirstOrDefault(map => map.ItemId == config.LootGoblinMapGatherItemId);
+
+        return selected != null && LootGoblinMapSafetyPolicy.IsSoloOutdoorSafe(selected);
     }
 
     private static void DrawDailyTaskHint(DateTime lastCompleted, DateTime nextReset, string pendingText)

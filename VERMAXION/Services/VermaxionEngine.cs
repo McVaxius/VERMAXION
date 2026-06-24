@@ -93,6 +93,7 @@ public class VermaxionEngine
         [PostProcessTaskOrder.JumboCactpot] = EngineState.RunningJumboCactpot,
         [PostProcessTaskOrder.FashionReport] = EngineState.RunningFashionReport,
         [PostProcessTaskOrder.ChocoboRacing] = EngineState.RunningChocoboRacing,
+        [PostProcessTaskOrder.LootGoblinMapGather] = EngineState.RunningLootGoblinMapGather,
         [PostProcessTaskOrder.NagYourMom] = EngineState.RunningNagYourMom,
         [PostProcessTaskOrder.NagYourDad] = EngineState.RunningNagYourDad,
     };
@@ -120,9 +121,11 @@ public class VermaxionEngine
     private readonly IClientState clientState;
     private readonly MomIPCClient momIPCClient;
     private readonly DadIPCClient dadIPCClient;
+    private readonly LootGoblinMapGatherService lootGoblinMapGatherService;
     private readonly AutoRetainerIPC autoRetainerIPC;
     private readonly VNavmeshIPC vNavmeshIPC;
     private readonly LifestreamIPC lifestreamIPC;
+    private readonly VermaxionIncidentWriter incidentWriter;
 
     private EngineState state = EngineState.Idle;
     private RunTaskPhaseFilter activePhaseFilter = RunTaskPhaseFilter.All;
@@ -156,6 +159,9 @@ public class VermaxionEngine
     private RunOutcome pendingRunOutcome = RunOutcome.None;
     private string pendingRunSummary = string.Empty;
     private bool requireEnabledConfig;
+    private DateTime watchdogLastProgressAt = DateTime.MinValue;
+    private string watchdogLastSignature = string.Empty;
+    private string watchdogPauseReason = string.Empty;
     private bool gateHenchmanTakeover;
     private DateTime henchmanTakeoverLastCheckedAt = DateTime.MinValue;
     private DateTime henchmanTakeoverLastLoggedAt = DateTime.MinValue;
@@ -176,6 +182,7 @@ public class VermaxionEngine
         RunningJumboCactpot,
         RunningFashionReport,
         RunningChocoboRacing,
+        RunningLootGoblinMapGather,
         RunningNagYourMom,
         RunningNagYourDad,
         SettlingTask,
@@ -233,9 +240,11 @@ public class VermaxionEngine
         IClientState clientState,
         MomIPCClient momIPCClient,
         DadIPCClient dadIPCClient,
+        LootGoblinMapGatherService lootGoblinMapGatherService,
         AutoRetainerIPC autoRetainerIPC,
         VNavmeshIPC vNavmeshIPC,
-        LifestreamIPC lifestreamIPC)
+        LifestreamIPC lifestreamIPC,
+        VermaxionIncidentWriter incidentWriter)
     {
         this.log = log;
         this.configuration = configuration;
@@ -257,9 +266,11 @@ public class VermaxionEngine
         this.clientState = clientState;
         this.momIPCClient = momIPCClient;
         this.dadIPCClient = dadIPCClient;
+        this.lootGoblinMapGatherService = lootGoblinMapGatherService;
         this.autoRetainerIPC = autoRetainerIPC;
         this.vNavmeshIPC = vNavmeshIPC;
         this.lifestreamIPC = lifestreamIPC;
+        this.incidentWriter = incidentWriter;
 
         // Subscribe to territory change events to close menus after teleporting
         clientState.TerritoryChanged += OnTerritoryChanged;
@@ -367,9 +378,10 @@ public class VermaxionEngine
     public void ForceStop()
     {
         log.Warning("[Engine] Full Stop force-releasing ownership");
-        ResetTaskServices();
         momIPCClient.CancelActiveRun();
         dadIPCClient.CancelActiveRun();
+        lootGoblinMapGatherService.Cancel();
+        ResetTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
         if (henchmanService.IsManaging)
@@ -415,11 +427,15 @@ public class VermaxionEngine
 
         try
         {
+            if (TickTaskWatchdog())
+                return;
             UpdateCore();
         }
         catch (Exception ex)
         {
             log.Error($"[Engine] Unhandled engine exception while state={state}: {ex}");
+            WriteIncident("engine-exception", ex.Message);
+            CleanupFaultingWork(state, "engine exception");
             runHadFailure = true;
             pendingRunOutcome = RunOutcome.Failed;
             pendingRunSummary = $"Unhandled exception in {state}: {ex.Message}";
@@ -890,6 +906,47 @@ public class VermaxionEngine
                 }
                 break;
 
+            case EngineState.RunningLootGoblinMapGather:
+                activeConfig = GetLiveActiveConfig();
+                if (activeConfig!.EnableLootGoblinMapGather &&
+                    ResetDetectionService.TaskNeedsRun(activeConfig.LootGoblinMapGatherLastCompleted, activeConfig.LootGoblinMapGatherNextReset))
+                {
+                    if (!lootGoblinMapGatherService.IsActive && !lootGoblinMapGatherService.IsComplete && !lootGoblinMapGatherService.IsFailed)
+                    {
+                        log.Information("[Engine] Starting LootGoblin Map Gather");
+                        ResetInteractionState();
+                        MarkCurrentTaskWorkStarted();
+                        lootGoblinMapGatherService.Start(activeConfig);
+                        return;
+                    }
+
+                    lootGoblinMapGatherService.Update();
+
+                    if (lootGoblinMapGatherService.IsComplete)
+                    {
+                        var completedAt = DateTime.UtcNow;
+                        PersistCurrentCharacterConfig(config =>
+                        {
+                            config.LootGoblinMapGatherLastCompleted = completedAt;
+                            config.LootGoblinMapGatherNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
+                        }, "LootGoblin Map Gather completion");
+                        lootGoblinMapGatherService.Reset();
+                        AdvanceToNextTask(EngineState.RunningLootGoblinMapGather);
+                    }
+                    else if (lootGoblinMapGatherService.IsFailed)
+                    {
+                        log.Warning($"[Engine] LootGoblin Map Gather failed - will retry later: {lootGoblinMapGatherService.StatusText}");
+                        runHadFailure = true;
+                        lootGoblinMapGatherService.Reset();
+                        AdvanceToNextTask(EngineState.RunningLootGoblinMapGather);
+                    }
+                }
+                else
+                {
+                    AdvanceToNextTask(EngineState.RunningLootGoblinMapGather);
+                }
+                break;
+
             case EngineState.RunningNagYourMom:
                 activeConfig = GetLiveActiveConfig();
                 RollNagYourMomLocalDay(activeConfig!);
@@ -1297,9 +1354,10 @@ public class VermaxionEngine
 
     private void CancelForSettling(string status)
     {
-        ResetTaskServices();
         momIPCClient.CancelActiveRun();
         dadIPCClient.CancelActiveRun();
+        lootGoblinMapGatherService.Cancel();
+        ResetTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
         NagYourMomStatusText = status;
@@ -1313,6 +1371,7 @@ public class VermaxionEngine
     {
         currentTaskOwnedWorkStarted = true;
         runOwnedWorkStarted = true;
+        RecordWatchdogProgress("owned work started");
     }
 
     private void ResetTaskServices()
@@ -1323,10 +1382,171 @@ public class VermaxionEngine
         registerRegistrablesService.Reset();
         retainerListingRefillService.Reset();
         workshopBellService.Reset();
+        lootGoblinMapGatherService.Reset();
         verminionService.Reset();
         cactpotService.Reset();
         fashionReportService.Reset();
         chocoboRaceService.Reset();
+    }
+
+    private bool TickTaskWatchdog()
+    {
+        if (!TaskIdByState.ContainsKey(state))
+        {
+            ResetWatchdog();
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        var pauseReason = GetTaskWatchdogPauseReason();
+        if (pauseReason != null)
+        {
+            if (!string.Equals(watchdogPauseReason, pauseReason, StringComparison.Ordinal))
+                log.Information($"[Engine][Watchdog] Suspended in {state}: {pauseReason}");
+            watchdogPauseReason = pauseReason;
+            watchdogLastProgressAt = now;
+            watchdogLastSignature = BuildWatchdogSignature();
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(watchdogPauseReason))
+        {
+            log.Information($"[Engine][Watchdog] Re-armed in {state} after {watchdogPauseReason}");
+            watchdogPauseReason = string.Empty;
+            watchdogLastProgressAt = now;
+            watchdogLastSignature = BuildWatchdogSignature();
+            return false;
+        }
+
+        var signature = BuildWatchdogSignature();
+        if (!string.Equals(signature, watchdogLastSignature, StringComparison.Ordinal))
+        {
+            watchdogLastSignature = signature;
+            watchdogLastProgressAt = now;
+            return false;
+        }
+
+        if (watchdogLastProgressAt == DateTime.MinValue)
+        {
+            watchdogLastProgressAt = now;
+            return false;
+        }
+
+        if (!TaskWatchdogPolicy.ShouldTimeout(now, watchdogLastProgressAt, paused: false))
+            return false;
+
+        var timedOutState = state;
+        var taskId = TaskIdByState[timedOutState];
+        var stalledFor = now - watchdogLastProgressAt;
+        var summary = $"{taskId} stalled for {stalledFor.TotalMinutes:F1} minutes without observable progress";
+        log.Error($"[Engine][Watchdog] {summary}; cleaning task and continuing queue");
+        WriteIncident("task-watchdog-timeout", summary);
+        CleanupFaultingWork(timedOutState, "watchdog timeout");
+        runHadFailure = true;
+        AdvanceToNextTask(timedOutState);
+        return true;
+    }
+
+    private string? GetTaskWatchdogPauseReason()
+    {
+        if (!clientState.IsLoggedIn)
+            return "client logged out";
+        if (Plugin.ObjectTable.LocalPlayer == null)
+            return "local player unavailable";
+        if (Plugin.Condition[ConditionFlag.BoundByDuty] || Plugin.Condition[ConditionFlag.BoundByDuty56])
+            return "duty-bound";
+        if (Plugin.Condition[ConditionFlag.InDutyQueue]
+            || Plugin.Condition[ConditionFlag.WaitingForDuty]
+            || Plugin.Condition[ConditionFlag.WaitingForDutyFinder])
+            return "duty queue/wait";
+        if (Plugin.Condition[ConditionFlag.InCombat] || Plugin.Condition[ConditionFlag.Casting])
+            return "combat/casting";
+        if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
+            return "zoning";
+        if (Plugin.Condition[ConditionFlag.Occupied]
+            || Plugin.Condition[ConditionFlag.OccupiedInQuestEvent]
+            || Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent]
+            || Plugin.Condition[ConditionFlag.WatchingCutscene])
+            return "occupied/cutscene";
+        if (!IsPlayerAvailable())
+            return "player unavailable";
+        return null;
+    }
+
+    private string BuildWatchdogSignature()
+        => string.Join(
+            '|',
+            state,
+            runQueueIndex,
+            fcBuffService.State,
+            vendorStockService.IsActive,
+            registerRegistrablesService.State,
+            retainerListingRefillService.IsActive,
+            workshopBellService.IsActive,
+            verminionService.StatusText,
+            cactpotService.IsActive,
+            fashionReportService.State,
+            chocoboRaceService.StatusText,
+            lootGoblinMapGatherService.StatusText,
+            NagYourMomStatusText,
+            NagYourDadStatusText);
+
+    private void RecordWatchdogProgress(string reason)
+    {
+        watchdogLastProgressAt = DateTime.UtcNow;
+        watchdogLastSignature = BuildWatchdogSignature();
+        watchdogPauseReason = string.Empty;
+        log.Debug($"[Engine][Watchdog] Progress: {reason}");
+    }
+
+    private void ResetWatchdog()
+    {
+        watchdogLastProgressAt = DateTime.MinValue;
+        watchdogLastSignature = string.Empty;
+        watchdogPauseReason = string.Empty;
+    }
+
+    private void CleanupFaultingWork(EngineState faultingState, string reason)
+    {
+        switch (faultingState)
+        {
+            case EngineState.RunningFCBuff: fcBuffService.Reset(); break;
+            case EngineState.RunningVendorStock: vendorStockService.Reset(); break;
+            case EngineState.RunningRegisterRegistrables: registerRegistrablesService.Reset(); break;
+            case EngineState.RunningRetainerListingRefill: retainerListingRefillService.Reset(); workshopBellService.Reset(); break;
+            case EngineState.RunningVerminion: verminionService.Reset(); break;
+            case EngineState.RunningMiniCactpot:
+            case EngineState.RunningJumboCactpot: cactpotService.Reset(); break;
+            case EngineState.RunningFashionReport: fashionReportService.Reset(); break;
+            case EngineState.RunningChocoboRacing: chocoboRaceService.Reset(); break;
+            case EngineState.RunningLootGoblinMapGather: lootGoblinMapGatherService.Cancel(); break;
+            case EngineState.RunningNagYourMom: momIPCClient.CancelActiveRun(); break;
+            case EngineState.RunningNagYourDad: dadIPCClient.CancelActiveRun(); break;
+            default: ResetTaskServices(); break;
+        }
+
+        vNavmeshIPC.Stop();
+        TryCloseOwnedUiBestEffort();
+        log.Warning($"[Engine] Cleaned faulting work in {faultingState} after {reason}");
+    }
+
+    private void WriteIncident(string type, string summary)
+    {
+        try
+        {
+            var taskId = TaskIdByState.TryGetValue(state, out var id) ? id : string.Empty;
+            incidentWriter.Write(new VermaxionIncident(
+                DateTime.UtcNow,
+                type,
+                state.ToString(),
+                taskId,
+                summary,
+                $"queueIndex={runQueueIndex}; queue=[{string.Join(',', runQueue)}]; ownedTask={currentTaskOwnedWorkStarted}; ownedRun={runOwnedWorkStarted}; blocker={GetHandoffBlocker() ?? "none"}; signature={BuildWatchdogSignature()}"));
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[Engine] Failed to write Vermaxion incident: {ex.Message}");
+        }
     }
 
     private bool TickHandoffSettling(string phase)
@@ -1441,12 +1661,15 @@ public class VermaxionEngine
         return null;
     }
 
-    private void TryCloseOwnedUiBestEffort()
+    private void TryCloseOwnedUiBestEffort(UiCloseFallbackMode fallbackMode = UiCloseFallbackMode.Always)
     {
+        var knownAddonWasVisible = TaskOwnedAddonNames.Any(IsAddonVisible);
+
         foreach (var addonName in TaskOwnedAddonNames)
             TryCloseAddonByCallback(addonName);
 
-        ResetInteractionState();
+        if (UiCloseFallbackPolicy.ShouldPressFallbackEscape(fallbackMode, knownAddonWasVisible))
+            ResetInteractionState();
     }
 
     private void ResetHandoffTracking()
@@ -1569,6 +1792,8 @@ public class VermaxionEngine
                 ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset),
             PostProcessTaskOrder.ChocoboRacing => config.EnableChocoboRacing &&
                 ResetDetectionService.TaskNeedsRun(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset),
+            PostProcessTaskOrder.LootGoblinMapGather => config.EnableLootGoblinMapGather &&
+                ResetDetectionService.TaskNeedsRun(config.LootGoblinMapGatherLastCompleted, config.LootGoblinMapGatherNextReset),
             PostProcessTaskOrder.NagYourMom => ShouldRunNagYourMomNow(config) && momIPCClient.GetReadiness().CanStart,
             PostProcessTaskOrder.NagYourDad => ShouldRunNagYourDadNow(config, out _) && dadIPCClient.IsReady(),
             _ => false,
@@ -1621,6 +1846,7 @@ public class VermaxionEngine
         ResetHenchmanTakeoverTracking();
         activeConfig = null;
         activePhaseFilter = RunTaskPhaseFilter.All;
+        ResetWatchdog();
     }
 
     private void SetState(EngineState newState)
@@ -1628,6 +1854,7 @@ public class VermaxionEngine
         log.Debug($"[Engine] State: {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        RecordWatchdogProgress($"state entered {newState}");
 
         StatusText = newState switch
         {
@@ -1644,6 +1871,7 @@ public class VermaxionEngine
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",
             EngineState.RunningFashionReport => "Fashion Report",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
+            EngineState.RunningLootGoblinMapGather => "LootGoblin Map Gather",
             EngineState.RunningNagYourMom => "nag your mom",
             EngineState.RunningNagYourDad => "nag your dad",
             EngineState.SettlingTask => "Settling task handoff",
@@ -1662,6 +1890,8 @@ public class VermaxionEngine
         }
         if (newState != EngineState.RunningNagYourDad)
             nagYourDadRequestIssued = false;
+        if (newState != EngineState.RunningLootGoblinMapGather && lootGoblinMapGatherService.IsComplete)
+            lootGoblinMapGatherService.Reset();
         if (newState != EngineState.RunningJumboCactpot)
             activeJumboCactpotPayoutRoute = null;
         if (newState != EngineState.RunningMiniCactpot && newState != EngineState.RunningJumboCactpot)
@@ -2194,8 +2424,8 @@ public class VermaxionEngine
     {
         try
         {
-            log.Information($"[Engine] Territory changed to {territoryType} - clearing open UI");
-            ResetInteractionState();
+            log.Information($"[Engine] Territory changed to {territoryType} - clearing known task UI");
+            TryCloseOwnedUiBestEffort(UiCloseFallbackMode.OnlyWhenKnownAddonVisible);
         }
         catch (Exception ex)
         {
