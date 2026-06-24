@@ -18,19 +18,29 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
       - name: Download Dalamud
         run: |
-          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/api15/latest.zip -OutFile latest.zip
-          Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev\"
+          $devPath = Join-Path $env:AppData "XIVLauncher\addon\Hooks\dev"
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/goatcorp/dalamud-distrib/4b9175ec411f15a84f4d59dc24881095aef2d999/stg/latest.zip -OutFile latest.zip
+          Expand-Archive -Force latest.zip $devPath
+          Write-Host "Expected pinned Dalamud: version 15.0.2.2, GitSha 4a6abae25b8a156a102ed3869429ef026a3d7cfe, revision 7312"
+          foreach ($metadataFile in @("commit_hash.txt", "revision.txt")) {
+            $metadataPath = Join-Path $devPath $metadataFile
+            if (Test-Path $metadataPath) {
+              Write-Host "${metadataFile}: $((Get-Content -Raw $metadataPath).Trim())"
+            } else {
+              Write-Warning "${metadataFile} was not found in $devPath"
+            }
+          }
 
       - name: Build
         run: |
@@ -40,7 +50,7 @@ jobs:
           DOTNET_CLI_TELEMETRY_OPTOUT: true
 
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.PLUGIN_NAME }}-artifact
           path: |
@@ -55,10 +65,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Build Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.PLUGIN_NAME }}-artifact
           path: artifact
@@ -73,7 +83,7 @@ jobs:
           fi
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: Release ${{ steps.get_version.outputs.version }}
