@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\VERMAXION\Models\HenchmanTakeoverReadiness.cs" Link="HenchmanTakeoverReadiness.cs" />
     <Compile Include="..\VERMAXION\Models\LifecycleStatus.cs" Link="LifecycleStatus.cs" />
     <Compile Include="..\VERMAXION\Models\RecoveryPolicy.cs" Link="RecoveryPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\UiCloseFallbackPolicy.cs" Link="UiCloseFallbackPolicy.cs" />

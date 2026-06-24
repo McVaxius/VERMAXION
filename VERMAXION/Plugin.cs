@@ -83,6 +83,8 @@ public sealed class Plugin : IDalamudPlugin
     private DateTime beforeArLoginLastDiagnosticAt = DateTime.MinValue;
     private DateTime beforeArWorldReadySince = DateTime.MinValue;
     private DateTime beforeArSuppressionRecoveryLastAttemptAt = DateTime.MinValue;
+    private bool releaseOnlyPostprocessFinishPending;
+    private string releaseOnlyPostprocessFinishReason = string.Empty;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
     public BeforeArGateState BeforeArGate { get; private set; } = BeforeArGateState.Idle;
@@ -111,7 +113,7 @@ public sealed class Plugin : IDalamudPlugin
 
         // Initialize services
         ResetDetectionService = new ResetDetectionService(Log);
-        HenchmanService = new HenchmanService(CommandManager, Log);
+        HenchmanService = new HenchmanService(PluginInterface, CommandManager, Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
@@ -214,7 +216,66 @@ public sealed class Plugin : IDalamudPlugin
     private void OnARCharacterReady(string pluginName)
     {
         Log.Information($"[Plugin] AR signaled character ready for postprocess");
+
+        var henchmanReadiness = HenchmanService.GetTakeoverReadiness();
+        var decision = AutomatedPostprocessPolicy.EvaluateHenchmanPreflight(henchmanReadiness);
+        if (!decision.StartEngine)
+        {
+            Log.Warning($"[Plugin] Skipping AR postprocess engine start: {decision.Summary}");
+            Engine.RecordSkippedOpportunity(decision.Summary);
+
+            if (decision.FinishPostprocess)
+                FinishReleaseOnlyPostprocess(decision.Summary);
+
+            if (decision.ReleaseAutoRetainerSuppression)
+                ReleaseOwnedSuppressionAfterSkippedPostprocess(decision.Summary);
+
+            return;
+        }
+
         Engine.StartPostProcess();
+    }
+
+    private void FinishReleaseOnlyPostprocess(string reason)
+    {
+        if (ARPostProcessService.FinishPostProcess(mode: ARPostProcessFinishMode.ReleaseOnly))
+        {
+            releaseOnlyPostprocessFinishPending = false;
+            releaseOnlyPostprocessFinishReason = string.Empty;
+            return;
+        }
+
+        releaseOnlyPostprocessFinishPending = ARPostProcessService.IsProcessing;
+        releaseOnlyPostprocessFinishReason = reason;
+    }
+
+    private void ProcessReleaseOnlyPostprocessFinishPending()
+    {
+        if (!releaseOnlyPostprocessFinishPending)
+            return;
+
+        if (!ARPostProcessService.IsProcessing)
+        {
+            releaseOnlyPostprocessFinishPending = false;
+            releaseOnlyPostprocessFinishReason = string.Empty;
+            return;
+        }
+
+        if (!ARPostProcessService.FinishPostProcess(mode: ARPostProcessFinishMode.ReleaseOnly))
+            return;
+
+        Log.Information($"[AR] Release-only postprocess finish confirmed after retry: {releaseOnlyPostprocessFinishReason}");
+        releaseOnlyPostprocessFinishPending = false;
+        releaseOnlyPostprocessFinishReason = string.Empty;
+    }
+
+    private void ReleaseOwnedSuppressionAfterSkippedPostprocess(string reason)
+    {
+        if (!AutoRetainerIPC.SuppressionOwnedByVermaxion)
+            return;
+
+        SetBeforeArGate(BeforeArGateState.ReleasePending, reason);
+        ProcessBeforeArReleasePending();
     }
 
     private void OnCharacterChanged(string oldCharacterKey, string newCharacterKey)
@@ -663,6 +724,7 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         ProcessBeforeArSuppressionRecovery();
+        ProcessReleaseOnlyPostprocessFinishPending();
         ProcessBeforeArReleasePending();
         ProcessPendingBeforeArLogin();
 
@@ -828,6 +890,8 @@ public sealed class Plugin : IDalamudPlugin
         Log.Information("[FULL STOP] YesAlready unpaused");
 
         AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
+        releaseOnlyPostprocessFinishPending = false;
+        releaseOnlyPostprocessFinishReason = string.Empty;
         beforeArArmedByPostprocess = false;
         pendingBeforeArLogin = false;
         SetBeforeArGate(BeforeArGateState.Idle, "Full Stop");
