@@ -1649,12 +1649,15 @@ public class VermaxionEngine
         return null;
     }
 
-    private void TryCloseOwnedUiBestEffort()
+    private void TryCloseOwnedUiBestEffort(UiCloseFallbackMode fallbackMode = UiCloseFallbackMode.Always)
     {
+        var knownAddonWasVisible = TaskOwnedAddonNames.Any(IsAddonVisible);
+
         foreach (var addonName in TaskOwnedAddonNames)
             TryCloseAddonByCallback(addonName);
 
-        ResetInteractionState();
+        if (UiCloseFallbackPolicy.ShouldPressFallbackEscape(fallbackMode, knownAddonWasVisible))
+            ResetInteractionState();
     }
 
     private void ResetHandoffTracking()
@@ -2365,8 +2368,8 @@ public class VermaxionEngine
     {
         try
         {
-            log.Information($"[Engine] Territory changed to {territoryType} - clearing open UI");
-            ResetInteractionState();
+            log.Information($"[Engine] Territory changed to {territoryType} - clearing known task UI");
+            TryCloseOwnedUiBestEffort(UiCloseFallbackMode.OnlyWhenKnownAddonVisible);
         }
         catch (Exception ex)
         {

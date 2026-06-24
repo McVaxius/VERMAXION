@@ -18,6 +18,7 @@
   <ItemGroup>
     <Compile Include="..\VERMAXION\Models\LifecycleStatus.cs" Link="LifecycleStatus.cs" />
     <Compile Include="..\VERMAXION\Models\RecoveryPolicy.cs" Link="RecoveryPolicy.cs" />
+    <Compile Include="..\VERMAXION\Models\UiCloseFallbackPolicy.cs" Link="UiCloseFallbackPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\LootGoblinMapGatherModels.cs" Link="LootGoblinMapGatherModels.cs" />
     <Compile Include="..\VERMAXION\Models\LootGoblinMapGatherManualRunPolicy.cs" Link="LootGoblinMapGatherManualRunPolicy.cs" />
     <Compile Include="..\VERMAXION\PostProcessTaskOrder.cs" Link="PostProcessTaskOrder.cs" />
