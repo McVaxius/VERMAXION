@@ -298,6 +298,14 @@ public class CactpotService : IDisposable
         SetState(CactpotState.Idle);
     }
 
+    public void HandleChatMessage(string messageText)
+    {
+        if (!JumboCactpotPurchaseMessagePolicy.TryParsePurchasedNumber(messageText, out var purchasedNumber))
+            return;
+
+        TryRecordJumboPurchaseFromSystemMessage(purchasedNumber);
+    }
+
     public void Update()
     {
         if (state == CactpotState.Idle || state == CactpotState.Complete || state == CactpotState.Failed)
@@ -752,7 +760,11 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboWaitingForConfirmation:
-                if (GameHelpers.ClickYesIfVisible())
+                if (jumboPurchasesVerified >= currentTicket)
+                {
+                    SetState(CactpotState.JumboVerifyingPurchase);
+                }
+                else if (GameHelpers.ClickYesIfVisible())
                 {
                     log.Information($"[Cactpot] Accepted Jumbo Cactpot Yes/No prompt for ticket {currentTicket}/{totalTickets}");
                     SetState(CactpotState.JumboVerifyingPurchase);
@@ -765,6 +777,12 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboVerifyingPurchase:
+                if (jumboPurchasesVerified >= currentTicket)
+                {
+                    AdvanceAfterJumboPurchaseVerified("system message");
+                    break;
+                }
+
                 if (GameHelpers.IsAddonVisible("SelectYesno"))
                 {
                     if (elapsed > JumboUiTimeout)
@@ -780,21 +798,7 @@ public class CactpotService : IDisposable
                     break;
 
                 jumboPurchasesVerified = Math.Max(jumboPurchasesVerified, currentTicket);
-                log.Information($"[Cactpot] Verified Jumbo purchase {jumboPurchasesVerified}/{totalTickets} after confirmation closed");
-                if (jumboPurchasesVerified >= totalTickets)
-                {
-                    SetState(CactpotState.JumboClosingWindows);
-                }
-                else
-                {
-                    currentTicket++;
-                    if (GameHelpers.IsAddonVisible("LotteryWeeklyInput"))
-                        SetState(CactpotState.JumboWaitingForInputWindow);
-                    else if (GameHelpers.IsAddonVisible("SelectString"))
-                        SetState(CactpotState.JumboSelectingPurchase);
-                    else
-                        SetState(CactpotState.JumboTargetingBroker);
-                }
+                AdvanceAfterJumboPurchaseVerified("confirmation closed");
                 break;
 
             case CactpotState.JumboClosingWindows:
@@ -1252,6 +1256,60 @@ public class CactpotService : IDisposable
             reason,
             string.IsNullOrWhiteSpace(promptText) ? string.Empty : $": '{promptText}'");
         return true;
+    }
+
+    private bool TryRecordJumboPurchaseFromSystemMessage(int purchasedNumber)
+    {
+        if (state is not (CactpotState.JumboWaitingForConfirmation or CactpotState.JumboVerifyingPurchase) ||
+            currentTicket < 1 ||
+            currentTicket > totalTickets)
+        {
+            return false;
+        }
+
+        if (jumboPurchasesVerified >= currentTicket)
+            return false;
+
+        if (purchasedNumber != currentJumboNumber)
+        {
+            log.Warning("[Cactpot] Jumbo purchase system message number {PurchasedNumber:0000} did not match expected {ExpectedNumber:0000}; accepting system message as purchase confirmation",
+                purchasedNumber,
+                currentJumboNumber);
+        }
+
+        jumboPurchasesVerified = currentTicket;
+        log.Information("[Cactpot] Verified Jumbo purchase {VerifiedPurchases}/{TotalTickets} from system message with number {PurchasedNumber:0000}",
+            jumboPurchasesVerified,
+            totalTickets,
+            purchasedNumber);
+
+        if (state == CactpotState.JumboWaitingForConfirmation)
+            SetState(CactpotState.JumboVerifyingPurchase);
+
+        return true;
+    }
+
+    private void AdvanceAfterJumboPurchaseVerified(string source)
+    {
+        log.Information("[Cactpot] Verified Jumbo purchase {VerifiedPurchases}/{TotalTickets} after {Source}",
+            jumboPurchasesVerified,
+            totalTickets,
+            source);
+
+        if (jumboPurchasesVerified >= totalTickets)
+        {
+            SetState(CactpotState.JumboClosingWindows);
+            return;
+        }
+
+        currentTicket++;
+
+        if (GameHelpers.IsAddonVisible("LotteryWeeklyInput") || GameHelpers.IsAddonVisible("SelectYesno"))
+            SetState(CactpotState.JumboWaitingForInputWindow);
+        else if (GameHelpers.IsAddonVisible("SelectString"))
+            SetState(CactpotState.JumboSelectingPurchase);
+        else
+            SetState(CactpotState.JumboTargetingBroker);
     }
 
     private int GetMiniCactpotTicketsToday()

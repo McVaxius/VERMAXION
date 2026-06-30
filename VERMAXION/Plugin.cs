@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Dalamud.Game.Command;
+using Dalamud.Game.Chat;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Text.SeStringHandling;
@@ -180,12 +181,14 @@ public sealed class Plugin : IDalamudPlugin
         // Login detection
         ClientState.Login += OnLoginEvent;
         Framework.Update += OnFrameworkUpdate;
+        ChatGui.ChatMessage += OnChatMessage;
 
         Log.Information("===Vermaxion loaded!===");
     }
 
     public void Dispose()
     {
+        ChatGui.ChatMessage -= OnChatMessage;
         Framework.Update -= OnFrameworkUpdate;
         ClientState.Login -= OnLoginEvent;
         ConfigManager.OnCharacterChanged -= OnCharacterChanged;
@@ -211,6 +214,11 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
 
         ECommonsMain.Dispose();
+    }
+
+    private void OnChatMessage(IChatMessage message)
+    {
+        CactpotService.HandleChatMessage(message.Message.TextValue);
     }
 
     private void OnARCharacterReady(string pluginName)
