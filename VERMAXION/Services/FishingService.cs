@@ -133,6 +133,19 @@ public sealed class FishingService
             fishingWindowActive);
     }
 
+    public bool IsOceanFishingStartupWindowActive(DateTimeOffset nowUtc)
+        => OceanFishingSchedulePolicy.IsStartupWindowActive(
+            nowUtc,
+            configuration.OceanFishingPreWindowOffsetMinutes);
+
+    public FishingSelectionResult SelectFishingStartupTarget(DateTimeOffset nowUtc)
+    {
+        if (!IsOceanFishingStartupWindowActive(nowUtc))
+            return FishingSelectionResult.None("No VERMAXION Ocean Fishing startup window is active.");
+
+        return SelectFishingTarget(fishingWindowActive: true);
+    }
+
     public static bool IsFishingContextActive()
         => Plugin.Condition[ConditionFlag.BoundByDuty]
            || Plugin.Condition[ConditionFlag.BoundByDuty56]

@@ -44,7 +44,7 @@ public sealed class FishingRelogCoordinator
         stepStartedAt = DateTime.MinValue;
         IsActive = true;
         StatusText = $"Preparing relog to {targetCharacterKey}";
-        log.Information($"[Fishing][Relog] Starting AR release sequence for {targetCharacterKey}");
+        log.Information($"[Fishing][Relog] Starting release/relog sequence for {targetCharacterKey}");
         return true;
     }
 
@@ -97,7 +97,7 @@ public sealed class FishingRelogCoordinator
 
             case FishingRelogPrepAction.SendCommand:
                 StatusText = step.Command;
-                log.Information($"[Fishing][Relog] Sending {step.Command}");
+                log.Information(FishingRelogDiagnostics.FormatCommand(step));
                 CommandHelper.SendCommand(step.Command);
                 AdvanceStep();
                 break;

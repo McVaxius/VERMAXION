@@ -18,7 +18,7 @@ using VERMAXION.Windows;
 
 namespace VERMAXION;
 
-public sealed class Plugin : IDalamudPlugin
+public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 {
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
@@ -71,6 +71,7 @@ public sealed class Plugin : IDalamudPlugin
     public WorkshopBellService WorkshopBellService { get; init; }
     public FishingService FishingService { get; init; }
     public FishingRelogCoordinator FishingRelogCoordinator { get; init; }
+    public FishingStartupCoordinator FishingStartupCoordinator { get; init; }
     public VermaxionEngine Engine { get; init; }
     public VermaxionIncidentWriter IncidentWriter { get; init; }
 
@@ -157,6 +158,7 @@ public sealed class Plugin : IDalamudPlugin
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady, ArmBeforeArSuppressionFromPostprocess);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC);
         FishingService = new FishingService(CommandManager, Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient);
+        FishingStartupCoordinator = new FishingStartupCoordinator(this);
 
         // Engine - orchestrates all tasks
         Engine = new VermaxionEngine(
@@ -240,6 +242,22 @@ public sealed class Plugin : IDalamudPlugin
     {
         Log.Information($"[Plugin] AR signaled character ready for postprocess");
 
+        var fishingStartup = RunFishingStartupTrigger(FishingStartupTrigger.AutoRetainerPostprocess);
+        if (fishingStartup.ClaimsStartup)
+        {
+            Engine.RecordSkippedOpportunity($"Ocean Fishing startup: {fishingStartup.Reason}");
+
+            // Relog startup owns the AR release steps itself. Current-character
+            // startup has no relog sequence, so release the AR handoff directly.
+            if (!FishingRelogCoordinator.IsActive)
+            {
+                FinishReleaseOnlyPostprocess(fishingStartup.Reason);
+                ReleaseOwnedSuppressionAfterSkippedPostprocess(fishingStartup.Reason);
+            }
+
+            return;
+        }
+
         var henchmanReadiness = HenchmanService.GetTakeoverReadiness();
         var decision = AutomatedPostprocessPolicy.EvaluateHenchmanPreflight(henchmanReadiness);
         if (!decision.StartEngine)
@@ -256,46 +274,36 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        if (TryBeginFishingRelogFromPostprocess())
-            return;
-
         Engine.StartPostProcess();
     }
 
-    private bool TryBeginFishingRelogFromPostprocess()
+    public void RunFishingStartupManual()
     {
-        if (Configuration.FishingExecutionMode != FishingExecutionMode.AutoRetainerRelogCurrentAccount)
-            return false;
+        var result = RunFishingStartupTrigger(FishingStartupTrigger.Manual);
+        ChatGui.Print($"[Vermaxion] Fishing startup: {result.Reason}");
+    }
 
-        var fishingWindowActive = FishingService.IsFishingContextActive() || HenchmanService.IsFishingWindowActive();
-        if (!fishingWindowActive)
-            return false;
-
-        var selection = FishingService.SelectFishingTarget(fishingWindowActive);
-        if (!selection.Selected)
+    private FishingStartupResult RunFishingStartupTrigger(FishingStartupTrigger trigger)
+    {
+        var result = FishingStartupCoordinator.Poll(DateTimeOffset.UtcNow, trigger);
+        if (result.Started)
         {
-            Log.Information($"[Fishing] No AR fishing relog target selected: {selection.Reason}");
-            return false;
+            Log.Information(FishingStartupDiagnostics.FormatStarted(result));
+        }
+        else if (trigger is FishingStartupTrigger.Manual or FishingStartupTrigger.AutoRetainerPostprocess)
+        {
+            Log.Information($"[Fishing][Startup] trigger={trigger}, action={result.Action}, reason={result.Reason}");
         }
 
-        if (selection.AlwaysFishKeysToDisable.Count > 0)
+        if (trigger != FishingStartupTrigger.AutoRetainerPostprocess &&
+            result.Action == FishingStartupAction.FishingStarted &&
+            ARPostProcessService.IsProcessing)
         {
-            var cleared = ConfigManager.DisableAlwaysFishOnOtherCharacters(selection.CharacterKey);
-            Log.Information($"[Fishing] Cleared AlwaysFishOnThisCharacterIfWindowOpen on {cleared} other character(s); selected={selection.CharacterKey}");
+            FinishReleaseOnlyPostprocess(result.Reason);
+            ReleaseOwnedSuppressionAfterSkippedPostprocess(result.Reason);
         }
 
-        if (!selection.RequiresRelog)
-            return false;
-
-        if (!FishingRelogCoordinator.RequestRelog(selection.CharacterKey))
-        {
-            Log.Warning($"[Fishing] Could not start relog coordinator for selected target {selection.CharacterKey}");
-            return false;
-        }
-
-        Engine.RecordSkippedOpportunity($"Fishing relog to {selection.CharacterKey}");
-        Log.Information($"[Fishing] AR postprocess yielded to fishing relog target {selection.CharacterKey}: {selection.Reason}");
-        return true;
+        return result;
     }
 
     private void ApplyLegacyFishingOperationSettingsIfNeeded()
@@ -621,6 +629,16 @@ public sealed class Plugin : IDalamudPlugin
             Configuration.LastAccountId = ConfigManager.CurrentAccountId;
             Configuration.Save();
             ConfigManager.LoadAllAccounts();
+
+            // Fishing has priority over the normal before-AR task queue during
+            // its narrow startup gate. This also covers the first world-ready
+            // update after a coordinator-initiated relog.
+            var fishingStartup = RunFishingStartupTrigger(FishingStartupTrigger.Clock);
+            if (fishingStartup.ClaimsStartup)
+            {
+                SkipBeforeArForLogin($"Ocean Fishing startup: {fishingStartup.Reason}");
+                return;
+            }
 
             var activeConfig = ConfigManager.GetActiveConfig();
             var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
@@ -952,6 +970,11 @@ public sealed class Plugin : IDalamudPlugin
         ProcessBeforeArReleasePending();
         ProcessPendingBeforeArLogin();
 
+        // Ocean Fishing startup is clock-driven and does not depend on an AR
+        // postprocess callback. The coordinator de-duplicates the relog and
+        // fishing-start attempts within each registration window.
+        RunFishingStartupTrigger(FishingStartupTrigger.Clock);
+
         // Update engine (runs the state machine)
         Engine.Update();
         UpdateBeforeArGateAfterEngine();
@@ -1093,6 +1116,8 @@ public sealed class Plugin : IDalamudPlugin
     {
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
 
+        FishingStartupCoordinator.SuppressCurrentWindow(DateTimeOffset.UtcNow);
+
         LootGoblinMapGatherManualRunCoordinator.Cancel();
         Log.Information("[FULL STOP] LootGoblin map gather cancel requested");
 
@@ -1143,4 +1168,42 @@ public sealed class Plugin : IDalamudPlugin
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
+
+    int IFishingStartupRuntime.PreWindowOffsetMinutes
+        => Configuration.OceanFishingPreWindowOffsetMinutes;
+
+    bool IFishingStartupRuntime.CanInitiateStartup
+        => ClientState.IsLoggedIn &&
+           ObjectTable.LocalPlayer != null &&
+           !Condition[ConditionFlag.BetweenAreas] &&
+           !Condition[ConditionFlag.BetweenAreas51] &&
+           !Engine.IsRunning;
+
+    bool IFishingStartupRuntime.IsFishingActive => FishingService.IsActive;
+    bool IFishingStartupRuntime.IsRelogActive => FishingRelogCoordinator.IsActive;
+
+    FishingSelectionResult IFishingStartupRuntime.SelectTarget()
+        => FishingService.SelectFishingTarget(fishingWindowActive: true);
+
+    int IFishingStartupRuntime.DisableAlwaysFishOnOtherCharacters(string selectedCharacterKey)
+    {
+        var cleared = ConfigManager.DisableAlwaysFishOnOtherCharacters(selectedCharacterKey);
+        if (cleared > 0)
+        {
+            Log.Information(
+                $"[Fishing][Startup] Cleared AlwaysFishOnThisCharacterIfWindowOpen on {cleared} " +
+                $"other character(s); selected={selectedCharacterKey}");
+        }
+
+        return cleared;
+    }
+
+    bool IFishingStartupRuntime.RequestRelog(string characterKey)
+        => FishingRelogCoordinator.RequestRelog(characterKey);
+
+    bool IFishingStartupRuntime.StartFishing()
+    {
+        FishingService.Start();
+        return FishingService.IsActive;
+    }
 }

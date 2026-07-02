@@ -33,11 +33,125 @@ public static class FishingDefaults
 {
     public const FishingExecutionMode ExecutionMode = FishingExecutionMode.AutoRetainerRelogCurrentAccount;
     public const int MaxFisherLevel = 100;
-    public const int LureRestockTarget = 0;
-    public const FishingReturnDestination ReturnDestination = FishingReturnDestination.Home;
-    public const string ReturnCommand = "/li home";
-    public const FishingRepairMode RepairMode = FishingRepairMode.Disabled;
+    public const int OceanFishingPreWindowOffsetMinutes = -1;
+    public const int MinOceanFishingPreWindowOffsetMinutes = -10;
+    public const int MaxOceanFishingPreWindowOffsetMinutes = 0;
+    public const int OceanFishingRegistrationIntervalHours = 2;
+    public const int OceanFishingRegistrationAvailabilityMinutes = 15;
+    public const int OceanFishingStartupWindowMinutesAfterRegistrationStart = 1;
+    public const int LureRestockTarget = 22;
+    public const FishingReturnDestination ReturnDestination = FishingReturnDestination.FreeCompany;
+    public const string ReturnCommand = "/li fc";
+    public const FishingRepairMode RepairMode = FishingRepairMode.NpcNoInn;
     public const int RepairThresholdPercent = 50;
+}
+
+public readonly record struct OceanFishingStartupWindow(
+    DateTimeOffset RegistrationStartUtc,
+    DateTimeOffset StartUtc,
+    DateTimeOffset EndUtc);
+
+public readonly record struct OceanFishingRegistrationWindow(
+    DateTimeOffset StartUtc,
+    DateTimeOffset EndUtc);
+
+public static class OceanFishingSchedulePolicy
+{
+    public static int NormalizePreWindowOffsetMinutes(int offsetMinutes)
+        => Math.Clamp(
+            offsetMinutes,
+            FishingDefaults.MinOceanFishingPreWindowOffsetMinutes,
+            FishingDefaults.MaxOceanFishingPreWindowOffsetMinutes);
+
+    public static bool IsStartupWindowActive(DateTimeOffset nowUtc, int preWindowOffsetMinutes)
+        => TryGetActiveStartupWindow(nowUtc, preWindowOffsetMinutes, out _);
+
+    public static string DescribeInactiveStartupWindow(DateTimeOffset nowUtc, int preWindowOffsetMinutes)
+    {
+        var normalizedNow = nowUtc.ToUniversalTime();
+        var nextRegistrationStart = GetNextRegistrationStart(normalizedNow);
+        var nextWindow = BuildStartupWindow(nextRegistrationStart, preWindowOffsetMinutes);
+        return $"No Ocean Fishing startup gate is active at {normalizedNow:u}; " +
+               $"next gate is {nextWindow.StartUtc:u} through {nextWindow.EndUtc:u}.";
+    }
+
+    public static bool TryGetActiveStartupWindow(
+        DateTimeOffset nowUtc,
+        int preWindowOffsetMinutes,
+        out OceanFishingStartupWindow window)
+    {
+        var normalizedNow = nowUtc.ToUniversalTime();
+        foreach (var registrationStart in GetCandidateRegistrationStarts(normalizedNow))
+        {
+            var candidate = BuildStartupWindow(registrationStart, preWindowOffsetMinutes);
+            if (normalizedNow >= candidate.StartUtc && normalizedNow < candidate.EndUtc)
+            {
+                window = candidate;
+                return true;
+            }
+        }
+
+        window = default;
+        return false;
+    }
+
+    public static OceanFishingStartupWindow BuildStartupWindow(
+        DateTimeOffset registrationStartUtc,
+        int preWindowOffsetMinutes)
+    {
+        var normalizedRegistrationStart = registrationStartUtc.ToUniversalTime();
+        var normalizedOffset = NormalizePreWindowOffsetMinutes(preWindowOffsetMinutes);
+        return new OceanFishingStartupWindow(
+            normalizedRegistrationStart,
+            normalizedRegistrationStart.AddMinutes(normalizedOffset),
+            normalizedRegistrationStart.AddMinutes(FishingDefaults.OceanFishingStartupWindowMinutesAfterRegistrationStart));
+    }
+
+    public static OceanFishingRegistrationWindow BuildRegistrationWindow(DateTimeOffset registrationStartUtc)
+    {
+        var normalizedRegistrationStart = registrationStartUtc.ToUniversalTime();
+        return new OceanFishingRegistrationWindow(
+            normalizedRegistrationStart,
+            normalizedRegistrationStart.AddMinutes(FishingDefaults.OceanFishingRegistrationAvailabilityMinutes));
+    }
+
+    private static DateTimeOffset GetNextRegistrationStart(DateTimeOffset nowUtc)
+    {
+        var hourStart = new DateTimeOffset(
+            nowUtc.Year,
+            nowUtc.Month,
+            nowUtc.Day,
+            nowUtc.Hour,
+            0,
+            0,
+            TimeSpan.Zero);
+        var currentEvenHour = hourStart.Hour % FishingDefaults.OceanFishingRegistrationIntervalHours == 0
+            ? hourStart
+            : hourStart.AddHours(1);
+
+        return nowUtc < BuildStartupWindow(currentEvenHour, 0).EndUtc
+            ? currentEvenHour
+            : currentEvenHour.AddHours(FishingDefaults.OceanFishingRegistrationIntervalHours);
+    }
+
+    private static IEnumerable<DateTimeOffset> GetCandidateRegistrationStarts(DateTimeOffset nowUtc)
+    {
+        var hourStart = new DateTimeOffset(
+            nowUtc.Year,
+            nowUtc.Month,
+            nowUtc.Day,
+            nowUtc.Hour,
+            0,
+            0,
+            TimeSpan.Zero);
+        var currentOrPreviousEvenHour = hourStart.Hour % FishingDefaults.OceanFishingRegistrationIntervalHours == 0
+            ? hourStart
+            : hourStart.AddHours(-1);
+
+        yield return currentOrPreviousEvenHour.AddHours(-FishingDefaults.OceanFishingRegistrationIntervalHours);
+        yield return currentOrPreviousEvenHour;
+        yield return currentOrPreviousEvenHour.AddHours(FishingDefaults.OceanFishingRegistrationIntervalHours);
+    }
 }
 
 public readonly record struct FishingOperationSettings(
@@ -65,6 +179,32 @@ public sealed record FishingSelectionResult(
 
     public static FishingSelectionResult None(string reason)
         => new(string.Empty, 0, false, Array.Empty<string>(), reason);
+}
+
+public static class FishingStartupPolicy
+{
+    public static FishingSelectionResult SelectStartupTarget(
+        IEnumerable<FishingCharacterCandidate> candidates,
+        int maxFisherLevel,
+        FishingExecutionMode mode,
+        string currentCharacterKey,
+        bool startupWindowActive)
+    {
+        if (!startupWindowActive)
+            return FishingSelectionResult.None("No VERMAXION Ocean Fishing startup window is active.");
+
+        return FishingSelectionPolicy.Select(
+            candidates,
+            maxFisherLevel,
+            mode,
+            currentCharacterKey,
+            fishingWindowActive: true);
+    }
+
+    public static bool ShouldStartOnCurrentCharacter(FishingSelectionResult selection, string currentCharacterKey)
+        => selection.Selected &&
+           !selection.RequiresRelog &&
+           string.Equals(selection.CharacterKey, currentCharacterKey, StringComparison.OrdinalIgnoreCase);
 }
 
 public static class FishingSelectionPolicy
@@ -329,6 +469,12 @@ public static class FishingRelogPrepPolicy
             new(FishingRelogPrepAction.SendCommand, $"/ays relog {normalizedKey}"),
         ];
     }
+}
+
+public static class FishingRelogDiagnostics
+{
+    public static string FormatCommand(FishingRelogPrepStep step)
+        => $"[Fishing][Relog] Sending {step.Command}";
 }
 
 public static class BeforeArMultiModePolicy

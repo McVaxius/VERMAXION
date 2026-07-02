@@ -391,7 +391,7 @@ public class VermaxionEngine
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
         // Henchman stop/restart management is deprecated. Keep the service for
-        // readiness/fishing status only; do not restart Henchman from Full Stop.
+        // readiness only; do not restart Henchman from Full Stop.
         if (arService.IsProcessing)
             arService.FinishPostProcess(force: true);
         yesAlreadyIPC.Unpause();
@@ -577,35 +577,35 @@ public class VermaxionEngine
 
             case EngineState.RunningFishing:
                 activeConfig = GetLiveActiveConfig();
-                if (activeConfig!.EnableFishing)
+                if (!fishingService.IsActive && !fishingService.IsComplete && !fishingService.IsFailed &&
+                    !ShouldRunFishing(activeConfig!))
                 {
-                    if (!fishingService.IsActive && !fishingService.IsComplete && !fishingService.IsFailed)
-                    {
-                        log.Information("[Engine] Starting Fishing");
-                        ResetInteractionState();
-                        MarkCurrentTaskWorkStarted();
-                        fishingService.Start();
-                        return;
-                    }
-
-                    fishingService.Update();
-
-                    if (fishingService.IsComplete)
-                    {
-                        log.Information("[Engine] Fishing completed");
-                        fishingService.Reset();
-                        AdvanceToNextTask(EngineState.RunningFishing);
-                    }
-                    else if (fishingService.IsFailed)
-                    {
-                        log.Warning($"[Engine] Fishing failed - continuing: {fishingService.StatusText}");
-                        runHadFailure = true;
-                        fishingService.Reset();
-                        AdvanceToNextTask(EngineState.RunningFishing);
-                    }
+                    AdvanceToNextTask(EngineState.RunningFishing);
+                    break;
                 }
-                else
+
+                if (!fishingService.IsActive && !fishingService.IsComplete && !fishingService.IsFailed)
                 {
+                    log.Information("[Engine] Starting Fishing");
+                    ResetInteractionState();
+                    MarkCurrentTaskWorkStarted();
+                    fishingService.Start();
+                    return;
+                }
+
+                fishingService.Update();
+
+                if (fishingService.IsComplete)
+                {
+                    log.Information("[Engine] Fishing completed");
+                    fishingService.Reset();
+                    AdvanceToNextTask(EngineState.RunningFishing);
+                }
+                else if (fishingService.IsFailed)
+                {
+                    log.Warning($"[Engine] Fishing failed - continuing: {fishingService.StatusText}");
+                    runHadFailure = true;
+                    fishingService.Reset();
                     AdvanceToNextTask(EngineState.RunningFishing);
                 }
                 break;
@@ -1839,19 +1839,13 @@ public class VermaxionEngine
         };
     }
 
-    private bool ShouldRunFishing(CharacterConfig config)
+    private bool ShouldRunFishing(CharacterConfig _)
     {
-        if (!config.EnableFishing)
-            return false;
-
-        var selection = fishingService.SelectFishingTarget(IsFishingWindowSignalActive());
-        return selection.Selected &&
-               !selection.RequiresRelog &&
-               string.Equals(selection.CharacterKey, configManager.CurrentCharacterKey, StringComparison.OrdinalIgnoreCase);
+        // Ocean Fishing startup is owned by FishingStartupCoordinator. Keeping
+        // it out of the engine prevents unrelated postprocess tasks from running
+        // before current-character fishing prep.
+        return false;
     }
-
-    private bool IsFishingWindowSignalActive()
-        => FishingService.IsFishingContextActive() || henchmanService.IsFishingWindowActive();
 
     private void CompleteRun()
     {

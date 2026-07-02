@@ -27,6 +27,7 @@ public class Configuration : IPluginConfiguration
     // --- Fishing ---
     public FishingExecutionMode FishingExecutionMode { get; set; } = FishingDefaults.ExecutionMode;
     public int FishingMaxFisherLevel { get; set; } = FishingDefaults.MaxFisherLevel;
+    public int OceanFishingPreWindowOffsetMinutes { get; set; } = FishingDefaults.OceanFishingPreWindowOffsetMinutes;
     public bool FishingCharacterSettingsMigrated { get; set; } = false;
 
     // --- Account Tracking ---

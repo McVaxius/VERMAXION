@@ -247,6 +247,18 @@ public class ConfigWindow : Window, IDisposable
                 config.Save();
             }
             DrawHelpMarker("Characters with Fisher at or above this level are skipped unless their active fishing window override applies.");
+
+            var oceanFishingOffset = config.OceanFishingPreWindowOffsetMinutes;
+            ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+            if (ImGui.InputInt("Ocean Fishing pre-window offset", ref oceanFishingOffset))
+            {
+                config.OceanFishingPreWindowOffsetMinutes = Math.Clamp(
+                    oceanFishingOffset,
+                    FishingDefaults.MinOceanFishingPreWindowOffsetMinutes,
+                    FishingDefaults.MaxOceanFishingPreWindowOffsetMinutes);
+                config.Save();
+            }
+            DrawHelpMarker("Minutes relative to Ocean Fishing registration start. VERMAXION starts only from this offset through the first registration minute.");
         }
 
         ImGui.Separator();

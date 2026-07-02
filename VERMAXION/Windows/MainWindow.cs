@@ -164,7 +164,7 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
                 "run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
             DrawTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingService.StatusText),
-                "run##Fishing", () => plugin.FishingService.RunTask(), "WIP");
+                "run##Fishing", plugin.RunFishingStartupManual, "WIP");
             DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
                 "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
