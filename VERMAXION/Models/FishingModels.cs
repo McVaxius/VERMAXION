@@ -38,7 +38,6 @@ public static class FishingDefaults
     public const int MaxOceanFishingPreWindowOffsetMinutes = 0;
     public const int OceanFishingRegistrationIntervalHours = 2;
     public const int OceanFishingRegistrationAvailabilityMinutes = 15;
-    public const int OceanFishingStartupWindowMinutesAfterRegistrationStart = 1;
     public const int LureRestockTarget = 22;
     public const FishingReturnDestination ReturnDestination = FishingReturnDestination.FreeCompany;
     public const string ReturnCommand = "/li fc";
@@ -72,7 +71,7 @@ public static class OceanFishingSchedulePolicy
         var nextRegistrationStart = GetNextRegistrationStart(normalizedNow);
         var nextWindow = BuildStartupWindow(nextRegistrationStart, preWindowOffsetMinutes);
         return $"No Ocean Fishing startup gate is active at {normalizedNow:u}; " +
-               $"next gate is {nextWindow.StartUtc:u} through {nextWindow.EndUtc:u}.";
+               $"next gate is {nextWindow.StartUtc:u} until {nextWindow.EndUtc:u} (end exclusive).";
     }
 
     public static bool TryGetActiveStartupWindow(
@@ -104,7 +103,7 @@ public static class OceanFishingSchedulePolicy
         return new OceanFishingStartupWindow(
             normalizedRegistrationStart,
             normalizedRegistrationStart.AddMinutes(normalizedOffset),
-            normalizedRegistrationStart.AddMinutes(FishingDefaults.OceanFishingStartupWindowMinutesAfterRegistrationStart));
+            normalizedRegistrationStart.AddMinutes(FishingDefaults.OceanFishingRegistrationAvailabilityMinutes));
     }
 
     public static OceanFishingRegistrationWindow BuildRegistrationWindow(DateTimeOffset registrationStartUtc)
@@ -464,8 +463,6 @@ public static class FishingRelogPrepPolicy
             new(FishingRelogPrepAction.ReleaseVermaxionSuppression),
             new(FishingRelogPrepAction.SendCommand, "/ays m d"),
             new(FishingRelogPrepAction.Wait, DelayMilliseconds: 1000),
-            new(FishingRelogPrepAction.SendCommand, "/ays reset"),
-            new(FishingRelogPrepAction.Wait, DelayMilliseconds: 1000),
             new(FishingRelogPrepAction.SendCommand, $"/ays relog {normalizedKey}"),
         ];
     }
@@ -481,6 +478,145 @@ public static class BeforeArMultiModePolicy
 {
     public static bool ShouldRunBeforeAr(bool readSucceeded, bool multiModeEnabled)
         => readSucceeded && multiModeEnabled;
+}
+
+public enum FishingRelogRuntimeAction
+{
+    Complete,
+    Fail,
+    Wait,
+    SendRelog,
+}
+
+public readonly record struct FishingRelogRuntimeDecision(
+    FishingRelogRuntimeAction Action,
+    string Reason);
+
+public static class FishingRelogCommandPolicy
+{
+    public static readonly TimeSpan DefaultRetryInterval = TimeSpan.FromSeconds(45);
+    public static readonly TimeSpan DefaultOverallTimeout = TimeSpan.FromMinutes(4);
+
+    public static FishingRelogRuntimeDecision Evaluate(
+        DateTimeOffset nowUtc,
+        DateTimeOffset startedAtUtc,
+        DateTimeOffset? lastRelogCommandAtUtc,
+        bool registrationOpen,
+        bool readyForRelog,
+        string blockedReason,
+        bool targetReached,
+        bool observableProgress,
+        bool wrongCharacterArrived,
+        TimeSpan? retryInterval = null,
+        TimeSpan? overallTimeout = null)
+    {
+        if (targetReached)
+            return new(FishingRelogRuntimeAction.Complete, "Arrived on the target character.");
+
+        if (!registrationOpen)
+            return new(FishingRelogRuntimeAction.Fail, "Ocean Fishing registration closed before relog completed.");
+
+        if (wrongCharacterArrived)
+            return new(FishingRelogRuntimeAction.Fail, "Relog arrived on a different character than the selected fishing target.");
+
+        var cappedOverallTimeout = overallTimeout ?? DefaultOverallTimeout;
+        if (startedAtUtc != default && nowUtc - startedAtUtc >= cappedOverallTimeout)
+            return new(FishingRelogRuntimeAction.Fail, $"Relog did not reach the selected character within {cappedOverallTimeout.TotalSeconds:F0}s.");
+
+        if (!readyForRelog)
+            return new(FishingRelogRuntimeAction.Wait, string.IsNullOrWhiteSpace(blockedReason) ? "Waiting for relog readiness." : blockedReason);
+
+        if (!lastRelogCommandAtUtc.HasValue)
+            return new(FishingRelogRuntimeAction.SendRelog, "Relog command has not been sent.");
+
+        if (observableProgress)
+            return new(FishingRelogRuntimeAction.Wait, "Relog transition was observed; waiting for target character.");
+
+        var cappedRetryInterval = retryInterval ?? DefaultRetryInterval;
+        return nowUtc - lastRelogCommandAtUtc.Value >= cappedRetryInterval
+            ? new(FishingRelogRuntimeAction.SendRelog, $"No logout or area transition was observed within {cappedRetryInterval.TotalSeconds:F0}s; retrying relog.")
+            : new(FishingRelogRuntimeAction.Wait, "Waiting for observable relog progress.");
+    }
+}
+
+public enum OceanFishingQueueAction
+{
+    SwitchToFisher,
+    PrepareSupplies,
+    TravelToLimsa,
+    MoveToRegistrar,
+    WaitForRegistrationOpen,
+    InteractWithRegistrar,
+    WaitForQueueConfirmation,
+    WaitForDeparture,
+    MoveToFishingPosition,
+    CastLine,
+    CloseResult,
+    ReturnAfterCompletion,
+    Complete,
+    FailRegistrationClosed,
+}
+
+public readonly record struct OceanFishingQueueSnapshot(
+    int CurrentJobId,
+    bool SuppliesPrepared,
+    ushort TerritoryType,
+    double RegistrarDistance,
+    bool RegistrationWindowOpen,
+    bool RegistrationWindowClosed,
+    bool QueueConfirmed,
+    bool DutyActive,
+    double FishingPositionDistance,
+    bool ResultAddonVisible,
+    bool FishingComplete,
+    bool ReturnCommandSent);
+
+public static class OceanFishingQueuePolicy
+{
+    public const int FisherJobId = 18;
+    public const ushort LimsaTerritoryType = 129;
+    public const double RegistrarInteractDistance = 4.5;
+    public const double BoatFishingPositionTolerance = 1.5;
+
+    public static OceanFishingQueueAction Decide(OceanFishingQueueSnapshot snapshot)
+    {
+        if (snapshot.FishingComplete)
+            return snapshot.ReturnCommandSent
+                ? OceanFishingQueueAction.Complete
+                : OceanFishingQueueAction.ReturnAfterCompletion;
+
+        if (snapshot.ResultAddonVisible)
+            return OceanFishingQueueAction.CloseResult;
+
+        if (snapshot.DutyActive)
+        {
+            return snapshot.FishingPositionDistance <= BoatFishingPositionTolerance
+                ? OceanFishingQueueAction.CastLine
+                : OceanFishingQueueAction.MoveToFishingPosition;
+        }
+
+        if (snapshot.QueueConfirmed)
+            return OceanFishingQueueAction.WaitForDeparture;
+
+        if (snapshot.RegistrationWindowClosed)
+            return OceanFishingQueueAction.FailRegistrationClosed;
+
+        if (snapshot.CurrentJobId != FisherJobId)
+            return OceanFishingQueueAction.SwitchToFisher;
+
+        if (!snapshot.SuppliesPrepared)
+            return OceanFishingQueueAction.PrepareSupplies;
+
+        if (snapshot.TerritoryType != LimsaTerritoryType)
+            return OceanFishingQueueAction.TravelToLimsa;
+
+        if (snapshot.RegistrarDistance > RegistrarInteractDistance)
+            return OceanFishingQueueAction.MoveToRegistrar;
+
+        return snapshot.RegistrationWindowOpen
+            ? OceanFishingQueueAction.InteractWithRegistrar
+            : OceanFishingQueueAction.WaitForRegistrationOpen;
+    }
 }
 
 public readonly record struct AutoRetainerMultiModeReadResult(bool Success, bool Enabled, string Error)

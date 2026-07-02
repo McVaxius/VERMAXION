@@ -6,80 +6,76 @@ namespace VERMAXION.Tests;
 public sealed class AccountSelectionPolicyTests
 {
     [Fact]
-    public void NoncanonicalSingleAccountMigratesToFirstContentId()
-    {
-        var decision = AccountSelectionPolicy.Select(
-            [new AccountSelectionInput("legacy-account", HasCurrentCharacter: false)],
-            0x1234ABCD,
-            currentAccountId: "legacy-account",
-            hasCurrentCharacterKey: false);
-
-        Assert.Equal(AccountSelectionAction.MigrateLegacy, decision.Action);
-        Assert.Equal("1234ABCD", decision.TargetAccountId);
-        Assert.Equal("legacy-account", decision.SourceAccountId);
-    }
-
-    [Fact]
-    public void CanonicalSingleAccountPlusDifferentContentIdCreatesNewCanonicalAccount()
-    {
-        var existingCanonical = AccountSelectionPolicy.GetCanonicalAccountId(0x1111);
-
-        var decision = AccountSelectionPolicy.Select(
-            [new AccountSelectionInput(existingCanonical, HasCurrentCharacter: false)],
-            0x2222,
-            currentAccountId: existingCanonical,
-            hasCurrentCharacterKey: false);
-
-        Assert.Equal(AccountSelectionAction.CreateCanonical, decision.Action);
-        Assert.Equal("2222", decision.TargetAccountId);
-        Assert.Equal(existingCanonical, decision.SourceAccountId);
-    }
-
-    [Fact]
-    public void ExistingTargetAccountIsSelectedUnchanged()
+    public void DuplicateCharacterMembershipSelectsLargestAccount()
     {
         var decision = AccountSelectionPolicy.Select(
             [
-                new AccountSelectionInput("AAAA", HasCurrentCharacter: false),
-                new AccountSelectionInput("BBBB", HasCurrentCharacter: true),
+                new AccountSelectionInput("4000174C01C65D", HasCurrentCharacter: true, CharacterCount: 87),
+                new AccountSelectionInput("4000174C45A8FE", HasCurrentCharacter: true, CharacterCount: 1),
             ],
-            0xAAAA,
-            currentAccountId: "BBBB",
+            currentAccountId: "4000174C45A8FE",
             hasCurrentCharacterKey: true);
 
         Assert.Equal(AccountSelectionAction.SelectExisting, decision.Action);
-        Assert.Equal("AAAA", decision.TargetAccountId);
-        Assert.False(decision.CopyCurrentCharacterConfig);
+        Assert.Equal("4000174C01C65D", decision.TargetAccountId);
     }
 
     [Fact]
-    public void PaddedContentIdAccountIsSelectedAsExistingCanonicalAccount()
+    public void RepeatedKnownCharacterLoginDoesNotRequestNewAccount()
     {
-        var decision = AccountSelectionPolicy.Select(
-            [new AccountSelectionInput("000000000000AAAA", HasCurrentCharacter: false)],
-            0xAAAA,
-            currentAccountId: "000000000000AAAA",
-            hasCurrentCharacterKey: false);
+        var first = AccountSelectionPolicy.Select(
+            [new AccountSelectionInput("4000174C01C65D", HasCurrentCharacter: true, CharacterCount: 87)],
+            currentAccountId: "4000174C01C65D",
+            hasCurrentCharacterKey: true);
+        var second = AccountSelectionPolicy.Select(
+            [new AccountSelectionInput("4000174C01C65D", HasCurrentCharacter: true, CharacterCount: 87)],
+            currentAccountId: "4000174C01C65D",
+            hasCurrentCharacterKey: true);
 
-        Assert.Equal(AccountSelectionAction.SelectExisting, decision.Action);
-        Assert.Equal("000000000000AAAA", decision.TargetAccountId);
+        Assert.Equal(AccountSelectionAction.SelectExisting, first.Action);
+        Assert.Equal(AccountSelectionAction.SelectExisting, second.Action);
+        Assert.Equal(first.TargetAccountId, second.TargetAccountId);
     }
 
     [Fact]
-    public void CurrentCharacterConfigIsCopiedFromOtherAccountWhenCreatingCanonicalAccount()
+    public void UnknownCharacterStaysOnCurrentValidAccount()
     {
         var decision = AccountSelectionPolicy.Select(
             [
-                new AccountSelectionInput("1111", HasCurrentCharacter: false),
-                new AccountSelectionInput("2222", HasCurrentCharacter: true),
+                new AccountSelectionInput("primary", HasCurrentCharacter: false, CharacterCount: 87),
+                new AccountSelectionInput("secondary", HasCurrentCharacter: false, CharacterCount: 1),
             ],
-            0x3333,
-            currentAccountId: "1111",
+            currentAccountId: "secondary",
             hasCurrentCharacterKey: true);
 
-        Assert.Equal(AccountSelectionAction.CreateCanonical, decision.Action);
-        Assert.Equal("3333", decision.TargetAccountId);
-        Assert.Equal("2222", decision.SourceAccountId);
-        Assert.True(decision.CopyCurrentCharacterConfig);
+        Assert.Equal(AccountSelectionAction.SelectExisting, decision.Action);
+        Assert.Equal("secondary", decision.TargetAccountId);
+    }
+
+    [Fact]
+    public void UnknownCharacterWithoutCurrentAccountUsesLargestExistingAccount()
+    {
+        var decision = AccountSelectionPolicy.Select(
+            [
+                new AccountSelectionInput("small", HasCurrentCharacter: false, CharacterCount: 1),
+                new AccountSelectionInput("primary", HasCurrentCharacter: false, CharacterCount: 108),
+            ],
+            currentAccountId: "missing",
+            hasCurrentCharacterKey: true);
+
+        Assert.Equal(AccountSelectionAction.SelectExisting, decision.Action);
+        Assert.Equal("primary", decision.TargetAccountId);
+    }
+
+    [Fact]
+    public void EmptyAccountSetRequestsExplicitNewAccountCreation()
+    {
+        var decision = AccountSelectionPolicy.Select(
+            [],
+            currentAccountId: string.Empty,
+            hasCurrentCharacterKey: true);
+
+        Assert.Equal(AccountSelectionAction.CreateNew, decision.Action);
+        Assert.Equal(string.Empty, decision.TargetAccountId);
     }
 }

@@ -8,6 +8,7 @@ public enum FishingStartupTrigger
     Clock,
     AutoRetainerPostprocess,
     Manual,
+    RelogContinuation,
 }
 
 public enum FishingStartupAction
@@ -63,11 +64,19 @@ public sealed class FishingStartupCoordinator
     private DateTimeOffset? trackedRegistrationStartUtc;
     private bool relogAttempted;
     private bool fishingStartAttempted;
+    private DateTimeOffset? pendingRelogRegistrationStartUtc;
+    private string pendingRelogCharacterKey = string.Empty;
 
     public FishingStartupCoordinator(IFishingStartupRuntime runtime)
     {
         this.runtime = runtime;
     }
+
+    public bool HasPendingRelogContinuation
+        => pendingRelogRegistrationStartUtc.HasValue &&
+           !string.IsNullOrWhiteSpace(pendingRelogCharacterKey);
+
+    public string PendingRelogCharacterKey => pendingRelogCharacterKey;
 
     public FishingStartupResult Poll(DateTimeOffset nowUtc, FishingStartupTrigger trigger)
     {
@@ -84,6 +93,16 @@ public sealed class FishingStartupCoordinator
         }
 
         TrackWindow(window.RegistrationStartUtc);
+
+        if (trigger == FishingStartupTrigger.Clock)
+        {
+            return Result(
+                trigger,
+                FishingStartupAction.None,
+                window,
+                FishingSelectionResult.None("Ambient clock polling does not start Ocean Fishing."),
+                "Ambient clock polling does not start Ocean Fishing.");
+        }
 
         var selection = runtime.SelectTarget();
         if (!selection.Selected)
@@ -116,6 +135,66 @@ public sealed class FishingStartupCoordinator
         TrackWindow(window.RegistrationStartUtc);
         relogAttempted = true;
         fishingStartAttempted = true;
+        ClearPendingRelogContinuation();
+    }
+
+    public void ResetCurrentWindow(DateTimeOffset nowUtc, bool clearPendingRelogContinuation = true)
+    {
+        if (OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+                nowUtc,
+                runtime.PreWindowOffsetMinutes,
+                out var window))
+        {
+            trackedRegistrationStartUtc = window.RegistrationStartUtc;
+        }
+        else
+        {
+            trackedRegistrationStartUtc = null;
+        }
+
+        relogAttempted = false;
+        fishingStartAttempted = false;
+        if (clearPendingRelogContinuation)
+            ClearPendingRelogContinuation();
+    }
+
+    public FishingStartupResult ContinuePendingRelog(DateTimeOffset nowUtc, string currentCharacterKey)
+    {
+        if (!HasPendingRelogContinuation)
+            return None(FishingStartupTrigger.RelogContinuation, "No pending VERMAXION fishing relog continuation.");
+
+        if (!OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+                nowUtc,
+                runtime.PreWindowOffsetMinutes,
+                out var window) ||
+            pendingRelogRegistrationStartUtc != window.RegistrationStartUtc)
+        {
+            var pendingRegistration = pendingRelogRegistrationStartUtc;
+            ClearPendingRelogContinuation();
+            return None(
+                FishingStartupTrigger.RelogContinuation,
+                $"Pending fishing relog continuation expired; pending registration was {pendingRegistration:u}.");
+        }
+
+        TrackWindow(window.RegistrationStartUtc);
+        var selection = new FishingSelectionResult(
+            pendingRelogCharacterKey,
+            FisherLevel: 0,
+            RequiresRelog: false,
+            AlwaysFishKeysToDisable: Array.Empty<string>(),
+            Reason: "Continuing explicit VERMAXION fishing relog.");
+
+        if (!string.Equals(currentCharacterKey, pendingRelogCharacterKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return Result(
+                FishingStartupTrigger.RelogContinuation,
+                FishingStartupAction.Waiting,
+                window,
+                selection,
+                $"Waiting for fishing relog target {pendingRelogCharacterKey}; current character is {currentCharacterKey}.");
+        }
+
+        return TryStartFishing(FishingStartupTrigger.RelogContinuation, window, selection);
     }
 
     private FishingStartupResult TryStartRelog(
@@ -141,6 +220,7 @@ public sealed class FishingStartupCoordinator
                 $"Could not start relog to {selection.CharacterKey}; polling will retry.");
 
         relogAttempted = true;
+        RecordPendingRelogContinuation(selection.CharacterKey, window.RegistrationStartUtc);
         return Result(trigger, FishingStartupAction.RelogStarted, window, selection,
             $"Selected {selection.CharacterKey} (Fisher {selection.FisherLevel}) and started relog.");
     }
@@ -151,12 +231,16 @@ public sealed class FishingStartupCoordinator
         FishingSelectionResult selection)
     {
         if (fishingStartAttempted)
+        {
+            ClearPendingRelogContinuation();
             return Result(trigger, FishingStartupAction.AlreadyHandled, window, selection,
                 $"Fishing prep was already attempted for the {window.RegistrationStartUtc:u} registration window.");
+        }
 
         if (runtime.IsFishingActive)
         {
             fishingStartAttempted = true;
+            ClearPendingRelogContinuation();
             return Result(trigger, FishingStartupAction.AlreadyHandled, window, selection,
                 "Fishing prep is already active.");
         }
@@ -175,6 +259,7 @@ public sealed class FishingStartupCoordinator
                 "Could not start fishing prep; polling will retry.");
 
         fishingStartAttempted = true;
+        ClearPendingRelogContinuation();
         return Result(trigger, FishingStartupAction.FishingStarted, window, selection,
             $"Selected current character {selection.CharacterKey} (Fisher {selection.FisherLevel}) and started fishing prep.");
     }
@@ -187,6 +272,24 @@ public sealed class FishingStartupCoordinator
         trackedRegistrationStartUtc = registrationStartUtc;
         relogAttempted = false;
         fishingStartAttempted = false;
+
+        if (pendingRelogRegistrationStartUtc.HasValue &&
+            pendingRelogRegistrationStartUtc != registrationStartUtc)
+        {
+            ClearPendingRelogContinuation();
+        }
+    }
+
+    private void RecordPendingRelogContinuation(string characterKey, DateTimeOffset registrationStartUtc)
+    {
+        pendingRelogCharacterKey = characterKey.Trim();
+        pendingRelogRegistrationStartUtc = registrationStartUtc;
+    }
+
+    private void ClearPendingRelogContinuation()
+    {
+        pendingRelogCharacterKey = string.Empty;
+        pendingRelogRegistrationStartUtc = null;
     }
 
     private static FishingStartupResult None(FishingStartupTrigger trigger, string reason)

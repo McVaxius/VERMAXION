@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
@@ -11,9 +12,22 @@ namespace VERMAXION.Services;
 
 public sealed class FishingService
 {
+    private const int FisherJobId = 18;
+    private const ushort LimsaTerritoryType = 129;
+    private const uint DryskthotaDataId = 1005421;
     private const uint VersatileLureItemId = 29717;
+    private const float RegistrarInteractDistance = 4.5f;
+    private const float BoatFishingPositionTolerance = 1.5f;
+    private static readonly Vector3 DryskthotaPosition = new(-409.42f, 4.00f, 74.48f);
+    private static readonly Vector3 BoatFishingPosition = new(7.451f, 6.750f, -2.0f);
     private static readonly TimeSpan CastInterval = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan NoFishingContextTimeout = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan FishingLoopPollInterval = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan JobSwitchTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan LimsaTravelTimeout = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan RegistrarNavigationTimeout = TimeSpan.FromSeconds(120);
+    private static readonly TimeSpan QueueConfirmationTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan DepartureTimeout = TimeSpan.FromMinutes(35);
+    private static readonly TimeSpan DutyCompletionTimeout = TimeSpan.FromHours(3);
     private static readonly TimeSpan RepairTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ResultCloseDelay = TimeSpan.FromSeconds(15);
 
@@ -24,23 +38,42 @@ public sealed class FishingService
     private readonly XADatabaseIPCClient xaDatabase;
     private readonly VendorStockService vendorStockService;
     private readonly AdsIpcClient adsIpcClient;
+    private readonly VNavmeshIPC vnavmesh;
+    private readonly LifestreamIPC lifestream;
 
     private FishingState state = FishingState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private DateTime lastCastAt = DateTime.MinValue;
     private DateTime repairStartedAt = DateTime.MinValue;
     private DateTime lastResultCloseAttemptAt = DateTime.MinValue;
+    private DateTime lastFishingLoopPollAt = DateTime.MinValue;
+    private DateTime lastJobSwitchAttemptAt = DateTime.MinValue;
+    private DateTime lastTravelCommandAt = DateTime.MinValue;
+    private DateTime travelStartedAt = DateTime.MinValue;
+    private DateTime lastNavigationCommandAt = DateTime.MinValue;
+    private DateTime lastInteractionAttemptAt = DateTime.MinValue;
+    private DateTime registrationAttemptStartedAt = DateTime.MinValue;
+    private DateTime departureWaitStartedAt = DateTime.MinValue;
+    private DateTime dutyStartedAt = DateTime.MinValue;
     private bool sawFishingContext;
     private string lastError = string.Empty;
+    private string statusDetail = string.Empty;
 
     public enum FishingState
     {
         Idle,
+        SwitchingToFisher,
         CheckingRepair,
         WaitingForRepair,
         CheckingLures,
         RestockingLures,
         SettingBait,
+        TravelingToLimsa,
+        NavigatingToRegistrar,
+        InteractingRegistrar,
+        ConfirmingRegistration,
+        WaitingForDeparture,
+        MovingToFishingSpot,
         Fishing,
         Returning,
         Complete,
@@ -53,6 +86,8 @@ public sealed class FishingService
     public bool IsFailed => state == FishingState.Failed;
     public string StatusText => state == FishingState.Failed && !string.IsNullOrWhiteSpace(lastError)
         ? lastError
+        : !string.IsNullOrWhiteSpace(statusDetail)
+            ? statusDetail
         : state.ToString();
 
     public FishingService(
@@ -62,7 +97,9 @@ public sealed class FishingService
         ConfigManager configManager,
         XADatabaseIPCClient xaDatabase,
         VendorStockService vendorStockService,
-        AdsIpcClient adsIpcClient)
+        AdsIpcClient adsIpcClient,
+        VNavmeshIPC vnavmesh,
+        LifestreamIPC lifestream)
     {
         this.commandManager = commandManager;
         this.log = log;
@@ -71,6 +108,8 @@ public sealed class FishingService
         this.xaDatabase = xaDatabase;
         this.vendorStockService = vendorStockService;
         this.adsIpcClient = adsIpcClient;
+        this.vnavmesh = vnavmesh;
+        this.lifestream = lifestream;
     }
 
     public void Start()
@@ -80,10 +119,20 @@ public sealed class FishingService
 
         lastError = string.Empty;
         sawFishingContext = IsFishingContextActive();
+        statusDetail = string.Empty;
         lastCastAt = DateTime.MinValue;
         repairStartedAt = DateTime.MinValue;
         lastResultCloseAttemptAt = DateTime.MinValue;
-        SetState(FishingState.CheckingRepair);
+        lastFishingLoopPollAt = DateTime.MinValue;
+        lastJobSwitchAttemptAt = DateTime.MinValue;
+        lastTravelCommandAt = DateTime.MinValue;
+        travelStartedAt = DateTime.MinValue;
+        lastNavigationCommandAt = DateTime.MinValue;
+        lastInteractionAttemptAt = DateTime.MinValue;
+        registrationAttemptStartedAt = DateTime.MinValue;
+        departureWaitStartedAt = DateTime.MinValue;
+        dutyStartedAt = DateTime.MinValue;
+        SetState(FishingState.SwitchingToFisher);
     }
 
     public void RunTask()
@@ -100,8 +149,19 @@ public sealed class FishingService
         lastCastAt = DateTime.MinValue;
         repairStartedAt = DateTime.MinValue;
         lastResultCloseAttemptAt = DateTime.MinValue;
+        lastFishingLoopPollAt = DateTime.MinValue;
+        lastJobSwitchAttemptAt = DateTime.MinValue;
+        lastTravelCommandAt = DateTime.MinValue;
+        travelStartedAt = DateTime.MinValue;
+        lastNavigationCommandAt = DateTime.MinValue;
+        lastInteractionAttemptAt = DateTime.MinValue;
+        registrationAttemptStartedAt = DateTime.MinValue;
+        departureWaitStartedAt = DateTime.MinValue;
+        dutyStartedAt = DateTime.MinValue;
         sawFishingContext = false;
         lastError = string.Empty;
+        statusDetail = string.Empty;
+        vnavmesh.Stop();
     }
 
     public FishingSelectionResult SelectFishingTarget(bool fishingWindowActive)
@@ -159,6 +219,17 @@ public sealed class FishingService
         var elapsed = DateTime.UtcNow - stateEnteredAt;
         switch (state)
         {
+            case FishingState.SwitchingToFisher:
+                if (IsOceanFishingDutyActive())
+                {
+                    SetState(FishingState.MovingToFishingSpot);
+                    break;
+                }
+
+                if (EnsureFisherJob(elapsed))
+                    SetState(FishingState.CheckingRepair);
+                break;
+
             case FishingState.CheckingRepair:
                 if (TryStartRepairIfNeeded())
                     break;
@@ -213,7 +284,31 @@ public sealed class FishingService
 
             case FishingState.SettingBait:
                 CommandHelper.SendCommand("/bait Versatile Lure");
-                SetState(FishingState.Fishing);
+                SetState(FishingState.TravelingToLimsa);
+                break;
+
+            case FishingState.TravelingToLimsa:
+                TickTravelToLimsa(elapsed);
+                break;
+
+            case FishingState.NavigatingToRegistrar:
+                TickNavigateToRegistrar(elapsed);
+                break;
+
+            case FishingState.InteractingRegistrar:
+                TickInteractWithRegistrar(elapsed);
+                break;
+
+            case FishingState.ConfirmingRegistration:
+                TickConfirmRegistration(elapsed);
+                break;
+
+            case FishingState.WaitingForDeparture:
+                TickWaitForDeparture(elapsed);
+                break;
+
+            case FishingState.MovingToFishingSpot:
+                TickMoveToFishingSpot(elapsed);
                 break;
 
             case FishingState.Fishing:
@@ -224,6 +319,287 @@ public sealed class FishingService
                 SetState(FishingState.Complete);
                 break;
         }
+    }
+
+    private bool EnsureFisherJob(TimeSpan elapsed)
+    {
+        if (GetCurrentJobId() == FisherJobId)
+            return true;
+
+        if (elapsed > JobSwitchTimeout)
+        {
+            Fail($"Timed out switching to Fisher; current job id is {GetCurrentJobId()}.");
+            return false;
+        }
+
+        if (lastJobSwitchAttemptAt == DateTime.MinValue ||
+            DateTime.UtcNow - lastJobSwitchAttemptAt >= TimeSpan.FromSeconds(5))
+        {
+            lastJobSwitchAttemptAt = DateTime.UtcNow;
+            log.Information("[Fishing] Equipping Fisher with /gearset change FSH");
+            CommandHelper.SendCommand("/gearset change FSH");
+        }
+
+        return false;
+    }
+
+    private static int GetCurrentJobId()
+        => (int)Plugin.PlayerState.ClassJob.RowId;
+
+    private void TickTravelToLimsa(TimeSpan elapsed)
+    {
+        if (IsOceanFishingDutyActive())
+        {
+            SetState(FishingState.MovingToFishingSpot);
+            return;
+        }
+
+        if (IsInLimsaAndReady())
+        {
+            SetState(FishingState.NavigatingToRegistrar);
+            return;
+        }
+
+        if (travelStartedAt == DateTime.MinValue)
+            travelStartedAt = DateTime.UtcNow;
+
+        if (elapsed > LimsaTravelTimeout)
+        {
+            Fail("Timed out traveling to Limsa for Ocean Fishing registration.");
+            return;
+        }
+
+        if (lastTravelCommandAt == DateTime.MinValue ||
+            DateTime.UtcNow - lastTravelCommandAt >= TimeSpan.FromSeconds(10))
+        {
+            lastTravelCommandAt = DateTime.UtcNow;
+            log.Information("[Fishing] Traveling to Limsa for Ocean Fishing: /li limsa");
+            lifestream.ExecuteCommand("/li limsa");
+        }
+    }
+
+    private void TickNavigateToRegistrar(TimeSpan elapsed)
+    {
+        if (IsOceanFishingDutyActive())
+        {
+            SetState(FishingState.MovingToFishingSpot);
+            return;
+        }
+
+        if (!IsInLimsaAndReady())
+        {
+            SetState(FishingState.TravelingToLimsa);
+            return;
+        }
+
+        var distance = DistanceTo(DryskthotaPosition);
+        if (distance <= RegistrarInteractDistance)
+        {
+            vnavmesh.Stop();
+            SetState(FishingState.InteractingRegistrar);
+            return;
+        }
+
+        if (elapsed > RegistrarNavigationTimeout)
+        {
+            Fail($"Timed out navigating to Dryskthota; distance={distance:F1}y.");
+            return;
+        }
+
+        if (lastNavigationCommandAt == DateTime.MinValue ||
+            DateTime.UtcNow - lastNavigationCommandAt >= TimeSpan.FromSeconds(2))
+        {
+            lastNavigationCommandAt = DateTime.UtcNow;
+            log.Information($"[Fishing] Navigating to Dryskthota ({distance:F1}y)");
+            vnavmesh.PathfindAndMoveTo(DryskthotaPosition);
+        }
+    }
+
+    private void TickInteractWithRegistrar(TimeSpan elapsed)
+    {
+        if (IsOceanFishingDutyActive())
+        {
+            SetState(FishingState.MovingToFishingSpot);
+            return;
+        }
+
+        if (IsQueueConfirmed())
+        {
+            SetState(FishingState.WaitingForDeparture);
+            return;
+        }
+
+        if (!IsRegistrationWindowOpen(out var window))
+        {
+            if (OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+                    DateTimeOffset.UtcNow,
+                    configuration.OceanFishingPreWindowOffsetMinutes,
+                    out window) &&
+                DateTimeOffset.UtcNow < window.RegistrationStartUtc)
+            {
+                statusDetail = $"Waiting for Ocean Fishing registration at {window.RegistrationStartUtc:u}";
+                return;
+            }
+
+            Fail("Ocean Fishing registration is not open before Dryskthota interaction.");
+            return;
+        }
+
+        if (registrationAttemptStartedAt == DateTime.MinValue)
+            registrationAttemptStartedAt = DateTime.UtcNow;
+
+        if (elapsed > QueueConfirmationTimeout)
+        {
+            SetState(FishingState.ConfirmingRegistration);
+            return;
+        }
+
+        TryHandleOceanFishingYesNo();
+
+        if (lastInteractionAttemptAt == DateTime.MinValue ||
+            DateTime.UtcNow - lastInteractionAttemptAt >= TimeSpan.FromSeconds(5))
+        {
+            lastInteractionAttemptAt = DateTime.UtcNow;
+            log.Information($"[Fishing] Interacting with Dryskthota dataId={DryskthotaDataId} at registration window {window.RegistrationStartUtc:u}");
+            GameHelpers.TargetAndInteractByDataId(DryskthotaDataId, "Dryskthota");
+        }
+    }
+
+    private void TickConfirmRegistration(TimeSpan elapsed)
+    {
+        if (IsOceanFishingDutyActive())
+        {
+            SetState(FishingState.MovingToFishingSpot);
+            return;
+        }
+
+        if (IsQueueConfirmed())
+        {
+            SetState(FishingState.WaitingForDeparture);
+            return;
+        }
+
+        TryHandleOceanFishingYesNo();
+
+        if (!IsRegistrationWindowOpen(out _))
+        {
+            Fail("Ocean Fishing registration closed before queue confirmation was observed.");
+            return;
+        }
+
+        if (registrationAttemptStartedAt != DateTime.MinValue &&
+            DateTime.UtcNow - registrationAttemptStartedAt > QueueConfirmationTimeout &&
+            lastInteractionAttemptAt != DateTime.MinValue &&
+            DateTime.UtcNow - lastInteractionAttemptAt >= TimeSpan.FromSeconds(5))
+        {
+            lastInteractionAttemptAt = DateTime.UtcNow;
+            log.Information("[Fishing] Queue confirmation not observed yet; retrying Dryskthota interaction");
+            GameHelpers.TargetAndInteractByDataId(DryskthotaDataId, "Dryskthota");
+        }
+
+        statusDetail = "Waiting for Ocean Fishing queue confirmation";
+    }
+
+    private void TickWaitForDeparture(TimeSpan elapsed)
+    {
+        if (departureWaitStartedAt == DateTime.MinValue)
+            departureWaitStartedAt = DateTime.UtcNow;
+
+        if (IsOceanFishingDutyActive())
+        {
+            SetState(FishingState.MovingToFishingSpot);
+            return;
+        }
+
+        TryHandleOceanFishingYesNo();
+
+        if (elapsed > DepartureTimeout)
+        {
+            Fail("Timed out waiting for Ocean Fishing departure after queue confirmation.");
+            return;
+        }
+
+        statusDetail = "Registered for Ocean Fishing; waiting for departure";
+    }
+
+    private void TickMoveToFishingSpot(TimeSpan elapsed)
+    {
+        if (!IsOceanFishingDutyActive())
+        {
+            if (elapsed > TimeSpan.FromSeconds(30))
+            {
+                Fail("Ocean Fishing duty context was not active after departure.");
+                return;
+            }
+
+            statusDetail = "Waiting for Ocean Fishing duty context";
+            return;
+        }
+
+        var distance = DistanceTo(BoatFishingPosition);
+        if (distance <= BoatFishingPositionTolerance)
+        {
+            vnavmesh.Stop();
+            SetState(FishingState.Fishing);
+            return;
+        }
+
+        if (lastNavigationCommandAt == DateTime.MinValue ||
+            DateTime.UtcNow - lastNavigationCommandAt >= TimeSpan.FromSeconds(2))
+        {
+            lastNavigationCommandAt = DateTime.UtcNow;
+            log.Information($"[Fishing] Moving to Ocean Fishing rail position ({distance:F1}y)");
+            vnavmesh.PathfindAndMoveTo(BoatFishingPosition);
+        }
+    }
+
+    private static bool IsInLimsaAndReady()
+        => Plugin.ClientState.TerritoryType == LimsaTerritoryType &&
+           !Plugin.Condition[ConditionFlag.BetweenAreas] &&
+           !Plugin.Condition[ConditionFlag.BetweenAreas51] &&
+           GameHelpers.IsPlayerAvailable();
+
+    private static bool IsQueueConfirmed()
+        => Plugin.Condition[ConditionFlag.WaitingForDuty] ||
+           Plugin.Condition[ConditionFlag.WaitingForDutyFinder] ||
+           GameHelpers.IsAddonVisible("ContentsFinderConfirm") ||
+           GameHelpers.IsAddonVisible("ContentsFinderReady");
+
+    private static bool IsOceanFishingDutyActive()
+        => IsFishingContextActive();
+
+    private static double DistanceTo(Vector3 position)
+    {
+        var player = Plugin.ObjectTable.LocalPlayer;
+        return player == null
+            ? double.MaxValue
+            : Vector3.Distance(player.Position, position);
+    }
+
+    private bool IsRegistrationWindowOpen(out OceanFishingStartupWindow window)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (!OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+                now,
+                configuration.OceanFishingPreWindowOffsetMinutes,
+                out window))
+        {
+            return false;
+        }
+
+        return now >= window.RegistrationStartUtc && now < window.EndUtc;
+    }
+
+    private static void TryHandleOceanFishingYesNo()
+    {
+        GameHelpers.TryClickYesIfPromptAllowed(
+            prompt => prompt.Contains("Register to board", StringComparison.OrdinalIgnoreCase) ||
+                      prompt.Contains("Embark to the", StringComparison.OrdinalIgnoreCase) ||
+                      prompt.Contains("board the Endeavor", StringComparison.OrdinalIgnoreCase) ||
+                      prompt.Contains("ocean fishing", StringComparison.OrdinalIgnoreCase),
+            "Ocean Fishing registration/embark",
+            allowUnreadable: false,
+            out _);
     }
 
     private bool TryStartRepairIfNeeded()
@@ -255,6 +631,14 @@ public sealed class FishingService
 
     private void TickFishingLoop(TimeSpan elapsed)
     {
+        var now = DateTime.UtcNow;
+        if (lastFishingLoopPollAt != DateTime.MinValue &&
+            now - lastFishingLoopPollAt < FishingLoopPollInterval)
+        {
+            return;
+        }
+
+        lastFishingLoopPollAt = now;
         var inFishingContext = IsFishingContextActive();
         if (inFishingContext)
             sawFishingContext = true;
@@ -270,10 +654,9 @@ public sealed class FishingService
                 return;
             }
 
-            if (elapsed >= NoFishingContextTimeout)
+            if (elapsed >= DutyCompletionTimeout)
             {
-                log.Information("[Fishing] No active fishing duty/window found after prep; completing without cast spam.");
-                SetState(FishingState.Complete);
+                Fail("Timed out waiting for Ocean Fishing duty completion.");
             }
 
             return;
@@ -300,7 +683,6 @@ public sealed class FishingService
             return;
         }
 
-        var now = DateTime.UtcNow;
         if (lastCastAt != DateTime.MinValue && now - lastCastAt < CastInterval)
             return;
 
@@ -358,5 +740,25 @@ public sealed class FishingService
         log.Information($"[Fishing] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        statusDetail = string.Empty;
+
+        if (newState is FishingState.NavigatingToRegistrar or FishingState.MovingToFishingSpot)
+            lastNavigationCommandAt = DateTime.MinValue;
+
+        if (newState == FishingState.InteractingRegistrar)
+            lastInteractionAttemptAt = DateTime.MinValue;
+
+        if (newState == FishingState.ConfirmingRegistration && registrationAttemptStartedAt == DateTime.MinValue)
+            registrationAttemptStartedAt = DateTime.UtcNow;
+
+        if (newState == FishingState.WaitingForDeparture)
+            departureWaitStartedAt = DateTime.UtcNow;
+
+        if (newState == FishingState.Fishing)
+        {
+            lastFishingLoopPollAt = DateTime.MinValue;
+            dutyStartedAt = DateTime.UtcNow;
+            sawFishingContext = true;
+        }
     }
 }

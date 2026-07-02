@@ -93,50 +93,45 @@ public class ConfigManager
     public void EnsureAccountSelected(ulong contentId, string? aliasHint = null, string? currentCharacterKey = null)
     {
         if (contentId == 0)
+            log.Warning("Current character content ID is 0; selecting by existing account membership only.");
+
+        if (accounts.Count == 0)
         {
-            log.Warning("Cannot select account with content ID 0 - using fallback");
-            if (accounts.Count > 0)
+            var fallbackId = Guid.NewGuid().ToString("N")[..8];
+            var fallbackAccount = new AccountConfig
             {
-                CurrentAccountId = accounts.Keys.First();
-                return;
-            }
-            else
-            {
-                var fallbackId = Guid.NewGuid().ToString("N")[..8];
-                var fallbackAccount = new AccountConfig
-                {
-                    AccountId = fallbackId,
-                    AccountAlias = aliasHint ?? "Fallback Account",
-                };
-                accounts[fallbackId] = fallbackAccount;
-                CurrentAccountId = fallbackId;
-                SaveAccount(fallbackId);
-                return;
-            }
+                AccountId = fallbackId,
+                AccountAlias = aliasHint ?? "Account 1",
+            };
+            accounts[fallbackId] = fallbackAccount;
+            CurrentAccountId = fallbackId;
+            SaveAccount(fallbackId);
+            log.Information($"[ConfigManager] Created first account {fallbackId}; contentId={contentId:X16}");
+            return;
         }
 
+        var hasCurrentCharacterKey = !string.IsNullOrWhiteSpace(currentCharacterKey);
         var selectionInputs = accounts
             .Select(pair => new AccountSelectionInput(
                 pair.Key,
-                !string.IsNullOrWhiteSpace(currentCharacterKey) &&
-                pair.Value.Characters.ContainsKey(currentCharacterKey)))
+                hasCurrentCharacterKey &&
+                pair.Value.Characters.ContainsKey(currentCharacterKey!),
+                pair.Value.Characters.Count))
             .ToList();
         var decision = AccountSelectionPolicy.Select(
             selectionInputs,
-            contentId,
             CurrentAccountId,
-            !string.IsNullOrWhiteSpace(currentCharacterKey));
+            hasCurrentCharacterKey);
 
         switch (decision.Action)
         {
             case AccountSelectionAction.SelectExisting:
                 SelectExistingAccount(decision.TargetAccountId, aliasHint, contentId);
                 break;
-            case AccountSelectionAction.MigrateLegacy:
-                MigrateLegacyAccount(decision.SourceAccountId, decision.TargetAccountId, aliasHint, contentId);
-                break;
-            case AccountSelectionAction.CreateCanonical:
-                CreateCanonicalAccountFromSelection(decision, aliasHint, currentCharacterKey, contentId);
+            case AccountSelectionAction.CreateNew:
+                var newId = CreateNewAccount(aliasHint ?? "Account 1");
+                CurrentAccountId = newId;
+                log.Information($"[ConfigManager] Account selection: created first accountId={newId}, contentId={contentId:X16}");
                 break;
         }
     }
@@ -148,15 +143,12 @@ public class ConfigManager
 
         var charKey = $"{characterName}@{worldName}";
 
-        if (!string.IsNullOrEmpty(CurrentAccountId) &&
-            accounts.TryGetValue(CurrentAccountId, out var currentAccount))
+        if (TryFindBestAccountContainingCharacter(charKey, out var existingAccountId, out var existingAccount))
         {
-            if (!currentAccount.Characters.ContainsKey(charKey))
+            CurrentAccountId = existingAccountId;
+            if (EnsureCharacterCreatedAtUtc(existingAccount, charKey, DateTime.UtcNow))
             {
-                currentAccount.Characters[charKey] = FindCharacterConfigInOtherAccount(charKey)?.Clone()
-                                                     ?? currentAccount.DefaultConfig.Clone();
-                SaveAccount(CurrentAccountId);
-                log.Information($"Added character {charKey} to account {CurrentAccountId}");
+                SaveAccount(existingAccountId);
             }
 
             SetCurrentCharacterKey(charKey);
@@ -165,21 +157,15 @@ public class ConfigManager
             return;
         }
 
-        foreach (var kvp in accounts)
+        if (string.IsNullOrEmpty(CurrentAccountId) ||
+            !accounts.TryGetValue(CurrentAccountId, out var accountForChar))
         {
-            if (kvp.Value.Characters.ContainsKey(charKey))
-            {
-                CurrentAccountId = kvp.Key;
-                SetCurrentCharacterKey(charKey);
-                if (string.IsNullOrEmpty(SelectedCharacterKey))
-                    SelectedCharacterKey = charKey;
-                return;
-            }
-        }
+            var fallbackId = accounts
+                .OrderByDescending(pair => pair.Value.Characters.Count)
+                .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(pair => pair.Key)
+                .FirstOrDefault();
 
-        if (string.IsNullOrEmpty(CurrentAccountId))
-        {
-            var fallbackId = accounts.Keys.FirstOrDefault();
             if (fallbackId == null)
             {
                 fallbackId = Guid.NewGuid().ToString("N")[..8];
@@ -190,16 +176,13 @@ public class ConfigManager
                 };
                 SaveAccount(fallbackId);
             }
-            CurrentAccountId = fallbackId;
-        }
 
-        if (!accounts.TryGetValue(CurrentAccountId, out var accountForChar))
-        {
-            log.Error($"Current account {CurrentAccountId} missing when adding {charKey}");
-            return;
+            CurrentAccountId = fallbackId;
+            accountForChar = accounts[fallbackId];
         }
 
         accountForChar.Characters[charKey] = accountForChar.DefaultConfig.Clone();
+        EnsureCharacterCreatedAtUtc(accountForChar, charKey, DateTime.UtcNow);
         SetCurrentCharacterKey(charKey);
         if (string.IsNullOrEmpty(SelectedCharacterKey))
             SelectedCharacterKey = charKey;
@@ -225,77 +208,6 @@ public class ConfigManager
         log.Information($"[ConfigManager] Account selection: select existing accountId={accountId}, contentId={contentId:X16}");
     }
 
-    private void MigrateLegacyAccount(string oldId, string accountId, string? aliasHint, ulong contentId)
-    {
-        if (!accounts.TryGetValue(oldId, out var account))
-        {
-            log.Error($"[ConfigManager] Account selection chose missing legacy account {oldId}");
-            return;
-        }
-
-        accounts.Remove(oldId);
-        account.AccountId = accountId;
-        if (!string.IsNullOrWhiteSpace(aliasHint) && string.IsNullOrWhiteSpace(account.AccountAlias))
-            account.AccountAlias = aliasHint;
-        accounts[accountId] = account;
-
-        try
-        {
-            var oldFile = Path.Combine(configDir, $"{oldId}_Vermaxion.json");
-            if (File.Exists(oldFile))
-                File.Delete(oldFile);
-        }
-        catch (Exception ex)
-        {
-            log.Warning($"Failed to delete legacy config file for {oldId}: {ex.Message}");
-        }
-
-        SaveAccount(accountId);
-        CurrentAccountId = accountId;
-        log.Information($"[ConfigManager] Account selection: migrate legacy source={oldId}, target={accountId}, contentId={contentId:X16}");
-    }
-
-    private void CreateCanonicalAccountFromSelection(
-        AccountSelectionDecision decision,
-        string? aliasHint,
-        string? currentCharacterKey,
-        ulong contentId)
-    {
-        var accountId = decision.TargetAccountId;
-        if (accounts.TryGetValue(accountId, out _))
-        {
-            SelectExistingAccount(accountId, aliasHint, contentId);
-            return;
-        }
-
-        AccountConfig? sourceAccount = null;
-        if (!string.IsNullOrWhiteSpace(decision.SourceAccountId))
-            accounts.TryGetValue(decision.SourceAccountId, out sourceAccount);
-
-        var account = new AccountConfig
-        {
-            AccountId = accountId,
-            AccountAlias = !string.IsNullOrWhiteSpace(aliasHint)
-                ? aliasHint
-                : $"Account {accounts.Count + 1}",
-            DefaultConfig = sourceAccount?.DefaultConfig.Clone() ?? new CharacterConfig(),
-        };
-
-        if (decision.CopyCurrentCharacterConfig &&
-            sourceAccount != null &&
-            !string.IsNullOrWhiteSpace(currentCharacterKey) &&
-            sourceAccount.Characters.TryGetValue(currentCharacterKey, out var sourceCharacterConfig))
-        {
-            account.Characters[currentCharacterKey] = sourceCharacterConfig.Clone();
-            log.Information($"[ConfigManager] Account selection: copy character config character={currentCharacterKey}, source={decision.SourceAccountId}, target={accountId}");
-        }
-
-        accounts[accountId] = account;
-        SaveAccount(accountId);
-        CurrentAccountId = accountId;
-        log.Information($"[ConfigManager] Account selection: create canonical accountId={accountId}, source={decision.SourceAccountId}, contentId={contentId:X16}");
-    }
-
     private CharacterConfig? FindCharacterConfigInOtherAccount(string charKey)
     {
         foreach (var pair in accounts)
@@ -308,6 +220,29 @@ public class ConfigManager
         }
 
         return null;
+    }
+
+    private bool TryFindBestAccountContainingCharacter(
+        string charKey,
+        out string accountId,
+        out AccountConfig account)
+    {
+        var match = accounts
+            .Where(pair => pair.Value.Characters.ContainsKey(charKey))
+            .OrderByDescending(pair => pair.Value.Characters.Count)
+            .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+
+        if (match.Value != null)
+        {
+            accountId = match.Key;
+            account = match.Value;
+            return true;
+        }
+
+        accountId = string.Empty;
+        account = null!;
+        return false;
     }
 
     public string CreateNewAccount(string alias)
@@ -353,6 +288,7 @@ public class ConfigManager
         if (!account.Characters.ContainsKey(charKey)) return false;
 
         account.Characters.Remove(charKey);
+        account.CharacterCreatedAtUtc.Remove(charKey);
         if (SelectedCharacterKey == charKey)
             SelectedCharacterKey = "";
         if (CurrentCharacterKey == charKey)
@@ -516,10 +452,13 @@ public class ConfigManager
         => value?.Trim().ToUpperInvariant() ?? string.Empty;
 
     public IEnumerable<string> GetSortedCharacterKeys()
+        => GetSortedCharacterKeys(CharacterListSortMode.Name);
+
+    public IEnumerable<string> GetSortedCharacterKeys(CharacterListSortMode sortMode)
     {
         var account = GetCurrentAccount();
         if (account == null) return Enumerable.Empty<string>();
-        return account.Characters.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase);
+        return CharacterSortPolicy.Sort(account.Characters.Keys, sortMode, account.CharacterCreatedAtUtc);
     }
 
     public void UpdateAccountAlias(string alias)
@@ -560,6 +499,8 @@ public class ConfigManager
         try
         {
             var files = Directory.GetFiles(configDir, "*_Vermaxion.json");
+            var loadedAccounts = new Dictionary<string, AccountConfig>(StringComparer.OrdinalIgnoreCase);
+            var accountsNeedingSave = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var file in files)
             {
                 try
@@ -568,13 +509,32 @@ public class ConfigManager
                     var account = JsonSerializer.Deserialize<AccountConfig>(json, JsonOptions);
                     if (account != null && !string.IsNullOrEmpty(account.AccountId))
                     {
-                        accounts[account.AccountId] = account;
+                        loadedAccounts[account.AccountId] = account;
+                        if (BackfillCharacterCreatedAtUtc(account))
+                            accountsNeedingSave.Add(account.AccountId);
                     }
                 }
                 catch (Exception ex)
                 {
                     log.Error($"Failed to load config file {file}: {ex.Message}");
                 }
+            }
+
+            accounts.Clear();
+            foreach (var pair in loadedAccounts)
+                accounts[pair.Key] = pair.Value;
+
+            foreach (var accountId in accountsNeedingSave)
+                SaveAccount(accountId);
+
+            if (!string.IsNullOrWhiteSpace(CurrentAccountId) &&
+                !accounts.ContainsKey(CurrentAccountId))
+            {
+                CurrentAccountId = accounts
+                    .OrderByDescending(pair => pair.Value.Characters.Count)
+                    .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault() ?? string.Empty;
             }
         }
         catch (Exception ex)
@@ -599,6 +559,45 @@ public class ConfigManager
         {
             log.Error($"Failed to save account {accountId}: {ex.Message}");
         }
+    }
+
+    private static bool EnsureCharacterCreatedAtUtc(AccountConfig account, string characterKey, DateTime createdAtUtc)
+    {
+        if (string.IsNullOrWhiteSpace(characterKey) ||
+            account.CharacterCreatedAtUtc.ContainsKey(characterKey))
+        {
+            return false;
+        }
+
+        account.CharacterCreatedAtUtc[characterKey] = createdAtUtc.ToUniversalTime();
+        return true;
+    }
+
+    private static bool BackfillCharacterCreatedAtUtc(AccountConfig account)
+    {
+        var missingKeys = account.Characters.Keys
+            .Where(key => !account.CharacterCreatedAtUtc.ContainsKey(key))
+            .ToList();
+
+        if (missingKeys.Count == 0)
+            return false;
+
+        var backfillStartUtc = DateTime.UtcNow.AddTicks(-missingKeys.Count);
+        for (var index = 0; index < missingKeys.Count; index++)
+            account.CharacterCreatedAtUtc[missingKeys[index]] = backfillStartUtc.AddTicks(index);
+
+        return true;
+    }
+
+    private static bool TryGetCharacterCreatedAtUtc(
+        AccountConfig? account,
+        string characterKey,
+        out DateTime createdAtUtc)
+    {
+        createdAtUtc = DateTime.MinValue;
+        return account != null &&
+               account.CharacterCreatedAtUtc.TryGetValue(characterKey, out createdAtUtc) &&
+               createdAtUtc != DateTime.MinValue;
     }
 
     public static string FixNameCapitalization(string input)

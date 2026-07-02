@@ -1,0 +1,12 @@
+{
+  "Items": [
+    {
+      "ItemId": 12345,
+      "ItemName": "Example Registrable 1"
+    },
+    {
+      "ItemId": 12346,
+      "ItemName": "Example Registrable 2"
+    }
+  ]
+}

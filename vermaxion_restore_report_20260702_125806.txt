@@ -1,0 +1,38 @@
+﻿VERMAXION config restore report 20260702_125806
+
+W:
+  PluginConfigPath: W:\pluginConfigs\Vermaxion
+  DriveBackupPath: W:\pluginConfigs\Vermaxion_backup_20260702_125806
+  RepoBackupPath: Microsoft.PowerShell.Core\FileSystem::\\zdav\temp\VERMAXION\vermaxion_config_backup_20260702_125806\W
+  PrimaryAccountId: 4000174C01C65D
+  PrimaryFile: W:\pluginConfigs\Vermaxion\4000174C01C65D_Vermaxion.json
+  Characters: 87
+  FishingEnabled: 5
+  QuarantinePath: W:\pluginConfigs\Vermaxion\quarantine_generated_20260702_125806
+  QuarantinedGeneratedFiles: 31
+  MergedGeneratedFiles: 31
+  MergedCharacters: 31
+  UpdatedNewerDateFields: 56
+  UpdatedRelatedStateFields: 0
+  NormalizedDadFrequencyFields: 77
+  MissingFromPrimary: 0
+  RemainingAccountFiles: 1
+
+X:
+  PluginConfigPath: X:\pluginConfigs\Vermaxion
+  DriveBackupPath: X:\pluginConfigs\Vermaxion_backup_20260702_125806
+  RepoBackupPath: Microsoft.PowerShell.Core\FileSystem::\\zdav\temp\VERMAXION\vermaxion_config_backup_20260702_125806\X
+  PrimaryAccountId: 4000174C2E9532
+  PrimaryFile: X:\pluginConfigs\Vermaxion\4000174C2E9532_Vermaxion.json
+  Characters: 108
+  FishingEnabled: 0
+  QuarantinePath: X:\pluginConfigs\Vermaxion\quarantine_generated_20260702_125806
+  QuarantinedGeneratedFiles: 35
+  MergedGeneratedFiles: 35
+  MergedCharacters: 35
+  UpdatedNewerDateFields: 129
+  UpdatedRelatedStateFields: 0
+  NormalizedDadFrequencyFields: 103
+  MissingFromPrimary: 0
+  RemainingAccountFiles: 1
+

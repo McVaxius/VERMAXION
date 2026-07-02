@@ -57,3 +57,7 @@ See [how-to-import-plugins.md](how-to-import-plugins.md)
 ## Status
 
 v0.0.0.1 — Initial scaffold. Core architecture complete, game interaction stubs need in-game testing.
+
+2026-07-02 — Recovered VERMAXION account configs after the content-ID account regression. W: restored primary account `4000174C01C65D` with 87 characters and 5 fishing-enabled characters; X: restored primary account `4000174C2E9532` with 108 characters and 0 fishing-enabled characters. Generated one-character account files were backed up and quarantined, and global `LastAccountId` now points at the restored primary accounts.
+
+2026-07-02 — Account selection now resolves by existing character membership, preferring the largest matching account for duplicate membership and adding unknown characters to the currently selected valid account. Fishing relog now releases VERMAXION/AutoRetainer ownership, waits for idle conditions, sends `/ays relog` without `/ays reset`, retries unobserved commands, and fails explicitly on registration expiry or wrong-character arrival. Ocean Fishing now runs a full queue flow through FSH equip, repair/lure prep, Limsa travel, Dryskthota interaction, queue confirmation, departure wait, boat positioning, casting, result close, and configured return.
