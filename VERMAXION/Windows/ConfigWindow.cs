@@ -258,7 +258,11 @@ public class ConfigWindow : Window, IDisposable
                     FishingDefaults.MaxOceanFishingPreWindowOffsetMinutes);
                 config.Save();
             }
-            DrawHelpMarker("Minutes relative to Ocean Fishing registration start. VERMAXION starts only from this offset through the first registration minute.");
+            DrawHelpMarker("Minutes relative to Ocean Fishing registration start. VERMAXION starts from this offset through the full 15-minute registration period; the closing boundary is excluded.");
+
+            if (ImGui.SmallButton("Reset Fishing startup gate"))
+                plugin.ResetFishingStartupGate();
+            DrawHelpMarker("Clears the current Ocean Fishing startup-window attempt guard so an explicit Fishing run can retry.");
         }
 
         ImGui.Separator();
@@ -421,6 +425,8 @@ public class ConfigWindow : Window, IDisposable
     private void DrawCharacterList(ConfigManager configManager)
     {
         ImGui.Text(UIConstants.ConfigLabels.Characters);
+        ImGui.SameLine();
+        DrawCharacterSortSelector();
         ImGui.Separator();
 
         // Default config entry
@@ -436,37 +442,25 @@ public class ConfigWindow : Window, IDisposable
         var currentChar = !string.IsNullOrEmpty(charName) && !string.IsNullOrEmpty(worldName) 
             ? $"{charName}@{worldName}" 
             : "";
-        if (!string.IsNullOrEmpty(currentChar))
-        {
-            var isCurrentSelected = configManager.SelectedCharacterKey == currentChar;
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 1f, 0.4f, 1)); // Green text
-            
-            // Apply krangle to current character display
-            var displayCurrentChar = plugin.Configuration.KrangleEnabled 
-                ? KrangleService.KrangleName(CleanLuminaText(currentChar))
-                : currentChar;
-                
-            if (ImGui.Selectable(displayCurrentChar, isCurrentSelected))
-            {
-                configManager.SelectedCharacterKey = currentChar;
-            }
-            ImGui.PopStyleColor();
-            ImGui.Spacing();
-        }
 
-        // Other characters sorted alphabetically
-        foreach (var charKey in configManager.GetSortedCharacterKeys())
+        foreach (var charKey in configManager.GetSortedCharacterKeys(plugin.Configuration.CharacterListSortMode))
         {
-            if (charKey == currentChar) continue; // Skip current char, already shown
             var displayName = plugin.Configuration.KrangleEnabled
                 ? KrangleService.KrangleName(CleanLuminaText(charKey))
                 : charKey;
 
             var isSelected = configManager.SelectedCharacterKey == charKey;
+            var isCurrentCharacter = string.Equals(charKey, currentChar, StringComparison.Ordinal);
+            if (isCurrentCharacter)
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 1f, 0.4f, 1));
+
             if (ImGui.Selectable(displayName, isSelected))
             {
                 configManager.SelectedCharacterKey = charKey;
             }
+
+            if (isCurrentCharacter)
+                ImGui.PopStyleColor();
 
             // Right-click context menu
             if (ImGui.BeginPopupContextItem($"CharContext_{charKey}"))
@@ -478,6 +472,31 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.EndPopup();
             }
         }
+    }
+
+    private void DrawCharacterSortSelector()
+    {
+        var sortMode = plugin.Configuration.CharacterListSortMode;
+        ImGui.SetNextItemWidth(120f);
+        if (ImGui.BeginCombo("##CharacterSortMode", FormatCharacterListSortMode(sortMode)))
+        {
+            foreach (var mode in Enum.GetValues<CharacterListSortMode>())
+            {
+                var selected = mode == sortMode;
+                if (ImGui.Selectable(FormatCharacterListSortMode(mode), selected))
+                {
+                    plugin.Configuration.CharacterListSortMode = mode;
+                    plugin.Configuration.Save();
+                }
+
+                if (selected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndCombo();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Character list sort order");
     }
 
     private void DrawCharacterSettings(ConfigManager configManager)
@@ -2053,6 +2072,15 @@ public class ConfigWindow : Window, IDisposable
         {
             FishingExecutionMode.AutoRetainerRelogCurrentAccount => "AR postprocess / current account relog",
             _ => "Current character only",
+        };
+
+    private static string FormatCharacterListSortMode(CharacterListSortMode mode)
+        => mode switch
+        {
+            CharacterListSortMode.Name => "Name",
+            CharacterListSortMode.Server => "Server",
+            CharacterListSortMode.CreationDate => "Creation date",
+            _ => mode.ToString(),
         };
 
     private static string FormatFishingReturnDestination(FishingReturnDestination destination)

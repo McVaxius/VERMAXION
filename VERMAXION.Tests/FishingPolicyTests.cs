@@ -213,14 +213,28 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void OceanFishingStartupWindowCoversOffsetThroughFirstRegistrationMinute()
+    public void OceanFishingStartupWindowCoversOffsetThroughFullRegistrationPeriod()
     {
         Assert.True(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 6, 30, 23, 59, 0), -1));
         Assert.True(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 7, 1, 0, 0, 0), -1));
-        Assert.True(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 7, 1, 0, 0, 59), -1));
+        Assert.True(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 7, 1, 0, 14, 59), -1));
 
         Assert.False(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 6, 30, 23, 58, 59), -1));
-        Assert.False(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 7, 1, 0, 1, 0), -1));
+        Assert.False(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 7, 1, 0, 15, 0), -1));
+    }
+
+    [Fact]
+    public void OceanFishingStartupWindowAtReportedTimestampResolvesFullGate()
+    {
+        var active = OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+            Utc(2026, 7, 2, 12, 7, 42),
+            -1,
+            out var window);
+
+        Assert.True(active);
+        Assert.Equal(Utc(2026, 7, 2, 12, 0, 0), window.RegistrationStartUtc);
+        Assert.Equal(Utc(2026, 7, 2, 11, 59, 0), window.StartUtc);
+        Assert.Equal(Utc(2026, 7, 2, 12, 15, 0), window.EndUtc);
     }
 
     [Fact]
@@ -243,7 +257,7 @@ public sealed class FishingPolicyTests
         Assert.Equal(Utc(2026, 6, 30, 23, 59, 0), defaultOffsetWindow.StartUtc);
         Assert.Equal(Utc(2026, 6, 30, 23, 55, 0), widerOffsetWindow.StartUtc);
         Assert.Equal(defaultOffsetWindow.EndUtc, widerOffsetWindow.EndUtc);
-        Assert.Equal(Utc(2026, 7, 1, 0, 1, 0), widerOffsetWindow.EndUtc);
+        Assert.Equal(registrationWindow.EndUtc, widerOffsetWindow.EndUtc);
 
         Assert.False(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 6, 30, 23, 55, 0), -1));
         Assert.True(OceanFishingSchedulePolicy.IsStartupWindowActive(Utc(2026, 6, 30, 23, 55, 0), -5));
@@ -265,9 +279,133 @@ public sealed class FishingPolicyTests
         Assert.Equal(FishingRelogPrepAction.ReleaseVermaxionSuppression, steps[1].Action);
         Assert.Equal("/ays m d", steps[2].Command);
         Assert.Equal(FishingRelogPrepAction.Wait, steps[3].Action);
-        Assert.Equal("/ays reset", steps[4].Command);
-        Assert.Equal(FishingRelogPrepAction.Wait, steps[5].Action);
-        Assert.Equal("/ays relog Fishy Person@Cactuar", steps[6].Command);
+        Assert.Equal("/ays relog Fishy Person@Cactuar", steps[4].Command);
+        Assert.DoesNotContain(steps, step => string.Equals(step.Command, "/ays reset", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void RelogPolicyWaitsWhileOccupiedOrBellBlocked()
+    {
+        var decision = FishingRelogCommandPolicy.Evaluate(
+            Utc(2026, 7, 2, 12, 1, 0),
+            Utc(2026, 7, 2, 12, 0, 0),
+            lastRelogCommandAtUtc: null,
+            registrationOpen: true,
+            readyForRelog: false,
+            blockedReason: "Waiting for occupied/bell/cutscene state to clear before relog.",
+            targetReached: false,
+            observableProgress: false,
+            wrongCharacterArrived: false);
+
+        Assert.Equal(FishingRelogRuntimeAction.Wait, decision.Action);
+        Assert.Contains("occupied/bell", decision.Reason);
+    }
+
+    [Fact]
+    public void RelogPolicyRetriesUnobservedCommandAfterBoundedInterval()
+    {
+        var decision = FishingRelogCommandPolicy.Evaluate(
+            Utc(2026, 7, 2, 12, 1, 46),
+            Utc(2026, 7, 2, 12, 0, 0),
+            lastRelogCommandAtUtc: Utc(2026, 7, 2, 12, 1, 0),
+            registrationOpen: true,
+            readyForRelog: true,
+            blockedReason: string.Empty,
+            targetReached: false,
+            observableProgress: false,
+            wrongCharacterArrived: false);
+
+        Assert.Equal(FishingRelogRuntimeAction.SendRelog, decision.Action);
+        Assert.Contains("retrying relog", decision.Reason);
+    }
+
+    [Fact]
+    public void RelogPolicyCompletesOnTargetArrivalAndFailsWrongArrivalOrExpiry()
+    {
+        var now = Utc(2026, 7, 2, 12, 3, 0);
+        var started = Utc(2026, 7, 2, 12, 0, 0);
+
+        var success = FishingRelogCommandPolicy.Evaluate(
+            now,
+            started,
+            lastRelogCommandAtUtc: Utc(2026, 7, 2, 12, 1, 0),
+            registrationOpen: true,
+            readyForRelog: true,
+            blockedReason: string.Empty,
+            targetReached: true,
+            observableProgress: true,
+            wrongCharacterArrived: false);
+        var wrong = FishingRelogCommandPolicy.Evaluate(
+            now,
+            started,
+            lastRelogCommandAtUtc: Utc(2026, 7, 2, 12, 1, 0),
+            registrationOpen: true,
+            readyForRelog: true,
+            blockedReason: string.Empty,
+            targetReached: false,
+            observableProgress: true,
+            wrongCharacterArrived: true);
+        var expired = FishingRelogCommandPolicy.Evaluate(
+            now,
+            started,
+            lastRelogCommandAtUtc: Utc(2026, 7, 2, 12, 1, 0),
+            registrationOpen: false,
+            readyForRelog: true,
+            blockedReason: string.Empty,
+            targetReached: false,
+            observableProgress: false,
+            wrongCharacterArrived: false);
+
+        Assert.Equal(FishingRelogRuntimeAction.Complete, success.Action);
+        Assert.Equal(FishingRelogRuntimeAction.Fail, wrong.Action);
+        Assert.Equal(FishingRelogRuntimeAction.Fail, expired.Action);
+        Assert.Contains("different character", wrong.Reason);
+        Assert.Contains("registration closed", expired.Reason);
+    }
+
+    [Theory]
+    [InlineData(1, true, 129, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.SwitchToFisher)]
+    [InlineData(18, false, 129, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.PrepareSupplies)]
+    [InlineData(18, true, 128, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.TravelToLimsa)]
+    [InlineData(18, true, 129, 20.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.MoveToRegistrar)]
+    [InlineData(18, true, 129, 1.0, false, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.WaitForRegistrationOpen)]
+    [InlineData(18, true, 129, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.InteractWithRegistrar)]
+    [InlineData(18, true, 129, 1.0, false, true, false, false, 99.0, false, false, false, OceanFishingQueueAction.FailRegistrationClosed)]
+    [InlineData(18, true, 129, 1.0, false, false, true, false, 99.0, false, false, false, OceanFishingQueueAction.WaitForDeparture)]
+    [InlineData(18, true, 129, 1.0, false, false, false, true, 10.0, false, false, false, OceanFishingQueueAction.MoveToFishingPosition)]
+    [InlineData(18, true, 129, 1.0, false, false, false, true, 1.0, false, false, false, OceanFishingQueueAction.CastLine)]
+    [InlineData(18, true, 129, 1.0, false, false, false, true, 1.0, true, false, false, OceanFishingQueueAction.CloseResult)]
+    [InlineData(18, true, 129, 1.0, false, false, false, false, 1.0, false, true, false, OceanFishingQueueAction.ReturnAfterCompletion)]
+    public void QueuePolicyCoversOceanFishingStateMachine(
+        int currentJobId,
+        bool suppliesPrepared,
+        ushort territoryType,
+        double registrarDistance,
+        bool registrationWindowOpen,
+        bool registrationWindowClosed,
+        bool queueConfirmed,
+        bool dutyActive,
+        double fishingPositionDistance,
+        bool resultAddonVisible,
+        bool fishingComplete,
+        bool returnCommandSent,
+        OceanFishingQueueAction expected)
+    {
+        var action = OceanFishingQueuePolicy.Decide(new OceanFishingQueueSnapshot(
+            currentJobId,
+            suppliesPrepared,
+            territoryType,
+            registrarDistance,
+            registrationWindowOpen,
+            registrationWindowClosed,
+            queueConfirmed,
+            dutyActive,
+            fishingPositionDistance,
+            resultAddonVisible,
+            fishingComplete,
+            returnCommandSent));
+
+        Assert.Equal(expected, action);
     }
 
     [Theory]

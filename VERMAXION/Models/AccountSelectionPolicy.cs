@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 
 namespace VERMAXION.Models;
@@ -8,108 +7,82 @@ namespace VERMAXION.Models;
 internal enum AccountSelectionAction
 {
     SelectExisting,
-    MigrateLegacy,
-    CreateCanonical,
+    CreateNew,
 }
 
 internal readonly record struct AccountSelectionInput(
     string AccountId,
-    bool HasCurrentCharacter);
+    bool HasCurrentCharacter,
+    int CharacterCount);
 
 internal readonly record struct AccountSelectionDecision(
     AccountSelectionAction Action,
     string TargetAccountId,
-    string SourceAccountId,
-    bool CopyCurrentCharacterConfig);
+    string Reason);
 
 internal static class AccountSelectionPolicy
 {
-    public static string GetCanonicalAccountId(ulong contentId)
-        => contentId.ToString("X", CultureInfo.InvariantCulture);
-
-    public static bool IsCanonicalContentAccountId(string accountId)
-        => TryParseContentAccountId(accountId, out _);
-
-    private static bool TryParseContentAccountId(string accountId, out ulong contentId)
-    {
-        contentId = 0;
-        var normalized = accountId.Trim();
-        if (string.IsNullOrWhiteSpace(normalized))
-            return false;
-
-        if (normalized.Length > 16 || normalized.Any(ch => !Uri.IsHexDigit(ch)))
-            return false;
-
-        if (!ulong.TryParse(normalized, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var parsed) || parsed == 0)
-            return false;
-
-        contentId = parsed;
-        return true;
-    }
-
     public static AccountSelectionDecision Select(
         IEnumerable<AccountSelectionInput> accounts,
-        ulong contentId,
         string currentAccountId,
         bool hasCurrentCharacterKey)
     {
-        if (contentId == 0)
-            throw new ArgumentOutOfRangeException(nameof(contentId), "Content ID 0 cannot be canonicalized.");
-
-        var targetAccountId = GetCanonicalAccountId(contentId);
         var accountList = accounts
             .Where(account => !string.IsNullOrWhiteSpace(account.AccountId))
             .GroupBy(account => account.AccountId, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.First())
-            .OrderBy(account => account.AccountId, StringComparer.OrdinalIgnoreCase)
+            .Select(group =>
+            {
+                var grouped = group.ToList();
+                return new AccountSelectionInput(
+                    group.Key.Trim(),
+                    grouped.Any(account => account.HasCurrentCharacter),
+                    grouped.Max(account => Math.Max(0, account.CharacterCount)));
+            })
             .ToList();
 
-        var existingTarget = accountList.FirstOrDefault(account =>
-            string.Equals(account.AccountId, targetAccountId, StringComparison.OrdinalIgnoreCase) ||
-            (TryParseContentAccountId(account.AccountId, out var accountContentId) && accountContentId == contentId));
-        if (!string.IsNullOrWhiteSpace(existingTarget.AccountId))
+        if (accountList.Count == 0)
+        {
+            return new AccountSelectionDecision(
+                AccountSelectionAction.CreateNew,
+                string.Empty,
+                "No account config exists.");
+        }
+
+        if (hasCurrentCharacterKey)
+        {
+            var membershipAccount = accountList
+                .Where(account => account.HasCurrentCharacter)
+                .OrderByDescending(account => Math.Max(0, account.CharacterCount))
+                .ThenBy(account => account.AccountId, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(membershipAccount.AccountId))
+            {
+                return new AccountSelectionDecision(
+                    AccountSelectionAction.SelectExisting,
+                    membershipAccount.AccountId,
+                    "Selected account containing the current character.");
+            }
+        }
+
+        var currentAccount = accountList.FirstOrDefault(
+            account => string.Equals(account.AccountId, currentAccountId, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(currentAccount.AccountId))
         {
             return new AccountSelectionDecision(
                 AccountSelectionAction.SelectExisting,
-                existingTarget.AccountId,
-                string.Empty,
-                CopyCurrentCharacterConfig: false);
+                currentAccount.AccountId,
+                "Selected current account because the character is not configured elsewhere.");
         }
 
-        if (accountList.Count == 1 && !IsCanonicalContentAccountId(accountList[0].AccountId))
-        {
-            return new AccountSelectionDecision(
-                AccountSelectionAction.MigrateLegacy,
-                targetAccountId,
-                accountList[0].AccountId,
-                CopyCurrentCharacterConfig: false);
-        }
+        var largestAccount = accountList
+            .OrderByDescending(account => Math.Max(0, account.CharacterCount))
+            .ThenBy(account => account.AccountId, StringComparer.OrdinalIgnoreCase)
+            .First();
 
-        var source = ChooseSourceAccount(accountList, currentAccountId);
-        var copyCharacterConfig = hasCurrentCharacterKey && source.HasCurrentCharacter;
         return new AccountSelectionDecision(
-            AccountSelectionAction.CreateCanonical,
-            targetAccountId,
-            source.AccountId ?? string.Empty,
-            copyCharacterConfig);
-    }
-
-    private static AccountSelectionInput ChooseSourceAccount(
-        IReadOnlyList<AccountSelectionInput> accounts,
-        string currentAccountId)
-    {
-        if (accounts.Count == 0)
-            return default;
-
-        var characterSource = accounts.FirstOrDefault(account => account.HasCurrentCharacter);
-        if (!string.IsNullOrWhiteSpace(characterSource.AccountId))
-            return characterSource;
-
-        var currentSource = accounts.FirstOrDefault(
-            account => string.Equals(account.AccountId, currentAccountId, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(currentSource.AccountId))
-            return currentSource;
-
-        return accounts[0];
+            AccountSelectionAction.SelectExisting,
+            largestAccount.AccountId,
+            "Selected largest existing account because no current account was valid.");
     }
 }

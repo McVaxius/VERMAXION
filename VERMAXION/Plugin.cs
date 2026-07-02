@@ -92,8 +92,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     private bool releaseOnlyPostprocessFinishPending;
     private string releaseOnlyPostprocessFinishReason = string.Empty;
     private string beforeArTimeoutReleaseReason = string.Empty;
+    private DateTime fishingRelogContinuationLastCheckAt = DateTime.MinValue;
+    private DateTime fishingRelogWorldReadySince = DateTime.MinValue;
+    private DateTime fishingRelogLastDiagnosticAt = DateTime.MinValue;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
+    private static readonly TimeSpan FishingRelogContinuationPollInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan BeforeArArmedStallTimeout = BeforeArArmedStallPolicy.DefaultTimeout;
     public BeforeArGateState BeforeArGate { get; private set; } = BeforeArGateState.Idle;
     public string BeforeArGateStatus { get; private set; } = "Idle";
@@ -156,8 +160,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady, ArmBeforeArSuppressionFromPostprocess);
-        FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC);
-        FishingService = new FishingService(CommandManager, Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient);
+        FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, Configuration, ConfigManager);
+        FishingService = new FishingService(CommandManager, Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC);
         FishingStartupCoordinator = new FishingStartupCoordinator(this);
 
         // Engine - orchestrates all tasks
@@ -279,8 +283,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     public void RunFishingStartupManual()
     {
+        FishingStartupCoordinator.ResetCurrentWindow(DateTimeOffset.UtcNow, clearPendingRelogContinuation: false);
         var result = RunFishingStartupTrigger(FishingStartupTrigger.Manual);
         ChatGui.Print($"[Vermaxion] Fishing startup: {result.Reason}");
+    }
+
+    public void ResetFishingStartupGate()
+    {
+        FishingStartupCoordinator.ResetCurrentWindow(DateTimeOffset.UtcNow);
+        Log.Information("[Fishing][Startup] Startup gate reset by user");
+        ChatGui.Print("[Vermaxion] Fishing startup gate reset.");
     }
 
     private FishingStartupResult RunFishingStartupTrigger(FishingStartupTrigger trigger)
@@ -384,7 +396,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             FashionReportService.Reset();
             VendorStockService.Reset();
             FishingService.Reset();
-            FishingRelogCoordinator.Reset();
+            if (FishingRelogCoordinator.IsActive)
+                FishingRelogCoordinator.NotifyCharacterChanged(newCharacterKey);
+            else
+                FishingRelogCoordinator.Reset();
             RetainerListingRefillService.Reset();
             WorkshopBellService.Reset();
             RegisterRegistrablesService.Reset();
@@ -630,16 +645,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             Configuration.Save();
             ConfigManager.LoadAllAccounts();
 
-            // Fishing has priority over the normal before-AR task queue during
-            // its narrow startup gate. This also covers the first world-ready
-            // update after a coordinator-initiated relog.
-            var fishingStartup = RunFishingStartupTrigger(FishingStartupTrigger.Clock);
-            if (fishingStartup.ClaimsStartup)
-            {
-                SkipBeforeArForLogin($"Ocean Fishing startup: {fishingStartup.Reason}");
-                return;
-            }
-
             var activeConfig = ConfigManager.GetActiveConfig();
             var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
             var dueTaskIds = Engine.GetRunnableTaskIdsForPhase(PostProcessTaskPhase.BeforeAR).ToList();
@@ -684,6 +689,81 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             Log.Error($"Error in pending before-AR login processing: {ex.Message}");
             SkipBeforeArForLogin($"Pending Before-AR exception: {ex.Message}");
         }
+    }
+
+    private bool ProcessPendingFishingRelogContinuation()
+    {
+        if (!FishingStartupCoordinator.HasPendingRelogContinuation)
+        {
+            ClearFishingRelogContinuationReadiness();
+            return false;
+        }
+
+        if (FishingRelogCoordinator.IsFailed)
+        {
+            var reason = FishingRelogCoordinator.FailureReason;
+            Log.Warning($"[Fishing][Startup] Pending relog continuation failed: {reason}");
+            FishingStartupCoordinator.SuppressCurrentWindow(DateTimeOffset.UtcNow);
+            FishingRelogCoordinator.Reset();
+            ClearFishingRelogContinuationReadiness();
+
+            if (pendingBeforeArLogin)
+                SkipBeforeArForLogin($"Ocean Fishing relog failed: {reason}");
+
+            return false;
+        }
+
+        if (!ClientState.IsLoggedIn)
+        {
+            fishingRelogWorldReadySince = DateTime.MinValue;
+            return true;
+        }
+
+        var now = DateTime.UtcNow;
+        if (fishingRelogContinuationLastCheckAt != DateTime.MinValue &&
+            now - fishingRelogContinuationLastCheckAt < FishingRelogContinuationPollInterval)
+        {
+            return true;
+        }
+
+        fishingRelogContinuationLastCheckAt = now;
+        if (!TryGetWorldReadyCharacterForFishing(out var charName, out var worldName, out var contentId, out var notReadyReason))
+        {
+            LogFishingRelogContinuationDiagnostic(notReadyReason);
+            return true;
+        }
+
+        var characterKey = $"{charName}@{worldName}";
+        Log.Information($"[Fishing][Startup] Relog continuation world-ready resolved: character={characterKey}, contentId={contentId:X16}, target={FishingStartupCoordinator.PendingRelogCharacterKey}");
+        ConfigManager.EnsureAccountSelected(contentId, null, characterKey);
+        ConfigManager.EnsureCharacterExists(charName, worldName);
+        ApplyLegacyFishingOperationSettingsIfNeeded();
+        Configuration.LastAccountId = ConfigManager.CurrentAccountId;
+        Configuration.Save();
+        ConfigManager.LoadAllAccounts();
+
+        var result = FishingStartupCoordinator.ContinuePendingRelog(DateTimeOffset.UtcNow, ConfigManager.CurrentCharacterKey);
+        if (result.Started)
+            Log.Information(FishingStartupDiagnostics.FormatStarted(result));
+        else
+            Log.Information($"[Fishing][Startup] trigger={result.Trigger}, action={result.Action}, reason={result.Reason}");
+
+        if (result.Action is FishingStartupAction.FishingStarted or FishingStartupAction.AlreadyHandled)
+        {
+            if (pendingBeforeArLogin)
+                SkipBeforeArForLogin($"Ocean Fishing relog continuation: {result.Reason}");
+
+            ClearFishingRelogContinuationReadiness();
+            return true;
+        }
+
+        if (!FishingStartupCoordinator.HasPendingRelogContinuation)
+        {
+            ClearFishingRelogContinuationReadiness();
+            return false;
+        }
+
+        return true;
     }
 
     private void ClearPendingBeforeArLogin(string reason)
@@ -939,6 +1019,67 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         return true;
     }
 
+    private bool TryGetWorldReadyCharacterForFishing(out string charName, out string worldName, out ulong contentId, out string reason)
+    {
+        charName = ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        worldName = ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString() ?? "";
+        contentId = PlayerState.ContentId;
+
+        var loggedIn = ClientState.IsLoggedIn;
+        var hasLocalPlayer = ObjectTable.LocalPlayer != null;
+        var betweenAreas = Condition[ConditionFlag.BetweenAreas];
+        var betweenAreas51 = Condition[ConditionFlag.BetweenAreas51];
+        var playerAvailable = GameHelpers.IsPlayerAvailable();
+
+        if (!loggedIn ||
+            !hasLocalPlayer ||
+            string.IsNullOrEmpty(charName) ||
+            string.IsNullOrEmpty(worldName) ||
+            contentId == 0 ||
+            betweenAreas ||
+            betweenAreas51 ||
+            !playerAvailable)
+        {
+            fishingRelogWorldReadySince = DateTime.MinValue;
+            reason = $"waiting for fishing relog world-ready: loggedIn={loggedIn}, hasLocalPlayer={hasLocalPlayer}, character='{charName}', world='{worldName}', contentId={contentId:X16}, BetweenAreas={betweenAreas}, BetweenAreas51={betweenAreas51}, playerAvailable={playerAvailable}";
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (fishingRelogWorldReadySince == DateTime.MinValue)
+            fishingRelogWorldReadySince = now;
+
+        var stableSeconds = (now - fishingRelogWorldReadySince).TotalSeconds;
+        if (stableSeconds < BeforeArWorldReadyStableSeconds)
+        {
+            reason = $"waiting for fishing relog world-ready stability: stable={stableSeconds:F1}/{BeforeArWorldReadyStableSeconds:F1}s, character='{charName}', world='{worldName}', contentId={contentId:X16}, BetweenAreas={betweenAreas}, BetweenAreas51={betweenAreas51}, playerAvailable={playerAvailable}";
+            return false;
+        }
+
+        reason = "world-ready";
+        return true;
+    }
+
+    private void LogFishingRelogContinuationDiagnostic(string reason)
+    {
+        var now = DateTime.UtcNow;
+        if (fishingRelogLastDiagnosticAt != DateTime.MinValue &&
+            (now - fishingRelogLastDiagnosticAt).TotalSeconds < 2)
+        {
+            return;
+        }
+
+        fishingRelogLastDiagnosticAt = now;
+        Log.Information($"[Fishing][Startup] Pending relog continuation: {reason}, target={FishingStartupCoordinator.PendingRelogCharacterKey}");
+    }
+
+    private void ClearFishingRelogContinuationReadiness()
+    {
+        fishingRelogContinuationLastCheckAt = DateTime.MinValue;
+        fishingRelogWorldReadySince = DateTime.MinValue;
+        fishingRelogLastDiagnosticAt = DateTime.MinValue;
+    }
+
     private int GetConfiguredBeforeAutoRetainerTaskCount()
     {
         if (PostProcessTaskOrder.Normalize(Configuration))
@@ -968,12 +1109,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ProcessBeforeArArmedStallGuard();
         ProcessReleaseOnlyPostprocessFinishPending();
         ProcessBeforeArReleasePending();
-        ProcessPendingBeforeArLogin();
-
-        // Ocean Fishing startup is clock-driven and does not depend on an AR
-        // postprocess callback. The coordinator de-duplicates the relog and
-        // fishing-start attempts within each registration window.
-        RunFishingStartupTrigger(FishingStartupTrigger.Clock);
+        var fishingContinuationBlocksBeforeAr = ProcessPendingFishingRelogContinuation();
+        if (!fishingContinuationBlocksBeforeAr)
+            ProcessPendingBeforeArLogin();
 
         // Update engine (runs the state machine)
         Engine.Update();
@@ -1099,6 +1237,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             return beforeArTimeoutReleaseReason;
         if (FishingRelogCoordinator.IsActive)
             return FishingRelogCoordinator.StatusText;
+        if (FishingStartupCoordinator.HasPendingRelogContinuation)
+            return $"Fishing relog pending {FishingStartupCoordinator.PendingRelogCharacterKey}";
         if (FishingService.IsActive)
             return $"Fishing {FishingService.StatusText}";
         if (ARPostProcessService.IsProcessing)
@@ -1117,6 +1257,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
 
         FishingStartupCoordinator.SuppressCurrentWindow(DateTimeOffset.UtcNow);
+        ClearFishingRelogContinuationReadiness();
 
         LootGoblinMapGatherManualRunCoordinator.Cancel();
         Log.Information("[FULL STOP] LootGoblin map gather cancel requested");

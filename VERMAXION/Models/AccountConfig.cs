@@ -10,4 +10,5 @@ public class AccountConfig
     public string AccountAlias { get; set; } = "";
     public CharacterConfig DefaultConfig { get; set; } = new();
     public Dictionary<string, CharacterConfig> Characters { get; set; } = new();
+    public Dictionary<string, DateTime> CharacterCreatedAtUtc { get; set; } = new();
 }

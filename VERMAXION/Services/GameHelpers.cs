@@ -130,6 +130,22 @@ public static class GameHelpers
         return null;
     }
 
+    public static IGameObject? FindObjectByDataId(uint dataId)
+    {
+        foreach (var obj in Plugin.ObjectTable)
+        {
+            if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc ||
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj)
+            {
+                if (obj.BaseId == dataId)
+                    return obj;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Target an object by name, then interact with it.
     /// Uses AutoRetainer's proven targeting pattern: direct TargetManager targeting.
@@ -226,6 +242,31 @@ public static class GameHelpers
         catch (Exception ex)
         {
             Plugin.Log.Error($"[Callback] Failed for '{addonName}'. Args: {formattedArgs}. Error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public static bool TargetAndInteractByDataId(uint dataId, string fallbackName)
+    {
+        var obj = FindObjectByDataId(dataId) ?? FindObjectByName(fallbackName);
+        if (obj == null)
+        {
+            Plugin.Log.Warning($"[INTERACT] Object dataId={dataId} fallback='{fallbackName}' not found");
+            return false;
+        }
+
+        try
+        {
+            Plugin.TargetManager.Target = obj;
+            Plugin.Log.Information($"[INTERACT] Set target to {obj.Name.TextValue} (dataId={dataId})");
+            Plugin.Framework.RunOnFrameworkThread(() => { });
+            System.Threading.Tasks.Task.Delay(50).Wait();
+
+            return InteractWithObject(obj);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[INTERACT] Failed to interact with dataId={dataId}, fallback='{fallbackName}': {ex.Message}");
             return false;
         }
     }
