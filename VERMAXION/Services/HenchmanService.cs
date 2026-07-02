@@ -145,6 +145,20 @@ public class HenchmanService
         }
     }
 
+    public bool IsFishingWindowActive()
+    {
+        var readiness = GetTakeoverReadiness();
+        if (!readiness.Loaded || !readiness.Busy)
+            return false;
+
+        if (!string.Equals(readiness.TaskName, HenchmanTakeoverPolicy.SafeTaskName, StringComparison.Ordinal))
+            return false;
+
+        return !readiness.DisplayDescription.Contains(
+            HenchmanTakeoverPolicy.SafeTaskDescription,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     public void StopHenchman()
     {
         wasRunning = true;

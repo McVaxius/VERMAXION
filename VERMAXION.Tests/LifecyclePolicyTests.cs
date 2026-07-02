@@ -55,6 +55,82 @@ public sealed class LifecyclePolicyTests
     }
 
     [Theory]
+    [InlineData(false, false, true, 1, false, BeforeArArmPolicy.MultiModeUnreadableReason)]
+    [InlineData(true, false, true, 1, false, BeforeArArmPolicy.MultiModeOffReason)]
+    [InlineData(true, true, false, 1, false, BeforeArArmPolicy.NoDueWorkReason)]
+    [InlineData(true, true, true, 0, false, BeforeArArmPolicy.NoDueWorkReason)]
+    [InlineData(true, true, true, 1, true, "ready")]
+    public void BeforeArArmPolicyRequiresEnabledMultiModeAndDueWork(
+        bool multiModeReadSucceeded,
+        bool multiModeEnabled,
+        bool characterEnabled,
+        int dueTaskCount,
+        bool expectedArm,
+        string expectedReason)
+    {
+        var decision = BeforeArArmPolicy.Evaluate(
+            multiModeReadSucceeded,
+            multiModeEnabled,
+            characterEnabled,
+            dueTaskCount);
+
+        Assert.Equal(expectedArm, decision.ShouldArm);
+        Assert.Equal(expectedReason, decision.Reason);
+    }
+
+    [Fact]
+    public void ArmedSuppressionStallReleasesAfterTimeoutWhileIdleAndArBusy()
+    {
+        var now = DateTime.UtcNow;
+        var armedAt = now - TimeSpan.FromMinutes(5);
+
+        Assert.True(BeforeArArmedStallPolicy.ShouldRelease(
+            now,
+            armedAt,
+            BeforeArGateState.Armed,
+            suppressionOwnedByVermaxion: true,
+            engineOwnsActiveWork: false,
+            loginTransitionStarted: false,
+            autoRetainerBusy: true));
+    }
+
+    [Fact]
+    public void ArmedSuppressionStallDoesNotReleaseBeforeTimeout()
+    {
+        var now = DateTime.UtcNow;
+        var armedAt = now - TimeSpan.FromMinutes(4.99);
+
+        Assert.False(BeforeArArmedStallPolicy.ShouldRelease(
+            now,
+            armedAt,
+            BeforeArGateState.Armed,
+            suppressionOwnedByVermaxion: true,
+            engineOwnsActiveWork: false,
+            loginTransitionStarted: false,
+            autoRetainerBusy: true));
+    }
+
+    [Theory]
+    [InlineData(BeforeArGateState.WaitingForWorldReady, false)]
+    [InlineData(BeforeArGateState.Armed, true)]
+    public void ArmedSuppressionStallDoesNotReleaseDuringLoginOrActiveWork(
+        BeforeArGateState state,
+        bool engineOwnsActiveWork)
+    {
+        var now = DateTime.UtcNow;
+        var armedAt = now - TimeSpan.FromMinutes(6);
+
+        Assert.False(BeforeArArmedStallPolicy.ShouldRelease(
+            now,
+            armedAt,
+            state,
+            suppressionOwnedByVermaxion: true,
+            engineOwnsActiveWork,
+            loginTransitionStarted: state == BeforeArGateState.WaitingForWorldReady,
+            autoRetainerBusy: true));
+    }
+
+    [Theory]
     [MemberData(nameof(SuppressionCases))]
     public void SuppressionLeaseDecisionMatchesOwnershipContract(
         bool acquire,

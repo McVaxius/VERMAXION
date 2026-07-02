@@ -90,7 +90,7 @@ public class ConfigManager
         return GetConfigForKey(charKey);
     }
 
-    public void EnsureAccountSelected(ulong contentId, string? aliasHint = null)
+    public void EnsureAccountSelected(ulong contentId, string? aliasHint = null, string? currentCharacterKey = null)
     {
         if (contentId == 0)
         {
@@ -115,53 +115,30 @@ public class ConfigManager
             }
         }
 
-        var accountId = contentId.ToString("X");
-        if (!accounts.TryGetValue(accountId, out var account))
+        var selectionInputs = accounts
+            .Select(pair => new AccountSelectionInput(
+                pair.Key,
+                !string.IsNullOrWhiteSpace(currentCharacterKey) &&
+                pair.Value.Characters.ContainsKey(currentCharacterKey)))
+            .ToList();
+        var decision = AccountSelectionPolicy.Select(
+            selectionInputs,
+            contentId,
+            CurrentAccountId,
+            !string.IsNullOrWhiteSpace(currentCharacterKey));
+
+        switch (decision.Action)
         {
-            if (accounts.Count == 1)
-            {
-                var kvp = accounts.First();
-                var oldId = kvp.Key;
-                account = kvp.Value;
-                accounts.Remove(oldId);
-                account.AccountId = accountId;
-                accounts[accountId] = account;
-
-                try
-                {
-                    var oldFile = Path.Combine(configDir, $"{oldId}_Vermaxion.json");
-                    if (File.Exists(oldFile))
-                        File.Delete(oldFile);
-                }
-                catch (Exception ex)
-                {
-                    log.Warning($"Failed to delete legacy config file for {oldId}: {ex.Message}");
-                }
-
-                SaveAccount(accountId);
-                log.Information($"Migrated legacy account {oldId} -> {accountId}");
-            }
-            else
-            {
-                account = new AccountConfig
-                {
-                    AccountId = accountId,
-                    AccountAlias = !string.IsNullOrWhiteSpace(aliasHint)
-                        ? aliasHint
-                        : $"Account {accounts.Count + 1}",
-                };
-                accounts[accountId] = account;
-                SaveAccount(accountId);
-                log.Information($"Created account {accountId} ({account.AccountAlias})");
-            }
+            case AccountSelectionAction.SelectExisting:
+                SelectExistingAccount(decision.TargetAccountId, aliasHint, contentId);
+                break;
+            case AccountSelectionAction.MigrateLegacy:
+                MigrateLegacyAccount(decision.SourceAccountId, decision.TargetAccountId, aliasHint, contentId);
+                break;
+            case AccountSelectionAction.CreateCanonical:
+                CreateCanonicalAccountFromSelection(decision, aliasHint, currentCharacterKey, contentId);
+                break;
         }
-        else if (!string.IsNullOrWhiteSpace(aliasHint) && string.IsNullOrWhiteSpace(account.AccountAlias))
-        {
-            account.AccountAlias = aliasHint;
-            SaveAccount(accountId);
-        }
-
-        CurrentAccountId = accountId;
     }
 
     public void EnsureCharacterExists(string characterName, string worldName)
@@ -170,6 +147,23 @@ public class ConfigManager
             return;
 
         var charKey = $"{characterName}@{worldName}";
+
+        if (!string.IsNullOrEmpty(CurrentAccountId) &&
+            accounts.TryGetValue(CurrentAccountId, out var currentAccount))
+        {
+            if (!currentAccount.Characters.ContainsKey(charKey))
+            {
+                currentAccount.Characters[charKey] = FindCharacterConfigInOtherAccount(charKey)?.Clone()
+                                                     ?? currentAccount.DefaultConfig.Clone();
+                SaveAccount(CurrentAccountId);
+                log.Information($"Added character {charKey} to account {CurrentAccountId}");
+            }
+
+            SetCurrentCharacterKey(charKey);
+            if (string.IsNullOrEmpty(SelectedCharacterKey))
+                SelectedCharacterKey = charKey;
+            return;
+        }
 
         foreach (var kvp in accounts)
         {
@@ -211,6 +205,109 @@ public class ConfigManager
             SelectedCharacterKey = charKey;
         SaveAccount(CurrentAccountId);
         log.Information($"Added character {charKey} to account {CurrentAccountId}");
+    }
+
+    private void SelectExistingAccount(string accountId, string? aliasHint, ulong contentId)
+    {
+        if (!accounts.TryGetValue(accountId, out var account))
+        {
+            log.Error($"[ConfigManager] Account selection chose missing existing account {accountId}");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(aliasHint) && string.IsNullOrWhiteSpace(account.AccountAlias))
+        {
+            account.AccountAlias = aliasHint;
+            SaveAccount(accountId);
+        }
+
+        CurrentAccountId = accountId;
+        log.Information($"[ConfigManager] Account selection: select existing accountId={accountId}, contentId={contentId:X16}");
+    }
+
+    private void MigrateLegacyAccount(string oldId, string accountId, string? aliasHint, ulong contentId)
+    {
+        if (!accounts.TryGetValue(oldId, out var account))
+        {
+            log.Error($"[ConfigManager] Account selection chose missing legacy account {oldId}");
+            return;
+        }
+
+        accounts.Remove(oldId);
+        account.AccountId = accountId;
+        if (!string.IsNullOrWhiteSpace(aliasHint) && string.IsNullOrWhiteSpace(account.AccountAlias))
+            account.AccountAlias = aliasHint;
+        accounts[accountId] = account;
+
+        try
+        {
+            var oldFile = Path.Combine(configDir, $"{oldId}_Vermaxion.json");
+            if (File.Exists(oldFile))
+                File.Delete(oldFile);
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"Failed to delete legacy config file for {oldId}: {ex.Message}");
+        }
+
+        SaveAccount(accountId);
+        CurrentAccountId = accountId;
+        log.Information($"[ConfigManager] Account selection: migrate legacy source={oldId}, target={accountId}, contentId={contentId:X16}");
+    }
+
+    private void CreateCanonicalAccountFromSelection(
+        AccountSelectionDecision decision,
+        string? aliasHint,
+        string? currentCharacterKey,
+        ulong contentId)
+    {
+        var accountId = decision.TargetAccountId;
+        if (accounts.TryGetValue(accountId, out _))
+        {
+            SelectExistingAccount(accountId, aliasHint, contentId);
+            return;
+        }
+
+        AccountConfig? sourceAccount = null;
+        if (!string.IsNullOrWhiteSpace(decision.SourceAccountId))
+            accounts.TryGetValue(decision.SourceAccountId, out sourceAccount);
+
+        var account = new AccountConfig
+        {
+            AccountId = accountId,
+            AccountAlias = !string.IsNullOrWhiteSpace(aliasHint)
+                ? aliasHint
+                : $"Account {accounts.Count + 1}",
+            DefaultConfig = sourceAccount?.DefaultConfig.Clone() ?? new CharacterConfig(),
+        };
+
+        if (decision.CopyCurrentCharacterConfig &&
+            sourceAccount != null &&
+            !string.IsNullOrWhiteSpace(currentCharacterKey) &&
+            sourceAccount.Characters.TryGetValue(currentCharacterKey, out var sourceCharacterConfig))
+        {
+            account.Characters[currentCharacterKey] = sourceCharacterConfig.Clone();
+            log.Information($"[ConfigManager] Account selection: copy character config character={currentCharacterKey}, source={decision.SourceAccountId}, target={accountId}");
+        }
+
+        accounts[accountId] = account;
+        SaveAccount(accountId);
+        CurrentAccountId = accountId;
+        log.Information($"[ConfigManager] Account selection: create canonical accountId={accountId}, source={decision.SourceAccountId}, contentId={contentId:X16}");
+    }
+
+    private CharacterConfig? FindCharacterConfigInOtherAccount(string charKey)
+    {
+        foreach (var pair in accounts)
+        {
+            if (string.Equals(pair.Key, CurrentAccountId, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (pair.Value.Characters.TryGetValue(charKey, out var config))
+                return config;
+        }
+
+        return null;
     }
 
     public string CreateNewAccount(string alias)
@@ -305,6 +402,29 @@ public class ConfigManager
         return count;
     }
 
+    public int ApplyFishingOperationSettingsToAllAccounts(FishingOperationSettings settings)
+    {
+        var count = 0;
+        foreach (var account in accounts.Values)
+        {
+            CopyFishingOperationSettings(settings, account.DefaultConfig);
+            count++;
+
+            foreach (var character in account.Characters.Values)
+            {
+                CopyFishingOperationSettings(settings, character);
+                count++;
+            }
+
+            SaveAccount(account.AccountId);
+        }
+
+        if (count > 0)
+            log.Information($"[ConfigManager] Migrated legacy fishing operation settings to {count} character config record(s)");
+
+        return count;
+    }
+
     private static void CopyDefaultSettings(CharacterConfig source, CharacterConfig target)
     {
         target.Enabled = source.Enabled;
@@ -331,6 +451,9 @@ public class ConfigManager
         target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity;
         target.EnableMiscCmd = source.EnableMiscCmd;
         target.EnableLootGoblinMapGather = source.EnableLootGoblinMapGather;
+        target.EnableFishing = source.EnableFishing;
+        target.AlwaysFishOnThisCharacterIfWindowOpen = source.AlwaysFishOnThisCharacterIfWindowOpen;
+        CopyFishingOperationSettings(source, target);
         target.ChocoboRacesPerDay = source.ChocoboRacesPerDay;
         target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50;
         target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
@@ -371,6 +494,24 @@ public class ConfigManager
         target.PersonalRegistrableItems = new List<uint>(source.PersonalRegistrableItems);
     }
 
+    private static void CopyFishingOperationSettings(CharacterConfig source, CharacterConfig target)
+    {
+        target.FishingLureRestockTarget = source.FishingLureRestockTarget;
+        target.FishingReturnDestination = source.FishingReturnDestination;
+        target.FishingReturnCommand = source.FishingReturnCommand;
+        target.FishingRepairMode = source.FishingRepairMode;
+        target.FishingRepairThresholdPercent = source.FishingRepairThresholdPercent;
+    }
+
+    private static void CopyFishingOperationSettings(FishingOperationSettings source, CharacterConfig target)
+    {
+        target.FishingLureRestockTarget = Math.Max(0, source.LureRestockTarget);
+        target.FishingReturnDestination = source.ReturnDestination;
+        target.FishingReturnCommand = source.ReturnCommand;
+        target.FishingRepairMode = source.RepairMode;
+        target.FishingRepairThresholdPercent = Math.Clamp(source.RepairThresholdPercent, 0, 100);
+    }
+
     private static string NormalizeJobAbbreviation(string value)
         => value?.Trim().ToUpperInvariant() ?? string.Empty;
 
@@ -387,6 +528,31 @@ public class ConfigManager
         if (account == null) return;
         account.AccountAlias = alias;
         SaveCurrentAccount();
+    }
+
+    public int DisableAlwaysFishOnOtherCharacters(string selectedCharacterKey)
+    {
+        var account = GetCurrentAccount();
+        if (account == null || string.IsNullOrWhiteSpace(selectedCharacterKey))
+            return 0;
+
+        var count = 0;
+        foreach (var pair in account.Characters)
+        {
+            if (string.Equals(pair.Key, selectedCharacterKey, StringComparison.OrdinalIgnoreCase) ||
+                !pair.Value.AlwaysFishOnThisCharacterIfWindowOpen)
+            {
+                continue;
+            }
+
+            pair.Value.AlwaysFishOnThisCharacterIfWindowOpen = false;
+            count++;
+        }
+
+        if (count > 0)
+            SaveCurrentAccount();
+
+        return count;
     }
 
     public void LoadAllAccounts()

@@ -52,6 +52,8 @@ public sealed class Plugin : IDalamudPlugin
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
     public AutoRetainerIPC AutoRetainerIPC { get; init; }
+    public XADatabaseIPCClient XADatabaseIPCClient { get; init; }
+    public AdsIpcClient AdsIpcClient { get; init; }
     public RegistrableConfigManager RegistrableConfigManager { get; init; }
     public MinionRouletteService MinionRouletteService { get; init; }
     public SeasonalGearService SeasonalGearService { get; init; }
@@ -67,6 +69,8 @@ public sealed class Plugin : IDalamudPlugin
     public LootGoblinMapGatherService LootGoblinMapGatherService { get; init; }
     public LootGoblinMapGatherManualRunCoordinator LootGoblinMapGatherManualRunCoordinator { get; init; }
     public WorkshopBellService WorkshopBellService { get; init; }
+    public FishingService FishingService { get; init; }
+    public FishingRelogCoordinator FishingRelogCoordinator { get; init; }
     public VermaxionEngine Engine { get; init; }
     public VermaxionIncidentWriter IncidentWriter { get; init; }
 
@@ -86,10 +90,16 @@ public sealed class Plugin : IDalamudPlugin
     private DateTime beforeArSuppressionRecoveryLastAttemptAt = DateTime.MinValue;
     private bool releaseOnlyPostprocessFinishPending;
     private string releaseOnlyPostprocessFinishReason = string.Empty;
+    private string beforeArTimeoutReleaseReason = string.Empty;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
+    private static readonly TimeSpan BeforeArArmedStallTimeout = BeforeArArmedStallPolicy.DefaultTimeout;
     public BeforeArGateState BeforeArGate { get; private set; } = BeforeArGateState.Idle;
     public string BeforeArGateStatus { get; private set; } = "Idle";
+    public DateTime BeforeArArmedAtUtc { get; private set; } = DateTime.MinValue;
+    public string BeforeArArmedAccountId { get; private set; } = string.Empty;
+    public string BeforeArArmedCharacterKey { get; private set; } = string.Empty;
+    public string BeforeArStatusText => BuildBeforeArStatusText();
 
     public Plugin()
     {
@@ -97,8 +107,11 @@ public sealed class Plugin : IDalamudPlugin
 
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ConfigManager = new ConfigManager(PluginInterface, Log);
+        ApplyLegacyFishingOperationSettingsIfNeeded();
         RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
         AutoRetainerIPC = new AutoRetainerIPC(PluginInterface, Log);
+        XADatabaseIPCClient = new XADatabaseIPCClient(PluginInterface, Log);
+        AdsIpcClient = new AdsIpcClient(PluginInterface, Log);
 
         if (!string.IsNullOrEmpty(Configuration.LastAccountId))
             ConfigManager.CurrentAccountId = Configuration.LastAccountId;
@@ -142,13 +155,15 @@ public sealed class Plugin : IDalamudPlugin
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady, ArmBeforeArSuppressionFromPostprocess);
+        FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC);
+        FishingService = new FishingService(CommandManager, Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient);
 
         // Engine - orchestrates all tasks
         Engine = new VermaxionEngine(
             Log, Configuration, ConfigManager, ResetDetectionService,
             HenchmanService, FCBuffService, FCBuffInventoryService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
-            VendorStockService,
+            VendorStockService, FishingService,
             RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
 
@@ -241,7 +256,64 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        if (TryBeginFishingRelogFromPostprocess())
+            return;
+
         Engine.StartPostProcess();
+    }
+
+    private bool TryBeginFishingRelogFromPostprocess()
+    {
+        if (Configuration.FishingExecutionMode != FishingExecutionMode.AutoRetainerRelogCurrentAccount)
+            return false;
+
+        var fishingWindowActive = FishingService.IsFishingContextActive() || HenchmanService.IsFishingWindowActive();
+        if (!fishingWindowActive)
+            return false;
+
+        var selection = FishingService.SelectFishingTarget(fishingWindowActive);
+        if (!selection.Selected)
+        {
+            Log.Information($"[Fishing] No AR fishing relog target selected: {selection.Reason}");
+            return false;
+        }
+
+        if (selection.AlwaysFishKeysToDisable.Count > 0)
+        {
+            var cleared = ConfigManager.DisableAlwaysFishOnOtherCharacters(selection.CharacterKey);
+            Log.Information($"[Fishing] Cleared AlwaysFishOnThisCharacterIfWindowOpen on {cleared} other character(s); selected={selection.CharacterKey}");
+        }
+
+        if (!selection.RequiresRelog)
+            return false;
+
+        if (!FishingRelogCoordinator.RequestRelog(selection.CharacterKey))
+        {
+            Log.Warning($"[Fishing] Could not start relog coordinator for selected target {selection.CharacterKey}");
+            return false;
+        }
+
+        Engine.RecordSkippedOpportunity($"Fishing relog to {selection.CharacterKey}");
+        Log.Information($"[Fishing] AR postprocess yielded to fishing relog target {selection.CharacterKey}: {selection.Reason}");
+        return true;
+    }
+
+    private void ApplyLegacyFishingOperationSettingsIfNeeded()
+    {
+        if (Configuration.FishingCharacterSettingsMigrated ||
+            !Configuration.TryGetLegacyFishingOperationSettings(out var settings))
+        {
+            return;
+        }
+
+        var migratedCount = ConfigManager.ApplyFishingOperationSettingsToAllAccounts(settings);
+        if (migratedCount == 0)
+            return;
+
+        Configuration.FishingCharacterSettingsMigrated = true;
+        Configuration.ClearLegacyFishingOperationSettings();
+        Configuration.Save();
+        Log.Information($"[Fishing] Migrated legacy global fishing operation settings to {migratedCount} per-character config record(s)");
     }
 
     private void FinishReleaseOnlyPostprocess(string reason)
@@ -303,6 +375,8 @@ public sealed class Plugin : IDalamudPlugin
             ChocoboRaceService.Reset();
             FashionReportService.Reset();
             VendorStockService.Reset();
+            FishingService.Reset();
+            FishingRelogCoordinator.Reset();
             RetainerListingRefillService.Reset();
             WorkshopBellService.Reset();
             RegisterRegistrablesService.Reset();
@@ -456,6 +530,7 @@ public sealed class Plugin : IDalamudPlugin
             beforeArLoginLastDiagnosticAt = DateTime.MinValue;
         }
 
+        beforeArTimeoutReleaseReason = string.Empty;
         SetBeforeArGate(BeforeArGateState.WaitingForWorldReady, reason);
         Log.Information($"[AR] Before-AR login pending: reason={reason}, suppression={AutoRetainerIPC.GetSuppressionSnapshot()}");
     }
@@ -463,15 +538,31 @@ public sealed class Plugin : IDalamudPlugin
     private void ArmBeforeArSuppressionFromPostprocess()
     {
         var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
+        var activeConfig = ConfigManager.GetActiveConfig();
+        var dueTaskIds = Engine.GetRunnableTaskIdsForPhase(PostProcessTaskPhase.BeforeAR).ToList();
+        var multiMode = AutoRetainerIPC.ReadMultiModeEnabled();
         var suppressionBefore = AutoRetainerIPC.GetSuppressionSnapshot();
-        Log.Information($"[AR] Postprocess before-AR arm check: configuredBeforeArCount={configuredCount}, suppression={suppressionBefore}");
+        var armDecision = BeforeArArmPolicy.Evaluate(
+            multiMode.Success,
+            multiMode.Enabled,
+            activeConfig.Enabled,
+            dueTaskIds.Count);
+        Log.Information($"[AR] Postprocess before-AR arm check: configuredBeforeArCount={configuredCount}, dueBeforeArTaskIds=[{string.Join(", ", dueTaskIds)}], multiModeRead={multiMode.Success}, multiModeEnabled={multiMode.Enabled}, configEnabled={activeConfig.Enabled}, suppression={suppressionBefore}");
 
-        if (configuredCount == 0)
+        if (!armDecision.ShouldArm)
         {
+            var reason = FormatBeforeArArmSkipReason(armDecision, multiMode);
+            Log.Information($"[AR] Postprocess before-AR arm skipped: reason={armDecision.Reason}; detail={reason}");
+            beforeArArmedByPostprocess = false;
+            ClearBeforeArArmedTracking();
             if (AutoRetainerIPC.SuppressionOwnedByVermaxion)
             {
-                SetBeforeArGate(BeforeArGateState.ReleasePending, "No Before-AR tasks configured");
+                SetBeforeArGate(BeforeArGateState.ReleasePending, reason);
                 ProcessBeforeArReleasePending();
+            }
+            else
+            {
+                SetBeforeArGate(BeforeArGateState.Skipped, reason);
             }
             return;
         }
@@ -479,6 +570,10 @@ public sealed class Plugin : IDalamudPlugin
         var acquired = AutoRetainerIPC.TryAcquireSuppression();
         var suppressionAfter = AutoRetainerIPC.GetSuppressionSnapshot();
         beforeArArmedByPostprocess = AutoRetainerIPC.SuppressionOwnedByVermaxion;
+        if (beforeArArmedByPostprocess)
+            RecordBeforeArArmed();
+        else
+            ClearBeforeArArmedTracking();
         SetBeforeArGate(
             beforeArArmedByPostprocess ? BeforeArGateState.Armed : BeforeArGateState.Skipped,
             beforeArArmedByPostprocess ? "Suppression armed for next login" : "Could not acquire suppression");
@@ -519,8 +614,10 @@ public sealed class Plugin : IDalamudPlugin
             }
 
             Log.Information($"[AR] Login world-ready resolved: character={charName}@{worldName}, contentId={contentId:X16}");
-            ConfigManager.EnsureAccountSelected(contentId, null);
+            var characterKey = $"{charName}@{worldName}";
+            ConfigManager.EnsureAccountSelected(contentId, null, characterKey);
             ConfigManager.EnsureCharacterExists(charName, worldName);
+            ApplyLegacyFishingOperationSettingsIfNeeded();
             Configuration.LastAccountId = ConfigManager.CurrentAccountId;
             Configuration.Save();
             ConfigManager.LoadAllAccounts();
@@ -529,17 +626,19 @@ public sealed class Plugin : IDalamudPlugin
             var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
             var dueTaskIds = Engine.GetRunnableTaskIdsForPhase(PostProcessTaskPhase.BeforeAR).ToList();
             var suppression = AutoRetainerIPC.GetSuppressionSnapshot();
-            Log.Information($"[AR] Before-AR gate: accountId={ConfigManager.CurrentAccountId}, characterKey='{ConfigManager.CurrentCharacterKey}', configuredBeforeArCount={configuredCount}, dueBeforeArTaskIds=[{string.Join(", ", dueTaskIds)}], suppression={suppression}, configEnabled={activeConfig.Enabled}");
+            var multiMode = AutoRetainerIPC.ReadMultiModeEnabled();
+            var armDecision = BeforeArArmPolicy.Evaluate(
+                multiMode.Success,
+                multiMode.Enabled,
+                activeConfig.Enabled,
+                dueTaskIds.Count);
+            Log.Information($"[AR] Before-AR gate: accountId={ConfigManager.CurrentAccountId}, characterKey='{ConfigManager.CurrentCharacterKey}', configuredBeforeArCount={configuredCount}, dueBeforeArTaskIds=[{string.Join(", ", dueTaskIds)}], multiModeRead={multiMode.Success}, multiModeEnabled={multiMode.Enabled}, suppression={suppression}, configEnabled={activeConfig.Enabled}");
 
-            if (configuredCount == 0)
+            if (!armDecision.ShouldArm)
             {
-                SkipBeforeArForLogin("No Before-AR tasks configured");
-                return;
-            }
-
-            if (!activeConfig.Enabled || dueTaskIds.Count == 0)
-            {
-                SkipBeforeArForLogin($"No enabled/due Before-AR tasks; enabled={activeConfig.Enabled}, due={dueTaskIds.Count}");
+                var reason = FormatBeforeArArmSkipReason(armDecision, multiMode);
+                Log.Information($"[AR] Before-AR gated off for this login: reason={armDecision.Reason}; detail={reason}");
+                SkipBeforeArForLogin(reason);
                 return;
             }
 
@@ -555,6 +654,7 @@ public sealed class Plugin : IDalamudPlugin
 
             beforeArStartedThisLogin = true;
             beforeArArmedByPostprocess = false;
+            ClearBeforeArArmedTracking();
             ClearPendingBeforeArLogin("starting before-AR engine");
             if (Engine.StartBeforeAutoRetainer())
                 SetBeforeArGate(BeforeArGateState.Running, "Before-AR engine running");
@@ -587,6 +687,7 @@ public sealed class Plugin : IDalamudPlugin
         Engine?.RecordSkippedOpportunity($"Before-AR skipped: {reason}");
         beforeArStartedThisLogin = true;
         beforeArArmedByPostprocess = false;
+        ClearBeforeArArmedTracking();
         ClearPendingBeforeArLogin(reason);
         if (AutoRetainerIPC.SuppressionOwnedByVermaxion)
         {
@@ -607,7 +708,49 @@ public sealed class Plugin : IDalamudPlugin
         if (!AutoRetainerIPC.ReleaseSuppressionIfOwned())
             return;
 
+        ClearBeforeArArmedTracking(preserveTimeoutReason: !string.IsNullOrWhiteSpace(beforeArTimeoutReleaseReason));
         SetBeforeArGate(BeforeArGateState.Skipped, $"{BeforeArGateStatus}; suppression release confirmed");
+    }
+
+    private void ProcessBeforeArArmedStallGuard()
+    {
+        if (BeforeArGate != BeforeArGateState.Armed ||
+            BeforeArArmedAtUtc == DateTime.MinValue ||
+            !AutoRetainerIPC.SuppressionOwnedByVermaxion)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var arBusy = AutoRetainerIPC.IsBusy();
+        if (!BeforeArArmedStallPolicy.ShouldRelease(
+                now,
+                BeforeArArmedAtUtc,
+                BeforeArGate,
+                AutoRetainerIPC.SuppressionOwnedByVermaxion,
+                Engine.OwnsActiveWork,
+                pendingBeforeArLogin,
+                arBusy,
+                BeforeArArmedStallTimeout))
+        {
+            return;
+        }
+
+        var elapsed = now - BeforeArArmedAtUtc;
+        var suppressionBefore = AutoRetainerIPC.GetSuppressionSnapshot();
+        var reason = $"Before-AR armed timeout released after {elapsed.TotalMinutes:F1}m";
+        beforeArTimeoutReleaseReason = reason;
+        Log.Warning($"[AR] {reason}; account={BeforeArArmedAccountId}, character={BeforeArArmedCharacterKey}, arBusy={arBusy}, suppression={suppressionBefore}");
+
+        var released = AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
+        var suppressionAfter = AutoRetainerIPC.GetSuppressionSnapshot();
+        WriteBeforeArArmedStallIncident(elapsed, arBusy, suppressionBefore, suppressionAfter, released);
+
+        beforeArArmedByPostprocess = false;
+        ClearBeforeArArmedTracking(preserveTimeoutReason: true);
+        SetBeforeArGate(
+            !AutoRetainerIPC.SuppressionOwnedByVermaxion ? BeforeArGateState.Skipped : BeforeArGateState.ReleasePending,
+            released ? reason : $"{reason}; release confirmation pending");
     }
 
     private void ProcessBeforeArSuppressionRecovery()
@@ -630,7 +773,10 @@ public sealed class Plugin : IDalamudPlugin
         if (AutoRetainerIPC.SuppressionOwnedByVermaxion && BeforeArGate == BeforeArGateState.WaitingForWorldReady)
             LogPendingBeforeArDiagnostic("VMX suppression ownership recovery pending");
         else if (!AutoRetainerIPC.SuppressionOwnedByVermaxion && BeforeArGate == BeforeArGateState.Armed)
+        {
+            ClearBeforeArArmedTracking();
             SetBeforeArGate(BeforeArGateState.Skipped, "Could not recover armed suppression");
+        }
     }
 
     private void UpdateBeforeArGateAfterEngine()
@@ -650,6 +796,75 @@ public sealed class Plugin : IDalamudPlugin
 
         BeforeArGate = state;
         BeforeArGateStatus = status;
+    }
+
+    private static string FormatBeforeArArmSkipReason(
+        BeforeArArmDecision decision,
+        AutoRetainerMultiModeReadResult multiMode)
+    {
+        return decision.Reason == BeforeArArmPolicy.MultiModeUnreadableReason && !string.IsNullOrWhiteSpace(multiMode.Error)
+            ? $"{decision.Reason}: {multiMode.Error}"
+            : decision.Reason;
+    }
+
+    private void RecordBeforeArArmed()
+    {
+        BeforeArArmedAtUtc = DateTime.UtcNow;
+        BeforeArArmedAccountId = ConfigManager.CurrentAccountId;
+        BeforeArArmedCharacterKey = ConfigManager.CurrentCharacterKey;
+        beforeArTimeoutReleaseReason = string.Empty;
+    }
+
+    private void ClearBeforeArArmedTracking(bool preserveTimeoutReason = false)
+    {
+        BeforeArArmedAtUtc = DateTime.MinValue;
+        BeforeArArmedAccountId = string.Empty;
+        BeforeArArmedCharacterKey = string.Empty;
+        if (!preserveTimeoutReason)
+            beforeArTimeoutReleaseReason = string.Empty;
+    }
+
+    private string BuildBeforeArStatusText()
+    {
+        if (BeforeArGate == BeforeArGateState.Armed && BeforeArArmedAtUtc != DateTime.MinValue)
+            return $"{BeforeArGateStatus}; armed {FormatBeforeArArmedAge()}";
+
+        if (BeforeArGate == BeforeArGateState.Skipped && !string.IsNullOrWhiteSpace(beforeArTimeoutReleaseReason))
+            return beforeArTimeoutReleaseReason;
+
+        return BeforeArGateStatus;
+    }
+
+    private string FormatBeforeArArmedAge()
+    {
+        var elapsed = DateTime.UtcNow - BeforeArArmedAtUtc;
+        return $"{Math.Max(0, elapsed.TotalMinutes):F1}/{BeforeArArmedStallTimeout.TotalMinutes:F1}m";
+    }
+
+    private void WriteBeforeArArmedStallIncident(
+        TimeSpan elapsed,
+        bool arBusy,
+        SuppressionSnapshot suppressionBefore,
+        SuppressionSnapshot suppressionAfter,
+        bool released)
+    {
+        try
+        {
+            var summary = $"Before-AR armed suppression released after {elapsed.TotalMinutes:F1}m for {BeforeArArmedCharacterKey}";
+            var diagnostics =
+                $"account={BeforeArArmedAccountId}; character={BeforeArArmedCharacterKey}; elapsed={elapsed}; arBusy={arBusy}; suppressionBefore={suppressionBefore}; suppressionAfter={suppressionAfter}; releaseConfirmed={released}; lastRunOutcome={Engine.LastRunOutcome}; lastRunSummary={Engine.LastRunSummary}";
+            IncidentWriter.Write(new VermaxionIncident(
+                DateTime.UtcNow,
+                "before-ar-armed-stall-release",
+                BeforeArGate.ToString(),
+                "BeforeAR",
+                summary,
+                diagnostics));
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[AR] Failed to write before-AR armed stall incident: {ex.Message}");
+        }
     }
 
     private void LogPendingBeforeArDiagnostic(string reason)
@@ -732,6 +947,7 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         ProcessBeforeArSuppressionRecovery();
+        ProcessBeforeArArmedStallGuard();
         ProcessReleaseOnlyPostprocessFinishPending();
         ProcessBeforeArReleasePending();
         ProcessPendingBeforeArLogin();
@@ -753,7 +969,9 @@ public sealed class Plugin : IDalamudPlugin
             CactpotService.Update();
             ChocoboRaceService.Update();
             FashionReportService.Update();
-            VendorStockService.Update();
+            if (!FishingService.IsActive)
+                VendorStockService.Update();
+            FishingRelogCoordinator.Update();
             RetainerListingRefillService.Update();
             WorkshopBellService.Update();
             RegisterRegistrablesService.Update();
@@ -762,6 +980,7 @@ public sealed class Plugin : IDalamudPlugin
             SeasonalGearService.Update();
             GearUpdaterService.Update();
             CurrentJobEquipmentService.Update();
+            FishingService.Update();
         }
     }
 
@@ -847,8 +1066,18 @@ public sealed class Plugin : IDalamudPlugin
             return Engine.StatusText;
         if (BeforeArGate == BeforeArGateState.ReleasePending)
             return "AR suppression release pending";
-        if (BeforeArGate is BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady or BeforeArGateState.Running)
+        if (BeforeArGate == BeforeArGateState.Armed)
+            return BeforeArArmedAtUtc != DateTime.MinValue
+                ? $"Before-AR Armed {FormatBeforeArArmedAge()}"
+                : "Before-AR Armed";
+        if (BeforeArGate is BeforeArGateState.WaitingForWorldReady or BeforeArGateState.Running)
             return $"Before-AR {BeforeArGate}";
+        if (BeforeArGate == BeforeArGateState.Skipped && !string.IsNullOrWhiteSpace(beforeArTimeoutReleaseReason))
+            return beforeArTimeoutReleaseReason;
+        if (FishingRelogCoordinator.IsActive)
+            return FishingRelogCoordinator.StatusText;
+        if (FishingService.IsActive)
+            return $"Fishing {FishingService.StatusText}";
         if (ARPostProcessService.IsProcessing)
             return "AR postprocess owned";
         if (AutoRetainerIPC.SuppressionOwnedByVermaxion)
@@ -880,6 +1109,8 @@ public sealed class Plugin : IDalamudPlugin
         ChocoboRaceService.Reset();
         FashionReportService.Reset();
         VendorStockService.Reset();
+        FishingService.Reset();
+        FishingRelogCoordinator.Reset();
         RetainerListingRefillService.Reset();
         WorkshopBellService.Reset();
         RegisterRegistrablesService.Reset();
@@ -901,6 +1132,7 @@ public sealed class Plugin : IDalamudPlugin
         releaseOnlyPostprocessFinishPending = false;
         releaseOnlyPostprocessFinishReason = string.Empty;
         beforeArArmedByPostprocess = false;
+        ClearBeforeArArmedTracking();
         pendingBeforeArLogin = false;
         SetBeforeArGate(BeforeArGateState.Idle, "Full Stop");
         Log.Information("[FULL STOP] AutoRetainer suppression released if owned");

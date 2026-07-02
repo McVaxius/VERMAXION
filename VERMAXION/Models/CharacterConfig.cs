@@ -30,6 +30,13 @@ public class CharacterConfig
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
     public bool EnableMiscCmd { get; set; } = true;
     public bool EnableLootGoblinMapGather { get; set; } = false;
+    public bool EnableFishing { get; set; } = false;
+    public bool AlwaysFishOnThisCharacterIfWindowOpen { get; set; } = false;
+    public int FishingLureRestockTarget { get; set; } = FishingDefaults.LureRestockTarget;
+    public FishingReturnDestination FishingReturnDestination { get; set; } = FishingDefaults.ReturnDestination;
+    public string FishingReturnCommand { get; set; } = FishingDefaults.ReturnCommand;
+    public FishingRepairMode FishingRepairMode { get; set; } = FishingDefaults.RepairMode;
+    public int FishingRepairThresholdPercent { get; set; } = FishingDefaults.RepairThresholdPercent;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -240,6 +247,13 @@ public class CharacterConfig
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
             EnableMiscCmd = EnableMiscCmd,
             EnableLootGoblinMapGather = EnableLootGoblinMapGather,
+            EnableFishing = EnableFishing,
+            AlwaysFishOnThisCharacterIfWindowOpen = AlwaysFishOnThisCharacterIfWindowOpen,
+            FishingLureRestockTarget = FishingLureRestockTarget,
+            FishingReturnDestination = FishingReturnDestination,
+            FishingReturnCommand = FishingReturnCommand,
+            FishingRepairMode = FishingRepairMode,
+            FishingRepairThresholdPercent = FishingRepairThresholdPercent,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,

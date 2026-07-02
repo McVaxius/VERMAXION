@@ -21,3 +21,20 @@ internal static class JumboCactpotPurchaseMessagePolicy
                int.TryParse(match.Groups["number"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out number);
     }
 }
+
+internal static class JumboCactpotPurchaseConfirmationPolicy
+{
+    public static bool ShouldConfirmPurchasePrompt(string? promptText, bool allowUnreadable)
+    {
+        if (string.IsNullOrWhiteSpace(promptText))
+            return allowUnreadable;
+
+        var prompt = promptText.Trim();
+        if (!prompt.Contains("Jumbo Cactpot", System.StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return prompt.Contains("purchase", System.StringComparison.OrdinalIgnoreCase) ||
+               prompt.Contains("another", System.StringComparison.OrdinalIgnoreCase) ||
+               prompt.Contains("100 MGP", System.StringComparison.OrdinalIgnoreCase);
+    }
+}

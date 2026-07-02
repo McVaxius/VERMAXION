@@ -327,6 +327,53 @@ public static class GameHelpers
         }
     }
 
+    public static unsafe bool TryClickYesIfPromptAllowed(
+        Func<string, bool> isAllowed,
+        string reason,
+        bool allowUnreadable,
+        out string promptText)
+    {
+        promptText = string.Empty;
+
+        try
+        {
+            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
+            if (addonPtr == 0)
+                return false;
+
+            var addon = (AddonSelectYesno*)addonPtr;
+            if (!addon->AtkUnitBase.IsVisible)
+                return false;
+
+            var yesNo = new AddonMaster.SelectYesno(&addon->AtkUnitBase);
+            promptText = NormalizeAddonText(yesNo.Text);
+            if (!string.IsNullOrWhiteSpace(promptText))
+            {
+                if (!isAllowed(promptText))
+                {
+                    Plugin.Log.Debug($"[YES/NO] SelectYesno prompt rejected for {reason}: '{promptText}'");
+                    return false;
+                }
+
+                yesNo.Yes();
+                Plugin.Log.Information($"[YES/NO] Clicked policy-guarded Yes for {reason}: '{promptText}'");
+                return true;
+            }
+
+            if (!allowUnreadable)
+                return false;
+
+            yesNo.Yes();
+            Plugin.Log.Warning($"[YES/NO] Clicked policy-guarded Yes for {reason} after unreadable prompt text");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[YES/NO] Policy-guarded Yes failed for {reason}: {ex.Message}");
+            return false;
+        }
+    }
+
     private static string NormalizeAddonText(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -499,6 +546,40 @@ public static class GameHelpers
         catch
         {
             return 0;
+        }
+    }
+
+    public static unsafe bool TryGetLowestEquippedGearConditionPercent(out int lowestConditionPercent)
+    {
+        lowestConditionPercent = 100;
+        var foundEquippedItem = false;
+
+        try
+        {
+            var manager = InventoryManager.Instance();
+            if (manager == null)
+                return false;
+
+            var equippedContainer = manager->GetInventoryContainer(InventoryType.EquippedItems);
+            if (equippedContainer == null || !equippedContainer->IsLoaded)
+                return false;
+
+            for (var i = 0; i < equippedContainer->Size; i++)
+            {
+                var slot = equippedContainer->GetInventorySlot(i);
+                if (slot == null || slot->ItemId == 0)
+                    continue;
+
+                foundEquippedItem = true;
+                lowestConditionPercent = Math.Min(lowestConditionPercent, slot->Condition / 300);
+            }
+
+            return foundEquippedItem;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[GameHelpers] Failed to read equipped durability: {ex.Message}");
+            return false;
         }
     }
 

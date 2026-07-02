@@ -1,13 +1,19 @@
 using System;
+using System.Reflection;
+using System.Runtime.Loader;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
+using ECommons.Reflection;
 using VERMAXION.Models;
 
 namespace VERMAXION.IPC;
 
 public sealed class AutoRetainerIPC
 {
+    private const string AutoRetainerInternalName = "AutoRetainer";
+    private const string MultiModeTypeName = "AutoRetainer.Modules.Multi.MultiMode";
+
     private readonly IPluginLog log;
     private readonly ICallGateSubscriber<bool> getSuppressedSubscriber;
     private readonly ICallGateSubscriber<bool, object> setSuppressedSubscriber;
@@ -57,6 +63,42 @@ public sealed class AutoRetainerIPC
         {
             log.Warning($"[AR] PluginState.IsBusy failed: {ex.Message}");
             return false;
+        }
+    }
+
+    public AutoRetainerMultiModeReadResult ReadMultiModeEnabled()
+    {
+        try
+        {
+            if (!DalamudReflector.TryGetDalamudPlugin(
+                    AutoRetainerInternalName,
+                    out var autoRetainerPlugin,
+                    out AssemblyLoadContext? _,
+                    true,
+                    true) ||
+                autoRetainerPlugin == null)
+            {
+                return AutoRetainerMultiModeReadResult.Failed("AutoRetainer was not loaded.");
+            }
+
+            var multiModeType = autoRetainerPlugin.GetType().Assembly.GetType(MultiModeTypeName);
+            if (multiModeType == null)
+                return AutoRetainerMultiModeReadResult.Failed($"{MultiModeTypeName} was not available.");
+
+            var enabledField = multiModeType.GetField("Enabled", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            if (enabledField?.GetValue(null) is bool fieldValue)
+                return AutoRetainerMultiModeReadResult.Known(fieldValue);
+
+            var enabledProperty = multiModeType.GetProperty("Enabled", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            if (enabledProperty?.GetValue(null) is bool propertyValue)
+                return AutoRetainerMultiModeReadResult.Known(propertyValue);
+
+            return AutoRetainerMultiModeReadResult.Failed("MultiMode.Enabled field/property was not readable.");
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[AR] MultiMode.Enabled reflection failed: {ex.Message}");
+            return AutoRetainerMultiModeReadResult.Failed(ex.Message);
         }
     }
 

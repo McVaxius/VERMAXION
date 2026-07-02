@@ -85,6 +85,7 @@ public class CactpotService : IDisposable
     private int miniJumpAssistTotalJumps;
     private DateTime lastJumboNavigationAttempt = DateTime.MinValue;
     private DateTime lastJumboTargetAttempt = DateTime.MinValue;
+    private DateTime lastJumboConfirmationAttemptAt = DateTime.MinValue;
     private DateTime lastJumboNavigationStopAttempt = DateTime.MinValue;
     private DateTime lastJumboCleanupAttempt = DateTime.MinValue;
     private DateTime jumboCleanupQuietSince = DateTime.MinValue;
@@ -224,6 +225,7 @@ public class CactpotService : IDisposable
         totalTickets = 3;
         jumboPurchasesVerified = 0;
         failAfterJumboCleanup = false;
+        lastJumboConfirmationAttemptAt = DateTime.MinValue;
         lastJumboNavigationStopAttempt = DateTime.MinValue;
         ResetJumboCleanupTracking();
         currentJumboNumber = GetConfiguredJumboNumber();
@@ -238,6 +240,7 @@ public class CactpotService : IDisposable
         jumboPayoutClaimsVerified = 0;
         jumboPayoutUiObserved = false;
         failAfterJumboCleanup = false;
+        lastJumboConfirmationAttemptAt = DateTime.MinValue;
         lastJumboNavigationStopAttempt = DateTime.MinValue;
         ResetJumboCleanupTracking();
         log.Information("[Cactpot] Starting Jumbo Cactpot payout check sequence");
@@ -293,6 +296,7 @@ public class CactpotService : IDisposable
     {
         FinishMiniCactpotRun("reset");
         failAfterJumboCleanup = false;
+        lastJumboConfirmationAttemptAt = DateTime.MinValue;
         lastJumboNavigationStopAttempt = DateTime.MinValue;
         ResetJumboCleanupTracking();
         SetState(CactpotState.Idle);
@@ -742,7 +746,8 @@ public class CactpotService : IDisposable
                     GameHelpers.FireAddonCallback("LotteryWeeklyInput", true, currentJumboNumber);
                     SetState(CactpotState.JumboWaitingForConfirmation);
                 }
-                else if (currentTicket > 1 && GameHelpers.IsAddonVisible("SelectYesno") && GameHelpers.ClickYesIfVisible())
+                else if (currentTicket > 1 && GameHelpers.IsAddonVisible("SelectYesno") &&
+                         TryConfirmJumboCactpotPurchaseYes("Jumbo Cactpot follow-up purchase prompt", allowUnreadable: false))
                 {
                     log.Information($"[Cactpot] Accepted follow-up Jumbo Yes/No prompt while waiting for ticket {currentTicket}/{totalTickets}");
                     stateEnteredAt = DateTime.UtcNow;
@@ -764,7 +769,7 @@ public class CactpotService : IDisposable
                 {
                     SetState(CactpotState.JumboVerifyingPurchase);
                 }
-                else if (GameHelpers.ClickYesIfVisible())
+                else if (TryConfirmJumboCactpotPurchaseYes("Jumbo Cactpot purchase confirmation", allowUnreadable: false))
                 {
                     log.Information($"[Cactpot] Accepted Jumbo Cactpot Yes/No prompt for ticket {currentTicket}/{totalTickets}");
                     SetState(CactpotState.JumboVerifyingPurchase);
@@ -1252,6 +1257,31 @@ public class CactpotService : IDisposable
         if (!GameHelpers.TryClickYesIfPromptContains(MiniCactpotYesPromptFragments, reason, allowUnreadable, out var promptText))
             return false;
 
+        log.Information("[Cactpot] Confirmed {Reason}{PromptText}",
+            reason,
+            string.IsNullOrWhiteSpace(promptText) ? string.Empty : $": '{promptText}'");
+        return true;
+    }
+
+    private bool TryConfirmJumboCactpotPurchaseYes(string reason, bool allowUnreadable)
+    {
+        var now = DateTime.UtcNow;
+        if (lastJumboConfirmationAttemptAt != DateTime.MinValue &&
+            (now - lastJumboConfirmationAttemptAt).TotalSeconds < 1.25)
+        {
+            return false;
+        }
+
+        if (!GameHelpers.TryClickYesIfPromptAllowed(
+                prompt => JumboCactpotPurchaseConfirmationPolicy.ShouldConfirmPurchasePrompt(prompt, allowUnreadable),
+                reason,
+                allowUnreadable,
+                out var promptText))
+        {
+            return false;
+        }
+
+        lastJumboConfirmationAttemptAt = now;
         log.Information("[Cactpot] Confirmed {Reason}{PromptText}",
             reason,
             string.IsNullOrWhiteSpace(promptText) ? string.Empty : $": '{promptText}'");

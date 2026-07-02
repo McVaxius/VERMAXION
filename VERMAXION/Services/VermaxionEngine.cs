@@ -87,6 +87,7 @@ public class VermaxionEngine
         [PostProcessTaskOrder.RefillListings] = EngineState.RunningRetainerListingRefill,
         [PostProcessTaskOrder.FCBuffRefill] = EngineState.RunningFCBuff,
         [PostProcessTaskOrder.VendorStock] = EngineState.RunningVendorStock,
+        [PostProcessTaskOrder.Fishing] = EngineState.RunningFishing,
         [PostProcessTaskOrder.RegisterRegistrables] = EngineState.RunningRegisterRegistrables,
         [PostProcessTaskOrder.VerminionQueue] = EngineState.RunningVerminion,
         [PostProcessTaskOrder.MiniCactpot] = EngineState.RunningMiniCactpot,
@@ -113,6 +114,7 @@ public class VermaxionEngine
     private readonly ChocoboRaceService chocoboRaceService;
     private readonly FashionReportService fashionReportService;
     private readonly VendorStockService vendorStockService;
+    private readonly FishingService fishingService;
     private readonly RegisterRegistrablesService registerRegistrablesService;
     private readonly RetainerListingRefillService retainerListingRefillService;
     private readonly WorkshopBellService workshopBellService;
@@ -175,6 +177,7 @@ public class VermaxionEngine
         CheckingResets,
         RunningFCBuff,
         RunningVendorStock,
+        RunningFishing,
         RunningRegisterRegistrables,
         RunningRetainerListingRefill,
         RunningVerminion,
@@ -215,7 +218,8 @@ public class VermaxionEngine
     public string LastRunSummary { get; private set; } = "No run recorded";
     public DateTime? LastRunCompletedAtUtc { get; private set; }
     public string ActiveHandoffBlocker => handoffBlockerReason;
-    public bool OwnsLiveWork => IsRunning || runOwnedWorkStarted || arService.IsProcessing || autoRetainerIPC.SuppressionOwnedByVermaxion;
+    public bool OwnsActiveWork => IsRunning || runOwnedWorkStarted || arService.IsProcessing;
+    public bool OwnsLiveWork => OwnsActiveWork || autoRetainerIPC.SuppressionOwnedByVermaxion;
     
     public bool IsRunningDebug => IsRunning; // For debugging
 
@@ -232,6 +236,7 @@ public class VermaxionEngine
         ChocoboRaceService chocoboRaceService,
         FashionReportService fashionReportService,
         VendorStockService vendorStockService,
+        FishingService fishingService,
         RegisterRegistrablesService registerRegistrablesService,
         RetainerListingRefillService retainerListingRefillService,
         WorkshopBellService workshopBellService,
@@ -258,6 +263,7 @@ public class VermaxionEngine
         this.chocoboRaceService = chocoboRaceService;
         this.fashionReportService = fashionReportService;
         this.vendorStockService = vendorStockService;
+        this.fishingService = fishingService;
         this.registerRegistrablesService = registerRegistrablesService;
         this.retainerListingRefillService = retainerListingRefillService;
         this.workshopBellService = workshopBellService;
@@ -384,8 +390,8 @@ public class VermaxionEngine
         ResetTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
-        if (henchmanService.IsManaging)
-            henchmanService.StartHenchman();
+        // Henchman stop/restart management is deprecated. Keep the service for
+        // readiness/fishing status only; do not restart Henchman from Full Stop.
         if (arService.IsProcessing)
             arService.FinishPostProcess(force: true);
         yesAlreadyIPC.Unpause();
@@ -466,11 +472,7 @@ public class VermaxionEngine
 
                 SendStartupMiscCommandBundleIfEnabled();
                 yesAlreadyIPC.Pause();
-                if (activeConfig!.EnableHenchmanManagement)
-                {
-                    henchmanService.StopHenchman();
-                    log.Information("[Engine] Henchman disabled");
-                }
+                // Henchman stop/start management is deprecated.
                 DispatchNextQueuedTask();
                 break;
 
@@ -570,6 +572,41 @@ public class VermaxionEngine
                 else
                 {
                     AdvanceToNextTask(EngineState.RunningVendorStock);
+                }
+                break;
+
+            case EngineState.RunningFishing:
+                activeConfig = GetLiveActiveConfig();
+                if (activeConfig!.EnableFishing)
+                {
+                    if (!fishingService.IsActive && !fishingService.IsComplete && !fishingService.IsFailed)
+                    {
+                        log.Information("[Engine] Starting Fishing");
+                        ResetInteractionState();
+                        MarkCurrentTaskWorkStarted();
+                        fishingService.Start();
+                        return;
+                    }
+
+                    fishingService.Update();
+
+                    if (fishingService.IsComplete)
+                    {
+                        log.Information("[Engine] Fishing completed");
+                        fishingService.Reset();
+                        AdvanceToNextTask(EngineState.RunningFishing);
+                    }
+                    else if (fishingService.IsFailed)
+                    {
+                        log.Warning($"[Engine] Fishing failed - continuing: {fishingService.StatusText}");
+                        runHadFailure = true;
+                        fishingService.Reset();
+                        AdvanceToNextTask(EngineState.RunningFishing);
+                    }
+                }
+                else
+                {
+                    AdvanceToNextTask(EngineState.RunningFishing);
                 }
                 break;
 
@@ -1183,11 +1220,7 @@ public class VermaxionEngine
                     }
                 }
 
-                if (activeConfig?.EnableHenchmanManagement == true)
-                {
-                    henchmanService.StartHenchman();
-                    log.Information("[Engine] Henchman re-enabled");
-                }
+                // Henchman stop/start management is deprecated.
 
                 yesAlreadyIPC.Unpause();
                 CompleteRun();
@@ -1379,6 +1412,7 @@ public class VermaxionEngine
         fcBuffService.Reset();
         fcBuffInventoryService.Reset();
         vendorStockService.Reset();
+        fishingService.Reset();
         registerRegistrablesService.Reset();
         retainerListingRefillService.Reset();
         workshopBellService.Reset();
@@ -1480,6 +1514,7 @@ public class VermaxionEngine
             runQueueIndex,
             fcBuffService.State,
             vendorStockService.IsActive,
+            fishingService.StatusText,
             registerRegistrablesService.State,
             retainerListingRefillService.IsActive,
             workshopBellService.IsActive,
@@ -1512,6 +1547,7 @@ public class VermaxionEngine
         {
             case EngineState.RunningFCBuff: fcBuffService.Reset(); break;
             case EngineState.RunningVendorStock: vendorStockService.Reset(); break;
+            case EngineState.RunningFishing: fishingService.Reset(); break;
             case EngineState.RunningRegisterRegistrables: registerRegistrablesService.Reset(); break;
             case EngineState.RunningRetainerListingRefill: retainerListingRefillService.Reset(); workshopBellService.Reset(); break;
             case EngineState.RunningVerminion: verminionService.Reset(); break;
@@ -1614,6 +1650,8 @@ public class VermaxionEngine
             return "FC Buff Inventory service active";
         if (vendorStockService.IsActive)
             return "Vendor Stock service active";
+        if (fishingService.IsActive)
+            return $"Fishing service active ({fishingService.StatusText})";
         if (registerRegistrablesService.IsActive)
             return "Register Registrables service active";
         if (retainerListingRefillService.IsActive)
@@ -1780,6 +1818,7 @@ public class VermaxionEngine
             PostProcessTaskOrder.FCBuffRefill => config.EnableFCBuffRefill,
             PostProcessTaskOrder.VendorStock => config.EnableVendorStock &&
                 (config.VendorStockGysahlGreensTarget > 0 || config.VendorStockGrade8DarkMatterTarget > 0),
+            PostProcessTaskOrder.Fishing => ShouldRunFishing(config),
             PostProcessTaskOrder.RegisterRegistrables => config.EnableRegisterRegistrables,
             PostProcessTaskOrder.VerminionQueue => config.EnableVerminionQueue &&
                 ResetDetectionService.TaskNeedsRun(config.VerminionLastCompleted, config.VerminionNextReset),
@@ -1799,6 +1838,20 @@ public class VermaxionEngine
             _ => false,
         };
     }
+
+    private bool ShouldRunFishing(CharacterConfig config)
+    {
+        if (!config.EnableFishing)
+            return false;
+
+        var selection = fishingService.SelectFishingTarget(IsFishingWindowSignalActive());
+        return selection.Selected &&
+               !selection.RequiresRelog &&
+               string.Equals(selection.CharacterKey, configManager.CurrentCharacterKey, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsFishingWindowSignalActive()
+        => FishingService.IsFishingContextActive() || henchmanService.IsFishingWindowActive();
 
     private void CompleteRun()
     {
@@ -1864,6 +1917,7 @@ public class VermaxionEngine
             EngineState.CheckingResets => "Checking resets",
             EngineState.RunningFCBuff => "FC Buff Refill",
             EngineState.RunningVendorStock => "Vendor Stock",
+            EngineState.RunningFishing => "Fishing",
             EngineState.RunningRegisterRegistrables => "Register Registrables",
             EngineState.RunningRetainerListingRefill => "Retainer Listing Refill",
             EngineState.RunningVerminion => "Verminion Queue",

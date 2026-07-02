@@ -215,6 +215,38 @@ public class ConfigWindow : Window, IDisposable
                 config.DtrIconDisabled = disabledIcon;
                 config.Save();
             }
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Text("Fishing");
+
+            var fishingMode = config.FishingExecutionMode;
+            if (ImGui.BeginCombo("Fishing mode", FormatFishingExecutionMode(fishingMode)))
+            {
+                foreach (var mode in Enum.GetValues<FishingExecutionMode>())
+                {
+                    var selected = mode == fishingMode;
+                    if (ImGui.Selectable(FormatFishingExecutionMode(mode), selected))
+                    {
+                        config.FishingExecutionMode = mode;
+                        config.Save();
+                    }
+
+                    if (selected)
+                        ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
+            }
+            DrawHelpMarker("Controls whether Fishing only runs on the current character or may relog through AutoRetainer to another enabled character on the current account.");
+
+            var maxFisherLevel = config.FishingMaxFisherLevel;
+            ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+            if (ImGui.InputInt("Max Fisher level", ref maxFisherLevel))
+            {
+                config.FishingMaxFisherLevel = Math.Clamp(maxFisherLevel, 1, 100);
+                config.Save();
+            }
+            DrawHelpMarker("Characters with Fisher at or above this level are skipped unless their active fishing window override applies.");
         }
 
         ImGui.Separator();
@@ -270,6 +302,14 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextDisabled("Jumbo Cactpot:");
         ImGui.BulletText("Lifestream - /li Cactpot (navigate to Jumbo Cactpot area)");
         ImGui.BulletText("vnavmesh - Navigation to Broker/Cashier NPCs");
+        ImGui.Spacing();
+
+        ImGui.TextDisabled("Fishing:");
+        ImGui.BulletText("XA Database - Fisher levels for current-account character selection");
+        ImGui.BulletText("AutoRetainer - Character relog command handoff");
+        ImGui.BulletText("Lifestream - Return/restock travel commands");
+        ImGui.BulletText("AutoHook - Hook and reel behavior after Vermaxion casts");
+        ImGui.BulletText("ADS - Repair when Fishing repair mode is enabled");
         ImGui.Spacing();
 
         ImGui.TextDisabled("Chocobo Racing:");
@@ -532,18 +572,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Unindent();
             }
 
-            var henchman = cc.EnableHenchmanManagement;
-            if (ImGui.Checkbox(UIConstants.ConfigLabels.HenchmanManagement, ref henchman))
-            {
-                cc.EnableHenchmanManagement = henchman;
-                changed = true;
-            }
-            DrawDefaultOverrideButton(isDefault, configManager, "HenchmanManagement", UIConstants.ConfigLabels.HenchmanManagement,
-                (source, target) => target.EnableHenchmanManagement = source.EnableHenchmanManagement);
-            ImGui.SameLine();
-            ImGui.TextDisabled("(?)");
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(UIConstants.Tooltips.HenchmanManagement);
+            // Deprecated: old Henchman stop/restart management is no longer exposed.
 
             var minionRoulette = cc.EnableMinionRoulette;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.MinionRoulette, ref minionRoulette))
@@ -659,6 +688,127 @@ public class ConfigWindow : Window, IDisposable
                     (source, target) => target.VendorStockGrade8DarkMatterTarget = source.VendorStockGrade8DarkMatterTarget);
 
                 ImGui.TextDisabled("Gridania: Maisenta for Gysahl Greens. Khetto's Amphitheatre: Alaric for Grade 8 Dark Matter.");
+                ImGui.Unindent();
+            }
+
+            var fishing = cc.EnableFishing;
+            if (ImGui.Checkbox("Fishing", ref fishing))
+            {
+                cc.EnableFishing = fishing;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "Fishing", "Fishing",
+                (source, target) => target.EnableFishing = source.EnableFishing);
+            DrawHelpMarker("Enables Fishing for this character. Vermaxion chooses among enabled current-account characters, casts, and leaves hook/reel behavior to AutoHook.");
+            if (cc.EnableFishing)
+            {
+                ImGui.Indent();
+
+                var alwaysFish = cc.AlwaysFishOnThisCharacterIfWindowOpen;
+                if (ImGui.Checkbox("Always fish on this character if window open", ref alwaysFish))
+                {
+                    cc.AlwaysFishOnThisCharacterIfWindowOpen = alwaysFish;
+                    changed = true;
+                }
+                DrawHelpMarker("When a fishing window is already open, prefer this character even if another enabled character has a lower Fisher level.");
+
+                if (!isDefault && cc.AlwaysFishOnThisCharacterIfWindowOpen)
+                {
+                    var account = configManager.GetCurrentAccount();
+                    var duplicateAlwaysCount = account?.Characters.Count(pair =>
+                        pair.Value.EnableFishing &&
+                        pair.Value.AlwaysFishOnThisCharacterIfWindowOpen &&
+                        !string.Equals(pair.Key, charKey, StringComparison.OrdinalIgnoreCase)) ?? 0;
+                    if (duplicateAlwaysCount > 0)
+                    {
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton("Disable on other characters"))
+                        {
+                            var cleared = configManager.DisableAlwaysFishOnOtherCharacters(charKey);
+                            Plugin.ChatGui.Print($"[Vermaxion] Disabled always-fish on {cleared} other character(s).");
+                        }
+                        if (ImGui.IsItemHovered())
+                            ImGui.SetTooltip("Clears the active-window fishing override from every other character on this account.");
+                    }
+                }
+
+                var lureTarget = cc.FishingLureRestockTarget;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                if (ImGui.InputInt("Versatile Lure restock target", ref lureTarget))
+                {
+                    cc.FishingLureRestockTarget = Math.Max(0, lureTarget);
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingLureRestockTarget", "Versatile Lure restock target",
+                    (source, target) => target.FishingLureRestockTarget = source.FishingLureRestockTarget);
+                DrawHelpMarker("Minimum Versatile Lures this character should have before fishing starts. Set 0 to skip lure restocking.");
+
+                var returnDestination = cc.FishingReturnDestination;
+                if (ImGui.BeginCombo("Return destination", FormatFishingReturnDestination(returnDestination)))
+                {
+                    foreach (var destination in Enum.GetValues<FishingReturnDestination>())
+                    {
+                        var selected = destination == returnDestination;
+                        if (ImGui.Selectable(FormatFishingReturnDestination(destination), selected))
+                        {
+                            cc.FishingReturnDestination = destination;
+                            if (destination != FishingReturnDestination.Custom)
+                                cc.FishingReturnCommand = GetDefaultFishingReturnCommand(destination);
+                            changed = true;
+                        }
+
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingReturnDestination", "Fishing return destination",
+                    (source, target) => target.FishingReturnDestination = source.FishingReturnDestination);
+                DrawHelpMarker("Where this character should go after the fishing duty or window ends.");
+
+                var returnCommand = cc.FishingReturnCommand;
+                if (ImGui.InputText("Return slash command", ref returnCommand, 128))
+                {
+                    cc.FishingReturnCommand = returnCommand;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingReturnCommand", "Fishing return command",
+                    (source, target) => target.FishingReturnCommand = source.FishingReturnCommand);
+                DrawHelpMarker("Slash command sent for the selected return destination. Custom destinations require an explicit command.");
+
+                var repairMode = cc.FishingRepairMode;
+                if (ImGui.BeginCombo("Fishing repair mode", FormatFishingRepairMode(repairMode)))
+                {
+                    foreach (var mode in Enum.GetValues<FishingRepairMode>())
+                    {
+                        var selected = mode == repairMode;
+                        if (ImGui.Selectable(FormatFishingRepairMode(mode), selected))
+                        {
+                            cc.FishingRepairMode = mode;
+                            changed = true;
+                        }
+
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingRepairMode", "Fishing repair mode",
+                    (source, target) => target.FishingRepairMode = source.FishingRepairMode);
+                DrawHelpMarker("ADS repair mode for this character before fishing starts. Disabled skips gear repair.");
+
+                var repairThreshold = cc.FishingRepairThresholdPercent;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                if (ImGui.InputInt("Fishing repair threshold %", ref repairThreshold))
+                {
+                    cc.FishingRepairThresholdPercent = Math.Clamp(repairThreshold, 0, 100);
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingRepairThresholdPercent", "Fishing repair threshold",
+                    (source, target) => target.FishingRepairThresholdPercent = source.FishingRepairThresholdPercent);
+                DrawHelpMarker("Repairs when this character's lowest equipped gear condition is at or below this percent.");
+
+                ImGui.TextDisabled("Requires XADB, AutoRetainer, Lifestream, and AutoHook. ADS is required when this character's repair mode is enabled.");
                 ImGui.Unindent();
             }
 
@@ -1623,6 +1773,14 @@ public class ConfigWindow : Window, IDisposable
         return changed;
     }
 
+    private static void DrawHelpMarker(string tooltip)
+    {
+        ImGui.SameLine();
+        ImGui.TextDisabled("(?)");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(tooltip);
+    }
+
     private static string GetUnicodeCode(string icon)
     {
         if (string.IsNullOrEmpty(icon) || icon.Length != 1)
@@ -1877,4 +2035,40 @@ public class ConfigWindow : Window, IDisposable
             _ => "Random",
         };
     }
+
+    private static string FormatFishingExecutionMode(FishingExecutionMode mode)
+        => mode switch
+        {
+            FishingExecutionMode.AutoRetainerRelogCurrentAccount => "AR postprocess / current account relog",
+            _ => "Current character only",
+        };
+
+    private static string FormatFishingReturnDestination(FishingReturnDestination destination)
+        => destination switch
+        {
+            FishingReturnDestination.None => "None",
+            FishingReturnDestination.Limsa => "Limsa",
+            FishingReturnDestination.FreeCompany => "Free Company",
+            FishingReturnDestination.Custom => "Custom",
+            _ => "Home",
+        };
+
+    private static string GetDefaultFishingReturnCommand(FishingReturnDestination destination)
+        => destination switch
+        {
+            FishingReturnDestination.None => string.Empty,
+            FishingReturnDestination.Limsa => "/li limsa",
+            FishingReturnDestination.FreeCompany => "/li fc",
+            FishingReturnDestination.Custom => string.Empty,
+            _ => "/li home",
+        };
+
+    private static string FormatFishingRepairMode(FishingRepairMode mode)
+        => mode switch
+        {
+            FishingRepairMode.Self => "ADS self repair",
+            FishingRepairMode.NpcNoInn => "ADS NPC no-inn",
+            FishingRepairMode.NpcNoTeleportNoInn => "ADS NPC no-teleport/no-inn",
+            _ => "Disabled",
+        };
 }

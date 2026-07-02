@@ -14,6 +14,7 @@ public static class PostProcessTaskOrder
     public const string RefillListings = "refill_listings";
     public const string FCBuffRefill = "fc_buff_refill";
     public const string VendorStock = "vendor_stock";
+    public const string Fishing = "fishing";
     public const string RegisterRegistrables = "register_registrables";
     public const string VerminionQueue = "verminion_queue";
     public const string MiniCactpot = "mini_cactpot";
@@ -29,6 +30,7 @@ public static class PostProcessTaskOrder
         new(RefillListings, "Refill Listings"),
         new(FCBuffRefill, "FC Buff Refill"),
         new(VendorStock, "Vendor Stock"),
+        new(Fishing, "Fishing"),
         new(RegisterRegistrables, "Register Registrables"),
         new(VerminionQueue, "Verminion Queue"),
         new(MiniCactpot, "Mini Cactpot"),
@@ -45,6 +47,7 @@ public static class PostProcessTaskOrder
         RefillListings,
         FCBuffRefill,
         VendorStock,
+        Fishing,
         RegisterRegistrables,
         VerminionQueue,
         MiniCactpot,

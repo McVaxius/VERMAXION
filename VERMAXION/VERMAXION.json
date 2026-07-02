@@ -3,7 +3,7 @@
   "Name": "Vermaxion",
   "Author": "DhogGPT",
   "Punchline": "ARPostProcess automation for weekly/daily tasks.",
-  "Description": "Automates weekly and daily tasks triggered by AutoRetainer post-processing. Configurable per character: Verminion queue, Cactpot, Chocobo Racing, FC buff refill, and Henchman management.",
+  "Description": "Automates weekly and daily tasks triggered by AutoRetainer post-processing. Configurable per character: Verminion queue, Cactpot, Chocobo Racing, FC buff refill, vendor stock, and Fishing with AutoHook.",
   "IconUrl": "https://raw.githubusercontent.com/McVaxius/VERMAXION/refs/heads/master/VERMAXION/images/icon.png",
   "Tags": [
     "automation",
@@ -16,7 +16,7 @@
     "other"
   ],
   "InternalName": "VERMAXION",
-  "AssemblyVersion": "0.2.4.7",
+  "AssemblyVersion": "0.2.4.8",
   "RepoUrl": "https://github.com/McVaxius/VERMAXION",
   "ApplicableVersion": "any",
   "DalamudApiLevel": 15

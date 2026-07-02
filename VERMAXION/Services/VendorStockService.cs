@@ -12,6 +12,7 @@ public sealed class VendorStockService
 {
     private const uint GysahlGreensItemId = 4868;
     private const uint Grade8DarkMatterItemId = 33916;
+    private const uint VersatileLureItemId = 29717;
     private const float TargetInteractDistance = 3.0f;
 
     private readonly ICommandManager commandManager;
@@ -30,6 +31,8 @@ public sealed class VendorStockService
     private VendorStockState cleanupNextState = VendorStockState.Complete;
     private int observedGysahlCount;
     private int observedDarkMatterCount;
+    private int observedVersatileLureCount;
+    private int versatileLureTarget;
     private int gysahlShopMenuIndex;
     private bool gysahlAlternateShopAttempted;
 
@@ -49,6 +52,12 @@ public sealed class VendorStockService
         DarkMatterNavigatingToVendor,
         DarkMatterInteractingVendor,
         DarkMatterPurchasing,
+        VersatileLureLifestreaming,
+        VersatileLureWaitingForArrival,
+        VersatileLureNavigatingToVendor,
+        VersatileLureInteractingVendor,
+        VersatileLureSelectingShopMenu,
+        VersatileLurePurchasing,
         Complete,
         Failed,
     }
@@ -78,6 +87,23 @@ public sealed class VendorStockService
 
         observedGysahlCount = (int)GameHelpers.GetInventoryItemCount(GysahlGreensItemId);
         observedDarkMatterCount = (int)GameHelpers.GetInventoryItemCount(Grade8DarkMatterItemId);
+        observedVersatileLureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
+        versatileLureTarget = 0;
+        gysahlShopMenuIndex = 0;
+        gysahlAlternateShopAttempted = false;
+        GameHelpers.ResetInteractionState();
+        SetState(VendorStockState.CheckingNeeds);
+    }
+
+    public void StartVersatileLureRestock(int target)
+    {
+        if (IsActive)
+            return;
+
+        versatileLureTarget = Math.Max(0, target);
+        observedGysahlCount = (int)GameHelpers.GetInventoryItemCount(GysahlGreensItemId);
+        observedDarkMatterCount = (int)GameHelpers.GetInventoryItemCount(Grade8DarkMatterItemId);
+        observedVersatileLureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
         gysahlShopMenuIndex = 0;
         gysahlAlternateShopAttempted = false;
         GameHelpers.ResetInteractionState();
@@ -102,6 +128,8 @@ public sealed class VendorStockService
         travelOriginTerritory = 0;
         sawTravelTransition = false;
         cleanupNextState = VendorStockState.Complete;
+        versatileLureTarget = 0;
+        observedVersatileLureCount = 0;
         gysahlShopMenuIndex = 0;
         gysahlAlternateShopAttempted = false;
     }
@@ -125,6 +153,11 @@ public sealed class VendorStockService
                 {
                     log.Information("[VendorStock] Grade 8 Dark Matter is below target, traveling to Alaric");
                     SetState(VendorStockState.DarkMatterLifestreaming);
+                }
+                else if (NeedsVersatileLures())
+                {
+                    log.Information("[VendorStock] Versatile Lures are below target, traveling to Limsa Merchant & Mender");
+                    SetState(VendorStockState.VersatileLureLifestreaming);
                 }
                 else
                 {
@@ -314,6 +347,92 @@ public sealed class VendorStockService
                     Fail("[VendorStock] Timed out stocking Grade 8 Dark Matter");
                 }
                 break;
+
+            case VendorStockState.VersatileLureLifestreaming:
+                log.Information("[VendorStock] Lifestreaming to Limsa: /li limsa");
+                BeginTravelWait();
+                commandManager.ProcessCommand("/li limsa");
+                SetState(VendorStockState.VersatileLureWaitingForArrival);
+                break;
+
+            case VendorStockState.VersatileLureWaitingForArrival:
+                if (HasArrivedNearVendor("Merchant & Mender", 3.0, 12.0))
+                {
+                    SetState(VendorStockState.VersatileLureNavigatingToVendor);
+                }
+                else if (elapsed > 45)
+                {
+                    Fail("[VendorStock] Timed out waiting to arrive near Limsa Merchant & Mender");
+                }
+                break;
+
+            case VendorStockState.VersatileLureNavigatingToVendor:
+                if (AdvanceToVendor("Merchant & Mender"))
+                {
+                    SetState(VendorStockState.VersatileLureInteractingVendor);
+                }
+                else if (elapsed > 45)
+                {
+                    Fail("[VendorStock] Timed out navigating to Merchant & Mender");
+                }
+                break;
+
+            case VendorStockState.VersatileLureInteractingVendor:
+                if (!EnsureVendorInRange("Merchant & Mender"))
+                    break;
+
+                if (GameHelpers.IsAddonVisible("Shop"))
+                {
+                    SetState(VendorStockState.VersatileLurePurchasing);
+                }
+                else if (GameHelpers.IsAddonVisible("SelectIconString"))
+                {
+                    SetState(VendorStockState.VersatileLureSelectingShopMenu);
+                }
+                else if (TryInteract("Merchant & Mender"))
+                {
+                    // Wait for menu to appear.
+                }
+                else if (elapsed > 30)
+                {
+                    Fail("[VendorStock] Timed out opening Merchant & Mender's menu");
+                }
+                break;
+
+            case VendorStockState.VersatileLureSelectingShopMenu:
+                if (GameHelpers.IsAddonVisible("Shop"))
+                {
+                    SetState(VendorStockState.VersatileLurePurchasing);
+                }
+                else if (GameHelpers.IsAddonVisible("SelectIconString") && TryFirePurchaseAction(0.75))
+                {
+                    log.Information("[VendorStock] Opening Merchant & Mender shop for Versatile Lures");
+                    GameHelpers.FireAddonCallback("SelectIconString", true, 0);
+                }
+                else if (elapsed > 8)
+                {
+                    SetState(VendorStockState.VersatileLureInteractingVendor);
+                }
+                break;
+
+            case VendorStockState.VersatileLurePurchasing:
+                if (HandleShopPurchases(
+                    VersatileLureItemId,
+                    GetVersatileLureTarget(),
+                    ref observedVersatileLureCount,
+                    "[VendorStock] Versatile Lures",
+                    1.5,
+                    99,
+                    0,
+                    3))
+                {
+                    FinishVersatileLurePhase();
+                }
+                else if (elapsed > 180)
+                {
+                    Fail("[VendorStock] Timed out stocking Versatile Lures");
+                }
+                break;
         }
     }
 
@@ -329,11 +448,20 @@ public sealed class VendorStockService
         return target > 0 && (int)GameHelpers.GetInventoryItemCount(Grade8DarkMatterItemId) < target;
     }
 
+    private bool NeedsVersatileLures()
+    {
+        var target = GetVersatileLureTarget();
+        return target > 0 && (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId) < target;
+    }
+
     private int GetGysahlTarget()
         => Math.Max(0, configManager.GetActiveConfig().VendorStockGysahlGreensTarget);
 
     private int GetDarkMatterTarget()
         => Math.Max(0, configManager.GetActiveConfig().VendorStockGrade8DarkMatterTarget);
+
+    private int GetVersatileLureTarget()
+        => Math.Max(0, versatileLureTarget);
 
     private bool AdvanceToVendor(string npcName)
     {
@@ -428,6 +556,10 @@ public sealed class VendorStockService
         {
             SetState(VendorStockState.DarkMatterLifestreaming);
         }
+        else if (NeedsVersatileLures())
+        {
+            SetState(VendorStockState.VersatileLureLifestreaming);
+        }
         else
         {
             BeginVendorCleanup(VendorStockState.Complete);
@@ -436,6 +568,16 @@ public sealed class VendorStockService
 
     private void FinishDarkMatterPhase()
     {
+        GameHelpers.ResetInteractionState();
+        if (NeedsVersatileLures())
+            SetState(VendorStockState.VersatileLureLifestreaming);
+        else
+            BeginVendorCleanup(VendorStockState.Complete);
+    }
+
+    private void FinishVersatileLurePhase()
+    {
+        versatileLureTarget = 0;
         GameHelpers.ResetInteractionState();
         BeginVendorCleanup(VendorStockState.Complete);
     }

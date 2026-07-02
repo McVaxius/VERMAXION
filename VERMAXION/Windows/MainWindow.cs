@@ -90,7 +90,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TextColored(stateColor, $"Engine: {engine.StatusText} (State: {engine.State})");
         var lastRunTime = engine.LastRunCompletedAtUtc?.ToString("u") ?? "never";
         ImGui.TextDisabled($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
-        ImGui.TextDisabled($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArGateStatus}");
+        ImGui.TextDisabled($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
         ImGui.TextDisabled($"AR suppression: {plugin.AutoRetainerIPC.LastSnapshot}");
         if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
             ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Handoff blocker: {engine.ActiveHandoffBlocker}");
@@ -109,6 +109,8 @@ public class MainWindow : Window, IDisposable
         // FULL STOP button - red only when plugin is in operation
         var highlightFullStop = engine.OwnsLiveWork ||
                                 plugin.LootGoblinMapGatherManualRunCoordinator.IsActive ||
+                                plugin.FishingService.IsActive ||
+                                plugin.FishingRelogCoordinator.IsActive ||
                                 plugin.ARPostProcessService.IsProcessing ||
                                 plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
         if (highlightFullStop)
@@ -161,6 +163,8 @@ public class MainWindow : Window, IDisposable
                 "run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
                 "run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
+            DrawTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingService.StatusText),
+                "run##Fishing", () => plugin.FishingService.RunTask(), "WIP");
             DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
                 "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
@@ -177,8 +181,7 @@ public class MainWindow : Window, IDisposable
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
                 }, "OK");
-            DrawTaskRow("Henchman Mgmt", config.EnableHenchmanManagement, "Stop/Start",
-                "Off##Hench", () => plugin.HenchmanService.StopHenchman(), "OK");
+            // Deprecated: old Henchman stop/restart management is no longer exposed.
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
                 "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
@@ -474,6 +477,17 @@ public class MainWindow : Window, IDisposable
             return "Set targets";
 
         return "Every AR run";
+    }
+
+    private static string GetFishingStatus(Models.CharacterConfig config, string serviceStatus)
+    {
+        if (!config.EnableFishing)
+            return "Off";
+
+        if (!string.IsNullOrWhiteSpace(serviceStatus) && serviceStatus != "Idle")
+            return serviceStatus;
+
+        return "AutoHook casts";
     }
 
     private static string GetRefillFromListingsStatus(Models.CharacterConfig config)

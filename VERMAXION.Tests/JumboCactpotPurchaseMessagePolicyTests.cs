@@ -25,4 +25,22 @@ public sealed class JumboCactpotPurchaseMessagePolicyTests
     {
         Assert.False(JumboCactpotPurchaseMessagePolicy.TryParsePurchasedNumber(message, out _));
     }
+
+    [Theory]
+    [InlineData("Use 100 MGP to purchase a Jumbo Cactpot ticket?", true)]
+    [InlineData("Purchase another Jumbo Cactpot ticket?", true)]
+    [InlineData("Welcome to drawing number 669 of the Jumbo Cactpot! Can I interest you in a ticket to fame and fortune?", false)]
+    [InlineData("Purchase a Mini Cactpot ticket?", false)]
+    [InlineData("", false)]
+    public void JumboPurchaseConfirmationPolicyGuardsPromptText(string prompt, bool expected)
+    {
+        Assert.Equal(expected, JumboCactpotPurchaseConfirmationPolicy.ShouldConfirmPurchasePrompt(prompt, allowUnreadable: false));
+    }
+
+    [Fact]
+    public void JumboPurchaseConfirmationPolicyOnlyAllowsUnreadableWhenExplicitlyAllowed()
+    {
+        Assert.False(JumboCactpotPurchaseConfirmationPolicy.ShouldConfirmPurchasePrompt("", allowUnreadable: false));
+        Assert.True(JumboCactpotPurchaseConfirmationPolicy.ShouldConfirmPurchasePrompt("", allowUnreadable: true));
+    }
 }

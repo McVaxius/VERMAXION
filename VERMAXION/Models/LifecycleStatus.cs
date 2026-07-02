@@ -77,6 +77,55 @@ internal static class LifecyclePolicy
     }
 }
 
+internal readonly record struct BeforeArArmDecision(bool ShouldArm, string Reason);
+
+internal static class BeforeArArmPolicy
+{
+    public const string MultiModeOffReason = "MultiMode off";
+    public const string MultiModeUnreadableReason = "MultiMode unreadable";
+    public const string NoDueWorkReason = "no due Before-AR work";
+
+    public static BeforeArArmDecision Evaluate(
+        bool multiModeReadSucceeded,
+        bool multiModeEnabled,
+        bool characterEnabled,
+        int dueBeforeArTaskCount)
+    {
+        if (!multiModeReadSucceeded)
+            return new BeforeArArmDecision(false, MultiModeUnreadableReason);
+        if (!multiModeEnabled)
+            return new BeforeArArmDecision(false, MultiModeOffReason);
+        if (!characterEnabled || dueBeforeArTaskCount <= 0)
+            return new BeforeArArmDecision(false, NoDueWorkReason);
+
+        return new BeforeArArmDecision(true, "ready");
+    }
+}
+
+internal static class BeforeArArmedStallPolicy
+{
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
+
+    public static bool ShouldRelease(
+        DateTime nowUtc,
+        DateTime armedAtUtc,
+        BeforeArGateState gateState,
+        bool suppressionOwnedByVermaxion,
+        bool engineOwnsActiveWork,
+        bool loginTransitionStarted,
+        bool autoRetainerBusy,
+        TimeSpan? timeout = null)
+    {
+        return gateState == BeforeArGateState.Armed &&
+               armedAtUtc != DateTime.MinValue &&
+               suppressionOwnedByVermaxion &&
+               !engineOwnsActiveWork &&
+               !loginTransitionStarted &&
+               autoRetainerBusy &&
+               nowUtc - armedAtUtc >= (timeout ?? DefaultTimeout);
+    }
+}
+
 internal readonly record struct AutomatedPostprocessDecision(
     bool StartEngine,
     bool FinishPostprocess,
