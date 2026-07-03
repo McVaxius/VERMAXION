@@ -33,6 +33,7 @@ backups/
 *.md
 !README.md
 !CHANGELOG.md
+!OCEAN_FISHING_COMPARISON.md
 
 # Lock files
 packages.lock.json

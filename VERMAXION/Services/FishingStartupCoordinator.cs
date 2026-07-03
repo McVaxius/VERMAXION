@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -8,6 +9,7 @@ public enum FishingStartupTrigger
     Clock,
     AutoRetainerPostprocess,
     Manual,
+    Test,
     RelogContinuation,
 }
 
@@ -22,6 +24,7 @@ public enum FishingStartupAction
 
 public sealed record FishingStartupResult(
     FishingStartupTrigger Trigger,
+    FishingRunMode Mode,
     FishingStartupAction Action,
     bool WindowActive,
     DateTimeOffset? RegistrationStartUtc,
@@ -46,9 +49,14 @@ public interface IFishingStartupRuntime
     bool IsFishingActive { get; }
     bool IsRelogActive { get; }
 
-    FishingSelectionResult SelectTarget();
-    int DisableAlwaysFishOnOtherCharacters(string selectedCharacterKey);
-    bool RequestRelog(string characterKey);
+    IReadOnlyList<FishingSelectionResult> BuildCandidateQueue();
+    bool IsFishingRunActiveForWindow(DateTimeOffset registrationStartUtc);
+    bool IsQueueRegistrationConfirmedForWindow(DateTimeOffset registrationStartUtc);
+    bool IsTerminalFailureBeforeQueueConfirmationForWindow(DateTimeOffset registrationStartUtc);
+    void ClearFishingWindowOutcome(DateTimeOffset registrationStartUtc);
+    bool BeginRun(FishingRunMode mode, string targetCharacterKey, DateTimeOffset registrationStartUtc, DateTimeOffset registrationDeadlineUtc);
+    void AbortRun(string reason);
+    bool RequestRelog(string characterKey, DateTimeOffset registrationDeadlineUtc);
     bool StartFishing();
 }
 
@@ -65,7 +73,20 @@ public sealed class FishingStartupCoordinator
     private bool relogAttempted;
     private bool fishingStartAttempted;
     private DateTimeOffset? pendingRelogRegistrationStartUtc;
+    private DateTimeOffset? pendingRelogRegistrationDeadlineUtc;
+    private FishingRunMode pendingRelogMode;
     private string pendingRelogCharacterKey = string.Empty;
+    private IReadOnlyList<FishingSelectionResult> orderedCandidates = Array.Empty<FishingSelectionResult>();
+    private bool candidateQueueBuilt;
+    private bool attemptSequenceStopped;
+    private int activeCandidateIndex;
+    private int transientRetriesScheduled;
+    private DateTimeOffset? recoveryReadyAtUtc;
+    private string recoveryReason = string.Empty;
+    private FishingRunMode activeMode;
+    private DateTimeOffset activeRegistrationStartUtc;
+    private DateTimeOffset activeRegistrationDeadlineUtc;
+    private DateTimeOffset decisionNowUtc;
 
     public FishingStartupCoordinator(IFishingStartupRuntime runtime)
     {
@@ -77,9 +98,12 @@ public sealed class FishingStartupCoordinator
            !string.IsNullOrWhiteSpace(pendingRelogCharacterKey);
 
     public string PendingRelogCharacterKey => pendingRelogCharacterKey;
+    public FishingRunMode? PendingRelogMode => HasPendingRelogContinuation ? pendingRelogMode : null;
+    public bool HasRecoveryPending => recoveryReadyAtUtc.HasValue;
 
     public FishingStartupResult Poll(DateTimeOffset nowUtc, FishingStartupTrigger trigger)
     {
+        decisionNowUtc = nowUtc.ToUniversalTime();
         if (!OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
                 nowUtc,
                 runtime.PreWindowOffsetMinutes,
@@ -87,6 +111,7 @@ public sealed class FishingStartupCoordinator
         {
             return None(
                 trigger,
+                FishingRunMode.Scheduled,
                 OceanFishingSchedulePolicy.DescribeInactiveStartupWindow(
                     nowUtc,
                     runtime.PreWindowOffsetMinutes));
@@ -98,17 +123,31 @@ public sealed class FishingStartupCoordinator
         {
             return Result(
                 trigger,
+                FishingRunMode.Scheduled,
                 FishingStartupAction.None,
                 window,
                 FishingSelectionResult.None("Ambient clock polling does not start Ocean Fishing."),
                 "Ambient clock polling does not start Ocean Fishing.");
         }
 
-        var selection = runtime.SelectTarget();
+        EnsureCandidateQueue(FishingRunMode.Scheduled, window);
+        var selection = GetActiveCandidate();
+        if (attemptSequenceStopped)
+        {
+            return Result(
+                trigger,
+                FishingRunMode.Scheduled,
+                FishingStartupAction.AlreadyHandled,
+                window,
+                selection,
+                "Ocean Fishing recovery is terminal for this registration window.");
+        }
+
         if (!selection.Selected)
         {
             return new FishingStartupResult(
                 trigger,
+                FishingRunMode.Scheduled,
                 FishingStartupAction.None,
                 WindowActive: true,
                 window.RegistrationStartUtc,
@@ -117,9 +156,37 @@ public sealed class FishingStartupCoordinator
         }
 
         if (selection.RequiresRelog)
-            return TryStartRelog(trigger, window, selection);
+            return TryStartRelog(trigger, FishingRunMode.Scheduled, window, selection, mutateScheduledGuards: true);
 
-        return TryStartFishing(trigger, window, selection);
+        return TryStartFishing(trigger, FishingRunMode.Scheduled, window, selection, mutateScheduledGuards: true);
+    }
+
+    public FishingStartupResult StartTest(DateTimeOffset nowUtc)
+    {
+        decisionNowUtc = nowUtc.ToUniversalTime();
+        var registration = OceanFishingSchedulePolicy.GetCurrentOrNextRegistrationWindow(nowUtc);
+        var window = new OceanFishingStartupWindow(registration.StartUtc, nowUtc.ToUniversalTime(), registration.EndUtc);
+        orderedCandidates = runtime.BuildCandidateQueue();
+        candidateQueueBuilt = true;
+        activeCandidateIndex = 0;
+        transientRetriesScheduled = 0;
+        attemptSequenceStopped = false;
+        var selection = GetActiveCandidate();
+        if (!selection.Selected)
+        {
+            return new FishingStartupResult(
+                FishingStartupTrigger.Test,
+                FishingRunMode.Test,
+                FishingStartupAction.None,
+                WindowActive: true,
+                registration.StartUtc,
+                selection,
+                selection.Reason);
+        }
+
+        return selection.RequiresRelog
+            ? TryStartRelog(FishingStartupTrigger.Test, FishingRunMode.Test, window, selection, mutateScheduledGuards: false)
+            : TryStartFishing(FishingStartupTrigger.Test, FishingRunMode.Test, window, selection, mutateScheduledGuards: false);
     }
 
     public void SuppressCurrentWindow(DateTimeOffset nowUtc)
@@ -135,6 +202,7 @@ public sealed class FishingStartupCoordinator
         TrackWindow(window.RegistrationStartUtc);
         relogAttempted = true;
         fishingStartAttempted = true;
+        attemptSequenceStopped = true;
         ClearPendingRelogContinuation();
     }
 
@@ -146,6 +214,7 @@ public sealed class FishingStartupCoordinator
                 out var window))
         {
             trackedRegistrationStartUtc = window.RegistrationStartUtc;
+            runtime.ClearFishingWindowOutcome(window.RegistrationStartUtc);
         }
         else
         {
@@ -155,113 +224,191 @@ public sealed class FishingStartupCoordinator
         relogAttempted = false;
         fishingStartAttempted = false;
         if (clearPendingRelogContinuation)
+        {
             ClearPendingRelogContinuation();
+            orderedCandidates = Array.Empty<FishingSelectionResult>();
+            candidateQueueBuilt = false;
+            activeCandidateIndex = 0;
+            transientRetriesScheduled = 0;
+            recoveryReadyAtUtc = null;
+            attemptSequenceStopped = false;
+        }
     }
+
+    public void CancelPendingRun()
+        => ClearPendingRelogContinuation();
 
     public FishingStartupResult ContinuePendingRelog(DateTimeOffset nowUtc, string currentCharacterKey)
     {
+        decisionNowUtc = nowUtc.ToUniversalTime();
         if (!HasPendingRelogContinuation)
-            return None(FishingStartupTrigger.RelogContinuation, "No pending VERMAXION fishing relog continuation.");
+            return None(FishingStartupTrigger.RelogContinuation, FishingRunMode.Scheduled, "No pending VERMAXION fishing relog continuation.");
 
-        if (!OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
-                nowUtc,
-                runtime.PreWindowOffsetMinutes,
-                out var window) ||
-            pendingRelogRegistrationStartUtc != window.RegistrationStartUtc)
+        var pendingStart = pendingRelogRegistrationStartUtc!.Value;
+        var pendingDeadline = pendingRelogRegistrationDeadlineUtc!.Value;
+        OceanFishingStartupWindow window = default;
+        var continuationValid = pendingRelogMode == FishingRunMode.Test
+            ? nowUtc.ToUniversalTime() < pendingDeadline
+            : OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+                  nowUtc,
+                  runtime.PreWindowOffsetMinutes,
+                  out window) && pendingStart == window.RegistrationStartUtc;
+
+        if (pendingRelogMode == FishingRunMode.Test)
+            window = new OceanFishingStartupWindow(pendingStart, nowUtc.ToUniversalTime(), pendingDeadline);
+
+        if (!continuationValid)
         {
             var pendingRegistration = pendingRelogRegistrationStartUtc;
+            var expiredMode = pendingRelogMode;
             ClearPendingRelogContinuation();
+            runtime.AbortRun("pending relog continuation expired");
             return None(
                 FishingStartupTrigger.RelogContinuation,
+                expiredMode,
                 $"Pending fishing relog continuation expired; pending registration was {pendingRegistration:u}.");
         }
 
-        TrackWindow(window.RegistrationStartUtc);
-        var selection = new FishingSelectionResult(
-            pendingRelogCharacterKey,
-            FisherLevel: 0,
-            RequiresRelog: false,
-            AlwaysFishKeysToDisable: Array.Empty<string>(),
-            Reason: "Continuing explicit VERMAXION fishing relog.");
+        if (pendingRelogMode == FishingRunMode.Scheduled)
+            TrackWindow(window.RegistrationStartUtc);
+        var selection = GetActiveCandidate(currentCharacterKey) with
+        {
+            CharacterKey = pendingRelogCharacterKey,
+            RequiresRelog = false,
+            Reason = "Continuing explicit VERMAXION fishing relog.",
+        };
 
         if (!string.Equals(currentCharacterKey, pendingRelogCharacterKey, StringComparison.OrdinalIgnoreCase))
         {
             return Result(
                 FishingStartupTrigger.RelogContinuation,
+                pendingRelogMode,
                 FishingStartupAction.Waiting,
                 window,
                 selection,
                 $"Waiting for fishing relog target {pendingRelogCharacterKey}; current character is {currentCharacterKey}.");
         }
 
-        return TryStartFishing(FishingStartupTrigger.RelogContinuation, window, selection);
+        return TryStartFishing(
+            FishingStartupTrigger.RelogContinuation,
+            pendingRelogMode,
+            window,
+            selection,
+            mutateScheduledGuards: pendingRelogMode == FishingRunMode.Scheduled);
     }
 
     private FishingStartupResult TryStartRelog(
         FishingStartupTrigger trigger,
+        FishingRunMode mode,
         OceanFishingStartupWindow window,
-        FishingSelectionResult selection)
+        FishingSelectionResult selection,
+        bool mutateScheduledGuards)
     {
-        if (relogAttempted)
-            return Result(trigger, FishingStartupAction.AlreadyHandled, window, selection,
+        if (mutateScheduledGuards && relogAttempted)
+            return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
                 $"Relog was already attempted for the {window.RegistrationStartUtc:u} registration window.");
 
+        if (!FishingRecoveryPolicy.CanStartAttempt(decisionNowUtc, window.EndUtc))
+            return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
+                "Less than 60 seconds remain in the registration window; no attempt will start.");
+
         if (!runtime.CanInitiateStartup)
-            return Result(trigger, FishingStartupAction.Waiting, window, selection,
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Waiting for the current character and VERMAXION engine to become ready.");
 
         if (runtime.IsRelogActive)
-            return Result(trigger, FishingStartupAction.Waiting, window, selection,
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "A fishing relog sequence is already active.");
 
-        runtime.DisableAlwaysFishOnOtherCharacters(selection.CharacterKey);
-        if (!runtime.RequestRelog(selection.CharacterKey))
-            return Result(trigger, FishingStartupAction.Waiting, window, selection,
+        if (!runtime.BeginRun(mode, selection.CharacterKey, window.RegistrationStartUtc, window.EndUtc))
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
+                "Could not acquire Ocean Fishing run ownership; polling will retry.");
+        if (!runtime.RequestRelog(selection.CharacterKey, window.EndUtc))
+        {
+            runtime.AbortRun("relog request rejected");
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 $"Could not start relog to {selection.CharacterKey}; polling will retry.");
+        }
 
-        relogAttempted = true;
-        RecordPendingRelogContinuation(selection.CharacterKey, window.RegistrationStartUtc);
-        return Result(trigger, FishingStartupAction.RelogStarted, window, selection,
-            $"Selected {selection.CharacterKey} (Fisher {selection.FisherLevel}) and started relog.");
+        if (mutateScheduledGuards)
+            relogAttempted = true;
+        CaptureActiveRun(mode, window);
+        RecordPendingRelogContinuation(selection.CharacterKey, mode, window.RegistrationStartUtc, window.EndUtc);
+        return Result(trigger, mode, FishingStartupAction.RelogStarted, window, selection,
+            $"Selected {selection.CharacterKey} (Fisher {FormatLevel(selection.FisherLevel)}) and started relog.");
     }
 
     private FishingStartupResult TryStartFishing(
         FishingStartupTrigger trigger,
+        FishingRunMode mode,
         OceanFishingStartupWindow window,
-        FishingSelectionResult selection)
+        FishingSelectionResult selection,
+        bool mutateScheduledGuards)
     {
-        if (fishingStartAttempted)
+        if (!FishingRecoveryPolicy.CanStartAttempt(decisionNowUtc, window.EndUtc))
+            return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
+                "Less than 60 seconds remain in the registration window; no attempt will start.");
+
+        if (mutateScheduledGuards &&
+            runtime.IsTerminalFailureBeforeQueueConfirmationForWindow(window.RegistrationStartUtc))
         {
             ClearPendingRelogContinuation();
-            return Result(trigger, FishingStartupAction.AlreadyHandled, window, selection,
-                $"Fishing prep was already attempted for the {window.RegistrationStartUtc:u} registration window.");
+            return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
+                $"Fishing prep reached a terminal failure for the {window.RegistrationStartUtc:u} registration window.");
+        }
+
+        if (mutateScheduledGuards && fishingStartAttempted)
+        {
+            if (runtime.IsFishingRunActiveForWindow(window.RegistrationStartUtc))
+            {
+                ClearPendingRelogContinuation();
+                return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
+                    "Fishing prep is already active.");
+            }
+
+            if (runtime.IsQueueRegistrationConfirmedForWindow(window.RegistrationStartUtc))
+            {
+                ClearPendingRelogContinuation();
+                return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
+                    $"Ocean Fishing queue registration was already confirmed for the {window.RegistrationStartUtc:u} registration window.");
+            }
+
+            fishingStartAttempted = false;
         }
 
         if (runtime.IsFishingActive)
         {
-            fishingStartAttempted = true;
+            if (mutateScheduledGuards)
+                fishingStartAttempted = true;
             ClearPendingRelogContinuation();
-            return Result(trigger, FishingStartupAction.AlreadyHandled, window, selection,
+            return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
                 "Fishing prep is already active.");
         }
 
         if (!runtime.CanInitiateStartup)
-            return Result(trigger, FishingStartupAction.Waiting, window, selection,
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Waiting for the current character and VERMAXION engine to become ready.");
 
         if (runtime.IsRelogActive)
-            return Result(trigger, FishingStartupAction.Waiting, window, selection,
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Waiting for the fishing relog sequence to finish.");
 
-        runtime.DisableAlwaysFishOnOtherCharacters(selection.CharacterKey);
+        if (!runtime.BeginRun(mode, selection.CharacterKey, window.RegistrationStartUtc, window.EndUtc))
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
+                "Could not acquire Ocean Fishing run ownership; polling will retry.");
         if (!runtime.StartFishing())
-            return Result(trigger, FishingStartupAction.Waiting, window, selection,
+        {
+            runtime.AbortRun("fishing service start rejected");
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Could not start fishing prep; polling will retry.");
+        }
 
-        fishingStartAttempted = true;
+        if (mutateScheduledGuards)
+            fishingStartAttempted = true;
+        CaptureActiveRun(mode, window);
         ClearPendingRelogContinuation();
-        return Result(trigger, FishingStartupAction.FishingStarted, window, selection,
-            $"Selected current character {selection.CharacterKey} (Fisher {selection.FisherLevel}) and started fishing prep.");
+        return Result(trigger, mode, FishingStartupAction.FishingStarted, window, selection,
+            $"Selected current character {selection.CharacterKey} (Fisher {FormatLevel(selection.FisherLevel)}) and started fishing prep.");
     }
 
     private void TrackWindow(DateTimeOffset registrationStartUtc)
@@ -272,6 +419,12 @@ public sealed class FishingStartupCoordinator
         trackedRegistrationStartUtc = registrationStartUtc;
         relogAttempted = false;
         fishingStartAttempted = false;
+        orderedCandidates = Array.Empty<FishingSelectionResult>();
+        candidateQueueBuilt = false;
+        activeCandidateIndex = 0;
+        transientRetriesScheduled = 0;
+        recoveryReadyAtUtc = null;
+        attemptSequenceStopped = false;
 
         if (pendingRelogRegistrationStartUtc.HasValue &&
             pendingRelogRegistrationStartUtc != registrationStartUtc)
@@ -280,21 +433,194 @@ public sealed class FishingStartupCoordinator
         }
     }
 
-    private void RecordPendingRelogContinuation(string characterKey, DateTimeOffset registrationStartUtc)
+    private void RecordPendingRelogContinuation(
+        string characterKey,
+        FishingRunMode mode,
+        DateTimeOffset registrationStartUtc,
+        DateTimeOffset registrationDeadlineUtc)
     {
         pendingRelogCharacterKey = characterKey.Trim();
+        pendingRelogMode = mode;
         pendingRelogRegistrationStartUtc = registrationStartUtc;
+        pendingRelogRegistrationDeadlineUtc = registrationDeadlineUtc;
     }
 
     private void ClearPendingRelogContinuation()
     {
         pendingRelogCharacterKey = string.Empty;
         pendingRelogRegistrationStartUtc = null;
+        pendingRelogRegistrationDeadlineUtc = null;
+        pendingRelogMode = FishingRunMode.Scheduled;
     }
 
-    private static FishingStartupResult None(FishingStartupTrigger trigger, string reason)
+    public void ReportAttemptFailure(
+        DateTimeOffset nowUtc,
+        FishingAttemptFailureKind failureKind,
+        string reason,
+        bool queueConfirmed)
+    {
+        ClearPendingRelogContinuation();
+        runtime.AbortRun(reason);
+
+        var now = nowUtc.ToUniversalTime();
+        var registrationOpen = activeRegistrationDeadlineUtc != default && now < activeRegistrationDeadlineUtc;
+        if (!FishingRecoveryPolicy.MayRecover(
+                failureKind,
+                queueConfirmed,
+                registrationOpen,
+                transientRetriesScheduled))
+        {
+            recoveryReadyAtUtc = null;
+            recoveryReason = reason;
+            attemptSequenceStopped = true;
+            return;
+        }
+
+        recoveryReason = reason;
+        if (failureKind == FishingAttemptFailureKind.CharacterPermanent)
+        {
+            activeCandidateIndex++;
+            transientRetriesScheduled = 0;
+            recoveryReadyAtUtc = now;
+        }
+        else
+        {
+            transientRetriesScheduled++;
+            recoveryReadyAtUtc = now + FishingRecoveryPolicy.GetTransientBackoff(transientRetriesScheduled);
+        }
+
+        if (activeCandidateIndex >= orderedCandidates.Count)
+        {
+            recoveryReadyAtUtc = null;
+            attemptSequenceStopped = true;
+        }
+    }
+
+    public FishingStartupResult PollRecovery(DateTimeOffset nowUtc, string currentCharacterKey)
+    {
+        decisionNowUtc = nowUtc.ToUniversalTime();
+        if (!recoveryReadyAtUtc.HasValue)
+            return None(FishingStartupTrigger.RelogContinuation, activeMode, "No automatic fishing recovery is pending.");
+
+        var now = nowUtc.ToUniversalTime();
+        var selection = GetActiveCandidate(currentCharacterKey);
+        var window = new OceanFishingStartupWindow(
+            activeRegistrationStartUtc,
+            activeRegistrationStartUtc,
+            activeRegistrationDeadlineUtc);
+
+        if (!selection.Selected)
+        {
+            recoveryReadyAtUtc = null;
+            return Result(
+                FishingStartupTrigger.RelogContinuation,
+                activeMode,
+                FishingStartupAction.AlreadyHandled,
+                window,
+                selection,
+                "No remaining Ocean Fishing candidate is eligible.");
+        }
+
+        if (!FishingRecoveryPolicy.CanStartAttempt(now, activeRegistrationDeadlineUtc))
+        {
+            recoveryReadyAtUtc = null;
+            return Result(
+                FishingStartupTrigger.RelogContinuation,
+                activeMode,
+                FishingStartupAction.AlreadyHandled,
+                window,
+                selection,
+                "Less than 60 seconds remain in the registration window; recovery stopped.");
+        }
+
+        if (now < recoveryReadyAtUtc.Value)
+        {
+            return Result(
+                FishingStartupTrigger.RelogContinuation,
+                activeMode,
+                FishingStartupAction.Waiting,
+                window,
+                selection,
+                $"Waiting for recovery backoff until {recoveryReadyAtUtc:u}: {recoveryReason}");
+        }
+
+        if (!runtime.CanInitiateStartup || runtime.IsRelogActive)
+        {
+            return Result(
+                FishingStartupTrigger.RelogContinuation,
+                activeMode,
+                FishingStartupAction.Waiting,
+                window,
+                selection,
+                "Waiting for cleanup and client readiness before automatic fishing recovery.");
+        }
+
+        var result = selection.RequiresRelog
+            ? TryStartRelog(
+                FishingStartupTrigger.RelogContinuation,
+                activeMode,
+                window,
+                selection,
+                mutateScheduledGuards: false)
+            : TryStartFishing(
+                FishingStartupTrigger.RelogContinuation,
+                activeMode,
+                window,
+                selection,
+                mutateScheduledGuards: false);
+        recoveryReadyAtUtc = result.Started ? null : now;
+        return result;
+    }
+
+    private void EnsureCandidateQueue(FishingRunMode mode, OceanFishingStartupWindow window)
+    {
+        if (candidateQueueBuilt &&
+            activeRegistrationStartUtc == window.RegistrationStartUtc &&
+            activeMode == mode)
+        {
+            return;
+        }
+
+        orderedCandidates = runtime.BuildCandidateQueue();
+        candidateQueueBuilt = true;
+        activeCandidateIndex = 0;
+        transientRetriesScheduled = 0;
+        attemptSequenceStopped = false;
+        CaptureActiveRun(mode, window);
+    }
+
+    private FishingSelectionResult GetActiveCandidate(string? currentCharacterKey = null)
+    {
+        if (activeCandidateIndex < 0 || activeCandidateIndex >= orderedCandidates.Count)
+            return FishingSelectionResult.None("No eligible Ocean Fishing candidates remain.");
+
+        var selection = orderedCandidates[activeCandidateIndex];
+        if (currentCharacterKey == null)
+            return selection;
+
+        return selection with
+        {
+            RequiresRelog = !string.Equals(
+                selection.CharacterKey,
+                currentCharacterKey,
+                StringComparison.OrdinalIgnoreCase),
+        };
+    }
+
+    private void CaptureActiveRun(FishingRunMode mode, OceanFishingStartupWindow window)
+    {
+        activeMode = mode;
+        activeRegistrationStartUtc = window.RegistrationStartUtc;
+        activeRegistrationDeadlineUtc = window.EndUtc;
+    }
+
+    private static string FormatLevel(int? fisherLevel)
+        => fisherLevel?.ToString() ?? "unknown";
+
+    private static FishingStartupResult None(FishingStartupTrigger trigger, FishingRunMode mode, string reason)
         => new(
             trigger,
+            mode,
             FishingStartupAction.None,
             WindowActive: false,
             RegistrationStartUtc: null,
@@ -303,12 +629,14 @@ public sealed class FishingStartupCoordinator
 
     private static FishingStartupResult Result(
         FishingStartupTrigger trigger,
+        FishingRunMode mode,
         FishingStartupAction action,
         OceanFishingStartupWindow window,
         FishingSelectionResult selection,
         string reason)
         => new(
             trigger,
+            mode,
             action,
             WindowActive: true,
             window.RegistrationStartUtc,

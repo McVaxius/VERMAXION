@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Game.Command;
 using Dalamud.Game.Chat;
@@ -33,6 +34,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ITargetManager TargetManager { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] internal static IUnlockState UnlockState { get; private set; } = null!;
+    [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
@@ -40,7 +43,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public Configuration Configuration { get; init; }
     public ConfigManager ConfigManager { get; init; }
     public ResetDetectionService ResetDetectionService { get; init; }
-    public HenchmanService HenchmanService { get; init; }
     public FCBuffService FCBuffService { get; init; }
     public FCBuffInventoryService FCBuffInventoryService { get; init; }
     public VerminionService VerminionService { get; init; }
@@ -52,6 +54,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
     public AutoRetainerIPC AutoRetainerIPC { get; init; }
+    public AutoHookIPC AutoHookIPC { get; init; }
     public XADatabaseIPCClient XADatabaseIPCClient { get; init; }
     public AdsIpcClient AdsIpcClient { get; init; }
     public RegistrableConfigManager RegistrableConfigManager { get; init; }
@@ -72,6 +75,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public FishingService FishingService { get; init; }
     public FishingRelogCoordinator FishingRelogCoordinator { get; init; }
     public FishingStartupCoordinator FishingStartupCoordinator { get; init; }
+    public FishingRunLifecycle FishingRunLifecycle { get; init; }
+    public IFisherGearsetRuntime FisherGearsetRuntime { get; init; }
+    public FisherGearsetTestService FisherGearsetTestService { get; init; }
     public VermaxionEngine Engine { get; init; }
     public VermaxionIncidentWriter IncidentWriter { get; init; }
 
@@ -105,6 +111,22 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public string BeforeArArmedAccountId { get; private set; } = string.Empty;
     public string BeforeArArmedCharacterKey { get; private set; } = string.Empty;
     public string BeforeArStatusText => BuildBeforeArStatusText();
+    public bool IsFishingRunActive => FishingRunLifecycle.IsActive ||
+                                      FishingService.IsActive ||
+                                      FishingRelogCoordinator.IsActive ||
+                                      FishingStartupCoordinator.HasPendingRelogContinuation;
+    public string FishingRunStatusText
+    {
+        get
+        {
+            var prefix = FishingRunLifecycle.StatusPrefix;
+            if (FishingRelogCoordinator.IsActive)
+                return prefix + FishingRelogCoordinator.StatusText;
+            if (FishingStartupCoordinator.HasPendingRelogContinuation)
+                return prefix + $"Relog pending {FishingStartupCoordinator.PendingRelogCharacterKey}";
+            return FishingService.StatusText;
+        }
+    }
 
     public Plugin()
     {
@@ -115,6 +137,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ApplyLegacyFishingOperationSettingsIfNeeded();
         RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
         AutoRetainerIPC = new AutoRetainerIPC(PluginInterface, Log);
+        AutoHookIPC = new AutoHookIPC(PluginInterface, Log);
         XADatabaseIPCClient = new XADatabaseIPCClient(PluginInterface, Log);
         AdsIpcClient = new AdsIpcClient(PluginInterface, Log);
 
@@ -132,7 +155,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
         // Initialize services
         ResetDetectionService = new ResetDetectionService(Log);
-        HenchmanService = new HenchmanService(PluginInterface, CommandManager, Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
@@ -146,6 +168,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         HighestCombatJobService = new HighestCombatJobService(CommandManager, Log, PlayerState, ClientState, ObjectTable, DataManager);
         CurrentJobEquipmentService = new CurrentJobEquipmentService(CommandManager, Log, PlayerState);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
+        FishingRunLifecycle = new FishingRunLifecycle(Log, YesAlreadyIPC, AutoRetainerIPC, AutoHookIPC);
+        FisherGearsetRuntime = new FisherGearsetRuntime();
+        FisherGearsetTestService = new FisherGearsetTestService(
+            FisherGearsetRuntime,
+            Log,
+            message => ChatGui.Print(message));
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
         LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         MomIPCClient = new MomIPCClient(PluginInterface, Log);
@@ -160,14 +188,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
         ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady, ArmBeforeArSuppressionFromPostprocess);
-        FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, Configuration, ConfigManager);
-        FishingService = new FishingService(CommandManager, Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC);
+        FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
+        FishingService = new FishingService(Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC, AutoRetainerIPC, FishingRunLifecycle, FisherGearsetRuntime, DutyState);
         FishingStartupCoordinator = new FishingStartupCoordinator(this);
 
         // Engine - orchestrates all tasks
         Engine = new VermaxionEngine(
             Log, Configuration, ConfigManager, ResetDetectionService,
-            HenchmanService, FCBuffService, FCBuffInventoryService, VerminionService,
+            FCBuffService, FCBuffInventoryService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService, FishingService,
             RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
@@ -223,6 +251,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         MainWindow.Dispose();
 
         ARPostProcessService.Dispose();
+        FishingService.Dispose();
+        FishingRunLifecycle.ForceCleanup("plugin disposal");
         AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         YesAlreadyIPC.Dispose();
         VNavmeshIPC.Dispose();
@@ -262,22 +292,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             return;
         }
 
-        var henchmanReadiness = HenchmanService.GetTakeoverReadiness();
-        var decision = AutomatedPostprocessPolicy.EvaluateHenchmanPreflight(henchmanReadiness);
-        if (!decision.StartEngine)
-        {
-            Log.Warning($"[Plugin] Skipping AR postprocess engine start: {decision.Summary}");
-            Engine.RecordSkippedOpportunity(decision.Summary);
-
-            if (decision.FinishPostprocess)
-                FinishReleaseOnlyPostprocess(decision.Summary);
-
-            if (decision.ReleaseAutoRetainerSuppression)
-                ReleaseOwnedSuppressionAfterSkippedPostprocess(decision.Summary);
-
-            return;
-        }
-
         Engine.StartPostProcess();
     }
 
@@ -286,6 +300,30 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         FishingStartupCoordinator.ResetCurrentWindow(DateTimeOffset.UtcNow, clearPendingRelogContinuation: false);
         var result = RunFishingStartupTrigger(FishingStartupTrigger.Manual);
         ChatGui.Print($"[Vermaxion] Fishing startup: {result.Reason}");
+    }
+
+    public void RunFishingStartupTest()
+    {
+        var result = FishingStartupCoordinator.StartTest(DateTimeOffset.UtcNow);
+        if (result.Started)
+            Log.Information(FishingStartupDiagnostics.FormatStarted(result));
+        else
+            Log.Information($"[Fishing][Startup] trigger={result.Trigger}, action={result.Action}, reason={result.Reason}");
+        ChatGui.Print($"[Vermaxion] Test fishing startup: {result.Reason}");
+    }
+
+    public void RunFishingGearsetTest()
+    {
+        if (Engine.IsRunning || IsFishingRunActive)
+        {
+            const string message = "Fisher gearset test is unavailable while engine, fishing, or relog work is active.";
+            Log.Warning($"[Fishing][GearsetTest] {message}");
+            ChatGui.Print($"[Vermaxion] {message}");
+            return;
+        }
+
+        if (!FisherGearsetTestService.Start())
+            ChatGui.Print("[Vermaxion] Fisher gearset test is already active.");
     }
 
     public void ResetFishingStartupGate()
@@ -388,6 +426,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             Log.Information("[Plugin] Resetting all services due to character change");
 
             LootGoblinMapGatherManualRunCoordinator.Cancel();
+            FisherGearsetTestService.Cancel();
             
             FCBuffService.Reset();
             VerminionService.Reset();
@@ -395,7 +434,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             ChocoboRaceService.Reset();
             FashionReportService.Reset();
             VendorStockService.Reset();
-            FishingService.Reset();
+            var preserveFishingRun = FishingRelogCoordinator.IsActive || FishingStartupCoordinator.HasPendingRelogContinuation;
+            FishingService.Reset(releaseRun: !preserveFishingRun);
             if (FishingRelogCoordinator.IsActive)
                 FishingRelogCoordinator.NotifyCharacterChanged(newCharacterKey);
             else
@@ -703,8 +743,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         {
             var reason = FishingRelogCoordinator.FailureReason;
             Log.Warning($"[Fishing][Startup] Pending relog continuation failed: {reason}");
-            FishingStartupCoordinator.SuppressCurrentWindow(DateTimeOffset.UtcNow);
             FishingRelogCoordinator.Reset();
+            FishingStartupCoordinator.ReportAttemptFailure(
+                DateTimeOffset.UtcNow,
+                FishingAttemptFailureKind.SharedTransient,
+                $"Fishing relog failed: {reason}",
+                queueConfirmed: false);
             ClearFishingRelogContinuationReadiness();
 
             if (pendingBeforeArLogin)
@@ -1106,6 +1150,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         }
 
         ProcessBeforeArSuppressionRecovery();
+        FishingRunLifecycle.Update();
+        ProcessFishingRecovery();
         ProcessBeforeArArmedStallGuard();
         ProcessReleaseOnlyPostprocessFinishPending();
         ProcessBeforeArReleasePending();
@@ -1115,6 +1161,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
         // Update engine (runs the state machine)
         Engine.Update();
+        FisherGearsetTestService.Update();
         UpdateBeforeArGateAfterEngine();
         ProcessBeforeArReleasePending();
 
@@ -1236,17 +1283,43 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         if (BeforeArGate == BeforeArGateState.Skipped && !string.IsNullOrWhiteSpace(beforeArTimeoutReleaseReason))
             return beforeArTimeoutReleaseReason;
         if (FishingRelogCoordinator.IsActive)
-            return FishingRelogCoordinator.StatusText;
+            return FishingRunLifecycle.StatusPrefix + FishingRelogCoordinator.StatusText;
         if (FishingStartupCoordinator.HasPendingRelogContinuation)
-            return $"Fishing relog pending {FishingStartupCoordinator.PendingRelogCharacterKey}";
+            return FishingRunLifecycle.StatusPrefix + $"Fishing relog pending {FishingStartupCoordinator.PendingRelogCharacterKey}";
         if (FishingService.IsActive)
             return $"Fishing {FishingService.StatusText}";
+        if (FishingRunLifecycle.IsCleanupPending)
+            return "Fishing external-state cleanup pending";
         if (ARPostProcessService.IsProcessing)
             return "AR postprocess owned";
         if (AutoRetainerIPC.SuppressionOwnedByVermaxion)
             return "AR suppression recovery";
 
         return null;
+    }
+
+    private void ProcessFishingRecovery()
+    {
+        if (FishingService.IsFailed && !FishingService.FailureReported)
+        {
+            FishingService.MarkFailureReported();
+            FishingStartupCoordinator.ReportAttemptFailure(
+                DateTimeOffset.UtcNow,
+                FishingService.FailureKind,
+                FishingService.StatusText,
+                FishingService.QueueRegistrationObserved);
+        }
+
+        if (!FishingStartupCoordinator.HasRecoveryPending)
+            return;
+
+        var result = FishingStartupCoordinator.PollRecovery(
+            DateTimeOffset.UtcNow,
+            ConfigManager.CurrentCharacterKey);
+        if (result.Started)
+            Log.Information($"[Fishing][Recovery] {FishingStartupDiagnostics.FormatStarted(result)}");
+        else if (result.Action == FishingStartupAction.AlreadyHandled)
+            Log.Warning($"[Fishing][Recovery] {result.Reason}");
     }
 
     /// <summary>
@@ -1256,7 +1329,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     {
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
 
-        FishingStartupCoordinator.SuppressCurrentWindow(DateTimeOffset.UtcNow);
+        FisherGearsetTestService.Cancel();
+        if (FishingRunLifecycle.Mode != FishingRunMode.Test)
+            FishingStartupCoordinator.SuppressCurrentWindow(DateTimeOffset.UtcNow);
+        FishingStartupCoordinator.CancelPendingRun();
         ClearFishingRelogContinuationReadiness();
 
         LootGoblinMapGatherManualRunCoordinator.Cancel();
@@ -1277,6 +1353,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         VendorStockService.Reset();
         FishingService.Reset();
         FishingRelogCoordinator.Reset();
+        FishingRunLifecycle.ForceCleanup("Full Stop");
         RetainerListingRefillService.Reset();
         WorkshopBellService.Reset();
         RegisterRegistrablesService.Reset();
@@ -1323,24 +1400,39 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     bool IFishingStartupRuntime.IsFishingActive => FishingService.IsActive;
     bool IFishingStartupRuntime.IsRelogActive => FishingRelogCoordinator.IsActive;
 
-    FishingSelectionResult IFishingStartupRuntime.SelectTarget()
-        => FishingService.SelectFishingTarget(fishingWindowActive: true);
+    IReadOnlyList<FishingSelectionResult> IFishingStartupRuntime.BuildCandidateQueue()
+        => FishingService.BuildFishingCandidateQueue(fishingWindowActive: true);
 
-    int IFishingStartupRuntime.DisableAlwaysFishOnOtherCharacters(string selectedCharacterKey)
+    bool IFishingStartupRuntime.IsFishingRunActiveForWindow(DateTimeOffset registrationStartUtc)
+        => FishingRunLifecycle.IsActiveForWindow(registrationStartUtc);
+
+    bool IFishingStartupRuntime.IsQueueRegistrationConfirmedForWindow(DateTimeOffset registrationStartUtc)
+        => FishingRunLifecycle.IsQueueRegistrationConfirmedForWindow(registrationStartUtc);
+
+    bool IFishingStartupRuntime.IsTerminalFailureBeforeQueueConfirmationForWindow(DateTimeOffset registrationStartUtc)
+        => FishingRunLifecycle.IsTerminalFailureBeforeQueueConfirmationForWindow(registrationStartUtc);
+
+    void IFishingStartupRuntime.ClearFishingWindowOutcome(DateTimeOffset registrationStartUtc)
+        => FishingRunLifecycle.ClearWindowOutcome(registrationStartUtc);
+
+    bool IFishingStartupRuntime.BeginRun(
+        FishingRunMode mode,
+        string targetCharacterKey,
+        DateTimeOffset registrationStartUtc,
+        DateTimeOffset registrationDeadlineUtc)
     {
-        var cleared = ConfigManager.DisableAlwaysFishOnOtherCharacters(selectedCharacterKey);
-        if (cleared > 0)
-        {
-            Log.Information(
-                $"[Fishing][Startup] Cleared AlwaysFishOnThisCharacterIfWindowOpen on {cleared} " +
-                $"other character(s); selected={selectedCharacterKey}");
-        }
+        if (FishingRunLifecycle.TryBegin(mode, targetCharacterKey, registrationStartUtc, registrationDeadlineUtc, out var error))
+            return true;
 
-        return cleared;
+        Log.Warning($"[Fishing][Startup] Could not begin run: {error}");
+        return false;
     }
 
-    bool IFishingStartupRuntime.RequestRelog(string characterKey)
-        => FishingRelogCoordinator.RequestRelog(characterKey);
+    void IFishingStartupRuntime.AbortRun(string reason)
+        => FishingRunLifecycle.Cleanup(reason);
+
+    bool IFishingStartupRuntime.RequestRelog(string characterKey, DateTimeOffset registrationDeadlineUtc)
+        => FishingRelogCoordinator.RequestRelog(characterKey, registrationDeadlineUtc);
 
     bool IFishingStartupRuntime.StartFishing()
     {

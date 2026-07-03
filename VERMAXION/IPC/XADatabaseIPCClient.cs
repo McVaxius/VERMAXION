@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
@@ -18,17 +17,26 @@ public sealed class XADatabaseIPCClient
         getAccountCharacterListJsonSubscriber = pluginInterface.GetIpcSubscriber<string>("XA.Database.GetAccountCharacterListJson");
     }
 
-    public IReadOnlyDictionary<string, int> GetFisherLevelsByCharacterKey()
+    public XaFishingRosterSnapshot GetFishingRoster()
     {
         try
         {
             var json = getAccountCharacterListJsonSubscriber.InvokeFunc();
-            return XaFishingRosterParser.ParseFisherLevels(json);
+            var roster = XaFishingRosterParser.Parse(json);
+            if (!roster.IsUsable)
+            {
+                log.Warning(
+                    $"[XADB] Fisher roster rejected: status={roster.Status}, detail={roster.Detail}");
+            }
+
+            return roster;
         }
         catch (Exception ex)
         {
             log.Warning($"[XADB] Failed to read Fisher levels from XA.Database.GetAccountCharacterListJson: {ex.Message}");
-            return new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            return XaFishingRosterSnapshot.Failure(
+                XaFishingRosterReadStatus.IpcFailure,
+                ex.Message);
         }
     }
 }

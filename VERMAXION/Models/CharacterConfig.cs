@@ -12,7 +12,6 @@ public class CharacterConfig
     public bool EnableMiniCactpot { get; set; } = false;
     public bool EnableChocoboRacing { get; set; } = false;
     public bool EnableFCBuffRefill { get; set; } = false;
-    public bool EnableHenchmanManagement { get; set; } = false;
     public bool EnableMinionRoulette { get; set; } = false;
     public bool EnableSeasonalGearRoulette { get; set; } = false;
     public bool EnableGearUpdater { get; set; } = false;
@@ -37,6 +36,8 @@ public class CharacterConfig
     public string FishingReturnCommand { get; set; } = FishingDefaults.ReturnCommand;
     public FishingRepairMode FishingRepairMode { get; set; } = FishingDefaults.RepairMode;
     public int FishingRepairThresholdPercent { get; set; } = FishingDefaults.RepairThresholdPercent;
+    public bool FishingDiscardAfterVoyage { get; set; } = false;
+    public bool FishingSellAfterVoyage { get; set; } = false;
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -229,7 +230,6 @@ public class CharacterConfig
             EnableMiniCactpot = EnableMiniCactpot,
             EnableChocoboRacing = EnableChocoboRacing,
             EnableFCBuffRefill = EnableFCBuffRefill,
-            EnableHenchmanManagement = EnableHenchmanManagement,
             EnableMinionRoulette = EnableMinionRoulette,
             EnableSeasonalGearRoulette = EnableSeasonalGearRoulette,
             EnableGearUpdater = EnableGearUpdater,
@@ -254,6 +254,8 @@ public class CharacterConfig
             FishingReturnCommand = FishingReturnCommand,
             FishingRepairMode = FishingRepairMode,
             FishingRepairThresholdPercent = FishingRepairThresholdPercent,
+            FishingDiscardAfterVoyage = FishingDiscardAfterVoyage,
+            FishingSellAfterVoyage = FishingSellAfterVoyage,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,

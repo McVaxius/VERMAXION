@@ -603,8 +603,6 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Unindent();
             }
 
-            // Deprecated: old Henchman stop/restart management is no longer exposed.
-
             var minionRoulette = cc.EnableMinionRoulette;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.MinionRoulette, ref minionRoulette))
             {
@@ -839,7 +837,27 @@ public class ConfigWindow : Window, IDisposable
                     (source, target) => target.FishingRepairThresholdPercent = source.FishingRepairThresholdPercent);
                 DrawHelpMarker("Repairs when this character's lowest equipped gear condition is at or below this percent.");
 
-                ImGui.TextDisabled("Requires XADB, AutoRetainer, Lifestream, and AutoHook. ADS is required when this character's repair mode is enabled.");
+                var discardAfterVoyage = cc.FishingDiscardAfterVoyage;
+                if (ImGui.Checkbox("Discard configured fish after voyage", ref discardAfterVoyage))
+                {
+                    cc.FishingDiscardAfterVoyage = discardAfterVoyage;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingDiscardAfterVoyage", "Fishing discard cleanup",
+                    (source, target) => target.FishingDiscardAfterVoyage = source.FishingDiscardAfterVoyage);
+                DrawHelpMarker("After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard.");
+
+                var sellAfterVoyage = cc.FishingSellAfterVoyage;
+                if (ImGui.Checkbox("Sell configured fish after voyage", ref sellAfterVoyage))
+                {
+                    cc.FishingSellAfterVoyage = sellAfterVoyage;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingSellAfterVoyage", "Fishing sell cleanup",
+                    (source, target) => target.FishingSellAfterVoyage = source.FishingSellAfterVoyage);
+                DrawHelpMarker("After discard cleanup, moves near Limsa's Merchant & Mender and runs /ays itemsell. Cleanup warnings do not prevent the configured return.");
+
+                ImGui.TextDisabled("Requires XADB, AutoRetainer, Lifestream, AutoHook, and vnavmesh. ADS is the only repair provider and is required when repair is enabled.");
                 ImGui.Unindent();
             }
 

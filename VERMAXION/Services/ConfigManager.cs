@@ -369,7 +369,6 @@ public class ConfigManager
         target.EnableMiniCactpot = source.EnableMiniCactpot;
         target.EnableChocoboRacing = source.EnableChocoboRacing;
         target.EnableFCBuffRefill = source.EnableFCBuffRefill;
-        target.EnableHenchmanManagement = source.EnableHenchmanManagement;
         target.EnableMinionRoulette = source.EnableMinionRoulette;
         target.EnableSeasonalGearRoulette = source.EnableSeasonalGearRoulette;
         target.EnableGearUpdater = source.EnableGearUpdater;
@@ -437,6 +436,8 @@ public class ConfigManager
         target.FishingReturnCommand = source.FishingReturnCommand;
         target.FishingRepairMode = source.FishingRepairMode;
         target.FishingRepairThresholdPercent = source.FishingRepairThresholdPercent;
+        target.FishingDiscardAfterVoyage = source.FishingDiscardAfterVoyage;
+        target.FishingSellAfterVoyage = source.FishingSellAfterVoyage;
     }
 
     private static void CopyFishingOperationSettings(FishingOperationSettings source, CharacterConfig target)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 
 namespace VERMAXION.Models;
@@ -10,6 +11,37 @@ public enum FishingExecutionMode
 {
     CurrentCharacterOnly = 0,
     AutoRetainerRelogCurrentAccount = 1,
+}
+
+public enum FishingRunMode
+{
+    Scheduled = 0,
+    Test = 1,
+}
+
+public sealed class FishingRunContext
+{
+    public FishingRunMode Mode { get; init; }
+    public string TargetCharacterKey { get; init; } = string.Empty;
+    public DateTimeOffset RegistrationStartUtc { get; init; }
+    public DateTimeOffset RegistrationDeadlineUtc { get; init; }
+    public bool QueueRegistrationConfirmed { get; set; }
+    public bool TerminalFailureBeforeQueueConfirmation { get; set; }
+    public bool? InitialAutoRetainerMultiModeEnabled { get; set; }
+    public bool AutoRetainerMultiModeChanged { get; set; }
+    public bool? InitialAutoHookEnabled { get; set; }
+    public bool AutoHookChanged { get; set; }
+    public bool YesAlreadyLeaseOwned { get; set; }
+    public bool CleanupPending { get; set; }
+    public string CleanupReason { get; set; } = string.Empty;
+    public DateTimeOffset LastCleanupAttemptUtc { get; set; }
+
+    public bool OwnsExternalState
+        => AutoRetainerMultiModeChanged || AutoHookChanged || YesAlreadyLeaseOwned;
+    public bool OwnsRegistrationLeases
+        => AutoRetainerMultiModeChanged || YesAlreadyLeaseOwned;
+
+    public string StatusPrefix => Mode == FishingRunMode.Test ? "Test: " : string.Empty;
 }
 
 public enum FishingReturnDestination
@@ -114,6 +146,9 @@ public static class OceanFishingSchedulePolicy
             normalizedRegistrationStart.AddMinutes(FishingDefaults.OceanFishingRegistrationAvailabilityMinutes));
     }
 
+    public static OceanFishingRegistrationWindow GetCurrentOrNextRegistrationWindow(DateTimeOffset nowUtc)
+        => BuildRegistrationWindow(GetNextRegistrationStart(nowUtc.ToUniversalTime()));
+
     private static DateTimeOffset GetNextRegistrationStart(DateTimeOffset nowUtc)
     {
         var hourStart = new DateTimeOffset(
@@ -162,14 +197,14 @@ public readonly record struct FishingOperationSettings(
 
 public readonly record struct FishingCharacterCandidate(
     string CharacterKey,
-    int FisherLevel,
+    int? FisherLevel,
     bool FishingEnabled,
     bool AlwaysFishIfWindowOpen,
     bool IsCurrentCharacter);
 
 public sealed record FishingSelectionResult(
     string CharacterKey,
-    int FisherLevel,
+    int? FisherLevel,
     bool RequiresRelog,
     IReadOnlyList<string> AlwaysFishKeysToDisable,
     string Reason)
@@ -177,7 +212,31 @@ public sealed record FishingSelectionResult(
     public bool Selected => !string.IsNullOrWhiteSpace(CharacterKey);
 
     public static FishingSelectionResult None(string reason)
-        => new(string.Empty, 0, false, Array.Empty<string>(), reason);
+        => new(string.Empty, null, false, Array.Empty<string>(), reason);
+}
+
+public static class FishingXadbCandidatePolicy
+{
+    public static IReadOnlyList<FishingCharacterCandidate> ApplyAuthoritativeLevels(
+        IEnumerable<FishingCharacterCandidate> configuredCandidates,
+        XaFishingRosterSnapshot roster)
+    {
+        if (!roster.IsUsable)
+            return Array.Empty<FishingCharacterCandidate>();
+
+        var levels = roster.Characters.ToDictionary(
+            entry => entry.CharacterKey,
+            entry => entry.FisherLevel,
+            StringComparer.OrdinalIgnoreCase);
+        return configuredCandidates
+            .Select(candidate => candidate with
+            {
+                FisherLevel = levels.TryGetValue(candidate.CharacterKey.Trim(), out var fisherLevel)
+                    ? fisherLevel
+                    : null,
+            })
+            .ToArray();
+    }
 }
 
 public static class FishingStartupPolicy
@@ -208,20 +267,24 @@ public static class FishingStartupPolicy
 
 public static class FishingSelectionPolicy
 {
-    public static FishingSelectionResult Select(
+    public static IReadOnlyList<FishingSelectionResult> BuildOrderedCandidates(
         IEnumerable<FishingCharacterCandidate> candidates,
         int maxFisherLevel,
         FishingExecutionMode mode,
         string currentCharacterKey,
-        bool fishingWindowActive)
+        bool fishingWindowActive,
+        IReadOnlySet<string>? excludedCharacterKeys = null)
     {
         var normalizedCurrentKey = NormalizeKey(currentCharacterKey);
+        var excluded = excludedCharacterKeys ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var normalizedCandidates = candidates
             .Where(candidate => !string.IsNullOrWhiteSpace(candidate.CharacterKey))
             .Select(candidate => candidate with
             {
                 CharacterKey = NormalizeKey(candidate.CharacterKey),
-                FisherLevel = Math.Max(0, candidate.FisherLevel),
+                FisherLevel = candidate.FisherLevel.HasValue
+                    ? Math.Max(0, candidate.FisherLevel.Value)
+                    : null,
                 IsCurrentCharacter = string.Equals(
                     NormalizeKey(candidate.CharacterKey),
                     normalizedCurrentKey,
@@ -231,86 +294,78 @@ public static class FishingSelectionPolicy
             .Select(group => group
                 .OrderByDescending(candidate => candidate.IsCurrentCharacter)
                 .ThenByDescending(candidate => candidate.FishingEnabled)
+                .ThenByDescending(candidate => candidate.FisherLevel.HasValue)
                 .First())
+            .Where(candidate => candidate.FishingEnabled && !excluded.Contains(candidate.CharacterKey))
             .ToList();
 
         var cappedMaxLevel = Math.Clamp(maxFisherLevel, 1, 100);
         if (mode == FishingExecutionMode.CurrentCharacterOnly)
         {
             var current = normalizedCandidates.FirstOrDefault(candidate => candidate.IsCurrentCharacter);
-            if (string.IsNullOrWhiteSpace(current.CharacterKey))
-                return FishingSelectionResult.None("Current character was not configured for fishing.");
-
-            if (!current.FishingEnabled)
-                return FishingSelectionResult.None("Current character fishing is disabled.");
-
-            if (!IsLevelEligible(current, cappedMaxLevel, fishingWindowActive))
-                return FishingSelectionResult.None($"Current character Fisher level {current.FisherLevel} is at or above max {cappedMaxLevel}.");
-
-            return BuildResult(current, normalizedCandidates, requiresRelog: false, "Selected current character.");
-        }
-
-        if (fishingWindowActive)
-        {
-            var alwaysCandidate = normalizedCandidates
-                .Where(candidate => candidate.FishingEnabled && candidate.AlwaysFishIfWindowOpen)
-                .OrderByDescending(candidate => candidate.IsCurrentCharacter)
-                .ThenBy(candidate => candidate.FisherLevel)
-                .ThenBy(candidate => candidate.CharacterKey, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
-
-            if (!string.IsNullOrWhiteSpace(alwaysCandidate.CharacterKey))
+            if (string.IsNullOrWhiteSpace(current.CharacterKey) ||
+                !IsLevelEligible(current, cappedMaxLevel, fishingWindowActive))
             {
-                return BuildResult(
-                    alwaysCandidate,
-                    normalizedCandidates,
-                    requiresRelog: !alwaysCandidate.IsCurrentCharacter,
-                    "Selected always-fish character for active fishing window.");
+                return Array.Empty<FishingSelectionResult>();
             }
+
+            return [BuildResult(current, requiresRelog: false, "Selected current character.")];
         }
 
-        var selected = normalizedCandidates
-            .Where(candidate => candidate.FishingEnabled && candidate.FisherLevel < cappedMaxLevel)
-            .OrderBy(candidate => candidate.FisherLevel)
+        var ordered = normalizedCandidates
+            .Where(candidate =>
+                fishingWindowActive && candidate.AlwaysFishIfWindowOpen ||
+                candidate.FisherLevel.HasValue && candidate.FisherLevel.Value < cappedMaxLevel)
+            .OrderByDescending(candidate => fishingWindowActive && candidate.AlwaysFishIfWindowOpen)
+            .ThenBy(candidate => candidate.FisherLevel ?? int.MaxValue)
             .ThenByDescending(candidate => candidate.IsCurrentCharacter)
             .ThenBy(candidate => candidate.CharacterKey, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
+            .Select(candidate => BuildResult(
+                candidate,
+                requiresRelog: !candidate.IsCurrentCharacter,
+                fishingWindowActive && candidate.AlwaysFishIfWindowOpen
+                    ? "Selected always-fish character for active fishing window."
+                    : "Selected lowest known Fisher below max."))
+            .ToArray();
 
-        if (string.IsNullOrWhiteSpace(selected.CharacterKey))
-            return FishingSelectionResult.None($"No enabled configured character has Fisher below max {cappedMaxLevel}.");
+        return ordered;
+    }
 
-        return BuildResult(
-            selected,
-            normalizedCandidates,
-            requiresRelog: !selected.IsCurrentCharacter,
-            "Selected lowest Fisher below max.");
+    public static FishingSelectionResult Select(
+        IEnumerable<FishingCharacterCandidate> candidates,
+        int maxFisherLevel,
+        FishingExecutionMode mode,
+        string currentCharacterKey,
+        bool fishingWindowActive)
+    {
+        var ordered = BuildOrderedCandidates(
+            candidates,
+            maxFisherLevel,
+            mode,
+            currentCharacterKey,
+            fishingWindowActive);
+        return ordered.Count > 0
+            ? ordered[0]
+            : FishingSelectionResult.None(
+                mode == FishingExecutionMode.CurrentCharacterOnly
+                    ? "Current character is disabled, unknown, or at the configured Fisher cap."
+                    : $"No enabled configured character has a known Fisher below max {Math.Clamp(maxFisherLevel, 1, 100)}, and no AlwaysFish override applies.");
     }
 
     private static bool IsLevelEligible(FishingCharacterCandidate candidate, int maxFisherLevel, bool fishingWindowActive)
-        => candidate.FisherLevel < maxFisherLevel || (fishingWindowActive && candidate.AlwaysFishIfWindowOpen);
+        => candidate.FisherLevel.HasValue && candidate.FisherLevel.Value < maxFisherLevel ||
+           fishingWindowActive && candidate.AlwaysFishIfWindowOpen;
 
     private static FishingSelectionResult BuildResult(
         FishingCharacterCandidate selected,
-        IReadOnlyCollection<FishingCharacterCandidate> allCandidates,
         bool requiresRelog,
         string reason)
     {
-        var alwaysKeys = allCandidates
-            .Where(candidate => candidate.FishingEnabled && candidate.AlwaysFishIfWindowOpen)
-            .Select(candidate => candidate.CharacterKey)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var keysToDisable = alwaysKeys.Count <= 1
-            ? Array.Empty<string>()
-            : alwaysKeys
-                .Where(key => !string.Equals(key, selected.CharacterKey, StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-
         return new FishingSelectionResult(
             selected.CharacterKey,
             selected.FisherLevel,
             requiresRelog,
-            keysToDisable,
+            Array.Empty<string>(),
             reason);
     }
 
@@ -318,35 +373,169 @@ public static class FishingSelectionPolicy
         => value.Trim();
 }
 
+public enum FishingAttemptFailureKind
+{
+    CharacterPermanent,
+    SharedTransient,
+    Stop,
+}
+
+public static class FishingRecoveryPolicy
+{
+    public const int MaximumTransientRetries = 2;
+    public static readonly TimeSpan MinimumAttemptTimeRemaining = TimeSpan.FromSeconds(60);
+
+    public static TimeSpan GetTransientBackoff(int retryNumber)
+        => retryNumber switch
+        {
+            1 => TimeSpan.FromSeconds(3),
+            2 => TimeSpan.FromSeconds(10),
+            _ => TimeSpan.MaxValue,
+        };
+
+    public static bool CanStartAttempt(DateTimeOffset nowUtc, DateTimeOffset registrationDeadlineUtc)
+        => registrationDeadlineUtc.ToUniversalTime() - nowUtc.ToUniversalTime() >= MinimumAttemptTimeRemaining;
+
+    public static bool MayRecover(
+        FishingAttemptFailureKind failureKind,
+        bool queueConfirmed,
+        bool registrationOpen,
+        int transientRetriesAlreadyScheduled)
+        => !queueConfirmed &&
+           registrationOpen &&
+           failureKind switch
+           {
+               FishingAttemptFailureKind.CharacterPermanent => true,
+               FishingAttemptFailureKind.SharedTransient => transientRetriesAlreadyScheduled < MaximumTransientRetries,
+               _ => false,
+           };
+}
+
+public enum FishingCleanupCommand
+{
+    None,
+    Discard,
+    Sell,
+}
+
+public static class FishingInventoryCleanupPolicy
+{
+    public static IReadOnlyList<FishingCleanupCommand> Build(bool discardEnabled, bool sellEnabled)
+    {
+        var result = new List<FishingCleanupCommand>(2);
+        if (discardEnabled)
+            result.Add(FishingCleanupCommand.Discard);
+        if (sellEnabled)
+            result.Add(FishingCleanupCommand.Sell);
+        return result;
+    }
+
+    public static bool TreatAsNothingToProcess(bool busyObserved, TimeSpan elapsed)
+        => !busyObserved && elapsed >= TimeSpan.FromSeconds(10);
+}
+
+public static class FishingReturnPolicy
+{
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(30);
+    public static readonly TimeSpan FailAfter = TimeSpan.FromSeconds(120);
+
+    public static bool IsVerified(bool commandRequired, bool activityObserved, bool territoryChanged, bool currentlyBusy)
+        => !commandRequired || territoryChanged || activityObserved && !currentlyBusy;
+
+    public static bool ShouldRetry(int commandsSent, TimeSpan elapsed)
+        => commandsSent == 1 && elapsed >= RetryAfter;
+}
+
 public static class XaFishingRosterParser
 {
     private const int FisherJobId = 18;
 
-    public static IReadOnlyDictionary<string, int> ParseFisherLevels(string? json)
+    public static XaFishingRosterSnapshot Parse(string? json)
     {
-        var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         if (string.IsNullOrWhiteSpace(json))
-            return result;
+            return XaFishingRosterSnapshot.Failure(
+                XaFishingRosterReadStatus.EmptyResponse,
+                "XA Database returned an empty account roster response.");
 
-        using var document = JsonDocument.Parse(json);
-        var root = document.RootElement;
-        if (!TryGetProperty(root, "characters", out var characters) ||
-            characters.ValueKind != JsonValueKind.Array)
+        try
         {
-            return result;
-        }
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return Malformed("The account roster root is not an object.");
 
-        foreach (var character in characters.EnumerateArray())
+            if (!TryGetProperty(root, "isFullRosterAvailable", out var fullRoster) ||
+                fullRoster.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            {
+                return Malformed("The account roster does not contain a boolean isFullRosterAvailable status.");
+            }
+
+            var generatedAtUtc = TryGetDateTimeOffset(root, "generatedAtUtc", out var generatedAt)
+                ? generatedAt
+                : null;
+            if (!fullRoster.GetBoolean())
+            {
+                return new XaFishingRosterSnapshot(
+                    XaFishingRosterReadStatus.FullRosterUnavailable,
+                    generatedAtUtc,
+                    Array.Empty<XaFishingRosterEntry>(),
+                    ReadWarnings(root, "XA Database did not advertise a full account roster."));
+            }
+
+            if (!TryGetProperty(root, "characters", out var characters) ||
+                characters.ValueKind != JsonValueKind.Array)
+            {
+                return Malformed("The full account roster does not contain a characters array.", generatedAtUtc);
+            }
+
+            var result = new List<XaFishingRosterEntry>();
+            var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var character in characters.EnumerateArray())
+            {
+                if (character.ValueKind != JsonValueKind.Object)
+                    return Malformed("The account roster contains a non-object character row.", generatedAtUtc);
+
+                var key = GetCharacterKey(character);
+                if (string.IsNullOrWhiteSpace(key))
+                    return Malformed("The account roster contains a character row without a character key.", generatedAtUtc);
+                if (!seenKeys.Add(key))
+                    return Malformed($"The account roster contains duplicate character key '{key}'.", generatedAtUtc);
+
+                if (!TryGetFisherLevel(character, out var fisherLevel, out var levelError))
+                    return Malformed($"{key}: {levelError}", generatedAtUtc);
+
+                DateTimeOffset? snapshotTimestamp = null;
+                if (TryGetProperty(
+                        character,
+                        out var snapshotElement,
+                        "lastSnapshotUtc",
+                        "snapshotUtc",
+                        "updatedUtc",
+                        "capturedAtUtc",
+                        "lastSaveUtc"))
+                {
+                    if (!TryReadDateTimeOffset(snapshotElement, out var parsedTimestamp))
+                        return Malformed($"{key}: snapshot timestamp is malformed.", generatedAtUtc);
+                    snapshotTimestamp = parsedTimestamp;
+                }
+
+                result.Add(new XaFishingRosterEntry(
+                    key,
+                    fisherLevel,
+                    GetString(character, "source").Trim(),
+                    snapshotTimestamp));
+            }
+
+            return new XaFishingRosterSnapshot(
+                XaFishingRosterReadStatus.Ready,
+                generatedAtUtc,
+                result,
+                ReadWarnings(root, "XA Database full account roster is ready."));
+        }
+        catch (JsonException ex)
         {
-            var key = GetCharacterKey(character);
-            if (string.IsNullOrWhiteSpace(key))
-                continue;
-
-            if (TryGetFisherLevel(character, out var fisherLevel))
-                result[key] = Math.Max(0, fisherLevel);
+            return Malformed($"Account roster JSON is malformed: {ex.Message}");
         }
-
-        return result;
     }
 
     private static string GetCharacterKey(JsonElement character)
@@ -362,49 +551,73 @@ public static class XaFishingRosterParser
             : $"{characterName.Trim()}@{worldName.Trim()}";
     }
 
-    private static bool TryGetFisherLevel(JsonElement character, out int level)
+    private static bool TryGetFisherLevel(
+        JsonElement character,
+        out int? level,
+        out string error)
     {
-        level = 0;
+        level = null;
+        error = string.Empty;
         var found = false;
+        var maximumLevel = 0;
 
-        if (TryGetProperty(character, "jobLevels", out var jobLevels) &&
-            jobLevels.ValueKind == JsonValueKind.Object)
+        if (TryGetProperty(character, "jobLevels", out var jobLevels))
         {
-            if (TryGetObjectInt(jobLevels, FisherJobId.ToString(CultureInfo.InvariantCulture), out var numericLevel) ||
-                TryGetObjectInt(jobLevels, "FSH", out numericLevel))
+            if (jobLevels.ValueKind != JsonValueKind.Object)
             {
-                level = Math.Max(level, numericLevel);
+                error = "jobLevels is not an object.";
+                return false;
+            }
+
+            if (TryGetProperty(jobLevels, FisherJobId.ToString(CultureInfo.InvariantCulture), out var fisherProperty) ||
+                TryGetProperty(jobLevels, "FSH", out fisherProperty))
+            {
+                if (!TryReadInt(fisherProperty, out var numericLevel))
+                {
+                    error = "Fisher jobLevels value is not an integer.";
+                    return false;
+                }
+
+                maximumLevel = Math.Max(maximumLevel, numericLevel);
                 found = true;
             }
         }
 
-        if (TryGetProperty(character, "jobs", out var jobs) &&
-            jobs.ValueKind == JsonValueKind.Array)
+        if (TryGetProperty(character, "jobs", out var jobs))
         {
+            if (jobs.ValueKind != JsonValueKind.Array)
+            {
+                error = "jobs is not an array.";
+                return false;
+            }
+
             foreach (var job in jobs.EnumerateArray())
             {
+                if (job.ValueKind != JsonValueKind.Object)
+                {
+                    error = "jobs contains a non-object entry.";
+                    return false;
+                }
+
                 var jobIdMatches = TryGetInt(job, "jobId", out var jobId) && jobId == FisherJobId;
                 var abbrevMatches = string.Equals(GetString(job, "jobAbbrev"), "FSH", StringComparison.OrdinalIgnoreCase);
                 if (!jobIdMatches && !abbrevMatches)
                     continue;
 
-                if (TryGetInt(job, "level", out var jobLevel))
+                if (!TryGetProperty(job, "level", out var jobLevelElement) ||
+                    !TryReadInt(jobLevelElement, out var jobLevel))
                 {
-                    level = Math.Max(level, jobLevel);
-                    found = true;
+                    error = "Fisher jobs entry does not contain an integer level.";
+                    return false;
                 }
+
+                maximumLevel = Math.Max(maximumLevel, jobLevel);
+                found = true;
             }
         }
 
-        return found;
-    }
-
-    private static bool TryGetObjectInt(JsonElement obj, string propertyName, out int value)
-    {
-        value = 0;
-        return TryGetProperty(obj, propertyName, out var property) &&
-               property.ValueKind == JsonValueKind.Number &&
-               property.TryGetInt32(out value);
+        level = found ? Math.Max(0, maximumLevel) : null;
+        return true;
     }
 
     private static string GetString(JsonElement obj, string propertyName)
@@ -416,20 +629,100 @@ public static class XaFishingRosterParser
     {
         value = 0;
         return TryGetProperty(obj, propertyName, out var property) &&
-               property.ValueKind == JsonValueKind.Number &&
-               property.TryGetInt32(out value);
+               TryReadInt(property, out value);
     }
 
-    private static bool TryGetProperty(JsonElement obj, string propertyName, out JsonElement property)
+    private static bool TryReadInt(JsonElement element, out int value)
     {
-        if (obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(propertyName, out property))
-            return true;
+        value = 0;
+        return element.ValueKind switch
+        {
+            JsonValueKind.Number => element.TryGetInt32(out value),
+            JsonValueKind.String => int.TryParse(
+                element.GetString(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out value),
+            _ => false,
+        };
+    }
+
+    private static bool TryGetDateTimeOffset(
+        JsonElement obj,
+        string propertyName,
+        out DateTimeOffset? value)
+    {
+        value = null;
+        if (!TryGetProperty(obj, propertyName, out var property))
+            return false;
+
+        if (!TryReadDateTimeOffset(property, out var parsed))
+            return false;
+
+        value = parsed;
+        return true;
+    }
+
+    private static bool TryReadDateTimeOffset(JsonElement element, out DateTimeOffset value)
+    {
+        value = default;
+        return element.ValueKind == JsonValueKind.String &&
+               DateTimeOffset.TryParse(
+                   element.GetString(),
+                   CultureInfo.InvariantCulture,
+                   DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                   out value);
+    }
+
+    private static string ReadWarnings(JsonElement root, string fallback)
+    {
+        if (!TryGetProperty(root, "warnings", out var warnings) ||
+            warnings.ValueKind != JsonValueKind.Array)
+        {
+            return fallback;
+        }
+
+        var messages = warnings
+            .EnumerateArray()
+            .Where(entry => entry.ValueKind == JsonValueKind.String)
+            .Select(entry => entry.GetString())
+            .Where(message => !string.IsNullOrWhiteSpace(message))
+            .ToArray();
+        return messages.Length == 0 ? fallback : string.Join(" | ", messages!);
+    }
+
+    private static XaFishingRosterSnapshot Malformed(
+        string detail,
+        DateTimeOffset? generatedAtUtc = null)
+        => new(
+            XaFishingRosterReadStatus.MalformedResponse,
+            generatedAtUtc,
+            Array.Empty<XaFishingRosterEntry>(),
+            detail);
+
+    private static bool TryGetProperty(JsonElement obj, string propertyName, out JsonElement property)
+        => TryGetProperty(obj, out property, propertyName);
+
+    private static bool TryGetProperty(
+        JsonElement obj,
+        out JsonElement property,
+        params string[] propertyNames)
+    {
+        if (obj.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (obj.TryGetProperty(propertyName, out property))
+                    return true;
+            }
+        }
 
         if (obj.ValueKind == JsonValueKind.Object)
         {
             foreach (var candidate in obj.EnumerateObject())
             {
-                if (string.Equals(candidate.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                if (propertyNames.Any(propertyName =>
+                        string.Equals(candidate.Name, propertyName, StringComparison.OrdinalIgnoreCase)))
                 {
                     property = candidate.Value;
                     return true;
@@ -442,10 +735,40 @@ public static class XaFishingRosterParser
     }
 }
 
+public enum XaFishingRosterReadStatus
+{
+    Ready,
+    EmptyResponse,
+    MalformedResponse,
+    FullRosterUnavailable,
+    IpcFailure,
+}
+
+public sealed record XaFishingRosterEntry(
+    string CharacterKey,
+    int? FisherLevel,
+    string Source,
+    DateTimeOffset? SnapshotTimestamp);
+
+public sealed record XaFishingRosterSnapshot(
+    XaFishingRosterReadStatus Status,
+    DateTimeOffset? GeneratedAtUtc,
+    IReadOnlyList<XaFishingRosterEntry> Characters,
+    string Detail)
+{
+    public bool IsUsable => Status == XaFishingRosterReadStatus.Ready;
+
+    public static XaFishingRosterSnapshot Failure(
+        XaFishingRosterReadStatus status,
+        string detail)
+        => new(status, null, Array.Empty<XaFishingRosterEntry>(), detail);
+}
+
 public enum FishingRelogPrepAction
 {
     FinishVermaxionPostprocess,
     ReleaseVermaxionSuppression,
+    DisableAutoRetainerMultiMode,
     SendCommand,
     Wait,
 }
@@ -461,8 +784,7 @@ public static class FishingRelogPrepPolicy
         [
             new(FishingRelogPrepAction.FinishVermaxionPostprocess),
             new(FishingRelogPrepAction.ReleaseVermaxionSuppression),
-            new(FishingRelogPrepAction.SendCommand, "/ays m d"),
-            new(FishingRelogPrepAction.Wait, DelayMilliseconds: 1000),
+            new(FishingRelogPrepAction.DisableAutoRetainerMultiMode),
             new(FishingRelogPrepAction.SendCommand, $"/ays relog {normalizedKey}"),
         ];
     }
@@ -516,9 +838,6 @@ public static class FishingRelogCommandPolicy
         if (!registrationOpen)
             return new(FishingRelogRuntimeAction.Fail, "Ocean Fishing registration closed before relog completed.");
 
-        if (wrongCharacterArrived)
-            return new(FishingRelogRuntimeAction.Fail, "Relog arrived on a different character than the selected fishing target.");
-
         var cappedOverallTimeout = overallTimeout ?? DefaultOverallTimeout;
         if (startedAtUtc != default && nowUtc - startedAtUtc >= cappedOverallTimeout)
             return new(FishingRelogRuntimeAction.Fail, $"Relog did not reach the selected character within {cappedOverallTimeout.TotalSeconds:F0}s.");
@@ -529,10 +848,17 @@ public static class FishingRelogCommandPolicy
         if (!lastRelogCommandAtUtc.HasValue)
             return new(FishingRelogRuntimeAction.SendRelog, "Relog command has not been sent.");
 
+        var cappedRetryInterval = retryInterval ?? DefaultRetryInterval;
+        if (wrongCharacterArrived)
+        {
+            return nowUtc - lastRelogCommandAtUtc.Value >= cappedRetryInterval
+                ? new(FishingRelogRuntimeAction.SendRelog, $"An intermediate character arrived; retrying relog to the selected target after {cappedRetryInterval.TotalSeconds:F0}s.")
+                : new(FishingRelogRuntimeAction.Wait, "An intermediate character arrived; waiting until the relog command can be retried.");
+        }
+
         if (observableProgress)
             return new(FishingRelogRuntimeAction.Wait, "Relog transition was observed; waiting for target character.");
 
-        var cappedRetryInterval = retryInterval ?? DefaultRetryInterval;
         return nowUtc - lastRelogCommandAtUtc.Value >= cappedRetryInterval
             ? new(FishingRelogRuntimeAction.SendRelog, $"No logout or area transition was observed within {cappedRetryInterval.TotalSeconds:F0}s; retrying relog.")
             : new(FishingRelogRuntimeAction.Wait, "Waiting for observable relog progress.");
@@ -575,7 +901,7 @@ public static class OceanFishingQueuePolicy
 {
     public const int FisherJobId = 18;
     public const ushort LimsaTerritoryType = 129;
-    public const double RegistrarInteractDistance = 4.5;
+    public const double RegistrarInteractDistance = 2.0;
     public const double BoatFishingPositionTolerance = 1.5;
 
     public static OceanFishingQueueAction Decide(OceanFishingQueueSnapshot snapshot)
@@ -619,6 +945,141 @@ public static class OceanFishingQueuePolicy
     }
 }
 
+public static class OceanFishingRegistrarPolicy
+{
+    public static Vector3 ResolveApproachPosition(Vector3 fallbackPosition, Vector3? liveObjectPosition)
+        => liveObjectPosition ?? fallbackPosition;
+
+    public static bool IsWithinInteractionRange(double distance)
+        => distance <= OceanFishingQueuePolicy.RegistrarInteractDistance;
+}
+
+public enum OceanFishingRegistrationDecision
+{
+    ContinueDialogs,
+    QueueConfirmed,
+    RegistrationExpired,
+    GenuineFailure,
+}
+
+public static class OceanFishingRegistrationPolicy
+{
+    public static OceanFishingRegistrationDecision Decide(
+        bool queueConfirmed,
+        DateTimeOffset nowUtc,
+        DateTimeOffset registrationDeadlineUtc,
+        bool genuineFailure)
+    {
+        if (queueConfirmed)
+            return OceanFishingRegistrationDecision.QueueConfirmed;
+        if (genuineFailure)
+            return OceanFishingRegistrationDecision.GenuineFailure;
+        if (nowUtc >= registrationDeadlineUtc)
+            return OceanFishingRegistrationDecision.RegistrationExpired;
+        return OceanFishingRegistrationDecision.ContinueDialogs;
+    }
+
+    public static bool ShouldRetainRegistrationLeases(OceanFishingRegistrationDecision decision)
+        => decision is OceanFishingRegistrationDecision.ContinueDialogs or
+           OceanFishingRegistrationDecision.QueueConfirmed;
+}
+
+public static class OceanFishingDialoguePolicy
+{
+    public const string SheetName = "custom/006/CtsIkdEntrance_00663";
+    public const uint BoardingRow = 4;
+    public const uint EmbarkRow = 10;
+    public const string EnglishEmbarkPrefix = "Embark to ";
+
+    public static bool Matches(string actualText, string localizedSheetText)
+    {
+        var actual = actualText?.Trim() ?? string.Empty;
+        var localized = localizedSheetText?.Trim() ?? string.Empty;
+        return localized.Length > 0 &&
+               (string.Equals(actual, localized, StringComparison.Ordinal) ||
+                actual.Contains(localized, StringComparison.Ordinal));
+    }
+
+    public static bool MatchesEmbarkPrompt(string actualText, string localizedSheetText)
+    {
+        if (Matches(actualText, localizedSheetText))
+            return true;
+
+        var normalized = NormalizeWhitespace(actualText);
+        if (!normalized.StartsWith(EnglishEmbarkPrefix, StringComparison.Ordinal) ||
+            !normalized.EndsWith("?", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var destination = normalized[EnglishEmbarkPrefix.Length..^1].Trim();
+        return destination.Length > 0;
+    }
+
+    public static string DescribeEmbarkExpectation(string localizedSheetText)
+    {
+        var localized = localizedSheetText?.Trim();
+        if (string.IsNullOrWhiteSpace(localized))
+            localized = "<unavailable>";
+
+        return $"{SheetName} row {EmbarkRow} text '{localized}' or English route prompt '{EnglishEmbarkPrefix}...?'.";
+    }
+
+    private static string NormalizeWhitespace(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var parts = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(' ', parts);
+    }
+}
+
+public static class OceanFishingCompletionPolicy
+{
+    public static bool ShouldInferFromDutyContextLoss(
+        bool dutyContextPreviouslyObserved,
+        bool stillInOceanFishingTerritory,
+        bool playerAvailable,
+        bool areaTransitioning)
+        => dutyContextPreviouslyObserved &&
+           !stillInOceanFishingTerritory &&
+           playerAvailable &&
+           !areaTransitioning;
+}
+
+public enum OceanFishingAttunementAction
+{
+    UseUnlockedShard,
+    NavigateToLockedShard,
+    AttuneLockedShard,
+    VerifyAttunement,
+    WalkDirect,
+}
+
+public static class OceanFishingAttunementPolicy
+{
+    public static readonly TimeSpan VerificationWait = TimeSpan.FromSeconds(10);
+
+    public static OceanFishingAttunementAction Decide(
+        bool unlocked,
+        bool shardLoaded,
+        bool inInteractionRange,
+        bool attunementAttempted,
+        TimeSpan sinceAttempt)
+    {
+        if (unlocked)
+            return OceanFishingAttunementAction.UseUnlockedShard;
+        if (!attunementAttempted)
+            return shardLoaded && inInteractionRange
+                ? OceanFishingAttunementAction.AttuneLockedShard
+                : OceanFishingAttunementAction.NavigateToLockedShard;
+        return sinceAttempt < VerificationWait
+            ? OceanFishingAttunementAction.VerifyAttunement
+            : OceanFishingAttunementAction.WalkDirect;
+    }
+}
+
 public readonly record struct AutoRetainerMultiModeReadResult(bool Success, bool Enabled, string Error)
 {
     public static AutoRetainerMultiModeReadResult Known(bool enabled)
@@ -628,15 +1089,129 @@ public readonly record struct AutoRetainerMultiModeReadResult(bool Success, bool
         => new(false, false, error);
 }
 
+public readonly record struct PluginStateReadResult(bool Success, bool Enabled, string Error)
+{
+    public static PluginStateReadResult Known(bool enabled) => new(true, enabled, string.Empty);
+    public static PluginStateReadResult Failed(string error) => new(false, false, error);
+}
+
+public readonly record struct PluginBusyReadResult(bool Success, bool Busy, string Error)
+{
+    public static PluginBusyReadResult Known(bool busy) => new(true, busy, string.Empty);
+    public static PluginBusyReadResult Failed(string error) => new(false, false, error);
+}
+
+public static class FishingExternalStatePolicy
+{
+    public static bool ShouldRestore(bool? initialState, bool changedByVermaxion)
+        => initialState.HasValue && changedByVermaxion;
+}
+
+public static class LifestreamCommandPolicy
+{
+    public static string NormalizeForIpc(string command)
+    {
+        var normalized = command.Trim();
+        return normalized.StartsWith("/li ", StringComparison.OrdinalIgnoreCase)
+            ? normalized[4..].Trim()
+            : normalized;
+    }
+}
+
+public enum FishingCastDecision
+{
+    Suppressed = 0,
+    Attempt = 1,
+    Acknowledged = 2,
+}
+
+public readonly record struct FishingCastEvaluation(
+    FishingCastDecision Decision,
+    string Gate);
+
 public static class FishingCastPolicy
 {
+    public const string CastCommand = "/ac cast";
+    public static readonly TimeSpan FirstAttemptDelay = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(3);
+    public static readonly TimeSpan CanFishFallbackDelay = TimeSpan.FromSeconds(10);
+
+    public static FishingCastEvaluation Evaluate(
+        bool enabled,
+        bool inFishingContext,
+        bool zoneTransitionActive,
+        bool railPositionReady,
+        bool canFish,
+        bool playerAvailable,
+        bool gatheringConditionActive,
+        bool fishingConditionActive,
+        bool busy,
+        bool resultWindowVisible,
+        TimeSpan railSettlementElapsed,
+        TimeSpan sinceLastAttempt)
+    {
+        if (!enabled)
+            return Suppressed("disabled");
+        if (resultWindowVisible)
+            return Suppressed("result window visible");
+        if (!inFishingContext)
+            return Suppressed("Ocean Fishing duty context inactive");
+        if (zoneTransitionActive)
+            return Suppressed("route transition active");
+        if (gatheringConditionActive || fishingConditionActive)
+            return new FishingCastEvaluation(FishingCastDecision.Acknowledged, "Fishing/Gathering active");
+        if (!playerAvailable)
+            return Suppressed("player unavailable");
+        if (busy)
+            return Suppressed("player occupied/casting");
+        if (!railPositionReady)
+            return Suppressed("rail position invalid");
+        if (railSettlementElapsed < FirstAttemptDelay)
+            return Suppressed("waiting for movement/bait settlement");
+        if (!canFish)
+            return Suppressed("CanFish false");
+        if (sinceLastAttempt < RetryInterval)
+            return Suppressed("waiting for retry interval");
+
+        return new FishingCastEvaluation(FishingCastDecision.Attempt, string.Empty);
+    }
+
+    public static bool ShouldAdvanceRail(
+        bool canFish,
+        bool gatheringConditionActive,
+        bool fishingConditionActive,
+        bool playerAvailable,
+        bool busy,
+        TimeSpan canFishUnavailableElapsed)
+        => !canFish &&
+           !gatheringConditionActive &&
+           !fishingConditionActive &&
+           playerAvailable &&
+           !busy &&
+           canFishUnavailableElapsed >= CanFishFallbackDelay;
+
     public static bool ShouldCast(
         bool enabled,
         bool inFishingContext,
+        bool railPositionReady,
+        bool canFish,
         bool playerAvailable,
+        bool gatheringConditionActive,
+        bool fishingConditionActive,
         bool busy,
         bool resultWindowVisible)
-        => enabled && inFishingContext && playerAvailable && !busy && !resultWindowVisible;
+        => enabled &&
+           inFishingContext &&
+           railPositionReady &&
+           canFish &&
+           playerAvailable &&
+           !gatheringConditionActive &&
+           !fishingConditionActive &&
+           !busy &&
+           !resultWindowVisible;
+
+    private static FishingCastEvaluation Suppressed(string gate)
+        => new(FishingCastDecision.Suppressed, gate);
 }
 
 public sealed record FishingRepairDecision(bool ShouldRepair, string AdsMode, string Reason);

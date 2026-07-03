@@ -16,7 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\VERMAXION\Models\HenchmanTakeoverReadiness.cs" Link="HenchmanTakeoverReadiness.cs" />
     <Compile Include="..\VERMAXION\Models\AccountSelectionPolicy.cs" Link="AccountSelectionPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\LifecycleStatus.cs" Link="LifecycleStatus.cs" />
     <Compile Include="..\VERMAXION\Models\RecoveryPolicy.cs" Link="RecoveryPolicy.cs" />
@@ -25,6 +24,7 @@
     <Compile Include="..\VERMAXION\Models\LootGoblinMapGatherManualRunPolicy.cs" Link="LootGoblinMapGatherManualRunPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\JumboCactpotPurchaseMessagePolicy.cs" Link="JumboCactpotPurchaseMessagePolicy.cs" />
     <Compile Include="..\VERMAXION\Models\FishingModels.cs" Link="FishingModels.cs" />
+    <Compile Include="..\VERMAXION\Models\FisherGearsetModels.cs" Link="FisherGearsetModels.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterSortPolicy.cs" Link="CharacterSortPolicy.cs" />
     <Compile Include="..\VERMAXION\Services\FishingStartupCoordinator.cs" Link="FishingStartupCoordinator.cs" />
     <Compile Include="..\VERMAXION\PostProcessTaskOrder.cs" Link="PostProcessTaskOrder.cs" />

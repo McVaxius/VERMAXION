@@ -14,8 +14,6 @@ public class VermaxionEngine
     private static readonly TimeSpan HandoffQuietPeriod = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan HandoffBlockerLogThrottle = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan HandoffBlockerWarningThrottle = TimeSpan.FromSeconds(60);
-    private static readonly TimeSpan HenchmanTakeoverPollInterval = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan HenchmanTakeoverLogThrottle = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan NagYourMomLostStatusGrace = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusLogThrottle = TimeSpan.FromSeconds(30);
     private static readonly string[] NagYourMomRouteOrder =
@@ -106,7 +104,6 @@ public class VermaxionEngine
     private readonly Configuration configuration;
     private readonly ConfigManager configManager;
     private readonly ResetDetectionService resetService;
-    private readonly HenchmanService henchmanService;
     private readonly FCBuffService fcBuffService;
     private readonly FCBuffInventoryService fcBuffInventoryService;
     private readonly VerminionService verminionService;
@@ -164,16 +161,11 @@ public class VermaxionEngine
     private DateTime watchdogLastProgressAt = DateTime.MinValue;
     private string watchdogLastSignature = string.Empty;
     private string watchdogPauseReason = string.Empty;
-    private bool gateHenchmanTakeover;
-    private DateTime henchmanTakeoverLastCheckedAt = DateTime.MinValue;
-    private DateTime henchmanTakeoverLastLoggedAt = DateTime.MinValue;
-    private HenchmanTakeoverReadiness henchmanTakeoverReadiness;
 
     public enum EngineState
     {
         Idle,
         Starting,
-        DisablingHenchman,
         CheckingResets,
         RunningFCBuff,
         RunningVendorStock,
@@ -190,7 +182,6 @@ public class VermaxionEngine
         RunningNagYourDad,
         SettlingTask,
         SettlingFinalHandoff,
-        EnablingHenchman,
         SignalingARDone,
         Complete,
         Error,
@@ -228,7 +219,6 @@ public class VermaxionEngine
         Configuration configuration,
         ConfigManager configManager,
         ResetDetectionService resetService,
-        HenchmanService henchmanService,
         FCBuffService fcBuffService,
         FCBuffInventoryService fcBuffInventoryService,
         VerminionService verminionService,
@@ -255,7 +245,6 @@ public class VermaxionEngine
         this.configuration = configuration;
         this.configManager = configManager;
         this.resetService = resetService;
-        this.henchmanService = henchmanService;
         this.fcBuffService = fcBuffService;
         this.fcBuffInventoryService = fcBuffInventoryService;
         this.verminionService = verminionService;
@@ -343,9 +332,6 @@ public class VermaxionEngine
         ResetRunTracking();
         activePhaseFilter = phaseFilter;
         requireEnabledConfig = requireEnabled;
-        gateHenchmanTakeover = LifecyclePolicy.ShouldGateHenchmanTakeover(
-            automatedRun,
-            afterArPostprocess: phaseFilter == RunTaskPhaseFilter.AfterAR);
         activeConfig = configManager.GetActiveConfig();
         NagYourMomStatusText = "Idle";
         NagYourDadStatusText = "Idle";
@@ -390,8 +376,6 @@ public class VermaxionEngine
         ResetTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
-        // Henchman stop/restart management is deprecated. Keep the service for
-        // readiness only; do not restart Henchman from Full Stop.
         if (arService.IsProcessing)
             arService.FinishPostProcess(force: true);
         yesAlreadyIPC.Unpause();
@@ -467,16 +451,8 @@ public class VermaxionEngine
                     break;
                 }
 
-                if (ShouldHoldForHenchmanTakeover())
-                    break;
-
                 SendStartupMiscCommandBundleIfEnabled();
                 yesAlreadyIPC.Pause();
-                // Henchman stop/start management is deprecated.
-                DispatchNextQueuedTask();
-                break;
-
-            case EngineState.DisablingHenchman:
                 DispatchNextQueuedTask();
                 break;
 
@@ -1188,10 +1164,6 @@ public class VermaxionEngine
                 SetState(EngineState.SignalingARDone);
                 break;
 
-            case EngineState.EnablingHenchman:
-                BeginFinalHandoffSettling();
-                break;
-
             case EngineState.SignalingARDone:
                 var finalBlocker = runOwnedWorkStarted ? GetHandoffBlocker() : null;
                 if (finalBlocker != null)
@@ -1219,8 +1191,6 @@ public class VermaxionEngine
                         break;
                     }
                 }
-
-                // Henchman stop/start management is deprecated.
 
                 yesAlreadyIPC.Unpause();
                 CompleteRun();
@@ -1889,8 +1859,6 @@ public class VermaxionEngine
         pendingRunOutcome = RunOutcome.None;
         pendingRunSummary = string.Empty;
         requireEnabledConfig = false;
-        gateHenchmanTakeover = false;
-        ResetHenchmanTakeoverTracking();
         activeConfig = null;
         activePhaseFilter = RunTaskPhaseFilter.All;
         ResetWatchdog();
@@ -1907,7 +1875,6 @@ public class VermaxionEngine
         {
             EngineState.Idle => "Idle",
             EngineState.Starting => "Starting...",
-            EngineState.DisablingHenchman => "Disabling Henchman",
             EngineState.CheckingResets => "Checking resets",
             EngineState.RunningFCBuff => "FC Buff Refill",
             EngineState.RunningVendorStock => "Vendor Stock",
@@ -1924,7 +1891,6 @@ public class VermaxionEngine
             EngineState.RunningNagYourDad => "nag your dad",
             EngineState.SettlingTask => "Settling task handoff",
             EngineState.SettlingFinalHandoff => "Settling final handoff",
-            EngineState.EnablingHenchman => "Enabling Henchman",
             EngineState.SignalingARDone => "Signaling AR",
             EngineState.Complete => "Complete",
             EngineState.Error => "Error",
@@ -1954,48 +1920,6 @@ public class VermaxionEngine
             StopMovementForHandoff();
             yesAlreadyIPC.Pause();
         }
-    }
-
-    private bool ShouldHoldForHenchmanTakeover()
-    {
-        if (!gateHenchmanTakeover)
-            return false;
-
-        var now = DateTime.UtcNow;
-        if (henchmanTakeoverLastCheckedAt == DateTime.MinValue ||
-            now - henchmanTakeoverLastCheckedAt >= HenchmanTakeoverPollInterval)
-        {
-            henchmanTakeoverReadiness = henchmanService.GetTakeoverReadiness();
-            henchmanTakeoverLastCheckedAt = now;
-
-            if (henchmanTakeoverReadiness.AllowTakeover)
-            {
-                if (henchmanTakeoverLastLoggedAt != DateTime.MinValue)
-                    log.Information($"[Engine] Henchman takeover is safe: {henchmanTakeoverReadiness.Reason}");
-                ResetHenchmanTakeoverTracking();
-                return false;
-            }
-
-            if (henchmanTakeoverLastLoggedAt == DateTime.MinValue ||
-                now - henchmanTakeoverLastLoggedAt >= HenchmanTakeoverLogThrottle)
-            {
-                log.Warning($"[Engine] Holding automated run for Henchman: {henchmanTakeoverReadiness.Reason}");
-                henchmanTakeoverLastLoggedAt = now;
-            }
-        }
-
-        if (henchmanTakeoverReadiness.AllowTakeover)
-            return false;
-
-        StatusText = $"Waiting for Henchman: {henchmanTakeoverReadiness.DisplayDescription}";
-        return true;
-    }
-
-    private void ResetHenchmanTakeoverTracking()
-    {
-        henchmanTakeoverLastCheckedAt = DateTime.MinValue;
-        henchmanTakeoverLastLoggedAt = DateTime.MinValue;
-        henchmanTakeoverReadiness = default;
     }
 
     private CharacterConfig GetLiveActiveConfig()
