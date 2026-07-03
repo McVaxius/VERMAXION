@@ -8,13 +8,11 @@ namespace VERMAXION.Services;
 
 public sealed class FishingRelogCoordinator
 {
-    private static readonly TimeSpan MultiModeCommandSettleDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan WaitLogInterval = TimeSpan.FromSeconds(15);
 
     private readonly IPluginLog log;
     private readonly ARPostProcessService arPostProcessService;
     private readonly AutoRetainerIPC autoRetainerIPC;
-    private readonly Configuration configuration;
     private readonly ConfigManager configManager;
 
     private FishingRelogState state = FishingRelogState.Idle;
@@ -22,7 +20,7 @@ public sealed class FishingRelogCoordinator
     private string sourceCharacterKey = string.Empty;
     private DateTimeOffset startedAtUtc;
     private DateTimeOffset? lastRelogCommandAtUtc;
-    private DateTimeOffset? multiModeCommandSentAtUtc;
+    private DateTimeOffset registrationDeadlineUtc;
     private DateTimeOffset lastWaitLogAtUtc;
     private string lastWaitReason = string.Empty;
     private int relogAttempts;
@@ -38,17 +36,15 @@ public sealed class FishingRelogCoordinator
         IPluginLog log,
         ARPostProcessService arPostProcessService,
         AutoRetainerIPC autoRetainerIPC,
-        Configuration configuration,
         ConfigManager configManager)
     {
         this.log = log;
         this.arPostProcessService = arPostProcessService;
         this.autoRetainerIPC = autoRetainerIPC;
-        this.configuration = configuration;
         this.configManager = configManager;
     }
 
-    public bool RequestRelog(string characterKey)
+    public bool RequestRelog(string characterKey, DateTimeOffset registrationDeadlineUtc)
     {
         if (IsActive)
             return false;
@@ -60,7 +56,7 @@ public sealed class FishingRelogCoordinator
         sourceCharacterKey = GetCurrentCharacterKey();
         startedAtUtc = DateTimeOffset.UtcNow;
         lastRelogCommandAtUtc = null;
-        multiModeCommandSentAtUtc = null;
+        this.registrationDeadlineUtc = registrationDeadlineUtc.ToUniversalTime();
         lastWaitLogAtUtc = default;
         lastWaitReason = string.Empty;
         relogAttempts = 0;
@@ -68,7 +64,7 @@ public sealed class FishingRelogCoordinator
         failureReason = string.Empty;
         state = FishingRelogState.FinishingPostprocess;
         StatusText = $"Preparing relog to {targetCharacterKey}";
-        log.Information($"[Fishing][Relog] Starting observed relog sequence for {targetCharacterKey}; source={sourceCharacterKey}");
+        log.Information($"[Fishing][Relog] Starting observed relog sequence for {targetCharacterKey}; source={sourceCharacterKey}, deadline={this.registrationDeadlineUtc:u}");
         return true;
     }
 
@@ -92,7 +88,7 @@ public sealed class FishingRelogCoordinator
         sourceCharacterKey = string.Empty;
         startedAtUtc = default;
         lastRelogCommandAtUtc = null;
-        multiModeCommandSentAtUtc = null;
+        registrationDeadlineUtc = default;
         lastWaitLogAtUtc = default;
         lastWaitReason = string.Empty;
         relogAttempts = 0;
@@ -133,18 +129,18 @@ public sealed class FishingRelogCoordinator
                 break;
 
             case FishingRelogState.DisablingAutoRetainerMultiMode:
-                if (!multiModeCommandSentAtUtc.HasValue)
+                var multiMode = autoRetainerIPC.ReadMultiModeEnabled();
+                if (!multiMode.Success)
                 {
-                    const string command = "/ays m d";
-                    log.Information(FishingRelogDiagnostics.FormatCommand(new FishingRelogPrepStep(FishingRelogPrepAction.SendCommand, command)));
-                    CommandHelper.SendCommand(command);
-                    multiModeCommandSentAtUtc = DateTimeOffset.UtcNow;
-                    StatusText = "Waiting for AutoRetainer multi-mode disable to settle";
+                    Fail($"Could not verify AutoRetainer multi-mode before relog: {multiMode.Error}");
                     return;
                 }
 
-                if (DateTimeOffset.UtcNow - multiModeCommandSentAtUtc.Value < MultiModeCommandSettleDelay)
+                if (multiMode.Enabled && !autoRetainerIPC.TrySetMultiModeEnabled(false, out var multiModeError))
+                {
+                    Fail($"Could not disable AutoRetainer multi-mode before relog: {multiModeError}");
                     return;
+                }
 
                 SetState(FishingRelogState.WaitingForRelogReadiness);
                 break;
@@ -164,15 +160,13 @@ public sealed class FishingRelogCoordinator
         var ready = IsReadyForRelog(out var blockedReason);
         var targetReached = IsTargetReached();
         var wrongCharacterArrived = IsWrongCharacterArrival();
-        var registrationOpen = OceanFishingSchedulePolicy.IsStartupWindowActive(
-            now,
-            configuration.OceanFishingPreWindowOffsetMinutes);
+        var runWindowValid = registrationDeadlineUtc != default && now < registrationDeadlineUtc;
 
         var decision = FishingRelogCommandPolicy.Evaluate(
             now,
             startedAtUtc,
             lastRelogCommandAtUtc,
-            registrationOpen,
+            runWindowValid,
             ready,
             blockedReason,
             targetReached,

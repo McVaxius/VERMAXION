@@ -163,8 +163,21 @@ public class MainWindow : Window, IDisposable
                 "run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
                 "run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
-            DrawTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingService.StatusText),
-                "run##Fishing", plugin.RunFishingStartupManual, "WIP");
+            var fishingButtonsDisabled = engine.IsRunning ||
+                                         plugin.IsFishingRunActive ||
+                                         plugin.FisherGearsetTestService.IsActive;
+            DrawTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingRunStatusText),
+                "R##Fishing", plugin.RunFishingStartupManual, "WIP",
+                buttonDisabled: fishingButtonsDisabled,
+                buttonTooltip: fishingButtonsDisabled ? "Fishing, relog, or engine work is active. Use FULL STOP to cancel." : null,
+                secondaryButtonLabel: "T##FishingTest",
+                secondaryOnClick: plugin.RunFishingStartupTest,
+                secondaryButtonDisabled: fishingButtonsDisabled,
+                secondaryButtonTooltip: "Run a full account-level Ocean Fishing test using the next real registration.",
+                tertiaryButtonLabel: "F##FishingGearsetTest",
+                tertiaryOnClick: plugin.RunFishingGearsetTest,
+                tertiaryButtonDisabled: fishingButtonsDisabled,
+                tertiaryButtonTooltip: "Equip and verify the current character's first saved Fisher gearset.");
             DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
                 "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
@@ -181,7 +194,6 @@ public class MainWindow : Window, IDisposable
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
                 }, "OK");
-            // Deprecated: old Henchman stop/restart management is no longer exposed.
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
                 "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
@@ -401,7 +413,15 @@ public class MainWindow : Window, IDisposable
         string maturity = "-",
         string? statusTooltip = null,
         bool buttonDisabled = false,
-        string? buttonTooltip = null)
+        string? buttonTooltip = null,
+        string? secondaryButtonLabel = null,
+        Action? secondaryOnClick = null,
+        bool secondaryButtonDisabled = false,
+        string? secondaryButtonTooltip = null,
+        string? tertiaryButtonLabel = null,
+        Action? tertiaryOnClick = null,
+        bool tertiaryButtonDisabled = false,
+        string? tertiaryButtonTooltip = null)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -419,6 +439,26 @@ public class MainWindow : Window, IDisposable
         ImGui.EndDisabled();
         if (!string.IsNullOrWhiteSpace(buttonTooltip) && ImGui.IsItemHovered())
             ImGui.SetTooltip(buttonTooltip);
+        if (!string.IsNullOrWhiteSpace(secondaryButtonLabel) && secondaryOnClick != null)
+        {
+            ImGui.SameLine();
+            ImGui.BeginDisabled(secondaryButtonDisabled);
+            if (ImGui.SmallButton(secondaryButtonLabel))
+                secondaryOnClick();
+            ImGui.EndDisabled();
+            if (!string.IsNullOrWhiteSpace(secondaryButtonTooltip) && ImGui.IsItemHovered())
+                ImGui.SetTooltip(secondaryButtonTooltip);
+        }
+        if (!string.IsNullOrWhiteSpace(tertiaryButtonLabel) && tertiaryOnClick != null)
+        {
+            ImGui.SameLine();
+            ImGui.BeginDisabled(tertiaryButtonDisabled);
+            if (ImGui.SmallButton(tertiaryButtonLabel))
+                tertiaryOnClick();
+            ImGui.EndDisabled();
+            if (!string.IsNullOrWhiteSpace(tertiaryButtonTooltip) && ImGui.IsItemHovered())
+                ImGui.SetTooltip(tertiaryButtonTooltip);
+        }
         ImGui.TableSetColumnIndex(4);
         
         // Color code maturity
@@ -481,11 +521,11 @@ public class MainWindow : Window, IDisposable
 
     private static string GetFishingStatus(Models.CharacterConfig config, string serviceStatus)
     {
-        if (!config.EnableFishing)
-            return "Off";
-
         if (!string.IsNullOrWhiteSpace(serviceStatus) && serviceStatus != "Idle")
             return serviceStatus;
+
+        if (!config.EnableFishing)
+            return "Off";
 
         return "AutoHook casts";
     }

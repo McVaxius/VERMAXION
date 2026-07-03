@@ -14,7 +14,6 @@ public static class UIConstants
         public const string MaxPurchaseAttempts = "Max Purchase Attempts";
         public const string MinFCPoints = "Min FC Points";
         public const string MinGil = "Min Gil";
-        public const string HenchmanManagement = "Henchman Disable/Enable";
         public const string MinionRoulette = "Minion Roulette";
         public const string SeasonalGearRoulette = "Seasonal Gear Roulette";
         public const string GearUpdater = "Gear Updater";
@@ -71,7 +70,6 @@ public static class UIConstants
     public static class Tooltips
     {
         public const string KrangleNames = "Replace character names with exercise words for screenshots";
-        public const string HenchmanManagement = "Stop Henchman before tasks, restart after";
         public const string MinionRoulette = "Fire off /minion roulette once per AR postprocess";
         public const string SeasonalGearRoulette = "Randomly equip seasonal event gear for a fun ensemble each AR run";
         public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";

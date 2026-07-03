@@ -18,6 +18,8 @@ public sealed class AutoRetainerIPC
     private readonly ICallGateSubscriber<bool> getSuppressedSubscriber;
     private readonly ICallGateSubscriber<bool, object> setSuppressedSubscriber;
     private readonly ICallGateSubscriber<bool> isBusySubscriber;
+    private readonly ICallGateSubscriber<bool> getMultiModeEnabledSubscriber;
+    private readonly ICallGateSubscriber<bool, object> setMultiModeEnabledSubscriber;
     private bool suppressionOwnedByVermaxion;
     private DateTime lastReleaseAttemptAt = DateTime.MinValue;
 
@@ -30,6 +32,8 @@ public sealed class AutoRetainerIPC
         getSuppressedSubscriber = pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.GetSuppressed");
         setSuppressedSubscriber = pluginInterface.GetIpcSubscriber<bool, object>("AutoRetainer.SetSuppressed");
         isBusySubscriber = pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.PluginState.IsBusy");
+        getMultiModeEnabledSubscriber = pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.GetMultiModeEnabled");
+        setMultiModeEnabledSubscriber = pluginInterface.GetIpcSubscriber<bool, object>("AutoRetainer.SetMultiModeEnabled");
         LastSnapshot = new SuppressionSnapshot(false, false, false);
     }
 
@@ -54,20 +58,32 @@ public sealed class AutoRetainerIPC
     }
 
     public bool IsBusy()
+        => ReadBusyState().Busy;
+
+    public PluginBusyReadResult ReadBusyState()
     {
         try
         {
-            return isBusySubscriber.InvokeFunc();
+            return PluginBusyReadResult.Known(isBusySubscriber.InvokeFunc());
         }
         catch (Exception ex)
         {
             log.Warning($"[AR] PluginState.IsBusy failed: {ex.Message}");
-            return false;
+            return PluginBusyReadResult.Failed(ex.Message);
         }
     }
 
     public AutoRetainerMultiModeReadResult ReadMultiModeEnabled()
     {
+        try
+        {
+            return AutoRetainerMultiModeReadResult.Known(getMultiModeEnabledSubscriber.InvokeFunc());
+        }
+        catch (Exception ipcException)
+        {
+            log.Warning($"[AR] GetMultiModeEnabled IPC failed; trying local reflection fallback: {ipcException.Message}");
+        }
+
         try
         {
             if (!DalamudReflector.TryGetDalamudPlugin(
@@ -99,6 +115,38 @@ public sealed class AutoRetainerIPC
         {
             log.Warning($"[AR] MultiMode.Enabled reflection failed: {ex.Message}");
             return AutoRetainerMultiModeReadResult.Failed(ex.Message);
+        }
+    }
+
+    public bool TrySetMultiModeEnabled(bool enabled, out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            setMultiModeEnabledSubscriber.InvokeAction(enabled);
+            var verification = ReadMultiModeEnabled();
+            if (!verification.Success)
+            {
+                error = $"SetMultiModeEnabled({enabled}) was sent but verification failed: {verification.Error}";
+                log.Warning($"[AR] {error}");
+                return false;
+            }
+
+            if (verification.Enabled != enabled)
+            {
+                error = $"SetMultiModeEnabled({enabled}) did not change the verified state.";
+                log.Warning($"[AR] {error}");
+                return false;
+            }
+
+            log.Information($"[AR] MultiMode enabled={enabled} via IPC and verified.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            log.Warning($"[AR] SetMultiModeEnabled({enabled}) IPC failed: {ex.Message}");
+            return false;
         }
     }
 

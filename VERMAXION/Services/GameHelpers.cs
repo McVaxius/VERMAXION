@@ -120,7 +120,8 @@ public static class GameHelpers
             // AutoRetainer pattern: Filter by ObjectKind FIRST to avoid players entirely
             if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
                 obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc ||
-                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj)
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj ||
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Aetheryte)
             {
                 // Then check name matching (case-insensitive like AutoRetainer)
                 if (obj.Name.TextValue.Equals(name, StringComparison.OrdinalIgnoreCase))
@@ -136,7 +137,8 @@ public static class GameHelpers
         {
             if (obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc ||
                 obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc ||
-                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj)
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj ||
+                obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Aetheryte)
             {
                 if (obj.BaseId == dataId)
                     return obj;
@@ -295,6 +297,76 @@ public static class GameHelpers
         return true;
     }
 
+    public static unsafe bool TrySelectStringExact(string expectedEntry, out string visibleEntries)
+    {
+        visibleEntries = string.Empty;
+        try
+        {
+            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectString", 1);
+            if (addonPtr == 0 || !((AtkUnitBase*)addonPtr)->IsVisible)
+                return false;
+
+            var master = new AddonMaster.SelectString(addonPtr);
+            var entries = new List<string>();
+            var expected = NormalizeAddonText(expectedEntry).Trim();
+            for (var i = 0; i < master.EntryCount; i++)
+            {
+                var text = NormalizeAddonText(master.Entries[i].Text).Trim();
+                entries.Add($"{i}:{text}");
+                if (!string.Equals(text, expected, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                visibleEntries = string.Join(", ", entries);
+                FireAddonCallback("SelectString", true, i);
+                Plugin.Log.Information($"[SelectString] Selected exact entry {i}: '{text}'");
+                return true;
+            }
+
+            visibleEntries = string.Join(", ", entries);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            visibleEntries = $"read failed: {ex.Message}";
+            Plugin.Log.Warning($"[SelectString] Exact selection failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    public static bool TrySelectFirstStringEntry()
+    {
+        if (!IsAddonVisible("SelectString"))
+            return false;
+
+        return TryFireAddonCallback("SelectString", true, 0);
+    }
+
+    public static bool TryCommenceDuty()
+    {
+        if (!IsAddonVisible("ContentsFinderConfirm"))
+            return false;
+
+        return TryFireAddonCallback("ContentsFinderConfirm", true, 8);
+    }
+
+    public static unsafe bool TrySetLocalPlayerRotation(float rotation)
+    {
+        try
+        {
+            var player = Plugin.ObjectTable.LocalPlayer;
+            if (player == null || player.Address == nint.Zero)
+                return false;
+
+            ((NativeGameObject*)player.Address)->SetRotation(rotation);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Fishing] Failed to set player rotation: {ex.Message}");
+            return false;
+        }
+    }
+
     /// <summary>
     /// Click Yes on any visible SelectYesno dialog.
     /// Pattern from LootGoblin GameHelpers.
@@ -372,7 +444,8 @@ public static class GameHelpers
         Func<string, bool> isAllowed,
         string reason,
         bool allowUnreadable,
-        out string promptText)
+        out string promptText,
+        string expectedDescription = "")
     {
         promptText = string.Empty;
 
@@ -392,7 +465,10 @@ public static class GameHelpers
             {
                 if (!isAllowed(promptText))
                 {
-                    Plugin.Log.Debug($"[YES/NO] SelectYesno prompt rejected for {reason}: '{promptText}'");
+                    var expectedSuffix = string.IsNullOrWhiteSpace(expectedDescription)
+                        ? string.Empty
+                        : $" Expected {expectedDescription}";
+                    Plugin.Log.Debug($"[YES/NO] SelectYesno prompt rejected for {reason}: '{promptText}'.{expectedSuffix}");
                     return false;
                 }
 

@@ -57,9 +57,6 @@ internal static class LifecyclePolicy
 {
     public static bool CanStart(bool isRunning) => !isRunning;
 
-    public static bool ShouldGateHenchmanTakeover(bool automatedRun, bool afterArPostprocess = false)
-        => automatedRun && !afterArPostprocess;
-
     public static bool RequiresSettling(bool ownedWorkStarted) => ownedWorkStarted;
 
     public static bool ShouldSkipBeforeArForTimeout(TimeSpan elapsed, bool workStarted, TimeSpan timeout)
@@ -123,39 +120,6 @@ internal static class BeforeArArmedStallPolicy
                !loginTransitionStarted &&
                autoRetainerBusy &&
                nowUtc - armedAtUtc >= (timeout ?? DefaultTimeout);
-    }
-}
-
-internal readonly record struct AutomatedPostprocessDecision(
-    bool StartEngine,
-    bool FinishPostprocess,
-    ARPostProcessFinishMode FinishMode,
-    bool ReleaseAutoRetainerSuppression,
-    RunOutcome Outcome,
-    string Summary);
-
-internal static class AutomatedPostprocessPolicy
-{
-    public static AutomatedPostprocessDecision EvaluateHenchmanPreflight(HenchmanTakeoverReadiness readiness)
-    {
-        if (readiness.AllowTakeover)
-        {
-            return new AutomatedPostprocessDecision(
-                StartEngine: true,
-                FinishPostprocess: false,
-                FinishMode: ARPostProcessFinishMode.Normal,
-                ReleaseAutoRetainerSuppression: false,
-                Outcome: RunOutcome.None,
-                Summary: string.Empty);
-        }
-
-        return new AutomatedPostprocessDecision(
-            StartEngine: false,
-            FinishPostprocess: true,
-            FinishMode: ARPostProcessFinishMode.ReleaseOnly,
-            ReleaseAutoRetainerSuppression: true,
-            Outcome: RunOutcome.Skipped,
-            Summary: $"Waiting for Henchman: {readiness.Reason}");
     }
 }
 
