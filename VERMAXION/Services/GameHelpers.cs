@@ -28,6 +28,8 @@ namespace VERMAXION.Services;
 
 public static class GameHelpers
 {
+    private const string OceanFishingResultAddonName = "IKDResult";
+
     /// <summary>
     /// Interact with a targeted game object via TargetSystem.
     /// </summary>
@@ -246,6 +248,252 @@ public static class GameHelpers
             Plugin.Log.Error($"[Callback] Failed for '{addonName}'. Args: {formattedArgs}. Error: {ex.Message}");
             return false;
         }
+    }
+
+    public static unsafe bool IsAddonReady(string addonName)
+    {
+        try
+        {
+            return ECommons.GenericHelpers.TryGetAddonByName<AtkUnitBase>(addonName, out var addon) &&
+                   ECommons.GenericHelpers.IsAddonReady(addon);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static unsafe bool TryFireReadyAddonCallback(string addonName, bool updateState, params object[] args)
+    {
+        var formattedArgs = FormatCallbackArgs(updateState, args);
+        try
+        {
+            if (!ECommons.GenericHelpers.TryGetAddonByName<AtkUnitBase>(addonName, out var addon) ||
+                !ECommons.GenericHelpers.IsAddonReady(addon))
+            {
+                Plugin.Log.Debug($"[Callback] Addon '{addonName}' not ready. Args: {formattedArgs}");
+                return false;
+            }
+
+            Callback.Fire(addon, updateState, args);
+            Plugin.Log.Information($"[Callback] Fired on ready addon '{addonName}'. Args: {formattedArgs}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Error($"[Callback] Failed for ready addon '{addonName}'. Args: {formattedArgs}. Error: {ex.Message}");
+            return false;
+        }
+    }
+
+    public static unsafe bool IsIKDResultAddonPresent(out string addonState)
+    {
+        ProbeIKDResultAddon(out _, out var ecommonsProbe, out _, out var raptureProbe);
+        addonState = FormatIKDResultAddonState(ecommonsProbe, raptureProbe, "none");
+        return ecommonsProbe.Found || raptureProbe.Found;
+    }
+
+    public static unsafe bool TryCloseIKDResult(out string closePath, out string addonState)
+    {
+        closePath = "none";
+        ProbeIKDResultAddon(out var ecommonsAddon, out var ecommonsProbe, out var raptureAddon, out var raptureProbe);
+
+        if (ecommonsAddon != null && ecommonsProbe.Ready)
+        {
+            closePath = "ECommons ready lookup";
+            if (TryFireIKDResultClose(ecommonsAddon, closePath, ecommonsProbe, raptureProbe, out addonState))
+                return true;
+
+            ecommonsProbe.Error = AppendProbeError(ecommonsProbe.Error, "close callback failed");
+        }
+
+        if (raptureAddon != null && (raptureProbe.Ready || raptureProbe.Visible || raptureProbe.Loaded))
+        {
+            closePath = "Rapture name lookup";
+            if (TryFireIKDResultClose(raptureAddon, closePath, ecommonsProbe, raptureProbe, out addonState))
+                return true;
+
+            raptureProbe.Error = AppendProbeError(raptureProbe.Error, "close callback failed");
+        }
+
+        closePath = "none";
+        addonState = FormatIKDResultAddonState(ecommonsProbe, raptureProbe, closePath);
+        if (ecommonsProbe.Error.Contains("close callback failed", StringComparison.Ordinal) ||
+            raptureProbe.Error.Contains("close callback failed", StringComparison.Ordinal))
+            Plugin.Log.Warning($"[Fishing][IKDResult] Close callback did not fire; {addonState}");
+        else
+            Plugin.Log.Debug($"[Fishing][IKDResult] Close lookup did not fire; {addonState}");
+        return false;
+    }
+
+    private static unsafe bool TryFireIKDResultClose(
+        AtkUnitBase* addon,
+        string closePath,
+        AddonProbe ecommonsProbe,
+        AddonProbe raptureProbe,
+        out string addonState)
+    {
+        try
+        {
+            Callback.Fire(addon, true, 0);
+            addonState = FormatIKDResultAddonState(ecommonsProbe, raptureProbe, closePath);
+            Plugin.Log.Information($"[Fishing] Closed Ocean Fishing result addon: {OceanFishingResultAddonName} true 0 via {closePath}; {addonState}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            addonState = FormatIKDResultAddonState(ecommonsProbe, raptureProbe, closePath);
+            Plugin.Log.Warning($"[Fishing][IKDResult] Failed close callback via {closePath}: {ex.Message}; {addonState}");
+            return false;
+        }
+    }
+
+    private static unsafe void ProbeIKDResultAddon(
+        out AtkUnitBase* ecommonsAddon,
+        out AddonProbe ecommonsProbe,
+        out AtkUnitBase* raptureAddon,
+        out AddonProbe raptureProbe)
+    {
+        ecommonsAddon = null;
+        raptureAddon = null;
+        ecommonsProbe = new AddonProbe("ECommons ready lookup");
+        raptureProbe = new AddonProbe("Rapture name lookup");
+
+        try
+        {
+            if (ECommons.GenericHelpers.TryGetAddonByName<AtkUnitBase>(OceanFishingResultAddonName, out ecommonsAddon) &&
+                ecommonsAddon != null)
+                PopulateAddonProbe(ecommonsAddon, ref ecommonsProbe);
+        }
+        catch (Exception ex)
+        {
+            ecommonsProbe.Error = ex.Message;
+        }
+
+        try
+        {
+            var manager = RaptureAtkUnitManager.Instance();
+            if (manager == null)
+            {
+                raptureProbe.Error = "RaptureAtkUnitManager.Instance() returned null";
+                return;
+            }
+
+            raptureAddon = manager->GetAddonByName(OceanFishingResultAddonName);
+            if (raptureAddon != null)
+                PopulateAddonProbe(raptureAddon, ref raptureProbe);
+        }
+        catch (Exception ex)
+        {
+            raptureProbe.Error = ex.Message;
+        }
+    }
+
+    private static unsafe void PopulateAddonProbe(AtkUnitBase* addon, ref AddonProbe probe)
+    {
+        probe.Found = true;
+        probe.Visible = TryReadAddonVisible(addon, out var visibleError);
+        probe.LoadState = TryReadAddonLoadState(addon, out var loadStateError);
+        probe.Loaded = TryReadAddonLoaded(addon, probe.LoadState, out var loadedError);
+        probe.Ready = TryReadAddonReady(addon, out var readyError);
+        probe.Error = JoinProbeErrors(visibleError, loadStateError, loadedError, readyError);
+    }
+
+    private static unsafe bool TryReadAddonVisible(AtkUnitBase* addon, out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            return addon != null && addon->IsVisible;
+        }
+        catch (Exception ex)
+        {
+            error = $"visible={ex.Message}";
+            return false;
+        }
+    }
+
+    private static unsafe bool TryReadAddonReady(AtkUnitBase* addon, out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            return addon != null && ECommons.GenericHelpers.IsAddonReady(addon);
+        }
+        catch (Exception ex)
+        {
+            error = $"ready={ex.Message}";
+            return false;
+        }
+    }
+
+    private static unsafe string TryReadAddonLoadState(AtkUnitBase* addon, out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            return addon == null ? "null" : addon->LoadState.ToString();
+        }
+        catch (Exception ex)
+        {
+            error = $"loadState={ex.Message}";
+            return "unreadable";
+        }
+    }
+
+    private static unsafe bool TryReadAddonLoaded(AtkUnitBase* addon, string loadState, out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            if (addon == null)
+                return false;
+
+            return addon->RootNode != null ||
+                   string.Equals(loadState, "Loaded", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            error = $"loaded={ex.Message}";
+            return false;
+        }
+    }
+
+    private static string FormatIKDResultAddonState(AddonProbe ecommonsProbe, AddonProbe raptureProbe, string closePath)
+        => $"path={closePath}; {FormatAddonProbe(ecommonsProbe)}; {FormatAddonProbe(raptureProbe)}";
+
+    private static string FormatAddonProbe(AddonProbe probe)
+    {
+        var state = $"{probe.Source}: {(probe.Found ? "found" : "not found")}, visible={probe.Visible}, ready={probe.Ready}, loaded={probe.Loaded}, loadState={probe.LoadState}";
+        return string.IsNullOrWhiteSpace(probe.Error) ? state : $"{state}, error={probe.Error}";
+    }
+
+    private static string JoinProbeErrors(params string[] errors)
+        => string.Join("; ", errors.Where(error => !string.IsNullOrWhiteSpace(error)));
+
+    private static string AppendProbeError(string current, string error)
+        => string.IsNullOrWhiteSpace(current) ? error : $"{current}; {error}";
+
+    private struct AddonProbe
+    {
+        public AddonProbe(string source)
+        {
+            Source = source;
+            Found = false;
+            Visible = false;
+            Ready = false;
+            Loaded = false;
+            LoadState = "n/a";
+            Error = string.Empty;
+        }
+
+        public string Source;
+        public bool Found;
+        public bool Visible;
+        public bool Ready;
+        public bool Loaded;
+        public string LoadState;
+        public string Error;
     }
 
     public static bool TargetAndInteractByDataId(uint dataId, string fallbackName)
