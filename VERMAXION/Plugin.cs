@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Dalamud.Game.Command;
 using Dalamud.Game.Chat;
 using Dalamud.Game.ClientState.Conditions;
@@ -39,6 +40,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
+    private const string ExpectedDebugPluginPath = @"D:\temp\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
     public ConfigManager ConfigManager { get; init; }
@@ -131,6 +133,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public Plugin()
     {
         ECommonsMain.Init(PluginInterface, this);
+        LogPluginAssemblyDetails();
 
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         ConfigManager = new ConfigManager(PluginInterface, Log);
@@ -233,6 +236,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ChatGui.ChatMessage += OnChatMessage;
 
         Log.Information("===Vermaxion loaded!===");
+    }
+
+    private static void LogPluginAssemblyDetails()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var version = assembly.GetName().Version?.ToString() ?? "unknown";
+        var path = string.IsNullOrWhiteSpace(assembly.Location) ? "unknown" : assembly.Location;
+        Log.Information($"[Plugin] VERMAXION assembly loaded from '{path}', version '{version}', expected debug path '{ExpectedDebugPluginPath}'");
     }
 
     public void Dispose()
