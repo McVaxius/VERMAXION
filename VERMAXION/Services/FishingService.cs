@@ -310,10 +310,12 @@ public sealed class FishingService
             $"generated={FormatSnapshotTimestamp(roster.GeneratedAtUtc)}, detail={roster.Detail}");
         if (!roster.IsUsable)
         {
+            var reason =
+                "XADB 0.0.0.39+ contract v6 roster IPC is required via XA.Database.GetAccountCharacterListJson; " +
+                $"status={roster.Status}, detail={roster.Detail}";
             log.Warning(
-                $"[Fishing][Selection] Selection failed closed because the XADB full roster is unavailable: " +
-                $"status={roster.Status}, detail={roster.Detail}");
-            return Array.Empty<FishingSelectionResult>();
+                $"[Fishing][Selection] Selection failed closed because the XADB full roster is unavailable: {reason}");
+            return [FishingSelectionResult.None(reason)];
         }
 
         var rosterByCharacterKey = roster.Characters.ToDictionary(

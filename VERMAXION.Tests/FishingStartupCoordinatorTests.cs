@@ -313,6 +313,38 @@ public sealed class FishingStartupCoordinatorTests
     }
 
     [Fact]
+    public void StartupReportsXadbFailureInsteadOfGenericEmptyCandidateReason()
+    {
+        const string xadbFailure =
+            "XADB 0.0.0.39+ contract v6 roster IPC is required via XA.Database.GetAccountCharacterListJson; status=UnsupportedContract, detail=contract v5 is unsupported.";
+        var manualRuntime = RuntimeForRelog();
+        manualRuntime.CandidateQueue = [FishingSelectionResult.None(xadbFailure)];
+        var manualCoordinator = new FishingStartupCoordinator(manualRuntime);
+        var testRuntime = RuntimeForRelog();
+        testRuntime.CandidateQueue = [FishingSelectionResult.None(xadbFailure)];
+        var testCoordinator = new FishingStartupCoordinator(testRuntime);
+
+        var manual = manualCoordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+        var test = testCoordinator.StartTest(new DateTimeOffset(2026, 7, 2, 1, 20, 0, TimeSpan.Zero));
+
+        Assert.Equal(FishingRunMode.Scheduled, manual.Mode);
+        Assert.Equal(FishingStartupAction.None, manual.Action);
+        Assert.False(manual.Selection.Selected);
+        Assert.Equal(xadbFailure, manual.Reason);
+        Assert.DoesNotContain("No eligible Ocean Fishing candidates remain", manual.Reason);
+        Assert.Equal(0, manualRuntime.RelogRequests);
+        Assert.Equal(0, manualRuntime.FishingStarts);
+
+        Assert.Equal(FishingRunMode.Test, test.Mode);
+        Assert.Equal(FishingStartupAction.None, test.Action);
+        Assert.False(test.Selection.Selected);
+        Assert.Equal(xadbFailure, test.Reason);
+        Assert.DoesNotContain("No eligible Ocean Fishing candidates remain", test.Reason);
+        Assert.Equal(0, testRuntime.RelogRequests);
+        Assert.Equal(0, testRuntime.FishingStarts);
+    }
+
+    [Fact]
     public void TestRelogContinuationCanStartTargetPrepBeforeRegistrationOpens()
     {
         var runtime = RuntimeForRelog();
