@@ -100,11 +100,11 @@ public sealed class FishingPolicyTests
     public void XadbParserFailsClosedForUnavailableOrMalformedFullRoster()
     {
         var unavailable = XaFishingRosterParser.Parse(
-            """{ "isFullRosterAvailable": false, "characters": [] }""");
+            """{ "ipcContractVersion": 6, "isFullRosterAvailable": false, "characters": [] }""");
         var missingStatus = XaFishingRosterParser.Parse(
-            """{ "characters": [] }""");
+            """{ "ipcContractVersion": 6, "characters": [] }""");
         var malformedCharacter = XaFishingRosterParser.Parse(
-            """{ "isFullRosterAvailable": true, "characters": [{ "characterKey": "Bad@World", "jobLevels": [] }] }""");
+            """{ "ipcContractVersion": 6, "isFullRosterAvailable": true, "characters": [{ "characterKey": "Bad@World", "jobLevels": [] }] }""");
 
         Assert.Equal(XaFishingRosterReadStatus.FullRosterUnavailable, unavailable.Status);
         Assert.False(unavailable.IsUsable);
@@ -115,12 +115,30 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
+    public void XadbParserFailsClosedForMissingOrUnsupportedContract()
+    {
+        var missingContract = XaFishingRosterParser.Parse(
+            """{ "isFullRosterAvailable": true, "characters": [] }""");
+        var oldContract = XaFishingRosterParser.Parse(
+            """{ "ipcContractVersion": 5, "isFullRosterAvailable": true, "characters": [] }""");
+
+        Assert.Equal(XaFishingRosterReadStatus.UnsupportedContract, missingContract.Status);
+        Assert.False(missingContract.IsUsable);
+        Assert.Contains("XADB 0.0.0.39+ contract v6", missingContract.Detail);
+        Assert.Equal(XaFishingRosterReadStatus.UnsupportedContract, oldContract.Status);
+        Assert.False(oldContract.IsUsable);
+        Assert.Contains("contract v5 is unsupported", oldContract.Detail);
+        Assert.Contains("XADB 0.0.0.39+ contract v6", oldContract.Detail);
+    }
+
+    [Fact]
     public void CurrentCharacterSelectionUsesXadbLevelDespiteBogusLiveLevel()
     {
         const int bogusLiveLevel = 0;
         var roster = XaFishingRosterParser.Parse(
             """
             {
+              "ipcContractVersion": 6,
               "isFullRosterAvailable": true,
               "characters": [
                 {

@@ -10,11 +10,13 @@ public sealed class XADatabaseIPCClient
 {
     private readonly IPluginLog log;
     private readonly ICallGateSubscriber<string> getAccountCharacterListJsonSubscriber;
+    private readonly ICallGateSubscriber<string> getVersionSubscriber;
 
     public XADatabaseIPCClient(IDalamudPluginInterface pluginInterface, IPluginLog log)
     {
         this.log = log;
         getAccountCharacterListJsonSubscriber = pluginInterface.GetIpcSubscriber<string>("XA.Database.GetAccountCharacterListJson");
+        getVersionSubscriber = pluginInterface.GetIpcSubscriber<string>("XA.Database.GetVersion");
     }
 
     public XaFishingRosterSnapshot GetFishingRoster()
@@ -25,18 +27,36 @@ public sealed class XADatabaseIPCClient
             var roster = XaFishingRosterParser.Parse(json);
             if (!roster.IsUsable)
             {
+                var xadbVersion = ReadVersionForDiagnostics();
                 log.Warning(
-                    $"[XADB] Fisher roster rejected: status={roster.Status}, detail={roster.Detail}");
+                    $"[XADB] Fisher roster rejected: status={roster.Status}, detail={roster.Detail}, " +
+                    $"xadbVersion={xadbVersion}");
             }
 
             return roster;
         }
         catch (Exception ex)
         {
-            log.Warning($"[XADB] Failed to read Fisher levels from XA.Database.GetAccountCharacterListJson: {ex.Message}");
+            var xadbVersion = ReadVersionForDiagnostics();
+            log.Warning(
+                $"[XADB] Failed to read Fisher levels from XA.Database.GetAccountCharacterListJson: {ex.Message}; " +
+                $"xadbVersion={xadbVersion}");
             return XaFishingRosterSnapshot.Failure(
                 XaFishingRosterReadStatus.IpcFailure,
-                ex.Message);
+                $"XA.Database.GetAccountCharacterListJson failed: {ex.Message}; XADB version: {xadbVersion}");
+        }
+    }
+
+    private string ReadVersionForDiagnostics()
+    {
+        try
+        {
+            var version = getVersionSubscriber.InvokeFunc();
+            return string.IsNullOrWhiteSpace(version) ? "unknown" : version.Trim();
+        }
+        catch (Exception ex)
+        {
+            return $"unavailable ({ex.Message})";
         }
     }
 }

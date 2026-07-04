@@ -449,6 +449,7 @@ public static class FishingReturnPolicy
 public static class XaFishingRosterParser
 {
     private const int FisherJobId = 18;
+    private const int MinimumIpcContractVersion = 6;
 
     public static XaFishingRosterSnapshot Parse(string? json)
     {
@@ -464,22 +465,37 @@ public static class XaFishingRosterParser
             if (root.ValueKind != JsonValueKind.Object)
                 return Malformed("The account roster root is not an object.");
 
+            var generatedAtUtc = TryGetDateTimeOffset(root, "generatedAtUtc", out var generatedAt)
+                ? generatedAt
+                : null;
+            if (!TryGetProperty(root, "ipcContractVersion", out var contractVersion) ||
+                !TryReadInt(contractVersion, out var ipcContractVersion))
+            {
+                return UnsupportedContract(
+                    "XA Database account roster IPC must include numeric ipcContractVersion; XADB 0.0.0.39+ contract v6 is required.",
+                    generatedAtUtc);
+            }
+
+            if (ipcContractVersion < MinimumIpcContractVersion)
+            {
+                return UnsupportedContract(
+                    $"XA Database account roster IPC contract v{ipcContractVersion} is unsupported; XADB 0.0.0.39+ contract v6 is required.",
+                    generatedAtUtc);
+            }
+
             if (!TryGetProperty(root, "isFullRosterAvailable", out var fullRoster) ||
                 fullRoster.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
             {
                 return Malformed("The account roster does not contain a boolean isFullRosterAvailable status.");
             }
 
-            var generatedAtUtc = TryGetDateTimeOffset(root, "generatedAtUtc", out var generatedAt)
-                ? generatedAt
-                : null;
             if (!fullRoster.GetBoolean())
             {
                 return new XaFishingRosterSnapshot(
                     XaFishingRosterReadStatus.FullRosterUnavailable,
                     generatedAtUtc,
                     Array.Empty<XaFishingRosterEntry>(),
-                    ReadWarnings(root, "XA Database did not advertise a full account roster."));
+                    ReadWarnings(root, "XA Database contract v6 roster IPC did not advertise a full account roster."));
             }
 
             if (!TryGetProperty(root, "characters", out var characters) ||
@@ -700,6 +716,15 @@ public static class XaFishingRosterParser
             Array.Empty<XaFishingRosterEntry>(),
             detail);
 
+    private static XaFishingRosterSnapshot UnsupportedContract(
+        string detail,
+        DateTimeOffset? generatedAtUtc = null)
+        => new(
+            XaFishingRosterReadStatus.UnsupportedContract,
+            generatedAtUtc,
+            Array.Empty<XaFishingRosterEntry>(),
+            detail);
+
     private static bool TryGetProperty(JsonElement obj, string propertyName, out JsonElement property)
         => TryGetProperty(obj, out property, propertyName);
 
@@ -740,6 +765,7 @@ public enum XaFishingRosterReadStatus
     Ready,
     EmptyResponse,
     MalformedResponse,
+    UnsupportedContract,
     FullRosterUnavailable,
     IpcFailure,
 }
