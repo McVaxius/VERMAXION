@@ -82,7 +82,10 @@ public sealed class FishingService
     private bool sawFishingContext;
     private bool registrationEntrySelected;
     private bool routeSelectionHandled;
+    private bool embarkConfirmationAccepted;
     private bool queueRegistrationObserved;
+    private bool queueRecognitionGraceEntered;
+    private bool lateQueueRecognitionLogged;
     private int lureCountBeforeRestock;
     private bool dutyReadyAccepted;
     private bool dutyCompletionObserved;
@@ -130,6 +133,7 @@ public sealed class FishingService
         NavigatingToRegistrar,
         InteractingRegistrar,
         ConfirmingRegistration,
+        WaitingForQueueRecognitionGrace,
         WaitingForDeparture,
         MovingToFishingSpot,
         Fishing,
@@ -218,7 +222,10 @@ public sealed class FishingService
         dutyStartedAt = DateTime.MinValue;
         registrationEntrySelected = false;
         routeSelectionHandled = false;
+        embarkConfirmationAccepted = false;
         queueRegistrationObserved = false;
+        queueRecognitionGraceEntered = false;
+        lateQueueRecognitionLogged = false;
         lureCountBeforeRestock = 0;
         dutyReadyAccepted = false;
         dutyCompletionObserved = false;
@@ -273,6 +280,13 @@ public sealed class FishingService
         departureWaitStartedAt = DateTime.MinValue;
         dutyStartedAt = DateTime.MinValue;
         sawFishingContext = false;
+        registrationEntrySelected = false;
+        routeSelectionHandled = false;
+        embarkConfirmationAccepted = false;
+        queueRegistrationObserved = false;
+        queueRecognitionGraceEntered = false;
+        lateQueueRecognitionLogged = false;
+        dutyReadyAccepted = false;
         resultFallbackLogged = false;
         lastError = string.Empty;
         statusDetail = string.Empty;
@@ -546,6 +560,10 @@ public sealed class FishingService
                 TickConfirmRegistration(elapsed);
                 break;
 
+            case FishingState.WaitingForQueueRecognitionGrace:
+                TickWaitForQueueRecognitionGrace();
+                break;
+
             case FishingState.WaitingForDeparture:
                 TickWaitForDeparture(elapsed);
                 break;
@@ -795,12 +813,6 @@ public sealed class FishingService
 
     private void TickInteractWithRegistrar(TimeSpan elapsed)
     {
-        if (IsOceanFishingDutyActive())
-        {
-            SetState(FishingState.MovingToFishingSpot);
-            return;
-        }
-
         if (TryObserveQueueRegistration())
         {
             return;
@@ -858,19 +870,43 @@ public sealed class FishingService
 
     private void TickConfirmRegistration(TimeSpan elapsed)
     {
-        if (IsOceanFishingDutyActive())
-        {
-            SetState(FishingState.MovingToFishingSpot);
-            return;
-        }
-
         if (TryObserveQueueRegistration())
         {
             return;
         }
 
+        var context = runLifecycle.Current;
+        if (context == null)
+        {
+            Fail("Ocean Fishing registration lost its owned run context.", FishingAttemptFailureKind.Stop);
+            return;
+        }
+
+        var registrationDecision = OceanFishingRegistrationPolicy.Decide(
+            queueConfirmed: false,
+            embarkAccepted: embarkConfirmationAccepted,
+            nowUtc: DateTimeOffset.UtcNow,
+            registrationDeadlineUtc: context.RegistrationDeadlineUtc,
+            genuineFailure: false);
+        if (registrationDecision == OceanFishingRegistrationDecision.WaitForQueueRecognitionGrace)
+        {
+            EnterQueueRecognitionGrace(context);
+            return;
+        }
+
+        if (registrationDecision == OceanFishingRegistrationDecision.RegistrationExpired)
+        {
+            Fail(
+                embarkConfirmationAccepted
+                    ? "Ocean Fishing queue recognition grace expired with no queue evidence."
+                    : "Ocean Fishing registration closed before queue confirmation was observed.",
+                FishingAttemptFailureKind.Stop);
+            return;
+        }
+
         if (TryHandleOceanFishingYesNo())
         {
+            embarkConfirmationAccepted = true;
             log.Information("[Fishing] Confirmed Ocean Fishing embark prompt");
             statusDetail = "Waiting for queue registration";
             return;
@@ -884,15 +920,62 @@ public sealed class FishingService
             return;
         }
 
-        if (!IsRegistrationWindowOpen(out var window))
-        {
-            Fail("Ocean Fishing registration closed before queue confirmation was observed.", FishingAttemptFailureKind.Stop);
-            return;
-        }
+        var window = new OceanFishingStartupWindow(
+            context.RegistrationStartUtc,
+            context.RegistrationStartUtc,
+            context.RegistrationDeadlineUtc);
 
         statusDetail = registrationEntrySelected
             ? $"Waiting for route/embark confirmation (deadline {window.EndUtc:u})"
             : "Waiting for registration selection";
+    }
+
+    private void TickWaitForQueueRecognitionGrace()
+    {
+        if (TryObserveQueueRegistration(duringGrace: true))
+            return;
+
+        var context = runLifecycle.Current;
+        if (context == null)
+        {
+            Fail("Ocean Fishing queue recognition grace lost its owned run context.", FishingAttemptFailureKind.Stop);
+            return;
+        }
+
+        var registrationDecision = OceanFishingRegistrationPolicy.Decide(
+            queueConfirmed: false,
+            embarkAccepted: embarkConfirmationAccepted,
+            nowUtc: DateTimeOffset.UtcNow,
+            registrationDeadlineUtc: context.RegistrationDeadlineUtc,
+            genuineFailure: false);
+        if (registrationDecision == OceanFishingRegistrationDecision.RegistrationExpired)
+        {
+            Fail(
+                "Ocean Fishing queue recognition grace expired with no queue evidence.",
+                FishingAttemptFailureKind.Stop);
+            return;
+        }
+
+        var graceDeadlineUtc =
+            context.RegistrationDeadlineUtc + OceanFishingRegistrationPolicy.QueueRecognitionGracePeriod;
+        statusDetail =
+            $"Embark accepted; retaining lifecycle locks while queue recognition settles (until {graceDeadlineUtc:u})";
+    }
+
+    private void EnterQueueRecognitionGrace(FishingRunContext context)
+    {
+        if (!queueRecognitionGraceEntered)
+        {
+            queueRecognitionGraceEntered = true;
+            var graceDeadlineUtc =
+                context.RegistrationDeadlineUtc + OceanFishingRegistrationPolicy.QueueRecognitionGracePeriod;
+            log.Information(
+                $"[Fishing] Embark was accepted but queue evidence was not visible at registration close; " +
+                $"retaining lifecycle locks through {graceDeadlineUtc:u}");
+        }
+
+        vnavmesh.Stop();
+        SetState(FishingState.WaitingForQueueRecognitionGrace);
     }
 
     private void TickWaitForDeparture(TimeSpan elapsed)
@@ -1025,16 +1108,51 @@ public sealed class FishingService
            GameHelpers.IsPlayerAvailable();
 
     private static bool IsQueueRegistered()
-        => Plugin.Condition[ConditionFlag.WaitingForDuty] ||
-           Plugin.Condition[ConditionFlag.WaitingForDutyFinder];
+        => OceanFishingQueueEvidencePolicy.Detect(
+               Plugin.Condition[ConditionFlag.InDutyQueue],
+               Plugin.Condition[ConditionFlag.WaitingForDuty],
+               Plugin.Condition[ConditionFlag.WaitingForDutyFinder],
+               oceanFishingDutyActive: false,
+               contentsFinderConfirmVisible: false) != OceanFishingQueueEvidence.None;
 
-    private bool TryObserveQueueRegistration()
+    private bool TryObserveQueueRegistration(bool duringGrace = false)
     {
-        if (!IsQueueRegistered())
+        var evidence = OceanFishingQueueEvidencePolicy.Detect(
+            Plugin.Condition[ConditionFlag.InDutyQueue],
+            Plugin.Condition[ConditionFlag.WaitingForDuty],
+            Plugin.Condition[ConditionFlag.WaitingForDutyFinder],
+            IsOceanFishingDutyActive(),
+            GameHelpers.IsAddonVisible("ContentsFinderConfirm"));
+        if (evidence == OceanFishingQueueEvidence.None)
             return false;
 
-        ObserveQueueRegistration("duty queue condition");
-        SetState(FishingState.WaitingForDeparture);
+        var reason = evidence switch
+        {
+            OceanFishingQueueEvidence.InDutyQueue => "InDutyQueue condition",
+            OceanFishingQueueEvidence.WaitingForDuty => "WaitingForDuty condition",
+            OceanFishingQueueEvidence.WaitingForDutyFinder => "WaitingForDutyFinder condition",
+            OceanFishingQueueEvidence.OceanFishingDutyEntry => "Ocean Fishing duty entry",
+            OceanFishingQueueEvidence.ContentsFinderConfirm => "ContentsFinderConfirm ready prompt",
+            _ => "Ocean Fishing queue evidence",
+        };
+        ObserveQueueRegistration(reason);
+
+        if (duringGrace && !lateQueueRecognitionLogged)
+        {
+            lateQueueRecognitionLogged = true;
+            log.Information($"[Fishing] Ocean Fishing queue recognized during post-registration grace: {reason}");
+        }
+
+        if (evidence == OceanFishingQueueEvidence.OceanFishingDutyEntry)
+        {
+            log.Information("[Fishing] Ocean Fishing duty entry observed");
+            SetState(FishingState.MovingToFishingSpot);
+        }
+        else
+        {
+            SetState(FishingState.WaitingForDeparture);
+        }
+
         return true;
     }
 
@@ -1083,6 +1201,7 @@ public sealed class FishingService
             context.RegistrationDeadlineUtc);
         var registrationDecision = OceanFishingRegistrationPolicy.Decide(
             queueConfirmed: false,
+            embarkAccepted: false,
             nowUtc: now,
             registrationDeadlineUtc: context.RegistrationDeadlineUtc,
             genuineFailure: false);
