@@ -983,6 +983,7 @@ public static class OceanFishingRegistrarPolicy
 public enum OceanFishingRegistrationDecision
 {
     ContinueDialogs,
+    WaitForQueueRecognitionGrace,
     QueueConfirmed,
     RegistrationExpired,
     GenuineFailure,
@@ -990,8 +991,11 @@ public enum OceanFishingRegistrationDecision
 
 public static class OceanFishingRegistrationPolicy
 {
+    public static readonly TimeSpan QueueRecognitionGracePeriod = TimeSpan.FromSeconds(60);
+
     public static OceanFishingRegistrationDecision Decide(
         bool queueConfirmed,
+        bool embarkAccepted,
         DateTimeOffset nowUtc,
         DateTimeOffset registrationDeadlineUtc,
         bool genuineFailure)
@@ -1000,14 +1004,54 @@ public static class OceanFishingRegistrationPolicy
             return OceanFishingRegistrationDecision.QueueConfirmed;
         if (genuineFailure)
             return OceanFishingRegistrationDecision.GenuineFailure;
-        if (nowUtc >= registrationDeadlineUtc)
-            return OceanFishingRegistrationDecision.RegistrationExpired;
-        return OceanFishingRegistrationDecision.ContinueDialogs;
+        if (nowUtc < registrationDeadlineUtc)
+            return OceanFishingRegistrationDecision.ContinueDialogs;
+        if (embarkAccepted &&
+            nowUtc < registrationDeadlineUtc + QueueRecognitionGracePeriod)
+        {
+            return OceanFishingRegistrationDecision.WaitForQueueRecognitionGrace;
+        }
+
+        return OceanFishingRegistrationDecision.RegistrationExpired;
     }
 
     public static bool ShouldRetainRegistrationLeases(OceanFishingRegistrationDecision decision)
         => decision is OceanFishingRegistrationDecision.ContinueDialogs or
+           OceanFishingRegistrationDecision.WaitForQueueRecognitionGrace or
            OceanFishingRegistrationDecision.QueueConfirmed;
+}
+
+public enum OceanFishingQueueEvidence
+{
+    None,
+    InDutyQueue,
+    WaitingForDuty,
+    WaitingForDutyFinder,
+    OceanFishingDutyEntry,
+    ContentsFinderConfirm,
+}
+
+public static class OceanFishingQueueEvidencePolicy
+{
+    public static OceanFishingQueueEvidence Detect(
+        bool inDutyQueue,
+        bool waitingForDuty,
+        bool waitingForDutyFinder,
+        bool oceanFishingDutyActive,
+        bool contentsFinderConfirmVisible)
+    {
+        if (oceanFishingDutyActive)
+            return OceanFishingQueueEvidence.OceanFishingDutyEntry;
+        if (contentsFinderConfirmVisible)
+            return OceanFishingQueueEvidence.ContentsFinderConfirm;
+        if (inDutyQueue)
+            return OceanFishingQueueEvidence.InDutyQueue;
+        if (waitingForDuty)
+            return OceanFishingQueueEvidence.WaitingForDuty;
+        if (waitingForDutyFinder)
+            return OceanFishingQueueEvidence.WaitingForDutyFinder;
+        return OceanFishingQueueEvidence.None;
+    }
 }
 
 public static class OceanFishingDialoguePolicy

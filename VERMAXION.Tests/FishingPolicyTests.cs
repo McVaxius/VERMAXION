@@ -748,16 +748,19 @@ public sealed class FishingPolicyTests
         var deadline = Utc(2026, 7, 2, 12, 15, 0);
         var delayed = OceanFishingRegistrationPolicy.Decide(
             queueConfirmed: false,
+            embarkAccepted: false,
             nowUtc: Utc(2026, 7, 2, 12, 14, 59),
             registrationDeadlineUtc: deadline,
             genuineFailure: false);
         var queued = OceanFishingRegistrationPolicy.Decide(
             queueConfirmed: true,
+            embarkAccepted: false,
             nowUtc: Utc(2026, 7, 2, 12, 14, 59),
             registrationDeadlineUtc: deadline,
             genuineFailure: false);
         var expired = OceanFishingRegistrationPolicy.Decide(
             queueConfirmed: false,
+            embarkAccepted: false,
             nowUtc: deadline,
             registrationDeadlineUtc: deadline,
             genuineFailure: false);
@@ -768,6 +771,102 @@ public sealed class FishingPolicyTests
         Assert.True(OceanFishingRegistrationPolicy.ShouldRetainRegistrationLeases(queued));
         Assert.Equal(OceanFishingRegistrationDecision.RegistrationExpired, expired);
         Assert.False(OceanFishingRegistrationPolicy.ShouldRetainRegistrationLeases(expired));
+    }
+
+    [Theory]
+    [InlineData(true, false, false, OceanFishingQueueEvidence.InDutyQueue)]
+    [InlineData(false, true, false, OceanFishingQueueEvidence.WaitingForDuty)]
+    [InlineData(false, false, true, OceanFishingQueueEvidence.WaitingForDutyFinder)]
+    public void QueueEvidenceRecognizesEverySupportedConditionFlag(
+        bool inDutyQueue,
+        bool waitingForDuty,
+        bool waitingForDutyFinder,
+        OceanFishingQueueEvidence expected)
+    {
+        var evidence = OceanFishingQueueEvidencePolicy.Detect(
+            inDutyQueue,
+            waitingForDuty,
+            waitingForDutyFinder,
+            oceanFishingDutyActive: false,
+            contentsFinderConfirmVisible: false);
+
+        Assert.Equal(expected, evidence);
+    }
+
+    [Theory]
+    [InlineData(false, true, OceanFishingQueueEvidence.ContentsFinderConfirm)]
+    [InlineData(true, false, OceanFishingQueueEvidence.OceanFishingDutyEntry)]
+    public void ReadyPromptAndDutyEntryConfirmQueueDuringGrace(
+        bool oceanFishingDutyActive,
+        bool contentsFinderConfirmVisible,
+        OceanFishingQueueEvidence expected)
+    {
+        var deadline = Utc(2026, 7, 2, 12, 15, 0);
+        var evidence = OceanFishingQueueEvidencePolicy.Detect(
+            inDutyQueue: false,
+            waitingForDuty: false,
+            waitingForDutyFinder: false,
+            oceanFishingDutyActive,
+            contentsFinderConfirmVisible);
+        var decision = OceanFishingRegistrationPolicy.Decide(
+            queueConfirmed: evidence != OceanFishingQueueEvidence.None,
+            embarkAccepted: true,
+            nowUtc: deadline + TimeSpan.FromSeconds(30),
+            registrationDeadlineUtc: deadline,
+            genuineFailure: false);
+
+        Assert.Equal(expected, evidence);
+        Assert.Equal(OceanFishingRegistrationDecision.QueueConfirmed, decision);
+        Assert.True(OceanFishingRegistrationPolicy.ShouldRetainRegistrationLeases(decision));
+    }
+
+    [Fact]
+    public void QueueRecognitionGraceOnlyAppliesAfterEmbarkAcceptance()
+    {
+        var deadline = Utc(2026, 7, 2, 12, 15, 0);
+
+        var accepted = OceanFishingRegistrationPolicy.Decide(
+            queueConfirmed: false,
+            embarkAccepted: true,
+            nowUtc: deadline,
+            registrationDeadlineUtc: deadline,
+            genuineFailure: false);
+        var notAccepted = OceanFishingRegistrationPolicy.Decide(
+            queueConfirmed: false,
+            embarkAccepted: false,
+            nowUtc: deadline,
+            registrationDeadlineUtc: deadline,
+            genuineFailure: false);
+
+        Assert.Equal(OceanFishingRegistrationDecision.WaitForQueueRecognitionGrace, accepted);
+        Assert.True(OceanFishingRegistrationPolicy.ShouldRetainRegistrationLeases(accepted));
+        Assert.Equal(OceanFishingRegistrationDecision.RegistrationExpired, notAccepted);
+        Assert.False(OceanFishingRegistrationPolicy.ShouldRetainRegistrationLeases(notAccepted));
+    }
+
+    [Fact]
+    public void QueueRecognitionGraceExpiresAtExactlySixtySecondsWithoutEvidence()
+    {
+        var deadline = Utc(2026, 7, 2, 12, 15, 0);
+        Assert.Equal(
+            TimeSpan.FromSeconds(60),
+            OceanFishingRegistrationPolicy.QueueRecognitionGracePeriod);
+
+        var beforeExpiration = OceanFishingRegistrationPolicy.Decide(
+            queueConfirmed: false,
+            embarkAccepted: true,
+            nowUtc: deadline + TimeSpan.FromMilliseconds(59_999),
+            registrationDeadlineUtc: deadline,
+            genuineFailure: false);
+        var atExpiration = OceanFishingRegistrationPolicy.Decide(
+            queueConfirmed: false,
+            embarkAccepted: true,
+            nowUtc: deadline + TimeSpan.FromSeconds(60),
+            registrationDeadlineUtc: deadline,
+            genuineFailure: false);
+
+        Assert.Equal(OceanFishingRegistrationDecision.WaitForQueueRecognitionGrace, beforeExpiration);
+        Assert.Equal(OceanFishingRegistrationDecision.RegistrationExpired, atExpiration);
     }
 
     [Fact]
