@@ -24,6 +24,7 @@
     <Compile Include="..\VERMAXION\Models\LootGoblinMapGatherManualRunPolicy.cs" Link="LootGoblinMapGatherManualRunPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\JumboCactpotPurchaseMessagePolicy.cs" Link="JumboCactpotPurchaseMessagePolicy.cs" />
     <Compile Include="..\VERMAXION\Models\FishingModels.cs" Link="FishingModels.cs" />
+    <Compile Include="..\VERMAXION\Models\OceanFishingResultClosePolicy.cs" Link="OceanFishingResultClosePolicy.cs" />
     <Compile Include="..\VERMAXION\Models\FisherGearsetModels.cs" Link="FisherGearsetModels.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterSortPolicy.cs" Link="CharacterSortPolicy.cs" />
     <Compile Include="..\VERMAXION\Services\FishingStartupCoordinator.cs" Link="FishingStartupCoordinator.cs" />
