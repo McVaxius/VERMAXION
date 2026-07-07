@@ -44,9 +44,7 @@ public sealed class FishingService
     private static readonly TimeSpan DepartureTimeout = TimeSpan.FromMinutes(35);
     private static readonly TimeSpan DutyCompletionTimeout = TimeSpan.FromHours(3);
     private static readonly TimeSpan RepairTimeout = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan ResultCloseDelay = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan ResultSettlementTimeout = TimeSpan.FromMinutes(2);
-    private static readonly TimeSpan ResultSettlementWaitLogInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ResultSettlementTimeout = OceanFishingResultClosePolicy.Timeout;
     private static readonly TimeSpan ReturnSettlementTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ZoneTransitionTimeout = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan CleanupReadyTimeout = TimeSpan.FromSeconds(60);
@@ -69,9 +67,9 @@ public sealed class FishingService
     private DateTime stateEnteredAt = DateTime.MinValue;
     private DateTime lastCastAt = DateTime.MinValue;
     private DateTime repairStartedAt = DateTime.MinValue;
-    private DateTime lastResultCloseAttemptAt = DateTime.MinValue;
-    private DateTime lastResultSettlementWaitLogAt = DateTime.MinValue;
-    private string lastResultAddonState = string.Empty;
+    private DateTime lastResultPollAt = DateTime.MinValue;
+    private DateTime lastResultCallbackAt = DateTime.MinValue;
+    private OceanFishingResultAddonSnapshot lastResultAddonSnapshot = OceanFishingResultAddonSnapshot.NotPolled;
     private DateTime lastFishingLoopPollAt = DateTime.MinValue;
     private DateTime lastTravelCommandAt = DateTime.MinValue;
     private DateTime travelStartedAt = DateTime.MinValue;
@@ -90,6 +88,13 @@ public sealed class FishingService
     private bool dutyReadyAccepted;
     private bool dutyCompletionObserved;
     private bool resultFallbackLogged;
+    private bool resultCallbackDispatched;
+    private bool resultWindowClosed;
+    private bool resultPostVoyageTransitionObserved;
+    private bool resultDetectionLogged;
+    private bool resultTransitionLogged;
+    private bool resultCallbackLogged;
+    private bool resultClosureLogged;
     private bool aethernetAttempted;
     private bool aethernetAttunementAttempted;
     private DateTime aethernetAttunementStartedAt = DateTime.MinValue;
@@ -209,9 +214,7 @@ public sealed class FishingService
         statusDetail = string.Empty;
         lastCastAt = DateTime.MinValue;
         repairStartedAt = DateTime.MinValue;
-        lastResultCloseAttemptAt = DateTime.MinValue;
-        lastResultSettlementWaitLogAt = DateTime.MinValue;
-        lastResultAddonState = string.Empty;
+        ResetResultHandlingState();
         lastFishingLoopPollAt = DateTime.MinValue;
         fisherGearsetOperation = null;
         lastTravelCommandAt = DateTime.MinValue;
@@ -229,7 +232,6 @@ public sealed class FishingService
         lureCountBeforeRestock = 0;
         dutyReadyAccepted = false;
         dutyCompletionObserved = false;
-        resultFallbackLogged = false;
         aethernetAttempted = false;
         aethernetAttunementAttempted = false;
         aethernetAttunementStartedAt = DateTime.MinValue;
@@ -268,9 +270,7 @@ public sealed class FishingService
         stateEnteredAt = DateTime.MinValue;
         lastCastAt = DateTime.MinValue;
         repairStartedAt = DateTime.MinValue;
-        lastResultCloseAttemptAt = DateTime.MinValue;
-        lastResultSettlementWaitLogAt = DateTime.MinValue;
-        lastResultAddonState = string.Empty;
+        ResetResultHandlingState();
         lastFishingLoopPollAt = DateTime.MinValue;
         fisherGearsetOperation = null;
         lastTravelCommandAt = DateTime.MinValue;
@@ -287,7 +287,6 @@ public sealed class FishingService
         queueRecognitionGraceEntered = false;
         lateQueueRecognitionLogged = false;
         dutyReadyAccepted = false;
-        resultFallbackLogged = false;
         lastError = string.Empty;
         statusDetail = string.Empty;
         railPositionIndex = 0;
@@ -1600,6 +1599,21 @@ public sealed class FishingService
         lastCastGate = string.Empty;
     }
 
+    private void ResetResultHandlingState()
+    {
+        lastResultPollAt = DateTime.MinValue;
+        lastResultCallbackAt = DateTime.MinValue;
+        lastResultAddonSnapshot = OceanFishingResultAddonSnapshot.NotPolled;
+        resultFallbackLogged = false;
+        resultCallbackDispatched = false;
+        resultWindowClosed = false;
+        resultPostVoyageTransitionObserved = false;
+        resultDetectionLogged = false;
+        resultTransitionLogged = false;
+        resultCallbackLogged = false;
+        resultClosureLogged = false;
+    }
+
     private void LogCastGate(string gate)
     {
         if (string.Equals(lastCastGate, gate, StringComparison.Ordinal))
@@ -1612,74 +1626,112 @@ public sealed class FishingService
     }
 
     private static bool IsOceanFishingResultAddonAvailable()
-        => GameHelpers.IsIKDResultAddonPresent(out _);
-
-    private bool TryCloseResultWindow(out string addonState)
-    {
-        addonState = lastResultAddonState;
-        var now = DateTime.UtcNow;
-        if (lastResultCloseAttemptAt != DateTime.MinValue && now - lastResultCloseAttemptAt < ResultCloseDelay)
-            return false;
-
-        lastResultCloseAttemptAt = now;
-        var closeFired = GameHelpers.TryCloseIKDResult(out _, out addonState);
-        lastResultAddonState = addonState;
-        return closeFired;
-    }
+        => GameHelpers.GetIKDResultAddonSnapshot().Visible;
 
     private void TickHandleResult(TimeSpan elapsed)
     {
-        var closeFired = TryCloseResultWindow(out var closeAttemptState);
-        var resultAddonAvailable = GameHelpers.IsIKDResultAddonPresent(out var resultAddonState);
-        if (resultAddonAvailable)
-        {
-            statusDetail = "Closing Ocean Fishing result";
-            var stateDetails = string.IsNullOrWhiteSpace(resultAddonState) ? closeAttemptState : resultAddonState;
-            if (elapsed < ResultSettlementTimeout)
-            {
-                LogResultSettlementWait(closeFired
-                    ? $"IKDResult close callback fired; waiting for result addon to settle. state={stateDetails}"
-                    : $"IKDResult close is pending or the addon is not ready. state={stateDetails}");
-                return;
-            }
-
-            LogResultFallback($"IKDResult callback failed; addon still present after {ResultSettlementTimeout.TotalSeconds:F0}s. state={stateDetails}");
-        }
-
-        var stillInOceanFishingTerritory = Plugin.ClientState.TerritoryType is 900 or 1163;
-        if (!dutyCompletionObserved && stillInOceanFishingTerritory)
-        {
-            if (elapsed < ResultSettlementTimeout)
-            {
-                statusDetail = "Waiting for Ocean Fishing completion";
-                LogResultSettlementWait("duty completion has not settled yet");
-                return;
-            }
-
-            LogResultFallback("Ocean Fishing completion did not settle");
-        }
-
-        if (!GameHelpers.IsPlayerAvailable() ||
-            Plugin.Condition[ConditionFlag.BetweenAreas] ||
-            Plugin.Condition[ConditionFlag.BetweenAreas51])
-        {
-            statusDetail = "Waiting for post-voyage player settlement";
-            LogResultSettlementWait("player is unavailable or between areas");
-            return;
-        }
-
-        BeginInventoryCleanup();
-    }
-
-    private void LogResultSettlementWait(string reason)
-    {
         var now = DateTime.UtcNow;
-        if (lastResultSettlementWaitLogAt != DateTime.MinValue &&
-            now - lastResultSettlementWaitLogAt < ResultSettlementWaitLogInterval)
-            return;
+        LogResultDetection();
 
-        lastResultSettlementWaitLogAt = now;
-        log.Information($"[Fishing] Result handling waiting: {reason}");
+        var areaTransitioning = Plugin.Condition[ConditionFlag.BetweenAreas] ||
+                                Plugin.Condition[ConditionFlag.BetweenAreas51];
+        var playerAvailable = GameHelpers.IsPlayerAvailable();
+        var stillInOceanFishingTerritory = Plugin.ClientState.TerritoryType is 900 or 1163;
+        var postVoyageTransitionStarted = areaTransitioning || !stillInOceanFishingTerritory;
+        if (postVoyageTransitionStarted)
+        {
+            LogResultTransition(areaTransitioning, stillInOceanFishingTerritory, playerAvailable);
+            resultPostVoyageTransitionObserved = true;
+        }
+
+        var postVoyageSettled = resultPostVoyageTransitionObserved &&
+                                playerAvailable &&
+                                !areaTransitioning &&
+                                !stillInOceanFishingTerritory;
+        var sinceLastPoll = lastResultPollAt == DateTime.MinValue
+            ? TimeSpan.MaxValue
+            : now - lastResultPollAt;
+        if (!resultWindowClosed &&
+            elapsed >= OceanFishingResultClosePolicy.InitialDelay &&
+            sinceLastPoll >= OceanFishingResultClosePolicy.PollInterval)
+        {
+            lastResultAddonSnapshot = GameHelpers.GetIKDResultAddonSnapshot();
+            lastResultPollAt = now;
+        }
+
+        var decision = OceanFishingResultClosePolicy.Decide(new OceanFishingResultCloseSnapshot(
+            elapsed,
+            sinceLastPoll,
+            lastResultCallbackAt == DateTime.MinValue
+                ? TimeSpan.MaxValue
+                : now - lastResultCallbackAt,
+            lastResultAddonSnapshot.Found,
+            lastResultAddonSnapshot.Visible,
+            lastResultAddonSnapshot.Ready,
+            resultCallbackDispatched,
+            resultWindowClosed,
+            resultPostVoyageTransitionObserved,
+            postVoyageSettled));
+
+        if (decision.ResultClosed && !resultWindowClosed)
+        {
+            resultWindowClosed = true;
+            LogResultClosure(decision.Reason);
+        }
+
+        switch (decision.Action)
+        {
+            case OceanFishingResultCloseAction.WaitInitialDelay:
+                statusDetail = "Waiting for Ocean Fishing result";
+                return;
+
+            case OceanFishingResultCloseAction.WaitForPollInterval:
+                statusDetail = "Closing Ocean Fishing result";
+                return;
+
+            case OceanFishingResultCloseAction.WaitForReadyAddon:
+                statusDetail = "Waiting for Ocean Fishing result addon readiness";
+                return;
+
+            case OceanFishingResultCloseAction.WaitCallbackSettlement:
+                statusDetail = "Waiting for Ocean Fishing result close";
+                return;
+
+            case OceanFishingResultCloseAction.FireCallback:
+                statusDetail = "Closing Ocean Fishing result";
+                if (GameHelpers.TryCloseReadyIKDResult(out var firedSnapshot, out var closeError))
+                {
+                    lastResultAddonSnapshot = firedSnapshot;
+                    resultCallbackDispatched = true;
+                    lastResultCallbackAt = now;
+                    LogResultCallbackDispatch();
+                }
+                else
+                {
+                    lastResultAddonSnapshot = firedSnapshot;
+                }
+                return;
+
+            case OceanFishingResultCloseAction.WaitPostVoyageTransition:
+                statusDetail = "Waiting for post-voyage transition";
+                return;
+
+            case OceanFishingResultCloseAction.WaitPlayerSettlement:
+                statusDetail = "Waiting for post-voyage player settlement";
+                return;
+
+            case OceanFishingResultCloseAction.Timeout:
+                LogResultFallback(
+                    $"IKDResult close timed out after {ResultSettlementTimeout.TotalSeconds:F0}s; " +
+                    $"{lastResultAddonSnapshot.Detail}");
+                BeginInventoryCleanup();
+                return;
+
+            case OceanFishingResultCloseAction.Complete:
+                log.Information("[Fishing][IKDResult] Result handling settled; beginning post-voyage cleanup flow");
+                BeginInventoryCleanup();
+                return;
+        }
     }
 
     private void LogResultFallback(string reason)
@@ -1688,7 +1740,52 @@ public sealed class FishingService
             return;
 
         resultFallbackLogged = true;
-        log.Warning($"[Fishing] Two-minute result fallback reached: {reason}; continuing cleanup and return");
+        log.Warning($"[Fishing][IKDResult] Result handling timeout reached: {reason}; continuing cleanup and return");
+    }
+
+    private void LogResultDetection()
+    {
+        if (resultDetectionLogged)
+            return;
+
+        resultDetectionLogged = true;
+        log.Information(
+            $"[Fishing][IKDResult] Result handling detected; dutyCompleted={dutyCompletionObserved}, " +
+            $"territory={Plugin.ClientState.TerritoryType}");
+    }
+
+    private void LogResultCallbackDispatch()
+    {
+        if (resultCallbackLogged)
+            return;
+
+        resultCallbackLogged = true;
+        log.Information($"[Fishing][IKDResult] Fired close callback: {OceanFishingResultAddonName} true 0; {lastResultAddonSnapshot.Detail}");
+    }
+
+    private void LogResultTransition(bool areaTransitioning, bool stillInOceanFishingTerritory, bool playerAvailable)
+    {
+        if (resultTransitionLogged)
+            return;
+
+        resultTransitionLogged = true;
+        log.Information(
+            $"[Fishing][IKDResult] Real post-voyage transition signal detected; " +
+            $"BetweenAreas={Plugin.Condition[ConditionFlag.BetweenAreas]}, " +
+            $"BetweenAreas51={Plugin.Condition[ConditionFlag.BetweenAreas51]}, " +
+            $"areaTransitioning={areaTransitioning}, " +
+            $"territory={Plugin.ClientState.TerritoryType}, " +
+            $"stillInOceanFishingTerritory={stillInOceanFishingTerritory}, " +
+            $"playerAvailable={playerAvailable}");
+    }
+
+    private void LogResultClosure(string reason)
+    {
+        if (resultClosureLogged)
+            return;
+
+        resultClosureLogged = true;
+        log.Information($"[Fishing][IKDResult] Result window closed: {reason}; {lastResultAddonSnapshot.Detail}");
     }
 
     private void BeginInventoryCleanup()
@@ -1997,11 +2094,6 @@ public sealed class FishingService
         }
 
         if (newState == FishingState.HandlingResult)
-        {
-            lastResultCloseAttemptAt = DateTime.MinValue;
-            lastResultSettlementWaitLogAt = DateTime.MinValue;
-            lastResultAddonState = string.Empty;
-            resultFallbackLogged = false;
-        }
+            ResetResultHandlingState();
     }
 }
