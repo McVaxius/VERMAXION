@@ -167,7 +167,7 @@ public class MainWindow : Window, IDisposable
                                          plugin.IsFishingRunActive ||
                                          plugin.FisherGearsetTestService.IsActive;
             DrawTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingRunStatusText),
-                "R##Fishing", plugin.RunFishingStartupManual, "WIP",
+                "R##Fishing", plugin.RunFishingStartupManual, "OK",
                 buttonDisabled: fishingButtonsDisabled,
                 buttonTooltip: fishingButtonsDisabled ? "Fishing, relog, or engine work is active. Use FULL STOP to cancel." : null,
                 secondaryButtonLabel: "T##FishingTest",
