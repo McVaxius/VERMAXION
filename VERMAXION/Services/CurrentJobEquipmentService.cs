@@ -30,6 +30,10 @@ public class CurrentJobEquipmentService : IDisposable
     private EquipmentState state = EquipmentState.Idle;
     private DateTime stateStartTime = DateTime.UtcNow;
 
+    public bool IsActive => isRunning;
+    public EquipmentState State => state;
+    public string StatusText => isRunning ? state.ToString() : "Idle";
+
     public CurrentJobEquipmentService(ICommandManager commandManager, IPluginLog log, IPlayerState playerState)
     {
         this.commandManager = commandManager;

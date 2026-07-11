@@ -121,6 +121,7 @@ public class SeasonalGearService : IDisposable
     public bool IsComplete => state == GearState.Complete;
     public bool IsFailed => state == GearState.Failed;
     public bool IsIdle => state == GearState.Idle;
+    public bool IsActive => !IsIdle && !IsComplete && !IsFailed;
     public string StatusText => state.ToString();
 
     public SeasonalGearService(ICommandManager commandManager, IPluginLog log)

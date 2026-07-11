@@ -19,6 +19,9 @@ public class HighestCombatJobService : IDisposable
     
     private DateTime lastAction = DateTime.MinValue;
     private bool isRunning = false;
+
+    public bool IsActive => isRunning;
+    public string StatusText => isRunning ? "Selecting highest combat job" : "Idle";
     
     // Combat job IDs (DOW/DOM only - all combat jobs 1-100 excluding DOH/DOL)
     private static readonly uint[] CombatJobs = GenerateCombatJobIds();

@@ -17,6 +17,7 @@ public class MinionRouletteService : IDisposable
     public bool IsComplete => state == MinionState.Complete;
     public bool IsFailed => state == MinionState.Failed;
     public bool IsIdle => state == MinionState.Idle;
+    public bool IsActive => !IsIdle && !IsComplete && !IsFailed;
     public string StatusText => state.ToString();
 
     public MinionRouletteService(ICommandManager commandManager, IPluginLog log)
