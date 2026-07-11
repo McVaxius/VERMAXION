@@ -25,6 +25,7 @@ public class GearUpdaterService : IDisposable
     public bool IsComplete => state == UpdaterState.Complete;
     public bool IsFailed => state == UpdaterState.Failed;
     public bool IsIdle => state == UpdaterState.Idle;
+    public bool IsActive => !IsIdle && !IsComplete && !IsFailed;
     public string StatusText => state == UpdaterState.Idle ? "Idle" : $"{state} ({currentGearsetIndex}/{maxGearsets})";
 
     public GearUpdaterService(ICommandManager commandManager, IPluginLog log, IClientState clientState, IPlayerState playerState)

@@ -82,6 +82,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public FisherGearsetTestService FisherGearsetTestService { get; init; }
     public VermaxionEngine Engine { get; init; }
     public VermaxionIncidentWriter IncidentWriter { get; init; }
+    public AutomationStatusIpcProvider AutomationStatusIpcProvider { get; init; }
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
     public ConfigWindow ConfigWindow { get; init; }
@@ -203,6 +204,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             VendorStockService, FishingService,
             RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
+        AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -248,6 +250,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     public void Dispose()
     {
+        AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
         Framework.Update -= OnFrameworkUpdate;
         ClientState.Login -= OnLoginEvent;
@@ -278,9 +281,118 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ECommonsMain.Dispose();
     }
 
+    private AutomationStatus BuildAutomationStatus()
+    {
+        var fishingCleanup = FishingRunLifecycle.IsCleanupPending ||
+                             FishingService.State is FishingService.FishingState.HandlingResult
+                                 or FishingService.FishingState.WaitingForCleanupReady
+                                 or FishingService.FishingState.NavigatingToCleanupVendor
+                                 or FishingService.FishingState.RunningInventoryCleanup
+                                 or FishingService.FishingState.Returning
+                                 or FishingService.FishingState.CleaningUpLifecycle;
+        var fishingRelog = FishingRelogCoordinator.IsActive ||
+                           FishingStartupCoordinator.HasPendingRelogContinuation;
+        var fishing = FishingRunLifecycle.IsActive || FishingService.IsActive;
+        var beforeAutoRetainer = BeforeArGate is BeforeArGateState.Armed
+            or BeforeArGateState.WaitingForWorldReady
+            or BeforeArGateState.Running;
+        var suppressionRecovery = BeforeArGate == BeforeArGateState.ReleasePending ||
+                                  releaseOnlyPostprocessFinishPending ||
+                                  (!beforeAutoRetainer && AutoRetainerIPC.SuppressionOwnedByVermaxion);
+        var manual = GetActiveManualService();
+        var postprocessPending = ARPostProcessService.IsRequested && !ARPostProcessService.IsProcessing;
+
+        var state = fishingRelog
+            ? FishingRelogCoordinator.IsActive
+                ? FishingRelogCoordinator.StatusText
+                : $"RelogPending:{FishingStartupCoordinator.PendingRelogCharacterKey}"
+            : postprocessPending
+                ? "Requested"
+            : fishingCleanup || fishing
+                ? FishingService.State.ToString()
+                : beforeAutoRetainer
+                    ? BeforeArGate.ToString()
+                    : suppressionRecovery
+                        ? "Recovery"
+                        : Engine.OwnsLiveWork
+                            ? Engine.State.ToString()
+                            : manual.State;
+        var summary = postprocessPending
+            ? "VERMAXION requested AutoRetainer character postprocessing."
+            : fishingRelog || fishingCleanup || fishing
+            ? FishingRunStatusText
+            : beforeAutoRetainer
+                ? BeforeArStatusText
+                : suppressionRecovery
+                    ? GetDtrOperationalStatus() ?? "VERMAXION suppression or cleanup recovery is active."
+                    : Engine.OwnsLiveWork
+                        ? Engine.StatusText
+                        : manual.Summary;
+
+        return AutomationStatusPolicy.Evaluate(
+            new AutomationOwnershipSnapshot
+            {
+                FishingRelogActive = FishingRelogCoordinator.IsActive,
+                FishingRelogPending = FishingStartupCoordinator.HasPendingRelogContinuation,
+                FishingActive = fishing,
+                FishingCleanupActive = fishingCleanup,
+                BeforeAutoRetainerActive = beforeAutoRetainer,
+                SuppressionRecoveryActive = suppressionRecovery,
+                EngineOwnsLiveWork = Engine.OwnsLiveWork,
+                ManualServiceActive = manual.Active,
+                CharacterPostprocessRequested = postprocessPending,
+                State = state,
+                Summary = summary,
+            },
+            DateTime.UtcNow);
+    }
+
+    private (bool Active, string State, string Summary) GetActiveManualService()
+    {
+        if (FisherGearsetTestService.IsActive)
+            return (true, "FisherGearsetTest", FisherGearsetTestService.StatusText);
+        if (LootGoblinMapGatherManualRunCoordinator.IsActive)
+            return (true, LootGoblinMapGatherService.State.ToString(), LootGoblinMapGatherService.StatusText);
+        if (FCBuffService.IsActive)
+            return (true, FCBuffService.State.ToString(), FCBuffService.StatusText);
+        if (FCBuffInventoryService.IsActive)
+            return (true, FCBuffInventoryService.State.ToString(), FCBuffInventoryService.StatusText);
+        if (VendorStockService.IsActive)
+            return (true, VendorStockService.State.ToString(), VendorStockService.StatusText);
+        if (RegisterRegistrablesService.IsActive)
+            return (true, RegisterRegistrablesService.State.ToString(), $"Register Registrables: {RegisterRegistrablesService.State}");
+        if (RetainerListingRefillService.IsActive)
+            return (true, "RetainerListingRefill", RetainerListingRefillService.StatusText);
+        if (WorkshopBellService.IsActive)
+            return (true, "WorkshopBell", WorkshopBellService.StatusText);
+        if (SeasonalGearService.IsActive)
+            return (true, "SeasonalGear", SeasonalGearService.StatusText);
+        if (MinionRouletteService.IsActive)
+            return (true, "MinionRoulette", MinionRouletteService.StatusText);
+        if (GearUpdaterService.IsActive)
+            return (true, "GearUpdater", GearUpdaterService.StatusText);
+        if (VerminionService.IsActive)
+            return (true, VerminionService.State.ToString(), VerminionService.StatusText);
+        if (CactpotService.IsActive)
+            return (true, CactpotService.State.ToString(), CactpotService.StatusText);
+        if (FashionReportService.IsActive)
+            return (true, FashionReportService.State.ToString(), $"Fashion Report: {FashionReportService.State}");
+        if (ChocoboRaceService.IsActive)
+            return (true, ChocoboRaceService.State.ToString(), ChocoboRaceService.StatusText);
+        if (CurrentJobEquipmentService.IsActive)
+            return (true, CurrentJobEquipmentService.State.ToString(), CurrentJobEquipmentService.StatusText);
+        if (HighestCombatJobService.IsActive)
+            return (true, "HighestCombatJob", HighestCombatJobService.StatusText);
+
+        return (false, "Idle", "VERMAXION is idle.");
+    }
+
     private void OnChatMessage(IChatMessage message)
     {
-        CactpotService.HandleChatMessage(message.Message.TextValue);
+        CactpotService.HandleChatMessage(
+            message.LogKind.ToString(),
+            message.Sender.TextValue,
+            message.Message.TextValue);
     }
 
     private void OnARCharacterReady(string pluginName)

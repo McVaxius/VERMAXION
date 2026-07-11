@@ -20,6 +20,7 @@ public class ARPostProcessService : IDisposable
     private const string PluginName = "Vermaxion";
 
     public bool IsProcessing { get; private set; } = false;
+    public bool IsRequested { get; private set; } = false;
     public bool FinishSignaled { get; private set; } = false;
     private bool finishPreparationDone;
     private DateTime lastFinishAttemptAt = DateTime.MinValue;
@@ -63,11 +64,17 @@ public class ARPostProcessService : IDisposable
     {
         try
         {
+            // Publish ownership intent before invoking AR. DAD may be subscribed earlier and must
+            // still see VERMAXION busy when its own ready callback is delivered.
+            IsRequested = true;
+            FinishSignaled = false;
+            finishPreparationDone = false;
             log.Information($"[AR] OnCharacterAdditionalTask fired - requesting postprocess for {PluginName}");
             requestPostprocessSub?.InvokeAction(PluginName);
         }
         catch (Exception ex)
         {
+            IsRequested = false;
             log.Error($"[AR] Failed to request postprocess: {ex.Message}");
         }
     }
@@ -78,6 +85,7 @@ public class ARPostProcessService : IDisposable
 
         log.Information($"[AR] Character ready for postprocess — {PluginName}");
         IsProcessing = true;
+        IsRequested = true;
         FinishSignaled = false;
         finishPreparationDone = false;
         lastFinishAttemptAt = DateTime.MinValue;
@@ -132,6 +140,7 @@ public class ARPostProcessService : IDisposable
             finishPostprocessSub.InvokeAction();
             FinishSignaled = true;
             IsProcessing = false;
+            IsRequested = false;
             return true;
         }
         catch (Exception ex)
@@ -140,6 +149,7 @@ public class ARPostProcessService : IDisposable
             if (force)
             {
                 IsProcessing = false;
+                IsRequested = false;
                 log.Warning("[AR] Full Stop cleared local postprocess ownership after finish-signal failure.");
             }
 
@@ -150,10 +160,10 @@ public class ARPostProcessService : IDisposable
     public void Dispose()
     {
         // CRITICAL: Always finish if we're processing to prevent AR from hanging
-        if (IsProcessing)
+        if (IsProcessing || IsRequested)
         {
-            log.Warning("[AR] Plugin unloading while processing - signaling AR to continue");
-            FinishPostProcess(force: true);
+            log.Warning("[AR] Plugin unloading with requested/owned postprocess - signaling AR to continue");
+            FinishPostProcess(force: true, mode: ARPostProcessFinishMode.ReleaseOnly);
         }
 
         try
