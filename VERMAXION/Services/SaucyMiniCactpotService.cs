@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Reflection;
 using System.Runtime.Loader;
 using Dalamud.Plugin.Services;
@@ -10,16 +9,10 @@ namespace VERMAXION.Services;
 public sealed class SaucyMiniCactpotService
 {
     private const string SaucyInternalName = "Saucy";
-    private const string MiniCactpotModuleName = "MiniCactpot";
-
     private readonly IPluginLog log;
-    private object? activeConfig;
-    private FieldInfo? activeAutoMiniField;
-    private FieldInfo? activeEnabledModulesField;
+    private SaucyConfigurationAccessor? activeConfiguration;
+    private SaucyMiniCactpotConfigurationSnapshot activeSnapshot;
     private bool runActive;
-    private bool restoreNeeded;
-    private bool priorAutoMiniCactpot;
-    private bool priorModuleEnabled;
 
     public SaucyMiniCactpotService(IPluginLog log)
     {
@@ -30,13 +23,13 @@ public sealed class SaucyMiniCactpotService
     {
         EndMiniCactpotRun("new Mini Cactpot run");
 
-        if (!TryGetSaucyConfig(out var config, out var autoMiniField, out var enabledModulesField, out status))
+        if (!TryGetSaucyConfig(out var config, out status))
         {
             status = $"Saucy unavailable: {status}";
             return !requireSaucy;
         }
 
-        if (!TryGetEnabledModules(config, enabledModulesField, out var enabledModules, out status))
+        if (!SaucyConfigurationAccessor.TryCreate(config, out var configuration, out status))
         {
             status = $"Saucy unavailable: {status}";
             return !requireSaucy;
@@ -44,30 +37,14 @@ public sealed class SaucyMiniCactpotService
 
         try
         {
-            priorAutoMiniCactpot = autoMiniField.GetValue(config) is true;
-            priorModuleEnabled = enabledModules.Contains(MiniCactpotModuleName);
-            activeConfig = config;
-            activeAutoMiniField = autoMiniField;
-            activeEnabledModulesField = enabledModulesField;
+            activeSnapshot = configuration.CaptureMiniCactpotState();
+            activeConfiguration = configuration;
             runActive = true;
 
-            var changed = false;
-            if (!priorAutoMiniCactpot)
+            var change = configuration.EnableMiniCactpot();
+            LogSaveFailure(change.SaveError);
+            if (change.StateChanged)
             {
-                autoMiniField.SetValue(config, true);
-                changed = true;
-            }
-
-            if (!priorModuleEnabled)
-            {
-                enabledModules.Add(MiniCactpotModuleName);
-                changed = true;
-            }
-
-            restoreNeeded = changed;
-            if (changed)
-            {
-                TrySaveSaucyConfig(config);
                 status = "Saucy MiniCactpot module temporarily enabled for VERMAXION Mini Cactpot.";
             }
             else
@@ -94,27 +71,14 @@ public sealed class SaucyMiniCactpotService
 
         try
         {
-            if (restoreNeeded &&
-                activeConfig != null &&
-                activeAutoMiniField != null &&
-                activeEnabledModulesField != null &&
-                TryGetEnabledModules(activeConfig, activeEnabledModulesField, out var enabledModules, out _))
+            if (activeConfiguration != null)
             {
-                activeAutoMiniField.SetValue(activeConfig, priorAutoMiniCactpot);
-
-                if (priorModuleEnabled)
+                var change = activeConfiguration.RestoreMiniCactpot(activeSnapshot);
+                LogSaveFailure(change.SaveError);
+                if (change.StateChanged)
                 {
-                    if (!enabledModules.Contains(MiniCactpotModuleName))
-                        enabledModules.Add(MiniCactpotModuleName);
+                    log.Information($"[Cactpot] Restored prior Saucy MiniCactpot state after {reason}.");
                 }
-                else
-                {
-                    while (enabledModules.Contains(MiniCactpotModuleName))
-                        enabledModules.Remove(MiniCactpotModuleName);
-                }
-
-                TrySaveSaucyConfig(activeConfig);
-                log.Information($"[Cactpot] Restored prior Saucy MiniCactpot state after {reason}.");
             }
         }
         catch (Exception ex)
@@ -123,25 +87,17 @@ public sealed class SaucyMiniCactpotService
         }
         finally
         {
-            activeConfig = null;
-            activeAutoMiniField = null;
-            activeEnabledModulesField = null;
+            activeConfiguration = null;
+            activeSnapshot = default;
             runActive = false;
-            restoreNeeded = false;
-            priorAutoMiniCactpot = false;
-            priorModuleEnabled = false;
         }
     }
 
     private static bool TryGetSaucyConfig(
         out object config,
-        out FieldInfo autoMiniField,
-        out FieldInfo enabledModulesField,
         out string status)
     {
         config = null!;
-        autoMiniField = null!;
-        enabledModulesField = null!;
 
         if (!DalamudReflector.TryGetDalamudPlugin(SaucyInternalName, out object saucyPlugin, out AssemblyLoadContext? _, true, true) ||
             saucyPlugin == null)
@@ -159,43 +115,13 @@ public sealed class SaucyMiniCactpotService
             return false;
         }
 
-        var configType = config.GetType();
-        autoMiniField = configType.GetField("EnableAutoMiniCactpot", BindingFlags.Public | BindingFlags.Instance) ?? null!;
-        enabledModulesField = configType.GetField("EnabledModules", BindingFlags.Public | BindingFlags.Instance) ?? null!;
-        if (autoMiniField == null || enabledModulesField == null)
-        {
-            status = "Saucy config fields EnableAutoMiniCactpot or EnabledModules were not available.";
-            return false;
-        }
-
         status = "Saucy config available.";
         return true;
     }
 
-    private static bool TryGetEnabledModules(object config, FieldInfo enabledModulesField, out IList enabledModules, out string status)
+    private void LogSaveFailure(Exception? exception)
     {
-        enabledModules = null!;
-        status = string.Empty;
-
-        if (enabledModulesField.GetValue(config) is not IList list)
-        {
-            status = "Saucy EnabledModules was not a mutable list.";
-            return false;
-        }
-
-        enabledModules = list;
-        return true;
-    }
-
-    private void TrySaveSaucyConfig(object config)
-    {
-        try
-        {
-            config.GetType().GetMethod("Save", BindingFlags.Public | BindingFlags.Instance)?.Invoke(config, null);
-        }
-        catch (Exception ex)
-        {
-            log.Warning($"[Cactpot] Saucy config save failed: {ex.Message}");
-        }
+        if (exception != null)
+            log.Warning($"[Cactpot] Saucy config save failed: {exception.Message}");
     }
 }
