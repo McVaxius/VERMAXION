@@ -93,6 +93,140 @@ public sealed class FishingStartupCoordinatorTests
     }
 
     [Fact]
+    public void LichRelogArrivalRestartsIdleFishingServiceUsingExistingLifecycleExactlyOnce()
+    {
+        var runtime = RuntimeForRelog();
+        runtime.Selection = new FishingSelectionResult(
+            "Lich-lich Lich-lich@Lich",
+            FisherLevel: 12,
+            RequiresRelog: true,
+            AlwaysFishKeysToDisable: Array.Empty<string>(),
+            Reason: "Selected lowest Fisher below max.");
+        var coordinator = new FishingStartupCoordinator(runtime);
+
+        var relog = coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.AutoRetainerPostprocess);
+
+        // Character-change reset retains the lifecycle lease but leaves the
+        // destination FishingService idle once the relog has settled.
+        runtime.IsRelogActive = false;
+        runtime.IsFishingActive = false;
+        var continuation = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(10),
+            "Lich-lich Lich-lich@Lich");
+        var repeated = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(11),
+            "Lich-lich Lich-lich@Lich");
+
+        Assert.Equal(FishingStartupAction.RelogStarted, relog.Action);
+        Assert.Equal(FishingStartupAction.FishingStarted, continuation.Action);
+        Assert.Equal(FishingStartupAction.None, repeated.Action);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(1, runtime.FishingStarts);
+        Assert.Equal(1, runtime.SelectionRequests);
+        Assert.False(coordinator.HasPendingRelogContinuation);
+    }
+
+    [Fact]
+    public void MatchingRelogArrivalWaitsWhileRelogIsStillActive()
+    {
+        var runtime = RuntimeForRelog();
+        var coordinator = new FishingStartupCoordinator(runtime);
+        coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+
+        var continuation = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(10),
+            "Low Fisher@World");
+
+        Assert.Equal(FishingStartupAction.Waiting, continuation.Action);
+        Assert.Contains("relog sequence to finish", continuation.Reason);
+        Assert.True(coordinator.HasPendingRelogContinuation);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(0, runtime.FishingStarts);
+    }
+
+    [Fact]
+    public void MatchingRelogArrivalTreatsGenuinelyActiveFishingAsHandled()
+    {
+        var runtime = RuntimeForRelog();
+        var coordinator = new FishingStartupCoordinator(runtime);
+        coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+        runtime.IsRelogActive = false;
+        runtime.IsFishingActive = true;
+
+        var continuation = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(10),
+            "Low Fisher@World");
+
+        Assert.Equal(FishingStartupAction.AlreadyHandled, continuation.Action);
+        Assert.False(coordinator.HasPendingRelogContinuation);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(0, runtime.FishingStarts);
+    }
+
+    [Fact]
+    public void MatchingRelogArrivalTreatsConfirmedQueueAsHandled()
+    {
+        var runtime = RuntimeForRelog();
+        var coordinator = new FishingStartupCoordinator(runtime);
+        var relog = coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+        runtime.IsRelogActive = false;
+        runtime.QueueConfirmedRegistrationStartUtc = relog.RegistrationStartUtc;
+
+        var continuation = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(10),
+            "Low Fisher@World");
+
+        Assert.Equal(FishingStartupAction.AlreadyHandled, continuation.Action);
+        Assert.Contains("queue registration was already confirmed", continuation.Reason);
+        Assert.False(coordinator.HasPendingRelogContinuation);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(0, runtime.FishingStarts);
+    }
+
+    [Fact]
+    public void RelogContinuationStartRejectionAbortsOwnedLifecycleAndDoesNotReacquire()
+    {
+        var runtime = RuntimeForRelog();
+        var coordinator = new FishingStartupCoordinator(runtime);
+        coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+        runtime.IsRelogActive = false;
+        runtime.FishingStartAccepted = false;
+
+        var continuation = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(10),
+            "Low Fisher@World");
+
+        Assert.Equal(FishingStartupAction.None, continuation.Action);
+        Assert.Contains("owned run was cleaned up", continuation.Reason);
+        Assert.False(coordinator.HasPendingRelogContinuation);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(1, runtime.FishingStarts);
+        Assert.Equal(1, runtime.AbortRequests);
+        Assert.Null(runtime.ActiveRunRegistrationStartUtc);
+    }
+
+    [Fact]
+    public void RelogContinuationWithoutMatchingLifecycleCleansUpWithoutReacquiring()
+    {
+        var runtime = RuntimeForRelog();
+        var coordinator = new FishingStartupCoordinator(runtime);
+        coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+        runtime.IsRelogActive = false;
+        runtime.ActiveRunRegistrationStartUtc = null;
+
+        var continuation = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(10),
+            "Low Fisher@World");
+
+        Assert.Equal(FishingStartupAction.None, continuation.Action);
+        Assert.Contains("lost its Ocean Fishing run ownership", continuation.Reason);
+        Assert.False(coordinator.HasPendingRelogContinuation);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(0, runtime.FishingStarts);
+        Assert.Equal(1, runtime.AbortRequests);
+    }
+
+    [Fact]
     public void RelogContinuationKeepsCachedXadbSelectionUntilNextStartup()
     {
         var runtime = RuntimeForRelog();
@@ -203,7 +337,9 @@ public sealed class FishingStartupCoordinatorTests
             new DateTimeOffset(2026, 7, 2, 12, 14, 59, TimeSpan.Zero),
             "Low Fisher@World");
 
-        Assert.Equal(FishingStartupAction.AlreadyHandled, beforeClose.Action);
+        Assert.Equal(FishingStartupAction.None, beforeClose.Action);
+        Assert.False(validCoordinator.HasPendingRelogContinuation);
+        Assert.Equal(1, validRuntime.AbortRequests);
         Assert.Equal(0, validRuntime.FishingStarts);
 
         var expiredRuntime = RuntimeForRelog();
@@ -217,6 +353,7 @@ public sealed class FishingStartupCoordinatorTests
 
         Assert.Equal(FishingStartupAction.None, atClose.Action);
         Assert.False(expiredCoordinator.HasPendingRelogContinuation);
+        Assert.Equal(1, expiredRuntime.AbortRequests);
         Assert.Equal(0, expiredRuntime.FishingStarts);
     }
 
@@ -594,6 +731,7 @@ public sealed class FishingStartupCoordinatorTests
         public IReadOnlyList<FishingSelectionResult>? CandidateQueue { get; set; }
 
         public int SelectionRequests { get; private set; }
+        public int BeginRunRequests { get; private set; }
         public int RelogRequests { get; private set; }
         public int FishingStarts { get; private set; }
         public int DisableAlwaysFishRequests { get; private set; }
@@ -604,6 +742,7 @@ public sealed class FishingStartupCoordinatorTests
         public DateTimeOffset? ActiveRunRegistrationStartUtc { get; set; }
         public DateTimeOffset? QueueConfirmedRegistrationStartUtc { get; set; }
         public DateTimeOffset? TerminalFailureRegistrationStartUtc { get; set; }
+        public bool FishingStartAccepted { get; set; } = true;
 
         public IReadOnlyList<FishingSelectionResult> BuildCandidateQueue()
         {
@@ -618,7 +757,7 @@ public sealed class FishingStartupCoordinatorTests
             return 0;
         }
 
-        public bool IsFishingRunActiveForWindow(DateTimeOffset registrationStartUtc)
+        public bool IsFishingRunOwnedForWindow(DateTimeOffset registrationStartUtc)
             => ActiveRunRegistrationStartUtc == registrationStartUtc.ToUniversalTime();
 
         public bool IsQueueRegistrationConfirmedForWindow(DateTimeOffset registrationStartUtc)
@@ -638,6 +777,7 @@ public sealed class FishingStartupCoordinatorTests
 
         public bool BeginRun(FishingRunMode mode, string targetCharacterKey, DateTimeOffset registrationStartUtc, DateTimeOffset registrationDeadlineUtc)
         {
+            BeginRunRequests++;
             LastRunMode = mode;
             LastRegistrationDeadline = registrationDeadlineUtc;
             ActiveRunRegistrationStartUtc = registrationStartUtc.ToUniversalTime();
@@ -661,8 +801,8 @@ public sealed class FishingStartupCoordinatorTests
         public bool StartFishing()
         {
             FishingStarts++;
-            IsFishingActive = true;
-            return true;
+            IsFishingActive = FishingStartAccepted;
+            return FishingStartAccepted;
         }
     }
 }
