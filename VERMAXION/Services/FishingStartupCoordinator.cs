@@ -50,7 +50,7 @@ public interface IFishingStartupRuntime
     bool IsRelogActive { get; }
 
     IReadOnlyList<FishingSelectionResult> BuildCandidateQueue();
-    bool IsFishingRunActiveForWindow(DateTimeOffset registrationStartUtc);
+    bool IsFishingRunOwnedForWindow(DateTimeOffset registrationStartUtc);
     bool IsQueueRegistrationConfirmedForWindow(DateTimeOffset registrationStartUtc);
     bool IsTerminalFailureBeforeQueueConfirmationForWindow(DateTimeOffset registrationStartUtc);
     void ClearFishingWindowOutcome(DateTimeOffset registrationStartUtc);
@@ -225,7 +225,10 @@ public sealed class FishingStartupCoordinator
         fishingStartAttempted = false;
         if (clearPendingRelogContinuation)
         {
+            var hadPendingRelogContinuation = HasPendingRelogContinuation;
             ClearPendingRelogContinuation();
+            if (hadPendingRelogContinuation)
+                runtime.AbortRun("pending relog continuation reset");
             orderedCandidates = Array.Empty<FishingSelectionResult>();
             candidateQueueBuilt = false;
             activeCandidateIndex = 0;
@@ -236,7 +239,13 @@ public sealed class FishingStartupCoordinator
     }
 
     public void CancelPendingRun()
-        => ClearPendingRelogContinuation();
+    {
+        if (!HasPendingRelogContinuation)
+            return;
+
+        ClearPendingRelogContinuation();
+        runtime.AbortRun("pending relog continuation cancelled");
+    }
 
     public FishingStartupResult ContinuePendingRelog(DateTimeOffset nowUtc, string currentCharacterKey)
     {
@@ -294,7 +303,8 @@ public sealed class FishingStartupCoordinator
             pendingRelogMode,
             window,
             selection,
-            mutateScheduledGuards: pendingRelogMode == FishingRunMode.Scheduled);
+            mutateScheduledGuards: pendingRelogMode == FishingRunMode.Scheduled,
+            requireExistingRunOwnership: true);
     }
 
     private FishingStartupResult TryStartRelog(
@@ -343,29 +353,37 @@ public sealed class FishingStartupCoordinator
         FishingRunMode mode,
         OceanFishingStartupWindow window,
         FishingSelectionResult selection,
-        bool mutateScheduledGuards)
+        bool mutateScheduledGuards,
+        bool requireExistingRunOwnership = false)
     {
         if (!FishingRecoveryPolicy.CanStartAttempt(decisionNowUtc, window.EndUtc))
+        {
+            if (requireExistingRunOwnership)
+            {
+                ClearPendingRelogContinuation();
+                runtime.AbortRun("pending relog continuation has insufficient registration time");
+                return Result(trigger, mode, FishingStartupAction.None, window, selection,
+                    "Less than 60 seconds remain in the registration window; the pending relog continuation was cleaned up.");
+            }
+
             return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
                 "Less than 60 seconds remain in the registration window; no attempt will start.");
+        }
 
         if (mutateScheduledGuards &&
             runtime.IsTerminalFailureBeforeQueueConfirmationForWindow(window.RegistrationStartUtc))
         {
             ClearPendingRelogContinuation();
-            return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
+            runtime.AbortRun("terminal fishing prep failure before queue confirmation");
+            return Result(trigger, mode,
+                requireExistingRunOwnership ? FishingStartupAction.None : FishingStartupAction.AlreadyHandled,
+                window,
+                selection,
                 $"Fishing prep reached a terminal failure for the {window.RegistrationStartUtc:u} registration window.");
         }
 
         if (mutateScheduledGuards && fishingStartAttempted)
         {
-            if (runtime.IsFishingRunActiveForWindow(window.RegistrationStartUtc))
-            {
-                ClearPendingRelogContinuation();
-                return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
-                    "Fishing prep is already active.");
-            }
-
             if (runtime.IsQueueRegistrationConfirmedForWindow(window.RegistrationStartUtc))
             {
                 ClearPendingRelogContinuation();
@@ -385,22 +403,51 @@ public sealed class FishingStartupCoordinator
                 "Fishing prep is already active.");
         }
 
-        if (!runtime.CanInitiateStartup)
-            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
-                "Waiting for the current character and VERMAXION engine to become ready.");
+        if (runtime.IsQueueRegistrationConfirmedForWindow(window.RegistrationStartUtc))
+        {
+            if (mutateScheduledGuards)
+                fishingStartAttempted = true;
+            ClearPendingRelogContinuation();
+            return Result(trigger, mode, FishingStartupAction.AlreadyHandled, window, selection,
+                $"Ocean Fishing queue registration was already confirmed for the {window.RegistrationStartUtc:u} registration window.");
+        }
 
         if (runtime.IsRelogActive)
             return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Waiting for the fishing relog sequence to finish.");
 
-        if (!runtime.BeginRun(mode, selection.CharacterKey, window.RegistrationStartUtc, window.EndUtc))
+        if (!runtime.CanInitiateStartup)
+            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
+                "Waiting for the current character and VERMAXION engine to become ready.");
+
+        var runOwnedForWindow = runtime.IsFishingRunOwnedForWindow(window.RegistrationStartUtc);
+        if (requireExistingRunOwnership && !runOwnedForWindow)
+        {
+            ClearPendingRelogContinuation();
+            runtime.AbortRun("pending relog continuation lost lifecycle ownership");
+            return Result(trigger, mode, FishingStartupAction.None, window, selection,
+                "Pending fishing relog continuation lost its Ocean Fishing run ownership and was cleaned up.");
+        }
+
+        if (!runOwnedForWindow &&
+            !runtime.BeginRun(mode, selection.CharacterKey, window.RegistrationStartUtc, window.EndUtc))
+        {
             return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Could not acquire Ocean Fishing run ownership; polling will retry.");
+        }
+
         if (!runtime.StartFishing())
         {
+            if (requireExistingRunOwnership)
+                ClearPendingRelogContinuation();
             runtime.AbortRun("fishing service start rejected");
-            return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
-                "Could not start fishing prep; polling will retry.");
+            return Result(trigger, mode,
+                requireExistingRunOwnership ? FishingStartupAction.None : FishingStartupAction.Waiting,
+                window,
+                selection,
+                requireExistingRunOwnership
+                    ? "Could not restart fishing prep after relog; the owned run was cleaned up."
+                    : "Could not start fishing prep; polling will retry.");
         }
 
         if (mutateScheduledGuards)
@@ -430,6 +477,7 @@ public sealed class FishingStartupCoordinator
             pendingRelogRegistrationStartUtc != registrationStartUtc)
         {
             ClearPendingRelogContinuation();
+            runtime.AbortRun("pending relog continuation moved outside its registration window");
         }
     }
 

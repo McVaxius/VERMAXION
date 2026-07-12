@@ -1553,7 +1553,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     IReadOnlyList<FishingSelectionResult> IFishingStartupRuntime.BuildCandidateQueue()
         => FishingService.BuildFishingCandidateQueue(fishingWindowActive: true);
 
-    bool IFishingStartupRuntime.IsFishingRunActiveForWindow(DateTimeOffset registrationStartUtc)
+    bool IFishingStartupRuntime.IsFishingRunOwnedForWindow(DateTimeOffset registrationStartUtc)
         => FishingRunLifecycle.IsActiveForWindow(registrationStartUtc);
 
     bool IFishingStartupRuntime.IsQueueRegistrationConfirmedForWindow(DateTimeOffset registrationStartUtc)
