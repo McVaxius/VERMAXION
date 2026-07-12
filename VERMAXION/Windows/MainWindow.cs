@@ -129,7 +129,7 @@ public class MainWindow : Window, IDisposable
         }
         ImGui.SameLine();
         
-        ImGui.BeginDisabled(engine.IsRunning);
+        ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
         if (ImGui.Button("Run All"))
             engine.ManualStart();
         ImGui.EndDisabled();
@@ -280,6 +280,7 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
 
             // Test Functions
+            ImGui.BeginDisabled(plugin.DadHandoffBlocksNewWork);
             ImGui.Text("Test Functions");
             ImGui.Separator();
             
@@ -358,6 +359,7 @@ public class MainWindow : Window, IDisposable
                 Plugin.Log.Information("[UI] Testing END key press");
                 GameHelpers.SendEnd();
             }
+            ImGui.EndDisabled();
         }
 
         ImGui.Spacing();
@@ -423,6 +425,9 @@ public class MainWindow : Window, IDisposable
         bool tertiaryButtonDisabled = false,
         string? tertiaryButtonTooltip = null)
     {
+        buttonDisabled |= plugin.DadHandoffBlocksNewWork;
+        secondaryButtonDisabled |= plugin.DadHandoffBlocksNewWork;
+        tertiaryButtonDisabled |= plugin.DadHandoffBlocksNewWork;
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
         ImGui.Text(task);

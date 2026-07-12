@@ -11,6 +11,7 @@ public class ARPostProcessService : IDisposable
     private readonly IPluginLog log;
     private readonly Action<string> onCharacterReady;
     private readonly Action beforeFinishPostprocess;
+    private readonly Func<bool> canRequestPostprocess;
 
     private Dalamud.Plugin.Ipc.ICallGateSubscriber<object>? onAdditionalTaskSub;
     private Dalamud.Plugin.Ipc.ICallGateSubscriber<string, object>? onReadyForPostprocessSub;
@@ -25,12 +26,18 @@ public class ARPostProcessService : IDisposable
     private bool finishPreparationDone;
     private DateTime lastFinishAttemptAt = DateTime.MinValue;
 
-    public ARPostProcessService(IDalamudPluginInterface pluginInterface, IPluginLog log, Action<string> onCharacterReady, Action beforeFinishPostprocess)
+    public ARPostProcessService(
+        IDalamudPluginInterface pluginInterface,
+        IPluginLog log,
+        Action<string> onCharacterReady,
+        Action beforeFinishPostprocess,
+        Func<bool>? canRequestPostprocess = null)
     {
         this.pluginInterface = pluginInterface;
         this.log = log;
         this.onCharacterReady = onCharacterReady;
         this.beforeFinishPostprocess = beforeFinishPostprocess;
+        this.canRequestPostprocess = canRequestPostprocess ?? (() => true);
 
         Initialize();
     }
@@ -64,6 +71,12 @@ public class ARPostProcessService : IDisposable
     {
         try
         {
+            if (!canRequestPostprocess())
+            {
+                log.Information("[AR] DAD handoff reservation owns the next cycle; VERMAXION did not request character postprocess.");
+                return;
+            }
+
             // Publish ownership intent before invoking AR. DAD may be subscribed earlier and must
             // still see VERMAXION busy when its own ready callback is delivered.
             IsRequested = true;

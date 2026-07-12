@@ -41,6 +41,15 @@ public sealed class JumboCactpotRecoveryPolicyTests
         Assert.Equal(JumboDialogueEvidence.None, evidence);
     }
 
+    [Theory]
+    [InlineData("NPCDialogue", "Cactpot Cashier", true)]
+    [InlineData("SystemMessage", "Cactpot Cashier", false)]
+    [InlineData("NPCDialogue", "Jumbo Cactpot Broker", false)]
+    public void CashierDialogueRequiresExactNpcMetadata(string chatType, string speaker, bool expected)
+    {
+        Assert.Equal(expected, JumboCactpotRecoveryPolicy.IsCashierDialogue(chatType, speaker));
+    }
+
     [Fact]
     public void RewardListWithoutPurchaseInputClassifiesExistingTickets()
     {

@@ -1,5 +1,10 @@
 # VERMAXION
 
+VERMAXION exposes its existing v1 automation status IPC plus an additive v2 DAD handoff reservation. A live DAD
+operation renews a 15-second lease every five seconds. VERMAXION finishes current owned work, blocks new work,
+turns AutoRetainer Multi Mode off, waits for AutoRetainer idle, releases its suppression, and publishes the local
+grant event. If DAD unloads or crashes, lease expiry safely allows VERMAXION to resume.
+
 
 ---
 
@@ -58,6 +63,8 @@ Ocean Fishing does not require Questionable. It does not manage AutoHook presets
 See [how-to-import-plugins.md](how-to-import-plugins.md)
 
 ## Status
+
+2026-07-12 — Ocean Fishing now resolves non-positive lure targets to the default 22 and uses fresh Henchman-envelope random rail destinations on voyage entry, route changes, and failed fishability retries, with no Henchman runtime dependency. Verification: all 266 tests pass, the Debug x64 solution build succeeds with only the existing PInvoke.User32 NU1601 warning, and multi-client runtime acceptance remains pending.
 
 2026-07-02 — Ocean Fishing reliability overhaul: each registration window now caches one ordered candidate queue (`AlwaysFish` first, then XA Database Fisher level), treats the full XADB roster as authoritative for every character including the logged-in character, and excludes unknown levels unless overridden. Missing unlock/gearset/lure failures advance immediately; ADS/travel failures retry the same character twice at 3s/10s; registration closure and post-queue failures stop. Lifecycle restoration now retains ownership until AutoHook, AutoRetainer multi-mode, and YesAlready are verified. Registration text is loaded from localized `CtsIkdEntrance_00663` rows 4/10, locked Arcanists' Guild shard 43 gets one verified attunement attempt, optional `/ays discard` and `/ays itemsell` cleanup runs before return, and return succeeds only after observed Lifestream activity or a territory change.
 
