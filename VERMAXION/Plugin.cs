@@ -83,6 +83,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public VermaxionEngine Engine { get; init; }
     public VermaxionIncidentWriter IncidentWriter { get; init; }
     public AutomationStatusIpcProvider AutomationStatusIpcProvider { get; init; }
+    public DadHandoffIpcProvider DadHandoffIpcProvider { get; private set; } = null!;
+    public bool DadHandoffBlocksNewWork => DadHandoffIpcProvider?.BlocksNewWork == true;
 
     public readonly WindowSystem WindowSystem = new("VERMAXION");
     public ConfigWindow ConfigWindow { get; init; }
@@ -191,7 +193,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         IncidentWriter = new VermaxionIncidentWriter(PluginInterface.ConfigDirectory.FullName);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
-        ARPostProcessService = new ARPostProcessService(PluginInterface, Log, OnARCharacterReady, ArmBeforeArSuppressionFromPostprocess);
+        ARPostProcessService = new ARPostProcessService(
+            PluginInterface,
+            Log,
+            OnARCharacterReady,
+            ArmBeforeArSuppressionFromPostprocess,
+            () => !DadHandoffBlocksNewWork);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
         FishingService = new FishingService(Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC, AutoRetainerIPC, FishingRunLifecycle, FisherGearsetRuntime, DutyState);
         FishingStartupCoordinator = new FishingStartupCoordinator(this);
@@ -204,7 +211,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             VendorStockService, FishingService,
             RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
+        Engine.StartBlocker = () => DadHandoffBlocksNewWork
+            ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
+            : null;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
+        DadHandoffIpcProvider = new DadHandoffIpcProvider(PluginInterface, Log, AutoRetainerIPC, BuildAutomationStatus);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -250,6 +261,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     public void Dispose()
     {
+        DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
         Framework.Update -= OnFrameworkUpdate;
@@ -437,9 +449,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     public void RunFishingGearsetTest()
     {
-        if (Engine.IsRunning || IsFishingRunActive)
+        if (DadHandoffBlocksNewWork || Engine.IsRunning || IsFishingRunActive)
         {
-            const string message = "Fisher gearset test is unavailable while engine, fishing, or relog work is active.";
+            const string message = "Fisher gearset test is unavailable while DAD handoff, engine, fishing, or relog work is active.";
             Log.Warning($"[Fishing][GearsetTest] {message}");
             ChatGui.Print($"[Vermaxion] {message}");
             return;
@@ -723,6 +735,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void ArmBeforeArSuppressionFromPostprocess()
     {
+        if (DadHandoffBlocksNewWork)
+        {
+            beforeArArmedByPostprocess = false;
+            ClearBeforeArArmedTracking();
+            SetBeforeArGate(BeforeArGateState.Skipped, "DAD handoff reservation blocks new before-AR work");
+            Log.Information("[AR] Skipped before-AR arming because DAD owns a handoff reservation.");
+            return;
+        }
+
         var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
         var activeConfig = ConfigManager.GetActiveConfig();
         var dueTaskIds = Engine.GetRunnableTaskIdsForPhase(PostProcessTaskPhase.BeforeAR).ToList();
@@ -768,6 +789,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void ProcessPendingBeforeArLogin()
     {
+        if (DadHandoffBlocksNewWork)
+            return;
+
         if (!pendingBeforeArLogin)
             return;
 
@@ -1257,6 +1281,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void OnFrameworkUpdate(IFramework fw)
     {
+        DadHandoffIpcProvider.Update();
+
         // Login detection
         if (ClientState.IsLoggedIn && !wasLoggedIn)
         {
@@ -1518,7 +1544,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
            ObjectTable.LocalPlayer != null &&
            !Condition[ConditionFlag.BetweenAreas] &&
            !Condition[ConditionFlag.BetweenAreas51] &&
-           !Engine.IsRunning;
+           !Engine.IsRunning &&
+           !DadHandoffBlocksNewWork;
 
     bool IFishingStartupRuntime.IsFishingActive => FishingService.IsActive;
     bool IFishingStartupRuntime.IsRelogActive => FishingRelogCoordinator.IsActive;

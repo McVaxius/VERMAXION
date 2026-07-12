@@ -47,6 +47,64 @@ public sealed class FishingPolicyTests
         Assert.Equal("npc-no-inn", decision.AdsMode);
     }
 
+    [Theory]
+    [InlineData(0, 22)]
+    [InlineData(-1, 22)]
+    [InlineData(1, 1)]
+    [InlineData(37, 37)]
+    public void LureRestockTargetUsesDefaultUnlessConfiguredPositive(int configuredTarget, int expectedTarget)
+    {
+        Assert.Equal(expectedTarget, FishingOperationPolicy.ResolveLureRestockTarget(configuredTarget));
+    }
+
+    [Fact]
+    public void SeededRailPositionsStayInsideHenchmanEnvelopes()
+    {
+        var random = new Random(0x5EED);
+        var sawStarboard = false;
+        var sawPort = false;
+        var sawStarboardForwardBand = false;
+        var sawStarboardAftBand = false;
+
+        for (var index = 0; index < 4096; index++)
+        {
+            var destination = OceanFishingRailPositionGenerator.Generate(random);
+            var position = destination.Position;
+
+            Assert.Equal(6.711f, position.Y);
+            if (position.X > 0)
+            {
+                sawStarboard = true;
+                Assert.InRange(position.X, 7.0f, 7.25f);
+                Assert.Equal(OceanFishingRailPositionGenerator.StarboardRotation, destination.Rotation);
+
+                if (position.Z <= -4f)
+                {
+                    sawStarboardForwardBand = true;
+                    Assert.InRange(position.Z, -14f, -4f);
+                }
+                else
+                {
+                    sawStarboardAftBand = true;
+                    Assert.InRange(position.Z, -2f, 5f);
+                }
+            }
+            else
+            {
+                sawPort = true;
+                Assert.InRange(position.X, -7.25f, -7.0f);
+                Assert.InRange(position.Z, -10f, 5.5f);
+                Assert.Equal(OceanFishingRailPositionGenerator.PortRotation, destination.Rotation);
+            }
+        }
+
+        Assert.True(sawStarboard);
+        Assert.True(sawPort);
+        Assert.True(sawStarboardForwardBand);
+        Assert.True(sawStarboardAftBand);
+        Assert.Equal(5, OceanFishingRailPositionGenerator.MaximumAttempts);
+    }
+
     [Fact]
     public void XadbParserReadsFisherFromJobLevelsAndJobs()
     {

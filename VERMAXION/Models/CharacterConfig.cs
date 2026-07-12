@@ -95,6 +95,8 @@ public class CharacterConfig
     public DateTime VerminionNextReset { get; set; } = DateTime.MinValue;
     public DateTime JumboCactpotLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime JumboCactpotNextReset { get; set; } = DateTime.MinValue;
+    public int? JumboCactpotUnclaimedTickets { get; set; }
+    public DateTime JumboCactpotPayoutAvailableAt { get; set; } = DateTime.MinValue;
     public DateTime FashionReportLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime FashionReportNextReset { get; set; } = DateTime.MinValue;
     
@@ -125,6 +127,11 @@ public class CharacterConfig
     // --- Plugin State ---
     public bool Enabled { get; set; } = true;
 
+    public static CharacterConfig CreateNew() => new()
+    {
+        JumboCactpotUnclaimedTickets = 0,
+    };
+
     public void ResetVerminionState()
     {
         VerminionCompletedThisWeek = false;
@@ -137,6 +144,8 @@ public class CharacterConfig
         JumboCactpotCompletedThisWeek = false;
         JumboCactpotLastCompleted = DateTime.MinValue;
         JumboCactpotNextReset = DateTime.MinValue;
+        JumboCactpotUnclaimedTickets = null;
+        JumboCactpotPayoutAvailableAt = DateTime.MinValue;
     }
 
     public void ResetFashionReportState()
@@ -305,6 +314,8 @@ public class CharacterConfig
             VerminionNextReset = VerminionNextReset,
             JumboCactpotLastCompleted = JumboCactpotLastCompleted,
             JumboCactpotNextReset = JumboCactpotNextReset,
+            JumboCactpotUnclaimedTickets = JumboCactpotUnclaimedTickets,
+            JumboCactpotPayoutAvailableAt = JumboCactpotPayoutAvailableAt,
             FashionReportLastCompleted = FashionReportLastCompleted,
             FashionReportNextReset = FashionReportNextReset,
             MiniCactpotLastCompleted = MiniCactpotLastCompleted,

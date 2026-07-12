@@ -69,7 +69,7 @@ public class ConfigManager
         if (account == null)
         {
             log.Warning("[ConfigManager] GetCurrentAccount returned null - using default config");
-            return new CharacterConfig();
+            return CharacterConfig.CreateNew();
         }
 
         if (string.IsNullOrEmpty(charKey))
@@ -182,6 +182,8 @@ public class ConfigManager
         }
 
         accountForChar.Characters[charKey] = accountForChar.DefaultConfig.Clone();
+        accountForChar.Characters[charKey].JumboCactpotUnclaimedTickets = 0;
+        accountForChar.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
         EnsureCharacterCreatedAtUtc(accountForChar, charKey, DateTime.UtcNow);
         SetCurrentCharacterKey(charKey);
         if (string.IsNullOrEmpty(SelectedCharacterKey))
@@ -271,11 +273,13 @@ public class ConfigManager
 
         if (string.IsNullOrEmpty(charKey))
         {
-            account.DefaultConfig = new CharacterConfig();
+            account.DefaultConfig = CharacterConfig.CreateNew();
         }
         else if (account.Characters.ContainsKey(charKey))
         {
             account.Characters[charKey] = account.DefaultConfig.Clone();
+            account.Characters[charKey].JumboCactpotUnclaimedTickets = 0;
+            account.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
         }
 
         SaveCurrentAccount();

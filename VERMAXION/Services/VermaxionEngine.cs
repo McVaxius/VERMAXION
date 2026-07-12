@@ -11,6 +11,7 @@ namespace VERMAXION.Services;
 
 public class VermaxionEngine
 {
+    public Func<string?> StartBlocker { get; set; } = static () => null;
     private static readonly TimeSpan HandoffQuietPeriod = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan HandoffBlockerLogThrottle = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan HandoffBlockerWarningThrottle = TimeSpan.FromSeconds(60);
@@ -143,7 +144,7 @@ public class VermaxionEngine
     private bool nagYourDadRequestIssued = false;
     private bool taskStartHoldLogged = false;
     private EngineState taskStartHoldState = EngineState.Idle;
-    private bool? activeJumboCactpotPayoutRoute = null;
+    private JumboCactpotRouteDecision? activeJumboCactpotRoute = null;
     private DateTime handoffQuietSince = DateTime.MinValue;
     private DateTime handoffBlockerLastLoggedAt = DateTime.MinValue;
     private DateTime handoffMovementStopLastIssuedAt = DateTime.MinValue;
@@ -323,6 +324,13 @@ public class VermaxionEngine
 
     private bool TryBeginRun(RunTaskPhaseFilter phaseFilter, bool requireEnabled, bool requireWorldReady, bool automatedRun, string source)
     {
+        var startBlocker = StartBlocker();
+        if (!string.IsNullOrWhiteSpace(startBlocker))
+        {
+            log.Information($"[Engine] Rejected {source} start: {startBlocker}");
+            return false;
+        }
+
         if (!LifecyclePolicy.CanStart(IsRunning))
         {
             log.Warning($"[Engine] Rejected overlapping {source} start while state={state}");
@@ -757,29 +765,51 @@ public class VermaxionEngine
 
             case EngineState.RunningJumboCactpot:
                 activeConfig = GetLiveActiveConfig();
-                if (activeConfig!.EnableJumboCactpot &&
-                    ResetDetectionService.TaskNeedsRun(activeConfig.JumboCactpotLastCompleted, activeConfig.JumboCactpotNextReset))
+                if (activeConfig!.EnableJumboCactpot)
                 {
                     var now = DateTime.UtcNow;
+                    var purchaseDue = ResetDetectionService.TaskNeedsRun(
+                        activeConfig.JumboCactpotLastCompleted,
+                        activeConfig.JumboCactpotNextReset);
+                    var route = activeJumboCactpotRoute ?? JumboCactpotRoutingPolicy.Decide(
+                        now,
+                        ResetDetectionService.IsJumboCactpotPayoutAvailable(now),
+                        activeConfig.JumboCactpotUnclaimedTickets,
+                        activeConfig.JumboCactpotPayoutAvailableAt,
+                        purchaseDue);
 
                     if (!cactpotService.IsActive && !cactpotService.IsComplete && !cactpotService.IsFailed)
                     {
+                        if (route.Route == JumboCactpotRoute.Wait)
+                        {
+                            log.Information("[Engine] Jumbo Cactpot routing decision is wait: tickets={Tickets}, payoutAt={PayoutAt:u}, purchaseDue={PurchaseDue}",
+                                activeConfig.JumboCactpotUnclaimedTickets?.ToString() ?? "unknown",
+                                activeConfig.JumboCactpotPayoutAvailableAt,
+                                purchaseDue);
+                            AdvanceToNextTask(EngineState.RunningJumboCactpot);
+                            break;
+                        }
+
                         if (ShouldHoldNonDutyTaskStart("Jumbo Cactpot"))
                             return;
 
-                        var runSaturdayPayout = ResetDetectionService.IsJumboCactpotPayoutAvailable(now);
-                        activeJumboCactpotPayoutRoute = runSaturdayPayout;
-                        log.Information($"[Engine] Jumbo Cactpot routing decision: now={now:u}, dc={ResetDetectionService.GetCurrentCharacterJumboDataCenterName()}, payoutAvailable={runSaturdayPayout}");
+                        activeJumboCactpotRoute = route;
+                        log.Information("[Engine] Jumbo Cactpot routing decision: now={Now:u}, dc={DataCenter}, route={Route}, expectedClaims={ExpectedClaims}, purchaseDue={PurchaseDue}",
+                            now,
+                            ResetDetectionService.GetCurrentCharacterJumboDataCenterName(),
+                            route.Route,
+                            route.ExpectedClaims?.ToString() ?? "discovery",
+                            route.PurchaseDue);
 
                         // Clean slate before starting Jumbo Cactpot
                         log.Information("[Engine] Clean slate: clearing open UI before Jumbo Cactpot");
                         ResetInteractionState();
                         MarkCurrentTaskWorkStarted();
 
-                        if (runSaturdayPayout)
+                        if (route.UsesCashier)
                         {
-                            log.Information("[Engine] Starting Jumbo Cactpot payout check");
-                            cactpotService.StartJumboCactpotCheck();
+                            log.Information("[Engine] Starting Jumbo Cactpot cashier route {Route}", route.Route);
+                            cactpotService.StartJumboCactpotCheck(route);
                         }
                         else
                         {
@@ -789,7 +819,6 @@ public class VermaxionEngine
                         return;
                     }
 
-                    var routeWasPayout = activeJumboCactpotPayoutRoute ?? ResetDetectionService.IsJumboCactpotPayoutAvailable(now);
                     cactpotService.Update();
 
                     if (cactpotService.IsComplete)
@@ -797,23 +826,41 @@ public class VermaxionEngine
                         var completedAt = DateTime.UtcNow;
                         PersistCurrentCharacterConfig(config =>
                         {
-                            config.JumboCactpotLastCompleted = completedAt;
-                            config.JumboCactpotNextReset = routeWasPayout
-                                ? ResetDetectionService.GetNextWeeklyReset(completedAt)
-                                : ResetDetectionService.GetNextJumboCactpotPayoutAvailability(completedAt);
-                            config.JumboCactpotCompletedThisWeek = routeWasPayout;
+                            switch (cactpotService.JumboCompletionKind)
+                            {
+                                case JumboCactpotCompletionKind.PurchaseBatchEstablished:
+                                    config.JumboCactpotLastCompleted = completedAt;
+                                    config.JumboCactpotNextReset = ResetDetectionService.GetNextJumboCactpotPayoutAvailability(completedAt);
+                                    config.JumboCactpotCompletedThisWeek = false;
+                                    config.JumboCactpotUnclaimedTickets = 3;
+                                    config.JumboCactpotPayoutAvailableAt = config.JumboCactpotNextReset;
+                                    break;
+                                case JumboCactpotCompletionKind.ScheduledPayoutComplete:
+                                    config.JumboCactpotLastCompleted = completedAt;
+                                    config.JumboCactpotNextReset = ResetDetectionService.GetNextWeeklyReset(completedAt);
+                                    config.JumboCactpotCompletedThisWeek = true;
+                                    config.JumboCactpotUnclaimedTickets = 0;
+                                    config.JumboCactpotPayoutAvailableAt = DateTime.MinValue;
+                                    break;
+                                case JumboCactpotCompletionKind.PreservedExistingCompletion:
+                                    config.JumboCactpotUnclaimedTickets = 0;
+                                    config.JumboCactpotPayoutAvailableAt = DateTime.MinValue;
+                                    break;
+                                default:
+                                    throw new InvalidOperationException("Jumbo Cactpot completed without a verified completion kind.");
+                            }
                         }, "Jumbo Cactpot completion");
                         cactpotService.Reset();
-                        activeJumboCactpotPayoutRoute = null;
+                        activeJumboCactpotRoute = null;
                         AdvanceToNextTask(EngineState.RunningJumboCactpot);
                     }
                     else if (cactpotService.IsFailed)
                     {
                         log.Warning("[Engine] Jumbo Cactpot failed - continuing");
                         runHadFailure = true;
-                        MarkJumboCactpotFailed(routeWasPayout);
+                        MarkJumboCactpotFailed(route.Route);
                         cactpotService.Reset();
-                        activeJumboCactpotPayoutRoute = null;
+                        activeJumboCactpotRoute = null;
                         AdvanceToNextTask(EngineState.RunningJumboCactpot);
                     }
                 }
@@ -1216,13 +1263,13 @@ public class VermaxionEngine
         log.Warning($"[Engine] {taskName} failed and remains unstamped for a future retry.");
     }
 
-    private void MarkJumboCactpotFailed(bool runSaturdayPayout)
+    private void MarkJumboCactpotFailed(JumboCactpotRoute route)
     {
         PersistCurrentCharacterConfig(config =>
         {
             config.JumboCactpotCompletedThisWeek = false;
         }, "Jumbo Cactpot failure");
-        log.Warning($"[Engine] Jumbo Cactpot {(runSaturdayPayout ? "payout" : "purchase")} failed and remains unstamped for a future retry.");
+        log.Warning("[Engine] Jumbo Cactpot route {Route} failed and remains unstamped for a future retry.", route);
     }
 
     private void PersistRefillFromListingsCompletion(RefillFromListingsFrequency frequency)
@@ -1795,7 +1842,12 @@ public class VermaxionEngine
             PostProcessTaskOrder.MiniCactpot => config.EnableMiniCactpot &&
                 ResetDetectionService.TaskNeedsRun(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset),
             PostProcessTaskOrder.JumboCactpot => config.EnableJumboCactpot &&
-                ResetDetectionService.TaskNeedsRun(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset),
+                JumboCactpotRoutingPolicy.Decide(
+                    DateTime.UtcNow,
+                    ResetDetectionService.IsJumboCactpotPayoutAvailable(DateTime.UtcNow),
+                    config.JumboCactpotUnclaimedTickets,
+                    config.JumboCactpotPayoutAvailableAt,
+                    ResetDetectionService.TaskNeedsRun(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset)).Route != JumboCactpotRoute.Wait,
             PostProcessTaskOrder.FashionReport => config.EnableFashionReport &&
                 ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) &&
                 ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset),
@@ -1907,7 +1959,7 @@ public class VermaxionEngine
         if (newState != EngineState.RunningLootGoblinMapGather && lootGoblinMapGatherService.IsComplete)
             lootGoblinMapGatherService.Reset();
         if (newState != EngineState.RunningJumboCactpot)
-            activeJumboCactpotPayoutRoute = null;
+            activeJumboCactpotRoute = null;
         if (newState != EngineState.RunningMiniCactpot && newState != EngineState.RunningJumboCactpot)
         {
             taskStartHoldLogged = false;

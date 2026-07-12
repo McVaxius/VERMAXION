@@ -28,7 +28,11 @@
     <Compile Include="..\VERMAXION\Models\OceanFishingResultClosePolicy.cs" Link="OceanFishingResultClosePolicy.cs" />
     <Compile Include="..\VERMAXION\Models\FisherGearsetModels.cs" Link="FisherGearsetModels.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterSortPolicy.cs" Link="CharacterSortPolicy.cs" />
+    <Compile Include="..\VERMAXION\Models\CharacterConfig.cs" Link="CharacterConfig.cs" />
+    <Compile Include="..\VERMAXION\Models\DadRunRequest.cs" Link="DadRunRequest.cs" />
+    <Compile Include="..\VERMAXION\Models\DadTimeWindow.cs" Link="DadTimeWindow.cs" />
     <Compile Include="..\VERMAXION\Models\AutomationStatusModels.cs" Link="AutomationStatusModels.cs" />
+    <Compile Include="..\VERMAXION\Models\DadHandoffModels.cs" Link="DadHandoffModels.cs" />
     <Compile Include="..\VERMAXION\Services\FishingStartupCoordinator.cs" Link="FishingStartupCoordinator.cs" />
     <Compile Include="..\VERMAXION\Services\SaucyConfigurationAccessor.cs" Link="SaucyConfigurationAccessor.cs" />
     <Compile Include="..\VERMAXION\PostProcessTaskOrder.cs" Link="PostProcessTaskOrder.cs" />

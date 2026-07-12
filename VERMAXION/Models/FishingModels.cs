@@ -77,6 +77,39 @@ public static class FishingDefaults
     public const int RepairThresholdPercent = 50;
 }
 
+public readonly record struct OceanFishingRailDestination(
+    Vector3 Position,
+    float Rotation);
+
+public static class OceanFishingRailPositionGenerator
+{
+    public const int MaximumAttempts = 5;
+    public const float StarboardRotation = 1.5f;
+    public const float PortRotation = -1.5f;
+
+    public static OceanFishingRailDestination Generate(Random random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+
+        if (random.Next(2) == 0)
+        {
+            var x = 7f + (float)(random.NextDouble() * 0.25);
+            var z = random.Next(2) == 0
+                ? -14f + random.NextSingle() * 10f
+                : -2f + random.NextSingle() * 7f;
+            return new OceanFishingRailDestination(
+                new Vector3(x, 6.711f, z),
+                StarboardRotation);
+        }
+
+        var portX = -7f - (float)(random.NextDouble() * 0.25);
+        var portZ = -10f + random.NextSingle() * 15.5f;
+        return new OceanFishingRailDestination(
+            new Vector3(portX, 6.711f, portZ),
+            PortRotation);
+    }
+}
+
 public readonly record struct OceanFishingStartupWindow(
     DateTimeOffset RegistrationStartUtc,
     DateTimeOffset StartUtc,
@@ -1324,6 +1357,11 @@ public static class FishingRepairPolicy
 
 public static class FishingOperationPolicy
 {
+    public static int ResolveLureRestockTarget(int configuredTarget)
+        => configuredTarget > 0
+            ? configuredTarget
+            : FishingDefaults.LureRestockTarget;
+
     public static FishingRepairDecision EvaluateRepair(
         FishingOperationSettings settings,
         bool durabilityKnown,

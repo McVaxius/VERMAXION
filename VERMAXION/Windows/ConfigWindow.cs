@@ -770,7 +770,7 @@ public class ConfigWindow : Window, IDisposable
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "FishingLureRestockTarget", "Versatile Lure restock target",
                     (source, target) => target.FishingLureRestockTarget = source.FishingLureRestockTarget);
-                DrawHelpMarker("Minimum Versatile Lures this character should have before fishing starts. Set 0 to skip lure restocking.");
+                DrawHelpMarker($"Minimum Versatile Lures this character should have before fishing starts. Set 0 to use the default target of {FishingDefaults.LureRestockTarget}.");
 
                 var returnDestination = cc.FishingReturnDestination;
                 if (ImGui.BeginCombo("Return destination", FormatFishingReturnDestination(returnDestination)))
