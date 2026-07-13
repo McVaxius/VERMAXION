@@ -989,11 +989,11 @@ public static class OceanFishingQueuePolicy
         if (snapshot.CurrentJobId != FisherJobId)
             return OceanFishingQueueAction.SwitchToFisher;
 
-        if (!snapshot.SuppliesPrepared)
-            return OceanFishingQueueAction.PrepareSupplies;
-
         if (snapshot.TerritoryType != LimsaTerritoryType)
             return OceanFishingQueueAction.TravelToLimsa;
+
+        if (!snapshot.SuppliesPrepared)
+            return OceanFishingQueueAction.PrepareSupplies;
 
         if (snapshot.RegistrarDistance > RegistrarInteractDistance)
             return OceanFishingQueueAction.MoveToRegistrar;
@@ -1011,6 +1011,56 @@ public static class OceanFishingRegistrarPolicy
 
     public static bool IsWithinInteractionRange(double distance)
         => distance <= OceanFishingQueuePolicy.RegistrarInteractDistance;
+}
+
+internal readonly record struct OceanFishingDockPreparationDecision(
+    bool RepairNeeded,
+    bool LureRestockNeeded)
+{
+    public bool RequiresDockNavigation => RepairNeeded || LureRestockNeeded;
+}
+
+internal static class OceanFishingDockPreparationPolicy
+{
+    public const ushort LimsaTerritoryType = 129;
+    public const uint MerchantAndMenderDataId = 1005422;
+    public const uint DryskthotaDataId = 1005421;
+    public const uint ArcanistsGuildAethernetId = 43;
+    public const uint VersatileLureItemId = 29717;
+    public const double InteractDistance = 3.0;
+    public static readonly Vector3 MerchantAndMenderPosition = new(-399.0f, 3.0f, 80.0f);
+    public static readonly Vector3 DryskthotaPosition = new(-409.42f, 4.0f, 74.48f);
+
+    public static OceanFishingDockPreparationDecision Evaluate(
+        bool repairNeeded,
+        int currentLureCount,
+        int lureTarget)
+        => new(
+            repairNeeded,
+            Math.Max(0, currentLureCount) < Math.Max(0, lureTarget));
+
+    public static bool IsLimsaSettlementReady(
+        uint territoryType,
+        bool betweenAreas,
+        bool playerAvailable)
+        => territoryType == LimsaTerritoryType && !betweenAreas && playerAvailable;
+
+    public static Vector3 ResolveMerchantApproachPosition(
+        Vector3 fallbackPosition,
+        Vector3? dataIdObjectPosition,
+        Vector3? nameFallbackObjectPosition)
+        => dataIdObjectPosition ?? nameFallbackObjectPosition ?? fallbackPosition;
+
+    public static int RequiredPurchaseQuantity(int currentCount, int targetCount, int maximumQuantity = 99)
+    {
+        var remaining = Math.Max(0, targetCount) - Math.Max(0, currentCount);
+        return remaining <= 0
+            ? 0
+            : Math.Clamp(remaining, 1, Math.Max(1, maximumQuantity));
+    }
+
+    public static bool CanContinueAfterRestockFailure(int finalLureCount)
+        => finalLureCount > 0;
 }
 
 public enum OceanFishingRegistrationDecision

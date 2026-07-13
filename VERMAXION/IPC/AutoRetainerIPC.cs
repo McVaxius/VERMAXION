@@ -9,7 +9,7 @@ using VERMAXION.Models;
 
 namespace VERMAXION.IPC;
 
-public sealed class AutoRetainerIPC
+public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
 {
     private const string AutoRetainerInternalName = "AutoRetainer";
     private const string MultiModeTypeName = "AutoRetainer.Modules.Multi.MultiMode";
@@ -35,6 +35,80 @@ public sealed class AutoRetainerIPC
         getMultiModeEnabledSubscriber = pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.GetMultiModeEnabled");
         setMultiModeEnabledSubscriber = pluginInterface.GetIpcSubscriber<bool, object>("AutoRetainer.SetMultiModeEnabled");
         LastSnapshot = new SuppressionSnapshot(false, false, false);
+    }
+
+    AutoRetainerSelectionReadResult IAutoRetainerSelectionAccessor.ReadCurrentCharacterSelection(
+        ulong localContentId)
+        => ReadCurrentCharacterSelection(localContentId);
+
+    AutoRetainerSelectionWriteResult IAutoRetainerSelectionAccessor.WriteCurrentCharacterSelection(
+        ulong localContentId,
+        bool enabled)
+        => WriteCurrentCharacterSelection(localContentId, enabled);
+
+    internal AutoRetainerSelectionReadResult ReadCurrentCharacterSelection(ulong localContentId)
+    {
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var autoRetainerPlugin, out var error))
+            {
+                log.Warning($"[AR][SelectionGuard] Selection read failed: {error}");
+                return AutoRetainerSelectionReadResult.Failed(error);
+            }
+
+            var result = AutoRetainerSelectionReflection.Read(autoRetainerPlugin, localContentId);
+            if (!result.Success)
+                log.Warning($"[AR][SelectionGuard] Selection read failed: {result.Error}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[AR][SelectionGuard] Selection read failed: {ex.Message}");
+            return AutoRetainerSelectionReadResult.Failed(ex.Message);
+        }
+    }
+
+    internal AutoRetainerSelectionWriteResult WriteCurrentCharacterSelection(
+        ulong localContentId,
+        bool enabled)
+    {
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var autoRetainerPlugin, out var error))
+            {
+                log.Warning($"[AR][SelectionGuard] Selection write failed: {error}");
+                return AutoRetainerSelectionWriteResult.Failed(error);
+            }
+
+            var result = AutoRetainerSelectionReflection.Write(autoRetainerPlugin, localContentId, enabled);
+            if (!result.Success)
+                log.Warning($"[AR][SelectionGuard] Selection write failed: {result.Error}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[AR][SelectionGuard] Selection write failed: {ex.Message}");
+            return AutoRetainerSelectionWriteResult.Failed(ex.Message);
+        }
+    }
+
+    private static bool TryGetLoadedAutoRetainer(out object autoRetainerPlugin, out string error)
+    {
+        if (DalamudReflector.TryGetDalamudPlugin(
+                AutoRetainerInternalName,
+                out autoRetainerPlugin,
+                out AssemblyLoadContext? _,
+                true,
+                true) &&
+            autoRetainerPlugin != null)
+        {
+            error = string.Empty;
+            return true;
+        }
+
+        autoRetainerPlugin = null!;
+        error = "AutoRetainer was not loaded.";
+        return false;
     }
 
     public SuppressionReadResult ReadSuppression()

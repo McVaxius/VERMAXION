@@ -1,4 +1,6 @@
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace VERMAXION.Models;
 
@@ -57,6 +59,23 @@ public sealed class DadHandoffReservationStatus
         or DadHandoffReservationState.Granted;
 }
 
+public static class DadHandoffJson
+{
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false) },
+    };
+
+    public static DadHandoffReservationRequest DeserializeRequest(string json)
+        => JsonSerializer.Deserialize<DadHandoffReservationRequest>(json ?? string.Empty, Options)
+           ?? new DadHandoffReservationRequest();
+
+    public static string SerializeStatus(DadHandoffReservationStatus status)
+        => JsonSerializer.Serialize(status, Options);
+}
+
 public sealed class DadHandoffObservation
 {
     public bool VermaxionBusy { get; init; }
@@ -67,6 +86,89 @@ public sealed class DadHandoffObservation
     public bool MultiModeKnown { get; init; }
     public bool MultiModeEnabled { get; init; }
     public bool VermaxionSuppressionOwned { get; init; }
+}
+
+public enum DadHandoffGrantAction
+{
+    Wait = 0,
+    ReleaseVermaxionSuppression = 1,
+    DisableMultiMode = 2,
+    Grant = 3,
+}
+
+public static class DadHandoffGrantPolicy
+{
+    public static DadHandoffGrantAction Decide(DadHandoffObservation observation)
+    {
+        if (observation.VermaxionBusy)
+            return DadHandoffGrantAction.Wait;
+        if (observation.VermaxionSuppressionOwned)
+            return DadHandoffGrantAction.ReleaseVermaxionSuppression;
+        if (!observation.MultiModeKnown)
+            return DadHandoffGrantAction.Wait;
+        if (observation.MultiModeEnabled)
+            return DadHandoffGrantAction.DisableMultiMode;
+        if (!observation.AutoRetainerBusyKnown || observation.AutoRetainerBusy)
+            return DadHandoffGrantAction.Wait;
+        return DadHandoffGrantAction.Grant;
+    }
+}
+
+public readonly record struct DadHandoffBeforeArYieldSnapshot(
+    bool ReservationActive,
+    BeforeArGateState GateState,
+    bool LoginPending,
+    bool EngineOwnsActiveWork,
+    bool FishingOwnsWork,
+    bool ManualServiceOwnsWork,
+    bool CharacterPostprocessRequested,
+    bool CleanupOwnsWork);
+
+public static class DadHandoffBeforeArYieldPolicy
+{
+    public static bool ShouldYield(DadHandoffBeforeArYieldSnapshot snapshot)
+    {
+        var hasUnstartedGate = snapshot.LoginPending ||
+                               snapshot.GateState is BeforeArGateState.WaitingForWorldReady
+                                   or BeforeArGateState.Armed;
+        var hasStartedOrOtherWork = snapshot.GateState == BeforeArGateState.Running ||
+                                    snapshot.EngineOwnsActiveWork ||
+                                    snapshot.FishingOwnsWork ||
+                                    snapshot.ManualServiceOwnsWork ||
+                                    snapshot.CharacterPostprocessRequested ||
+                                    snapshot.CleanupOwnsWork;
+        return snapshot.ReservationActive && hasUnstartedGate && !hasStartedOrOtherWork;
+    }
+}
+
+public sealed class DadHandoffPreGrantMultiModeLease
+{
+    public bool ChangedByVermaxion { get; private set; }
+    public bool RestorePending { get; private set; }
+
+    public void RecordDisabledByVermaxion()
+    {
+        ChangedByVermaxion = true;
+        RestorePending = false;
+    }
+
+    public void EndWithoutGrant()
+    {
+        if (ChangedByVermaxion)
+            RestorePending = true;
+    }
+
+    public void CompleteGrant()
+    {
+        ChangedByVermaxion = false;
+        RestorePending = false;
+    }
+
+    public void RecordRestored()
+    {
+        ChangedByVermaxion = false;
+        RestorePending = false;
+    }
 }
 
 public sealed class DadHandoffReservationMachine
@@ -83,6 +185,13 @@ public sealed class DadHandoffReservationMachine
         or DadHandoffReservationState.Granted;
 
     public string OperationToken => request?.OperationToken ?? string.Empty;
+    public DadHandoffReservationState State => state;
+
+    public bool IsLeaseExpired(DateTime nowUtc)
+    {
+        nowUtc = EnsureUtc(nowUtc);
+        return BlocksNewWork && leaseExpiresUtc.HasValue && nowUtc >= leaseExpiresUtc.Value;
+    }
 
     public DadHandoffReservationStatus Reserve(
         DadHandoffReservationRequest candidate,

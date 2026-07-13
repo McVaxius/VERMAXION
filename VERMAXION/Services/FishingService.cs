@@ -20,18 +20,21 @@ namespace VERMAXION.Services;
 
 public sealed class FishingService
 {
-    private const ushort LimsaTerritoryType = 129;
-    private const uint ArcanistsGuildAethernetId = 43;
+    private const ushort LimsaTerritoryType = OceanFishingDockPreparationPolicy.LimsaTerritoryType;
+    private const uint ArcanistsGuildAethernetId = OceanFishingDockPreparationPolicy.ArcanistsGuildAethernetId;
     private const uint OceanFishingUnlockQuestId = 69379;
-    private const uint DryskthotaDataId = 1005421;
-    private const uint VersatileLureItemId = 29717;
+    private const uint MerchantAndMenderDataId = OceanFishingDockPreparationPolicy.MerchantAndMenderDataId;
+    private const uint DryskthotaDataId = OceanFishingDockPreparationPolicy.DryskthotaDataId;
+    private const uint VersatileLureItemId = OceanFishingDockPreparationPolicy.VersatileLureItemId;
     private const string OceanFishingResultAddonName = "IKDResult";
     private const float BoatFishingPositionTolerance = 1.5f;
     private const ConditionFlag GatheringCondition = (ConditionFlag)6;
     private const ConditionFlag FishingCondition = (ConditionFlag)43;
-    private static readonly Vector3 DryskthotaPosition = new(-409.42f, 4.00f, 74.48f);
+    private static readonly Vector3 MerchantAndMenderPosition = OceanFishingDockPreparationPolicy.MerchantAndMenderPosition;
+    private static readonly Vector3 DryskthotaPosition = OceanFishingDockPreparationPolicy.DryskthotaPosition;
     private static readonly TimeSpan FishingLoopPollInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan LimsaTravelTimeout = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan DockNavigationTimeout = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan RegistrarNavigationTimeout = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan DepartureTimeout = TimeSpan.FromMinutes(35);
     private static readonly TimeSpan DutyCompletionTimeout = TimeSpan.FromHours(3);
@@ -76,7 +79,6 @@ public sealed class FishingService
     private bool queueRegistrationObserved;
     private bool queueRecognitionGraceEntered;
     private bool lateQueueRecognitionLogged;
-    private int lureCountBeforeRestock;
     private bool dutyReadyAccepted;
     private bool dutyCompletionObserved;
     private bool resultFallbackLogged;
@@ -122,12 +124,14 @@ public sealed class FishingService
         Idle,
         SwitchingToFisher,
         ValidatingUnlock,
+        TravelingToLimsa,
+        CheckingPreparation,
+        NavigatingToPreparationDock,
         CheckingRepair,
         WaitingForRepair,
         CheckingLures,
         RestockingLures,
         SettingBait,
-        TravelingToLimsa,
         NavigatingToRegistrar,
         InteractingRegistrar,
         ConfirmingRegistration,
@@ -222,7 +226,6 @@ public sealed class FishingService
         queueRegistrationObserved = false;
         queueRecognitionGraceEntered = false;
         lateQueueRecognitionLogged = false;
-        lureCountBeforeRestock = 0;
         dutyReadyAccepted = false;
         dutyCompletionObserved = false;
         aethernetAttempted = false;
@@ -451,7 +454,19 @@ public sealed class FishingService
                 }
 
                 log.Information($"[Fishing] Ocean Fishing unlock quest {OceanFishingUnlockQuestId} verified complete");
-                SetState(FishingState.CheckingRepair);
+                SetState(FishingState.TravelingToLimsa);
+                break;
+
+            case FishingState.TravelingToLimsa:
+                TickTravelToLimsa(elapsed);
+                break;
+
+            case FishingState.CheckingPreparation:
+                TickCheckDockPreparation();
+                break;
+
+            case FishingState.NavigatingToPreparationDock:
+                TickNavigateToPreparationDock(elapsed);
                 break;
 
             case FishingState.CheckingRepair:
@@ -484,9 +499,12 @@ public sealed class FishingService
                 var lureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
                 if (lureTarget > 0 && lureCount < lureTarget)
                 {
-                    lureCountBeforeRestock = lureCount;
-                    log.Information($"[Fishing] Versatile Lures below target ({lureCount}/{lureTarget}); starting restock");
-                    vendorStockService.StartVersatileLureRestock(lureTarget);
+                    var purchaseQuantity = OceanFishingDockPreparationPolicy.RequiredPurchaseQuantity(
+                        lureCount,
+                        lureTarget);
+                    log.Information(
+                        $"[Fishing][DockPrep] Versatile Lures below target ({lureCount}/{lureTarget}); starting dock-local restock for {purchaseQuantity}");
+                    vendorStockService.StartVersatileLureRestockDockside(lureTarget);
                     SetState(FishingState.RestockingLures);
                     break;
                 }
@@ -513,15 +531,15 @@ public sealed class FishingService
                 {
                     vendorStockService.Reset();
                     var availableLures = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
-                    if (Math.Max(availableLures, lureCountBeforeRestock) > 0)
+                    if (OceanFishingDockPreparationPolicy.CanContinueAfterRestockFailure(availableLures))
                     {
-                        log.Warning($"[Fishing] Versatile Lure restock failed, but {availableLures} lure(s) are available; continuing with existing stock.");
+                        log.Warning($"[Fishing][DockPrep] Bounded lure-restock failure left {availableLures} usable lure(s); continuing to Dryskthota with final inventory stock.");
                         SetState(FishingState.SettingBait);
                     }
                     else
                     {
                         Fail(
-                            "Versatile Lure restock failed and no Versatile Lures are available.",
+                            "Bounded Versatile Lure restock failed and final inventory count is zero.",
                             FishingAttemptFailureKind.CharacterPermanent);
                     }
                 }
@@ -537,11 +555,7 @@ public sealed class FishingService
                 }
 
                 CommandHelper.SendCommand("/bait Versatile Lure");
-                SetState(FishingState.TravelingToLimsa);
-                break;
-
-            case FishingState.TravelingToLimsa:
-                TickTravelToLimsa(elapsed);
+                SetState(FishingState.NavigatingToRegistrar);
                 break;
 
             case FishingState.NavigatingToRegistrar:
@@ -667,7 +681,9 @@ public sealed class FishingService
 
         if (IsInLimsaAndReady())
         {
-            SetState(FishingState.NavigatingToRegistrar);
+            log.Information(
+                $"[Fishing][DockPrep] Limsa settlement confirmed in territory {LimsaTerritoryType}; evaluating repair and lure requirements");
+            SetState(FishingState.CheckingPreparation);
             return;
         }
 
@@ -687,6 +703,182 @@ public sealed class FishingService
             log.Information("[Fishing] Traveling to Limsa for Ocean Fishing: /li limsa");
             lifestream.ExecuteCommand("/li limsa");
         }
+    }
+
+    private void TickCheckDockPreparation()
+    {
+        if (!IsInLimsaAndReady())
+        {
+            SetState(FishingState.TravelingToLimsa);
+            return;
+        }
+
+        var settings = GetActiveOperationSettings();
+        var durabilityKnown = GameHelpers.TryGetLowestEquippedGearConditionPercent(out var lowestDurability);
+        var repairDecision = FishingOperationPolicy.EvaluateRepair(
+            settings,
+            durabilityKnown,
+            lowestDurability);
+        var lureTarget = FishingOperationPolicy.ResolveLureRestockTarget(settings.LureRestockTarget);
+        var lureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
+        var preparation = OceanFishingDockPreparationPolicy.Evaluate(
+            repairDecision.ShouldRepair,
+            lureCount,
+            lureTarget);
+
+        log.Information(
+            $"[Fishing][DockPrep] Requirements evaluated after Limsa arrival: " +
+            $"repair={preparation.RepairNeeded} ({repairDecision.Reason}), " +
+            $"lures={lureCount}/{lureTarget}, restock={preparation.LureRestockNeeded}");
+
+        if (!preparation.RequiresDockNavigation)
+        {
+            log.Information("[Fishing][DockPrep] Repair and lure targets already satisfied; dock vendor navigation skipped");
+            SetState(FishingState.SettingBait);
+            return;
+        }
+
+        SetState(FishingState.NavigatingToPreparationDock);
+    }
+
+    private void TickNavigateToPreparationDock(TimeSpan elapsed)
+    {
+        if (!IsInLimsaAndReady())
+        {
+            SetState(FishingState.TravelingToLimsa);
+            return;
+        }
+
+        var dataIdVendor = GameHelpers.FindObjectByDataId(MerchantAndMenderDataId);
+        var nameFallbackVendor = GameHelpers.FindObjectByName("Merchant & Mender");
+        var vendor = dataIdVendor ?? nameFallbackVendor;
+        var approachPosition = OceanFishingDockPreparationPolicy.ResolveMerchantApproachPosition(
+            MerchantAndMenderPosition,
+            dataIdVendor?.Position,
+            nameFallbackVendor?.Position);
+        var distance = DistanceTo(approachPosition);
+
+        if (TryRouteViaArcanistsGuild(distance, "Merchant & Mender"))
+            return;
+
+        if (vendor != null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
+        {
+            vnavmesh.Stop();
+            var source = dataIdVendor != null ? "data ID" : "name fallback";
+            log.Information(
+                $"[Fishing][DockPrep] Vendor acquisition: Merchant & Mender dataId={MerchantAndMenderDataId} resolved by {source} at {vendor.Position}");
+            SetState(FishingState.CheckingRepair);
+            return;
+        }
+
+        if (vendor == null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
+        {
+            vnavmesh.Stop();
+            statusDetail = "Waiting for Merchant & Mender to load at the Limsa dock";
+        }
+
+        if (elapsed > DockNavigationTimeout)
+        {
+            Fail(
+                $"Bounded dock navigation timed out waiting for Merchant & Mender dataId={MerchantAndMenderDataId}; distance={distance:F1}y.",
+                FishingAttemptFailureKind.SharedTransient);
+            return;
+        }
+
+        if (vendor == null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
+            return;
+
+        if (lastNavigationCommandAt == DateTime.MinValue ||
+            DateTime.UtcNow - lastNavigationCommandAt >= TimeSpan.FromSeconds(2))
+        {
+            lastNavigationCommandAt = DateTime.UtcNow;
+            var source = vendor == null ? "fixed fallback" : dataIdVendor != null ? "data ID" : "name fallback";
+            log.Information(
+                $"[Fishing][DockPrep] Dock navigation to Merchant & Mender ({distance:F1}y, source={source}, dataId={MerchantAndMenderDataId})");
+            vnavmesh.PathfindAndMoveTo(approachPosition);
+        }
+    }
+
+    private bool TryRouteViaArcanistsGuild(double distance, string directDestinationName)
+    {
+        if (distance <= 100)
+            return false;
+
+        if (!IsArcanistsGuildAethernetUnlocked() && !aethernetAttunementAttempted)
+        {
+            var shardName = GetArcanistsGuildAethernetName();
+            var shard = string.IsNullOrWhiteSpace(shardName)
+                ? null
+                : GameHelpers.FindObjectByName(shardName);
+            if (shard == null)
+            {
+                if (TryGetAethernetPosition(ArcanistsGuildAethernetId, out var shardPosition))
+                {
+                    if (aethernetAttunementNavigationStartedAt == DateTime.MinValue)
+                        aethernetAttunementNavigationStartedAt = DateTime.UtcNow;
+
+                    if (DateTime.UtcNow - aethernetAttunementNavigationStartedAt < TimeSpan.FromSeconds(60))
+                    {
+                        statusDetail = "Moving to locked Arcanists' Guild shard for attunement";
+                        vnavmesh.PathfindAndMoveTo(shardPosition);
+                        return true;
+                    }
+                }
+
+                aethernetAttunementAttempted = true;
+                log.Warning(
+                    $"[Fishing][DockRoute] Arcanists' Guild shard {ArcanistsGuildAethernetId} was locked but could not be found for one attunement attempt; navigating directly to {directDestinationName}");
+            }
+            else
+            {
+                var shardDistance = DistanceTo(shard.Position);
+                if (shardDistance > 3.0)
+                {
+                    statusDetail = $"Moving to locked Arcanists' Guild shard ({shardDistance:F1}y)";
+                    vnavmesh.PathfindAndMoveTo(shard.Position);
+                    return true;
+                }
+
+                vnavmesh.Stop();
+                aethernetAttunementAttempted = true;
+                aethernetAttunementStartedAt = DateTime.UtcNow;
+                Plugin.TargetManager.Target = shard;
+                GameHelpers.InteractWithObject(shard);
+                log.Information(
+                    $"[Fishing][DockRoute] Attempted attunement of locked Arcanists' Guild shard {ArcanistsGuildAethernetId}");
+                return true;
+            }
+        }
+
+        if (aethernetAttunementStartedAt != DateTime.MinValue && !IsArcanistsGuildAethernetUnlocked())
+        {
+            if (DateTime.UtcNow - aethernetAttunementStartedAt < OceanFishingAttunementPolicy.VerificationWait)
+            {
+                statusDetail = "Verifying Arcanists' Guild shard attunement";
+                return true;
+            }
+
+            aethernetAttunementStartedAt = DateTime.MinValue;
+            log.Warning(
+                $"[Fishing][DockRoute] Arcanists' Guild shard {ArcanistsGuildAethernetId} did not unlock after the attunement attempt; navigating directly to {directDestinationName}");
+        }
+
+        if (!aethernetAttempted && IsArcanistsGuildAethernetUnlocked())
+        {
+            aethernetAttempted = true;
+            if (lifestream.AethernetTeleportById(ArcanistsGuildAethernetId))
+            {
+                log.Information(
+                    $"[Fishing][DockRoute] Traveling toward {directDestinationName} via Arcanists' Guild aethernet id {ArcanistsGuildAethernetId}");
+                statusDetail = "Traveling to Arcanists' Guild";
+                return true;
+            }
+
+            log.Warning(
+                $"[Fishing][DockRoute] Arcanists' Guild aethernet request failed; navigating directly to {directDestinationName}");
+        }
+
+        return false;
     }
 
     private void TickNavigateToRegistrar(TimeSpan elapsed)
@@ -711,74 +903,8 @@ public sealed class FishingService
             registrar?.Position);
         var distance = DistanceTo(approachPosition);
 
-        if (distance > 100 && !IsArcanistsGuildAethernetUnlocked() && !aethernetAttunementAttempted)
-        {
-            var shardName = GetArcanistsGuildAethernetName();
-            var shard = string.IsNullOrWhiteSpace(shardName)
-                ? null
-                : GameHelpers.FindObjectByName(shardName);
-            if (shard == null)
-            {
-                if (TryGetAethernetPosition(ArcanistsGuildAethernetId, out var shardPosition))
-                {
-                    if (aethernetAttunementNavigationStartedAt == DateTime.MinValue)
-                        aethernetAttunementNavigationStartedAt = DateTime.UtcNow;
-
-                    if (DateTime.UtcNow - aethernetAttunementNavigationStartedAt < TimeSpan.FromSeconds(60))
-                    {
-                        statusDetail = "Moving to locked Arcanists' Guild shard for attunement";
-                        vnavmesh.PathfindAndMoveTo(shardPosition);
-                        return;
-                    }
-                }
-
-                aethernetAttunementAttempted = true;
-                log.Warning("[Fishing] Arcanists' Guild shard 43 was locked but could not be found for one attunement attempt; navigating directly to Dryskthota");
-            }
-            else
-            {
-                var shardDistance = DistanceTo(shard.Position);
-                if (shardDistance > 3.0)
-                {
-                    statusDetail = $"Moving to locked Arcanists' Guild shard ({shardDistance:F1}y)";
-                    vnavmesh.PathfindAndMoveTo(shard.Position);
-                    return;
-                }
-
-                vnavmesh.Stop();
-                aethernetAttunementAttempted = true;
-                aethernetAttunementStartedAt = DateTime.UtcNow;
-                Plugin.TargetManager.Target = shard;
-                GameHelpers.InteractWithObject(shard);
-                log.Information("[Fishing] Attempted attunement of locked Arcanists' Guild shard 43");
-                return;
-            }
-        }
-
-        if (aethernetAttunementStartedAt != DateTime.MinValue && !IsArcanistsGuildAethernetUnlocked())
-        {
-            if (DateTime.UtcNow - aethernetAttunementStartedAt < OceanFishingAttunementPolicy.VerificationWait)
-            {
-                statusDetail = "Verifying Arcanists' Guild shard attunement";
-                return;
-            }
-
-            aethernetAttunementStartedAt = DateTime.MinValue;
-            log.Warning("[Fishing] Arcanists' Guild shard 43 did not unlock after the attunement attempt; navigating directly to Dryskthota");
-        }
-
-        if (!aethernetAttempted && distance > 100 && IsArcanistsGuildAethernetUnlocked())
-        {
-            aethernetAttempted = true;
-            if (lifestream.AethernetTeleportById(ArcanistsGuildAethernetId))
-            {
-                log.Information($"[Fishing] Traveling to Arcanists' Guild via aethernet id {ArcanistsGuildAethernetId}");
-                statusDetail = "Traveling to Arcanists' Guild";
-                return;
-            }
-
-            log.Warning("[Fishing] Arcanists' Guild aethernet request failed; navigating directly");
-        }
+        if (TryRouteViaArcanistsGuild(distance, "Dryskthota"))
+            return;
 
         if (registrar != null && OceanFishingRegistrarPolicy.IsWithinInteractionRange(distance))
         {
@@ -1106,10 +1232,11 @@ public sealed class FishingService
     }
 
     private static bool IsInLimsaAndReady()
-        => Plugin.ClientState.TerritoryType == LimsaTerritoryType &&
-           !Plugin.Condition[ConditionFlag.BetweenAreas] &&
-           !Plugin.Condition[ConditionFlag.BetweenAreas51] &&
-           GameHelpers.IsPlayerAvailable();
+        => OceanFishingDockPreparationPolicy.IsLimsaSettlementReady(
+            Plugin.ClientState.TerritoryType,
+            Plugin.Condition[ConditionFlag.BetweenAreas] ||
+            Plugin.Condition[ConditionFlag.BetweenAreas51],
+            GameHelpers.IsPlayerAvailable());
 
     private static bool IsQueueRegistered()
         => OceanFishingQueueEvidencePolicy.Detect(
@@ -2110,7 +2237,8 @@ public sealed class FishingService
         stateEnteredAt = DateTime.UtcNow;
         statusDetail = string.Empty;
 
-        if (newState is FishingState.NavigatingToRegistrar or
+        if (newState is FishingState.NavigatingToPreparationDock or
+            FishingState.NavigatingToRegistrar or
             FishingState.MovingToFishingSpot or
             FishingState.NavigatingToCleanupVendor)
             lastNavigationCommandAt = DateTime.MinValue;

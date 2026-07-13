@@ -3,7 +3,11 @@
 VERMAXION exposes its existing v1 automation status IPC plus an additive v2 DAD handoff reservation. A live DAD
 operation renews a 15-second lease every five seconds. VERMAXION finishes current owned work, blocks new work,
 turns AutoRetainer Multi Mode off, waits for AutoRetainer idle, releases its suppression, and publishes the local
-grant event. If DAD unloads or crashes, lease expiry safely allows VERMAXION to resume.
+grant event. V2 status JSON emits canonical string reservation states. A waiting, pending, or armed Before-AR gate
+has not crossed VERMAXION's real-work boundary and yields to DAD, releasing only VERMAXION-owned suppression;
+running engine, fishing, manual, and other active work still drains normally. If a pre-grant attempt ends, VERMAXION
+restores Multi Mode only when that attempt disabled it. A successful grant transfers the boundary to DAD and is
+never followed by a VERMAXION Multi Mode restore.
 
 
 ---

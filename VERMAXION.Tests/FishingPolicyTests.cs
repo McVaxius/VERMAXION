@@ -744,6 +744,7 @@ public sealed class FishingPolicyTests
     [Theory]
     [InlineData(1, true, 129, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.SwitchToFisher)]
     [InlineData(18, false, 129, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.PrepareSupplies)]
+    [InlineData(18, false, 128, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.TravelToLimsa)]
     [InlineData(18, true, 128, 1.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.TravelToLimsa)]
     [InlineData(18, true, 129, 20.0, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.MoveToRegistrar)]
     [InlineData(18, true, 129, 2.001, true, false, false, false, 99.0, false, false, false, OceanFishingQueueAction.MoveToRegistrar)]
@@ -798,6 +799,89 @@ public sealed class FishingPolicyTests
         Assert.Equal(fallback, OceanFishingRegistrarPolicy.ResolveApproachPosition(fallback, null));
         Assert.True(OceanFishingRegistrarPolicy.IsWithinInteractionRange(2.0));
         Assert.False(OceanFishingRegistrarPolicy.IsWithinInteractionRange(2.001));
+    }
+
+    [Fact]
+    public void DockPreparationUsesKnownLimsaRouteAndNpcIdentifiers()
+    {
+        Assert.Equal((ushort)129, OceanFishingDockPreparationPolicy.LimsaTerritoryType);
+        Assert.Equal(1005422u, OceanFishingDockPreparationPolicy.MerchantAndMenderDataId);
+        Assert.Equal(1005421u, OceanFishingDockPreparationPolicy.DryskthotaDataId);
+        Assert.Equal(43u, OceanFishingDockPreparationPolicy.ArcanistsGuildAethernetId);
+        Assert.Equal(29717u, OceanFishingDockPreparationPolicy.VersatileLureItemId);
+        Assert.Equal(new Vector3(-399f, 3f, 80f), OceanFishingDockPreparationPolicy.MerchantAndMenderPosition);
+    }
+
+    [Fact]
+    public void LimsaSettlementDoesNotDependOnVendorVisibility()
+    {
+        Assert.True(OceanFishingDockPreparationPolicy.IsLimsaSettlementReady(
+            territoryType: 129,
+            betweenAreas: false,
+            playerAvailable: true));
+        Assert.False(OceanFishingDockPreparationPolicy.IsLimsaSettlementReady(128, false, true));
+        Assert.False(OceanFishingDockPreparationPolicy.IsLimsaSettlementReady(129, true, true));
+        Assert.False(OceanFishingDockPreparationPolicy.IsLimsaSettlementReady(129, false, false));
+    }
+
+    [Fact]
+    public void DockApproachUsesDataIdObjectThenNameThenFixedFallback()
+    {
+        var fallback = OceanFishingDockPreparationPolicy.MerchantAndMenderPosition;
+        var byName = new Vector3(-398f, 3.1f, 79f);
+        var byDataId = new Vector3(-397f, 3.2f, 78f);
+
+        Assert.Equal(
+            byDataId,
+            OceanFishingDockPreparationPolicy.ResolveMerchantApproachPosition(fallback, byDataId, byName));
+        Assert.Equal(
+            byName,
+            OceanFishingDockPreparationPolicy.ResolveMerchantApproachPosition(fallback, null, byName));
+        Assert.Equal(
+            fallback,
+            OceanFishingDockPreparationPolicy.ResolveMerchantApproachPosition(fallback, null, null));
+    }
+
+    [Theory]
+    [InlineData(false, 22, 22, false)]
+    [InlineData(false, 23, 22, false)]
+    [InlineData(false, 9, 22, true)]
+    [InlineData(true, 22, 22, true)]
+    public void DockNavigationOnlyRunsWhenRepairOrLurePreparationIsNeeded(
+        bool repairNeeded,
+        int currentLures,
+        int targetLures,
+        bool expected)
+    {
+        var decision = OceanFishingDockPreparationPolicy.Evaluate(
+            repairNeeded,
+            currentLures,
+            targetLures);
+
+        Assert.Equal(expected, decision.RequiresDockNavigation);
+    }
+
+    [Theory]
+    [InlineData(0, 22, 22)]
+    [InlineData(9, 22, 13)]
+    [InlineData(22, 22, 0)]
+    [InlineData(30, 22, 0)]
+    public void DockRestockRequestsOnlyTheQuantityNeededForTheTarget(
+        int currentCount,
+        int targetCount,
+        int expectedQuantity)
+    {
+        Assert.Equal(
+            expectedQuantity,
+            OceanFishingDockPreparationPolicy.RequiredPurchaseQuantity(currentCount, targetCount));
+    }
+
+    [Fact]
+    public void RestockFailureContinuationUsesFinalInventoryCount()
+    {
+        Assert.False(OceanFishingDockPreparationPolicy.CanContinueAfterRestockFailure(0));
+        Assert.True(OceanFishingDockPreparationPolicy.CanContinueAfterRestockFailure(1));
+        Assert.True(OceanFishingDockPreparationPolicy.CanContinueAfterRestockFailure(9));
     }
 
     [Fact]

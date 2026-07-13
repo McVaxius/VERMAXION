@@ -5,6 +5,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
@@ -14,6 +15,7 @@ public sealed class VendorStockService
     private const uint Grade8DarkMatterItemId = 33916;
     private const uint VersatileLureItemId = 29717;
     private const float TargetInteractDistance = 3.0f;
+    private static readonly TimeSpan VersatileLureRestockTimeout = TimeSpan.FromMinutes(5);
 
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
@@ -26,6 +28,7 @@ public sealed class VendorStockService
     private DateTime lastInteractionAttemptAt = DateTime.MinValue;
     private DateTime lastPurchaseAttemptAt = DateTime.MinValue;
     private DateTime lastCleanupAttemptAt = DateTime.MinValue;
+    private DateTime versatileLureRestockStartedAt = DateTime.MinValue;
     private uint travelOriginTerritory;
     private bool sawTravelTransition;
     private VendorStockState cleanupNextState = VendorStockState.Complete;
@@ -35,6 +38,7 @@ public sealed class VendorStockService
     private int versatileLureTarget;
     private int gysahlShopMenuIndex;
     private bool gysahlAlternateShopAttempted;
+    private bool versatileLureVendorAcquiredLogged;
 
     public enum VendorStockState
     {
@@ -89,8 +93,10 @@ public sealed class VendorStockService
         observedDarkMatterCount = (int)GameHelpers.GetInventoryItemCount(Grade8DarkMatterItemId);
         observedVersatileLureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
         versatileLureTarget = 0;
+        versatileLureRestockStartedAt = DateTime.MinValue;
         gysahlShopMenuIndex = 0;
         gysahlAlternateShopAttempted = false;
+        versatileLureVendorAcquiredLogged = false;
         GameHelpers.ResetInteractionState();
         SetState(VendorStockState.CheckingNeeds);
     }
@@ -101,13 +107,45 @@ public sealed class VendorStockService
             return;
 
         versatileLureTarget = Math.Max(0, target);
+        versatileLureRestockStartedAt = DateTime.MinValue;
         observedGysahlCount = (int)GameHelpers.GetInventoryItemCount(GysahlGreensItemId);
         observedDarkMatterCount = (int)GameHelpers.GetInventoryItemCount(Grade8DarkMatterItemId);
         observedVersatileLureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
         gysahlShopMenuIndex = 0;
         gysahlAlternateShopAttempted = false;
+        versatileLureVendorAcquiredLogged = false;
         GameHelpers.ResetInteractionState();
         SetState(VendorStockState.CheckingNeeds);
+    }
+
+    internal void StartVersatileLureRestockDockside(int target)
+    {
+        if (IsActive)
+            return;
+
+        versatileLureTarget = Math.Max(0, target);
+        versatileLureRestockStartedAt = DateTime.MinValue;
+        observedVersatileLureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
+        versatileLureVendorAcquiredLogged = false;
+        lastNavigationCommandAt = DateTime.MinValue;
+        lastInteractionAttemptAt = DateTime.MinValue;
+        lastPurchaseAttemptAt = DateTime.MinValue;
+        GameHelpers.ResetInteractionState();
+
+        if (!NeedsVersatileLures())
+        {
+            log.Information(
+                $"[VendorStock][LureDock] Inventory verification: {observedVersatileLureCount}/{versatileLureTarget}; purchase skipped");
+            SetState(VendorStockState.Complete);
+            return;
+        }
+
+        var quantity = OceanFishingDockPreparationPolicy.RequiredPurchaseQuantity(
+            observedVersatileLureCount,
+            versatileLureTarget);
+        log.Information(
+            $"[VendorStock][LureDock] Dock-local restock started at {observedVersatileLureCount}/{versatileLureTarget}; required purchase={quantity}; no Limsa travel command will be issued");
+        SetState(VendorStockState.VersatileLureNavigatingToVendor);
     }
 
     public void RunTask()
@@ -129,9 +167,11 @@ public sealed class VendorStockService
         sawTravelTransition = false;
         cleanupNextState = VendorStockState.Complete;
         versatileLureTarget = 0;
+        versatileLureRestockStartedAt = DateTime.MinValue;
         observedVersatileLureCount = 0;
         gysahlShopMenuIndex = 0;
         gysahlAlternateShopAttempted = false;
+        versatileLureVendorAcquiredLogged = false;
     }
 
     public void Update()
@@ -140,6 +180,14 @@ public sealed class VendorStockService
             return;
 
         var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
+        if (IsVersatileLureState(state) &&
+            versatileLureRestockStartedAt != DateTime.MinValue &&
+            DateTime.UtcNow - versatileLureRestockStartedAt > VersatileLureRestockTimeout)
+        {
+            Fail(
+                $"[VendorStock][LureDock] Bounded failure: Versatile Lure restock exceeded {VersatileLureRestockTimeout.TotalMinutes:F0} minutes");
+            return;
+        }
 
         switch (state)
         {
@@ -356,29 +404,39 @@ public sealed class VendorStockService
                 break;
 
             case VendorStockState.VersatileLureWaitingForArrival:
-                if (HasArrivedNearVendor("Merchant & Mender", 3.0, 12.0))
+                if (HasArrivedInTerritory(
+                        OceanFishingDockPreparationPolicy.LimsaTerritoryType,
+                        3.0,
+                        12.0))
                 {
+                    log.Information("[VendorStock][LureDock] Limsa settlement confirmed; starting dock navigation without waiting for Merchant & Mender to load");
                     SetState(VendorStockState.VersatileLureNavigatingToVendor);
                 }
                 else if (elapsed > 45)
                 {
-                    Fail("[VendorStock] Timed out waiting to arrive near Limsa Merchant & Mender");
+                    Fail("[VendorStock][LureDock] Bounded failure: timed out waiting for settled Limsa territory");
                 }
                 break;
 
             case VendorStockState.VersatileLureNavigatingToVendor:
-                if (AdvanceToVendor("Merchant & Mender"))
+                if (AdvanceToVendor(
+                        "Merchant & Mender",
+                        OceanFishingDockPreparationPolicy.MerchantAndMenderDataId,
+                        OceanFishingDockPreparationPolicy.MerchantAndMenderPosition))
                 {
                     SetState(VendorStockState.VersatileLureInteractingVendor);
                 }
                 else if (elapsed > 45)
                 {
-                    Fail("[VendorStock] Timed out navigating to Merchant & Mender");
+                    Fail("[VendorStock][LureDock] Bounded failure: timed out navigating to Merchant & Mender");
                 }
                 break;
 
             case VendorStockState.VersatileLureInteractingVendor:
-                if (!EnsureVendorInRange("Merchant & Mender"))
+                if (!EnsureVendorInRange(
+                        "Merchant & Mender",
+                        OceanFishingDockPreparationPolicy.MerchantAndMenderDataId,
+                        OceanFishingDockPreparationPolicy.MerchantAndMenderPosition))
                     break;
 
                 if (GameHelpers.IsAddonVisible("Shop"))
@@ -389,13 +447,15 @@ public sealed class VendorStockService
                 {
                     SetState(VendorStockState.VersatileLureSelectingShopMenu);
                 }
-                else if (TryInteract("Merchant & Mender"))
+                else if (TryInteract(
+                             "Merchant & Mender",
+                             OceanFishingDockPreparationPolicy.MerchantAndMenderDataId))
                 {
                     // Wait for menu to appear.
                 }
                 else if (elapsed > 30)
                 {
-                    Fail("[VendorStock] Timed out opening Merchant & Mender's menu");
+                    Fail("[VendorStock][LureDock] Bounded failure: timed out opening Merchant & Mender's menu");
                 }
                 break;
 
@@ -406,7 +466,7 @@ public sealed class VendorStockService
                 }
                 else if (GameHelpers.IsAddonVisible("SelectIconString") && TryFirePurchaseAction(0.75))
                 {
-                    log.Information("[VendorStock] Opening Merchant & Mender shop for Versatile Lures");
+                    log.Information("[VendorStock][LureDock] Menu opening submission: SelectIconString callback entry 0");
                     GameHelpers.FireAddonCallback("SelectIconString", true, 0);
                 }
                 else if (elapsed > 8)
@@ -420,7 +480,7 @@ public sealed class VendorStockService
                     VersatileLureItemId,
                     GetVersatileLureTarget(),
                     ref observedVersatileLureCount,
-                    "[VendorStock] Versatile Lures",
+                    "[VendorStock][LureDock] Versatile Lures",
                     1.5,
                     99,
                     0,
@@ -430,7 +490,7 @@ public sealed class VendorStockService
                 }
                 else if (elapsed > 180)
                 {
-                    Fail("[VendorStock] Timed out stocking Versatile Lures");
+                    Fail("[VendorStock][LureDock] Bounded failure: timed out stocking Versatile Lures");
                 }
                 break;
         }
@@ -463,38 +523,69 @@ public sealed class VendorStockService
     private int GetVersatileLureTarget()
         => Math.Max(0, versatileLureTarget);
 
-    private bool AdvanceToVendor(string npcName)
+    private bool AdvanceToVendor(
+        string npcName,
+        uint dataId = 0,
+        Vector3? fallbackPosition = null)
     {
-        var npc = GameHelpers.FindObjectByName(npcName);
-        if (npc == null)
+        var dataIdNpc = dataId == 0 ? null : GameHelpers.FindObjectByDataId(dataId);
+        var nameNpc = GameHelpers.FindObjectByName(npcName);
+        var npc = dataIdNpc ?? nameNpc;
+        var approachPosition = OceanFishingDockPreparationPolicy.ResolveMerchantApproachPosition(
+            fallbackPosition ?? default,
+            dataIdNpc?.Position,
+            nameNpc?.Position);
+        if (npc == null && !fallbackPosition.HasValue)
             return false;
 
-        var distance = GetDistanceTo(npc);
-        var maxInteractDistance = GetDesiredInteractDistance(npc);
-        if (distance <= maxInteractDistance)
+        var distance = GetDistanceTo(approachPosition);
+        if (npc != null && distance <= GetDesiredInteractDistance(npc))
         {
             vnavmesh.Stop();
+            if (dataId == OceanFishingDockPreparationPolicy.MerchantAndMenderDataId &&
+                !versatileLureVendorAcquiredLogged)
+            {
+                versatileLureVendorAcquiredLogged = true;
+                var source = dataIdNpc != null ? "data ID" : "name fallback";
+                log.Information(
+                    $"[VendorStock][LureDock] Vendor acquisition: Merchant & Mender resolved by {source} at {npc.Position}");
+            }
             return true;
+        }
+
+        if (npc == null && distance <= TargetInteractDistance)
+        {
+            vnavmesh.Stop();
+            return false;
         }
 
         if ((DateTime.UtcNow - lastNavigationCommandAt).TotalSeconds >= 2)
         {
             lastNavigationCommandAt = DateTime.UtcNow;
-            log.Information($"[VendorStock] Navigating to {npcName} ({distance:F1}y)");
-            vnavmesh.PathfindAndMoveTo(npc.Position);
+            var source = npc == null ? "fixed fallback" : dataIdNpc != null ? "data ID" : "name fallback";
+            var prefix = dataId == OceanFishingDockPreparationPolicy.MerchantAndMenderDataId
+                ? "[VendorStock][LureDock]"
+                : "[VendorStock]";
+            log.Information($"{prefix} Navigating to {npcName} ({distance:F1}y, source={source})");
+            vnavmesh.PathfindAndMoveTo(approachPosition);
         }
 
         return false;
     }
 
-    private bool TryInteract(string npcName)
+    private bool TryInteract(string npcName, uint dataId = 0)
     {
         if ((DateTime.UtcNow - lastInteractionAttemptAt).TotalSeconds < 5.25)
             return false;
 
         lastInteractionAttemptAt = DateTime.UtcNow;
-        log.Information($"[VendorStock] Interacting with {npcName}");
-        return GameHelpers.TargetAndInteract(npcName);
+        var prefix = dataId == OceanFishingDockPreparationPolicy.MerchantAndMenderDataId
+            ? "[VendorStock][LureDock]"
+            : "[VendorStock]";
+        log.Information($"{prefix} Interacting with {npcName}{(dataId == 0 ? string.Empty : $" dataId={dataId}")}");
+        return dataId == 0
+            ? GameHelpers.TargetAndInteract(npcName)
+            : GameHelpers.TargetAndInteractByDataId(dataId, npcName);
     }
 
     private bool HandleShopPurchases(
@@ -510,12 +601,12 @@ public sealed class VendorStockService
         if (currentCount > observedCount)
         {
             observedCount = currentCount;
-            log.Information($"{label} count increased to {currentCount}/{targetCount}");
+            log.Information($"{label} inventory verification: count increased to {currentCount}/{targetCount}");
         }
 
         if (currentCount >= targetCount)
         {
-            log.Information($"{label} target reached: {currentCount}/{targetCount}");
+            log.Information($"{label} inventory verification complete: target reached at {currentCount}/{targetCount}");
             return true;
         }
 
@@ -527,13 +618,19 @@ public sealed class VendorStockService
         if (!TryFirePurchaseAction(repeatDelaySeconds))
             return false;
 
-        var remaining = Math.Max(1, targetCount - currentCount);
-        var purchaseQuantity = Math.Clamp(remaining, 1, maxPurchaseQuantity);
+        var purchaseQuantity = OceanFishingDockPreparationPolicy.RequiredPurchaseQuantity(
+            currentCount,
+            targetCount,
+            maxPurchaseQuantity);
+        if (purchaseQuantity <= 0)
+            return true;
+
         var purchaseArgs = new object[purchaseArgPrefix.Length + 1];
         Array.Copy(purchaseArgPrefix, purchaseArgs, purchaseArgPrefix.Length);
         purchaseArgs[^1] = purchaseQuantity;
 
-        log.Information($"{label} below target ({currentCount}/{targetCount}), purchasing {purchaseQuantity}");
+        log.Information(
+            $"{label} purchase submission: Shop callback ({string.Join(", ", purchaseArgPrefix)}, {purchaseQuantity}) for item {itemId}; inventory={currentCount}/{targetCount}");
         GameHelpers.FireAddonCallback("Shop", true, purchaseArgs);
         return false;
     }
@@ -578,6 +675,7 @@ public sealed class VendorStockService
     private void FinishVersatileLurePhase()
     {
         versatileLureTarget = 0;
+        versatileLureRestockStartedAt = DateTime.MinValue;
         GameHelpers.ResetInteractionState();
         BeginVendorCleanup(VendorStockState.Complete);
     }
@@ -594,7 +692,17 @@ public sealed class VendorStockService
         log.Information($"[VendorStock] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
+        if (IsVersatileLureState(newState) && versatileLureRestockStartedAt == DateTime.MinValue)
+            versatileLureRestockStartedAt = stateEnteredAt;
     }
+
+    private static bool IsVersatileLureState(VendorStockState candidate)
+        => candidate is VendorStockState.VersatileLureLifestreaming
+            or VendorStockState.VersatileLureWaitingForArrival
+            or VendorStockState.VersatileLureNavigatingToVendor
+            or VendorStockState.VersatileLureInteractingVendor
+            or VendorStockState.VersatileLureSelectingShopMenu
+            or VendorStockState.VersatileLurePurchasing;
 
     private void BeginTravelWait()
     {
@@ -624,6 +732,36 @@ public sealed class VendorStockService
         }
 
         return GameHelpers.FindObjectByName(npcName) != null;
+    }
+
+    private bool HasArrivedInTerritory(
+        ushort territoryType,
+        double minimumWaitSeconds,
+        double sameTerritoryFallbackSeconds)
+    {
+        if ((DateTime.UtcNow - stateEnteredAt).TotalSeconds < minimumWaitSeconds)
+            return false;
+
+        var betweenAreas = Plugin.Condition[ConditionFlag.BetweenAreas] ||
+                           Plugin.Condition[ConditionFlag.BetweenAreas51];
+        if (betweenAreas)
+        {
+            sawTravelTransition = true;
+            return false;
+        }
+
+        if (!sawTravelTransition &&
+            Plugin.ClientState.TerritoryType == travelOriginTerritory &&
+            (DateTime.UtcNow - stateEnteredAt).TotalSeconds < sameTerritoryFallbackSeconds)
+        {
+            return false;
+        }
+
+        return OceanFishingDockPreparationPolicy.IsLimsaSettlementReady(
+            Plugin.ClientState.TerritoryType,
+            betweenAreas,
+            GameHelpers.IsPlayerAvailable()) &&
+               Plugin.ClientState.TerritoryType == territoryType;
     }
 
     private void BeginVendorCleanup(VendorStockState nextState)
@@ -656,18 +794,33 @@ public sealed class VendorStockService
         return Vector3.Distance(player.Position, npc.Position);
     }
 
-    private bool EnsureVendorInRange(string npcName)
+    private static float GetDistanceTo(Vector3 position)
     {
-        var npc = GameHelpers.FindObjectByName(npcName);
+        var player = Plugin.ObjectTable.LocalPlayer;
+        return player == null
+            ? float.MaxValue
+            : Vector3.Distance(player.Position, position);
+    }
+
+    private bool EnsureVendorInRange(
+        string npcName,
+        uint dataId = 0,
+        Vector3? fallbackPosition = null)
+    {
+        var npc = (dataId == 0 ? null : GameHelpers.FindObjectByDataId(dataId)) ??
+                  GameHelpers.FindObjectByName(npcName);
         if (npc == null)
+        {
+            AdvanceToVendor(npcName, dataId, fallbackPosition);
             return false;
+        }
 
         var maxInteractDistance = GetDesiredInteractDistance(npc);
         var distance = GetDistanceTo(npc);
         if (distance <= maxInteractDistance)
             return true;
 
-        AdvanceToVendor(npcName);
+        AdvanceToVendor(npcName, dataId, fallbackPosition);
         return false;
     }
 

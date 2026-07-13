@@ -12,6 +12,7 @@ namespace VERMAXION.Services;
 public class VermaxionEngine
 {
     public Func<string?> StartBlocker { get; set; } = static () => null;
+    internal event Action? CurrentTaskWorkStarted;
     private static readonly TimeSpan HandoffQuietPeriod = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan HandoffBlockerLogThrottle = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan HandoffBlockerWarningThrottle = TimeSpan.FromSeconds(60);
@@ -1422,6 +1423,15 @@ public class VermaxionEngine
         currentTaskOwnedWorkStarted = true;
         runOwnedWorkStarted = true;
         RecordWatchdogProgress("owned work started");
+
+        try
+        {
+            CurrentTaskWorkStarted?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[Engine] Current-task work-start observer failed: {ex.Message}");
+        }
     }
 
     private void ResetTaskServices()

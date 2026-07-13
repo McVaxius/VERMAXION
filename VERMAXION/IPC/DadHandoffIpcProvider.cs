@@ -1,5 +1,4 @@
 using System;
-using System.Text.Json;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
@@ -9,16 +8,12 @@ namespace VERMAXION.IPC;
 
 public sealed class DadHandoffIpcProvider : IDisposable
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
-
     private readonly IPluginLog log;
     private readonly AutoRetainerIPC autoRetainer;
     private readonly Func<AutomationStatus> getAutomationStatus;
+    private readonly Action yieldUnstartedBeforeArGate;
     private readonly DadHandoffReservationMachine machine = new();
+    private readonly DadHandoffPreGrantMultiModeLease multiModeLease = new();
     private readonly ICallGateProvider<string, string> reserveProvider;
     private readonly ICallGateProvider<string, string> releaseProvider;
     private readonly ICallGateProvider<string, object> grantedProvider;
@@ -26,17 +21,20 @@ public sealed class DadHandoffIpcProvider : IDisposable
     private DadHandoffReservationState lastLoggedState = DadHandoffReservationState.Released;
     private DateTime nextDrainCheckUtc = DateTime.MinValue;
     private DateTime nextObservationUtc = DateTime.MinValue;
+    private DateTime nextMultiModeRestoreUtc = DateTime.MinValue;
     private bool disposed;
 
     public DadHandoffIpcProvider(
         IDalamudPluginInterface pluginInterface,
         IPluginLog log,
         AutoRetainerIPC autoRetainer,
-        Func<AutomationStatus> getAutomationStatus)
+        Func<AutomationStatus> getAutomationStatus,
+        Action yieldUnstartedBeforeArGate)
     {
         this.log = log;
         this.autoRetainer = autoRetainer;
         this.getAutomationStatus = getAutomationStatus;
+        this.yieldUnstartedBeforeArGate = yieldUnstartedBeforeArGate;
         reserveProvider = pluginInterface.GetIpcProvider<string, string>(DadHandoffContract.ReserveChannel);
         releaseProvider = pluginInterface.GetIpcProvider<string, string>(DadHandoffContract.ReleaseChannel);
         grantedProvider = pluginInterface.GetIpcProvider<string, object>(DadHandoffContract.GrantedChannel);
@@ -70,11 +68,25 @@ public sealed class DadHandoffIpcProvider : IDisposable
                 return;
 
             var now = DateTime.UtcNow;
+            TryRestorePreGrantMultiMode(now);
+            if (multiModeLease.RestorePending)
+                return;
             if (!machine.BlocksNewWork || now < nextObservationUtc)
                 return;
+
+            if (machine.IsLeaseExpired(now))
+            {
+                var beforeExpiry = machine.State;
+                var expired = machine.Observe(ObserveRuntime(), safeToGrant: false, now);
+                HandleAttemptTransition(beforeExpiry, expired.State, now);
+                LogTransition(expired);
+                return;
+            }
+
+            yieldUnstartedBeforeArGate();
             nextObservationUtc = now.AddMilliseconds(100);
             var observation = ObserveRuntime();
-            var before = machine.Snapshot(observation).State;
+            var before = machine.State;
             var safeToGrant = false;
             if (before == DadHandoffReservationState.Granting && now >= nextDrainCheckUtc)
             {
@@ -89,12 +101,14 @@ public sealed class DadHandoffIpcProvider : IDisposable
                 status = machine.Observe(observation, safeToGrant, now);
             }
 
+            HandleAttemptTransition(before, status.State, now);
+
             LogTransition(status);
             if (before != DadHandoffReservationState.Granted && status.State == DadHandoffReservationState.Granted)
             {
                 try
                 {
-                    grantedProvider.SendMessage(JsonSerializer.Serialize(status, JsonOptions));
+                    grantedProvider.SendMessage(DadHandoffJson.SerializeStatus(status));
                 }
                 catch (Exception ex)
                 {
@@ -111,9 +125,11 @@ public sealed class DadHandoffIpcProvider : IDisposable
             DadHandoffReservationStatus status;
             try
             {
-                var request = JsonSerializer.Deserialize<DadHandoffReservationRequest>(json ?? string.Empty, JsonOptions)
-                              ?? new DadHandoffReservationRequest();
+                TryRestorePreGrantMultiMode(DateTime.UtcNow);
+                var request = DadHandoffJson.DeserializeRequest(json);
                 status = machine.Reserve(request, ObserveRuntime(), DateTime.UtcNow);
+                if (status.BlocksNewWork)
+                    yieldUnstartedBeforeArGate();
             }
             catch (Exception ex)
             {
@@ -126,7 +142,7 @@ public sealed class DadHandoffIpcProvider : IDisposable
             }
 
             LogTransition(status);
-            return JsonSerializer.Serialize(status, JsonOptions);
+            return DadHandoffJson.SerializeStatus(status);
         }
     }
 
@@ -134,38 +150,88 @@ public sealed class DadHandoffIpcProvider : IDisposable
     {
         lock (gate)
         {
+            var before = machine.State;
             var status = machine.Release(operationToken, ObserveRuntime(), DateTime.UtcNow);
+            if (status.State == DadHandoffReservationState.Released)
+            {
+                HandleAttemptTransition(before, status.State, DateTime.UtcNow);
+                status = machine.Snapshot(ObserveRuntime());
+            }
             LogTransition(status);
-            return JsonSerializer.Serialize(status, JsonOptions);
+            return DadHandoffJson.SerializeStatus(status);
         }
     }
 
     private bool TryReachSafeGrantState(ref DadHandoffObservation observation)
     {
-        if (observation.VermaxionBusy)
-            return false;
-
-        if (observation.VermaxionSuppressionOwned && !autoRetainer.ReleaseSuppressionIfOwned())
-            return false;
-
-        var multiMode = autoRetainer.ReadMultiModeEnabled();
-        if (!multiMode.Success)
+        for (var step = 0; step < 3; step++)
         {
-            observation = ObserveRuntime();
+            switch (DadHandoffGrantPolicy.Decide(observation))
+            {
+                case DadHandoffGrantAction.ReleaseVermaxionSuppression:
+                    if (!autoRetainer.ReleaseSuppressionIfOwned())
+                        return false;
+                    observation = ObserveRuntime();
+                    continue;
+                case DadHandoffGrantAction.DisableMultiMode:
+                    if (!autoRetainer.TrySetMultiModeEnabled(false, out _))
+                    {
+                        observation = ObserveRuntime();
+                        return false;
+                    }
+
+                    multiModeLease.RecordDisabledByVermaxion();
+                    observation = ObserveRuntime(multiModeOverride: false);
+                    continue;
+                case DadHandoffGrantAction.Grant:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        return DadHandoffGrantPolicy.Decide(observation) == DadHandoffGrantAction.Grant;
+    }
+
+    private void HandleAttemptTransition(
+        DadHandoffReservationState before,
+        DadHandoffReservationState after,
+        DateTime nowUtc)
+    {
+        if (after == DadHandoffReservationState.Granted && before != DadHandoffReservationState.Granted)
+        {
+            multiModeLease.CompleteGrant();
+            return;
+        }
+
+        if (after == DadHandoffReservationState.Released &&
+            before is DadHandoffReservationState.Pending or DadHandoffReservationState.Granting)
+        {
+            multiModeLease.EndWithoutGrant();
+            TryRestorePreGrantMultiMode(nowUtc, force: true);
+        }
+    }
+
+    private bool TryRestorePreGrantMultiMode(DateTime nowUtc, bool force = false)
+    {
+        if (!multiModeLease.RestorePending)
+            return true;
+        if (!force && nowUtc < nextMultiModeRestoreUtc)
+            return false;
+
+        nextMultiModeRestoreUtc = nowUtc.AddSeconds(2);
+        if (!autoRetainer.TrySetMultiModeEnabled(true, out var error))
+        {
+            log.Warning(
+                "[DAD handoff] Waiting to restore AutoRetainer Multi Mode after an ungranted reservation: {Error}",
+                error);
             return false;
         }
 
-        if (multiMode.Enabled && !autoRetainer.TrySetMultiModeEnabled(false, out _))
-        {
-            observation = ObserveRuntime();
-            return false;
-        }
-
-        var busy = autoRetainer.ReadBusyState();
-        observation = ObserveRuntime(multiModeOverride: false, busyOverride: busy);
-        return busy.Success && !busy.Busy &&
-               !autoRetainer.SuppressionOwnedByVermaxion &&
-               observation.MultiModeKnown && !observation.MultiModeEnabled;
+        multiModeLease.RecordRestored();
+        nextMultiModeRestoreUtc = DateTime.MinValue;
+        log.Information("[DAD handoff] Restored AutoRetainer Multi Mode changed by the ungranted reservation.");
+        return true;
     }
 
     private DadHandoffObservation ObserveRuntime(
@@ -207,6 +273,11 @@ public sealed class DadHandoffIpcProvider : IDisposable
             if (disposed)
                 return;
             disposed = true;
+            if (machine.State is DadHandoffReservationState.Pending or DadHandoffReservationState.Granting)
+                multiModeLease.EndWithoutGrant();
+            else if (machine.State == DadHandoffReservationState.Granted)
+                multiModeLease.CompleteGrant();
+            TryRestorePreGrantMultiMode(DateTime.UtcNow, force: true);
             reserveProvider.UnregisterFunc();
             releaseProvider.UnregisterFunc();
         }
