@@ -83,6 +83,56 @@ public sealed class JumboCactpotRoutingPolicyTests
         Assert.Equal(JumboCactpotRoute.Wait, complete.Route);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScheduledWindowKnownZeroNeverVisitsCashierOrBroker(bool purchaseDue)
+    {
+        var decision = JumboCactpotRoutingPolicy.Decide(
+            Now,
+            scheduledPayoutWindow: true,
+            unclaimedTickets: 0,
+            payoutAvailableAt: DateTime.MinValue,
+            purchaseDue);
+
+        Assert.Equal(JumboCactpotRoute.Wait, decision.Route);
+        Assert.False(decision.UsesCashier);
+    }
+
+    [Fact]
+    public void UnknownDiscoveryPersistedAsZeroPreventsRepeatCashierVisit()
+    {
+        var discovery = JumboCactpotRoutingPolicy.Decide(
+            Now,
+            scheduledPayoutWindow: true,
+            unclaimedTickets: null,
+            payoutAvailableAt: DateTime.MinValue,
+            purchaseDue: false);
+        var persisted = JumboCactpotRoutingPolicy.Decide(
+            Now.AddMinutes(1),
+            scheduledPayoutWindow: true,
+            unclaimedTickets: 0,
+            payoutAvailableAt: DateTime.MinValue,
+            purchaseDue: false);
+
+        Assert.Equal(JumboCactpotRoute.DiscoveryCashier, discovery.Route);
+        Assert.Equal(JumboCactpotRoute.Wait, persisted.Route);
+    }
+
+    [Fact]
+    public void ScheduledWindowStillWaitsForKnownFutureBatch()
+    {
+        var decision = JumboCactpotRoutingPolicy.Decide(
+            Now,
+            scheduledPayoutWindow: true,
+            unclaimedTickets: 3,
+            payoutAvailableAt: Now.AddHours(1),
+            purchaseDue: false);
+
+        Assert.Equal(JumboCactpotRoute.Wait, decision.Route);
+        Assert.False(decision.UsesCashier);
+    }
+
     [Fact]
     public void ScheduledTwoTicketPayoutFinishesWithoutReturningToBroker()
     {

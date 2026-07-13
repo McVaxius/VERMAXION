@@ -152,6 +152,13 @@ public class VermaxionEngine
     private string handoffBlockerReason = string.Empty;
     private DateTime handoffBlockerSince = DateTime.MinValue;
     private DateTime handoffBlockerLastWarningAt = DateTime.MinValue;
+    private DateTime orphanResultSettlingSince = DateTime.MinValue;
+    private DateTime orphanResultLastPollAt = DateTime.MinValue;
+    private DateTime orphanResultLastCallbackAt = DateTime.MinValue;
+    private OceanFishingResultAddonSnapshot orphanResultAddonSnapshot = OceanFishingResultAddonSnapshot.NotPolled;
+    private bool orphanResultCallbackDispatched;
+    private bool orphanResultClosureLogged;
+    private bool orphanResultTimeoutLogged;
     private readonly List<EngineState> runQueue = [];
     private int runQueueIndex = -1;
     private bool currentTaskOwnedWorkStarted;
@@ -1205,7 +1212,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.SettlingFinalHandoff:
-                if (!TickHandoffSettling("final handoff"))
+                if (!TickHandoffSettling("final handoff", finalHandoff: true))
                     break;
 
                 ResetHandoffTracking();
@@ -1213,7 +1220,7 @@ public class VermaxionEngine
                 break;
 
             case EngineState.SignalingARDone:
-                var finalBlocker = runOwnedWorkStarted ? GetHandoffBlocker() : null;
+                var finalBlocker = GetFinalHandoffBlocker();
                 if (finalBlocker != null)
                 {
                     log.Information($"[Engine] Final handoff blocker appeared after quiet period: {finalBlocker}");
@@ -1390,7 +1397,11 @@ public class VermaxionEngine
 
     private void BeginFinalHandoffSettling()
     {
-        if (LifecyclePolicy.RequiresSettling(runOwnedWorkStarted))
+        var externalBlockerPresent = arService.IsProcessing && GetExternalHandoffBlocker() != null;
+        if (LifecyclePolicy.RequiresFinalSettling(
+                runOwnedWorkStarted,
+                arService.IsProcessing,
+                externalBlockerPresent))
             SetState(EngineState.SettlingFinalHandoff);
         else
             SetState(EngineState.SignalingARDone);
@@ -1612,12 +1623,15 @@ public class VermaxionEngine
         }
     }
 
-    private bool TickHandoffSettling(string phase)
+    private bool TickHandoffSettling(string phase, bool finalHandoff = false)
     {
         StopMovementForHandoff();
         yesAlreadyIPC.Pause();
 
-        var blocker = GetHandoffBlocker();
+        if (finalHandoff && arService.IsProcessing && !fishingService.IsActive)
+            TickOrphanOceanFishingResult();
+
+        var blocker = finalHandoff ? GetFinalHandoffBlocker() : GetHandoffBlocker();
         var now = DateTime.UtcNow;
         if (blocker != null)
         {
@@ -1670,6 +1684,17 @@ public class VermaxionEngine
     }
 
     private string? GetHandoffBlocker()
+        => GetServiceOwnedHandoffBlocker() ?? GetExternalHandoffBlocker();
+
+    private string? GetFinalHandoffBlocker()
+    {
+        if (runOwnedWorkStarted)
+            return GetHandoffBlocker();
+
+        return arService.IsProcessing ? GetExternalHandoffBlocker() : null;
+    }
+
+    private string? GetServiceOwnedHandoffBlocker()
     {
         if (fcBuffService.IsActive)
             return $"FC Buff service active ({fcBuffService.StatusText})";
@@ -1693,37 +1718,98 @@ public class VermaxionEngine
             return $"Fashion Report service active ({fashionReportService.State})";
         if (chocoboRaceService.IsActive)
             return $"Chocobo Racing service active ({chocoboRaceService.StatusText})";
-        if (lifestreamIPC.IsBusy())
-            return "Lifestream is busy";
-        if (Plugin.Condition[ConditionFlag.BoundByDuty] || Plugin.Condition[ConditionFlag.BoundByDuty56])
-            return "player is bound by duty";
-        if (Plugin.Condition[ConditionFlag.InDutyQueue] ||
-            Plugin.Condition[ConditionFlag.WaitingForDuty] ||
-            Plugin.Condition[ConditionFlag.WaitingForDutyFinder])
-        {
-            return "duty queue is active";
-        }
-        if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
-            return "area transition is active";
-        if (Plugin.Condition[ConditionFlag.Occupied] ||
-            Plugin.Condition[ConditionFlag.OccupiedInQuestEvent] ||
-            Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
-            Plugin.Condition[ConditionFlag.WatchingCutscene])
-        {
-            return "player is occupied";
-        }
-        if (Plugin.Condition[ConditionFlag.InCombat] || Plugin.Condition[ConditionFlag.Casting])
-            return "player is in combat or casting";
 
         var visibleAddon = TaskOwnedAddonNames.FirstOrDefault(IsAddonVisible);
         if (visibleAddon != null)
             return $"{visibleAddon} addon is visible";
-        if (!clientState.IsLoggedIn)
-            return "client is not logged in";
-        if (!IsPlayerAvailable())
-            return "player is not available";
 
         return null;
+    }
+
+    private string? GetExternalHandoffBlocker()
+    {
+        var resultAddon = GameHelpers.GetIKDResultAddonSnapshot();
+        return ExternalHandoffPolicy.GetBlocker(new ExternalHandoffSnapshot(
+            clientState.TerritoryType,
+            resultAddon.Visible,
+            resultAddon.Ready,
+            lifestreamIPC.IsBusy(),
+            Plugin.Condition[ConditionFlag.BoundByDuty] || Plugin.Condition[ConditionFlag.BoundByDuty56],
+            Plugin.Condition[ConditionFlag.InDutyQueue] ||
+            Plugin.Condition[ConditionFlag.WaitingForDuty] ||
+            Plugin.Condition[ConditionFlag.WaitingForDutyFinder],
+            Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51],
+            Plugin.Condition[ConditionFlag.Occupied] ||
+            Plugin.Condition[ConditionFlag.OccupiedInQuestEvent] ||
+            Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
+            Plugin.Condition[ConditionFlag.WatchingCutscene],
+            Plugin.Condition[ConditionFlag.InCombat] || Plugin.Condition[ConditionFlag.Casting],
+            clientState.IsLoggedIn,
+            IsPlayerAvailable()));
+    }
+
+    private void TickOrphanOceanFishingResult()
+    {
+        var now = DateTime.UtcNow;
+        if (orphanResultSettlingSince == DateTime.MinValue)
+            orphanResultSettlingSince = now;
+
+        var elapsed = now - orphanResultSettlingSince;
+        var sinceLastPoll = orphanResultLastPollAt == DateTime.MinValue
+            ? TimeSpan.MaxValue
+            : now - orphanResultLastPollAt;
+        if (elapsed >= OceanFishingResultClosePolicy.InitialDelay &&
+            sinceLastPoll >= OceanFishingResultClosePolicy.PollInterval)
+        {
+            orphanResultAddonSnapshot = GameHelpers.GetIKDResultAddonSnapshot();
+            orphanResultLastPollAt = now;
+        }
+
+        if (elapsed >= OceanFishingResultClosePolicy.Timeout &&
+            orphanResultAddonSnapshot.Visible &&
+            !orphanResultTimeoutLogged)
+        {
+            orphanResultTimeoutLogged = true;
+            log.Warning(
+                $"[Engine][IKDResult] Orphan result remained visible after {OceanFishingResultClosePolicy.Timeout.TotalSeconds:F0}s; " +
+                $"continuing close attempts and retaining AR ownership. {orphanResultAddonSnapshot.Detail}");
+        }
+
+        var decision = OceanFishingResultClosePolicy.Decide(new OceanFishingResultCloseSnapshot(
+            elapsed,
+            sinceLastPoll,
+            orphanResultLastCallbackAt == DateTime.MinValue
+                ? TimeSpan.MaxValue
+                : now - orphanResultLastCallbackAt,
+            orphanResultAddonSnapshot.Found,
+            orphanResultAddonSnapshot.Visible,
+            orphanResultAddonSnapshot.Ready,
+            orphanResultCallbackDispatched,
+            ResultClosed: false,
+            PostVoyageTransitionObserved: false,
+            PostVoyageSettled: false));
+
+        if (decision.Action == OceanFishingResultCloseAction.FireCallback)
+        {
+            if (GameHelpers.TryCloseReadyIKDResult(out var firedSnapshot, out var closeError))
+            {
+                orphanResultAddonSnapshot = firedSnapshot;
+                orphanResultCallbackDispatched = true;
+                orphanResultLastCallbackAt = now;
+                log.Information($"[Engine][IKDResult] Fired close callback: IKDResult true 0; {firedSnapshot.Detail}");
+            }
+            else
+            {
+                orphanResultAddonSnapshot = firedSnapshot;
+                if (!string.IsNullOrWhiteSpace(closeError))
+                    log.Warning($"[Engine][IKDResult] Ready close callback failed; retaining AR ownership: {closeError}");
+            }
+        }
+        else if (decision.ResultClosed && orphanResultCallbackDispatched && !orphanResultClosureLogged)
+        {
+            orphanResultClosureLogged = true;
+            log.Information($"[Engine][IKDResult] Orphan result window closed; {orphanResultAddonSnapshot.Detail}");
+        }
     }
 
     private void TryCloseOwnedUiBestEffort(UiCloseFallbackMode fallbackMode = UiCloseFallbackMode.Always)
@@ -1923,7 +2009,19 @@ public class VermaxionEngine
         requireEnabledConfig = false;
         activeConfig = null;
         activePhaseFilter = RunTaskPhaseFilter.All;
+        ResetOrphanResultTracking();
         ResetWatchdog();
+    }
+
+    private void ResetOrphanResultTracking()
+    {
+        orphanResultSettlingSince = DateTime.MinValue;
+        orphanResultLastPollAt = DateTime.MinValue;
+        orphanResultLastCallbackAt = DateTime.MinValue;
+        orphanResultAddonSnapshot = OceanFishingResultAddonSnapshot.NotPolled;
+        orphanResultCallbackDispatched = false;
+        orphanResultClosureLogged = false;
+        orphanResultTimeoutLogged = false;
     }
 
     private void SetState(EngineState newState)

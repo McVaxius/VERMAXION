@@ -462,6 +462,8 @@ public sealed class FishingPolicyTests
             currentlyBusy: false));
         Assert.True(FishingReturnPolicy.ShouldRetry(1, TimeSpan.FromSeconds(30)));
         Assert.False(FishingReturnPolicy.ShouldRetry(2, TimeSpan.FromSeconds(120)));
+        Assert.True(FishingReturnPolicy.ShouldSuppressCommand(resultAddonVisible: true));
+        Assert.False(FishingReturnPolicy.ShouldSuppressCommand(resultAddonVisible: false));
     }
 
     [Fact]

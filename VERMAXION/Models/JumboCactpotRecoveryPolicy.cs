@@ -66,14 +66,6 @@ internal static class JumboCactpotRoutingPolicy
         DateTime payoutAvailableAt,
         bool purchaseDue)
     {
-        if (scheduledPayoutWindow)
-        {
-            return new JumboCactpotRouteDecision(
-                JumboCactpotRoute.ScheduledCashier,
-                IsValidCount(unclaimedTickets) && unclaimedTickets > 0 ? unclaimedTickets : null,
-                purchaseDue);
-        }
-
         if (!IsValidCount(unclaimedTickets))
             return new JumboCactpotRouteDecision(JumboCactpotRoute.DiscoveryCashier, null, purchaseDue);
 
@@ -83,10 +75,15 @@ internal static class JumboCactpotRoutingPolicy
                 return new JumboCactpotRouteDecision(JumboCactpotRoute.Wait, null, purchaseDue);
 
             return new JumboCactpotRouteDecision(
-                JumboCactpotRoute.RecoveryCashier,
+                scheduledPayoutWindow
+                    ? JumboCactpotRoute.ScheduledCashier
+                    : JumboCactpotRoute.RecoveryCashier,
                 unclaimedTickets,
                 purchaseDue);
         }
+
+        if (scheduledPayoutWindow)
+            return new JumboCactpotRouteDecision(JumboCactpotRoute.Wait, null, purchaseDue);
 
         return new JumboCactpotRouteDecision(
             purchaseDue ? JumboCactpotRoute.Broker : JumboCactpotRoute.Wait,
