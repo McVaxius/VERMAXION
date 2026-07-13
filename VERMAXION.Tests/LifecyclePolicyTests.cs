@@ -31,6 +31,93 @@ public sealed class LifecyclePolicyTests
     }
 
     [Fact]
+    public void NoWorkArPostprocessStillSettlesWhenExternalWorldIsBlocked()
+    {
+        Assert.True(LifecyclePolicy.RequiresFinalSettling(
+            ownedWorkStarted: false,
+            arPostprocessOwned: true,
+            externalBlockerPresent: true));
+    }
+
+    [Fact]
+    public void NoWorkArPostprocessCanFinishImmediatelyWhenWorldIsSafe()
+    {
+        Assert.False(LifecyclePolicy.RequiresFinalSettling(
+            ownedWorkStarted: false,
+            arPostprocessOwned: true,
+            externalBlockerPresent: false));
+    }
+
+    [Fact]
+    public void ReappearingFinalBlockerReturnsNoWorkArPostprocessToSettling()
+    {
+        Assert.False(LifecyclePolicy.RequiresFinalSettling(false, true, false));
+        Assert.True(LifecyclePolicy.RequiresFinalSettling(false, true, true));
+    }
+
+    [Theory]
+    [InlineData(900, true, true, false, false, false, false, false, false)]
+    [InlineData(1163, true, true, false, false, false, false, false, false)]
+    [InlineData(129, true, true, true, false, false, false, false, false)]
+    [InlineData(129, true, true, false, true, false, false, false, false)]
+    [InlineData(129, true, true, false, false, true, false, false, false)]
+    [InlineData(129, true, true, false, false, false, true, false, false)]
+    [InlineData(129, true, true, false, false, false, false, true, false)]
+    [InlineData(129, true, true, false, false, false, false, false, true)]
+    [InlineData(129, false, true, false, false, false, false, false, false)]
+    [InlineData(129, true, false, false, false, false, false, false, false)]
+    public void ExternalWorldBlockersRetainHandoff(
+        uint territoryType,
+        bool loggedIn,
+        bool playerAvailable,
+        bool lifestreamBusy,
+        bool boundByDuty,
+        bool dutyQueueActive,
+        bool areaTransitionActive,
+        bool occupiedOrCutscene,
+        bool combatOrCasting)
+    {
+        var blocker = ExternalHandoffPolicy.GetBlocker(new ExternalHandoffSnapshot(
+            territoryType,
+            IKDResultVisible: false,
+            IKDResultReady: false,
+            lifestreamBusy,
+            boundByDuty,
+            dutyQueueActive,
+            areaTransitionActive,
+            occupiedOrCutscene,
+            combatOrCasting,
+            loggedIn,
+            playerAvailable));
+
+        Assert.NotNull(blocker);
+    }
+
+    [Fact]
+    public void IKDResultReadinessIsReportedAsAnExternalBlocker()
+    {
+        var notReady = BuildSafeExternalSnapshot() with
+        {
+            IKDResultVisible = true,
+            IKDResultReady = false,
+        };
+        var ready = notReady with { IKDResultReady = true };
+
+        Assert.Contains("not ready", ExternalHandoffPolicy.GetBlocker(notReady));
+        Assert.Equal("IKDResult addon is visible", ExternalHandoffPolicy.GetBlocker(ready));
+    }
+
+    [Fact]
+    public void ClearedTransitionAndAvailablePlayerAreExternallySettled()
+    {
+        var transitioning = BuildSafeExternalSnapshot() with { AreaTransitionActive = true };
+        var settled = transitioning with { AreaTransitionActive = false };
+
+        Assert.Equal("area transition is active", ExternalHandoffPolicy.GetBlocker(transitioning));
+        Assert.Null(ExternalHandoffPolicy.GetBlocker(settled));
+    }
+
+    [Fact]
     public void OverlappingStartIsRejected()
     {
         Assert.False(LifecyclePolicy.CanStart(isRunning: true));
@@ -147,4 +234,18 @@ public sealed class LifecyclePolicyTests
         yield return [false, false, SuppressionReadResult.Known(true), SuppressionLeaseAction.PreserveExternal];
         yield return [false, true, SuppressionReadResult.Known(true), SuppressionLeaseAction.Release];
     }
+
+    private static ExternalHandoffSnapshot BuildSafeExternalSnapshot()
+        => new(
+            TerritoryType: 129,
+            IKDResultVisible: false,
+            IKDResultReady: false,
+            LifestreamBusy: false,
+            BoundByDuty: false,
+            DutyQueueActive: false,
+            AreaTransitionActive: false,
+            OccupiedOrCutscene: false,
+            CombatOrCasting: false,
+            LoggedIn: true,
+            PlayerAvailable: true);
 }

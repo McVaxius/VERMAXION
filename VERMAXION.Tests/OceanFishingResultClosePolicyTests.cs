@@ -74,7 +74,7 @@ public sealed class OceanFishingResultClosePolicyTests
     }
 
     [Fact]
-    public void VisibleButNotReadyKeepsPollingUntilTimeout()
+    public void VisibleButNotReadyKeepsPollingPastDiagnosticTimeout()
     {
         var waiting = Decide(
             elapsed: TimeSpan.FromSeconds(1),
@@ -88,7 +88,21 @@ public sealed class OceanFishingResultClosePolicyTests
             addonReady: false);
 
         Assert.Equal(OceanFishingResultCloseAction.WaitForReadyAddon, waiting.Action);
-        Assert.Equal(OceanFishingResultCloseAction.Timeout, timedOut.Action);
+        Assert.Equal(OceanFishingResultCloseAction.WaitForReadyAddon, timedOut.Action);
+        Assert.False(timedOut.ResultClosed);
+    }
+
+    [Fact]
+    public void ReadyAddonStillFiresAfterDiagnosticTimeout()
+    {
+        var decision = Decide(
+            elapsed: OceanFishingResultClosePolicy.Timeout + TimeSpan.FromMinutes(1),
+            sinceLastPoll: TimeSpan.FromMilliseconds(250),
+            addonVisible: true,
+            addonReady: true);
+
+        Assert.Equal(OceanFishingResultCloseAction.FireCallback, decision.Action);
+        Assert.False(decision.ResultClosed);
     }
 
     [Fact]
@@ -163,16 +177,18 @@ public sealed class OceanFishingResultClosePolicyTests
         var waiting = Decide(
             elapsed: TimeSpan.FromSeconds(2),
             sinceLastPoll: TimeSpan.FromMilliseconds(250),
-            addonVisible: true,
-            addonReady: true,
+            addonFound: false,
+            addonVisible: false,
+            addonReady: false,
             callbackDispatched: true,
             postVoyageTransitionObserved: true,
             postVoyageSettled: false);
         var settled = Decide(
             elapsed: TimeSpan.FromSeconds(2),
             sinceLastPoll: TimeSpan.FromMilliseconds(250),
-            addonVisible: true,
-            addonReady: true,
+            addonFound: false,
+            addonVisible: false,
+            addonReady: false,
             callbackDispatched: true,
             postVoyageTransitionObserved: true,
             postVoyageSettled: true);
@@ -180,6 +196,22 @@ public sealed class OceanFishingResultClosePolicyTests
         Assert.True(waiting.ResultClosed);
         Assert.Equal(OceanFishingResultCloseAction.WaitPlayerSettlement, waiting.Action);
         Assert.Equal(OceanFishingResultCloseAction.Complete, settled.Action);
+    }
+
+    [Fact]
+    public void VisibleAddonOverridesTransitionAndEarlierClosureEvidence()
+    {
+        var decision = Decide(
+            elapsed: TimeSpan.FromSeconds(3),
+            sinceLastPoll: TimeSpan.FromMilliseconds(250),
+            addonVisible: true,
+            addonReady: true,
+            resultClosed: true,
+            postVoyageTransitionObserved: true,
+            postVoyageSettled: true);
+
+        Assert.Equal(OceanFishingResultCloseAction.FireCallback, decision.Action);
+        Assert.False(decision.ResultClosed);
     }
 
     private static OceanFishingResultCloseDecision Decide(

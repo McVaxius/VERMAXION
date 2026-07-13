@@ -22,7 +22,6 @@ internal enum OceanFishingResultCloseAction
     WaitPostVoyageTransition,
     WaitPlayerSettlement,
     Complete,
-    Timeout,
 }
 
 internal readonly record struct OceanFishingResultCloseSnapshot(
@@ -54,6 +53,22 @@ internal static class OceanFishingResultClosePolicy
         if (snapshot.Elapsed < InitialDelay)
             return Wait(OceanFishingResultCloseAction.WaitInitialDelay, "waiting for initial result delay");
 
+        // A visible result window always owns the handoff, even if a territory
+        // transition has started or an earlier poll considered the result closed.
+        if (snapshot.AddonFound && snapshot.AddonVisible)
+        {
+            if (snapshot.CallbackDispatched && snapshot.SinceLastCallback < CallbackSettlementDelay)
+                return Wait(OceanFishingResultCloseAction.WaitCallbackSettlement, "waiting for close callback settlement");
+
+            if (snapshot.SinceLastPoll < PollInterval)
+                return Wait(OceanFishingResultCloseAction.WaitForPollInterval, "waiting for result poll interval");
+
+            if (!snapshot.AddonReady)
+                return Wait(OceanFishingResultCloseAction.WaitForReadyAddon, "result addon visible but not ready");
+
+            return Wait(OceanFishingResultCloseAction.FireCallback, "result addon is visible and ready");
+        }
+
         if (snapshot.ResultClosed ||
             snapshot.PostVoyageTransitionObserved ||
             snapshot.CallbackDispatched && !snapshot.AddonFound ||
@@ -70,22 +85,7 @@ internal static class OceanFishingResultClosePolicy
             return Wait(OceanFishingResultCloseAction.WaitPostVoyageTransition, "waiting for result addon or post-voyage transition");
         }
 
-        if (snapshot.Elapsed >= Timeout)
-            return new(
-                OceanFishingResultCloseAction.Timeout,
-                ResultClosed: false,
-                "result addon stayed visible through the close timeout");
-
-        if (snapshot.CallbackDispatched && snapshot.SinceLastCallback < CallbackSettlementDelay)
-            return Wait(OceanFishingResultCloseAction.WaitCallbackSettlement, "waiting for close callback settlement");
-
-        if (snapshot.SinceLastPoll < PollInterval)
-            return Wait(OceanFishingResultCloseAction.WaitForPollInterval, "waiting for result poll interval");
-
-        if (!snapshot.AddonReady)
-            return Wait(OceanFishingResultCloseAction.WaitForReadyAddon, "result addon visible but not ready");
-
-        return Wait(OceanFishingResultCloseAction.FireCallback, "result addon is visible and ready");
+        return DecideAfterResultClosed(snapshot, "result addon is hidden");
     }
 
     private static OceanFishingResultCloseDecision DecideAfterResultClosed(

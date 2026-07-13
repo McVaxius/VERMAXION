@@ -1816,12 +1816,18 @@ public sealed class FishingService
         var sinceLastPoll = lastResultPollAt == DateTime.MinValue
             ? TimeSpan.MaxValue
             : now - lastResultPollAt;
-        if (!resultWindowClosed &&
-            elapsed >= OceanFishingResultClosePolicy.InitialDelay &&
+        if (elapsed >= OceanFishingResultClosePolicy.InitialDelay &&
             sinceLastPoll >= OceanFishingResultClosePolicy.PollInterval)
         {
             lastResultAddonSnapshot = GameHelpers.GetIKDResultAddonSnapshot();
             lastResultPollAt = now;
+        }
+
+        if (elapsed >= ResultSettlementTimeout && lastResultAddonSnapshot.Visible)
+        {
+            LogResultFallback(
+                $"IKDResult remained visible after {ResultSettlementTimeout.TotalSeconds:F0}s; " +
+                $"{lastResultAddonSnapshot.Detail}");
         }
 
         var decision = OceanFishingResultClosePolicy.Decide(new OceanFishingResultCloseSnapshot(
@@ -1885,13 +1891,6 @@ public sealed class FishingService
                 statusDetail = "Waiting for post-voyage player settlement";
                 return;
 
-            case OceanFishingResultCloseAction.Timeout:
-                LogResultFallback(
-                    $"IKDResult close timed out after {ResultSettlementTimeout.TotalSeconds:F0}s; " +
-                    $"{lastResultAddonSnapshot.Detail}");
-                BeginInventoryCleanup();
-                return;
-
             case OceanFishingResultCloseAction.Complete:
                 log.Information("[Fishing][IKDResult] Result handling settled; beginning post-voyage cleanup flow");
                 BeginInventoryCleanup();
@@ -1905,7 +1904,7 @@ public sealed class FishingService
             return;
 
         resultFallbackLogged = true;
-        log.Warning($"[Fishing][IKDResult] Result handling timeout reached: {reason}; continuing cleanup and return");
+        log.Warning($"[Fishing][IKDResult] Result handling timeout reached: {reason}; continuing close attempts and retaining ownership");
     }
 
     private void LogResultDetection()
@@ -2129,11 +2128,15 @@ public sealed class FishingService
 
     private void ReturnAfterFishing()
     {
+        if (TryReenterResultHandlingBeforeReturn("starting the configured return"))
+            return;
+
         var command = ResolveReturnCommand();
         if (!string.IsNullOrWhiteSpace(command))
         {
             log.Information($"[Fishing] Fishing context ended; returning with {command}");
-            SendReturnCommand(command);
+            if (!SendReturnCommand(command))
+                return;
             returnCommandSent = true;
         }
 
@@ -2144,6 +2147,9 @@ public sealed class FishingService
 
     private void TickReturnSettlement(TimeSpan elapsed)
     {
+        if (TryReenterResultHandlingBeforeReturn("waiting for the configured return"))
+            return;
+
         if (returnStartedAt == DateTime.MinValue)
             returnStartedAt = DateTime.UtcNow;
 
@@ -2185,13 +2191,31 @@ public sealed class FishingService
             Fail("Timed out waiting for configured Ocean Fishing return to settle.");
     }
 
-    private void SendReturnCommand(string command)
+    private bool SendReturnCommand(string command)
     {
+        if (TryReenterResultHandlingBeforeReturn($"sending return command {command}"))
+            return false;
+
         returnCommandsSent++;
         if (command.StartsWith("/li ", StringComparison.OrdinalIgnoreCase))
             lifestream.ExecuteCommand(command);
         else
             CommandHelper.SendCommand(command);
+
+        return true;
+    }
+
+    private bool TryReenterResultHandlingBeforeReturn(string phase)
+    {
+        var snapshot = GameHelpers.GetIKDResultAddonSnapshot();
+        if (!FishingReturnPolicy.ShouldSuppressCommand(snapshot.Visible))
+            return false;
+
+        log.Warning(
+            $"[Fishing][IKDResult] Suppressing {phase} because IKDResult reappeared; " +
+            $"returning to result handling. {snapshot.Detail}");
+        SetState(FishingState.HandlingResult);
+        return true;
     }
 
     private void OnDutyCompleted(IDutyStateEventArgs args)

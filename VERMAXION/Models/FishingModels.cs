@@ -477,6 +477,9 @@ public static class FishingReturnPolicy
 
     public static bool ShouldRetry(int commandsSent, TimeSpan elapsed)
         => commandsSent == 1 && elapsed >= RetryAfter;
+
+    public static bool ShouldSuppressCommand(bool resultAddonVisible)
+        => resultAddonVisible;
 }
 
 public static class XaFishingRosterParser

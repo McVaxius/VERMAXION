@@ -59,6 +59,12 @@ internal static class LifecyclePolicy
 
     public static bool RequiresSettling(bool ownedWorkStarted) => ownedWorkStarted;
 
+    public static bool RequiresFinalSettling(
+        bool ownedWorkStarted,
+        bool arPostprocessOwned,
+        bool externalBlockerPresent)
+        => ownedWorkStarted || arPostprocessOwned && externalBlockerPresent;
+
     public static bool ShouldSkipBeforeArForTimeout(TimeSpan elapsed, bool workStarted, TimeSpan timeout)
         => !workStarted && elapsed >= timeout;
 
@@ -71,6 +77,52 @@ internal static class LifecyclePolicy
             .Where(belongsToPhase)
             .Where(isRunnable)
             .ToList();
+    }
+}
+
+internal readonly record struct ExternalHandoffSnapshot(
+    uint TerritoryType,
+    bool IKDResultVisible,
+    bool IKDResultReady,
+    bool LifestreamBusy,
+    bool BoundByDuty,
+    bool DutyQueueActive,
+    bool AreaTransitionActive,
+    bool OccupiedOrCutscene,
+    bool CombatOrCasting,
+    bool LoggedIn,
+    bool PlayerAvailable);
+
+internal static class ExternalHandoffPolicy
+{
+    public static string? GetBlocker(ExternalHandoffSnapshot snapshot)
+    {
+        if (snapshot.IKDResultVisible)
+        {
+            return snapshot.IKDResultReady
+                ? "IKDResult addon is visible"
+                : "IKDResult addon is visible but not ready";
+        }
+        if (snapshot.TerritoryType is 900 or 1163)
+            return $"Ocean Fishing territory {snapshot.TerritoryType} is active";
+        if (snapshot.LifestreamBusy)
+            return "Lifestream is busy";
+        if (snapshot.BoundByDuty)
+            return "player is bound by duty";
+        if (snapshot.DutyQueueActive)
+            return "duty queue is active";
+        if (snapshot.AreaTransitionActive)
+            return "area transition is active";
+        if (snapshot.OccupiedOrCutscene)
+            return "player is occupied";
+        if (snapshot.CombatOrCasting)
+            return "player is in combat or casting";
+        if (!snapshot.LoggedIn)
+            return "client is not logged in";
+        if (!snapshot.PlayerAvailable)
+            return "player is not available";
+
+        return null;
     }
 }
 
