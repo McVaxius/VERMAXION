@@ -56,6 +56,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
     public AutoRetainerIPC AutoRetainerIPC { get; init; }
+    internal AutoRetainerSelectionGuard AutoRetainerSelectionGuard { get; init; }
     public AutoHookIPC AutoHookIPC { get; init; }
     public XADatabaseIPCClient XADatabaseIPCClient { get; init; }
     public AdsIpcClient AdsIpcClient { get; init; }
@@ -106,6 +107,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     private DateTime fishingRelogContinuationLastCheckAt = DateTime.MinValue;
     private DateTime fishingRelogWorldReadySince = DateTime.MinValue;
     private DateTime fishingRelogLastDiagnosticAt = DateTime.MinValue;
+    private int loggedDadBeforeArYield;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
     private static readonly TimeSpan FishingRelogContinuationPollInterval = TimeSpan.FromSeconds(1);
@@ -143,6 +145,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ApplyLegacyFishingOperationSettingsIfNeeded();
         RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
         AutoRetainerIPC = new AutoRetainerIPC(PluginInterface, Log);
+        AutoRetainerSelectionGuard = new AutoRetainerSelectionGuard(
+            AutoRetainerIPC,
+            message => Log.Information(message),
+            message => Log.Warning(message));
         AutoHookIPC = new AutoHookIPC(PluginInterface, Log);
         XADatabaseIPCClient = new XADatabaseIPCClient(PluginInterface, Log);
         AdsIpcClient = new AdsIpcClient(PluginInterface, Log);
@@ -214,8 +220,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
             : null;
+        Engine.CurrentTaskWorkStarted += OnEngineCurrentTaskWorkStarted;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
-        DadHandoffIpcProvider = new DadHandoffIpcProvider(PluginInterface, Log, AutoRetainerIPC, BuildAutomationStatus);
+        DadHandoffIpcProvider = new DadHandoffIpcProvider(
+            PluginInterface,
+            Log,
+            AutoRetainerIPC,
+            BuildAutomationStatus,
+            YieldUnstartedBeforeArGateToDad);
 
         // Windows
         ConfigWindow = new ConfigWindow(this);
@@ -261,6 +273,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     public void Dispose()
     {
+        Engine.CurrentTaskWorkStarted -= OnEngineCurrentTaskWorkStarted;
         DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
@@ -359,6 +372,52 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             DateTime.UtcNow);
     }
 
+    private void YieldUnstartedBeforeArGateToDad()
+    {
+        var snapshot = BuildDadHandoffBeforeArYieldSnapshot();
+        if (!DadHandoffBeforeArYieldPolicy.ShouldYield(snapshot))
+            return;
+
+        var previousGate = BeforeArGate;
+        var hadPendingLogin = pendingBeforeArLogin;
+        var suppressionOwnedBefore = AutoRetainerIPC.SuppressionOwnedByVermaxion;
+        SkipBeforeArForLogin("Yielded unstarted Before-AR work to active DAD handoff reservation");
+        if (System.Threading.Interlocked.Exchange(ref loggedDadBeforeArYield, 1) == 0)
+        {
+            Log.Information(
+                "[DAD handoff] Yielded unstarted Before-AR gate to DAD: gate={Gate}, loginPending={LoginPending}, suppressionOwnedBefore={SuppressionOwnedBefore}, suppressionReleasePending={SuppressionReleasePending}; external suppression was not touched.",
+                previousGate,
+                hadPendingLogin,
+                suppressionOwnedBefore,
+                AutoRetainerIPC.SuppressionOwnedByVermaxion);
+        }
+    }
+
+    private DadHandoffBeforeArYieldSnapshot BuildDadHandoffBeforeArYieldSnapshot()
+    {
+        var manual = GetActiveManualService();
+        var fishingOwnsWork = FishingRunLifecycle.IsActive ||
+                              FishingRunLifecycle.IsCleanupPending ||
+                              FishingService.IsActive ||
+                              FishingRelogCoordinator.IsActive ||
+                              FishingStartupCoordinator.HasPendingRelogContinuation ||
+                              FishingService.State is FishingService.FishingState.HandlingResult
+                                  or FishingService.FishingState.WaitingForCleanupReady
+                                  or FishingService.FishingState.NavigatingToCleanupVendor
+                                  or FishingService.FishingState.RunningInventoryCleanup
+                                  or FishingService.FishingState.Returning
+                                  or FishingService.FishingState.CleaningUpLifecycle;
+        return new DadHandoffBeforeArYieldSnapshot(
+            DadHandoffBlocksNewWork,
+            BeforeArGate,
+            pendingBeforeArLogin,
+            Engine.OwnsActiveWork,
+            fishingOwnsWork,
+            manual.Active,
+            ARPostProcessService.IsRequested,
+            releaseOnlyPostprocessFinishPending);
+    }
+
     private (bool Active, string State, string Summary) GetActiveManualService()
     {
         if (FisherGearsetTestService.IsActive)
@@ -405,6 +464,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             message.LogKind.ToString(),
             message.Sender.TextValue,
             message.Message.TextValue);
+    }
+
+    private void OnEngineCurrentTaskWorkStarted()
+    {
+        AutoRetainerSelectionGuard.NotifyCurrentTaskWorkStarted(
+            Configuration.AutoRestoreRetainerCheckingAfterWork,
+            ClientState.IsLoggedIn,
+            PlayerState.ContentId,
+            DateTime.UtcNow);
     }
 
     private void OnARCharacterReady(string pluginName)
@@ -554,6 +622,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     private void OnCharacterChanged(string oldCharacterKey, string newCharacterKey)
     {
         Log.Information($"[Plugin] Character changed: '{oldCharacterKey}' -> '{newCharacterKey}'");
+        AutoRetainerSelectionGuard.ResetSession("ConfigManager character change");
         
         // Reset all services to prevent state persistence between characters
         try
@@ -702,6 +771,27 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         if (beforeArStartedThisLogin)
         {
             Log.Information($"[AR] Ignoring before-AR login trigger after start this login: reason={reason}");
+            return;
+        }
+
+        if (DadHandoffBlocksNewWork)
+        {
+            var handoff = BuildDadHandoffBeforeArYieldSnapshot();
+            if (handoff.GateState == BeforeArGateState.Running ||
+                handoff.EngineOwnsActiveWork ||
+                handoff.FishingOwnsWork ||
+                handoff.ManualServiceOwnsWork ||
+                handoff.CharacterPostprocessRequested ||
+                handoff.CleanupOwnsWork)
+            {
+                beforeArStartedThisLogin = true;
+                ClearPendingBeforeArLogin("DAD handoff blocks login detection while active VERMAXION work drains");
+                Log.Information(
+                    "[DAD handoff] Prevented new Before-AR login work while active VERMAXION work drains; existing work and suppression ownership were preserved.");
+                return;
+            }
+
+            SkipBeforeArForLogin("DAD handoff reservation blocks new Before-AR work on this login");
             return;
         }
 
@@ -1297,6 +1387,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             Log.Information("[AR] Preserving VMX ownership across logout transition.");
             ClearPendingBeforeArLogin("framework logout transition");
         }
+
+        AutoRetainerSelectionGuard.Update(
+            Configuration.AutoRestoreRetainerCheckingAfterWork,
+            ClientState.IsLoggedIn,
+            PlayerState.ContentId,
+            DateTime.UtcNow);
 
         ProcessBeforeArSuppressionRecovery();
         FishingRunLifecycle.Update();

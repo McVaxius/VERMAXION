@@ -158,6 +158,19 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
 
+            var autoRestoreRetainerChecking = config.AutoRestoreRetainerCheckingAfterWork;
+            if (ImGui.Checkbox(
+                    UIConstants.ConfigLabels.AutoRestoreRetainerCheckingAfterWork,
+                    ref autoRestoreRetainerChecking))
+            {
+                config.AutoRestoreRetainerCheckingAfterWork = autoRestoreRetainerChecking;
+                config.Save();
+            }
+            DrawHelpMarker(UIConstants.Tooltips.AutoRestoreRetainerCheckingAfterWork);
+            ImGui.Indent();
+            ImGui.TextWrapped("The guard stays inactive when VERMAXION skips all work and never selects a character that was already deselected before work began.");
+            ImGui.Unindent();
+
             var dtrEnabled = config.DtrBarEnabled;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
             {

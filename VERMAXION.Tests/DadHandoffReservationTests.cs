@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using VERMAXION.Models;
 using Xunit;
 
@@ -7,6 +8,31 @@ namespace VERMAXION.Tests;
 public sealed class DadHandoffReservationTests
 {
     private static readonly DateTime Now = new(2026, 7, 11, 12, 0, 0, DateTimeKind.Utc);
+
+    [Theory]
+    [InlineData(DadHandoffReservationState.Pending, "Pending")]
+    [InlineData(DadHandoffReservationState.Granting, "Granting")]
+    [InlineData(DadHandoffReservationState.Granted, "Granted")]
+    [InlineData(DadHandoffReservationState.Released, "Released")]
+    [InlineData(DadHandoffReservationState.Rejected, "Rejected")]
+    public void CanonicalStatusSerializationWritesStringStates(
+        DadHandoffReservationState state,
+        string expected)
+    {
+        var json = DadHandoffJson.SerializeStatus(new DadHandoffReservationStatus { State = state });
+
+        using var document = JsonDocument.Parse(json);
+        var stateElement = document.RootElement.GetProperty("state");
+        Assert.Equal(JsonValueKind.String, stateElement.ValueKind);
+        Assert.Equal(expected, stateElement.GetString());
+    }
+
+    [Fact]
+    public void CanonicalStatusSerializationNeverFallsBackToUnknownNumericState()
+    {
+        Assert.Throws<JsonException>(() => DadHandoffJson.SerializeStatus(
+            new DadHandoffReservationStatus { State = (DadHandoffReservationState)99 }));
+    }
 
     [Fact]
     public void BusyReservationBlocksNewWorkUntilSafeGrant()
@@ -67,6 +93,76 @@ public sealed class DadHandoffReservationTests
         Assert.True(machine.BlocksNewWork);
     }
 
+    [Theory]
+    [InlineData(BeforeArGateState.Idle, true, true)]
+    [InlineData(BeforeArGateState.WaitingForWorldReady, false, true)]
+    [InlineData(BeforeArGateState.Armed, false, true)]
+    [InlineData(BeforeArGateState.Running, true, false)]
+    [InlineData(BeforeArGateState.Skipped, false, false)]
+    public void OnlyUnstartedBeforeArGateYieldsToDad(
+        BeforeArGateState gateState,
+        bool loginPending,
+        bool expected)
+    {
+        var snapshot = YieldSnapshot(gateState, loginPending);
+
+        Assert.Equal(expected, DadHandoffBeforeArYieldPolicy.ShouldYield(snapshot));
+    }
+
+    [Fact]
+    public void BeforeArGateNeverYieldsOverGenuinelyActiveWork()
+    {
+        var candidate = YieldSnapshot(BeforeArGateState.Armed, loginPending: true);
+
+        Assert.False(DadHandoffBeforeArYieldPolicy.ShouldYield(candidate with { EngineOwnsActiveWork = true }));
+        Assert.False(DadHandoffBeforeArYieldPolicy.ShouldYield(candidate with { FishingOwnsWork = true }));
+        Assert.False(DadHandoffBeforeArYieldPolicy.ShouldYield(candidate with { ManualServiceOwnsWork = true }));
+        Assert.False(DadHandoffBeforeArYieldPolicy.ShouldYield(candidate with { CharacterPostprocessRequested = true }));
+        Assert.False(DadHandoffBeforeArYieldPolicy.ShouldYield(candidate with { CleanupOwnsWork = true }));
+        Assert.False(DadHandoffBeforeArYieldPolicy.ShouldYield(candidate with { ReservationActive = false }));
+    }
+
+    [Fact]
+    public void GrantPolicyDisablesMultiModeOnceThenWaitsForReadableArIdle()
+    {
+        var multiModeOn = Observation(vermaxionBusy: false, arBusy: true, multiMode: true);
+        var draining = Observation(vermaxionBusy: false, arBusy: true, multiMode: false);
+        var idle = Observation(vermaxionBusy: false, arBusy: false, multiMode: false);
+
+        Assert.Equal(DadHandoffGrantAction.DisableMultiMode, DadHandoffGrantPolicy.Decide(multiModeOn));
+        Assert.Equal(DadHandoffGrantAction.Wait, DadHandoffGrantPolicy.Decide(draining));
+        Assert.Equal(DadHandoffGrantAction.Grant, DadHandoffGrantPolicy.Decide(idle));
+        Assert.Equal(
+            DadHandoffGrantAction.Wait,
+            DadHandoffGrantPolicy.Decide(new DadHandoffObservation
+            {
+                MultiModeKnown = true,
+                AutoRetainerBusyKnown = false,
+            }));
+    }
+
+    [Fact]
+    public void PreGrantMultiModeChangeRestoresOnlyWhenAttemptEndsWithoutGrant()
+    {
+        var lease = new DadHandoffPreGrantMultiModeLease();
+        lease.EndWithoutGrant();
+        Assert.False(lease.RestorePending);
+
+        lease.RecordDisabledByVermaxion();
+        lease.EndWithoutGrant();
+        Assert.True(lease.RestorePending);
+
+        lease.RecordRestored();
+        Assert.False(lease.ChangedByVermaxion);
+        Assert.False(lease.RestorePending);
+
+        lease.RecordDisabledByVermaxion();
+        lease.CompleteGrant();
+        lease.EndWithoutGrant();
+        Assert.False(lease.ChangedByVermaxion);
+        Assert.False(lease.RestorePending);
+    }
+
     private static DadHandoffReservationRequest Request()
         => new()
         {
@@ -88,4 +184,17 @@ public sealed class DadHandoffReservationTests
             MultiModeKnown = true,
             MultiModeEnabled = multiMode,
         };
+
+    private static DadHandoffBeforeArYieldSnapshot YieldSnapshot(
+        BeforeArGateState gateState,
+        bool loginPending)
+        => new(
+            ReservationActive: true,
+            GateState: gateState,
+            LoginPending: loginPending,
+            EngineOwnsActiveWork: false,
+            FishingOwnsWork: false,
+            ManualServiceOwnsWork: false,
+            CharacterPostprocessRequested: false,
+            CleanupOwnsWork: false);
 }
