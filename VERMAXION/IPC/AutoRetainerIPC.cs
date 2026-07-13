@@ -37,57 +37,43 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         LastSnapshot = new SuppressionSnapshot(false, false, false);
     }
 
-    AutoRetainerSelectionReadResult IAutoRetainerSelectionAccessor.ReadCurrentCharacterSelection(
-        ulong localContentId)
-        => ReadCurrentCharacterSelection(localContentId);
+    AutoRetainerSelectionReadResult IAutoRetainerSelectionAccessor.ReadCharacterSelection(
+        ulong contentId)
+        => ReadCharacterSelection(contentId);
 
-    AutoRetainerSelectionWriteResult IAutoRetainerSelectionAccessor.WriteCurrentCharacterSelection(
-        ulong localContentId,
+    AutoRetainerSelectionWriteResult IAutoRetainerSelectionAccessor.WriteCharacterSelection(
+        ulong contentId,
         bool enabled)
-        => WriteCurrentCharacterSelection(localContentId, enabled);
+        => WriteCharacterSelection(contentId, enabled);
 
-    internal AutoRetainerSelectionReadResult ReadCurrentCharacterSelection(ulong localContentId)
+    internal AutoRetainerSelectionReadResult ReadCharacterSelection(ulong contentId)
     {
         try
         {
             if (!TryGetLoadedAutoRetainer(out var autoRetainerPlugin, out var error))
-            {
-                log.Warning($"[AR][SelectionGuard] Selection read failed: {error}");
                 return AutoRetainerSelectionReadResult.Failed(error);
-            }
 
-            var result = AutoRetainerSelectionReflection.Read(autoRetainerPlugin, localContentId);
-            if (!result.Success)
-                log.Warning($"[AR][SelectionGuard] Selection read failed: {result.Error}");
-            return result;
+            return AutoRetainerSelectionReflection.Read(autoRetainerPlugin, contentId);
         }
         catch (Exception ex)
         {
-            log.Warning($"[AR][SelectionGuard] Selection read failed: {ex.Message}");
             return AutoRetainerSelectionReadResult.Failed(ex.Message);
         }
     }
 
-    internal AutoRetainerSelectionWriteResult WriteCurrentCharacterSelection(
-        ulong localContentId,
+    internal AutoRetainerSelectionWriteResult WriteCharacterSelection(
+        ulong contentId,
         bool enabled)
     {
         try
         {
             if (!TryGetLoadedAutoRetainer(out var autoRetainerPlugin, out var error))
-            {
-                log.Warning($"[AR][SelectionGuard] Selection write failed: {error}");
                 return AutoRetainerSelectionWriteResult.Failed(error);
-            }
 
-            var result = AutoRetainerSelectionReflection.Write(autoRetainerPlugin, localContentId, enabled);
-            if (!result.Success)
-                log.Warning($"[AR][SelectionGuard] Selection write failed: {result.Error}");
-            return result;
+            return AutoRetainerSelectionReflection.Write(autoRetainerPlugin, contentId, enabled);
         }
         catch (Exception ex)
         {
-            log.Warning($"[AR][SelectionGuard] Selection write failed: {ex.Message}");
             return AutoRetainerSelectionWriteResult.Failed(ex.Message);
         }
     }

@@ -5,24 +5,27 @@ namespace VERMAXION.Services;
 
 internal sealed class AutoRetainerSelectionGuard
 {
-    internal const int MaxObservationReadFailures = 3;
     internal const int MaxRepairAttempts = 3;
     internal static readonly TimeSpan ObservationInterval = TimeSpan.FromSeconds(1);
     internal static readonly TimeSpan RepairRetryInterval = TimeSpan.FromSeconds(1);
+    internal static readonly TimeSpan ReadFailureLogInterval = TimeSpan.FromSeconds(60);
 
     private readonly IAutoRetainerSelectionAccessor accessor;
     private readonly Action<string> logInformation;
     private readonly Action<string> logWarning;
 
-    private bool sessionActive;
-    private ulong sessionContentId;
-    private DateTime nextActionAtUtc = DateTime.MinValue;
-    private int observationReadFailureCount;
+    private SelectionTarget? currentTarget;
+    private SelectionTarget? previousTarget;
+    private ulong currentContentId;
+    private ulong previousContentId;
+    private bool wasLoggedIn;
+    private bool guardEnabled;
 
     public AutoRetainerSelectionGuardState State { get; private set; } =
         AutoRetainerSelectionGuardState.Inactive;
 
-    public ulong SessionContentId => sessionContentId;
+    public ulong SessionContentId => currentContentId;
+    public ulong PreviousContentId => previousContentId;
     public int RepairAttemptCount { get; private set; }
     public int RepairIncidentCount { get; private set; }
     public bool RepairSucceeded { get; private set; }
@@ -38,194 +41,225 @@ internal sealed class AutoRetainerSelectionGuard
         this.logWarning = logWarning;
     }
 
-    public void NotifyCurrentTaskWorkStarted(
-        bool enabled,
-        bool isLoggedIn,
-        ulong localContentId,
-        DateTime nowUtc)
-    {
-        if (!ReconcileSession(isLoggedIn, localContentId, "work-start notification"))
-            return;
-
-        if (State != AutoRetainerSelectionGuardState.AwaitingWorkStart)
-            return;
-
-        if (!enabled)
-        {
-            Complete("Disabled when VERMAXION work started");
-            return;
-        }
-
-        var snapshot = SafeRead(localContentId);
-        if (!snapshot.Success)
-        {
-            logWarning(
-                $"[AR][SelectionGuard] Not armed for {FormatContentId(localContentId)} because the work-start selection snapshot failed closed: {snapshot.Error}");
-            Complete("Work-start selection snapshot failed");
-            return;
-        }
-
-        if (!snapshot.Enabled)
-        {
-            logInformation(
-                $"[AR][SelectionGuard] Not armed for {FormatContentId(localContentId)} because AutoRetainer checking was already deselected when VERMAXION work started.");
-            Complete("Already deselected before VERMAXION work");
-            return;
-        }
-
-        State = AutoRetainerSelectionGuardState.Observing;
-        Status = "Watching for one selected-to-deselected transition";
-        observationReadFailureCount = 0;
-        nextActionAtUtc = nowUtc + ObservationInterval;
-        logInformation(
-            $"[AR][SelectionGuard] Armed for {FormatContentId(localContentId)} after the first VERMAXION task began real work.");
-    }
-
     public void Update(
         bool enabled,
         bool isLoggedIn,
         ulong localContentId,
         DateTime nowUtc)
     {
-        if (!ReconcileSession(isLoggedIn, localContentId, "framework update"))
-            return;
-
         if (!enabled)
         {
-            if (State is AutoRetainerSelectionGuardState.Observing or AutoRetainerSelectionGuardState.Repairing)
-            {
-                logInformation(
-                    $"[AR][SelectionGuard] Observation stopped for {FormatContentId(sessionContentId)} because the global guard was disabled.");
-                Complete("Disabled while active");
-            }
+            if (guardEnabled)
+                logInformation("[AR][SelectionGuard] Disabled; current and previous character selections will not be changed.");
 
+            guardEnabled = false;
+            TrackContentIdWithoutObservation(isLoggedIn, localContentId);
+            StopObservation("Disabled");
             return;
         }
 
-        if (nowUtc < nextActionAtUtc)
-            return;
+        guardEnabled = true;
 
-        switch (State)
+        if (!isLoggedIn)
         {
-            case AutoRetainerSelectionGuardState.Observing:
-                ObserveSelection(nowUtc);
-                break;
-            case AutoRetainerSelectionGuardState.Repairing:
-                AttemptRepair(nowUtc);
-                break;
+            wasLoggedIn = false;
+            State = AutoRetainerSelectionGuardState.Inactive;
+            Status = "Waiting for login";
+            return;
         }
+
+        if (localContentId == 0)
+        {
+            State = AutoRetainerSelectionGuardState.Inactive;
+            Status = "Waiting for local content ID";
+            return;
+        }
+
+        if (currentContentId == 0 || currentContentId != localContentId)
+            BeginCharacterTransition(localContentId, nowUtc);
+        else if (!wasLoggedIn || currentTarget == null)
+            ArmTrackedTargets(nowUtc);
+
+        wasLoggedIn = true;
+
+        // AutoRetainer can deselect the character being left during a relog. Repair that
+        // entry first, then reconcile the character that is currently loaded.
+        ProcessTarget(previousTarget, nowUtc);
+        ProcessTarget(currentTarget, nowUtc);
+        RefreshAggregateState();
     }
 
-    public void ResetSession(string reason)
+    private void BeginCharacterTransition(ulong localContentId, DateTime nowUtc)
     {
-        if (sessionActive || State != AutoRetainerSelectionGuardState.Inactive)
-        {
-            logInformation(
-                $"[AR][SelectionGuard] Session reset: reason={reason}, contentId={FormatContentId(sessionContentId)}, state={State}.");
-        }
+        var oldCurrentContentId = currentContentId;
+        previousContentId = oldCurrentContentId != 0 && oldCurrentContentId != localContentId
+            ? oldCurrentContentId
+            : 0;
+        currentContentId = localContentId;
 
-        sessionActive = false;
-        sessionContentId = 0;
-        State = AutoRetainerSelectionGuardState.Inactive;
-        Status = "Inactive";
-        nextActionAtUtc = DateTime.MinValue;
-        observationReadFailureCount = 0;
+        ArmTrackedTargets(nowUtc);
+    }
+
+    private void ArmTrackedTargets(DateTime nowUtc)
+    {
+
+        previousTarget = previousContentId == 0
+            ? null
+            : new SelectionTarget(previousContentId, SelectionTargetRole.Previous, nowUtc);
+        currentTarget = new SelectionTarget(currentContentId, SelectionTargetRole.Current, nowUtc);
+
         RepairAttemptCount = 0;
         RepairIncidentCount = 0;
         RepairSucceeded = false;
+        State = AutoRetainerSelectionGuardState.Observing;
+        Status = previousTarget == null
+            ? "Watching current AutoRetainer selection"
+            : "Watching current and previous AutoRetainer selections";
+
+        logInformation(previousTarget == null
+            ? $"[AR][SelectionGuard] Tracking current character {FormatContentId(currentContentId)}; an already-disabled selection will be restored."
+            : $"[AR][SelectionGuard] Tracking current {FormatContentId(currentContentId)} and previous {FormatContentId(previousContentId)}; already-disabled selections will be restored.");
     }
 
-    private bool ReconcileSession(bool isLoggedIn, ulong localContentId, string source)
+    private void TrackContentIdWithoutObservation(bool isLoggedIn, ulong localContentId)
     {
-        if (!isLoggedIn || localContentId == 0)
+        if (!isLoggedIn)
         {
-            if (sessionActive || State != AutoRetainerSelectionGuardState.Inactive)
-                ResetSession(!isLoggedIn ? "logout" : "local content ID unavailable");
-            return false;
+            wasLoggedIn = false;
+            return;
         }
 
-        if (sessionActive && sessionContentId == localContentId)
-            return true;
+        if (localContentId == 0)
+            return;
 
-        var previousContentId = sessionContentId;
-        var hadSession = sessionActive;
-        ResetSession(hadSession
-            ? $"local content ID changed from {FormatContentId(previousContentId)} via {source}"
-            : $"new login session via {source}");
+        if (currentContentId == 0)
+        {
+            currentContentId = localContentId;
+        }
+        else if (currentContentId != localContentId)
+        {
+            previousContentId = currentContentId;
+            currentContentId = localContentId;
+        }
 
-        sessionActive = true;
-        sessionContentId = localContentId;
-        State = AutoRetainerSelectionGuardState.AwaitingWorkStart;
-        Status = "Waiting for VERMAXION real work";
-        return true;
+        wasLoggedIn = true;
     }
 
-    private void ObserveSelection(DateTime nowUtc)
+    private void ProcessTarget(SelectionTarget? target, DateTime nowUtc)
     {
-        var selection = SafeRead(sessionContentId);
+        if (target == null || target.Completed || nowUtc < target.NextActionAtUtc)
+            return;
+
+        if (target.RepairIncidentStarted)
+        {
+            AttemptRepair(target, nowUtc);
+            return;
+        }
+
+        var selection = SafeRead(target.ContentId);
         if (!selection.Success)
         {
-            observationReadFailureCount++;
-            if (observationReadFailureCount >= MaxObservationReadFailures)
+            target.ConsecutiveReadFailures++;
+            if (target.LastReadFailureLogAtUtc == DateTime.MinValue ||
+                nowUtc - target.LastReadFailureLogAtUtc >= ReadFailureLogInterval)
             {
                 logWarning(
-                    $"[AR][SelectionGuard] Stopped watching {FormatContentId(sessionContentId)} after {observationReadFailureCount} consecutive read failures; no selection write was attempted. Last error: {selection.Error}");
-                Complete("Selection observation failed closed");
-                return;
+                    $"[AR][SelectionGuard] {FormatRole(target.Role)} selection read failed closed for {FormatContentId(target.ContentId)}; no write was attempted and observation will retry. ConsecutiveFailures={target.ConsecutiveReadFailures}. Error: {selection.Error}");
+                target.LastReadFailureLogAtUtc = nowUtc;
             }
 
-            logWarning(
-                $"[AR][SelectionGuard] Selection observation read {observationReadFailureCount}/{MaxObservationReadFailures} failed for {FormatContentId(sessionContentId)}: {selection.Error}");
-            nextActionAtUtc = nowUtc + ObservationInterval;
+            target.NextActionAtUtc = nowUtc + ObservationInterval;
             return;
         }
 
-        observationReadFailureCount = 0;
+        target.ConsecutiveReadFailures = 0;
         if (selection.Enabled)
         {
-            nextActionAtUtc = nowUtc + ObservationInterval;
+            target.NextActionAtUtc = nowUtc + ObservationInterval;
             return;
         }
 
+        target.RepairIncidentStarted = true;
         RepairIncidentCount++;
-        State = AutoRetainerSelectionGuardState.Repairing;
-        Status = "Restoring AutoRetainer character selection";
         logWarning(
-            $"[AR][SelectionGuard] Detected selected-to-deselected transition for {FormatContentId(sessionContentId)} after VERMAXION work; starting one bounded repair incident.");
-        AttemptRepair(nowUtc);
+            $"[AR][SelectionGuard] Detected disabled AutoRetainer checking for {FormatRole(target.Role)} character {FormatContentId(target.ContentId)}; starting one bounded repair incident.");
+        AttemptRepair(target, nowUtc);
     }
 
-    private void AttemptRepair(DateTime nowUtc)
+    private void AttemptRepair(SelectionTarget target, DateTime nowUtc)
     {
+        target.RepairAttemptCount++;
         RepairAttemptCount++;
-        var result = SafeWrite(sessionContentId, enabled: true);
+        var result = SafeWrite(target.ContentId, enabled: true);
         if (result.Success && result.Enabled && result.SaveInvoked)
         {
+            target.RepairSucceeded = true;
+            target.Completed = true;
             RepairSucceeded = true;
             logInformation(
-                $"[AR][SelectionGuard] Restored and persisted AutoRetainer checking for {FormatContentId(sessionContentId)} on attempt {RepairAttemptCount}/{MaxRepairAttempts}; observation is complete until the next login.");
-            Complete("Selection restored and persisted");
+                $"[AR][SelectionGuard] Restored and persisted AutoRetainer checking for {FormatRole(target.Role)} character {FormatContentId(target.ContentId)} on attempt {target.RepairAttemptCount}/{MaxRepairAttempts}; this character is complete until the next transition.");
             return;
         }
 
-        if (RepairAttemptCount >= MaxRepairAttempts)
+        if (target.RepairAttemptCount >= MaxRepairAttempts)
         {
+            target.Completed = true;
             logWarning(
-                $"[AR][SelectionGuard] Repair exhausted for {FormatContentId(sessionContentId)} after {RepairAttemptCount} attempts; observation is complete until the next login. Last error: {FormatWriteFailure(result)}");
-            Complete("Selection repair exhausted");
+                $"[AR][SelectionGuard] Repair exhausted for {FormatRole(target.Role)} character {FormatContentId(target.ContentId)} after {target.RepairAttemptCount} attempts; this character is complete until the next transition. Last error: {FormatWriteFailure(result)}");
             return;
         }
 
         logWarning(
-            $"[AR][SelectionGuard] Repair attempt {RepairAttemptCount}/{MaxRepairAttempts} failed for {FormatContentId(sessionContentId)}: {FormatWriteFailure(result)}");
-        nextActionAtUtc = nowUtc + RepairRetryInterval;
+            $"[AR][SelectionGuard] Repair attempt {target.RepairAttemptCount}/{MaxRepairAttempts} failed for {FormatRole(target.Role)} character {FormatContentId(target.ContentId)}: {FormatWriteFailure(result)}");
+        target.NextActionAtUtc = nowUtc + RepairRetryInterval;
     }
 
-    private AutoRetainerSelectionReadResult SafeRead(ulong localContentId)
+    private void RefreshAggregateState()
+    {
+        if (!guardEnabled || !wasLoggedIn)
+        {
+            State = AutoRetainerSelectionGuardState.Inactive;
+            return;
+        }
+
+        var repairing = IsRepairing(previousTarget) || IsRepairing(currentTarget);
+        if (repairing)
+        {
+            State = AutoRetainerSelectionGuardState.Repairing;
+            Status = "Restoring AutoRetainer character selection";
+            return;
+        }
+
+        var observing = IsObserving(previousTarget) || IsObserving(currentTarget);
+        if (observing)
+        {
+            State = AutoRetainerSelectionGuardState.Observing;
+            Status = previousTarget is { Completed: false }
+                ? "Watching current and previous AutoRetainer selections"
+                : "Watching current AutoRetainer selection";
+            return;
+        }
+
+        State = AutoRetainerSelectionGuardState.Completed;
+        Status = "Selection repair complete until next character transition";
+    }
+
+    private void StopObservation(string status)
+    {
+        currentTarget = null;
+        previousTarget = null;
+        RepairAttemptCount = 0;
+        RepairIncidentCount = 0;
+        RepairSucceeded = false;
+        State = AutoRetainerSelectionGuardState.Inactive;
+        Status = status;
+    }
+
+    private AutoRetainerSelectionReadResult SafeRead(ulong contentId)
     {
         try
         {
-            return accessor.ReadCurrentCharacterSelection(localContentId);
+            return accessor.ReadCharacterSelection(contentId);
         }
         catch (Exception ex)
         {
@@ -234,11 +268,11 @@ internal sealed class AutoRetainerSelectionGuard
         }
     }
 
-    private AutoRetainerSelectionWriteResult SafeWrite(ulong localContentId, bool enabled)
+    private AutoRetainerSelectionWriteResult SafeWrite(ulong contentId, bool enabled)
     {
         try
         {
-            return accessor.WriteCurrentCharacterSelection(localContentId, enabled);
+            return accessor.WriteCharacterSelection(contentId, enabled);
         }
         catch (Exception ex)
         {
@@ -247,12 +281,11 @@ internal sealed class AutoRetainerSelectionGuard
         }
     }
 
-    private void Complete(string status)
-    {
-        State = AutoRetainerSelectionGuardState.Completed;
-        Status = status;
-        nextActionAtUtc = DateTime.MaxValue;
-    }
+    private static bool IsRepairing(SelectionTarget? target)
+        => target is { Completed: false, RepairIncidentStarted: true };
+
+    private static bool IsObserving(SelectionTarget? target)
+        => target is { Completed: false, RepairIncidentStarted: false };
 
     private static string FormatWriteFailure(AutoRetainerSelectionWriteResult result)
     {
@@ -260,6 +293,31 @@ internal sealed class AutoRetainerSelectionGuard
         return $"{error} (enabled={result.Enabled}, saveInvoked={result.SaveInvoked})";
     }
 
+    private static string FormatRole(SelectionTargetRole role)
+        => role == SelectionTargetRole.Current ? "current" : "previous";
+
     private static string FormatContentId(ulong contentId)
         => contentId == 0 ? "none" : contentId.ToString("X16");
+
+    private enum SelectionTargetRole
+    {
+        Current,
+        Previous,
+    }
+
+    private sealed class SelectionTarget(
+        ulong contentId,
+        SelectionTargetRole role,
+        DateTime nextActionAtUtc)
+    {
+        public ulong ContentId { get; } = contentId;
+        public SelectionTargetRole Role { get; } = role;
+        public DateTime NextActionAtUtc { get; set; } = nextActionAtUtc;
+        public DateTime LastReadFailureLogAtUtc { get; set; } = DateTime.MinValue;
+        public int ConsecutiveReadFailures { get; set; }
+        public int RepairAttemptCount { get; set; }
+        public bool RepairIncidentStarted { get; set; }
+        public bool RepairSucceeded { get; set; }
+        public bool Completed { get; set; }
+    }
 }

@@ -16,24 +16,25 @@ namespace VERMAXION.Tests
         }
 
         [Fact]
-        public void ReadsWritesVerifiesAndPersistsCurrentCharacterSelection()
+        public void ReadsWritesVerifiesAndPersistsArbitraryCharacterSelection()
         {
             var current = new AutoRetainer.FakeOfflineCharacterData
             {
                 CID = ContentId,
-                Enabled = false,
+                Enabled = true,
             };
-            AutoRetainer.AutoRetainer.C.OfflineData.Add(new AutoRetainer.FakeOfflineCharacterData
+            var previous = new AutoRetainer.FakeOfflineCharacterData
             {
                 CID = ContentId + 1,
-                Enabled = true,
-            });
+                Enabled = false,
+            };
             AutoRetainer.AutoRetainer.C.OfflineData.Add(current);
+            AutoRetainer.AutoRetainer.C.OfflineData.Add(previous);
             var plugin = new AutoRetainer.AutoRetainer();
 
-            var before = AutoRetainerSelectionReflection.Read(plugin, ContentId);
-            var write = AutoRetainerSelectionReflection.Write(plugin, ContentId, enabled: true);
-            var after = AutoRetainerSelectionReflection.Read(plugin, ContentId);
+            var before = AutoRetainerSelectionReflection.Read(plugin, previous.CID);
+            var write = AutoRetainerSelectionReflection.Write(plugin, previous.CID, enabled: true);
+            var after = AutoRetainerSelectionReflection.Read(plugin, previous.CID);
 
             Assert.True(before.Success);
             Assert.False(before.Enabled);
@@ -42,6 +43,7 @@ namespace VERMAXION.Tests
             Assert.True(write.SaveInvoked);
             Assert.True(after.Success);
             Assert.True(after.Enabled);
+            Assert.True(current.Enabled);
             Assert.Equal(1, AutoRetainer.Modules.OfflineDataManager.WriteCount);
             Assert.False(AutoRetainer.Modules.OfflineDataManager.LastWriteGatherables);
             Assert.True(AutoRetainer.Modules.OfflineDataManager.LastSaveConfig);

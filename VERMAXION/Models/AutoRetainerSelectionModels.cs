@@ -30,17 +30,16 @@ internal readonly record struct AutoRetainerSelectionWriteResult(
 
 internal interface IAutoRetainerSelectionAccessor
 {
-    AutoRetainerSelectionReadResult ReadCurrentCharacterSelection(ulong localContentId);
+    AutoRetainerSelectionReadResult ReadCharacterSelection(ulong contentId);
 
-    AutoRetainerSelectionWriteResult WriteCurrentCharacterSelection(
-        ulong localContentId,
+    AutoRetainerSelectionWriteResult WriteCharacterSelection(
+        ulong contentId,
         bool enabled);
 }
 
 internal enum AutoRetainerSelectionGuardState
 {
     Inactive,
-    AwaitingWorkStart,
     Observing,
     Repairing,
     Completed,
