@@ -220,7 +220,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
             : null;
-        Engine.CurrentTaskWorkStarted += OnEngineCurrentTaskWorkStarted;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
         DadHandoffIpcProvider = new DadHandoffIpcProvider(
             PluginInterface,
@@ -273,7 +272,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     public void Dispose()
     {
-        Engine.CurrentTaskWorkStarted -= OnEngineCurrentTaskWorkStarted;
         DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
@@ -466,15 +464,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             message.Message.TextValue);
     }
 
-    private void OnEngineCurrentTaskWorkStarted()
-    {
-        AutoRetainerSelectionGuard.NotifyCurrentTaskWorkStarted(
-            Configuration.AutoRestoreRetainerCheckingAfterWork,
-            ClientState.IsLoggedIn,
-            PlayerState.ContentId,
-            DateTime.UtcNow);
-    }
-
     private void OnARCharacterReady(string pluginName)
     {
         Log.Information($"[Plugin] AR signaled character ready for postprocess");
@@ -622,7 +611,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     private void OnCharacterChanged(string oldCharacterKey, string newCharacterKey)
     {
         Log.Information($"[Plugin] Character changed: '{oldCharacterKey}' -> '{newCharacterKey}'");
-        AutoRetainerSelectionGuard.ResetSession("ConfigManager character change");
         
         // Reset all services to prevent state persistence between characters
         try

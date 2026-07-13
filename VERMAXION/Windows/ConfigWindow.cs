@@ -168,7 +168,7 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawHelpMarker(UIConstants.Tooltips.AutoRestoreRetainerCheckingAfterWork);
             ImGui.Indent();
-            ImGui.TextWrapped("The guard stays inactive when VERMAXION skips all work and never selects a character that was already deselected before work began.");
+            ImGui.TextWrapped("Works even when VERMAXION skips all tasks. Turn this off before intentionally disabling AutoRetainer checking for the current or previous character.");
             ImGui.Unindent();
 
             var dtrEnabled = config.DtrBarEnabled;
