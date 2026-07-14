@@ -141,7 +141,7 @@ public class VermaxionEngine
     private int nagYourMomRouteCursor = 0;
     private DateTime nagYourMomLostStatusSince = DateTime.MinValue;
     private DateTime nagYourMomLostStatusLastLoggedAt = DateTime.MinValue;
-    private bool nagYourDadRequestIssued = false;
+    private DadSelectionExecution? activeDadExecution;
     private bool taskStartHoldLogged = false;
     private EngineState taskStartHoldState = EngineState.Idle;
     private JumboCactpotRouteDecision? activeJumboCactpotRoute = null;
@@ -1144,7 +1144,7 @@ public class VermaxionEngine
                     break;
                 }
 
-                if (!nagYourDadRequestIssued)
+                if (activeDadExecution == null)
                 {
                     if (!dadIPCClient.IsReady())
                     {
@@ -1154,51 +1154,47 @@ public class VermaxionEngine
                         break;
                     }
 
-                    var dadRequest = BuildDadRunRequest(activeConfig!);
-                    if (dadRequest.GetConfiguredTaskCount() == 0)
-                    {
-                        NagYourDadStatusText = "No dad tasks configured.";
-                        AdvanceToNextTask(EngineState.RunningNagYourDad);
-                        break;
-                    }
+                    activeDadExecution = dadIPCClient.StartSelection(
+                        activeConfig!.NagYourDadSelectionKind,
+                        activeConfig.NagYourDadSelectionId,
+                        activeConfig.NagYourDadSelectionDisplayName);
+                    NagYourDadStatusText = activeDadExecution.StatusText;
 
-                    var dadStartResult = dadIPCClient.StartTasks(dadRequest);
-                    NagYourDadStatusText = dadStartResult.Summary;
-
-                    if (dadStartResult.Status is DadRunStatus.Rejected or DadRunStatus.Failed or DadRunStatus.Cancelled)
+                    if (activeDadExecution.IsTerminal)
                     {
-                        log.Warning($"[Engine] nag your dad start failed: {dadStartResult.Summary}");
-                        AdvanceToNextTask(EngineState.RunningNagYourDad);
-                        break;
-                    }
-
-                    if (dadStartResult.Status == DadRunStatus.Completed)
-                    {
-                        MarkCurrentTaskWorkStarted();
-                        log.Information("[Engine] nag your dad completed immediately");
+                        if (activeDadExecution.Success)
+                        {
+                            MarkCurrentTaskWorkStarted();
+                            log.Information($"[Engine] nag your dad completed immediately: {activeDadExecution.StatusText}");
+                        }
+                        else
+                        {
+                            runHadFailure = true;
+                            log.Warning($"[Engine] nag your dad start failed: {activeDadExecution.StatusText}");
+                        }
+                        activeDadExecution = null;
                         AdvanceToNextTask(EngineState.RunningNagYourDad);
                         break;
                     }
 
                     MarkCurrentTaskWorkStarted();
-                    nagYourDadRequestIssued = true;
                     return;
                 }
 
-                var currentDadStatus = dadIPCClient.GetStatus();
-                NagYourDadStatusText = currentDadStatus.Summary;
-                if (currentDadStatus.Status is DadRunStatus.Queued or DadRunStatus.WaitingForParticipants or DadRunStatus.Running)
+                activeDadExecution = dadIPCClient.PollSelection(activeDadExecution);
+                NagYourDadStatusText = activeDadExecution.StatusText;
+                if (!activeDadExecution.IsTerminal)
                     return;
 
-                nagYourDadRequestIssued = false;
-                if (currentDadStatus.Status == DadRunStatus.Completed)
-                    log.Information("[Engine] nag your dad completed successfully");
+                if (activeDadExecution.Success)
+                    log.Information($"[Engine] nag your dad completed successfully: {activeDadExecution.StatusText}");
                 else
                 {
                     runHadFailure = true;
-                    log.Warning($"[Engine] nag your dad ended with status {currentDadStatus.Status}: {currentDadStatus.Summary}");
+                    log.Warning($"[Engine] nag your dad ended with status {activeDadExecution.StatusText}");
                 }
 
+                activeDadExecution = null;
                 AdvanceToNextTask(EngineState.RunningNagYourDad);
                 break;
 
@@ -1416,7 +1412,8 @@ public class VermaxionEngine
     private void CancelForSettling(string status)
     {
         momIPCClient.CancelActiveRun();
-        dadIPCClient.CancelActiveRun();
+        if (activeDadExecution != null)
+            dadIPCClient.CancelSelection(activeDadExecution);
         lootGoblinMapGatherService.Cancel();
         ResetTaskServices();
         vNavmeshIPC.Stop();
@@ -1585,7 +1582,10 @@ public class VermaxionEngine
             case EngineState.RunningChocoboRacing: chocoboRaceService.Reset(); break;
             case EngineState.RunningLootGoblinMapGather: lootGoblinMapGatherService.Cancel(); break;
             case EngineState.RunningNagYourMom: momIPCClient.CancelActiveRun(); break;
-            case EngineState.RunningNagYourDad: dadIPCClient.CancelActiveRun(); break;
+            case EngineState.RunningNagYourDad:
+                if (activeDadExecution != null)
+                    dadIPCClient.CancelSelection(activeDadExecution);
+                break;
             default: ResetTaskServices(); break;
         }
 
@@ -2053,7 +2053,7 @@ public class VermaxionEngine
             nagYourMomRouteCursor = 0;
         }
         if (newState != EngineState.RunningNagYourDad)
-            nagYourDadRequestIssued = false;
+            activeDadExecution = null;
         if (newState != EngineState.RunningLootGoblinMapGather && lootGoblinMapGatherService.IsComplete)
             lootGoblinMapGatherService.Reset();
         if (newState != EngineState.RunningJumboCactpot)
@@ -2420,39 +2420,10 @@ public class VermaxionEngine
         if (!config.EnableNagYourDad)
             return false;
 
-        if (config.NagYourDadDungeonCount > 0 &&
-            (string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) || config.NagYourDadDungeonContentFinderConditionId == 0))
-        {
-            reason = "Set a dad dungeon";
-            return false;
-        }
-
-        if (config.NagYourDadDailyMsq && string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
-        {
-            reason = "Set a Lan Party preset";
-            return false;
-        }
-
         if (!HasNagYourDadConfiguredWork(config))
         {
-            reason = "Set dad tasks";
+            reason = "Select a DAD preset or schedule";
             return false;
-        }
-
-        if (config.NagYourDadAstropeAttempts > 0)
-        {
-            if (!TryParseLocalTime(config.NagYourDadWindowStartLocal, out var start) ||
-                !TryParseLocalTime(config.NagYourDadWindowEndLocal, out var end))
-            {
-                reason = "Invalid dad Astrope local-time window";
-                return false;
-            }
-
-            if (!IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end))
-            {
-                reason = $"Outside dad Astrope window ({config.NagYourDadWindowStartLocal}-{config.NagYourDadWindowEndLocal})";
-                return false;
-            }
         }
 
         reason = "Ready";
@@ -2460,80 +2431,8 @@ public class VermaxionEngine
     }
 
     private static bool HasNagYourDadConfiguredWork(CharacterConfig config)
-    {
-        if (config.NagYourDadDungeonCount > 0 &&
-            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
-            config.NagYourDadDungeonContentFinderConditionId != 0)
-            return true;
-
-        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
-            return true;
-
-        if (config.NagYourDadCommendationAttempts > 0)
-            return true;
-
-        if (config.NagYourDadAstropeAttempts > 0)
-            return true;
-
-        return false;
-    }
-
-    private static DadRunRequest BuildDadRunRequest(CharacterConfig config)
-    {
-        var request = new DadRunRequest
-        {
-            RequestedBy = "VERMAXION",
-        };
-
-        if (config.NagYourDadDungeonCount > 0 &&
-            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
-            config.NagYourDadDungeonContentFinderConditionId != 0)
-        {
-            request.Dungeon = new DadDungeonTask
-            {
-                Count = Math.Max(1, config.NagYourDadDungeonCount),
-                Frequency = DadRunRequestOptions.NormalizeFrequency(config.NagYourDadDungeonFrequency),
-                ContentFinderConditionId = config.NagYourDadDungeonContentFinderConditionId,
-                SelectedDungeon = config.NagYourDadDungeonName.Trim(),
-                SelectedJob = config.NagYourDadDungeonJob.Trim().ToUpperInvariant(),
-                ExecutionPreference = DadRunRequestOptions.TrustThenDutySupport,
-                QueueViaLanParty = config.NagYourDadQueueViaLanParty,
-                Unsynced = config.NagYourDadDungeonUnsynced,
-            };
-        }
-
-        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
-        {
-            request.DailyMsq = new DadDailyMsqTask
-            {
-                LanPartyPreset = config.NagYourDadLanPartyPreset.Trim(),
-            };
-        }
-
-        if (config.NagYourDadCommendationAttempts > 0)
-        {
-            request.Commendation = new DadCommendationTask
-            {
-                Attempts = config.NagYourDadCommendationAttempts,
-            };
-        }
-
-        if (config.NagYourDadAstropeAttempts > 0)
-        {
-            request.Astrope = new DadAstropeTask
-            {
-                Attempts = config.NagYourDadAstropeAttempts,
-                ValidLocalTimeWindow = new DadTimeWindow
-                {
-                    StartLocal = config.NagYourDadWindowStartLocal,
-                    EndLocal = config.NagYourDadWindowEndLocal,
-                },
-            };
-        }
-
-        request.ApplyOrchestrationDefaults();
-        return request;
-    }
+        => config.NagYourDadSelectionKind is DadSelectionKind.Preset or DadSelectionKind.Schedule &&
+           !string.IsNullOrWhiteSpace(config.NagYourDadSelectionId);
 
     /// <summary>
     /// Handle territory changes to close menus that might be stuck after teleporting.

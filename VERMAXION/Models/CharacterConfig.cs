@@ -58,6 +58,10 @@ public class CharacterConfig
     public string NagYourMomWindowStartLocal { get; set; } = "00:00";
     public string NagYourMomWindowEndLocal { get; set; } = "23:59";
     public bool NagYourMomStopAtSeriesRank25 { get; set; } = true;
+    public DadSelectionKind NagYourDadSelectionKind { get; set; } = DadSelectionKind.None;
+    public string NagYourDadSelectionId { get; set; } = string.Empty;
+    public string NagYourDadSelectionDisplayName { get; set; } = string.Empty;
+    // Legacy DAD task-builder fields are retained only so older JSON can deserialize.
     public int NagYourDadDungeonCount { get; set; } = 0;
     public string NagYourDadDungeonFrequency { get; set; } = DadRunRequestOptions.FrequencyPerArRun;
     public uint NagYourDadDungeonContentFinderConditionId { get; set; } = 0;
@@ -283,6 +287,9 @@ public class CharacterConfig
             NagYourMomWindowStartLocal = NagYourMomWindowStartLocal,
             NagYourMomWindowEndLocal = NagYourMomWindowEndLocal,
             NagYourMomStopAtSeriesRank25 = NagYourMomStopAtSeriesRank25,
+            NagYourDadSelectionKind = NagYourDadSelectionKind,
+            NagYourDadSelectionId = NagYourDadSelectionId,
+            NagYourDadSelectionDisplayName = NagYourDadSelectionDisplayName,
             NagYourDadDungeonCount = NagYourDadDungeonCount,
             NagYourDadDungeonFrequency = DadRunRequestOptions.NormalizeFrequency(NagYourDadDungeonFrequency),
             NagYourDadDungeonContentFinderConditionId = NagYourDadDungeonContentFinderConditionId,

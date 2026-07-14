@@ -255,12 +255,16 @@ public class MainWindow : Window, IDisposable
                     Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
                 }, "OK");
             DrawTaskRow("nag your dad", config.EnableNagYourDad,
-                GetNagYourDadStatus(config, engine.NagYourDadStatusText),
+                GetNagYourDadStatus(config, engine.NagYourDadStatusText, plugin.DadIPCClient.LastSubmissionStatus),
                 "run##Dad", () =>
                 {
-                    var result = plugin.DadIPCClient.StartTasks(BuildDadRunRequest(config));
-                    Plugin.ChatGui.Print($"[Vermaxion] {result.Summary}");
-                }, "WIP");
+                    var activeConfig = plugin.ConfigManager.GetActiveConfig();
+                    var result = plugin.DadIPCClient.StartSelection(
+                        activeConfig.NagYourDadSelectionKind,
+                        activeConfig.NagYourDadSelectionId,
+                        activeConfig.NagYourDadSelectionDisplayName);
+                    Plugin.ChatGui.Print($"[Vermaxion] {result.StatusText}");
+                }, "OK");
             DrawTaskRow("Adventurer Activity (Evercold)", config.EnableEvercoldAdventurerActivity,
                 GetEvercoldAdventurerActivityStatus(config),
                 "Stub##EvercoldActivity", () =>
@@ -646,41 +650,24 @@ public class MainWindow : Window, IDisposable
             _ => config.NagYourMomAttemptsToday,
         };
 
-    private static string GetNagYourDadStatus(Models.CharacterConfig config, string engineStatus)
+    private static string GetNagYourDadStatus(
+        Models.CharacterConfig config,
+        string engineStatus,
+        string lastSubmissionStatus)
     {
         if (!config.EnableNagYourDad)
             return "Off";
 
-        if (config.NagYourDadDungeonCount > 0 &&
-            (string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) || config.NagYourDadDungeonContentFinderConditionId == 0))
-            return "Set dungeon";
+        if (config.NagYourDadSelectionKind == DadSelectionKind.None ||
+            string.IsNullOrWhiteSpace(config.NagYourDadSelectionId))
+            return "Select DAD work";
 
-        if (config.NagYourDadDailyMsq && string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
-            return "Set Lan Party preset";
+        if (!string.IsNullOrWhiteSpace(engineStatus) && engineStatus != "Idle")
+            return engineStatus;
 
-        if (!HasNagYourDadConfiguredWork(config))
-            return "Set dad tasks";
-
-        if (config.NagYourDadAstropeAttempts > 0)
-        {
-            if (!TimeSpan.TryParse(config.NagYourDadWindowStartLocal, out var start) ||
-                !TimeSpan.TryParse(config.NagYourDadWindowEndLocal, out var end))
-            {
-                return "Bad Astrope window";
-            }
-
-            var now = DateTime.Now.TimeOfDay;
-            var inWindow = start <= end
-                ? now >= start && now <= end
-                : now >= start || now <= end;
-
-            if (!inWindow)
-                return "Outside Astrope window";
-        }
-
-        return string.IsNullOrWhiteSpace(engineStatus) || engineStatus == "Idle"
+        return string.IsNullOrWhiteSpace(lastSubmissionStatus)
             ? "Ready on AR"
-            : engineStatus;
+            : lastSubmissionStatus;
     }
 
     private static string GetEvercoldAdventurerActivityStatus(Models.CharacterConfig config)
@@ -701,79 +688,4 @@ public class MainWindow : Window, IDisposable
         return $"{current}/{config.EvercoldAdventurerActivityTargetPoints} pts";
     }
 
-    private static bool HasNagYourDadConfiguredWork(Models.CharacterConfig config)
-    {
-        if (config.NagYourDadDungeonCount > 0 &&
-            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
-            config.NagYourDadDungeonContentFinderConditionId != 0)
-            return true;
-
-        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
-            return true;
-
-        if (config.NagYourDadCommendationAttempts > 0)
-            return true;
-
-        if (config.NagYourDadAstropeAttempts > 0)
-            return true;
-
-        return false;
-    }
-
-    private static Models.DadRunRequest BuildDadRunRequest(Models.CharacterConfig config)
-    {
-        var request = new Models.DadRunRequest
-        {
-            RequestedBy = "VERMAXION UI",
-        };
-
-        if (config.NagYourDadDungeonCount > 0 &&
-            !string.IsNullOrWhiteSpace(config.NagYourDadDungeonName) &&
-            config.NagYourDadDungeonContentFinderConditionId != 0)
-        {
-            request.Dungeon = new Models.DadDungeonTask
-            {
-                Count = Math.Max(1, config.NagYourDadDungeonCount),
-                Frequency = Models.DadRunRequestOptions.NormalizeFrequency(config.NagYourDadDungeonFrequency),
-                ContentFinderConditionId = config.NagYourDadDungeonContentFinderConditionId,
-                SelectedDungeon = config.NagYourDadDungeonName.Trim(),
-                SelectedJob = config.NagYourDadDungeonJob.Trim().ToUpperInvariant(),
-                ExecutionPreference = Models.DadRunRequestOptions.TrustThenDutySupport,
-                QueueViaLanParty = config.NagYourDadQueueViaLanParty,
-                Unsynced = config.NagYourDadDungeonUnsynced,
-            };
-        }
-
-        if (config.NagYourDadDailyMsq && !string.IsNullOrWhiteSpace(config.NagYourDadLanPartyPreset))
-        {
-            request.DailyMsq = new Models.DadDailyMsqTask
-            {
-                LanPartyPreset = config.NagYourDadLanPartyPreset.Trim(),
-            };
-        }
-
-        if (config.NagYourDadCommendationAttempts > 0)
-        {
-            request.Commendation = new Models.DadCommendationTask
-            {
-                Attempts = config.NagYourDadCommendationAttempts,
-            };
-        }
-
-        if (config.NagYourDadAstropeAttempts > 0)
-        {
-            request.Astrope = new Models.DadAstropeTask
-            {
-                Attempts = config.NagYourDadAstropeAttempts,
-                ValidLocalTimeWindow = new Models.DadTimeWindow
-                {
-                    StartLocal = config.NagYourDadWindowStartLocal,
-                    EndLocal = config.NagYourDadWindowEndLocal,
-                },
-            };
-        }
-
-        request.ApplyOrchestrationDefaults();
-        return request;
-    }
 }
