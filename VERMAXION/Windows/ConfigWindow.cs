@@ -1404,6 +1404,24 @@ public class ConfigWindow : Window, IDisposable
             if (cc.EnableNagYourDad)
             {
                 ImGui.Indent();
+                DrawDadSelectionSelector(cc, ref changed);
+                DrawDefaultOverrideButton(isDefault, configManager, "NagYourDadSelection", "DAD preset or schedule",
+                    (source, target) =>
+                    {
+                        target.NagYourDadSelectionKind = source.NagYourDadSelectionKind;
+                        target.NagYourDadSelectionId = source.NagYourDadSelectionId;
+                        target.NagYourDadSelectionDisplayName = source.NagYourDadSelectionDisplayName;
+                    });
+                var dadStatus = plugin.DadIPCClient.GetStatus();
+                ImGui.TextDisabled($"DAD IPC: {(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")} | launch: {dadStatus.Status}");
+                ImGui.TextWrapped($"DAD status: {dadStatus.Summary}");
+                ImGui.TextDisabled($"VERMAXION status: {plugin.Engine.NagYourDadStatusText}");
+                ImGui.TextWrapped("VERMAXION launches the selected saved DAD preset through the scheduler path, or the selected DAD schedule through its exact schedule run path.");
+                ImGui.Unindent();
+            }
+            if (ShouldDrawLegacyDadTaskBuilder())
+            {
+                ImGui.Indent();
 
                 ImGui.TextWrapped("Dungeon count tells dad how many times to run the selected Duty Finder duty.");
                 var dadDungeonCount = cc.NagYourDadDungeonCount;
@@ -1644,6 +1662,74 @@ public class ConfigWindow : Window, IDisposable
         if (changed)
             configManager.SaveCurrentAccount();
     }
+
+    private void DrawDadSelectionSelector(CharacterConfig cc, ref bool changed)
+    {
+        var catalog = plugin.DadIPCClient.GetSelectionCatalog();
+        var all = catalog.Presets.Concat(catalog.Schedules).ToList();
+        var selected = all.FirstOrDefault(item =>
+            item.Kind == cc.NagYourDadSelectionKind &&
+            string.Equals(item.Id, cc.NagYourDadSelectionId, StringComparison.OrdinalIgnoreCase));
+        var fallback = string.IsNullOrWhiteSpace(cc.NagYourDadSelectionDisplayName)
+            ? string.IsNullOrWhiteSpace(cc.NagYourDadSelectionId)
+                ? "Select DAD preset or schedule"
+                : cc.NagYourDadSelectionId
+            : cc.NagYourDadSelectionDisplayName;
+        var preview = selected == null
+            ? cc.NagYourDadSelectionKind == DadSelectionKind.None ? fallback : $"{cc.NagYourDadSelectionKind}: {fallback}"
+            : $"{selected.Kind}: {selected.DisplayName}";
+
+        ImGui.SetNextItemWidth(460f);
+        if (ImGui.BeginCombo("DAD Preset or Schedule", preview))
+        {
+            if (ImGui.Selectable("None", cc.NagYourDadSelectionKind == DadSelectionKind.None))
+            {
+                cc.NagYourDadSelectionKind = DadSelectionKind.None;
+                cc.NagYourDadSelectionId = string.Empty;
+                cc.NagYourDadSelectionDisplayName = string.Empty;
+                changed = true;
+            }
+
+            DrawDadSelectionGroup("Presets", catalog.Presets, cc, ref changed);
+            DrawDadSelectionGroup("Schedules", catalog.Schedules, cc, ref changed);
+            ImGui.EndCombo();
+        }
+
+        if (!catalog.Available)
+            ImGui.TextDisabled(catalog.Summary);
+        else if (selected == null && cc.NagYourDadSelectionKind != DadSelectionKind.None)
+            ImGui.TextDisabled($"Saved selection is not currently present in DAD; retaining fallback '{fallback}' without guessing a migration.");
+        else
+            ImGui.TextDisabled(catalog.Summary);
+    }
+
+    private static void DrawDadSelectionGroup(
+        string label,
+        IReadOnlyList<DadSelectionCatalogItem> items,
+        CharacterConfig cc,
+        ref bool changed)
+    {
+        ImGui.Separator();
+        ImGui.TextDisabled(label);
+        foreach (var item in items)
+        {
+            var isSelected = cc.NagYourDadSelectionKind == item.Kind &&
+                             string.Equals(cc.NagYourDadSelectionId, item.Id, StringComparison.OrdinalIgnoreCase);
+            if (ImGui.Selectable($"{item.DisplayName}##dad-selection-{item.Kind}-{item.Id}", isSelected))
+            {
+                cc.NagYourDadSelectionKind = item.Kind;
+                cc.NagYourDadSelectionId = item.Id;
+                cc.NagYourDadSelectionDisplayName = item.DisplayName;
+                changed = true;
+            }
+            if (isSelected)
+                ImGui.SetItemDefaultFocus();
+        }
+        if (items.Count == 0)
+            ImGui.TextDisabled($"No DAD {label.ToLowerInvariant()} available.");
+    }
+
+    private static bool ShouldDrawLegacyDadTaskBuilder() => false;
 
     private void DrawDadDutySelector(CharacterConfig cc, ref bool changed)
     {

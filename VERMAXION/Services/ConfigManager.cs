@@ -411,6 +411,9 @@ public class ConfigManager
         target.NagYourMomWindowStartLocal = source.NagYourMomWindowStartLocal;
         target.NagYourMomWindowEndLocal = source.NagYourMomWindowEndLocal;
         target.NagYourMomStopAtSeriesRank25 = source.NagYourMomStopAtSeriesRank25;
+        target.NagYourDadSelectionKind = source.NagYourDadSelectionKind;
+        target.NagYourDadSelectionId = source.NagYourDadSelectionId;
+        target.NagYourDadSelectionDisplayName = source.NagYourDadSelectionDisplayName;
         target.NagYourDadDungeonCount = source.NagYourDadDungeonCount;
         target.NagYourDadDungeonFrequency = DadRunRequestOptions.NormalizeFrequency(source.NagYourDadDungeonFrequency);
         target.NagYourDadDungeonContentFinderConditionId = source.NagYourDadDungeonContentFinderConditionId;
