@@ -56,12 +56,61 @@ public sealed class DadHandoffReservationTests
     {
         var machine = new DadHandoffReservationMachine();
         var observation = Observation(false, false, false);
-        machine.Reserve(Request(), observation, Now);
+        var original = machine.Reserve(Request(), observation, Now);
 
         var renewed = machine.Reserve(Request(), observation, Now.AddSeconds(5));
 
         Assert.Equal(DadHandoffReservationState.Granting, renewed.State);
+        Assert.Equal(original.CreatedAtUtc, renewed.CreatedAtUtc);
         Assert.Equal(Now.AddSeconds(20), renewed.LeaseExpiresUtc);
+    }
+
+    [Fact]
+    public void ReleasedReservationCanReacquireSameTokenAsFreshAttempt()
+    {
+        var machine = new DadHandoffReservationMachine();
+        var observation = Observation(false, false, false);
+        machine.Reserve(Request(), observation, Now);
+        Assert.Equal(
+            DadHandoffReservationState.Granted,
+            machine.Observe(observation, safeToGrant: true, Now.AddSeconds(1)).State);
+        Assert.Equal(
+            DadHandoffReservationState.Released,
+            machine.Release("operation", observation, Now.AddSeconds(2)).State);
+
+        var reacquired = machine.Reserve(Request(), observation, Now.AddSeconds(3));
+
+        Assert.Equal(DadHandoffReservationState.Granting, reacquired.State);
+        Assert.Equal(Now.AddSeconds(3), reacquired.CreatedAtUtc);
+        Assert.Equal(Now.AddSeconds(18), reacquired.LeaseExpiresUtc);
+        Assert.True(machine.BlocksNewWork);
+        Assert.Equal(
+            DadHandoffReservationState.Granted,
+            machine.Observe(observation, safeToGrant: true, Now.AddSeconds(4)).State);
+    }
+
+    [Fact]
+    public void ExpiredReservationCanReacquireSameTokenAsFreshAttempt()
+    {
+        var machine = new DadHandoffReservationMachine();
+        var observation = Observation(false, false, false);
+        machine.Reserve(Request(), observation, Now);
+        Assert.Equal(
+            DadHandoffReservationState.Granted,
+            machine.Observe(observation, safeToGrant: true, Now.AddSeconds(1)).State);
+        Assert.Equal(
+            DadHandoffReservationState.Released,
+            machine.Observe(observation, safeToGrant: false, Now.AddSeconds(15)).State);
+
+        var reacquired = machine.Reserve(Request(), observation, Now.AddSeconds(16));
+
+        Assert.Equal(DadHandoffReservationState.Granting, reacquired.State);
+        Assert.Equal(Now.AddSeconds(16), reacquired.CreatedAtUtc);
+        Assert.Equal(Now.AddSeconds(31), reacquired.LeaseExpiresUtc);
+        Assert.True(machine.BlocksNewWork);
+        Assert.Equal(
+            DadHandoffReservationState.Granted,
+            machine.Observe(observation, safeToGrant: true, Now.AddSeconds(17)).State);
     }
 
     [Fact]

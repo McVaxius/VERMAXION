@@ -211,7 +211,8 @@ public sealed class DadHandoffReservationMachine
                 $"VERMAXION already holds DAD reservation {request.OperationToken}.");
         }
 
-        if (request == null || !string.Equals(request.OperationToken, candidate.OperationToken, StringComparison.OrdinalIgnoreCase))
+        if (!BlocksNewWork || request == null ||
+            !string.Equals(request.OperationToken, candidate.OperationToken, StringComparison.OrdinalIgnoreCase))
         {
             request = Clone(candidate);
             createdAtUtc = nowUtc;
