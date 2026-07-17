@@ -7,7 +7,9 @@ grant event. V2 status JSON emits canonical string reservation states. A waiting
 has not crossed VERMAXION's real-work boundary and yields to DAD, releasing only VERMAXION-owned suppression;
 running engine, fishing, manual, and other active work still drains normally. If a pre-grant attempt ends, VERMAXION
 restores Multi Mode only when that attempt disabled it. A successful grant transfers the boundary to DAD and is
-never followed by a VERMAXION Multi Mode restore.
+never followed by a VERMAXION Multi Mode restore. An explicit reservation request made after the prior lease reaches
+terminal `Released` starts a fresh `Pending`/`Granting` attempt, including when DAD reuses the same operation token.
+Same-token renewals remain idempotent while a reservation is active, and a conflicting active token remains rejected.
 
 
 ---
