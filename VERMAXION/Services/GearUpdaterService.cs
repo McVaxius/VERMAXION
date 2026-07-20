@@ -125,7 +125,7 @@ public class GearUpdaterService : IDisposable
 
             case UpdaterState.AutoEquipping:
                 log.Information($"[GearUpdater] Auto-equipping recommended gear for gearset {currentGearsetIndex}");
-                CommandHelper.SendCommand("/equiprecommended"); // SimpleTweaks required
+                RecommendedEquipHelper.EquipRecommended();
                 SetState(UpdaterState.WaitingForEquip);
                 break;
 

@@ -64,7 +64,7 @@ public class CurrentJobEquipmentService : IDisposable
         {
             case EquipmentState.EquippingRecommended:
                 log.Information("[CurrentJobEquipment] Equipping recommended gear");
-                CommandHelper.SendCommand("/equiprecommended");
+                RecommendedEquipHelper.EquipRecommended();
                 SetState(EquipmentState.WaitingForEquip);
                 break;
 

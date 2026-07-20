@@ -1,5 +1,10 @@
 # VERMAXION Changelog
 
+## 2026-07-20 - I62 recommended-equipment fix
+
+### Fixed
+- Equipment updaters now use the native recommended-equipment module instead of `/equiprecommended`, while retaining their existing `/updategearset` save flow and timing.
+
 ## 2026-07-17 - P1195 DAD terminal-reservation reacquisition
 
 ### Fixed

@@ -275,6 +275,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
+        RecommendedEquipHelper.Dispose();
         Framework.Update -= OnFrameworkUpdate;
         ClientState.Login -= OnLoginEvent;
         ConfigManager.OnCharacterChanged -= OnCharacterChanged;
