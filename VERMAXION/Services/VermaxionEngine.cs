@@ -319,10 +319,13 @@ public class VermaxionEngine
         this.lifestreamIPC = lifestreamIPC;
         this.incidentWriter = incidentWriter;
 
-        taskBindings = CreateTaskBindings();
+        var registrations = CreateTaskBindings();
         RegistryValidation = AutomationCatalog.ValidateRuntimeRegistry(
-            taskBindings.Keys,
+            registrations.Select(binding => binding.Id),
             PostProcessTaskOrder.Definitions.Select(definition => definition.Id));
+        taskBindings = registrations
+            .GroupBy(binding => binding.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         if (!RegistryValidation.IsValid)
             log.Error($"[Engine][Registry] {RegistryValidation.Message}");
 
@@ -330,7 +333,7 @@ public class VermaxionEngine
         clientState.TerritoryChanged += OnTerritoryChanged;
     }
 
-    private IReadOnlyDictionary<string, EngineTaskBinding> CreateTaskBindings()
+    private IReadOnlyList<EngineTaskBinding> CreateTaskBindings()
     {
         EngineTaskBinding Bind(
             string id,
@@ -391,7 +394,7 @@ public class VermaxionEngine
                 () => { if (activeDadExecution != null) dadIPCClient.CancelSelection(activeDadExecution); }),
         };
 
-        return bindings.ToDictionary(binding => binding.Id, StringComparer.Ordinal);
+        return bindings;
     }
 
     public TaskEligibility GetTaskEligibility(string id)
@@ -1040,7 +1043,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    cactpotService.Update();
+                    taskBindings[PostProcessTaskOrder.JumboCactpot].Tick();
 
                     if (cactpotService.IsComplete)
                     {
@@ -1130,7 +1133,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    cactpotService.Update();
+                    taskBindings[PostProcessTaskOrder.MiniCactpot].Tick();
 
                     if (cactpotService.IsComplete)
                     {
@@ -1199,7 +1202,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    fashionReportService.Update();
+                    taskBindings[PostProcessTaskOrder.FashionReport].Tick();
 
                     if (fashionReportService.IsComplete)
                     {
@@ -1246,7 +1249,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    chocoboRaceService.Update();
+                    taskBindings[PostProcessTaskOrder.ChocoboRacing].Tick();
 
                     if (chocoboRaceService.IsComplete)
                     {
@@ -1291,7 +1294,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    lootGoblinMapGatherService.Update();
+                    taskBindings[PostProcessTaskOrder.LootGoblinMapGather].Tick();
 
                     if (lootGoblinMapGatherService.IsComplete)
                     {

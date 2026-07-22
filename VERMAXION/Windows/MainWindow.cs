@@ -174,10 +174,10 @@ public class MainWindow : Window, IDisposable
             // --- Every AR PostProcess ---
             DrawTaskCategory("Run-start hook", AutomationCatalog.Get(AutomationCatalog.MiscCommands));
             DrawTaskRow("Misc Cmd", config.EnableMiscCmd,
-                config.EnableMiscCmd ? "Every AR + manual run" : "Off",
+                config.EnableMiscCmd ? AutomationCatalog.Get(AutomationCatalog.MiscCommands).CadenceLabel : "Off",
                 "run##MiscCmd", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
             DrawTaskCategory("Ordered engine tasks", AutomationCatalog.Get(AutomationCatalog.FCBuffRefill));
-            DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
+            DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, AutomationCatalog.Get(AutomationCatalog.FCBuffRefill).CadenceLabel,
                 "run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
                 "run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
@@ -198,7 +198,7 @@ public class MainWindow : Window, IDisposable
                 tertiaryButtonDisabled: fishingButtonsDisabled,
                 tertiaryButtonTooltip: "Equip and verify the current character's first saved Fisher gearset.");
             DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.RegisterRegistrables));
-            DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
+            DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, AutomationCatalog.Get(AutomationCatalog.RegisterRegistrables).CadenceLabel,
                 "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
                 "run##Listings", () =>
@@ -216,11 +216,11 @@ public class MainWindow : Window, IDisposable
                     plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
                 }, "OK");
             DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.SeasonalGear));
-            DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
+            DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, AutomationCatalog.Get(AutomationCatalog.SeasonalGear).CadenceLabel,
                 "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
-            DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
+            DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, AutomationCatalog.Get(AutomationCatalog.MinionRoulette).CadenceLabel,
                 "run##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
-            DrawTaskRow("Gear Updater", config.EnableGearUpdater, "Every AR run",
+            DrawTaskRow("Gear Updater", config.EnableGearUpdater, AutomationCatalog.Get(AutomationCatalog.GearUpdater).CadenceLabel,
                 "run##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
 
             // --- Weekly Tasks ---
@@ -298,9 +298,9 @@ public class MainWindow : Window, IDisposable
 
             // --- Utility Tasks ---
             DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.HighestCombatJob));
-            DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
+            DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, AutomationCatalog.Get(AutomationCatalog.HighestCombatJob).CadenceLabel,
                 "run##Highest", () => plugin.HighestCombatJobService.RunTask(), "OK");
-            DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Every AR run",
+            DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, AutomationCatalog.Get(AutomationCatalog.CurrentJobEquipment).CadenceLabel,
                 "run##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
 
             ImGui.EndTable();

@@ -112,6 +112,34 @@ public sealed class EquipmentAutomationTests
     }
 
     [Fact]
+    public void GearUpdaterRestoresStartingGearsetAfterSuccessfulMultiJobRun()
+    {
+        var runtime = new FakeRuntime
+        {
+            CurrentGearsetId = 40,
+            CurrentJobId = 20,
+            Gearsets =
+            [
+                Gearset(3, 1, items: [30, 31]),
+                Gearset(7, 2, items: [70, 71]),
+                Gearset(40, 20, items: [400, 401]),
+            ],
+            EquippedItems = [400, 401],
+        };
+        var machine = new GearUpdaterStateMachine(runtime);
+        Assert.True(machine.Start(out _));
+
+        for (var i = 0; i < 40 && machine.IsActive; i++)
+            machine.Tick();
+
+        Assert.Equal(EquipmentTaskTerminalState.Complete, machine.TerminalState);
+        Assert.Equal(40, runtime.CurrentGearsetId);
+        Assert.Equal(20u, runtime.CurrentJobId);
+        Assert.Equal(3, machine.CompletedTargetCount);
+        Assert.Equal(3, runtime.RecommendedBeginCount);
+    }
+
+    [Fact]
     public void HighestCombatJobFailsAfterBoundedNativeEquipAttempts()
     {
         var runtime = new FakeRuntime
@@ -164,6 +192,33 @@ public sealed class EquipmentAutomationTests
         Assert.Equal([10u, 11u, 12u], runtime.EquippedItems);
         Assert.Equal(4, runtime.CurrentGearsetId);
         Assert.Equal(0, runtime.RecommendedBeginCount);
+    }
+
+    [Fact]
+    public void SeasonalRestorationStopsAfterBoundedVerificationAttempts()
+    {
+        var runtime = new FakeRuntime
+        {
+            CurrentGearsetId = 4,
+            CurrentJobId = 20,
+            Gearsets = [Gearset(4, 20, items: [10, 11, 12])],
+            EquippedItems = [10, 11, 12],
+            SeasonalItems = [new SeasonalInventoryItem(90, "Head", EquipmentSlot.Head)],
+            UpdateSucceeds = false,
+            ApplyEquipState = false,
+        };
+        var machine = new SeasonalGearStateMachine(runtime, [90], _ => 0);
+        Assert.True(machine.Start(out _));
+
+        for (var i = 0; i < 20 && machine.IsActive; i++)
+        {
+            machine.Tick();
+            runtime.Advance(TimeSpan.FromSeconds(9));
+        }
+
+        Assert.True(machine.IsFailed);
+        Assert.Contains("could not be verified", machine.Status, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(3, runtime.EquipRequests.Count);
     }
 
     [Fact]

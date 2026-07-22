@@ -38,12 +38,28 @@ AutoRetainer post-process automation for weekly and daily tasks, configured per 
 - **Chocobo Racing** — Configurable daily races via Chocoholic plugin
 - **Ocean Fishing** — Ordered per-account character fallback, verified queue/voyage lifecycle, and optional post-voyage discard/sell cleanup
 
+## Automation ownership and ordering
+
+Every per-character `Enable*` feature has one explicit owner. The Task Order tab contains only the 17 engine-dispatched tasks and shows their catalog cadence/ownership metadata. Existing custom order and Before-AR/After-AR phase choices are retained during normalization.
+
+- **Ordered engine tasks:** Run through the configured task order. Gear Updater, Highest Combat Job, Current Job Equipment, Seasonal Gear, and Minion Roulette are fully registered alongside the existing tasks.
+- **Misc Commands hook:** Runs once at the beginning of an applicable After-AR or manual engine run, including when it is the only work. It never arms a Before-AR pass by itself.
+- **Fishing coordinator:** Ocean Fishing retains its preemptive startup window and account/relog coordinator. It is intentionally not reorderable through the engine task list.
+- **Manual utility:** Retainer Bell remains an explicit manual utility rather than a character enable flag.
+- **Configuration-only WIP:** Adventurer Activity (Evercold) is labelled as configuration-only and is not advertised as runtime dispatch.
+
+The main and configuration windows show exact blocked prerequisites, such as an empty Register Registrables list, rather than collapsing them into a generic no-work result. If the catalog, task order definitions, and runtime bindings ever disagree, VERMAXION rejects the run visibly and safely releases its AutoRetainer ownership instead of partially dispatching.
+
+Equipment automation uses the game's native gearset and recommended-equipment modules. Gear Updater scans all 100 saved slots and restores the starting gearset; Highest Combat Job only considers combat jobs represented by valid saved gearsets; Current Job Equipment aborts if the active job or gearset changes; Seasonal Gear derives equipment slots from game data and restores the starting gearset on failure. These paths use bounded polling and verified native saves without SimpleTweaks commands or blocking sleeps.
+
 ## How It Works
 
 1. AutoRetainer finishes retainers/subs on a character
 2. AR fires post-process event → Vermaxion picks it up
 3. Vermaxion runs enabled tasks while retaining and restoring any external-plugin state it owns
 4. Vermaxion signals AR to continue to the next character
+
+Each AutoRetainer/manual run records a structured plan for every catalog entry: runnable, disabled, not due, blocked, or unsupported, with a concrete reason.
 
 ## Requirements
 

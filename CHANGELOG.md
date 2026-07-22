@@ -1,5 +1,25 @@
 # VERMAXION Changelog
 
+## 2026-07-22 - P27 holistic automation dispatch and native equipment hardening
+
+### Added
+- Added one internal automation catalog that assigns each of the 23 per-character `Enable*` feature flags exactly one stable ID, cadence, maturity, default phase, and runtime owner. The 17 ordered engine tasks now have matching catalog, order, and runtime registrations that fail closed with a visible diagnostic if they diverge.
+- Added ordered dispatch for Gear Updater, Highest Combat Job, Current Job Equipment, Seasonal Gear, and Minion Roulette. Existing custom order and phase choices are preserved while the five IDs are inserted deterministically after Register Registrables.
+- Added structured runnable, disabled, not-due, blocked, and unsupported planning results. Every AutoRetainer/manual run logs the complete plan, and the configuration/main windows expose registry failures and concrete prerequisite blockers.
+
+### Changed
+- Misc Commands is a run-start hook and can now be the only After-AR/manual work. It still does not arm or run a Before-AR pass by itself. Ocean Fishing remains owned by its preemptive startup coordinator and is no longer presented as reorderable.
+- Gear Updater, Highest Combat Job, Current Job Equipment, and Seasonal Gear now use bounded native gearset/recommended-equipment/inventory adapters. SimpleTweaks commands, hardcoded job targets, blocking delays, delayed continuations, and temporary framework subscriptions were removed.
+- Gear Updater enumerates all 100 saved-gearset slots, chooses one stable gearset per unlocked class/job, verifies native updates, and restores the starting gearset. Highest Combat Job uses saved combat gearsets plus Lumina metadata and actual levels. Current Job Equipment saves only the captured active gearset. Seasonal Gear derives slots from Lumina data, verifies moves and saves, and restores the starting gearset on failure without applying recommended gear.
+- Minion Roulette sends exactly one command per run and updates its informational attempt counter without using it as an eligibility gate.
+
+### Fixed
+- Empty Register Registrables lists and Rival Wings completion/disable recommendations no longer change character enablement. They now produce visible blocked/skip reasons while preserving their checkboxes.
+- Cancellation, character changes, watchdog failures, and Full Stop now clean up the new equipment state machines and recommended-equipment operation state.
+
+### Verification
+- Expanded the baseline from 366 to 388 passing tests with catalog/reflection, registry contract, migration, dispatch, misc-hook, native equipment policy, timeout, partial-failure, restoration, and cleanup coverage. The isolated Debug x64 plugin build succeeds with only the existing `PInvoke.User32` NU1601 resolution warning.
+
 ## 2026-07-21 - I61/I57 narrow Ocean Fishing positioning and startup fix
 
 ### Fixed
