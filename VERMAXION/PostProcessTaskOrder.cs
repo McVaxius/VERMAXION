@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -11,35 +12,42 @@ public enum PostProcessTaskPhase
 
 public static class PostProcessTaskOrder
 {
-    public const string RefillListings = "refill_listings";
-    public const string FCBuffRefill = "fc_buff_refill";
-    public const string VendorStock = "vendor_stock";
-    public const string Fishing = "fishing";
-    public const string RegisterRegistrables = "register_registrables";
-    public const string VerminionQueue = "verminion_queue";
-    public const string MiniCactpot = "mini_cactpot";
-    public const string JumboCactpot = "jumbo_cactpot";
-    public const string FashionReport = "fashion_report";
-    public const string ChocoboRacing = "chocobo_racing";
-    public const string LootGoblinMapGather = "lootgoblin_map_gather";
-    public const string NagYourMom = "nag_your_mom";
-    public const string NagYourDad = "nag_your_dad";
+    public const string RefillListings = AutomationCatalog.RefillListings;
+    public const string FCBuffRefill = AutomationCatalog.FCBuffRefill;
+    public const string VendorStock = AutomationCatalog.VendorStock;
+    public const string RegisterRegistrables = AutomationCatalog.RegisterRegistrables;
+    public const string GearUpdater = AutomationCatalog.GearUpdater;
+    public const string HighestCombatJob = AutomationCatalog.HighestCombatJob;
+    public const string CurrentJobEquipment = AutomationCatalog.CurrentJobEquipment;
+    public const string SeasonalGear = AutomationCatalog.SeasonalGear;
+    public const string MinionRoulette = AutomationCatalog.MinionRoulette;
+    public const string VerminionQueue = AutomationCatalog.VerminionQueue;
+    public const string MiniCactpot = AutomationCatalog.MiniCactpot;
+    public const string JumboCactpot = AutomationCatalog.JumboCactpot;
+    public const string FashionReport = AutomationCatalog.FashionReport;
+    public const string ChocoboRacing = AutomationCatalog.ChocoboRacing;
+    public const string LootGoblinMapGather = AutomationCatalog.LootGoblinMapGather;
+    public const string NagYourMom = AutomationCatalog.NagYourMom;
+    public const string NagYourDad = AutomationCatalog.NagYourDad;
 
-    public static readonly IReadOnlyList<TaskDefinition> Definitions =
+    public const string LegacyFishing = AutomationCatalog.Fishing;
+
+    public static readonly IReadOnlyList<TaskDefinition> Definitions = AutomationCatalog.EngineTasks
+        .Select(definition => new TaskDefinition(
+            definition.Id,
+            definition.Label,
+            definition.CadenceLabel,
+            definition.Maturity,
+            definition.OwnershipLabel))
+        .ToList();
+
+    public static readonly IReadOnlyList<string> NewlyDispatchableIds =
     [
-        new(RefillListings, "Refill Listings"),
-        new(FCBuffRefill, "FC Buff Refill"),
-        new(VendorStock, "Vendor Stock"),
-        new(Fishing, "Fishing"),
-        new(RegisterRegistrables, "Register Registrables"),
-        new(VerminionQueue, "Verminion Queue"),
-        new(MiniCactpot, "Mini Cactpot"),
-        new(JumboCactpot, "Jumbo Cactpot"),
-        new(FashionReport, "Fashion Report"),
-        new(ChocoboRacing, "Chocobo Racing"),
-        new(LootGoblinMapGather, "LootGoblin Map Gather"),
-        new(NagYourMom, "nag your mom"),
-        new(NagYourDad, "nag your dad"),
+        GearUpdater,
+        HighestCombatJob,
+        CurrentJobEquipment,
+        SeasonalGear,
+        MinionRoulette,
     ];
 
     public static readonly IReadOnlyList<string> DefaultOrder =
@@ -47,8 +55,12 @@ public static class PostProcessTaskOrder
         RefillListings,
         FCBuffRefill,
         VendorStock,
-        Fishing,
         RegisterRegistrables,
+        GearUpdater,
+        HighestCombatJob,
+        CurrentJobEquipment,
+        SeasonalGear,
+        MinionRoulette,
         VerminionQueue,
         MiniCactpot,
         JumboCactpot,
@@ -59,12 +71,14 @@ public static class PostProcessTaskOrder
         NagYourDad,
     ];
 
-    private static readonly HashSet<string> KnownIds = Definitions.Select(definition => definition.Id).ToHashSet();
+    private static readonly HashSet<string> KnownIds = Definitions
+        .Select(definition => definition.Id)
+        .ToHashSet(StringComparer.Ordinal);
 
     public static List<string> Normalize(IEnumerable<string>? order)
     {
         var normalized = new List<string>();
-        var seen = new HashSet<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var id in order ?? [])
         {
@@ -72,6 +86,16 @@ public static class PostProcessTaskOrder
                 continue;
 
             normalized.Add(id);
+        }
+
+        if (normalized.Count == 0)
+            return DefaultOrder.ToList();
+
+        var missingNewIds = NewlyDispatchableIds.Where(id => seen.Add(id)).ToList();
+        if (missingNewIds.Count > 0)
+        {
+            var insertionIndex = FindNewTaskInsertionIndex(normalized);
+            normalized.InsertRange(insertionIndex, missingNewIds);
         }
 
         foreach (var id in DefaultOrder)
@@ -119,15 +143,50 @@ public static class PostProcessTaskOrder
     }
 
     public static string GetLabel(string id)
-    {
-        return Definitions.FirstOrDefault(definition => definition.Id == id)?.Label ?? id;
-    }
+        => AutomationCatalog.ById.TryGetValue(id, out var definition) ? definition.Label : id;
 
     public static PostProcessTaskPhase GetDefaultPhase(string id)
-        => id == RefillListings ? PostProcessTaskPhase.BeforeAR : PostProcessTaskPhase.AfterAR;
+        => AutomationCatalog.ById.TryGetValue(id, out var definition)
+            ? definition.DefaultPhase
+            : PostProcessTaskPhase.AfterAR;
 
     public static Dictionary<string, PostProcessTaskPhase> CreateDefaultPlacement()
-        => DefaultOrder.ToDictionary(id => id, GetDefaultPhase);
+        => DefaultOrder.ToDictionary(id => id, GetDefaultPhase, StringComparer.Ordinal);
 
-    public sealed record TaskDefinition(string Id, string Label);
+    private static int FindNewTaskInsertionIndex(IReadOnlyList<string> normalized)
+    {
+        var registerIndex = normalized.IndexOf(RegisterRegistrables);
+        if (registerIndex >= 0)
+            return registerIndex + 1;
+
+        var firstDefaultSuccessor = DefaultOrder
+            .SkipWhile(id => id != VerminionQueue)
+            .Select(normalized.IndexOf)
+            .Where(index => index >= 0)
+            .DefaultIfEmpty(normalized.Count)
+            .Min();
+        return firstDefaultSuccessor;
+    }
+
+    public sealed record TaskDefinition(
+        string Id,
+        string Label,
+        string Cadence,
+        AutomationMaturity Maturity,
+        string Owner);
+}
+
+internal static class ReadOnlyListExtensions
+{
+    public static int IndexOf<T>(this IReadOnlyList<T> values, T value)
+    {
+        var comparer = EqualityComparer<T>.Default;
+        for (var index = 0; index < values.Count; index++)
+        {
+            if (comparer.Equals(values[index], value))
+                return index;
+        }
+
+        return -1;
+    }
 }

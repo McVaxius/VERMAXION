@@ -73,6 +73,13 @@ public class ConfigWindow : Window, IDisposable
         if (PostProcessTaskOrder.Normalize(config))
             config.Save();
 
+        if (!plugin.Engine.RegistryReady)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.2f, 0.2f, 1f), "CONFIGURED BUT NOT DISPATCHABLE");
+            ImGui.TextWrapped(plugin.Engine.RegistryDiagnostic);
+            ImGui.Separator();
+        }
+
         ImGui.Text("Global post-process order");
         ImGui.TextDisabled("Before AR runs while AutoRetainer is suppressed after login. After AR runs in the normal postprocess slot.");
         ImGui.Spacing();
@@ -116,6 +123,9 @@ public class ConfigWindow : Window, IDisposable
 
             ImGui.SameLine();
             ImGui.Text($"{index + 1}. {PostProcessTaskOrder.GetLabel(order[index])}");
+            var definition = AutomationCatalog.Get(order[index]);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip($"{definition.CadenceLabel} · {definition.OwnershipLabel}");
 
             ImGui.SameLine(360f);
             var phase = config.PostProcessTaskPlacement.TryGetValue(order[index], out var configuredPhase)
@@ -136,6 +146,30 @@ public class ConfigWindow : Window, IDisposable
 
             ImGui.PopID();
         }
+
+        ImGui.Separator();
+        DrawCatalogCategory(AutomationOwner.RunHook, "Run-start hook");
+        DrawCatalogCategory(AutomationOwner.PreemptiveCoordinator, "Preemptive coordinator");
+        ImGui.Text("Manual utility");
+        ImGui.BulletText("Retainer Bell — manual utility; not part of ordered automation");
+        DrawCatalogCategory(AutomationOwner.ConfigOnlyWip, "Configuration-only WIP");
+
+        var blockers = AutomationCatalog.EngineTasks
+            .Select(feature => (feature, eligibility: plugin.Engine.GetTaskEligibility(feature.Id)))
+            .Where(item => item.eligibility.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
+            .ToList();
+        if (blockers.Count > 0 && ImGui.CollapsingHeader("Current prerequisite blockers"))
+        {
+            foreach (var item in blockers)
+                ImGui.BulletText($"{item.feature.Label}: {item.eligibility.Reason}");
+        }
+    }
+
+    private static void DrawCatalogCategory(AutomationOwner owner, string heading)
+    {
+        ImGui.Text(heading);
+        foreach (var feature in AutomationCatalog.Features.Where(feature => feature.Owner == owner))
+            ImGui.BulletText($"{feature.Label} — {feature.CadenceLabel}; {feature.OwnershipLabel}");
     }
 
     private void DrawSettingsTab()

@@ -1,93 +1,109 @@
 using System;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using GameFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
-internal static unsafe class RecommendedEquipHelper
+/// <summary>
+/// Thin native adapter for RecommendEquipModule. It never subscribes to framework
+/// events: callers poll it from their existing bounded state machine.
+/// </summary>
+internal sealed unsafe class RecommendedEquipHelper
 {
-    private static bool isSubscribed;
-    private static bool isDisposed;
+    private bool operationActive;
+    private bool equipIssued;
 
-    internal static void EquipRecommended()
+    internal bool TryBegin(uint classJobId, out string error)
     {
-        if (isDisposed)
-            return;
-
+        Cancel();
         try
         {
-            var module = GetModule();
+            var module = RecommendEquipModule.Instance();
             if (module == null)
             {
-                Plugin.Log.Warning("[RecommendedEquip] RecommendEquipModule is unavailable");
-                Unsubscribe();
-                return;
+                error = "RecommendEquipModule is unavailable.";
+                return false;
             }
 
-            module->SetupForClassJob((byte)(Plugin.ObjectTable.LocalPlayer?.ClassJob.RowId ?? 0));
-
-            if (isSubscribed)
-                return;
-
-            Plugin.Framework.Update += DoEquip;
-            isSubscribed = true;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.Error(ex, "[RecommendedEquip] Failed to set up recommended equipment");
-            Unsubscribe();
-        }
-    }
-
-    private static void DoEquip(IFramework framework)
-    {
-        try
-        {
-            var module = GetModule();
-            if (module == null || module->EquippedMainHand == null)
+            if (classJobId is 0 or > byte.MaxValue || !module->SetupForClassJob((byte)classJobId))
             {
-                Unsubscribe();
-                return;
+                error = $"RecommendEquipModule rejected class/job {classJobId}.";
+                module->Clear();
+                return false;
             }
 
-            module->EquipRecommendedGear();
+            operationActive = true;
+            equipIssued = false;
+            error = string.Empty;
+            return true;
         }
         catch (Exception ex)
         {
-            Plugin.Log.Error(ex, "[RecommendedEquip] Failed while equipping recommended gear");
-            Unsubscribe();
+            error = ex.Message;
+            Cancel();
+            return false;
         }
     }
 
-    private static RecommendEquipModule* GetModule()
+    internal RecommendedEquipmentProgress Poll(out string error)
     {
-        var framework = GameFramework.Instance();
-        if (framework == null)
-            return null;
-
-        var uiModule = framework->GetUIModule();
-        return uiModule == null ? null : uiModule->GetRecommendEquipModule();
-    }
-
-    private static void Unsubscribe()
-    {
-        if (!isSubscribed)
-            return;
+        if (!operationActive)
+        {
+            error = "No recommended-equipment operation is active.";
+            return RecommendedEquipmentProgress.Failed;
+        }
 
         try
         {
-            Plugin.Framework.Update -= DoEquip;
+            var module = RecommendEquipModule.Instance();
+            if (module == null)
+            {
+                error = "RecommendEquipModule became unavailable.";
+                Cancel();
+                return RecommendedEquipmentProgress.Failed;
+            }
+
+            if (module->IsUpdating || module->EquippedMainHand == null)
+            {
+                error = string.Empty;
+                return RecommendedEquipmentProgress.Pending;
+            }
+
+            if (!equipIssued)
+            {
+                module->EquipRecommendedGear();
+                equipIssued = true;
+            }
+
+            module->Clear();
+            operationActive = false;
+            error = string.Empty;
+            return RecommendedEquipmentProgress.Complete;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            Cancel();
+            return RecommendedEquipmentProgress.Failed;
+        }
+    }
+
+    internal void Cancel()
+    {
+        try
+        {
+            var module = RecommendEquipModule.Instance();
+            if (operationActive && module != null)
+                module->Clear();
+        }
+        catch
+        {
+            // Cleanup is best-effort and must never leak into engine cancellation.
         }
         finally
         {
-            isSubscribed = false;
+            operationActive = false;
+            equipIssued = false;
         }
-    }
-
-    internal static void Dispose()
-    {
-        isDisposed = true;
-        Unsubscribe();
     }
 }

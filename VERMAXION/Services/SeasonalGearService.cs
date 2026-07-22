@@ -1,551 +1,60 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Client.System.String;
-using VERMAXION.Services;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
-public class SeasonalGearService : IDisposable
+public sealed class SeasonalGearService : IDisposable
 {
-    private readonly ICommandManager commandManager;
+    // IDs are intentionally kept as the curated source list. The policy layer
+    // deduplicates them and Lumina, rather than this list, determines each slot.
+    internal static readonly uint[] CuratedItemIds =
+    [
+        43471, 43472, 43473, 43474, 43475,
+        38261, 38262, 38263, 38264, 38260,
+        36837, 36838, 36839, 36840, 36841,
+        47924, 47925, 47926, 47927,
+        41565, 41566,
+        38233, 38234, 38235, 38236, 38237,
+        39245, 39246,
+        38257, 38258, 38259, 38260,
+        43154, 43155, 43156, 43157,
+        43149, 43150, 43151, 43152,
+        43189, 43190, 43191, 43192, 43193,
+        36832, 36833, 36834, 36835, 36836,
+        35857,
+        43198, 43199, 43200, 43201,
+        38265, 38266,
+        43149, 43150, 43151, 43152, 43153,
+        28556, 28557, 33653, 33654, 32803,
+    ];
+
+    private readonly SeasonalGearStateMachine machine;
     private readonly IPluginLog log;
-    private readonly Random rng = new();
 
-    // Complete seasonal gear database (71 items from 2021-2024 research)
-    // ItemID, Name, Slot
-    public static readonly List<(uint ItemId, string Name, string Slot)> SeasonalGearList = new()
+    internal SeasonalGearService(IEquipmentAutomationRuntime runtime, IPluginLog log)
     {
-        // 2024 Sets
-        (43471, "Night of Devilry", "Head"),
-        (43472, "Night of Devilry", "Body"),
-        (43473, "Night of Devilry", "Hands"),
-        (43474, "Night of Devilry", "Legs"),
-        (43475, "Night of Devilry", "Feet"),
-        
-        (38261, "Heavensturn Domaru", "Body"),
-        (38262, "Heavensturn Kote", "Hands"),
-        (38263, "Heavensturn Haidate", "Legs"),
-        (38264, "Heavensturn Sune-ate", "Feet"),
-        (38260, "Usagi Kabuto", "Head"),
-        
-        (36837, "Moonfire Bandana", "Head"),
-        (36838, "Moonfire Beach Cover-up", "Body"),
-        (36839, "Moonfire Wrist Torques", "Hands"),
-        (36840, "Moonfire Bottoms", "Legs"),
-        (36841, "Moonfire Sandals", "Feet"),
-        
-        (47924, "Maritime Mirrored Sunglasses", "Head"),
-        (47925, "Maritime Top", "Body"),
-        (47926, "Maritime Shorts", "Legs"),
-        (47927, "Maritime Sandals", "Feet"),
-        
-        (41565, "Imp Head", "Head"),
-        (41566, "Imp Suit", "Body"),
-        
-        // 2023 Sets
-        (38233, "Tonberry Head", "Head"),
-        (38234, "Tonberry Body", "Body"),
-        (38235, "Tonberry Hands", "Hands"),
-        (38236, "Tonberry Culottes", "Legs"),
-        (38237, "Tonberry Boots", "Feet"),
-        
-        (39245, "Phoenix Riser Helmet", "Head"),
-        (39246, "Phoenix Riser Suit", "Body"),
-        
-        (38257, "Valentione Emissary's Dress Hat", "Head"),
-        (38258, "Valentione Emissary's Ruffled Dress", "Body"),
-        (38259, "Valentione Emissary's Culottes", "Legs"),
-        (38260, "Valentione Emissary's Dress Boots", "Feet"),
-        
-        (43154, "Witch's Hat", "Head"),
-        (43155, "Witch's Coat", "Body"),
-        (43156, "Witch's Gloves", "Hands"),
-        (43157, "Witch's Boots", "Feet"),
-        
-        (43149, "Starlight Robe", "Body"),
-        (43150, "Starlight Boots", "Feet"),
-        (43151, "Starlight Tights", "Legs"),
-        (43152, "Starlight Hat", "Head"),
-        
-        // 2022 Sets
-        (43189, "Valentione Emissary's Hat", "Head"),
-        (43190, "Valentione Emissary's Jacket", "Body"),
-        (43191, "Valentione Emissary's Gloves", "Hands"),
-        (43192, "Valentione Emissary's Trousers", "Legs"),
-        (43193, "Valentione Emissary's Shoes", "Feet"),
-        
-        (36832, "Summer Sunset Bandana", "Head"),
-        (36833, "Summer Sunset Beach Cover-up", "Body"),
-        (36834, "Summer Sunset Wrist Torques", "Hands"),
-        (36835, "Summer Sunset Bottoms", "Legs"),
-        (36836, "Summer Sunset Sandals", "Feet"),
-        
-        (35857, "Little Lady's Crown", "Head"),
-        
-        (43198, "Berserker's Helm", "Head"),
-        (43199, "Berserker's Mail", "Body"),
-        (43200, "Berserker's Vambraces", "Hands"),
-        (43201, "Berserker's Flanchard", "Legs"),
-        
-        (38265, "Tora Kabuto", "Head"),
-        (38266, "Tora Tekko", "Hands"),
-        
-        // 2021 Sets
-        (43149, "Unorthodox Saint's Cap", "Head"),
-        (43150, "Unorthodox Saint's Halfrobe", "Body"),
-        (43151, "Unorthodox Saint's Gloves", "Hands"),
-        (43152, "Unorthodox Saint's Bottoms", "Legs"),
-        (43153, "Unorthodox Saint's Longboots", "Feet"),
-        
-        (28556, "Crimson Ushi Kabuto", "Head"),
-        (28557, "Black Ushi Kabuto", "Head"),
-        
-        (33653, "Chicken Head", "Head"),
-        (33654, "Chicken Suit", "Body"),
-        
-        (32803, "Lovely Moogle Cap", "Head"),
-    };
-
-    private enum GearState { Idle, SelectingGear, EquippingItem, WaitingForEquip, Finalizing, Complete, Failed }
-    private GearState state = GearState.Idle;
-    private DateTime stateEnteredAt;
-    private readonly HashSet<uint> attemptedItems = new(); // Track by ItemId, not slot
-    private (uint ItemId, string Name, string Slot) selectedItem;
-    private readonly Dictionary<string, (uint ItemId, string Name, string Slot)> selectedItemsPerSlot = new(); // Track one item per slot
-
-    public bool IsComplete => state == GearState.Complete;
-    public bool IsFailed => state == GearState.Failed;
-    public bool IsIdle => state == GearState.Idle;
-    public bool IsActive => !IsIdle && !IsComplete && !IsFailed;
-    public string StatusText => state.ToString();
-
-    public SeasonalGearService(ICommandManager commandManager, IPluginLog log)
-    {
-        this.commandManager = commandManager;
+        machine = new SeasonalGearStateMachine(runtime, CuratedItemIds);
         this.log = log;
     }
 
-    private void SetState(GearState newState)
-    {
-        log.Information($"[SeasonalGear] {state} -> {newState}");
-        state = newState;
-        stateEnteredAt = DateTime.UtcNow;
-    }
-
-    private bool HasItemInInventory(uint itemId)
-    {
-        try
-        {
-            // Use built-in GetInventoryItemCount like SND examples: GetItemCount(itemId) > 0
-            unsafe
-            {
-                var im = InventoryManager.Instance();
-                if (im == null)
-                {
-                    log.Warning("[SeasonalGear] InventoryManager.Instance() is null");
-                    return false;
-                }
-
-                // Built-in method that searches all containers automatically (SND pattern)
-                var count = im->GetInventoryItemCount(itemId);
-                log.Debug($"[SeasonalGear] GetInventoryItemCount({itemId}) = {count}");
-                return count > 0;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.Error($"[SeasonalGear] Error checking item {itemId}: {ex.Message}");
-            return false;
-        }
-    }
-
-    private bool EquipItem(uint itemId, string itemName)
-    {
-        try
-        {
-            // Use InventoryManager.MoveItemSlot() like SND actually implements /equipitem
-            // /equipitem is a special SND command that moves items to equipped slots
-            if (!HasItemInInventory(itemId))
-            {
-                log.Warning($"[SeasonalGear] Item {itemId} ({itemName}) not found in inventory");
-                return false;
-            }
-
-            log.Information($"[SeasonalGear] Equipping {itemName} (ItemID: {itemId})");
-            
-            unsafe
-            {
-                var im = InventoryManager.Instance();
-                if (im == null)
-                {
-                    log.Warning("[SeasonalGear] InventoryManager.Instance() is null");
-                    return false;
-                }
-
-                // Find the item in inventory containers
-                var containers = new ushort[]
-                {
-                    2001, // ArmoryHead
-                    2002, // ArmoryBody
-                    2003, // ArmoryHands
-                    2004, // ArmoryLegs
-                    2005, // ArmoryFeet
-                    2006, // ArmoryEar
-                    2007, // ArmoryNeck
-                    2008, // ArmoryWrist
-                    2009, // ArmoryRing
-                    2010, // ArmoryMainHand
-                    2011, // ArmoryOffHand
-                    2012, // ArmorySoulCrystal
-                    // Also check regular inventory bags
-                    3200, // Inventory1
-                    3201, // Inventory2
-                    3202, // Inventory3
-                    3203, // Inventory4
-                    1400, // SaddleBag1
-                    1401, // SaddleBag2
-                    1402, // SaddleBag3 - Premium Bag 1
-                    1403, // SaddleBag4 - Premium Bag 2
-                    1404, // SaddleBag5 - Premium Bag 3
-                    1405, // SaddleBag6 - Premium Bag 4
-                    1406, // SaddleBag7 - Premium Bag 5
-                    1407, // SaddleBag8 - Premium Bag 6
-                };
-
-                foreach (var containerType in containers)
-                {
-                    var container = im->GetInventoryContainer((InventoryType)containerType);
-                    if (container == null) continue;
-
-                    for (int i = 0; i < container->Size; i++)
-                    {
-                        var slot = container->GetInventorySlot(i);
-                        if (slot != null && slot->ItemId == itemId && slot->Quantity > 0)
-                        {
-                            log.Debug($"[SeasonalGear] Found item {itemId} in container {containerType} slot {i}");
-                            log.Debug($"[SeasonalGear] Item details: Quantity={slot->Quantity}, Flags={slot->Flags}, Condition={slot->Condition}");
-                            log.Debug($"[SeasonalGear] Target slot mapping: ItemId={itemId} -> Slot={GetEquipmentSlotForItem(itemId)}");
-                            
-                            // Determine target equipment slot based on item
-                            var targetContainer = (InventoryType)1000; // EquippedItems (not Inventory1!)
-                            var targetSlot = GetEquipmentSlotForItem(itemId);
-                            
-                            if (targetSlot == -1)
-                            {
-                                log.Warning($"[SeasonalGear] Unknown equipment slot for item {itemId}");
-                                return false;
-                            }
-
-                            log.Debug($"[SeasonalGear] Target: Container={targetContainer}, Slot={targetSlot}");
-                            
-                            // Check target slot before moving
-                            var equippedContainer = im->GetInventoryContainer(targetContainer);
-                            if (equippedContainer != null)
-                            {
-                                log.Debug($"[SeasonalGear] Target container size: {equippedContainer->Size}");
-                                
-                                // Log all equipped slots to understand the structure
-                                log.Debug("[SeasonalGear] Current equipped items:");
-                                for (int eqSlot = 0; eqSlot < equippedContainer->Size && eqSlot < 14; eqSlot++)
-                                {
-                                    var eqItem = equippedContainer->GetInventorySlot(eqSlot);
-                                    if (eqItem != null && eqItem->ItemId > 0)
-                                    {
-                                        log.Debug($"[SeasonalGear]  Slot {eqSlot}: ItemId={eqItem->ItemId}, Quantity={eqItem->Quantity}");
-                                    }
-                                }
-                                
-                                if (targetSlot < equippedContainer->Size)
-                                {
-                                    var targetSlotItem = equippedContainer->GetInventorySlot(targetSlot);
-                                    if (targetSlotItem != null)
-                                    {
-                                        log.Debug($"[SeasonalGear] Target slot currently has: ItemId={targetSlotItem->ItemId}, Quantity={targetSlotItem->Quantity}");
-                                    }
-                                    else
-                                    {
-                                        log.Debug($"[SeasonalGear] Target slot is empty");
-                                    }
-                                }
-                                else
-                                {
-                                    log.Warning($"[SeasonalGear] Target slot {targetSlot} exceeds container size {equippedContainer->Size}");
-                                }
-                            }
-                            else
-                            {
-                                log.Warning($"[SeasonalGear] Target container {targetContainer} is null");
-                            }
-                            
-                            log.Debug($"[SeasonalGear] Attempting MoveItemSlot: sourceContainer={containerType}, sourceSlot={i}, targetContainer={targetContainer}, targetSlot={targetSlot}");
-                            
-                            // Re-check source slot to prevent race condition (Error 11)
-                            var sourceSlotCheck = container->GetInventorySlot(i);
-                            if (sourceSlotCheck == null || sourceSlotCheck->ItemId != itemId || sourceSlotCheck->Quantity <= 0)
-                            {
-                                log.Warning($"[SeasonalGear] Source slot changed between check and move (race condition)");
-                                return false;
-                            }
-                            
-                            // Use MoveItemSlot like SND implements /equipitem
-                            var result = im->MoveItemSlot((InventoryType)containerType, (ushort)i, targetContainer, (ushort)targetSlot);
-                            log.Debug($"[SeasonalGear] MoveItemSlot result: {result}");
-                            
-                            if (result == 0)
-                            {
-                                // SUCCESS: MoveItemSlot worked, no finalization yet
-                                log.Information($"[SeasonalGear] Equip command sent for {itemName}");
-                                log.Debug("[SeasonalGear] MoveItemSlot successful - waiting for finalization");
-                                
-                                // NO individual finalization - will finalize all at once at the end
-                                // This avoids crashes and ensures all equipment changes persist together
-                            }
-                            
-                            return result == 0; // 0 = success for MoveItemSlot
-                        }
-                    }
-                }
-
-                log.Warning($"[SeasonalGear] Item {itemId} not found in any container");
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.Error($"[SeasonalGear] Error equipping item {itemId}: {ex.Message}");
-            return false;
-        }
-    }
-
-    private int GetEquipmentSlotForItem(uint itemId)
-    {
-        // Map item to equipment slot (Correct FFXIV equipped slot indices)
-        // Based on actual equipped structure from logs
-        // Head items
-        if (itemId == 47924 || itemId == 47623 || itemId == 43471 || itemId == 38260 || itemId == 39245 || 
-            itemId == 38257 || itemId == 43154 || itemId == 43152 || itemId == 43189 || itemId == 35857 ||
-            itemId == 43198 || itemId == 38265 || itemId == 43149 || itemId == 28556 || itemId == 28557 ||
-            itemId == 33653 || itemId == 32803) return 2;  // Head -> Slot 2
-        
-        // Body items  
-        if (itemId == 50851 || itemId == 50850 || itemId == 43472 || itemId == 38261 || itemId == 43470 ||
-            itemId == 36838 || itemId == 47925 || itemId == 41566 || itemId == 38234 || itemId == 39246 ||
-            itemId == 38258 || itemId == 43155 || itemId == 43149 || itemId == 43190 || itemId == 36833 ||
-            itemId == 43199 || itemId == 43150 || itemId == 33654) return 3;  // Body -> Slot 3
-        
-        // Hands items
-        if (itemId == 43473 || itemId == 38262 || itemId == 36839 || itemId == 38235 || itemId == 43156 ||
-            itemId == 43191 || itemId == 36834 || itemId == 43200 || itemId == 38266 || itemId == 43151) return 4;  // Hands -> Slot 4
-        
-        // Legs items
-        if (itemId == 43474 || itemId == 38263 || itemId == 36840 || itemId == 47926 || itemId == 38236 ||
-            itemId == 38259 || itemId == 43151 || itemId == 43192 || itemId == 36835 || itemId == 43201) return 6;  // Legs -> Slot 6
-        
-        // Feet items
-        if (itemId == 43475 || itemId == 38264 || itemId == 36841 || itemId == 47927 || itemId == 38237 ||
-            itemId == 38260 || itemId == 43157 || itemId == 43150 || itemId == 43193 || itemId == 36836 || itemId == 43153) return 7;  // Feet -> Slot 7
-        
-        return -1; // Unknown slot
-    }
+    public bool IsComplete => machine.IsComplete;
+    public bool IsFailed => machine.IsFailed;
+    public bool IsIdle => machine.CurrentState == SeasonalGearStateMachine.State.Idle;
+    public bool IsActive => machine.IsActive;
+    public string StatusText => machine.Status;
 
     public void Start()
     {
-        attemptedItems.Clear();
-        selectedItemsPerSlot.Clear();
-        SetState(GearState.SelectingGear);
-        log.Information("[SeasonalGear] Starting seasonal gear roulette");
+        if (!machine.Start(out var reason))
+            log.Warning($"[SeasonalGear] {reason}");
+        else
+            log.Information($"[SeasonalGear] {reason}");
     }
 
-    public void RunTask()
-    {
-        log.Information("[VERMAXION] Manual Seasonal Gear Roulette triggered");
-        Start();
-    }
-
-    public void Reset()
-    {
-        attemptedItems.Clear();
-        selectedItemsPerSlot.Clear();
-        SetState(GearState.Idle);
-    }
-
-    public void Update()
-    {
-        if (state == GearState.Idle || state == GearState.Complete || state == GearState.Failed)
-            return;
-
-        var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
-
-        switch (state)
-        {
-            case GearState.SelectingGear:
-                // Group available items by slot
-                var slotGroups = new Dictionary<string, List<(uint ItemId, string Name, string Slot)>>();
-                foreach (var item in SeasonalGearList)
-                {
-                    if (HasItemInInventory(item.ItemId))
-                    {
-                        if (!slotGroups.ContainsKey(item.Slot))
-                            slotGroups[item.Slot] = new List<(uint, string, string)>();
-                        slotGroups[item.Slot].Add(item);
-                        log.Debug($"[SeasonalGear] Found available item: {item.Name} (ID:{item.ItemId}) for slot {item.Slot}");
-                    }
-                }
-
-                if (slotGroups.Count == 0)
-                {
-                    log.Information("[SeasonalGear] No seasonal gear items found in inventory");
-                    SetState(GearState.Complete);
-                    return;
-                }
-
-                // Select exactly ONE random item for each slot
-                selectedItemsPerSlot.Clear();
-                var slotsToProcess = new[] { "Head", "Body", "Hands", "Legs", "Feet" };
-                
-                foreach (var slot in slotsToProcess)
-                {
-                    if (slotGroups.ContainsKey(slot))
-                    {
-                        var slotItems = slotGroups[slot];
-                        var selectedItem = slotItems[rng.Next(slotItems.Count)];
-                        selectedItemsPerSlot[slot] = selectedItem;
-                        log.Information($"[SeasonalGear] Selected for {slot}: {selectedItem.Name} (ID:{selectedItem.ItemId})");
-                    }
-                    else
-                    {
-                        log.Information($"[SeasonalGear] No items available for {slot} slot");
-                    }
-                }
-
-                if (selectedItemsPerSlot.Count == 0)
-                {
-                    log.Information("[SeasonalGear] No items could be selected, completing");
-                    SetState(GearState.Complete);
-                    return;
-                }
-
-                // Start equipping the first selected item
-                var firstSlot = selectedItemsPerSlot.Keys.First();
-                selectedItem = selectedItemsPerSlot[firstSlot];
-                attemptedItems.Add(selectedItem.ItemId);
-                
-                log.Information($"[SeasonalGear] Starting to equip: {selectedItem.Name} (ID:{selectedItem.ItemId}, Slot:{firstSlot})");
-                SetState(GearState.EquippingItem);
-                break;
-
-            case GearState.EquippingItem:
-                log.Information($"[SeasonalGear] Attempting to equip {selectedItem.Name} (ItemID: {selectedItem.ItemId})");
-                
-                var equipSuccess = EquipItem(selectedItem.ItemId, selectedItem.Name);
-                if (equipSuccess)
-                {
-                    log.Information($"[SeasonalGear] Equip command sent for {selectedItem.Name}");
-                    SetState(GearState.WaitingForEquip);
-                }
-                else
-                {
-                    log.Warning($"[SeasonalGear] Failed to equip {selectedItem.Name}, trying next item");
-                    
-                    // Find the next item to equip
-                    var nextSlot = selectedItemsPerSlot.Keys
-                        .FirstOrDefault(slot => !attemptedItems.Contains(selectedItemsPerSlot[slot].ItemId));
-                    
-                    if (nextSlot != null)
-                    {
-                        // Equip the next item
-                        selectedItem = selectedItemsPerSlot[nextSlot];
-                        attemptedItems.Add(selectedItem.ItemId);
-                        log.Information($"[SeasonalGear] Moving to next item after failure: {selectedItem.Name} (ID:{selectedItem.ItemId}, Slot:{nextSlot})");
-                        SetState(GearState.EquippingItem);
-                    }
-                    else
-                    {
-                        // All items attempted, proceed to finalization
-                        log.Information("[SeasonalGear] All selected items attempted, starting finalization");
-                        SetState(GearState.Finalizing);
-                    }
-                }
-                break;
-
-            case GearState.WaitingForEquip:
-                if (elapsed > 3.5) // SND waits 3.5 seconds after equipitem
-                {
-                    log.Information($"[SeasonalGear] Equip wait done for {selectedItem.Name}");
-                    
-                    // Find the next item to equip
-                    var nextSlot = selectedItemsPerSlot.Keys
-                        .FirstOrDefault(slot => !attemptedItems.Contains(selectedItemsPerSlot[slot].ItemId));
-                    
-                    if (nextSlot != null)
-                    {
-                        // Equip the next item
-                        selectedItem = selectedItemsPerSlot[nextSlot];
-                        attemptedItems.Add(selectedItem.ItemId);
-                        log.Information($"[SeasonalGear] Moving to next item: {selectedItem.Name} (ID:{selectedItem.ItemId}, Slot:{nextSlot})");
-                        SetState(GearState.EquippingItem);
-                    }
-                    else
-                    {
-                        // All items equipped, proceed to finalization
-                        log.Information("[SeasonalGear] All selected items equipped, starting finalization");
-                        SetState(GearState.Finalizing);
-                    }
-                }
-                break;
-
-            case GearState.Finalizing:
-                if (elapsed > 2.0 && elapsed < 2.1) // Increased delay to 2.0s
-                {
-                    log.Information("[SeasonalGear] Starting final equipment finalization");
-                    try
-                    {
-                        // Correct sequence: character window -> callback 15 -> SelectYesno -> updategearset
-                        CommandHelper.SendCommand("/character");
-                        log.Debug("[SeasonalGear] Character window opened");
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error($"[SeasonalGear] Error during finalization: {ex.Message}");
-                        SetState(GearState.Failed);
-                    }
-                }
-                else if (elapsed > 3.5 && elapsed < 3.6) // Increased delay to 3.5s for window load
-                {
-                    // Use callback 12 (Recommend button) - corrected number
-                    GameHelpers.FireAddonCallback("Character", true, 12);
-                    log.Debug("[SeasonalGear] Fired Character callback true 12 (Recommend button)");
-                    
-                    // Handle RecommendEquip dialog if it appears (2 second delay as specified)
-                    System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => {
-                        try
-                        {
-                            if (GameHelpers.IsAddonVisible("RecommendEquip"))
-                            {
-                                log.Debug("[SeasonalGear] Confirming RecommendEquip dialog");
-                                GameHelpers.FireAddonCallback("RecommendEquip", true, 0);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Plugin.Log.Error($"[SeasonalGear] ContinueWith exception in RecommendEquip dialog: {ex.Message}");
-                        }
-                    }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnRanToCompletion);
-                }
-                else if (elapsed > 6.0)  // Increased to 6.0s to account for longer delays
-                {
-                    CommandHelper.SendCommand("/updategearset");
-                    log.Debug("[SeasonalGear] Gearset update sent - finalization complete");
-                    SetState(GearState.Complete);
-                }
-                break;
-        }
-    }
-
-    public void Dispose() { }
+    public void RunTask() => Start();
+    public void Update() => machine.Tick();
+    public void Cancel(string reason = "Seasonal Gear cancelled") => machine.Cancel(reason);
+    public void Reset() => machine.Reset();
+    public void Dispose() => Cancel("Seasonal Gear disposed");
 }

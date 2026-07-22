@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using Dalamud.Interface.Windowing;
@@ -88,6 +89,11 @@ public class MainWindow : Window, IDisposable
         };
 
         ImGui.TextColored(stateColor, $"Engine: {engine.StatusText} (State: {engine.State})");
+        if (!engine.RegistryReady)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.15f, 0.15f, 1f), "CONFIGURED BUT NOT DISPATCHABLE");
+            ImGui.TextWrapped(engine.RegistryDiagnostic);
+        }
         var lastRunTime = engine.LastRunCompletedAtUtc?.ToString("u") ?? "never";
         ImGui.TextDisabled($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
         ImGui.TextDisabled($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
@@ -104,6 +110,16 @@ public class MainWindow : Window, IDisposable
         }
         
         ImGui.Spacing();
+
+        var currentBlockers = AutomationCatalog.EngineTasks
+            .Select(feature => (feature, eligibility: engine.GetTaskEligibility(feature.Id)))
+            .Where(item => item.eligibility.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
+            .ToList();
+        if (currentBlockers.Count > 0 && ImGui.CollapsingHeader($"Blocked prerequisites ({currentBlockers.Count})"))
+        {
+            foreach (var item in currentBlockers)
+                ImGui.BulletText($"{item.feature.Label}: {item.eligibility.Reason}");
+        }
         
         // Control buttons row
         // FULL STOP button - red only when plugin is in operation
@@ -156,9 +172,11 @@ public class MainWindow : Window, IDisposable
             ImGui.TableHeadersRow();
 
             // --- Every AR PostProcess ---
+            DrawTaskCategory("Run-start hook", AutomationCatalog.Get(AutomationCatalog.MiscCommands));
             DrawTaskRow("Misc Cmd", config.EnableMiscCmd,
                 config.EnableMiscCmd ? "Every AR + manual run" : "Off",
                 "run##MiscCmd", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
+            DrawTaskCategory("Ordered engine tasks", AutomationCatalog.Get(AutomationCatalog.FCBuffRefill));
             DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, "Every AR run",
                 "run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
             DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
@@ -166,6 +184,7 @@ public class MainWindow : Window, IDisposable
             var fishingButtonsDisabled = engine.IsRunning ||
                                          plugin.IsFishingRunActive ||
                                          plugin.FisherGearsetTestService.IsActive;
+            DrawTaskCategory("Preemptive coordinator", AutomationCatalog.Get(AutomationCatalog.Fishing));
             DrawTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingRunStatusText),
                 "R##Fishing", plugin.RunFishingStartupManual, "OK",
                 buttonDisabled: fishingButtonsDisabled,
@@ -178,6 +197,7 @@ public class MainWindow : Window, IDisposable
                 tertiaryOnClick: plugin.RunFishingGearsetTest,
                 tertiaryButtonDisabled: fishingButtonsDisabled,
                 tertiaryButtonTooltip: "Equip and verify the current character's first saved Fisher gearset.");
+            DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.RegisterRegistrables));
             DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, "Every AR run",
                 "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
             DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
@@ -187,6 +207,7 @@ public class MainWindow : Window, IDisposable
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.RetainerListingRefillService.Start(activeConfig);
                 }, "OK");
+            DrawTaskCategory("Manual utility", null);
             DrawTaskRow("Retainer Bell", true, plugin.WorkshopBellService.StatusText,
                 "run##WorkshopBell", () =>
                 {
@@ -194,6 +215,7 @@ public class MainWindow : Window, IDisposable
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
                 }, "OK");
+            DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.SeasonalGear));
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, "Every AR run",
                 "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
             DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, "Every AR run",
@@ -265,6 +287,7 @@ public class MainWindow : Window, IDisposable
                         activeConfig.NagYourDadSelectionDisplayName);
                     Plugin.ChatGui.Print($"[Vermaxion] {result.StatusText}");
                 }, "OK");
+            DrawTaskCategory("Configuration-only WIP", AutomationCatalog.Get(AutomationCatalog.EvercoldAdventurerActivity));
             DrawTaskRow("Adventurer Activity (Evercold)", config.EnableEvercoldAdventurerActivity,
                 GetEvercoldAdventurerActivityStatus(config),
                 "Stub##EvercoldActivity", () =>
@@ -274,6 +297,7 @@ public class MainWindow : Window, IDisposable
                 }, "WIP");
 
             // --- Utility Tasks ---
+            DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.HighestCombatJob));
             DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, "Every AR run",
                 "run##Highest", () => plugin.HighestCombatJobService.RunTask(), "OK");
             DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, "Every AR run",
@@ -408,6 +432,15 @@ public class MainWindow : Window, IDisposable
             ImGui.SetTooltip("Support continued development on Ko-fi");
         }
         ImGui.TextDisabled("Every donation helps keep these plugins free and updated!");
+    }
+
+    private static void DrawTaskCategory(string label, AutomationFeatureDefinition? feature)
+    {
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+        ImGui.TextColored(new Vector4(0.45f, 0.75f, 1f, 1f), label);
+        if (feature != null && ImGui.IsItemHovered())
+            ImGui.SetTooltip($"{feature.CadenceLabel} · {feature.OwnershipLabel}");
     }
 
     private void DrawTaskRow(
