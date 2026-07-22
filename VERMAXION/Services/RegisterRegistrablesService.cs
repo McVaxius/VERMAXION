@@ -67,9 +67,8 @@ public class RegisterRegistrablesService : IDisposable
 
         if (activeConfig.PersonalRegistrableItems.Count == 0)
         {
-            log.Information("[RegisterRegistrables] No personal registrable items configured, disabling feature");
-            activeConfig.EnableRegisterRegistrables = false;
-            configManager.SaveCurrentAccount();
+            log.Warning("[RegisterRegistrables] Blocked: no personal registrable items are configured; enablement was preserved");
+            SetState(RegisterState.Failed);
             return;
         }
 

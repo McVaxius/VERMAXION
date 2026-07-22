@@ -1,169 +1,41 @@
 using System;
-using Dalamud.Game.Command;
 using Dalamud.Plugin.Services;
-using Dalamud.Game.ClientState.JobGauge.Types;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects;
+using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
-// [WIP] - Implementation following pseudocode with job change detection, needs SimpleTweaks testing
-public class GearUpdaterService : IDisposable
+public sealed class GearUpdaterService : IDisposable
 {
-    private readonly ICommandManager commandManager;
+    private readonly GearUpdaterStateMachine machine;
     private readonly IPluginLog log;
-    private readonly IClientState clientState;
-    private readonly IPlayerState playerState;
 
-    private enum UpdaterState { Idle, SwitchingJob, WaitingForSwitch, AutoEquipping, WaitingForEquip, OpeningCharacter, WaitingForCharacter, UpdatingGearset, WaitingForUpdate, Complete, Failed }
-    private UpdaterState state = UpdaterState.Idle;
-    private DateTime stateEnteredAt;
-    private int currentGearsetIndex;
-    private int maxGearsets = 40;
-    private uint? lastJobId;
-
-    public bool IsComplete => state == UpdaterState.Complete;
-    public bool IsFailed => state == UpdaterState.Failed;
-    public bool IsIdle => state == UpdaterState.Idle;
-    public bool IsActive => !IsIdle && !IsComplete && !IsFailed;
-    public string StatusText => state == UpdaterState.Idle ? "Idle" : $"{state} ({currentGearsetIndex}/{maxGearsets})";
-
-    public GearUpdaterService(ICommandManager commandManager, IPluginLog log, IClientState clientState, IPlayerState playerState)
+    internal GearUpdaterService(IEquipmentAutomationRuntime runtime, IPluginLog log)
     {
-        this.commandManager = commandManager;
+        machine = new GearUpdaterStateMachine(runtime);
         this.log = log;
-        this.clientState = clientState;
-        this.playerState = playerState;
     }
 
-    private void SetState(UpdaterState newState)
-    {
-        log.Information($"[GearUpdater] {state} -> {newState}");
-        state = newState;
-        stateEnteredAt = DateTime.UtcNow;
-    }
-
-    private uint GetCurrentJobId()
-    {
-        try
-        {
-            var classJob = playerState?.ClassJob;
-            return classJob?.RowId ?? 0;
-        }
-        catch
-        {
-            return 0;
-        }
-    }
+    public bool IsComplete => machine.TerminalState == EquipmentTaskTerminalState.Complete;
+    public bool IsFailed => machine.TerminalState is EquipmentTaskTerminalState.Failed or EquipmentTaskTerminalState.Cancelled;
+    public bool IsIdle => machine.CurrentState == GearUpdaterStateMachine.State.Idle;
+    public bool IsActive => machine.IsActive;
+    public string StatusText => $"{machine.Status} ({machine.CompletedTargetCount}/{machine.TargetCount})";
 
     public void Start()
     {
-        currentGearsetIndex = 1;
-        lastJobId = GetCurrentJobId();
-        SetState(UpdaterState.SwitchingJob);
-        log.Information("[GearUpdater] Starting gear updater - cycling through gearsets 1-40");
+        if (!machine.Start(out var reason))
+            log.Warning($"[GearUpdater] {reason}");
+        else
+            log.Information($"[GearUpdater] {reason}");
     }
 
-    public void RunTask()
-    {
-        log.Information("[VERMAXION] Manual Gear Updater triggered");
-        Start();
-    }
+    public void RunTask() => Start();
 
-    public void Reset()
-    {
-        currentGearsetIndex = 0;
-        lastJobId = null;
-        SetState(UpdaterState.Idle);
-    }
+    public void Update() => machine.Tick();
 
-    public void Update()
-    {
-        if (state == UpdaterState.Idle || state == UpdaterState.Complete || state == UpdaterState.Failed)
-            return;
+    public void Cancel(string reason = "Gear Updater cancelled") => machine.Cancel(reason);
 
-        var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
+    public void Reset() => machine.Reset();
 
-        switch (state)
-        {
-            case UpdaterState.SwitchingJob:
-                if (currentGearsetIndex > maxGearsets)
-                {
-                    log.Information("[GearUpdater] All gearsets processed, complete");
-                    SetState(UpdaterState.Complete);
-                    return;
-                }
-                
-                // Check if job hasn't changed (stop condition - we're done)
-                if (currentGearsetIndex > 1 && lastJobId.HasValue)
-                {
-                    var currentJobId = GetCurrentJobId();
-                    if (currentJobId == lastJobId.Value)
-                    {
-                        log.Information($"[GearUpdater] Job hasn't changed from {lastJobId} to {currentJobId}, stopping loop - we're done");
-                        SetState(UpdaterState.Complete);
-                        return;
-                    }
-                    else
-                    {
-                        log.Information($"[GearUpdater] Job changed from {lastJobId} to {currentJobId}, continuing loop");
-                        lastJobId = currentJobId; // Update for next iteration
-                    }
-                }
-                
-                log.Information($"[GearUpdater] Switching to gearset {currentGearsetIndex}");
-                CommandHelper.SendCommand($"/gs change {currentGearsetIndex}");
-                SetState(UpdaterState.WaitingForSwitch);
-                break;
-
-            case UpdaterState.WaitingForSwitch:
-                if (elapsed > 2.0)
-                {
-                    SetState(UpdaterState.AutoEquipping);
-                }
-                break;
-
-            case UpdaterState.AutoEquipping:
-                log.Information($"[GearUpdater] Auto-equipping recommended gear for gearset {currentGearsetIndex}");
-                RecommendedEquipHelper.EquipRecommended();
-                SetState(UpdaterState.WaitingForEquip);
-                break;
-
-            case UpdaterState.WaitingForEquip:
-                if (elapsed > 1.0)
-                {
-                    SetState(UpdaterState.OpeningCharacter);
-                }
-                break;
-
-            case UpdaterState.OpeningCharacter:
-                log.Information($"[GearUpdater] Opening character window for gearset {currentGearsetIndex}");
-                CommandHelper.SendCommand("/character");
-                SetState(UpdaterState.WaitingForCharacter);
-                break;
-
-            case UpdaterState.WaitingForCharacter:
-                if (elapsed > 1.0)
-                {
-                    SetState(UpdaterState.UpdatingGearset);
-                }
-                break;
-
-            case UpdaterState.UpdatingGearset:
-                log.Information($"[GearUpdater] Updating gearset {currentGearsetIndex}");
-                CommandHelper.SendCommand("/updategearset"); // SimpleTweaks required
-                SetState(UpdaterState.WaitingForUpdate);
-                break;
-
-            case UpdaterState.WaitingForUpdate:
-                if (elapsed > 1.0)
-                {
-                    currentGearsetIndex++;
-                    SetState(UpdaterState.SwitchingJob);
-                }
-                break;
-        }
-    }
-
-    public void Dispose() { }
+    public void Dispose() => Cancel("Gear Updater disposed");
 }

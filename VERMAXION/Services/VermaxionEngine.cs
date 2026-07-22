@@ -86,8 +86,12 @@ public class VermaxionEngine
         [PostProcessTaskOrder.RefillListings] = EngineState.RunningRetainerListingRefill,
         [PostProcessTaskOrder.FCBuffRefill] = EngineState.RunningFCBuff,
         [PostProcessTaskOrder.VendorStock] = EngineState.RunningVendorStock,
-        [PostProcessTaskOrder.Fishing] = EngineState.RunningFishing,
         [PostProcessTaskOrder.RegisterRegistrables] = EngineState.RunningRegisterRegistrables,
+        [PostProcessTaskOrder.GearUpdater] = EngineState.RunningGearUpdater,
+        [PostProcessTaskOrder.HighestCombatJob] = EngineState.RunningHighestCombatJob,
+        [PostProcessTaskOrder.CurrentJobEquipment] = EngineState.RunningCurrentJobEquipment,
+        [PostProcessTaskOrder.SeasonalGear] = EngineState.RunningSeasonalGear,
+        [PostProcessTaskOrder.MinionRoulette] = EngineState.RunningMinionRoulette,
         [PostProcessTaskOrder.VerminionQueue] = EngineState.RunningVerminion,
         [PostProcessTaskOrder.MiniCactpot] = EngineState.RunningMiniCactpot,
         [PostProcessTaskOrder.JumboCactpot] = EngineState.RunningJumboCactpot,
@@ -114,6 +118,12 @@ public class VermaxionEngine
     private readonly VendorStockService vendorStockService;
     private readonly FishingService fishingService;
     private readonly RegisterRegistrablesService registerRegistrablesService;
+    private readonly GearUpdaterService gearUpdaterService;
+    private readonly HighestCombatJobService highestCombatJobService;
+    private readonly CurrentJobEquipmentService currentJobEquipmentService;
+    private readonly SeasonalGearService seasonalGearService;
+    private readonly MinionRouletteService minionRouletteService;
+    private readonly IEquipmentAutomationRuntime equipmentRuntime;
     private readonly RetainerListingRefillService retainerListingRefillService;
     private readonly WorkshopBellService workshopBellService;
     private readonly ARPostProcessService arService;
@@ -169,6 +179,19 @@ public class VermaxionEngine
     private DateTime watchdogLastProgressAt = DateTime.MinValue;
     private string watchdogLastSignature = string.Empty;
     private string watchdogPauseReason = string.Empty;
+    private readonly IReadOnlyDictionary<string, EngineTaskBinding> taskBindings;
+    private bool miscHookRan;
+
+    private sealed record EngineTaskBinding(
+        string Id,
+        EngineState State,
+        Func<CharacterConfig, TaskEligibility> Eligibility,
+        Action Tick,
+        Action Reset,
+        Action Cancel,
+        Action Cleanup,
+        Func<string> Status,
+        Func<string> WatchdogProgress);
 
     public enum EngineState
     {
@@ -177,8 +200,12 @@ public class VermaxionEngine
         CheckingResets,
         RunningFCBuff,
         RunningVendorStock,
-        RunningFishing,
         RunningRegisterRegistrables,
+        RunningGearUpdater,
+        RunningHighestCombatJob,
+        RunningCurrentJobEquipment,
+        RunningSeasonalGear,
+        RunningMinionRoulette,
         RunningRetainerListingRefill,
         RunningVerminion,
         RunningMiniCactpot,
@@ -219,6 +246,11 @@ public class VermaxionEngine
     public string ActiveHandoffBlocker => handoffBlockerReason;
     public bool OwnsActiveWork => IsRunning || runOwnedWorkStarted || arService.IsProcessing;
     public bool OwnsLiveWork => OwnsActiveWork || autoRetainerIPC.SuppressionOwnedByVermaxion;
+    public AutomationRegistryValidation RegistryValidation { get; }
+    public bool RegistryReady => RegistryValidation.IsValid;
+    public string RegistryDiagnostic => RegistryValidation.Message;
+    public IReadOnlyList<AutomationPlanEntry> LastPlan { get; private set; } = [];
+    public IReadOnlyCollection<string> RegisteredTaskIds => taskBindings.Keys.ToArray();
     
     public bool IsRunningDebug => IsRunning; // For debugging
 
@@ -236,6 +268,12 @@ public class VermaxionEngine
         VendorStockService vendorStockService,
         FishingService fishingService,
         RegisterRegistrablesService registerRegistrablesService,
+        GearUpdaterService gearUpdaterService,
+        HighestCombatJobService highestCombatJobService,
+        CurrentJobEquipmentService currentJobEquipmentService,
+        SeasonalGearService seasonalGearService,
+        MinionRouletteService minionRouletteService,
+        IEquipmentAutomationRuntime equipmentRuntime,
         RetainerListingRefillService retainerListingRefillService,
         WorkshopBellService workshopBellService,
         ARPostProcessService arService,
@@ -262,6 +300,12 @@ public class VermaxionEngine
         this.vendorStockService = vendorStockService;
         this.fishingService = fishingService;
         this.registerRegistrablesService = registerRegistrablesService;
+        this.gearUpdaterService = gearUpdaterService;
+        this.highestCombatJobService = highestCombatJobService;
+        this.currentJobEquipmentService = currentJobEquipmentService;
+        this.seasonalGearService = seasonalGearService;
+        this.minionRouletteService = minionRouletteService;
+        this.equipmentRuntime = equipmentRuntime;
         this.retainerListingRefillService = retainerListingRefillService;
         this.workshopBellService = workshopBellService;
         this.arService = arService;
@@ -275,8 +319,224 @@ public class VermaxionEngine
         this.lifestreamIPC = lifestreamIPC;
         this.incidentWriter = incidentWriter;
 
+        taskBindings = CreateTaskBindings();
+        RegistryValidation = AutomationCatalog.ValidateRuntimeRegistry(
+            taskBindings.Keys,
+            PostProcessTaskOrder.Definitions.Select(definition => definition.Id));
+        if (!RegistryValidation.IsValid)
+            log.Error($"[Engine][Registry] {RegistryValidation.Message}");
+
         // Subscribe to territory change events to close menus after teleporting
         clientState.TerritoryChanged += OnTerritoryChanged;
+    }
+
+    private IReadOnlyDictionary<string, EngineTaskBinding> CreateTaskBindings()
+    {
+        EngineTaskBinding Bind(
+            string id,
+            Func<CharacterConfig, TaskEligibility> eligibility,
+            Action tick,
+            Action reset,
+            Func<string> status,
+            Action? cancel = null,
+            Action? cleanup = null)
+            => new(
+                id,
+                TaskStateById[id],
+                eligibility,
+                tick,
+                reset,
+                cancel ?? reset,
+                cleanup ?? reset,
+                status,
+                status);
+
+        var bindings = new[]
+        {
+            Bind(PostProcessTaskOrder.RefillListings, EvaluateRefillListings, retainerListingRefillService.Update,
+                () => { retainerListingRefillService.Reset(); workshopBellService.Reset(); },
+                () => retainerListingRefillService.StatusText),
+            Bind(PostProcessTaskOrder.FCBuffRefill, EvaluateFcBuff, fcBuffService.Update, fcBuffService.Reset,
+                () => fcBuffService.StatusText),
+            Bind(PostProcessTaskOrder.VendorStock, EvaluateVendorStock, vendorStockService.Update, vendorStockService.Reset,
+                () => vendorStockService.StatusText),
+            Bind(PostProcessTaskOrder.RegisterRegistrables, EvaluateRegisterRegistrables, registerRegistrablesService.Update,
+                registerRegistrablesService.Reset, () => registerRegistrablesService.State.ToString()),
+            Bind(PostProcessTaskOrder.GearUpdater, EvaluateGearUpdater, gearUpdaterService.Update, gearUpdaterService.Reset,
+                () => gearUpdaterService.StatusText, () => gearUpdaterService.Cancel()),
+            Bind(PostProcessTaskOrder.HighestCombatJob, EvaluateHighestCombatJob, highestCombatJobService.Update,
+                highestCombatJobService.Reset, () => highestCombatJobService.StatusText, () => highestCombatJobService.Cancel()),
+            Bind(PostProcessTaskOrder.CurrentJobEquipment, EvaluateCurrentJobEquipment, currentJobEquipmentService.Update,
+                currentJobEquipmentService.Reset, () => currentJobEquipmentService.StatusText, () => currentJobEquipmentService.Cancel()),
+            Bind(PostProcessTaskOrder.SeasonalGear, EvaluateSeasonalGear, seasonalGearService.Update, seasonalGearService.Reset,
+                () => seasonalGearService.StatusText, () => seasonalGearService.Cancel()),
+            Bind(PostProcessTaskOrder.MinionRoulette, EvaluateMinionRoulette, minionRouletteService.Update,
+                minionRouletteService.Reset, () => minionRouletteService.StatusText),
+            Bind(PostProcessTaskOrder.VerminionQueue, EvaluateVerminion, verminionService.Update, verminionService.Reset,
+                () => verminionService.StatusText),
+            Bind(PostProcessTaskOrder.MiniCactpot, EvaluateMiniCactpot, cactpotService.Update, cactpotService.Reset,
+                () => cactpotService.StatusText),
+            Bind(PostProcessTaskOrder.JumboCactpot, EvaluateJumboCactpot, cactpotService.Update, cactpotService.Reset,
+                () => cactpotService.StatusText),
+            Bind(PostProcessTaskOrder.FashionReport, EvaluateFashionReport, fashionReportService.Update,
+                fashionReportService.Reset, () => fashionReportService.State.ToString()),
+            Bind(PostProcessTaskOrder.ChocoboRacing, EvaluateChocoboRacing, chocoboRaceService.Update,
+                chocoboRaceService.Reset, () => chocoboRaceService.StatusText),
+            Bind(PostProcessTaskOrder.LootGoblinMapGather, EvaluateLootGoblin, lootGoblinMapGatherService.Update,
+                lootGoblinMapGatherService.Reset, () => lootGoblinMapGatherService.StatusText, lootGoblinMapGatherService.Cancel),
+            Bind(PostProcessTaskOrder.NagYourMom, EvaluateNagYourMom, () => { }, () => { },
+                () => NagYourMomStatusText, () => { momIPCClient.CancelActiveRun(); }),
+            Bind(PostProcessTaskOrder.NagYourDad, EvaluateNagYourDad, () => { }, () => { },
+                () => NagYourDadStatusText,
+                () => { if (activeDadExecution != null) dadIPCClient.CancelSelection(activeDadExecution); }),
+        };
+
+        return bindings.ToDictionary(binding => binding.Id, StringComparer.Ordinal);
+    }
+
+    public TaskEligibility GetTaskEligibility(string id)
+    {
+        var config = configManager.GetActiveConfig();
+        if (config == null)
+            return TaskEligibility.Blocked("No active character configuration is available.");
+        return taskBindings.TryGetValue(id, out var binding)
+            ? binding.Eligibility(config)
+            : TaskEligibility.Unsupported($"No runtime binding is registered for '{id}'.");
+    }
+
+    private static TaskEligibility Enabled(bool enabled, string label)
+        => enabled ? TaskEligibility.Runnable() : TaskEligibility.Disabled($"{label} is disabled for this character.");
+
+    private TaskEligibility EvaluateRefillListings(CharacterConfig config)
+        => !config.EnableRefillFromListings
+            ? TaskEligibility.Disabled("Refill Listings is disabled for this character.")
+            : ShouldRunRefillFromListings(config)
+                ? TaskEligibility.Runnable()
+                : TaskEligibility.NotDue($"Refill Listings is not due for its {config.RefillFromListingsFrequency} cadence.");
+
+    private static TaskEligibility EvaluateFcBuff(CharacterConfig config)
+        => Enabled(config.EnableFCBuffRefill, "FC Buff Refill");
+
+    private static TaskEligibility EvaluateVendorStock(CharacterConfig config)
+        => !config.EnableVendorStock
+            ? TaskEligibility.Disabled("Vendor Stock is disabled for this character.")
+            : config.VendorStockGysahlGreensTarget <= 0 && config.VendorStockGrade8DarkMatterTarget <= 0
+                ? TaskEligibility.Blocked("Vendor Stock has no positive item target configured.")
+                : TaskEligibility.Runnable();
+
+    private static TaskEligibility EvaluateRegisterRegistrables(CharacterConfig config)
+        => !config.EnableRegisterRegistrables
+            ? TaskEligibility.Disabled("Register Registrables is disabled for this character.")
+            : config.PersonalRegistrableItems.Count == 0
+                ? TaskEligibility.Blocked("Register Registrables has no personal items configured.")
+                : TaskEligibility.Runnable();
+
+    private TaskEligibility EvaluateGearUpdater(CharacterConfig config)
+        => !config.EnableGearUpdater
+            ? TaskEligibility.Disabled("Gear Updater is disabled for this character.")
+            : equipmentRuntime.GetValidGearsets().Count == 0
+                ? TaskEligibility.Blocked("Gear Updater found no valid saved gearsets for unlocked classes or jobs.")
+                : TaskEligibility.Runnable();
+
+    private TaskEligibility EvaluateHighestCombatJob(CharacterConfig config)
+        => !config.EnableHighestCombatJob
+            ? TaskEligibility.Disabled("Highest Combat Job is disabled for this character.")
+            : EquipmentAutomationPolicy.SelectHighestCombatJob(equipmentRuntime.GetValidGearsets(), equipmentRuntime.CurrentJobId) == null
+                ? TaskEligibility.Blocked("Highest Combat Job found no combat job represented by a valid saved gearset.")
+                : TaskEligibility.Runnable();
+
+    private TaskEligibility EvaluateCurrentJobEquipment(CharacterConfig config)
+        => !config.EnableCurrentJobEquipment
+            ? TaskEligibility.Disabled("Current Job Equipment is disabled for this character.")
+            : EquipmentAutomationPolicy.SelectCurrentGearset(
+                equipmentRuntime.GetValidGearsets(), equipmentRuntime.CurrentGearsetId, equipmentRuntime.CurrentJobId) == null
+                ? TaskEligibility.Blocked("Current Job Equipment requires the active job to match a valid saved gearset.")
+                : TaskEligibility.Runnable();
+
+    private TaskEligibility EvaluateSeasonalGear(CharacterConfig config)
+        => !config.EnableSeasonalGearRoulette
+            ? TaskEligibility.Disabled("Seasonal Gear is disabled for this character.")
+            : equipmentRuntime.FindSeasonalInventoryItems(
+                EquipmentAutomationPolicy.DeduplicateCuratedItemIds(SeasonalGearService.CuratedItemIds)).Count == 0
+                ? TaskEligibility.Blocked("Seasonal Gear found no curated equippable items in inventory or the Armoury Chest.")
+                : TaskEligibility.Runnable();
+
+    private static TaskEligibility EvaluateMinionRoulette(CharacterConfig config)
+        => Enabled(config.EnableMinionRoulette, "Minion Roulette");
+
+    private static TaskEligibility Due(bool enabled, string label, DateTime completed, DateTime next)
+        => !enabled
+            ? TaskEligibility.Disabled($"{label} is disabled for this character.")
+            : ResetDetectionService.TaskNeedsRun(completed, next)
+                ? TaskEligibility.Runnable()
+                : TaskEligibility.NotDue($"{label} is not due until {next:u}.");
+
+    private static TaskEligibility EvaluateVerminion(CharacterConfig config)
+        => Due(config.EnableVerminionQueue, "Verminion Queue", config.VerminionLastCompleted, config.VerminionNextReset);
+
+    private static TaskEligibility EvaluateMiniCactpot(CharacterConfig config)
+        => Due(config.EnableMiniCactpot, "Mini Cactpot", config.MiniCactpotLastCompleted, config.MiniCactpotNextReset);
+
+    private TaskEligibility EvaluateJumboCactpot(CharacterConfig config)
+    {
+        if (!config.EnableJumboCactpot)
+            return TaskEligibility.Disabled("Jumbo Cactpot is disabled for this character.");
+        var now = DateTime.UtcNow;
+        var decision = JumboCactpotRoutingPolicy.Decide(
+            now,
+            ResetDetectionService.IsJumboCactpotPayoutAvailable(now),
+            config.JumboCactpotUnclaimedTickets,
+            config.JumboCactpotPayoutAvailableAt,
+            ResetDetectionService.TaskNeedsRun(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset));
+        return decision.Route == JumboCactpotRoute.Wait
+            ? TaskEligibility.NotDue("Jumbo Cactpot has no payout or ticket-purchase route due now.")
+            : TaskEligibility.Runnable($"Route: {decision.Route}.");
+    }
+
+    private static TaskEligibility EvaluateFashionReport(CharacterConfig config)
+    {
+        if (!config.EnableFashionReport)
+            return TaskEligibility.Disabled("Fashion Report is disabled for this character.");
+        if (!ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow))
+            return TaskEligibility.Blocked("Fashion Report is outside its Friday-to-reset availability window.");
+        return ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset)
+            ? TaskEligibility.Runnable()
+            : TaskEligibility.NotDue($"Fashion Report is not due until {config.FashionReportNextReset:u}.");
+    }
+
+    private static TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
+        => Due(config.EnableChocoboRacing, "Chocobo Racing", config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset);
+
+    private static TaskEligibility EvaluateLootGoblin(CharacterConfig config)
+        => Due(config.EnableLootGoblinMapGather, "LootGoblin Map Gather", config.LootGoblinMapGatherLastCompleted, config.LootGoblinMapGatherNextReset);
+
+    private TaskEligibility EvaluateNagYourMom(CharacterConfig config)
+    {
+        if (!config.EnableNagYourMom)
+            return TaskEligibility.Disabled("nag your mom is disabled for this character.");
+        if (string.IsNullOrWhiteSpace(config.NagYourMomJob))
+            return TaskEligibility.Blocked("Set a mom job.");
+        if (!TryParseLocalTime(config.NagYourMomWindowStartLocal, out var start) ||
+            !TryParseLocalTime(config.NagYourMomWindowEndLocal, out var end))
+            return TaskEligibility.Blocked("The mom local-time window is invalid.");
+        if (!IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end))
+            return TaskEligibility.NotDue($"Outside mom window ({config.NagYourMomWindowStartLocal}-{config.NagYourMomWindowEndLocal}).");
+        RollNagYourMomLocalDay(config);
+        if (!NagYourMomRouteOrder.Any(route => IsNagYourMomRouteDue(config, route)))
+            return TaskEligibility.NotDue("All enabled mom routes reached their local-day caps.");
+        var readiness = momIPCClient.GetReadiness();
+        return readiness.CanStart
+            ? TaskEligibility.Runnable()
+            : TaskEligibility.Blocked(string.IsNullOrWhiteSpace(readiness.BlockReason) ? readiness.Summary : readiness.BlockReason);
+    }
+
+    private TaskEligibility EvaluateNagYourDad(CharacterConfig config)
+    {
+        if (!ShouldRunNagYourDadNow(config, out var reason))
+            return !config.EnableNagYourDad ? TaskEligibility.Disabled(reason) : TaskEligibility.Blocked(reason);
+        return dadIPCClient.IsReady()
+            ? TaskEligibility.Runnable()
+            : TaskEligibility.Blocked("DAD IPC is unavailable or not ready.");
     }
 
     public bool StartPostProcess()
@@ -331,6 +591,17 @@ public class VermaxionEngine
 
     private bool TryBeginRun(RunTaskPhaseFilter phaseFilter, bool requireEnabled, bool requireWorldReady, bool automatedRun, string source)
     {
+        if (!RegistryValidation.IsValid)
+        {
+            log.Error($"[Engine][Registry] Rejecting {source}: {RegistryValidation.Message}");
+            if (arService.IsProcessing)
+                arService.FinishPostProcess(force: true);
+            autoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
+            RecordRunCompletion(RunOutcome.Failed, RegistryValidation.Message);
+            SetState(EngineState.Idle);
+            return false;
+        }
+
         var startBlocker = StartBlocker();
         if (!string.IsNullOrWhiteSpace(startBlocker))
         {
@@ -388,7 +659,7 @@ public class VermaxionEngine
         momIPCClient.CancelActiveRun();
         dadIPCClient.CancelActiveRun();
         lootGoblinMapGatherService.Cancel();
-        ResetTaskServices();
+        CancelTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
         if (arService.IsProcessing)
@@ -460,13 +731,28 @@ public class VermaxionEngine
             case EngineState.Starting:
                 if (elapsed < 1.5) return; // AR settle delay
                 RevalidatePlannedQueue();
-                if (runQueue.Count == 0)
+                var miscHookRunnable = AutomationRunHookPolicy.ShouldRunMiscHook(
+                    activeConfig?.EnableMiscCmd == true,
+                    activePhaseFilter == RunTaskPhaseFilter.BeforeAR);
+                if (!AutomationRunHookPolicy.HasApplicableWork(runQueue.Count > 0, miscHookRunnable))
                 {
                     BeginImmediateFinalization(RunOutcome.Skipped, "Planned tasks were no longer runnable before dispatch");
                     break;
                 }
 
-                SendStartupMiscCommandBundleIfEnabled();
+                if (miscHookRunnable && !miscHookRan)
+                {
+                    SendRunShutdownCommandBundle();
+                    miscHookRan = true;
+                    runOwnedWorkStarted = true;
+                }
+
+                if (runQueue.Count == 0)
+                {
+                    BeginImmediateFinalization(RunOutcome.Succeeded, "Misc Commands run-start hook completed");
+                    break;
+                }
+
                 yesAlreadyIPC.Pause();
                 DispatchNextQueuedTask();
                 break;
@@ -489,9 +775,12 @@ public class VermaxionEngine
 
                 log.Information($"[Engine] Weekly reset: {weeklyResetDetected}, Daily reset: {dailyResetDetected}, Saturday: {resetService.IsSaturday()}");
                 BuildRunQueue(activeConfig);
-                if (runQueue.Count == 0)
+                var miscOnlyApplicable = AutomationRunHookPolicy.ShouldRunMiscHook(
+                    activeConfig.EnableMiscCmd,
+                    activePhaseFilter == RunTaskPhaseFilter.BeforeAR);
+                if (!AutomationRunHookPolicy.HasApplicableWork(runQueue.Count > 0, miscOnlyApplicable))
                 {
-                    BeginImmediateFinalization(RunOutcome.Skipped, "No enabled and due tasks");
+                    BeginImmediateFinalization(RunOutcome.Skipped, BuildNoRunnableWorkSummary());
                     break;
                 }
 
@@ -513,7 +802,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    fcBuffService.Update();
+                    taskBindings[PostProcessTaskOrder.FCBuffRefill].Tick();
 
                     if (fcBuffService.IsComplete || fcBuffService.IsFailed)
                     {
@@ -544,7 +833,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    vendorStockService.Update();
+                    taskBindings[PostProcessTaskOrder.VendorStock].Tick();
 
                     if (vendorStockService.IsComplete)
                     {
@@ -566,41 +855,6 @@ public class VermaxionEngine
                 }
                 break;
 
-            case EngineState.RunningFishing:
-                activeConfig = GetLiveActiveConfig();
-                if (!fishingService.IsActive && !fishingService.IsComplete && !fishingService.IsFailed &&
-                    !ShouldRunFishing(activeConfig!))
-                {
-                    AdvanceToNextTask(EngineState.RunningFishing);
-                    break;
-                }
-
-                if (!fishingService.IsActive && !fishingService.IsComplete && !fishingService.IsFailed)
-                {
-                    log.Information("[Engine] Starting Fishing");
-                    ResetInteractionState();
-                    MarkCurrentTaskWorkStarted();
-                    fishingService.Start();
-                    return;
-                }
-
-                fishingService.Update();
-
-                if (fishingService.IsComplete)
-                {
-                    log.Information("[Engine] Fishing completed");
-                    fishingService.Reset();
-                    AdvanceToNextTask(EngineState.RunningFishing);
-                }
-                else if (fishingService.IsFailed)
-                {
-                    log.Warning($"[Engine] Fishing failed - continuing: {fishingService.StatusText}");
-                    runHadFailure = true;
-                    fishingService.Reset();
-                    AdvanceToNextTask(EngineState.RunningFishing);
-                }
-                break;
-
             case EngineState.RunningRegisterRegistrables:
                 if (activeConfig!.EnableRegisterRegistrables)
                 {
@@ -612,7 +866,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    registerRegistrablesService.Update();
+                    taskBindings[PostProcessTaskOrder.RegisterRegistrables].Tick();
 
                     if (registerRegistrablesService.IsComplete)
                     {
@@ -634,6 +888,56 @@ public class VermaxionEngine
                 }
                 break;
 
+            case EngineState.RunningGearUpdater:
+                TickSimpleRegisteredTask(
+                    EngineState.RunningGearUpdater,
+                    activeConfig!.EnableGearUpdater,
+                    () => gearUpdaterService.IsActive,
+                    () => gearUpdaterService.IsComplete,
+                    () => gearUpdaterService.IsFailed,
+                    gearUpdaterService.Start);
+                break;
+
+            case EngineState.RunningHighestCombatJob:
+                TickSimpleRegisteredTask(
+                    EngineState.RunningHighestCombatJob,
+                    activeConfig!.EnableHighestCombatJob,
+                    () => highestCombatJobService.IsActive,
+                    () => highestCombatJobService.IsComplete,
+                    () => highestCombatJobService.IsFailed,
+                    highestCombatJobService.Start);
+                break;
+
+            case EngineState.RunningCurrentJobEquipment:
+                TickSimpleRegisteredTask(
+                    EngineState.RunningCurrentJobEquipment,
+                    activeConfig!.EnableCurrentJobEquipment,
+                    () => currentJobEquipmentService.IsActive,
+                    () => currentJobEquipmentService.IsComplete,
+                    () => currentJobEquipmentService.IsFailed,
+                    currentJobEquipmentService.Start);
+                break;
+
+            case EngineState.RunningSeasonalGear:
+                TickSimpleRegisteredTask(
+                    EngineState.RunningSeasonalGear,
+                    activeConfig!.EnableSeasonalGearRoulette,
+                    () => seasonalGearService.IsActive,
+                    () => seasonalGearService.IsComplete,
+                    () => seasonalGearService.IsFailed,
+                    seasonalGearService.Start);
+                break;
+
+            case EngineState.RunningMinionRoulette:
+                TickSimpleRegisteredTask(
+                    EngineState.RunningMinionRoulette,
+                    activeConfig!.EnableMinionRoulette,
+                    () => minionRouletteService.IsActive,
+                    () => minionRouletteService.IsComplete,
+                    () => minionRouletteService.IsFailed,
+                    minionRouletteService.Start);
+                break;
+
             case EngineState.RunningRetainerListingRefill:
                 activeConfig = GetLiveActiveConfig();
                 if (ShouldRunRefillFromListings(activeConfig!))
@@ -647,7 +951,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    retainerListingRefillService.Update();
+                    taskBindings[PostProcessTaskOrder.RefillListings].Tick();
 
                     if (retainerListingRefillService.IsComplete)
                     {
@@ -686,7 +990,7 @@ public class VermaxionEngine
                         return;
                     }
 
-                    verminionService.Update();
+                    taskBindings[PostProcessTaskOrder.VerminionQueue].Tick();
 
                     if (verminionService.IsComplete)
                     {
@@ -1248,6 +1552,49 @@ public class VermaxionEngine
         }
     }
 
+    private void TickSimpleRegisteredTask(
+        EngineState expectedState,
+        bool enabled,
+        Func<bool> isActive,
+        Func<bool> isComplete,
+        Func<bool> isFailed,
+        Action start)
+    {
+        var taskId = TaskIdByState[expectedState];
+        var binding = taskBindings[taskId];
+        if (!enabled)
+        {
+            binding.Cleanup();
+            AdvanceToNextTask(expectedState);
+            return;
+        }
+
+        if (!isActive() && !isComplete() && !isFailed())
+        {
+            log.Information($"[Engine] Starting {AutomationCatalog.Get(taskId).Label}");
+            MarkCurrentTaskWorkStarted();
+            start();
+            return;
+        }
+
+        binding.Tick();
+        if (!isComplete() && !isFailed())
+            return;
+
+        if (isFailed())
+        {
+            runHadFailure = true;
+            log.Warning($"[Engine] {AutomationCatalog.Get(taskId).Label} failed: {binding.Status()}");
+        }
+        else
+        {
+            log.Information($"[Engine] {AutomationCatalog.Get(taskId).Label} completed: {binding.Status()}");
+        }
+
+        binding.Cleanup();
+        AdvanceToNextTask(expectedState);
+    }
+
     private void MarkWeeklyTaskFailed(string taskName, Action<CharacterConfig> clearLegacyFlag)
     {
         PersistCurrentCharacterConfig(config =>
@@ -1415,7 +1762,7 @@ public class VermaxionEngine
         if (activeDadExecution != null)
             dadIPCClient.CancelSelection(activeDadExecution);
         lootGoblinMapGatherService.Cancel();
-        ResetTaskServices();
+        CancelTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
         NagYourMomStatusText = status;
@@ -1434,18 +1781,18 @@ public class VermaxionEngine
 
     private void ResetTaskServices()
     {
-        fcBuffService.Reset();
+        foreach (var reset in taskBindings.Values.Select(binding => binding.Reset).Distinct())
+            reset();
         fcBuffInventoryService.Reset();
-        vendorStockService.Reset();
-        fishingService.Reset();
-        registerRegistrablesService.Reset();
-        retainerListingRefillService.Reset();
         workshopBellService.Reset();
-        lootGoblinMapGatherService.Reset();
-        verminionService.Reset();
-        cactpotService.Reset();
-        fashionReportService.Reset();
-        chocoboRaceService.Reset();
+    }
+
+    private void CancelTaskServices()
+    {
+        foreach (var cancel in taskBindings.Values.Select(binding => binding.Cancel).Distinct())
+            cancel();
+        fcBuffInventoryService.Reset();
+        workshopBellService.Reset();
     }
 
     private bool TickTaskWatchdog()
@@ -1537,19 +1884,10 @@ public class VermaxionEngine
             '|',
             state,
             runQueueIndex,
-            fcBuffService.State,
-            vendorStockService.IsActive,
-            fishingService.StatusText,
-            registerRegistrablesService.State,
-            retainerListingRefillService.IsActive,
-            workshopBellService.IsActive,
-            verminionService.StatusText,
-            cactpotService.IsActive,
-            fashionReportService.State,
-            chocoboRaceService.StatusText,
-            lootGoblinMapGatherService.StatusText,
-            NagYourMomStatusText,
-            NagYourDadStatusText);
+            TaskIdByState.TryGetValue(state, out var id) && taskBindings.TryGetValue(id, out var binding)
+                ? binding.WatchdogProgress()
+                : StatusText,
+            workshopBellService.StatusText);
 
     private void RecordWatchdogProgress(string reason)
     {
@@ -1568,25 +1906,14 @@ public class VermaxionEngine
 
     private void CleanupFaultingWork(EngineState faultingState, string reason)
     {
-        switch (faultingState)
+        if (TaskIdByState.TryGetValue(faultingState, out var taskId) &&
+            taskBindings.TryGetValue(taskId, out var binding))
         {
-            case EngineState.RunningFCBuff: fcBuffService.Reset(); break;
-            case EngineState.RunningVendorStock: vendorStockService.Reset(); break;
-            case EngineState.RunningFishing: fishingService.Reset(); break;
-            case EngineState.RunningRegisterRegistrables: registerRegistrablesService.Reset(); break;
-            case EngineState.RunningRetainerListingRefill: retainerListingRefillService.Reset(); workshopBellService.Reset(); break;
-            case EngineState.RunningVerminion: verminionService.Reset(); break;
-            case EngineState.RunningMiniCactpot:
-            case EngineState.RunningJumboCactpot: cactpotService.Reset(); break;
-            case EngineState.RunningFashionReport: fashionReportService.Reset(); break;
-            case EngineState.RunningChocoboRacing: chocoboRaceService.Reset(); break;
-            case EngineState.RunningLootGoblinMapGather: lootGoblinMapGatherService.Cancel(); break;
-            case EngineState.RunningNagYourMom: momIPCClient.CancelActiveRun(); break;
-            case EngineState.RunningNagYourDad:
-                if (activeDadExecution != null)
-                    dadIPCClient.CancelSelection(activeDadExecution);
-                break;
-            default: ResetTaskServices(); break;
+            binding.Cancel();
+        }
+        else
+        {
+            CancelTaskServices();
         }
 
         vNavmeshIPC.Stop();
@@ -1708,6 +2035,16 @@ public class VermaxionEngine
             return $"Fashion Report service active ({fashionReportService.State})";
         if (chocoboRaceService.IsActive)
             return $"Chocobo Racing service active ({chocoboRaceService.StatusText})";
+        if (gearUpdaterService.IsActive)
+            return $"Gear Updater active ({gearUpdaterService.StatusText})";
+        if (highestCombatJobService.IsActive)
+            return $"Highest Combat Job active ({highestCombatJobService.StatusText})";
+        if (currentJobEquipmentService.IsActive)
+            return $"Current Job Equipment active ({currentJobEquipmentService.StatusText})";
+        if (seasonalGearService.IsActive)
+            return $"Seasonal Gear active ({seasonalGearService.StatusText})";
+        if (minionRouletteService.IsActive)
+            return $"Minion Roulette active ({minionRouletteService.StatusText})";
 
         var visibleAddon = TaskOwnedAddonNames.FirstOrDefault(IsAddonVisible);
         if (visibleAddon != null)
@@ -1840,11 +2177,87 @@ public class VermaxionEngine
     {
         runQueue.Clear();
         runQueueIndex = -1;
-        var runnableIds = LifecyclePolicy.BuildRunnableQueue(
-            GetNormalizedTaskOrder(),
-            _ => true,
-            id => ShouldRunTask(id, config));
+        LastPlan = BuildAutomationPlan(config);
+        foreach (var entry in LastPlan)
+            log.Information($"[Engine][Plan] {entry}");
+
+        var eligibility = taskBindings.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Eligibility(config),
+            StringComparer.Ordinal);
+        var runnableIds = AutomationDispatchPlanner.BuildRunnableQueue(GetNormalizedTaskOrder(), eligibility);
         runQueue.AddRange(runnableIds.Select(id => TaskStateById[id]));
+    }
+
+    private IReadOnlyList<AutomationPlanEntry> BuildAutomationPlan(CharacterConfig config)
+    {
+        var entries = new List<AutomationPlanEntry>(AutomationCatalog.Features.Count);
+        foreach (var feature in AutomationCatalog.Features)
+        {
+            var phase = feature.DefaultPhase.ToString();
+            TaskEligibility eligibility;
+            if (feature.Owner == AutomationOwner.EngineTask)
+            {
+                var configuredPhase = configuration.PostProcessTaskPlacement.TryGetValue(feature.Id, out var placement)
+                    ? placement
+                    : feature.DefaultPhase;
+                phase = configuredPhase.ToString();
+                var phaseMatches = activePhaseFilter == RunTaskPhaseFilter.All ||
+                                   activePhaseFilter == RunTaskPhaseFilter.BeforeAR && configuredPhase == PostProcessTaskPhase.BeforeAR ||
+                                   activePhaseFilter == RunTaskPhaseFilter.AfterAR && configuredPhase == PostProcessTaskPhase.AfterAR;
+                eligibility = phaseMatches
+                    ? taskBindings[feature.Id].Eligibility(config)
+                    : TaskEligibility.Blocked($"Assigned to {configuredPhase}, outside this {activePhaseFilter} run.");
+            }
+            else if (feature.Owner == AutomationOwner.RunHook)
+            {
+                eligibility = !config.EnableMiscCmd
+                    ? TaskEligibility.Disabled("Misc Commands is disabled for this character.")
+                    : activePhaseFilter == RunTaskPhaseFilter.BeforeAR
+                        ? TaskEligibility.Blocked("Misc Commands does not arm or run a Before-AR pass by itself.")
+                        : TaskEligibility.Runnable("Runs once at the start of this applicable engine run.");
+            }
+            else if (feature.Owner == AutomationOwner.PreemptiveCoordinator)
+            {
+                eligibility = config.EnableFishing
+                    ? TaskEligibility.Unsupported("Owned by FishingStartupCoordinator before engine dispatch; it is not reorderable.")
+                    : TaskEligibility.Disabled("Fishing is disabled for this character.");
+            }
+            else if (feature.Owner == AutomationOwner.ConfigOnlyWip)
+            {
+                eligibility = TaskEligibility.Unsupported("Configuration-only WIP; no runtime dispatch is advertised.");
+            }
+            else
+            {
+                var property = typeof(CharacterConfig).GetProperty(feature.FlagProperty);
+                var enabled = property?.GetValue(config) as bool? == true;
+                eligibility = enabled
+                    ? TaskEligibility.Unsupported("Child route option; dispatched only through nag your mom.")
+                    : TaskEligibility.Disabled("Child route option is disabled.");
+            }
+
+            entries.Add(new AutomationPlanEntry(
+                feature.Id,
+                feature.Label,
+                feature.OwnershipLabel,
+                phase,
+                eligibility.Status,
+                eligibility.Reason));
+        }
+
+        return entries;
+    }
+
+    private string BuildNoRunnableWorkSummary()
+    {
+        var reasons = LastPlan
+            .Where(entry => entry.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
+            .Select(entry => $"{entry.Label}: {entry.Reason}")
+            .Take(4)
+            .ToList();
+        return reasons.Count == 0
+            ? "All configured engine tasks are disabled or not due"
+            : $"No runnable work. {string.Join(" | ", reasons)}";
     }
 
     private void DispatchNextQueuedTask()
@@ -1855,9 +2268,10 @@ public class VermaxionEngine
             var nextState = runQueue[runQueueIndex];
             var taskId = TaskIdByState[nextState];
             var liveConfig = GetLiveActiveConfig();
-            if (!ShouldRunTask(taskId, liveConfig))
+            var eligibility = taskBindings[taskId].Eligibility(liveConfig);
+            if (!eligibility.IsRunnable)
             {
-                log.Information($"[Engine] Skipping queued task after dispatch revalidation: {taskId}");
+                log.Information($"[Engine] Skipping queued task after dispatch revalidation: {taskId} ({eligibility.Status}: {eligibility.Reason})");
                 continue;
             }
 
@@ -1871,7 +2285,7 @@ public class VermaxionEngine
     private void RevalidatePlannedQueue()
     {
         var liveConfig = GetLiveActiveConfig();
-        runQueue.RemoveAll(taskState => !ShouldRunTask(TaskIdByState[taskState], liveConfig));
+        runQueue.RemoveAll(taskState => !taskBindings[TaskIdByState[taskState]].Eligibility(liveConfig).IsRunnable);
         runQueueIndex = -1;
     }
 
@@ -1910,50 +2324,11 @@ public class VermaxionEngine
         return LifecyclePolicy.BuildRunnableQueue(
             configuration.PostProcessTaskOrder,
             id => configuration.PostProcessTaskPlacement.TryGetValue(id, out var placement) && placement == phase,
-            id => ShouldRunTask(id, config));
+            id => taskBindings.TryGetValue(id, out var binding) && binding.Eligibility(config).IsRunnable);
     }
 
     private bool ShouldRunTask(string id, CharacterConfig config)
-    {
-        return id switch
-        {
-            PostProcessTaskOrder.RefillListings => ShouldRunRefillFromListings(config),
-            PostProcessTaskOrder.FCBuffRefill => config.EnableFCBuffRefill,
-            PostProcessTaskOrder.VendorStock => config.EnableVendorStock &&
-                (config.VendorStockGysahlGreensTarget > 0 || config.VendorStockGrade8DarkMatterTarget > 0),
-            PostProcessTaskOrder.Fishing => ShouldRunFishing(config),
-            PostProcessTaskOrder.RegisterRegistrables => config.EnableRegisterRegistrables,
-            PostProcessTaskOrder.VerminionQueue => config.EnableVerminionQueue &&
-                ResetDetectionService.TaskNeedsRun(config.VerminionLastCompleted, config.VerminionNextReset),
-            PostProcessTaskOrder.MiniCactpot => config.EnableMiniCactpot &&
-                ResetDetectionService.TaskNeedsRun(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset),
-            PostProcessTaskOrder.JumboCactpot => config.EnableJumboCactpot &&
-                JumboCactpotRoutingPolicy.Decide(
-                    DateTime.UtcNow,
-                    ResetDetectionService.IsJumboCactpotPayoutAvailable(DateTime.UtcNow),
-                    config.JumboCactpotUnclaimedTickets,
-                    config.JumboCactpotPayoutAvailableAt,
-                    ResetDetectionService.TaskNeedsRun(config.JumboCactpotLastCompleted, config.JumboCactpotNextReset)).Route != JumboCactpotRoute.Wait,
-            PostProcessTaskOrder.FashionReport => config.EnableFashionReport &&
-                ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow) &&
-                ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset),
-            PostProcessTaskOrder.ChocoboRacing => config.EnableChocoboRacing &&
-                ResetDetectionService.TaskNeedsRun(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset),
-            PostProcessTaskOrder.LootGoblinMapGather => config.EnableLootGoblinMapGather &&
-                ResetDetectionService.TaskNeedsRun(config.LootGoblinMapGatherLastCompleted, config.LootGoblinMapGatherNextReset),
-            PostProcessTaskOrder.NagYourMom => ShouldRunNagYourMomNow(config) && momIPCClient.GetReadiness().CanStart,
-            PostProcessTaskOrder.NagYourDad => ShouldRunNagYourDadNow(config, out _) && dadIPCClient.IsReady(),
-            _ => false,
-        };
-    }
-
-    private bool ShouldRunFishing(CharacterConfig _)
-    {
-        // Ocean Fishing startup is owned by FishingStartupCoordinator. Keeping
-        // it out of the engine prevents unrelated postprocess tasks from running
-        // before current-character fishing prep.
-        return false;
-    }
+        => taskBindings.TryGetValue(id, out var binding) && binding.Eligibility(config).IsRunnable;
 
     private void CompleteRun()
     {
@@ -1997,6 +2372,7 @@ public class VermaxionEngine
         pendingRunOutcome = RunOutcome.None;
         pendingRunSummary = string.Empty;
         requireEnabledConfig = false;
+        miscHookRan = false;
         activeConfig = null;
         activePhaseFilter = RunTaskPhaseFilter.All;
         ResetOrphanResultTracking();
@@ -2028,8 +2404,12 @@ public class VermaxionEngine
             EngineState.CheckingResets => "Checking resets",
             EngineState.RunningFCBuff => "FC Buff Refill",
             EngineState.RunningVendorStock => "Vendor Stock",
-            EngineState.RunningFishing => "Fishing",
             EngineState.RunningRegisterRegistrables => "Register Registrables",
+            EngineState.RunningGearUpdater => "Gear Updater",
+            EngineState.RunningHighestCombatJob => "Highest Combat Job",
+            EngineState.RunningCurrentJobEquipment => "Current Job Equipment",
+            EngineState.RunningSeasonalGear => "Seasonal Gear",
+            EngineState.RunningMinionRoulette => "Minion Roulette",
             EngineState.RunningRetainerListingRefill => "Retainer Listing Refill",
             EngineState.RunningVerminion => "Verminion Queue",
             EngineState.RunningMiniCactpot => "Mini Cactpot",
@@ -2336,14 +2716,10 @@ public class VermaxionEngine
         if (route != MomRunRoutes.RivalWings)
             return false;
 
-        PersistCurrentCharacterConfig(current =>
-        {
-            current.EnableNagYourMomRivalWings = false;
-        }, "nag your mom Rival Wings disable recommendation");
-
         NagYourMomStatusText = string.IsNullOrWhiteSpace(reason)
-            ? "Rival Wings disabled by mom."
-            : reason;
+            ? "Rival Wings skipped because mom recommends disabling this route; the checkbox was preserved."
+            : $"Rival Wings skipped: {reason} The checkbox was preserved.";
+        log.Warning($"[Engine] {NagYourMomStatusText}");
         return true;
     }
 

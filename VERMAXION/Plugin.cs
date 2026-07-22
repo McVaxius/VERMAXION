@@ -66,6 +66,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public GearUpdaterService GearUpdaterService { get; init; }
     public HighestCombatJobService HighestCombatJobService { get; init; }
     public CurrentJobEquipmentService CurrentJobEquipmentService { get; init; }
+    internal IEquipmentAutomationRuntime EquipmentAutomationRuntime { get; init; }
     public YesAlreadyIPC YesAlreadyIPC { get; init; }
     public VNavmeshIPC VNavmeshIPC { get; init; }
     public LifestreamIPC LifestreamIPC { get; init; }
@@ -174,11 +175,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log);
         RegisterRegistrablesService = new RegisterRegistrablesService(CommandManager, ObjectTable, Log, ConfigManager);
-        MinionRouletteService = new MinionRouletteService(CommandManager, Log);
-        SeasonalGearService = new SeasonalGearService(CommandManager, Log);
-        GearUpdaterService = new GearUpdaterService(CommandManager, Log, ClientState, PlayerState);
-        HighestCombatJobService = new HighestCombatJobService(CommandManager, Log, PlayerState, ClientState, ObjectTable, DataManager);
-        CurrentJobEquipmentService = new CurrentJobEquipmentService(CommandManager, Log, PlayerState);
+        EquipmentAutomationRuntime = new NativeEquipmentAutomationRuntime(DataManager, Framework, PlayerState, Log);
+        MinionRouletteService = new MinionRouletteService(Log, ConfigManager);
+        SeasonalGearService = new SeasonalGearService(EquipmentAutomationRuntime, Log);
+        GearUpdaterService = new GearUpdaterService(EquipmentAutomationRuntime, Log);
+        HighestCombatJobService = new HighestCombatJobService(EquipmentAutomationRuntime, Log);
+        CurrentJobEquipmentService = new CurrentJobEquipmentService(EquipmentAutomationRuntime, Log);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         FishingRunLifecycle = new FishingRunLifecycle(Log, YesAlreadyIPC, AutoRetainerIPC, AutoHookIPC);
         FisherGearsetRuntime = new FisherGearsetRuntime();
@@ -215,7 +217,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             FCBuffService, FCBuffInventoryService, VerminionService,
             CactpotService, ChocoboRaceService, FashionReportService,
             VendorStockService, FishingService,
-            RegisterRegistrablesService, RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
+            RegisterRegistrablesService, GearUpdaterService, HighestCombatJobService,
+            CurrentJobEquipmentService, SeasonalGearService, MinionRouletteService, EquipmentAutomationRuntime,
+            RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
@@ -275,7 +279,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
-        RecommendedEquipHelper.Dispose();
         Framework.Update -= OnFrameworkUpdate;
         ClientState.Login -= OnLoginEvent;
         ConfigManager.OnCharacterChanged -= OnCharacterChanged;
@@ -639,6 +642,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             MinionRouletteService.Reset();
             SeasonalGearService.Reset();
             GearUpdaterService.Reset();
+            HighestCombatJobService.Reset();
+            CurrentJobEquipmentService.Reset();
             
             // Reset engine state if running
             if (Engine.IsRunning)
@@ -1421,6 +1426,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             MinionRouletteService.Update();
             SeasonalGearService.Update();
             GearUpdaterService.Update();
+            HighestCombatJobService.Update();
             CurrentJobEquipmentService.Update();
             FishingService.Update();
         }
@@ -1595,6 +1601,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         MinionRouletteService.Reset();
         SeasonalGearService.Reset();
         GearUpdaterService.Reset();
+        HighestCombatJobService.Reset();
+        CurrentJobEquipmentService.Reset();
         Log.Information("[FULL STOP] All services reset");
 
         // Stop VNavmesh navigation
