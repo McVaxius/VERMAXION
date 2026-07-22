@@ -315,11 +315,21 @@ public sealed class GearUpdaterStateMachine
 
                 if (equipAttempts == 0 || StepTimedOut())
                 {
+                    if (equipAttempts >= MaxEquipAttempts)
+                    {
+                        restoreTerminalState = EquipmentTaskTerminalState.Failed;
+                        Status = $"Could not verify restoration of starting gearset {startingGearsetId}: {restoreFailure}";
+                        FinishRestore();
+                        break;
+                    }
+
                     equipAttempts++;
                     if (!runtime.TryEquipGearset(startingGearsetId, out var restoreError))
                         restoreFailure = restoreError;
+                    else
+                        restoreFailure = string.Empty;
 
-                    if (equipAttempts >= MaxEquipAttempts)
+                    if (!string.IsNullOrWhiteSpace(restoreFailure) && equipAttempts >= MaxEquipAttempts)
                     {
                         restoreTerminalState = EquipmentTaskTerminalState.Failed;
                         Status = $"Could not restore starting gearset {startingGearsetId}: {restoreFailure}";
@@ -645,6 +655,7 @@ public sealed class SeasonalGearStateMachine
 {
     private static readonly TimeSpan StepTimeout = TimeSpan.FromSeconds(8);
     private const int MaxMoveAttempts = 3;
+    private const int MaxRestoreAttempts = 3;
     private readonly IEquipmentAutomationRuntime runtime;
     private readonly IReadOnlyList<uint> curatedIds;
     private readonly Func<int, int> selectIndex;
@@ -656,6 +667,7 @@ public sealed class SeasonalGearStateMachine
     private ulong startingContentId;
     private int selectedIndex;
     private int moveAttempts;
+    private int restoreAttempts;
     private string failureReason = string.Empty;
 
     public enum State
@@ -802,6 +814,13 @@ public sealed class SeasonalGearStateMachine
 
                 if (StepTimedOut())
                 {
+                    if (restoreAttempts >= MaxRestoreAttempts)
+                    {
+                        SetState(State.Failed, $"{failureReason} Starting gearset restoration could not be verified after {restoreAttempts} attempts.");
+                        break;
+                    }
+
+                    restoreAttempts++;
                     if (!runtime.TryEquipGearset(startingGearset.GearsetId, out var restoreError))
                         failureReason = $"{failureReason} Restore failed: {restoreError}";
                     stateEnteredAt = runtime.UtcNow;
@@ -826,6 +845,7 @@ public sealed class SeasonalGearStateMachine
         startingContentId = 0;
         selectedIndex = 0;
         moveAttempts = 0;
+        restoreAttempts = 0;
         failureReason = string.Empty;
         CurrentState = State.Idle;
         Status = "Idle";
@@ -843,6 +863,7 @@ public sealed class SeasonalGearStateMachine
             return;
         }
 
+        restoreAttempts = 1;
         runtime.TryEquipGearset(startingGearset.GearsetId, out _);
         SetState(State.Restoring, $"{reason} Restoring starting gearset.");
     }
