@@ -81,32 +81,278 @@ public readonly record struct OceanFishingRailDestination(
     Vector3 Position,
     float Rotation);
 
-public static class OceanFishingRailPositionGenerator
+internal readonly record struct OceanFishingEdgeCandidate(
+    Vector3 Position,
+    int DirectionIndex);
+
+internal enum OceanFishingPositionPlanSource
 {
-    public const int MaximumAttempts = 5;
-    public const float StarboardRotation = 1.5f;
-    public const float PortRotation = -1.5f;
+    MeshEdge = 0,
+    FurthestPlayer = 1,
+    VoyageEntry = 2,
+}
 
-    public static OceanFishingRailDestination Generate(Random random)
+internal sealed record OceanFishingPositionPlan(
+    OceanFishingRailDestination Primary,
+    OceanFishingRailDestination? Alternative,
+    OceanFishingPositionPlanSource Source,
+    int EdgeCandidateCount);
+
+internal static class OceanFishingEdgeSelectionPolicy
+{
+    public const int DirectionCount = 32;
+    public const float ProbeStep = 0.5f;
+    public const float ProbeLimit = 20f;
+    public const float CrowdRadius = 2f;
+    public const float ProbeQueryHalfExtent = 0.2f;
+    public const float ProbeVerticalOffset = 1f;
+    public const float MaximumHorizontalResolutionError = 0.35f;
+    public const float MaximumDeckHeightDifference = 1.5f;
+
+    public static Vector3 BuildProbe(Vector3 voyageEntry, int directionIndex, float distance)
     {
-        ArgumentNullException.ThrowIfNull(random);
+        if (directionIndex < 0 || directionIndex >= DirectionCount)
+            throw new ArgumentOutOfRangeException(nameof(directionIndex));
+        if (!float.IsFinite(distance) || distance < ProbeStep || distance > ProbeLimit)
+            throw new ArgumentOutOfRangeException(nameof(distance));
 
-        if (random.Next(2) == 0)
+        var angle = MathF.Tau * directionIndex / DirectionCount;
+        return new Vector3(
+            voyageEntry.X + MathF.Sin(angle) * distance,
+            voyageEntry.Y + ProbeVerticalOffset,
+            voyageEntry.Z + MathF.Cos(angle) * distance);
+    }
+
+    public static bool IsResolvedProbeUsable(
+        Vector3 voyageEntry,
+        Vector3 requestedProbe,
+        Vector3 resolvedPoint)
+    {
+        if (!IsFinite(voyageEntry) || !IsFinite(requestedProbe) || !IsFinite(resolvedPoint))
+            return false;
+
+        var horizontalError = Vector2.Distance(
+            new Vector2(requestedProbe.X, requestedProbe.Z),
+            new Vector2(resolvedPoint.X, resolvedPoint.Z));
+        return horizontalError <= MaximumHorizontalResolutionError &&
+               MathF.Abs(resolvedPoint.Y - voyageEntry.Y) <= MaximumDeckHeightDifference;
+    }
+
+    public static OceanFishingPositionPlan Select(
+        Vector3 voyageEntry,
+        float currentRotation,
+        IReadOnlyList<OceanFishingEdgeCandidate> edgeCandidates,
+        IReadOnlyList<Vector3> otherPlayerPositions)
+    {
+        ArgumentNullException.ThrowIfNull(edgeCandidates);
+        ArgumentNullException.ThrowIfNull(otherPlayerPositions);
+
+        var players = otherPlayerPositions
+            .Where(IsFinite)
+            .ToArray();
+        var ranked = edgeCandidates
+            .Where(candidate => IsFinite(candidate.Position))
+            .Select(candidate => new RankedEdge(
+                Destination: new OceanFishingRailDestination(
+                    candidate.Position,
+                    ResolveOutwardRotation(voyageEntry, candidate.Position, currentRotation)),
+                DistanceFromEntry: Vector3.Distance(voyageEntry, candidate.Position),
+                PlayerClearance: players.Length == 0
+                    ? float.PositiveInfinity
+                    : players.Min(player => Vector3.Distance(player, candidate.Position)),
+                candidate.DirectionIndex))
+            .ToArray();
+
+        if (ranked.Length > 0)
         {
-            var x = 7f + (float)(random.NextDouble() * 0.25);
-            var z = random.Next(2) == 0
-                ? -14f + random.NextSingle() * 10f
-                : -2f + random.NextSingle() * 7f;
-            return new OceanFishingRailDestination(
-                new Vector3(x, 6.711f, z),
-                StarboardRotation);
+            var uncrowded = ranked
+                .Where(candidate => candidate.PlayerClearance >= CrowdRadius)
+                .OrderBy(candidate => candidate.DistanceFromEntry)
+                .ThenBy(candidate => candidate.DirectionIndex);
+            var crowded = ranked
+                .Where(candidate => candidate.PlayerClearance < CrowdRadius)
+                .OrderByDescending(candidate => candidate.PlayerClearance)
+                .ThenBy(candidate => candidate.DistanceFromEntry)
+                .ThenBy(candidate => candidate.DirectionIndex);
+            var ordered = uncrowded.Concat(crowded).ToArray();
+            return new OceanFishingPositionPlan(
+                ordered[0].Destination,
+                ordered.Length > 1 ? ordered[1].Destination : null,
+                OceanFishingPositionPlanSource.MeshEdge,
+                ranked.Length);
         }
 
-        var portX = -7f - (float)(random.NextDouble() * 0.25);
-        var portZ = -10f + random.NextSingle() * 15.5f;
-        return new OceanFishingRailDestination(
-            new Vector3(portX, 6.711f, portZ),
-            PortRotation);
+        if (players.Length > 0)
+        {
+            var furthestPlayer = players
+                .OrderByDescending(player => Vector3.DistanceSquared(voyageEntry, player))
+                .ThenBy(player => player.X)
+                .ThenBy(player => player.Y)
+                .ThenBy(player => player.Z)
+                .First();
+            return new OceanFishingPositionPlan(
+                new OceanFishingRailDestination(
+                    furthestPlayer,
+                    ResolveOutwardRotation(voyageEntry, furthestPlayer, currentRotation)),
+                Alternative: null,
+                OceanFishingPositionPlanSource.FurthestPlayer,
+                EdgeCandidateCount: 0);
+        }
+
+        return new OceanFishingPositionPlan(
+            new OceanFishingRailDestination(voyageEntry, currentRotation),
+            Alternative: null,
+            OceanFishingPositionPlanSource.VoyageEntry,
+            EdgeCandidateCount: 0);
+    }
+
+    public static float ResolveOutwardRotation(
+        Vector3 voyageEntry,
+        Vector3 destination,
+        float fallbackRotation)
+    {
+        var deltaX = destination.X - voyageEntry.X;
+        var deltaZ = destination.Z - voyageEntry.Z;
+        return MathF.Abs(deltaX) < 0.0001f && MathF.Abs(deltaZ) < 0.0001f
+            ? fallbackRotation
+            : MathF.Atan2(deltaX, deltaZ);
+    }
+
+    private static bool IsFinite(Vector3 position)
+        => float.IsFinite(position.X) &&
+           float.IsFinite(position.Y) &&
+           float.IsFinite(position.Z);
+
+    private readonly record struct RankedEdge(
+        OceanFishingRailDestination Destination,
+        float DistanceFromEntry,
+        float PlayerClearance,
+        int DirectionIndex);
+}
+
+internal readonly record struct OceanFishingStartEvaluation(
+    FishingCastDecision Decision,
+    string Gate,
+    bool StopNavigation);
+
+internal sealed class OceanFishingVoyageState
+{
+    private DateTimeOffset? lastStartAttemptAt;
+    private DateTimeOffset? firstDestinationUnfishableSince;
+    private bool baitAppliedThisSession;
+
+    public bool FishingEverStarted { get; private set; }
+    public bool MovementLocked { get; private set; }
+    public bool AlternativeUsed { get; private set; }
+    public int SessionNumber { get; private set; }
+    public int SessionStartAttemptCount { get; private set; }
+
+    public void Reset()
+    {
+        lastStartAttemptAt = null;
+        firstDestinationUnfishableSince = null;
+        baitAppliedThisSession = false;
+        FishingEverStarted = false;
+        MovementLocked = false;
+        AlternativeUsed = false;
+        SessionNumber = 0;
+        SessionStartAttemptCount = 0;
+    }
+
+    public void BeginSession()
+    {
+        SessionNumber++;
+        SessionStartAttemptCount = 0;
+        lastStartAttemptAt = null;
+        firstDestinationUnfishableSince = null;
+        baitAppliedThisSession = false;
+    }
+
+    public bool TryApplySessionBait()
+    {
+        if (baitAppliedThisSession)
+            return false;
+
+        baitAppliedThisSession = true;
+        return true;
+    }
+
+    public OceanFishingStartEvaluation EvaluateFishingStart(
+        DateTimeOffset nowUtc,
+        bool enabled,
+        bool inFishingContext,
+        bool zoneTransitionActive,
+        bool playerAvailable,
+        bool gatheringConditionActive,
+        bool fishingConditionActive,
+        bool resultWindowVisible)
+    {
+        var evaluation = FishingCastPolicy.Evaluate(
+            enabled,
+            inFishingContext,
+            zoneTransitionActive,
+            playerAvailable,
+            gatheringConditionActive,
+            fishingConditionActive,
+            resultWindowVisible,
+            lastStartAttemptAt.HasValue
+                ? nowUtc - lastStartAttemptAt.Value
+                : TimeSpan.MaxValue);
+
+        if (evaluation.Decision == FishingCastDecision.Attempt)
+        {
+            lastStartAttemptAt = nowUtc;
+            SessionStartAttemptCount++;
+        }
+
+        var stopNavigation = false;
+        if (evaluation.Decision == FishingCastDecision.Acknowledged)
+        {
+            stopNavigation = !MovementLocked;
+            FishingEverStarted = true;
+            MovementLocked = true;
+            firstDestinationUnfishableSince = null;
+        }
+
+        return new OceanFishingStartEvaluation(
+            evaluation.Decision,
+            evaluation.Gate,
+            stopNavigation);
+    }
+
+    public bool ShouldSelectAlternative(
+        DateTimeOffset nowUtc,
+        bool atFirstDestination,
+        bool alternativeAvailable,
+        bool canFish,
+        bool playerAvailable,
+        bool busy)
+    {
+        var eligible = !FishingEverStarted &&
+                       !MovementLocked &&
+                       !AlternativeUsed &&
+                       atFirstDestination &&
+                       alternativeAvailable &&
+                       playerAvailable &&
+                       !busy;
+        if (!eligible || canFish)
+        {
+            firstDestinationUnfishableSince = null;
+            return false;
+        }
+
+        if (!firstDestinationUnfishableSince.HasValue)
+        {
+            firstDestinationUnfishableSince = nowUtc;
+            return false;
+        }
+
+        if (nowUtc - firstDestinationUnfishableSince.Value < FishingCastPolicy.CanFishFallbackDelay)
+            return false;
+
+        AlternativeUsed = true;
+        firstDestinationUnfishableSince = null;
+        return true;
     }
 }
 
@@ -1287,8 +1533,7 @@ public readonly record struct FishingCastEvaluation(
 
 public static class FishingCastPolicy
 {
-    public const string CastCommand = "/ac cast";
-    public static readonly TimeSpan FirstAttemptDelay = TimeSpan.FromSeconds(1);
+    public const string CastCommand = "/ahstart";
     public static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(3);
     public static readonly TimeSpan CanFishFallbackDelay = TimeSpan.FromSeconds(10);
 
@@ -1296,14 +1541,10 @@ public static class FishingCastPolicy
         bool enabled,
         bool inFishingContext,
         bool zoneTransitionActive,
-        bool railPositionReady,
-        bool canFish,
         bool playerAvailable,
         bool gatheringConditionActive,
         bool fishingConditionActive,
-        bool busy,
         bool resultWindowVisible,
-        TimeSpan railSettlementElapsed,
         TimeSpan sinceLastAttempt)
     {
         if (!enabled)
@@ -1318,53 +1559,11 @@ public static class FishingCastPolicy
             return new FishingCastEvaluation(FishingCastDecision.Acknowledged, "Fishing/Gathering active");
         if (!playerAvailable)
             return Suppressed("player unavailable");
-        if (busy)
-            return Suppressed("player occupied/casting");
-        if (!railPositionReady)
-            return Suppressed("rail position invalid");
-        if (railSettlementElapsed < FirstAttemptDelay)
-            return Suppressed("waiting for movement/bait settlement");
-        if (!canFish)
-            return Suppressed("CanFish false");
         if (sinceLastAttempt < RetryInterval)
             return Suppressed("waiting for retry interval");
 
         return new FishingCastEvaluation(FishingCastDecision.Attempt, string.Empty);
     }
-
-    public static bool ShouldAdvanceRail(
-        bool canFish,
-        bool gatheringConditionActive,
-        bool fishingConditionActive,
-        bool playerAvailable,
-        bool busy,
-        TimeSpan canFishUnavailableElapsed)
-        => !canFish &&
-           !gatheringConditionActive &&
-           !fishingConditionActive &&
-           playerAvailable &&
-           !busy &&
-           canFishUnavailableElapsed >= CanFishFallbackDelay;
-
-    public static bool ShouldCast(
-        bool enabled,
-        bool inFishingContext,
-        bool railPositionReady,
-        bool canFish,
-        bool playerAvailable,
-        bool gatheringConditionActive,
-        bool fishingConditionActive,
-        bool busy,
-        bool resultWindowVisible)
-        => enabled &&
-           inFishingContext &&
-           railPositionReady &&
-           canFish &&
-           playerAvailable &&
-           !gatheringConditionActive &&
-           !fishingConditionActive &&
-           !busy &&
-           !resultWindowVisible;
 
     private static FishingCastEvaluation Suppressed(string gate)
         => new(FishingCastDecision.Suppressed, gate);
