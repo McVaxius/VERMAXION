@@ -2,14 +2,19 @@ using System;
 using System.Globalization;
 using System.Numerics;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
 
 namespace VERMAXION.IPC;
 
 public class VNavmeshIPC : IDisposable
 {
+    private const string PointOnFloorIpc = "vnavmesh.Query.Mesh.PointOnFloor";
+
     private readonly IPluginLog log;
     private readonly ICommandManager commandManager;
+    private readonly ICallGateSubscriber<Vector3, bool, float, Vector3?> pointOnFloorSubscriber;
+    private DateTime nextFloorQueryFailureLogAt = DateTime.MinValue;
     
     public bool IsReady { get; private set; } = true;
     public bool PathIsRunning { get; private set; }
@@ -18,6 +23,8 @@ public class VNavmeshIPC : IDisposable
     {
         this.log = log;
         this.commandManager = commandManager;
+        pointOnFloorSubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<Vector3, bool, float, Vector3?>(PointOnFloorIpc);
         log.Information("[VNavmeshIPC] VNavmesh IPC initialized (using command fallback)");
     }
     
@@ -52,6 +59,48 @@ public class VNavmeshIPC : IDisposable
         catch (Exception ex)
         {
             log.Error($"[VNavmeshIPC] Stop failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    public bool TryFindReachablePointOnFloor(
+        Vector3 probe,
+        float halfExtentXZ,
+        out Vector3 point)
+    {
+        point = default;
+        if (!float.IsFinite(probe.X) ||
+            !float.IsFinite(probe.Y) ||
+            !float.IsFinite(probe.Z) ||
+            !float.IsFinite(halfExtentXZ) ||
+            halfExtentXZ <= 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            var resolved = pointOnFloorSubscriber.InvokeFunc(probe, false, halfExtentXZ);
+            if (resolved is not { } candidate ||
+                !float.IsFinite(candidate.X) ||
+                !float.IsFinite(candidate.Y) ||
+                !float.IsFinite(candidate.Z))
+            {
+                return false;
+            }
+
+            point = candidate;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            var now = DateTime.UtcNow;
+            if (now >= nextFloorQueryFailureLogAt)
+            {
+                nextFloorQueryFailureLogAt = now + TimeSpan.FromSeconds(5);
+                log.Debug($"[VNavmeshIPC] Read-only PointOnFloor query failed: {ex.Message}");
+            }
+
             return false;
         }
     }

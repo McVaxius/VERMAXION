@@ -58,51 +58,132 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void SeededRailPositionsStayInsideHenchmanEnvelopes()
+    public void EdgeScanUsesThirtyTwoHalfYalmDirectionsWithTwentyYalmLimit()
     {
-        var random = new Random(0x5EED);
-        var sawStarboard = false;
-        var sawPort = false;
-        var sawStarboardForwardBand = false;
-        var sawStarboardAftBand = false;
+        var origin = new Vector3(10f, 6.7f, -4f);
+        var north = OceanFishingEdgeSelectionPolicy.BuildProbe(origin, 0, 0.5f);
+        var east = OceanFishingEdgeSelectionPolicy.BuildProbe(
+            origin,
+            OceanFishingEdgeSelectionPolicy.DirectionCount / 4,
+            20f);
 
-        for (var index = 0; index < 4096; index++)
+        Assert.Equal(32, OceanFishingEdgeSelectionPolicy.DirectionCount);
+        Assert.Equal(0.5f, OceanFishingEdgeSelectionPolicy.ProbeStep);
+        Assert.Equal(20f, OceanFishingEdgeSelectionPolicy.ProbeLimit);
+        Assert.Equal(new Vector3(10f, 7.7f, -3.5f), north);
+        Assert.InRange(east.X, 29.999f, 30.001f);
+        Assert.InRange(east.Z, -4.001f, -3.999f);
+    }
+
+    [Fact]
+    public void DynamicSelectionChoosesNearestUncrowdedEdgeAndFacesOutward()
+    {
+        var candidates = new[]
         {
-            var destination = OceanFishingRailPositionGenerator.Generate(random);
-            var position = destination.Position;
+            new OceanFishingEdgeCandidate(new Vector3(0f, 0f, 3f), 0),
+            new OceanFishingEdgeCandidate(new Vector3(4f, 0f, 0f), 8),
+            new OceanFishingEdgeCandidate(new Vector3(-6f, 0f, 0f), 24),
+        };
+        var players = new[] { new Vector3(0f, 0f, 3.5f) };
 
-            Assert.Equal(6.711f, position.Y);
-            if (position.X > 0)
-            {
-                sawStarboard = true;
-                Assert.InRange(position.X, 7.0f, 7.25f);
-                Assert.Equal(OceanFishingRailPositionGenerator.StarboardRotation, destination.Rotation);
+        var plan = OceanFishingEdgeSelectionPolicy.Select(
+            Vector3.Zero,
+            currentRotation: 0.25f,
+            candidates,
+            players);
 
-                if (position.Z <= -4f)
-                {
-                    sawStarboardForwardBand = true;
-                    Assert.InRange(position.Z, -14f, -4f);
-                }
-                else
-                {
-                    sawStarboardAftBand = true;
-                    Assert.InRange(position.Z, -2f, 5f);
-                }
-            }
-            else
-            {
-                sawPort = true;
-                Assert.InRange(position.X, -7.25f, -7.0f);
-                Assert.InRange(position.Z, -10f, 5.5f);
-                Assert.Equal(OceanFishingRailPositionGenerator.PortRotation, destination.Rotation);
-            }
-        }
+        Assert.Equal(OceanFishingPositionPlanSource.MeshEdge, plan.Source);
+        Assert.Equal(new Vector3(4f, 0f, 0f), plan.Primary.Position);
+        Assert.Equal(MathF.PI / 2f, plan.Primary.Rotation, precision: 5);
+        Assert.Equal(new Vector3(-6f, 0f, 0f), plan.Alternative?.Position);
+    }
 
-        Assert.True(sawStarboard);
-        Assert.True(sawPort);
-        Assert.True(sawStarboardForwardBand);
-        Assert.True(sawStarboardAftBand);
-        Assert.Equal(5, OceanFishingRailPositionGenerator.MaximumAttempts);
+    [Theory]
+    [InlineData(0f, 1f, 0f)]
+    [InlineData(1f, 0f, 1.5707964f)]
+    [InlineData(0f, -1f, 3.1415927f)]
+    [InlineData(-1f, 0f, -1.5707964f)]
+    public void OutwardFacingUsesEntryToEdgeDirection(float x, float z, float expectedRotation)
+    {
+        var rotation = OceanFishingEdgeSelectionPolicy.ResolveOutwardRotation(
+            Vector3.Zero,
+            new Vector3(x, 0f, z),
+            fallbackRotation: 0.25f);
+
+        Assert.Equal(expectedRotation, rotation, precision: 5);
+    }
+
+    [Fact]
+    public void FullyCrowdedSelectionUsesGreatestPlayerClearance()
+    {
+        var candidates = new[]
+        {
+            new OceanFishingEdgeCandidate(new Vector3(0f, 0f, 3f), 0),
+            new OceanFishingEdgeCandidate(new Vector3(4f, 0f, 0f), 8),
+        };
+        var players = new[]
+        {
+            new Vector3(0f, 0f, 2.5f),
+            new Vector3(5.5f, 0f, 0f),
+        };
+
+        var plan = OceanFishingEdgeSelectionPolicy.Select(
+            Vector3.Zero,
+            currentRotation: 0f,
+            candidates,
+            players);
+
+        Assert.Equal(new Vector3(4f, 0f, 0f), plan.Primary.Position);
+        Assert.Equal(new Vector3(0f, 0f, 3f), plan.Alternative?.Position);
+    }
+
+    [Fact]
+    public void FailedScanFallsBackToFurthestPlayerSnapshotOrVoyageEntry()
+    {
+        var origin = new Vector3(1f, 2f, 3f);
+        var players = new[]
+        {
+            new Vector3(2f, 2f, 3f),
+            new Vector3(1f, 2f, 11f),
+        };
+
+        var playerFallback = OceanFishingEdgeSelectionPolicy.Select(
+            origin,
+            currentRotation: 0.75f,
+            Array.Empty<OceanFishingEdgeCandidate>(),
+            players);
+        var entryFallback = OceanFishingEdgeSelectionPolicy.Select(
+            origin,
+            currentRotation: 0.75f,
+            Array.Empty<OceanFishingEdgeCandidate>(),
+            Array.Empty<Vector3>());
+
+        Assert.Equal(OceanFishingPositionPlanSource.FurthestPlayer, playerFallback.Source);
+        Assert.Equal(players[1], playerFallback.Primary.Position);
+        Assert.Null(playerFallback.Alternative);
+        Assert.Equal(OceanFishingPositionPlanSource.VoyageEntry, entryFallback.Source);
+        Assert.Equal(origin, entryFallback.Primary.Position);
+        Assert.Equal(0.75f, entryFallback.Primary.Rotation);
+    }
+
+    [Fact]
+    public void ProbeResolutionRejectsDifferentDeckOrHorizontalSnap()
+    {
+        var origin = new Vector3(0f, 6.7f, 0f);
+        var probe = OceanFishingEdgeSelectionPolicy.BuildProbe(origin, 0, 2f);
+
+        Assert.True(OceanFishingEdgeSelectionPolicy.IsResolvedProbeUsable(
+            origin,
+            probe,
+            new Vector3(0.1f, 6.7f, 2f)));
+        Assert.False(OceanFishingEdgeSelectionPolicy.IsResolvedProbeUsable(
+            origin,
+            probe,
+            new Vector3(0f, 3f, 2f)));
+        Assert.False(OceanFishingEdgeSelectionPolicy.IsResolvedProbeUsable(
+            origin,
+            probe,
+            new Vector3(1f, 6.7f, 2f)));
     }
 
     [Fact]
@@ -1052,72 +1133,20 @@ public sealed class FishingPolicyTests
         Assert.Equal(expected, BeforeArMultiModePolicy.ShouldRunBeforeAr(readSucceeded, enabled));
     }
 
-    [Theory]
-    [InlineData(true, true, true, true, true, false, false, false, false, true)]
-    [InlineData(true, true, true, true, true, true, false, false, false, false)]
-    [InlineData(true, true, true, true, true, false, true, false, false, false)]
-    [InlineData(true, true, true, true, true, true, true, false, false, false)]
-    [InlineData(true, true, false, true, true, false, false, false, false, false)]
-    [InlineData(true, true, true, false, true, false, false, false, false, false)]
-    [InlineData(false, true, true, true, true, false, false, false, false, false)]
-    [InlineData(true, false, true, true, true, false, false, false, false, false)]
-    [InlineData(true, true, true, true, false, false, false, false, false, false)]
-    [InlineData(true, true, true, true, true, false, false, true, false, false)]
-    [InlineData(true, true, true, true, true, false, false, false, true, false)]
-    public void CastPolicyOnlyCastsInReadyEligibleState(
-        bool enabled,
-        bool inFishingContext,
-        bool railPositionReady,
-        bool canFish,
-        bool playerAvailable,
-        bool gatheringConditionActive,
-        bool fishingConditionActive,
-        bool busy,
-        bool resultWindowVisible,
-        bool expected)
+    [Fact]
+    public void FishingStartUsesAutoHookCommandAndIsEligibleWhileMoving()
     {
-        Assert.Equal(expected, FishingCastPolicy.ShouldCast(
-            enabled,
-            inFishingContext,
-            railPositionReady,
-            canFish,
-            playerAvailable,
-            gatheringConditionActive,
-            fishingConditionActive,
-            busy,
-            resultWindowVisible));
+        var whileMoving = EvaluateCast(sinceLastAttempt: TimeSpan.MaxValue);
+
+        Assert.Equal("/ahstart", FishingCastPolicy.CastCommand);
+        Assert.Equal(FishingCastDecision.Attempt, whileMoving.Decision);
     }
 
     [Fact]
-    public void CastCommandIsExactlyLowercaseActionCast()
+    public void UnacknowledgedAutoHookStartRetriesEveryThreeSeconds()
     {
-        Assert.Equal("/ac cast", FishingCastPolicy.CastCommand);
-    }
-
-    [Fact]
-    public void FirstCastWaitsForOneSecondMovementAndBaitSettlement()
-    {
-        var settling = EvaluateCast(
-            railSettlementElapsed: TimeSpan.FromMilliseconds(999),
-            sinceLastAttempt: TimeSpan.MaxValue);
-        var ready = EvaluateCast(
-            railSettlementElapsed: TimeSpan.FromSeconds(1),
-            sinceLastAttempt: TimeSpan.MaxValue);
-
-        Assert.Equal(FishingCastDecision.Suppressed, settling.Decision);
-        Assert.Equal("waiting for movement/bait settlement", settling.Gate);
-        Assert.Equal(FishingCastDecision.Attempt, ready.Decision);
-    }
-
-    [Fact]
-    public void UnacknowledgedCastRetriesEveryThreeSeconds()
-    {
-        var early = EvaluateCast(
-            railSettlementElapsed: TimeSpan.FromSeconds(10),
-            sinceLastAttempt: TimeSpan.FromMilliseconds(2999));
-        var due = EvaluateCast(
-            railSettlementElapsed: TimeSpan.FromSeconds(10),
-            sinceLastAttempt: TimeSpan.FromSeconds(3));
+        var early = EvaluateCast(sinceLastAttempt: TimeSpan.FromMilliseconds(2999));
+        var due = EvaluateCast(sinceLastAttempt: TimeSpan.FromSeconds(3));
 
         Assert.Equal(FishingCastDecision.Suppressed, early.Decision);
         Assert.Equal("waiting for retry interval", early.Gate);
@@ -1156,60 +1185,160 @@ public sealed class FishingPolicyTests
         Assert.Equal(expectedGate, evaluation.Gate);
     }
 
-    [Fact]
-    public void BusyStateSuppressesWithoutAcknowledgingOrCancellingPendingCast()
+    [Theory]
+    [InlineData(false, true, false, true, false, "disabled")]
+    [InlineData(true, false, false, true, false, "Ocean Fishing duty context inactive")]
+    [InlineData(true, true, true, true, false, "route transition active")]
+    [InlineData(true, true, false, false, false, "player unavailable")]
+    [InlineData(true, true, false, true, true, "result window visible")]
+    public void AutoHookStartHonorsOnlyLifecycleSafetyGates(
+        bool enabled,
+        bool inFishingContext,
+        bool zoneTransitionActive,
+        bool playerAvailable,
+        bool resultWindowVisible,
+        string expectedGate)
     {
-        var whileBusy = EvaluateCast(
-            busy: true,
-            sinceLastAttempt: TimeSpan.FromSeconds(10));
-        var afterBusy = EvaluateCast(
-            busy: false,
-            sinceLastAttempt: TimeSpan.FromSeconds(10));
+        var evaluation = EvaluateCast(
+            enabled,
+            inFishingContext,
+            zoneTransitionActive,
+            playerAvailable,
+            resultWindowVisible: resultWindowVisible);
 
-        Assert.Equal(FishingCastDecision.Suppressed, whileBusy.Decision);
-        Assert.Equal("player occupied/casting", whileBusy.Gate);
-        Assert.Equal(FishingCastDecision.Attempt, afterBusy.Decision);
-    }
-
-    [Fact]
-    public void CanFishFallbackUsesTenSecondThreshold()
-    {
-        Assert.Equal(TimeSpan.FromSeconds(10), FishingCastPolicy.CanFishFallbackDelay);
-        var evaluation = EvaluateCast(canFish: false);
         Assert.Equal(FishingCastDecision.Suppressed, evaluation.Decision);
-        Assert.Equal("CanFish false", evaluation.Gate);
-        Assert.False(FishingCastPolicy.ShouldAdvanceRail(
-            canFish: false,
-            gatheringConditionActive: false,
-            fishingConditionActive: false,
-            playerAvailable: true,
-            busy: false,
-            TimeSpan.FromMilliseconds(9999)));
-        Assert.True(FishingCastPolicy.ShouldAdvanceRail(
-            canFish: false,
-            gatheringConditionActive: false,
-            fishingConditionActive: false,
-            playerAvailable: true,
-            busy: false,
-            TimeSpan.FromSeconds(10)));
+        Assert.Equal(expectedGate, evaluation.Gate);
     }
 
     [Fact]
-    public void RouteCutscenePausesThenAllowsFreshCastAfterSettlement()
+    public void SessionBaitIsConsumedOncePerSession()
     {
-        var duringCutscene = EvaluateCast(
-            zoneTransitionActive: true,
-            railSettlementElapsed: TimeSpan.FromSeconds(10));
-        var immediatelyAfterRail = EvaluateCast(
-            zoneTransitionActive: false,
-            railSettlementElapsed: TimeSpan.Zero);
-        var settledAfterRail = EvaluateCast(
-            zoneTransitionActive: false,
-            railSettlementElapsed: TimeSpan.FromSeconds(1));
+        var voyage = new OceanFishingVoyageState();
+        voyage.Reset();
+        voyage.BeginSession();
 
-        Assert.Equal("route transition active", duringCutscene.Gate);
-        Assert.Equal("waiting for movement/bait settlement", immediatelyAfterRail.Gate);
-        Assert.Equal(FishingCastDecision.Attempt, settledAfterRail.Decision);
+        Assert.True(voyage.TryApplySessionBait());
+        Assert.False(voyage.TryApplySessionBait());
+
+        voyage.BeginSession();
+
+        Assert.Equal(2, voyage.SessionNumber);
+        Assert.True(voyage.TryApplySessionBait());
+        Assert.False(voyage.TryApplySessionBait());
+    }
+
+    [Fact]
+    public void AcknowledgementRequestsImmediateStopAndPermanentlyLocksMovement()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginSession();
+
+        var firstAttempt = EvaluateVoyageStart(voyage, now);
+        var acknowledgement = EvaluateVoyageStart(
+            voyage,
+            now.AddSeconds(1),
+            fishingConditionActive: true);
+        var repeatedAcknowledgement = EvaluateVoyageStart(
+            voyage,
+            now.AddSeconds(2),
+            gatheringConditionActive: true);
+
+        Assert.Equal(FishingCastDecision.Attempt, firstAttempt.Decision);
+        Assert.True(acknowledgement.StopNavigation);
+        Assert.False(repeatedAcknowledgement.StopNavigation);
+        Assert.True(voyage.FishingEverStarted);
+        Assert.True(voyage.MovementLocked);
+
+        voyage.BeginSession();
+
+        Assert.True(voyage.MovementLocked);
+        Assert.True(voyage.FishingEverStarted);
+    }
+
+    [Fact]
+    public void InterruptedFishingRetriesAutoHookStartInPlace()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginSession();
+
+        Assert.Equal(FishingCastDecision.Attempt, EvaluateVoyageStart(voyage, now).Decision);
+        Assert.Equal(
+            FishingCastDecision.Acknowledged,
+            EvaluateVoyageStart(voyage, now.AddSeconds(1), fishingConditionActive: true).Decision);
+
+        var interrupted = EvaluateVoyageStart(voyage, now.AddSeconds(3));
+
+        Assert.Equal(FishingCastDecision.Attempt, interrupted.Decision);
+        Assert.True(voyage.MovementLocked);
+        Assert.Equal(2, voyage.SessionStartAttemptCount);
+    }
+
+    [Fact]
+    public void OnlyOnePreStartAlternativeIsAllowedAfterTenSecondsUnfishable()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginSession();
+
+        Assert.False(ShouldSelectAlternative(voyage, now));
+        Assert.False(ShouldSelectAlternative(voyage, now.AddMilliseconds(9999)));
+        Assert.True(ShouldSelectAlternative(voyage, now.AddSeconds(10)));
+        Assert.False(ShouldSelectAlternative(voyage, now.AddSeconds(20)));
+        Assert.True(voyage.AlternativeUsed);
+    }
+
+    [Fact]
+    public void FishingAcknowledgementForbidsAlternativeMovement()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginSession();
+        EvaluateVoyageStart(voyage, now, gatheringConditionActive: true);
+
+        Assert.False(ShouldSelectAlternative(voyage, now.AddSeconds(10)));
+        Assert.False(voyage.AlternativeUsed);
+        Assert.True(voyage.MovementLocked);
+    }
+
+    [Fact]
+    public void MissingAlternativeNeverAuthorizesMovement()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginSession();
+
+        Assert.False(voyage.ShouldSelectAlternative(
+            now,
+            atFirstDestination: true,
+            alternativeAvailable: false,
+            canFish: false,
+            playerAvailable: true,
+            busy: false));
+        Assert.False(voyage.ShouldSelectAlternative(
+            now.AddSeconds(30),
+            atFirstDestination: true,
+            alternativeAvailable: false,
+            canFish: false,
+            playerAvailable: true,
+            busy: false));
+        Assert.False(voyage.AlternativeUsed);
+    }
+
+    [Fact]
+    public void RouteTransitionPausesThenAllowsImmediateSessionStartAttempt()
+    {
+        var duringTransition = EvaluateCast(zoneTransitionActive: true);
+        var afterTransition = EvaluateCast(zoneTransitionActive: false);
+
+        Assert.Equal("route transition active", duringTransition.Gate);
+        Assert.Equal(FishingCastDecision.Attempt, afterTransition.Decision);
     }
 
     [Fact]
@@ -1255,28 +1384,47 @@ public sealed class FishingPolicyTests
         => new(year, month, day, hour, minute, second, TimeSpan.Zero);
 
     private static FishingCastEvaluation EvaluateCast(
+        bool enabled = true,
         bool inFishingContext = true,
         bool zoneTransitionActive = false,
-        bool railPositionReady = true,
-        bool canFish = true,
         bool playerAvailable = true,
         bool gatheringConditionActive = false,
         bool fishingConditionActive = false,
-        bool busy = false,
         bool resultWindowVisible = false,
-        TimeSpan? railSettlementElapsed = null,
         TimeSpan? sinceLastAttempt = null)
         => FishingCastPolicy.Evaluate(
-            enabled: true,
+            enabled,
             inFishingContext,
             zoneTransitionActive,
-            railPositionReady,
-            canFish,
             playerAvailable,
             gatheringConditionActive,
             fishingConditionActive,
-            busy,
             resultWindowVisible,
-            railSettlementElapsed ?? TimeSpan.FromSeconds(10),
             sinceLastAttempt ?? TimeSpan.MaxValue);
+
+    private static OceanFishingStartEvaluation EvaluateVoyageStart(
+        OceanFishingVoyageState voyage,
+        DateTimeOffset nowUtc,
+        bool gatheringConditionActive = false,
+        bool fishingConditionActive = false)
+        => voyage.EvaluateFishingStart(
+            nowUtc,
+            enabled: true,
+            inFishingContext: true,
+            zoneTransitionActive: false,
+            playerAvailable: true,
+            gatheringConditionActive,
+            fishingConditionActive,
+            resultWindowVisible: false);
+
+    private static bool ShouldSelectAlternative(
+        OceanFishingVoyageState voyage,
+        DateTimeOffset nowUtc)
+        => voyage.ShouldSelectAlternative(
+            nowUtc,
+            atFirstDestination: true,
+            alternativeAvailable: true,
+            canFish: false,
+            playerAvailable: true,
+            busy: false);
 }
