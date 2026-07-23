@@ -365,6 +365,108 @@ public class ConfigManager
         return count;
     }
 
+    public int MigrateFishingStockCatalog(IEnumerable<FishingStockCatalogEntry> catalog)
+    {
+        var rows = catalog.ToList();
+        var count = 0;
+        foreach (var account in accounts.Values)
+        {
+            if (FishingStockCatalogPolicy.MigrateLegacy(
+                    account.DefaultConfig.FishingStockItems,
+                    account.DefaultConfig.FishingLureRestockTarget,
+                    rows))
+            {
+                count++;
+            }
+
+            foreach (var character in account.Characters.Values)
+            {
+                if (FishingStockCatalogPolicy.MigrateLegacy(
+                        character.FishingStockItems,
+                        character.FishingLureRestockTarget,
+                        rows))
+                {
+                    count++;
+                }
+            }
+
+            SaveAccount(account.AccountId);
+        }
+
+        return count;
+    }
+
+    public bool AddFishingStockCatalogEntry(
+        Configuration configuration,
+        uint itemId,
+        int defaultTarget,
+        bool defaultEnabled)
+    {
+        if (!FishingStockCatalogPolicy.TryAdd(
+                configuration.FishingStockCatalog,
+                itemId,
+                defaultTarget,
+                defaultEnabled))
+        {
+            return false;
+        }
+
+        var row = configuration.FishingStockCatalog[^1];
+        foreach (var account in accounts.Values)
+        {
+            FishingStockCatalogPolicy.SyncRow(account.DefaultConfig.FishingStockItems, row);
+            foreach (var character in account.Characters.Values)
+                FishingStockCatalogPolicy.SyncRow(character.FishingStockItems, row);
+            SaveAccount(account.AccountId);
+        }
+        configuration.Save();
+        return true;
+    }
+
+    public bool RemoveFishingStockCatalogEntry(Configuration configuration, uint itemId)
+    {
+        var maps = accounts.Values.SelectMany(account =>
+            new[] { account.DefaultConfig.FishingStockItems }
+                .Concat(account.Characters.Values.Select(character => character.FishingStockItems)));
+        if (!FishingStockCatalogPolicy.Remove(configuration.FishingStockCatalog, itemId, maps))
+            return false;
+
+        foreach (var account in accounts.Values)
+            SaveAccount(account.AccountId);
+        configuration.Save();
+        return true;
+    }
+
+    public int SyncFishingStockRowToCurrentAccount(FishingStockCatalogEntry row)
+    {
+        var account = GetCurrentAccount();
+        if (account == null)
+            return 0;
+
+        FishingStockCatalogPolicy.SyncRow(account.DefaultConfig.FishingStockItems, row);
+        foreach (var character in account.Characters.Values)
+            FishingStockCatalogPolicy.SyncRow(character.FishingStockItems, row);
+        SaveCurrentAccount();
+        return account.Characters.Count + 1;
+    }
+
+    public int SyncAllFishingStockRowsToCurrentAccount(
+        IEnumerable<FishingStockCatalogEntry> catalog)
+    {
+        var account = GetCurrentAccount();
+        if (account == null)
+            return 0;
+
+        foreach (var row in catalog)
+        {
+            FishingStockCatalogPolicy.SyncRow(account.DefaultConfig.FishingStockItems, row);
+            foreach (var character in account.Characters.Values)
+                FishingStockCatalogPolicy.SyncRow(character.FishingStockItems, row);
+        }
+        SaveCurrentAccount();
+        return account.Characters.Count + 1;
+    }
+
     private static void CopyDefaultSettings(CharacterConfig source, CharacterConfig target)
     {
         target.Enabled = source.Enabled;
@@ -393,6 +495,14 @@ public class ConfigManager
         target.EnableFishing = source.EnableFishing;
         target.AlwaysFishOnThisCharacterIfWindowOpen = source.AlwaysFishOnThisCharacterIfWindowOpen;
         CopyFishingOperationSettings(source, target);
+        target.FishingStockItems = source.FishingStockItems.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Clone());
+        target.EnableRetainerEquipping = source.EnableRetainerEquipping;
+        target.RetainerGearSourceMode = source.RetainerGearSourceMode;
+        target.RetainerGearNonUniqueOnly = source.RetainerGearNonUniqueOnly;
+        target.RetainerCombatItemLevelTarget = source.RetainerCombatItemLevelTarget;
+        target.RetainerGatheringPerceptionTarget = source.RetainerGatheringPerceptionTarget;
         target.ChocoboRacesPerDay = source.ChocoboRacesPerDay;
         target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50;
         target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;

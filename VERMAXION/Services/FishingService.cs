@@ -39,6 +39,7 @@ public sealed class FishingService
     private static readonly TimeSpan DepartureTimeout = TimeSpan.FromMinutes(35);
     private static readonly TimeSpan DutyCompletionTimeout = TimeSpan.FromHours(3);
     private static readonly TimeSpan RepairTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ShopPurchaseTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ResultSettlementTimeout = OceanFishingResultClosePolicy.Timeout;
     private static readonly TimeSpan ReturnSettlementTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ZoneTransitionTimeout = TimeSpan.FromSeconds(90);
@@ -56,6 +57,7 @@ public sealed class FishingService
     private readonly AutoRetainerIPC autoRetainer;
     private readonly FishingRunLifecycle runLifecycle;
     private readonly IFisherGearsetRuntime fisherGearsetRuntime;
+    private readonly FisherFallbackService fisherFallbackService;
     private readonly IDutyState dutyState;
 
     private FishingState state = FishingState.Idle;
@@ -111,6 +113,14 @@ public sealed class FishingService
     private string lastError = string.Empty;
     private string statusDetail = string.Empty;
     private FisherGearsetEquipOperation? fisherGearsetOperation;
+    private bool fisherFallbackStarted;
+    private IReadOnlyList<FishingStockRequirement> fishingStockRequirements =
+        Array.Empty<FishingStockRequirement>();
+    private readonly List<FishingStockPurchaseOutcome> fishingStockPartialFailures = [];
+    private int fishingStockRequirementIndex;
+    private FishingStockRequirement? activeFishingStockRequirement;
+    private DateTime fishingStockPurchaseStartedAt = DateTime.MinValue;
+    private bool fishingStockPurchaseOwned;
     private FishingAttemptFailureKind failureKind = FishingAttemptFailureKind.Stop;
     private bool failureReported;
 
@@ -184,6 +194,12 @@ public sealed class FishingService
         this.autoRetainer = autoRetainer;
         this.runLifecycle = runLifecycle;
         this.fisherGearsetRuntime = fisherGearsetRuntime;
+        fisherFallbackService = new FisherFallbackService(
+            Plugin.DataManager,
+            Plugin.Framework,
+            Plugin.PlayerState,
+            adsIpcClient,
+            log);
         this.dutyState = dutyState;
         dutyState.DutyCompleted += OnDutyCompleted;
     }
@@ -208,6 +224,8 @@ public sealed class FishingService
         ResetResultHandlingState();
         lastFishingLoopPollAt = DateTime.MinValue;
         fisherGearsetOperation = null;
+        fisherFallbackStarted = false;
+        ResetFishingStockPurchase(cancelOwned: true);
         lastTravelCommandAt = DateTime.MinValue;
         travelStartedAt = DateTime.MinValue;
         lastNavigationCommandAt = DateTime.MinValue;
@@ -266,6 +284,9 @@ public sealed class FishingService
         ResetResultHandlingState();
         lastFishingLoopPollAt = DateTime.MinValue;
         fisherGearsetOperation = null;
+        fisherFallbackService.Reset();
+        fisherFallbackStarted = false;
+        ResetFishingStockPurchase(cancelOwned: true);
         lastTravelCommandAt = DateTime.MinValue;
         travelStartedAt = DateTime.MinValue;
         lastNavigationCommandAt = DateTime.MinValue;
@@ -486,55 +507,18 @@ public sealed class FishingService
                 break;
 
             case FishingState.CheckingLures:
-                var lureTarget = FishingOperationPolicy.ResolveLureRestockTarget(
-                    GetActiveOperationSettings().LureRestockTarget);
-                var lureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
-                if (lureTarget > 0 && lureCount < lureTarget)
-                {
-                    var purchaseQuantity = OceanFishingDockPreparationPolicy.RequiredPurchaseQuantity(
-                        lureCount,
-                        lureTarget);
-                    log.Information(
-                        $"[Fishing][DockPrep] Versatile Lures below target ({lureCount}/{lureTarget}); starting dock-local restock for {purchaseQuantity}");
-                    vendorStockService.StartVersatileLureRestockDockside(lureTarget);
-                    SetState(FishingState.RestockingLures);
-                    break;
-                }
-
-                if (lureCount <= 0)
-                {
-                    Fail(
-                        "No usable Versatile Lure is available and lure restocking is disabled.",
-                        FishingAttemptFailureKind.CharacterPermanent);
-                    break;
-                }
-
-                SetState(FishingState.SettingBait);
+                fishingStockRequirements = FishingStockCatalogPolicy.BuildRequirements(
+                    configuration.FishingStockCatalog,
+                    configManager.GetActiveConfig().FishingStockItems,
+                    itemId => (int)GameHelpers.GetInventoryItemCount(itemId));
+                fishingStockRequirementIndex = 0;
+                fishingStockPartialFailures.Clear();
+                activeFishingStockRequirement = null;
+                SetState(FishingState.RestockingLures);
                 break;
 
             case FishingState.RestockingLures:
-                vendorStockService.Update();
-                if (vendorStockService.IsComplete)
-                {
-                    vendorStockService.Reset();
-                    SetState(FishingState.SettingBait);
-                }
-                else if (vendorStockService.IsFailed)
-                {
-                    vendorStockService.Reset();
-                    var availableLures = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
-                    if (OceanFishingDockPreparationPolicy.CanContinueAfterRestockFailure(availableLures))
-                    {
-                        log.Warning($"[Fishing][DockPrep] Bounded lure-restock failure left {availableLures} usable lure(s); continuing to Dryskthota with final inventory stock.");
-                        SetState(FishingState.SettingBait);
-                    }
-                    else
-                    {
-                        Fail(
-                            "Bounded Versatile Lure restock failed and final inventory count is zero.",
-                            FishingAttemptFailureKind.CharacterPermanent);
-                    }
-                }
+                TickFishingStockPurchases();
                 break;
 
             case FishingState.SettingBait:
@@ -614,6 +598,17 @@ public sealed class FishingService
 
     private bool EnsureFisherJob()
     {
+        if (fisherFallbackStarted)
+        {
+            fisherFallbackService.Update();
+            statusDetail = fisherFallbackService.StatusText;
+            if (fisherFallbackService.Succeeded)
+                return true;
+            if (fisherFallbackService.IsComplete)
+                Fail(fisherFallbackService.Failure, FishingAttemptFailureKind.SharedTransient);
+            return false;
+        }
+
         if (fisherGearsetOperation == null)
         {
             var context = runLifecycle.Current;
@@ -641,7 +636,7 @@ public sealed class FishingService
             else
                 log.Information($"[Fishing][Gearset] {entry.Message}");
 
-            if (entry.Kind == FisherGearsetEventKind.TerminalFailure)
+            if (entry.Kind is FisherGearsetEventKind.TerminalFailure or FisherGearsetEventKind.FallbackRequested)
                 terminalMessage = entry.Message;
         }
 
@@ -650,12 +645,24 @@ public sealed class FishingService
 
         if (fisherGearsetOperation.IsComplete)
         {
+            if (fisherGearsetOperation.State == FisherGearsetEquipState.FallbackRequired)
+            {
+                var context = runLifecycle.Current;
+                if (context == null)
+                {
+                    Fail("Fisher fallback lost its owned registration deadline.");
+                    return false;
+                }
+                fisherFallbackStarted = true;
+                fisherFallbackService.Start(context.RegistrationDeadlineUtc);
+                statusDetail = terminalMessage;
+                return false;
+            }
+
             Fail(string.IsNullOrWhiteSpace(terminalMessage)
                 ? $"Fisher gearset activation failed: {fisherGearsetOperation.State}."
                 : terminalMessage,
-                fisherGearsetOperation.State == FisherGearsetEquipState.MissingGearset
-                    ? FishingAttemptFailureKind.CharacterPermanent
-                    : FishingAttemptFailureKind.SharedTransient);
+                FishingAttemptFailureKind.SharedTransient);
         }
 
         return false;
@@ -710,26 +717,168 @@ public sealed class FishingService
             settings,
             durabilityKnown,
             lowestDurability);
-        var lureTarget = FishingOperationPolicy.ResolveLureRestockTarget(settings.LureRestockTarget);
-        var lureCount = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
-        var preparation = OceanFishingDockPreparationPolicy.Evaluate(
-            repairDecision.ShouldRepair,
-            lureCount,
-            lureTarget);
+        var requirements = FishingStockCatalogPolicy.BuildRequirements(
+            configuration.FishingStockCatalog,
+            configManager.GetActiveConfig().FishingStockItems,
+            itemId => (int)GameHelpers.GetInventoryItemCount(itemId));
+        var missingItems = requirements.Count(item => item.MissingQuantity > 0);
 
         log.Information(
             $"[Fishing][DockPrep] Requirements evaluated after Limsa arrival: " +
-            $"repair={preparation.RepairNeeded} ({repairDecision.Reason}), " +
-            $"lures={lureCount}/{lureTarget}, restock={preparation.LureRestockNeeded}");
+            $"repair={repairDecision.ShouldRepair} ({repairDecision.Reason}), " +
+            $"enabledStock={requirements.Count}, missingStock={missingItems}");
+        SetState(FishingState.CheckingRepair);
+    }
 
-        if (!preparation.RequiresDockNavigation)
+    private void TickFishingStockPurchases()
+    {
+        if (activeFishingStockRequirement == null)
         {
-            log.Information("[Fishing][DockPrep] Repair and lure targets already satisfied; dock vendor navigation skipped");
-            SetState(FishingState.SettingBait);
+            while (fishingStockRequirementIndex < fishingStockRequirements.Count)
+            {
+                var configured = fishingStockRequirements[fishingStockRequirementIndex];
+                var current = (int)GameHelpers.GetInventoryItemCount(configured.ItemId);
+                var missing = Math.Max(0, configured.Target - current);
+                if (missing == 0)
+                {
+                    fishingStockRequirementIndex++;
+                    continue;
+                }
+
+                activeFishingStockRequirement = configured with
+                {
+                    InventoryCount = current,
+                    MissingQuantity = missing,
+                };
+                if (!adsIpcClient.StartShopPurchase(configured.ItemId, missing, out var startFailure))
+                {
+                    CompleteFishingStockRequirement(
+                        adsSucceeded: false,
+                        acquiredQuantity: 0,
+                        startFailure);
+                    return;
+                }
+
+                fishingStockPurchaseOwned = true;
+                fishingStockPurchaseStartedAt = DateTime.UtcNow;
+                statusDetail = $"ADS purchasing {missing} of item {configured.ItemId}";
+                log.Information(
+                    $"[Fishing][Stock] ADS accepted exact missing quantity item={configured.ItemId}, quantity={missing}, target={configured.Target}");
+                return;
+            }
+
+            FinishFishingStockPreparation();
             return;
         }
 
-        SetState(FishingState.NavigatingToPreparationDock);
+        if (DateTime.UtcNow - fishingStockPurchaseStartedAt > ShopPurchaseTimeout)
+        {
+            if (fishingStockPurchaseOwned)
+                adsIpcClient.CancelUtility(out _);
+            fishingStockPurchaseOwned = false;
+            CompleteFishingStockRequirement(false, 0, "ADS shop purchase timed out.");
+            return;
+        }
+
+        var status = adsIpcClient.RefreshShopPurchase();
+        if (!status.StatusReadable ||
+            status.ItemId != activeFishingStockRequirement.Value.ItemId ||
+            !status.IsTerminal)
+            return;
+
+        fishingStockPurchaseOwned = false;
+        var failure = status.Succeeded == true
+            ? string.Empty
+            : !string.IsNullOrWhiteSpace(status.FailureMessage)
+                ? status.FailureMessage
+                : status.StatusMessage;
+        CompleteFishingStockRequirement(
+            status.Succeeded == true,
+            Math.Max(0, status.AcquiredQuantity),
+            failure);
+    }
+
+    private void CompleteFishingStockRequirement(
+        bool adsSucceeded,
+        int acquiredQuantity,
+        string failure)
+    {
+        if (activeFishingStockRequirement is not { } requirement)
+            return;
+
+        var after = (int)GameHelpers.GetInventoryItemCount(requirement.ItemId);
+        var outcome = new FishingStockPurchaseOutcome(
+            requirement.ItemId,
+            requirement.MissingQuantity,
+            acquiredQuantity,
+            after,
+            requirement.Target,
+            adsSucceeded,
+            failure);
+        if (outcome.IsPartialFailure)
+        {
+            fishingStockPartialFailures.Add(outcome);
+            log.Warning(
+                $"[Fishing][Stock] Partial failure item={outcome.ItemId}, requested={outcome.RequestedQuantity}, " +
+                $"acquired={outcome.AcquiredQuantity}, inventory={outcome.InventoryAfter}/{outcome.Target}, failure={outcome.Failure}");
+        }
+        else
+        {
+            log.Information(
+                $"[Fishing][Stock] Verified item={outcome.ItemId} at {outcome.InventoryAfter}/{outcome.Target} after ADS terminal result");
+        }
+
+        if (!outcome.CanContinueFishing)
+        {
+            Fail(
+                "Versatile Lure restocking ended with zero usable lures.",
+                FishingAttemptFailureKind.CharacterPermanent);
+            return;
+        }
+
+        activeFishingStockRequirement = null;
+        fishingStockRequirementIndex++;
+        fishingStockPurchaseStartedAt = DateTime.MinValue;
+    }
+
+    private void FinishFishingStockPreparation()
+    {
+        var versatileLures = (int)GameHelpers.GetInventoryItemCount(VersatileLureItemId);
+        if (versatileLures <= 0)
+        {
+            Fail(
+                "No usable Versatile Lure remains after ordered fishing-stock preparation.",
+                FishingAttemptFailureKind.CharacterPermanent);
+            return;
+        }
+
+        if (fishingStockPartialFailures.Count > 0)
+        {
+            var report = string.Join(
+                "; ",
+                fishingStockPartialFailures.Select(outcome =>
+                    $"{outcome.ItemId} {outcome.InventoryAfter}/{outcome.Target}"));
+            log.Warning($"[Fishing][Stock] Optional stock partial-failure report: {report}. Fishing will continue.");
+        }
+
+        SetState(FishingState.SettingBait);
+    }
+
+    private void ResetFishingStockPurchase(bool cancelOwned)
+    {
+        if (cancelOwned && fishingStockPurchaseOwned)
+        {
+            var status = adsIpcClient.RefreshShopPurchase(force: true);
+            if (status.Running)
+                adsIpcClient.CancelUtility(out _);
+        }
+
+        fishingStockPurchaseOwned = false;
+        fishingStockRequirements = Array.Empty<FishingStockRequirement>();
+        fishingStockPartialFailures.Clear();
+        fishingStockRequirementIndex = 0;
+        activeFishingStockRequirement = null;
+        fishingStockPurchaseStartedAt = DateTime.MinValue;
     }
 
     private void TickNavigateToPreparationDock(TimeSpan elapsed)
@@ -2346,6 +2495,8 @@ public sealed class FishingService
         if (failureKind == FishingAttemptFailureKind.Stop && !queueRegistrationObserved)
             runLifecycle.MarkTerminalFailureBeforeQueueConfirmation(message);
         vendorStockService.Reset();
+        fisherFallbackService.Reset();
+        ResetFishingStockPurchase(cancelOwned: true);
         if (CurrentRailDestination.HasValue && IsOceanFishingDutyActive())
             StopFishingNavigationAndFaceOutward("terminal voyage failure");
         else

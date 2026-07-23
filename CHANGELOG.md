@@ -1,5 +1,26 @@
 # VERMAXION Changelog
 
+## 2026-07-23 - P27 six-item recovery and retainer equipping
+
+### Added
+- Added a persistent Seal Sweetener II ledger keyed by Free Company ID. Already-active actions leave stock unchanged, confirmed activations decrement exactly once, and successful zero reads remain distinguishable from unreadable FC UI state.
+- Added a global ordered fishing-stock catalog and per-character enabled/target settings. Defaults are Versatile Lure at enabled/22 and Plump Worm, Ragworm, and Krill at disabled/99. Catalog removal purges all stored values; later default propagation is explicit.
+- Added typed ADS shop purchase start/status/cancel operations. Ocean Fishing requests exact missing quantities in catalog order, verifies final inventory, reports optional partial failures, and blocks only when no Versatile Lure remains.
+- Added bounded Fisher fallback after a missing saved gearset or ten unverified equip requests. It reuses an inventory/Armoury Weathered Fishing Rod or asks ADS for exactly one, then uses a verified native inventory move without saving a gearset.
+- Added Retainer Equipping for AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible weighted average item level; gathering uses Perception only. Allocation respects job, level, physical-item uniqueness, both ring slots, source mode, saved-gearset membership, and the independent non-unique filter.
+- Added replayable Default & Sync, FC Buff, Fishing, and Retainer Equipping wizards. Apply changes only the current account Default Config and never launches automation.
+
+### Changed
+- Retainer source selection now has inventory-only, inventory/Armoury excluding saved gearsets (default), and unrestricted inventory/Armoury modes. Player-equipped containers remain excluded.
+- AutoRetainer collect-only state is checkpointed while returned ventures are collected, survives character rotation, and is restored to the original value on success, failure, cancellation, logout, disposal, and recovery.
+- The automation catalog now owns 24 per-character enable flags and 18 ordered engine tasks. Retainer Equipping defaults to Before AR. Existing Gysahl Greens and Grade 8 Dark Matter vendor-stock paths are unchanged.
+- I68 is resolved as the duplicate umbrella for the I75 FC-action recovery and I72 Fisher fallback work; no additional runtime feature was introduced.
+
+### Verification
+- Added deterministic migration, catalog add/remove/sync, FC reconciliation/persistence, ADS partial-outcome, Fisher boundary, source-mode, Perception-only, weighted item-level, strongest-allocation, ring-uniqueness, non-unique, target-zero, retry-signature, and collect-only restoration coverage.
+- The full Debug suite passes 412 tests, and the fresh Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+- Native/live-game behavior was not executed and remains pending separately authorized validation.
+
 ## 2026-07-22 - Ocean Fishing fixed-rail recovery
 
 ### Fixed

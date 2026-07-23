@@ -34,7 +34,7 @@ public sealed class FisherGearsetTests
     }
 
     [Fact]
-    public void MissingFisherGearsetIsImmediateTerminalFailure()
+    public void MissingFisherGearsetImmediatelyRequestsFallback()
     {
         var runtime = new FakeRuntime
         {
@@ -45,10 +45,10 @@ public sealed class FisherGearsetTests
 
         var events = operation.Tick(Start);
 
-        Assert.Equal(FisherGearsetEquipState.MissingGearset, operation.State);
+        Assert.Equal(FisherGearsetEquipState.FallbackRequired, operation.State);
         Assert.Contains(events, entry =>
-            entry.Kind == FisherGearsetEventKind.TerminalFailure &&
-            entry.Message.Contains("No saved Fisher gearset"));
+            entry.Kind == FisherGearsetEventKind.FallbackRequested &&
+            entry.Message.Contains("Weathered Fishing Rod"));
         Assert.Equal(0, runtime.EquipRequests);
     }
 
@@ -113,6 +113,30 @@ public sealed class FisherGearsetTests
 
         Assert.True(operation.Succeeded);
         Assert.Equal(2, runtime.EquipRequests);
+    }
+
+    [Fact]
+    public void TenFailedEquipRequestsFallBackBeforeAnEleventh()
+    {
+        var runtime = new FakeRuntime
+        {
+            CurrentClassJobId = ClassJobIds.WhiteMage,
+            Lookup = FisherGearsetLookupResult.Found(new FisherGearsetSelection(2, 83)),
+            EquipResult = FisherGearsetEquipRequestResult.Completed(-1),
+        };
+        var operation = new FisherGearsetEquipOperation(
+            runtime,
+            Start,
+            Start.AddMinutes(5));
+
+        for (var attempt = 0; attempt < FisherGearsetEquipOperation.MaximumEquipRequests; attempt++)
+            operation.Tick(Start.Add(FisherGearsetEquipOperation.RetryInterval * attempt));
+
+        Assert.Equal(FisherGearsetEquipState.FallbackRequired, operation.State);
+        Assert.Equal(10, runtime.EquipRequests);
+        var afterTerminal = operation.Tick(Start.AddMinutes(2));
+        Assert.Empty(afterTerminal);
+        Assert.Equal(10, runtime.EquipRequests);
     }
 
     [Fact]

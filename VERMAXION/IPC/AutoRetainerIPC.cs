@@ -1,4 +1,7 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 using Dalamud.Plugin;
@@ -95,6 +98,173 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         autoRetainerPlugin = null!;
         error = "AutoRetainer was not loaded.";
         return false;
+    }
+
+    public AutoRetainerEquipmentReadResult ReadEnabledRetainers(ulong contentId)
+    {
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out var error))
+                return AutoRetainerEquipmentReadResult.Failed(error);
+            if (!TryGetAutoRetainerConfig(plugin, out var config, out error))
+                return AutoRetainerEquipmentReadResult.Failed(error);
+
+            var selected = ReadDictionaryValue(config, "SelectedRetainers", contentId) as IEnumerable;
+            var selectedNames = selected == null
+                ? new HashSet<string>(StringComparer.Ordinal)
+                : selected.Cast<object>()
+                    .Select(value => value?.ToString() ?? string.Empty)
+                    .Where(value => value.Length > 0)
+                    .ToHashSet(StringComparer.Ordinal);
+            if (selectedNames.Count == 0)
+                return AutoRetainerEquipmentReadResult.Known([]);
+
+            var offlineCharacters = ReadMember(config, "OfflineData") as IEnumerable;
+            var character = offlineCharacters?.Cast<object>()
+                .FirstOrDefault(value => ReadUInt64(value, "CID") == contentId);
+            if (character == null)
+                return AutoRetainerEquipmentReadResult.Failed(
+                    "AutoRetainer offline data did not contain the current character.");
+
+            var additionalData = ReadMember(config, "AdditionalData") as IDictionary;
+            var retainerData = ReadMember(character, "RetainerData") as IEnumerable;
+            if (retainerData == null)
+                return AutoRetainerEquipmentReadResult.Failed(
+                    "AutoRetainer retainer data was not readable.");
+
+            var result = new List<AutoRetainerRetainerSnapshot>();
+            foreach (var retainer in retainerData.Cast<object>())
+            {
+                var name = ReadString(retainer, "Name");
+                if (!selectedNames.Contains(name))
+                    continue;
+                var key = $"#{contentId:X16} {name}";
+                var additional = additionalData?.Contains(key) == true
+                    ? additionalData[key]
+                    : null;
+                result.Add(new AutoRetainerRetainerSnapshot(
+                    ReadUInt64(retainer, "RetainerID"),
+                    name,
+                    (uint)ReadInt64(retainer, "Job"),
+                    (int)ReadInt64(retainer, "Level"),
+                    ReadBool(retainer, "HasVenture"),
+                    ReadInt64(retainer, "VentureEndsAt"),
+                    additional == null ? -1 : (int)ReadInt64(additional, "Ilvl", -1),
+                    additional == null ? -1 : (int)ReadInt64(additional, "Perception", -1)));
+            }
+
+            return AutoRetainerEquipmentReadResult.Known(result);
+        }
+        catch (Exception ex)
+        {
+            return AutoRetainerEquipmentReadResult.Failed(ex.Message);
+        }
+    }
+
+    public AutoRetainerCollectOnlyReadResult ReadCollectOnly()
+    {
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out var error))
+                return AutoRetainerCollectOnlyReadResult.Failed(error);
+            if (!TryGetAutoRetainerConfig(plugin, out var config, out error))
+                return AutoRetainerCollectOnlyReadResult.Failed(error);
+            return AutoRetainerCollectOnlyReadResult.Known(ReadBool(config, "_dontReassign"));
+        }
+        catch (Exception ex)
+        {
+            return AutoRetainerCollectOnlyReadResult.Failed(ex.Message);
+        }
+    }
+
+    public bool TrySetCollectOnly(bool enabled, out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
+                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+            {
+                return false;
+            }
+
+            var field = config.GetType().GetField(
+                "_dontReassign",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (field == null || field.FieldType != typeof(bool))
+            {
+                error = "AutoRetainer collect-only field was not writable.";
+                return false;
+            }
+
+            field.SetValue(config, enabled);
+            var verification = ReadCollectOnly();
+            if (!verification.Success || verification.Enabled != enabled)
+            {
+                error = verification.Success
+                    ? "AutoRetainer collect-only write did not verify."
+                    : verification.Error;
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private static bool TryGetAutoRetainerConfig(
+        object plugin,
+        out object config,
+        out string error)
+    {
+        var field = plugin.GetType().GetField(
+            "config",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        config = field?.GetValue(plugin)!;
+        if (config != null)
+        {
+            error = string.Empty;
+            return true;
+        }
+        error = "AutoRetainer configuration was not readable.";
+        return false;
+    }
+
+    private static object? ReadDictionaryValue(object owner, string memberName, object key)
+    {
+        var dictionary = ReadMember(owner, memberName) as IDictionary;
+        return dictionary?.Contains(key) == true ? dictionary[key] : null;
+    }
+
+    private static object? ReadMember(object owner, string name)
+    {
+        var type = owner.GetType();
+        var field = type.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (field != null)
+            return field.GetValue(owner);
+        return type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(owner);
+    }
+
+    private static string ReadString(object owner, string name) =>
+        ReadMember(owner, name)?.ToString() ?? string.Empty;
+
+    private static bool ReadBool(object owner, string name) =>
+        ReadMember(owner, name) is bool value && value;
+
+    private static ulong ReadUInt64(object owner, string name)
+    {
+        var value = ReadMember(owner, name);
+        return value == null ? 0 : Convert.ToUInt64(value);
+    }
+
+    private static long ReadInt64(object owner, string name, long fallback = 0)
+    {
+        var value = ReadMember(owner, name);
+        return value == null ? fallback : Convert.ToInt64(value);
     }
 
     public SuppressionReadResult ReadSuppression()

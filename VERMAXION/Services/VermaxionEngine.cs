@@ -84,6 +84,7 @@ public class VermaxionEngine
     private static readonly Dictionary<string, EngineState> TaskStateById = new()
     {
         [PostProcessTaskOrder.RefillListings] = EngineState.RunningRetainerListingRefill,
+        [PostProcessTaskOrder.RetainerEquipping] = EngineState.RunningRetainerEquipping,
         [PostProcessTaskOrder.FCBuffRefill] = EngineState.RunningFCBuff,
         [PostProcessTaskOrder.VendorStock] = EngineState.RunningVendorStock,
         [PostProcessTaskOrder.RegisterRegistrables] = EngineState.RunningRegisterRegistrables,
@@ -125,6 +126,7 @@ public class VermaxionEngine
     private readonly MinionRouletteService minionRouletteService;
     private readonly IEquipmentAutomationRuntime equipmentRuntime;
     private readonly RetainerListingRefillService retainerListingRefillService;
+    private readonly RetainerEquippingService retainerEquippingService;
     private readonly WorkshopBellService workshopBellService;
     private readonly ARPostProcessService arService;
     private readonly YesAlreadyIPC yesAlreadyIPC;
@@ -207,6 +209,7 @@ public class VermaxionEngine
         RunningSeasonalGear,
         RunningMinionRoulette,
         RunningRetainerListingRefill,
+        RunningRetainerEquipping,
         RunningVerminion,
         RunningMiniCactpot,
         RunningJumboCactpot,
@@ -275,6 +278,7 @@ public class VermaxionEngine
         MinionRouletteService minionRouletteService,
         IEquipmentAutomationRuntime equipmentRuntime,
         RetainerListingRefillService retainerListingRefillService,
+        RetainerEquippingService retainerEquippingService,
         WorkshopBellService workshopBellService,
         ARPostProcessService arService,
         YesAlreadyIPC yesAlreadyIPC,
@@ -307,6 +311,7 @@ public class VermaxionEngine
         this.minionRouletteService = minionRouletteService;
         this.equipmentRuntime = equipmentRuntime;
         this.retainerListingRefillService = retainerListingRefillService;
+        this.retainerEquippingService = retainerEquippingService;
         this.workshopBellService = workshopBellService;
         this.arService = arService;
         this.yesAlreadyIPC = yesAlreadyIPC;
@@ -359,6 +364,9 @@ public class VermaxionEngine
             Bind(PostProcessTaskOrder.RefillListings, EvaluateRefillListings, retainerListingRefillService.Update,
                 () => { retainerListingRefillService.Reset(); workshopBellService.Reset(); },
                 () => retainerListingRefillService.StatusText),
+            Bind(PostProcessTaskOrder.RetainerEquipping, EvaluateRetainerEquipping, retainerEquippingService.Update,
+                retainerEquippingService.Cancel, () => retainerEquippingService.StatusText,
+                retainerEquippingService.Cancel, retainerEquippingService.CleanupAfterDispatch),
             Bind(PostProcessTaskOrder.FCBuffRefill, EvaluateFcBuff, fcBuffService.Update, fcBuffService.Reset,
                 () => fcBuffService.StatusText),
             Bind(PostProcessTaskOrder.VendorStock, EvaluateVendorStock, vendorStockService.Update, vendorStockService.Reset,
@@ -466,6 +474,14 @@ public class VermaxionEngine
 
     private static TaskEligibility EvaluateMinionRoulette(CharacterConfig config)
         => Enabled(config.EnableMinionRoulette, "Minion Roulette");
+
+    private static TaskEligibility EvaluateRetainerEquipping(CharacterConfig config)
+        => !config.EnableRetainerEquipping
+            ? TaskEligibility.Disabled("Retainer Equipping is disabled for this character.")
+            : config.RetainerCombatItemLevelTarget <= 0 &&
+              config.RetainerGatheringPerceptionTarget <= 0
+                ? TaskEligibility.Blocked("Retainer Equipping requires a combat item-level or gathering Perception target above zero.")
+                : TaskEligibility.Runnable();
 
     private static TaskEligibility Due(bool enabled, string label, DateTime completed, DateTime next)
         => !enabled
@@ -939,6 +955,16 @@ public class VermaxionEngine
                     () => minionRouletteService.IsComplete,
                     () => minionRouletteService.IsFailed,
                     minionRouletteService.Start);
+                break;
+
+            case EngineState.RunningRetainerEquipping:
+                TickSimpleRegisteredTask(
+                    EngineState.RunningRetainerEquipping,
+                    activeConfig!.EnableRetainerEquipping,
+                    () => retainerEquippingService.IsActive,
+                    () => retainerEquippingService.IsComplete,
+                    () => retainerEquippingService.IsFailed,
+                    () => retainerEquippingService.Start(activeConfig!));
                 break;
 
             case EngineState.RunningRetainerListingRefill:
@@ -2414,6 +2440,7 @@ public class VermaxionEngine
             EngineState.RunningSeasonalGear => "Seasonal Gear",
             EngineState.RunningMinionRoulette => "Minion Roulette",
             EngineState.RunningRetainerListingRefill => "Retainer Listing Refill",
+            EngineState.RunningRetainerEquipping => "Retainer Equipping",
             EngineState.RunningVerminion => "Verminion Queue",
             EngineState.RunningMiniCactpot => "Mini Cactpot",
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",

@@ -13,6 +13,7 @@ public enum PostProcessTaskPhase
 public static class PostProcessTaskOrder
 {
     public const string RefillListings = AutomationCatalog.RefillListings;
+    public const string RetainerEquipping = AutomationCatalog.RetainerEquipping;
     public const string FCBuffRefill = AutomationCatalog.FCBuffRefill;
     public const string VendorStock = AutomationCatalog.VendorStock;
     public const string RegisterRegistrables = AutomationCatalog.RegisterRegistrables;
@@ -48,11 +49,13 @@ public static class PostProcessTaskOrder
         CurrentJobEquipment,
         SeasonalGear,
         MinionRoulette,
+        RetainerEquipping,
     ];
 
     public static readonly IReadOnlyList<string> DefaultOrder =
     [
         RefillListings,
+        RetainerEquipping,
         FCBuffRefill,
         VendorStock,
         RegisterRegistrables,

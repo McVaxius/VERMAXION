@@ -12,6 +12,14 @@ using VERMAXION.Services;
 
 namespace VERMAXION.Windows;
 
+public enum SetupWizardKind
+{
+    DefaultAndSync,
+    FcBuff,
+    Fishing,
+    RetainerEquipping,
+}
+
 public class ConfigWindow : Window, IDisposable
 {
     private readonly Plugin plugin;
@@ -21,6 +29,21 @@ public class ConfigWindow : Window, IDisposable
     private bool dadDutyOptionsLoaded;
     private string[] dadLanPartyPresetOptions = DadRunRequestOptions.LanPartyPresetStubs;
     private DateTime dadLanPartyPresetRefreshUtc = DateTime.MinValue;
+    private SetupWizardKind? activeWizard;
+    private CharacterConfig? wizardDraft;
+    private bool wizardPopupRequested;
+    private bool pendingFishingCatalogRow;
+    private bool focusFishingCatalogSearch;
+    private string fishingCatalogSearch = string.Empty;
+    private uint fishingCatalogRemoveItemId;
+
+    public void OpenWizard(SetupWizardKind kind)
+    {
+        var account = plugin.ConfigManager.GetCurrentAccount();
+        wizardDraft = (account?.DefaultConfig ?? CharacterConfig.CreateNew()).Clone();
+        activeWizard = kind;
+        wizardPopupRequested = true;
+    }
 
     private sealed class DadDutyOption
     {
@@ -65,6 +88,8 @@ public class ConfigWindow : Window, IDisposable
             }
             ImGui.EndTabBar();
         }
+
+        DrawWizardPopup();
     }
 
     private void DrawTaskOrderTab()
@@ -265,6 +290,22 @@ public class ConfigWindow : Window, IDisposable
 
             ImGui.Spacing();
             ImGui.Separator();
+            ImGui.Text("Replayable setup wizards");
+            if (ImGui.SmallButton("Default & Sync"))
+                OpenWizard(SetupWizardKind.DefaultAndSync);
+            ImGui.SameLine();
+            if (ImGui.SmallButton("FC Buff"))
+                OpenWizard(SetupWizardKind.FcBuff);
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Fishing##Wizard"))
+                OpenWizard(SetupWizardKind.Fishing);
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Retainer Equipping"))
+                OpenWizard(SetupWizardKind.RetainerEquipping);
+            ImGui.TextWrapped("Wizards stage changes and edit only the current account's Default Config after Apply. Existing characters remain unchanged until an explicit row sync or Apply Default to ALL.");
+
+            ImGui.Spacing();
+            ImGui.Separator();
             ImGui.Text("Fishing");
 
             var fishingMode = config.FishingExecutionMode;
@@ -310,6 +351,8 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.SmallButton("Reset Fishing startup gate"))
                 plugin.ResetFishingStartupGate();
             DrawHelpMarker("Clears the current Ocean Fishing startup-window attempt guard so an explicit Fishing run can retry.");
+
+            DrawFishingStockCatalogEditor();
         }
 
         ImGui.Separator();
@@ -558,7 +601,16 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.Text($"{UIConstants.ConfigLabels.Settings}: {displayName}");
         if (isDefault)
+        {
             ImGui.TextDisabled(UIConstants.ConfigLabels.NewCharactersInheritThese);
+            if (ImGui.SmallButton("Apply Default to ALL"))
+            {
+                var count = configManager.ApplyDefaultToAllCharacters();
+                Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {count} characters.");
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("Explicitly replaces each existing character's synchronized settings.");
+        }
         else if (!string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
             ImGui.TextDisabled($"Runtime character is {configManager.CurrentCharacterKey}");
         ImGui.Separator();
@@ -808,16 +860,51 @@ public class ConfigWindow : Window, IDisposable
                     }
                 }
 
-                var lureTarget = cc.FishingLureRestockTarget;
-                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                if (ImGui.InputInt("Versatile Lure restock target", ref lureTarget))
+                ImGui.Text("Fishing stock for this config");
+                foreach (var row in plugin.Configuration.FishingStockCatalog)
                 {
-                    cc.FishingLureRestockTarget = Math.Max(0, lureTarget);
-                    changed = true;
+                    if (!cc.FishingStockItems.TryGetValue(row.ItemId, out var stock))
+                    {
+                        stock = new FishingStockSetting
+                        {
+                            Enabled = row.DefaultEnabled,
+                            Target = row.DefaultTarget,
+                        };
+                        cc.FishingStockItems[row.ItemId] = stock;
+                    }
+
+                    ImGui.PushID($"CharacterFishingStock_{row.ItemId}");
+                    var enabledStock = stock.Enabled;
+                    if (ImGui.Checkbox("##Enabled", ref enabledStock))
+                    {
+                        stock.Enabled = enabledStock;
+                        changed = true;
+                    }
+                    ImGui.SameLine();
+                    ImGui.Text(GetItemName(row.ItemId));
+                    ImGui.SameLine(260f);
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                    var stockTarget = stock.Target;
+                    if (ImGui.InputInt("##Target", ref stockTarget))
+                    {
+                        stock.Target = Math.Max(0, stockTarget);
+                        changed = true;
+                    }
+                    if (isDefault)
+                    {
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton("Apply row to ALL"))
+                        {
+                            var defaultStock = cc.FishingStockItems[row.ItemId].Clone();
+                            var count = configManager.ApplyDefaultSettingToAllCharacters(
+                                $"{GetItemName(row.ItemId)} fishing stock",
+                                (_, target) => target.FishingStockItems[row.ItemId] = defaultStock.Clone());
+                            Plugin.ChatGui.Print($"[Vermaxion] Fishing-stock row applied to {count} characters.");
+                        }
+                    }
+                    ImGui.PopID();
                 }
-                DrawDefaultOverrideButton(isDefault, configManager, "FishingLureRestockTarget", "Versatile Lure restock target",
-                    (source, target) => target.FishingLureRestockTarget = source.FishingLureRestockTarget);
-                DrawHelpMarker($"Minimum Versatile Lures this character should have before fishing starts. Set 0 to use the default target of {FishingDefaults.LureRestockTarget}.");
+                DrawHelpMarker("Enabled rows are processed in catalog order. ADS is asked for the exact missing quantity. Optional bait failures are reported; fishing only blocks when Versatile Lure reaches zero.");
 
                 var returnDestination = cc.FishingReturnDestination;
                 if (ImGui.BeginCombo("Return destination", FormatFishingReturnDestination(returnDestination)))
@@ -905,6 +992,69 @@ public class ConfigWindow : Window, IDisposable
                 DrawHelpMarker("After discard cleanup, moves near Limsa's Merchant & Mender and runs /ays itemsell. Cleanup warnings do not prevent the configured return.");
 
                 ImGui.TextDisabled("Requires XADB, AutoRetainer, Lifestream, AutoHook, and vnavmesh. ADS is the only repair provider and is required when repair is enabled.");
+                ImGui.Unindent();
+            }
+
+            var retainerEquipping = cc.EnableRetainerEquipping;
+            if (ImGui.Checkbox("Retainer Equipping", ref retainerEquipping))
+            {
+                cc.EnableRetainerEquipping = retainerEquipping;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "RetainerEquipping", "Retainer Equipping",
+                (source, target) => target.EnableRetainerEquipping = source.EnableRetainerEquipping);
+            DrawHelpMarker("Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only.");
+            if (cc.EnableRetainerEquipping)
+            {
+                ImGui.Indent();
+                var sourceMode = cc.RetainerGearSourceMode;
+                if (ImGui.BeginCombo("Gear source", FormatRetainerGearSourceMode(sourceMode)))
+                {
+                    foreach (var mode in Enum.GetValues<RetainerGearSourceMode>())
+                    {
+                        var selected = mode == sourceMode;
+                        if (ImGui.Selectable(FormatRetainerGearSourceMode(mode), selected))
+                        {
+                            cc.RetainerGearSourceMode = mode;
+                            changed = true;
+                        }
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RetainerGearSourceMode", "Retainer gear source",
+                    (source, target) => target.RetainerGearSourceMode = source.RetainerGearSourceMode);
+
+                var nonUniqueOnly = cc.RetainerGearNonUniqueOnly;
+                if (ImGui.Checkbox("Use non-unique items only", ref nonUniqueOnly))
+                {
+                    cc.RetainerGearNonUniqueOnly = nonUniqueOnly;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RetainerGearNonUniqueOnly", "Retainer non-unique filter",
+                    (source, target) => target.RetainerGearNonUniqueOnly = source.RetainerGearNonUniqueOnly);
+
+                var combatTarget = cc.RetainerCombatItemLevelTarget;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                if (ImGui.InputInt("Combat item-level target", ref combatTarget))
+                {
+                    cc.RetainerCombatItemLevelTarget = Math.Max(0, combatTarget);
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RetainerCombatItemLevelTarget", "Retainer combat item-level target",
+                    (source, target) => target.RetainerCombatItemLevelTarget = source.RetainerCombatItemLevelTarget);
+
+                var perceptionTarget = cc.RetainerGatheringPerceptionTarget;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                if (ImGui.InputInt("Gathering Perception target", ref perceptionTarget))
+                {
+                    cc.RetainerGatheringPerceptionTarget = Math.Max(0, perceptionTarget);
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RetainerGatheringPerceptionTarget", "Retainer gathering Perception target",
+                    (source, target) => target.RetainerGatheringPerceptionTarget = source.RetainerGatheringPerceptionTarget);
+                ImGui.TextWrapped("Player-equipped gear is never used. Ignore Gearset excludes saved-gearset items; All Gear intentionally bypasses that membership filter. Venture reassignment is temporarily suppressed and the prior AutoRetainer collect-only state is restored on every exit path.");
                 ImGui.Unindent();
             }
 
@@ -2261,5 +2411,371 @@ public class ConfigWindow : Window, IDisposable
             FishingRepairMode.NpcNoInn => "ADS NPC no-inn",
             FishingRepairMode.NpcNoTeleportNoInn => "ADS NPC no-teleport/no-inn",
             _ => "Disabled",
+        };
+
+    private void DrawFishingStockCatalogEditor()
+    {
+        var configuration = plugin.Configuration;
+        var configManager = plugin.ConfigManager;
+        var changed = false;
+
+        ImGui.Spacing();
+        ImGui.Text("Ordered fishing-stock catalog");
+        ImGui.TextDisabled("[-] [+] [item search] [default target] [default enabled]");
+
+        for (var index = 0; index < configuration.FishingStockCatalog.Count; index++)
+        {
+            var row = configuration.FishingStockCatalog[index];
+            ImGui.PushID($"FishingCatalog_{row.ItemId}");
+
+            if (ImGui.SmallButton("-"))
+            {
+                fishingCatalogRemoveItemId = row.ItemId;
+                ImGui.OpenPopup("Remove fishing-stock item?");
+            }
+            ImGui.SameLine();
+            if (ImGui.SmallButton("+"))
+            {
+                pendingFishingCatalogRow = true;
+                fishingCatalogSearch = string.Empty;
+                focusFishingCatalogSearch = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextUnformatted(GetItemName(row.ItemId));
+            ImGui.SameLine(370f);
+
+            var target = row.DefaultTarget;
+            ImGui.SetNextItemWidth(72f);
+            if (ImGui.InputInt("##DefaultTarget", ref target))
+            {
+                row.DefaultTarget = Math.Max(0, target);
+                changed = true;
+            }
+            ImGui.SameLine();
+            var enabled = row.DefaultEnabled;
+            if (ImGui.Checkbox("##DefaultEnabled", ref enabled))
+            {
+                row.DefaultEnabled = enabled;
+                changed = true;
+            }
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Sync row to current account"))
+            {
+                var count = configManager.SyncFishingStockRowToCurrentAccount(row);
+                Plugin.ChatGui.Print($"[Vermaxion] {GetItemName(row.ItemId)} defaults synchronized to {count} current-account records.");
+            }
+
+            if (ImGui.BeginPopupModal("Remove fishing-stock item?", ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.TextWrapped($"Remove {GetItemName(fishingCatalogRemoveItemId)} from the global catalog?");
+                ImGui.TextWrapped("This also purges its account-default and character values. Re-adding it starts clean.");
+                if (ImGui.Button("Remove"))
+                {
+                    configManager.RemoveFishingStockCatalogEntry(configuration, fishingCatalogRemoveItemId);
+                    fishingCatalogRemoveItemId = 0;
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("Cancel"))
+                {
+                    fishingCatalogRemoveItemId = 0;
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.EndPopup();
+            }
+
+            ImGui.PopID();
+        }
+
+        if (pendingFishingCatalogRow)
+        {
+            ImGui.PushID("PendingFishingCatalogRow");
+            ImGui.BeginDisabled();
+            ImGui.SmallButton("-");
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            if (ImGui.SmallButton("+"))
+            {
+                fishingCatalogSearch = string.Empty;
+                focusFishingCatalogSearch = true;
+            }
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(330f);
+            if (focusFishingCatalogSearch)
+            {
+                ImGui.SetKeyboardFocusHere();
+                focusFishingCatalogSearch = false;
+            }
+            ImGui.InputTextWithHint("##ItemSearch", "Search for an item...", ref fishingCatalogSearch, 128);
+            ImGui.SameLine(370f);
+            ImGui.TextDisabled("99");
+            ImGui.SameLine();
+            ImGui.TextDisabled("disabled");
+
+            if (!string.IsNullOrWhiteSpace(fishingCatalogSearch))
+            {
+                var query = fishingCatalogSearch.Trim();
+                var matches = Plugin.DataManager.GetExcelSheet<Item>()
+                    .Where(item => item.RowId != 0 &&
+                                   !string.IsNullOrWhiteSpace(item.Name.ToString()) &&
+                                   item.Name.ToString().Contains(query, StringComparison.OrdinalIgnoreCase))
+                    .Take(20)
+                    .ToList();
+
+                if (ImGui.BeginChild("FishingCatalogMatches", new Vector2(350f, 120f), true))
+                {
+                    foreach (var item in matches)
+                    {
+                        if (!ImGui.Selectable($"{item.Name}##{item.RowId}"))
+                            continue;
+
+                        if (configManager.AddFishingStockCatalogEntry(configuration, item.RowId, 99, false))
+                        {
+                            pendingFishingCatalogRow = false;
+                            fishingCatalogSearch = string.Empty;
+                        }
+                        else
+                        {
+                            Plugin.ChatGui.PrintError("[Vermaxion] That item is already in the fishing-stock catalog.");
+                        }
+                    }
+                }
+                ImGui.EndChild();
+            }
+
+            if (ImGui.SmallButton("Cancel blank row"))
+            {
+                pendingFishingCatalogRow = false;
+                fishingCatalogSearch = string.Empty;
+            }
+            ImGui.PopID();
+        }
+        else if (ImGui.SmallButton("+ Add fishing-stock item"))
+        {
+            pendingFishingCatalogRow = true;
+            fishingCatalogSearch = string.Empty;
+            focusFishingCatalogSearch = true;
+        }
+
+        if (ImGui.SmallButton("Sync ALL catalog defaults to current account"))
+        {
+            var count = configManager.SyncAllFishingStockRowsToCurrentAccount(configuration.FishingStockCatalog);
+            Plugin.ChatGui.Print($"[Vermaxion] All fishing-stock defaults synchronized to {count} current-account records.");
+        }
+        ImGui.TextWrapped("Changing a global default does not alter existing account or character values until a row or all-catalog sync is explicitly used.");
+
+        if (changed)
+            configuration.Save();
+    }
+
+    private string GetItemName(uint itemId)
+    {
+        var sheet = Plugin.DataManager.GetExcelSheet<Item>();
+        return sheet.GetRowOrDefault(itemId)?.Name.ToString() is { Length: > 0 } name
+            ? name
+            : $"Item {itemId}";
+    }
+
+    private void DrawWizardPopup()
+    {
+        if (wizardPopupRequested)
+        {
+            ImGui.OpenPopup("Setup Wizard");
+            wizardPopupRequested = false;
+        }
+
+        if (activeWizard == null || wizardDraft == null)
+            return;
+
+        var open = true;
+        if (!ImGui.BeginPopupModal("Setup Wizard", ref open, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            if (!open)
+                CloseWizard();
+            return;
+        }
+
+        ImGui.Text($"{FormatWizardKind(activeWizard.Value)} wizard");
+        ImGui.Separator();
+        ImGui.TextWrapped("Changes are staged here. Apply writes only to this account's Default Config and never starts automation.");
+
+        switch (activeWizard.Value)
+        {
+            case SetupWizardKind.DefaultAndSync:
+            {
+                var enabled = wizardDraft.Enabled;
+                if (ImGui.Checkbox("Enable inherited character automation", ref enabled))
+                    wizardDraft.Enabled = enabled;
+                ImGui.TextWrapped("New characters inherit Default Config. Existing characters remain unchanged until you use a row-level sync or Apply Default to ALL in the Default Config view.");
+                break;
+            }
+            case SetupWizardKind.FcBuff:
+            {
+                var enabled = wizardDraft.EnableFCBuffRefill;
+                if (ImGui.Checkbox("Enable FC Buff", ref enabled))
+                    wizardDraft.EnableFCBuffRefill = enabled;
+                var quantity = wizardDraft.FCBuffPurchaseAttempts;
+                if (ImGui.InputInt("Purchase quantity", ref quantity))
+                    wizardDraft.FCBuffPurchaseAttempts = Math.Max(1, quantity);
+                var points = wizardDraft.FCBuffMinPoints;
+                if (ImGui.InputInt("Minimum FC points", ref points))
+                    wizardDraft.FCBuffMinPoints = Math.Max(0, points);
+                var gil = wizardDraft.FCBuffMinGil;
+                if (ImGui.InputInt("Minimum gil", ref gil))
+                    wizardDraft.FCBuffMinGil = Math.Max(0, gil);
+                ImGui.TextWrapped("Requires Free Company action access. Stock is cached by Free Company ID and only decremented after confirmed activation.");
+                break;
+            }
+            case SetupWizardKind.Fishing:
+            {
+                var enabled = wizardDraft.EnableFishing;
+                if (ImGui.Checkbox("Enable Fishing", ref enabled))
+                    wizardDraft.EnableFishing = enabled;
+                foreach (var row in plugin.Configuration.FishingStockCatalog)
+                {
+                    if (!wizardDraft.FishingStockItems.TryGetValue(row.ItemId, out var stock))
+                    {
+                        stock = new FishingStockSetting
+                        {
+                            Enabled = row.DefaultEnabled,
+                            Target = row.DefaultTarget,
+                        };
+                        wizardDraft.FishingStockItems[row.ItemId] = stock;
+                    }
+                    ImGui.PushID($"WizardFishing_{row.ItemId}");
+                    var stockEnabled = stock.Enabled;
+                    if (ImGui.Checkbox(GetItemName(row.ItemId), ref stockEnabled))
+                        stock.Enabled = stockEnabled;
+                    ImGui.SameLine(300f);
+                    var target = stock.Target;
+                    ImGui.SetNextItemWidth(72f);
+                    if (ImGui.InputInt("target", ref target))
+                        stock.Target = Math.Max(0, target);
+                    ImGui.PopID();
+                }
+                ImGui.TextWrapped("Requires ADS and the listed fishing dependencies. Optional bait purchase failures are reported; Versatile Lure blocks only when none remains.");
+                break;
+            }
+            case SetupWizardKind.RetainerEquipping:
+            {
+                var enabled = wizardDraft.EnableRetainerEquipping;
+                if (ImGui.Checkbox("Enable Retainer Equipping", ref enabled))
+                    wizardDraft.EnableRetainerEquipping = enabled;
+                var sourceMode = wizardDraft.RetainerGearSourceMode;
+                if (ImGui.BeginCombo("Gear source", FormatRetainerGearSourceMode(sourceMode)))
+                {
+                    foreach (var mode in Enum.GetValues<RetainerGearSourceMode>())
+                    {
+                        var selected = mode == sourceMode;
+                        if (ImGui.Selectable(FormatRetainerGearSourceMode(mode), selected))
+                            wizardDraft.RetainerGearSourceMode = mode;
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+                var nonUnique = wizardDraft.RetainerGearNonUniqueOnly;
+                if (ImGui.Checkbox("Use non-unique items only", ref nonUnique))
+                    wizardDraft.RetainerGearNonUniqueOnly = nonUnique;
+                var combatTarget = wizardDraft.RetainerCombatItemLevelTarget;
+                if (ImGui.InputInt("Combat item-level target", ref combatTarget))
+                    wizardDraft.RetainerCombatItemLevelTarget = Math.Max(0, combatTarget);
+                var perceptionTarget = wizardDraft.RetainerGatheringPerceptionTarget;
+                if (ImGui.InputInt("Gathering Perception target", ref perceptionTarget))
+                    wizardDraft.RetainerGatheringPerceptionTarget = Math.Max(0, perceptionTarget);
+                ImGui.TextWrapped("Only AutoRetainer-enabled retainers are touched. Player-equipped items are excluded. Venture reassignment suppression is temporary and restored to its prior state.");
+                break;
+            }
+        }
+
+        ImGui.Separator();
+        if (ImGui.Button("Apply"))
+        {
+            if (ApplyWizard())
+            {
+                ImGui.CloseCurrentPopup();
+                CloseWizard();
+            }
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel"))
+        {
+            ImGui.CloseCurrentPopup();
+            CloseWizard();
+        }
+
+        ImGui.EndPopup();
+    }
+
+    private bool ApplyWizard()
+    {
+        if (activeWizard == null || wizardDraft == null)
+            return false;
+
+        var account = plugin.ConfigManager.GetCurrentAccount();
+        if (account == null)
+        {
+            Plugin.ChatGui.PrintError("[Vermaxion] Select an account before applying a setup wizard.");
+            return false;
+        }
+
+        var target = account.DefaultConfig;
+        switch (activeWizard.Value)
+        {
+            case SetupWizardKind.DefaultAndSync:
+                target.Enabled = wizardDraft.Enabled;
+                break;
+            case SetupWizardKind.FcBuff:
+                target.EnableFCBuffRefill = wizardDraft.EnableFCBuffRefill;
+                target.FCBuffPurchaseAttempts = wizardDraft.FCBuffPurchaseAttempts;
+                target.FCBuffMinPoints = wizardDraft.FCBuffMinPoints;
+                target.FCBuffMinGil = wizardDraft.FCBuffMinGil;
+                break;
+            case SetupWizardKind.Fishing:
+                target.EnableFishing = wizardDraft.EnableFishing;
+                target.FishingStockItems = wizardDraft.FishingStockItems.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.Clone());
+                break;
+            case SetupWizardKind.RetainerEquipping:
+                target.EnableRetainerEquipping = wizardDraft.EnableRetainerEquipping;
+                target.RetainerGearSourceMode = wizardDraft.RetainerGearSourceMode;
+                target.RetainerGearNonUniqueOnly = wizardDraft.RetainerGearNonUniqueOnly;
+                target.RetainerCombatItemLevelTarget = wizardDraft.RetainerCombatItemLevelTarget;
+                target.RetainerGatheringPerceptionTarget = wizardDraft.RetainerGatheringPerceptionTarget;
+                break;
+        }
+
+        plugin.ConfigManager.SaveCurrentAccount();
+        plugin.Configuration.SetupWizardCompleted = true;
+        plugin.Configuration.SetupWizardStateMigrated = true;
+        plugin.Configuration.Save();
+        Plugin.ChatGui.Print("[Vermaxion] Setup wizard applied to this account's Default Config. Existing characters were not changed.");
+        return true;
+    }
+
+    private void CloseWizard()
+    {
+        activeWizard = null;
+        wizardDraft = null;
+        wizardPopupRequested = false;
+    }
+
+    private static string FormatWizardKind(SetupWizardKind kind)
+        => kind switch
+        {
+            SetupWizardKind.FcBuff => "FC Buff",
+            SetupWizardKind.Fishing => "Fishing",
+            SetupWizardKind.RetainerEquipping => "Retainer Equipping",
+            _ => "Default & Sync",
+        };
+
+    private static string FormatRetainerGearSourceMode(RetainerGearSourceMode mode)
+        => mode switch
+        {
+            RetainerGearSourceMode.IgnoreArmory => "Ignore Armoury Chest",
+            RetainerGearSourceMode.IgnoreGearset => "Ignore saved gearsets",
+            RetainerGearSourceMode.AllGear => "All inventory and Armoury gear",
+            _ => mode.ToString(),
         };
 }

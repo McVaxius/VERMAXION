@@ -28,6 +28,10 @@
     <Compile Include="..\VERMAXION\Models\FishingModels.cs" Link="FishingModels.cs" />
     <Compile Include="..\VERMAXION\Models\OceanFishingResultClosePolicy.cs" Link="OceanFishingResultClosePolicy.cs" />
     <Compile Include="..\VERMAXION\Models\FisherGearsetModels.cs" Link="FisherGearsetModels.cs" />
+    <Compile Include="..\VERMAXION\Models\FishingStockModels.cs" Link="FishingStockModels.cs" />
+    <Compile Include="..\VERMAXION\Models\FCBuffStockModels.cs" Link="FCBuffStockModels.cs" />
+    <Compile Include="..\VERMAXION\Models\RetainerEquipmentModels.cs" Link="RetainerEquipmentModels.cs" />
+    <Compile Include="..\VERMAXION\Models\SetupWizardModels.cs" Link="SetupWizardModels.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterSortPolicy.cs" Link="CharacterSortPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterConfig.cs" Link="CharacterConfig.cs" />
     <Compile Include="..\VERMAXION\Models\DadRunRequest.cs" Link="DadRunRequest.cs" />
