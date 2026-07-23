@@ -43,6 +43,7 @@ public interface IEquipmentAutomationRuntime
     IReadOnlyList<GearsetSnapshot> GetValidGearsets();
     IReadOnlyList<uint> GetEquippedItemIds();
     bool TryEquipGearset(int gearsetId, out string error);
+    bool TryConfirmGearsetChangePrompt();
     bool IsGearsetEquipped(int gearsetId, uint classJobId);
     bool TryBeginRecommendedEquipment(uint classJobId, out string error);
     RecommendedEquipmentProgress PollRecommendedEquipment(out string error);
@@ -52,6 +53,48 @@ public interface IEquipmentAutomationRuntime
     IReadOnlyList<SeasonalInventoryItem> FindSeasonalInventoryItems(IReadOnlyCollection<uint> curatedItemIds);
     bool TryMoveSeasonalItemToEquipped(SeasonalInventoryItem item, out string error);
     bool IsSeasonalItemEquipped(SeasonalInventoryItem item);
+}
+
+internal sealed class GearsetConfirmationWindow
+{
+    public static readonly TimeSpan Duration = TimeSpan.FromSeconds(3);
+
+    private DateTime closesAt;
+
+    public bool IsOpen { get; private set; }
+
+    public void Open(DateTime nowUtc)
+    {
+        closesAt = nowUtc + Duration;
+        IsOpen = true;
+    }
+
+    public bool Poll(IEquipmentAutomationRuntime runtime)
+    {
+        if (!IsOpen)
+            return true;
+
+        var nowUtc = runtime.UtcNow;
+        if (nowUtc > closesAt)
+        {
+            IsOpen = false;
+            return true;
+        }
+
+        if (runtime.TryConfirmGearsetChangePrompt() || nowUtc >= closesAt)
+        {
+            IsOpen = false;
+            return true;
+        }
+
+        return false;
+    }
+
+    public void Reset()
+    {
+        closesAt = DateTime.MinValue;
+        IsOpen = false;
+    }
 }
 
 public static class EquipmentAutomationPolicy
@@ -123,6 +166,7 @@ public sealed class GearUpdaterStateMachine
     private const int MaxEquipAttempts = 3;
 
     private readonly IEquipmentAutomationRuntime runtime;
+    private readonly GearsetConfirmationWindow confirmationWindow = new();
     private IReadOnlyList<GearsetSnapshot> targets = [];
     private IReadOnlyList<uint> expectedItems = [];
     private DateTime startedAt;
@@ -140,12 +184,14 @@ public sealed class GearUpdaterStateMachine
     {
         Idle,
         EquippingGearset,
+        ConfirmingGearset,
         WaitingForGearset,
         StartingRecommended,
         WaitingForRecommended,
         SavingGearset,
         WaitingForSave,
         RestoringStartingGearset,
+        ConfirmingStartingGearset,
         Complete,
         Failed,
         Cancelled,
@@ -227,26 +273,47 @@ public sealed class GearUpdaterStateMachine
                 equipAttempts++;
                 if (!runtime.TryEquipGearset(target!.GearsetId, out var equipError))
                 {
-                    if (equipAttempts >= MaxEquipAttempts)
-                        FailWithRestore($"Could not equip gearset {target.GearsetId}: {equipError}");
-                    else
-                        SetState(State.WaitingForGearset, $"Retrying gearset {target.GearsetId}: {equipError}");
-                    return;
+                    restoreFailure = equipError;
+                    confirmationWindow.Open(runtime.UtcNow);
+                    SetState(
+                        State.ConfirmingGearset,
+                        $"Native gearset {target.GearsetId} request returned an error; checking for its confirmation prompt.");
+                    break;
                 }
 
-                SetState(State.WaitingForGearset, $"Verifying {target.Name}");
+                restoreFailure = string.Empty;
+                confirmationWindow.Open(runtime.UtcNow);
+                SetState(State.ConfirmingGearset, $"Checking for a confirmation prompt for {target.Name}");
+                break;
+
+            case State.ConfirmingGearset:
+                if (!confirmationWindow.Poll(runtime))
+                    break;
+
+                SetState(
+                    State.WaitingForGearset,
+                    string.IsNullOrWhiteSpace(restoreFailure)
+                        ? $"Verifying {target!.Name}"
+                        : $"Verifying {target!.Name} after native error: {restoreFailure}");
                 break;
 
             case State.WaitingForGearset:
                 if (runtime.IsGearsetEquipped(target!.GearsetId, target.ClassJobId))
                 {
                     equipAttempts = 0;
+                    restoreFailure = string.Empty;
                     SetState(State.StartingRecommended, $"Preparing recommended gear for {target.Name}");
                 }
                 else if (StepTimedOut())
                 {
                     if (equipAttempts >= MaxEquipAttempts)
-                        FailWithRestore($"Gearset {target.GearsetId} did not become active after {equipAttempts} attempts.");
+                    {
+                        var errorSuffix = string.IsNullOrWhiteSpace(restoreFailure)
+                            ? string.Empty
+                            : $" Last native error: {restoreFailure}";
+                        FailWithRestore(
+                            $"Gearset {target.GearsetId} did not become active after {equipAttempts} attempts.{errorSuffix}");
+                    }
                     else
                         SetState(State.EquippingGearset, $"Retrying {target.Name}");
                 }
@@ -329,17 +396,22 @@ public sealed class GearUpdaterStateMachine
                     else
                         restoreFailure = string.Empty;
 
-                    if (!string.IsNullOrWhiteSpace(restoreFailure) && equipAttempts >= MaxEquipAttempts)
-                    {
-                        restoreTerminalState = EquipmentTaskTerminalState.Failed;
-                        Status = $"Could not restore starting gearset {startingGearsetId}: {restoreFailure}";
-                        FinishRestore();
-                    }
-                    else
-                    {
-                        stateEnteredAt = runtime.UtcNow;
-                    }
+                    confirmationWindow.Open(runtime.UtcNow);
+                    SetState(
+                        State.ConfirmingStartingGearset,
+                        $"Checking for a confirmation prompt while restoring gearset {startingGearsetId}.");
                 }
+                break;
+
+            case State.ConfirmingStartingGearset:
+                if (!confirmationWindow.Poll(runtime))
+                    break;
+
+                SetState(
+                    State.RestoringStartingGearset,
+                    string.IsNullOrWhiteSpace(restoreFailure)
+                        ? $"Verifying restoration of starting gearset {startingGearsetId}."
+                        : $"Verifying restoration of starting gearset {startingGearsetId} after native error: {restoreFailure}");
                 break;
         }
     }
@@ -370,6 +442,7 @@ public sealed class GearUpdaterStateMachine
         terminalAfterRestore = false;
         restoreTerminalState = EquipmentTaskTerminalState.None;
         restoreFailure = string.Empty;
+        confirmationWindow.Reset();
         CompletedTargetCount = 0;
         CurrentState = State.Idle;
         Status = "Idle";
@@ -421,8 +494,10 @@ public sealed class HighestCombatJobStateMachine
     private static readonly TimeSpan AttemptInterval = TimeSpan.FromSeconds(2);
     private const int MaxAttempts = 3;
     private readonly IEquipmentAutomationRuntime runtime;
+    private readonly GearsetConfirmationWindow confirmationWindow = new();
     private GearsetSnapshot? target;
     private DateTime lastAttemptAt;
+    private string lastEquipError = string.Empty;
     private int attempts;
 
     public HighestCombatJobStateMachine(IEquipmentAutomationRuntime runtime)
@@ -459,6 +534,18 @@ public sealed class HighestCombatJobStateMachine
         if (!IsActive || target == null)
             return;
 
+        if (confirmationWindow.IsOpen)
+        {
+            if (!confirmationWindow.Poll(runtime))
+                return;
+
+            lastAttemptAt = runtime.UtcNow;
+            Status = string.IsNullOrWhiteSpace(lastEquipError)
+                ? $"Verifying gearset {target.GearsetId} after its confirmation window."
+                : $"Verifying gearset {target.GearsetId} after native error: {lastEquipError}";
+            return;
+        }
+
         if (runtime.IsGearsetEquipped(target.GearsetId, target.ClassJobId))
         {
             IsActive = false;
@@ -478,16 +565,15 @@ public sealed class HighestCombatJobStateMachine
 
         attempts++;
         lastAttemptAt = runtime.UtcNow;
-        if (!runtime.TryEquipGearset(target.GearsetId, out var error) && attempts >= MaxAttempts)
-        {
-            IsActive = false;
-            IsFailed = true;
-            Status = $"Could not equip {target.Name} after {attempts} attempts: {error}";
-        }
-        else if (attempts >= MaxAttempts && !runtime.IsGearsetEquipped(target.GearsetId, target.ClassJobId))
-        {
-            Status = $"Verifying final equip attempt for {target.Name}.";
-        }
+        if (!runtime.TryEquipGearset(target.GearsetId, out var error))
+            lastEquipError = error;
+        else
+            lastEquipError = string.Empty;
+
+        confirmationWindow.Open(runtime.UtcNow);
+        Status = attempts >= MaxAttempts
+            ? $"Polling the final confirmation window for {target.Name}."
+            : $"Polling the confirmation window for {target.Name}.";
     }
 
     private void FailFinalVerification()
@@ -508,7 +594,9 @@ public sealed class HighestCombatJobStateMachine
     {
         target = null;
         lastAttemptAt = DateTime.MinValue;
+        lastEquipError = string.Empty;
         attempts = 0;
+        confirmationWindow.Reset();
         IsActive = false;
         IsComplete = false;
         IsFailed = false;
@@ -657,6 +745,7 @@ public sealed class SeasonalGearStateMachine
     private const int MaxMoveAttempts = 3;
     private const int MaxRestoreAttempts = 3;
     private readonly IEquipmentAutomationRuntime runtime;
+    private readonly GearsetConfirmationWindow confirmationWindow = new();
     private readonly IReadOnlyList<uint> curatedIds;
     private readonly Func<int, int> selectIndex;
     private IReadOnlyList<SeasonalInventoryItem> selectedItems = [];
@@ -678,6 +767,7 @@ public sealed class SeasonalGearStateMachine
         Saving,
         WaitingForSave,
         Restoring,
+        ConfirmingRestore,
         Complete,
         Failed,
         Cancelled,
@@ -743,8 +833,9 @@ public sealed class SeasonalGearStateMachine
             return;
         }
 
-        if (runtime.CurrentGearsetId != startingGearset.GearsetId ||
-            runtime.CurrentJobId != startingGearset.ClassJobId)
+        if (CurrentState is not (State.Restoring or State.ConfirmingRestore) &&
+            (runtime.CurrentGearsetId != startingGearset.GearsetId ||
+             runtime.CurrentJobId != startingGearset.ClassJobId))
         {
             FailWithRestore("Player changed job or gearset during Seasonal Gear.");
             return;
@@ -812,7 +903,7 @@ public sealed class SeasonalGearStateMachine
                     return;
                 }
 
-                if (StepTimedOut())
+                if (restoreAttempts == 0 || StepTimedOut())
                 {
                     if (restoreAttempts >= MaxRestoreAttempts)
                     {
@@ -823,8 +914,19 @@ public sealed class SeasonalGearStateMachine
                     restoreAttempts++;
                     if (!runtime.TryEquipGearset(startingGearset.GearsetId, out var restoreError))
                         failureReason = $"{failureReason} Restore failed: {restoreError}";
-                    stateEnteredAt = runtime.UtcNow;
+
+                    confirmationWindow.Open(runtime.UtcNow);
+                    SetState(
+                        State.ConfirmingRestore,
+                        $"{failureReason} Checking for a restoration confirmation prompt.");
                 }
+                break;
+
+            case State.ConfirmingRestore:
+                if (!confirmationWindow.Poll(runtime))
+                    break;
+
+                SetState(State.Restoring, $"{failureReason} Verifying starting gearset restoration.");
                 break;
         }
     }
@@ -847,6 +949,7 @@ public sealed class SeasonalGearStateMachine
         moveAttempts = 0;
         restoreAttempts = 0;
         failureReason = string.Empty;
+        confirmationWindow.Reset();
         CurrentState = State.Idle;
         Status = "Idle";
         stateEnteredAt = DateTime.MinValue;
@@ -863,8 +966,7 @@ public sealed class SeasonalGearStateMachine
             return;
         }
 
-        restoreAttempts = 1;
-        runtime.TryEquipGearset(startingGearset.GearsetId, out _);
+        restoreAttempts = 0;
         SetState(State.Restoring, $"{reason} Restoring starting gearset.");
     }
 

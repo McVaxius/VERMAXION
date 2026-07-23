@@ -1343,13 +1343,14 @@ public sealed class FishingService
         var nowUtc = new DateTimeOffset(now, TimeSpan.Zero);
         if (atDestination && !voyageState.DestinationArrived)
         {
-            StopFishingNavigationAndFaceOutward("fishing destination reached");
+            GameHelpers.TrySetLocalPlayerRotation(destination.Rotation);
             voyageState.MarkArrived(nowUtc);
             log.Information(
                 $"[Fishing][Position] Destination {FormatFishingDestinationIndex()} reached; " +
                 $"distance={distance:F2}y, rotation={destination.Rotation:F3}; " +
-                $"settling for {OceanFishingVoyageState.FacingSettlementDelay.TotalMilliseconds:F0}ms while " +
-                $"{FishingCastPolicy.CastCommand} retries continue");
+                $"{FishingCastPolicy.CastCommand} is immediately eligible and navigation remains owned until " +
+                "Fishing/Gathering acknowledgement; " +
+                $"{OceanFishingVoyageState.FacingSettlementDelay.TotalMilliseconds:F0}ms facing settlement remains active");
         }
 
         if (TickFishingStartAttempt(now, resultWindowVisible: false, atDestination))
@@ -1387,7 +1388,8 @@ public sealed class FishingService
             lastNavigationCommandAt = now;
             log.Information(
                 $"[Fishing][Position] Moving to destination {FormatFishingDestinationIndex()} ({distance:F1}y); " +
-                $"{FishingCastPolicy.CastCommand} retries remain active while moving");
+                $"{FishingCastPolicy.CastCommand} and premature Fishing/Gathering acknowledgement remain gated until within " +
+                $"{BoatFishingPositionTolerance:F1}y");
             vnavmesh.PathfindAndMoveTo(position);
         }
     }
@@ -1837,7 +1839,8 @@ public sealed class FishingService
 
         log.Information(
             $"[Fishing][Session] Session {voyageState.SessionNumber} started for {reason}; " +
-            $"Versatile Lure set once and {FishingCastPolicy.CastCommand} is immediately eligible");
+            $"Versatile Lure set once; the first voyage start is distance-gated, while post-acknowledgement " +
+            $"{FishingCastPolicy.CastCommand} retries remain in place");
         return true;
     }
 

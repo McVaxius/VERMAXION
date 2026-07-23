@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Plugin.Services;
+using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Lumina.Excel.Sheets;
 using VERMAXION.Models;
@@ -146,6 +148,29 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
 
     public bool IsGearsetEquipped(int gearsetId, uint classJobId)
         => CurrentGearsetId == gearsetId && CurrentJobId == classJobId;
+
+    public bool TryConfirmGearsetChangePrompt()
+    {
+        try
+        {
+            nint addonAddress = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
+            if (addonAddress == nint.Zero)
+                return false;
+
+            var addon = (AddonSelectYesno*)addonAddress;
+            if (!addon->AtkUnitBase.IsVisible || !addon->AtkUnitBase.IsReady)
+                return false;
+
+            new AddonMaster.SelectYesno(&addon->AtkUnitBase).Yes();
+            log.Information("[Equipment] Confirmed ready SelectYesno during owned native gearset-change window.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[Equipment] Native gearset confirmation check failed: {ex.Message}");
+            return false;
+        }
+    }
 
     public bool TryBeginRecommendedEquipment(uint classJobId, out string error)
         => recommendedEquip.TryBegin(classJobId, out error);

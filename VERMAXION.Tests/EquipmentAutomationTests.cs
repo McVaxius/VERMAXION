@@ -61,6 +61,7 @@ public sealed class EquipmentAutomationTests
         Assert.Equal(1, runtime.RecommendedBeginCount);
         Assert.Equal(1, runtime.RecommendedPollCount);
         Assert.Equal([12], runtime.UpdatedGearsets);
+        Assert.Equal(0, runtime.ConfirmationPollCount);
     }
 
     [Fact]
@@ -108,6 +109,7 @@ public sealed class EquipmentAutomationTests
         Assert.Equal(7, runtime.CurrentGearsetId);
         Assert.Equal(2u, runtime.CurrentJobId);
         Assert.Contains(7, runtime.EquipRequests);
+        Assert.Equal(runtime.EquipRequests.Count, runtime.ConfirmationClickCount);
         Assert.True(runtime.RecommendedCancelCount > 0);
     }
 
@@ -137,6 +139,7 @@ public sealed class EquipmentAutomationTests
         Assert.Equal(20u, runtime.CurrentJobId);
         Assert.Equal(3, machine.CompletedTargetCount);
         Assert.Equal(3, runtime.RecommendedBeginCount);
+        Assert.Equal(runtime.EquipRequests.Count, runtime.ConfirmationClickCount);
     }
 
     [Fact]
@@ -153,7 +156,7 @@ public sealed class EquipmentAutomationTests
         var machine = new HighestCombatJobStateMachine(runtime);
         Assert.True(machine.Start(out _));
 
-        for (var i = 0; i < 5 && machine.IsActive; i++)
+        for (var i = 0; i < 12 && machine.IsActive; i++)
         {
             machine.Tick();
             runtime.Advance(TimeSpan.FromSeconds(2));
@@ -161,6 +164,136 @@ public sealed class EquipmentAutomationTests
 
         Assert.True(machine.IsFailed);
         Assert.Equal(3, runtime.EquipRequests.Count);
+        Assert.Equal(3, runtime.ConfirmationClickCount);
+        Assert.Contains("bounded", machine.Status, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ConfirmationWindowPollsReadyPromptThroughExactThreeSecondBoundary()
+    {
+        var runtime = new FakeRuntime { ConfirmationReady = false };
+        var window = new GearsetConfirmationWindow();
+        window.Open(runtime.UtcNow);
+
+        Assert.False(window.Poll(runtime));
+        runtime.Advance(TimeSpan.FromMilliseconds(2999));
+        Assert.False(window.Poll(runtime));
+
+        runtime.Advance(TimeSpan.FromMilliseconds(1));
+        runtime.ConfirmationReady = true;
+
+        Assert.True(window.Poll(runtime));
+        Assert.Equal(1, runtime.ConfirmationClickCount);
+        Assert.False(window.IsOpen);
+    }
+
+    [Fact]
+    public void ConfirmationWindowDoesNotClickPromptAfterBoundaryOrWhenNotReady()
+    {
+        var runtime = new FakeRuntime { ConfirmationReady = false };
+        var window = new GearsetConfirmationWindow();
+        window.Open(runtime.UtcNow);
+
+        runtime.Advance(GearsetConfirmationWindow.Duration);
+
+        Assert.True(window.Poll(runtime));
+        Assert.Equal(0, runtime.ConfirmationClickCount);
+        Assert.Equal(1, runtime.ConfirmationPollCount);
+
+        window.Open(runtime.UtcNow);
+        runtime.Advance(GearsetConfirmationWindow.Duration + TimeSpan.FromMilliseconds(1));
+        runtime.ConfirmationReady = true;
+
+        Assert.True(window.Poll(runtime));
+        Assert.Equal(0, runtime.ConfirmationClickCount);
+        Assert.Equal(1, runtime.ConfirmationPollCount);
+    }
+
+    [Fact]
+    public void NativeErrorStillOwnsPromptWindowWithoutDuplicateEquipAndThenVerifiesActiveGearset()
+    {
+        var runtime = new FakeRuntime
+        {
+            CurrentGearsetId = 1,
+            CurrentJobId = 1,
+            Gearsets = [Gearset(8, 21, level: 100, combat: true, isJob: true)],
+            EquipSucceeds = false,
+            ApplyEquipState = false,
+            ApplyEquipStateOnConfirmation = true,
+            AutoReadyConfirmation = false,
+            ConfirmationReady = false,
+        };
+        var machine = new HighestCombatJobStateMachine(runtime);
+        Assert.True(machine.Start(out _));
+
+        machine.Tick();
+        Assert.Single(runtime.EquipRequests);
+
+        runtime.Advance(TimeSpan.FromSeconds(1));
+        machine.Tick();
+        runtime.Advance(TimeSpan.FromSeconds(1));
+        machine.Tick();
+
+        Assert.Single(runtime.EquipRequests);
+        Assert.True(machine.IsActive);
+
+        runtime.ConfirmationReady = true;
+        machine.Tick();
+        Assert.Equal(1, runtime.ConfirmationClickCount);
+        Assert.Single(runtime.EquipRequests);
+
+        machine.Tick();
+
+        Assert.True(machine.IsComplete);
+        Assert.False(machine.IsFailed);
+        Assert.Equal(8, runtime.CurrentGearsetId);
+        Assert.Equal(21u, runtime.CurrentJobId);
+    }
+
+    [Fact]
+    public void FinalNativeAttemptKeepsPollingBeforeFinalActivationVerification()
+    {
+        var runtime = new FakeRuntime
+        {
+            CurrentGearsetId = 1,
+            CurrentJobId = 1,
+            Gearsets = [Gearset(8, 21, level: 100, combat: true, isJob: true)],
+            EquipSucceeds = false,
+            ApplyEquipState = false,
+            AutoReadyConfirmation = false,
+            ConfirmationReady = false,
+        };
+        var machine = new HighestCombatJobStateMachine(runtime);
+        Assert.True(machine.Start(out _));
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            machine.Tick();
+            Assert.Equal(attempt, runtime.EquipRequests.Count);
+
+            runtime.Advance(TimeSpan.FromSeconds(2));
+            machine.Tick();
+            Assert.Equal(attempt, runtime.EquipRequests.Count);
+            Assert.True(machine.IsActive);
+
+            runtime.Advance(TimeSpan.FromSeconds(1));
+            if (attempt == 3)
+                runtime.ConfirmationReady = true;
+            machine.Tick();
+            Assert.Equal(attempt, runtime.EquipRequests.Count);
+            Assert.True(machine.IsActive);
+
+            if (attempt < 3)
+            {
+                runtime.Advance(TimeSpan.FromSeconds(2));
+            }
+        }
+
+        Assert.Equal(1, runtime.ConfirmationClickCount);
+        runtime.Advance(TimeSpan.FromSeconds(2));
+        machine.Tick();
+
+        Assert.True(machine.IsFailed);
         Assert.Contains("bounded", machine.Status, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -192,6 +325,7 @@ public sealed class EquipmentAutomationTests
         Assert.Equal([10u, 11u, 12u], runtime.EquippedItems);
         Assert.Equal(4, runtime.CurrentGearsetId);
         Assert.Equal(0, runtime.RecommendedBeginCount);
+        Assert.Equal(runtime.EquipRequests.Count, runtime.ConfirmationClickCount);
     }
 
     [Fact]
@@ -213,12 +347,15 @@ public sealed class EquipmentAutomationTests
         for (var i = 0; i < 20 && machine.IsActive; i++)
         {
             machine.Tick();
+            if (machine.CurrentState == SeasonalGearStateMachine.State.ConfirmingRestore)
+                machine.Tick();
             runtime.Advance(TimeSpan.FromSeconds(9));
         }
 
         Assert.True(machine.IsFailed);
         Assert.Contains("could not be verified", machine.Status, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(3, runtime.EquipRequests.Count);
+        Assert.Equal(3, runtime.ConfirmationClickCount);
     }
 
     [Fact]
@@ -268,14 +405,20 @@ public sealed class EquipmentAutomationTests
         public IReadOnlyList<SeasonalInventoryItem> SeasonalItems { get; set; } = [];
         public bool EquipSucceeds { get; set; } = true;
         public bool ApplyEquipState { get; set; } = true;
+        public bool ApplyEquipStateOnConfirmation { get; set; }
+        public bool AutoReadyConfirmation { get; set; } = true;
+        public bool ConfirmationReady { get; set; } = true;
         public bool UpdateSucceeds { get; set; } = true;
         public RecommendedEquipmentProgress RecommendedProgress { get; set; } = RecommendedEquipmentProgress.Complete;
         public int RecommendedBeginCount { get; private set; }
         public int RecommendedPollCount { get; private set; }
         public int RecommendedCancelCount { get; private set; }
+        public int ConfirmationPollCount { get; private set; }
+        public int ConfirmationClickCount { get; private set; }
         public List<int> EquipRequests { get; } = [];
         public List<int> UpdatedGearsets { get; } = [];
         private readonly Dictionary<int, IReadOnlyList<uint>> saved = [];
+        private GearsetSnapshot? pendingGearset;
 
         public IReadOnlyList<GearsetSnapshot> GetValidGearsets() => Gearsets;
         public IReadOnlyList<uint> GetEquippedItemIds() => EquippedItems.ToArray();
@@ -284,6 +427,9 @@ public sealed class EquipmentAutomationTests
         {
             EquipRequests.Add(gearsetId);
             var target = Gearsets.FirstOrDefault(gearset => gearset.GearsetId == gearsetId);
+            pendingGearset = target;
+            if (AutoReadyConfirmation)
+                ConfirmationReady = true;
             if (!EquipSucceeds || target == null)
             {
                 error = "equip rejected";
@@ -297,6 +443,19 @@ public sealed class EquipmentAutomationTests
                 EquippedItems = target.ItemIds.ToArray();
             }
             error = string.Empty;
+            return true;
+        }
+
+        public bool TryConfirmGearsetChangePrompt()
+        {
+            ConfirmationPollCount++;
+            if (!ConfirmationReady)
+                return false;
+
+            ConfirmationClickCount++;
+            ConfirmationReady = false;
+            if (ApplyEquipStateOnConfirmation && pendingGearset != null)
+                ApplyGearset(pendingGearset);
             return true;
         }
 
@@ -362,6 +521,13 @@ public sealed class EquipmentAutomationTests
             => EquippedItems.Count > (int)item.Slot && EquippedItems[(int)item.Slot] == item.ItemId;
 
         public void Advance(TimeSpan duration) => UtcNow += duration;
+
+        private void ApplyGearset(GearsetSnapshot target)
+        {
+            CurrentGearsetId = target.GearsetId;
+            CurrentJobId = target.ClassJobId;
+            EquippedItems = target.ItemIds.ToArray();
+        }
     }
 }
 
