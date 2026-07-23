@@ -232,6 +232,14 @@ internal sealed class OceanFishingVoyageState
         bool resultWindowVisible,
         bool atDestination = false)
     {
+        if (!FishingEverStarted && (!DestinationArrived || !atDestination))
+        {
+            return new OceanFishingStartEvaluation(
+                FishingCastDecision.Suppressed,
+                "waiting to reach fixed-rail destination",
+                StopNavigation: false);
+        }
+
         var evaluation = FishingCastPolicy.Evaluate(
             enabled,
             inFishingContext,

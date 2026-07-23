@@ -1089,12 +1089,12 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void FishingStartUsesAutoHookCommandAndIsEligibleWhileMoving()
+    public void FishingCastPolicyRetainsThreeSecondAutoHookCommandCadence()
     {
-        var whileMoving = EvaluateCast(sinceLastAttempt: TimeSpan.MaxValue);
+        var eligible = EvaluateCast(sinceLastAttempt: TimeSpan.MaxValue);
 
         Assert.Equal("/ahstart", FishingCastPolicy.CastCommand);
-        Assert.Equal(FishingCastDecision.Attempt, whileMoving.Decision);
+        Assert.Equal(FishingCastDecision.Attempt, eligible.Decision);
     }
 
     [Fact]
@@ -1188,13 +1188,16 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
+        voyage.BeginPositioning(6, now);
         voyage.BeginSession();
+        voyage.MarkArrived(now);
 
-        var firstAttempt = EvaluateVoyageStart(voyage, now);
+        var firstAttempt = EvaluateVoyageStart(voyage, now, atDestination: true);
         var acknowledgement = EvaluateVoyageStart(
             voyage,
             now.AddSeconds(1),
-            fishingConditionActive: true);
+            fishingConditionActive: true,
+            atDestination: true);
         var repeatedAcknowledgement = EvaluateVoyageStart(
             voyage,
             now.AddSeconds(2),
@@ -1218,18 +1221,118 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
+        voyage.BeginPositioning(6, now);
         voyage.BeginSession();
+        voyage.MarkArrived(now);
 
-        Assert.Equal(FishingCastDecision.Attempt, EvaluateVoyageStart(voyage, now).Decision);
+        Assert.Equal(
+            FishingCastDecision.Attempt,
+            EvaluateVoyageStart(voyage, now, atDestination: true).Decision);
         Assert.Equal(
             FishingCastDecision.Acknowledged,
-            EvaluateVoyageStart(voyage, now.AddSeconds(1), fishingConditionActive: true).Decision);
+            EvaluateVoyageStart(
+                voyage,
+                now.AddSeconds(1),
+                fishingConditionActive: true,
+                atDestination: true).Decision);
 
         var interrupted = EvaluateVoyageStart(voyage, now.AddSeconds(3));
 
         Assert.Equal(FishingCastDecision.Attempt, interrupted.Decision);
         Assert.True(voyage.MovementLocked);
         Assert.Equal(2, voyage.SessionStartAttemptCount);
+    }
+
+    [Fact]
+    public void InitialStartAndPrematureAcknowledgementAreSuppressedBeforeArrivalWithoutMutation()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.BeginSession();
+
+        var attempt = EvaluateVoyageStart(voyage, now, atDestination: false);
+        var prematureAcknowledgement = EvaluateVoyageStart(
+            voyage,
+            now.AddSeconds(1),
+            gatheringConditionActive: true,
+            atDestination: false);
+
+        Assert.Equal(FishingCastDecision.Suppressed, attempt.Decision);
+        Assert.Equal("waiting to reach fixed-rail destination", attempt.Gate);
+        Assert.False(attempt.StopNavigation);
+        Assert.Equal(FishingCastDecision.Suppressed, prematureAcknowledgement.Decision);
+        Assert.False(prematureAcknowledgement.StopNavigation);
+        Assert.Equal(0, voyage.SessionStartAttemptCount);
+        Assert.Equal(0, voyage.PostArrivalStartAttemptCount);
+        Assert.False(voyage.DestinationArrived);
+        Assert.False(voyage.FishingEverStarted);
+        Assert.False(voyage.MovementLocked);
+    }
+
+    [Fact]
+    public void CurrentDistanceMustRemainInsideThresholdUntilFirstAcknowledgement()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.BeginSession();
+        voyage.MarkArrived(now);
+
+        var driftedAttempt = EvaluateVoyageStart(
+            voyage,
+            now.AddSeconds(1),
+            fishingConditionActive: true,
+            atDestination: false);
+
+        Assert.Equal(FishingCastDecision.Suppressed, driftedAttempt.Decision);
+        Assert.False(driftedAttempt.StopNavigation);
+        Assert.Equal(0, voyage.SessionStartAttemptCount);
+        Assert.Equal(0, voyage.PostArrivalStartAttemptCount);
+        Assert.False(voyage.FishingEverStarted);
+        Assert.False(voyage.MovementLocked);
+    }
+
+    [Fact]
+    public void ArrivalAllowsImmediateFirstAttemptBeforeFacingSettlement()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.BeginSession();
+        voyage.MarkArrived(now);
+
+        var attempt = EvaluateVoyageStart(voyage, now, atDestination: true);
+
+        Assert.Equal(FishingCastDecision.Attempt, attempt.Decision);
+        Assert.Equal(1, voyage.SessionStartAttemptCount);
+        Assert.Equal(1, voyage.PostArrivalStartAttemptCount);
+        Assert.False(attempt.StopNavigation);
+        Assert.False(voyage.ShouldReapplyFacing(now));
+    }
+
+    [Fact]
+    public void PrematureFishingDoesNotPreventExistingNavigationStallRecovery()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.BeginSession();
+
+        Assert.Equal(
+            FishingCastDecision.Suppressed,
+            EvaluateVoyageStart(voyage, now, fishingConditionActive: true).Decision);
+        Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now, distance: 10f));
+        Assert.Equal(
+            OceanFishingAdvanceReason.NavigationStalled,
+            EvaluateRecovery(voyage, now.AddSeconds(10), distance: 10f));
+        Assert.False(voyage.FishingEverStarted);
+        Assert.False(voyage.MovementLocked);
+        Assert.Equal(0, voyage.SessionStartAttemptCount);
     }
 
     [Fact]

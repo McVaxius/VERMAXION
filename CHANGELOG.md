@@ -1,5 +1,18 @@
 # VERMAXION Changelog
 
+## 2026-07-23 - Native gearset confirmation and Ocean Fishing distance gate
+
+### Fixed
+- Gear Updater target changes and restoration, Highest Combat Job, and Seasonal Gear restoration now own a three-second confirmation window after every applicable native `EquipGearset` request. Each window polls every framework tick and accepts the first ready `SelectYesno` without reading prompt text or metadata; duplicate gearset requests are suppressed while the window is open, including when the native call returns an error.
+- Closing or expiring the gearset confirmation window restarts normal active-gearset verification without consuming another attempt. Current Job Equipment remains unchanged and does not use the confirmation path.
+- Ocean Fishing now keeps the initial `/ahstart` and Fishing/Gathering acknowledgement gated until the character is currently within the existing 0.5-yalm fixed-rail threshold. Premature conditions do not increment attempts, stop navigation, mark fishing started, or lock movement.
+- Reaching the fixed rail permits the first `/ahstart` immediately without waiting for the 500 ms facing-settlement timer. Arrival no longer stops vnavmesh; the first valid at-destination Fishing/Gathering acknowledgement owns the stop and permanent movement lock.
+- Existing fixed-rail stall/timeout cycling, false-`CanFish` fallback, five post-arrival attempts, six coordinates, route behavior, and in-place post-start retries are unchanged.
+
+### Verification
+- Added prompt-ready/not-ready, three-second boundary, native-error, duplicate-suppression, final-attempt, and post-window activation-verification regressions across native equipment paths.
+- Added pre-arrival cast/acknowledgement suppression, counter/lock preservation, immediate-at-threshold start, acknowledgement ownership, stall recovery, and post-start in-place retry regressions. The full Debug suite contains 420 tests; native/live-game acceptance remains pending.
+
 ## 2026-07-23 - P27 six-item recovery and retainer equipping
 
 ### Added
