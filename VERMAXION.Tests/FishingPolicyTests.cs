@@ -58,132 +58,87 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void EdgeScanUsesThirtyTwoHalfYalmDirectionsWithTwentyYalmLimit()
+    public void FixedRailsUseProvenCoordinatesAndCanonicalRotations()
     {
-        var origin = new Vector3(10f, 6.7f, -4f);
-        var north = OceanFishingEdgeSelectionPolicy.BuildProbe(origin, 0, 0.5f);
-        var east = OceanFishingEdgeSelectionPolicy.BuildProbe(
-            origin,
-            OceanFishingEdgeSelectionPolicy.DirectionCount / 4,
-            20f);
+        var expected = new[]
+        {
+            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, -2.0f), 1.5f),
+            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, -10.0f), 1.5f),
+            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, 3.5f), 1.5f),
+            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, -1.0f), -1.5f),
+            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, -8.0f), -1.5f),
+            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, 4.0f), -1.5f),
+        };
 
-        Assert.Equal(32, OceanFishingEdgeSelectionPolicy.DirectionCount);
-        Assert.Equal(0.5f, OceanFishingEdgeSelectionPolicy.ProbeStep);
-        Assert.Equal(20f, OceanFishingEdgeSelectionPolicy.ProbeLimit);
-        Assert.Equal(new Vector3(10f, 7.7f, -3.5f), north);
-        Assert.InRange(east.X, 29.999f, 30.001f);
-        Assert.InRange(east.Z, -4.001f, -3.999f);
+        Assert.Equal(expected, OceanFishingFixedRailPolicy.CanonicalDestinations);
+        Assert.Equal(0.5, OceanFishingQueuePolicy.BoatFishingPositionTolerance);
     }
 
     [Fact]
-    public void DynamicSelectionChoosesNearestUncrowdedEdgeAndFacesOutward()
+    public void EmptyDeckPreservesStableCanonicalRailOrder()
     {
-        var candidates = new[]
-        {
-            new OceanFishingEdgeCandidate(new Vector3(0f, 0f, 3f), 0),
-            new OceanFishingEdgeCandidate(new Vector3(4f, 0f, 0f), 8),
-            new OceanFishingEdgeCandidate(new Vector3(-6f, 0f, 0f), 24),
-        };
-        var players = new[] { new Vector3(0f, 0f, 3.5f) };
+        var ranked = OceanFishingFixedRailPolicy.Rank(Array.Empty<Vector3>());
 
-        var plan = OceanFishingEdgeSelectionPolicy.Select(
-            Vector3.Zero,
-            currentRotation: 0.25f,
-            candidates,
-            players);
-
-        Assert.Equal(OceanFishingPositionPlanSource.MeshEdge, plan.Source);
-        Assert.Equal(new Vector3(4f, 0f, 0f), plan.Primary.Position);
-        Assert.Equal(MathF.PI / 2f, plan.Primary.Rotation, precision: 5);
-        Assert.Equal(new Vector3(-6f, 0f, 0f), plan.Alternative?.Position);
-    }
-
-    [Theory]
-    [InlineData(0f, 1f, 0f)]
-    [InlineData(1f, 0f, 1.5707964f)]
-    [InlineData(0f, -1f, 3.1415927f)]
-    [InlineData(-1f, 0f, -1.5707964f)]
-    public void OutwardFacingUsesEntryToEdgeDirection(float x, float z, float expectedRotation)
-    {
-        var rotation = OceanFishingEdgeSelectionPolicy.ResolveOutwardRotation(
-            Vector3.Zero,
-            new Vector3(x, 0f, z),
-            fallbackRotation: 0.25f);
-
-        Assert.Equal(expectedRotation, rotation, precision: 5);
+        Assert.Equal(OceanFishingFixedRailPolicy.CanonicalDestinations, ranked);
     }
 
     [Fact]
-    public void FullyCrowdedSelectionUsesGreatestPlayerClearance()
+    public void CrowdRankingPrefersTwoYalmClearanceThenGreatestClearance()
     {
-        var candidates = new[]
+        var ranked = OceanFishingFixedRailPolicy.Rank(new[]
         {
-            new OceanFishingEdgeCandidate(new Vector3(0f, 0f, 3f), 0),
-            new OceanFishingEdgeCandidate(new Vector3(4f, 0f, 0f), 8),
-        };
+            new Vector3(0f, 6.711f, 0f),
+        });
+
+        Assert.Equal(new Vector3(7.20f, 6.711f, -10.0f), ranked[0].Position);
+        Assert.Equal(new Vector3(-7.20f, 6.711f, -8.0f), ranked[1].Position);
+        Assert.All(
+            ranked,
+            destination => Assert.True(
+                Vector3.Distance(destination.Position, new Vector3(0f, 6.711f, 0f)) >=
+                OceanFishingFixedRailPolicy.CrowdRadius));
+    }
+
+    [Fact]
+    public void FullyCrowdedRailsUseGreatestClearanceWithCanonicalTieBreak()
+    {
+        var players = OceanFishingFixedRailPolicy.CanonicalDestinations
+            .Select(destination => destination.Position + new Vector3(0f, 0f, 0.5f))
+            .ToArray();
+        var ranked = OceanFishingFixedRailPolicy.Rank(players);
+        var expected = OceanFishingFixedRailPolicy.CanonicalDestinations
+            .Select((destination, index) => new
+            {
+                Destination = destination,
+                Index = index,
+                Clearance = players.Min(player => Vector3.Distance(player, destination.Position)),
+            })
+            .OrderByDescending(candidate => candidate.Clearance)
+            .ThenBy(candidate => candidate.Index)
+            .Select(candidate => candidate.Destination)
+            .ToArray();
+
+        Assert.Equal(expected, ranked);
+        Assert.All(
+            ranked,
+            destination => Assert.Contains(destination, OceanFishingFixedRailPolicy.CanonicalDestinations));
+    }
+
+    [Fact]
+    public void PlayerSnapshotsOnlyRankAndNeverBecomeDestinations()
+    {
         var players = new[]
         {
-            new Vector3(0f, 0f, 2.5f),
-            new Vector3(5.5f, 0f, 0f),
+            new Vector3(100f, 100f, 100f),
+            new Vector3(-100f, -100f, -100f),
         };
+        var ranked = OceanFishingFixedRailPolicy.Rank(players);
 
-        var plan = OceanFishingEdgeSelectionPolicy.Select(
-            Vector3.Zero,
-            currentRotation: 0f,
-            candidates,
-            players);
-
-        Assert.Equal(new Vector3(4f, 0f, 0f), plan.Primary.Position);
-        Assert.Equal(new Vector3(0f, 0f, 3f), plan.Alternative?.Position);
-    }
-
-    [Fact]
-    public void FailedScanFallsBackToFurthestPlayerSnapshotOrVoyageEntry()
-    {
-        var origin = new Vector3(1f, 2f, 3f);
-        var players = new[]
-        {
-            new Vector3(2f, 2f, 3f),
-            new Vector3(1f, 2f, 11f),
-        };
-
-        var playerFallback = OceanFishingEdgeSelectionPolicy.Select(
-            origin,
-            currentRotation: 0.75f,
-            Array.Empty<OceanFishingEdgeCandidate>(),
-            players);
-        var entryFallback = OceanFishingEdgeSelectionPolicy.Select(
-            origin,
-            currentRotation: 0.75f,
-            Array.Empty<OceanFishingEdgeCandidate>(),
-            Array.Empty<Vector3>());
-
-        Assert.Equal(OceanFishingPositionPlanSource.FurthestPlayer, playerFallback.Source);
-        Assert.Equal(players[1], playerFallback.Primary.Position);
-        Assert.Null(playerFallback.Alternative);
-        Assert.Equal(OceanFishingPositionPlanSource.VoyageEntry, entryFallback.Source);
-        Assert.Equal(origin, entryFallback.Primary.Position);
-        Assert.Equal(0.75f, entryFallback.Primary.Rotation);
-    }
-
-    [Fact]
-    public void ProbeResolutionRejectsDifferentDeckOrHorizontalSnap()
-    {
-        var origin = new Vector3(0f, 6.7f, 0f);
-        var probe = OceanFishingEdgeSelectionPolicy.BuildProbe(origin, 0, 2f);
-
-        Assert.True(OceanFishingEdgeSelectionPolicy.IsResolvedProbeUsable(
-            origin,
-            probe,
-            new Vector3(0.1f, 6.7f, 2f)));
-        Assert.False(OceanFishingEdgeSelectionPolicy.IsResolvedProbeUsable(
-            origin,
-            probe,
-            new Vector3(0f, 3f, 2f)));
-        Assert.False(OceanFishingEdgeSelectionPolicy.IsResolvedProbeUsable(
-            origin,
-            probe,
-            new Vector3(1f, 6.7f, 2f)));
+        Assert.Equal(6, ranked.Count);
+        Assert.DoesNotContain(ranked, destination => players.Contains(destination.Position));
+        Assert.All(
+            ranked,
+            destination => Assert.Contains(destination, OceanFishingFixedRailPolicy.CanonicalDestinations));
     }
 
     [Fact]
@@ -837,7 +792,7 @@ public sealed class FishingPolicyTests
     [InlineData(18, true, 129, 1.0, false, true, false, false, 99.0, false, false, false, OceanFishingQueueAction.FailRegistrationClosed)]
     [InlineData(18, true, 129, 1.0, false, false, true, false, 99.0, false, false, false, OceanFishingQueueAction.WaitForDeparture)]
     [InlineData(18, true, 129, 1.0, false, false, false, true, 10.0, false, false, false, OceanFishingQueueAction.MoveToFishingPosition)]
-    [InlineData(18, true, 129, 1.0, false, false, false, true, 1.0, false, false, false, OceanFishingQueueAction.CastLine)]
+    [InlineData(18, true, 129, 1.0, false, false, false, true, 0.5, false, false, false, OceanFishingQueueAction.CastLine)]
     [InlineData(18, true, 129, 1.0, false, false, false, true, 1.0, true, false, false, OceanFishingQueueAction.CloseResult)]
     [InlineData(18, true, 129, 1.0, false, false, false, false, 1.0, false, true, false, OceanFishingQueueAction.ReturnAfterCompletion)]
     public void QueuePolicyCoversOceanFishingStateMachine(
@@ -1278,57 +1233,166 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void OnlyOnePreStartAlternativeIsAllowedAfterTenSecondsUnfishable()
+    public void FixedDestinationIndexCyclesForeverWithoutTerminalExhaustion()
     {
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginSession();
+        voyage.BeginPositioning(6, now);
 
-        Assert.False(ShouldSelectAlternative(voyage, now));
-        Assert.False(ShouldSelectAlternative(voyage, now.AddMilliseconds(9999)));
-        Assert.True(ShouldSelectAlternative(voyage, now.AddSeconds(10)));
-        Assert.False(ShouldSelectAlternative(voyage, now.AddSeconds(20)));
-        Assert.True(voyage.AlternativeUsed);
+        Assert.Equal(0, voyage.DestinationIndex);
+        for (var expected = 1; expected < 6; expected++)
+        {
+            Assert.True(voyage.AdvanceDestination(now.AddSeconds(expected)));
+            Assert.Equal(expected, voyage.DestinationIndex);
+        }
+
+        Assert.True(voyage.AdvanceDestination(now.AddSeconds(6)));
+        Assert.Equal(0, voyage.DestinationIndex);
+        Assert.True(voyage.AdvanceDestination(now.AddSeconds(7)));
+        Assert.Equal(1, voyage.DestinationIndex);
     }
 
     [Fact]
-    public void FishingAcknowledgementForbidsAlternativeMovement()
+    public void NavigationStallAdvancesAfterTenSecondsWithoutQuarterYalmProgress()
     {
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginSession();
-        EvaluateVoyageStart(voyage, now, gatheringConditionActive: true);
+        voyage.BeginPositioning(6, now);
 
-        Assert.False(ShouldSelectAlternative(voyage, now.AddSeconds(10)));
-        Assert.False(voyage.AlternativeUsed);
-        Assert.True(voyage.MovementLocked);
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(voyage, now, distance: 10f));
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(voyage, now.AddMilliseconds(9999), distance: 9.8f));
+        Assert.Equal(
+            OceanFishingAdvanceReason.NavigationStalled,
+            EvaluateRecovery(voyage, now.AddSeconds(10), distance: 9.8f));
     }
 
     [Fact]
-    public void MissingAlternativeNeverAuthorizesMovement()
+    public void NavigationTimeoutAdvancesAfterThirtyActiveSecondsDespiteProgress()
     {
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginSession();
+        voyage.BeginPositioning(6, now);
 
-        Assert.False(voyage.ShouldSelectAlternative(
+        Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now, 10f));
+        for (var seconds = 5; seconds < 30; seconds += 5)
+        {
+            Assert.Equal(
+                OceanFishingAdvanceReason.None,
+                EvaluateRecovery(voyage, now.AddSeconds(seconds), 10f - seconds * 0.1f));
+        }
+
+        Assert.Equal(
+            OceanFishingAdvanceReason.NavigationTimeout,
+            EvaluateRecovery(voyage, now.AddSeconds(30), 7f));
+    }
+
+    [Fact]
+    public void FalseCanFishAdvancesAfterTenAvailableNonBusyArrivalSeconds()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.MarkArrived(now);
+
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(voyage, now, 0.25f, atDestination: true, canFish: false));
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(voyage, now.AddMilliseconds(9999), 0.25f, atDestination: true, canFish: false));
+        Assert.Equal(
+            OceanFishingAdvanceReason.CannotFish,
+            EvaluateRecovery(voyage, now.AddSeconds(10), 0.25f, atDestination: true, canFish: false));
+    }
+
+    [Fact]
+    public void FivePostArrivalStartAttemptsAdvanceWithoutAcknowledgement()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.BeginSession();
+        voyage.MarkArrived(now);
+
+        for (var attempt = 0; attempt < OceanFishingVoyageState.PostArrivalAttemptLimit; attempt++)
+        {
+            Assert.Equal(
+                FishingCastDecision.Attempt,
+                EvaluateVoyageStart(voyage, now.AddSeconds(attempt * 3), atDestination: true).Decision);
+        }
+
+        Assert.Equal(OceanFishingVoyageState.PostArrivalAttemptLimit, voyage.PostArrivalStartAttemptCount);
+        Assert.Equal(
+            OceanFishingAdvanceReason.StartUnacknowledged,
+            EvaluateRecovery(voyage, now.AddSeconds(12), 0.25f, atDestination: true, canFish: true));
+    }
+
+    [Fact]
+    public void PausedRecoveryTimeDoesNotCountTowardNavigationStall()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+
+        Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now, 10f));
+        Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now.AddSeconds(5), 9.9f));
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(voyage, now.AddSeconds(35), 9.9f, timersPaused: true));
+        Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now.AddSeconds(39), 9.9f));
+        Assert.Equal(
+            OceanFishingAdvanceReason.NavigationStalled,
+            EvaluateRecovery(voyage, now.AddSeconds(40), 9.9f));
+    }
+
+    [Fact]
+    public void ArrivalFacingWaitsHalfSecondThenReappliesAtMostOncePerSecond()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.MarkArrived(now);
+
+        Assert.False(voyage.ShouldReapplyFacing(now.AddMilliseconds(499)));
+        Assert.True(voyage.ShouldReapplyFacing(now.AddMilliseconds(500)));
+        Assert.False(voyage.ShouldReapplyFacing(now.AddMilliseconds(1499)));
+        Assert.True(voyage.ShouldReapplyFacing(now.AddMilliseconds(1500)));
+    }
+
+    [Fact]
+    public void FishingAcknowledgementPermanentlyForbidsDestinationAdvancesAndFacingRetries()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(6, now);
+        voyage.BeginSession();
+        voyage.MarkArrived(now);
+
+        var acknowledgement = EvaluateVoyageStart(
+            voyage,
             now,
-            atFirstDestination: true,
-            alternativeAvailable: false,
-            canFish: false,
-            playerAvailable: true,
-            busy: false));
-        Assert.False(voyage.ShouldSelectAlternative(
-            now.AddSeconds(30),
-            atFirstDestination: true,
-            alternativeAvailable: false,
-            canFish: false,
-            playerAvailable: true,
-            busy: false));
-        Assert.False(voyage.AlternativeUsed);
+            gatheringConditionActive: true,
+            atDestination: true);
+
+        Assert.True(acknowledgement.StopNavigation);
+        Assert.False(voyage.AdvanceDestination(now.AddSeconds(10)));
+        Assert.False(voyage.ShouldReapplyFacing(now.AddSeconds(10)));
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(voyage, now.AddMinutes(1), 0.25f, atDestination: true, canFish: false));
+        Assert.Equal(0, voyage.DestinationIndex);
     }
 
     [Fact]
@@ -1406,7 +1470,8 @@ public sealed class FishingPolicyTests
         OceanFishingVoyageState voyage,
         DateTimeOffset nowUtc,
         bool gatheringConditionActive = false,
-        bool fishingConditionActive = false)
+        bool fishingConditionActive = false,
+        bool atDestination = false)
         => voyage.EvaluateFishingStart(
             nowUtc,
             enabled: true,
@@ -1415,16 +1480,20 @@ public sealed class FishingPolicyTests
             playerAvailable: true,
             gatheringConditionActive,
             fishingConditionActive,
-            resultWindowVisible: false);
+            resultWindowVisible: false,
+            atDestination);
 
-    private static bool ShouldSelectAlternative(
+    private static OceanFishingAdvanceReason EvaluateRecovery(
         OceanFishingVoyageState voyage,
-        DateTimeOffset nowUtc)
-        => voyage.ShouldSelectAlternative(
+        DateTimeOffset nowUtc,
+        float distance,
+        bool atDestination = false,
+        bool canFish = false,
+        bool timersPaused = false)
+        => voyage.EvaluateRecovery(
             nowUtc,
-            atFirstDestination: true,
-            alternativeAvailable: true,
-            canFish: false,
-            playerAvailable: true,
-            busy: false);
+            distance,
+            atDestination,
+            canFish,
+            timersPaused);
 }
