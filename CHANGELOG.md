@@ -1,5 +1,17 @@
 # VERMAXION Changelog
 
+## 2026-07-22 - Ocean Fishing fixed-rail recovery
+
+### Fixed
+- Replaced the live-unverified dynamic vnavmesh edge scan and player/entry-position fallbacks with six proven Henchman/FUTA rail coordinates. Destinations keep canonical starboard/port rotations and are ranked by two-yalm player clearance, greatest clearance, and stable canonical order; player positions are never used as navigation targets.
+- Tightened rail arrival to 0.5 yalms. Navigation now stops and applies the canonical facing at arrival, waits 500 ms before a bounded facing reapply, and retries facing at most once per second until Fishing/Gathering acknowledges startup.
+- Before the first acknowledgement, Ocean Fishing now advances through and wraps the fixed list on ten seconds without 0.25 yalms of progress, 30 active navigation seconds, ten available/non-busy seconds with `CanFish` false after arrival, or five unacknowledged post-arrival `/ahstart` attempts. Recovery clocks pause during route transitions, unavailable-player states, combat, casting, and occupied states.
+- `/ahstart` remains immediately eligible and retries every three seconds while moving or settled. Versatile Lure remains once per seven-minute session, advances preserve session state, and the first Fishing/Gathering acknowledgement still stops navigation immediately and permanently locks movement for the voyage.
+
+### Verification
+- Added deterministic fixed-coordinate, canonical-rotation, crowd-ranking, wraparound, stall, timeout, false-`CanFish`, unacknowledged-start, paused-timer, facing-settlement, and permanent-lock regressions while retaining startup, route, lifecycle, result, cleanup, and lure coverage.
+- The full Debug suite passes 389/389 tests, and the Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+
 ## 2026-07-22 - P27 holistic automation dispatch and native equipment hardening
 
 ### Added
