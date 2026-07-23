@@ -85,6 +85,7 @@ public static class AutomationCatalog
     public const string RegisterRegistrables = "register_registrables";
     public const string VendorStock = "vendor_stock";
     public const string RefillListings = "refill_listings";
+    public const string RetainerEquipping = "retainer_equipping";
     public const string NagYourMom = "nag_your_mom";
     public const string NagYourMomCasualCc = "nag_your_mom_casual_cc";
     public const string NagYourMomFrontline = "nag_your_mom_frontline";
@@ -111,6 +112,7 @@ public static class AutomationCatalog
         Engine(RegisterRegistrables, nameof(CharacterConfig.EnableRegisterRegistrables), "Register Registrables", AutomationCadence.EveryRun),
         Engine(VendorStock, nameof(CharacterConfig.EnableVendorStock), "Vendor Stock", AutomationCadence.EveryRun),
         Engine(RefillListings, nameof(CharacterConfig.EnableRefillFromListings), "Refill Listings", AutomationCadence.Scheduled, PostProcessTaskPhase.BeforeAR),
+        Engine(RetainerEquipping, nameof(CharacterConfig.EnableRetainerEquipping), "Retainer Equipping", AutomationCadence.EveryRun, PostProcessTaskPhase.BeforeAR),
         Engine(NagYourMom, nameof(CharacterConfig.EnableNagYourMom), "nag your mom", AutomationCadence.Daily),
         new(NagYourMomCasualCc, nameof(CharacterConfig.EnableNagYourMomCasualCc), "Casual CC route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
         new(NagYourMomFrontline, nameof(CharacterConfig.EnableNagYourMomFrontline), "Frontline route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),

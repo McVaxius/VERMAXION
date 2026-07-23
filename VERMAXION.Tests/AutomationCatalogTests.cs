@@ -23,7 +23,7 @@ public sealed class AutomationCatalogTests
             .OrderBy(name => name)
             .ToList();
 
-        Assert.Equal(23, enableProperties.Count);
+        Assert.Equal(24, enableProperties.Count);
         Assert.Equal(enableProperties, catalogFlags);
         Assert.All(AutomationCatalog.Features, feature => Assert.True(Enum.IsDefined(feature.Owner)));
     }
@@ -34,7 +34,7 @@ public sealed class AutomationCatalogTests
         var engineIds = AutomationCatalog.EngineTasks.Select(feature => feature.Id).ToList();
         var validation = AutomationCatalog.ValidateRuntimeRegistry(engineIds, PostProcessTaskOrder.DefaultOrder);
 
-        Assert.Equal(17, engineIds.Count);
+        Assert.Equal(18, engineIds.Count);
         Assert.True(validation.IsValid, validation.Message);
     }
 
@@ -68,7 +68,9 @@ public sealed class AutomationCatalogTests
         var registerIndex = normalized.IndexOf(PostProcessTaskOrder.RegisterRegistrables);
 
         Assert.DoesNotContain(PostProcessTaskOrder.LegacyFishing, normalized);
-        Assert.Equal(PostProcessTaskOrder.NewlyDispatchableIds, normalized.Skip(registerIndex + 1).Take(5));
+        Assert.Equal(
+            PostProcessTaskOrder.NewlyDispatchableIds,
+            normalized.Skip(registerIndex + 1).Take(PostProcessTaskOrder.NewlyDispatchableIds.Count));
         Assert.True(normalized.IndexOf(PostProcessTaskOrder.NagYourDad) < registerIndex);
         Assert.True(registerIndex < normalized.IndexOf(PostProcessTaskOrder.FCBuffRefill));
     }
@@ -100,7 +102,7 @@ public sealed class AutomationCatalogTests
         Assert.Equal(PostProcessTaskPhase.AfterAR, config.PostProcessTaskPlacement[PostProcessTaskOrder.RefillListings]);
         Assert.DoesNotContain(PostProcessTaskOrder.LegacyFishing, config.PostProcessTaskPlacement.Keys);
         Assert.All(PostProcessTaskOrder.NewlyDispatchableIds,
-            id => Assert.Equal(PostProcessTaskPhase.AfterAR, config.PostProcessTaskPlacement[id]));
+            id => Assert.Equal(PostProcessTaskOrder.GetDefaultPhase(id), config.PostProcessTaskPlacement[id]));
         Assert.False(PostProcessTaskOrder.Normalize(config));
     }
 

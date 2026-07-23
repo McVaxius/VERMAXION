@@ -31,6 +31,16 @@ public class Configuration : IPluginConfiguration
     public int FishingMaxFisherLevel { get; set; } = FishingDefaults.MaxFisherLevel;
     public int OceanFishingPreWindowOffsetMinutes { get; set; } = FishingDefaults.OceanFishingPreWindowOffsetMinutes;
     public bool FishingCharacterSettingsMigrated { get; set; } = false;
+    public bool FishingStockCatalogMigrated { get; set; } = false;
+    public List<FishingStockCatalogEntry> FishingStockCatalog { get; set; } =
+        FishingStockCatalogPolicy.CreateDefaultCatalog();
+
+    // --- Free Company action stock ---
+    public Dictionary<ulong, FcActionStockEntry> FcActionStockByFreeCompanyId { get; set; } = new();
+
+    // --- Setup wizard ---
+    public bool SetupWizardStateMigrated { get; set; } = false;
+    public bool SetupWizardCompleted { get; set; } = false;
 
     // --- Account Tracking ---
     public string LastAccountId { get; set; } = "";

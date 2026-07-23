@@ -22,20 +22,167 @@ public sealed class AdsUtilityStatusSnapshot
     public DateTime CapturedAtUtc { get; init; }
 }
 
+public sealed class AdsShopPurchaseStatusSnapshot
+{
+    public static AdsShopPurchaseStatusSnapshot Empty { get; } = new();
+
+    public bool IsAvailable { get; init; }
+    public bool StatusReadable { get; init; }
+    public bool Running { get; init; }
+    public bool Done { get; init; }
+    public bool? Succeeded { get; init; }
+    public string Phase { get; init; } = string.Empty;
+    public uint ItemId { get; init; }
+    public string ItemName { get; init; } = string.Empty;
+    public int RequestedQuantity { get; init; }
+    public int AcquiredQuantity { get; init; }
+    public int RemainingQuantity { get; init; }
+    public string FailureCode { get; init; } = string.Empty;
+    public string StatusMessage { get; init; } = string.Empty;
+    public string SuccessMessage { get; init; } = string.Empty;
+    public string FailureMessage { get; init; } = string.Empty;
+    public string LastStartError { get; init; } = string.Empty;
+    public DateTime? CompletedAtUtc { get; init; }
+    public DateTime CapturedAtUtc { get; init; }
+    public bool IsTerminal => Done && !Running;
+}
+
 public sealed class AdsIpcClient
 {
     private readonly IPluginLog log;
     private readonly ICallGateSubscriber<string, bool> startRepairSubscriber;
     private readonly ICallGateSubscriber<string> getStatusJsonSubscriber;
+    private readonly ICallGateSubscriber<uint, int, bool> startShopPurchaseSubscriber;
+    private readonly ICallGateSubscriber<string> getShopPurchaseStatusJsonSubscriber;
+    private readonly ICallGateSubscriber<bool> cancelUtilitySubscriber;
     private DateTime lastRefreshUtc = DateTime.MinValue;
+    private DateTime lastShopRefreshUtc = DateTime.MinValue;
 
     public AdsUtilityStatusSnapshot Current { get; private set; } = AdsUtilityStatusSnapshot.Empty;
+    public AdsShopPurchaseStatusSnapshot CurrentShopPurchase { get; private set; } =
+        AdsShopPurchaseStatusSnapshot.Empty;
 
     public AdsIpcClient(IDalamudPluginInterface pluginInterface, IPluginLog log)
     {
         this.log = log;
         startRepairSubscriber = pluginInterface.GetIpcSubscriber<string, bool>("ADS.StartRepair");
         getStatusJsonSubscriber = pluginInterface.GetIpcSubscriber<string>("ADS.GetStatusJson");
+        startShopPurchaseSubscriber =
+            pluginInterface.GetIpcSubscriber<uint, int, bool>("ADS.StartShopPurchase");
+        getShopPurchaseStatusJsonSubscriber =
+            pluginInterface.GetIpcSubscriber<string>("ADS.GetShopPurchaseStatusJson");
+        cancelUtilitySubscriber = pluginInterface.GetIpcSubscriber<bool>("ADS.CancelUtility");
+    }
+
+    public bool StartShopPurchase(uint itemId, int quantity, out string failure)
+    {
+        failure = string.Empty;
+        if (itemId == 0 || quantity < 1)
+        {
+            failure = "ADS shop purchases require a valid item and a positive quantity.";
+            return false;
+        }
+
+        try
+        {
+            if (startShopPurchaseSubscriber.InvokeFunc(itemId, quantity))
+            {
+                CurrentShopPurchase = AdsShopPurchaseStatusSnapshot.Empty;
+                lastShopRefreshUtc = DateTime.MinValue;
+                return true;
+            }
+
+            var status = RefreshShopPurchase(force: true);
+            failure = !string.IsNullOrWhiteSpace(status.LastStartError)
+                ? status.LastStartError
+                : !string.IsNullOrWhiteSpace(status.FailureMessage)
+                    ? status.FailureMessage
+                    : "ADS did not accept the shop purchase request.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            failure = ex.Message;
+            log.Warning($"[ADS] Failed to start shop purchase item={itemId}, quantity={quantity}: {ex.Message}");
+            return false;
+        }
+    }
+
+    public AdsShopPurchaseStatusSnapshot RefreshShopPurchase(bool force = false)
+    {
+        var now = DateTime.UtcNow;
+        if (!force && now - lastShopRefreshUtc < TimeSpan.FromMilliseconds(250))
+            return CurrentShopPurchase;
+
+        lastShopRefreshUtc = now;
+        try
+        {
+            var json = getShopPurchaseStatusJsonSubscriber.InvokeFunc();
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                CurrentShopPurchase = new AdsShopPurchaseStatusSnapshot
+                {
+                    IsAvailable = true,
+                    StatusReadable = false,
+                    CapturedAtUtc = now,
+                };
+                return CurrentShopPurchase;
+            }
+
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            CurrentShopPurchase = new AdsShopPurchaseStatusSnapshot
+            {
+                IsAvailable = true,
+                StatusReadable = true,
+                Running = GetBool(root, "running"),
+                Done = GetBool(root, "done"),
+                Succeeded = GetNullableBool(root, "succeeded"),
+                Phase = GetString(root, "phase"),
+                ItemId = (uint)Math.Max(0, GetInt(root, "itemId")),
+                ItemName = GetString(root, "itemName"),
+                RequestedQuantity = GetInt(root, "requestedQuantity"),
+                AcquiredQuantity = GetInt(root, "acquiredQuantity"),
+                RemainingQuantity = GetInt(root, "remainingQuantity"),
+                FailureCode = GetString(root, "failureCode"),
+                StatusMessage = GetString(root, "statusMessage"),
+                SuccessMessage = GetString(root, "successMessage"),
+                FailureMessage = GetString(root, "failureMessage"),
+                LastStartError = GetString(root, "lastStartError"),
+                CompletedAtUtc = GetDateTime(root, "completedAtUtc"),
+                CapturedAtUtc = now,
+            };
+            return CurrentShopPurchase;
+        }
+        catch (Exception ex)
+        {
+            log.Debug($"[ADS] Failed to read shop purchase status JSON: {ex.Message}");
+            CurrentShopPurchase = new AdsShopPurchaseStatusSnapshot
+            {
+                IsAvailable = false,
+                StatusReadable = false,
+                CapturedAtUtc = now,
+            };
+            return CurrentShopPurchase;
+        }
+    }
+
+    public bool CancelUtility(out string failure)
+    {
+        failure = string.Empty;
+        try
+        {
+            if (cancelUtilitySubscriber.InvokeFunc())
+                return true;
+            failure = "ADS reported that no utility request was cancelled.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            failure = ex.Message;
+            log.Warning($"[ADS] Failed to cancel utility: {ex.Message}");
+            return false;
+        }
     }
 
     public bool StartRepair(string mode, out string failure)
@@ -130,6 +277,25 @@ public sealed class AdsIpcClient
         => root.TryGetProperty(propertyName, out var property)
            && property.ValueKind is JsonValueKind.True or JsonValueKind.False
            && property.GetBoolean();
+
+    private static bool? GetNullableBool(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var property))
+            return null;
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => null,
+        };
+    }
+
+    private static int GetInt(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out var property) &&
+           property.ValueKind == JsonValueKind.Number &&
+           property.TryGetInt32(out var value)
+            ? value
+            : 0;
 
     private static DateTime? GetDateTime(JsonElement root, string propertyName)
     {

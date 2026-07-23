@@ -12,6 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using ECommons.UIHelpers.AddonMasterImplementations;
+using Lumina.Excel.Sheets;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -66,6 +67,11 @@ public class FCBuffService : IDisposable
     private int? cachedGCTerritory = null;
     private string? windowCloseTargetName = null;
     private bool failAfterClosingWindows = false;
+    private ulong currentFreeCompanyId;
+    private bool reconciliationRequired;
+    private bool resumeAfterPurchase;
+    private int activationAttempts;
+    private int lastSealSweetenerListIndex = -1;
 
     // FC points threshold from FUTA_GC.lua
     private const int MinFCPoints = 500000;
@@ -97,6 +103,8 @@ public class FCBuffService : IDisposable
         ConfirmingPurchase,
         PurchaseLoop,
         ClosingWindows,
+        ActivatingBuff,
+        WaitingForActivation,
         Complete,
         Failed
     }
@@ -139,6 +147,16 @@ public class FCBuffService : IDisposable
         failAfterClosingWindows = false;
         ResetWindowCloseTracking();
         ResetCachedGCTerritory();
+        currentFreeCompanyId = GetCurrentFreeCompanyId();
+        reconciliationRequired =
+            currentFreeCompanyId == 0 ||
+            !plugin.Configuration.FcActionStockByFreeCompanyId.TryGetValue(
+                currentFreeCompanyId,
+                out var cachedStock) ||
+            cachedStock.KnownSealSweetenerTwoCount <= 0;
+        resumeAfterPurchase = false;
+        activationAttempts = 0;
+        lastSealSweetenerListIndex = -1;
         SetState(FCBuffState.CheckingFCPoints);
         log.Information($"[FCBuff] Starting FC buff refill (max attempts: {purchaseAttempts})");
     }
@@ -347,7 +365,18 @@ public class FCBuffService : IDisposable
         {
             case FCBuffState.CheckingFCPoints:
                 if (elapsed < 1) return;
-                log.Information("[FCBuff] Checking if we have enough FC points for refill");
+                if (IsSealSweetenerTwoActive())
+                {
+                    log.Information("[FCBuff] Seal Sweetener II is already active; stock is unchanged.");
+                    SetState(FCBuffState.Complete);
+                    break;
+                }
+                if (currentFreeCompanyId == 0)
+                {
+                    log.Error("[FCBuff] No Free Company ID is available for stock ledger ownership.");
+                    SetState(FCBuffState.Failed);
+                    break;
+                }
                 SetState(FCBuffState.OpeningFCWindow);
                 break;
 
@@ -367,36 +396,6 @@ public class FCBuffService : IDisposable
                         if (elapsed < 1)
                         {
                             // Wait 1 second for window data to populate
-                            return;
-                        }
-                        
-                        log.Information("[FCBuff] FC window is ready, checking FC points before switching to Actions tab");
-                        
-                        // Get FC points from the window
-                        var fcProxyPoints = InfoProxyFreeCompany.Instance();
-                        if (fcProxyPoints != null && fcProxyPoints->Id != 0)
-                        {
-                            // FC points are at node 1,4,16,17 in the FC window
-                            var fcPointsNode = GameHelpers.GetFCPointsNode();
-                            var fcPoints = fcPointsNode ?? 0;
-                            log.Information($"[FCBuff] Current FC points: {fcPoints:N0}");
-                            
-                            // Check if we have enough FC points
-                            var config = configManager.GetActiveConfig();
-                            var minFCPoints = config.FCBuffMinPoints;
-                            if (fcPoints < minFCPoints)
-                            {
-                                log.Information($"[FCBuff] Not enough FC points ({fcPoints:N0} < {minFCPoints:N0}), skipping refill");
-                                SetState(FCBuffState.Complete);
-                                return;
-                            }
-                            
-                            log.Information("[FCBuff] Sufficient FC points, proceeding to switch to Actions tab");
-                        }
-                        else
-                        {
-                            log.Error("[FCBuff] Failed to get FC points from InfoProxy");
-                            SetState(FCBuffState.Failed);
                             return;
                         }
                         
@@ -423,8 +422,16 @@ public class FCBuffService : IDisposable
                 if (elapsed < 2) return;
                 if (GameHelpers.IsAddonVisible("FreeCompanyAction"))
                 {
-                    log.Information("[FCBuff] FC Action window appeared, ready for buff counting");
-                    SetState(FCBuffState.CheckingBuffInventory);
+                    if (reconciliationRequired)
+                    {
+                        log.Information("[FCBuff] FC Action window appeared; reconciling stock.");
+                        SetState(FCBuffState.CheckingBuffInventory);
+                    }
+                    else
+                    {
+                        log.Information("[FCBuff] FC Action window appeared; activating from positive cached stock.");
+                        SetState(FCBuffState.ActivatingBuff);
+                    }
                 }
                 else if (elapsed > 5)
                 {
@@ -473,8 +480,23 @@ public class FCBuffService : IDisposable
                 try
                 {
                     // Use the FCBuffInventoryService to count buffs
-                    var sealSweetenerCount = CountSealSweetenerBuffs();
-                    log.Information($"[FCBuff] Seal Sweetener II count: {sealSweetenerCount}");
+                    var inventoryRead = ReadSealSweetenerBuffs();
+                    if (inventoryRead.Status != FcActionInventoryReadStatus.Success)
+                    {
+                        log.Error($"[FCBuff] FC action inventory read failed: {inventoryRead.Failure}");
+                        SetState(FCBuffState.Failed);
+                        break;
+                    }
+
+                    var sealSweetenerCount = inventoryRead.Count;
+                    FcBuffStockPolicy.ApplyReconciliation(
+                        plugin.Configuration.FcActionStockByFreeCompanyId,
+                        currentFreeCompanyId,
+                        inventoryRead,
+                        DateTime.UtcNow);
+                    plugin.Configuration.Save();
+                    reconciliationRequired = false;
+                    log.Information($"[FCBuff] Reconciled Seal Sweetener II count: {sealSweetenerCount}");
                     
                     if (sealSweetenerCount == 0)
                     {
@@ -483,8 +505,8 @@ public class FCBuffService : IDisposable
                     }
                     else
                     {
-                        log.Information($"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II, skipping refill");
-                        SetState(FCBuffState.Complete);
+                        log.Information($"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II; activating one.");
+                        SetState(FCBuffState.ActivatingBuff);
                     }
                 }
                 catch (Exception ex)
@@ -496,8 +518,21 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.CheckingIfRefillNeeded:
                 if (elapsed < 1) return;
-                // Check gil
+                var purchaseFcPointsNode = GameHelpers.GetFCPointsNode();
+                if (!purchaseFcPointsNode.HasValue)
+                {
+                    log.Error("[FCBuff] FC points could not be read while a purchase was necessary.");
+                    SetState(FCBuffState.Failed);
+                    return;
+                }
                 var activeConfig = configManager.GetActiveConfig();
+                if (purchaseFcPointsNode.Value < activeConfig.FCBuffMinPoints)
+                {
+                    log.Information(
+                        $"[FCBuff] Not enough FC points ({purchaseFcPointsNode.Value:N0} < {activeConfig.FCBuffMinPoints:N0}); purchase skipped.");
+                    SetState(FCBuffState.Complete);
+                    return;
+                }
                 var minGil = Math.Max(BaseMinGil, activeConfig.FCBuffMinGil);
                 var gil = GameHelpers.GetInventoryItemCount(1);
                 log.Information($"[FCBuff] Current gil: {gil:N0}");
@@ -777,6 +812,8 @@ public class FCBuffService : IDisposable
                 if (buyCount >= buyMax)
                 {
                     log.Information($"[FCBuff] Purchase complete: {buyCount} buffs bought");
+                    resumeAfterPurchase = true;
+                    reconciliationRequired = true;
                     SetState(FCBuffState.ClosingWindows);
                     return;
                 }
@@ -830,6 +867,71 @@ public class FCBuffService : IDisposable
 
             case FCBuffState.ClosingWindows:
                 TickClosingWindows(elapsed);
+                break;
+
+            case FCBuffState.ActivatingBuff:
+                if (elapsed < 0.5)
+                    return;
+                if (lastSealSweetenerListIndex < 0)
+                {
+                    var read = ReadSealSweetenerBuffs();
+                    if (read.Status != FcActionInventoryReadStatus.Success || read.Count <= 0)
+                    {
+                        reconciliationRequired = true;
+                        SetState(FCBuffState.CheckingBuffInventory);
+                        break;
+                    }
+                }
+                activationAttempts++;
+                log.Information(
+                    $"[FCBuff] Requesting Seal Sweetener II activation from stock row {lastSealSweetenerListIndex}; attempt={activationAttempts}");
+                GameHelpers.FireAddonCallback(
+                    "FreeCompanyAction",
+                    true,
+                    2,
+                    (uint)Math.Max(0, lastSealSweetenerListIndex));
+                SetState(FCBuffState.WaitingForActivation);
+                break;
+
+            case FCBuffState.WaitingForActivation:
+                if (IsSealSweetenerTwoActive())
+                {
+                    if (FcBuffStockPolicy.ApplyConfirmedActivation(
+                            plugin.Configuration.FcActionStockByFreeCompanyId,
+                            currentFreeCompanyId,
+                            DateTime.UtcNow))
+                    {
+                        plugin.Configuration.Save();
+                    }
+                    log.Information("[FCBuff] Seal Sweetener II activation verified; persisted stock decremented once.");
+                    SetState(FCBuffState.Complete);
+                    break;
+                }
+
+                if (GameHelpers.IsAddonVisible("SelectYesno"))
+                {
+                    GameHelpers.TryClickYesIfPromptContains(
+                        ["Seal Sweetener II"],
+                        "FC action activation",
+                        allowUnreadable: false,
+                        out _);
+                }
+
+                if (elapsed < 10)
+                    return;
+
+                if (activationAttempts == 1)
+                {
+                    log.Warning("[FCBuff] Cached activation was not verified; forcing FC stock reconciliation.");
+                    reconciliationRequired = true;
+                    lastSealSweetenerListIndex = -1;
+                    SetState(FCBuffState.CheckingBuffInventory);
+                }
+                else
+                {
+                    log.Error("[FCBuff] Seal Sweetener II activation remained unverified after reconciliation.");
+                    SetState(FCBuffState.Failed);
+                }
                 break;
         }
     }
@@ -1048,6 +1150,13 @@ public class FCBuffService : IDisposable
         var visibleAddons = GetVisibleFcCleanupAddons();
         if (visibleAddons.Count == 0)
         {
+            if (resumeAfterPurchase && !failAfterClosingWindows)
+            {
+                resumeAfterPurchase = false;
+                log.Information("[FCBuff] Purchase windows closed; reopening FC actions for required rescan.");
+                SetState(FCBuffState.OpeningFCWindow);
+                return;
+            }
             log.Information(failAfterClosingWindows
                 ? "[FCBuff] FC windows closed after failure"
                 : "[FCBuff] All FC windows closed, task complete");
@@ -1193,7 +1302,7 @@ public class FCBuffService : IDisposable
         return builder.ToString().Trim();
     }
 
-    private unsafe int CountSealSweetenerBuffs()
+    private unsafe FcActionInventoryReadResult ReadSealSweetenerBuffs()
     {
         try
         {
@@ -1203,11 +1312,14 @@ public class FCBuffService : IDisposable
             if (addon == null || !addon->IsVisible)
             {
                 log.Error("[FCBuff] FreeCompanyAction addon not found or not visible for buff counting");
-                return 0;
+                return FcActionInventoryReadResult.Failed(
+                    "FreeCompanyAction addon was not visible.");
             }
 
             // Count occurrences of specific buff names
             int sealSweetenerCount = 0;
+            int readableSlots = 0;
+            lastSealSweetenerListIndex = -1;
             
             // Navigate the node path: GetNode(1, 10, 14, i, 3)
             for (uint i = 51001; i <= 51016; i++)
@@ -1254,9 +1366,12 @@ public class FCBuffService : IDisposable
                     if (textNode == null) continue;
                     
                     var text = textNode->NodeText.ToString();
+                    readableSlots++;
                     if (text == "Seal Sweetener II")
                     {
                         sealSweetenerCount++;
+                        if (lastSealSweetenerListIndex < 0)
+                            lastSealSweetenerListIndex = listIndex - 1;
                         log.Debug($"[FCBuff] Found Seal Sweetener II at slot {i}");
                     }
                 }
@@ -1269,13 +1384,57 @@ public class FCBuffService : IDisposable
             log.Information($"[FCBuff] Seal Sweetener II count: {sealSweetenerCount}");
             commandManager.ProcessCommand($"/echo Seal Sweetener II count: {sealSweetenerCount}");
             
-            return sealSweetenerCount;
+            return readableSlots > 0
+                ? FcActionInventoryReadResult.Succeeded(sealSweetenerCount)
+                : FcActionInventoryReadResult.Failed(
+                    "No FC action inventory rows were readable.");
         }
         catch (Exception ex)
         {
             log.Error($"[FCBuff] Error counting Seal Sweetener buffs: {ex.Message}");
+            return FcActionInventoryReadResult.Failed(ex.Message);
+        }
+    }
+
+    private static unsafe ulong GetCurrentFreeCompanyId()
+    {
+        try
+        {
+            var proxy = InfoProxyFreeCompany.Instance();
+            return proxy == null ? 0 : proxy->Id;
+        }
+        catch
+        {
             return 0;
         }
+    }
+
+    private static bool IsSealSweetenerTwoActive()
+    {
+        try
+        {
+            var player = Plugin.ObjectTable.LocalPlayer;
+            var sheet = Plugin.DataManager.GetExcelSheet<Status>();
+            if (player == null || sheet == null)
+                return false;
+
+            foreach (var status in player.StatusList)
+            {
+                if (sheet.TryGetRow(status.StatusId, out var row) &&
+                    string.Equals(
+                        row.Name.ToString(),
+                        "Seal Sweetener II",
+                        StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // A failed active-status read is not satisfaction evidence.
+        }
+        return false;
     }
 
     private void SetState(FCBuffState newState)

@@ -54,6 +54,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public RegisterRegistrablesService RegisterRegistrablesService { get; init; }
     public VendorStockService VendorStockService { get; init; }
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
+    public RetainerEquippingService RetainerEquippingService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
     public AutoRetainerIPC AutoRetainerIPC { get; init; }
     internal AutoRetainerSelectionGuard AutoRetainerSelectionGuard { get; init; }
@@ -108,6 +109,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     private DateTime fishingRelogContinuationLastCheckAt = DateTime.MinValue;
     private DateTime fishingRelogWorldReadySince = DateTime.MinValue;
     private DateTime fishingRelogLastDiagnosticAt = DateTime.MinValue;
+    private bool retainerCollectOnlyObservedArProcessing;
     private int loggedDadBeforeArYield;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
@@ -141,9 +143,22 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ECommonsMain.Init(PluginInterface, this);
         LogPluginAssemblyDetails();
 
-        Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        var storedConfiguration = PluginInterface.GetPluginConfig() as Configuration;
+        var setupWizardDecision = SetupWizardMigrationPolicy.Decide(
+            storedConfiguration != null,
+            storedConfiguration?.SetupWizardStateMigrated ?? false,
+            storedConfiguration?.SetupWizardCompleted ?? false);
+        Configuration = storedConfiguration ?? new Configuration();
+        if (Configuration.SetupWizardCompleted != setupWizardDecision.Completed ||
+            Configuration.SetupWizardStateMigrated != setupWizardDecision.Migrated)
+        {
+            Configuration.SetupWizardCompleted = setupWizardDecision.Completed;
+            Configuration.SetupWizardStateMigrated = setupWizardDecision.Migrated;
+            Configuration.Save();
+        }
         ConfigManager = new ConfigManager(PluginInterface, Log);
         ApplyLegacyFishingOperationSettingsIfNeeded();
+        ApplyFishingStockCatalogMigrationIfNeeded();
         RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
         AutoRetainerIPC = new AutoRetainerIPC(PluginInterface, Log);
         AutoRetainerSelectionGuard = new AutoRetainerSelectionGuard(
@@ -198,6 +213,13 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
         WorkshopBellService = new WorkshopBellService(Log, LifestreamIPC, VNavmeshIPC);
         RetainerListingRefillService = new RetainerListingRefillService(Log, ConfigManager, VNavmeshIPC, WorkshopBellService, AutoRetainerIPC);
+        RetainerEquippingService = new RetainerEquippingService(
+            Log,
+            ConfigManager,
+            AutoRetainerIPC,
+            WorkshopBellService,
+            DataManager,
+            Framework);
         IncidentWriter = new VermaxionIncidentWriter(PluginInterface.ConfigDirectory.FullName);
 
         // AR PostProcess - fires OnARCharacterReady when AR signals us
@@ -219,7 +241,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             VendorStockService, FishingService,
             RegisterRegistrablesService, GearUpdaterService, HighestCombatJobService,
             CurrentJobEquipmentService, SeasonalGearService, MinionRouletteService, EquipmentAutomationRuntime,
-            RetainerListingRefillService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
+            RetainerListingRefillService, RetainerEquippingService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
@@ -239,6 +261,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(RegistrableConfigWindow);
+        if (setupWizardDecision.ShouldAutoOpen && !Configuration.SetupWizardCompleted)
+        {
+            ConfigWindow.IsOpen = true;
+            ConfigWindow.OpenWizard(SetupWizardKind.DefaultAndSync);
+        }
 
         // Commands
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
@@ -294,6 +321,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ARPostProcessService.Dispose();
         FishingService.Dispose();
         FishingRunLifecycle.ForceCleanup("plugin disposal");
+        RetainerEquippingService.Cancel();
         AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         YesAlreadyIPC.Dispose();
         VNavmeshIPC.Dispose();
@@ -568,6 +596,22 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         Configuration.ClearLegacyFishingOperationSettings();
         Configuration.Save();
         Log.Information($"[Fishing] Migrated legacy global fishing operation settings to {migratedCount} per-character config record(s)");
+    }
+
+    private void ApplyFishingStockCatalogMigrationIfNeeded()
+    {
+        Configuration.FishingStockCatalog ??= FishingStockCatalogPolicy.CreateDefaultCatalog();
+        var changed = FishingStockCatalogPolicy.NormalizeCatalog(Configuration.FishingStockCatalog);
+        if (!Configuration.FishingStockCatalogMigrated)
+        {
+            var migratedCount = ConfigManager.MigrateFishingStockCatalog(Configuration.FishingStockCatalog);
+            Configuration.FishingStockCatalogMigrated = true;
+            changed = true;
+            Log.Information($"[Fishing] Migrated ordered stock settings to {migratedCount} account default/character record(s)");
+        }
+
+        if (changed)
+            Configuration.Save();
     }
 
     private void FinishReleaseOnlyPostprocess(string reason)
@@ -1376,6 +1420,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         }
         else if (!ClientState.IsLoggedIn && wasLoggedIn)
         {
+            RetainerEquippingService.RestoreCollectOnly(preserveCheckpoint: true);
+            retainerCollectOnlyObservedArProcessing = false;
             wasLoggedIn = false;
             beforeArStartedThisLogin = false;
             Log.Information("[AR] Preserving VMX ownership across logout transition.");
@@ -1403,6 +1449,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         FisherGearsetTestService.Update();
         UpdateBeforeArGateAfterEngine();
         ProcessBeforeArReleasePending();
+        ProcessRetainerCollectOnlyRecovery();
 
         // Update DTR bar
         UpdateDtrBar();
@@ -1430,6 +1477,32 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             CurrentJobEquipmentService.Update();
             FishingService.Update();
         }
+    }
+
+    private void ProcessRetainerCollectOnlyRecovery()
+    {
+        var active = ConfigManager.GetActiveConfig();
+        if (active?.RetainerEquipmentCheckpointPending != true)
+        {
+            retainerCollectOnlyObservedArProcessing = false;
+            return;
+        }
+
+        if (ARPostProcessService.IsProcessing)
+        {
+            retainerCollectOnlyObservedArProcessing = true;
+            return;
+        }
+
+        if (!retainerCollectOnlyObservedArProcessing || Engine.IsRunning)
+            return;
+
+        RetainerEquippingService.RestoreCollectOnly();
+        if (active.RetainerEquipmentCheckpointPending)
+            return;
+
+        retainerCollectOnlyObservedArProcessing = false;
+        Log.Information("[RetainerEquip] Restored collect-only after AutoRetainer processing completed.");
     }
 
     public void SetupDtrBar()

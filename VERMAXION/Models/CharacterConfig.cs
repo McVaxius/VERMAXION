@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace VERMAXION.Models;
 
@@ -32,12 +33,22 @@ public class CharacterConfig
     public bool EnableFishing { get; set; } = false;
     public bool AlwaysFishOnThisCharacterIfWindowOpen { get; set; } = false;
     public int FishingLureRestockTarget { get; set; } = FishingDefaults.LureRestockTarget;
+    public Dictionary<uint, FishingStockSetting> FishingStockItems { get; set; } =
+        FishingStockCatalogPolicy.CreateDefaultSettings();
     public FishingReturnDestination FishingReturnDestination { get; set; } = FishingDefaults.ReturnDestination;
     public string FishingReturnCommand { get; set; } = FishingDefaults.ReturnCommand;
     public FishingRepairMode FishingRepairMode { get; set; } = FishingDefaults.RepairMode;
     public int FishingRepairThresholdPercent { get; set; } = FishingDefaults.RepairThresholdPercent;
     public bool FishingDiscardAfterVoyage { get; set; } = false;
     public bool FishingSellAfterVoyage { get; set; } = false;
+    public bool EnableRetainerEquipping { get; set; } = false;
+    public RetainerGearSourceMode RetainerGearSourceMode { get; set; } = RetainerGearSourceMode.IgnoreGearset;
+    public bool RetainerGearNonUniqueOnly { get; set; } = true;
+    public int RetainerCombatItemLevelTarget { get; set; } = 0;
+    public int RetainerGatheringPerceptionTarget { get; set; } = 0;
+    public string RetainerEquipmentLastUnmetSignature { get; set; } = string.Empty;
+    public bool RetainerEquipmentCheckpointPending { get; set; } = false;
+    public bool? RetainerEquipmentOriginalCollectOnly { get; set; }
 
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
@@ -263,12 +274,23 @@ public class CharacterConfig
             EnableFishing = EnableFishing,
             AlwaysFishOnThisCharacterIfWindowOpen = AlwaysFishOnThisCharacterIfWindowOpen,
             FishingLureRestockTarget = FishingLureRestockTarget,
+            FishingStockItems = FishingStockItems.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.Clone()),
             FishingReturnDestination = FishingReturnDestination,
             FishingReturnCommand = FishingReturnCommand,
             FishingRepairMode = FishingRepairMode,
             FishingRepairThresholdPercent = FishingRepairThresholdPercent,
             FishingDiscardAfterVoyage = FishingDiscardAfterVoyage,
             FishingSellAfterVoyage = FishingSellAfterVoyage,
+            EnableRetainerEquipping = EnableRetainerEquipping,
+            RetainerGearSourceMode = RetainerGearSourceMode,
+            RetainerGearNonUniqueOnly = RetainerGearNonUniqueOnly,
+            RetainerCombatItemLevelTarget = RetainerCombatItemLevelTarget,
+            RetainerGatheringPerceptionTarget = RetainerGatheringPerceptionTarget,
+            RetainerEquipmentLastUnmetSignature = RetainerEquipmentLastUnmetSignature,
+            RetainerEquipmentCheckpointPending = RetainerEquipmentCheckpointPending,
+            RetainerEquipmentOriginalCollectOnly = RetainerEquipmentOriginalCollectOnly,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,

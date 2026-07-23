@@ -78,7 +78,7 @@ public enum FisherGearsetEquipState
 {
     Running,
     Succeeded,
-    MissingGearset,
+    FallbackRequired,
     TimedOut,
 }
 
@@ -89,6 +89,7 @@ public enum FisherGearsetEventKind
     TransientFailure,
     Verified,
     TerminalFailure,
+    FallbackRequested,
 }
 
 public readonly record struct FisherGearsetEvent(
@@ -102,6 +103,7 @@ public readonly record struct FisherGearsetEvent(
 public sealed class FisherGearsetEquipOperation
 {
     public static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(5);
+    public const int MaximumEquipRequests = 10;
 
     private readonly IFisherGearsetRuntime runtime;
     private readonly DateTimeOffset deadlineUtc;
@@ -124,6 +126,7 @@ public sealed class FisherGearsetEquipOperation
     public int FinalClassJobId { get; private set; }
     public FisherGearsetSelection? Selection { get; private set; }
     public int? LastEquipRequestResult { get; private set; }
+    public int EquipRequestCount { get; private set; }
     public FisherGearsetEquipState State { get; private set; } = FisherGearsetEquipState.Running;
     public bool IsComplete => State != FisherGearsetEquipState.Running;
     public bool Succeeded => State == FisherGearsetEquipState.Succeeded;
@@ -164,8 +167,10 @@ public sealed class FisherGearsetEquipOperation
         var lookup = runtime.FindFirstSavedFisherGearset();
         if (lookup.Status == FisherGearsetLookupStatus.Missing)
         {
-            State = FisherGearsetEquipState.MissingGearset;
-            events.Add(new(FisherGearsetEventKind.TerminalFailure, lookup.Error));
+            State = FisherGearsetEquipState.FallbackRequired;
+            events.Add(new(
+                FisherGearsetEventKind.FallbackRequested,
+                $"{lookup.Error} Falling back to a Weathered Fishing Rod."));
             return events;
         }
 
@@ -198,6 +203,7 @@ public sealed class FisherGearsetEquipOperation
         }
 
         LastEquipRequestResult = equip.Result;
+        EquipRequestCount++;
         events.Add(new(
             FisherGearsetEventKind.EquipRequested,
             $"Equip request result: {equip.Result} (gearset ID {Selection.Value.Id})."));
@@ -209,6 +215,13 @@ public sealed class FisherGearsetEquipOperation
             events.Add(new(
                 FisherGearsetEventKind.Verified,
                 $"Verified final class-job ID: {FinalClassJobId}."));
+        }
+        else if (EquipRequestCount >= MaximumEquipRequests)
+        {
+            State = FisherGearsetEquipState.FallbackRequired;
+            events.Add(new(
+                FisherGearsetEventKind.FallbackRequested,
+                $"Fisher was not verified after {EquipRequestCount} equip requests; falling back before request {EquipRequestCount + 1}."));
         }
 
         return events;
