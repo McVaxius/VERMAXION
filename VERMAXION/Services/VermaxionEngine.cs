@@ -178,6 +178,7 @@ public class VermaxionEngine
     private RunOutcome pendingRunOutcome = RunOutcome.None;
     private string pendingRunSummary = string.Empty;
     private bool requireEnabledConfig;
+    private AutomationRunScope activeRunScope = AutomationRunScope.Full;
     private DateTime watchdogLastProgressAt = DateTime.MinValue;
     private string watchdogLastSignature = string.Empty;
     private string watchdogPauseReason = string.Empty;
@@ -476,7 +477,12 @@ public class VermaxionEngine
         => Enabled(config.EnableMinionRoulette, "Minion Roulette");
 
     private static TaskEligibility EvaluateRetainerEquipping(CharacterConfig config)
-        => !config.EnableRetainerEquipping
+        => EvaluateRetainerEquipping(config, ignoreSchedulingFlag: false);
+
+    private static TaskEligibility EvaluateRetainerEquipping(
+        CharacterConfig config,
+        bool ignoreSchedulingFlag)
+        => !ignoreSchedulingFlag && !config.EnableRetainerEquipping
             ? TaskEligibility.Disabled("Retainer Equipping is disabled for this character.")
             : config.RetainerCombatItemLevelTarget <= 0 &&
               config.RetainerGatheringPerceptionTarget <= 0
@@ -602,13 +608,30 @@ public class VermaxionEngine
         return TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false, automatedRun: false, "manual");
     }
 
+    public bool ManualStartRetainerEquipping()
+    {
+        return TryBeginRun(
+            RunTaskPhaseFilter.All,
+            requireEnabled: false,
+            requireWorldReady: false,
+            automatedRun: false,
+            "manual Retainer Equipping",
+            AutomationRunScope.SingleTask(PostProcessTaskOrder.RetainerEquipping));
+    }
+
     public void RecordSkippedOpportunity(string summary)
     {
         if (!IsRunning)
             RecordRunCompletion(RunOutcome.Skipped, summary);
     }
 
-    private bool TryBeginRun(RunTaskPhaseFilter phaseFilter, bool requireEnabled, bool requireWorldReady, bool automatedRun, string source)
+    private bool TryBeginRun(
+        RunTaskPhaseFilter phaseFilter,
+        bool requireEnabled,
+        bool requireWorldReady,
+        bool automatedRun,
+        string source,
+        AutomationRunScope? runScope = null)
     {
         if (!RegistryValidation.IsValid)
         {
@@ -634,8 +657,17 @@ public class VermaxionEngine
             return false;
         }
 
+        runScope ??= AutomationRunScope.Full;
+        if (runScope.SingleTaskId != null &&
+            !taskBindings.ContainsKey(runScope.SingleTaskId))
+        {
+            log.Warning($"[Engine] Rejected {source}: no engine binding exists for '{runScope.SingleTaskId}'.");
+            return false;
+        }
+
         ResetRunTracking();
         activePhaseFilter = phaseFilter;
+        activeRunScope = runScope;
         requireEnabledConfig = requireEnabled;
         activeConfig = configManager.GetActiveConfig();
         NagYourMomStatusText = "Idle";
@@ -750,7 +782,8 @@ public class VermaxionEngine
             case EngineState.Starting:
                 if (elapsed < 1.5) return; // AR settle delay
                 RevalidatePlannedQueue();
-                var miscHookRunnable = AutomationRunHookPolicy.ShouldRunMiscHook(
+                var miscHookRunnable = AutomationRunScopePolicy.ShouldRunMiscHook(
+                    activeRunScope,
                     activeConfig?.EnableMiscCmd == true,
                     activePhaseFilter == RunTaskPhaseFilter.BeforeAR);
                 if (!AutomationRunHookPolicy.HasApplicableWork(runQueue.Count > 0, miscHookRunnable))
@@ -794,7 +827,8 @@ public class VermaxionEngine
 
                 log.Information($"[Engine] Weekly reset: {weeklyResetDetected}, Daily reset: {dailyResetDetected}, Saturday: {resetService.IsSaturday()}");
                 BuildRunQueue(activeConfig);
-                var miscOnlyApplicable = AutomationRunHookPolicy.ShouldRunMiscHook(
+                var miscOnlyApplicable = AutomationRunScopePolicy.ShouldRunMiscHook(
+                    activeRunScope,
                     activeConfig.EnableMiscCmd,
                     activePhaseFilter == RunTaskPhaseFilter.BeforeAR);
                 if (!AutomationRunHookPolicy.HasApplicableWork(runQueue.Count > 0, miscOnlyApplicable))
@@ -960,7 +994,10 @@ public class VermaxionEngine
             case EngineState.RunningRetainerEquipping:
                 TickSimpleRegisteredTask(
                     EngineState.RunningRetainerEquipping,
-                    activeConfig!.EnableRetainerEquipping,
+                    AutomationRunScopePolicy.IsTaskSchedulingEnabled(
+                        activeRunScope,
+                        PostProcessTaskOrder.RetainerEquipping,
+                        activeConfig!.EnableRetainerEquipping),
                     () => retainerEquippingService.IsActive,
                     () => retainerEquippingService.IsComplete,
                     () => retainerEquippingService.IsFailed,
@@ -2212,9 +2249,12 @@ public class VermaxionEngine
 
         var eligibility = taskBindings.ToDictionary(
             pair => pair.Key,
-            pair => pair.Value.Eligibility(config),
+            pair => GetActiveRunEligibility(pair.Key, config),
             StringComparer.Ordinal);
-        var runnableIds = AutomationDispatchPlanner.BuildRunnableQueue(GetNormalizedTaskOrder(), eligibility);
+        var scopedOrder = AutomationRunScopePolicy.FilterOrderedIds(
+            GetNormalizedTaskOrder(),
+            activeRunScope);
+        var runnableIds = AutomationDispatchPlanner.BuildRunnableQueue(scopedOrder, eligibility);
         runQueue.AddRange(runnableIds.Select(id => TaskStateById[id]));
     }
 
@@ -2231,16 +2271,25 @@ public class VermaxionEngine
                     ? placement
                     : feature.DefaultPhase;
                 phase = configuredPhase.ToString();
-                var phaseMatches = activePhaseFilter == RunTaskPhaseFilter.All ||
-                                   activePhaseFilter == RunTaskPhaseFilter.BeforeAR && configuredPhase == PostProcessTaskPhase.BeforeAR ||
-                                   activePhaseFilter == RunTaskPhaseFilter.AfterAR && configuredPhase == PostProcessTaskPhase.AfterAR;
-                eligibility = phaseMatches
-                    ? taskBindings[feature.Id].Eligibility(config)
-                    : TaskEligibility.Blocked($"Assigned to {configuredPhase}, outside this {activePhaseFilter} run.");
+                if (!AutomationRunScopePolicy.IncludesTask(activeRunScope, feature.Id))
+                {
+                    eligibility = TaskEligibility.Blocked("Excluded from this manual single-task run.");
+                }
+                else
+                {
+                    var phaseMatches = activePhaseFilter == RunTaskPhaseFilter.All ||
+                                       activePhaseFilter == RunTaskPhaseFilter.BeforeAR && configuredPhase == PostProcessTaskPhase.BeforeAR ||
+                                       activePhaseFilter == RunTaskPhaseFilter.AfterAR && configuredPhase == PostProcessTaskPhase.AfterAR;
+                    eligibility = phaseMatches
+                        ? GetActiveRunEligibility(feature.Id, config)
+                        : TaskEligibility.Blocked($"Assigned to {configuredPhase}, outside this {activePhaseFilter} run.");
+                }
             }
             else if (feature.Owner == AutomationOwner.RunHook)
             {
-                eligibility = !config.EnableMiscCmd
+                eligibility = !activeRunScope.AllowRunHooks
+                    ? TaskEligibility.Blocked("Suppressed for this manual single-task run.")
+                    : !config.EnableMiscCmd
                     ? TaskEligibility.Disabled("Misc Commands is disabled for this character.")
                     : activePhaseFilter == RunTaskPhaseFilter.BeforeAR
                         ? TaskEligibility.Blocked("Misc Commands does not arm or run a Before-AR pass by itself.")
@@ -2297,7 +2346,7 @@ public class VermaxionEngine
             var nextState = runQueue[runQueueIndex];
             var taskId = TaskIdByState[nextState];
             var liveConfig = GetLiveActiveConfig();
-            var eligibility = taskBindings[taskId].Eligibility(liveConfig);
+            var eligibility = GetActiveRunEligibility(taskId, liveConfig);
             if (!eligibility.IsRunnable)
             {
                 log.Information($"[Engine] Skipping queued task after dispatch revalidation: {taskId} ({eligibility.Status}: {eligibility.Reason})");
@@ -2314,8 +2363,23 @@ public class VermaxionEngine
     private void RevalidatePlannedQueue()
     {
         var liveConfig = GetLiveActiveConfig();
-        runQueue.RemoveAll(taskState => !taskBindings[TaskIdByState[taskState]].Eligibility(liveConfig).IsRunnable);
+        runQueue.RemoveAll(taskState => !GetActiveRunEligibility(TaskIdByState[taskState], liveConfig).IsRunnable);
         runQueueIndex = -1;
+    }
+
+    private TaskEligibility GetActiveRunEligibility(string taskId, CharacterConfig config)
+    {
+        if (activeRunScope.BypassSelectedScheduling &&
+            string.Equals(
+                activeRunScope.SingleTaskId,
+                PostProcessTaskOrder.RetainerEquipping,
+                StringComparison.Ordinal) &&
+            string.Equals(taskId, PostProcessTaskOrder.RetainerEquipping, StringComparison.Ordinal))
+        {
+            return EvaluateRetainerEquipping(config, ignoreSchedulingFlag: true);
+        }
+
+        return taskBindings[taskId].Eligibility(config);
     }
 
     private List<string> GetNormalizedTaskOrder()
@@ -2404,6 +2468,7 @@ public class VermaxionEngine
         miscHookRan = false;
         activeConfig = null;
         activePhaseFilter = RunTaskPhaseFilter.All;
+        activeRunScope = AutomationRunScope.Full;
         ResetOrphanResultTracking();
         ResetWatchdog();
     }

@@ -39,6 +39,27 @@ public sealed class AutomationCatalogTests
     }
 
     [Fact]
+    public void RetainerEquippingIsDispatchableEngineTaskWhileMarkedWip()
+    {
+        var feature = AutomationCatalog.Get(AutomationCatalog.RetainerEquipping);
+        var eligibility = AutomationCatalog.EngineTasks.ToDictionary(
+            item => item.Id,
+            item => item.Id == feature.Id
+                ? TaskEligibility.Runnable("ready")
+                : TaskEligibility.Disabled("not selected"));
+
+        Assert.Equal(AutomationMaturity.Wip, feature.Maturity);
+        Assert.Equal(AutomationOwner.EngineTask, feature.Owner);
+        Assert.Contains(feature, AutomationCatalog.EngineTasks);
+        Assert.Contains(feature.Id, PostProcessTaskOrder.DefaultOrder);
+        Assert.Equal(
+            [feature.Id],
+            AutomationDispatchPlanner.BuildRunnableQueue(
+                PostProcessTaskOrder.DefaultOrder,
+                eligibility));
+    }
+
+    [Fact]
     public void MissingDuplicateAndExtraRegistrationsFailVisibly()
     {
         var engineIds = AutomationCatalog.EngineTasks.Select(feature => feature.Id).ToList();
@@ -120,6 +141,35 @@ public sealed class AutomationCatalogTests
     {
         Assert.True(AutomationRunHookPolicy.HasApplicableWork(false, true));
         Assert.False(AutomationRunHookPolicy.HasApplicableWork(false, false));
+    }
+
+    [Fact]
+    public void SingleTaskScopeRunsOnlyRetainerEquippingAndBypassesOnlyItsSchedulingFlag()
+    {
+        var scope = AutomationRunScope.SingleTask(PostProcessTaskOrder.RetainerEquipping);
+        var allRunnable = PostProcessTaskOrder.DefaultOrder.ToDictionary(
+            id => id,
+            id => TaskEligibility.Runnable(id));
+        var scopedOrder = AutomationRunScopePolicy.FilterOrderedIds(
+            PostProcessTaskOrder.DefaultOrder,
+            scope);
+
+        Assert.Equal([PostProcessTaskOrder.RetainerEquipping], scopedOrder);
+        Assert.Equal(
+            [PostProcessTaskOrder.RetainerEquipping],
+            AutomationDispatchPlanner.BuildRunnableQueue(scopedOrder, allRunnable));
+        Assert.True(AutomationRunScopePolicy.IsTaskSchedulingEnabled(
+            scope,
+            PostProcessTaskOrder.RetainerEquipping,
+            configuredEnabled: false));
+        Assert.False(AutomationRunScopePolicy.IsTaskSchedulingEnabled(
+            scope,
+            PostProcessTaskOrder.FCBuffRefill,
+            configuredEnabled: false));
+        Assert.False(AutomationRunScopePolicy.ShouldRunMiscHook(
+            scope,
+            enabled: true,
+            beforeArRun: false));
     }
 
     [Fact]

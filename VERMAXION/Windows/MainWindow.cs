@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 using VERMAXION.Models;
@@ -12,7 +13,28 @@ namespace VERMAXION.Windows;
 
 public class MainWindow : Window, IDisposable
 {
+    private static readonly string[] RetainerBellSessionAddonNames =
+    [
+        "RetainerList",
+        "RetainerCharacter",
+        "RetainerSellList",
+        "RetainerSell",
+        "RetainerItemTransferList",
+        "InventoryRetainerLarge",
+        "InventoryRetainer",
+        "RetainerGrid0",
+        "RetainerGrid1",
+        "RetainerGrid2",
+        "RetainerGrid3",
+        "RetainerGrid4",
+        "RetainerCrystalGrid",
+        "RetainerTaskAsk",
+        "RetainerTaskResult",
+    ];
+
     private readonly Plugin plugin;
+    private readonly RetainerEquippingArProbeCache retainerEquippingReadinessCache =
+        new(TimeSpan.FromSeconds(5));
 
     public MainWindow(Plugin plugin)
         : base("Vermaxion##Main")
@@ -207,6 +229,28 @@ public class MainWindow : Window, IDisposable
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.RetainerListingRefillService.Start(activeConfig);
                 }, "OK");
+            var retainerEquippingFeature = AutomationCatalog.Get(AutomationCatalog.RetainerEquipping);
+            var retainerEquippingReadiness = GetRetainerEquippingReadiness(config, forceRefresh: false);
+            var retainerEquippingExecuting =
+                engine.State == VermaxionEngine.EngineState.RunningRetainerEquipping;
+            var retainerEquippingStatus = retainerEquippingExecuting
+                ? plugin.RetainerEquippingService.StatusText
+                : retainerEquippingReadiness.StatusText;
+            var retainerEquippingTooltip = retainerEquippingExecuting
+                ? plugin.RetainerEquippingService.StatusText
+                : retainerEquippingReadiness.DisabledReason;
+            DrawTaskRow(
+                retainerEquippingFeature.Label,
+                config.EnableRetainerEquipping,
+                retainerEquippingStatus,
+                "run##RetainerEquipping",
+                RunRetainerEquipping,
+                retainerEquippingFeature.Maturity == AutomationMaturity.Wip ? "WIP" : "OK",
+                statusTooltip: retainerEquippingTooltip,
+                buttonDisabled: !retainerEquippingReadiness.CanRun,
+                buttonTooltip: retainerEquippingReadiness.CanRun
+                    ? "Run only Retainer Equipping. This explicit run ignores its scheduling checkbox."
+                    : retainerEquippingReadiness.DisabledReason);
             DrawTaskCategory("Manual utility", null);
             DrawTaskRow("Retainer Bell", true, plugin.WorkshopBellService.StatusText,
                 "run##WorkshopBell", () =>
@@ -432,6 +476,77 @@ public class MainWindow : Window, IDisposable
             ImGui.SetTooltip("Support continued development on Ko-fi");
         }
         ImGui.TextDisabled("Every donation helps keep these plugins free and updated!");
+    }
+
+    private void RunRetainerEquipping()
+    {
+        var config = plugin.ConfigManager.GetActiveConfig();
+        var readiness = GetRetainerEquippingReadiness(config, forceRefresh: true);
+        if (!readiness.CanRun)
+        {
+            Plugin.ChatGui.Print($"[Vermaxion] Retainer Equipping cannot run: {readiness.DisabledReason}");
+            return;
+        }
+
+        if (!plugin.Engine.ManualStartRetainerEquipping())
+        {
+            Plugin.ChatGui.Print(
+                "[Vermaxion] Retainer Equipping could not start because the engine start boundary changed.");
+        }
+    }
+
+    private RetainerEquippingReadinessResult GetRetainerEquippingReadiness(
+        CharacterConfig config,
+        bool forceRefresh)
+    {
+        var contentId = Plugin.PlayerState.ContentId;
+        var loggedIn = Plugin.ClientState.IsLoggedIn &&
+                       Plugin.ObjectTable.LocalPlayer != null &&
+                       contentId != 0;
+        var bellSessionActive = Plugin.Condition[ConditionFlag.OccupiedSummoningBell] ||
+                                plugin.WorkshopBellService.IsActive ||
+                                RetainerBellSessionAddonNames.Any(GameHelpers.IsAddonVisible);
+        var unprobed = RetainerEquippingArProbe.BusyReadFailed("not probed");
+        var snapshot = new RetainerEquippingReadinessSnapshot(
+            loggedIn,
+            plugin.DadHandoffBlocksNewWork,
+            plugin.Engine.IsRunning,
+            bellSessionActive,
+            config.RetainerCombatItemLevelTarget,
+            config.RetainerGatheringPerceptionTarget,
+            unprobed);
+        var immediate = RetainerEquippingReadinessPolicy.Evaluate(snapshot);
+        if (immediate.DisabledReason is RetainerEquippingReadinessPolicy.LoggedOutReason or
+            RetainerEquippingReadinessPolicy.DadOwnershipReason or
+            RetainerEquippingReadinessPolicy.EngineActiveReason or
+            RetainerEquippingReadinessPolicy.BellSessionReason or
+            RetainerEquippingReadinessPolicy.ZeroTargetsReason)
+        {
+            return immediate;
+        }
+
+        var cacheKey =
+            $"{contentId:X16}:{config.RetainerCombatItemLevelTarget}:{config.RetainerGatheringPerceptionTarget}";
+        var probe = retainerEquippingReadinessCache.GetOrRefresh(
+            cacheKey,
+            DateTime.UtcNow,
+            forceRefresh,
+            () => ReadRetainerEquippingArProbe(contentId));
+        return RetainerEquippingReadinessPolicy.Evaluate(snapshot with { AutoRetainer = probe });
+    }
+
+    private RetainerEquippingArProbe ReadRetainerEquippingArProbe(ulong contentId)
+    {
+        var busy = plugin.AutoRetainerIPC.ReadBusyState();
+        if (!busy.Success)
+            return RetainerEquippingArProbe.BusyReadFailed(busy.Error);
+        if (busy.Busy)
+            return RetainerEquippingArProbe.Busy();
+
+        var retainers = plugin.AutoRetainerIPC.ReadEnabledRetainers(contentId);
+        return retainers.Success
+            ? RetainerEquippingArProbe.Idle(retainers.Retainers)
+            : RetainerEquippingArProbe.RetainerReadFailed(retainers.Error);
     }
 
     private static void DrawTaskCategory(string label, AutomationFeatureDefinition? feature)

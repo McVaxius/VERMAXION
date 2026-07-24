@@ -70,6 +70,178 @@ public readonly record struct AutoRetainerEquipmentReadResult(
         new(false, Array.Empty<AutoRetainerRetainerSnapshot>(), error);
 }
 
+public readonly record struct RetainerEquippingArProbe(
+    bool BusyReadable,
+    bool IsBusy,
+    string BusyError,
+    bool RetainersReadable,
+    IReadOnlyList<AutoRetainerRetainerSnapshot> Retainers,
+    string RetainersError)
+{
+    public static RetainerEquippingArProbe BusyReadFailed(string error) =>
+        new(false, false, error, false, Array.Empty<AutoRetainerRetainerSnapshot>(), string.Empty);
+
+    public static RetainerEquippingArProbe Busy() =>
+        new(true, true, string.Empty, false, Array.Empty<AutoRetainerRetainerSnapshot>(), string.Empty);
+
+    public static RetainerEquippingArProbe RetainerReadFailed(string error) =>
+        new(true, false, string.Empty, false, Array.Empty<AutoRetainerRetainerSnapshot>(), error);
+
+    public static RetainerEquippingArProbe Idle(
+        IReadOnlyList<AutoRetainerRetainerSnapshot> retainers) =>
+        new(true, false, string.Empty, true, retainers, string.Empty);
+}
+
+public sealed record RetainerEquippingReadinessSnapshot(
+    bool CharacterLoggedIn,
+    bool DadOwnsNewWorkBoundary,
+    bool EngineRunActive,
+    bool BellSessionActive,
+    int CombatItemLevelTarget,
+    int GatheringPerceptionTarget,
+    RetainerEquippingArProbe AutoRetainer);
+
+public readonly record struct RetainerEquippingReadinessResult(
+    bool CanRun,
+    string StatusText,
+    string DisabledReason,
+    int TargetedRetainerCount)
+{
+    public static RetainerEquippingReadinessResult Ready(int count) =>
+        new(true, $"Ready: {count} targeted retainer{(count == 1 ? string.Empty : "s")}", string.Empty, count);
+
+    public static RetainerEquippingReadinessResult Blocked(string reason) =>
+        new(false, reason, reason, 0);
+}
+
+public static class RetainerEquippingReadinessPolicy
+{
+    public const string LoggedOutReason =
+        "Log in to a character before running Retainer Equipping.";
+    public const string DadOwnershipReason =
+        "A granted or pending DAD handoff reservation blocks new VERMAXION work.";
+    public const string EngineActiveReason =
+        "Another VERMAXION engine run is already active.";
+    public const string BellSessionReason =
+        "A retainer bell session is already active; close it before running Retainer Equipping.";
+    public const string ZeroTargetsReason =
+        "Set a combat item-level or gathering Perception target above zero.";
+    public const string AutoRetainerBusyReason =
+        "AutoRetainer is busy; wait for it to become idle.";
+    public const string NoEnabledRetainersReason =
+        "AutoRetainer has no enabled retainers for this character.";
+    public const string TargetsMetReason =
+        "No AutoRetainer-enabled retainer is below a configured target.";
+    public const string ActiveTargetedVentureReason =
+        "AutoRetainer must collect every targeted retainer's active venture before Retainer Equipping can run.";
+
+    public static RetainerEquippingReadinessResult Evaluate(
+        RetainerEquippingReadinessSnapshot snapshot)
+    {
+        if (!snapshot.CharacterLoggedIn)
+            return RetainerEquippingReadinessResult.Blocked(LoggedOutReason);
+        if (snapshot.DadOwnsNewWorkBoundary)
+            return RetainerEquippingReadinessResult.Blocked(DadOwnershipReason);
+        if (snapshot.EngineRunActive)
+            return RetainerEquippingReadinessResult.Blocked(EngineActiveReason);
+        if (snapshot.BellSessionActive)
+            return RetainerEquippingReadinessResult.Blocked(BellSessionReason);
+        if (snapshot.CombatItemLevelTarget <= 0 &&
+            snapshot.GatheringPerceptionTarget <= 0)
+        {
+            return RetainerEquippingReadinessResult.Blocked(ZeroTargetsReason);
+        }
+
+        var autoRetainer = snapshot.AutoRetainer;
+        if (!autoRetainer.BusyReadable)
+        {
+            return RetainerEquippingReadinessResult.Blocked(
+                $"AutoRetainer busy state was unreadable: {NormalizeError(autoRetainer.BusyError)}");
+        }
+        if (autoRetainer.IsBusy)
+            return RetainerEquippingReadinessResult.Blocked(AutoRetainerBusyReason);
+        if (!autoRetainer.RetainersReadable)
+        {
+            return RetainerEquippingReadinessResult.Blocked(
+                $"AutoRetainer retainer data was unreadable: {NormalizeError(autoRetainer.RetainersError)}");
+        }
+        if (autoRetainer.Retainers.Count == 0)
+            return RetainerEquippingReadinessResult.Blocked(NoEnabledRetainersReason);
+
+        var targeted = autoRetainer.Retainers
+            .Where(retainer => RequiresWork(
+                retainer,
+                snapshot.CombatItemLevelTarget,
+                snapshot.GatheringPerceptionTarget))
+            .ToList();
+        if (targeted.Count == 0)
+            return RetainerEquippingReadinessResult.Blocked(TargetsMetReason);
+        if (targeted.Any(retainer => retainer.HasVenture))
+            return RetainerEquippingReadinessResult.Blocked(ActiveTargetedVentureReason);
+
+        return RetainerEquippingReadinessResult.Ready(targeted.Count);
+    }
+
+    private static bool RequiresWork(
+        AutoRetainerRetainerSnapshot retainer,
+        int combatItemLevelTarget,
+        int gatheringPerceptionTarget)
+    {
+        var target = retainer.IsGathering
+            ? Math.Max(0, gatheringPerceptionTarget)
+            : Math.Max(0, combatItemLevelTarget);
+        var current = retainer.IsGathering
+            ? retainer.Perception
+            : retainer.ItemLevel;
+        return target > 0 && (current < 0 || current < target);
+    }
+
+    private static string NormalizeError(string error) =>
+        string.IsNullOrWhiteSpace(error) ? "unknown AutoRetainer error" : error.Trim();
+}
+
+public sealed class RetainerEquippingArProbeCache
+{
+    private readonly TimeSpan lifetime;
+    private string cachedKey = string.Empty;
+    private DateTime expiresAtUtc = DateTime.MinValue;
+    private RetainerEquippingArProbe cachedProbe;
+
+    public RetainerEquippingArProbeCache(TimeSpan lifetime)
+    {
+        if (lifetime <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(lifetime));
+        this.lifetime = lifetime;
+    }
+
+    public RetainerEquippingArProbe GetOrRefresh(
+        string key,
+        DateTime nowUtc,
+        bool forceRefresh,
+        Func<RetainerEquippingArProbe> refresh)
+    {
+        ArgumentNullException.ThrowIfNull(refresh);
+        if (!forceRefresh &&
+            string.Equals(cachedKey, key, StringComparison.Ordinal) &&
+            nowUtc < expiresAtUtc)
+        {
+            return cachedProbe;
+        }
+
+        cachedProbe = refresh();
+        cachedKey = key;
+        expiresAtUtc = nowUtc + lifetime;
+        return cachedProbe;
+    }
+
+    public void Invalidate()
+    {
+        cachedKey = string.Empty;
+        expiresAtUtc = DateTime.MinValue;
+        cachedProbe = default;
+    }
+}
+
 public readonly record struct AutoRetainerCollectOnlyReadResult(
     bool Success,
     bool Enabled,
@@ -380,5 +552,27 @@ public sealed class AutoRetainerCollectOnlyLease
             return null;
         IsHeld = false;
         return OriginalCollectOnly;
+    }
+}
+
+public readonly record struct RetainerCollectOnlyRestorationDecision(
+    bool ShouldRestore,
+    bool RestoreValue,
+    bool ClearCheckpoint);
+
+public static class RetainerCollectOnlyRestorationPolicy
+{
+    public static RetainerCollectOnlyRestorationDecision Decide(
+        bool checkpointPending,
+        bool? originalCollectOnly,
+        bool preserveCheckpoint)
+    {
+        if (!checkpointPending || !originalCollectOnly.HasValue)
+            return new RetainerCollectOnlyRestorationDecision(false, false, false);
+
+        return new RetainerCollectOnlyRestorationDecision(
+            true,
+            originalCollectOnly.Value,
+            !preserveCheckpoint);
     }
 }
