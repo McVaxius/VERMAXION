@@ -144,29 +144,31 @@ public sealed class RetainerEquippingService
     public void RestoreCollectOnly(bool preserveCheckpoint = false)
     {
         var active = config ?? configManager.GetActiveConfig();
-        if (active == null ||
-            !active.RetainerEquipmentCheckpointPending ||
-            !active.RetainerEquipmentOriginalCollectOnly.HasValue)
+        if (active == null)
+            return;
+
+        var restoration = RetainerCollectOnlyRestorationPolicy.Decide(
+            active.RetainerEquipmentCheckpointPending,
+            active.RetainerEquipmentOriginalCollectOnly,
+            preserveCheckpoint);
+        if (!restoration.ShouldRestore)
+            return;
+
+        if (!autoRetainer.TrySetCollectOnly(restoration.RestoreValue, out var error))
         {
+            log.Warning($"[RetainerEquip] Could not restore AutoRetainer collect-only={restoration.RestoreValue}: {error}");
             return;
         }
 
-        var original = active.RetainerEquipmentOriginalCollectOnly.Value;
-        if (!autoRetainer.TrySetCollectOnly(original, out var error))
-        {
-            log.Warning($"[RetainerEquip] Could not restore AutoRetainer collect-only={original}: {error}");
-            return;
-        }
-
-        if (!preserveCheckpoint)
+        if (restoration.ClearCheckpoint)
         {
             active.RetainerEquipmentCheckpointPending = false;
             active.RetainerEquipmentOriginalCollectOnly = null;
         }
         configManager.SaveCurrentAccount();
         log.Information(preserveCheckpoint
-            ? $"[RetainerEquip] Restored AutoRetainer collect-only={original}; checkpoint preserved across rotation."
-            : $"[RetainerEquip] Restored AutoRetainer collect-only={original} and cleared checkpoint.");
+            ? $"[RetainerEquip] Restored AutoRetainer collect-only={restoration.RestoreValue}; checkpoint preserved across rotation."
+            : $"[RetainerEquip] Restored AutoRetainer collect-only={restoration.RestoreValue} and cleared checkpoint.");
     }
 
     private void TickInspecting()

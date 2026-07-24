@@ -1,5 +1,21 @@
 # VERMAXION Changelog
 
+## 2026-07-24 - Retainer Equipping main-window ordered run
+
+### Added
+- Added Retainer Equipping immediately after Refill Listings in the Main Window. The row shows the current character's scheduling checkbox state, cached AutoRetainer readiness or live execution status, a functional Run button, and yellow `WIP` maturity.
+- Added exact manual readiness for login, DAD ownership, another engine run, an existing retainer bell session, positive targets, readable/idle AutoRetainer state, selected retainers, target completion, unknown stats, and targeted active ventures. UI probes are cached for five seconds, while a click always forces a fresh AutoRetainer read.
+- Added a scoped engine manual-run path that queues only Retainer Equipping, bypasses only its own scheduling checkbox, and suppresses Misc Commands and every unrelated configured task.
+
+### Changed
+- Retainer Equipping is now catalogued as `Wip` without changing its `EngineTask` ownership, Before-AR default placement, or normal automatic dispatch.
+- Manual execution uses the existing engine state, bell ownership, watchdog, handoff settling, cancellation, cleanup, and collect-only restoration paths. Targeted retainers with active ventures wait for AutoRetainer collection, while already-complete retainers do not block.
+
+### Verification
+- Added deterministic WIP-dispatch, isolated-run-scope, scheduling-bypass, hook suppression, readiness matrix, forced-cache-refresh, blocker-reason, and collect-only restoration regressions.
+- The complete Debug suite passes 433 tests, and the Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+- Packaging, release, X: copy, and live-game validation were not performed.
+
 ## 2026-07-23 - Native gearset confirmation and Ocean Fishing distance gate
 
 ### Fixed

@@ -112,7 +112,13 @@ public static class AutomationCatalog
         Engine(RegisterRegistrables, nameof(CharacterConfig.EnableRegisterRegistrables), "Register Registrables", AutomationCadence.EveryRun),
         Engine(VendorStock, nameof(CharacterConfig.EnableVendorStock), "Vendor Stock", AutomationCadence.EveryRun),
         Engine(RefillListings, nameof(CharacterConfig.EnableRefillFromListings), "Refill Listings", AutomationCadence.Scheduled, PostProcessTaskPhase.BeforeAR),
-        Engine(RetainerEquipping, nameof(CharacterConfig.EnableRetainerEquipping), "Retainer Equipping", AutomationCadence.EveryRun, PostProcessTaskPhase.BeforeAR),
+        Engine(
+            RetainerEquipping,
+            nameof(CharacterConfig.EnableRetainerEquipping),
+            "Retainer Equipping",
+            AutomationCadence.EveryRun,
+            PostProcessTaskPhase.BeforeAR,
+            AutomationMaturity.Wip),
         Engine(NagYourMom, nameof(CharacterConfig.EnableNagYourMom), "nag your mom", AutomationCadence.Daily),
         new(NagYourMomCasualCc, nameof(CharacterConfig.EnableNagYourMomCasualCc), "Casual CC route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
         new(NagYourMomFrontline, nameof(CharacterConfig.EnableNagYourMomFrontline), "Frontline route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
@@ -171,8 +177,9 @@ public static class AutomationCatalog
         string flagProperty,
         string label,
         AutomationCadence cadence,
-        PostProcessTaskPhase phase = PostProcessTaskPhase.AfterAR)
-        => new(id, flagProperty, label, cadence, AutomationMaturity.Stable, phase, AutomationOwner.EngineTask);
+        PostProcessTaskPhase phase = PostProcessTaskPhase.AfterAR,
+        AutomationMaturity maturity = AutomationMaturity.Stable)
+        => new(id, flagProperty, label, cadence, maturity, phase, AutomationOwner.EngineTask);
 
     private static void ValidateExactIds(
         string source,
