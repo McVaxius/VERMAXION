@@ -45,6 +45,8 @@ public sealed class FishingService
     private static readonly TimeSpan ZoneTransitionTimeout = TimeSpan.FromSeconds(90);
     private static readonly TimeSpan CleanupReadyTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan CleanupWorkTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan RailSampleRetryInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan NavigationStopRetryInterval = TimeSpan.FromSeconds(1);
 
     private readonly IPluginLog log;
     private readonly Configuration configuration;
@@ -104,7 +106,9 @@ public sealed class FishingService
     private int cleanupCommandIndex;
     private bool cleanupCommandSent;
     private bool cleanupBusyObserved;
-    private IReadOnlyList<OceanFishingRailDestination> railDestinations = Array.Empty<OceanFishingRailDestination>();
+    private OceanFishingRailDestination? currentRailDestination;
+    private OceanFishingRailDestination? railSampleExclusionDestination;
+    private DateTime nextRailSampleAt = DateTime.MinValue;
     private readonly OceanFishingVoyageState voyageState = new();
     private string lastCastGate = string.Empty;
     private DateTime returnStartedAt = DateTime.MinValue;
@@ -256,7 +260,9 @@ public sealed class FishingService
         cleanupBusyObserved = false;
         failureKind = FishingAttemptFailureKind.Stop;
         failureReported = false;
-        railDestinations = Array.Empty<OceanFishingRailDestination>();
+        currentRailDestination = null;
+        railSampleExclusionDestination = null;
+        nextRailSampleAt = DateTime.MinValue;
         voyageState.Reset();
         lastCastGate = string.Empty;
         returnStartedAt = DateTime.MinValue;
@@ -303,7 +309,9 @@ public sealed class FishingService
         dutyReadyAccepted = false;
         lastError = string.Empty;
         statusDetail = string.Empty;
-        railDestinations = Array.Empty<OceanFishingRailDestination>();
+        currentRailDestination = null;
+        railSampleExclusionDestination = null;
+        nextRailSampleAt = DateTime.MinValue;
         voyageState.Reset();
         lastCastGate = string.Empty;
         zoneTransitionStartedAt = DateTime.MinValue;
@@ -1333,7 +1341,12 @@ public sealed class FishingService
 
         if (CurrentRailDestination is not { } destination)
         {
-            Fail("Ocean Fishing voyage positioning did not produce a destination.", FishingAttemptFailureKind.Stop);
+            TrySelectRailDestination(
+                now,
+                previousDestination: null,
+                "waiting for an open continuous rail point");
+            statusDetail = $"Waiting for an open rail point with " +
+                           $"{OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1}-yalm player clearance";
             return;
         }
 
@@ -1341,44 +1354,51 @@ public sealed class FishingService
         var distance = (float)DistanceTo(position);
         var atDestination = distance <= BoatFishingPositionTolerance;
         var nowUtc = new DateTimeOffset(now, TimeSpan.Zero);
-        if (atDestination && !voyageState.DestinationArrived)
-        {
-            GameHelpers.TrySetLocalPlayerRotation(destination.Rotation);
-            voyageState.MarkArrived(nowUtc);
-            log.Information(
-                $"[Fishing][Position] Destination {FormatFishingDestinationIndex()} reached; " +
-                $"distance={distance:F2}y, rotation={destination.Rotation:F3}; " +
-                $"{FishingCastPolicy.CastCommand} is immediately eligible and navigation remains owned until " +
-                "Fishing/Gathering acknowledgement; " +
-                $"{OceanFishingVoyageState.FacingSettlementDelay.TotalMilliseconds:F0}ms facing settlement remains active");
-        }
+        var timersPaused = AreFishingRecoveryTimersPaused();
+        var placement = EvaluateInitialPlacementReadiness(
+            now,
+            destination,
+            atDestination,
+            timersPaused);
+        if (HandlePlacementFailure(placement, nowUtc))
+            return;
 
-        if (TickFishingStartAttempt(now, resultWindowVisible: false, atDestination))
+        if (TickFishingStartAttempt(
+                now,
+                resultWindowVisible: false,
+                atDestination,
+                placement.Ready,
+                placement.Gate))
             return;
 
         if (voyageState.MovementLocked)
             return;
 
-        var timersPaused = AreFishingRecoveryTimersPaused();
         var recovery = voyageState.EvaluateRecovery(
             nowUtc,
             distance,
             atDestination,
             CanFish(),
-            timersPaused);
+            timersPaused || (atDestination && !placement.Ready));
         if (TryAdvanceFishingDestination(recovery, nowUtc))
             return;
 
         if (atDestination)
         {
-            TryReapplyRailFacing(nowUtc);
+            if (!placement.Ready)
+            {
+                TryReapplyRailFacing(nowUtc);
+                statusDetail = placement.Gate;
+                return;
+            }
+
             SetState(FishingState.Fishing);
             return;
         }
 
         if (timersPaused)
         {
-            statusDetail = $"Recovery timers paused while moving to destination {FormatFishingDestinationIndex()}";
+            statusDetail = $"Recovery timers paused while moving to destination attempt {voyageState.DestinationAttemptNumber}";
             return;
         }
 
@@ -1387,9 +1407,11 @@ public sealed class FishingService
         {
             lastNavigationCommandAt = now;
             log.Information(
-                $"[Fishing][Position] Moving to destination {FormatFishingDestinationIndex()} ({distance:F1}y); " +
-                $"{FishingCastPolicy.CastCommand} and premature Fishing/Gathering acknowledgement remain gated until within " +
-                $"{BoatFishingPositionTolerance:F1}y");
+                $"[Fishing][Position] Moving to continuous rail destination attempt " +
+                $"{voyageState.DestinationAttemptNumber} ({distance:F1}y); " +
+                $"{FishingCastPolicy.CastCommand} and premature Fishing/Gathering acknowledgement remain gated until " +
+                $"distance, {OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1}y clearance, stopped-path settlement, " +
+                "and outward character facing are verified");
             vnavmesh.PathfindAndMoveTo(position);
         }
     }
@@ -1729,8 +1751,35 @@ public sealed class FishingService
             ? (float)DistanceTo(destination.Value.Position)
             : float.PositiveInfinity;
         var atDestination = destination.HasValue && distance <= BoatFishingPositionTolerance;
+        var nowUtc = new DateTimeOffset(now, TimeSpan.Zero);
+        var timersPaused = AreFishingRecoveryTimersPaused();
+        var placement = voyageState.MovementLocked
+            ? new OceanFishingPlacementEvaluation(
+                Ready: true,
+                ShouldResample: false,
+                ShouldAbort: false,
+                Gate: string.Empty)
+            : destination.HasValue
+                ? EvaluateInitialPlacementReadiness(
+                    now,
+                    destination.Value,
+                    atDestination,
+                    timersPaused)
+                : new OceanFishingPlacementEvaluation(
+                    Ready: false,
+                    ShouldResample: false,
+                    ShouldAbort: false,
+                    Gate: "waiting for an open continuous rail point");
 
-        if (TickFishingStartAttempt(now, resultVisible, atDestination))
+        if (!voyageState.MovementLocked && HandlePlacementFailure(placement, nowUtc))
+            return;
+
+        if (TickFishingStartAttempt(
+                now,
+                resultVisible,
+                atDestination,
+                placement.Ready,
+                placement.Gate))
             return;
 
         if (voyageState.MovementLocked)
@@ -1739,28 +1788,29 @@ public sealed class FishingService
             return;
         }
 
-        var nowUtc = new DateTimeOffset(now, TimeSpan.Zero);
-        var timersPaused = AreFishingRecoveryTimersPaused();
         var recovery = voyageState.EvaluateRecovery(
             nowUtc,
             distance,
             atDestination,
             canFish,
-            timersPaused);
+            timersPaused || (atDestination && !placement.Ready));
         if (TryAdvanceFishingDestination(recovery, nowUtc))
             return;
 
-        if (!atDestination)
+        if (!atDestination || !destination.HasValue)
         {
             SetState(FishingState.MovingToFishingSpot);
             return;
         }
 
-        TryReapplyRailFacing(nowUtc);
+        if (!placement.Ready)
+            TryReapplyRailFacing(nowUtc);
         statusDetail = timersPaused
-            ? $"Recovery timers paused at destination {FormatFishingDestinationIndex()}"
-            : $"Retrying {FishingCastPolicy.CastCommand} in place for voyage session {voyageState.SessionNumber}; " +
-              $"post-arrival attempts={voyageState.PostArrivalStartAttemptCount}/{OceanFishingVoyageState.PostArrivalAttemptLimit}";
+            ? $"Recovery timers paused at destination attempt {voyageState.DestinationAttemptNumber}"
+            : !placement.Ready
+                ? placement.Gate
+                : $"Retrying {FishingCastPolicy.CastCommand} in place for voyage session {voyageState.SessionNumber}; " +
+                  $"post-arrival attempts={voyageState.PostArrivalStartAttemptCount}/{OceanFishingVoyageState.PostArrivalAttemptLimit}";
     }
 
     private static bool IsVoyageRouteTransitionActive()
@@ -1784,16 +1834,15 @@ public sealed class FishingService
         lastNavigationCommandAt = DateTime.MinValue;
         lastCastGate = string.Empty;
         zoneTransitionStartedAt = DateTime.MinValue;
-        railDestinations = BuildVoyagePositionPlan(localPlayer.Address);
+        currentRailDestination = null;
+        railSampleExclusionDestination = null;
+        nextRailSampleAt = DateTime.MinValue;
         var nowUtc = new DateTimeOffset(DateTime.UtcNow, TimeSpan.Zero);
-        voyageState.BeginPositioning(railDestinations.Count, nowUtc);
-
-        var destination = CurrentRailDestination!.Value;
-        log.Information(
-            $"[Fishing][Position] Voyage-entry fixed-rail plan for {reason}: " +
-            $"rankedDestinations={railDestinations.Count}, " +
-            $"first=({destination.Position.X:F3}, {destination.Position.Y:F3}, {destination.Position.Z:F3}), " +
-            $"canonicalRotation={destination.Rotation:F3}");
+        voyageState.BeginPositioning(nowUtc);
+        TrySelectRailDestination(
+            DateTime.UtcNow,
+            previousDestination: null,
+            $"voyage entry for {reason}");
 
         if (IsVoyageRouteTransitionActive())
         {
@@ -1808,20 +1857,57 @@ public sealed class FishingService
         SetState(FishingState.MovingToFishingSpot);
     }
 
-    private IReadOnlyList<OceanFishingRailDestination> BuildVoyagePositionPlan(nint localPlayerAddress)
+    private bool TrySelectRailDestination(
+        DateTime now,
+        OceanFishingRailDestination? previousDestination,
+        string reason)
     {
-        var otherPlayers = Plugin.ObjectTable
-            .Where(gameObject =>
-                gameObject.Address != localPlayerAddress &&
-                gameObject.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Pc)
-            .Select(gameObject => gameObject.Position)
-            .ToArray();
-        var destinations = OceanFishingFixedRailPolicy.Rank(otherPlayers);
+        if (now < nextRailSampleAt)
+            return false;
+
+        var localPlayer = Plugin.ObjectTable.LocalPlayer;
+        if (localPlayer == null || localPlayer.Address == nint.Zero)
+        {
+            vnavmesh.Stop();
+            currentRailDestination = null;
+            nextRailSampleAt = now + RailSampleRetryInterval;
+            statusDetail = "Waiting for local player before sampling an Ocean Fishing rail point";
+            return false;
+        }
+
+        var otherPlayers = SnapshotOtherPlayerPositions(localPlayer.Address);
+        var excludedDestination = previousDestination ?? railSampleExclusionDestination;
+        if (!OceanFishingContinuousRailPolicy.TrySample(
+                Random.Shared,
+                otherPlayers,
+                excludedDestination,
+                out var destination))
+        {
+            vnavmesh.Stop();
+            currentRailDestination = null;
+            railSampleExclusionDestination = excludedDestination;
+            nextRailSampleAt = now + RailSampleRetryInterval;
+            statusDetail = $"No open continuous rail sample currently satisfies " +
+                           $"{OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1}-yalm clearance";
+            log.Debug(
+                $"[Fishing][Position] Sampling pass exhausted " +
+                $"{OceanFishingContinuousRailPolicy.MaxSampleAttempts} candidates for {reason}; " +
+                $"otherPlayers={otherPlayers.Length}, retry={RailSampleRetryInterval.TotalSeconds:F0}s");
+            return false;
+        }
+
+        currentRailDestination = destination;
+        railSampleExclusionDestination = null;
+        nextRailSampleAt = DateTime.MinValue;
+        lastNavigationCommandAt = DateTime.MinValue;
+        lastCastGate = string.Empty;
         log.Information(
-            $"[Fishing][Position] Ranked {destinations.Count} fixed Henchman/FUTA rails against " +
-            $"{otherPlayers.Length} other player(s) using {OceanFishingFixedRailPolicy.CrowdRadius:F1}y clearance; " +
-            "player snapshots are ranking inputs only and never navigation destinations");
-        return destinations;
+            $"[Fishing][Position] Sampled continuous rail destination attempt " +
+            $"{voyageState.DestinationAttemptNumber} for {reason}: " +
+            $"({destination.Position.X:F3}, {destination.Position.Y:F3}, {destination.Position.Z:F3}), " +
+            $"outwardRotation={destination.Rotation:F3}, otherPlayers={otherPlayers.Length}, " +
+            $"clearance={OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1}y");
+        return true;
     }
 
     private bool BeginFishingSession(string reason)
@@ -1886,7 +1972,9 @@ public sealed class FishingService
     private bool TickFishingStartAttempt(
         DateTime now,
         bool resultWindowVisible,
-        bool atDestination)
+        bool atDestination,
+        bool initialPlacementReady,
+        string initialPlacementGate)
     {
         var gathering = Plugin.Condition[GatheringCondition];
         var fishing = Plugin.Condition[FishingCondition];
@@ -1899,7 +1987,9 @@ public sealed class FishingService
             gatheringConditionActive: gathering,
             fishingConditionActive: fishing,
             resultWindowVisible,
-            atDestination);
+            atDestination,
+            initialPlacementReady,
+            initialPlacementGate);
 
         if (evaluation.Decision == FishingCastDecision.Acknowledged)
         {
@@ -1928,7 +2018,8 @@ public sealed class FishingService
         log.Information(
             $"[Fishing][Cast] Session {voyageState.SessionNumber} attempt " +
             $"{voyageState.SessionStartAttemptCount}: sent {FishingCastPolicy.CastCommand} " +
-            $"at destination {FormatFishingDestinationIndex()}; awaiting Fishing/Gathering acknowledgement");
+            $"at continuous rail destination attempt {voyageState.DestinationAttemptNumber}; " +
+            "awaiting Fishing/Gathering acknowledgement");
         return false;
     }
 
@@ -1939,20 +2030,147 @@ public sealed class FishingService
         if (reason == OceanFishingAdvanceReason.None)
             return false;
 
+        var previousDestination = CurrentRailDestination;
         vnavmesh.Stop();
-        if (!voyageState.AdvanceDestination(nowUtc) || CurrentRailDestination is not { } destination)
+        if (!voyageState.AdvanceDestination(nowUtc))
             return false;
 
+        currentRailDestination = null;
+        railSampleExclusionDestination = previousDestination;
+        nextRailSampleAt = DateTime.MinValue;
         lastNavigationCommandAt = DateTime.MinValue;
         lastCastGate = string.Empty;
-        log.Warning(
-            $"[Fishing][Position] Advancing after {DescribeAdvanceReason(reason)}; " +
-            $"next fixed destination {FormatFishingDestinationIndex()} is " +
-            $"({destination.Position.X:F3}, {destination.Position.Y:F3}, {destination.Position.Z:F3}) " +
-            $"with canonical rotation {destination.Rotation:F3}. Start retries and session bait state are preserved.");
+        var sampled = TrySelectRailDestination(
+            nowUtc.UtcDateTime,
+            previousDestination,
+            DescribeAdvanceReason(reason));
+        if (sampled && CurrentRailDestination is { } destination)
+        {
+            log.Warning(
+                $"[Fishing][Position] Resampled after {DescribeAdvanceReason(reason)}; " +
+                $"destination attempt {voyageState.DestinationAttemptNumber} is " +
+                $"({destination.Position.X:F3}, {destination.Position.Y:F3}, {destination.Position.Z:F3}) " +
+                $"with outward character rotation {destination.Rotation:F3}. " +
+                "Start retry cadence and session bait state are preserved.");
+        }
+        else
+        {
+            log.Warning(
+                $"[Fishing][Position] Resampling after {DescribeAdvanceReason(reason)} found no open point; " +
+                $"{FishingCastPolicy.CastCommand} remains blocked and sampling will retry in " +
+                $"{RailSampleRetryInterval.TotalSeconds:F0}s");
+        }
+
         SetState(FishingState.MovingToFishingSpot);
         return true;
     }
+
+    private OceanFishingPlacementEvaluation EvaluateInitialPlacementReadiness(
+        DateTime now,
+        OceanFishingRailDestination destination,
+        bool atDestination,
+        bool timersPaused)
+    {
+        var nowUtc = new DateTimeOffset(now, TimeSpan.Zero);
+        var player = Plugin.ObjectTable.LocalPlayer;
+        var playerAvailable = GameHelpers.IsPlayerAvailable() &&
+                              player != null &&
+                              player.Address != nint.Zero;
+        var playerClear = !atDestination ||
+                          (playerAvailable &&
+                           OceanFishingContinuousRailPolicy.HasPlayerClearance(
+                               player!.Position,
+                               SnapshotOtherPlayerPositions(player.Address)));
+
+        if (atDestination &&
+            playerClear &&
+            !timersPaused &&
+            !voyageState.DestinationArrived)
+        {
+            vnavmesh.Stop();
+            lastNavigationCommandAt = now;
+            GameHelpers.TrySetLocalPlayerRotation(destination.Rotation);
+            voyageState.MarkArrived(nowUtc);
+            log.Information(
+                $"[Fishing][Position] Continuous rail destination attempt " +
+                $"{voyageState.DestinationAttemptNumber} reached; distance<={BoatFishingPositionTolerance:F1}y, " +
+                $"clearance>={OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1}y, " +
+                $"rotation={destination.Rotation:F3}. Navigation stop issued; " +
+                $"{FishingCastPolicy.CastCommand} remains gated until Path.IsRunning is false for " +
+                $"{OceanFishingVoyageState.StoppedPathSettlementDelay.TotalSeconds:F0}s and character facing verifies.");
+        }
+
+        var pathStatusAvailable = false;
+        var pathRunning = false;
+        if (atDestination && voyageState.DestinationArrived)
+        {
+            pathStatusAvailable = vnavmesh.TryGetPathIsRunning(out pathRunning);
+            if (pathStatusAvailable &&
+                pathRunning &&
+                (lastNavigationCommandAt == DateTime.MinValue ||
+                 now - lastNavigationCommandAt >= NavigationStopRetryInterval))
+            {
+                lastNavigationCommandAt = now;
+                vnavmesh.Stop();
+            }
+        }
+
+        var facingVerified = playerAvailable &&
+                             OceanFishingContinuousRailPolicy.IsFacingOutward(
+                                 player!.Rotation,
+                                 destination.Rotation);
+        return voyageState.EvaluatePlacementReadiness(
+            nowUtc,
+            inFishingContext: IsOceanFishingDutyActive(),
+            zoneTransitionActive: IsVoyageRouteTransitionActive(),
+            playerAvailable,
+            timersPaused,
+            atDestination,
+            playerClear,
+            pathStatusAvailable,
+            pathRunning,
+            facingVerified);
+    }
+
+    private bool HandlePlacementFailure(
+        OceanFishingPlacementEvaluation placement,
+        DateTimeOffset nowUtc)
+    {
+        if (placement.ShouldAbort)
+        {
+            Fail(
+                $"Ocean Fishing initial placement aborted: {placement.Gate}.",
+                FishingAttemptFailureKind.Stop);
+            return true;
+        }
+
+        if (!placement.ShouldResample)
+            return false;
+
+        vnavmesh.Stop();
+        if (Plugin.Condition[GatheringCondition] ||
+            Plugin.Condition[FishingCondition] ||
+            AreFishingRecoveryTimersPaused())
+        {
+            voyageState.PauseRecovery(nowUtc);
+            statusDetail = $"{placement.Gate}; waiting for a movement-safe state before resampling";
+            return true;
+        }
+
+        var reason = placement.Gate.StartsWith("outward character facing", StringComparison.Ordinal)
+            ? OceanFishingAdvanceReason.FacingUnverified
+            : OceanFishingAdvanceReason.PlayerClearanceLost;
+        TryAdvanceFishingDestination(reason, nowUtc);
+        return true;
+    }
+
+    private static Vector3[] SnapshotOtherPlayerPositions(nint localPlayerAddress)
+        => Plugin.ObjectTable
+            .Where(gameObject =>
+                gameObject.Address != localPlayerAddress &&
+                gameObject.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Pc)
+            .Select(gameObject => gameObject.Position)
+            .ToArray();
 
     private void StopFishingNavigationAndFaceOutward(string reason)
     {
@@ -1972,7 +2190,7 @@ public sealed class FishingService
 
         GameHelpers.TrySetLocalPlayerRotation(destination.Rotation);
         log.Debug(
-            $"[Fishing][Position] Reapplied canonical rotation {destination.Rotation:F3} after arrival settlement; " +
+            $"[Fishing][Position] Reapplied outward character rotation {destination.Rotation:F3} after arrival settlement; " +
             $"next reapply is limited to {OceanFishingVoyageState.FacingRetryInterval.TotalSeconds:F0}s");
     }
 
@@ -1999,18 +2217,13 @@ public sealed class FishingService
             OceanFishingAdvanceReason.NavigationTimeout => "30 active navigation seconds on one destination",
             OceanFishingAdvanceReason.CannotFish => "CanFish false for 10 available/non-busy seconds after arrival",
             OceanFishingAdvanceReason.StartUnacknowledged => "five post-arrival /ahstart attempts without acknowledgement",
+            OceanFishingAdvanceReason.PlayerClearanceLost => "another player entered the 3-yalm first-cast clearance",
+            OceanFishingAdvanceReason.FacingUnverified => "outward character facing failed to verify for 10 active seconds",
             _ => "an unknown recovery condition",
         };
 
     private OceanFishingRailDestination? CurrentRailDestination
-        => voyageState.DestinationIndex >= 0 && voyageState.DestinationIndex < railDestinations.Count
-            ? railDestinations[voyageState.DestinationIndex]
-            : null;
-
-    private string FormatFishingDestinationIndex()
-        => railDestinations.Count > 0
-            ? $"{voyageState.DestinationIndex + 1}/{railDestinations.Count}"
-            : "0/0";
+        => currentRailDestination;
 
     private void ResetResultHandlingState()
     {
@@ -2036,7 +2249,7 @@ public sealed class FishingService
         log.Debug(
             $"[Fishing][Cast] Session {voyageState.SessionNumber} attempt " +
             $"{voyageState.SessionStartAttemptCount + 1} suppressed: {gate}; " +
-            $"destination={FormatFishingDestinationIndex()}");
+            $"destinationAttempt={voyageState.DestinationAttemptNumber}");
     }
 
     private static bool IsOceanFishingResultAddonAvailable()

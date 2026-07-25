@@ -81,41 +81,93 @@ public readonly record struct OceanFishingRailDestination(
     Vector3 Position,
     float Rotation);
 
-internal static class OceanFishingFixedRailPolicy
+internal static class OceanFishingContinuousRailPolicy
 {
-    public const float CrowdRadius = 2f;
+    public const float MinimumPlayerClearance = 3f;
+    public const int MaxSampleAttempts = 32;
+    public const float DeckY = 6.711f;
+    public const float StarboardRotation = 1.5f;
+    public const float PortRotation = -1.5f;
+    public const float FacingToleranceRadians = 0.05f;
 
-    public static IReadOnlyList<OceanFishingRailDestination> CanonicalDestinations { get; } =
-        Array.AsReadOnly(new[]
-        {
-            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, -2.0f), 1.5f),
-            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, -10.0f), 1.5f),
-            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, 3.5f), 1.5f),
-            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, -1.0f), -1.5f),
-            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, -8.0f), -1.5f),
-            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, 4.0f), -1.5f),
-        });
-
-    public static IReadOnlyList<OceanFishingRailDestination> Rank(
-        IReadOnlyList<Vector3> otherPlayerPositions)
+    public static bool TrySample(
+        Random random,
+        IReadOnlyList<Vector3> otherPlayerPositions,
+        OceanFishingRailDestination? previousDestination,
+        out OceanFishingRailDestination destination)
     {
+        ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(otherPlayerPositions);
 
         var players = otherPlayerPositions
             .Where(IsFinite)
             .ToArray();
-        return CanonicalDestinations
-            .Select((destination, canonicalIndex) => new RankedRail(
-                destination,
-                canonicalIndex,
-                players.Length == 0
-                    ? float.PositiveInfinity
-                    : players.Min(player => Vector3.Distance(player, destination.Position))))
-            .OrderByDescending(candidate => candidate.PlayerClearance >= CrowdRadius)
-            .ThenByDescending(candidate => candidate.PlayerClearance)
-            .ThenBy(candidate => candidate.CanonicalIndex)
-            .Select(candidate => candidate.Destination)
-            .ToArray();
+
+        for (var attempt = 0; attempt < MaxSampleAttempts; attempt++)
+        {
+            var candidate = SampleCandidate(random);
+            if (!HasPlayerClearance(candidate.Position, players))
+                continue;
+            if (previousDestination is { } previous &&
+                IsFinite(previous.Position) &&
+                Vector3.Distance(candidate.Position, previous.Position) < MinimumPlayerClearance)
+            {
+                continue;
+            }
+
+            destination = candidate;
+            return true;
+        }
+
+        destination = default;
+        return false;
+    }
+
+    public static OceanFishingRailDestination SampleCandidate(Random random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+
+        var starboard = random.NextDouble() < 0.5;
+        if (starboard)
+        {
+            var x = Lerp(7.0f, 7.25f, random.NextDouble());
+            var forwardSegment = random.NextDouble() < 0.5;
+            var z = forwardSegment
+                ? Lerp(-14.0f, -4.0f, random.NextDouble())
+                : Lerp(-2.0f, 5.0f, random.NextDouble());
+            return new OceanFishingRailDestination(
+                new Vector3(x, DeckY, z),
+                StarboardRotation);
+        }
+
+        return new OceanFishingRailDestination(
+            new Vector3(
+                Lerp(-7.25f, -7.0f, random.NextDouble()),
+                DeckY,
+                Lerp(-10.0f, 5.5f, random.NextDouble())),
+            PortRotation);
+    }
+
+    public static bool HasPlayerClearance(
+        Vector3 position,
+        IReadOnlyList<Vector3> otherPlayerPositions)
+    {
+        ArgumentNullException.ThrowIfNull(otherPlayerPositions);
+        if (!IsFinite(position))
+            return false;
+
+        return otherPlayerPositions
+            .Where(IsFinite)
+            .All(player => Vector3.Distance(position, player) >= MinimumPlayerClearance);
+    }
+
+    public static bool IsFacingOutward(float currentRotation, float targetRotation)
+    {
+        if (!float.IsFinite(currentRotation) || !float.IsFinite(targetRotation))
+            return false;
+
+        var delta = MathF.IEEERemainder(currentRotation - targetRotation, MathF.Tau);
+        return MathF.Abs(delta) <= FacingToleranceRadians;
     }
 
     private static bool IsFinite(Vector3 position)
@@ -123,16 +175,20 @@ internal static class OceanFishingFixedRailPolicy
            float.IsFinite(position.Y) &&
            float.IsFinite(position.Z);
 
-    private readonly record struct RankedRail(
-        OceanFishingRailDestination Destination,
-        int CanonicalIndex,
-        float PlayerClearance);
+    private static float Lerp(float minimum, float maximum, double sample)
+        => minimum + ((maximum - minimum) * (float)Math.Clamp(sample, 0d, 1d));
 }
 
 internal readonly record struct OceanFishingStartEvaluation(
     FishingCastDecision Decision,
     string Gate,
     bool StopNavigation);
+
+internal readonly record struct OceanFishingPlacementEvaluation(
+    bool Ready,
+    bool ShouldResample,
+    bool ShouldAbort,
+    string Gate);
 
 internal enum OceanFishingAdvanceReason
 {
@@ -141,6 +197,8 @@ internal enum OceanFishingAdvanceReason
     NavigationTimeout = 2,
     CannotFish = 3,
     StartUnacknowledged = 4,
+    PlayerClearanceLost = 5,
+    FacingUnverified = 6,
 }
 
 internal sealed class OceanFishingVoyageState
@@ -149,6 +207,9 @@ internal sealed class OceanFishingVoyageState
     private DateTimeOffset? lastRecoveryObservationAt;
     private DateTimeOffset? arrivalAt;
     private DateTimeOffset? lastFacingReapplyAt;
+    private DateTimeOffset? pathStoppedAt;
+    private DateTimeOffset? pathStatusUnavailableAt;
+    private DateTimeOffset? facingUnverifiedAt;
     private TimeSpan destinationNavigationTime;
     private TimeSpan noProgressTime;
     private TimeSpan canFishFalseTime;
@@ -158,8 +219,8 @@ internal sealed class OceanFishingVoyageState
     public bool FishingEverStarted { get; private set; }
     public bool MovementLocked { get; private set; }
     public bool DestinationArrived { get; private set; }
-    public int DestinationCount { get; private set; }
-    public int DestinationIndex { get; private set; }
+    public bool PositioningActive { get; private set; }
+    public int DestinationAttemptNumber { get; private set; }
     public int SessionNumber { get; private set; }
     public int SessionStartAttemptCount { get; private set; }
     public int PostArrivalStartAttemptCount { get; private set; }
@@ -168,6 +229,9 @@ internal sealed class OceanFishingVoyageState
     public static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan FacingSettlementDelay = TimeSpan.FromMilliseconds(500);
     public static readonly TimeSpan FacingRetryInterval = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan StoppedPathSettlementDelay = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan PathStatusUnavailableTimeout = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan FacingVerificationTimeout = TimeSpan.FromSeconds(10);
     public const float MinimumNavigationProgress = 0.25f;
     public const int PostArrivalAttemptLimit = 5;
 
@@ -177,29 +241,26 @@ internal sealed class OceanFishingVoyageState
         baitAppliedThisSession = false;
         FishingEverStarted = false;
         MovementLocked = false;
-        DestinationCount = 0;
-        DestinationIndex = 0;
+        PositioningActive = false;
+        DestinationAttemptNumber = 0;
         SessionNumber = 0;
         SessionStartAttemptCount = 0;
         ResetDestinationRecovery(DateTimeOffset.MinValue);
     }
 
-    public void BeginPositioning(int destinationCount, DateTimeOffset nowUtc)
+    public void BeginPositioning(DateTimeOffset nowUtc)
     {
-        if (destinationCount <= 0)
-            throw new ArgumentOutOfRangeException(nameof(destinationCount));
-
-        DestinationCount = destinationCount;
-        DestinationIndex = 0;
+        PositioningActive = true;
+        DestinationAttemptNumber = 1;
         ResetDestinationRecovery(nowUtc);
     }
 
     public bool AdvanceDestination(DateTimeOffset nowUtc)
     {
-        if (MovementLocked || FishingEverStarted || DestinationCount <= 0)
+        if (MovementLocked || FishingEverStarted || !PositioningActive)
             return false;
 
-        DestinationIndex = (DestinationIndex + 1) % DestinationCount;
+        DestinationAttemptNumber++;
         ResetDestinationRecovery(nowUtc);
         return true;
     }
@@ -230,13 +291,18 @@ internal sealed class OceanFishingVoyageState
         bool gatheringConditionActive,
         bool fishingConditionActive,
         bool resultWindowVisible,
-        bool atDestination = false)
+        bool atDestination = false,
+        bool initialPlacementReady = false,
+        string initialPlacementGate = "")
     {
-        if (!FishingEverStarted && (!DestinationArrived || !atDestination))
+        if (!FishingEverStarted &&
+            (!DestinationArrived || !atDestination || !initialPlacementReady))
         {
             return new OceanFishingStartEvaluation(
                 FishingCastDecision.Suppressed,
-                "waiting to reach fixed-rail destination",
+                string.IsNullOrWhiteSpace(initialPlacementGate)
+                    ? "waiting for verified rail placement"
+                    : initialPlacementGate,
                 StopNavigation: false);
         }
 
@@ -275,7 +341,10 @@ internal sealed class OceanFishingVoyageState
     }
 
     public void PauseRecovery(DateTimeOffset nowUtc)
-        => lastRecoveryObservationAt = nowUtc;
+    {
+        lastRecoveryObservationAt = nowUtc;
+        ResetPlacementVerification();
+    }
 
     public void MarkArrived(DateTimeOffset nowUtc)
     {
@@ -288,6 +357,121 @@ internal sealed class OceanFishingVoyageState
         canFishFalseTime = TimeSpan.Zero;
         PostArrivalStartAttemptCount = 0;
         lastRecoveryObservationAt = nowUtc;
+        ResetPlacementVerification();
+    }
+
+    public OceanFishingPlacementEvaluation EvaluatePlacementReadiness(
+        DateTimeOffset nowUtc,
+        bool inFishingContext,
+        bool zoneTransitionActive,
+        bool playerAvailable,
+        bool timersPaused,
+        bool atDestination,
+        bool playerClear,
+        bool pathStatusAvailable,
+        bool pathRunning,
+        bool facingVerified)
+    {
+        if (FishingEverStarted || MovementLocked)
+            return ReadyPlacement();
+
+        if (!PositioningActive)
+        {
+            ResetPlacementVerification();
+            return WaitingPlacement("voyage positioning inactive");
+        }
+
+        if (!inFishingContext)
+        {
+            ResetPlacementVerification();
+            return WaitingPlacement("Ocean Fishing duty context inactive");
+        }
+
+        if (zoneTransitionActive)
+        {
+            ResetPlacementVerification();
+            return WaitingPlacement("route transition active");
+        }
+
+        if (!playerAvailable)
+        {
+            ResetPlacementVerification();
+            return WaitingPlacement("player unavailable");
+        }
+
+        if (timersPaused)
+        {
+            ResetPlacementVerification();
+            return WaitingPlacement("placement verification paused by unsafe player state");
+        }
+
+        if (!atDestination)
+        {
+            ResetPlacementVerification();
+            return WaitingPlacement("waiting to reach continuous rail destination");
+        }
+
+        if (!playerClear)
+        {
+            ResetPlacementVerification();
+            return new OceanFishingPlacementEvaluation(
+                Ready: false,
+                ShouldResample: true,
+                ShouldAbort: false,
+                $"another player is within {OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1} yalms");
+        }
+
+        if (!DestinationArrived)
+        {
+            ResetPlacementVerification();
+            return WaitingPlacement("waiting for arrival stop and facing application");
+        }
+
+        if (!pathStatusAvailable)
+        {
+            pathStoppedAt = null;
+            facingUnverifiedAt = null;
+            pathStatusUnavailableAt ??= nowUtc;
+            var timedOut = nowUtc - pathStatusUnavailableAt.Value >= PathStatusUnavailableTimeout;
+            return new OceanFishingPlacementEvaluation(
+                Ready: false,
+                ShouldResample: false,
+                ShouldAbort: timedOut,
+                timedOut
+                    ? "vnavmesh path status unavailable for 10 active seconds"
+                    : "waiting for vnavmesh path status");
+        }
+
+        pathStatusUnavailableAt = null;
+        if (pathRunning)
+        {
+            pathStoppedAt = null;
+            facingUnverifiedAt = null;
+            return WaitingPlacement("waiting for vnavmesh movement to stop");
+        }
+
+        pathStoppedAt ??= nowUtc;
+        if (nowUtc - pathStoppedAt.Value < StoppedPathSettlementDelay)
+        {
+            facingUnverifiedAt = null;
+            return WaitingPlacement("waiting for one continuous stopped second");
+        }
+
+        if (!facingVerified)
+        {
+            facingUnverifiedAt ??= nowUtc;
+            var timedOut = nowUtc - facingUnverifiedAt.Value >= FacingVerificationTimeout;
+            return new OceanFishingPlacementEvaluation(
+                Ready: false,
+                ShouldResample: timedOut,
+                ShouldAbort: false,
+                timedOut
+                    ? "outward character facing did not verify for 10 active seconds"
+                    : "waiting for outward character facing readback");
+        }
+
+        facingUnverifiedAt = null;
+        return ReadyPlacement();
     }
 
     public bool ShouldReapplyFacing(DateTimeOffset nowUtc)
@@ -315,7 +499,7 @@ internal sealed class OceanFishingVoyageState
         bool canFish,
         bool timersPaused)
     {
-        if (FishingEverStarted || MovementLocked || DestinationCount <= 0)
+        if (FishingEverStarted || MovementLocked || !PositioningActive)
             return OceanFishingAdvanceReason.None;
 
         var delta = TimeSpan.Zero;
@@ -382,6 +566,7 @@ internal sealed class OceanFishingVoyageState
         lastRecoveryObservationAt = nowUtc == DateTimeOffset.MinValue ? null : nowUtc;
         arrivalAt = null;
         lastFacingReapplyAt = null;
+        ResetPlacementVerification();
         destinationNavigationTime = TimeSpan.Zero;
         noProgressTime = TimeSpan.Zero;
         canFishFalseTime = TimeSpan.Zero;
@@ -389,6 +574,27 @@ internal sealed class OceanFishingVoyageState
         DestinationArrived = false;
         PostArrivalStartAttemptCount = 0;
     }
+
+    private void ResetPlacementVerification()
+    {
+        pathStoppedAt = null;
+        pathStatusUnavailableAt = null;
+        facingUnverifiedAt = null;
+    }
+
+    private static OceanFishingPlacementEvaluation WaitingPlacement(string gate)
+        => new(
+            Ready: false,
+            ShouldResample: false,
+            ShouldAbort: false,
+            gate);
+
+    private static OceanFishingPlacementEvaluation ReadyPlacement()
+        => new(
+            Ready: true,
+            ShouldResample: false,
+            ShouldAbort: false,
+            string.Empty);
 }
 
 public readonly record struct OceanFishingStartupWindow(
