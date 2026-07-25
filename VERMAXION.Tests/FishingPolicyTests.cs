@@ -58,87 +58,110 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void FixedRailsUseProvenCoordinatesAndCanonicalRotations()
+    public void ContinuousRailsUseProvenRangesAndOutwardCharacterRotations()
     {
-        var expected = new[]
-        {
-            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, -2.0f), 1.5f),
-            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, -10.0f), 1.5f),
-            new OceanFishingRailDestination(new Vector3(7.20f, 6.711f, 3.5f), 1.5f),
-            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, -1.0f), -1.5f),
-            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, -8.0f), -1.5f),
-            new OceanFishingRailDestination(new Vector3(-7.20f, 6.711f, 4.0f), -1.5f),
-        };
+        var random = new Random(20260724);
+        var starboardSamples = 0;
+        var portSamples = 0;
 
-        Assert.Equal(expected, OceanFishingFixedRailPolicy.CanonicalDestinations);
+        for (var sample = 0; sample < 10_000; sample++)
+        {
+            var destination = OceanFishingContinuousRailPolicy.SampleCandidate(random);
+
+            Assert.Equal(OceanFishingContinuousRailPolicy.DeckY, destination.Position.Y);
+            if (destination.Position.X > 0)
+            {
+                starboardSamples++;
+                Assert.InRange(destination.Position.X, 7.0f, 7.25f);
+                Assert.True(
+                    destination.Position.Z is >= -14.0f and <= -4.0f or >= -2.0f and <= 5.0f,
+                    $"Unexpected starboard Z {destination.Position.Z}");
+                Assert.Equal(OceanFishingContinuousRailPolicy.StarboardRotation, destination.Rotation);
+            }
+            else
+            {
+                portSamples++;
+                Assert.InRange(destination.Position.X, -7.25f, -7.0f);
+                Assert.InRange(destination.Position.Z, -10.0f, 5.5f);
+                Assert.Equal(OceanFishingContinuousRailPolicy.PortRotation, destination.Rotation);
+            }
+        }
+
+        Assert.True(starboardSamples > 0);
+        Assert.True(portSamples > 0);
         Assert.Equal(0.5, OceanFishingQueuePolicy.BoatFishingPositionTolerance);
     }
 
     [Fact]
-    public void EmptyDeckPreservesStableCanonicalRailOrder()
+    public void ThreeYalmClearanceRejectsCloserPlayersAndAllowsExactBoundary()
     {
-        var ranked = OceanFishingFixedRailPolicy.Rank(Array.Empty<Vector3>());
+        var position = new Vector3(7.125f, OceanFishingContinuousRailPolicy.DeckY, -9f);
 
-        Assert.Equal(OceanFishingFixedRailPolicy.CanonicalDestinations, ranked);
+        Assert.False(OceanFishingContinuousRailPolicy.HasPlayerClearance(
+            position,
+            [position + new Vector3(0f, 0f, 2.999f)]));
+        Assert.True(OceanFishingContinuousRailPolicy.HasPlayerClearance(
+            position,
+            [position + new Vector3(0f, 0f, 3.0f)]));
     }
 
     [Fact]
-    public void CrowdRankingPrefersTwoYalmClearanceThenGreatestClearance()
+    public void SamplingExhaustsExactlyThirtyTwoBlockedCandidatesAndFailsClosed()
     {
-        var ranked = OceanFishingFixedRailPolicy.Rank(new[]
-        {
-            new Vector3(0f, 6.711f, 0f),
-        });
+        var random = new CountingConstantRandom(0.25);
+        var blockedCandidate = OceanFishingContinuousRailPolicy.SampleCandidate(
+            new CountingConstantRandom(0.25));
 
-        Assert.Equal(new Vector3(7.20f, 6.711f, -10.0f), ranked[0].Position);
-        Assert.Equal(new Vector3(-7.20f, 6.711f, -8.0f), ranked[1].Position);
-        Assert.All(
-            ranked,
-            destination => Assert.True(
-                Vector3.Distance(destination.Position, new Vector3(0f, 6.711f, 0f)) >=
-                OceanFishingFixedRailPolicy.CrowdRadius));
+        Assert.False(OceanFishingContinuousRailPolicy.TrySample(
+            random,
+            [blockedCandidate.Position],
+            previousDestination: null,
+            out _));
+        Assert.Equal(OceanFishingContinuousRailPolicy.MaxSampleAttempts * 4, random.CallCount);
     }
 
     [Fact]
-    public void FullyCrowdedRailsUseGreatestClearanceWithCanonicalTieBreak()
+    public void RecoverySamplingRejectsThePreviousDestination()
     {
-        var players = OceanFishingFixedRailPolicy.CanonicalDestinations
-            .Select(destination => destination.Position + new Vector3(0f, 0f, 0.5f))
-            .ToArray();
-        var ranked = OceanFishingFixedRailPolicy.Rank(players);
-        var expected = OceanFishingFixedRailPolicy.CanonicalDestinations
-            .Select((destination, index) => new
-            {
-                Destination = destination,
-                Index = index,
-                Clearance = players.Min(player => Vector3.Distance(player, destination.Position)),
-            })
-            .OrderByDescending(candidate => candidate.Clearance)
-            .ThenBy(candidate => candidate.Index)
-            .Select(candidate => candidate.Destination)
-            .ToArray();
+        var previous = OceanFishingContinuousRailPolicy.SampleCandidate(
+            new CountingConstantRandom(0.25));
 
-        Assert.Equal(expected, ranked);
-        Assert.All(
-            ranked,
-            destination => Assert.Contains(destination, OceanFishingFixedRailPolicy.CanonicalDestinations));
+        Assert.False(OceanFishingContinuousRailPolicy.TrySample(
+            new CountingConstantRandom(0.25),
+            Array.Empty<Vector3>(),
+            previous,
+            out _));
     }
 
     [Fact]
-    public void PlayerSnapshotsOnlyRankAndNeverBecomeDestinations()
+    public void OtherPlayerPositionsAreClearanceInputsAndNeverDestinations()
     {
         var players = new[]
         {
             new Vector3(100f, 100f, 100f),
             new Vector3(-100f, -100f, -100f),
         };
-        var ranked = OceanFishingFixedRailPolicy.Rank(players);
+        Assert.True(OceanFishingContinuousRailPolicy.TrySample(
+            new Random(42),
+            players,
+            previousDestination: null,
+            out var destination));
+        Assert.DoesNotContain(destination.Position, players);
+    }
 
-        Assert.Equal(6, ranked.Count);
-        Assert.DoesNotContain(ranked, destination => players.Contains(destination.Position));
-        Assert.All(
-            ranked,
-            destination => Assert.Contains(destination, OceanFishingFixedRailPolicy.CanonicalDestinations));
+    [Theory]
+    [InlineData(1.5f, 1.5f, true)]
+    [InlineData(1.549f, 1.5f, true)]
+    [InlineData(1.551f, 1.5f, false)]
+    [InlineData(-3.1315928f, 3.1315928f, true)]
+    public void FacingVerificationUsesNormalizedCharacterRotation(
+        float current,
+        float target,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            OceanFishingContinuousRailPolicy.IsFacingOutward(current, target));
     }
 
     [Fact]
@@ -1188,7 +1211,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
         voyage.MarkArrived(now);
 
@@ -1221,7 +1244,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
         voyage.MarkArrived(now);
 
@@ -1249,7 +1272,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
 
         var attempt = EvaluateVoyageStart(voyage, now, atDestination: false);
@@ -1260,7 +1283,7 @@ public sealed class FishingPolicyTests
             atDestination: false);
 
         Assert.Equal(FishingCastDecision.Suppressed, attempt.Decision);
-        Assert.Equal("waiting to reach fixed-rail destination", attempt.Gate);
+        Assert.Equal("waiting for verified rail placement", attempt.Gate);
         Assert.False(attempt.StopNavigation);
         Assert.Equal(FishingCastDecision.Suppressed, prematureAcknowledgement.Decision);
         Assert.False(prematureAcknowledgement.StopNavigation);
@@ -1277,7 +1300,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
         voyage.MarkArrived(now);
 
@@ -1296,17 +1319,29 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void ArrivalAllowsImmediateFirstAttemptBeforeFacingSettlement()
+    public void ArrivalBlocksUntilTheCompletePlacementGateIsReady()
     {
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
         voyage.MarkArrived(now);
 
-        var attempt = EvaluateVoyageStart(voyage, now, atDestination: true);
+        var blocked = EvaluateVoyageStart(
+            voyage,
+            now,
+            atDestination: true,
+            initialPlacementReady: false,
+            initialPlacementGate: "waiting for one continuous stopped second");
+        var attempt = EvaluateVoyageStart(
+            voyage,
+            now.AddSeconds(1),
+            atDestination: true,
+            initialPlacementReady: true);
 
+        Assert.Equal(FishingCastDecision.Suppressed, blocked.Decision);
+        Assert.Equal("waiting for one continuous stopped second", blocked.Gate);
         Assert.Equal(FishingCastDecision.Attempt, attempt.Decision);
         Assert.Equal(1, voyage.SessionStartAttemptCount);
         Assert.Equal(1, voyage.PostArrivalStartAttemptCount);
@@ -1320,7 +1355,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
 
         Assert.Equal(
@@ -1336,24 +1371,19 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void FixedDestinationIndexCyclesForeverWithoutTerminalExhaustion()
+    public void ContinuousDestinationAttemptsAdvanceWithoutFixedListExhaustion()
     {
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
 
-        Assert.Equal(0, voyage.DestinationIndex);
-        for (var expected = 1; expected < 6; expected++)
+        Assert.Equal(1, voyage.DestinationAttemptNumber);
+        for (var expected = 2; expected <= 8; expected++)
         {
             Assert.True(voyage.AdvanceDestination(now.AddSeconds(expected)));
-            Assert.Equal(expected, voyage.DestinationIndex);
+            Assert.Equal(expected, voyage.DestinationAttemptNumber);
         }
-
-        Assert.True(voyage.AdvanceDestination(now.AddSeconds(6)));
-        Assert.Equal(0, voyage.DestinationIndex);
-        Assert.True(voyage.AdvanceDestination(now.AddSeconds(7)));
-        Assert.Equal(1, voyage.DestinationIndex);
     }
 
     [Fact]
@@ -1362,7 +1392,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
 
         Assert.Equal(
             OceanFishingAdvanceReason.None,
@@ -1381,7 +1411,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
 
         Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now, 10f));
         for (var seconds = 5; seconds < 30; seconds += 5)
@@ -1402,7 +1432,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.MarkArrived(now);
 
         Assert.Equal(
@@ -1422,7 +1452,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
         voyage.MarkArrived(now);
 
@@ -1445,7 +1475,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
 
         Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now, 10f));
         Assert.Equal(OceanFishingAdvanceReason.None, EvaluateRecovery(voyage, now.AddSeconds(5), 9.9f));
@@ -1464,7 +1494,7 @@ public sealed class FishingPolicyTests
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.MarkArrived(now);
 
         Assert.False(voyage.ShouldReapplyFacing(now.AddMilliseconds(499)));
@@ -1474,12 +1504,184 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
+    public void PathMustRemainStoppedForOneContinuousSecondBeforeCasting()
+    {
+        var voyage = ArrivedVoyage(out var now);
+
+        Assert.False(EvaluatePlacement(voyage, now, pathRunning: false).Ready);
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now.AddMilliseconds(999),
+            pathRunning: false).Ready);
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now.AddSeconds(1),
+            pathRunning: true).Ready);
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now.AddSeconds(2),
+            pathRunning: false).Ready);
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now.AddMilliseconds(2999),
+            pathRunning: false).Ready);
+        Assert.True(EvaluatePlacement(
+            voyage,
+            now.AddSeconds(3),
+            pathRunning: false).Ready);
+    }
+
+    [Fact]
+    public void InitialPlacementSafetyChangesResetStoppedSettlement()
+    {
+        var voyage = ArrivedVoyage(out var now);
+
+        Assert.False(EvaluatePlacement(voyage, now, pathRunning: false).Ready);
+        var crowded = EvaluatePlacement(
+            voyage,
+            now.AddSeconds(1),
+            playerClear: false,
+            pathRunning: false);
+        Assert.True(crowded.ShouldResample);
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now.AddSeconds(2),
+            pathRunning: false).Ready);
+        Assert.True(EvaluatePlacement(
+            voyage,
+            now.AddSeconds(3),
+            pathRunning: false).Ready);
+    }
+
+    [Fact]
+    public void MissingPathStatusFailsClosedAfterTenActiveSeconds()
+    {
+        var voyage = ArrivedVoyage(out var now);
+
+        var initial = EvaluatePlacement(
+            voyage,
+            now,
+            pathStatusAvailable: false);
+        var beforeBoundary = EvaluatePlacement(
+            voyage,
+            now.AddMilliseconds(9999),
+            pathStatusAvailable: false);
+        var boundary = EvaluatePlacement(
+            voyage,
+            now.AddSeconds(10),
+            pathStatusAvailable: false);
+
+        Assert.False(initial.Ready);
+        Assert.False(initial.ShouldAbort);
+        Assert.Equal("waiting for vnavmesh path status", initial.Gate);
+        Assert.False(beforeBoundary.ShouldAbort);
+        Assert.True(boundary.ShouldAbort);
+    }
+
+    [Fact]
+    public void UnverifiedCharacterFacingRequestsResampleAfterTenSettledSeconds()
+    {
+        var voyage = ArrivedVoyage(out var now);
+
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now,
+            pathRunning: false,
+            facingVerified: false).Ready);
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now.AddSeconds(1),
+            pathRunning: false,
+            facingVerified: false).ShouldResample);
+        Assert.False(EvaluatePlacement(
+            voyage,
+            now.AddMilliseconds(10999),
+            pathRunning: false,
+            facingVerified: false).ShouldResample);
+        Assert.True(EvaluatePlacement(
+            voyage,
+            now.AddSeconds(11),
+            pathRunning: false,
+            facingVerified: false).ShouldResample);
+    }
+
+    [Theory]
+    [InlineData(false, false, true, false, true, "Ocean Fishing duty context inactive")]
+    [InlineData(true, true, true, false, true, "route transition active")]
+    [InlineData(true, false, false, false, true, "player unavailable")]
+    [InlineData(true, false, true, true, true, "placement verification paused by unsafe player state")]
+    [InlineData(true, false, true, false, false, "waiting to reach continuous rail destination")]
+    public void PlacementPrerequisitesIndependentlyBlockReadiness(
+        bool inFishingContext,
+        bool zoneTransitionActive,
+        bool playerAvailable,
+        bool timersPaused,
+        bool atDestination,
+        string expectedGate)
+    {
+        var voyage = ArrivedVoyage(out var now);
+
+        var evaluation = EvaluatePlacement(
+            voyage,
+            now,
+            inFishingContext,
+            zoneTransitionActive,
+            playerAvailable,
+            timersPaused,
+            atDestination);
+
+        Assert.False(evaluation.Ready);
+        Assert.Equal(expectedGate, evaluation.Gate);
+    }
+
+    [Fact]
+    public void CanFishFallbackDoesNotAccumulateBeforePlacementReadiness()
+    {
+        var voyage = ArrivedVoyage(out var now);
+
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(
+                voyage,
+                now,
+                0.25f,
+                atDestination: true,
+                canFish: false,
+                timersPaused: true));
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(
+                voyage,
+                now.AddSeconds(20),
+                0.25f,
+                atDestination: true,
+                canFish: false,
+                timersPaused: true));
+        Assert.Equal(
+            OceanFishingAdvanceReason.None,
+            EvaluateRecovery(
+                voyage,
+                now.AddSeconds(20),
+                0.25f,
+                atDestination: true,
+                canFish: false));
+        Assert.Equal(
+            OceanFishingAdvanceReason.CannotFish,
+            EvaluateRecovery(
+                voyage,
+                now.AddSeconds(30),
+                0.25f,
+                atDestination: true,
+                canFish: false));
+    }
+
+    [Fact]
     public void FishingAcknowledgementPermanentlyForbidsDestinationAdvancesAndFacingRetries()
     {
         var voyage = new OceanFishingVoyageState();
         var now = Utc(2026, 7, 21, 22, 0, 0);
         voyage.Reset();
-        voyage.BeginPositioning(6, now);
+        voyage.BeginPositioning(now);
         voyage.BeginSession();
         voyage.MarkArrived(now);
 
@@ -1495,7 +1697,7 @@ public sealed class FishingPolicyTests
         Assert.Equal(
             OceanFishingAdvanceReason.None,
             EvaluateRecovery(voyage, now.AddMinutes(1), 0.25f, atDestination: true, canFish: false));
-        Assert.Equal(0, voyage.DestinationIndex);
+        Assert.Equal(1, voyage.DestinationAttemptNumber);
     }
 
     [Fact]
@@ -1506,6 +1708,22 @@ public sealed class FishingPolicyTests
 
         Assert.Equal("route transition active", duringTransition.Gate);
         Assert.Equal(FishingCastDecision.Attempt, afterTransition.Decision);
+    }
+
+    [Fact]
+    public void CurrentVersionDutyGateRejectsStaleFishingAndGatheringConditions()
+    {
+        var staleFishing = EvaluateCast(
+            inFishingContext: false,
+            fishingConditionActive: true);
+        var staleGathering = EvaluateCast(
+            inFishingContext: false,
+            gatheringConditionActive: true);
+
+        Assert.Equal(FishingCastDecision.Suppressed, staleFishing.Decision);
+        Assert.Equal("Ocean Fishing duty context inactive", staleFishing.Gate);
+        Assert.Equal(FishingCastDecision.Suppressed, staleGathering.Decision);
+        Assert.Equal("Ocean Fishing duty context inactive", staleGathering.Gate);
     }
 
     [Fact]
@@ -1574,7 +1792,9 @@ public sealed class FishingPolicyTests
         DateTimeOffset nowUtc,
         bool gatheringConditionActive = false,
         bool fishingConditionActive = false,
-        bool atDestination = false)
+        bool atDestination = false,
+        bool initialPlacementReady = true,
+        string initialPlacementGate = "")
         => voyage.EvaluateFishingStart(
             nowUtc,
             enabled: true,
@@ -1584,7 +1804,43 @@ public sealed class FishingPolicyTests
             gatheringConditionActive,
             fishingConditionActive,
             resultWindowVisible: false,
-            atDestination);
+            atDestination,
+            initialPlacementReady,
+            initialPlacementGate);
+
+    private static OceanFishingVoyageState ArrivedVoyage(out DateTimeOffset now)
+    {
+        now = Utc(2026, 7, 24, 22, 0, 0);
+        var voyage = new OceanFishingVoyageState();
+        voyage.Reset();
+        voyage.BeginPositioning(now);
+        voyage.MarkArrived(now);
+        return voyage;
+    }
+
+    private static OceanFishingPlacementEvaluation EvaluatePlacement(
+        OceanFishingVoyageState voyage,
+        DateTimeOffset nowUtc,
+        bool inFishingContext = true,
+        bool zoneTransitionActive = false,
+        bool playerAvailable = true,
+        bool timersPaused = false,
+        bool atDestination = true,
+        bool playerClear = true,
+        bool pathStatusAvailable = true,
+        bool pathRunning = false,
+        bool facingVerified = true)
+        => voyage.EvaluatePlacementReadiness(
+            nowUtc,
+            inFishingContext,
+            zoneTransitionActive,
+            playerAvailable,
+            timersPaused,
+            atDestination,
+            playerClear,
+            pathStatusAvailable,
+            pathRunning,
+            facingVerified);
 
     private static OceanFishingAdvanceReason EvaluateRecovery(
         OceanFishingVoyageState voyage,
@@ -1599,4 +1855,15 @@ public sealed class FishingPolicyTests
             atDestination,
             canFish,
             timersPaused);
+
+    private sealed class CountingConstantRandom(double value) : Random
+    {
+        public int CallCount { get; private set; }
+
+        public override double NextDouble()
+        {
+            CallCount++;
+            return value;
+        }
+    }
 }

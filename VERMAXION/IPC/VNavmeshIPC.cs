@@ -10,11 +10,14 @@ namespace VERMAXION.IPC;
 public class VNavmeshIPC : IDisposable
 {
     private const string PointOnFloorIpc = "vnavmesh.Query.Mesh.PointOnFloor";
+    private const string PathIsRunningIpc = "vnavmesh.Path.IsRunning";
 
     private readonly IPluginLog log;
     private readonly ICommandManager commandManager;
     private readonly ICallGateSubscriber<Vector3, bool, float, Vector3?> pointOnFloorSubscriber;
+    private readonly ICallGateSubscriber<bool> pathIsRunningSubscriber;
     private DateTime nextFloorQueryFailureLogAt = DateTime.MinValue;
+    private DateTime nextPathStatusFailureLogAt = DateTime.MinValue;
     
     public bool IsReady { get; private set; } = true;
     public bool PathIsRunning { get; private set; }
@@ -25,7 +28,9 @@ public class VNavmeshIPC : IDisposable
         this.commandManager = commandManager;
         pointOnFloorSubscriber = Plugin.PluginInterface
             .GetIpcSubscriber<Vector3, bool, float, Vector3?>(PointOnFloorIpc);
-        log.Information("[VNavmeshIPC] VNavmesh IPC initialized (using command fallback)");
+        pathIsRunningSubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<bool>(PathIsRunningIpc);
+        log.Information("[VNavmeshIPC] VNavmesh IPC initialized (command movement with path-status verification)");
     }
     
     public bool PathfindAndMoveTo(Vector3 position, bool fly = false)
@@ -104,12 +109,33 @@ public class VNavmeshIPC : IDisposable
             return false;
         }
     }
+
+    public bool TryGetPathIsRunning(out bool isRunning)
+    {
+        try
+        {
+            isRunning = pathIsRunningSubscriber.InvokeFunc();
+            PathIsRunning = isRunning;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            isRunning = false;
+            var now = DateTime.UtcNow;
+            if (now >= nextPathStatusFailureLogAt)
+            {
+                nextPathStatusFailureLogAt = now + TimeSpan.FromSeconds(5);
+                log.Debug($"[VNavmeshIPC] Path.IsRunning query failed: {ex.Message}");
+            }
+
+            return false;
+        }
+    }
     
     public void UpdateStatus()
     {
-        // Can't check status via commands, assume it's ready
         IsReady = true;
-        // We can't check PathIsRunning without IPC, so we'll use distance-based detection
+        TryGetPathIsRunning(out _);
     }
 
     public void Dispose()

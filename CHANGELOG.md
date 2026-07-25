@@ -1,5 +1,19 @@
 # VERMAXION Changelog
 
+## 2026-07-24 - Ocean Fishing continuous rail placement and settled cast gate
+
+### Fixed
+- Replaced the six static boat destinations with continuous Henchman-proven rail sampling. Starboard preserves the middle obstruction gap, port uses its full proven span, and both retain their outward character rotations.
+- Each sampling pass rejects candidates within three yalms of another player and rejects recovery points within three yalms of the previous destination. An exhausted 32-candidate pass stops navigation, blocks `/ahstart`, and retries after one second.
+- Reaching a destination within 0.5 yalms now stops vnavmesh and applies character rotation. The camera is not rotated. The first `/ahstart` and Fishing/Gathering acknowledgement remain locked until live player clearance is at least three yalms, `vnavmesh.Path.IsRunning` has remained false for one continuous second, and facing readback is within 0.05 radians.
+- Clearance loss before acknowledgement resamples as soon as movement is safe; facing verification resamples after ten active seconds, and unavailable path-status IPC fails closed after ten active seconds. Existing navigation stall, timeout, false-`CanFish`, and five-attempt recovery now resample instead of cycling fixed indices.
+- The first valid acknowledgement still permanently locks voyage movement. Later route changes and fishing interruptions retry in place without respreading. The existing Ocean Fishing context gate still rejects stale Fishing/Gathering state and `/ahstart` outside the duty.
+
+### Verification
+- Focused fishing policy tests pass 143/143, including rail ranges, obstruction-gap preservation, exact three-yalm boundary, bounded sampling, stopped-path resets, facing/path-status timeouts, pre-readiness recovery pauses, movement locking, and outside-duty stale-condition coverage.
+- The full Debug suite passes 448/448 tests. The Debug x64 plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+- Packaging, publication, client configuration, and live-game actions were not performed. Multi-client live acceptance remains pending separately authorized observation.
+
 ## 2026-07-24 - Retainer Equipping main-window ordered run
 
 ### Added
