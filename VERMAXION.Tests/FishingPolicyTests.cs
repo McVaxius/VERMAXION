@@ -1114,16 +1114,17 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void FishingCastPolicyRetainsThreeSecondAutoHookCommandCadence()
+    public void FishingCastPolicyRetainsExactPairedStartCommandsAndThreeSecondCadence()
     {
         var eligible = EvaluateCast(sinceLastAttempt: TimeSpan.MaxValue);
 
         Assert.Equal("/ahstart", FishingCastPolicy.CastCommand);
+        Assert.Equal("/ac cast", FishingCastPolicy.DirectCastFallbackCommand);
         Assert.Equal(FishingCastDecision.Attempt, eligible.Decision);
     }
 
     [Fact]
-    public void UnacknowledgedAutoHookStartRetriesEveryThreeSeconds()
+    public void UnacknowledgedPairedStartRetriesEveryThreeSeconds()
     {
         var early = EvaluateCast(sinceLastAttempt: TimeSpan.FromMilliseconds(2999));
         var due = EvaluateCast(sinceLastAttempt: TimeSpan.FromSeconds(3));

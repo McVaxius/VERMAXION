@@ -1409,7 +1409,8 @@ public sealed class FishingService
             log.Information(
                 $"[Fishing][Position] Moving to continuous rail destination attempt " +
                 $"{voyageState.DestinationAttemptNumber} ({distance:F1}y); " +
-                $"{FishingCastPolicy.CastCommand} and premature Fishing/Gathering acknowledgement remain gated until " +
+                $"{FishingCastPolicy.CastCommand} then {FishingCastPolicy.DirectCastFallbackCommand}, plus premature " +
+                "Fishing/Gathering acknowledgement, remain gated until " +
                 $"distance, {OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1}y clearance, stopped-path settlement, " +
                 "and outward character facing are verified");
             vnavmesh.PathfindAndMoveTo(position);
@@ -1809,7 +1810,8 @@ public sealed class FishingService
             ? $"Recovery timers paused at destination attempt {voyageState.DestinationAttemptNumber}"
             : !placement.Ready
                 ? placement.Gate
-                : $"Retrying {FishingCastPolicy.CastCommand} in place for voyage session {voyageState.SessionNumber}; " +
+                : $"Retrying {FishingCastPolicy.CastCommand} then {FishingCastPolicy.DirectCastFallbackCommand} " +
+                  $"in place for voyage session {voyageState.SessionNumber}; " +
                   $"post-arrival attempts={voyageState.PostArrivalStartAttemptCount}/{OceanFishingVoyageState.PostArrivalAttemptLimit}";
     }
 
@@ -1926,7 +1928,7 @@ public sealed class FishingService
         log.Information(
             $"[Fishing][Session] Session {voyageState.SessionNumber} started for {reason}; " +
             $"Versatile Lure set once; the first voyage start is distance-gated, while post-acknowledgement " +
-            $"{FishingCastPolicy.CastCommand} retries remain in place");
+            $"{FishingCastPolicy.CastCommand} then {FishingCastPolicy.DirectCastFallbackCommand} retries remain in place");
         return true;
     }
 
@@ -1965,7 +1967,8 @@ public sealed class FishingService
 
         log.Information(
             $"[Fishing][Session] Route transition completed; session {voyageState.SessionNumber} will retry " +
-            $"{FishingCastPolicy.CastCommand} in place with movementLocked={voyageState.MovementLocked}");
+            $"{FishingCastPolicy.CastCommand} then {FishingCastPolicy.DirectCastFallbackCommand} in place " +
+            $"with movementLocked={voyageState.MovementLocked}");
         return false;
     }
 
@@ -2000,7 +2003,7 @@ public sealed class FishingService
             var acknowledgement = fishing ? "Fishing" : "Gathering";
             log.Information(
                 $"[Fishing][Cast] {acknowledgement} acknowledged after " +
-                $"{voyageState.SessionStartAttemptCount} {FishingCastPolicy.CastCommand} attempt(s); " +
+                $"{voyageState.SessionStartAttemptCount} paired start attempt(s); " +
                 "navigation stopped immediately and movement is locked for the remainder of the voyage");
             if (state == FishingState.MovingToFishingSpot)
                 SetState(FishingState.Fishing);
@@ -2014,10 +2017,12 @@ public sealed class FishingService
         }
 
         CommandHelper.SendCommand(FishingCastPolicy.CastCommand);
+        CommandHelper.SendCommand(FishingCastPolicy.DirectCastFallbackCommand);
         lastCastGate = string.Empty;
         log.Information(
             $"[Fishing][Cast] Session {voyageState.SessionNumber} attempt " +
-            $"{voyageState.SessionStartAttemptCount}: sent {FishingCastPolicy.CastCommand} " +
+            $"{voyageState.SessionStartAttemptCount}: sent {FishingCastPolicy.CastCommand} then " +
+            $"{FishingCastPolicy.DirectCastFallbackCommand} " +
             $"at continuous rail destination attempt {voyageState.DestinationAttemptNumber}; " +
             "awaiting Fishing/Gathering acknowledgement");
         return false;
@@ -2057,7 +2062,8 @@ public sealed class FishingService
         {
             log.Warning(
                 $"[Fishing][Position] Resampling after {DescribeAdvanceReason(reason)} found no open point; " +
-                $"{FishingCastPolicy.CastCommand} remains blocked and sampling will retry in " +
+                $"{FishingCastPolicy.CastCommand} then {FishingCastPolicy.DirectCastFallbackCommand} remain blocked, " +
+                "and sampling will retry in " +
                 $"{RailSampleRetryInterval.TotalSeconds:F0}s");
         }
 
@@ -2096,7 +2102,8 @@ public sealed class FishingService
                 $"{voyageState.DestinationAttemptNumber} reached; distance<={BoatFishingPositionTolerance:F1}y, " +
                 $"clearance>={OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1}y, " +
                 $"rotation={destination.Rotation:F3}. Navigation stop issued; " +
-                $"{FishingCastPolicy.CastCommand} remains gated until Path.IsRunning is false for " +
+                $"{FishingCastPolicy.CastCommand} then {FishingCastPolicy.DirectCastFallbackCommand} remain gated until " +
+                "Path.IsRunning is false for " +
                 $"{OceanFishingVoyageState.StoppedPathSettlementDelay.TotalSeconds:F0}s and character facing verifies.");
         }
 
@@ -2216,7 +2223,7 @@ public sealed class FishingService
             OceanFishingAdvanceReason.NavigationStalled => "less than 0.25y navigation progress for 10 active seconds",
             OceanFishingAdvanceReason.NavigationTimeout => "30 active navigation seconds on one destination",
             OceanFishingAdvanceReason.CannotFish => "CanFish false for 10 available/non-busy seconds after arrival",
-            OceanFishingAdvanceReason.StartUnacknowledged => "five post-arrival /ahstart attempts without acknowledgement",
+            OceanFishingAdvanceReason.StartUnacknowledged => "five post-arrival paired /ahstart then /ac cast attempts without acknowledgement",
             OceanFishingAdvanceReason.PlayerClearanceLost => "another player entered the 3-yalm first-cast clearance",
             OceanFishingAdvanceReason.FacingUnverified => "outward character facing failed to verify for 10 active seconds",
             _ => "an unknown recovery condition",

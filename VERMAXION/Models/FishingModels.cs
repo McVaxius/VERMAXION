@@ -1798,6 +1798,7 @@ public readonly record struct FishingCastEvaluation(
 public static class FishingCastPolicy
 {
     public const string CastCommand = "/ahstart";
+    public const string DirectCastFallbackCommand = "/ac cast";
     public static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(3);
     public static readonly TimeSpan CanFishFallbackDelay = TimeSpan.FromSeconds(10);
 
