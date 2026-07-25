@@ -1,5 +1,13 @@
 # VERMAXION Changelog
 
+## 2026-07-25 - Ocean Fishing live Fisher-cap revalidation
+
+### Fixed
+- Ocean Fishing now re-reads the current character's Fisher level from native `PlayerState` immediately before acquiring a new run or starting `FishingService`. An unavailable live level fails closed and retries without switching job, traveling, queueing, or casting.
+- A non-override candidate whose live Fisher level is at or above the configured cap is rejected even when the cached XADB roster reports a lower level. Current-character rejection stops before run ownership; post-relog rejection releases the owned lifecycle and advances to the next cached candidate.
+- The explicit `AlwaysFish` selection now carries override provenance through the startup coordinator, preserving its deliberate cap bypass while normal candidates remain protected.
+- Added current-character, unavailable-native-state, post-relog mismatch, next-candidate recovery, and explicit-override regression coverage. W40 voyage positioning and casting behavior is unchanged.
+
 ## 2026-07-24 - Ocean Fishing continuous rail placement and settled cast gate
 
 ### Fixed

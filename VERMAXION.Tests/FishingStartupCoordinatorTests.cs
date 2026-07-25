@@ -534,6 +534,118 @@ public sealed class FishingStartupCoordinatorTests
     }
 
     [Fact]
+    public void CurrentCharacterAtLiveFisherCapIsRejectedBeforeRunOwnershipOrFishingStart()
+    {
+        var runtime = RuntimeForRelog();
+        runtime.Selection = CurrentSelection() with { FisherLevel = 80 };
+        runtime.LiveFisherLevel = FishingLiveFisherLevelSnapshot.Ready(100);
+        var coordinator = new FishingStartupCoordinator(runtime);
+
+        var result = coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+
+        Assert.Equal(FishingStartupAction.AlreadyHandled, result.Action);
+        Assert.Contains("Live Fisher level 100", result.Reason);
+        Assert.Equal(0, runtime.BeginRunRequests);
+        Assert.Equal(0, runtime.FishingStarts);
+        Assert.Equal(0, runtime.RelogRequests);
+        Assert.False(coordinator.HasRecoveryPending);
+    }
+
+    [Fact]
+    public void UnavailableLiveFisherLevelFailsClosedAndRetriesWithoutStartingPreparation()
+    {
+        var runtime = RuntimeForRelog();
+        runtime.Selection = CurrentSelection() with { FisherLevel = 80 };
+        runtime.LiveFisherLevel =
+            FishingLiveFisherLevelSnapshot.Unavailable("native state not ready");
+        var coordinator = new FishingStartupCoordinator(runtime);
+
+        var blocked = coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+
+        Assert.Equal(FishingStartupAction.Waiting, blocked.Action);
+        Assert.Contains("Live Fisher level is unavailable", blocked.Reason);
+        Assert.True(coordinator.HasRecoveryPending);
+        Assert.Equal(0, runtime.BeginRunRequests);
+        Assert.Equal(0, runtime.FishingStarts);
+
+        runtime.LiveFisherLevel = FishingLiveFisherLevelSnapshot.Ready(80);
+        var recovered = coordinator.PollRecovery(
+            ActiveWindowTime.AddSeconds(1),
+            "Low Fisher@World");
+
+        Assert.Equal(FishingStartupAction.FishingStarted, recovered.Action);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(1, runtime.FishingStarts);
+        Assert.False(coordinator.HasRecoveryPending);
+    }
+
+    [Fact]
+    public void RelogArrivalAtLiveFisherCapAbortsOwnedRunAndAdvancesCachedCandidate()
+    {
+        var runtime = RuntimeForRelog();
+        runtime.CandidateQueue =
+        [
+            new FishingSelectionResult(
+                "Stale Fisher@World",
+                FisherLevel: 80,
+                RequiresRelog: true,
+                AlwaysFishKeysToDisable: Array.Empty<string>(),
+                Reason: "Selected cached XADB Fisher below max."),
+            new FishingSelectionResult(
+                "Fallback Fisher@World",
+                FisherLevel: 20,
+                RequiresRelog: true,
+                AlwaysFishKeysToDisable: Array.Empty<string>(),
+                Reason: "Fallback cached XADB Fisher below max."),
+        ];
+        var coordinator = new FishingStartupCoordinator(runtime);
+
+        var initial = coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+        runtime.IsRelogActive = false;
+        runtime.LiveFisherLevel = FishingLiveFisherLevelSnapshot.Ready(100);
+        var rejected = coordinator.ContinuePendingRelog(
+            ActiveWindowTime.AddSeconds(10),
+            "Stale Fisher@World");
+
+        Assert.Equal(FishingStartupAction.RelogStarted, initial.Action);
+        Assert.Equal(FishingStartupAction.Waiting, rejected.Action);
+        Assert.Contains("Advancing to the next cached candidate", rejected.Reason);
+        Assert.Equal(0, runtime.FishingStarts);
+        Assert.Equal(1, runtime.AbortRequests);
+        Assert.True(coordinator.HasRecoveryPending);
+
+        runtime.LiveFisherLevel = FishingLiveFisherLevelSnapshot.Ready(100);
+        var recovery = coordinator.PollRecovery(
+            ActiveWindowTime.AddSeconds(11),
+            "Stale Fisher@World");
+
+        Assert.Equal(FishingStartupAction.RelogStarted, recovery.Action);
+        Assert.Equal("Fallback Fisher@World", runtime.LastRelogTarget);
+        Assert.Equal(2, runtime.RelogRequests);
+        Assert.Equal(0, runtime.FishingStarts);
+    }
+
+    [Fact]
+    public void ExplicitAlwaysFishOverrideAllowsLiveFisherAtCap()
+    {
+        var runtime = RuntimeForRelog();
+        runtime.Selection = CurrentSelection() with
+        {
+            FisherLevel = 80,
+            AlwaysFishOverride = true,
+        };
+        runtime.LiveFisherLevel = FishingLiveFisherLevelSnapshot.Ready(100);
+        var coordinator = new FishingStartupCoordinator(runtime);
+
+        var result = coordinator.Poll(ActiveWindowTime, FishingStartupTrigger.Manual);
+
+        Assert.Equal(FishingStartupAction.FishingStarted, result.Action);
+        Assert.Equal(100, result.Selection.FisherLevel);
+        Assert.Equal(1, runtime.BeginRunRequests);
+        Assert.Equal(1, runtime.FishingStarts);
+    }
+
+    [Fact]
     public void PreQueueFishingFailureCanRetrySameRegistrationWindow()
     {
         var runtime = RuntimeForRelog();
@@ -723,14 +835,18 @@ public sealed class FishingStartupCoordinatorTests
     private sealed class FakeFishingStartupRuntime : IFishingStartupRuntime
     {
         public int PreWindowOffsetMinutes { get; set; } = -1;
+        public int MaxFisherLevel { get; set; } = 100;
         public bool CanInitiateStartup { get; set; } = true;
         public bool IsFishingActive { get; set; }
         public bool IsRelogActive { get; set; }
+        public FishingLiveFisherLevelSnapshot LiveFisherLevel { get; set; } =
+            FishingLiveFisherLevelSnapshot.Ready(12);
         public FishingSelectionResult Selection { get; set; } =
             FishingSelectionResult.None("No target.");
         public IReadOnlyList<FishingSelectionResult>? CandidateQueue { get; set; }
 
         public int SelectionRequests { get; private set; }
+        public int LiveFisherLevelReads { get; private set; }
         public int BeginRunRequests { get; private set; }
         public int RelogRequests { get; private set; }
         public int FishingStarts { get; private set; }
@@ -749,6 +865,12 @@ public sealed class FishingStartupCoordinatorTests
             SelectionRequests++;
             return CandidateQueue ??
                    (Selection.Selected ? [Selection] : Array.Empty<FishingSelectionResult>());
+        }
+
+        public FishingLiveFisherLevelSnapshot ReadCurrentFisherLevel()
+        {
+            LiveFisherLevelReads++;
+            return LiveFisherLevel;
         }
 
         public int DisableAlwaysFishOnOtherCharacters(string selectedCharacterKey)

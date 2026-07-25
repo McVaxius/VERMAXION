@@ -4,8 +4,8 @@ VERMAXION now owns the Ocean Fishing flow directly. This records the supported s
 
 | Area | Current VERMAXION behavior |
 |---|---|
-| Character choice | Builds one queue per registration window: enabled `AlwaysFish` characters first, then enabled characters with XA Database Fisher levels ascending. The full XADB roster is authoritative for every character, including the current character. Unknown levels are excluded unless `AlwaysFish` is set. |
-| Fallback | Missing unlock, Fisher gearset, or usable lure excludes that character and advances immediately. ADS and travel failures retry the same character twice after 3 and 10 seconds. |
+| Character choice | Builds one queue per registration window: enabled `AlwaysFish` characters first, then enabled characters with XA Database Fisher levels ascending. XADB saved levels establish that cached order, but immediately before current-character preparation—and again after a relog—the coordinator reads native live Fisher level. An unavailable live read waits fail-closed; a normal character at or above the configured cap is rejected even if XADB is lower. Explicit `AlwaysFish` remains the only cap override. |
+| Fallback | A live at-cap mismatch, missing unlock, Fisher gearset, or usable lure excludes that character and advances immediately. A mismatch found after relog releases the owned lifecycle before advancing. ADS and travel failures retry the same character twice after 3 and 10 seconds. |
 | Stop boundaries | No new attempt starts with less than 60 seconds remaining. Registration closure, queue confirmation, and any post-queue failure disable fallback. |
 | External state | A named YesAlready lease plus AutoRetainer multi-mode and AutoHook snapshots are held through registration and the voyage. Cleanup retries until restoration is verified; Full Stop/disposal performs forced best-effort restoration with diagnostics. |
 | Registration | Boarding and embark strings come from active-language `custom/006/CtsIkdEntrance_00663` rows 4 and 10. |

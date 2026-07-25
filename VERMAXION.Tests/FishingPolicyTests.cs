@@ -379,6 +379,7 @@ public sealed class FishingPolicyTests
 
         Assert.Equal("Gamma@World", result.CharacterKey);
         Assert.True(result.RequiresRelog);
+        Assert.True(result.AlwaysFishOverride);
         Assert.Empty(result.AlwaysFishKeysToDisable);
     }
 
@@ -397,6 +398,7 @@ public sealed class FishingPolicyTests
 
         Assert.Equal("Current@World", result.CharacterKey);
         Assert.False(result.RequiresRelog);
+        Assert.False(result.AlwaysFishOverride);
     }
 
     [Fact]
