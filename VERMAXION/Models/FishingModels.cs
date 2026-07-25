@@ -727,12 +727,25 @@ public sealed record FishingSelectionResult(
     int? FisherLevel,
     bool RequiresRelog,
     IReadOnlyList<string> AlwaysFishKeysToDisable,
-    string Reason)
+    string Reason,
+    bool AlwaysFishOverride = false)
 {
     public bool Selected => !string.IsNullOrWhiteSpace(CharacterKey);
 
     public static FishingSelectionResult None(string reason)
         => new(string.Empty, null, false, Array.Empty<string>(), reason);
+}
+
+public readonly record struct FishingLiveFisherLevelSnapshot(
+    bool IsAvailable,
+    int Level,
+    string Detail)
+{
+    public static FishingLiveFisherLevelSnapshot Ready(int level)
+        => new(true, Math.Max(0, level), string.Empty);
+
+    public static FishingLiveFisherLevelSnapshot Unavailable(string detail)
+        => new(false, 0, detail);
 }
 
 public static class FishingXadbCandidatePolicy
@@ -829,7 +842,14 @@ public static class FishingSelectionPolicy
                 return Array.Empty<FishingSelectionResult>();
             }
 
-            return [BuildResult(current, requiresRelog: false, "Selected current character.")];
+            return
+            [
+                BuildResult(
+                    current,
+                    requiresRelog: false,
+                    "Selected current character.",
+                    fishingWindowActive && current.AlwaysFishIfWindowOpen),
+            ];
         }
 
         var ordered = normalizedCandidates
@@ -845,7 +865,8 @@ public static class FishingSelectionPolicy
                 requiresRelog: !candidate.IsCurrentCharacter,
                 fishingWindowActive && candidate.AlwaysFishIfWindowOpen
                     ? "Selected always-fish character for active fishing window."
-                    : "Selected lowest known Fisher below max."))
+                    : "Selected lowest known Fisher below max.",
+                fishingWindowActive && candidate.AlwaysFishIfWindowOpen))
             .ToArray();
 
         return ordered;
@@ -879,14 +900,16 @@ public static class FishingSelectionPolicy
     private static FishingSelectionResult BuildResult(
         FishingCharacterCandidate selected,
         bool requiresRelog,
-        string reason)
+        string reason,
+        bool alwaysFishOverride)
     {
         return new FishingSelectionResult(
             selected.CharacterKey,
             selected.FisherLevel,
             requiresRelog,
             Array.Empty<string>(),
-            reason);
+            reason,
+            alwaysFishOverride);
     }
 
     private static string NormalizeKey(string value)

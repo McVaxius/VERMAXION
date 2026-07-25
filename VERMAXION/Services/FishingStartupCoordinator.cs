@@ -45,11 +45,13 @@ public static class FishingStartupDiagnostics
 public interface IFishingStartupRuntime
 {
     int PreWindowOffsetMinutes { get; }
+    int MaxFisherLevel { get; }
     bool CanInitiateStartup { get; }
     bool IsFishingActive { get; }
     bool IsRelogActive { get; }
 
     IReadOnlyList<FishingSelectionResult> BuildCandidateQueue();
+    FishingLiveFisherLevelSnapshot ReadCurrentFisherLevel();
     bool IsFishingRunOwnedForWindow(DateTimeOffset registrationStartUtc);
     bool IsQueueRegistrationConfirmedForWindow(DateTimeOffset registrationStartUtc);
     bool IsTerminalFailureBeforeQueueConfirmationForWindow(DateTimeOffset registrationStartUtc);
@@ -429,6 +431,34 @@ public sealed class FishingStartupCoordinator
                 "Pending fishing relog continuation lost its Ocean Fishing run ownership and was cleaned up.");
         }
 
+        var liveFisherLevel = runtime.ReadCurrentFisherLevel();
+        if (!liveFisherLevel.IsAvailable)
+        {
+            recoveryReason =
+                $"Live Fisher level is unavailable; fishing preparation remains blocked. {liveFisherLevel.Detail}".Trim();
+            recoveryReadyAtUtc = decisionNowUtc;
+            return Result(
+                trigger,
+                mode,
+                FishingStartupAction.Waiting,
+                window,
+                selection,
+                recoveryReason);
+        }
+
+        selection = selection with { FisherLevel = liveFisherLevel.Level };
+        var cappedMaxLevel = Math.Clamp(runtime.MaxFisherLevel, 1, 100);
+        if (liveFisherLevel.Level >= cappedMaxLevel && !selection.AlwaysFishOverride)
+        {
+            return RejectCurrentCandidateAtLiveCap(
+                trigger,
+                mode,
+                window,
+                selection,
+                cappedMaxLevel,
+                runOwnedForWindow);
+        }
+
         if (!runOwnedForWindow &&
             !runtime.BeginRun(mode, selection.CharacterKey, window.RegistrationStartUtc, window.EndUtc))
         {
@@ -456,6 +486,51 @@ public sealed class FishingStartupCoordinator
         ClearPendingRelogContinuation();
         return Result(trigger, mode, FishingStartupAction.FishingStarted, window, selection,
             $"Selected current character {selection.CharacterKey} (Fisher {FormatLevel(selection.FisherLevel)}) and started fishing prep.");
+    }
+
+    private FishingStartupResult RejectCurrentCandidateAtLiveCap(
+        FishingStartupTrigger trigger,
+        FishingRunMode mode,
+        OceanFishingStartupWindow window,
+        FishingSelectionResult selection,
+        int cappedMaxLevel,
+        bool runOwnedForWindow)
+    {
+        var reason =
+            $"Live Fisher level {selection.FisherLevel} is at or above configured cap {cappedMaxLevel}; " +
+            "the cached XADB candidate was rejected before fishing preparation.";
+
+        ClearPendingRelogContinuation();
+        if (runOwnedForWindow)
+            runtime.AbortRun(reason);
+
+        activeCandidateIndex++;
+        transientRetriesScheduled = 0;
+        recoveryReason = reason;
+        fishingStartAttempted = false;
+
+        if (activeCandidateIndex >= orderedCandidates.Count ||
+            !FishingRecoveryPolicy.CanStartAttempt(decisionNowUtc, window.EndUtc))
+        {
+            recoveryReadyAtUtc = null;
+            attemptSequenceStopped = true;
+            return Result(
+                trigger,
+                mode,
+                FishingStartupAction.AlreadyHandled,
+                window,
+                selection,
+                $"{reason} No eligible cached candidate remains for this registration window.");
+        }
+
+        recoveryReadyAtUtc = decisionNowUtc;
+        return Result(
+            trigger,
+            mode,
+            FishingStartupAction.Waiting,
+            window,
+            selection,
+            $"{reason} Advancing to the next cached candidate.");
     }
 
     private void TrackWindow(DateTimeOffset registrationStartUtc)
@@ -616,7 +691,10 @@ public sealed class FishingStartupCoordinator
                 window,
                 selection,
                 mutateScheduledGuards: false);
-        recoveryReadyAtUtc = result.Started ? null : now;
+        if (result.Started)
+            recoveryReadyAtUtc = null;
+        else if (!attemptSequenceStopped && !recoveryReadyAtUtc.HasValue)
+            recoveryReadyAtUtc = now;
         return result;
     }
 

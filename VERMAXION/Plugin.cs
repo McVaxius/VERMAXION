@@ -1705,6 +1705,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     int IFishingStartupRuntime.PreWindowOffsetMinutes
         => Configuration.OceanFishingPreWindowOffsetMinutes;
 
+    int IFishingStartupRuntime.MaxFisherLevel
+        => Math.Clamp(Configuration.FishingMaxFisherLevel, 1, 100);
+
     bool IFishingStartupRuntime.CanInitiateStartup
         => ClientState.IsLoggedIn &&
            ObjectTable.LocalPlayer != null &&
@@ -1718,6 +1721,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     IReadOnlyList<FishingSelectionResult> IFishingStartupRuntime.BuildCandidateQueue()
         => FishingService.BuildFishingCandidateQueue(fishingWindowActive: true);
+
+    FishingLiveFisherLevelSnapshot IFishingStartupRuntime.ReadCurrentFisherLevel()
+        => ReadCurrentFisherLevel();
 
     bool IFishingStartupRuntime.IsFishingRunOwnedForWindow(DateTimeOffset registrationStartUtc)
         => FishingRunLifecycle.IsActiveForWindow(registrationStartUtc);
@@ -1754,5 +1760,27 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     {
         FishingService.Start();
         return FishingService.IsActive;
+    }
+
+    private static unsafe FishingLiveFisherLevelSnapshot ReadCurrentFisherLevel()
+    {
+        try
+        {
+            var playerState = FFXIVClientStructs.FFXIV.Client.Game.UI.PlayerState.Instance();
+            if (playerState == null)
+            {
+                return FishingLiveFisherLevelSnapshot.Unavailable(
+                    "Native PlayerState is unavailable.");
+            }
+
+            return FishingLiveFisherLevelSnapshot.Ready(
+                playerState->GetClassJobLevel(OceanFishingQueuePolicy.FisherJobId, false));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning($"[Fishing][Startup] Live Fisher level read failed: {ex.Message}");
+            return FishingLiveFisherLevelSnapshot.Unavailable(
+                "Native PlayerState Fisher-level read failed.");
+        }
     }
 }
