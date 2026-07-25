@@ -1,5 +1,17 @@
 # VERMAXION Changelog
 
+## 2026-07-25 - Ocean Fishing AutoHook start with direct-cast fallback
+
+### Fixed
+- Every eligible Ocean Fishing start now sends exact `/ahstart` first and exact `/ac cast` second in the same tick. AutoHook remains the primary start path, while the direct cast provides a fallback when preset-driven startup does not cast.
+- The paired dispatch remains one attempt: one three-second retry cadence, one attempt-counter increment, and one slot toward the existing five-attempt placement-recovery threshold.
+- Both commands remain behind the existing continuous-rail placement and Ocean Fishing duty gates. Fishing/Gathering acknowledgement, recovery, voyage-long movement lock, AutoHook preset ownership, and AutoHook lifecycle cleanup are unchanged.
+
+### Verification
+- Focused fishing policy tests pass 143/143, including exact command strings, paired-attempt cadence, placement gates, recovery, movement locking, and outside-duty suppression.
+- The full Debug suite passes 452/452 tests. The Debug x64 plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+- Packaging, publication, client configuration, and live-game actions were not performed. Multi-client live acceptance remains pending separately authorized observation.
+
 ## 2026-07-25 - Ocean Fishing live Fisher-cap revalidation
 
 ### Fixed
