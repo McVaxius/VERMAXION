@@ -182,6 +182,252 @@ public sealed class RetainerEquipmentPolicyTests
         Assert.NotEqual(first, sourceChanged);
     }
 
+    [Fact]
+    public void ExactFingerprintDistinguishesHqGlamourBothStainsAndEveryMateriaField()
+    {
+        var exact = Fingerprint(
+            encodedItemId: RetainerGearFingerprint.EncodeItemId(500, highQuality: true),
+            glamourId: 600,
+            stain0Id: 7,
+            stain1Id: 8,
+            materia0Id: 10,
+            materia1Id: 11,
+            materia2Id: 12,
+            materia3Id: 13,
+            materia4Id: 14,
+            materia0Grade: 1,
+            materia1Grade: 2,
+            materia2Grade: 3,
+            materia3Grade: 4,
+            materia4Grade: 5);
+
+        Assert.NotEqual(exact, exact with { EncodedItemId = 500 });
+        Assert.NotEqual(exact, exact with { GlamourId = 601 });
+        Assert.NotEqual(exact, exact with { Stain0Id = 9 });
+        Assert.NotEqual(exact, exact with { Stain1Id = 9 });
+        Assert.NotEqual(exact, exact with { Materia0Id = 20 });
+        Assert.NotEqual(exact, exact with { Materia1Id = 21 });
+        Assert.NotEqual(exact, exact with { Materia2Id = 22 });
+        Assert.NotEqual(exact, exact with { Materia3Id = 23 });
+        Assert.NotEqual(exact, exact with { Materia4Id = 24 });
+        Assert.NotEqual(exact, exact with { Materia0Grade = 6 });
+        Assert.NotEqual(exact, exact with { Materia1Grade = 6 });
+        Assert.NotEqual(exact, exact with { Materia2Grade = 6 });
+        Assert.NotEqual(exact, exact with { Materia3Grade = 6 });
+        Assert.NotEqual(exact, exact with { Materia4Grade = 6 });
+    }
+
+    [Fact]
+    public void SavedGearsetCountsReserveOnlyExactCopiesAndLeaveIdenticalSurplusEligible()
+    {
+        var savedHq = Fingerprint(
+            RetainerGearFingerprint.EncodeItemId(500, highQuality: true),
+            glamourId: 600,
+            stain0Id: 7,
+            materia0Id: 10,
+            materia0Grade: 2);
+        var normal = savedHq with { EncodedItemId = 500 };
+        var differentGlamour = savedHq with { GlamourId = 601 };
+        var remaining = RetainerEquipmentPolicy.CountSavedGearsetFingerprints(
+            [savedHq, savedHq]);
+
+        Assert.False(RetainerEquipmentPolicy.ConsumeSavedGearsetReservation(remaining, normal));
+        Assert.False(RetainerEquipmentPolicy.ConsumeSavedGearsetReservation(remaining, differentGlamour));
+        Assert.True(RetainerEquipmentPolicy.ConsumeSavedGearsetReservation(remaining, savedHq));
+        Assert.True(RetainerEquipmentPolicy.ConsumeSavedGearsetReservation(remaining, savedHq));
+        Assert.False(RetainerEquipmentPolicy.ConsumeSavedGearsetReservation(remaining, savedHq));
+    }
+
+    [Fact]
+    public void SameClassCombatRetainersAndGatherersTransitionOnlyWhenTheOpenRetainerChanges()
+    {
+        var firstCombat = Retainer(id: 10, jobId: 19);
+        var secondSameClassCombat = Retainer(id: 20, jobId: 19);
+        var gatherer = Retainer(id: 30, jobId: 16);
+        Assert.False(firstCombat.IsGathering);
+        Assert.Equal(firstCombat.JobId, secondSameClassCombat.JobId);
+        Assert.True(gatherer.IsGathering);
+
+        var moves = new[]
+        {
+            Move(firstCombat.RetainerId, RetainerEquipmentSlot.Head),
+            Move(firstCombat.RetainerId, RetainerEquipmentSlot.Body),
+            Move(secondSameClassCombat.RetainerId, RetainerEquipmentSlot.Head),
+            Move(secondSameClassCombat.RetainerId, RetainerEquipmentSlot.Body),
+            Move(gatherer.RetainerId, RetainerEquipmentSlot.MainHand),
+        };
+
+        Assert.Equal(
+            RetainerMoveSequenceAction.ApplyMove,
+            RetainerMoveSequencePolicy.Decide(moves, 0, openRetainerId: 10));
+        Assert.Equal(
+            RetainerMoveSequenceAction.ApplyMove,
+            RetainerMoveSequencePolicy.Decide(moves, 1, openRetainerId: 10));
+        Assert.Equal(
+            RetainerMoveSequenceAction.ReturnToList,
+            RetainerMoveSequencePolicy.Decide(moves, 2, openRetainerId: 10));
+        Assert.Equal(
+            RetainerMoveSequenceAction.SelectRetainer,
+            RetainerMoveSequencePolicy.Decide(moves, 2, openRetainerId: null));
+        Assert.Equal(
+            RetainerMoveSequenceAction.ApplyMove,
+            RetainerMoveSequencePolicy.Decide(moves, 2, openRetainerId: 20));
+        Assert.Equal(
+            RetainerMoveSequenceAction.ReturnToList,
+            RetainerMoveSequencePolicy.Decide(moves, 4, openRetainerId: 20));
+        Assert.Equal(
+            RetainerMoveSequenceAction.ApplyMove,
+            RetainerMoveSequencePolicy.Decide(moves, 4, openRetainerId: 30));
+    }
+
+    [Fact]
+    public void MultipleMovesOnOneRetainerKeepTheWindowAndThenCloseTheFinalWindow()
+    {
+        var moves = new[]
+        {
+            Move(retainerId: 10, RetainerEquipmentSlot.Head),
+            Move(retainerId: 10, RetainerEquipmentSlot.Body),
+        };
+
+        Assert.Equal(
+            RetainerMoveSequenceAction.ApplyMove,
+            RetainerMoveSequencePolicy.Decide(moves, 0, openRetainerId: 10));
+        Assert.Equal(
+            RetainerMoveSequenceAction.ApplyMove,
+            RetainerMoveSequencePolicy.Decide(moves, 1, openRetainerId: 10));
+        Assert.Equal(
+            RetainerMoveSequenceAction.CloseFinalWindow,
+            RetainerMoveSequencePolicy.Decide(moves, 2, openRetainerId: 10));
+        Assert.Equal(
+            RetainerMoveSequenceAction.Finished,
+            RetainerMoveSequencePolicy.Decide(moves, 2, openRetainerId: null));
+    }
+
+    [Fact]
+    public void NonzeroNativeReturnCanStillVerifyAsynchronousExactDestinationSuccess()
+    {
+        var start = new DateTime(2026, 7, 26, 20, 0, 0, DateTimeKind.Utc);
+        var policy = new RetainerMoveAttemptPolicy(start);
+
+        Assert.Equal(
+            RetainerMoveAttemptAction.Wait,
+            policy.Evaluate(start.AddMilliseconds(499), RetainerMoveObservation.ExactSource()).Action);
+        Assert.Equal(
+            RetainerMoveAttemptAction.Dispatch,
+            policy.Evaluate(start.AddMilliseconds(500), RetainerMoveObservation.ExactSource()).Action);
+        policy.MarkDispatched(
+            start.AddMilliseconds(500),
+            new RetainerMoveRequestResult(true, 37, string.Empty));
+
+        var customizedDestinationMismatch = new RetainerMoveObservation(
+            DestinationReadable: true,
+            DestinationMatches: false,
+            SourceReadable: true,
+            SourceMatches: true,
+            Error: string.Empty);
+        Assert.Equal(
+            RetainerMoveAttemptAction.Wait,
+            policy.Evaluate(start.AddMilliseconds(550), customizedDestinationMismatch).Action);
+        Assert.Equal(
+            RetainerMoveAttemptAction.Succeeded,
+            policy.Evaluate(
+                start.AddMilliseconds(600),
+                RetainerMoveObservation.ExactDestination()).Action);
+        Assert.Equal(
+            RetainerMoveAttemptAction.None,
+            policy.Evaluate(
+                start.AddMilliseconds(601),
+                RetainerMoveObservation.ExactDestination()).Action);
+    }
+
+    [Fact]
+    public void MoveRetriesAreDelayedAndBoundedToThreeTotalAttempts()
+    {
+        var start = new DateTime(2026, 7, 26, 20, 0, 0, DateTimeKind.Utc);
+        var policy = new RetainerMoveAttemptPolicy(start);
+        var dispatches = 0;
+
+        void DispatchAt(DateTime at, int nativeReturn)
+        {
+            Assert.Equal(
+                RetainerMoveAttemptAction.Dispatch,
+                policy.Evaluate(at, RetainerMoveObservation.ExactSource()).Action);
+            dispatches++;
+            policy.MarkDispatched(at, new RetainerMoveRequestResult(true, nativeReturn, string.Empty));
+        }
+
+        DispatchAt(start.AddMilliseconds(500), 1);
+        Assert.Equal(
+            RetainerMoveAttemptAction.Wait,
+            policy.Evaluate(start.AddMilliseconds(2500), RetainerMoveObservation.ExactSource()).Action);
+        Assert.Equal(
+            RetainerMoveAttemptAction.Wait,
+            policy.Evaluate(start.AddMilliseconds(2999), RetainerMoveObservation.ExactSource()).Action);
+        DispatchAt(start.AddMilliseconds(3000), 2);
+        Assert.Equal(
+            RetainerMoveAttemptAction.Wait,
+            policy.Evaluate(start.AddMilliseconds(5000), RetainerMoveObservation.ExactSource()).Action);
+        DispatchAt(start.AddMilliseconds(5500), 3);
+        var terminal = policy.Evaluate(
+            start.AddMilliseconds(7500),
+            RetainerMoveObservation.ExactSource());
+
+        Assert.Equal(3, dispatches);
+        Assert.Equal(3, policy.Attempt);
+        Assert.Equal(RetainerMoveAttemptAction.TerminalFailure, terminal.Action);
+        Assert.Equal(
+            RetainerMoveAttemptAction.None,
+            policy.Evaluate(
+                start.AddMilliseconds(7501),
+                RetainerMoveObservation.ExactSource()).Action);
+    }
+
+    [Fact]
+    public void SourceDisappearanceProducesOneTerminalSignalWithoutRetry()
+    {
+        var start = new DateTime(2026, 7, 26, 20, 0, 0, DateTimeKind.Utc);
+        var policy = new RetainerMoveAttemptPolicy(start);
+        Assert.Equal(
+            RetainerMoveAttemptAction.Dispatch,
+            policy.Evaluate(start.AddMilliseconds(500), RetainerMoveObservation.ExactSource()).Action);
+        policy.MarkDispatched(
+            start.AddMilliseconds(500),
+            new RetainerMoveRequestResult(true, 0, string.Empty));
+
+        Assert.Equal(
+            RetainerMoveAttemptAction.TerminalFailure,
+            policy.Evaluate(
+                start.AddMilliseconds(600),
+                RetainerMoveObservation.SourceLost()).Action);
+        Assert.Equal(
+            RetainerMoveAttemptAction.None,
+            policy.Evaluate(
+                start.AddMilliseconds(601),
+                RetainerMoveObservation.SourceLost()).Action);
+        Assert.Equal(1, policy.Attempt);
+    }
+
+    [Fact]
+    public void NoCandidatesStillProduceAnEmptySuccessfulAllocation()
+    {
+        var profile = Profile(
+            RetainerMetricKind.CombatItemLevel,
+            currentMetric: 10,
+            new Dictionary<RetainerEquipmentSlot, int>
+            {
+                [RetainerEquipmentSlot.Head] = 10,
+            });
+
+        var result = RetainerEquipmentPolicy.Allocate(
+            [profile],
+            [],
+            RetainerGearSourceMode.AllGear,
+            nonUniqueOnly: false);
+
+        Assert.Empty(result.Moves);
+        Assert.Equal(10, result.ProjectedMetrics[RetainerId]);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -444,5 +690,46 @@ public sealed class RetainerEquipmentPolicyTests
             IsInSavedGearset = saved,
             IsUnique = unique,
             CompatibleRetainerIds = new HashSet<ulong> { RetainerId },
+            Fingerprint = RetainerGearFingerprint.Plain(itemId),
         };
+
+    private static RetainerEquipmentMove Move(
+        ulong retainerId,
+        RetainerEquipmentSlot slot) =>
+        new(
+            retainerId,
+            slot,
+            Candidate((uint)(100 + (int)slot), slot, RetainerGearSource.Inventory, 100, 100),
+            Improvement: 1);
+
+    private static RetainerGearFingerprint Fingerprint(
+        uint encodedItemId,
+        uint glamourId = 0,
+        byte stain0Id = 0,
+        byte stain1Id = 0,
+        ushort materia0Id = 0,
+        ushort materia1Id = 0,
+        ushort materia2Id = 0,
+        ushort materia3Id = 0,
+        ushort materia4Id = 0,
+        byte materia0Grade = 0,
+        byte materia1Grade = 0,
+        byte materia2Grade = 0,
+        byte materia3Grade = 0,
+        byte materia4Grade = 0) =>
+        new(
+            encodedItemId,
+            glamourId,
+            stain0Id,
+            stain1Id,
+            materia0Id,
+            materia1Id,
+            materia2Id,
+            materia3Id,
+            materia4Id,
+            materia0Grade,
+            materia1Grade,
+            materia2Grade,
+            materia3Grade,
+            materia4Grade);
 }

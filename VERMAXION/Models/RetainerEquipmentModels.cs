@@ -41,6 +41,49 @@ public enum RetainerEquipmentSlot
     RingRight,
 }
 
+internal readonly record struct RetainerGearFingerprint(
+    uint EncodedItemId,
+    uint GlamourId,
+    byte Stain0Id,
+    byte Stain1Id,
+    ushort Materia0Id,
+    ushort Materia1Id,
+    ushort Materia2Id,
+    ushort Materia3Id,
+    ushort Materia4Id,
+    byte Materia0Grade,
+    byte Materia1Grade,
+    byte Materia2Grade,
+    byte Materia3Grade,
+    byte Materia4Grade)
+{
+    private const uint HighQualityOffset = 1_000_000;
+
+    public static uint EncodeItemId(uint itemId, bool highQuality) =>
+        highQuality ? itemId + HighQualityOffset : itemId;
+
+    public static RetainerGearFingerprint Plain(uint encodedItemId) =>
+        new(encodedItemId, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+    public void AppendTo(StringBuilder builder)
+    {
+        builder.Append(EncodedItemId).Append(':')
+            .Append(GlamourId).Append(':')
+            .Append(Stain0Id).Append(':')
+            .Append(Stain1Id).Append(':')
+            .Append(Materia0Id).Append(':')
+            .Append(Materia1Id).Append(':')
+            .Append(Materia2Id).Append(':')
+            .Append(Materia3Id).Append(':')
+            .Append(Materia4Id).Append(':')
+            .Append(Materia0Grade).Append(':')
+            .Append(Materia1Grade).Append(':')
+            .Append(Materia2Grade).Append(':')
+            .Append(Materia3Grade).Append(':')
+            .Append(Materia4Grade);
+    }
+}
+
 public sealed record AutoRetainerRetainerSnapshot(
     ulong RetainerId,
     string Name,
@@ -281,6 +324,7 @@ public sealed class RetainerGearCandidate
     public int Perception { get; init; }
     public IReadOnlySet<ulong> CompatibleRetainerIds { get; init; } = new HashSet<ulong>();
     public string PhysicalKey => $"{Container}:{ContainerSlot}";
+    internal RetainerGearFingerprint Fingerprint { get; init; }
 }
 
 public sealed record RetainerEquipmentMove(
@@ -295,6 +339,28 @@ public sealed record RetainerAllocationResult(
 
 public static class RetainerEquipmentPolicy
 {
+    internal static Dictionary<RetainerGearFingerprint, int> CountSavedGearsetFingerprints(
+        IEnumerable<RetainerGearFingerprint> fingerprints)
+    {
+        var counts = new Dictionary<RetainerGearFingerprint, int>();
+        foreach (var fingerprint in fingerprints)
+            counts[fingerprint] = counts.GetValueOrDefault(fingerprint) + 1;
+        return counts;
+    }
+
+    internal static bool ConsumeSavedGearsetReservation(
+        IDictionary<RetainerGearFingerprint, int> remaining,
+        RetainerGearFingerprint fingerprint)
+    {
+        if (!remaining.TryGetValue(fingerprint, out var count) || count <= 0)
+            return false;
+        if (count == 1)
+            remaining.Remove(fingerprint);
+        else
+            remaining[fingerprint] = count - 1;
+        return true;
+    }
+
     public static bool IsSourceEligible(
         RetainerGearCandidate candidate,
         RetainerGearSourceMode sourceMode,
@@ -425,7 +491,9 @@ public static class RetainerEquipmentPolicy
                      .ThenBy(item => item.ItemId))
         {
             canonical.Append('|').Append(candidate.PhysicalKey)
-                .Append(':').Append(candidate.ItemId)
+                .Append(':');
+            candidate.Fingerprint.AppendTo(canonical);
+            canonical
                 .Append(':').Append((int)candidate.Source)
                 .Append(':').Append((int)candidate.Slot)
                 .Append(':').Append(candidate.IsRing ? 1 : 0)
@@ -529,6 +597,182 @@ public static class RetainerEquipmentPolicy
                 result[p[j] - 1] = j - 1;
         }
         return result;
+    }
+}
+
+internal enum RetainerMoveSequenceAction
+{
+    SelectRetainer,
+    ApplyMove,
+    ReturnToList,
+    CloseFinalWindow,
+    Finished,
+}
+
+internal static class RetainerMoveSequencePolicy
+{
+    public static RetainerMoveSequenceAction Decide(
+        IReadOnlyList<RetainerEquipmentMove> moves,
+        int moveIndex,
+        ulong? openRetainerId)
+    {
+        if (moveIndex >= moves.Count)
+        {
+            return openRetainerId.HasValue
+                ? RetainerMoveSequenceAction.CloseFinalWindow
+                : RetainerMoveSequenceAction.Finished;
+        }
+
+        if (!openRetainerId.HasValue)
+            return RetainerMoveSequenceAction.SelectRetainer;
+        return openRetainerId.Value == moves[moveIndex].RetainerId
+            ? RetainerMoveSequenceAction.ApplyMove
+            : RetainerMoveSequenceAction.ReturnToList;
+    }
+}
+
+internal readonly record struct RetainerMoveObservation(
+    bool DestinationReadable,
+    bool DestinationMatches,
+    bool SourceReadable,
+    bool SourceMatches,
+    string Error)
+{
+    public static RetainerMoveObservation ExactDestination(bool sourceMatches = false) =>
+        new(true, true, true, sourceMatches, string.Empty);
+
+    public static RetainerMoveObservation ExactSource() =>
+        new(true, false, true, true, string.Empty);
+
+    public static RetainerMoveObservation SourceLost() =>
+        new(true, false, true, false, string.Empty);
+}
+
+internal readonly record struct RetainerMoveRequestResult(
+    bool RequestIssued,
+    int NativeReturnCode,
+    string Error)
+{
+    public string Detail => RequestIssued
+        ? NativeReturnCode == 0
+            ? "native request accepted"
+            : $"native request returned {NativeReturnCode}"
+        : string.IsNullOrWhiteSpace(Error)
+            ? "native request was not issued"
+            : Error;
+}
+
+internal enum RetainerMoveAttemptAction
+{
+    None,
+    Wait,
+    Dispatch,
+    Succeeded,
+    TerminalFailure,
+}
+
+internal readonly record struct RetainerMoveAttemptDecision(
+    RetainerMoveAttemptAction Action,
+    string Detail);
+
+internal sealed class RetainerMoveAttemptPolicy
+{
+    public const int MaximumAttempts = 3;
+    public static readonly TimeSpan ActionDelay = TimeSpan.FromMilliseconds(500);
+    public static readonly TimeSpan VerificationTimeout = TimeSpan.FromSeconds(2);
+
+    private DateTime nextActionAtUtc;
+    private DateTime verificationDeadlineUtc;
+    private bool pending;
+    private bool terminal;
+    private string lastRequestDetail = string.Empty;
+
+    public RetainerMoveAttemptPolicy(DateTime nowUtc)
+    {
+        nextActionAtUtc = nowUtc + ActionDelay;
+    }
+
+    public int Attempt { get; private set; }
+    public bool IsPending => pending;
+    public int DisplayAttempt => Math.Min(MaximumAttempts, Math.Max(1, Attempt + (pending ? 0 : 1)));
+
+    public RetainerMoveAttemptDecision Evaluate(
+        DateTime nowUtc,
+        RetainerMoveObservation observation)
+    {
+        if (terminal)
+            return new RetainerMoveAttemptDecision(RetainerMoveAttemptAction.None, string.Empty);
+        if (observation.DestinationReadable && observation.DestinationMatches)
+        {
+            terminal = true;
+            return new RetainerMoveAttemptDecision(
+                RetainerMoveAttemptAction.Succeeded,
+                "Exact destination fingerprint verified.");
+        }
+        if (observation.SourceReadable && !observation.SourceMatches)
+        {
+            terminal = true;
+            return new RetainerMoveAttemptDecision(
+                RetainerMoveAttemptAction.TerminalFailure,
+                "The exact source item disappeared before destination verification.");
+        }
+
+        if (pending)
+        {
+            if (nowUtc < verificationDeadlineUtc)
+            {
+                return new RetainerMoveAttemptDecision(
+                    RetainerMoveAttemptAction.Wait,
+                    $"Polling destination after attempt {Attempt}/{MaximumAttempts}.");
+            }
+
+            pending = false;
+            if (Attempt >= MaximumAttempts)
+            {
+                terminal = true;
+                return new RetainerMoveAttemptDecision(
+                    RetainerMoveAttemptAction.TerminalFailure,
+                    $"Destination did not verify after {MaximumAttempts} attempts ({lastRequestDetail}).");
+            }
+            if (!observation.SourceReadable || !observation.SourceMatches)
+            {
+                terminal = true;
+                return new RetainerMoveAttemptDecision(
+                    RetainerMoveAttemptAction.TerminalFailure,
+                    "The exact source item could not be verified for another attempt.");
+            }
+
+            nextActionAtUtc = nowUtc + ActionDelay;
+            return new RetainerMoveAttemptDecision(
+                RetainerMoveAttemptAction.Wait,
+                $"Waiting to retry after attempt {Attempt}/{MaximumAttempts}.");
+        }
+
+        if (nowUtc < nextActionAtUtc)
+        {
+            return new RetainerMoveAttemptDecision(
+                RetainerMoveAttemptAction.Wait,
+                $"Waiting before attempt {DisplayAttempt}/{MaximumAttempts}.");
+        }
+        if (!observation.SourceReadable || !observation.SourceMatches)
+        {
+            terminal = true;
+            return new RetainerMoveAttemptDecision(
+                RetainerMoveAttemptAction.TerminalFailure,
+                "The exact source item was unavailable before dispatch.");
+        }
+
+        return new RetainerMoveAttemptDecision(
+            RetainerMoveAttemptAction.Dispatch,
+            $"Dispatch attempt {DisplayAttempt}/{MaximumAttempts}.");
+    }
+
+    public void MarkDispatched(DateTime nowUtc, RetainerMoveRequestResult request)
+    {
+        Attempt++;
+        pending = true;
+        verificationDeadlineUtc = nowUtc + VerificationTimeout;
+        lastRequestDetail = request.Detail;
     }
 }
 

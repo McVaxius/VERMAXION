@@ -51,6 +51,8 @@ public sealed class RetainerEquippingService
     private bool ownsRetainerList;
     private bool preserveCheckpointOnCleanup;
     private bool returningFromMoves;
+    private ulong? openRetainerId;
+    private RetainerMoveAttemptPolicy? moveAttempt;
     private string retrySignature = string.Empty;
 
     public RetainerEquippingService(
@@ -302,6 +304,12 @@ public sealed class RetainerEquippingService
     {
         if (runtime.IsRetainerGearWindowReady)
         {
+            openRetainerId = forMoves
+                ? moves[moveIndex].RetainerId
+                : targeted[retainerIndex].RetainerId;
+            moveAttempt = forMoves
+                ? new RetainerMoveAttemptPolicy(DateTime.UtcNow)
+                : null;
             SetState(
                 forMoves ? EquippingState.Moving : EquippingState.ReadingGear,
                 forMoves ? "Applying verified retainer upgrades" : "Reading current retainer equipment");
@@ -337,6 +345,8 @@ public sealed class RetainerEquippingService
             return;
         }
 
+        openRetainerId = null;
+        moveAttempt = null;
         if (returningFromMoves)
         {
             if (moveIndex < moves.Count)
@@ -381,24 +391,66 @@ public sealed class RetainerEquippingService
 
     private void TickMove()
     {
-        if (moveIndex >= moves.Count)
+        var sequenceAction = RetainerMoveSequencePolicy.Decide(
+            moves,
+            moveIndex,
+            openRetainerId);
+        switch (sequenceAction)
         {
-            returningFromMoves = true;
-            SetState(EquippingState.ReturningToList, "Closing final retainer equipment window");
-            return;
+            case RetainerMoveSequenceAction.SelectRetainer:
+                SetState(EquippingState.SelectingForMoves, "Selecting next retainer for upgrades");
+                return;
+            case RetainerMoveSequenceAction.ReturnToList:
+                returningFromMoves = true;
+                SetState(EquippingState.ReturningToList, "Returning for next retainer");
+                return;
+            case RetainerMoveSequenceAction.CloseFinalWindow:
+                returningFromMoves = true;
+                SetState(EquippingState.ReturningToList, "Closing final retainer equipment window");
+                return;
+            case RetainerMoveSequenceAction.Finished:
+                FinishMoves();
+                return;
         }
 
+        var nowUtc = DateTime.UtcNow;
         var move = moves[moveIndex];
-        if (moveIndex > 0 && moves[moveIndex - 1].RetainerId != move.RetainerId)
+        moveAttempt ??= new RetainerMoveAttemptPolicy(nowUtc);
+        var observation = runtime.ObserveMove(move);
+        var decision = moveAttempt.Evaluate(nowUtc, observation);
+        StatusText =
+            $"Upgrade item {moveIndex + 1}/{moves.Count}, attempt " +
+            $"{moveAttempt.DisplayAttempt}/{RetainerMoveAttemptPolicy.MaximumAttempts}: {decision.Detail}";
+        switch (decision.Action)
         {
-            returningFromMoves = true;
-            SetState(EquippingState.ReturningToList, "Returning for next retainer");
-            return;
+            case RetainerMoveAttemptAction.Dispatch:
+                var request = runtime.RequestMove(move);
+                moveAttempt.MarkDispatched(nowUtc, request);
+                StatusText =
+                    $"Upgrade item {moveIndex + 1}/{moves.Count}, attempt " +
+                    $"{moveAttempt.Attempt}/{RetainerMoveAttemptPolicy.MaximumAttempts}: {request.Detail}; verifying destination";
+                return;
+            case RetainerMoveAttemptAction.Succeeded:
+                AdvanceMove(nowUtc);
+                return;
+            case RetainerMoveAttemptAction.TerminalFailure:
+                log.Warning(
+                    $"[RetainerEquip] Upgrade item {moveIndex + 1}/{moves.Count} " +
+                    $"ended after {moveAttempt.Attempt}/{RetainerMoveAttemptPolicy.MaximumAttempts} attempts: " +
+                    $"{decision.Detail}");
+                AdvanceMove(nowUtc);
+                return;
+            default:
+                return;
         }
+    }
 
-        if (!runtime.TryMoveAndVerify(move, out var error))
-            log.Warning($"[RetainerEquip] Upgrade skipped after move verification failure: {error}");
+    private void AdvanceMove(DateTime nowUtc)
+    {
         moveIndex++;
+        moveAttempt = moveIndex < moves.Count
+            ? new RetainerMoveAttemptPolicy(nowUtc)
+            : null;
     }
 
     private void FinishMoves()
@@ -415,6 +467,7 @@ public sealed class RetainerEquippingService
     {
         StatusText = status;
         state = EquippingState.Complete;
+        ClearMoveState();
         log.Information($"[RetainerEquip] {status}");
     }
 
@@ -426,6 +479,7 @@ public sealed class RetainerEquippingService
         ownsRetainerList = false;
         bell.Reset();
         RestoreCollectOnly();
+        ClearMoveState();
         log.Warning($"[RetainerEquip] {status}");
     }
 
@@ -451,7 +505,18 @@ public sealed class RetainerEquippingService
         ownsRetainerList = false;
         preserveCheckpointOnCleanup = false;
         returningFromMoves = false;
+        openRetainerId = null;
+        moveAttempt = null;
         retrySignature = string.Empty;
+    }
+
+    private void ClearMoveState()
+    {
+        moves = [];
+        moveIndex = 0;
+        returningFromMoves = false;
+        openRetainerId = null;
+        moveAttempt = null;
     }
 }
 
@@ -511,8 +576,8 @@ internal sealed unsafe class NativeRetainerEquipmentRuntime
             return result;
 
         var gearsetCounts = sourceMode == RetainerGearSourceMode.IgnoreGearset
-            ? ReadSavedGearsetItemCounts()
-            : new Dictionary<uint, int>();
+            ? ReadSavedGearsetFingerprintCounts()
+            : new Dictionary<RetainerGearFingerprint, int>();
         var sources = sourceMode == RetainerGearSourceMode.IgnoreArmory
             ? InventorySources
             : InventorySources.Concat(ArmorySources).ToArray();
@@ -531,9 +596,10 @@ internal sealed unsafe class NativeRetainerEquipmentRuntime
                     continue;
                 }
 
-                var inGearset = gearsetCounts.TryGetValue(native->ItemId, out var remaining) && remaining > 0;
-                if (inGearset)
-                    gearsetCounts[native->ItemId] = remaining - 1;
+                var fingerprint = ReadFingerprint(native);
+                var inGearset = RetainerEquipmentPolicy.ConsumeSavedGearsetReservation(
+                    gearsetCounts,
+                    fingerprint);
                 var compatible = retainers
                     .Where(retainer => IsJobCompatible(item, retainer.JobId))
                     .Select(retainer => retainer.RetainerId)
@@ -557,6 +623,7 @@ internal sealed unsafe class NativeRetainerEquipmentRuntime
                     ItemLevel = (int)item.LevelItem.RowId,
                     Perception = ReadPerception(item, native),
                     CompatibleRetainerIds = compatible,
+                    Fingerprint = fingerprint,
                 });
             }
         }
@@ -675,52 +742,85 @@ internal sealed unsafe class NativeRetainerEquipmentRuntime
         return true;
     }
 
-    public bool TryMoveAndVerify(RetainerEquipmentMove move, out string error)
+    public RetainerMoveRequestResult RequestMove(RetainerEquipmentMove move)
     {
-        error = string.Empty;
+        if (!framework.IsInFrameworkUpdateThread)
+            return new RetainerMoveRequestResult(
+                false,
+                0,
+                "Inventory move was attempted outside the framework update thread.");
+
+        try
+        {
+            var inventory = InventoryManager.Instance();
+            if (inventory == null)
+                return new RetainerMoveRequestResult(false, 0, "InventoryManager was unavailable.");
+
+            var source = (InventoryType)move.Candidate.Container;
+            var sourceContainer = inventory->GetInventoryContainer(source);
+            var sourceItem = sourceContainer == null
+                ? null
+                : sourceContainer->GetInventorySlot(move.Candidate.ContainerSlot);
+            if (!MatchesFingerprint(sourceItem, move.Candidate.Fingerprint))
+            {
+                return new RetainerMoveRequestResult(
+                    false,
+                    0,
+                    $"Physical candidate {move.Candidate.PhysicalKey} was no longer exact.");
+            }
+
+            var result = inventory->MoveItemSlot(
+                source,
+                (ushort)move.Candidate.ContainerSlot,
+                InventoryType.RetainerEquippedItems,
+                DestinationSlots[move.Slot],
+                true);
+            return new RetainerMoveRequestResult(true, result, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            return new RetainerMoveRequestResult(false, 0, ex.Message);
+        }
+    }
+
+    public RetainerMoveObservation ObserveMove(RetainerEquipmentMove move)
+    {
         if (!framework.IsInFrameworkUpdateThread)
         {
-            error = "Inventory move was attempted outside the framework update thread.";
-            return false;
-        }
-        var inventory = InventoryManager.Instance();
-        if (inventory == null)
-        {
-            error = "InventoryManager was unavailable.";
-            return false;
-        }
-        var source = (InventoryType)move.Candidate.Container;
-        var sourceContainer = inventory->GetInventoryContainer(source);
-        var sourceItem = sourceContainer == null
-            ? null
-            : sourceContainer->GetInventorySlot(move.Candidate.ContainerSlot);
-        if (sourceItem == null || sourceItem->ItemId != move.Candidate.ItemId)
-        {
-            error = $"Physical candidate {move.Candidate.PhysicalKey} was no longer present.";
-            return false;
+            return new RetainerMoveObservation(
+                false,
+                false,
+                false,
+                false,
+                "Inventory move was observed outside the framework update thread.");
         }
 
-        var destination = DestinationSlots[move.Slot];
-        var result = inventory->MoveItemSlot(
-            source,
-            (ushort)move.Candidate.ContainerSlot,
-            InventoryType.RetainerEquippedItems,
-            destination,
-            true);
-        if (result != 0)
+        try
         {
-            error = $"Native retainer equipment move returned {result}.";
-            return false;
-        }
+            var inventory = InventoryManager.Instance();
+            if (inventory == null)
+                return new RetainerMoveObservation(false, false, false, false, "InventoryManager was unavailable.");
 
-        var equipped = inventory->GetInventoryContainer(InventoryType.RetainerEquippedItems);
-        var verified = equipped == null ? null : equipped->GetInventorySlot(destination);
-        if (verified == null || verified->ItemId != move.Candidate.ItemId)
-        {
-            error = "The destination slot did not verify the requested physical item.";
-            return false;
+            var sourceContainer = inventory->GetInventoryContainer(
+                (InventoryType)move.Candidate.Container);
+            var sourceItem = sourceContainer == null
+                ? null
+                : sourceContainer->GetInventorySlot(move.Candidate.ContainerSlot);
+            var equipped = inventory->GetInventoryContainer(InventoryType.RetainerEquippedItems);
+            var destinationItem = equipped == null
+                ? null
+                : equipped->GetInventorySlot(DestinationSlots[move.Slot]);
+            return new RetainerMoveObservation(
+                DestinationReadable: equipped != null,
+                DestinationMatches: MatchesFingerprint(destinationItem, move.Candidate.Fingerprint),
+                SourceReadable: sourceContainer != null,
+                SourceMatches: MatchesFingerprint(sourceItem, move.Candidate.Fingerprint),
+                Error: string.Empty);
         }
-        return true;
+        catch (Exception ex)
+        {
+            return new RetainerMoveObservation(false, false, false, false, ex.Message);
+        }
     }
 
     public void CloseOwnedRetainerUi(bool owned)
@@ -806,12 +906,12 @@ internal sealed unsafe class NativeRetainerEquipmentRuntime
             checkPvPCharacterFlag: false,
             checkPvPItemFlag: false);
 
-    private static Dictionary<uint, int> ReadSavedGearsetItemCounts()
+    private static Dictionary<RetainerGearFingerprint, int> ReadSavedGearsetFingerprintCounts()
     {
-        var counts = new Dictionary<uint, int>();
+        var fingerprints = new List<RetainerGearFingerprint>();
         var module = RaptureGearsetModule.Instance();
         if (module == null)
-            return counts;
+            return [];
         for (var index = 0; index < 100; index++)
         {
             ref var entry = ref module->Entries[index];
@@ -821,11 +921,55 @@ internal sealed unsafe class NativeRetainerEquipmentRuntime
             {
                 if (item.ItemId == 0)
                     continue;
-                counts[item.ItemId] = counts.GetValueOrDefault(item.ItemId) + 1;
+                fingerprints.Add(ReadFingerprint(item));
             }
         }
-        return counts;
+        return RetainerEquipmentPolicy.CountSavedGearsetFingerprints(fingerprints);
     }
+
+    private static RetainerGearFingerprint ReadFingerprint(InventoryItem* item) =>
+        new(
+            RetainerGearFingerprint.EncodeItemId(
+                item->ItemId,
+                (item->Flags & InventoryItem.ItemFlags.HighQuality) != 0),
+            item->GlamourId,
+            item->Stains[0],
+            item->Stains[1],
+            item->Materia[0],
+            item->Materia[1],
+            item->Materia[2],
+            item->Materia[3],
+            item->Materia[4],
+            item->MateriaGrades[0],
+            item->MateriaGrades[1],
+            item->MateriaGrades[2],
+            item->MateriaGrades[3],
+            item->MateriaGrades[4]);
+
+    private static RetainerGearFingerprint ReadFingerprint(
+        RaptureGearsetModule.GearsetItem item) =>
+        new(
+            item.ItemId,
+            item.GlamourId,
+            item.Stain0Id,
+            item.Stain1Id,
+            item.Materia[0],
+            item.Materia[1],
+            item.Materia[2],
+            item.Materia[3],
+            item.Materia[4],
+            item.MateriaGrades[0],
+            item.MateriaGrades[1],
+            item.MateriaGrades[2],
+            item.MateriaGrades[3],
+            item.MateriaGrades[4]);
+
+    private static bool MatchesFingerprint(
+        InventoryItem* item,
+        RetainerGearFingerprint expected) =>
+        item != null &&
+        item->ItemId != 0 &&
+        ReadFingerprint(item) == expected;
 
     private static string ReadAtkValueString(AtkValue value)
     {
