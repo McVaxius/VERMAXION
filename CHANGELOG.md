@@ -1,5 +1,18 @@
 # VERMAXION Changelog
 
+## 2026-07-26 - Retainer Equipping live defect repair
+
+### Fixed
+- Saved gearsets are now protected by counted exact fingerprints containing the encoded HQ item ID, glamour, both stains, and all five materia IDs and grades. `Ignore Gearset` preserves the exact saved copies while allowing physical surplus duplicates; `Ignore Armory`, `All Gear`, player-equipped exclusion, compatibility, and allocation behavior are unchanged.
+- Retainer equipment-window ownership is now bound to the selected retainer. Multiple upgrades remain in one retainer's window, cross-retainer transitions return to the list exactly once, and the final equipment window closes before completion.
+- Native equipment moves now wait 500 ms after opening the window and between items or attempts, dispatch one request at a time, and poll the exact destination for up to two seconds. Nonzero native returns can still settle successfully; unresolved moves retry only while the exact source remains, stop after three total attempts, emit one terminal warning, and continue without discarding earlier upgrades.
+- Completion, failure, cancellation, and Full Stop clear all pending move state while retaining the existing bell ownership and collect-only restoration paths.
+
+### Verification
+- Focused Retainer Equipment tests pass 29/29, including HQ/customization fingerprints, counted saved copies and surplus duplicates, same-class combat retainers, gatherers, same-retainer batching, final-window closure, asynchronous nonzero-return success, exact verification, bounded retry, source loss, and single terminal-signal behavior.
+- The full Debug suite passes 460/460 tests. The Debug x64 plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+- Packaging, publication, version changes, plugin commits/pushes, DLL copying, client mutation, remote testing, and live-game actions were not performed. Live acceptance remains operator-run.
+
 ## 2026-07-25 - Ocean Fishing AutoHook start with direct-cast fallback
 
 ### Fixed
