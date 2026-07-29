@@ -1,5 +1,17 @@
 # VERMAXION Changelog
 
+## 2026-07-29 - Jumbo follow-up and shared configuration safety
+
+### Fixed
+- Jumbo Cactpot now restores the state-owned Yes click only for the second/third-ticket follow-up prompt. The guarded first-ticket confirmation, purchase system-message verification, payout recovery, ticket cadence, Mini Cactpot, and Saucy behavior are unchanged.
+- Per-account saves no longer write a process's entire stale in-memory snapshot over a shared configuration file. Each local process tracks its loaded baseline, locks the account across processes, reads the newest valid disk copy, and merges only locally changed account, default, and character records. Remote character additions/deletions are retained, deliberate local additions/deletions propagate, and a same-character conflict uses the current saver's value.
+- Account JSON remains schema-compatible. Saves validate a same-directory temporary file before atomic replacement and retain one last-known-good `.bak`; a malformed primary loads from that backup. If neither copy is valid, loading and saving fail closed without overwriting either file or treating the unreadable account as absent.
+
+### Verification
+- Focused Jumbo, persistence, and account-selection tests pass 65/65, including two stale clients editing different characters, remote additions/deletions, intentional bulk changes, same-character conflict precedence, backup recovery, malformed-file refusal, and valid atomic replacement.
+- The full Debug suite passes 470/470 tests. The Debug x64 plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+- No version, manifest, dependency, package, commit, push, deployment, client configuration, or live-game action was performed. Live Jumbo and multi-client verification were not run.
+
 ## 2026-07-26 - Retainer Equipping live defect repair
 
 ### Fixed

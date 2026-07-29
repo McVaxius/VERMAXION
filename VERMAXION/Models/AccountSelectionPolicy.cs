@@ -8,6 +8,7 @@ internal enum AccountSelectionAction
 {
     SelectExisting,
     CreateNew,
+    RefuseUnreadable,
 }
 
 internal readonly record struct AccountSelectionInput(
@@ -25,7 +26,8 @@ internal static class AccountSelectionPolicy
     public static AccountSelectionDecision Select(
         IEnumerable<AccountSelectionInput> accounts,
         string currentAccountId,
-        bool hasCurrentCharacterKey)
+        bool hasCurrentCharacterKey,
+        bool hasUnreadableAccounts = false)
     {
         var accountList = accounts
             .Where(account => !string.IsNullOrWhiteSpace(account.AccountId))
@@ -43,9 +45,13 @@ internal static class AccountSelectionPolicy
         if (accountList.Count == 0)
         {
             return new AccountSelectionDecision(
-                AccountSelectionAction.CreateNew,
+                hasUnreadableAccounts
+                    ? AccountSelectionAction.RefuseUnreadable
+                    : AccountSelectionAction.CreateNew,
                 string.Empty,
-                "No account config exists.");
+                hasUnreadableAccounts
+                    ? "No readable account config exists."
+                    : "No account config exists.");
         }
 
         if (hasCurrentCharacterKey)
@@ -63,6 +69,14 @@ internal static class AccountSelectionPolicy
                     membershipAccount.AccountId,
                     "Selected account containing the current character.");
             }
+
+            if (hasUnreadableAccounts)
+            {
+                return new AccountSelectionDecision(
+                    AccountSelectionAction.RefuseUnreadable,
+                    string.Empty,
+                    "Current character membership cannot be resolved while an account config is unreadable.");
+            }
         }
 
         var currentAccount = accountList.FirstOrDefault(
@@ -73,6 +87,14 @@ internal static class AccountSelectionPolicy
                 AccountSelectionAction.SelectExisting,
                 currentAccount.AccountId,
                 "Selected current account because the character is not configured elsewhere.");
+        }
+
+        if (hasUnreadableAccounts)
+        {
+            return new AccountSelectionDecision(
+                AccountSelectionAction.RefuseUnreadable,
+                string.Empty,
+                "No current readable account can be selected while an account config is unreadable.");
         }
 
         var largestAccount = accountList

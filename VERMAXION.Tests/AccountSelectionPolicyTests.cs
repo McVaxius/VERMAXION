@@ -78,4 +78,42 @@ public sealed class AccountSelectionPolicyTests
         Assert.Equal(AccountSelectionAction.CreateNew, decision.Action);
         Assert.Equal(string.Empty, decision.TargetAccountId);
     }
+
+    [Fact]
+    public void UnreadableOnlyAccountSetFailsClosed()
+    {
+        var decision = AccountSelectionPolicy.Select(
+            [],
+            currentAccountId: string.Empty,
+            hasCurrentCharacterKey: true,
+            hasUnreadableAccounts: true);
+
+        Assert.Equal(AccountSelectionAction.RefuseUnreadable, decision.Action);
+        Assert.Equal(string.Empty, decision.TargetAccountId);
+    }
+
+    [Fact]
+    public void UnknownCharacterFailsClosedWhenAnotherAccountIsUnreadable()
+    {
+        var decision = AccountSelectionPolicy.Select(
+            [new AccountSelectionInput("readable-account", HasCurrentCharacter: false, CharacterCount: 4)],
+            currentAccountId: "readable-account",
+            hasCurrentCharacterKey: true,
+            hasUnreadableAccounts: true);
+
+        Assert.Equal(AccountSelectionAction.RefuseUnreadable, decision.Action);
+    }
+
+    [Fact]
+    public void KnownCharacterMembershipStillWinsWhenAnotherAccountIsUnreadable()
+    {
+        var decision = AccountSelectionPolicy.Select(
+            [new AccountSelectionInput("readable-account", HasCurrentCharacter: true, CharacterCount: 4)],
+            currentAccountId: string.Empty,
+            hasCurrentCharacterKey: true,
+            hasUnreadableAccounts: true);
+
+        Assert.Equal(AccountSelectionAction.SelectExisting, decision.Action);
+        Assert.Equal("readable-account", decision.TargetAccountId);
+    }
 }
