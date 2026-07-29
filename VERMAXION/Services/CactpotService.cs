@@ -853,7 +853,7 @@ public class CactpotService : IDisposable
                     SetState(CactpotState.JumboClosingWindows);
                 }
                 else if (currentTicket > 1 && GameHelpers.IsAddonVisible("SelectYesno") &&
-                         TryConfirmJumboCactpotPurchaseYes("Jumbo Cactpot follow-up purchase prompt", allowUnreadable: false))
+                         GameHelpers.ClickYesIfVisible())
                 {
                     log.Information($"[Cactpot] Accepted follow-up Jumbo Yes/No prompt while waiting for ticket {currentTicket}/{totalTickets}");
                     stateEnteredAt = DateTime.UtcNow;

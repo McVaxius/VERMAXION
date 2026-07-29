@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using VERMAXION.Models;
@@ -11,11 +10,12 @@ namespace VERMAXION.Services;
 
 public class ConfigManager
 {
-    private readonly IDalamudPluginInterface pluginInterface;
     private readonly IPluginLog log;
     private readonly string configDir;
+    private readonly AccountConfigPersistence persistence;
 
     private readonly Dictionary<string, AccountConfig> accounts = new();
+    private readonly HashSet<string> unreadableAccountIds = new(StringComparer.OrdinalIgnoreCase);
 
     public string CurrentAccountId { get; set; } = "";
     public string CurrentCharacterKey { get; private set; } = "";
@@ -29,19 +29,14 @@ public class ConfigManager
 
     public event Action<string, string>? OnCharacterChanged;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-    };
-
     public ConfigManager(IDalamudPluginInterface pluginInterface, IPluginLog log)
     {
-        this.pluginInterface = pluginInterface;
         this.log = log;
         configDir = Path.Combine(pluginInterface.GetPluginConfigDirectory());
         if (!Directory.Exists(configDir))
             Directory.CreateDirectory(configDir);
 
+        persistence = new AccountConfigPersistence(configDir);
         LoadAllAccounts();
     }
 
@@ -95,21 +90,6 @@ public class ConfigManager
         if (contentId == 0)
             log.Warning("Current character content ID is 0; selecting by existing account membership only.");
 
-        if (accounts.Count == 0)
-        {
-            var fallbackId = Guid.NewGuid().ToString("N")[..8];
-            var fallbackAccount = new AccountConfig
-            {
-                AccountId = fallbackId,
-                AccountAlias = aliasHint ?? "Account 1",
-            };
-            accounts[fallbackId] = fallbackAccount;
-            CurrentAccountId = fallbackId;
-            SaveAccount(fallbackId);
-            log.Information($"[ConfigManager] Created first account {fallbackId}; contentId={contentId:X16}");
-            return;
-        }
-
         var hasCurrentCharacterKey = !string.IsNullOrWhiteSpace(currentCharacterKey);
         var selectionInputs = accounts
             .Select(pair => new AccountSelectionInput(
@@ -121,7 +101,8 @@ public class ConfigManager
         var decision = AccountSelectionPolicy.Select(
             selectionInputs,
             CurrentAccountId,
-            hasCurrentCharacterKey);
+            hasCurrentCharacterKey,
+            unreadableAccountIds.Count > 0);
 
         switch (decision.Action)
         {
@@ -132,6 +113,9 @@ public class ConfigManager
                 var newId = CreateNewAccount(aliasHint ?? "Account 1");
                 CurrentAccountId = newId;
                 log.Information($"[ConfigManager] Account selection: created first accountId={newId}, contentId={contentId:X16}");
+                break;
+            case AccountSelectionAction.RefuseUnreadable:
+                log.Error("[ConfigManager] Account selection failed closed because one or more account files are unreadable.");
                 break;
         }
     }
@@ -154,6 +138,12 @@ public class ConfigManager
             SetCurrentCharacterKey(charKey);
             if (string.IsNullOrEmpty(SelectedCharacterKey))
                 SelectedCharacterKey = charKey;
+            return;
+        }
+
+        if (unreadableAccountIds.Count > 0)
+        {
+            log.Error("[ConfigManager] Refusing to add an unknown character while one or more account files are unreadable.");
             return;
         }
 
@@ -616,26 +606,32 @@ public class ConfigManager
     {
         try
         {
-            var files = Directory.GetFiles(configDir, "*_Vermaxion.json");
+            var previousAccounts = accounts.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value,
+                StringComparer.OrdinalIgnoreCase);
             var loadedAccounts = new Dictionary<string, AccountConfig>(StringComparer.OrdinalIgnoreCase);
             var accountsNeedingSave = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var file in files)
+            unreadableAccountIds.Clear();
+
+            foreach (var result in persistence.LoadAll())
             {
-                try
+                if (!result.Succeeded || result.Account == null)
                 {
-                    var json = File.ReadAllText(file);
-                    var account = JsonSerializer.Deserialize<AccountConfig>(json, JsonOptions);
-                    if (account != null && !string.IsNullOrEmpty(account.AccountId))
-                    {
-                        loadedAccounts[account.AccountId] = account;
-                        if (BackfillCharacterCreatedAtUtc(account))
-                            accountsNeedingSave.Add(account.AccountId);
-                    }
+                    unreadableAccountIds.Add(result.AccountId);
+                    if (previousAccounts.TryGetValue(result.AccountId, out var previousAccount))
+                        loadedAccounts[result.AccountId] = previousAccount;
+
+                    log.Error($"Failed to load account config {result.AccountId}: {result.Error}");
+                    continue;
                 }
-                catch (Exception ex)
-                {
-                    log.Error($"Failed to load config file {file}: {ex.Message}");
-                }
+
+                var account = result.Account;
+                loadedAccounts[account.AccountId] = account;
+                if (result.UsedBackup)
+                    log.Warning($"[ConfigManager] Loaded last-known-good backup for account {account.AccountId}");
+                if (BackfillCharacterCreatedAtUtc(account))
+                    accountsNeedingSave.Add(account.AccountId);
             }
 
             accounts.Clear();
@@ -665,18 +661,47 @@ public class ConfigManager
     {
         if (!accounts.TryGetValue(accountId, out var account)) return;
 
-        try
+        var result = persistence.Save(accountId, account);
+        if (!result.Succeeded || result.Account == null)
         {
-            var fileName = $"{accountId}_Vermaxion.json";
-            var filePath = Path.Combine(configDir, fileName);
-            var json = JsonSerializer.Serialize(account, JsonOptions);
-            File.WriteAllText(filePath, json);
-            log.Debug($"Saved account {accountId}");
+            log.Error($"Failed to save account {accountId}: {result.Error}");
+            return;
         }
-        catch (Exception ex)
+
+        ApplyMergedAccount(account, result.Account);
+        unreadableAccountIds.Remove(accountId);
+        if (result.UsedBackup)
+            log.Warning($"[ConfigManager] Recovered account {accountId} from its last-known-good backup while saving");
+        log.Debug($"Saved account {accountId}");
+    }
+
+    private static void ApplyMergedAccount(AccountConfig target, AccountConfig merged)
+    {
+        target.AccountId = merged.AccountId;
+        target.AccountAlias = merged.AccountAlias;
+
+        if (!AccountConfigPersistence.AreEquivalent(target.DefaultConfig, merged.DefaultConfig))
+            target.DefaultConfig = merged.DefaultConfig;
+
+        foreach (var removedKey in target.Characters.Keys
+                     .Where(key => !merged.Characters.ContainsKey(key))
+                     .ToList())
         {
-            log.Error($"Failed to save account {accountId}: {ex.Message}");
+            target.Characters.Remove(removedKey);
         }
+
+        foreach (var pair in merged.Characters)
+        {
+            if (!target.Characters.TryGetValue(pair.Key, out var current) ||
+                !AccountConfigPersistence.AreEquivalent(current, pair.Value))
+            {
+                target.Characters[pair.Key] = pair.Value;
+            }
+        }
+
+        target.CharacterCreatedAtUtc.Clear();
+        foreach (var pair in merged.CharacterCreatedAtUtc)
+            target.CharacterCreatedAtUtc[pair.Key] = pair.Value;
     }
 
     private static bool EnsureCharacterCreatedAtUtc(AccountConfig account, string characterKey, DateTime createdAtUtc)
