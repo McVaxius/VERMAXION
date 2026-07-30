@@ -1179,6 +1179,30 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawDefaultOverrideButton(isDefault, configManager, "RegisterRegistrables", "Register Registrables",
                 (source, target) => target.EnableRegisterRegistrables = source.EnableRegisterRegistrables);
+
+            var registerFromInventory = cc.RegisterUnregisteredItemsFromInventory;
+            if (ImGui.Checkbox("Register unregistered items from inventory", ref registerFromInventory))
+            {
+                cc.RegisterUnregisteredItemsFromInventory = registerFromInventory;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(
+                isDefault,
+                configManager,
+                "RegisterUnregisteredItemsFromInventory",
+                "Register unregistered items from inventory",
+                (source, target) => target.RegisterUnregisteredItemsFromInventory =
+                    source.RegisterUnregisteredItemsFromInventory);
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(
+                    "Uses one snapshot of Inventory 1-4 and ignores the personal list for that run.\n" +
+                    "Only direct mounts, minions, fashion accessories, facewear, orchestrion rolls,\n" +
+                    "emotes/hairstyles, bardings, and Triple Triad cards that are still locked are used.");
+            }
+
             ImGui.SameLine();
             if (ImGui.Button("Configure##RegistrableConfig"))
             {

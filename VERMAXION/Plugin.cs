@@ -189,7 +189,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log));
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log);
-        RegisterRegistrablesService = new RegisterRegistrablesService(CommandManager, ObjectTable, Log, ConfigManager);
+        RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
         EquipmentAutomationRuntime = new NativeEquipmentAutomationRuntime(DataManager, Framework, PlayerState, Log);
         MinionRouletteService = new MinionRouletteService(Log, ConfigManager);
         SeasonalGearService = new SeasonalGearService(EquipmentAutomationRuntime, Log);

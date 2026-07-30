@@ -1,5 +1,20 @@
 # VERMAXION Changelog
 
+## 2026-07-30 - Automatic Register Registrables inventory mode
+
+### Added
+- Added the opt-in per-character `RegisterUnregisteredItemsFromInventory` setting, defaulting to `false` for new and existing JSON. Clone and default-to-character copies preserve the value.
+- Automatic mode takes one ordered snapshot of readable, loaded `Inventory1` through `Inventory4`, deduplicates item IDs by first bag/slot occurrence, and ignores the personal list for that run. It selects only still-locked direct mounts, minions, fashion accessories, facewear, orchestrion rolls, emotes/hairstyles, bardings, and Triple Triad cards using the ADS action-ID classification. Faded orchestrion materials and unrelated/indirect items are excluded.
+
+### Changed
+- Manual mode continues to use only the configured personal list and retains the empty-list blocker. Automatic mode is eligible with an empty personal list.
+- The fixed queue skips already registered items, rechecks native registration immediately before use, then waits the existing seven seconds after every use request. A verified unlock advances even if duplicate copies remain; only a still-present locked item retries, with the existing three-attempt limit and warning. Unreadable bag, slot, item-registration, or verification state fails closed, and exhausted items do not trigger a rescan.
+
+### Verification
+- Focused Register Registrables, recovery, and automation-catalog tests pass 64/64, including all eight ADS action IDs, faded/unrelated rejection, inventory ordering/deduplication, locked filtering, unreadable-state failure, automatic/manual source selection, empty-list eligibility, exact seven-second verification, duplicate-copy advancement, and three-attempt exhaustion.
+- The complete Debug x64 solution suite passes 497/497 tests. The isolated Debug x64 plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning.
+- No ADS edits, version/manifest/dependency changes, packaging, release, commit, push, client control, or live-game testing was performed. Live acceptance was out of scope and no deferred work was created.
+
 ## 2026-07-29 - Jumbo follow-up and shared configuration safety
 
 ### Fixed

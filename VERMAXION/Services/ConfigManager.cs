@@ -472,6 +472,7 @@ public class ConfigManager
         target.EnableCurrentJobEquipment = source.EnableCurrentJobEquipment;
         target.EnableFashionReport = source.EnableFashionReport;
         target.EnableRegisterRegistrables = source.EnableRegisterRegistrables;
+        target.RegisterUnregisteredItemsFromInventory = source.RegisterUnregisteredItemsFromInventory;
         target.EnableVendorStock = source.EnableVendorStock;
         target.EnableRefillFromListings = source.EnableRefillFromListings;
         target.EnableNagYourMom = source.EnableNagYourMom;

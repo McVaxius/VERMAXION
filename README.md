@@ -39,6 +39,8 @@ AutoRetainer post-process automation for weekly and daily tasks, configured per 
 - **Chocobo Racing** — Configurable daily races via Chocoholic plugin
 - **Ocean Fishing** — Ordered per-account character fallback, ordered ADS fishing-stock preparation, verified queue/voyage lifecycle, and optional post-voyage discard/sell cleanup
 
+- **Register Registrables** - Personal-list registration or opt-in automatic discovery of locked direct registrables in the four main inventory bags
+
 ## Automation ownership and ordering
 
 Every per-character `Enable*` feature has one explicit owner. The Task Order tab contains only the 18 engine-dispatched tasks and shows their catalog cadence/ownership metadata. Existing custom order and Before-AR/After-AR phase choices are retained during normalization.
@@ -49,7 +51,9 @@ Every per-character `Enable*` feature has one explicit owner. The Task Order tab
 - **Manual utility:** Retainer Bell remains an explicit manual utility rather than a character enable flag.
 - **Configuration-only WIP:** Adventurer Activity (Evercold) is labelled as configuration-only and is not advertised as runtime dispatch.
 
-The main and configuration windows show exact blocked prerequisites, such as an empty Register Registrables list, rather than collapsing them into a generic no-work result. If the catalog, task order definitions, and runtime bindings ever disagree, VERMAXION rejects the run visibly and safely releases its AutoRetainer ownership instead of partially dispatching.
+The main and configuration windows show exact blocked prerequisites, such as an empty Register Registrables list when automatic inventory discovery is disabled, rather than collapsing them into a generic no-work result. If the catalog, task order definitions, and runtime bindings ever disagree, VERMAXION rejects the run visibly and safely releases its AutoRetainer ownership instead of partially dispatching.
+
+Register Registrables retains the per-character personal list as its default and only source. The opt-in `Register unregistered items from inventory` setting uses an alternative automatic source for that run and ignores the personal list, so it can run when that list is empty. Automatic discovery takes one ordered snapshot of loaded `Inventory1` through `Inventory4`, deduplicates item IDs by first bag/slot occurrence, and queues only still-locked direct mounts, minions, fashion accessories, facewear, orchestrion rolls, emotes/hairstyles, bardings, and Triple Triad cards. Faded orchestrion materials and other indirect items are excluded. Registration is checked while the fixed queue is built, immediately before each use, and after the existing seven-second wait. A verified unlock advances even when duplicate copies remain; a still-present locked item retries up to three total attempts, and unreadable inventory or registration state fails the run closed without rescanning.
 
 Equipment automation uses the game's native gearset and recommended-equipment modules. Gear Updater scans all 100 saved slots and restores the starting gearset; Highest Combat Job only considers combat jobs represented by valid saved gearsets; Current Job Equipment aborts if the active job or gearset changes; Seasonal Gear derives equipment slots from game data and restores the starting gearset on failure. After an applicable native gearset-change request, Gear Updater, Highest Combat Job, and Seasonal Gear restoration own a three-second window that clicks the first ready Yes/No prompt without inspecting its text and suppresses duplicate requests until normal activation verification resumes. Current Job Equipment does not use that prompt path. These paths use bounded polling and verified native saves without SimpleTweaks commands or blocking sleeps.
 
@@ -97,6 +101,8 @@ Ocean Fishing does not require Questionable. It does not manage AutoHook presets
 See [how-to-import-plugins.md](how-to-import-plugins.md)
 
 ## Status
+
+2026-07-30 - Added opt-in automatic Register Registrables inventory discovery while preserving personal-list behavior as the default. Automatic runs ignore the personal list, snapshot the four loaded main bags once in bag/slot order, deduplicate item IDs, select only the eight ADS-classified direct registrable action types that remain locked, and fail closed when inventory or native registration state is unreadable. The fixed queue rechecks before use and after seven seconds, advances on verified registration despite duplicate copies, and exhausts only after three still-present locked attempts. Focused registration/recovery/catalog verification passes 64 tests, the full Debug x64 suite passes 497 tests, and the isolated plugin build succeeds with the existing `PInvoke.User32` warning only. Live-game testing was out of scope.
 
 2026-07-29 — Fixed the Jumbo Cactpot second/third-ticket follow-up confirmation without changing the guarded first-ticket or payout paths. Shared per-account saves now merge locally changed records against the newest valid disk state under a cross-process lock, so one stale client cannot erase unrelated character changes; malformed files recover from one last-known-good backup or fail closed when neither copy is valid. The JSON schema and `SaveCurrentAccount()` workflow are unchanged. Focused verification passes 65 tests, the full Debug suite passes 470 tests, and the Debug x64 plugin build has only the existing `PInvoke.User32` warning; live Jumbo and multi-client verification were not run.
 
