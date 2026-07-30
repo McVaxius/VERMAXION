@@ -20,6 +20,7 @@ public class CharacterConfig
     public bool EnableCurrentJobEquipment { get; set; } = false;
     public bool EnableFashionReport { get; set; } = false;
     public bool EnableRegisterRegistrables { get; set; } = false;
+    public bool RegisterUnregisteredItemsFromInventory { get; set; } = false;
     public bool EnableVendorStock { get; set; } = false;
     public bool EnableRefillFromListings { get; set; } = false;
     public bool EnableNagYourMom { get; set; } = false;
@@ -261,6 +262,7 @@ public class CharacterConfig
             EnableCurrentJobEquipment = EnableCurrentJobEquipment,
             EnableFashionReport = EnableFashionReport,
             EnableRegisterRegistrables = EnableRegisterRegistrables,
+            RegisterUnregisteredItemsFromInventory = RegisterUnregisteredItemsFromInventory,
             EnableVendorStock = EnableVendorStock,
             EnableRefillFromListings = EnableRefillFromListings,
             EnableNagYourMom = EnableNagYourMom,

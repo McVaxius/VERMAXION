@@ -439,7 +439,10 @@ public class VermaxionEngine
     private static TaskEligibility EvaluateRegisterRegistrables(CharacterConfig config)
         => !config.EnableRegisterRegistrables
             ? TaskEligibility.Disabled("Register Registrables is disabled for this character.")
-            : config.PersonalRegistrableItems.Count == 0
+            : !RegistrableRegistrationPolicy.CanStart(
+                featureEnabled: true,
+                config.RegisterUnregisteredItemsFromInventory,
+                config.PersonalRegistrableItems.Count)
                 ? TaskEligibility.Blocked("Register Registrables has no personal items configured.")
                 : TaskEligibility.Runnable();
 
