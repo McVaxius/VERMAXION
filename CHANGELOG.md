@@ -1,5 +1,15 @@
 # VERMAXION Changelog
 
+## 2026-08-01 - Ocean Fishing 1.5-yalm clearance
+
+### Changed
+- Ocean Fishing now uses one shared 1.5-yalm clearance policy for continuous rail candidates, the initial start gate, and recovery-point separation from the prior destination.
+- The 32-sample cap, stopped-path and facing gates, paired `/ahstart` then `/ac cast` cadence, bounded recovery, and permanent post-acknowledgement movement lock are unchanged. W40 remains a separate active workflow.
+
+### Verification
+- Focused Debug x64 fishing policy tests pass 143/143, including the 1.499-yalm rejection and exact 1.5-yalm acceptance boundary. The full Debug x64 suite passes 497/497 tests.
+- The Debug x64 plugin build succeeds with zero errors and the existing `PInvoke.User32` NU1601 dependency-resolution warning. No package, deployment, version bump, commit, push, remote-client access, or live-game verification was performed.
+
 ## 2026-07-30 - Automatic Register Registrables inventory mode
 
 ### Added
