@@ -97,6 +97,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     private IDtrBarEntry? dtrEntry;
     private bool wasLoggedIn;
     private bool pendingBeforeArLogin;
+    private bool pendingFishingPostprocessHandoff;
     private bool beforeArStartedThisLogin;
     private bool beforeArArmedByPostprocess;
     private DateTime beforeArLoginPendingSince = DateTime.MinValue;
@@ -499,6 +500,18 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     private void OnARCharacterReady(string pluginName)
     {
         Log.Information($"[Plugin] AR signaled character ready for postprocess");
+        pendingFishingPostprocessHandoff = true;
+    }
+
+    private bool ProcessPendingFishingPostprocessHandoff()
+    {
+        if (!pendingFishingPostprocessHandoff)
+            return false;
+
+        if (LifestreamIPC.IsBusy())
+            return true;
+
+        pendingFishingPostprocessHandoff = false;
 
         var fishingStartup = RunFishingStartupTrigger(FishingStartupTrigger.AutoRetainerPostprocess);
         if (fishingStartup.ClaimsStartup)
@@ -513,10 +526,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
                 ReleaseOwnedSuppressionAfterSkippedPostprocess(fishingStartup.Reason);
             }
 
-            return;
+            return true;
         }
 
         Engine.StartPostProcess();
+        return true;
     }
 
     public void RunFishingStartupManual()
@@ -1441,7 +1455,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ProcessReleaseOnlyPostprocessFinishPending();
         ProcessBeforeArReleasePending();
         var fishingContinuationBlocksBeforeAr = ProcessPendingFishingRelogContinuation();
-        if (!fishingContinuationBlocksBeforeAr)
+        var fishingPostprocessHandoffBlocksBeforeAr = ProcessPendingFishingPostprocessHandoff();
+        if (!fishingContinuationBlocksBeforeAr && !fishingPostprocessHandoffBlocksBeforeAr)
             ProcessPendingBeforeArLogin();
 
         // Update engine (runs the state machine)
@@ -1646,6 +1661,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         if (FishingRunLifecycle.Mode != FishingRunMode.Test)
             FishingStartupCoordinator.SuppressCurrentWindow(DateTimeOffset.UtcNow);
         FishingStartupCoordinator.CancelPendingRun();
+        pendingFishingPostprocessHandoff = false;
         ClearFishingRelogContinuationReadiness();
 
         LootGoblinMapGatherManualRunCoordinator.Cancel();
