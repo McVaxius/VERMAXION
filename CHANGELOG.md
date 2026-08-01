@@ -1,5 +1,10 @@
 # VERMAXION Changelog
 
+## 2026-08-01 - Fishing handoff waits for Lifestream
+
+### Fixed
+- AutoRetainer post-process fishing startup now waits for Lifestream to become idle, retaining the existing post-process hold and before-AR gate until the existing fishing handoff runs.
+
 ## 2026-08-01 - Ocean Fishing 1.5-yalm clearance
 
 ### Changed
