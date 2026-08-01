@@ -93,16 +93,16 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void ThreeYalmClearanceRejectsCloserPlayersAndAllowsExactBoundary()
+    public void OnePointFiveYalmClearanceRejectsCloserPlayersAndAllowsExactBoundary()
     {
         var position = new Vector3(7.125f, OceanFishingContinuousRailPolicy.DeckY, -9f);
 
         Assert.False(OceanFishingContinuousRailPolicy.HasPlayerClearance(
             position,
-            [position + new Vector3(0f, 0f, 2.999f)]));
+            [position + new Vector3(0f, 0f, 1.499f)]));
         Assert.True(OceanFishingContinuousRailPolicy.HasPlayerClearance(
             position,
-            [position + new Vector3(0f, 0f, 3.0f)]));
+            [position + new Vector3(0f, 0f, 1.5f)]));
     }
 
     [Fact]

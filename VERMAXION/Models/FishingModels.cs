@@ -83,7 +83,7 @@ public readonly record struct OceanFishingRailDestination(
 
 internal static class OceanFishingContinuousRailPolicy
 {
-    public const float MinimumPlayerClearance = 3f;
+    public const float MinimumPlayerClearance = 1.5f;
     public const int MaxSampleAttempts = 32;
     public const float DeckY = 6.711f;
     public const float StarboardRotation = 1.5f;
