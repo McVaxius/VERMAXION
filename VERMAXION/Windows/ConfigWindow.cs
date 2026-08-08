@@ -230,6 +230,16 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped("Works even when VERMAXION skips all tasks. Turn this off before intentionally disabling AutoRetainer checking for the current or previous character.");
             ImGui.Unindent();
 
+            var enableCharacterSelectStallRecovery = config.EnableCharacterSelectStallRecovery;
+            if (ImGui.Checkbox(
+                    UIConstants.ConfigLabels.EnableCharacterSelectStallRecovery,
+                    ref enableCharacterSelectStallRecovery))
+            {
+                config.EnableCharacterSelectStallRecovery = enableCharacterSelectStallRecovery;
+                config.Save();
+            }
+            DrawHelpMarker(UIConstants.Tooltips.EnableCharacterSelectStallRecovery);
+
             var dtrEnabled = config.DtrBarEnabled;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
             {

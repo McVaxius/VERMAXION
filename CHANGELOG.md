@@ -1,5 +1,23 @@
 # VERMAXION Changelog
 
+## 2026-08-08 - Character-select stall recovery
+
+### Added
+
+- Added the enabled-by-default global `EnableCharacterSelectStallRecovery` setting and its configuration control.
+- During VERMAXION's existing logged-out fishing-relog character-select wait, a five-minute timer now makes one automatic attempt to load character-list entry 0. The Main Window also exposes a `Load first character now` control that queues the same framework-thread attempt.
+- Both triggers require only a visible `CharaSelect` addon, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. They never open, navigate, or back out of character select; a fired callback accepts one new login confirmation only.
+- The Main Window reports the setting, timer/stall state, and precise blocked reason.
+
+### Verification
+
+- Added focused policy/state coverage for the setting-off gate, timer arm/expiry/one-shot reset, manual eligibility, entry-0 targeting, and one-shot login confirmation.
+- Debug x64 tests and plugin build were run locally. Live-client verification was not performed.
+
+### Fixed
+
+- Treat a visible `CharaSelect` addon as the complete character-select gate. The generic ECommons addon-ready predicate and `AgentLobby`/entry checks do not apply to this recovery path, which invokes the callback through the visible-addon path.
+
 ## 2026-08-01 - Fishing handoff waits for Lifestream
 
 ### Fixed

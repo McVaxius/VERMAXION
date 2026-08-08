@@ -120,6 +120,22 @@ public class MainWindow : Window, IDisposable
         ImGui.TextDisabled($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
         ImGui.TextDisabled($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
         ImGui.TextDisabled($"AR suppression: {plugin.AutoRetainerIPC.LastSnapshot}");
+        var characterSelectRecovery = plugin.CharacterSelectStallRecovery;
+        var characterSelectEligibility = characterSelectRecovery.GetEligibility(
+            plugin.Configuration.EnableCharacterSelectStallRecovery);
+        ImGui.TextDisabled(
+            $"Character-select recovery: {(plugin.Configuration.EnableCharacterSelectStallRecovery ? "On" : "Off")} - {characterSelectRecovery.StatusText}");
+        var characterSelectBlockedReason = characterSelectEligibility.CanAttempt
+            ? characterSelectRecovery.LastBlockedReason
+            : characterSelectEligibility.Reason;
+        if (!string.IsNullOrWhiteSpace(characterSelectBlockedReason))
+            ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Character-select recovery blocker: {characterSelectBlockedReason}");
+        ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt);
+        if (ImGui.SmallButton("Load first character now"))
+            plugin.QueueCharacterSelectRecoveryAttempt();
+        ImGui.EndDisabled();
+        if (!characterSelectEligibility.CanAttempt && ImGui.IsItemHovered())
+            ImGui.SetTooltip(characterSelectEligibility.Reason);
         if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
             ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Handoff blocker: {engine.ActiveHandoffBlocker}");
         

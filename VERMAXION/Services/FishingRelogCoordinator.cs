@@ -28,6 +28,8 @@ public sealed class FishingRelogCoordinator
     private string failureReason = string.Empty;
 
     public bool IsActive => state is not FishingRelogState.Idle and not FishingRelogState.Failed;
+    public bool IsWaitingForCharacterSelect => state == FishingRelogState.WaitingForRelogProgress &&
+                                               !Plugin.ClientState.IsLoggedIn;
     public bool IsFailed => state == FishingRelogState.Failed;
     public string FailureReason => failureReason;
     public string StatusText { get; private set; } = "Idle";
