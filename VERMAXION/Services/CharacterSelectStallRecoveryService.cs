@@ -37,9 +37,9 @@ public sealed class CharacterSelectStallRecoveryService
         StatusText = "Manual first-character recovery queued.";
     }
 
-    public void Update(DateTime nowUtc, bool recoveryEnabled, bool stallActive, bool loggedIn)
+    public void Update(DateTime nowUtc, bool recoveryEnabled, bool charaSelectVisible, bool loggedIn)
     {
-        state.UpdateStall(nowUtc, recoveryEnabled, stallActive);
+        state.UpdateStall(nowUtc, recoveryEnabled, charaSelectVisible);
         state.ResetAttemptHistoryWhenLoggedOutAndIdle(loggedIn);
 
         if (state.TryConsumeAutomaticExpiry(nowUtc, recoveryEnabled))
@@ -55,14 +55,14 @@ public sealed class CharacterSelectStallRecoveryService
             confirmationClickPending = false;
 
         if (state.AwaitingLoginConfirmation)
-            StatusText = confirmationClickPending
-                ? "Character selected; waiting for the OK confirmation."
-                : "Recovery request sent; waiting for one new login confirmation.";
+            StatusText = state.AutomaticAttemptIssued
+                ? "Automatic attempt used"
+                : confirmationClickPending
+                    ? "Character selected; waiting for the OK confirmation."
+                    : "Recovery request sent; waiting for one new login confirmation.";
         else if (state.StallActive && state.ArmedAtUtc != DateTime.MinValue)
         {
-            var elapsed = nowUtc.ToUniversalTime() - state.ArmedAtUtc;
-            var attempt = state.AutomaticAttemptIssued ? "automatic attempt used" : "automatic attempt armed";
-            StatusText = $"Character-select stall {elapsed.TotalMinutes:F1}/{CharacterSelectStallRecoveryState.DefaultRecoveryDelay.TotalMinutes:F1}m; {attempt}.";
+            StatusText = state.GetAutomaticRecoveryStatusText(nowUtc);
         }
         else if (!recoveryEnabled)
         {
