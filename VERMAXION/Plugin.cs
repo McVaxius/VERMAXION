@@ -79,6 +79,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     public WorkshopBellService WorkshopBellService { get; init; }
     public FishingService FishingService { get; init; }
     public FishingRelogCoordinator FishingRelogCoordinator { get; init; }
+    public CharacterSelectStallRecoveryService CharacterSelectStallRecovery { get; init; }
     public FishingStartupCoordinator FishingStartupCoordinator { get; init; }
     public FishingRunLifecycle FishingRunLifecycle { get; init; }
     public IFisherGearsetRuntime FisherGearsetRuntime { get; init; }
@@ -232,6 +233,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             () => !DadHandoffBlocksNewWork);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
         FishingService = new FishingService(Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC, AutoRetainerIPC, FishingRunLifecycle, FisherGearsetRuntime, DutyState);
+        CharacterSelectStallRecovery = new CharacterSelectStallRecoveryService(Log);
         FishingStartupCoordinator = new FishingStartupCoordinator(this);
 
         // Engine - orchestrates all tasks
@@ -790,6 +792,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void OnLoginEvent()
     {
+        CharacterSelectStallRecovery.NotifyLoginConfirmation();
         beforeArStartedThisLogin = false;
         BeginBeforeArLoginPending("ClientState.Login");
     }
@@ -1448,6 +1451,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             PlayerState.ContentId,
             DateTime.UtcNow);
 
+        CharacterSelectStallRecovery.Update(
+            DateTime.UtcNow,
+            Configuration.EnableCharacterSelectStallRecovery,
+            FishingRelogCoordinator.IsWaitingForCharacterSelect,
+            ClientState.IsLoggedIn);
+
         ProcessBeforeArSuppressionRecovery();
         FishingRunLifecycle.Update();
         ProcessFishingRecovery();
@@ -1682,6 +1691,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         VendorStockService.Reset();
         FishingService.Reset();
         FishingRelogCoordinator.Reset();
+        CharacterSelectStallRecovery.Reset();
         FishingRunLifecycle.ForceCleanup("Full Stop");
         RetainerListingRefillService.Reset();
         WorkshopBellService.Reset();
@@ -1717,6 +1727,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
+
+    public void QueueCharacterSelectRecoveryAttempt()
+        => Framework.RunOnFrameworkThread(CharacterSelectStallRecovery.QueueManualAttempt);
 
     int IFishingStartupRuntime.PreWindowOffsetMinutes
         => Configuration.OceanFishingPreWindowOffsetMinutes;

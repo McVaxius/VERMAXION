@@ -21,6 +21,7 @@
     <Compile Include="..\VERMAXION\Models\AutoRetainerSelectionModels.cs" Link="AutoRetainerSelectionModels.cs" />
     <Compile Include="..\VERMAXION\Models\LifecycleStatus.cs" Link="LifecycleStatus.cs" />
     <Compile Include="..\VERMAXION\Models\RecoveryPolicy.cs" Link="RecoveryPolicy.cs" />
+    <Compile Include="..\VERMAXION\Models\CharacterSelectRecoveryModels.cs" Link="CharacterSelectRecoveryModels.cs" />
     <Compile Include="..\VERMAXION\Models\RegistrableRegistrationModels.cs" Link="RegistrableRegistrationModels.cs" />
     <Compile Include="..\VERMAXION\Models\UiCloseFallbackPolicy.cs" Link="UiCloseFallbackPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\LootGoblinMapGatherModels.cs" Link="LootGoblinMapGatherModels.cs" />

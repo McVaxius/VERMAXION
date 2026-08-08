@@ -7,6 +7,7 @@ public static class UIConstants
         // Global Settings
         public const string KrangleNames = "Krangle Names";
         public const string AutoRestoreRetainerCheckingAfterWork = "Keep current/previous characters enabled in AutoRetainer";
+        public const string EnableCharacterSelectStallRecovery = "Recover stalled character select";
         public const string DtrBarEntry = "DTR Bar Entry";
         
         // Character Settings
@@ -72,6 +73,7 @@ public static class UIConstants
     {
         public const string KrangleNames = "Replace character names with exercise words for screenshots";
         public const string AutoRestoreRetainerCheckingAfterWork = "Restore and persist AutoRetainer checking for the current and immediately previous character whenever either is disabled. Turn this off before intentionally deselecting either character.";
+        public const string EnableCharacterSelectStallRecovery = "After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button.";
         public const string MinionRoulette = "Fire off /minion roulette once per AR postprocess";
         public const string SeasonalGearRoulette = "Randomly equip seasonal event gear for a fun ensemble each AR run";
         public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";
