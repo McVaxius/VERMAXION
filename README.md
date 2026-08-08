@@ -39,7 +39,7 @@ AutoRetainer post-process automation for weekly and daily tasks, configured per 
 - **Chocobo Racing** — Configurable daily races via Chocoholic plugin
 - **Ocean Fishing** — Ordered per-account character fallback, ordered ADS fishing-stock preparation, verified queue/voyage lifecycle, and optional post-voyage discard/sell cleanup
 
-- **Character-select stall recovery** - An enabled-by-default global recovery for a stalled VERMAXION fishing relog. After five minutes at the existing character-select wait, it makes one guarded attempt to load entry 0. The Main Window provides the same guarded `Load first character now` test control.
+- **Character-select stall recovery** - An enabled-by-default global recovery that arms whenever `CharaSelect` remains visible. After five minutes, it makes one guarded attempt to load entry 0. The Main Window shows a live `m:ss` countdown and provides the same guarded `Load first character now` test control.
 - **Register Registrables** - Personal-list registration or opt-in automatic discovery of locked direct registrables in the four main inventory bags
 
 ## Automation ownership and ordering
@@ -86,7 +86,7 @@ Each AutoRetainer/manual run records a structured plan for every catalog entry: 
 
 Ocean Fishing does not require Questionable. It does not manage AutoHook presets, choose bait dynamically, or use local/self repair.
 
-Character-select recovery never opens, navigates, or backs out of character select. Both the automatic and manual paths require only that `CharaSelect` is visible, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. The Main Window shows the global state, timer/stall status, and any blocking reason.
+Character-select recovery never opens, navigates, or backs out of character select. Its automatic timer arms only while `CharaSelect` is visible and resets as soon as it is hidden. Both the automatic and manual paths require only that visible addon, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. The Main Window shows the global state, live `m:ss` countdown, and any blocking reason.
 
 ## Commands
 

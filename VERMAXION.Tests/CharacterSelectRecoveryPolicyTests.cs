@@ -11,7 +11,7 @@ public sealed class CharacterSelectRecoveryPolicyTests
     {
         var state = new CharacterSelectStallRecoveryState();
         var now = DateTime.UtcNow;
-        state.UpdateStall(now, recoveryEnabled: false, stallActive: true);
+        state.UpdateStall(now, recoveryEnabled: false, charaSelectVisible: true);
 
         var eligibility = CharacterSelectRecoveryPolicy.Evaluate(ReadySnapshot(RecoveryEnabled: false));
 
@@ -22,14 +22,16 @@ public sealed class CharacterSelectRecoveryPolicyTests
     }
 
     [Fact]
-    public void StallTimerArmsExpiresOnceAndResetsWhenTheStallEnds()
+    public void CharaSelectVisibilityArmsTheTimerExpiresOnceAndResetsWhenHidden()
     {
         var state = new CharacterSelectStallRecoveryState();
-        var startedAt = DateTime.UtcNow;
+        var startedAt = new DateTime(2026, 8, 8, 12, 0, 0, DateTimeKind.Utc);
 
-        state.UpdateStall(startedAt, recoveryEnabled: true, stallActive: true);
+        state.UpdateStall(startedAt, recoveryEnabled: true, charaSelectVisible: true);
 
         Assert.Equal(startedAt, state.ArmedAtUtc);
+        Assert.Equal("Automatic recovery in 5:00", state.GetAutomaticRecoveryStatusText(startedAt));
+        Assert.Equal("Automatic recovery in 4:32", state.GetAutomaticRecoveryStatusText(startedAt.AddSeconds(28)));
         Assert.False(state.TryConsumeAutomaticExpiry(
             startedAt + CharacterSelectStallRecoveryState.DefaultRecoveryDelay - TimeSpan.FromTicks(1),
             recoveryEnabled: true));
@@ -39,14 +41,16 @@ public sealed class CharacterSelectRecoveryPolicyTests
         Assert.False(state.TryConsumeAutomaticExpiry(
             startedAt + CharacterSelectStallRecoveryState.DefaultRecoveryDelay + TimeSpan.FromMinutes(1),
             recoveryEnabled: true));
+        Assert.Equal("Automatic attempt used", state.GetAutomaticRecoveryStatusText(
+            startedAt + CharacterSelectStallRecoveryState.DefaultRecoveryDelay));
 
-        state.UpdateStall(startedAt.AddMinutes(7), recoveryEnabled: true, stallActive: false);
+        state.UpdateStall(startedAt.AddMinutes(7), recoveryEnabled: true, charaSelectVisible: false);
         Assert.Equal(DateTime.MinValue, state.ArmedAtUtc);
         Assert.False(state.AutomaticAttemptIssued);
 
-        var nextStall = startedAt.AddMinutes(8);
-        state.UpdateStall(nextStall, recoveryEnabled: true, stallActive: true);
-        Assert.Equal(nextStall, state.ArmedAtUtc);
+        var nextVisibleAt = startedAt.AddMinutes(8);
+        state.UpdateStall(nextVisibleAt, recoveryEnabled: true, charaSelectVisible: true);
+        Assert.Equal(nextVisibleAt, state.ArmedAtUtc);
         Assert.False(state.AutomaticAttemptIssued);
     }
 

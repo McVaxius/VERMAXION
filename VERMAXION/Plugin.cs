@@ -1454,7 +1454,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         CharacterSelectStallRecovery.Update(
             DateTime.UtcNow,
             Configuration.EnableCharacterSelectStallRecovery,
-            FishingRelogCoordinator.IsWaitingForCharacterSelect,
+            GameHelpers.IsAddonVisible("CharaSelect"),
             ClientState.IsLoggedIn);
 
         ProcessBeforeArSuppressionRecovery();

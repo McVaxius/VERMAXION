@@ -5,14 +5,19 @@
 ### Added
 
 - Added the enabled-by-default global `EnableCharacterSelectStallRecovery` setting and its configuration control.
-- During VERMAXION's existing logged-out fishing-relog character-select wait, a five-minute timer now makes one automatic attempt to load character-list entry 0. The Main Window also exposes a `Load first character now` control that queues the same framework-thread attempt.
+- Whenever `CharaSelect` remains visible, a five-minute timer now makes one automatic attempt to load character-list entry 0. The Main Window also exposes a `Load first character now` control that queues the same framework-thread attempt.
 - Both triggers require only a visible `CharaSelect` addon, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. They never open, navigate, or back out of character select; a fired callback accepts one new login confirmation only.
 - The Main Window reports the setting, timer/stall state, and precise blocked reason.
 
+### Changed
+
+- The automatic timer now uses `CharaSelect` visibility as its sole gate, resets when that addon is hidden, and displays `Automatic recovery in m:ss` while armed or `Automatic attempt used` after its one automatic attempt.
+
 ### Verification
 
-- Added focused policy/state coverage for the setting-off gate, timer arm/expiry/one-shot reset, manual eligibility, entry-0 targeting, and one-shot login confirmation.
-- Debug x64 tests and plugin build were run locally. Live-client verification was not performed.
+- Focused Debug x64 character-select recovery coverage passes 5/5, including visible-`CharaSelect` timer arm, `5:00` and `4:32` countdown formatting, one-shot expiry, hidden-addon reset, and re-arm behavior.
+- The complete Debug x64 test project passes 502/502. The Debug x64 plugin build succeeds with 0 errors and the existing `PInvoke.User32` NU1601 dependency-resolution warning (reported during restore and build).
+- Live-client verification was not performed.
 
 ### Fixed
 

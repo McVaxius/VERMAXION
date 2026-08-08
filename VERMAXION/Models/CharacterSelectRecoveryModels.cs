@@ -46,10 +46,10 @@ internal sealed class CharacterSelectStallRecoveryState
     public bool AwaitingLoginConfirmation { get; private set; }
     public bool LoginConfirmationAccepted { get; private set; }
 
-    public void UpdateStall(DateTime nowUtc, bool recoveryEnabled, bool stallActive)
+    public void UpdateStall(DateTime nowUtc, bool recoveryEnabled, bool charaSelectVisible)
     {
-        StallActive = stallActive;
-        if (!recoveryEnabled || !stallActive)
+        StallActive = charaSelectVisible;
+        if (!recoveryEnabled || !charaSelectVisible)
         {
             ArmedAtUtc = DateTime.MinValue;
             AutomaticAttemptIssued = false;
@@ -58,6 +58,16 @@ internal sealed class CharacterSelectStallRecoveryState
 
         if (ArmedAtUtc == DateTime.MinValue)
             ArmedAtUtc = nowUtc.ToUniversalTime();
+    }
+
+    public string GetAutomaticRecoveryStatusText(DateTime nowUtc)
+    {
+        if (AutomaticAttemptIssued)
+            return "Automatic attempt used";
+
+        var remaining = DefaultRecoveryDelay - (nowUtc.ToUniversalTime() - ArmedAtUtc);
+        var remainingSeconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+        return $"Automatic recovery in {remainingSeconds / 60}:{remainingSeconds % 60:D2}";
     }
 
     public bool TryConsumeAutomaticExpiry(DateTime nowUtc, bool recoveryEnabled)
