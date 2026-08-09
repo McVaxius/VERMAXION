@@ -97,6 +97,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private IDtrBarEntry? dtrEntry;
     private bool wasLoggedIn;
+    private bool pendingCharacterRegistration;
+    private bool characterRegistrationCompletedThisLogin;
+    private string characterRegistrationFailureReason = string.Empty;
+    private DateTime characterRegistrationWorldReadySince = DateTime.MinValue;
     private bool pendingBeforeArLogin;
     private bool pendingFishingPostprocessHandoff;
     private bool beforeArStartedThisLogin;
@@ -177,6 +181,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         if (ClientState.IsLoggedIn)
         {
             wasLoggedIn = true;
+            QueueCharacterRegistration("plugin load while logged in");
             BeginBeforeArLoginPendingFromPluginLoad();
         }
 
@@ -794,7 +799,75 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     {
         CharacterSelectStallRecovery.NotifyLoginConfirmation();
         beforeArStartedThisLogin = false;
+        QueueCharacterRegistration("ClientState.Login");
         BeginBeforeArLoginPending("ClientState.Login");
+    }
+
+    private void QueueCharacterRegistration(string reason)
+    {
+        if (pendingCharacterRegistration || characterRegistrationCompletedThisLogin)
+            return;
+
+        pendingCharacterRegistration = true;
+        characterRegistrationFailureReason = string.Empty;
+        characterRegistrationWorldReadySince = DateTime.MinValue;
+        Log.Information($"[Config] Character registration queued: reason={reason}");
+    }
+
+    private void ProcessPendingCharacterRegistration()
+    {
+        if (!pendingCharacterRegistration)
+            return;
+
+        if (!ClientState.IsLoggedIn)
+        {
+            ClearCharacterRegistrationForLogout();
+            return;
+        }
+
+        if (!TryGetWorldReadyCharacterForRegistration(out var charName, out var worldName, out var contentId, out _))
+            return;
+
+        var characterKey = $"{charName}@{worldName}";
+        try
+        {
+            Log.Information($"[Config] Registering logged-in character: character={characterKey}, contentId={contentId:X16}");
+            ConfigManager.EnsureAccountSelected(contentId, null, characterKey);
+            ConfigManager.EnsureCharacterExists(charName, worldName);
+            ApplyLegacyFishingOperationSettingsIfNeeded();
+            Configuration.LastAccountId = ConfigManager.CurrentAccountId;
+            Configuration.Save();
+            ConfigManager.LoadAllAccounts();
+
+            if (!string.Equals(ConfigManager.CurrentCharacterKey, characterKey, StringComparison.OrdinalIgnoreCase))
+            {
+                characterRegistrationFailureReason = $"Could not persist {characterKey}; account configuration remains fail-closed.";
+                pendingCharacterRegistration = false;
+                characterRegistrationWorldReadySince = DateTime.MinValue;
+                Log.Error($"[Config] Character registration failed: {characterRegistrationFailureReason}");
+                return;
+            }
+
+            pendingCharacterRegistration = false;
+            characterRegistrationCompletedThisLogin = true;
+            characterRegistrationWorldReadySince = DateTime.MinValue;
+            Log.Information($"[Config] Character registration completed: accountId={ConfigManager.CurrentAccountId}, characterKey='{ConfigManager.CurrentCharacterKey}'");
+        }
+        catch (Exception ex)
+        {
+            characterRegistrationFailureReason = ex.Message;
+            pendingCharacterRegistration = false;
+            characterRegistrationWorldReadySince = DateTime.MinValue;
+            Log.Error($"[Config] Character registration failed: {ex.Message}");
+        }
+    }
+
+    private void ClearCharacterRegistrationForLogout()
+    {
+        pendingCharacterRegistration = false;
+        characterRegistrationCompletedThisLogin = false;
+        characterRegistrationFailureReason = string.Empty;
+        characterRegistrationWorldReadySince = DateTime.MinValue;
     }
 
     private void BeginBeforeArLoginPendingFromPluginLoad()
@@ -968,15 +1041,21 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
                 return;
             }
 
-            Log.Information($"[AR] Login world-ready resolved: character={charName}@{worldName}, contentId={contentId:X16}");
-            var characterKey = $"{charName}@{worldName}";
-            ConfigManager.EnsureAccountSelected(contentId, null, characterKey);
-            ConfigManager.EnsureCharacterExists(charName, worldName);
-            ApplyLegacyFishingOperationSettingsIfNeeded();
-            Configuration.LastAccountId = ConfigManager.CurrentAccountId;
-            Configuration.Save();
-            ConfigManager.LoadAllAccounts();
+            if (!characterRegistrationCompletedThisLogin)
+            {
+                if (!string.IsNullOrWhiteSpace(characterRegistrationFailureReason))
+                {
+                    SkipBeforeArForLogin($"Character registration failed: {characterRegistrationFailureReason}");
+                }
+                else
+                {
+                    LogPendingBeforeArDiagnostic("waiting for independent character registration");
+                }
 
+                return;
+            }
+
+            Log.Information($"[AR] Login world-ready resolved: character={charName}@{worldName}, contentId={contentId:X16}");
             var activeConfig = ConfigManager.GetActiveConfig();
             var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
             var dueTaskIds = Engine.GetRunnableTaskIdsForPhase(PostProcessTaskPhase.BeforeAR).ToList();
@@ -1355,6 +1434,46 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         return true;
     }
 
+    private bool TryGetWorldReadyCharacterForRegistration(out string charName, out string worldName, out ulong contentId, out string reason)
+    {
+        charName = ObjectTable.LocalPlayer?.Name.ToString() ?? "";
+        worldName = ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString() ?? "";
+        contentId = PlayerState.ContentId;
+
+        var loggedIn = ClientState.IsLoggedIn;
+        var hasLocalPlayer = ObjectTable.LocalPlayer != null;
+        var betweenAreas = Condition[ConditionFlag.BetweenAreas];
+        var betweenAreas51 = Condition[ConditionFlag.BetweenAreas51];
+        var playerAvailable = GameHelpers.IsPlayerAvailable();
+
+        if (!loggedIn ||
+            !hasLocalPlayer ||
+            string.IsNullOrEmpty(charName) ||
+            string.IsNullOrEmpty(worldName) ||
+            contentId == 0 ||
+            betweenAreas ||
+            betweenAreas51 ||
+            !playerAvailable)
+        {
+            characterRegistrationWorldReadySince = DateTime.MinValue;
+            reason = "waiting for character-registration world-ready";
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (characterRegistrationWorldReadySince == DateTime.MinValue)
+            characterRegistrationWorldReadySince = now;
+
+        if ((now - characterRegistrationWorldReadySince).TotalSeconds < BeforeArWorldReadyStableSeconds)
+        {
+            reason = "waiting for character-registration world-ready stability";
+            return false;
+        }
+
+        reason = "world-ready";
+        return true;
+    }
+
     private bool TryGetWorldReadyCharacterForFishing(out string charName, out string worldName, out ulong contentId, out string reason)
     {
         charName = ObjectTable.LocalPlayer?.Name.ToString() ?? "";
@@ -1433,6 +1552,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         {
             wasLoggedIn = true;
             beforeArStartedThisLogin = false;
+            QueueCharacterRegistration("framework login transition");
             BeginBeforeArLoginPending("framework login transition");
         }
         else if (!ClientState.IsLoggedIn && wasLoggedIn)
@@ -1443,7 +1563,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             beforeArStartedThisLogin = false;
             Log.Information("[AR] Preserving VMX ownership across logout transition.");
             ClearPendingBeforeArLogin("framework logout transition");
+            ClearCharacterRegistrationForLogout();
         }
+
+        ProcessPendingCharacterRegistration();
 
         AutoRetainerSelectionGuard.Update(
             Configuration.AutoRestoreRetainerCheckingAfterWork,

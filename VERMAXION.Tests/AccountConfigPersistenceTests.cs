@@ -113,6 +113,24 @@ public sealed class AccountConfigPersistenceTests
     }
 
     [Fact]
+    public void LegacyNullCreationMetadataLoadsWithoutDroppingCharacters()
+    {
+        using var directory = new TemporaryDirectory();
+        var account = CreateAccount("character-a", "character-b");
+        account.CharacterCreatedAtUtc = null!;
+        File.WriteAllText(
+            new AccountConfigPersistence(directory.Path).GetPrimaryPath(AccountId),
+            JsonSerializer.Serialize(account));
+
+        var loaded = LoadSingle(new AccountConfigPersistence(directory.Path));
+
+        Assert.Equal(2, loaded.Characters.Count);
+        Assert.Equal(1000, loaded.Characters["character-a"].JumboCactpotFixedNumber);
+        Assert.Equal(1001, loaded.Characters["character-b"].JumboCactpotFixedNumber);
+        Assert.Empty(loaded.CharacterCreatedAtUtc);
+    }
+
+    [Fact]
     public void MalformedPrimaryLoadsAndRecoversFromLastKnownGoodBackup()
     {
         using var directory = new TemporaryDirectory();

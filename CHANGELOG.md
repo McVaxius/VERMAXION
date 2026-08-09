@@ -18,10 +18,13 @@
 - Focused Debug x64 character-select recovery coverage passes 5/5, including visible-`CharaSelect` timer arm, `5:00` and `4:32` countdown formatting, one-shot expiry, hidden-addon reset, and re-arm behavior.
 - The complete Debug x64 test project passes 502/502. The Debug x64 plugin build succeeds with 0 errors and the existing `PInvoke.User32` NU1601 dependency-resolution warning (reported during restore and build).
 - Live-client verification was not performed.
+- The focused legacy-null account-persistence regression passes 1/1. The fresh Debug x64 plugin build succeeds with 0 errors and the existing `PInvoke.User32` NU1601 dependency-resolution warning. Live-client verification remains pending.
 
 ### Fixed
 
 - Treat a visible `CharaSelect` addon as the complete character-select gate. The generic ECommons addon-ready predicate and `AgentLobby`/entry checks do not apply to this recovery path, which invokes the callback through the visible-addon path.
+- Legacy account JSON with null or missing `CharacterCreatedAtUtc` metadata now loads for the existing timestamp backfill without dropping character configurations.
+- Every confirmed login now independently registers the ready `Name@World` character against its selected account, including plugin reload while already logged in. An unknown character remains with its selected readable account even when another account file is unreadable; unreadable-only account sets still fail closed. Before-AR automation waits for that registration but keeps its existing task, AutoRetainer, and DAD gates unchanged.
 
 ## 2026-08-01 - Fishing handoff waits for Lifestream
 

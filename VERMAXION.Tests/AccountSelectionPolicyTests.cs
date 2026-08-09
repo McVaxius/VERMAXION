@@ -93,7 +93,7 @@ public sealed class AccountSelectionPolicyTests
     }
 
     [Fact]
-    public void UnknownCharacterFailsClosedWhenAnotherAccountIsUnreadable()
+    public void UnknownCharacterSelectsCurrentReadableAccountWhenAnotherAccountIsUnreadable()
     {
         var decision = AccountSelectionPolicy.Select(
             [new AccountSelectionInput("readable-account", HasCurrentCharacter: false, CharacterCount: 4)],
@@ -101,7 +101,8 @@ public sealed class AccountSelectionPolicyTests
             hasCurrentCharacterKey: true,
             hasUnreadableAccounts: true);
 
-        Assert.Equal(AccountSelectionAction.RefuseUnreadable, decision.Action);
+        Assert.Equal(AccountSelectionAction.SelectExisting, decision.Action);
+        Assert.Equal("readable-account", decision.TargetAccountId);
     }
 
     [Fact]
