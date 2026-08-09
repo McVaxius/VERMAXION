@@ -466,15 +466,7 @@ public sealed class FishingService
                 break;
 
             case FishingState.ValidatingUnlock:
-                if (!IsOceanFishingUnlocked())
-                {
-                    Fail(
-                        $"{configManager.CurrentCharacterKey} has not unlocked Ocean Fishing (quest {OceanFishingUnlockQuestId}).",
-                        FishingAttemptFailureKind.CharacterPermanent);
-                    break;
-                }
-
-                log.Information($"[Fishing] Ocean Fishing unlock quest {OceanFishingUnlockQuestId} verified complete");
+                log.Information("[Fishing] Ocean Fishing unlock validation skipped");
                 SetState(FishingState.TravelingToLimsa);
                 break;
 
