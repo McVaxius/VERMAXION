@@ -238,6 +238,9 @@ internal sealed class AccountConfigPersistence
         {
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             var account = JsonSerializer.Deserialize<AccountConfig>(stream, JsonOptions);
+            if (account != null && account.CharacterCreatedAtUtc == null)
+                account.CharacterCreatedAtUtc = new Dictionary<string, DateTime>();
+
             if (!IsValidAccount(account, accountId, out var error))
             {
                 return new CopyReadResult(

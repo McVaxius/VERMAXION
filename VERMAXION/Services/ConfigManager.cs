@@ -141,15 +141,15 @@ public class ConfigManager
             return;
         }
 
-        if (unreadableAccountIds.Count > 0)
-        {
-            log.Error("[ConfigManager] Refusing to add an unknown character while one or more account files are unreadable.");
-            return;
-        }
-
         if (string.IsNullOrEmpty(CurrentAccountId) ||
             !accounts.TryGetValue(CurrentAccountId, out var accountForChar))
         {
+            if (unreadableAccountIds.Count > 0)
+            {
+                log.Error("[ConfigManager] Refusing to add an unknown character because no readable account is selected.");
+                return;
+            }
+
             var fallbackId = accounts
                 .OrderByDescending(pair => pair.Value.Characters.Count)
                 .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)

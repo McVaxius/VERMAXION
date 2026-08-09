@@ -70,13 +70,6 @@ internal static class AccountSelectionPolicy
                     "Selected account containing the current character.");
             }
 
-            if (hasUnreadableAccounts)
-            {
-                return new AccountSelectionDecision(
-                    AccountSelectionAction.RefuseUnreadable,
-                    string.Empty,
-                    "Current character membership cannot be resolved while an account config is unreadable.");
-            }
         }
 
         var currentAccount = accountList.FirstOrDefault(
