@@ -53,6 +53,7 @@ public sealed class AdsIpcClient
     private readonly ICallGateSubscriber<string, bool> startRepairSubscriber;
     private readonly ICallGateSubscriber<string> getStatusJsonSubscriber;
     private readonly ICallGateSubscriber<uint, int, bool> startShopPurchaseSubscriber;
+    private readonly ICallGateSubscriber<bool, bool> setShopKeepOpenSubscriber;
     private readonly ICallGateSubscriber<string> getShopPurchaseStatusJsonSubscriber;
     private readonly ICallGateSubscriber<bool> cancelUtilitySubscriber;
     private DateTime lastRefreshUtc = DateTime.MinValue;
@@ -69,6 +70,8 @@ public sealed class AdsIpcClient
         getStatusJsonSubscriber = pluginInterface.GetIpcSubscriber<string>("ADS.GetStatusJson");
         startShopPurchaseSubscriber =
             pluginInterface.GetIpcSubscriber<uint, int, bool>("ADS.StartShopPurchase");
+        setShopKeepOpenSubscriber =
+            pluginInterface.GetIpcSubscriber<bool, bool>("ADS.SetShopKeepOpen");
         getShopPurchaseStatusJsonSubscriber =
             pluginInterface.GetIpcSubscriber<string>("ADS.GetShopPurchaseStatusJson");
         cancelUtilitySubscriber = pluginInterface.GetIpcSubscriber<bool>("ADS.CancelUtility");
@@ -104,6 +107,24 @@ public sealed class AdsIpcClient
         {
             failure = ex.Message;
             log.Warning($"[ADS] Failed to start shop purchase item={itemId}, quantity={quantity}: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>Asks ADS to hold a successful purchase's shop open for the next one (or to stop holding it).
+    /// Returns whether ADS confirmed the requested state. Every failure — an ADS build without the endpoint
+    /// included — returns false, which the caller must treat as "chaining is unavailable", never as an
+    /// error: the per-item close-and-re-interact path still works, it just cannot exceed two consecutive
+    /// purchases at one NPC.</summary>
+    public bool SetShopKeepOpen(bool enabled)
+    {
+        try
+        {
+            return setShopKeepOpenSubscriber.InvokeFunc(enabled) == enabled;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[ADS] Failed to set shop keep-open={enabled}: {ex.Message}");
             return false;
         }
     }

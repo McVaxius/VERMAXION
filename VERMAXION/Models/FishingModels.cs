@@ -32,6 +32,7 @@ public sealed class FishingRunContext
     public bool? InitialAutoHookEnabled { get; set; }
     public bool AutoHookChanged { get; set; }
     public bool YesAlreadyLeaseOwned { get; set; }
+    public bool YesAlreadyLeaseSuspendedForShopping { get; set; }
     public bool CleanupPending { get; set; }
     public string CleanupReason { get; set; } = string.Empty;
     public DateTimeOffset LastCleanupAttemptUtc { get; set; }
@@ -51,6 +52,7 @@ public enum FishingReturnDestination
     Limsa = 2,
     FreeCompany = 3,
     Custom = 4,
+    Inn = 5,
 }
 
 public enum FishingRepairMode
@@ -71,25 +73,344 @@ public static class FishingDefaults
     public const int OceanFishingRegistrationIntervalHours = 2;
     public const int OceanFishingRegistrationAvailabilityMinutes = 15;
     public const int LureRestockTarget = 22;
-    public const FishingReturnDestination ReturnDestination = FishingReturnDestination.FreeCompany;
-    public const string ReturnCommand = "/li fc";
+    public const FishingReturnDestination ReturnDestination = FishingReturnDestination.Inn;
+    public const string ReturnCommand = "/li inn";
     public const FishingRepairMode RepairMode = FishingRepairMode.NpcNoInn;
     public const int RepairThresholdPercent = 50;
 }
 
+// ArrivalClearance is the clearance tier the sampler ACCEPTED this point under — the arrival gate must
+// re-verify at exactly that tier. Gating a preferred-tier point at the fallback floor would silently
+// weaken the first-cast guard on quiet vessels; gating a fallback point at the full minimum livelocks.
 public readonly record struct OceanFishingRailDestination(
     Vector3 Position,
-    float Rotation);
+    float Rotation,
+    float ArrivalClearance);
+
+/// <summary>
+/// Discrete fixed-spot rail (mode 2): VMX positions toons only at an explicit operator-supplied list of
+/// (Position, Rotation) points — the deck-rail live-test picks (24 primary + 8 backup) — instead of sampling
+/// off geometry. Resolution mirrors the edge-spread policy over a finite set: settled-stay if my nearest spot
+/// is clear, else the nearest listed spot that clears other players by the AoE, else the best-clearance
+/// non-excluded spot. Facing is supplied per spot (the mapped outward-normal), so no sweep constants and no
+/// deck-Y table — the supplied Y IS the arrival Y (must be within the 3D tolerance).
+/// </summary>
+internal static class OceanFishingDiscreteSpotPolicy
+{
+    public static bool Enabled;
+    public static float PlayerAoeYalms = 2.0f;
+    public static float HysteresisYalms = 0.3f;
+    // Small so an excluded/dead spot poisons only itself, not deliberately-nearby backup spots (a sparse
+    // hand-authored list, unlike the edge policy's dense ring where 1.5y is a tiny neighborhood).
+    private const float ExclusionRadiusYalms = 0.5f;
+    private static OceanFishingRailDestination[] _spots = Array.Empty<OceanFishingRailDestination>();
+
+    /// <summary>The vessel's fishing spots, compiled in (world X/Y/Z + outward-facing rotation): 24 primary
+    /// + 8 backup positions walked and validated on the live deck. The vessel's geometry is identical for
+    /// every player and has not changed across expansions, so these are code, not configuration — no user
+    /// ever authors coordinates, and no serialization can corrupt or drift them. Y is the measured deck
+    /// floor (the arrival gate is 3D).</summary>
+    private static readonly (float X, float Y, float Z, float Rotation)[] BuiltInSpots =
+    {
+        (6.75f, 5.21f, -17.53f, 1.7f),
+        (-6.76f, 5.23f, -18.45f, -1.8692f),
+        (7.21f, 5.25f, -15.96f, 1.7017f),
+        (-7.29f, 5.25f, -15.93f, -1.5429f),
+        (7.27f, 6.71f, -0.55f, 1.5708f),
+        (-7.44f, 6.71f, -11.24f, -1.7226f),
+        (7.3f, 6.75f, 2.99f, 1.5708f),
+        (-7.27f, 6.71f, -0.82f, -1.5708f),
+        (7.21f, 6.03f, 5.01f, 1.7471f),
+        (-7.3f, 6.71f, 1.06f, -1.5708f),
+        (6.93f, 5.25f, 6.91f, 1.8064f),
+        (-7.3f, 6.75f, 3.2f, -1.5708f),
+        (6.89f, 5.21f, 10.88f, 1.0821f),
+        (-7.28f, 6.14f, 5.07f, -1.7261f),
+        (8.04f, 5.79f, 14.71f, 1.5708f),
+        (-6.9f, 5.25f, 6.77f, -1.9635f),
+        (8.18f, 6.96f, 16.71f, 1.5708f),
+        (-7.59f, 5.23f, 12.26f, -1.9076f),
+        (-8.14f, 5.82f, 14.75f, -1.5708f),
+        (-8.18f, 7.04f, 16.86f, -1.5708f),
+        (-7.3f, 6.71f, -8.92f, -1.5708f),
+        (-7.32f, 6.71f, -6.79f, -1.5708f),
+        (-7.51f, 6.75f, -5.17f, -1.5708f),
+        (-7.3f, 6.75f, -2.95f, -1.5708f),
+        (7.5f, 6.07f, -13.86f, 1.5708f),
+        (7.24f, 6.75f, -11.86f, 1.5708f),
+        (7.46f, 6.71f, -10.21f, 1.5708f),
+        (7.54f, 6.74f, -7.86f, 1.5708f),
+        (7.45f, 6.75f, -5.86f, 1.5708f),
+        (7.53f, 6.75f, -3.86f, 1.5708f),
+        (7.3f, 6.71f, -1.86f, 1.5708f),
+        (7.52f, 6.74f, 2.14f, 1.5708f),
+    };
+    // Avoid set: spots excluded (dead/contested) during the pre-lock positioning phase. The caller's
+    // excludedDestination is ONE-SHOT (cleared on the next successful sample), which let a dead assigned spot
+    // be re-selected on the following advance -> mine<->fallback churn. Accumulating it here keeps a bad spot
+    // avoided until the set is cleared: at voyage entry (caller passes excludedDestination == null) and on any
+    // config rebuild. NOTE: this policy is only consulted while PLACING the fisher; once fishing acknowledges,
+    // MovementLocked holds the toon for the rest of the voyage, so the set is not re-read across the 3 zones
+    // (a mid-voyage zone flip does NOT reset it, but also never queries it). Per-client (VMX is one instance
+    // per client), only ever touched on the framework thread -> no locking.
+    private static readonly HashSet<int> _avoidThisLeg = new();
+
+    public static void ApplyConfiguration(Configuration configuration)
+    {
+        Enabled = configuration.OceanRailSpreadMode == 2;
+        PlayerAoeYalms = Math.Clamp(configuration.OceanRailEdgePlayerAoeYalms, 0.5f, 5f);
+        // Stamp the SAMPLER-GUARANTEED clearance tier (PlayerAoe), NOT max(Min, PlayerAoe): the sampler only
+        // accepts a spot at the PlayerAoe tier, so stamping a higher arrival clearance it never enforced makes
+        // the 3D arrival gate unreachable when Min > PlayerAoe -> full-voyage livelock.
+        _spots = BuiltInSpots
+            .Select(s => new OceanFishingRailDestination(new Vector3(s.X, s.Y, s.Z), s.Rotation, PlayerAoeYalms))
+            .ToArray();
+        // A rebuilt _spots invalidates the raw indices in the avoid set (a live ConfigWindow save re-runs this),
+        // so drop them rather than avoid the wrong spots or fast-path a now-avoided assigned index.
+        _avoidThisLeg.Clear();
+    }
+
+    private static float MinDistanceTo(Vector3 p, IReadOnlyList<Vector3> others)
+    {
+        var min = float.PositiveInfinity;
+        for (var i = 0; i < others.Count; i++)
+        {
+            var dx = others[i].X - p.X;
+            var dz = others[i].Z - p.Z;
+            var d = MathF.Sqrt(dx * dx + dz * dz);
+            if (d < min) min = d;
+        }
+        return min;
+    }
+
+    public static bool TrySample(
+        Vector3 myPosition,
+        IReadOnlyList<Vector3> otherPlayerPositions,
+        OceanFishingRailDestination? excludedDestination,
+        out OceanFishingRailDestination destination)
+    {
+        destination = default;
+        if (_spots.Length == 0)
+            return false;
+
+        // Maintain the per-leg avoid set. A leg re-entry (excludedDestination == null) clears
+        // it; otherwise fold the excluded spot in so a dead/contested spot stays avoided for the rest of the
+        // leg. This is the actual fix for the mine<->fallback churn: a position settled-stay could not hold,
+        // because the caller re-excludes the CURRENT spot on every pre-lock advance, which dropped control back
+        // to the fixed-assignment primary and re-selected the known-dead assigned spot.
+        if (excludedDestination is null)
+        {
+            _avoidThisLeg.Clear();
+        }
+        else if (excludedDestination is { } ex)
+        {
+            for (var i = 0; i < _spots.Length; i++)
+            {
+                if (Vector2.Distance(new Vector2(_spots[i].Position.X, _spots[i].Position.Z),
+                                     new Vector2(ex.Position.X, ex.Position.Z)) <= ExclusionRadiusYalms)
+                {
+                    _avoidThisLeg.Add(i);
+                }
+            }
+        }
+
+        // Settled-stay: a character already standing at a listed spot keeps it while the spot still clears
+        // every player by the plain AoE radius. New picks below must clear AoE + hysteresis — the
+        // asymmetric bands stop boundary jitter from re-triggering moves once placed.
+        for (var i = 0; i < _spots.Length; i++)
+        {
+            if (_avoidThisLeg.Contains(i)) continue;
+            var dxs = _spots[i].Position.X - myPosition.X;
+            var dzs = _spots[i].Position.Z - myPosition.Z;
+            if (dxs * dxs + dzs * dzs > 0.25f) continue;      // within 0.5y = standing on it
+            if (MinDistanceTo(_spots[i].Position, otherPlayerPositions) >= PlayerAoeYalms)
+            {
+                destination = _spots[i];
+                return true;
+            }
+            break;
+        }
+
+        // Nearest non-avoided spot clearing every other player by AoE + hysteresis. Since every
+        // dead/contested spot is in the avoid set, the toon settles forward onto a fresh spot each
+        // advance and CONVERGES, rather than ping-ponging back to a known-bad one.
+        var clearNeeded = PlayerAoeYalms + HysteresisYalms;
+        var best = -1;
+        var bestDist = float.PositiveInfinity;
+        for (var i = 0; i < _spots.Length; i++)
+        {
+            if (_avoidThisLeg.Contains(i)) continue;
+            if (MinDistanceTo(_spots[i].Position, otherPlayerPositions) < clearNeeded) continue;
+            var dx = _spots[i].Position.X - myPosition.X;
+            var dz = _spots[i].Position.Z - myPosition.Z;
+            var d = MathF.Sqrt(dx * dx + dz * dz);
+            if (d < bestDist) { bestDist = d; best = i; }
+        }
+        if (best >= 0) { destination = _spots[best]; return true; }
+
+        // Degrade like the other policies: best-clearance non-avoided spot rather than failing closed.
+        var fb = -1;
+        var fbClear = float.NegativeInfinity;
+        for (var i = 0; i < _spots.Length; i++)
+        {
+            if (_avoidThisLeg.Contains(i)) continue;
+            var c = MinDistanceTo(_spots[i].Position, otherPlayerPositions);
+            if (c > fbClear) { fbClear = c; fb = i; }
+        }
+        if (fb < 0 || fbClear < OceanFishingContinuousRailPolicy.FallbackPlayerClearance)
+        {
+            // The whole list is avoided/blocked -> return false and let the caller's continuous-sampler
+            // fallback place the character. The avoid set deliberately PERSISTS: clearing it here (the old
+            // behavior, from before the fallback existed, when false meant idling the voyage) re-armed the
+            // known-dead assigned spot after every sampler interlude, churning mine -> dead -> sampler ->
+            // mine for the rest of the placement phase. Spots un-avoid at leg entry.
+            return false;
+        }
+        destination = _spots[fb] with { ArrivalClearance = OceanFishingContinuousRailPolicy.FallbackPlayerClearance };
+        return true;
+    }
+}
 
 internal static class OceanFishingContinuousRailPolicy
 {
-    public const float MinimumPlayerClearance = 1.5f;
-    public const int MaxSampleAttempts = 32;
+    // Mutable statics rather than consts, deliberately: on a vessel whose population varies wildly these
+    // are the knobs an operator needs to turn at runtime (via reflection tooling) without a rebuild.
+    // Persisted values come from Configuration.OceanRail* via ApplyConfiguration at plugin load, so a
+    // bare client is correctly tuned with no external tooling; runtime reflection can still override live.
+    public static float MinimumPlayerClearance = 3f;
+    public static float FallbackPlayerClearance = 1.5f;
+    public static float RailStepYalms = 1f;
+
+    // Direct-SetPosition offset applied at the settled fence to reach the TRUE deck edge, which navmesh
+    // CANNOT walk to (it clamps ~1.5y inboard of the model edge). 0 = disabled (stay at the walkable edge,
+    // prior behavior). Live-tunable via reflection like the clearance knobs, so it can be staged on one
+    // client before wider rollout, and reverted instantly if the online instance rejects the warp.
+    public static float EdgeSetPositionOffsetYalms = 0f;
+
+    /// <summary>Angular speed of the CanFish-sampling facing sweep fallback, in degrees per second. The
+    /// default matches a player holding the turn key (a full 360-degree circle in ~2s ≈ 180 deg/s); the
+    /// sweep still snaps in 15-degree increments, this only sets how fast it steps through them.</summary>
+    public static float FacingSweepDegreesPerSecond = 180f;
+
+    /// <summary>Applies the persisted Configuration knob overrides. Call once at plugin load (and after
+    /// any config-window edit of these values). Values are clamped to sane bounds so a hand-edited config
+    /// cannot produce a zero step or a negative clearance.</summary>
+    public static void ApplyConfiguration(Configuration configuration)
+    {
+        MinimumPlayerClearance = Math.Clamp(configuration.OceanRailMinimumPlayerClearance, 0.5f, 10f);
+        FallbackPlayerClearance = Math.Clamp(configuration.OceanRailFallbackPlayerClearance, 0.5f, MinimumPlayerClearance);
+        RailStepYalms = Math.Clamp(configuration.OceanRailStepYalms, 0.25f, 5f);
+        FacingSweepDegreesPerSecond = Math.Clamp(configuration.OceanRailFacingSweepDegreesPerSecond, 30f, 720f);
+        RailSliceCount = Math.Clamp(configuration.OceanRailSliceCount, 0, 64);
+        RailSliceIndex = Math.Clamp(configuration.OceanRailSliceIndex, 0, Math.Max(0, RailSliceCount - 1));
+    }
     public const float DeckY = 6.711f;
-    public const float StarboardRotation = 1.5f;
-    public const float PortRotation = -1.5f;
+    public const float StarboardRotation = 1.5f;    // face +x (water off starboard)
+    public const float PortRotation = -1.5f;         // face -x (water off port)
+    public const float BowRotation = 0f;             // face +z (water off the bow)
+    public const float SternRotation = 3.14159f;     // face -z (water off the stern)
     public const float FacingToleranceRadians = 0.05f;
 
+    // Rotation is a SIMPLE fixed per-segment angle (perpendicular out from that rail), NOT a computed
+    // face-away-from-centre vector. The face-away version gave DIAGONAL headings; at many spots the cast
+    // then did not point at open water and the game reported CanFish=false, so clients thrashed resampling
+    // (measured attempt counts reached 60-113 in a single voyage). A fixed perpendicular casts straight over the
+    // water at every point on a side, which is how the original proven rail behaved.
+    //
+    // The full walkable perimeter, mapped by tracing a client around the deck with
+    // collision on and reading settled positions (the physical walk, not pathfind success). Fields:
+    // (MinZ, MaxZ, X nominal, Y deck height, Rotation). X is jittered +/-0.125y per point. Deck height
+    // steps along each side (measured, y-consistent zones): mid deck 6.7, aft/forward-low walkways ~5.3,
+    // raised foredeck ~7.5-8.25. Both bow z=27 and stern z=-26 were walk-confirmed at their limits.
+    private static readonly (float MinZ, float MaxZ, float X, float Y, float Rotation)[] RailSegments =
+    [
+        // starboard, stern -> bow (continuous) — face +x
+        (-16.0f, -13.0f, 7.0f, 5.6f, StarboardRotation),
+        (-12.0f, 4.0f, 7.0f, 6.7f, StarboardRotation),
+        (6.0f, 14.0f, 7.0f, 5.3f, StarboardRotation),
+        (15.0f, 22.0f, 7.0f, 7.5f, StarboardRotation),
+        // port, mid -> bow — face -x
+        (-12.0f, 4.0f, -7.0f, 6.7f, PortRotation),
+        (6.0f, 14.0f, -7.0f, 5.3f, PortRotation),
+        (15.0f, 20.0f, -7.0f, 7.5f, PortRotation),
+        // port-aft strip (separate, reached from the stern) — face -x
+        (-19.0f, -14.0f, -6.6f, 5.0f, PortRotation),
+        // bow (centreline, face +z) and stern — the stern now HUGS the walked fence taper (the old
+        // constant x=3.0 across z -26..-19 sat up to ~2.7y inboard of the fence, so CanFish never
+        // passed and clients thrashed there; walked settle points: 5.7@-21.7, 4.9@-23.4, 4.1@-24.7,
+        // 2.6@-26.5). Two short segments track the taper ~0.5y inside it; the fence-push fallback closes
+        // the remaining gap physically.
+        (22.0f, 27.0f, 0.0f, 8.25f, BowRotation),
+        (-24.0f, -21.0f, 4.3f, 5.2f, SternRotation),
+        (-26.5f, -24.5f, 2.6f, 5.2f, SternRotation),
+    ];
+
+    // Per-client private rail slice. With many cooperating clients sampling SIMULTANEOUSLY, the clearance
+    // check races: everyone still stands in the spawn stack, the whole rail looks empty to everyone, and
+    // Independent random picks can collide when several clients arrive together. Slicing gives each client
+    // a disjoint window of the linear rail, so peer spacing holds by construction regardless of timing:
+    // candidates keep only the central 50% of each slice to preserve a gap between adjacent windows.
+    // Defaults (0, 1) mean "whole rail" — behavior is unchanged until an operator assigns indices via
+    // reflection tooling, exactly like the clearance knobs above. TrySample falls back to the whole rail
+    // when the slice itself has no acceptable point (e.g. strangers parked in it), so a packed slice
+    // degrades instead of stalling.
+    public static int RailSliceIndex = 0;
+    public static int RailSliceCount = 1;
+
+    private static float TotalRailLength
+    {
+        get
+        {
+            var total = 0f;
+            foreach (var (minZ, maxZ, _, _, _) in RailSegments)
+                total += maxZ - minZ;
+            return total;
+        }
+    }
+
+    private static bool InSlice(float cumulative, int sliceIndex)
+    {
+        if (RailSliceCount <= 1)
+            return true;
+        var width = TotalRailLength / RailSliceCount;
+        var lo = width * Math.Clamp(sliceIndex, 0, RailSliceCount - 1);
+        return cumulative >= lo + width * 0.25f && cumulative <= lo + width * 0.75f;
+    }
+
+    /// <summary>
+    /// Slice visit order for the fallback: own slice first, then neighbors by distance. Measured
+    /// motivation: when a client's own slice was stranger-occupied, the old
+    /// whole-rail fallback ignored slices entirely and could land inside another client's window. Borrowing
+    /// the nearest free slice preserves the by-construction peer spacing even in the fallback.
+    /// </summary>
+    private static IEnumerable<int> SliceVisitOrder()
+    {
+        var own = Math.Clamp(RailSliceIndex, 0, Math.Max(0, RailSliceCount - 1));
+        yield return own;
+        for (var d = 1; d < RailSliceCount; d++)
+        {
+            if (own - d >= 0) yield return own - d;
+            if (own + d < RailSliceCount) yield return own + d;
+        }
+    }
+
+    /// <summary>
+    /// Picks a rail point by sweeping every segment on BOTH sides rather than throwing random darts.
+    /// </summary>
+    /// <remarks>
+    /// The previous implementation drew 32 independent random candidates and
+    /// failed closed when all were blocked. On a busy vessel (measured: 23 other players) that exhausts
+    /// routinely even when open rail exists, and several cooperating clients would then sit at
+    /// "Waiting for an open rail point" indefinitely. The sweep enumerates the whole rail at
+    /// <see cref="RailStepYalms"/> resolution (with a random phase and per-point jitter so repeated calls
+    /// and concurrent clients do not contest identical points), then:
+    /// 1. picks UNIFORMLY AT RANDOM among candidates with full <see cref="MinimumPlayerClearance"/> —
+    ///    random choice, not best-clearance, so several clients sampling simultaneously spread out
+    ///    instead of converging on the same "emptiest" spot;
+    /// 2. otherwise falls back to the single largest-clearance point if it still clears
+    ///    <see cref="FallbackPlayerClearance"/> — a busy boat degrades instead of stalling;
+    /// 3. fails closed only when the entire rail is genuinely packed.
+    /// </remarks>
     public static bool TrySample(
         Random random,
         IReadOnlyList<Vector3> otherPlayerPositions,
@@ -103,11 +424,48 @@ internal static class OceanFishingContinuousRailPolicy
             .Where(IsFinite)
             .ToArray();
 
-        for (var attempt = 0; attempt < MaxSampleAttempts; attempt++)
+        // RE-PICK (previousDestination present): the group is already anchored, so the per-client slice is
+        // no longer needed to defeat the boarding-time stampede -- take the NEAREST valid spot on the WHOLE
+        // rail to the one we're leaving, so a bumped client steps to the closest gap instead of walking the
+        // ship end to end. Player clearance still enforces spacing.
+        if (previousDestination is { } prev)
         {
-            var candidate = SampleCandidate(random);
-            if (!HasPlayerClearance(candidate.Position, players))
-                continue;
+            if (TryScan(random, players, previousDestination, prev.Position, -1, out destination))
+                return true;
+            destination = default;
+            return false;
+        }
+
+        // INITIAL placement: slice-first, then NEIGHBOR slices by distance, then the whole rail as a last
+        // resort, picking RANDOMLY within the winning slice. The private slice kills the concurrent-arrival
+        // race between cooperating clients boarding at once.
+        foreach (var slice in SliceVisitOrder())
+        {
+            if (TryScan(random, players, null, null, slice, out destination))
+                return true;
+        }
+        if (RailSliceCount > 1 &&
+            TryScan(random, players, null, null, -1, out destination))
+            return true;
+
+        destination = default;
+        return false;
+    }
+
+    private static bool TryScan(
+        Random random,
+        Vector3[] players,
+        OceanFishingRailDestination? previousDestination,
+        Vector3? nearestTo,
+        int sliceIndex,
+        out OceanFishingRailDestination destination)
+    {
+        var clear = new List<OceanFishingRailDestination>();
+        var best = default(OceanFishingRailDestination);
+        var bestClearance = float.NegativeInfinity;
+
+        foreach (var candidate in EnumerateRailCandidates(random, sliceIndex))
+        {
             if (previousDestination is { } previous &&
                 IsFinite(previous.Position) &&
                 Vector3.Distance(candidate.Position, previous.Position) < MinimumPlayerClearance)
@@ -115,7 +473,30 @@ internal static class OceanFishingContinuousRailPolicy
                 continue;
             }
 
-            destination = candidate;
+            var clearance = ClearanceAt(candidate.Position, players);
+            if (clearance >= MinimumPlayerClearance)
+                clear.Add(candidate);
+            if (clearance > bestClearance)
+            {
+                bestClearance = clearance;
+                best = candidate;
+            }
+        }
+
+        if (clear.Count > 0)
+        {
+            // Re-pick takes the candidate NEAREST the spot we're leaving (shortest walk); initial placement
+            // takes a random one so simultaneous boarders spread out instead of converging on one gap.
+            var chosen = nearestTo is { } near
+                ? clear.OrderBy(c => Vector3.DistanceSquared(c.Position, near)).First()
+                : clear[random.Next(clear.Count)];
+            destination = chosen with { ArrivalClearance = MinimumPlayerClearance };
+            return true;
+        }
+
+        if (bestClearance >= FallbackPlayerClearance)
+        {
+            destination = best with { ArrivalClearance = FallbackPlayerClearance };
             return true;
         }
 
@@ -123,34 +504,79 @@ internal static class OceanFishingContinuousRailPolicy
         return false;
     }
 
+    private static IEnumerable<OceanFishingRailDestination> EnumerateRailCandidates(Random random, int sliceIndex)
+    {
+        var step = MathF.Max(0.25f, RailStepYalms);
+        var phase = (float)(random.NextDouble() * step);
+        var offset = 0f;
+        foreach (var (minZ, maxZ, segX, segY, rotation) in RailSegments)
+        {
+            for (var z = minZ + phase; z <= maxZ; z += step)
+            {
+                if (sliceIndex >= 0 && !InSlice(offset + (z - minZ), sliceIndex))
+                    continue;
+                var jitteredZ = Math.Clamp(z + Lerp(-0.3f, 0.3f, random.NextDouble()), minZ, maxZ);
+                var x = segX + Lerp(-0.125f, 0.125f, random.NextDouble());
+                yield return new OceanFishingRailDestination(
+                    new Vector3(x, segY, jitteredZ),
+                    rotation,
+                    MinimumPlayerClearance);
+            }
+            offset += maxZ - minZ;
+        }
+    }
+
+    private static float ClearanceAt(Vector3 position, IReadOnlyList<Vector3> players)
+    {
+        var minimum = float.PositiveInfinity;
+        foreach (var player in players)
+        {
+            var distance = Vector3.Distance(position, player);
+            if (distance < minimum)
+                minimum = distance;
+        }
+
+        return minimum;
+    }
+
     public static OceanFishingRailDestination SampleCandidate(Random random)
     {
         ArgumentNullException.ThrowIfNull(random);
 
-        var starboard = random.NextDouble() < 0.5;
-        if (starboard)
+        // Pick a segment weighted by its length (longer rail = proportionally more likely), then a random
+        // point in it, so the distribution is uniform along the whole rail as segments are added/resized.
+        var target = random.NextDouble() * TotalRailLength;
+        var (minZ, maxZ, segX, segY, rotation) = RailSegments[^1];
+        var acc = 0f;
+        foreach (var seg in RailSegments)
         {
-            var x = Lerp(7.0f, 7.25f, random.NextDouble());
-            var forwardSegment = random.NextDouble() < 0.5;
-            var z = forwardSegment
-                ? Lerp(-14.0f, -4.0f, random.NextDouble())
-                : Lerp(-2.0f, 5.0f, random.NextDouble());
-            return new OceanFishingRailDestination(
-                new Vector3(x, DeckY, z),
-                StarboardRotation);
+            acc += seg.MaxZ - seg.MinZ;
+            if (target <= acc) { (minZ, maxZ, segX, segY, rotation) = seg; break; }
         }
-
+        var x = segX + Lerp(-0.125f, 0.125f, random.NextDouble());
+        var z = Lerp(minZ, maxZ, random.NextDouble());
         return new OceanFishingRailDestination(
-            new Vector3(
-                Lerp(-7.25f, -7.0f, random.NextDouble()),
-                DeckY,
-                Lerp(-10.0f, 5.5f, random.NextDouble())),
-            PortRotation);
+            new Vector3(x, segY, z),
+            rotation,
+            MinimumPlayerClearance);
     }
 
     public static bool HasPlayerClearance(
         Vector3 position,
         IReadOnlyList<Vector3> otherPlayerPositions)
+        => HasPlayerClearance(position, otherPlayerPositions, MinimumPlayerClearance);
+
+    // The explicit-clearance overload exists for the ARRIVAL gate: sampling prefers
+    // MinimumPlayerClearance but may accept a fallback point down to FallbackPlayerClearance on a busy
+    // vessel. If arrival then re-verified at the full minimum, a fallback destination could never pass —
+    // the character would resample, walk, fail the gate again, and livelock without ever casting. The
+    // gate therefore enforces OceanFishingRailDestination.ArrivalClearance — the tier the sampler
+    // actually accepted that specific point under — so fallback points remain reachable while
+    // preferred-tier points keep the full-minimum guard.
+    public static bool HasPlayerClearance(
+        Vector3 position,
+        IReadOnlyList<Vector3> otherPlayerPositions,
+        float clearance)
     {
         ArgumentNullException.ThrowIfNull(otherPlayerPositions);
         if (!IsFinite(position))
@@ -158,7 +584,7 @@ internal static class OceanFishingContinuousRailPolicy
 
         return otherPlayerPositions
             .Where(IsFinite)
-            .All(player => Vector3.Distance(position, player) >= MinimumPlayerClearance);
+            .All(player => Vector3.Distance(position, player) >= clearance);
     }
 
     public static bool IsFacingOutward(float currentRotation, float targetRotation)
@@ -234,6 +660,17 @@ internal sealed class OceanFishingVoyageState
     public static readonly TimeSpan FacingVerificationTimeout = TimeSpan.FromSeconds(10);
     public const float MinimumNavigationProgress = 0.25f;
     public const int PostArrivalAttemptLimit = 5;
+    // Hard cap on how many distinct rail points one voyage will try before giving up. Without it,
+    // AdvanceDestination resampled forever, so a client on a genuinely-unfishable spot ran around the deck
+    // indefinitely on a public boat. At the cap the run abandons to a quiet logout rather
+    // than keep performing.
+    public const int MaxDestinationAttempts = 10;
+
+    /// <summary>True once positioning has burned the whole attempt budget without ever starting to fish —
+    /// the give-up signal that routes the voyage to a logout instead of another resample.</summary>
+    public bool DestinationAttemptsExhausted =>
+        PositioningActive && !MovementLocked && !FishingEverStarted &&
+        DestinationAttemptNumber >= MaxDestinationAttempts;
 
     public void Reset()
     {
@@ -259,6 +696,8 @@ internal sealed class OceanFishingVoyageState
     {
         if (MovementLocked || FishingEverStarted || !PositioningActive)
             return false;
+        if (DestinationAttemptNumber >= MaxDestinationAttempts)
+            return false; // exhausted — caller routes to logout via DestinationAttemptsExhausted
 
         DestinationAttemptNumber++;
         ResetDestinationRecovery(nowUtc);
@@ -418,7 +857,7 @@ internal sealed class OceanFishingVoyageState
                 Ready: false,
                 ShouldResample: true,
                 ShouldAbort: false,
-                $"another player is within {OceanFishingContinuousRailPolicy.MinimumPlayerClearance:F1} yalms");
+                "another player is inside the destination's first-cast clearance");
         }
 
         if (!DestinationArrived)
@@ -982,11 +1421,20 @@ public static class FishingReturnPolicy
     public static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan FailAfter = TimeSpan.FromSeconds(120);
 
+    // A territory change alone must NOT verify the return: multi-hop returns (city aetheryte -> inn room)
+    // change territory mid-chain, and settling there ran cleanup + multi-restore while Lifestream was still
+    // traveling. Any positive signal counts only once Lifestream and
+    // the transition conditions are quiet.
     public static bool IsVerified(bool commandRequired, bool activityObserved, bool territoryChanged, bool currentlyBusy)
-        => !commandRequired || territoryChanged || activityObserved && !currentlyBusy;
+        => !commandRequired || !currentlyBusy && (territoryChanged || activityObserved);
 
+    // The 30s single retry must also not fire while the first command's chain is still executing —
+    // re-sending /li inn mid-chain stacks a duplicate task queue.
     public static bool ShouldRetry(int commandsSent, TimeSpan elapsed)
         => commandsSent == 1 && elapsed >= RetryAfter;
+
+    public static bool ShouldRetry(int commandsSent, TimeSpan elapsed, bool currentlyBusy)
+        => !currentlyBusy && ShouldRetry(commandsSent, elapsed);
 
     public static bool ShouldSuppressCommand(bool resultAddonVisible)
         => resultAddonVisible;
@@ -1905,6 +2353,9 @@ public static class FishingOperationPolicy
                 : configuredCommand,
             FishingReturnDestination.FreeCompany => string.IsNullOrWhiteSpace(configuredCommand)
                 ? "/li fc"
+                : configuredCommand,
+            FishingReturnDestination.Inn => string.IsNullOrWhiteSpace(configuredCommand)
+                ? "/li inn"
                 : configuredCommand,
             FishingReturnDestination.Custom => configuredCommand,
             _ => string.Empty,

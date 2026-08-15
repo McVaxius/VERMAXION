@@ -879,6 +879,7 @@ public class ConfigWindow : Window, IDisposable
                         {
                             Enabled = row.DefaultEnabled,
                             Target = row.DefaultTarget,
+                            Min = row.DefaultMin,
                         };
                         cc.FishingStockItems[row.ItemId] = stock;
                     }
@@ -900,6 +901,18 @@ public class ConfigWindow : Window, IDisposable
                         stock.Target = Math.Max(0, stockTarget);
                         changed = true;
                     }
+                    ImGui.SameLine();
+                    ImGui.TextUnformatted("min");
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                    var stockMin = stock.Min;
+                    if (ImGui.InputInt("##Min", ref stockMin))
+                    {
+                        stock.Min = Math.Max(0, stockMin);
+                        changed = true;
+                    }
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip("Reorder point. 0 = buy whenever below target (default). Above 0 = only buy back up to target once inventory drops to this or lower.");
                     if (isDefault)
                     {
                         ImGui.SameLine();
@@ -1000,6 +1013,27 @@ public class ConfigWindow : Window, IDisposable
                 DrawDefaultOverrideButton(isDefault, configManager, "FishingSellAfterVoyage", "Fishing sell cleanup",
                     (source, target) => target.FishingSellAfterVoyage = source.FishingSellAfterVoyage);
                 DrawHelpMarker("After discard cleanup, moves near Limsa's Merchant & Mender and runs /ays itemsell. Cleanup warnings do not prevent the configured return.");
+
+                var eatAnyFood = cc.FishingEatAnyFood;
+                if (ImGui.Checkbox("Eat any food in bags (pre-fishing lobby)", ref eatAnyFood))
+                {
+                    cc.FishingEatAnyFood = eatAnyFood;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingEatAnyFood", "Eat any fishing food",
+                    (source, target) => target.FishingEatAnyFood = source.FishingEatAnyFood);
+                DrawHelpMarker("Eats food in the pre-fishing lobby so Well-Fed covers the voyage (no fishing time lost; only eats while stationary, so it never fights rail placement). ON = scan the bags and eat whatever food is there, preferring GP food. Set a specific item id below to override the scan. Both off = no food.");
+
+                var fishingFoodItemId = (int)cc.FishingFoodItemId;
+                ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                if (ImGui.InputInt("Specific food item id (0 = auto)", ref fishingFoodItemId))
+                {
+                    cc.FishingFoodItemId = (uint)Math.Max(0, fishingFoodItemId);
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FishingFoodItemId", "Fishing food item id",
+                    (source, target) => target.FishingFoodItemId = source.FishingFoodItemId);
+                DrawHelpMarker("Optional override: eat exactly this item id (NQ+HQ both count; must be in inventory). 0 = let 'Eat any food' pick.");
 
                 ImGui.TextDisabled("Requires XADB, AutoRetainer, Lifestream, AutoHook, and vnavmesh. ADS is the only repair provider and is required when repair is enabled.");
                 ImGui.Unindent();
@@ -2424,6 +2458,7 @@ public class ConfigWindow : Window, IDisposable
             FishingReturnDestination.None => "None",
             FishingReturnDestination.Limsa => "Limsa",
             FishingReturnDestination.FreeCompany => "Free Company",
+            FishingReturnDestination.Inn => "Inn",
             FishingReturnDestination.Custom => "Custom",
             _ => "Home",
         };
@@ -2434,6 +2469,7 @@ public class ConfigWindow : Window, IDisposable
             FishingReturnDestination.None => string.Empty,
             FishingReturnDestination.Limsa => "/li limsa",
             FishingReturnDestination.FreeCompany => "/li fc",
+            FishingReturnDestination.Inn => "/li inn",
             FishingReturnDestination.Custom => string.Empty,
             _ => "/li home",
         };
@@ -2485,6 +2521,16 @@ public class ConfigWindow : Window, IDisposable
                 row.DefaultTarget = Math.Max(0, target);
                 changed = true;
             }
+            ImGui.SameLine();
+            var defaultMin = row.DefaultMin;
+            ImGui.SetNextItemWidth(72f);
+            if (ImGui.InputInt("##DefaultMin", ref defaultMin))
+            {
+                row.DefaultMin = Math.Max(0, defaultMin);
+                changed = true;
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Default reorder point (0 = buy whenever below target).");
             ImGui.SameLine();
             var enabled = row.DefaultEnabled;
             if (ImGui.Checkbox("##DefaultEnabled", ref enabled))
@@ -2673,6 +2719,7 @@ public class ConfigWindow : Window, IDisposable
                         {
                             Enabled = row.DefaultEnabled,
                             Target = row.DefaultTarget,
+                            Min = row.DefaultMin,
                         };
                         wizardDraft.FishingStockItems[row.ItemId] = stock;
                     }
@@ -2685,6 +2732,11 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.SetNextItemWidth(72f);
                     if (ImGui.InputInt("target", ref target))
                         stock.Target = Math.Max(0, target);
+                    ImGui.SameLine();
+                    var wizardMin = stock.Min;
+                    ImGui.SetNextItemWidth(72f);
+                    if (ImGui.InputInt("min", ref wizardMin))
+                        stock.Min = Math.Max(0, wizardMin);
                     ImGui.PopID();
                 }
                 ImGui.TextWrapped("Requires ADS and the listed fishing dependencies. Optional bait purchase failures are reported; Versatile Lure blocks only when none remains.");

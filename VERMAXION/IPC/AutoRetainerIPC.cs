@@ -380,6 +380,222 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         }
     }
 
+    /// <summary>
+    /// Disables AutoRetainer's movement-stuck detector (BailoutManager.RunStuckDetection, AR 4.6.1.17) by
+    /// holding its EzThrottler gate key. That detector has two field-verified defects harmful to a fishing
+    /// character: (1) it treats any character stationary &gt;15s while MultiMode is active as "movement
+    /// stuck", setting Enabled/WorkshopEnabled=false (silently benching it from retainers AND submarines)
+    /// and firing Vnavmesh.Stop()+Lifestream.Abort(); fishing is inherently stationary, so every voyage
+    /// feeds it victims and the exclusion is reported only to AR's AnomalyWindow, never the log; (2) its
+    /// failure path dereferences Player.Position with no Player.Available guard, so with MultiMode active
+    /// and nobody logged in (char select) it throws a NullReferenceException every framework tick and
+    /// MultiMode never advances — a soft deadlock. No config flag gates the detector; RunStuckDetection
+    /// early-returns unless EzThrottler.Check("NoMoveCheck") passes, so re-arming a very long throttle on
+    /// that key is the narrowest off-switch. Re-asserted periodically because AR reloads reset its
+    /// throttler. The throttle lives in AR's OWN ECommons instance, reached through AR's load context.
+    /// </summary>
+    public bool TrySuppressStuckDetection(out string error)
+    {
+        error = string.Empty;
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out error))
+                return false;
+
+            var context = AssemblyLoadContext.GetLoadContext(plugin.GetType().Assembly);
+            var ecommons = context?.Assemblies.FirstOrDefault(
+                a => string.Equals(a.GetName().Name, "ECommons", StringComparison.Ordinal));
+            var throttler = ecommons?.GetType("ECommons.Throttlers.EzThrottler");
+            var method = throttler?.GetMethod(
+                "Throttle",
+                BindingFlags.Static | BindingFlags.Public,
+                [typeof(string), typeof(int), typeof(bool)]);
+            if (method == null)
+            {
+                error = "AutoRetainer's EzThrottler.Throttle(string,int,bool) was not reachable.";
+                return false;
+            }
+
+            method.Invoke(null, ["NoMoveCheck", 2_000_000_000, true]);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// "Fake-ready" one enabled character so AutoRetainer MultiMode logs it in, even when no venture is
+    /// naturally due. AR relogs to whichever enabled character becomes ready soonest (earliest retainer
+    /// VentureEndsAt); if none is due during an ocean-fishing registration window, a fishing-enabled
+    /// character can sit at the title/char-select screen and miss the boat entirely. Setting one retainer's
+    /// VentureEndsAt to now+leadSeconds makes AR treat that character as ready and log it in — the same
+    /// mechanism AR's own DebugArtisan "15s"/"1m" buttons use (r.VentureEndsAt = P.Time + n). It never
+    /// touches MultiModeEnabled (VMX-owned) and self-corrects: AR overwrites VentureEndsAt from live game
+    /// data the next time that character is logged in. Observed effect: title-wedged clients logged in
+    /// within ~45s of the write.
+    /// </summary>
+    public bool TryFakeReadyEnabledCharacter(int leadSeconds, out string who, out string error)
+    {
+        who = string.Empty;
+        error = string.Empty;
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
+                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+            {
+                return false;
+            }
+
+            // VentureEndsAt is standard unix seconds (matches DateTimeOffset.UtcNow), so no need to read
+            // AutoRetainer's clock. Floor the lead so a mis-passed value can't set a past/near-now time.
+            var target = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + Math.Max(10, leadSeconds);
+
+            if (ReadMember(config, "OfflineData") is not IEnumerable offline)
+            {
+                error = "AutoRetainer OfflineData was not readable.";
+                return false;
+            }
+
+            foreach (var character in offline.Cast<object>())
+            {
+                if (character == null || !ReadBool(character, "Enabled"))
+                    continue;
+                if (ReadMember(character, "RetainerData") is not IEnumerable retainers)
+                    continue;
+                // Prefer a retainer with a live venture — AR's readiness checks key off HasVenture, so
+                // writing VentureEndsAt on a venture-less retainer may not be honored.
+                var retainerList = retainers.Cast<object>().Where(r => r != null).ToList();
+                var retainer = retainerList.FirstOrDefault(r => ReadBool(r!, "HasVenture")) ?? retainerList.FirstOrDefault();
+                if (retainer == null)
+                    continue;
+
+                var type = retainer.GetType();
+                var field = type.GetField("VentureEndsAt", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (field != null && field.FieldType == typeof(long))
+                {
+                    field.SetValue(retainer, target);
+                    who = ReadString(character, "Name");
+                    return true;
+                }
+                var property = type.GetProperty("VentureEndsAt", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (property != null && property.CanWrite && property.PropertyType == typeof(long))
+                {
+                    property.SetValue(retainer, target);
+                    who = ReadString(character, "Name");
+                    return true;
+                }
+            }
+
+            error = "no enabled character with a writable retainer venture was found.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    /// <summary>Sets Enabled=true on the OfflineData entry matching the content id (the inn-park enable
+    /// rollout: a char is AR-enabled only once it has been parked at a known-clean inn location). In-memory
+    /// write; AutoRetainer persists it on its own save cycle.</summary>
+    public bool TryEnableCharacter(ulong contentId, out string who, out string error)
+    {
+        who = string.Empty;
+        error = string.Empty;
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
+                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+            {
+                return false;
+            }
+            if (ReadMember(config, "OfflineData") is not IEnumerable offline)
+            {
+                error = "AutoRetainer OfflineData was not readable.";
+                return false;
+            }
+            var character = offline.Cast<object?>()
+                .FirstOrDefault(value => value != null && ReadUInt64(value, "CID") == contentId);
+            if (character == null)
+            {
+                error = $"no OfflineData entry for content id {contentId:X}.";
+                return false;
+            }
+            who = ReadString(character, "Name");
+            if (ReadBool(character, "Enabled"))
+                return true; // already enabled — idempotent success
+            var type = character.GetType();
+            var field = type.GetField("Enabled", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (field != null && field.FieldType == typeof(bool))
+            {
+                field.SetValue(character, true);
+                return true;
+            }
+            var property = type.GetProperty("Enabled", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (property != null && property.CanWrite && property.PropertyType == typeof(bool))
+            {
+                property.SetValue(character, true);
+                return true;
+            }
+            error = "Enabled member was not writable.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    /// <summary>Reads the earliest VentureEndsAt (unix seconds) across the retainers of the OfflineData
+    /// entry matching the content id. Returns false when the char/entry/retainers are unreadable; a char
+    /// with no ventures out yields earliest=long.MaxValue.</summary>
+    public bool TryReadEarliestVenture(ulong contentId, out long earliestEndsAt, out string error)
+    {
+        earliestEndsAt = long.MaxValue;
+        error = string.Empty;
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
+                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+            {
+                return false;
+            }
+            if (ReadMember(config, "OfflineData") is not IEnumerable offline)
+            {
+                error = "AutoRetainer OfflineData was not readable.";
+                return false;
+            }
+            var character = offline.Cast<object?>()
+                .FirstOrDefault(value => value != null && ReadUInt64(value, "CID") == contentId);
+            if (character == null)
+            {
+                error = $"no OfflineData entry for content id {contentId:X}.";
+                return false;
+            }
+            if (ReadMember(character, "RetainerData") is not IEnumerable retainers)
+                return true; // no retainers — nothing ever due
+            foreach (var retainer in retainers.Cast<object?>())
+            {
+                if (retainer == null || !ReadBool(retainer, "HasVenture"))
+                    continue;
+                var ends = ReadInt64(retainer, "VentureEndsAt");
+                if (ends > 0 && ends < earliestEndsAt)
+                    earliestEndsAt = ends;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
     public bool TryAcquireSuppression()
     {
         var remote = ReadSuppression();
