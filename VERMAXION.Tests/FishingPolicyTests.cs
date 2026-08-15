@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using VERMAXION.Models;
@@ -21,11 +22,13 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
-    public void DefaultOperationSettingsUseFcReturnAndNpcNoInnRepair()
+    public void DefaultOperationSettingsUseInnReturnAndNpcNoInnRepair()
     {
         Assert.Equal(22, FishingDefaults.LureRestockTarget);
-        Assert.Equal(FishingReturnDestination.FreeCompany, FishingDefaults.ReturnDestination);
-        Assert.Equal("/li fc", FishingDefaults.ReturnCommand);
+        // Inn is the deliberate default return: fishers park at the inn between windows (inn-park
+        // pipeline), not the FC estate.
+        Assert.Equal(FishingReturnDestination.Inn, FishingDefaults.ReturnDestination);
+        Assert.Equal("/li inn", FishingDefaults.ReturnCommand);
         Assert.Equal(FishingRepairMode.NpcNoInn, FishingDefaults.RepairMode);
         Assert.Equal(50, FishingDefaults.RepairThresholdPercent);
 
@@ -36,7 +39,7 @@ public sealed class FishingPolicyTests
             FishingDefaults.RepairMode,
             FishingDefaults.RepairThresholdPercent);
 
-        Assert.Equal("/li fc", FishingOperationPolicy.ResolveReturnCommand(settings));
+        Assert.Equal("/li inn", FishingOperationPolicy.ResolveReturnCommand(settings));
 
         var decision = FishingOperationPolicy.EvaluateRepair(
             settings,
@@ -57,80 +60,164 @@ public sealed class FishingPolicyTests
         Assert.Equal(expectedTarget, FishingOperationPolicy.ResolveLureRestockTarget(configuredTarget));
     }
 
+    // Mirror of the production RailSegments perimeter map — the walked/measured deck geometry with
+    // per-segment deck heights: (MinZ, MaxZ, X nominal jittered +/-0.125y, Y measured deck height,
+    // outward Rotation). Kept here as the independent spec: a production geometry change must be
+    // walk-proven and updated here deliberately, not absorbed silently.
+    private static readonly (float MinZ, float MaxZ, float X, float Y, float Rotation)[] ExpectedRailSegments =
+    [
+        // starboard, stern -> bow — face +x
+        (-16.0f, -13.0f, 7.0f, 5.6f, OceanFishingContinuousRailPolicy.StarboardRotation),
+        (-12.0f, 4.0f, 7.0f, 6.7f, OceanFishingContinuousRailPolicy.StarboardRotation),
+        (6.0f, 14.0f, 7.0f, 5.3f, OceanFishingContinuousRailPolicy.StarboardRotation),
+        (15.0f, 22.0f, 7.0f, 7.5f, OceanFishingContinuousRailPolicy.StarboardRotation),
+        // port, mid -> bow — face -x
+        (-12.0f, 4.0f, -7.0f, 6.7f, OceanFishingContinuousRailPolicy.PortRotation),
+        (6.0f, 14.0f, -7.0f, 5.3f, OceanFishingContinuousRailPolicy.PortRotation),
+        (15.0f, 20.0f, -7.0f, 7.5f, OceanFishingContinuousRailPolicy.PortRotation),
+        // port-aft strip — face -x
+        (-19.0f, -14.0f, -6.6f, 5.0f, OceanFishingContinuousRailPolicy.PortRotation),
+        // bow centreline — face +z; stern taper — face -z
+        (22.0f, 27.0f, 0.0f, 8.25f, OceanFishingContinuousRailPolicy.BowRotation),
+        (-24.0f, -21.0f, 4.3f, 5.2f, OceanFishingContinuousRailPolicy.SternRotation),
+        (-26.5f, -24.5f, 2.6f, 5.2f, OceanFishingContinuousRailPolicy.SternRotation),
+    ];
+
     [Fact]
     public void ContinuousRailsUseProvenRangesAndOutwardCharacterRotations()
     {
         var random = new Random(20260724);
-        var starboardSamples = 0;
-        var portSamples = 0;
+        var rotationSamples = new Dictionary<float, int>();
 
         for (var sample = 0; sample < 10_000; sample++)
         {
             var destination = OceanFishingContinuousRailPolicy.SampleCandidate(random);
 
-            Assert.Equal(OceanFishingContinuousRailPolicy.DeckY, destination.Position.Y);
-            if (destination.Position.X > 0)
-            {
-                starboardSamples++;
-                Assert.InRange(destination.Position.X, 7.0f, 7.25f);
-                Assert.True(
-                    destination.Position.Z is >= -14.0f and <= -4.0f or >= -2.0f and <= 5.0f,
-                    $"Unexpected starboard Z {destination.Position.Z}");
-                Assert.Equal(OceanFishingContinuousRailPolicy.StarboardRotation, destination.Rotation);
-            }
-            else
-            {
-                portSamples++;
-                Assert.InRange(destination.Position.X, -7.25f, -7.0f);
-                Assert.InRange(destination.Position.Z, -10.0f, 5.5f);
-                Assert.Equal(OceanFishingContinuousRailPolicy.PortRotation, destination.Rotation);
-            }
+            // Every sample must land on exactly one mapped segment: measured deck Y (exact), nominal X
+            // within the +/-0.125y jitter, Z inside the walked range, and that segment's outward facing.
+            var segment = Assert.Single(ExpectedRailSegments, candidate =>
+                destination.Rotation == candidate.Rotation &&
+                destination.Position.Y == candidate.Y &&
+                destination.Position.Z >= candidate.MinZ &&
+                destination.Position.Z <= candidate.MaxZ &&
+                MathF.Abs(destination.Position.X - candidate.X) <= 0.1251f);
+            rotationSamples[segment.Rotation] = rotationSamples.GetValueOrDefault(segment.Rotation) + 1;
         }
 
-        Assert.True(starboardSamples > 0);
-        Assert.True(portSamples > 0);
+        // All four outward facings (starboard, port, bow, stern) must actually be sampled.
+        Assert.Equal(4, rotationSamples.Count);
         Assert.Equal(0.5, OceanFishingQueuePolicy.BoatFishingPositionTolerance);
     }
 
     [Fact]
-    public void OnePointFiveYalmClearanceRejectsCloserPlayersAndAllowsExactBoundary()
+    public void PreferredAndFallbackClearanceUseTheirOwnExactBoundaries()
     {
         var position = new Vector3(7.125f, OceanFishingContinuousRailPolicy.DeckY, -9f);
 
         Assert.False(OceanFishingContinuousRailPolicy.HasPlayerClearance(
             position,
-            [position + new Vector3(0f, 0f, 1.499f)]));
+            [position + new Vector3(0f, 0f, OceanFishingContinuousRailPolicy.MinimumPlayerClearance - 0.001f)]));
         Assert.True(OceanFishingContinuousRailPolicy.HasPlayerClearance(
             position,
-            [position + new Vector3(0f, 0f, 1.5f)]));
+            [position + new Vector3(0f, 0f, OceanFishingContinuousRailPolicy.MinimumPlayerClearance)]));
+
+        Assert.False(OceanFishingContinuousRailPolicy.HasPlayerClearance(
+            position,
+            [position + new Vector3(0f, 0f, OceanFishingContinuousRailPolicy.FallbackPlayerClearance - 0.001f)],
+            OceanFishingContinuousRailPolicy.FallbackPlayerClearance));
+        Assert.True(OceanFishingContinuousRailPolicy.HasPlayerClearance(
+            position,
+            [position + new Vector3(0f, 0f, OceanFishingContinuousRailPolicy.FallbackPlayerClearance)],
+            OceanFishingContinuousRailPolicy.FallbackPlayerClearance));
+    }
+
+    // Players packed shoulder-to-shoulder along every mapped rail segment (per-segment nominal X and
+    // measured deck Y, mirroring the full production perimeter): no candidate anywhere clears even
+    // the fallback tier. Spacing 1y leaves at most ~0.55y of clearance for any swept candidate.
+    private static Vector3[] PackedRails(float spacing)
+    {
+        var players = new System.Collections.Generic.List<Vector3>();
+        foreach (var (minZ, maxZ, x, y, _) in ExpectedRailSegments)
+        {
+            for (var z = minZ; z <= maxZ; z += spacing)
+                players.Add(new Vector3(x, y, z));
+            // Cap the segment END. Without this, spacing that does not divide the segment length leaves
+            // an unpopulated tail gap wider than the spacing — "packed every 4y" then still contains
+            // fully-clear 3y points near the rail ends, and the tests below pass or fail by seed luck.
+            players.Add(new Vector3(x, y, maxZ));
+        }
+
+        return [.. players];
     }
 
     [Fact]
-    public void SamplingExhaustsExactlyThirtyTwoBlockedCandidatesAndFailsClosed()
+    public void SamplingFailsClosedOnlyWhenTheEntireRailIsPacked()
     {
-        var random = new CountingConstantRandom(0.25);
-        var blockedCandidate = OceanFishingContinuousRailPolicy.SampleCandidate(
-            new CountingConstantRandom(0.25));
-
+        // Genuinely packed: fail closed, exactly as before.
         Assert.False(OceanFishingContinuousRailPolicy.TrySample(
-            random,
-            [blockedCandidate.Position],
+            new Random(20260801),
+            PackedRails(1.0f),
             previousDestination: null,
             out _));
-        Assert.Equal(OceanFishingContinuousRailPolicy.MaxSampleAttempts * 4, random.CallCount);
+
+        // One blocked spot must NOT block the whole rail — this was the exhaustion bug: 32 random darts
+        // could all land near the one occupied point and report a full vessel that was nearly empty.
+        // The occupied point sits on the measured starboard mid-deck segment (x 7.0, deck Y 6.7).
+        Assert.True(OceanFishingContinuousRailPolicy.TrySample(
+            new Random(20260801),
+            [new Vector3(7.0f, 6.7f, -9f)],
+            previousDestination: null,
+            out var destination));
+        Assert.True(OceanFishingContinuousRailPolicy.HasPlayerClearance(
+            destination.Position,
+            [new Vector3(7.0f, 6.7f, -9f)]));
+        // A fully-clear pick must carry the full-minimum arrival tier, so the arrival gate keeps the
+        // 3y first-cast guard at preferred destinations.
+        Assert.Equal(OceanFishingContinuousRailPolicy.MinimumPlayerClearance, destination.ArrivalClearance);
+    }
+
+    [Fact]
+    public void SamplingDegradesToBestAvailableClearanceOnABusyVessel()
+    {
+        // Players every 4y, segments capped at both ends: no point anywhere clears the full 3y
+        // minimum, but mid-gap points clear the 1.5y fallback — a busy boat degrades instead of
+        // stalling. Proven across many seeds, not one: an earlier version of this test asserted the
+        // same thing with end-gap geometry that made the premise false for ~half of all seeds.
+        var players = PackedRails(4.0f);
+        for (var seed = 1; seed <= 25; seed++)
+        {
+            Assert.True(OceanFishingContinuousRailPolicy.TrySample(
+                new Random(seed),
+                players,
+                previousDestination: null,
+                out var destination));
+
+            var nearest = players.Min(player => Vector3.Distance(destination.Position, player));
+            Assert.InRange(
+                nearest,
+                OceanFishingContinuousRailPolicy.FallbackPlayerClearance,
+                OceanFishingContinuousRailPolicy.MinimumPlayerClearance);
+            // A fallback pick must carry the fallback arrival tier — gating it at the full minimum is
+            // the livelock this contract exists to prevent.
+            Assert.Equal(OceanFishingContinuousRailPolicy.FallbackPlayerClearance, destination.ArrivalClearance);
+        }
     }
 
     [Fact]
     public void RecoverySamplingRejectsThePreviousDestination()
     {
-        var previous = OceanFishingContinuousRailPolicy.SampleCandidate(
-            new CountingConstantRandom(0.25));
+        var previous = OceanFishingContinuousRailPolicy.SampleCandidate(new Random(20260801));
 
-        Assert.False(OceanFishingContinuousRailPolicy.TrySample(
-            new CountingConstantRandom(0.25),
+        // An empty vessel with an excluded previous point: sampling must succeed somewhere ELSE —
+        // at least the minimum clearance away from the excluded destination.
+        Assert.True(OceanFishingContinuousRailPolicy.TrySample(
+            new Random(20260801),
             Array.Empty<Vector3>(),
             previous,
-            out _));
+            out var destination));
+        Assert.True(
+            Vector3.Distance(destination.Position, previous.Position) >=
+            OceanFishingContinuousRailPolicy.MinimumPlayerClearance);
     }
 
     [Fact]
@@ -1859,14 +1946,4 @@ public sealed class FishingPolicyTests
             canFish,
             timersPaused);
 
-    private sealed class CountingConstantRandom(double value) : Random
-    {
-        public int CallCount { get; private set; }
-
-        public override double NextDouble()
-        {
-            CallCount++;
-            return value;
-        }
-    }
 }

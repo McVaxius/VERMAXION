@@ -11,13 +11,18 @@ public class VNavmeshIPC : IDisposable
 {
     private const string PointOnFloorIpc = "vnavmesh.Query.Mesh.PointOnFloor";
     private const string PathIsRunningIpc = "vnavmesh.Path.IsRunning";
+    private const string NavIsReadyIpc = "vnavmesh.Nav.IsReady";
+    private const string PathfindInProgressIpc = "vnavmesh.SimpleMove.PathfindInProgress";
 
     private readonly IPluginLog log;
     private readonly ICommandManager commandManager;
     private readonly ICallGateSubscriber<Vector3, bool, float, Vector3?> pointOnFloorSubscriber;
     private readonly ICallGateSubscriber<bool> pathIsRunningSubscriber;
+    private readonly ICallGateSubscriber<bool> navIsReadySubscriber;
+    private readonly ICallGateSubscriber<bool> pathfindInProgressSubscriber;
     private DateTime nextFloorQueryFailureLogAt = DateTime.MinValue;
     private DateTime nextPathStatusFailureLogAt = DateTime.MinValue;
+    private DateTime nextNavStatusFailureLogAt = DateTime.MinValue;
     
     public bool IsReady { get; private set; } = true;
     public bool PathIsRunning { get; private set; }
@@ -30,6 +35,10 @@ public class VNavmeshIPC : IDisposable
             .GetIpcSubscriber<Vector3, bool, float, Vector3?>(PointOnFloorIpc);
         pathIsRunningSubscriber = Plugin.PluginInterface
             .GetIpcSubscriber<bool>(PathIsRunningIpc);
+        navIsReadySubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<bool>(NavIsReadyIpc);
+        pathfindInProgressSubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<bool>(PathfindInProgressIpc);
         log.Information("[VNavmeshIPC] VNavmesh IPC initialized (command movement with path-status verification)");
     }
     
@@ -108,6 +117,52 @@ public class VNavmeshIPC : IDisposable
 
             return false;
         }
+    }
+
+    /// <summary>Nav.IsReady — true when the current zone's navmesh is BUILT. False right after a zone
+    /// load/login while the mesh builds; navigation commands issued then are queued behind the build.
+    /// FAIL-CLOSED default (false) so callers wait rather than dispatch onto an unbuilt mesh.</summary>
+    public bool TryGetNavReady(out bool ready)
+    {
+        try
+        {
+            ready = navIsReadySubscriber.InvokeFunc();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ready = false;
+            LogNavStatusFailure(ex);
+            return false;
+        }
+    }
+
+    /// <summary>SimpleMove.PathfindInProgress — true while a moveto's pathfind task is pending (possibly
+    /// queued behind a mesh build). A pending task will START MOVING the toon when it completes, and it
+    /// also makes vnavmesh REJECT new moveto requests — never hand control to another navigator while
+    /// this is true.</summary>
+    public bool TryGetPathfindInProgress(out bool inProgress)
+    {
+        try
+        {
+            inProgress = pathfindInProgressSubscriber.InvokeFunc();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            inProgress = false;
+            LogNavStatusFailure(ex);
+            return false;
+        }
+    }
+
+    private void LogNavStatusFailure(Exception ex)
+    {
+        var now = DateTime.UtcNow;
+        if (now < nextNavStatusFailureLogAt)
+            return;
+        nextNavStatusFailureLogAt = now + TimeSpan.FromSeconds(5);
+        log.Debug($"[VNavmeshIPC] Nav status query failed: {ex.Message}");
     }
 
     public bool TryGetPathIsRunning(out bool isRunning)
