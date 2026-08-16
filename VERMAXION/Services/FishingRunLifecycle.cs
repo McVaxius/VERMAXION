@@ -107,6 +107,70 @@ public sealed class FishingRunLifecycle
         return true;
     }
 
+    /// <summary>
+    /// Temporarily releases the YesAlready pause so vendor purchasing can complete.
+    /// </summary>
+    /// <remarks>
+    /// The run-wide pause taken in <see cref="TryBegin"/> exists to keep YesAlready away from the
+    /// registration and duty dialogs — but it also silences it during the ADS shop restock, where the
+    /// gil-shop quantity confirmation MUST be answered by someone. ADS validates the row, fires the
+    /// purchase, and then deliberately refuses the confirmation ("An unexpected confirmation dialog
+    /// appeared; ADS did not accept it"), so with YesAlready paused every restock failed with
+    /// acquired=0 and the orphaned dialog cascaded into the remaining items. Suspending the lease for
+    /// exactly the shopping window fixes all three item failures at once.
+    /// While suspended, <see cref="FishingRunContext.YesAlreadyLeaseOwned"/> is false, so a run that
+    /// dies mid-restock is already in the state cleanup would produce — unpaused — and cleanup will
+    /// not double-release.
+    /// </remarks>
+    public void SuspendYesAlreadyPauseForShopping(string reason)
+    {
+        if (Current is not { } context || !context.YesAlreadyLeaseOwned)
+            return;
+
+        yesAlready.Unpause();
+        context.YesAlreadyLeaseOwned = yesAlready.IsPaused;
+        if (context.YesAlreadyLeaseOwned)
+        {
+            log.Warning($"[Fishing][Stock] Could not suspend the YesAlready pause for {reason}; " +
+                        "shop confirmations may go unanswered");
+            return;
+        }
+
+        context.YesAlreadyLeaseSuspendedForShopping = true;
+        log.Information($"[Fishing][Stock] YesAlready pause suspended for {reason}");
+    }
+
+    /// <summary>
+    /// Re-acquires the YesAlready pause after shopping. Returns false when the lease could not be
+    /// re-taken — and the caller must treat that as fatal to the run, exactly as <see cref="TryBegin"/>
+    /// does for the identical failure at startup. Continuing without the pause would walk the character
+    /// into the registration and duty dialogs with YesAlready live, which is the precise hazard the
+    /// run-wide lease exists to prevent; and because the suspension flag is consumed here, nothing later
+    /// in the run would ever retry.
+    /// </summary>
+    public bool ResumeYesAlreadyPauseAfterShopping(string reason)
+    {
+        if (Current is not { } context || !context.YesAlreadyLeaseSuspendedForShopping)
+            return true;
+
+        // One attempt, not a retry loop: Pause() is a synchronous in-process DataShare write whose only
+        // failure mode is deterministic (the shared key registered with a conflicting type), so
+        // back-to-back same-tick retries cannot succeed where the first call failed. The safety comes
+        // from the caller failing the run, not from repetition.
+        context.YesAlreadyLeaseSuspendedForShopping = false;
+        yesAlready.Pause();
+        context.YesAlreadyLeaseOwned = yesAlready.IsPaused;
+        if (context.YesAlreadyLeaseOwned)
+        {
+            log.Information($"[Fishing][Stock] YesAlready pause resumed after {reason}");
+            return true;
+        }
+
+        log.Warning($"[Fishing][Stock] YesAlready pause could NOT be re-acquired after {reason}; " +
+                    "the run cannot safely continue into registration");
+        return false;
+    }
+
     public bool IsActiveForWindow(DateTimeOffset registrationStartUtc)
     {
         var normalized = registrationStartUtc.ToUniversalTime();

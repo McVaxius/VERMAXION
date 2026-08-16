@@ -163,6 +163,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             Configuration.Save();
         }
         ConfigManager = new ConfigManager(PluginInterface, Log);
+        // Rail spot-selection knobs persist in config; apply before any fishing machinery constructs so a
+        // bare client (no reflection tooling, no external scripts) starts correctly tuned.
+        OceanFishingContinuousRailPolicy.ApplyConfiguration(Configuration);
+        OceanFishingDiscreteSpotPolicy.ApplyConfiguration(Configuration);
         ApplyLegacyFishingOperationSettingsIfNeeded();
         ApplyFishingStockCatalogMigrationIfNeeded();
         RegistrableConfigManager = new RegistrableConfigManager(Log, DataManager, PluginInterface.ConfigDirectory.FullName);
@@ -631,8 +635,45 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             Log.Information($"[Fishing] Migrated ordered stock settings to {migratedCount} account default/character record(s)");
         }
 
+        // A saved catalog predates rows added to CreateDefaultCatalog later (e.g. Lentils 4674 for
+        // eat-on-boat), so append any missing default rows — idempotent: AddFishingStock-
+        // CatalogEntry refuses ids already present. Rows arrive with their catalog default enablement
+        // (Lentils: disabled) and are switched on per profile via EnableFishingStockRow.
+        foreach (var def in FishingStockCatalogPolicy.CreateDefaultCatalog())
+        {
+            if (ConfigManager.AddFishingStockCatalogEntry(
+                    Configuration, def.ItemId, def.DefaultTarget, def.DefaultEnabled, def.DefaultMin))
+            {
+                changed = true;
+                Log.Information($"[Fishing] Stock catalog: appended new default row item={def.ItemId} enabled={def.DefaultEnabled}");
+            }
+        }
+
         if (changed)
             Configuration.Save();
+    }
+
+    /// <summary>Bridge-friendly per-row stock enablement: flips ONE catalog row's default enablement and
+    /// syncs just that row to the current account and all its characters (never the whole catalog — a
+    /// full sync would clobber existing per-character bait enables back to catalog defaults). target/min &lt; 0 keep
+    /// the row's existing values.</summary>
+    public string EnableFishingStockRow(uint itemId, bool enabled, int target = -1, int min = -1)
+    {
+        // Refuse without a current account: the sync below would touch 0 records while the return still
+        // read success-shaped, and nothing replays the sync on a later login.
+        if (string.IsNullOrEmpty(ConfigManager.CurrentAccountId))
+            return "refused: no current account selected — log a character in on this client first";
+        var row = Configuration.FishingStockCatalog?.FirstOrDefault(r => r.ItemId == itemId);
+        if (row == null)
+            return $"no catalog row for item {itemId}";
+        row.DefaultEnabled = enabled;
+        if (target >= 0)
+            row.DefaultTarget = target;
+        if (min >= 0)
+            row.DefaultMin = min;
+        Configuration.Save();
+        var synced = ConfigManager.SyncFishingStockRowToCurrentAccount(row);
+        return $"item {itemId} enabled={enabled} target={row.DefaultTarget} min={row.DefaultMin} synced to {synced} record(s)";
     }
 
     private void FinishReleaseOnlyPostprocess(string reason)
@@ -1543,6 +1584,158 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         return Configuration.PostProcessTaskPlacement.Values.Count(phase => phase == PostProcessTaskPhase.BeforeAR);
     }
 
+    private DateTime nextStuckDetectionSuppressionUtc = DateTime.MinValue;
+    private DateTime nextStuckSuppressionWarnUtc = DateTime.MinValue;
+    private DateTime nextFakeReadyUtc = DateTime.MinValue;
+
+    /// <summary>Once past the configured offset into a registration window with no fishing run active,
+    /// fake-ready a character so AutoRetainer logs one in (see AutoRetainerIPC.TryFakeReadyEnabledCharacter).
+    /// Throttled to every 30s; skips entirely when a run or relog is already in progress.</summary>
+    private void ProcessFishingFakeReady()
+    {
+        if (!Configuration.OceanFishingFakeReadyEnabled)
+            return;
+        if (FishingService.IsActive || FishingRelogCoordinator.IsActive)
+            return;
+        var now = DateTime.UtcNow;
+        if (now < nextFakeReadyUtc)
+            return;
+        if (!OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+                DateTimeOffset.UtcNow,
+                Configuration.OceanFishingPreWindowOffsetMinutes,
+                out var window))
+        {
+            return;
+        }
+        var offset = Math.Clamp(Configuration.OceanFishingFakeReadyOffsetMinutes, 0, 12);
+        if (DateTimeOffset.UtcNow < window.RegistrationStartUtc.AddMinutes(offset))
+            return;
+        // Per-window latch: once this client's queue registration is confirmed for the window, the nudge
+        // has served its purpose — keep nudging only while registration has not happened, so a failed
+        // registration still gets retries but a registered/completed one is not churned every 30s.
+        if (FishingRunLifecycle.IsQueueRegistrationConfirmedForWindow(window.RegistrationStartUtc))
+            return;
+        nextFakeReadyUtc = now.AddSeconds(30);
+        if (AutoRetainerIPC.TryFakeReadyEnabledCharacter(15, out var who, out var error))
+            Log.Information($"[Fishing][FakeReady] Nudged AutoRetainer ({who}) to log a character in for the open window.");
+        else
+            Log.Debug($"[Fishing][FakeReady] Not applied: {error}");
+    }
+
+    private DateTime nextInnParkCheckUtc = DateTime.MinValue;
+    private bool innParkEnableLogged;
+    private static readonly ushort[] InnTerritories = [177, 178, 179];
+
+    /// <summary>Idle inn-parking (checked every 60s): during downtime — no fishing run/relog, outside any
+    /// startup window with at least OceanIdleInnParkMinMinutesToWindow to the next even-UTC registration,
+    /// and no venture due within the exit lead — send the logged-in char to an inn. Once confirmed inside an
+    /// inn: (a) enable the char in AutoRetainer (the organic enable rollout — a char is only enabled from a
+    /// known-clean inn location), and (b) watch its earliest VentureEndsAt, exiting to Limsa ahead of it so
+    /// AutoRetainer wakes the char beside a summoning bell rather than inside the bell-less inn.</summary>
+    private void ProcessIdleInnPark()
+    {
+        if (!Configuration.OceanIdleInnParkEnabled)
+            return;
+        if (FishingService.IsActive || FishingRelogCoordinator.IsActive)
+            return;
+        var now = DateTime.UtcNow;
+        if (now < nextInnParkCheckUtc)
+            return;
+        nextInnParkCheckUtc = now.AddSeconds(60);
+
+        var contentId = PlayerState.ContentId;
+        if (contentId == 0 || ObjectTable.LocalPlayer == null)
+            return;
+
+        var territory = ClientState.TerritoryType;
+        var inInn = Array.IndexOf(InnTerritories, territory) >= 0;
+
+        // Earliest venture across the CURRENT char's retainers (unix seconds); unreadable -> be conservative
+        // and treat as due-now so we never park a char AR is about to need.
+        var earliest = 0L;
+        if (!AutoRetainerIPC.TryReadEarliestVenture(contentId, out earliest, out var ventureError))
+        {
+            Log.Debug($"[InnPark] Venture read unavailable ({ventureError}); skipping this pass.");
+            return;
+        }
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var exitLeadSeconds = Math.Clamp(Configuration.OceanIdleInnParkExitLeadMinutes, 1, 60) * 60L;
+
+        if (inInn)
+        {
+            // (a) organic AR-enable at the safe location (log only on an actual state change, not per tick).
+            if (Configuration.OceanIdleInnParkEnableAutoRetainer)
+            {
+                if (AutoRetainerIPC.TryEnableCharacter(contentId, out var who, out var enableError))
+                {
+                    if (!string.IsNullOrEmpty(who) && !innParkEnableLogged)
+                    {
+                        Log.Information($"[InnPark] {who} parked in inn (territory {territory}); AutoRetainer enable ensured.");
+                        innParkEnableLogged = true;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(enableError))
+                {
+                    Log.Debug($"[InnPark] AR enable not applied: {enableError}");
+                }
+            }
+
+            // (b) pre-emptive exit so AR wakes the char beside a bell — never while Lifestream is already
+            // mid-chain (re-firing would reset its task queue).
+            if (earliest != long.MaxValue && earliest - nowUnix <= exitLeadSeconds && !LifestreamIPC.IsBusy())
+            {
+                Log.Information($"[InnPark] Venture due in {(earliest - nowUnix) / 60.0:F1}min; exiting inn to Limsa ahead of AutoRetainer.");
+                LifestreamIPC.ExecuteCommand("/li limsa");
+            }
+            return;
+        }
+        innParkEnableLogged = false;
+
+        // Not in an inn: park only in genuine downtime.
+        if (OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
+                DateTimeOffset.UtcNow,
+                Configuration.OceanFishingPreWindowOffsetMinutes,
+                out _))
+        {
+            return; // a window is active — VMX owns the char
+        }
+        // Next even-UTC registration must be comfortably far away.
+        var utcNow = DateTimeOffset.UtcNow;
+        var nextEven = new DateTimeOffset(utcNow.Year, utcNow.Month, utcNow.Day, utcNow.Hour, 0, 0, TimeSpan.Zero);
+        if (nextEven.Hour % 2 != 0)
+            nextEven = nextEven.AddHours(1);
+        else if (utcNow >= nextEven.AddMinutes(15))
+            nextEven = nextEven.AddHours(2);
+        var minutesToWindow = (nextEven - utcNow).TotalMinutes;
+        if (minutesToWindow < Math.Clamp(Configuration.OceanIdleInnParkMinMinutesToWindow, 1, 110))
+            return;
+        // Nothing due on this char within the lead either (else AR is about to want the bell).
+        if (earliest != long.MaxValue && earliest - nowUnix <= exitLeadSeconds)
+            return;
+        if (LifestreamIPC.IsBusy())
+            return;
+
+        Log.Information($"[InnPark] Downtime ({minutesToWindow:F0}min to next window); sending character to the inn.");
+        LifestreamIPC.ExecuteCommand("/li inn");
+    }
+
+    /// <summary>Re-arms the AutoRetainer stuck-detector suppression every 60s (AR reloads reset its
+    /// throttler). Failures log at most hourly; AR simply not being loaded is a normal standalone state.</summary>
+    private void ProcessStuckDetectionSuppression()
+    {
+        if (!Configuration.SuppressAutoRetainerStuckDetection)
+            return;
+        var now = DateTime.UtcNow;
+        if (now < nextStuckDetectionSuppressionUtc)
+            return;
+        nextStuckDetectionSuppressionUtc = now.AddSeconds(60);
+        if (!AutoRetainerIPC.TrySuppressStuckDetection(out var error) && now >= nextStuckSuppressionWarnUtc)
+        {
+            nextStuckSuppressionWarnUtc = now.AddHours(1);
+            Log.Debug($"[AR] Stuck-detection suppression not applied: {error}");
+        }
+    }
+
     private void OnFrameworkUpdate(IFramework fw)
     {
         DadHandoffIpcProvider.Update();
@@ -1583,6 +1776,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ProcessBeforeArSuppressionRecovery();
         FishingRunLifecycle.Update();
         ProcessFishingRecovery();
+        ProcessStuckDetectionSuppression();
+        ProcessFishingFakeReady();
+        ProcessIdleInnPark();
         ProcessBeforeArArmedStallGuard();
         ProcessReleaseOnlyPostprocessFinishPending();
         ProcessBeforeArReleasePending();

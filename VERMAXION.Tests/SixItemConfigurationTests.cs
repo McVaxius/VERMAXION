@@ -53,7 +53,13 @@ public sealed class SixItemConfigurationTests
         var lure = values[FishingStockItemIds.VersatileLure];
         Assert.Equal(expectedEnabled, lure.Enabled);
         Assert.Equal(expectedTarget, lure.Target);
-        Assert.Equal(4, values.Count);
+        // 5 rows: lure + 3 optional baits + Lentils and Chestnuts (4674), the eat-on-boat food row.
+        Assert.Equal(5, values.Count);
+        // The food row is seeded from its catalog defaults: disabled, Target 10, reorder point Min 4.
+        var food = values[FishingStockItemIds.LentilsAndChestnuts];
+        Assert.False(food.Enabled);
+        Assert.Equal(FishingStockCatalogPolicy.DefaultFoodTarget, food.Target);
+        Assert.Equal(FishingStockCatalogPolicy.DefaultFoodMin, food.Min);
     }
 
     [Fact]
