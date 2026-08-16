@@ -514,6 +514,26 @@ public static class GameHelpers
         }
     }
 
+    /// <summary>Directly set the local player's world position (a small warp). Used to register the fishing
+    /// stand at the TRUE deck edge, which navmesh cannot walk to (it clamps ~1.5y inboard of the model edge).</summary>
+    public static unsafe bool TrySetLocalPlayerPosition(System.Numerics.Vector3 position)
+    {
+        try
+        {
+            var player = Plugin.ObjectTable.LocalPlayer;
+            if (player == null || player.Address == nint.Zero)
+                return false;
+
+            ((NativeGameObject*)player.Address)->SetPosition(position.X, position.Y, position.Z);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Fishing] Failed to set player position: {ex.Message}");
+            return false;
+        }
+    }
+
     /// <summary>
     /// Click Yes on any visible SelectYesno dialog.
     /// Pattern from LootGoblin GameHelpers.
@@ -767,6 +787,10 @@ public static class GameHelpers
     {
         try
         {
+            // HQ use-ids are baseId + 1,000,000 (the UseAction/GetActionStatus namespace); the Item
+            // sheet only has the base row.
+            if (itemId >= 1_000_000)
+                itemId -= 1_000_000;
             var itemSheet = Plugin.DataManager.GetExcelSheet<Item>();
             if (itemSheet == null) return $"Unknown Item {itemId}";
 
@@ -796,6 +820,28 @@ public static class GameHelpers
         }
     }
 
+    /// <summary>The use-ids of a food the player actually HOLDS, NQ first then HQ (HQ use-id = baseId +
+    /// 1,000,000). NQ and HQ are independent for GetActionStatus/UseAction — a character holding ONLY the
+    /// HQ variant returns status 583 for the NQ id and goes unfed.</summary>
+    public static unsafe List<uint> GetHeldFoodVariants(uint baseItemId)
+    {
+        var result = new List<uint>(2);
+        try
+        {
+            var im = InventoryManager.Instance();
+            if (im == null) return result;
+            if (im->GetInventoryItemCount(baseItemId) > 0)
+                result.Add(baseItemId);
+            if (im->GetInventoryItemCount(baseItemId, true) > 0)
+                result.Add(baseItemId + 1_000_000);
+        }
+        catch
+        {
+            // fall through with whatever was gathered
+        }
+        return result;
+    }
+
     /// <summary>
     /// Get the count of an item in the player's inventory (NQ + HQ).
     /// </summary>
@@ -810,6 +856,142 @@ public static class GameHelpers
         catch
         {
             return 0;
+        }
+    }
+
+    /// <summary>Scans the player's main inventory for edible food (ItemUICategory 46 = Meal, ItemAction
+    /// Data[0] == 48 = Well Fed) and returns the best fishing food id — preferring food that grants GP
+    /// (ItemFood BaseParam 10, the only stat that matters in ocean fishing), otherwise any food. Returns false
+    /// if the bags hold no food. Lets the ocean-fishing "eat any food" mode eat whatever a toon carries without
+    /// a per-character item-id config.</summary>
+    public static unsafe bool TryFindBestFishingFood(out uint itemId)
+    {
+        itemId = 0;
+        try
+        {
+            var im = InventoryManager.Instance();
+            var itemSheet = Plugin.DataManager.GetExcelSheet<Item>();
+            if (im == null || itemSheet == null) return false;
+            var foodSheet = Plugin.DataManager.GetExcelSheet<ItemFood>();
+
+            var bags = new[]
+            {
+                InventoryType.Inventory1, InventoryType.Inventory2,
+                InventoryType.Inventory3, InventoryType.Inventory4,
+            };
+            uint bestId = 0;
+            var bestScore = int.MinValue;
+            foreach (var bag in bags)
+            {
+                var container = im->GetInventoryContainer(bag);
+                if (container == null || !container->IsLoaded) continue;
+                for (var i = 0; i < container->Size; i++)
+                {
+                    var slot = container->GetInventorySlot(i);
+                    if (slot == null || slot->ItemId == 0) continue;
+                    var id = slot->ItemId;
+                    if (!itemSheet.TryGetRow(id, out var item)) continue;
+                    if (item.ItemUICategory.RowId != 46) continue;              // 46 = Meal
+                    var actionRow = item.ItemAction.ValueNullable;
+                    if (actionRow == null) continue;
+                    var action = actionRow.Value;
+                    if (action.Data[0] != 48) continue;                        // 48 = Well Fed
+
+                    // Same scoring as GetFishingFoodCandidates (kept in lockstep):
+                    // GP food strictly first, item level breaks ties so stronger food wins.
+                    var score = (int)item.LevelItem.RowId;
+                    if (foodSheet != null && foodSheet.TryGetRow(action.Data[1], out var food))
+                    {
+                        foreach (var param in food.Params)
+                            if (param.BaseParam.RowId == 10) { score += 100000; break; }   // 10 = GP
+                    }
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestId = id;
+                    }
+                }
+            }
+            if (bestId == 0) return false;
+            itemId = bestId;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[GameHelpers] Fishing-food scan failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>Like <see cref="TryFindBestFishingFood"/> but returns ALL edible foods in the bags ranked
+    /// best-first (GP food first). The caller eats the first one that is actually usable now — so if the
+    /// top pick is blocked (a per-item level/usability restriction, i.e. GetActionStatus != 0, which showed up
+    /// as status 583 on some toons), it can fall through to the next usable food instead of giving up.</summary>
+    public static unsafe List<uint> GetFishingFoodCandidates()
+    {
+        var result = new List<uint>();
+        try
+        {
+            var im = InventoryManager.Instance();
+            var itemSheet = Plugin.DataManager.GetExcelSheet<Item>();
+            if (im == null || itemSheet == null) return result;
+            var foodSheet = Plugin.DataManager.GetExcelSheet<ItemFood>();
+
+            var bags = new[]
+            {
+                InventoryType.Inventory1, InventoryType.Inventory2,
+                InventoryType.Inventory3, InventoryType.Inventory4,
+            };
+            var scored = new List<(uint Id, int Score)>();
+            var seen = new HashSet<uint>();
+            foreach (var bag in bags)
+            {
+                var container = im->GetInventoryContainer(bag);
+                if (container == null || !container->IsLoaded) continue;
+                for (var i = 0; i < container->Size; i++)
+                {
+                    var slot = container->GetInventorySlot(i);
+                    if (slot == null || slot->ItemId == 0) continue;
+                    var id = slot->ItemId;
+                    if (!seen.Add(id)) continue;
+                    if (!itemSheet.TryGetRow(id, out var item)) continue;
+                    if (item.ItemUICategory.RowId != 46) continue;              // 46 = Meal
+                    var actionRow = item.ItemAction.ValueNullable;
+                    if (actionRow == null) continue;
+                    var action = actionRow.Value;
+                    if (action.Data[0] != 48) continue;                        // 48 = Well Fed
+                    // GP food strictly beats non-GP; AMONG GP foods, item level breaks the tie — a flat
+                    // small GP bonus would let a low-ilvl GP food tie a high-ilvl one and win merely by
+                    // bag order. Higher-ilvl food = stronger stats, eat first.
+                    var score = (int)item.LevelItem.RowId;
+                    if (foodSheet != null && foodSheet.TryGetRow(action.Data[1], out var food))
+                        foreach (var param in food.Params)
+                            if (param.BaseParam.RowId == 10) { score += 100000; break; }   // 10 = GP
+                    scored.Add((id, score));
+                }
+            }
+            scored.Sort((a, b) => b.Score.CompareTo(a.Score));   // GP food first
+            foreach (var s in scored) result.Add(s.Id);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[GameHelpers] Fishing-food candidate scan failed: {ex.Message}");
+        }
+        return result;
+    }
+
+    /// <summary>The game's GetActionStatus for using an item (0 = usable now; non-zero is a LogMessage id such
+    /// as 583 for a food a given toon cannot use). uint.MaxValue if ActionManager is unavailable.</summary>
+    public static unsafe uint GetItemActionStatus(uint itemId)
+    {
+        try
+        {
+            var am = ActionManager.Instance();
+            return am == null ? uint.MaxValue : am->GetActionStatus(ActionType.Item, itemId);
+        }
+        catch
+        {
+            return uint.MaxValue;
         }
     }
 

@@ -355,6 +355,31 @@ public class ConfigManager
         return count;
     }
 
+    /// <summary>Bridge-callable "set default and apply to all toons" for the fishing return destination only.
+    /// Sets the destination (and command, used when destination is Custom) on every account's DefaultConfig
+    /// and every character config, then saves each account. Destination is passed as an int so the reflection
+    /// bridge (which cannot construct the enum or a copy lambda) can call it, e.g. (5, "/li inn") for Inn.</summary>
+    public int SetFishingReturnDestinationForAllCharacters(int destination, string command)
+    {
+        var dest = (FishingReturnDestination)destination;
+        command ??= string.Empty;
+        var count = 0;
+        foreach (var account in accounts.Values)
+        {
+            account.DefaultConfig.FishingReturnDestination = dest;
+            account.DefaultConfig.FishingReturnCommand = command;
+            foreach (var character in account.Characters.Values)
+            {
+                character.FishingReturnDestination = dest;
+                character.FishingReturnCommand = command;
+                count++;
+            }
+            SaveAccount(account.AccountId);
+        }
+        log.Information($"[ConfigManager] Set fishing return destination {dest} ('{command}') on {count} character config(s) across {accounts.Count} account(s)");
+        return count;
+    }
+
     public int MigrateFishingStockCatalog(IEnumerable<FishingStockCatalogEntry> catalog)
     {
         var rows = catalog.ToList();
@@ -390,13 +415,15 @@ public class ConfigManager
         Configuration configuration,
         uint itemId,
         int defaultTarget,
-        bool defaultEnabled)
+        bool defaultEnabled,
+        int defaultMin = 0)
     {
         if (!FishingStockCatalogPolicy.TryAdd(
                 configuration.FishingStockCatalog,
                 itemId,
                 defaultTarget,
-                defaultEnabled))
+                defaultEnabled,
+                defaultMin))
         {
             return false;
         }

@@ -42,6 +42,16 @@ public class CharacterConfig
     public int FishingRepairThresholdPercent { get; set; } = FishingDefaults.RepairThresholdPercent;
     public bool FishingDiscardAfterVoyage { get; set; } = false;
     public bool FishingSellAfterVoyage { get; set; } = false;
+
+    /// <summary>Ocean-fishing food: a SPECIFIC item id to eat in the pre-fishing lobby so Well-Fed covers the
+    /// whole voyage. 0 = no specific id — fall back to <see cref="FishingEatAnyFood"/>. NQ+HQ both count; the
+    /// item must be in inventory. Eating is skipped when already Well-Fed with comfortable margin.</summary>
+    public uint FishingFoodItemId { get; set; } = 0;
+
+    /// <summary>When no specific <see cref="FishingFoodItemId"/> is set (0), eat whatever edible food is in the
+    /// bags — scanning for any Meal that grants Well-Fed and preferring GP food (the only stat that helps ocean
+    /// fishing). On by default so fishers eat without a per-character item pick; both off = no food eaten.</summary>
+    public bool FishingEatAnyFood { get; set; } = true;
     public bool EnableRetainerEquipping { get; set; } = false;
     public RetainerGearSourceMode RetainerGearSourceMode { get; set; } = RetainerGearSourceMode.IgnoreGearset;
     public bool RetainerGearNonUniqueOnly { get; set; } = true;
