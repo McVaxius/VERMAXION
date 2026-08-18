@@ -9,7 +9,7 @@
 
 ### Changed
 
-- Added a signed global Refill Listings action-delay adjustment, defaulting to zero and limited to ordinary listing action pacing.
+- Added one absolute Refill Listings action delay, defaulting to 250 ms and clamped to 0–2000 ms, for ordinary listing action pacing.
 - Existing Current Job Equipment, Seasonal Gear, Ocean Fishing, and W40 behavior remain on their prior paths.
 
 ### Verification

@@ -241,14 +241,14 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawHelpMarker(UIConstants.Tooltips.EnableCharacterSelectStallRecovery);
 
-            var listingDelayAdjustment = config.RefillListingsDelayAdjustmentMs;
+            var listingActionDelay = Math.Clamp(config.RefillListingsActionDelayMs, 0, 2000);
             ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-            if (ImGui.InputInt("Listing action delay adjustment (ms)", ref listingDelayAdjustment, 50, 250))
+            if (ImGui.InputInt("Listing action delay (ms)", ref listingActionDelay, 50, 250))
             {
-                config.RefillListingsDelayAdjustmentMs = listingDelayAdjustment;
+                config.RefillListingsActionDelayMs = Math.Clamp(listingActionDelay, 0, 2000);
                 config.Save();
             }
-            DrawHelpMarker("Signed global adjustment for ordinary 250-2000 ms Refill Listings action pacing. Resulting delays are clamped to zero; timeouts, navigation, close retries, and UI-settlement gates are unchanged.");
+            DrawHelpMarker("Delay after ordinary Refill Listings actions. Range: 0–2000 ms. Default: 250 ms. Setting 0 performs the next action without an added delay. Timeouts, navigation, close retries, and UI-settlement waits are unchanged.");
 
             var dtrEnabled = config.DtrBarEnabled;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
