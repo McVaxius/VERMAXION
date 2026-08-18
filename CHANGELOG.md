@@ -1,5 +1,22 @@
 # VERMAXION Changelog
 
+## 2026-08-18 - Gearset bootstrap and narrow post-process utilities
+
+### Added
+
+- Added a bounded native bootstrap for missing unlocked class/job gearsets, including exact current-job anchoring, owned-mainhand selection, recommended-equipment timing, exact save verification, and manual controls. Gear Updater also uses optional Stylist IPC with its existing native path as the fallback.
+- Added disabled-by-default current-character Allied Society automation through Questionable Companion and one-shot After-AR parking with Home, Limsa, Free Company, Inn, Workshop, and validated custom `/li ...` destinations.
+
+### Changed
+
+- Added a signed global Refill Listings action-delay adjustment, defaulting to zero and limited to ordinary listing action pacing.
+- Existing Current Job Equipment, Seasonal Gear, Ocean Fishing, and W40 behavior remain on their prior paths.
+
+### Verification
+
+- Static acceptance review covered default compatibility, native timing, job/content and save drift, unsafe/full/missing-equipment failures, Stylist fallback, and invalid parking/Allied selections.
+- The single permitted Debug x64 plugin build reached compilation and reported one `uint`-to-`int` argument error in unlocked-job discovery. The direct cast was applied afterward, but the final source was not rebuilt under the one-build limit. Automated tests and live-client actions were not run; runtime behavior remains untested.
+
 ## 2026-08-08 - Character-select stall recovery
 
 ### Added

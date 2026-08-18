@@ -22,6 +22,7 @@ public enum SetupWizardKind
 
 public class ConfigWindow : Window, IDisposable
 {
+    private const string StylistRepositoryUrl = "https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json";
     private readonly Plugin plugin;
     private string editAccountAlias = "";
     private readonly List<DadDutyOption> dadDutyOptions = new();
@@ -239,6 +240,15 @@ public class ConfigWindow : Window, IDisposable
                 config.Save();
             }
             DrawHelpMarker(UIConstants.Tooltips.EnableCharacterSelectStallRecovery);
+
+            var listingDelayAdjustment = config.RefillListingsDelayAdjustmentMs;
+            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+            if (ImGui.InputInt("Listing action delay adjustment (ms)", ref listingDelayAdjustment, 50, 250))
+            {
+                config.RefillListingsDelayAdjustmentMs = listingDelayAdjustment;
+                config.Save();
+            }
+            DrawHelpMarker("Signed global adjustment for ordinary 250-2000 ms Refill Listings action pacing. Resulting delays are clamped to zero; timeouts, navigation, close retries, and UI-settlement gates are unchanged.");
 
             var dtrEnabled = config.DtrBarEnabled;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
@@ -761,6 +771,27 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(UIConstants.Tooltips.GearUpdater);
 
+            ImGui.Indent();
+            var equipmentAutomationBusy = IsEquipmentAutomationBusy();
+            ImGui.BeginDisabled(equipmentAutomationBusy);
+            if (ImGui.SmallButton("Bootstrap missing gearsets"))
+                plugin.GearUpdaterService.StartBootstrap();
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(equipmentAutomationBusy
+                    ? "An engine or equipment task is active."
+                    : "Persist the current job as an exact restoration anchor, then create exact gearsets for missing unlocked classes/jobs when a compatible main hand is already owned.");
+            }
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Copy Stylist repository URL"))
+            {
+                ImGui.SetClipboardText(StylistRepositoryUrl);
+                Plugin.ChatGui.Print("[Vermaxion] Stylist repository URL copied.");
+            }
+            ImGui.TextDisabled("Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable.");
+            ImGui.Unindent();
+
             var highestCombatJob = cc.EnableHighestCombatJob;
             if (ImGui.Checkbox("Highest Combat Job Selector", ref highestCombatJob))
             {
@@ -772,7 +803,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Selects the highest level combat job (DOW/DOM only). Requires SimpleTweaks.");
+                ImGui.SetTooltip("Selects the highest-level combat job (DOW/DOM only) through its saved gearset. Missing gearsets trigger the bounded native bootstrap first.");
 
             var currentJobEquipment = cc.EnableCurrentJobEquipment;
             if (ImGui.Checkbox("Current Job Equipment Updater", ref currentJobEquipment))
@@ -785,7 +816,65 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Updates equipment for current job only. No job cycling. Requires SimpleTweaks.");
+                ImGui.SetTooltip("Uses the native recommended-equipment module and exact native gearset persistence for the current saved gearset only.");
+
+            var afterArPark = cc.EnableAfterArPark;
+            if (ImGui.Checkbox("After-AR Park", ref afterArPark))
+            {
+                cc.EnableAfterArPark = afterArPark;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "AfterArPark", "After-AR Park",
+                (source, target) => target.EnableAfterArPark = source.EnableAfterArPark);
+            DrawHelpMarker("Issues one configured /li route, then waits for Lifestream idle and an available player to remain settled. It times out without retrying.");
+            if (cc.EnableAfterArPark)
+            {
+                ImGui.Indent();
+                var destination = cc.AfterArParkDestination;
+                if (ImGui.BeginCombo("Parking destination", FormatAfterArParkDestination(destination)))
+                {
+                    foreach (var option in Enum.GetValues<AfterArParkDestination>())
+                    {
+                        var selected = option == destination;
+                        if (ImGui.Selectable(FormatAfterArParkDestination(option), selected))
+                        {
+                            cc.AfterArParkDestination = option;
+                            changed = true;
+                        }
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "AfterArParkDestination", "After-AR parking destination",
+                    (source, target) => target.AfterArParkDestination = source.AfterArParkDestination);
+
+                if (cc.AfterArParkDestination == AfterArParkDestination.Custom)
+                {
+                    var customCommand = cc.AfterArParkCustomCommand;
+                    if (ImGui.InputText("Custom /li command", ref customCommand, 128))
+                    {
+                        cc.AfterArParkCustomCommand = customCommand;
+                        changed = true;
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "AfterArParkCustomCommand", "After-AR custom command",
+                        (source, target) => target.AfterArParkCustomCommand = source.AfterArParkCustomCommand);
+                }
+
+                if (!AfterArParkService.TryResolveCommand(
+                        cc.AfterArParkDestination,
+                        cc.AfterArParkCustomCommand,
+                        out var parkCommand,
+                        out var parkError))
+                {
+                    ImGui.TextColored(new Vector4(1f, 0.25f, 0.25f, 1f), parkError);
+                }
+                else
+                {
+                    ImGui.TextDisabled($"One-shot route: {parkCommand}");
+                }
+                ImGui.Unindent();
+            }
 
             var vendorStock = cc.EnableVendorStock;
             if (ImGui.Checkbox("Vendor Stock", ref vendorStock))
@@ -1349,6 +1438,75 @@ public class ConfigWindow : Window, IDisposable
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip("Checks rank before each race. Uses RaceChocoboManager when loaded, then opens /goldsaucer and reads GoldSaucerInfo node 21 as fallback. Rank 50 stops the daily racing task before another queue.");
 
+                ImGui.Unindent();
+            }
+
+            var alliedSociety = cc.EnableAlliedSociety;
+            if (ImGui.Checkbox("Allied Society", ref alliedSociety))
+            {
+                cc.EnableAlliedSociety = alliedSociety;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "AlliedSociety", "Allied Society",
+                (source, target) => target.EnableAlliedSociety = source.EnableAlliedSociety);
+            if (DrawResetButton("AlliedSocietyState", cc.ResetAlliedSocietyState))
+                changed = true;
+            if (ResetDetectionService.TaskIsCompleted(cc.AlliedSocietyLastCompleted, cc.AlliedSocietyNextReset))
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+            }
+            DrawDailyTaskHint(cc.AlliedSocietyLastCompleted, cc.AlliedSocietyNextReset,
+                "Runs Questionable Companion's Allied Society rotation for this current character only.");
+            if (cc.EnableAlliedSociety)
+            {
+                ImGui.Indent();
+                var gearsetSelection = cc.AlliedSocietyGearsetSelection;
+                if (ImGui.RadioButton("Current Job##AlliedSociety", gearsetSelection == AlliedSocietyGearsetSelection.CurrentJob))
+                {
+                    cc.AlliedSocietyGearsetSelection = AlliedSocietyGearsetSelection.CurrentJob;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Saved Gearset##AlliedSociety", gearsetSelection == AlliedSocietyGearsetSelection.SavedGearset))
+                {
+                    cc.AlliedSocietyGearsetSelection = AlliedSocietyGearsetSelection.SavedGearset;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "AlliedSocietyGearsetSelection", "Allied Society gearset mode",
+                    (source, target) => target.AlliedSocietyGearsetSelection = source.AlliedSocietyGearsetSelection);
+
+                if (cc.AlliedSocietyGearsetSelection == AlliedSocietyGearsetSelection.SavedGearset)
+                {
+                    var gearsets = plugin.EquipmentAutomationRuntime.GetValidGearsets();
+                    var selectedGearset = gearsets.FirstOrDefault(gearset => gearset.GearsetId == cc.AlliedSocietyGearsetId);
+                    var preview = selectedGearset == null
+                        ? $"Invalid gearset {cc.AlliedSocietyGearsetId}"
+                        : FormatGearset(selectedGearset);
+                    if (ImGui.BeginCombo("Saved gearset", preview))
+                    {
+                        foreach (var gearset in gearsets.OrderBy(gearset => gearset.GearsetId))
+                        {
+                            var selected = gearset.GearsetId == cc.AlliedSocietyGearsetId;
+                            if (ImGui.Selectable(FormatGearset(gearset), selected))
+                            {
+                                cc.AlliedSocietyGearsetId = gearset.GearsetId;
+                                changed = true;
+                            }
+                            if (selected)
+                                ImGui.SetItemDefaultFocus();
+                        }
+                        if (gearsets.Count == 0)
+                            ImGui.TextDisabled("No valid saved gearsets are available on the current character.");
+                        ImGui.EndCombo();
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "AlliedSocietyGearsetId", "Allied Society saved gearset",
+                        (source, target) => target.AlliedSocietyGearsetId = source.AlliedSocietyGearsetId);
+                    if (selectedGearset == null)
+                        ImGui.TextColored(new Vector4(1f, 0.25f, 0.25f, 1f), "A valid saved gearset must be selected before this task can start.");
+                }
+
+                ImGui.TextDisabled("Questionable Companion must be loaded with its AlliedSocietyRotationService public contract available.");
                 ImGui.Unindent();
             }
 
@@ -2371,6 +2529,30 @@ public class ConfigWindow : Window, IDisposable
         ImGui.EndCombo();
         return changed;
     }
+
+    private bool IsEquipmentAutomationBusy()
+        => plugin.Engine.IsRunning ||
+           plugin.GearUpdaterService.IsActive ||
+           plugin.HighestCombatJobService.IsActive ||
+           plugin.CurrentJobEquipmentService.IsActive ||
+           plugin.SeasonalGearService.IsActive ||
+           plugin.AlliedSocietyService.IsActive ||
+           plugin.AlliedSocietyService.OwnsRotation;
+
+    private static string FormatAfterArParkDestination(AfterArParkDestination destination)
+        => destination switch
+        {
+            AfterArParkDestination.Home => "Home (/li home)",
+            AfterArParkDestination.Limsa => "Limsa (/li limsa)",
+            AfterArParkDestination.FreeCompany => "Free Company (/li fc)",
+            AfterArParkDestination.Inn => "Inn (/li inn)",
+            AfterArParkDestination.Workshop => "Workshop (/li ws)",
+            AfterArParkDestination.Custom => "Custom /li command",
+            _ => "Invalid",
+        };
+
+    private static string FormatGearset(GearsetSnapshot gearset)
+        => $"{gearset.GearsetId + 1}: {gearset.Name} (Lv. {gearset.Level})";
 
     private static string NormalizeJobAbbreviation(string value)
         => value?.Trim().ToUpperInvariant() ?? string.Empty;
