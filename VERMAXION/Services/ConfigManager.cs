@@ -502,6 +502,8 @@ public class ConfigManager
         target.RegisterUnregisteredItemsFromInventory = source.RegisterUnregisteredItemsFromInventory;
         target.EnableVendorStock = source.EnableVendorStock;
         target.EnableRefillFromListings = source.EnableRefillFromListings;
+        target.EnableAfterArPark = source.EnableAfterArPark;
+        target.EnableAlliedSociety = source.EnableAlliedSociety;
         target.EnableNagYourMom = source.EnableNagYourMom;
         target.EnableNagYourMomCasualCc = source.EnableNagYourMomCasualCc;
         target.EnableNagYourMomFrontline = source.EnableNagYourMomFrontline;
@@ -532,6 +534,10 @@ public class ConfigManager
         target.RefillFromListingsSelectionMode = source.RefillFromListingsSelectionMode;
         target.RefillFromListingsRoute = source.RefillFromListingsRoute;
         target.RefillFromListingsMinFreeInventorySlots = source.RefillFromListingsMinFreeInventorySlots;
+        target.AfterArParkDestination = source.AfterArParkDestination;
+        target.AfterArParkCustomCommand = source.AfterArParkCustomCommand;
+        target.AlliedSocietyGearsetSelection = source.AlliedSocietyGearsetSelection;
+        target.AlliedSocietyGearsetId = source.AlliedSocietyGearsetId;
         target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay;
         target.NagYourMomFrontlineRunsPerDay = source.NagYourMomFrontlineRunsPerDay;
         target.NagYourMomRivalWingsRunsPerDay = source.NagYourMomRivalWingsRunsPerDay;
