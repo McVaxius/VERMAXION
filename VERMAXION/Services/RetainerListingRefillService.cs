@@ -137,7 +137,7 @@ public sealed class RetainerListingRefillService
     private bool reopenSellListForCurrentPlan;
     private bool contextOpenRequested;
     private int minFreeInventorySlots = DefaultMinFreeInventorySlots;
-    private int listingDelayAdjustmentMs;
+    private int listingActionDelayMs;
 
     public string StatusText { get; private set; } = "Idle.";
     public string LastError { get; private set; } = string.Empty;
@@ -170,7 +170,7 @@ public sealed class RetainerListingRefillService
         selectionMode = config.RefillFromListingsSelectionMode;
         route = config.RefillFromListingsRoute;
         minFreeInventorySlots = ClampMinFreeInventorySlots(config.RefillFromListingsMinFreeInventorySlots);
-        listingDelayAdjustmentMs = configuration.RefillListingsDelayAdjustmentMs;
+        listingActionDelayMs = Math.Clamp(configuration.RefillListingsActionDelayMs, 0, 2000);
         SetState(RefillState.PreparingTargets, "Reading retainer listings...");
         TickPreparingTargets();
     }
@@ -235,7 +235,7 @@ public sealed class RetainerListingRefillService
         closeThenComplete = false;
         closeMode = RetainerUiCloseMode.FullClose;
         minFreeInventorySlots = DefaultMinFreeInventorySlots;
-        listingDelayAdjustmentMs = 0;
+        listingActionDelayMs = 250;
         ResetRetainerPhaseFlags();
         ResetCloseTracking();
     }
@@ -439,7 +439,7 @@ public sealed class RetainerListingRefillService
             log.Information($"[Listings] RetainerList target '{target.Name}' matched row {index}.");
             GameHelpers.FireAddonCallback(RetainerListAddonName, true, 2, index, 0, 0);
             retainerSelected = true;
-            ScheduleListingAction(2000);
+            ScheduleListingAction();
             return;
         }
 
@@ -477,7 +477,7 @@ public sealed class RetainerListingRefillService
 
             GameHelpers.FireAddonCallback(SelectStringAddonName, true, index);
             sellMenuSelected = true;
-            ScheduleListingAction(2000);
+            ScheduleListingAction();
             return;
         }
 
@@ -590,7 +590,7 @@ public sealed class RetainerListingRefillService
 
         log.Information(detail);
         contextOpenRequested = true;
-        ScheduleListingAction(750);
+        ScheduleListingAction();
     }
 
     private void TickSelectingReturnToInventory()
@@ -633,7 +633,7 @@ public sealed class RetainerListingRefillService
             {
                 GameHelpers.ClickYesIfVisible();
                 confirmationClicked = true;
-                ScheduleListingAction(1000);
+                ScheduleListingAction();
                 return;
             }
         }
@@ -670,7 +670,7 @@ public sealed class RetainerListingRefillService
                 reopenSellListForCurrentPlan = true;
                 SetState(RefillState.OpeningSellList, "Reopening retainer market listings...");
             }
-            ScheduleListingAction(500);
+            ScheduleListingAction();
             return;
         }
 
@@ -678,11 +678,8 @@ public sealed class RetainerListingRefillService
         nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
     }
 
-    private void ScheduleListingAction(int baseDelayMs)
-    {
-        var adjusted = Math.Max(0L, (long)baseDelayMs + listingDelayAdjustmentMs);
-        nextActionAt = DateTime.UtcNow.AddMilliseconds(adjusted);
-    }
+    private void ScheduleListingAction()
+        => nextActionAt = DateTime.UtcNow.AddMilliseconds(listingActionDelayMs);
 
     private void TickClosingRetainerUi()
     {
