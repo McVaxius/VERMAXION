@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using VERMAXION.Models;
 using Xunit;
 
@@ -7,6 +8,20 @@ namespace VERMAXION.Tests;
 
 public sealed class UiUxPolicyTests
 {
+    [Fact]
+    public void FreshConfigurationDefaultsAutomaticTaskColumnSizingOn()
+    {
+        Assert.True(new Configuration().AutoWidthMainTaskColumns);
+    }
+
+    [Fact]
+    public void LegacyConfigurationDefaultsAutomaticTaskColumnSizingOn()
+    {
+        var configuration = JsonSerializer.Deserialize<Configuration>("{}")!;
+
+        Assert.True(configuration.AutoWidthMainTaskColumns);
+    }
+
     [Theory]
     [InlineData(TaskEligibilityStatus.Runnable, false, AutomationDashboardSection.DueNow)]
     [InlineData(TaskEligibilityStatus.Blocked, false, AutomationDashboardSection.Blocked)]
