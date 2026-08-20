@@ -1,7 +1,7 @@
 # Vermaxion UI/UX Recommendations
 
 **Review date:** 2026-08-18  
-**Scope:** UI code review only; no runtime behaviour or implementation changes are included in this document.
+**Scope:** UI review plus tracked implementation status. The prioritized P0/P1/P2 recommendations remain the acceptance source for the follow-up implementation.
 
 ## Product goal
 
@@ -18,6 +18,15 @@ Understand which recurring tasks are due, which character/config scope is active
 - The UI models task cadence, ownership, ordering, prerequisites, and per-character/default configuration.
 - A clear `CONFIGURED BUT NOT DISPATCHABLE` state already exposes registry problems.
 - Setup wizards and a dedicated registrable-item editor support complex configuration.
+
+## Implementation status
+
+### 2026-08-20 — First implementation bundle
+
+- Implemented global catalog-based Favorites with an `All Tasks` default tab, a flat `Favorites` tab, saved star toggles, shared row status/actions, and an explanatory empty state. Manual utilities and test controls remain in `All Tasks` only.
+- Split Refill Listings pacing into the existing menu/click action delay and an independent inter-item delay used only after a withdrawal is verified. Both values default to 250 ms, are snapshotted at run start, and are clamped to 0–2000 ms.
+- Added focused policy coverage for favorite resolution/toggling and pacing selection, including null, duplicate, unknown, and retired favorite IDs and proof that click pacing and unsuccessful verification do not use the inter-item delay.
+- The recommendations and validation checklist below remain intentionally open for the complete follow-up UI/UX pass.
 
 ## Prioritized recommendations
 
