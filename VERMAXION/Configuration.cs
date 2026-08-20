@@ -22,7 +22,9 @@ public class Configuration : IPluginConfiguration
     public bool KrangleEnabled { get; set; } = false;
     public bool AutoRestoreRetainerCheckingAfterWork { get; set; } = true;
     public bool EnableCharacterSelectStallRecovery { get; set; } = true;
+    public List<string> FavoriteAutomationIds { get; set; } = new();
     public int RefillListingsActionDelayMs { get; set; } = 250;
+    public int RefillListingsInterItemDelayMs { get; set; } = 250;
     public float LeftPanelWidth { get; set; } = 240f;
     public CharacterListSortMode CharacterListSortMode { get; set; } = CharacterListSortMode.Name;
     public List<string> PostProcessTaskOrder { get; set; } = VERMAXION.PostProcessTaskOrder.DefaultOrder.ToList();
