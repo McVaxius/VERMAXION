@@ -1,5 +1,29 @@
 # VERMAXION Changelog
 
+## 2026-08-20 - Complete UI/UX review implementation
+
+### Added
+
+- Added a saved global `Auto width the columns` setting, enabled by default, with immediate save and guidance for automatic versus manual task-table sizing.
+- Added a readiness-first automation dashboard with `Due now`, `Blocked`, `Scheduled later`, and `Complete` sections, written state labels, local next-eligible times, owner/cadence context, direct blocker recovery where configuration can help, and collapsed advanced diagnostics/test controls.
+- Added persistent configuration-scope context, row-level account-default comparisons, differing-character counts, immediate single-character `Use default`, and named-scope confirmations for propagation, reset, and delete actions.
+- Added explicit Before AR and After AR task-order lanes with lane-local movement, explicit phase changes, and inline cadence, ownership, and blocker details.
+- Added setup-wizard field-impact previews and separate account-default versus confirmed all-character apply actions. Fishing previews include every changed stock row.
+- Added personal registrable-list search and validated import previews with accepted, duplicate, unknown, invalid, added, and removed counts. Import, Clear All, and default-list replacement now mutate only after confirmation.
+
+### Changed
+
+- Corrected the Main Window to keep its identity, readiness, recovery, and primary actions fixed above exactly one scrolling body. The task table no longer owns a nested scrollbar or forces an empty minimum height, so short Favorites views do not reserve a blank table area.
+- Replaced the multiline six-column task table with a single-line `★ | Task | When | Type | Actions` layout. Compact local timing and owner/cadence codes carry full legends in header tooltips, while each task tooltip retains its complete status, blocker, maturity, schedule, and disabled-action context without increasing row height.
+- Automatic task-column sizing now fits the compact columns to their contents, assigns the remaining width to Task, and prevents divider dragging. Disabling it restores the shared, natively persisted manual layout for All Tasks and Favorites.
+- Configuration, task-order, wizard, and registrable-editor layouts retain their stretch/scroll tables, wrapped explanations, stable action columns, and explicit empty/error states at their existing minimum sizes.
+- Configuration recovery selects the active character, opens the correct tab and section, and scrolls it into view. Runtime-only blockers remain informational.
+
+### Verification
+
+- The focused `UiUxPolicyTests` class passes 18/18 tests, including fresh and legacy automatic-width defaults. The complete Debug x64 suite passes 538/538 tests.
+- The Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning. Manual checklist verification remains David-operated and pending.
+
 ## 2026-08-20 - Favorites and independent Refill Listings pacing
 
 ### Added

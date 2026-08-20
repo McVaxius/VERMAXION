@@ -43,6 +43,8 @@
     <Compile Include="..\VERMAXION\Models\DadTimeWindow.cs" Link="DadTimeWindow.cs" />
     <Compile Include="..\VERMAXION\Models\AutomationStatusModels.cs" Link="AutomationStatusModels.cs" />
     <Compile Include="..\VERMAXION\Models\AutomationDispatchModels.cs" Link="AutomationDispatchModels.cs" />
+    <Compile Include="..\VERMAXION\Models\AutomationDashboardModels.cs" Link="AutomationDashboardModels.cs" />
+    <Compile Include="..\VERMAXION\Models\RegistrableEditorPolicy.cs" Link="RegistrableEditorPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\RefillListingPacingPolicy.cs" Link="RefillListingPacingPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\EquipmentAutomationModels.cs" Link="EquipmentAutomationModels.cs" />
     <Compile Include="..\VERMAXION\Models\DadHandoffModels.cs" Link="DadHandoffModels.cs" />

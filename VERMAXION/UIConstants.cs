@@ -5,6 +5,7 @@ public static class UIConstants
     public static class ConfigLabels
     {
         // Global Settings
+        public const string AutoWidthMainTaskColumns = "Auto width the columns";
         public const string KrangleNames = "Krangle Names";
         public const string AutoRestoreRetainerCheckingAfterWork = "Keep current/previous characters enabled in AutoRetainer";
         public const string EnableCharacterSelectStallRecovery = "Recover stalled character select";
@@ -71,6 +72,7 @@ public static class UIConstants
     
     public static class Tooltips
     {
+        public const string AutoWidthMainTaskColumns = "Automatically fit the compact ★, When, Type, and Actions columns while Task uses the remaining space. Turn this off to drag the dividers; Dalamud saves and restores the manual widths for both All Tasks and Favorites.";
         public const string KrangleNames = "Replace character names with exercise words for screenshots";
         public const string AutoRestoreRetainerCheckingAfterWork = "Restore and persist AutoRetainer checking for the current and immediately previous character whenever either is disabled. Turn this off before intentionally deselecting either character.";
         public const string EnableCharacterSelectStallRecovery = "After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button.";

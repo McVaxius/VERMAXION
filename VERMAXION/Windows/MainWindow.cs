@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
@@ -35,11 +36,12 @@ public class MainWindow : Window, IDisposable
     private readonly Plugin plugin;
     private readonly RetainerEquippingArProbeCache retainerEquippingReadinessCache =
         new(TimeSpan.FromSeconds(5));
-    private bool drawingFavorites;
-    private int favoriteRowsDrawn;
+    private List<TaskRowDescriptor>? taskRowsBeingBuilt;
 
     public MainWindow(Plugin plugin)
-        : base("Vermaxion##Main")
+        : base(
+            "Vermaxion##Main",
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         this.plugin = plugin;
         SizeConstraints = new WindowSizeConstraints
@@ -78,12 +80,14 @@ public class MainWindow : Window, IDisposable
         }
         
         ImGui.Separator();
-        ImGui.Spacing();
 
         if (plugin.Configuration.KrangleEnabled && !string.IsNullOrEmpty(charKey))
             displayName = KrangleService.KrangleName(charKey);
 
         ImGui.Text($"Character: {displayName}");
+        var account = plugin.ConfigManager.GetCurrentAccount();
+        ImGui.SameLine();
+        ImGui.TextDisabled($"Account: {(string.IsNullOrWhiteSpace(account?.AccountAlias) ? "Not selected" : account.AccountAlias)}");
         ImGui.SameLine();
         var enabled = config.Enabled;
         if (ImGui.Checkbox("Enabled", ref enabled))
@@ -112,55 +116,29 @@ public class MainWindow : Window, IDisposable
             _ => new Vector4(1f, 0.8f, 0f, 1f),
         };
 
-        ImGui.TextColored(stateColor, $"Engine: {engine.StatusText} (State: {engine.State})");
+        var pendingTasks = engine.GetPendingTaskCount();
+        var readinessText = $"Engine readiness: {(engine.RegistryReady ? "Ready" : "Not ready")} · {engine.StatusText} (State: {engine.State})";
+        if (pendingTasks > 0)
+            readinessText += $" · {pendingTasks} pending";
+        ImGui.TextColored(stateColor, readinessText);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(readinessText);
         if (!engine.RegistryReady)
         {
             ImGui.TextColored(new Vector4(1f, 0.15f, 0.15f, 1f), "CONFIGURED BUT NOT DISPATCHABLE");
-            ImGui.TextWrapped(engine.RegistryDiagnostic);
-        }
-        var lastRunTime = engine.LastRunCompletedAtUtc?.ToString("u") ?? "never";
-        ImGui.TextDisabled($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
-        ImGui.TextDisabled($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
-        ImGui.TextDisabled($"AR suppression: {plugin.AutoRetainerIPC.LastSnapshot}");
-        var characterSelectRecovery = plugin.CharacterSelectStallRecovery;
-        var characterSelectEligibility = characterSelectRecovery.GetEligibility(
-            plugin.Configuration.EnableCharacterSelectStallRecovery);
-        ImGui.TextDisabled(
-            $"Character-select recovery: {(plugin.Configuration.EnableCharacterSelectStallRecovery ? "On" : "Off")} - {characterSelectRecovery.StatusText}");
-        var characterSelectBlockedReason = characterSelectEligibility.CanAttempt
-            ? characterSelectRecovery.LastBlockedReason
-            : characterSelectEligibility.Reason;
-        if (!string.IsNullOrWhiteSpace(characterSelectBlockedReason))
-            ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Character-select recovery blocker: {characterSelectBlockedReason}");
-        ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt);
-        if (ImGui.SmallButton("Load first character now"))
-            plugin.QueueCharacterSelectRecoveryAttempt();
-        ImGui.EndDisabled();
-        if (!characterSelectEligibility.CanAttempt && ImGui.IsItemHovered())
-            ImGui.SetTooltip(characterSelectEligibility.Reason);
-        if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
-            ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Handoff blocker: {engine.ActiveHandoffBlocker}");
-        
-        // Task count
-        var pendingTasks = engine.GetPendingTaskCount();
-        if (pendingTasks > 0)
-        {
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(engine.RegistryDiagnostic);
             ImGui.SameLine();
-            ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), $"({pendingTasks} pending)");
+            if (ImGui.SmallButton("Open Task Order"))
+                plugin.ConfigWindow.OpenTaskOrder();
         }
-        
-        ImGui.Spacing();
-
-        var currentBlockers = AutomationCatalog.EngineTasks
-            .Select(feature => (feature, eligibility: engine.GetTaskEligibility(feature.Id)))
-            .Where(item => item.eligibility.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
-            .ToList();
-        if (currentBlockers.Count > 0 && ImGui.CollapsingHeader($"Blocked prerequisites ({currentBlockers.Count})"))
+        if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
         {
-            foreach (var item in currentBlockers)
-                ImGui.BulletText($"{item.feature.Label}: {item.eligibility.Reason}");
+            ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Handoff blocker: {engine.ActiveHandoffBlocker}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(engine.ActiveHandoffBlocker);
         }
-        
+
         // Control buttons row
         // FULL STOP button - red only when plugin is in operation
         var highlightFullStop = engine.OwnsLiveWork ||
@@ -206,23 +184,27 @@ public class MainWindow : Window, IDisposable
         if (ImGui.Button("Config"))
             plugin.ToggleConfigUi();
 
-        ImGui.Spacing();
-
         void DrawTaskSurface(bool favoritesOnly)
         {
-            drawingFavorites = favoritesOnly;
-            favoriteRowsDrawn = 0;
+            taskRowsBeingBuilt = new List<TaskRowDescriptor>();
 
         // Task table with run buttons
-        if (ImGui.BeginTable("TasksTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+        var autoWidthTaskColumns = plugin.Configuration.AutoWidthMainTaskColumns;
+        var taskTableFlags = ImGuiTableFlags.Borders |
+                             ImGuiTableFlags.RowBg |
+                             ImGuiTableFlags.SizingStretchProp;
+        taskTableFlags |= autoWidthTaskColumns
+            ? ImGuiTableFlags.NoSavedSettings
+            : ImGuiTableFlags.Resizable;
+        var taskTableId = autoWidthTaskColumns ? "TasksTableAutoWidth" : "TasksTable";
+        if (ImGui.BeginTable(taskTableId, 5, taskTableFlags))
         {
-            ImGui.TableSetupColumn("★", ImGuiTableColumnFlags.WidthFixed, 28);
-            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthFixed, 172);
-            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 52);
-            ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 112);
-            ImGui.TableSetupColumn("run", ImGuiTableColumnFlags.WidthFixed, 60);
-            ImGui.TableSetupColumn("Maturity", ImGuiTableColumnFlags.WidthFixed, 68);
-            ImGui.TableHeadersRow();
+            ImGui.TableSetupColumn("★", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 28f);
+            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch, 1.8f);
+            ImGui.TableSetupColumn("When", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 94f);
+            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 98f);
+            ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 142f);
+            DrawTaskTableHeaders();
 
             // --- Every AR PostProcess ---
             DrawTaskCategory("Run-start hook", AutomationCatalog.Get(AutomationCatalog.MiscCommands));
@@ -402,16 +384,30 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, AutomationCatalog.Get(AutomationCatalog.CurrentJobEquipment).CadenceLabel,
                 "run##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
 
+            DrawDashboardRows(taskRowsBeingBuilt, favoritesOnly);
+
             ImGui.EndTable();
+        }
 
-            ImGui.Spacing();
+        ImGui.Spacing();
 
-            if (!favoritesOnly)
-            {
+        if (!favoritesOnly && ImGui.CollapsingHeader("Advanced test controls"))
+        {
             // Test Functions
             ImGui.BeginDisabled(plugin.DadHandoffBlocksNewWork);
             ImGui.Text("Test Functions");
             ImGui.Separator();
+
+            var fishingTestDisabled = engine.IsRunning ||
+                                      plugin.IsFishingRunActive ||
+                                      plugin.FisherGearsetTestService.IsActive;
+            ImGui.BeginDisabled(fishingTestDisabled);
+            if (ImGui.SmallButton("Ocean Fishing account test"))
+                plugin.RunFishingStartupTest();
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Current Fisher gearset test"))
+                plugin.RunFishingGearsetTest();
+            ImGui.EndDisabled();
             
             if (ImGui.SmallButton("Check FC Buff Inventory"))
             {
@@ -489,70 +485,75 @@ public class MainWindow : Window, IDisposable
                 GameHelpers.SendEnd();
             }
             ImGui.EndDisabled();
+        }
+
+        if (favoritesOnly && (taskRowsBeingBuilt?.All(row => row.Feature == null || !IsFavorite(row.Feature.Id)) ?? true))
+            ImGui.TextWrapped("No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here.");
+        taskRowsBeingBuilt = null;
+        }
+
+        if (ImGui.BeginChild("MainBody", new Vector2(0, 0), false))
+        {
+            if (ImGui.BeginTabBar("MainTaskTabs"))
+            {
+                if (ImGui.BeginTabItem("All Tasks"))
+                {
+                    DrawTaskSurface(false);
+                    ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem("Favorites"))
+                {
+                    DrawTaskSurface(true);
+                    ImGui.EndTabItem();
+                }
+                ImGui.EndTabBar();
+            }
+
+            ImGui.Spacing();
+
+            if (ImGui.CollapsingHeader("Advanced diagnostics"))
+            {
+                var lastRunTime = engine.LastRunCompletedAtUtc?.ToLocalTime().ToString("g") ?? "never";
+                ImGui.TextWrapped($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
+                ImGui.TextWrapped($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
+                ImGui.TextWrapped($"AR suppression: {plugin.AutoRetainerIPC.LastSnapshot}");
+
+                var characterSelectRecovery = plugin.CharacterSelectStallRecovery;
+                var characterSelectEligibility = characterSelectRecovery.GetEligibility(
+                    plugin.Configuration.EnableCharacterSelectStallRecovery);
+                ImGui.TextWrapped(
+                    $"Character-select recovery: {(plugin.Configuration.EnableCharacterSelectStallRecovery ? "On" : "Off")} - {characterSelectRecovery.StatusText}");
+                var characterSelectBlockedReason = characterSelectEligibility.CanAttempt
+                    ? characterSelectRecovery.LastBlockedReason
+                    : characterSelectEligibility.Reason;
+                if (!string.IsNullOrWhiteSpace(characterSelectBlockedReason))
+                    ImGui.TextWrapped($"Character-select recovery blocker: {characterSelectBlockedReason}");
+                ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt);
+                if (ImGui.SmallButton("Load first character now"))
+                    plugin.QueueCharacterSelectRecoveryAttempt();
+                ImGui.EndDisabled();
+                if (!characterSelectEligibility.CanAttempt && ImGui.IsItemHovered())
+                    ImGui.SetTooltip(characterSelectEligibility.Reason);
+
+                var now = DateTime.UtcNow;
+                var nextDaily = ResetDetectionService.GetLastDailyReset(now).AddDays(1);
+                var nextWeekly = ResetDetectionService.GetLastWeeklyReset(now).AddDays(7);
+                var untilDaily = nextDaily - now;
+                var untilWeekly = nextWeekly - now;
+                var nextFriday = ResetDetectionService.GetNextFashionReportAvailability(now);
+                var untilFriday = nextFriday - now;
+                var nextJumboPayout = ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now);
+                var untilJumboPayout = nextJumboPayout - now;
+                ImGui.TextWrapped($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m | Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m | Fashion: {untilFriday.Days}d {untilFriday.Hours}h {untilFriday.Minutes}m | Jumbo payout: {untilJumboPayout.Days}d {untilJumboPayout.Hours}h {untilJumboPayout.Minutes}m");
+
+                var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
+                var momIpcStatus = plugin.MomIPCClient.GetReadiness();
+                ImGui.TextWrapped($"AR PostProcess: {arStatus} | {now.DayOfWeek}");
+                ImGui.TextWrapped($"mom IPC: {momIpcStatus.Summary} | nag your mom: {engine.NagYourMomStatusText}");
+                ImGui.TextWrapped($"dad IPC: {(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")} | nag your dad: {engine.NagYourDadStatusText}");
             }
         }
-
-            if (favoritesOnly && favoriteRowsDrawn == 0)
-                ImGui.TextWrapped("No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here.");
-        }
-
-        if (ImGui.BeginTabBar("MainTaskTabs"))
-        {
-            if (ImGui.BeginTabItem("All Tasks"))
-            {
-                DrawTaskSurface(false);
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("Favorites"))
-            {
-                DrawTaskSurface(true);
-                ImGui.EndTabItem();
-            }
-            ImGui.EndTabBar();
-        }
-
-        ImGui.Spacing();
-
-        // Timers
-        var now = DateTime.UtcNow;
-        var nextDaily = ResetDetectionService.GetLastDailyReset(now).AddDays(1);
-        var nextWeekly = ResetDetectionService.GetLastWeeklyReset(now).AddDays(7);
-        var untilDaily = nextDaily - now;
-        var untilWeekly = nextWeekly - now;
-        var nextFriday = ResetDetectionService.GetNextFashionReportAvailability(now);
-        var untilFriday = nextFriday - now;
-
-        var nextJumboPayout = ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now);
-        var untilJumboPayout = nextJumboPayout - now;
-
-        ImGui.TextDisabled($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m  |  Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m  |  Fashion: {untilFriday.Days}d {untilFriday.Hours}h {untilFriday.Minutes}m  |  Jumbo payout: {untilJumboPayout.Days}d {untilJumboPayout.Hours}h {untilJumboPayout.Minutes}m");
-
-        // AR status
-        var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
-        var momIpcStatus = plugin.MomIPCClient.GetReadiness();
-        ImGui.TextDisabled($"AR PostProcess: {arStatus}  |  {now.DayOfWeek}");
-        ImGui.TextDisabled($"mom IPC: {momIpcStatus.Summary}  |  nag your mom: {engine.NagYourMomStatusText}");
-        ImGui.TextDisabled($"dad IPC: {(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")}  |  nag your dad: {engine.NagYourDadStatusText}");
-        
-        ImGui.Spacing();
-        ImGui.Separator();
-        
-        // Support section
-        ImGui.Text("Support VERMAXION");
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Buy me a coffee"))
-        {
-            System.Diagnostics.Process.Start(new ProcessStartInfo
-            {
-                FileName = "https://ko-fi.com/mcvaxius",
-                UseShellExecute = true
-            });
-        }
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.SetTooltip("Support continued development on Ko-fi");
-        }
-        ImGui.TextDisabled("Every donation helps keep these plugins free and updated!");
+        ImGui.EndChild();
     }
 
     private void RunRetainerEquipping()
@@ -628,14 +629,7 @@ public class MainWindow : Window, IDisposable
 
     private void DrawTaskCategory(string label, AutomationFeatureDefinition? feature)
     {
-        if (drawingFavorites)
-            return;
-
-        ImGui.TableNextRow();
-        ImGui.TableSetColumnIndex(1);
-        ImGui.TextColored(new Vector4(0.45f, 0.75f, 1f, 1f), label);
-        if (feature != null && ImGui.IsItemHovered())
-            ImGui.SetTooltip($"{feature.CadenceLabel} · {feature.OwnershipLabel}");
+        // Category calls remain beside their row definitions; the dashboard renders explicit state sections.
     }
 
     private void DrawTaskRow(
@@ -657,34 +651,111 @@ public class MainWindow : Window, IDisposable
         bool tertiaryButtonDisabled = false,
         string? tertiaryButtonTooltip = null)
     {
+        var feature = GetDisplayedFeature(task);
+        var eligibility = GetDashboardEligibility(feature, enabled, buttonDisabled, buttonTooltip, status);
+        var dadHandoffBlocker = plugin.DadHandoffBlocksNewWork
+            ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
+            : null;
         var row = new TaskRowDescriptor(
-            GetDisplayedFeature(task),
+            feature,
             task,
             enabled,
             status,
+            eligibility,
+            AutomationDashboardPolicy.Classify(
+                eligibility.Status,
+                IsCompletedStatus(status),
+                feature?.Id,
+                eligibility.Reason),
+            GetNextEligibleAt(feature?.Id, plugin.ConfigManager.GetActiveConfig()),
+            feature == null
+                ? null
+                : AutomationDashboardPolicy.GetRecoverySection(feature.Id, eligibility.Reason),
             buttonLabel,
             onClick,
             maturity,
             statusTooltip,
             buttonDisabled || plugin.DadHandoffBlocksNewWork,
-            buttonTooltip,
+            dadHandoffBlocker ?? buttonTooltip,
             secondaryButtonLabel,
             secondaryOnClick,
             secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
-            secondaryButtonTooltip,
+            dadHandoffBlocker ?? secondaryButtonTooltip,
             tertiaryButtonLabel,
             tertiaryOnClick,
             tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
-            tertiaryButtonTooltip);
+            dadHandoffBlocker ?? tertiaryButtonTooltip);
+        taskRowsBeingBuilt?.Add(row);
+    }
 
-        var favorites = plugin.Configuration.FavoriteAutomationIds;
-        var isFavorite = row.Feature != null &&
-                         (favorites?.Contains(row.Feature.Id, StringComparer.Ordinal) ?? false);
-        if (drawingFavorites && (!isFavorite || row.Feature == null))
+    private static void DrawTaskTableHeaders()
+    {
+        ImGui.TableNextRow(ImGuiTableRowFlags.Headers);
+        ImGui.TableSetColumnIndex(0);
+        ImGui.TableHeader("★");
+        ImGui.TableSetColumnIndex(1);
+        ImGui.TableHeader("Task");
+        ImGui.TableSetColumnIndex(2);
+        ImGui.TableHeader("When");
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Next dashboard timing: Now, Blocked, Off, Done, or the next eligible local date and time.");
+        }
+        ImGui.TableSetColumnIndex(3);
+        ImGui.TableHeader("Type");
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Owner / cadence\n" +
+                "Owners: ENG ordered engine task; HOOK run-start hook; COORD preemptive coordinator; " +
+                "WIP config-only WIP; ROUTE child option; MAN manual utility.\n" +
+                "Cadence: RUN every applicable run; DAY daily; WK weekly; SCH scheduled; " +
+                "WIN coordinator window; CFG config only. WIP is appended for work-in-progress features.");
+        }
+        ImGui.TableSetColumnIndex(4);
+        ImGui.TableHeader("Actions");
+    }
+
+    private void DrawDashboardRows(IReadOnlyList<TaskRowDescriptor> rows, bool favoritesOnly)
+    {
+        var catalogRows = rows.Where(row => row.Feature != null).ToList();
+        if (favoritesOnly)
+        {
+            foreach (var row in catalogRows.Where(row => IsFavorite(row.Feature!.Id)))
+                DrawDashboardRow(row, showDiagnosticActions: false);
             return;
-        if (drawingFavorites)
-            favoriteRowsDrawn++;
+        }
 
+        foreach (var section in Enum.GetValues<AutomationDashboardSection>())
+        {
+            var sectionRows = catalogRows.Where(row => row.Section == section).ToList();
+            if (sectionRows.Count == 0)
+                continue;
+
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(1);
+            ImGui.TextColored(
+                GetSectionColor(section),
+                $"{AutomationDashboardPolicy.GetStateLabel(section)} ({sectionRows.Count})");
+            foreach (var row in sectionRows)
+                DrawDashboardRow(row, showDiagnosticActions: true);
+        }
+
+        var manualRows = rows.Where(row => row.Feature == null).ToList();
+        if (manualRows.Count > 0)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(1);
+            ImGui.TextColored(new Vector4(0.45f, 0.75f, 1f, 1f), $"Manual utilities ({manualRows.Count})");
+            foreach (var row in manualRows)
+                DrawDashboardRow(row, showDiagnosticActions: true);
+        }
+    }
+
+    private void DrawDashboardRow(TaskRowDescriptor row, bool showDiagnosticActions)
+    {
+        var isFavorite = row.Feature != null && IsFavorite(row.Feature.Id);
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
         if (row.Feature != null)
@@ -692,21 +763,25 @@ public class MainWindow : Window, IDisposable
             if (ImGui.SmallButton($"{(isFavorite ? "★" : "☆")}##Favorite_{row.Feature.Id}"))
             {
                 plugin.Configuration.FavoriteAutomationIds = AutomationCatalog.ToggleFavorite(
-                    favorites,
+                    plugin.Configuration.FavoriteAutomationIds,
                     row.Feature.Id);
                 plugin.Configuration.Save();
             }
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(isFavorite ? "Remove from Favorites" : "Add to Favorites");
         }
+
         ImGui.TableSetColumnIndex(1);
-        ImGui.Text(row.Task);
+        ImGui.TextUnformatted(row.Task);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(BuildTaskTooltip(row));
+
         ImGui.TableSetColumnIndex(2);
-        ImGui.TextColored(row.Enabled ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1), row.Enabled ? "On" : "Off");
+        ImGui.TextColored(GetSectionColor(row.Section), FormatWhen(row));
+
         ImGui.TableSetColumnIndex(3);
-        ImGui.TextDisabled(row.Status);
-        if (!string.IsNullOrWhiteSpace(row.StatusTooltip) && ImGui.IsItemHovered())
-            ImGui.SetTooltip(row.StatusTooltip);
+        ImGui.TextUnformatted(FormatType(row));
+
         ImGui.TableSetColumnIndex(4);
         ImGui.BeginDisabled(row.ButtonDisabled);
         if (ImGui.SmallButton(row.ButtonLabel))
@@ -714,7 +789,15 @@ public class MainWindow : Window, IDisposable
         ImGui.EndDisabled();
         if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered())
             ImGui.SetTooltip(row.ButtonTooltip);
-        if (!drawingFavorites && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
+
+        if (row.Section == AutomationDashboardSection.Blocked && row.RecoverySection.HasValue)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton($"Settings##Recovery_{row.Feature?.Id}"))
+                plugin.ConfigWindow.OpenAutomationSettings(row.RecoverySection.Value);
+        }
+
+        if (showDiagnosticActions && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
         {
             ImGui.SameLine();
             ImGui.BeginDisabled(row.SecondaryButtonDisabled);
@@ -724,7 +807,7 @@ public class MainWindow : Window, IDisposable
             if (!string.IsNullOrWhiteSpace(row.SecondaryButtonTooltip) && ImGui.IsItemHovered())
                 ImGui.SetTooltip(row.SecondaryButtonTooltip);
         }
-        if (!drawingFavorites && !string.IsNullOrWhiteSpace(row.TertiaryButtonLabel) && row.TertiaryOnClick != null)
+        if (showDiagnosticActions && !string.IsNullOrWhiteSpace(row.TertiaryButtonLabel) && row.TertiaryOnClick != null)
         {
             ImGui.SameLine();
             ImGui.BeginDisabled(row.TertiaryButtonDisabled);
@@ -734,25 +817,196 @@ public class MainWindow : Window, IDisposable
             if (!string.IsNullOrWhiteSpace(row.TertiaryButtonTooltip) && ImGui.IsItemHovered())
                 ImGui.SetTooltip(row.TertiaryButtonTooltip);
         }
-        ImGui.TableSetColumnIndex(5);
-        
-        // Color code maturity
-        Vector4 color;
-        switch (row.Maturity)
-        {
-            case "OK":
-            case "[OK]":
-                color = new Vector4(0, 1, 0, 1); // Green
-                break;
-            case "WIP":
-                color = new Vector4(1, 1, 0, 1); // Yellow
-                break;
-            default:
-                color = new Vector4(1, 0, 0, 1); // Red
-                break;
-        }
-        ImGui.TextColored(color, row.Maturity);
     }
+
+    private TaskEligibility GetDashboardEligibility(
+        AutomationFeatureDefinition? feature,
+        bool enabled,
+        bool buttonDisabled,
+        string? buttonTooltip,
+        string status)
+    {
+        if (feature == null)
+            return buttonDisabled
+                ? TaskEligibility.Blocked(buttonTooltip ?? "Manual utility is unavailable right now.")
+                : TaskEligibility.Runnable(status);
+        if (feature.Owner == AutomationOwner.EngineTask)
+            return plugin.Engine.GetTaskEligibility(feature.Id);
+        if (!enabled)
+            return TaskEligibility.Disabled($"{feature.Label} is disabled for this character.");
+        if (feature.Owner == AutomationOwner.ConfigOnlyWip)
+            return TaskEligibility.Unsupported("Configuration-only WIP; no runtime dispatch is available.");
+        if (feature.Owner == AutomationOwner.PreemptiveCoordinator &&
+            string.Equals(status, "AutoHook casts", StringComparison.Ordinal))
+        {
+            return TaskEligibility.NotDue("Runs in its configured coordinator window; the manual action remains available.");
+        }
+        return buttonDisabled
+            ? TaskEligibility.Blocked(buttonTooltip ?? $"{feature.Label} cannot run right now.")
+            : TaskEligibility.Runnable(status);
+    }
+
+    private static bool IsCompletedStatus(string status)
+        => status.StartsWith("Done", StringComparison.OrdinalIgnoreCase) ||
+           status.StartsWith("Complete", StringComparison.OrdinalIgnoreCase) ||
+           status.StartsWith("Ticket purchased", StringComparison.OrdinalIgnoreCase) ||
+           status.StartsWith("Route caps hit", StringComparison.OrdinalIgnoreCase);
+
+    private DateTime? GetNextEligibleAt(string? automationId, CharacterConfig config)
+    {
+        var next = automationId switch
+        {
+            AutomationCatalog.VerminionQueue => config.VerminionNextReset,
+            AutomationCatalog.MiniCactpot => config.MiniCactpotNextReset,
+            AutomationCatalog.ChocoboRacing => config.ChocoboRacingNextReset,
+            AutomationCatalog.LootGoblinMapGather => config.LootGoblinMapGatherNextReset,
+            AutomationCatalog.AlliedSociety => config.AlliedSocietyNextReset,
+            AutomationCatalog.FashionReport => ResetDetectionService.TaskIsCompleted(
+                config.FashionReportLastCompleted,
+                config.FashionReportNextReset)
+                ? config.FashionReportNextReset
+                : ResetDetectionService.GetNextFashionReportAvailability(DateTime.UtcNow),
+            AutomationCatalog.JumboCactpot => config.JumboCactpotPayoutAvailableAt > DateTime.UtcNow
+                ? config.JumboCactpotPayoutAvailableAt
+                : config.JumboCactpotNextReset,
+            AutomationCatalog.RefillListings => config.RefillFromListingsNextReset,
+            AutomationCatalog.NagYourMom => GetNextNagYourMomEligibilityUtc(config),
+            AutomationCatalog.Fishing => GetNextFishingEligibilityUtc(),
+            _ => DateTime.MinValue,
+        };
+        return next == DateTime.MinValue ? null : next.ToUniversalTime();
+    }
+
+    private static DateTime GetNextNagYourMomEligibilityUtc(CharacterConfig config)
+    {
+        var now = DateTime.Now;
+        if (!IsAnyNagYourMomRouteDue(config))
+            return now.Date.AddDays(1).ToUniversalTime();
+        if (!TimeSpan.TryParse(config.NagYourMomWindowStartLocal, out var start) ||
+            !TimeSpan.TryParse(config.NagYourMomWindowEndLocal, out var end))
+        {
+            return DateTime.MinValue;
+        }
+
+        var inWindow = start <= end
+            ? now.TimeOfDay >= start && now.TimeOfDay <= end
+            : now.TimeOfDay >= start || now.TimeOfDay <= end;
+        if (inWindow)
+            return DateTime.UtcNow;
+
+        var nextStart = now.Date.Add(start);
+        if (start <= end && now.TimeOfDay > end)
+            nextStart = nextStart.AddDays(1);
+        return nextStart.ToUniversalTime();
+    }
+
+    private DateTime GetNextFishingEligibilityUtc()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var registration = OceanFishingSchedulePolicy.GetCurrentOrNextRegistrationWindow(now);
+        var window = OceanFishingSchedulePolicy.BuildStartupWindow(
+            registration.StartUtc,
+            plugin.Configuration.OceanFishingPreWindowOffsetMinutes);
+        var nextStart = window.StartUtc <= now
+            ? OceanFishingSchedulePolicy.BuildStartupWindow(
+                registration.StartUtc.AddHours(FishingDefaults.OceanFishingRegistrationIntervalHours),
+                plugin.Configuration.OceanFishingPreWindowOffsetMinutes).StartUtc
+            : window.StartUtc;
+        return nextStart.UtcDateTime;
+    }
+
+    private static string FormatWhen(TaskRowDescriptor row)
+    {
+        if (row.Section == AutomationDashboardSection.DueNow)
+            return "Now";
+        if (row.Section == AutomationDashboardSection.Blocked)
+            return "Blocked";
+        if (row.Eligibility.Status == TaskEligibilityStatus.Disabled)
+            return "Off";
+        if (row.Section == AutomationDashboardSection.Complete)
+            return "Done";
+        if (row.NextEligibleAtUtc.HasValue)
+            return row.NextEligibleAtUtc.Value.ToLocalTime().ToString("MMM dd HH:mm");
+        return "Blocked";
+    }
+
+    private static string FormatType(TaskRowDescriptor row)
+    {
+        if (row.Feature == null)
+            return "MAN";
+
+        var owner = row.Feature.Owner switch
+        {
+            AutomationOwner.EngineTask => "ENG",
+            AutomationOwner.RunHook => "HOOK",
+            AutomationOwner.PreemptiveCoordinator => "COORD",
+            AutomationOwner.ConfigOnlyWip => "WIP",
+            AutomationOwner.ChildOption => "ROUTE",
+            _ => row.Feature.Owner.ToString().ToUpperInvariant(),
+        };
+        var cadence = row.Feature.Cadence switch
+        {
+            AutomationCadence.EveryRun => "RUN",
+            AutomationCadence.Daily => "DAY",
+            AutomationCadence.Weekly => "WK",
+            AutomationCadence.Scheduled => "SCH",
+            AutomationCadence.CoordinatorWindow => "WIN",
+            AutomationCadence.ConfigOnly => "CFG",
+            _ => row.Feature.Cadence.ToString().ToUpperInvariant(),
+        };
+        return $"{owner}/{cadence}{(row.Maturity == "WIP" ? " WIP" : string.Empty)}";
+    }
+
+    private static string BuildTaskTooltip(TaskRowDescriptor row)
+    {
+        var owner = row.Feature?.OwnershipLabel ?? "Manual utility";
+        var cadence = row.Feature?.CadenceLabel ?? "Manual / on demand";
+        var maturity = row.Feature?.Maturity == AutomationMaturity.Wip
+            ? "WIP"
+            : row.Feature == null ? "Not applicable" : "Stable";
+        var blocker = row.Section == AutomationDashboardSection.Blocked
+            ? row.Eligibility.Reason
+            : "None";
+        var disabledActionReason = row.ButtonDisabled
+            ? row.ButtonTooltip ?? row.Eligibility.Reason
+            : "None";
+        var nextLocal = row.NextEligibleAtUtc.HasValue
+            ? row.NextEligibleAtUtc.Value.ToLocalTime().ToString("MMM dd yyyy HH:mm zzz")
+            : row.Section == AutomationDashboardSection.DueNow ? "Now" : "Not scheduled";
+        var nextUtc = row.NextEligibleAtUtc.HasValue
+            ? row.NextEligibleAtUtc.Value.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'")
+            : row.Section == AutomationDashboardSection.DueNow ? "Now" : "Not scheduled";
+        var statusDetail = !string.IsNullOrWhiteSpace(row.StatusTooltip) &&
+                           !string.Equals(row.StatusTooltip, row.Status, StringComparison.Ordinal)
+            ? $"\nStatus detail: {row.StatusTooltip}"
+            : string.Empty;
+
+        return $"{row.Task}\n" +
+               $"Enabled: {(row.Enabled ? "On" : "Off")}\n" +
+               $"Dashboard state: {AutomationDashboardPolicy.GetStateLabel(row.Section)}\n" +
+               $"Status: {row.Status}{statusDetail}\n" +
+               $"Eligibility detail: {row.Eligibility.Reason}\n" +
+               $"Blocker: {blocker}\n" +
+               $"Owner: {owner}\n" +
+               $"Cadence: {cadence}\n" +
+               $"Maturity: {maturity}\n" +
+               $"Next eligible (local): {nextLocal}\n" +
+               $"Next eligible (UTC): {nextUtc}\n" +
+               $"Disabled action reason: {disabledActionReason}";
+    }
+
+    private static Vector4 GetSectionColor(AutomationDashboardSection section)
+        => section switch
+        {
+            AutomationDashboardSection.DueNow => new Vector4(0.25f, 1f, 0.35f, 1f),
+            AutomationDashboardSection.Blocked => new Vector4(1f, 0.35f, 0.25f, 1f),
+            AutomationDashboardSection.ScheduledLater => new Vector4(0.45f, 0.75f, 1f, 1f),
+            AutomationDashboardSection.Complete => new Vector4(0.55f, 0.85f, 0.55f, 1f),
+            _ => Vector4.One,
+        };
+
+    private bool IsFavorite(string automationId)
+        => plugin.Configuration.FavoriteAutomationIds?.Contains(automationId, StringComparer.Ordinal) ?? false;
 
     private static AutomationFeatureDefinition? GetDisplayedFeature(string task)
     {
@@ -773,6 +1027,10 @@ public class MainWindow : Window, IDisposable
         string Task,
         bool Enabled,
         string Status,
+        TaskEligibility Eligibility,
+        AutomationDashboardSection Section,
+        DateTime? NextEligibleAtUtc,
+        ConfigurationSection? RecoverySection,
         string ButtonLabel,
         Action OnClick,
         string Maturity,
