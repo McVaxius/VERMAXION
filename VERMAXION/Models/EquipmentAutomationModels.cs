@@ -22,12 +22,35 @@ public sealed record GearsetSnapshot(
     string Name,
     IReadOnlyList<uint> ItemIds);
 
+public sealed record UnlockedJobSnapshot(
+    uint ClassJobId,
+    bool IsCombat,
+    bool IsJob,
+    int Level,
+    string Name,
+    string Abbreviation);
+
+public sealed record CurrentGearsetPersistenceResult(
+    bool Success,
+    int GearsetId,
+    uint ClassJobId,
+    bool Created,
+    IReadOnlyList<uint> ExpectedItemIds,
+    string Error);
+
 public sealed record SeasonalInventoryItem(
     uint ItemId,
     string Name,
     EquipmentSlot Slot);
 
 public enum RecommendedEquipmentProgress
+{
+    Pending,
+    Complete,
+    Failed,
+}
+
+public enum StylistGearsetUpdateProgress
 {
     Pending,
     Complete,
@@ -41,6 +64,7 @@ public interface IEquipmentAutomationRuntime
     uint CurrentJobId { get; }
     int CurrentGearsetId { get; }
     IReadOnlyList<GearsetSnapshot> GetValidGearsets();
+    IReadOnlyList<UnlockedJobSnapshot> GetUnlockedJobs();
     IReadOnlyList<uint> GetEquippedItemIds();
     bool TryEquipGearset(int gearsetId, out string error);
     bool TryConfirmGearsetChangePrompt();
@@ -48,8 +72,12 @@ public interface IEquipmentAutomationRuntime
     bool TryBeginRecommendedEquipment(uint classJobId, out string error);
     RecommendedEquipmentProgress PollRecommendedEquipment(out string error);
     void CancelRecommendedEquipment();
+    bool TryBeginStylistGearsetUpdate(int gearsetId, out string error);
+    StylistGearsetUpdateProgress PollStylistGearsetUpdate(out string error);
+    bool TryMoveBestMainHandToEquipped(UnlockedJobSnapshot job, out string error);
+    bool TryPersistCurrentGearset(out CurrentGearsetPersistenceResult result);
     bool TryUpdateGearset(int gearsetId, IReadOnlyList<uint> expectedItemIds, out string error);
-    bool IsGearsetSaveVerified(int gearsetId, IReadOnlyList<uint> expectedItemIds, out string error);
+    bool IsGearsetSaveVerified(int gearsetId, uint expectedClassJobId, IReadOnlyList<uint> expectedItemIds, out string error);
     IReadOnlyList<SeasonalInventoryItem> FindSeasonalInventoryItems(IReadOnlyCollection<uint> curatedItemIds);
     bool TryMoveSeasonalItemToEquipped(SeasonalInventoryItem item, out string error);
     bool IsSeasonalItemEquipped(SeasonalInventoryItem item);
@@ -177,6 +205,7 @@ public sealed class GearUpdaterStateMachine
     private int targetIndex;
     private int equipAttempts;
     private bool terminalAfterRestore;
+    private bool verifyingStylistSave;
     private EquipmentTaskTerminalState restoreTerminalState;
     private string restoreFailure = string.Empty;
 
@@ -186,8 +215,11 @@ public sealed class GearUpdaterStateMachine
         EquippingGearset,
         ConfirmingGearset,
         WaitingForGearset,
+        StartingStylist,
+        WaitingForStylist,
         StartingRecommended,
         WaitingForRecommended,
+        SettlingRecommended,
         SavingGearset,
         WaitingForSave,
         RestoringStartingGearset,
@@ -260,7 +292,8 @@ public sealed class GearUpdaterStateMachine
             return;
         }
 
-        if (runtime.UtcNow - startedAt >= OverallTimeout)
+        if (runtime.UtcNow - startedAt >= OverallTimeout &&
+            CurrentState is not (State.RestoringStartingGearset or State.ConfirmingStartingGearset))
         {
             FailWithRestore("Gear Updater exceeded its five-minute overall timeout.");
             return;
@@ -302,7 +335,7 @@ public sealed class GearUpdaterStateMachine
                 {
                     equipAttempts = 0;
                     restoreFailure = string.Empty;
-                    SetState(State.StartingRecommended, $"Preparing recommended gear for {target.Name}");
+                    SetState(State.StartingStylist, $"Checking Stylist fast path for {target.Name}");
                 }
                 else if (StepTimedOut())
                 {
@@ -319,7 +352,51 @@ public sealed class GearUpdaterStateMachine
                 }
                 break;
 
+            case State.StartingStylist:
+                if (runtime.TryBeginStylistGearsetUpdate(target!.GearsetId, out var stylistError))
+                {
+                    verifyingStylistSave = false;
+                    SetState(State.WaitingForStylist, $"Waiting for Stylist to update {target.Name}");
+                }
+                else
+                {
+                    SetState(
+                        State.StartingRecommended,
+                        string.IsNullOrWhiteSpace(stylistError)
+                            ? $"Preparing native recommended gear for {target.Name}"
+                            : $"Stylist unavailable for {target.Name}; using native updater: {stylistError}");
+                }
+                break;
+
+            case State.WaitingForStylist:
+                var stylistProgress = runtime.PollStylistGearsetUpdate(out var stylistProgressError);
+                if (stylistProgress == StylistGearsetUpdateProgress.Complete)
+                {
+                    if (!runtime.IsGearsetEquipped(target!.GearsetId, target.ClassJobId))
+                    {
+                        FailWithRestore($"The active job or gearset changed during Stylist update for {target.Name}.");
+                        break;
+                    }
+
+                    expectedItems = runtime.GetEquippedItemIds().ToArray();
+                    verifyingStylistSave = true;
+                    SetState(State.WaitingForSave, $"Verifying exact Stylist save for {target.Name}");
+                }
+                else if (stylistProgress == StylistGearsetUpdateProgress.Failed)
+                {
+                    var fallbackReason = string.IsNullOrWhiteSpace(stylistProgressError)
+                        ? "bounded Stylist wait expired"
+                        : stylistProgressError;
+                    SetState(State.StartingRecommended, $"Stylist failed for {target!.Name}; using native updater: {fallbackReason}");
+                }
+                else if (StepTimedOut())
+                {
+                    FailWithRestore($"Stylist remained busy beyond the bounded wait for {target!.Name}.");
+                }
+                break;
+
             case State.StartingRecommended:
+                verifyingStylistSave = false;
                 if (!runtime.TryBeginRecommendedEquipment(target!.ClassJobId, out var recommendedError))
                 {
                     FailWithRestore($"Recommended equipment setup failed for {target.Name}: {recommendedError}");
@@ -332,11 +409,22 @@ public sealed class GearUpdaterStateMachine
             case State.WaitingForRecommended:
                 var progress = runtime.PollRecommendedEquipment(out var progressError);
                 if (progress == RecommendedEquipmentProgress.Complete)
-                    SetState(State.SavingGearset, $"Saving {target!.Name}");
+                    SetState(State.SettlingRecommended, $"Allowing {target!.Name} equipment to settle before persistence");
                 else if (progress == RecommendedEquipmentProgress.Failed)
                     FailWithRestore($"Recommended equipment failed for {target!.Name}: {progressError}");
                 else if (StepTimedOut())
                     FailWithRestore($"Recommended equipment timed out for {target!.Name}.");
+                break;
+
+            case State.SettlingRecommended:
+                if (!runtime.IsGearsetEquipped(target!.GearsetId, target.ClassJobId))
+                {
+                    FailWithRestore($"The active job or gearset changed while recommended gear settled for {target.Name}.");
+                    break;
+                }
+
+                if (runtime.UtcNow - stateEnteredAt >= TimeSpan.FromSeconds(2))
+                    SetState(State.SavingGearset, $"Saving {target.Name}");
                 break;
 
             case State.SavingGearset:
@@ -357,19 +445,22 @@ public sealed class GearUpdaterStateMachine
                 break;
 
             case State.WaitingForSave:
-                if (runtime.IsGearsetSaveVerified(target!.GearsetId, expectedItems, out _))
+                if (runtime.IsGearsetSaveVerified(target!.GearsetId, target.ClassJobId, expectedItems, out _))
                 {
-                    CompletedTargetCount++;
-                    targetIndex++;
-                    if (targetIndex >= targets.Count)
-                        BeginRestore(EquipmentTaskTerminalState.Complete, "All class/job gearsets updated; restoring starting gearset.");
-                    else
-                        SetState(State.EquippingGearset, $"Preparing {targets[targetIndex].Name}");
+                    CompleteTarget();
                 }
                 else if (StepTimedOut())
                 {
-                    runtime.IsGearsetSaveVerified(target.GearsetId, expectedItems, out var verifyError);
-                    FailWithRestore($"Native save verification timed out for {target.Name}: {verifyError}");
+                    runtime.IsGearsetSaveVerified(target.GearsetId, target.ClassJobId, expectedItems, out var verifyError);
+                    if (verifyingStylistSave)
+                    {
+                        verifyingStylistSave = false;
+                        SetState(State.StartingRecommended, $"Stylist exact-save verification failed for {target.Name}; using native updater: {verifyError}");
+                    }
+                    else
+                    {
+                        FailWithRestore($"Native save verification timed out for {target.Name}: {verifyError}");
+                    }
                 }
                 break;
 
@@ -440,6 +531,7 @@ public sealed class GearUpdaterStateMachine
         targetIndex = 0;
         equipAttempts = 0;
         terminalAfterRestore = false;
+        verifyingStylistSave = false;
         restoreTerminalState = EquipmentTaskTerminalState.None;
         restoreFailure = string.Empty;
         confirmationWindow.Reset();
@@ -458,6 +550,16 @@ public sealed class GearUpdaterStateMachine
 
     private void FailWithoutRestore(string reason)
         => SetState(State.Failed, reason);
+
+    private void CompleteTarget()
+    {
+        CompletedTargetCount++;
+        targetIndex++;
+        if (targetIndex >= targets.Count)
+            BeginRestore(EquipmentTaskTerminalState.Complete, "All class/job gearsets updated; restoring starting gearset.");
+        else
+            SetState(State.EquippingGearset, $"Preparing {targets[targetIndex].Name}");
+    }
 
     private void BeginRestore(EquipmentTaskTerminalState terminalState, string status)
     {
@@ -480,6 +582,322 @@ public sealed class GearUpdaterStateMachine
             _ => State.Failed,
         }, Status);
     }
+
+    private void SetState(State state, string status)
+    {
+        CurrentState = state;
+        Status = status;
+        stateEnteredAt = runtime.UtcNow;
+    }
+}
+
+public sealed class GearsetBootstrapStateMachine
+{
+    private static readonly TimeSpan StepTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan OverallTimeout = TimeSpan.FromMinutes(5);
+
+    private readonly IEquipmentAutomationRuntime runtime;
+    private readonly GearsetConfirmationWindow confirmationWindow = new();
+    private IReadOnlyList<UnlockedJobSnapshot> targets = [];
+    private IReadOnlyList<uint> expectedItems = [];
+    private DateTime startedAt;
+    private DateTime stateEnteredAt;
+    private ulong startingContentId;
+    private uint startingJobId;
+    private int anchorGearsetId = -1;
+    private int targetIndex;
+    private string lastSkipReason = string.Empty;
+
+    public enum State
+    {
+        Idle,
+        PersistingCurrentJob,
+        WaitingForCurrentSave,
+        MovingTargetMainHand,
+        WaitingForTargetJob,
+        StartingRecommended,
+        WaitingForRecommended,
+        SettlingRecommended,
+        PersistingTarget,
+        WaitingForTargetSave,
+        RestoringAnchor,
+        ConfirmingAnchor,
+        WaitingForAnchor,
+        Complete,
+        Failed,
+        Cancelled,
+    }
+
+    public GearsetBootstrapStateMachine(IEquipmentAutomationRuntime runtime)
+    {
+        this.runtime = runtime;
+    }
+
+    public State CurrentState { get; private set; } = State.Idle;
+    public string Status { get; private set; } = "Idle";
+    public bool IsActive => CurrentState is not (State.Idle or State.Complete or State.Failed or State.Cancelled);
+    public bool IsComplete => CurrentState == State.Complete;
+    public bool IsFailed => CurrentState is State.Failed or State.Cancelled;
+    public int CreatedTargetCount { get; private set; }
+    public int SkippedTargetCount { get; private set; }
+    public int TargetCount => targets.Count;
+
+    public bool Start(out string reason)
+    {
+        Reset();
+        startingContentId = runtime.CharacterContentId;
+        startingJobId = runtime.CurrentJobId;
+        if (startingContentId == 0 || startingJobId == 0)
+        {
+            reason = "Current character or job data is unavailable.";
+            SetState(State.Failed, reason);
+            return false;
+        }
+
+        startedAt = runtime.UtcNow;
+        SetState(State.PersistingCurrentJob, "Persisting the current job as the restoration anchor.");
+        reason = Status;
+        return true;
+    }
+
+    public void Tick()
+    {
+        if (!IsActive)
+            return;
+
+        if (runtime.CharacterContentId != startingContentId)
+        {
+            runtime.CancelRecommendedEquipment();
+            SetState(State.Failed, "Character changed during gearset bootstrap.");
+            return;
+        }
+
+        if (runtime.UtcNow - startedAt >= OverallTimeout &&
+            CurrentState is not (State.RestoringAnchor or State.ConfirmingAnchor or State.WaitingForAnchor))
+        {
+            runtime.CancelRecommendedEquipment();
+            BeginRestore("Gearset bootstrap exceeded its five-minute overall timeout.", failed: true);
+            return;
+        }
+
+        var target = targetIndex < targets.Count ? targets[targetIndex] : null;
+        switch (CurrentState)
+        {
+            case State.PersistingCurrentJob:
+                if (!runtime.TryPersistCurrentGearset(out var currentResult) || !currentResult.Success)
+                {
+                    SetState(State.Failed, $"Current-job persistence is required: {currentResult.Error}");
+                    break;
+                }
+
+                anchorGearsetId = currentResult.GearsetId;
+                expectedItems = currentResult.ExpectedItemIds;
+                SetState(State.WaitingForCurrentSave, "Verifying the exact current-job restoration anchor.");
+                break;
+
+            case State.WaitingForCurrentSave:
+                if (runtime.IsGearsetSaveVerified(anchorGearsetId, startingJobId, expectedItems, out _))
+                {
+                    var existingJobs = runtime.GetValidGearsets()
+                        .Select(gearset => gearset.ClassJobId)
+                        .ToHashSet();
+                    targets = runtime.GetUnlockedJobs()
+                        .Where(job => job.ClassJobId != startingJobId && !existingJobs.Contains(job.ClassJobId))
+                        .OrderBy(job => job.ClassJobId)
+                        .ToList();
+                    targetIndex = 0;
+                    if (targets.Count == 0)
+                        BeginRestore("Current job persisted; no missing unlocked class/job gearsets were found.", failed: false);
+                    else
+                        SetState(State.MovingTargetMainHand, $"Preparing missing {targets[0].Name} gearset.");
+                }
+                else if (StepTimedOut())
+                {
+                    runtime.IsGearsetSaveVerified(anchorGearsetId, startingJobId, expectedItems, out var verifyError);
+                    SetState(State.Failed, $"Current-job persistence could not be verified: {verifyError}");
+                }
+                break;
+
+            case State.MovingTargetMainHand:
+                if (!runtime.TryMoveBestMainHandToEquipped(target!, out var moveError))
+                {
+                    SkipTarget(moveError);
+                    break;
+                }
+
+                SetState(State.WaitingForTargetJob, $"Waiting for exact {target!.Abbreviation} job switch.");
+                break;
+
+            case State.WaitingForTargetJob:
+                if (runtime.CurrentJobId == target!.ClassJobId)
+                    SetState(State.StartingRecommended, $"Preparing recommended equipment for {target.Name}.");
+                else if (StepTimedOut())
+                    SkipTarget($"Main-hand move did not switch to exact job {target.Abbreviation} within 15 seconds.");
+                break;
+
+            case State.StartingRecommended:
+                if (!runtime.TryBeginRecommendedEquipment(target!.ClassJobId, out var recommendedError))
+                    SkipTarget($"Recommended equipment setup failed for {target.Name}: {recommendedError}");
+                else
+                    SetState(State.WaitingForRecommended, $"Equipping recommended {target.Name} gear.");
+                break;
+
+            case State.WaitingForRecommended:
+                if (runtime.CurrentJobId != target!.ClassJobId)
+                {
+                    runtime.CancelRecommendedEquipment();
+                    SkipTarget($"Job changed while recommended {target.Name} gear was being prepared.");
+                    break;
+                }
+
+                var progress = runtime.PollRecommendedEquipment(out var progressError);
+                if (progress == RecommendedEquipmentProgress.Complete)
+                    SetState(State.SettlingRecommended, $"Allowing {target.Name} equipment to settle before persistence.");
+                else if (progress == RecommendedEquipmentProgress.Failed)
+                    SkipTarget($"Recommended equipment failed for {target.Name}: {progressError}");
+                else if (StepTimedOut())
+                {
+                    runtime.CancelRecommendedEquipment();
+                    SkipTarget($"Recommended equipment timed out for {target.Name}.");
+                }
+                break;
+
+            case State.SettlingRecommended:
+                if (runtime.CurrentJobId != target!.ClassJobId)
+                    SkipTarget($"Job changed while {target.Name} equipment settled.");
+                else if (runtime.UtcNow - stateEnteredAt >= TimeSpan.FromSeconds(2))
+                    SetState(State.PersistingTarget, $"Persisting exact {target.Name} equipment.");
+                break;
+
+            case State.PersistingTarget:
+                if (!runtime.TryPersistCurrentGearset(out var targetResult) || !targetResult.Success)
+                {
+                    SkipTarget($"Could not persist {target!.Name}: {targetResult.Error}");
+                    break;
+                }
+
+                expectedItems = targetResult.ExpectedItemIds;
+                SetState(State.WaitingForTargetSave, $"Verifying exact {target!.Name} gearset {targetResult.GearsetId}.");
+                pendingTargetGearsetId = targetResult.GearsetId;
+                break;
+
+            case State.WaitingForTargetSave:
+                if (runtime.IsGearsetSaveVerified(pendingTargetGearsetId, target!.ClassJobId, expectedItems, out _))
+                {
+                    CreatedTargetCount++;
+                    AdvanceTarget();
+                }
+                else if (StepTimedOut())
+                {
+                    runtime.IsGearsetSaveVerified(pendingTargetGearsetId, target!.ClassJobId, expectedItems, out var targetVerifyError);
+                    SkipTarget($"Exact {target.Name} save could not be verified: {targetVerifyError}");
+                }
+                break;
+
+            case State.RestoringAnchor:
+                if (runtime.IsGearsetEquipped(anchorGearsetId, startingJobId))
+                {
+                    FinishRestore();
+                    break;
+                }
+
+                if (!runtime.TryEquipGearset(anchorGearsetId, out var restoreError))
+                    lastSkipReason = restoreError;
+                confirmationWindow.Open(runtime.UtcNow);
+                SetState(State.ConfirmingAnchor, "Checking for a confirmation prompt while restoring the current-job anchor.");
+                break;
+
+            case State.ConfirmingAnchor:
+                if (confirmationWindow.Poll(runtime))
+                    SetState(State.WaitingForAnchor, "Verifying current-job anchor restoration.");
+                break;
+
+            case State.WaitingForAnchor:
+                if (runtime.IsGearsetEquipped(anchorGearsetId, startingJobId))
+                    FinishRestore();
+                else if (StepTimedOut())
+                    SetState(State.Failed, $"Current-job anchor restoration failed: {lastSkipReason}");
+                break;
+        }
+    }
+
+    private int pendingTargetGearsetId = -1;
+    private bool failAfterRestore;
+    private string completionStatus = string.Empty;
+
+    public void Cancel(string reason)
+    {
+        if (!IsActive)
+            return;
+        runtime.CancelRecommendedEquipment();
+        if (runtime.CharacterContentId == startingContentId && anchorGearsetId >= 0)
+            runtime.TryEquipGearset(anchorGearsetId, out _);
+        SetState(State.Cancelled, reason);
+    }
+
+    public void Reset()
+    {
+        runtime.CancelRecommendedEquipment();
+        targets = [];
+        expectedItems = [];
+        startedAt = DateTime.MinValue;
+        stateEnteredAt = DateTime.MinValue;
+        startingContentId = 0;
+        startingJobId = 0;
+        anchorGearsetId = -1;
+        pendingTargetGearsetId = -1;
+        targetIndex = 0;
+        lastSkipReason = string.Empty;
+        failAfterRestore = false;
+        completionStatus = string.Empty;
+        confirmationWindow.Reset();
+        CreatedTargetCount = 0;
+        SkippedTargetCount = 0;
+        CurrentState = State.Idle;
+        Status = "Idle";
+    }
+
+    private bool StepTimedOut() => runtime.UtcNow - stateEnteredAt >= StepTimeout;
+
+    private void SkipTarget(string reason)
+    {
+        runtime.CancelRecommendedEquipment();
+        SkippedTargetCount++;
+        lastSkipReason = reason;
+        AdvanceTarget();
+    }
+
+    private void AdvanceTarget()
+    {
+        targetIndex++;
+        pendingTargetGearsetId = -1;
+        expectedItems = [];
+        if (targetIndex >= targets.Count)
+        {
+            BeginRestore(
+                $"Gearset bootstrap created {CreatedTargetCount} and skipped {SkippedTargetCount} missing class/job gearset(s)." +
+                (string.IsNullOrWhiteSpace(lastSkipReason) ? string.Empty : $" Last skip: {lastSkipReason}"),
+                failed: false);
+        }
+        else
+        {
+            SetState(State.MovingTargetMainHand, $"Preparing missing {targets[targetIndex].Name} gearset.");
+        }
+    }
+
+    private void BeginRestore(string status, bool failed)
+    {
+        runtime.CancelRecommendedEquipment();
+        completionStatus = status;
+        failAfterRestore = failed;
+        if (anchorGearsetId < 0 || runtime.CurrentJobId == startingJobId && runtime.CurrentGearsetId == anchorGearsetId)
+            FinishRestore();
+        else
+            SetState(State.RestoringAnchor, $"{status} Restoring current-job anchor.");
+    }
+
+    private void FinishRestore()
+        => SetState(failAfterRestore ? State.Failed : State.Complete, completionStatus);
 
     private void SetState(State state, string status)
     {
@@ -618,6 +1036,7 @@ public sealed class CurrentJobEquipmentStateMachine
         Idle,
         StartingRecommended,
         WaitingForRecommended,
+        SettlingRecommended,
         Saving,
         WaitingForSave,
         Complete,
@@ -682,7 +1101,7 @@ public sealed class CurrentJobEquipmentStateMachine
             case State.WaitingForRecommended:
                 var progress = runtime.PollRecommendedEquipment(out var progressError);
                 if (progress == RecommendedEquipmentProgress.Complete)
-                    SetState(State.Saving, "Saving the captured gearset natively.");
+                    SetState(State.SettlingRecommended, "Allowing recommended equipment to settle before persistence.");
                 else if (progress == RecommendedEquipmentProgress.Failed)
                     SetState(State.Failed, $"Recommended equipment failed: {progressError}");
                 else if (StepTimedOut())
@@ -690,6 +1109,11 @@ public sealed class CurrentJobEquipmentStateMachine
                     runtime.CancelRecommendedEquipment();
                     SetState(State.Failed, "Recommended equipment timed out.");
                 }
+                break;
+
+            case State.SettlingRecommended:
+                if (runtime.UtcNow - stateEnteredAt >= TimeSpan.FromSeconds(2))
+                    SetState(State.Saving, "Saving the captured gearset natively.");
                 break;
 
             case State.Saving:
@@ -701,11 +1125,11 @@ public sealed class CurrentJobEquipmentStateMachine
                 break;
 
             case State.WaitingForSave:
-                if (runtime.IsGearsetSaveVerified(startingGearset.GearsetId, expectedItems, out _))
+                if (runtime.IsGearsetSaveVerified(startingGearset.GearsetId, startingGearset.ClassJobId, expectedItems, out _))
                     SetState(State.Complete, $"Updated gearset {startingGearset.GearsetId}.");
                 else if (StepTimedOut())
                 {
-                    runtime.IsGearsetSaveVerified(startingGearset.GearsetId, expectedItems, out var verifyError);
+                    runtime.IsGearsetSaveVerified(startingGearset.GearsetId, startingGearset.ClassJobId, expectedItems, out var verifyError);
                     SetState(State.Failed, $"Native save verification timed out: {verifyError}");
                 }
                 break;
@@ -886,11 +1310,11 @@ public sealed class SeasonalGearStateMachine
                 break;
 
             case State.WaitingForSave:
-                if (runtime.IsGearsetSaveVerified(startingGearset.GearsetId, expectedItems, out _))
+                if (runtime.IsGearsetSaveVerified(startingGearset.GearsetId, startingGearset.ClassJobId, expectedItems, out _))
                     SetState(State.Complete, $"Saved {selectedItems.Count} seasonal slot item(s).");
                 else if (StepTimedOut())
                 {
-                    runtime.IsGearsetSaveVerified(startingGearset.GearsetId, expectedItems, out var verifyError);
+                    runtime.IsGearsetSaveVerified(startingGearset.GearsetId, startingGearset.ClassJobId, expectedItems, out var verifyError);
                     FailWithRestore($"Seasonal gearset save verification timed out: {verifyError}");
                 }
                 break;

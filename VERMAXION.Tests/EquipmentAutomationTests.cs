@@ -401,6 +401,7 @@ public sealed class EquipmentAutomationTests
         public uint CurrentJobId { get; set; }
         public int CurrentGearsetId { get; set; }
         public IReadOnlyList<GearsetSnapshot> Gearsets { get; set; } = [];
+        public IReadOnlyList<UnlockedJobSnapshot> UnlockedJobs { get; set; } = [];
         public IReadOnlyList<uint> EquippedItems { get; set; } = [];
         public IReadOnlyList<SeasonalInventoryItem> SeasonalItems { get; set; } = [];
         public bool EquipSucceeds { get; set; } = true;
@@ -421,6 +422,7 @@ public sealed class EquipmentAutomationTests
         private GearsetSnapshot? pendingGearset;
 
         public IReadOnlyList<GearsetSnapshot> GetValidGearsets() => Gearsets;
+        public IReadOnlyList<UnlockedJobSnapshot> GetUnlockedJobs() => UnlockedJobs;
         public IReadOnlyList<uint> GetEquippedItemIds() => EquippedItems.ToArray();
 
         public bool TryEquipGearset(int gearsetId, out string error)
@@ -480,6 +482,45 @@ public sealed class EquipmentAutomationTests
 
         public void CancelRecommendedEquipment() => RecommendedCancelCount++;
 
+        public bool TryBeginStylistGearsetUpdate(int gearsetId, out string error)
+        {
+            error = "Stylist unavailable";
+            return false;
+        }
+
+        public StylistGearsetUpdateProgress PollStylistGearsetUpdate(out string error)
+        {
+            error = "Stylist unavailable";
+            return StylistGearsetUpdateProgress.Failed;
+        }
+
+        public bool TryMoveBestMainHandToEquipped(UnlockedJobSnapshot job, out string error)
+        {
+            CurrentGearsetId = -1;
+            CurrentJobId = job.ClassJobId;
+            error = string.Empty;
+            return true;
+        }
+
+        public bool TryPersistCurrentGearset(out CurrentGearsetPersistenceResult result)
+        {
+            var existing = Gearsets.FirstOrDefault(gearset =>
+                gearset.GearsetId == CurrentGearsetId && gearset.ClassJobId == CurrentJobId);
+            var gearsetId = existing?.GearsetId ?? Enumerable.Range(0, 100)
+                .First(id => Gearsets.All(gearset => gearset.GearsetId != id));
+            var expected = EquippedItems.ToArray();
+            saved[gearsetId] = expected;
+            result = new CurrentGearsetPersistenceResult(
+                true,
+                gearsetId,
+                CurrentJobId,
+                existing == null,
+                expected,
+                string.Empty);
+            CurrentGearsetId = gearsetId;
+            return true;
+        }
+
         public bool TryUpdateGearset(int gearsetId, IReadOnlyList<uint> expectedItemIds, out string error)
         {
             if (!UpdateSucceeds)
@@ -494,7 +535,11 @@ public sealed class EquipmentAutomationTests
             return true;
         }
 
-        public bool IsGearsetSaveVerified(int gearsetId, IReadOnlyList<uint> expectedItemIds, out string error)
+        public bool IsGearsetSaveVerified(
+            int gearsetId,
+            uint expectedClassJobId,
+            IReadOnlyList<uint> expectedItemIds,
+            out string error)
         {
             var verified = saved.TryGetValue(gearsetId, out var actual) &&
                            EquipmentAutomationPolicy.ItemSignaturesMatch(expectedItemIds, actual);

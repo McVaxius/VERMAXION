@@ -86,6 +86,8 @@ public static class AutomationCatalog
     public const string VendorStock = "vendor_stock";
     public const string RefillListings = "refill_listings";
     public const string RetainerEquipping = "retainer_equipping";
+    public const string AlliedSociety = "allied_society";
+    public const string AfterArPark = "after_ar_park";
     public const string NagYourMom = "nag_your_mom";
     public const string NagYourMomCasualCc = "nag_your_mom_casual_cc";
     public const string NagYourMomFrontline = "nag_your_mom_frontline";
@@ -119,6 +121,8 @@ public static class AutomationCatalog
             AutomationCadence.EveryRun,
             PostProcessTaskPhase.BeforeAR,
             AutomationMaturity.Wip),
+        Engine(AlliedSociety, nameof(CharacterConfig.EnableAlliedSociety), "Allied Society", AutomationCadence.Daily),
+        Engine(AfterArPark, nameof(CharacterConfig.EnableAfterArPark), "After-AR Park", AutomationCadence.EveryRun),
         Engine(NagYourMom, nameof(CharacterConfig.EnableNagYourMom), "nag your mom", AutomationCadence.Daily),
         new(NagYourMomCasualCc, nameof(CharacterConfig.EnableNagYourMomCasualCc), "Casual CC route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
         new(NagYourMomFrontline, nameof(CharacterConfig.EnableNagYourMomFrontline), "Frontline route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),

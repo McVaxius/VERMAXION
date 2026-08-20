@@ -23,6 +23,8 @@ public class CharacterConfig
     public bool RegisterUnregisteredItemsFromInventory { get; set; } = false;
     public bool EnableVendorStock { get; set; } = false;
     public bool EnableRefillFromListings { get; set; } = false;
+    public bool EnableAfterArPark { get; set; } = false;
+    public bool EnableAlliedSociety { get; set; } = false;
     public bool EnableNagYourMom { get; set; } = false;
     public bool EnableNagYourMomCasualCc { get; set; } = true;
     public bool EnableNagYourMomFrontline { get; set; } = false;
@@ -73,6 +75,10 @@ public class CharacterConfig
     public RefillFromListingsSelectionMode RefillFromListingsSelectionMode { get; set; } = RefillFromListingsSelectionMode.All;
     public RefillFromListingsRoute RefillFromListingsRoute { get; set; } = RefillFromListingsRoute.Workshop;
     public int RefillFromListingsMinFreeInventorySlots { get; set; } = 20;
+    public AfterArParkDestination AfterArParkDestination { get; set; } = AfterArParkDestination.Home;
+    public string AfterArParkCustomCommand { get; set; } = string.Empty;
+    public AlliedSocietyGearsetSelection AlliedSocietyGearsetSelection { get; set; } = AlliedSocietyGearsetSelection.CurrentJob;
+    public int AlliedSocietyGearsetId { get; set; } = -1;
     public int NagYourMomRunsPerDay { get; set; } = 1;
     public int NagYourMomFrontlineRunsPerDay { get; set; } = 1;
     public int NagYourMomRivalWingsRunsPerDay { get; set; } = 1;
@@ -135,6 +141,8 @@ public class CharacterConfig
     public DateTime LootGoblinMapGatherNextReset { get; set; } = DateTime.MinValue;
     public DateTime RefillFromListingsLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime RefillFromListingsNextReset { get; set; } = DateTime.MinValue;
+    public DateTime AlliedSocietyLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime AlliedSocietyNextReset { get; set; } = DateTime.MinValue;
     
     // --- Enhanced State Tracking ---
     public int MiniCactpotTicketsToday { get; set; } = 0;
@@ -230,6 +238,12 @@ public class CharacterConfig
         RefillFromListingsNextReset = DateTime.MinValue;
     }
 
+    public void ResetAlliedSocietyState()
+    {
+        AlliedSocietyLastCompleted = DateTime.MinValue;
+        AlliedSocietyNextReset = DateTime.MinValue;
+    }
+
     public void ResetWeeklySectionState()
     {
         LastWeeklyReset = DateTime.MinValue;
@@ -246,6 +260,7 @@ public class CharacterConfig
         ResetLootGoblinMapGatherState();
         ResetNagYourMomDailyState();
         ResetMinionRouletteDailyState();
+        ResetAlliedSocietyState();
     }
 
     public void ResetAllTaskState()
@@ -275,6 +290,8 @@ public class CharacterConfig
             RegisterUnregisteredItemsFromInventory = RegisterUnregisteredItemsFromInventory,
             EnableVendorStock = EnableVendorStock,
             EnableRefillFromListings = EnableRefillFromListings,
+            EnableAfterArPark = EnableAfterArPark,
+            EnableAlliedSociety = EnableAlliedSociety,
             EnableNagYourMom = EnableNagYourMom,
             EnableNagYourMomCasualCc = EnableNagYourMomCasualCc,
             EnableNagYourMomFrontline = EnableNagYourMomFrontline,
@@ -314,6 +331,10 @@ public class CharacterConfig
             RefillFromListingsSelectionMode = RefillFromListingsSelectionMode,
             RefillFromListingsRoute = RefillFromListingsRoute,
             RefillFromListingsMinFreeInventorySlots = RefillFromListingsMinFreeInventorySlots,
+            AfterArParkDestination = AfterArParkDestination,
+            AfterArParkCustomCommand = AfterArParkCustomCommand,
+            AlliedSocietyGearsetSelection = AlliedSocietyGearsetSelection,
+            AlliedSocietyGearsetId = AlliedSocietyGearsetId,
             NagYourMomRunsPerDay = NagYourMomRunsPerDay,
             NagYourMomFrontlineRunsPerDay = NagYourMomFrontlineRunsPerDay,
             NagYourMomRivalWingsRunsPerDay = NagYourMomRivalWingsRunsPerDay,
@@ -367,6 +388,8 @@ public class CharacterConfig
             LootGoblinMapGatherNextReset = LootGoblinMapGatherNextReset,
             RefillFromListingsLastCompleted = RefillFromListingsLastCompleted,
             RefillFromListingsNextReset = RefillFromListingsNextReset,
+            AlliedSocietyLastCompleted = AlliedSocietyLastCompleted,
+            AlliedSocietyNextReset = AlliedSocietyNextReset,
             MiniCactpotTicketsToday = MiniCactpotTicketsToday,
             MinionRouletteAttemptsToday = MinionRouletteAttemptsToday,
             LastMinionRouletteReset = LastMinionRouletteReset,
@@ -409,4 +432,20 @@ public enum RefillFromListingsRoute
     Workshop = 0,
     Inn = 1,
     Limsa = 2,
+}
+
+public enum AfterArParkDestination
+{
+    Home = 0,
+    Limsa = 1,
+    FreeCompany = 2,
+    Inn = 3,
+    Workshop = 4,
+    Custom = 5,
+}
+
+public enum AlliedSocietyGearsetSelection
+{
+    CurrentJob = 0,
+    SavedGearset = 1,
 }

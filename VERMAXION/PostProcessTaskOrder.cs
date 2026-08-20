@@ -14,6 +14,8 @@ public static class PostProcessTaskOrder
 {
     public const string RefillListings = AutomationCatalog.RefillListings;
     public const string RetainerEquipping = AutomationCatalog.RetainerEquipping;
+    public const string AlliedSociety = AutomationCatalog.AlliedSociety;
+    public const string AfterArPark = AutomationCatalog.AfterArPark;
     public const string FCBuffRefill = AutomationCatalog.FCBuffRefill;
     public const string VendorStock = AutomationCatalog.VendorStock;
     public const string RegisterRegistrables = AutomationCatalog.RegisterRegistrables;
@@ -47,6 +49,7 @@ public static class PostProcessTaskOrder
         GearUpdater,
         HighestCombatJob,
         CurrentJobEquipment,
+        AlliedSociety,
         SeasonalGear,
         MinionRoulette,
         RetainerEquipping,
@@ -62,6 +65,7 @@ public static class PostProcessTaskOrder
         GearUpdater,
         HighestCombatJob,
         CurrentJobEquipment,
+        AlliedSociety,
         SeasonalGear,
         MinionRoulette,
         VerminionQueue,
@@ -72,6 +76,7 @@ public static class PostProcessTaskOrder
         LootGoblinMapGather,
         NagYourMom,
         NagYourDad,
+        AfterArPark,
     ];
 
     private static readonly HashSet<string> KnownIds = Definitions
