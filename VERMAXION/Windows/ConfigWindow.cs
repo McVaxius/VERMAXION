@@ -283,6 +283,16 @@ public class ConfigWindow : Window, IDisposable
         // --- Global Settings ---
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.GlobalSettings, ImGuiTreeNodeFlags.DefaultOpen))
         {
+            var autoWidthMainTaskColumns = config.AutoWidthMainTaskColumns;
+            if (ImGui.Checkbox(
+                    UIConstants.ConfigLabels.AutoWidthMainTaskColumns,
+                    ref autoWidthMainTaskColumns))
+            {
+                config.AutoWidthMainTaskColumns = autoWidthMainTaskColumns;
+                config.Save();
+            }
+            DrawHelpMarker(UIConstants.Tooltips.AutoWidthMainTaskColumns);
+
             var krangleEnabled = config.KrangleEnabled;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
             {
