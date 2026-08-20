@@ -1,5 +1,23 @@
 # VERMAXION Changelog
 
+## 2026-08-20 - Favorites and independent Refill Listings pacing
+
+### Added
+
+- Added global saved Favorites for catalog automations. The main window now defaults to `All Tasks`, provides a flat `Favorites` tab using the same task status and run actions, and keeps manual utilities and test controls in `All Tasks` only.
+- Added an independent Refill Listings inter-item delay, defaulting to 250 ms and clamped to 0–2000 ms. It is used only after a listing withdrawal is verified and before the next listing is selected.
+
+### Changed
+
+- Refill Listings snapshots both pacing settings when a run starts. The existing action delay remains exclusive to ordinary menu and click pacing; navigation, verification polling, retries, timeouts, settlement, and closing are unchanged.
+- Expanded the UI/UX guide with implementation status while retaining every P0/P1/P2 recommendation for the complete follow-up pass.
+
+### Verification
+
+- Focused favorites and Refill Listings pacing policy coverage passes 8/8 tests, including null, duplicate, unknown, and retired favorite IDs, independent clamping, ordinary click pacing, successful verification, and failed-verification polling.
+- Focused catalog, equipment-timing, favorites, and Refill Listings pacing coverage passes 36/36 tests. The complete Debug x64 suite passes 520/520 tests.
+- The Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning. Live-client verification was not performed.
+
 ## 2026-08-18 - Gearset bootstrap and narrow post-process utilities
 
 ### Added

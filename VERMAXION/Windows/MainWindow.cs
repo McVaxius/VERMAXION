@@ -35,6 +35,8 @@ public class MainWindow : Window, IDisposable
     private readonly Plugin plugin;
     private readonly RetainerEquippingArProbeCache retainerEquippingReadinessCache =
         new(TimeSpan.FromSeconds(5));
+    private bool drawingFavorites;
+    private int favoriteRowsDrawn;
 
     public MainWindow(Plugin plugin)
         : base("Vermaxion##Main")
@@ -206,14 +208,20 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
 
-        // Task table with run buttons
-        if (ImGui.BeginTable("TasksTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+        void DrawTaskSurface(bool favoritesOnly)
         {
-            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthFixed, 200);
-            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 60);
-            ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 120);
+            drawingFavorites = favoritesOnly;
+            favoriteRowsDrawn = 0;
+
+        // Task table with run buttons
+        if (ImGui.BeginTable("TasksTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+        {
+            ImGui.TableSetupColumn("★", ImGuiTableColumnFlags.WidthFixed, 28);
+            ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthFixed, 172);
+            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, 52);
+            ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 112);
             ImGui.TableSetupColumn("run", ImGuiTableColumnFlags.WidthFixed, 60);
-            ImGui.TableSetupColumn("Maturity", ImGuiTableColumnFlags.WidthFixed, 80);
+            ImGui.TableSetupColumn("Maturity", ImGuiTableColumnFlags.WidthFixed, 68);
             ImGui.TableHeadersRow();
 
             // --- Every AR PostProcess ---
@@ -398,6 +406,8 @@ public class MainWindow : Window, IDisposable
 
             ImGui.Spacing();
 
+            if (!favoritesOnly)
+            {
             // Test Functions
             ImGui.BeginDisabled(plugin.DadHandoffBlocksNewWork);
             ImGui.Text("Test Functions");
@@ -479,6 +489,26 @@ public class MainWindow : Window, IDisposable
                 GameHelpers.SendEnd();
             }
             ImGui.EndDisabled();
+            }
+        }
+
+            if (favoritesOnly && favoriteRowsDrawn == 0)
+                ImGui.TextWrapped("No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here.");
+        }
+
+        if (ImGui.BeginTabBar("MainTaskTabs"))
+        {
+            if (ImGui.BeginTabItem("All Tasks"))
+            {
+                DrawTaskSurface(false);
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Favorites"))
+            {
+                DrawTaskSurface(true);
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
         }
 
         ImGui.Spacing();
@@ -596,10 +626,13 @@ public class MainWindow : Window, IDisposable
             : RetainerEquippingArProbe.RetainerReadFailed(retainers.Error);
     }
 
-    private static void DrawTaskCategory(string label, AutomationFeatureDefinition? feature)
+    private void DrawTaskCategory(string label, AutomationFeatureDefinition? feature)
     {
+        if (drawingFavorites)
+            return;
+
         ImGui.TableNextRow();
-        ImGui.TableSetColumnIndex(0);
+        ImGui.TableSetColumnIndex(1);
         ImGui.TextColored(new Vector4(0.45f, 0.75f, 1f, 1f), label);
         if (feature != null && ImGui.IsItemHovered())
             ImGui.SetTooltip($"{feature.CadenceLabel} · {feature.OwnershipLabel}");
@@ -624,50 +657,88 @@ public class MainWindow : Window, IDisposable
         bool tertiaryButtonDisabled = false,
         string? tertiaryButtonTooltip = null)
     {
-        buttonDisabled |= plugin.DadHandoffBlocksNewWork;
-        secondaryButtonDisabled |= plugin.DadHandoffBlocksNewWork;
-        tertiaryButtonDisabled |= plugin.DadHandoffBlocksNewWork;
+        var row = new TaskRowDescriptor(
+            GetDisplayedFeature(task),
+            task,
+            enabled,
+            status,
+            buttonLabel,
+            onClick,
+            maturity,
+            statusTooltip,
+            buttonDisabled || plugin.DadHandoffBlocksNewWork,
+            buttonTooltip,
+            secondaryButtonLabel,
+            secondaryOnClick,
+            secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
+            secondaryButtonTooltip,
+            tertiaryButtonLabel,
+            tertiaryOnClick,
+            tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
+            tertiaryButtonTooltip);
+
+        var favorites = plugin.Configuration.FavoriteAutomationIds;
+        var isFavorite = row.Feature != null &&
+                         (favorites?.Contains(row.Feature.Id, StringComparer.Ordinal) ?? false);
+        if (drawingFavorites && (!isFavorite || row.Feature == null))
+            return;
+        if (drawingFavorites)
+            favoriteRowsDrawn++;
+
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
-        ImGui.Text(task);
+        if (row.Feature != null)
+        {
+            if (ImGui.SmallButton($"{(isFavorite ? "★" : "☆")}##Favorite_{row.Feature.Id}"))
+            {
+                plugin.Configuration.FavoriteAutomationIds = AutomationCatalog.ToggleFavorite(
+                    favorites,
+                    row.Feature.Id);
+                plugin.Configuration.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(isFavorite ? "Remove from Favorites" : "Add to Favorites");
+        }
         ImGui.TableSetColumnIndex(1);
-        ImGui.TextColored(enabled ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1), enabled ? "On" : "Off");
+        ImGui.Text(row.Task);
         ImGui.TableSetColumnIndex(2);
-        ImGui.TextDisabled(status);
-        if (!string.IsNullOrWhiteSpace(statusTooltip) && ImGui.IsItemHovered())
-            ImGui.SetTooltip(statusTooltip);
+        ImGui.TextColored(row.Enabled ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1), row.Enabled ? "On" : "Off");
         ImGui.TableSetColumnIndex(3);
-        ImGui.BeginDisabled(buttonDisabled);
-        if (ImGui.SmallButton(buttonLabel))
-            onClick();
-        ImGui.EndDisabled();
-        if (!string.IsNullOrWhiteSpace(buttonTooltip) && ImGui.IsItemHovered())
-            ImGui.SetTooltip(buttonTooltip);
-        if (!string.IsNullOrWhiteSpace(secondaryButtonLabel) && secondaryOnClick != null)
-        {
-            ImGui.SameLine();
-            ImGui.BeginDisabled(secondaryButtonDisabled);
-            if (ImGui.SmallButton(secondaryButtonLabel))
-                secondaryOnClick();
-            ImGui.EndDisabled();
-            if (!string.IsNullOrWhiteSpace(secondaryButtonTooltip) && ImGui.IsItemHovered())
-                ImGui.SetTooltip(secondaryButtonTooltip);
-        }
-        if (!string.IsNullOrWhiteSpace(tertiaryButtonLabel) && tertiaryOnClick != null)
-        {
-            ImGui.SameLine();
-            ImGui.BeginDisabled(tertiaryButtonDisabled);
-            if (ImGui.SmallButton(tertiaryButtonLabel))
-                tertiaryOnClick();
-            ImGui.EndDisabled();
-            if (!string.IsNullOrWhiteSpace(tertiaryButtonTooltip) && ImGui.IsItemHovered())
-                ImGui.SetTooltip(tertiaryButtonTooltip);
-        }
+        ImGui.TextDisabled(row.Status);
+        if (!string.IsNullOrWhiteSpace(row.StatusTooltip) && ImGui.IsItemHovered())
+            ImGui.SetTooltip(row.StatusTooltip);
         ImGui.TableSetColumnIndex(4);
+        ImGui.BeginDisabled(row.ButtonDisabled);
+        if (ImGui.SmallButton(row.ButtonLabel))
+            row.OnClick();
+        ImGui.EndDisabled();
+        if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered())
+            ImGui.SetTooltip(row.ButtonTooltip);
+        if (!drawingFavorites && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
+        {
+            ImGui.SameLine();
+            ImGui.BeginDisabled(row.SecondaryButtonDisabled);
+            if (ImGui.SmallButton(row.SecondaryButtonLabel))
+                row.SecondaryOnClick();
+            ImGui.EndDisabled();
+            if (!string.IsNullOrWhiteSpace(row.SecondaryButtonTooltip) && ImGui.IsItemHovered())
+                ImGui.SetTooltip(row.SecondaryButtonTooltip);
+        }
+        if (!drawingFavorites && !string.IsNullOrWhiteSpace(row.TertiaryButtonLabel) && row.TertiaryOnClick != null)
+        {
+            ImGui.SameLine();
+            ImGui.BeginDisabled(row.TertiaryButtonDisabled);
+            if (ImGui.SmallButton(row.TertiaryButtonLabel))
+                row.TertiaryOnClick();
+            ImGui.EndDisabled();
+            if (!string.IsNullOrWhiteSpace(row.TertiaryButtonTooltip) && ImGui.IsItemHovered())
+                ImGui.SetTooltip(row.TertiaryButtonTooltip);
+        }
+        ImGui.TableSetColumnIndex(5);
         
         // Color code maturity
         Vector4 color;
-        switch (maturity)
+        switch (row.Maturity)
         {
             case "OK":
             case "[OK]":
@@ -680,8 +751,42 @@ public class MainWindow : Window, IDisposable
                 color = new Vector4(1, 0, 0, 1); // Red
                 break;
         }
-        ImGui.TextColored(color, maturity);
+        ImGui.TextColored(color, row.Maturity);
     }
+
+    private static AutomationFeatureDefinition? GetDisplayedFeature(string task)
+    {
+        var id = task switch
+        {
+            "Misc Cmd" => AutomationCatalog.MiscCommands,
+            "Verminion (5x)" => AutomationCatalog.VerminionQueue,
+            _ => null,
+        };
+        return id != null
+            ? AutomationCatalog.Get(id)
+            : AutomationCatalog.Features.FirstOrDefault(
+                feature => string.Equals(feature.Label, task, StringComparison.Ordinal));
+    }
+
+    private sealed record TaskRowDescriptor(
+        AutomationFeatureDefinition? Feature,
+        string Task,
+        bool Enabled,
+        string Status,
+        string ButtonLabel,
+        Action OnClick,
+        string Maturity,
+        string? StatusTooltip,
+        bool ButtonDisabled,
+        string? ButtonTooltip,
+        string? SecondaryButtonLabel,
+        Action? SecondaryOnClick,
+        bool SecondaryButtonDisabled,
+        string? SecondaryButtonTooltip,
+        string? TertiaryButtonLabel,
+        Action? TertiaryOnClick,
+        bool TertiaryButtonDisabled,
+        string? TertiaryButtonTooltip);
 
     private static string GetWeeklyTaskStatus(DateTime lastCompleted, DateTime nextReset, string completedText, string pendingText)
     {
