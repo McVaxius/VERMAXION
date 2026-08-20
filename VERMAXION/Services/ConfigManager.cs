@@ -484,7 +484,7 @@ public class ConfigManager
         return account.Characters.Count + 1;
     }
 
-    private static void CopyDefaultSettings(CharacterConfig source, CharacterConfig target)
+    internal static void CopyDefaultSettings(CharacterConfig source, CharacterConfig target)
     {
         target.Enabled = source.Enabled;
         target.EnableVerminionQueue = source.EnableVerminionQueue;

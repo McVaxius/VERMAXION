@@ -28,6 +28,26 @@ Understand which recurring tasks are due, which character/config scope is active
 - Added focused policy coverage for favorite resolution/toggling and pacing selection, including null, duplicate, unknown, and retired favorite IDs and proof that click pacing and unsuccessful verification do not use the inter-item delay.
 - The recommendations and validation checklist below remain intentionally open for the complete follow-up UI/UX pass.
 
+### 2026-08-20 — Complete P0/P1/P2 implementation
+
+- Reframed the main window around engine readiness and active account/character scope, followed by written-state `Due now`, `Blocked`, `Scheduled later`, and `Complete` sections. Favorites remain flat and reuse the same transient task-row descriptors and run delegates.
+- Added direct recovery navigation: registry failures open Task Order; configurable blockers open the correct Settings section for the active character; external/runtime-only blockers retain their reason without a misleading configuration action.
+- Kept `Editing: Account default` or `Editing: Character`, account context, selected scope, and runtime character above the scrolling character-settings pane. Configurable rows show whether they match the account default, default rows show differing-character counts, single-character `Use default` remains immediate, and propagation/reset/delete actions confirm their named scope.
+- Replaced the mixed task-order list with explicit Before AR and After AR lanes. Up/Down stays within a lane, phase changes are explicit, and every row includes cadence, ownership, and its current blocker.
+- Added setup-wizard impact previews with exact changed fields, including fishing-stock rows. Applying to the account default remains isolated; applying the default to all characters is a separate confirmed action and neither action starts automation.
+- Hardened the registrable-item editor with configured-list search, duplicate-safe additions, first-occurrence import normalization, parse-before-mutation validation, accepted/duplicate/unknown/invalid/added/removed preview counts, confirmed replacement, and confirmed Clear All/default-list replacement.
+- Corrected Main Window scroll ownership: the compact identity/readiness/action header stays fixed, and the tabs, task dashboard, collapsed test controls, and diagnostics share exactly one remaining-height scrolling body. The task table has no nested scrollbar or forced empty height, including in short Favorites views.
+- Replaced the Main Window's multiline six-column task table with one visual line per task in `★ | Task | When | Type | Actions`. Compact local timing and owner/cadence codes have header legends, and row tooltips preserve full status, blocker, ownership, cadence, maturity, local/UTC eligibility, and disabled-action reasons. All counted dashboard groups and the flat Favorites view remain visible.
+- Added a saved global `Auto width the columns` checkbox, enabled by default. Automatic mode uses a separate non-persisted layout that content-fits the compact columns, gives Task the remaining width, and prevents divider dragging; manual mode restores the shared native ImGui widths used by All Tasks and Favorites.
+- The other affected tables and panes retain stretch/scroll layouts, wrapped explanations, stable action columns, and explicit empty/error states at the existing minimum sizes. Advanced diagnostics and test controls remain available in collapsed sections.
+- Automated policy coverage now owns automatic-width defaults for fresh and legacy configurations, dashboard classification/recovery routing, lane movement/phase changes/normalization/registry completeness, wizard impact/copy boundaries, and registrable search/validation/deduplication/preview/confirmation/cancellation. The focused `UiUxPolicyTests` class passes 18/18, the complete suite passes 538/538, and the Debug x64 solution build succeeds with the established `PInvoke.User32` warning only. David-operated visual acceptance remains pending for narrow automatic sizing, locked versus draggable dividers, native manual-width restoration across toggles/reloads, the shared All Tasks/Favorites layout, and unchanged row/scroll behavior.
+
+### Delivery mapping
+
+- I193 and I195: global Favorites.
+- I194: independent verified inter-item pacing for Refill Listings.
+- I187: reviewed; no code change was required.
+
 ## Prioritized recommendations
 
 | Priority | Recommendation | Rationale and completion signal |

@@ -161,6 +161,60 @@ public static class PostProcessTaskOrder
     public static Dictionary<string, PostProcessTaskPhase> CreateDefaultPlacement()
         => DefaultOrder.ToDictionary(id => id, GetDefaultPhase, StringComparer.Ordinal);
 
+    public static IReadOnlyList<string> GetLane(
+        IEnumerable<string>? order,
+        IReadOnlyDictionary<string, PostProcessTaskPhase>? placement,
+        PostProcessTaskPhase phase)
+        => Normalize(order)
+            .Where(id => GetPhase(placement, id) == phase)
+            .ToList();
+
+    public static List<string> MoveWithinLane(
+        IEnumerable<string>? order,
+        IReadOnlyDictionary<string, PostProcessTaskPhase>? placement,
+        string taskId,
+        int direction)
+    {
+        var normalized = Normalize(order);
+        if (direction == 0 || !KnownIds.Contains(taskId))
+            return normalized;
+
+        var phase = GetPhase(placement, taskId);
+        var lane = GetLane(normalized, placement, phase);
+        var laneIndex = lane.IndexOf(taskId);
+        var targetLaneIndex = laneIndex + Math.Sign(direction);
+        if (laneIndex < 0 || targetLaneIndex < 0 || targetLaneIndex >= lane.Count)
+            return normalized;
+
+        var firstIndex = normalized.IndexOf(taskId);
+        var secondIndex = normalized.IndexOf(lane[targetLaneIndex]);
+        (normalized[firstIndex], normalized[secondIndex]) = (normalized[secondIndex], normalized[firstIndex]);
+        return normalized;
+    }
+
+    public static Dictionary<string, PostProcessTaskPhase> ChangePhase(
+        IReadOnlyDictionary<string, PostProcessTaskPhase>? placement,
+        string taskId,
+        PostProcessTaskPhase phase)
+    {
+        var result = CreateDefaultPlacement();
+        foreach (var pair in placement ?? new Dictionary<string, PostProcessTaskPhase>())
+        {
+            if (KnownIds.Contains(pair.Key))
+                result[pair.Key] = pair.Value;
+        }
+        if (KnownIds.Contains(taskId))
+            result[taskId] = phase;
+        return result;
+    }
+
+    private static PostProcessTaskPhase GetPhase(
+        IReadOnlyDictionary<string, PostProcessTaskPhase>? placement,
+        string taskId)
+        => placement != null && placement.TryGetValue(taskId, out var phase)
+            ? phase
+            : GetDefaultPhase(taskId);
+
     private static int FindNewTaskInsertionIndex(IReadOnlyList<string> normalized)
     {
         var registerIndex = normalized.IndexOf(RegisterRegistrables);

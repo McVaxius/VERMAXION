@@ -5,6 +5,7 @@ namespace VERMAXION;
 
 public sealed class Configuration
 {
+    public bool AutoWidthMainTaskColumns { get; set; } = true;
     public List<string> FavoriteAutomationIds { get; set; } = new();
     public int RefillListingsActionDelayMs { get; set; } = 250;
     public int RefillListingsInterItemDelayMs { get; set; } = 250;
