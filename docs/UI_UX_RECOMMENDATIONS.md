@@ -1,6 +1,6 @@
 # Vermaxion UI/UX Recommendations
 
-**Review date:** 2026-08-18  
+**Review date:** 2026-08-18
 **Scope:** UI review plus tracked implementation status. The prioritized P0/P1/P2 recommendations remain the acceptance source for the follow-up implementation.
 
 ## Product goal
