@@ -91,7 +91,9 @@ public class VermaxionEngine
         [PostProcessTaskOrder.GearUpdater] = EngineState.RunningGearUpdater,
         [PostProcessTaskOrder.HighestCombatJob] = EngineState.RunningHighestCombatJob,
         [PostProcessTaskOrder.CurrentJobEquipment] = EngineState.RunningCurrentJobEquipment,
+        [PostProcessTaskOrder.AlliedSociety] = EngineState.RunningAlliedSociety,
         [PostProcessTaskOrder.SeasonalGear] = EngineState.RunningSeasonalGear,
+        [PostProcessTaskOrder.AfterArPark] = EngineState.RunningAfterArPark,
         [PostProcessTaskOrder.MinionRoulette] = EngineState.RunningMinionRoulette,
         [PostProcessTaskOrder.VerminionQueue] = EngineState.RunningVerminion,
         [PostProcessTaskOrder.MiniCactpot] = EngineState.RunningMiniCactpot,
@@ -123,6 +125,8 @@ public class VermaxionEngine
     private readonly HighestCombatJobService highestCombatJobService;
     private readonly CurrentJobEquipmentService currentJobEquipmentService;
     private readonly SeasonalGearService seasonalGearService;
+    private readonly AlliedSocietyService alliedSocietyService;
+    private readonly AfterArParkService afterArParkService;
     private readonly MinionRouletteService minionRouletteService;
     private readonly IEquipmentAutomationRuntime equipmentRuntime;
     private readonly RetainerListingRefillService retainerListingRefillService;
@@ -207,7 +211,9 @@ public class VermaxionEngine
         RunningGearUpdater,
         RunningHighestCombatJob,
         RunningCurrentJobEquipment,
+        RunningAlliedSociety,
         RunningSeasonalGear,
+        RunningAfterArPark,
         RunningMinionRoulette,
         RunningRetainerListingRefill,
         RunningRetainerEquipping,
@@ -276,6 +282,8 @@ public class VermaxionEngine
         HighestCombatJobService highestCombatJobService,
         CurrentJobEquipmentService currentJobEquipmentService,
         SeasonalGearService seasonalGearService,
+        AlliedSocietyService alliedSocietyService,
+        AfterArParkService afterArParkService,
         MinionRouletteService minionRouletteService,
         IEquipmentAutomationRuntime equipmentRuntime,
         RetainerListingRefillService retainerListingRefillService,
@@ -309,6 +317,8 @@ public class VermaxionEngine
         this.highestCombatJobService = highestCombatJobService;
         this.currentJobEquipmentService = currentJobEquipmentService;
         this.seasonalGearService = seasonalGearService;
+        this.alliedSocietyService = alliedSocietyService;
+        this.afterArParkService = afterArParkService;
         this.minionRouletteService = minionRouletteService;
         this.equipmentRuntime = equipmentRuntime;
         this.retainerListingRefillService = retainerListingRefillService;
@@ -380,8 +390,12 @@ public class VermaxionEngine
                 highestCombatJobService.Reset, () => highestCombatJobService.StatusText, () => highestCombatJobService.Cancel()),
             Bind(PostProcessTaskOrder.CurrentJobEquipment, EvaluateCurrentJobEquipment, currentJobEquipmentService.Update,
                 currentJobEquipmentService.Reset, () => currentJobEquipmentService.StatusText, () => currentJobEquipmentService.Cancel()),
+            Bind(PostProcessTaskOrder.AlliedSociety, EvaluateAlliedSociety, alliedSocietyService.Update,
+                alliedSocietyService.Reset, () => alliedSocietyService.StatusText, () => alliedSocietyService.Cancel()),
             Bind(PostProcessTaskOrder.SeasonalGear, EvaluateSeasonalGear, seasonalGearService.Update, seasonalGearService.Reset,
                 () => seasonalGearService.StatusText, () => seasonalGearService.Cancel()),
+            Bind(PostProcessTaskOrder.AfterArPark, EvaluateAfterArPark, afterArParkService.Update,
+                afterArParkService.Reset, () => afterArParkService.StatusText, () => afterArParkService.Cancel()),
             Bind(PostProcessTaskOrder.MinionRoulette, EvaluateMinionRoulette, minionRouletteService.Update,
                 minionRouletteService.Reset, () => minionRouletteService.StatusText),
             Bind(PostProcessTaskOrder.VerminionQueue, EvaluateVerminion, verminionService.Update, verminionService.Reset,
@@ -447,18 +461,26 @@ public class VermaxionEngine
                 : TaskEligibility.Runnable();
 
     private TaskEligibility EvaluateGearUpdater(CharacterConfig config)
-        => !config.EnableGearUpdater
-            ? TaskEligibility.Disabled("Gear Updater is disabled for this character.")
-            : equipmentRuntime.GetValidGearsets().Count == 0
-                ? TaskEligibility.Blocked("Gear Updater found no valid saved gearsets for unlocked classes or jobs.")
-                : TaskEligibility.Runnable();
+    {
+        if (!config.EnableGearUpdater)
+            return TaskEligibility.Disabled("Gear Updater is disabled for this character.");
+        return equipmentRuntime.GetValidGearsets().Count > 0 ||
+               equipmentRuntime.CharacterContentId != 0 && equipmentRuntime.CurrentJobId != 0
+            ? TaskEligibility.Runnable()
+            : TaskEligibility.Blocked("Gear Updater cannot bootstrap without stable current-character and job data.");
+    }
 
     private TaskEligibility EvaluateHighestCombatJob(CharacterConfig config)
-        => !config.EnableHighestCombatJob
-            ? TaskEligibility.Disabled("Highest Combat Job is disabled for this character.")
-            : EquipmentAutomationPolicy.SelectHighestCombatJob(equipmentRuntime.GetValidGearsets(), equipmentRuntime.CurrentJobId) == null
-                ? TaskEligibility.Blocked("Highest Combat Job found no combat job represented by a valid saved gearset.")
-                : TaskEligibility.Runnable();
+    {
+        if (!config.EnableHighestCombatJob)
+            return TaskEligibility.Disabled("Highest Combat Job is disabled for this character.");
+        return EquipmentAutomationPolicy.SelectHighestCombatJob(
+                   equipmentRuntime.GetValidGearsets(),
+                   equipmentRuntime.CurrentJobId) != null ||
+               equipmentRuntime.CharacterContentId != 0 && equipmentRuntime.CurrentJobId != 0
+            ? TaskEligibility.Runnable()
+            : TaskEligibility.Blocked("Highest Combat Job cannot bootstrap without stable current-character and job data.");
+    }
 
     private TaskEligibility EvaluateCurrentJobEquipment(CharacterConfig config)
         => !config.EnableCurrentJobEquipment
@@ -468,6 +490,31 @@ public class VermaxionEngine
                 ? TaskEligibility.Blocked("Current Job Equipment requires the active job to match a valid saved gearset.")
                 : TaskEligibility.Runnable();
 
+    private TaskEligibility EvaluateAlliedSociety(CharacterConfig config)
+    {
+        if (!config.EnableAlliedSociety)
+            return TaskEligibility.Disabled("Allied Society is disabled for this character.");
+        if (!ResetDetectionService.TaskNeedsRun(config.AlliedSocietyLastCompleted, config.AlliedSocietyNextReset))
+            return TaskEligibility.NotDue($"Allied Society is not due until {config.AlliedSocietyNextReset:u}.");
+
+        var gearsets = equipmentRuntime.GetValidGearsets();
+        var selected = config.AlliedSocietyGearsetSelection switch
+        {
+            AlliedSocietyGearsetSelection.CurrentJob => EquipmentAutomationPolicy.SelectCurrentGearset(
+                gearsets,
+                equipmentRuntime.CurrentGearsetId,
+                equipmentRuntime.CurrentJobId),
+            AlliedSocietyGearsetSelection.SavedGearset => gearsets.FirstOrDefault(
+                gearset => gearset.GearsetId == config.AlliedSocietyGearsetId),
+            _ => null,
+        };
+        return selected == null
+            ? TaskEligibility.Blocked(config.AlliedSocietyGearsetSelection == AlliedSocietyGearsetSelection.SavedGearset
+                ? "Allied Society requires a valid selected saved gearset."
+                : "Allied Society Current Job requires a valid active saved gearset.")
+            : TaskEligibility.Runnable();
+    }
+
     private TaskEligibility EvaluateSeasonalGear(CharacterConfig config)
         => !config.EnableSeasonalGearRoulette
             ? TaskEligibility.Disabled("Seasonal Gear is disabled for this character.")
@@ -475,6 +522,19 @@ public class VermaxionEngine
                 EquipmentAutomationPolicy.DeduplicateCuratedItemIds(SeasonalGearService.CuratedItemIds)).Count == 0
                 ? TaskEligibility.Blocked("Seasonal Gear found no curated equippable items in inventory or the Armoury Chest.")
                 : TaskEligibility.Runnable();
+
+    private static TaskEligibility EvaluateAfterArPark(CharacterConfig config)
+    {
+        if (!config.EnableAfterArPark)
+            return TaskEligibility.Disabled("After-AR Park is disabled for this character.");
+        return AfterArParkService.TryResolveCommand(
+            config.AfterArParkDestination,
+            config.AfterArParkCustomCommand,
+            out _,
+            out var error)
+            ? TaskEligibility.Runnable()
+            : TaskEligibility.Blocked(error);
+    }
 
     private static TaskEligibility EvaluateMinionRoulette(CharacterConfig config)
         => Enabled(config.EnableMinionRoulette, "Minion Roulette");
@@ -974,6 +1034,44 @@ public class VermaxionEngine
                     currentJobEquipmentService.Start);
                 break;
 
+            case EngineState.RunningAlliedSociety:
+                if (!activeConfig!.EnableAlliedSociety)
+                {
+                    alliedSocietyService.Reset();
+                    AdvanceToNextTask(EngineState.RunningAlliedSociety);
+                    break;
+                }
+
+                if (!alliedSocietyService.IsActive && !alliedSocietyService.IsComplete && !alliedSocietyService.IsFailed)
+                {
+                    log.Information("[Engine] Starting Allied Society");
+                    MarkCurrentTaskWorkStarted();
+                    alliedSocietyService.Start(activeConfig);
+                    return;
+                }
+
+                taskBindings[PostProcessTaskOrder.AlliedSociety].Tick();
+                if (alliedSocietyService.IsComplete)
+                {
+                    var completedAt = DateTime.UtcNow;
+                    PersistCurrentCharacterConfig(config =>
+                    {
+                        config.AlliedSocietyLastCompleted = completedAt;
+                        config.AlliedSocietyNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
+                    }, "Allied Society completion");
+                    log.Information($"[Engine] Allied Society completed: {alliedSocietyService.StatusText}");
+                    alliedSocietyService.Reset();
+                    AdvanceToNextTask(EngineState.RunningAlliedSociety);
+                }
+                else if (alliedSocietyService.IsFailed)
+                {
+                    runHadFailure = true;
+                    log.Warning($"[Engine] Allied Society failed and remains unstamped: {alliedSocietyService.StatusText}");
+                    alliedSocietyService.Reset();
+                    AdvanceToNextTask(EngineState.RunningAlliedSociety);
+                }
+                break;
+
             case EngineState.RunningSeasonalGear:
                 TickSimpleRegisteredTask(
                     EngineState.RunningSeasonalGear,
@@ -982,6 +1080,16 @@ public class VermaxionEngine
                     () => seasonalGearService.IsComplete,
                     () => seasonalGearService.IsFailed,
                     seasonalGearService.Start);
+                break;
+
+            case EngineState.RunningAfterArPark:
+                TickSimpleRegisteredTask(
+                    EngineState.RunningAfterArPark,
+                    activeConfig!.EnableAfterArPark,
+                    () => afterArParkService.IsActive,
+                    () => afterArParkService.IsComplete,
+                    () => afterArParkService.IsFailed,
+                    () => afterArParkService.Start(activeConfig));
                 break;
 
             case EngineState.RunningMinionRoulette:
@@ -2110,8 +2218,12 @@ public class VermaxionEngine
             return $"Highest Combat Job active ({highestCombatJobService.StatusText})";
         if (currentJobEquipmentService.IsActive)
             return $"Current Job Equipment active ({currentJobEquipmentService.StatusText})";
+        if (alliedSocietyService.IsActive || alliedSocietyService.OwnsRotation)
+            return $"Allied Society active ({alliedSocietyService.StatusText})";
         if (seasonalGearService.IsActive)
             return $"Seasonal Gear active ({seasonalGearService.StatusText})";
+        if (afterArParkService.IsActive)
+            return $"After-AR Park active ({afterArParkService.StatusText})";
         if (minionRouletteService.IsActive)
             return $"Minion Roulette active ({minionRouletteService.StatusText})";
 
@@ -2505,7 +2617,9 @@ public class VermaxionEngine
             EngineState.RunningGearUpdater => "Gear Updater",
             EngineState.RunningHighestCombatJob => "Highest Combat Job",
             EngineState.RunningCurrentJobEquipment => "Current Job Equipment",
+            EngineState.RunningAlliedSociety => "Allied Society",
             EngineState.RunningSeasonalGear => "Seasonal Gear",
+            EngineState.RunningAfterArPark => "After-AR Park",
             EngineState.RunningMinionRoulette => "Minion Roulette",
             EngineState.RunningRetainerListingRefill => "Retainer Listing Refill",
             EngineState.RunningRetainerEquipping => "Retainer Equipping",

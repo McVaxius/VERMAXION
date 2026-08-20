@@ -12,6 +12,9 @@ internal sealed unsafe class RecommendedEquipHelper
 {
     private bool operationActive;
     private bool equipIssued;
+    private DateTime setupStartedAt;
+    private DateTime nextPollAt;
+    private DateTime equipIssuedAt;
 
     internal bool TryBegin(uint classJobId, out string error)
     {
@@ -25,15 +28,21 @@ internal sealed unsafe class RecommendedEquipHelper
                 return false;
             }
 
-            if (classJobId is 0 or > byte.MaxValue || !module->SetupForClassJob((byte)classJobId))
+            if (classJobId is 0 or > byte.MaxValue)
             {
-                error = $"RecommendEquipModule rejected class/job {classJobId}.";
+                error = $"Class/job {classJobId} cannot be passed to RecommendEquipModule.";
                 module->Clear();
                 return false;
             }
 
+            // The native Boolean is unreliable. IsUpdating is the authoritative
+            // completion signal used by Questionable Companion.
+            module->SetupForClassJob((byte)classJobId);
             operationActive = true;
             equipIssued = false;
+            setupStartedAt = DateTime.UtcNow;
+            nextPollAt = setupStartedAt;
+            equipIssuedAt = DateTime.MinValue;
             error = string.Empty;
             return true;
         }
@@ -63,22 +72,46 @@ internal sealed unsafe class RecommendedEquipHelper
                 return RecommendedEquipmentProgress.Failed;
             }
 
-            if (module->IsUpdating || module->EquippedMainHand == null)
+            var now = DateTime.UtcNow;
+            if (equipIssued)
+            {
+                if (now - equipIssuedAt < TimeSpan.FromSeconds(1))
+                {
+                    error = string.Empty;
+                    return RecommendedEquipmentProgress.Pending;
+                }
+
+                module->Clear();
+                operationActive = false;
+                error = string.Empty;
+                return RecommendedEquipmentProgress.Complete;
+            }
+
+            if (now < nextPollAt)
             {
                 error = string.Empty;
                 return RecommendedEquipmentProgress.Pending;
             }
+            nextPollAt = now + TimeSpan.FromMilliseconds(100);
 
-            if (!equipIssued)
+            if (module->IsUpdating)
             {
-                module->EquipRecommendedGear();
-                equipIssued = true;
+                if (now - setupStartedAt < TimeSpan.FromSeconds(10))
+                {
+                    error = string.Empty;
+                    return RecommendedEquipmentProgress.Pending;
+                }
+
+                error = "RecommendEquipModule did not finish calculating within 10 seconds.";
+                Cancel();
+                return RecommendedEquipmentProgress.Failed;
             }
 
-            module->Clear();
-            operationActive = false;
+            module->EquipRecommendedGear();
+            equipIssued = true;
+            equipIssuedAt = now;
             error = string.Empty;
-            return RecommendedEquipmentProgress.Complete;
+            return RecommendedEquipmentProgress.Pending;
         }
         catch (Exception ex)
         {
@@ -104,6 +137,9 @@ internal sealed unsafe class RecommendedEquipHelper
         {
             operationActive = false;
             equipIssued = false;
+            setupStartedAt = DateTime.MinValue;
+            nextPollAt = DateTime.MinValue;
+            equipIssuedAt = DateTime.MinValue;
         }
     }
 }

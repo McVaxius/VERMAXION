@@ -76,7 +76,7 @@ public static class UIConstants
         public const string EnableCharacterSelectStallRecovery = "After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button.";
         public const string MinionRoulette = "Fire off /minion roulette once per AR postprocess";
         public const string SeasonalGearRoulette = "Randomly equip seasonal event gear for a fun ensemble each AR run";
-        public const string GearUpdater = "Cycle through all unlocked jobs: auto equip recommended gear and save gearset (2s intervals)";
+        public const string GearUpdater = "Updates valid saved gearsets through optional Stylist IPC or the native recommended-equipment path. If none exist, first runs the bounded missing-gearset bootstrap.";
         public const string NagYourMom = "AR-only mom task. Evaluated during VERMAXION post-process, gated by a local time window and per-route daily attempt counts.";
         public const string NagYourDad = "AR-only DAD launch. Select one live saved DAD preset or schedule; VERMAXION tracks and cancels that exact scheduler job, planner request, or schedule run.";
         public const string MiscCmd = "Sends startup cleanup commands at the start of AutoRetainer and manual VERMAXION runs.";

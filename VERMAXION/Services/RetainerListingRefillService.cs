@@ -94,6 +94,7 @@ public sealed class RetainerListingRefillService
     };
 
     private readonly IPluginLog log;
+    private readonly Configuration configuration;
     private readonly ConfigManager configManager;
     private readonly VNavmeshIPC vnavmesh;
     private readonly WorkshopBellService workshopBellService;
@@ -136,6 +137,7 @@ public sealed class RetainerListingRefillService
     private bool reopenSellListForCurrentPlan;
     private bool contextOpenRequested;
     private int minFreeInventorySlots = DefaultMinFreeInventorySlots;
+    private int listingActionDelayMs;
 
     public string StatusText { get; private set; } = "Idle.";
     public string LastError { get; private set; } = string.Empty;
@@ -145,12 +147,14 @@ public sealed class RetainerListingRefillService
 
     public RetainerListingRefillService(
         IPluginLog log,
+        Configuration configuration,
         ConfigManager configManager,
         VNavmeshIPC vnavmesh,
         WorkshopBellService workshopBellService,
         AutoRetainerIPC autoRetainerIPC)
     {
         this.log = log;
+        this.configuration = configuration;
         this.configManager = configManager;
         this.vnavmesh = vnavmesh;
         this.workshopBellService = workshopBellService;
@@ -166,6 +170,7 @@ public sealed class RetainerListingRefillService
         selectionMode = config.RefillFromListingsSelectionMode;
         route = config.RefillFromListingsRoute;
         minFreeInventorySlots = ClampMinFreeInventorySlots(config.RefillFromListingsMinFreeInventorySlots);
+        listingActionDelayMs = Math.Clamp(configuration.RefillListingsActionDelayMs, 0, 2000);
         SetState(RefillState.PreparingTargets, "Reading retainer listings...");
         TickPreparingTargets();
     }
@@ -230,6 +235,7 @@ public sealed class RetainerListingRefillService
         closeThenComplete = false;
         closeMode = RetainerUiCloseMode.FullClose;
         minFreeInventorySlots = DefaultMinFreeInventorySlots;
+        listingActionDelayMs = 250;
         ResetRetainerPhaseFlags();
         ResetCloseTracking();
     }
@@ -433,7 +439,7 @@ public sealed class RetainerListingRefillService
             log.Information($"[Listings] RetainerList target '{target.Name}' matched row {index}.");
             GameHelpers.FireAddonCallback(RetainerListAddonName, true, 2, index, 0, 0);
             retainerSelected = true;
-            nextActionAt = DateTime.UtcNow.AddSeconds(2);
+            ScheduleListingAction();
             return;
         }
 
@@ -471,7 +477,7 @@ public sealed class RetainerListingRefillService
 
             GameHelpers.FireAddonCallback(SelectStringAddonName, true, index);
             sellMenuSelected = true;
-            nextActionAt = DateTime.UtcNow.AddSeconds(2);
+            ScheduleListingAction();
             return;
         }
 
@@ -584,7 +590,7 @@ public sealed class RetainerListingRefillService
 
         log.Information(detail);
         contextOpenRequested = true;
-        nextActionAt = DateTime.UtcNow.AddMilliseconds(750);
+        ScheduleListingAction();
     }
 
     private void TickSelectingReturnToInventory()
@@ -627,7 +633,7 @@ public sealed class RetainerListingRefillService
             {
                 GameHelpers.ClickYesIfVisible();
                 confirmationClicked = true;
-                nextActionAt = DateTime.UtcNow.AddSeconds(1);
+                ScheduleListingAction();
                 return;
             }
         }
@@ -664,13 +670,16 @@ public sealed class RetainerListingRefillService
                 reopenSellListForCurrentPlan = true;
                 SetState(RefillState.OpeningSellList, "Reopening retainer market listings...");
             }
-            nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
+            ScheduleListingAction();
             return;
         }
 
         StatusText = detail;
         nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
     }
+
+    private void ScheduleListingAction()
+        => nextActionAt = DateTime.UtcNow.AddMilliseconds(listingActionDelayMs);
 
     private void TickClosingRetainerUi()
     {

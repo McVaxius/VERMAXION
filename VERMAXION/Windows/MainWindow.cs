@@ -165,6 +165,13 @@ public class MainWindow : Window, IDisposable
                                 plugin.LootGoblinMapGatherManualRunCoordinator.IsActive ||
                                 plugin.FishingService.IsActive ||
                                 plugin.FishingRelogCoordinator.IsActive ||
+                                plugin.GearUpdaterService.IsActive ||
+                                plugin.HighestCombatJobService.IsActive ||
+                                plugin.CurrentJobEquipmentService.IsActive ||
+                                plugin.SeasonalGearService.IsActive ||
+                                plugin.AlliedSocietyService.IsActive ||
+                                plugin.AlliedSocietyService.OwnsRotation ||
+                                plugin.AfterArParkService.IsActive ||
                                 plugin.ARPostProcessService.IsProcessing ||
                                 plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
         if (highlightFullStop)
@@ -275,6 +282,13 @@ public class MainWindow : Window, IDisposable
                     var activeConfig = plugin.ConfigManager.GetActiveConfig();
                     plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
                 }, "OK");
+            var equipmentAutomationBusy = IsEquipmentAutomationBusy();
+            DrawTaskRow("Bootstrap Gearsets", true, plugin.GearUpdaterService.StatusText,
+                "run##BootstrapGearsets", plugin.GearUpdaterService.StartBootstrap, "OK",
+                buttonDisabled: equipmentAutomationBusy,
+                buttonTooltip: equipmentAutomationBusy
+                    ? "An engine or equipment task is active."
+                    : "Persist the current job, then bootstrap missing unlocked class/job gearsets from already-owned main hands.");
             DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.SeasonalGear));
             DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, AutomationCatalog.Get(AutomationCatalog.SeasonalGear).CadenceLabel,
                 "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
@@ -282,6 +296,15 @@ public class MainWindow : Window, IDisposable
                 "run##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
             DrawTaskRow("Gear Updater", config.EnableGearUpdater, AutomationCatalog.Get(AutomationCatalog.GearUpdater).CadenceLabel,
                 "run##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
+            DrawTaskRow("After-AR Park", config.EnableAfterArPark, GetAfterArParkStatus(config),
+                "run##AfterArPark", () => plugin.AfterArParkService.Start(config), "OK",
+                buttonDisabled: engine.IsRunning || plugin.AfterArParkService.IsActive ||
+                                !AfterArParkService.TryResolveCommand(
+                                    config.AfterArParkDestination,
+                                    config.AfterArParkCustomCommand,
+                                    out _,
+                                    out _),
+                buttonTooltip: "Issues the configured /li route once and waits for Lifestream/player settlement.");
 
             // --- Weekly Tasks ---
             DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
@@ -301,6 +324,14 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
                 GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
                 "run##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
+            var alliedGearsetValid = IsAlliedSocietyGearsetValid(config);
+            DrawTaskRow("Allied Society", config.EnableAlliedSociety,
+                GetAlliedSocietyStatus(config),
+                "run##AlliedSociety", () => plugin.AlliedSocietyService.Start(config), "OK",
+                buttonDisabled: equipmentAutomationBusy || !alliedGearsetValid,
+                buttonTooltip: alliedGearsetValid
+                    ? "Runs Questionable Companion's Allied Society rotation for only the current Name@HomeWorld character."
+                    : "Select a valid current or saved gearset before starting.");
             var lootGoblinDailyStatus = GetDailyTaskStatus(
                 config.LootGoblinMapGatherLastCompleted,
                 config.LootGoblinMapGatherNextReset,
@@ -740,6 +771,64 @@ public class MainWindow : Window, IDisposable
     {
         return mode == Models.RefillFromListingsSelectionMode.Random ? "Random" : "All";
     }
+
+    private string GetAlliedSocietyStatus(Models.CharacterConfig config)
+    {
+        if (plugin.AlliedSocietyService.State != AlliedSocietyService.RunState.Idle)
+            return plugin.AlliedSocietyService.StatusText;
+        if (!config.EnableAlliedSociety)
+            return "Off";
+        if (!IsAlliedSocietyGearsetValid(config))
+            return "Invalid gearset";
+        return GetDailyTaskStatus(
+            config.AlliedSocietyLastCompleted,
+            config.AlliedSocietyNextReset,
+            "Done today",
+            "Daily");
+    }
+
+    private string GetAfterArParkStatus(Models.CharacterConfig config)
+    {
+        if (plugin.AfterArParkService.IsActive ||
+            plugin.AfterArParkService.IsComplete ||
+            plugin.AfterArParkService.IsFailed)
+        {
+            return plugin.AfterArParkService.StatusText;
+        }
+        if (!config.EnableAfterArPark)
+            return "Off";
+        return AfterArParkService.TryResolveCommand(
+            config.AfterArParkDestination,
+            config.AfterArParkCustomCommand,
+            out var command,
+            out _)
+            ? command
+            : "Invalid command";
+    }
+
+    private bool IsAlliedSocietyGearsetValid(Models.CharacterConfig config)
+    {
+        var gearsets = plugin.EquipmentAutomationRuntime.GetValidGearsets();
+        return config.AlliedSocietyGearsetSelection switch
+        {
+            AlliedSocietyGearsetSelection.CurrentJob => EquipmentAutomationPolicy.SelectCurrentGearset(
+                gearsets,
+                plugin.EquipmentAutomationRuntime.CurrentGearsetId,
+                plugin.EquipmentAutomationRuntime.CurrentJobId) != null,
+            AlliedSocietyGearsetSelection.SavedGearset => gearsets.Any(
+                gearset => gearset.GearsetId == config.AlliedSocietyGearsetId),
+            _ => false,
+        };
+    }
+
+    private bool IsEquipmentAutomationBusy()
+        => plugin.Engine.IsRunning ||
+           plugin.GearUpdaterService.IsActive ||
+           plugin.HighestCombatJobService.IsActive ||
+           plugin.CurrentJobEquipmentService.IsActive ||
+           plugin.SeasonalGearService.IsActive ||
+           plugin.AlliedSocietyService.IsActive ||
+           plugin.AlliedSocietyService.OwnsRotation;
 
     private static string GetNagYourMomStatus(Models.CharacterConfig config, string engineStatus)
     {
