@@ -52,10 +52,11 @@ public sealed class EquipmentAutomationTests
         var machine = new CurrentJobEquipmentStateMachine(runtime);
 
         Assert.True(machine.Start(out _));
-        machine.Tick();
-        machine.Tick();
-        machine.Tick();
-        machine.Tick();
+        for (var i = 0; i < 8 && machine.IsActive; i++)
+        {
+            machine.Tick();
+            runtime.Advance(TimeSpan.FromSeconds(2));
+        }
 
         Assert.True(machine.IsComplete);
         Assert.Equal(1, runtime.RecommendedBeginCount);
@@ -102,8 +103,11 @@ public sealed class EquipmentAutomationTests
         var machine = new GearUpdaterStateMachine(runtime);
         Assert.True(machine.Start(out _));
 
-        for (var i = 0; i < 12 && machine.IsActive; i++)
+        for (var i = 0; i < 16 && machine.IsActive; i++)
+        {
             machine.Tick();
+            runtime.Advance(TimeSpan.FromSeconds(2));
+        }
 
         Assert.Equal(EquipmentTaskTerminalState.Failed, machine.TerminalState);
         Assert.Equal(7, runtime.CurrentGearsetId);
@@ -132,7 +136,10 @@ public sealed class EquipmentAutomationTests
         Assert.True(machine.Start(out _));
 
         for (var i = 0; i < 40 && machine.IsActive; i++)
+        {
             machine.Tick();
+            runtime.Advance(TimeSpan.FromSeconds(2));
+        }
 
         Assert.Equal(EquipmentTaskTerminalState.Complete, machine.TerminalState);
         Assert.Equal(40, runtime.CurrentGearsetId);

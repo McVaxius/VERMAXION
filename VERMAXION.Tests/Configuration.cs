@@ -5,6 +5,9 @@ namespace VERMAXION;
 
 public sealed class Configuration
 {
+    public List<string> FavoriteAutomationIds { get; set; } = new();
+    public int RefillListingsActionDelayMs { get; set; } = 250;
+    public int RefillListingsInterItemDelayMs { get; set; } = 250;
     public List<string> PostProcessTaskOrder { get; set; } = VERMAXION.PostProcessTaskOrder.DefaultOrder.ToList();
     public Dictionary<string, PostProcessTaskPhase> PostProcessTaskPlacement { get; set; } = VERMAXION.PostProcessTaskOrder.CreateDefaultPlacement();
 

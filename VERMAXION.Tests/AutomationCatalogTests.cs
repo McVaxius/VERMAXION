@@ -23,7 +23,7 @@ public sealed class AutomationCatalogTests
             .OrderBy(name => name)
             .ToList();
 
-        Assert.Equal(24, enableProperties.Count);
+        Assert.Equal(26, enableProperties.Count);
         Assert.Equal(enableProperties, catalogFlags);
         Assert.All(AutomationCatalog.Features, feature => Assert.True(Enum.IsDefined(feature.Owner)));
     }
@@ -34,7 +34,7 @@ public sealed class AutomationCatalogTests
         var engineIds = AutomationCatalog.EngineTasks.Select(feature => feature.Id).ToList();
         var validation = AutomationCatalog.ValidateRuntimeRegistry(engineIds, PostProcessTaskOrder.DefaultOrder);
 
-        Assert.Equal(18, engineIds.Count);
+        Assert.Equal(20, engineIds.Count);
         Assert.True(validation.IsValid, validation.Message);
     }
 

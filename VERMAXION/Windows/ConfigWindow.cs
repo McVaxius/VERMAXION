@@ -250,6 +250,15 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawHelpMarker("Delay after ordinary Refill Listings actions. Range: 0–2000 ms. Default: 250 ms. Setting 0 performs the next action without an added delay. Timeouts, navigation, close retries, and UI-settlement waits are unchanged.");
 
+            var listingInterItemDelay = Math.Clamp(config.RefillListingsInterItemDelayMs, 0, 2000);
+            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+            if (ImGui.InputInt("Listing inter-item delay (ms)", ref listingInterItemDelay, 50, 250))
+            {
+                config.RefillListingsInterItemDelayMs = Math.Clamp(listingInterItemDelay, 0, 2000);
+                config.Save();
+            }
+            DrawHelpMarker("Delay after a returned listing is verified and before the next listing is selected. Range: 0–2000 ms. Default: 250 ms. Menu clicks, verification polling, timeouts, navigation, closing, and UI-settlement waits are unchanged.");
+
             var dtrEnabled = config.DtrBarEnabled;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
             {

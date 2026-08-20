@@ -137,7 +137,9 @@ public sealed class RetainerListingRefillService
     private bool reopenSellListForCurrentPlan;
     private bool contextOpenRequested;
     private int minFreeInventorySlots = DefaultMinFreeInventorySlots;
-    private int listingActionDelayMs;
+    private RefillListingPacingSnapshot listingPacing = RefillListingPacingSnapshot.Capture(
+        RefillListingPacingSnapshot.DefaultDelayMs,
+        RefillListingPacingSnapshot.DefaultDelayMs);
 
     public string StatusText { get; private set; } = "Idle.";
     public string LastError { get; private set; } = string.Empty;
@@ -170,7 +172,9 @@ public sealed class RetainerListingRefillService
         selectionMode = config.RefillFromListingsSelectionMode;
         route = config.RefillFromListingsRoute;
         minFreeInventorySlots = ClampMinFreeInventorySlots(config.RefillFromListingsMinFreeInventorySlots);
-        listingActionDelayMs = Math.Clamp(configuration.RefillListingsActionDelayMs, 0, 2000);
+        listingPacing = RefillListingPacingSnapshot.Capture(
+            configuration.RefillListingsActionDelayMs,
+            configuration.RefillListingsInterItemDelayMs);
         SetState(RefillState.PreparingTargets, "Reading retainer listings...");
         TickPreparingTargets();
     }
@@ -235,7 +239,9 @@ public sealed class RetainerListingRefillService
         closeThenComplete = false;
         closeMode = RetainerUiCloseMode.FullClose;
         minFreeInventorySlots = DefaultMinFreeInventorySlots;
-        listingActionDelayMs = 250;
+        listingPacing = RefillListingPacingSnapshot.Capture(
+            RefillListingPacingSnapshot.DefaultDelayMs,
+            RefillListingPacingSnapshot.DefaultDelayMs);
         ResetRetainerPhaseFlags();
         ResetCloseTracking();
     }
@@ -611,6 +617,7 @@ public sealed class RetainerListingRefillService
             case ContextSelectResult.Selected:
                 log.Information(detail);
                 SetState(RefillState.ConfirmingReturn, "Confirming listing return...");
+                ScheduleListingAction();
                 break;
             case ContextSelectResult.Disabled:
                 Fail(detail);
@@ -670,16 +677,22 @@ public sealed class RetainerListingRefillService
                 reopenSellListForCurrentPlan = true;
                 SetState(RefillState.OpeningSellList, "Reopening retainer market listings...");
             }
-            ScheduleListingAction();
+            ScheduleAfterVerifiedWithdrawal();
             return;
         }
 
         StatusText = detail;
-        nextActionAt = DateTime.UtcNow.AddMilliseconds(500);
+        nextActionAt = DateTime.UtcNow.AddMilliseconds(
+            listingPacing.SelectDelay(RefillListingPacingEvent.WithdrawalNotVerified));
     }
 
     private void ScheduleListingAction()
-        => nextActionAt = DateTime.UtcNow.AddMilliseconds(listingActionDelayMs);
+        => nextActionAt = DateTime.UtcNow.AddMilliseconds(
+            listingPacing.SelectDelay(RefillListingPacingEvent.MenuOrClick));
+
+    private void ScheduleAfterVerifiedWithdrawal()
+        => nextActionAt = DateTime.UtcNow.AddMilliseconds(
+            listingPacing.SelectDelay(RefillListingPacingEvent.WithdrawalVerified));
 
     private void TickClosingRetainerUi()
     {

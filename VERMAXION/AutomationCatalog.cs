@@ -145,6 +145,26 @@ public static class AutomationCatalog
             ? definition
             : throw new KeyNotFoundException($"Unknown automation ID '{id}'.");
 
+    public static IReadOnlyList<AutomationFeatureDefinition> ResolveFavorites(IEnumerable<string>? favoriteIds)
+    {
+        var selected = new HashSet<string>(favoriteIds ?? [], StringComparer.Ordinal);
+        return Features.Where(feature => selected.Contains(feature.Id)).ToList();
+    }
+
+    public static List<string> ToggleFavorite(IEnumerable<string>? favoriteIds, string automationId)
+    {
+        var result = (favoriteIds ?? []).ToList();
+        if (!ById.ContainsKey(automationId))
+            return result;
+
+        if (result.Contains(automationId, StringComparer.Ordinal))
+            result.RemoveAll(id => string.Equals(id, automationId, StringComparison.Ordinal));
+        else
+            result.Add(automationId);
+
+        return result;
+    }
+
     public static AutomationRegistryValidation ValidateRuntimeRegistry(
         IEnumerable<string> runtimeBindingIds,
         IEnumerable<string> orderedIds)
