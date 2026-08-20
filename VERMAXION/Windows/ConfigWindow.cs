@@ -12,14 +12,6 @@ using VERMAXION.Services;
 
 namespace VERMAXION.Windows;
 
-public enum SetupWizardKind
-{
-    DefaultAndSync,
-    FcBuff,
-    Fishing,
-    RetainerEquipping,
-}
-
 public class ConfigWindow : Window, IDisposable
 {
     private const string StylistRepositoryUrl = "https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json";
@@ -37,6 +29,19 @@ public class ConfigWindow : Window, IDisposable
     private bool focusFishingCatalogSearch;
     private string fishingCatalogSearch = string.Empty;
     private uint fishingCatalogRemoveItemId;
+    private ConfigTab? requestedTab;
+    private ConfigurationSection? requestedConfigurationSection;
+    private bool confirmationPopupRequested;
+    private string confirmationTitle = string.Empty;
+    private string confirmationMessage = string.Empty;
+    private System.Action? confirmedAction;
+    private bool wizardApplyAllConfirmationRequested;
+
+    private enum ConfigTab
+    {
+        Settings,
+        TaskOrder,
+    }
 
     public void OpenWizard(SetupWizardKind kind)
     {
@@ -44,6 +49,21 @@ public class ConfigWindow : Window, IDisposable
         wizardDraft = (account?.DefaultConfig ?? CharacterConfig.CreateNew()).Clone();
         activeWizard = kind;
         wizardPopupRequested = true;
+    }
+
+    public void OpenTaskOrder()
+    {
+        IsOpen = true;
+        requestedTab = ConfigTab.TaskOrder;
+    }
+
+    public void OpenAutomationSettings(ConfigurationSection section)
+    {
+        IsOpen = true;
+        requestedTab = ConfigTab.Settings;
+        requestedConfigurationSection = section;
+        if (!string.IsNullOrWhiteSpace(plugin.ConfigManager.CurrentCharacterKey))
+            plugin.ConfigManager.SelectedCharacterKey = plugin.ConfigManager.CurrentCharacterKey;
     }
 
     private sealed class DadDutyOption
@@ -72,13 +92,23 @@ public class ConfigWindow : Window, IDisposable
     {
         if (ImGui.BeginTabBar("ConfigTabs"))
         {
-            if (ImGui.BeginTabItem("Settings"))
+            var settingsFlags = requestedTab == ConfigTab.Settings
+                ? ImGuiTabItemFlags.SetSelected
+                : ImGuiTabItemFlags.None;
+            if (ImGui.BeginTabItem("Settings", settingsFlags))
             {
+                if (requestedTab == ConfigTab.Settings)
+                    requestedTab = null;
                 DrawSettingsTab();
                 ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Task Order"))
+            var taskOrderFlags = requestedTab == ConfigTab.TaskOrder
+                ? ImGuiTabItemFlags.SetSelected
+                : ImGuiTabItemFlags.None;
+            if (ImGui.BeginTabItem("Task Order", taskOrderFlags))
             {
+                if (requestedTab == ConfigTab.TaskOrder)
+                    requestedTab = null;
                 DrawTaskOrderTab();
                 ImGui.EndTabItem();
             }
@@ -91,6 +121,7 @@ public class ConfigWindow : Window, IDisposable
         }
 
         DrawWizardPopup();
+        DrawConfirmationPopup();
     }
 
     private void DrawTaskOrderTab()
@@ -107,71 +138,26 @@ public class ConfigWindow : Window, IDisposable
         }
 
         ImGui.Text("Global post-process order");
-        ImGui.TextDisabled("Before AR runs while AutoRetainer is suppressed after login. After AR runs in the normal postprocess slot.");
+        ImGui.TextWrapped("Before AR runs while AutoRetainer is suppressed after login. After AR runs in the normal post-process slot. Up and Down stay within a lane; moving between lanes is always explicit.");
         ImGui.Spacing();
 
         if (ImGui.Button("Reset to default"))
         {
-            PostProcessTaskOrder.ResetToDefault(config);
-            config.Save();
+            RequestConfirmation(
+                "Reset task order?",
+                "Reset both global task-order lanes and every Before AR / After AR placement to the shipped defaults?",
+                () =>
+                {
+                    PostProcessTaskOrder.ResetToDefault(config);
+                    config.Save();
+                });
         }
 
         ImGui.Separator();
 
-        var order = config.PostProcessTaskOrder;
-        for (var index = 0; index < order.Count; index++)
-        {
-            ImGui.PushID($"TaskOrder_{order[index]}_{index}");
-
-            var canMoveUp = index > 0;
-            if (!canMoveUp)
-                ImGui.BeginDisabled();
-            if (ImGui.SmallButton("Up"))
-            {
-                (order[index - 1], order[index]) = (order[index], order[index - 1]);
-                config.Save();
-            }
-            if (!canMoveUp)
-                ImGui.EndDisabled();
-
-            ImGui.SameLine();
-
-            var canMoveDown = index < order.Count - 1;
-            if (!canMoveDown)
-                ImGui.BeginDisabled();
-            if (ImGui.SmallButton("Down"))
-            {
-                (order[index + 1], order[index]) = (order[index], order[index + 1]);
-                config.Save();
-            }
-            if (!canMoveDown)
-                ImGui.EndDisabled();
-
-            ImGui.SameLine();
-            ImGui.Text($"{index + 1}. {PostProcessTaskOrder.GetLabel(order[index])}");
-            var definition = AutomationCatalog.Get(order[index]);
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip($"{definition.CadenceLabel} · {definition.OwnershipLabel}");
-
-            ImGui.SameLine(360f);
-            var phase = config.PostProcessTaskPlacement.TryGetValue(order[index], out var configuredPhase)
-                ? configuredPhase
-                : PostProcessTaskOrder.GetDefaultPhase(order[index]);
-            var beforeAr = phase == PostProcessTaskPhase.BeforeAR;
-            if (ImGui.RadioButton("Before AR", beforeAr))
-            {
-                config.PostProcessTaskPlacement[order[index]] = PostProcessTaskPhase.BeforeAR;
-                config.Save();
-            }
-            ImGui.SameLine();
-            if (ImGui.RadioButton("After AR", !beforeAr))
-            {
-                config.PostProcessTaskPlacement[order[index]] = PostProcessTaskPhase.AfterAR;
-                config.Save();
-            }
-
-            ImGui.PopID();
-        }
+        DrawTaskOrderLane(config, PostProcessTaskPhase.BeforeAR, "Before AR");
+        ImGui.Spacing();
+        DrawTaskOrderLane(config, PostProcessTaskPhase.AfterAR, "After AR");
 
         ImGui.Separator();
         DrawCatalogCategory(AutomationOwner.RunHook, "Run-start hook");
@@ -189,6 +175,97 @@ public class ConfigWindow : Window, IDisposable
             foreach (var item in blockers)
                 ImGui.BulletText($"{item.feature.Label}: {item.eligibility.Reason}");
         }
+    }
+
+    private void DrawTaskOrderLane(Configuration config, PostProcessTaskPhase phase, string label)
+    {
+        var lane = PostProcessTaskOrder.GetLane(
+            config.PostProcessTaskOrder,
+            config.PostProcessTaskPlacement,
+            phase);
+        ImGui.Text($"{label} lane ({lane.Count})");
+        var tableFlags = ImGuiTableFlags.Borders |
+                         ImGuiTableFlags.RowBg |
+                         ImGuiTableFlags.Resizable |
+                         ImGuiTableFlags.ScrollY |
+                         ImGuiTableFlags.SizingStretchProp;
+        if (!ImGui.BeginTable($"TaskOrder_{phase}", 4, tableFlags, new Vector2(0, 230f)))
+            return;
+
+        ImGui.TableSetupScrollFreeze(0, 1);
+        ImGui.TableSetupColumn("Move", ImGuiTableColumnFlags.WidthFixed, 72f);
+        ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch, 1.2f);
+        ImGui.TableSetupColumn("Cadence / owner / blocker", ImGuiTableColumnFlags.WidthStretch, 2f);
+        ImGui.TableSetupColumn("Lane", ImGuiTableColumnFlags.WidthFixed, 104f);
+        ImGui.TableHeadersRow();
+
+        for (var laneIndex = 0; laneIndex < lane.Count; laneIndex++)
+        {
+            var taskId = lane[laneIndex];
+            var definition = AutomationCatalog.Get(taskId);
+            var eligibility = plugin.Engine.GetTaskEligibility(taskId);
+            ImGui.PushID($"Lane_{phase}_{taskId}");
+            ImGui.TableNextRow();
+
+            ImGui.TableSetColumnIndex(0);
+            ImGui.BeginDisabled(laneIndex == 0);
+            if (ImGui.SmallButton("Up"))
+            {
+                config.PostProcessTaskOrder = PostProcessTaskOrder.MoveWithinLane(
+                    config.PostProcessTaskOrder,
+                    config.PostProcessTaskPlacement,
+                    taskId,
+                    -1);
+                config.Save();
+            }
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            ImGui.BeginDisabled(laneIndex == lane.Count - 1);
+            if (ImGui.SmallButton("Dn"))
+            {
+                config.PostProcessTaskOrder = PostProcessTaskOrder.MoveWithinLane(
+                    config.PostProcessTaskOrder,
+                    config.PostProcessTaskPlacement,
+                    taskId,
+                    1);
+                config.Save();
+            }
+            ImGui.EndDisabled();
+
+            ImGui.TableSetColumnIndex(1);
+            ImGui.TextWrapped($"{laneIndex + 1}. {definition.Label}");
+
+            ImGui.TableSetColumnIndex(2);
+            ImGui.TextWrapped($"{definition.CadenceLabel} · {definition.OwnershipLabel}");
+            if (eligibility.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
+                ImGui.TextWrapped($"Blocked: {eligibility.Reason}");
+            else
+                ImGui.TextDisabled($"{eligibility.Status}: {eligibility.Reason}");
+
+            ImGui.TableSetColumnIndex(3);
+            var destination = phase == PostProcessTaskPhase.BeforeAR
+                ? PostProcessTaskPhase.AfterAR
+                : PostProcessTaskPhase.BeforeAR;
+            if (ImGui.SmallButton($"Move to {(destination == PostProcessTaskPhase.BeforeAR ? "Before" : "After")}"))
+            {
+                config.PostProcessTaskPlacement = PostProcessTaskOrder.ChangePhase(
+                    config.PostProcessTaskPlacement,
+                    taskId,
+                    destination);
+                config.Save();
+            }
+
+            ImGui.PopID();
+        }
+
+        if (lane.Count == 0)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(1);
+            ImGui.TextDisabled("No tasks are assigned to this lane.");
+        }
+
+        ImGui.EndTable();
     }
 
     private static void DrawCatalogCategory(AutomationOwner owner, string heading)
@@ -390,6 +467,8 @@ public class ConfigWindow : Window, IDisposable
         DrawAccountSelector(configManager);
 
         ImGui.Separator();
+        DrawConfigurationScopeBanner(configManager);
+        ImGui.Separator();
 
         // --- Left Panel: Character List / Right Panel: Character Settings ---
         var leftWidth = config.LeftPanelWidth;
@@ -534,6 +613,39 @@ public class ConfigWindow : Window, IDisposable
         }
     }
 
+    private void DrawConfigurationScopeBanner(ConfigManager configManager)
+    {
+        var account = configManager.GetCurrentAccount();
+        var charKey = configManager.SelectedCharacterKey;
+        var isDefault = string.IsNullOrEmpty(charKey);
+        var accountLabel = account == null
+            ? "No account selected"
+            : string.IsNullOrWhiteSpace(account.AccountAlias)
+                ? "Unnamed account"
+                : account.AccountAlias;
+        var editingLabel = isDefault ? "Account default" : "Character";
+        ImGui.Text($"Editing: {editingLabel}");
+        ImGui.SameLine();
+        ImGui.TextDisabled($"Account: {accountLabel}");
+        ImGui.TextWrapped($"Selected: {(isDefault ? "Default Config" : charKey)} · Runtime character: {(string.IsNullOrWhiteSpace(configManager.CurrentCharacterKey) ? "Not logged in" : configManager.CurrentCharacterKey)}");
+
+        if (account == null)
+            return;
+
+        if (isDefault)
+        {
+            var differing = account.Characters.Count(pair => !SettingsMatchDefault(account.DefaultConfig, pair.Value));
+            ImGui.TextDisabled($"{differing} of {account.Characters.Count} characters differ from the account default settings.");
+        }
+        else
+        {
+            var selected = configManager.GetSelectedConfig();
+            ImGui.TextDisabled(SettingsMatchDefault(account.DefaultConfig, selected)
+                ? "Matches account default"
+                : "Differs from account default");
+        }
+    }
+
     private static string CleanLuminaText(string text)
     {
         if (string.IsNullOrEmpty(text) || !text.Contains('\u0001'))
@@ -585,9 +697,21 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.BeginPopupContextItem($"CharContext_{charKey}"))
             {
                 if (ImGui.MenuItem("Reset to Default"))
-                    configManager.ResetCharacterToDefault(charKey);
+                {
+                    var accountLabel = configManager.GetCurrentAccount()?.AccountAlias ?? "current account";
+                    RequestConfirmation(
+                        "Reset character settings?",
+                        $"Replace all synchronized settings for {displayName} in {accountLabel} with the current Account default? Character completion history is reset only where the existing reset operation already does so.",
+                        () => configManager.ResetCharacterToDefault(charKey));
+                }
                 if (ImGui.MenuItem("Delete"))
-                    configManager.DeleteCharacter(charKey);
+                {
+                    var accountLabel = configManager.GetCurrentAccount()?.AccountAlias ?? "current account";
+                    RequestConfirmation(
+                        "Delete character configuration?",
+                        $"Delete the saved configuration for {displayName} from {accountLabel}? The character can be recreated from the Account default when seen again.",
+                        () => configManager.DeleteCharacter(charKey));
+                }
                 ImGui.EndPopup();
             }
         }
@@ -624,25 +748,29 @@ public class ConfigWindow : Window, IDisposable
         var cc = configManager.GetSelectedConfig();
         var isDefault = string.IsNullOrEmpty(charKey);
 
-        var displayName = isDefault ? "Default Config" : charKey;
-        if (plugin.Configuration.KrangleEnabled && !isDefault)
-            displayName = KrangleService.KrangleName(CleanLuminaText(charKey));
-
-        ImGui.Text($"{UIConstants.ConfigLabels.Settings}: {displayName}");
         if (isDefault)
         {
             ImGui.TextDisabled(UIConstants.ConfigLabels.NewCharactersInheritThese);
-            if (ImGui.SmallButton("Apply Default to ALL"))
+            if (ImGui.SmallButton("Apply Default to ALL..."))
             {
-                var count = configManager.ApplyDefaultToAllCharacters();
-                Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {count} characters.");
+                var account = configManager.GetCurrentAccount();
+                var count = account?.Characters.Count ?? 0;
+                var accountLabel = account?.AccountAlias ?? "current account";
+                RequestConfirmation(
+                    "Apply default to all characters?",
+                    $"Replace synchronized settings for all {count} characters in {accountLabel} with the current Account default? Completion history remains character-specific.",
+                    () =>
+                    {
+                        var applied = configManager.ApplyDefaultToAllCharacters();
+                        Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {applied} characters.");
+                    });
             }
             ImGui.SameLine();
             ImGui.TextDisabled("Explicitly replaces each existing character's synchronized settings.");
         }
         else if (!string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
             ImGui.TextDisabled($"Runtime character is {configManager.CurrentCharacterKey}");
-        ImGui.Separator();
+        ImGui.Spacing();
 
         var changed = false;
 
@@ -659,7 +787,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
 
         // --- Feature Toggles ---
-        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.EveryARPostProcess, ImGuiTreeNodeFlags.DefaultOpen))
+        if (BeginConfigurationSection(UIConstants.ConfigLabels.EveryARPostProcess, ConfigurationSection.EveryAr))
         {
             var miscCmd = cc.EnableMiscCmd;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.MiscCmd, ref miscCmd))
@@ -1011,18 +1139,18 @@ public class ConfigWindow : Window, IDisposable
                     }
                     if (ImGui.IsItemHovered())
                         ImGui.SetTooltip("Reorder point. 0 = buy whenever below target (default). Above 0 = only buy back up to target once inventory drops to this or lower.");
-                    if (isDefault)
-                    {
-                        ImGui.SameLine();
-                        if (ImGui.SmallButton("Apply row to ALL"))
+                    DrawDefaultOverrideButton(
+                        isDefault,
+                        configManager,
+                        $"FishingStock_{row.ItemId}",
+                        $"{GetItemName(row.ItemId)} fishing stock",
+                        (source, target) =>
                         {
-                            var defaultStock = cc.FishingStockItems[row.ItemId].Clone();
-                            var count = configManager.ApplyDefaultSettingToAllCharacters(
-                                $"{GetItemName(row.ItemId)} fishing stock",
-                                (_, target) => target.FishingStockItems[row.ItemId] = defaultStock.Clone());
-                            Plugin.ChatGui.Print($"[Vermaxion] Fishing-stock row applied to {count} characters.");
-                        }
-                    }
+                            if (source.FishingStockItems.TryGetValue(row.ItemId, out var sourceStock))
+                                target.FishingStockItems[row.ItemId] = sourceStock.Clone();
+                            else
+                                target.FishingStockItems.Remove(row.ItemId);
+                        });
                     ImGui.PopID();
                 }
                 DrawHelpMarker("Enabled rows are processed in catalog order. ADS is asked for the exact missing quantity. Optional bait failures are reported; fishing only blocks when Versatile Lure reaches zero.");
@@ -1204,7 +1332,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("Misc Cmd sends once at the start of every enabled AutoRetainer/manual VERMAXION run.");
         }
 
-        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WeeklyTasks, ImGuiTreeNodeFlags.DefaultOpen))
+        if (BeginConfigurationSection(UIConstants.ConfigLabels.WeeklyTasks, ConfigurationSection.Weekly))
         {
             var verminion = cc.EnableVerminionQueue;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.VerminionQueue, ref verminion))
@@ -1354,7 +1482,7 @@ public class ConfigWindow : Window, IDisposable
                 (source, target) => target.PersonalRegistrableItems = new List<uint>(source.PersonalRegistrableItems));
         }
 
-        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.DailyTasks, ImGuiTreeNodeFlags.DefaultOpen))
+        if (BeginConfigurationSection(UIConstants.ConfigLabels.DailyTasks, ConfigurationSection.Daily))
         {
             var mini = cc.EnableMiniCactpot;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.MiniCactpot, ref mini))
@@ -1560,7 +1688,7 @@ public class ConfigWindow : Window, IDisposable
 
         }
 
-        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.VariableTimeTasks, ImGuiTreeNodeFlags.DefaultOpen))
+        if (BeginConfigurationSection(UIConstants.ConfigLabels.VariableTimeTasks, ConfigurationSection.VariableTime))
         {
             var refillListings = cc.EnableRefillFromListings;
             if (ImGui.Checkbox("Refill from listings", ref refillListings))
@@ -1990,7 +2118,7 @@ public class ConfigWindow : Window, IDisposable
             }
         }
 
-        if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.WipTasks, ImGuiTreeNodeFlags.DefaultOpen))
+        if (BeginConfigurationSection(UIConstants.ConfigLabels.WipTasks, ConfigurationSection.Wip))
         {
             var evercoldActivity = cc.EnableEvercoldAdventurerActivity;
             if (ImGui.Checkbox("Adventurer Activity (Evercold) [WIP]", ref evercoldActivity))
@@ -2046,19 +2174,16 @@ public class ConfigWindow : Window, IDisposable
         // Reset buttons
         if (ImGui.Button("Reset Weekly Section"))
         {
-            cc.ResetWeeklySectionState();
-            changed = true;
+            RequestTaskStateReset("weekly task state", charKey, cc.ResetWeeklySectionState);
         }
         ImGui.SameLine();
         if (ImGui.Button("Reset Daily Section"))
         {
-            cc.ResetDailySectionState();
-            changed = true;
+            RequestTaskStateReset("daily task state", charKey, cc.ResetDailySectionState);
         }
         if (ImGui.Button("Reset All Character Task State"))
         {
-            cc.ResetAllTaskState();
-            changed = true;
+            RequestTaskStateReset("all saved task state", charKey, cc.ResetAllTaskState);
         }
 
         ImGui.Spacing();
@@ -2068,11 +2193,21 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.5f, 0.8f, 1));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.6f, 0.9f, 1));
-            if (ImGui.Button("Apply Default Settings to ALL Characters", new Vector2(-1, 30)))
+            var account = configManager.GetCurrentAccount();
+            var differing = account?.Characters.Values.Count(character =>
+                !SettingsMatchDefault(account.DefaultConfig, character)) ?? 0;
+            if (ImGui.Button($"Apply Default Settings to ALL Characters ({differing})...", new Vector2(-1, 30)))
             {
-                var count = configManager.ApplyDefaultToAllCharacters();
-                Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
-                Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
+                var accountLabel = account?.AccountAlias ?? "current account";
+                RequestConfirmation(
+                    "Apply all default settings?",
+                    $"Apply the Account default to {differing} differing characters in {accountLabel}? Completion history remains character-specific.",
+                    () =>
+                    {
+                        var count = configManager.ApplyDefaultToAllCharacters();
+                        Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
+                        Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
+                    });
             }
             ImGui.PopStyleColor(2);
             ImGui.TextDisabled("Copies all toggles and values from Default to every character. Preserves completion flags.");
@@ -2340,6 +2475,21 @@ public class ConfigWindow : Window, IDisposable
         return changed;
     }
 
+    private bool BeginConfigurationSection(string label, ConfigurationSection section)
+    {
+        var requested = requestedConfigurationSection == section;
+        if (requested)
+            ImGui.SetNextItemOpen(true, ImGuiCond.Always);
+
+        var open = ImGui.CollapsingHeader(label, ImGuiTreeNodeFlags.DefaultOpen);
+        if (open && requested)
+        {
+            ImGui.SetScrollHereY(0f);
+            requestedConfigurationSection = null;
+        }
+        return open;
+    }
+
     private static void DrawHelpMarker(string tooltip)
     {
         ImGui.SameLine();
@@ -2466,33 +2616,107 @@ public class ConfigWindow : Window, IDisposable
     private static float GetCompactNumericInputWidth()
         => Math.Max(72f, ImGui.CalcTextSize("00000").X + (ImGui.GetStyle().FramePadding.X * 2f) + 18f);
 
-    private static bool DrawResetButton(string id, System.Action reset)
+    private bool DrawResetButton(string id, System.Action reset)
     {
         ImGui.SameLine();
         if (!ImGui.SmallButton($"Reset##{id}"))
             return false;
 
-        reset();
-        return true;
+        var scope = string.IsNullOrWhiteSpace(plugin.ConfigManager.SelectedCharacterKey)
+            ? "the current Account default"
+            : plugin.ConfigManager.SelectedCharacterKey;
+        RequestConfirmation(
+            "Reset saved task state?",
+            $"Reset {id} state for {scope}? This affects only the named configuration scope.",
+            () =>
+            {
+                reset();
+                plugin.ConfigManager.SaveCurrentAccount();
+            });
+        return false;
     }
 
-    private static void DrawDefaultOverrideButton(
+    private void RequestTaskStateReset(string label, string charKey, System.Action reset)
+    {
+        var scope = string.IsNullOrWhiteSpace(charKey) ? "the current Account default" : charKey;
+        RequestConfirmation(
+            "Reset saved task state?",
+            $"Reset {label} for {scope}? This affects only the named configuration scope.",
+            () =>
+            {
+                reset();
+                plugin.ConfigManager.SaveCurrentAccount();
+            });
+    }
+
+    private void DrawDefaultOverrideButton(
         bool isDefault,
         ConfigManager configManager,
         string id,
         string label,
         Action<CharacterConfig, CharacterConfig> copy)
     {
+        var account = configManager.GetCurrentAccount();
+        if (account == null)
+            return;
+
         if (!isDefault)
+        {
+            var selected = configManager.GetSelectedConfig();
+            var matches = SettingMatchesDefault(account.DefaultConfig, selected, copy);
+            ImGui.SameLine();
+            ImGui.TextDisabled(matches ? "Matches account default" : "Differs from account default");
+            if (!matches)
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton($"Use default##{id}"))
+                {
+                    copy(account.DefaultConfig, selected);
+                    configManager.SaveCurrentAccount();
+                }
+            }
             return;
+        }
 
+        var differing = account.Characters.Values.Count(character =>
+            !SettingMatchesDefault(account.DefaultConfig, character, copy));
         ImGui.SameLine();
-        if (!ImGui.SmallButton($"Override all##{id}"))
-            return;
+        ImGui.TextDisabled($"{differing} characters differ");
+        ImGui.SameLine();
+        ImGui.BeginDisabled(differing == 0);
+        if (ImGui.SmallButton($"Apply to all...##{id}"))
+        {
+            var accountLabel = string.IsNullOrWhiteSpace(account.AccountAlias)
+                ? "current account"
+                : account.AccountAlias;
+            RequestConfirmation(
+                $"Apply {label} to all characters?",
+                $"Apply the Account default value for {label} to {differing} differing characters in {accountLabel}?",
+                () =>
+                {
+                    var count = configManager.ApplyDefaultSettingToAllCharacters(label, copy);
+                    Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
+                    Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
+                });
+        }
+        ImGui.EndDisabled();
+    }
 
-        var count = configManager.ApplyDefaultSettingToAllCharacters(label, copy);
-        Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
-        Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
+    private static bool SettingMatchesDefault(
+        CharacterConfig defaultConfig,
+        CharacterConfig target,
+        Action<CharacterConfig, CharacterConfig> copy)
+    {
+        var projected = target.Clone();
+        copy(defaultConfig, projected);
+        return AccountConfigPersistence.AreEquivalent(target, projected);
+    }
+
+    private static bool SettingsMatchDefault(CharacterConfig defaultConfig, CharacterConfig target)
+    {
+        var projected = target.Clone();
+        ConfigManager.CopyDefaultSettings(defaultConfig, projected);
+        return AccountConfigPersistence.AreEquivalent(target, projected);
     }
 
     private static bool DrawJobCombo(string label, string value, bool includeCurrentJobOption, out string selectedJob)
@@ -2730,10 +2954,23 @@ public class ConfigWindow : Window, IDisposable
                 changed = true;
             }
             ImGui.SameLine();
-            if (ImGui.SmallButton("Sync row to current account"))
+            var currentAccount = configManager.GetCurrentAccount();
+            var differingRecords = currentAccount == null
+                ? 0
+                : new[] { currentAccount.DefaultConfig }
+                    .Concat(currentAccount.Characters.Values)
+                    .Count(record => !FishingStockRowMatches(record, row));
+            if (ImGui.SmallButton($"Sync row ({differingRecords})..."))
             {
-                var count = configManager.SyncFishingStockRowToCurrentAccount(row);
-                Plugin.ChatGui.Print($"[Vermaxion] {GetItemName(row.ItemId)} defaults synchronized to {count} current-account records.");
+                var accountLabel = currentAccount?.AccountAlias ?? "current account";
+                RequestConfirmation(
+                    "Apply fishing-stock row to current account?",
+                    $"Apply {GetItemName(row.ItemId)} defaults to {differingRecords} differing default/character records in {accountLabel}?",
+                    () =>
+                    {
+                        var count = configManager.SyncFishingStockRowToCurrentAccount(row);
+                        Plugin.ChatGui.Print($"[Vermaxion] {GetItemName(row.ItemId)} defaults synchronized to {count} current-account records.");
+                    });
             }
 
             if (ImGui.BeginPopupModal("Remove fishing-stock item?", ImGuiWindowFlags.AlwaysAutoResize))
@@ -2828,16 +3065,35 @@ public class ConfigWindow : Window, IDisposable
             focusFishingCatalogSearch = true;
         }
 
-        if (ImGui.SmallButton("Sync ALL catalog defaults to current account"))
+        var account = configManager.GetCurrentAccount();
+        var allDifferingRecords = account == null
+            ? 0
+            : new[] { account.DefaultConfig }
+                .Concat(account.Characters.Values)
+                .Count(record => configuration.FishingStockCatalog.Any(row => !FishingStockRowMatches(record, row)));
+        if (ImGui.SmallButton($"Sync ALL catalog defaults ({allDifferingRecords})..."))
         {
-            var count = configManager.SyncAllFishingStockRowsToCurrentAccount(configuration.FishingStockCatalog);
-            Plugin.ChatGui.Print($"[Vermaxion] All fishing-stock defaults synchronized to {count} current-account records.");
+            var accountLabel = account?.AccountAlias ?? "current account";
+            RequestConfirmation(
+                "Apply all fishing-stock defaults to current account?",
+                $"Apply every global fishing-stock row to {allDifferingRecords} differing default/character records in {accountLabel}?",
+                () =>
+                {
+                    var count = configManager.SyncAllFishingStockRowsToCurrentAccount(configuration.FishingStockCatalog);
+                    Plugin.ChatGui.Print($"[Vermaxion] All fishing-stock defaults synchronized to {count} current-account records.");
+                });
         }
         ImGui.TextWrapped("Changing a global default does not alter existing account or character values until a row or all-catalog sync is explicitly used.");
 
         if (changed)
             configuration.Save();
     }
+
+    private static bool FishingStockRowMatches(CharacterConfig config, FishingStockCatalogEntry row)
+        => config.FishingStockItems.TryGetValue(row.ItemId, out var stock) &&
+           stock.Enabled == row.DefaultEnabled &&
+           stock.Target == row.DefaultTarget &&
+           stock.Min == row.DefaultMin;
 
     private string GetItemName(uint itemId)
     {
@@ -2966,14 +3222,56 @@ public class ConfigWindow : Window, IDisposable
         }
 
         ImGui.Separator();
-        if (ImGui.Button("Apply"))
+        var account = plugin.ConfigManager.GetCurrentAccount();
+        var impact = account == null
+            ? []
+            : SetupWizardPolicy.GetImpact(activeWizard.Value, account.DefaultConfig, wizardDraft);
+        ImGui.Text("Changes to Account default");
+        if (impact.Count == 0)
         {
-            if (ApplyWizard())
+            ImGui.TextDisabled("No fields will change.");
+        }
+        else if (ImGui.BeginTable(
+                     "WizardImpact",
+                     3,
+                     ImGuiTableFlags.Borders |
+                     ImGuiTableFlags.RowBg |
+                     ImGuiTableFlags.ScrollY |
+                     ImGuiTableFlags.SizingStretchProp,
+                     new Vector2(0, Math.Min(180f, 28f + impact.Count * 24f))))
+        {
+            ImGui.TableSetupScrollFreeze(0, 1);
+            ImGui.TableSetupColumn("Field", ImGuiTableColumnFlags.WidthStretch, 1.4f);
+            ImGui.TableSetupColumn("Current", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Staged", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableHeadersRow();
+            foreach (var change in impact)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableSetColumnIndex(0);
+                ImGui.TextWrapped(change.Label);
+                ImGui.TableSetColumnIndex(1);
+                ImGui.TextWrapped(change.Before);
+                ImGui.TableSetColumnIndex(2);
+                ImGui.TextWrapped(change.After);
+            }
+            ImGui.EndTable();
+        }
+
+        ImGui.Separator();
+        ImGui.BeginDisabled(impact.Count == 0);
+        if (ImGui.Button("Apply to account default"))
+        {
+            if (ApplyWizard(applyToAllCharacters: false))
             {
                 ImGui.CloseCurrentPopup();
                 CloseWizard();
             }
         }
+        ImGui.SameLine();
+        if (ImGui.Button("Apply default to all characters..."))
+            wizardApplyAllConfirmationRequested = true;
+        ImGui.EndDisabled();
         ImGui.SameLine();
         if (ImGui.Button("Cancel"))
         {
@@ -2981,10 +3279,38 @@ public class ConfigWindow : Window, IDisposable
             CloseWizard();
         }
 
+        if (wizardApplyAllConfirmationRequested)
+        {
+            ImGui.OpenPopup("Apply wizard default to all characters?");
+            wizardApplyAllConfirmationRequested = false;
+        }
+        var confirmOpen = true;
+        if (ImGui.BeginPopupModal(
+                "Apply wizard default to all characters?",
+                ref confirmOpen,
+                ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            var characterCount = account?.Characters.Count ?? 0;
+            var accountLabel = account?.AccountAlias ?? "current account";
+            ImGui.TextWrapped($"Apply these staged fields to the Account default, then copy all synchronized default settings to all {characterCount} characters in {accountLabel}? This does not start automation.");
+            if (ImGui.Button("Confirm apply to all"))
+            {
+                if (ApplyWizard(applyToAllCharacters: true))
+                {
+                    ImGui.CloseCurrentPopup();
+                    CloseWizard();
+                }
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel##WizardApplyAll"))
+                ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
+        }
+
         ImGui.EndPopup();
     }
 
-    private bool ApplyWizard()
+    private bool ApplyWizard(bool applyToAllCharacters)
     {
         if (activeWizard == null || wizardDraft == null)
             return false;
@@ -2996,38 +3322,18 @@ public class ConfigWindow : Window, IDisposable
             return false;
         }
 
-        var target = account.DefaultConfig;
-        switch (activeWizard.Value)
-        {
-            case SetupWizardKind.DefaultAndSync:
-                target.Enabled = wizardDraft.Enabled;
-                break;
-            case SetupWizardKind.FcBuff:
-                target.EnableFCBuffRefill = wizardDraft.EnableFCBuffRefill;
-                target.FCBuffPurchaseAttempts = wizardDraft.FCBuffPurchaseAttempts;
-                target.FCBuffMinPoints = wizardDraft.FCBuffMinPoints;
-                target.FCBuffMinGil = wizardDraft.FCBuffMinGil;
-                break;
-            case SetupWizardKind.Fishing:
-                target.EnableFishing = wizardDraft.EnableFishing;
-                target.FishingStockItems = wizardDraft.FishingStockItems.ToDictionary(
-                    pair => pair.Key,
-                    pair => pair.Value.Clone());
-                break;
-            case SetupWizardKind.RetainerEquipping:
-                target.EnableRetainerEquipping = wizardDraft.EnableRetainerEquipping;
-                target.RetainerGearSourceMode = wizardDraft.RetainerGearSourceMode;
-                target.RetainerGearNonUniqueOnly = wizardDraft.RetainerGearNonUniqueOnly;
-                target.RetainerCombatItemLevelTarget = wizardDraft.RetainerCombatItemLevelTarget;
-                target.RetainerGatheringPerceptionTarget = wizardDraft.RetainerGatheringPerceptionTarget;
-                break;
-        }
+        SetupWizardPolicy.Apply(activeWizard.Value, wizardDraft, account.DefaultConfig);
 
         plugin.ConfigManager.SaveCurrentAccount();
+        var appliedCharacterCount = applyToAllCharacters
+            ? plugin.ConfigManager.ApplyDefaultToAllCharacters()
+            : 0;
         plugin.Configuration.SetupWizardCompleted = true;
         plugin.Configuration.SetupWizardStateMigrated = true;
         plugin.Configuration.Save();
-        Plugin.ChatGui.Print("[Vermaxion] Setup wizard applied to this account's Default Config. Existing characters were not changed.");
+        Plugin.ChatGui.Print(applyToAllCharacters
+            ? $"[Vermaxion] Setup wizard applied to this account's Default Config and {appliedCharacterCount} characters."
+            : "[Vermaxion] Setup wizard applied to this account's Default Config. Existing characters were not changed.");
         return true;
     }
 
@@ -3036,6 +3342,51 @@ public class ConfigWindow : Window, IDisposable
         activeWizard = null;
         wizardDraft = null;
         wizardPopupRequested = false;
+        wizardApplyAllConfirmationRequested = false;
+    }
+
+    private void RequestConfirmation(string title, string message, System.Action action)
+    {
+        confirmationTitle = title;
+        confirmationMessage = message;
+        confirmedAction = action;
+        confirmationPopupRequested = true;
+    }
+
+    private void DrawConfirmationPopup()
+    {
+        if (confirmationPopupRequested)
+        {
+            ImGui.OpenPopup("Confirm configuration action");
+            confirmationPopupRequested = false;
+        }
+
+        if (!ImGui.BeginPopupModal(
+                "Confirm configuration action",
+                ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            return;
+        }
+
+        ImGui.Text(confirmationTitle);
+        ImGui.Separator();
+        ImGui.TextWrapped(confirmationMessage);
+        ImGui.Spacing();
+        if (ImGui.Button("Confirm"))
+        {
+            var action = confirmedAction;
+            confirmedAction = null;
+            action?.Invoke();
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel"))
+        {
+            confirmedAction = null;
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.EndPopup();
     }
 
     private static string FormatWizardKind(SetupWizardKind kind)

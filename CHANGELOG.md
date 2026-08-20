@@ -1,5 +1,25 @@
 # VERMAXION Changelog
 
+## 2026-08-20 - Complete UI/UX review implementation
+
+### Added
+
+- Added a readiness-first automation dashboard with `Due now`, `Blocked`, `Scheduled later`, and `Complete` sections, written state labels, local next-eligible times, owner/cadence context, direct blocker recovery where configuration can help, and collapsed advanced diagnostics/test controls.
+- Added persistent configuration-scope context, row-level account-default comparisons, differing-character counts, immediate single-character `Use default`, and named-scope confirmations for propagation, reset, and delete actions.
+- Added explicit Before AR and After AR task-order lanes with lane-local movement, explicit phase changes, and inline cadence, ownership, and blocker details.
+- Added setup-wizard field-impact previews and separate account-default versus confirmed all-character apply actions. Fishing previews include every changed stock row.
+- Added personal registrable-list search and validated import previews with accepted, duplicate, unknown, invalid, added, and removed counts. Import, Clear All, and default-list replacement now mutate only after confirmation.
+
+### Changed
+
+- Main, configuration, task-order, wizard, and registrable-editor layouts now use stretch/scroll tables, wrapped explanations, stable action columns, and explicit empty/error states at their existing minimum sizes.
+- Configuration recovery selects the active character, opens the correct tab and section, and scrolls it into view. Runtime-only blockers remain informational.
+
+### Verification
+
+- Focused dashboard/recovery, task-order, wizard, registrable-editor, Favorites, and pacing coverage passes 37/37 tests. The complete Debug x64 suite passes 536/536 tests.
+- The Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning. Manual checklist verification remains David-operated and pending.
+
 ## 2026-08-20 - Favorites and independent Refill Listings pacing
 
 ### Added

@@ -28,6 +28,23 @@ Understand which recurring tasks are due, which character/config scope is active
 - Added focused policy coverage for favorite resolution/toggling and pacing selection, including null, duplicate, unknown, and retired favorite IDs and proof that click pacing and unsuccessful verification do not use the inter-item delay.
 - The recommendations and validation checklist below remain intentionally open for the complete follow-up UI/UX pass.
 
+### 2026-08-20 — Complete P0/P1/P2 implementation
+
+- Reframed the main window around engine readiness and active account/character scope, followed by written-state `Due now`, `Blocked`, `Scheduled later`, and `Complete` sections. Favorites remain flat and reuse the same transient task-row descriptors and run delegates.
+- Added direct recovery navigation: registry failures open Task Order; configurable blockers open the correct Settings section for the active character; external/runtime-only blockers retain their reason without a misleading configuration action.
+- Kept `Editing: Account default` or `Editing: Character`, account context, selected scope, and runtime character above the scrolling character-settings pane. Configurable rows show whether they match the account default, default rows show differing-character counts, single-character `Use default` remains immediate, and propagation/reset/delete actions confirm their named scope.
+- Replaced the mixed task-order list with explicit Before AR and After AR lanes. Up/Down stays within a lane, phase changes are explicit, and every row includes cadence, ownership, and its current blocker.
+- Added setup-wizard impact previews with exact changed fields, including fishing-stock rows. Applying to the account default remains isolated; applying the default to all characters is a separate confirmed action and neither action starts automation.
+- Hardened the registrable-item editor with configured-list search, duplicate-safe additions, first-occurrence import normalization, parse-before-mutation validation, accepted/duplicate/unknown/invalid/added/removed preview counts, confirmed replacement, and confirmed Clear All/default-list replacement.
+- Updated the affected tables and panes to use stretch/scroll layouts, wrapped explanations, stable action columns, and explicit empty/error states at the existing minimum sizes. Advanced diagnostics and test controls remain available in collapsed sections.
+- Automated policy coverage now owns dashboard classification/recovery routing, lane movement/phase changes/normalization/registry completeness, wizard impact/copy boundaries, and registrable search/validation/deduplication/preview/confirmation/cancellation. Focused Debug x64 coverage passes 37/37, the complete suite passes 536/536, and the Debug x64 solution build succeeds with the established `PInvoke.User32` warning only. The manual checklist below remains David-operated and pending on fresh and mature configurations, narrow width, and common UI scales.
+
+### Delivery mapping
+
+- I193 and I195: global Favorites.
+- I194: independent verified inter-item pacing for Refill Listings.
+- I187: reviewed; no code change was required.
+
 ## Prioritized recommendations
 
 | Priority | Recommendation | Rationale and completion signal |
