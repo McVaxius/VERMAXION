@@ -1,5 +1,19 @@
 # VERMAXION Changelog
 
+## 2026-08-22 - Opt-in Ocean Fishing window watcher
+
+### Added
+
+- Added the disabled-by-default `Actively check for Ocean Fishing windows without AR pre/post process` checkbox to the fixed top of the Main Window. It starts the existing Ocean Fishing coordinator during an open startup window without waiting for an AutoRetainer pre/post process.
+
+### Changed
+
+- Window-watcher starts use the existing candidate order, startup guards, relog and recovery paths, configured return destination, and voyage behavior. Manual and AutoRetainer post-process starts remain unchanged and share the same per-window deduplication.
+
+### Verification
+
+- Reviewed the complete source diff and exact-scope searches. Automated tests, builds, packaging, deployment, and live-client verification were not run by request.
+
 ## 2026-08-20 - Complete UI/UX review implementation
 
 ### Added

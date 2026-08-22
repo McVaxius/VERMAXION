@@ -7,6 +7,7 @@ namespace VERMAXION.Services;
 public enum FishingStartupTrigger
 {
     Clock,
+    WindowWatch,
     AutoRetainerPostprocess,
     Manual,
     Test,

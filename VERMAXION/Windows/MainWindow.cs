@@ -81,6 +81,17 @@ public class MainWindow : Window, IDisposable
         
         ImGui.Separator();
 
+        var oceanFishingWindowWatch = plugin.Configuration.OceanFishingWindowWatchEnabled;
+        if (ImGui.Checkbox("Actively check for Ocean Fishing windows without AR pre/post process", ref oceanFishingWindowWatch))
+        {
+            plugin.Configuration.OceanFishingWindowWatchEnabled = oceanFishingWindowWatch;
+            plugin.Configuration.Save();
+        }
+        ImGui.SameLine();
+        ImGui.TextDisabled("(?)");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("This will relog per your configured fishing settings and process Vermaxion Ocean Fishing as normal.");
+
         if (plugin.Configuration.KrangleEnabled && !string.IsNullOrEmpty(charKey))
             displayName = KrangleService.KrangleName(charKey);
 

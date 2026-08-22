@@ -18,4 +18,4 @@ VERMAXION now owns the Ocean Fishing flow directly. This records the supported s
 | Return | A configured return is successful only after Lifestream activity settles or territory changes. It retries once after 30 seconds and fails after 120 seconds. |
 | Deliberately excluded | Questionable integration, local/self repair, dynamic bait selection, and AutoHook preset management. ADS remains the only repair provider. |
 
-Manual and AutoRetainer post-process triggers remain the only initial start paths. Once a run starts, bounded recovery is automatic for that registration window and is not persisted.
+Manual and AutoRetainer post-process triggers remain available. The disabled-by-default window watcher can invoke the same coordinator during an open startup window without waiting for an AutoRetainer post-process. Once a run starts, bounded recovery is automatic for that registration window and is not persisted.
