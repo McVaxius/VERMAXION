@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-22 - Arcanists' Guild aethernet stall recovery
+
+### Fixed
+
+- Ocean Fishing now waits on its own aethernet window and, if it remains visible for 10 seconds, closes it, cancels Lifestream, stops vnavmesh, and retries within the existing navigation timeout.
+
 ## 2026-08-22 - Opt-in Ocean Fishing window watcher
 
 ### Added

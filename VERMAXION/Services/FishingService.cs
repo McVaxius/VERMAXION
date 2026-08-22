@@ -27,6 +27,7 @@ public sealed class FishingService
     private const uint DryskthotaDataId = OceanFishingDockPreparationPolicy.DryskthotaDataId;
     private const uint VersatileLureItemId = OceanFishingDockPreparationPolicy.VersatileLureItemId;
     private const string OceanFishingResultAddonName = "IKDResult";
+    private const string TelepotTownAddonName = "TelepotTown";
     private const float BoatFishingPositionTolerance = 0.5f;
     private const ConditionFlag GatheringCondition = (ConditionFlag)6;
     private const ConditionFlag FishingCondition = (ConditionFlag)43;
@@ -47,6 +48,7 @@ public sealed class FishingService
     private static readonly TimeSpan CleanupWorkTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan RailSampleRetryInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan NavigationStopRetryInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan TelepotTownRecoveryDelay = TimeSpan.FromSeconds(10);
 
     private readonly IPluginLog log;
     private readonly Configuration configuration;
@@ -93,6 +95,8 @@ public sealed class FishingService
     private bool resultCallbackLogged;
     private bool resultClosureLogged;
     private bool aethernetAttempted;
+    private bool aethernetTeleportOwned;
+    private DateTime ownedTelepotTownVisibleAt = DateTime.MinValue;
     private bool aethernetAttunementAttempted;
     private DateTime aethernetAttunementStartedAt = DateTime.MinValue;
     private DateTime aethernetAttunementNavigationStartedAt = DateTime.MinValue;
@@ -278,6 +282,8 @@ public sealed class FishingService
         dutyReadyAccepted = false;
         dutyCompletionObserved = false;
         aethernetAttempted = false;
+        aethernetTeleportOwned = false;
+        ownedTelepotTownVisibleAt = DateTime.MinValue;
         aethernetAttunementAttempted = false;
         aethernetAttunementStartedAt = DateTime.MinValue;
         aethernetAttunementNavigationStartedAt = DateTime.MinValue;
@@ -340,6 +346,8 @@ public sealed class FishingService
         queueRecognitionGraceEntered = false;
         lateQueueRecognitionLogged = false;
         dutyReadyAccepted = false;
+        aethernetTeleportOwned = false;
+        ownedTelepotTownVisibleAt = DateTime.MinValue;
         lastError = string.Empty;
         statusDetail = string.Empty;
         currentRailDestination = null;
@@ -1320,8 +1328,15 @@ public sealed class FishingService
 
     private bool TryRouteViaArcanistsGuild(double distance, string directDestinationName)
     {
+        if (TryRecoverOwnedTelepotTown())
+            return true;
+
         if (distance <= 100)
+        {
+            aethernetTeleportOwned = false;
+            ownedTelepotTownVisibleAt = DateTime.MinValue;
             return false;
+        }
 
         if (!IsArcanistsGuildAethernetUnlocked() && !aethernetAttunementAttempted)
         {
@@ -1387,6 +1402,7 @@ public sealed class FishingService
             aethernetAttempted = true;
             if (lifestream.AethernetTeleportById(ArcanistsGuildAethernetId))
             {
+                aethernetTeleportOwned = true;
                 log.Information(
                     $"[Fishing][DockRoute] Traveling toward {directDestinationName} via Arcanists' Guild aethernet id {ArcanistsGuildAethernetId}");
                 statusDetail = "Traveling to Arcanists' Guild";
@@ -1398,6 +1414,46 @@ public sealed class FishingService
         }
 
         return false;
+    }
+
+    private bool TryRecoverOwnedTelepotTown()
+    {
+        if (!aethernetTeleportOwned)
+            return false;
+
+        if (!GameHelpers.IsAddonVisible(TelepotTownAddonName))
+        {
+            if (ownedTelepotTownVisibleAt != DateTime.MinValue)
+            {
+                ownedTelepotTownVisibleAt = DateTime.MinValue;
+                aethernetTeleportOwned = false;
+            }
+
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (ownedTelepotTownVisibleAt == DateTime.MinValue)
+        {
+            ownedTelepotTownVisibleAt = now;
+            log.Information("[Fishing][DockRoute] Waiting for the owned Arcanists' Guild aethernet window to close");
+        }
+
+        if (now - ownedTelepotTownVisibleAt < TelepotTownRecoveryDelay)
+        {
+            statusDetail = "Waiting for Arcanists' Guild aethernet travel";
+            return true;
+        }
+
+        GameHelpers.TryCloseAddonByCallback(TelepotTownAddonName);
+        CommandHelper.SendCommand("/lifestream cancel");
+        vnavmesh.Stop();
+        aethernetAttempted = false;
+        aethernetTeleportOwned = false;
+        ownedTelepotTownVisibleAt = DateTime.MinValue;
+        lastNavigationCommandAt = DateTime.MinValue;
+        log.Warning("[Fishing][DockRoute] Recovered a stuck Arcanists' Guild aethernet window; retrying the existing route");
+        return true;
     }
 
     private void TickNavigateToRegistrar(TimeSpan elapsed)
