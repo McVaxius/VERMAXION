@@ -48,7 +48,7 @@ Every per-character `Enable*` feature has one explicit owner. The Task Order tab
 
 - **Ordered engine tasks:** Run through the configured task order. Retainer Equipping runs Before AR by default and is fully registered alongside Gear Updater, Highest Combat Job, Current Job Equipment, Seasonal Gear, Minion Roulette, and the existing tasks.
 - **Misc Commands hook:** Runs once at the beginning of an applicable After-AR or manual engine run, including when it is the only work. It never arms a Before-AR pass by itself.
-- **Fishing coordinator:** Ocean Fishing retains its preemptive startup window and account/relog coordinator. It is intentionally not reorderable through the engine task list.
+- **Fishing coordinator:** Ocean Fishing retains its preemptive startup window and account/relog coordinator. The fixed top of the Main Window includes a disabled-by-default `Actively check for Ocean Fishing windows without AR pre/post process` checkbox that can invoke that same coordinator. It is intentionally not reorderable through the engine task list.
 - **Manual utility:** Retainer Bell remains an explicit manual utility rather than a character enable flag.
 - **Configuration-only WIP:** Adventurer Activity (Evercold) is labelled as configuration-only and is not advertised as runtime dispatch.
 

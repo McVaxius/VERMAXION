@@ -35,6 +35,7 @@ public class Configuration : IPluginConfiguration
     public FishingExecutionMode FishingExecutionMode { get; set; } = FishingDefaults.ExecutionMode;
     public int FishingMaxFisherLevel { get; set; } = FishingDefaults.MaxFisherLevel;
     public int OceanFishingPreWindowOffsetMinutes { get; set; } = FishingDefaults.OceanFishingPreWindowOffsetMinutes;
+    public bool OceanFishingWindowWatchEnabled { get; set; } = false;
 
     /// <summary>
     /// Persisted overrides for OceanFishingContinuousRailPolicy's spot-selection knobs, applied at plugin

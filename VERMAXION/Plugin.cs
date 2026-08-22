@@ -1812,6 +1812,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         ProcessBeforeArSuppressionRecovery();
         FishingRunLifecycle.Update();
         ProcessFishingRecovery();
+        if (Configuration.OceanFishingWindowWatchEnabled)
+            RunFishingStartupTrigger(FishingStartupTrigger.WindowWatch);
         ProcessStuckDetectionSuppression();
         ProcessFishingFakeReady();
         ProcessIdleInnPark();
