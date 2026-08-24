@@ -1,5 +1,16 @@
 # VERMAXION Changelog
 
+## 2026-08-24 - Scheduled FC Buff refill and settled GC arrival
+
+### Added
+
+- Added per-character Every AR, daily, weekly, and monthly FC Buff cadence, including configuration and setup-wizard controls plus an explicit cadence-state reset. Existing and new configurations remain on Every AR by default.
+
+### Fixed
+
+- FC Buff completion now stamps scheduled cadence only after success, including when Seal Sweetener II is already active; failed runs remain due and manual runs continue to bypass cadence.
+- FC Buff GC travel now waits for the expected territory, a completed zone transition, an available player, and idle Lifestream before Quartermaster navigation or a teleport retry.
+
 ## 2026-08-22 - Arcanists' Guild aethernet stall recovery
 
 ### Fixed

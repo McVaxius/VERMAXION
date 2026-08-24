@@ -172,6 +172,7 @@ public class ConfigManager
         }
 
         accountForChar.Characters[charKey] = accountForChar.DefaultConfig.Clone();
+        accountForChar.Characters[charKey].ResetFCBuffState();
         accountForChar.Characters[charKey].JumboCactpotUnclaimedTickets = 0;
         accountForChar.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
         EnsureCharacterCreatedAtUtc(accountForChar, charKey, DateTime.UtcNow);
@@ -268,6 +269,7 @@ public class ConfigManager
         else if (account.Characters.ContainsKey(charKey))
         {
             account.Characters[charKey] = account.DefaultConfig.Clone();
+            account.Characters[charKey].ResetFCBuffState();
             account.Characters[charKey].JumboCactpotUnclaimedTickets = 0;
             account.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
         }
@@ -528,6 +530,7 @@ public class ConfigManager
         target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
         target.FCBuffMinPoints = source.FCBuffMinPoints;
         target.FCBuffMinGil = source.FCBuffMinGil;
+        target.FCBuffFrequency = source.FCBuffFrequency;
         target.VendorStockGysahlGreensTarget = source.VendorStockGysahlGreensTarget;
         target.VendorStockGrade8DarkMatterTarget = source.VendorStockGrade8DarkMatterTarget;
         target.RefillFromListingsFrequency = source.RefillFromListingsFrequency;

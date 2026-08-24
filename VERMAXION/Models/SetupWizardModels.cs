@@ -40,6 +40,7 @@ public static class SetupWizardPolicy
                 Add(nameof(CharacterConfig.FCBuffPurchaseAttempts), "Purchase quantity", current.FCBuffPurchaseAttempts, draft.FCBuffPurchaseAttempts);
                 Add(nameof(CharacterConfig.FCBuffMinPoints), "Minimum FC points", current.FCBuffMinPoints, draft.FCBuffMinPoints);
                 Add(nameof(CharacterConfig.FCBuffMinGil), "Minimum gil", current.FCBuffMinGil, draft.FCBuffMinGil);
+                Add(nameof(CharacterConfig.FCBuffFrequency), "Cadence", current.FCBuffFrequency, draft.FCBuffFrequency);
                 break;
             case SetupWizardKind.Fishing:
                 Add(nameof(CharacterConfig.EnableFishing), "Fishing enabled", current.EnableFishing, draft.EnableFishing);
@@ -80,6 +81,7 @@ public static class SetupWizardPolicy
                 target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
                 target.FCBuffMinPoints = source.FCBuffMinPoints;
                 target.FCBuffMinGil = source.FCBuffMinGil;
+                target.FCBuffFrequency = source.FCBuffFrequency;
                 break;
             case SetupWizardKind.Fishing:
                 target.EnableFishing = source.EnableFishing;

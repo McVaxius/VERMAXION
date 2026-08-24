@@ -69,6 +69,7 @@ public class CharacterConfig
     public int FCBuffPurchaseAttempts { get; set; } = 15;
     public int FCBuffMinPoints { get; set; } = 500000;
     public int FCBuffMinGil { get; set; } = 16000;
+    public FCBuffFrequency FCBuffFrequency { get; set; } = FCBuffFrequency.EveryAR;
     public int VendorStockGysahlGreensTarget { get; set; } = 0;
     public int VendorStockGrade8DarkMatterTarget { get; set; } = 0;
     public RefillFromListingsFrequency RefillFromListingsFrequency { get; set; } = RefillFromListingsFrequency.Weekly;
@@ -139,6 +140,8 @@ public class CharacterConfig
     public DateTime ChocoboRacingNextReset { get; set; } = DateTime.MinValue;
     public DateTime LootGoblinMapGatherLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime LootGoblinMapGatherNextReset { get; set; } = DateTime.MinValue;
+    public DateTime FCBuffLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime FCBuffNextReset { get; set; } = DateTime.MinValue;
     public DateTime RefillFromListingsLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime RefillFromListingsNextReset { get; set; } = DateTime.MinValue;
     public DateTime AlliedSocietyLastCompleted { get; set; } = DateTime.MinValue;
@@ -210,6 +213,12 @@ public class CharacterConfig
         LootGoblinMapGatherNextReset = DateTime.MinValue;
     }
 
+    public void ResetFCBuffState()
+    {
+        FCBuffLastCompleted = DateTime.MinValue;
+        FCBuffNextReset = DateTime.MinValue;
+    }
+
     public void ResetNagYourMomDailyState()
     {
         NagYourMomAttemptsToday = 0;
@@ -268,6 +277,7 @@ public class CharacterConfig
         ResetWeeklySectionState();
         ResetDailySectionState();
         ResetEvercoldAdventurerActivityState();
+        ResetFCBuffState();
         ResetRefillFromListingsState();
     }
 
@@ -325,6 +335,7 @@ public class CharacterConfig
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
             FCBuffMinGil = FCBuffMinGil,
+            FCBuffFrequency = FCBuffFrequency,
             VendorStockGysahlGreensTarget = VendorStockGysahlGreensTarget,
             VendorStockGrade8DarkMatterTarget = VendorStockGrade8DarkMatterTarget,
             RefillFromListingsFrequency = RefillFromListingsFrequency,
@@ -386,6 +397,8 @@ public class CharacterConfig
             ChocoboRacingNextReset = ChocoboRacingNextReset,
             LootGoblinMapGatherLastCompleted = LootGoblinMapGatherLastCompleted,
             LootGoblinMapGatherNextReset = LootGoblinMapGatherNextReset,
+            FCBuffLastCompleted = FCBuffLastCompleted,
+            FCBuffNextReset = FCBuffNextReset,
             RefillFromListingsLastCompleted = RefillFromListingsLastCompleted,
             RefillFromListingsNextReset = RefillFromListingsNextReset,
             AlliedSocietyLastCompleted = AlliedSocietyLastCompleted,
@@ -414,6 +427,14 @@ public enum JumboCactpotNumberMode
 }
 
 public enum RefillFromListingsFrequency
+{
+    EveryAR,
+    Daily,
+    Weekly,
+    Monthly,
+}
+
+public enum FCBuffFrequency
 {
     EveryAR,
     Daily,

@@ -441,7 +441,11 @@ public class VermaxionEngine
                 : TaskEligibility.NotDue($"Refill Listings is not due for its {config.RefillFromListingsFrequency} cadence.");
 
     private static TaskEligibility EvaluateFcBuff(CharacterConfig config)
-        => Enabled(config.EnableFCBuffRefill, "FC Buff Refill");
+        => !config.EnableFCBuffRefill
+            ? TaskEligibility.Disabled("FC Buff Refill is disabled for this character.")
+            : ShouldRunFCBuff(config)
+                ? TaskEligibility.Runnable()
+                : TaskEligibility.NotDue($"FC Buff Refill is not due for its {config.FCBuffFrequency} cadence.");
 
     private static TaskEligibility EvaluateVendorStock(CharacterConfig config)
         => !config.EnableVendorStock
@@ -926,6 +930,10 @@ public class VermaxionEngine
                         {
                             log.Warning("[Engine] FC buff refill failed - continuing");
                             runHadFailure = true;
+                        }
+                        else
+                        {
+                            PersistFCBuffCompletion(GetLiveActiveConfig().FCBuffFrequency);
                         }
                         fcBuffService.Reset();
                         AdvanceToNextTask(EngineState.RunningFCBuff);
@@ -1810,6 +1818,41 @@ public class VermaxionEngine
             config.RefillFromListingsLastCompleted = completedAt;
             config.RefillFromListingsNextReset = GetNextRefillFromListingsReset(frequency, completedAt);
         }, "Retainer Listing Refill completion");
+    }
+
+    private void PersistFCBuffCompletion(FCBuffFrequency frequency)
+    {
+        if (frequency == FCBuffFrequency.EveryAR)
+            return;
+
+        var completedAt = DateTime.UtcNow;
+        PersistCurrentCharacterConfig(config =>
+        {
+            config.FCBuffLastCompleted = completedAt;
+            config.FCBuffNextReset = GetNextFCBuffReset(frequency, completedAt);
+        }, "FC Buff Refill completion");
+    }
+
+    private static bool ShouldRunFCBuff(CharacterConfig config)
+    {
+        return config.FCBuffFrequency switch
+        {
+            FCBuffFrequency.EveryAR => true,
+            FCBuffFrequency.Daily or FCBuffFrequency.Weekly or FCBuffFrequency.Monthly =>
+                ResetDetectionService.TaskNeedsRun(config.FCBuffLastCompleted, config.FCBuffNextReset),
+            _ => true,
+        };
+    }
+
+    private static DateTime GetNextFCBuffReset(FCBuffFrequency frequency, DateTime now)
+    {
+        return frequency switch
+        {
+            FCBuffFrequency.Daily => ResetDetectionService.GetNextDailyReset(now),
+            FCBuffFrequency.Weekly => ResetDetectionService.GetNextWeeklyReset(now),
+            FCBuffFrequency.Monthly => GetFirstDayOfNextUtcMonth(now),
+            _ => DateTime.MinValue,
+        };
     }
 
     private static bool ShouldRunRefillFromListings(CharacterConfig config)
