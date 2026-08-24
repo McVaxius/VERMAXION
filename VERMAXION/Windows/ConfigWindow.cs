@@ -36,6 +36,7 @@ public class ConfigWindow : Window, IDisposable
     private string confirmationMessage = string.Empty;
     private System.Action? confirmedAction;
     private bool wizardApplyAllConfirmationRequested;
+    private bool wizardFcBuffCadenceResetRequested;
 
     private enum ConfigTab
     {
@@ -48,6 +49,7 @@ public class ConfigWindow : Window, IDisposable
         var account = plugin.ConfigManager.GetCurrentAccount();
         wizardDraft = (account?.DefaultConfig ?? CharacterConfig.CreateNew()).Clone();
         activeWizard = kind;
+        wizardFcBuffCadenceResetRequested = false;
         wizardPopupRequested = true;
     }
 
@@ -829,6 +831,37 @@ public class ConfigWindow : Window, IDisposable
             if (fcBuff)
             {
                 ImGui.Indent();
+                ImGui.Text("Frequency:");
+                ImGui.SameLine();
+                var fcBuffFrequency = cc.FCBuffFrequency;
+                if (ImGui.RadioButton("AR##FCBuffEveryAR", fcBuffFrequency == FCBuffFrequency.EveryAR))
+                {
+                    cc.FCBuffFrequency = FCBuffFrequency.EveryAR;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Daily##FCBuffDaily", fcBuffFrequency == FCBuffFrequency.Daily))
+                {
+                    cc.FCBuffFrequency = FCBuffFrequency.Daily;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Weekly##FCBuffWeekly", fcBuffFrequency == FCBuffFrequency.Weekly))
+                {
+                    cc.FCBuffFrequency = FCBuffFrequency.Weekly;
+                    changed = true;
+                }
+                ImGui.SameLine();
+                if (ImGui.RadioButton("Monthly##FCBuffMonthly", fcBuffFrequency == FCBuffFrequency.Monthly))
+                {
+                    cc.FCBuffFrequency = FCBuffFrequency.Monthly;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "FCBuffFrequency", "FC Buff frequency",
+                    (source, target) => target.FCBuffFrequency = source.FCBuffFrequency);
+                DrawFCBuffHint(cc);
+                DrawResetButton("FC Buff cadence", cc.ResetFCBuffState);
+
                 var attempts = cc.FCBuffPurchaseAttempts;
                 if (ImGui.SliderInt(UIConstants.ConfigLabels.MaxPurchaseAttempts, ref attempts, 1, 30))
                 {
@@ -2610,6 +2643,29 @@ public class ConfigWindow : Window, IDisposable
         }
     }
 
+    private static void DrawFCBuffHint(CharacterConfig config)
+    {
+        switch (config.FCBuffFrequency)
+        {
+            case FCBuffFrequency.EveryAR:
+                ImGui.TextDisabled("Runs every automatic AR post-process. Run now always bypasses cadence.");
+                return;
+            case FCBuffFrequency.Daily:
+                DrawDailyTaskHint(config.FCBuffLastCompleted, config.FCBuffNextReset, "Runs once per daily reset.");
+                return;
+            case FCBuffFrequency.Weekly:
+                DrawWeeklyTaskHint(config.FCBuffLastCompleted, config.FCBuffNextReset, "Runs once per Tuesday weekly reset.");
+                return;
+            case FCBuffFrequency.Monthly:
+            default:
+                if (ResetDetectionService.TaskIsCompleted(config.FCBuffLastCompleted, config.FCBuffNextReset))
+                    ImGui.TextDisabled($"Completed until {FormatUtc(config.FCBuffNextReset)}");
+                else
+                    ImGui.TextDisabled("Runs once per UTC calendar month.");
+                return;
+        }
+    }
+
     private static bool IsRefillFromListingsMonthlyComplete(CharacterConfig config)
     {
         if (config.RefillFromListingsLastCompleted == DateTime.MinValue)
@@ -3151,6 +3207,23 @@ public class ConfigWindow : Window, IDisposable
                 var enabled = wizardDraft.EnableFCBuffRefill;
                 if (ImGui.Checkbox("Enable FC Buff", ref enabled))
                     wizardDraft.EnableFCBuffRefill = enabled;
+                var frequency = wizardDraft.FCBuffFrequency;
+                if (ImGui.BeginCombo("Frequency", frequency.ToString()))
+                {
+                    foreach (var option in Enum.GetValues<FCBuffFrequency>())
+                    {
+                        var selected = option == frequency;
+                        if (ImGui.Selectable(option.ToString(), selected))
+                            wizardDraft.FCBuffFrequency = option;
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+                if (ImGui.Button("Reset saved cadence state on Apply"))
+                    wizardFcBuffCadenceResetRequested = true;
+                if (wizardFcBuffCadenceResetRequested)
+                    ImGui.TextDisabled("Cadence completion state will be reset to due when this wizard is applied.");
                 var quantity = wizardDraft.FCBuffPurchaseAttempts;
                 if (ImGui.InputInt("Purchase quantity", ref quantity))
                     wizardDraft.FCBuffPurchaseAttempts = Math.Max(1, quantity);
@@ -3234,8 +3307,16 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         var account = plugin.ConfigManager.GetCurrentAccount();
         var impact = account == null
-            ? []
-            : SetupWizardPolicy.GetImpact(activeWizard.Value, account.DefaultConfig, wizardDraft);
+            ? new List<SetupWizardFieldChange>()
+            : SetupWizardPolicy.GetImpact(activeWizard.Value, account.DefaultConfig, wizardDraft).ToList();
+        if (activeWizard == SetupWizardKind.FcBuff && wizardFcBuffCadenceResetRequested)
+        {
+            impact.Add(new SetupWizardFieldChange(
+                "FCBuffCadenceState",
+                "Cadence completion state",
+                "Saved",
+                "Due"));
+        }
         ImGui.Text("Changes to Account default");
         if (impact.Count == 0)
         {
@@ -3333,11 +3414,19 @@ public class ConfigWindow : Window, IDisposable
         }
 
         SetupWizardPolicy.Apply(activeWizard.Value, wizardDraft, account.DefaultConfig);
+        if (activeWizard == SetupWizardKind.FcBuff && wizardFcBuffCadenceResetRequested)
+            account.DefaultConfig.ResetFCBuffState();
 
         plugin.ConfigManager.SaveCurrentAccount();
         var appliedCharacterCount = applyToAllCharacters
             ? plugin.ConfigManager.ApplyDefaultToAllCharacters()
             : 0;
+        if (applyToAllCharacters && activeWizard == SetupWizardKind.FcBuff && wizardFcBuffCadenceResetRequested)
+        {
+            foreach (var character in account.Characters.Values)
+                character.ResetFCBuffState();
+            plugin.ConfigManager.SaveCurrentAccount();
+        }
         plugin.Configuration.SetupWizardCompleted = true;
         plugin.Configuration.SetupWizardStateMigrated = true;
         plugin.Configuration.Save();
@@ -3353,6 +3442,7 @@ public class ConfigWindow : Window, IDisposable
         wizardDraft = null;
         wizardPopupRequested = false;
         wizardApplyAllConfirmationRequested = false;
+        wizardFcBuffCadenceResetRequested = false;
     }
 
     private void RequestConfirmation(string title, string message, System.Action action)

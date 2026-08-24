@@ -104,7 +104,7 @@ public static class AutomationCatalog
         Engine(JumboCactpot, nameof(CharacterConfig.EnableJumboCactpot), "Jumbo Cactpot", AutomationCadence.Weekly),
         Engine(MiniCactpot, nameof(CharacterConfig.EnableMiniCactpot), "Mini Cactpot", AutomationCadence.Daily),
         Engine(ChocoboRacing, nameof(CharacterConfig.EnableChocoboRacing), "Chocobo Racing", AutomationCadence.Daily),
-        Engine(FCBuffRefill, nameof(CharacterConfig.EnableFCBuffRefill), "FC Buff Refill", AutomationCadence.EveryRun),
+        Engine(FCBuffRefill, nameof(CharacterConfig.EnableFCBuffRefill), "FC Buff Refill", AutomationCadence.Scheduled),
         Engine(MinionRoulette, nameof(CharacterConfig.EnableMinionRoulette), "Minion Roulette", AutomationCadence.EveryRun),
         Engine(SeasonalGear, nameof(CharacterConfig.EnableSeasonalGearRoulette), "Seasonal Gear", AutomationCadence.EveryRun),
         Engine(GearUpdater, nameof(CharacterConfig.EnableGearUpdater), "Gear Updater", AutomationCadence.EveryRun),

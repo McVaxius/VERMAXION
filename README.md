@@ -31,7 +31,7 @@ AutoRetainer post-process automation for weekly and daily tasks, configured per 
 
 ## Features
 
-- **FC Buff Refill** — Seal Sweetener II purchase/cast on every AR run
+- **FC Buff Refill** — Seal Sweetener II purchase/cast on an every-AR, daily, weekly, or monthly schedule
 - **Retainer Equipping** — Upgrade AutoRetainer-enabled combat retainers by compatible average item level and gatherers by Perception
 - **Lord of Verminion** — Queue 5 intentional fails per week
 - **Mini Cactpot** — 3x daily via Saucy plugin

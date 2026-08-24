@@ -617,10 +617,9 @@ public class FCBuffService : IDisposable
             case FCBuffState.NavigatingToQuartermaster:
                 if (elapsed < 2) return;
                 
-                // Don't try to path during zone transitions
-                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+                if (!IsTravelSettlementReady())
                 {
-                    LogNavigationStatusThrottled("[FCBuff] Waiting for zone transition to complete before pathing...", debug: true);
+                    LogNavigationStatusThrottled("[FCBuff] Waiting for player and Lifestream travel to settle before pathing...", debug: true);
                     return;
                 }
 
@@ -658,10 +657,9 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForQuartermasterArrival:
-                // Don't check during zone transitions
-                if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+                if (!IsTravelSettlementReady())
                 {
-                    LogNavigationStatusThrottled("[FCBuff] Zone transition detected during navigation, waiting...", debug: true);
+                    LogNavigationStatusThrottled("[FCBuff] Player or Lifestream travel is unsettled during navigation, waiting...", debug: true);
                     return;
                 }
                 
@@ -990,9 +988,9 @@ public class FCBuffService : IDisposable
         if (elapsedSeconds < 1)
             return;
 
+        var settlementReady = IsTravelSettlementReady();
         if (clientState.TerritoryType == expectedTerritory
-            && !condition[ConditionFlag.BetweenAreas]
-            && !condition[ConditionFlag.BetweenAreas51]
+            && settlementReady
             && elapsedSeconds >= 3)
         {
             log.Information($"[FCBuff] Arrived at {destination}, navigating to Quartermaster");
@@ -1012,8 +1010,7 @@ public class FCBuffService : IDisposable
         var sinceLastRetry = lastTeleportRetryAt == DateTime.MinValue
             ? elapsed
             : now - lastTeleportRetryAt;
-        if (!condition[ConditionFlag.BetweenAreas]
-            && !condition[ConditionFlag.BetweenAreas51]
+        if (settlementReady
             && FCBuffRecoveryPolicy.ShouldRetryTeleport(elapsed, sinceLastRetry, teleportRetryCount))
         {
             teleportRetryCount++;
@@ -1025,6 +1022,12 @@ public class FCBuffService : IDisposable
 
         LogNavigationStatusThrottled($"[FCBuff] Waiting for {destination} arrival ({elapsed.TotalSeconds:F0}s, retries {teleportRetryCount}/{FCBuffRecoveryPolicy.MaxTeleportRetries})");
     }
+
+    private bool IsTravelSettlementReady()
+        => !condition[ConditionFlag.BetweenAreas]
+           && !condition[ConditionFlag.BetweenAreas51]
+           && objects.LocalPlayer != null
+           && !plugin.LifestreamIPC.IsBusy();
 
     private string GetExpectedPurchaseActionName() => isSealSweetenerTwo ? "Seal Sweetener II" : "Seal Sweetener I";
 
