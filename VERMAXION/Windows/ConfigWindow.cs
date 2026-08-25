@@ -3,9 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.Loader;
 using Dalamud.Game;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Interface.ImGuiNotification;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using ECommons.Reflection;
 using Lumina.Excel.Sheets;
 using VERMAXION.Models;
 using VERMAXION.Services;
@@ -15,6 +20,7 @@ namespace VERMAXION.Windows;
 public class ConfigWindow : Window, IDisposable
 {
     private const string StylistRepositoryUrl = "https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json";
+    private const string AutoHookWarningMessage = "AutoHook's AutoOceanFish is enabled. Disable it before using VERMAXION Fishing to avoid conflicting Ocean Fishing automation.";
     private readonly Plugin plugin;
     private string editAccountAlias = "";
     private readonly List<DadDutyOption> dadDutyOptions = new();
@@ -37,6 +43,7 @@ public class ConfigWindow : Window, IDisposable
     private System.Action? confirmedAction;
     private bool wizardApplyAllConfirmationRequested;
     private bool wizardFcBuffCadenceResetRequested;
+    private bool autoHookWarningPopupRequested;
 
     private enum ConfigTab
     {
@@ -124,6 +131,7 @@ public class ConfigWindow : Window, IDisposable
 
         DrawWizardPopup();
         DrawConfirmationPopup();
+        DrawAutoHookWarningPopup();
     }
 
     private void DrawTaskOrderTab()
@@ -768,6 +776,8 @@ public class ConfigWindow : Window, IDisposable
                 var account = configManager.GetCurrentAccount();
                 var count = account?.Characters.Count ?? 0;
                 var accountLabel = account?.AccountAlias ?? "current account";
+                var enablesFishing = account?.DefaultConfig.EnableFishing == true &&
+                                     account.Characters.Values.Any(character => !character.EnableFishing);
                 RequestConfirmation(
                     "Apply default to all characters?",
                     $"Replace synchronized settings for all {count} characters in {accountLabel} with the current Account default? Completion history remains character-specific.",
@@ -775,6 +785,8 @@ public class ConfigWindow : Window, IDisposable
                     {
                         var applied = configManager.ApplyDefaultToAllCharacters();
                         Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {applied} characters.");
+                        if (enablesFishing)
+                            WarnAboutAutoHookAutoOceanFishIfNeeded(false, true);
                     });
             }
             ImGui.SameLine();
@@ -1101,11 +1113,14 @@ public class ConfigWindow : Window, IDisposable
             var fishing = cc.EnableFishing;
             if (ImGui.Checkbox("Fishing", ref fishing))
             {
+                var wasEnabled = cc.EnableFishing;
                 cc.EnableFishing = fishing;
                 changed = true;
+                WarnAboutAutoHookAutoOceanFishIfNeeded(wasEnabled, cc.EnableFishing);
             }
             DrawDefaultOverrideButton(isDefault, configManager, "Fishing", "Fishing",
-                (source, target) => target.EnableFishing = source.EnableFishing);
+                (source, target) => target.EnableFishing = source.EnableFishing,
+                warnOnFishingEnable: true);
             DrawHelpMarker("Enables Fishing for this character. Vermaxion chooses among enabled current-account characters, casts, and leaves hook/reel behavior to AutoHook.");
             if (cc.EnableFishing)
             {
@@ -2720,7 +2735,8 @@ public class ConfigWindow : Window, IDisposable
         ConfigManager configManager,
         string id,
         string label,
-        Action<CharacterConfig, CharacterConfig> copy)
+        Action<CharacterConfig, CharacterConfig> copy,
+        bool warnOnFishingEnable = false)
     {
         var account = configManager.GetCurrentAccount();
         if (account == null)
@@ -2737,8 +2753,11 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 if (ImGui.SmallButton($"Use default##{id}"))
                 {
+                    var fishingWasEnabled = selected.EnableFishing;
                     copy(account.DefaultConfig, selected);
                     configManager.SaveCurrentAccount();
+                    if (warnOnFishingEnable)
+                        WarnAboutAutoHookAutoOceanFishIfNeeded(fishingWasEnabled, selected.EnableFishing);
                 }
             }
             return;
@@ -2755,6 +2774,9 @@ public class ConfigWindow : Window, IDisposable
             var accountLabel = string.IsNullOrWhiteSpace(account.AccountAlias)
                 ? "current account"
                 : account.AccountAlias;
+            var enablesFishing = warnOnFishingEnable &&
+                                 account.DefaultConfig.EnableFishing &&
+                                 account.Characters.Values.Any(character => !character.EnableFishing);
             RequestConfirmation(
                 $"Apply {label} to all characters?",
                 $"Apply the Account default value for {label} to {differing} differing characters in {accountLabel}?",
@@ -2763,6 +2785,8 @@ public class ConfigWindow : Window, IDisposable
                     var count = configManager.ApplyDefaultSettingToAllCharacters(label, copy);
                     Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
                     Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
+                    if (enablesFishing)
+                        WarnAboutAutoHookAutoOceanFishIfNeeded(false, true);
                 });
         }
         ImGui.EndDisabled();
@@ -3413,6 +3437,10 @@ public class ConfigWindow : Window, IDisposable
             return false;
         }
 
+        var enablesFishing = activeWizard == SetupWizardKind.Fishing &&
+                             wizardDraft.EnableFishing &&
+                             (!account.DefaultConfig.EnableFishing ||
+                              applyToAllCharacters && account.Characters.Values.Any(character => !character.EnableFishing));
         SetupWizardPolicy.Apply(activeWizard.Value, wizardDraft, account.DefaultConfig);
         if (activeWizard == SetupWizardKind.FcBuff && wizardFcBuffCadenceResetRequested)
             account.DefaultConfig.ResetFCBuffState();
@@ -3433,6 +3461,8 @@ public class ConfigWindow : Window, IDisposable
         Plugin.ChatGui.Print(applyToAllCharacters
             ? $"[Vermaxion] Setup wizard applied to this account's Default Config and {appliedCharacterCount} characters."
             : "[Vermaxion] Setup wizard applied to this account's Default Config. Existing characters were not changed.");
+        if (enablesFishing)
+            WarnAboutAutoHookAutoOceanFishIfNeeded(false, true);
         return true;
     }
 
@@ -3483,6 +3513,114 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.Button("Cancel"))
         {
             confirmedAction = null;
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.EndPopup();
+    }
+
+    private void WarnAboutAutoHookAutoOceanFishIfNeeded(bool wasEnabled, bool isEnabled)
+    {
+        if (wasEnabled || !isEnabled || plugin.Configuration.SuppressAutoHookAutoOceanFishWarning ||
+            !IsAutoHookAutoOceanFishEnabled())
+        {
+            return;
+        }
+
+        autoHookWarningPopupRequested = true;
+        try
+        {
+            Plugin.NotificationManager.AddNotification(new Notification
+            {
+                Title = "VERMAXION Fishing warning",
+                Content = AutoHookWarningMessage,
+                Type = NotificationType.Warning,
+            });
+        }
+        catch
+        {
+            // The modal and Echo message still provide the warning if Dalamud notifications are unavailable.
+        }
+
+        try
+        {
+            Plugin.ChatGui.Print(new XivChatEntry
+            {
+                Type = XivChatType.Echo,
+                Message = new SeStringBuilder()
+                    .AddUiForeground(AutoHookWarningMessage, 31)
+                    .Build(),
+            });
+        }
+        catch
+        {
+            // The modal and toast still provide the warning if chat output is unavailable.
+        }
+    }
+
+    private static bool IsAutoHookAutoOceanFishEnabled()
+    {
+        try
+        {
+            if (!DalamudReflector.TryGetDalamudPlugin(
+                    "AutoHook",
+                    out object autoHookPlugin,
+                    out AssemblyLoadContext? _,
+                    true,
+                    true) ||
+                autoHookPlugin == null)
+            {
+                return false;
+            }
+
+            const BindingFlags staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+            const BindingFlags instanceFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            var serviceType = autoHookPlugin.GetType().Assembly.GetType("AutoHook.Service");
+            var configuration = serviceType?.GetProperty("Configuration", staticFlags)?.GetValue(null) ??
+                                serviceType?.GetField("Configuration", staticFlags)?.GetValue(null);
+            if (configuration == null)
+                return false;
+
+            var configurationType = configuration.GetType();
+            var autoOceanFish = configurationType.GetProperty("AutoOceanFish", instanceFlags)?.GetValue(configuration) ??
+                                configurationType.GetField("AutoOceanFish", instanceFlags)?.GetValue(configuration);
+            return autoOceanFish is true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void DrawAutoHookWarningPopup()
+    {
+        if (autoHookWarningPopupRequested)
+        {
+            ImGui.OpenPopup("AutoHook AutoOceanFish warning");
+            autoHookWarningPopupRequested = false;
+        }
+
+        var open = true;
+        if (!ImGui.BeginPopupModal(
+                "AutoHook AutoOceanFish warning",
+                ref open,
+                ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            return;
+        }
+
+        ImGui.TextWrapped(AutoHookWarningMessage);
+        ImGui.Spacing();
+        if (ImGui.Button("Open AutoHook settings"))
+        {
+            Plugin.CommandManager.ProcessCommand("/ahcfg");
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Never show this warning again"))
+        {
+            plugin.Configuration.SuppressAutoHookAutoOceanFishWarning = true;
+            plugin.Configuration.Save();
             ImGui.CloseCurrentPopup();
         }
 

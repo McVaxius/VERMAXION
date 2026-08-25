@@ -37,6 +37,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IUnlockState UnlockState { get; private set; } = null!;
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
+    [PluginService] internal static INotificationManager NotificationManager { get; private set; } = null!;
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";

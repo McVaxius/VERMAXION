@@ -4,9 +4,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.Loader;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using ECommons.Reflection;
 using VERMAXION.Models;
 using VERMAXION.Services;
 
@@ -14,6 +16,23 @@ namespace VERMAXION.Windows;
 
 public class MainWindow : Window, IDisposable
 {
+    private static readonly string[] TaskDependencyInternalNames =
+    [
+        "XADatabase",
+        "AutoRetainer",
+        "Lifestream",
+        "AutoHook",
+        "vnavmesh",
+        "YesAlready",
+        "ADS",
+        "Teleporter",
+        "Saucy",
+        "QSTCompanion",
+        "LootGoblin",
+        "mom",
+        "dad",
+    ];
+
     private static readonly string[] RetainerBellSessionAddonNames =
     [
         "RetainerList",
@@ -198,6 +217,7 @@ public class MainWindow : Window, IDisposable
         void DrawTaskSurface(bool favoritesOnly)
         {
             taskRowsBeingBuilt = new List<TaskRowDescriptor>();
+            var loadedPluginInternalNames = GetLoadedTaskDependencyNames();
 
         // Task table with run buttons
         var autoWidthTaskColumns = plugin.Configuration.AutoWidthMainTaskColumns;
@@ -208,13 +228,14 @@ public class MainWindow : Window, IDisposable
             ? ImGuiTableFlags.NoSavedSettings
             : ImGuiTableFlags.Resizable;
         var taskTableId = autoWidthTaskColumns ? "TasksTableAutoWidth" : "TasksTable";
-        if (ImGui.BeginTable(taskTableId, 5, taskTableFlags))
+        if (ImGui.BeginTable(taskTableId, 6, taskTableFlags))
         {
             ImGui.TableSetupColumn("★", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 28f);
             ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch, 1.8f);
             ImGui.TableSetupColumn("When", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 94f);
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 98f);
             ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 142f);
+            ImGui.TableSetupColumn("Dependencies", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 112f);
             DrawTaskTableHeaders();
 
             // --- Every AR PostProcess ---
@@ -395,7 +416,7 @@ public class MainWindow : Window, IDisposable
             DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, AutomationCatalog.Get(AutomationCatalog.CurrentJobEquipment).CadenceLabel,
                 "run##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
 
-            DrawDashboardRows(taskRowsBeingBuilt, favoritesOnly);
+            DrawDashboardRows(taskRowsBeingBuilt, favoritesOnly, loadedPluginInternalNames);
 
             ImGui.EndTable();
         }
@@ -682,6 +703,7 @@ public class MainWindow : Window, IDisposable
             feature == null
                 ? null
                 : AutomationDashboardPolicy.GetRecoverySection(feature.Id, eligibility.Reason),
+            GetTaskDependencies(task, plugin.ConfigManager.GetActiveConfig()),
             buttonLabel,
             onClick,
             maturity,
@@ -697,6 +719,88 @@ public class MainWindow : Window, IDisposable
             tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
             dadHandoffBlocker ?? tertiaryButtonTooltip);
         taskRowsBeingBuilt?.Add(row);
+    }
+
+    private static HashSet<string> GetLoadedTaskDependencyNames()
+    {
+        var loaded = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var internalName in TaskDependencyInternalNames)
+        {
+            try
+            {
+                if (DalamudReflector.TryGetDalamudPlugin(
+                        internalName,
+                        out object pluginInstance,
+                        out AssemblyLoadContext? _,
+                        true,
+                        true) &&
+                    pluginInstance != null)
+                {
+                    loaded.Add(internalName);
+                }
+            }
+            catch
+            {
+                // Dependency status is informational; reflection failures count as not loaded.
+            }
+        }
+
+        return loaded;
+    }
+
+    private static IReadOnlyList<string> GetTaskDependencies(string task, CharacterConfig config)
+    {
+        switch (task)
+        {
+            case "FC Buff Refill":
+            case "Vendor Stock":
+                return ["Lifestream", "vnavmesh"];
+            case "Fishing":
+            {
+                var dependencies = new List<string>
+                {
+                    "XADatabase",
+                    "AutoRetainer",
+                    "Lifestream",
+                    "AutoHook",
+                    "vnavmesh",
+                    "YesAlready",
+                };
+                if (config.FishingRepairMode != FishingRepairMode.Disabled ||
+                    config.FishingStockItems.Values.Any(stock => stock.Enabled && stock.Target > 0))
+                {
+                    dependencies.Add("ADS");
+                }
+                return dependencies;
+            }
+            case "Refill Listings":
+                return ["AutoRetainer", "Lifestream", "vnavmesh"];
+            case "Retainer Equipping":
+                return ["AutoRetainer"];
+            case "Retainer Bell":
+                return ["Lifestream", "vnavmesh"];
+            case "After-AR Park":
+            case "Verminion (5x)":
+            case "Chocobo Racing":
+                return ["Lifestream"];
+            case "Jumbo Cactpot":
+            case "Fashion Report":
+                return ["Lifestream", "vnavmesh"];
+            case "Mini Cactpot":
+                return config.RequireSaucyForMiniCactpot
+                    ? ["Teleporter", "Lifestream", "vnavmesh", "Saucy"]
+                    : ["Teleporter", "Lifestream", "vnavmesh"];
+            case "Allied Society":
+                return ["QSTCompanion"];
+            case "LootGoblin Map Gather":
+                return ["LootGoblin"];
+            case "nag your mom":
+                return ["mom"];
+            case "nag your dad":
+                return ["dad"];
+            default:
+                return [];
+        }
     }
 
     private static void DrawTaskTableHeaders()
@@ -726,15 +830,22 @@ public class MainWindow : Window, IDisposable
         }
         ImGui.TableSetColumnIndex(4);
         ImGui.TableHeader("Actions");
+        ImGui.TableSetColumnIndex(5);
+        ImGui.TableHeader("Dependencies");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Informational only. Installed but unloaded plugins are reported missing and task eligibility is unchanged.");
     }
 
-    private void DrawDashboardRows(IReadOnlyList<TaskRowDescriptor> rows, bool favoritesOnly)
+    private void DrawDashboardRows(
+        IReadOnlyList<TaskRowDescriptor> rows,
+        bool favoritesOnly,
+        IReadOnlySet<string> loadedPluginInternalNames)
     {
         var catalogRows = rows.Where(row => row.Feature != null).ToList();
         if (favoritesOnly)
         {
             foreach (var row in catalogRows.Where(row => IsFavorite(row.Feature!.Id)))
-                DrawDashboardRow(row, showDiagnosticActions: false);
+                DrawDashboardRow(row, showDiagnosticActions: false, loadedPluginInternalNames: loadedPluginInternalNames);
             return;
         }
 
@@ -750,7 +861,7 @@ public class MainWindow : Window, IDisposable
                 GetSectionColor(section),
                 $"{AutomationDashboardPolicy.GetStateLabel(section)} ({sectionRows.Count})");
             foreach (var row in sectionRows)
-                DrawDashboardRow(row, showDiagnosticActions: true);
+                DrawDashboardRow(row, showDiagnosticActions: true, loadedPluginInternalNames: loadedPluginInternalNames);
         }
 
         var manualRows = rows.Where(row => row.Feature == null).ToList();
@@ -760,11 +871,14 @@ public class MainWindow : Window, IDisposable
             ImGui.TableSetColumnIndex(1);
             ImGui.TextColored(new Vector4(0.45f, 0.75f, 1f, 1f), $"Manual utilities ({manualRows.Count})");
             foreach (var row in manualRows)
-                DrawDashboardRow(row, showDiagnosticActions: true);
+                DrawDashboardRow(row, showDiagnosticActions: true, loadedPluginInternalNames: loadedPluginInternalNames);
         }
     }
 
-    private void DrawDashboardRow(TaskRowDescriptor row, bool showDiagnosticActions)
+    private void DrawDashboardRow(
+        TaskRowDescriptor row,
+        bool showDiagnosticActions,
+        IReadOnlySet<string> loadedPluginInternalNames)
     {
         var isFavorite = row.Feature != null && IsFavorite(row.Feature.Id);
         ImGui.TableNextRow();
@@ -827,6 +941,35 @@ public class MainWindow : Window, IDisposable
             ImGui.EndDisabled();
             if (!string.IsNullOrWhiteSpace(row.TertiaryButtonTooltip) && ImGui.IsItemHovered())
                 ImGui.SetTooltip(row.TertiaryButtonTooltip);
+        }
+
+        ImGui.TableSetColumnIndex(5);
+        DrawTaskDependencies(row.Dependencies, loadedPluginInternalNames);
+    }
+
+    private static void DrawTaskDependencies(
+        IReadOnlyList<string> required,
+        IReadOnlySet<string> loadedPluginInternalNames)
+    {
+        if (required.Count == 0)
+        {
+            ImGui.TextColored(new Vector4(0.55f, 0.55f, 0.55f, 1f), "—");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Required: None\nMissing: None");
+            return;
+        }
+
+        var missing = required.Where(plugin => !loadedPluginInternalNames.Contains(plugin)).ToList();
+        if (missing.Count == 0)
+            ImGui.TextColored(new Vector4(0.25f, 1f, 0.35f, 1f), "Ready");
+        else
+            ImGui.TextColored(new Vector4(1f, 0.75f, 0.15f, 1f), $"Missing {missing.Count}");
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                $"Required: {string.Join(", ", required)}\n" +
+                $"Missing: {(missing.Count == 0 ? "None" : string.Join(", ", missing))}");
         }
     }
 
@@ -1042,6 +1185,7 @@ public class MainWindow : Window, IDisposable
         AutomationDashboardSection Section,
         DateTime? NextEligibleAtUtc,
         ConfigurationSection? RecoverySection,
+        IReadOnlyList<string> Dependencies,
         string ButtonLabel,
         Action OnClick,
         string Maturity,
