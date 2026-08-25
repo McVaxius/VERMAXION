@@ -1,5 +1,13 @@
 # VERMAXION Changelog
 
+## 2026-08-25 - FC rank guard, Fishing conflict warning, and task dependencies
+
+### Changed
+
+- FC Buff refill now completes without purchase work for Free Company ranks 1–7, while unknown ranks preserve the existing flow.
+- Enabling Fishing now warns when AutoHook's AutoOceanFish setting is active, with direct settings access and a persistent opt-out.
+- The task dashboard now shows informational loaded-plugin dependency readiness without changing task eligibility.
+
 ## 2026-08-24 - Scheduled FC Buff refill and settled GC arrival
 
 ### Added

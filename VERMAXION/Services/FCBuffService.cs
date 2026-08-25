@@ -127,9 +127,17 @@ public class FCBuffService : IDisposable
         this.plugin = plugin;
     }
 
-    public void Start(int maxAttempts = 2)
+    public unsafe void Start(int maxAttempts = 2)
     {
         if (IsActive) return;
+
+        var freeCompany = InfoProxyFreeCompany.Instance();
+        if (freeCompany != null && freeCompany->Rank is >= 1 and <= 7)
+        {
+            log.Information($"[FCBuff] Free Company rank {freeCompany->Rank} cannot purchase Seal Sweetener actions; completing without purchase work.");
+            SetState(FCBuffState.Complete);
+            return;
+        }
         
         // Force load config from file to get latest values
         configManager.LoadAllAccounts();
