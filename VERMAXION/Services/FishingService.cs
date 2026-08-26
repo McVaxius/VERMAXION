@@ -1328,7 +1328,7 @@ public sealed class FishingService
 
     private bool TryRouteViaArcanistsGuild(double distance, string directDestinationName)
     {
-        if (TryRecoverOwnedTelepotTown())
+        if (TryRecoverOwnedTelepotTown(distance, directDestinationName))
             return true;
 
         if (distance <= 100)
@@ -1402,6 +1402,7 @@ public sealed class FishingService
             aethernetAttempted = true;
             if (lifestream.AethernetTeleportById(ArcanistsGuildAethernetId))
             {
+                vnavmesh.Stop();
                 aethernetTeleportOwned = true;
                 log.Information(
                     $"[Fishing][DockRoute] Traveling toward {directDestinationName} via Arcanists' Guild aethernet id {ArcanistsGuildAethernetId}");
@@ -1416,7 +1417,7 @@ public sealed class FishingService
         return false;
     }
 
-    private bool TryRecoverOwnedTelepotTown()
+    private bool TryRecoverOwnedTelepotTown(double distance, string directDestinationName)
     {
         if (!aethernetTeleportOwned)
             return false;
@@ -1424,11 +1425,15 @@ public sealed class FishingService
         if (!GameHelpers.IsAddonVisible(TelepotTownAddonName))
         {
             if (ownedTelepotTownVisibleAt != DateTime.MinValue)
-            {
                 ownedTelepotTownVisibleAt = DateTime.MinValue;
-                aethernetTeleportOwned = false;
+
+            if (lifestream.IsBusy() || distance > 100)
+            {
+                statusDetail = "Traveling to Arcanists' Guild";
+                return true;
             }
 
+            aethernetTeleportOwned = false;
             return false;
         }
 
@@ -1448,11 +1453,11 @@ public sealed class FishingService
         GameHelpers.TryCloseAddonByCallback(TelepotTownAddonName);
         CommandHelper.SendCommand("/lifestream cancel");
         vnavmesh.Stop();
-        aethernetAttempted = false;
         aethernetTeleportOwned = false;
         ownedTelepotTownVisibleAt = DateTime.MinValue;
         lastNavigationCommandAt = DateTime.MinValue;
-        log.Warning("[Fishing][DockRoute] Recovered a stuck Arcanists' Guild aethernet window; retrying the existing route");
+        log.Warning(
+            $"[Fishing][DockRoute] Recovered a stuck Arcanists' Guild aethernet window; continuing directly to {directDestinationName}");
         return true;
     }
 
@@ -1612,9 +1617,7 @@ public sealed class FishingService
 
         if (GameHelpers.IsAddonVisible("SelectString") && !routeSelectionHandled)
         {
-            routeSelectionHandled = GameHelpers.TrySelectFirstStringEntry();
-            if (routeSelectionHandled)
-                log.Information("[Fishing] Selected Ocean Fishing route entry 0");
+            routeSelectionHandled = TrySelectOceanFishingRoute();
             return;
         }
 
@@ -1968,6 +1971,54 @@ public sealed class FishingService
             allowUnreadable: false,
             out _,
             OceanFishingDialoguePolicy.DescribeEmbarkExpectation(embarkText));
+    }
+
+    private bool TrySelectOceanFishingRoute()
+    {
+        var preference = configManager.GetActiveConfig().OceanFishingRouteOverride ??
+                         configuration.OceanFishingRoutePreference;
+        var routeNames = GetOceanFishingRouteNames(preference);
+        if (routeNames.Count > 0 &&
+            GameHelpers.TrySelectStringExact(routeNames, out _, out var selectedRoute))
+        {
+            log.Information($"[Fishing] Selected {preference} Ocean Fishing route: '{selectedRoute}'");
+            return true;
+        }
+
+        var selectedFallback = GameHelpers.TrySelectFirstStringEntry();
+        if (selectedFallback)
+        {
+            log.Information(
+                $"[Fishing] Preferred {preference} Ocean Fishing route was unavailable or unreadable; selected route entry 0");
+        }
+
+        return selectedFallback;
+    }
+
+    private static IReadOnlyList<string> GetOceanFishingRouteNames(OceanFishingRoutePreference preference)
+    {
+        var (firstRow, lastRow) = preference switch
+        {
+            OceanFishingRoutePreference.Ruby => (13u, 18u),
+            OceanFishingRoutePreference.Thavnair => (19u, 21u),
+            _ => (1u, 12u),
+        };
+
+        try
+        {
+            return Plugin.DataManager.GetExcelSheet<IKDRoute>()
+                .Where(row => row.RowId >= firstRow && row.RowId <= lastRow)
+                .Select(row => row.Name.ToString().Trim())
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(
+                $"[Fishing] Could not read localized IKDRoute rows {firstRow}-{lastRow} for {preference}: {ex.Message}");
+            return Array.Empty<string>();
+        }
     }
 
     private static string GetOceanFishingDialogueText(uint rowId)

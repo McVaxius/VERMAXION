@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-26 - Ocean Fishing route and aethernet ownership
+
+### Changed
+
+- Ocean Fishing now honors global or per-character Indigo, Ruby, and Thavnair route preferences with a safe first-route fallback, while Arcanists' Guild aethernet travel remains movement-exclusive and falls back directly after a stuck window.
+
 ## 2026-08-25 - FC rank guard, Fishing conflict warning, and task dependencies
 
 ### Changed
