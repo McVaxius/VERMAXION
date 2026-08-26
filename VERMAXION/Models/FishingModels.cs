@@ -19,6 +19,13 @@ public enum FishingRunMode
     Test = 1,
 }
 
+public enum OceanFishingRoutePreference
+{
+    Indigo = 0,
+    Ruby = 1,
+    Thavnair = 2,
+}
+
 public sealed class FishingRunContext
 {
     public FishingRunMode Mode { get; init; }

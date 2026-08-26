@@ -444,9 +444,16 @@ public static class GameHelpers
         return true;
     }
 
-    public static unsafe bool TrySelectStringExact(string expectedEntry, out string visibleEntries)
+    public static bool TrySelectStringExact(string expectedEntry, out string visibleEntries)
+        => TrySelectStringExact([expectedEntry], out visibleEntries, out _);
+
+    public static unsafe bool TrySelectStringExact(
+        IEnumerable<string> expectedEntries,
+        out string visibleEntries,
+        out string selectedEntry)
     {
         visibleEntries = string.Empty;
+        selectedEntry = string.Empty;
         try
         {
             nint addonPtr = Plugin.GameGui.GetAddonByName("SelectString", 1);
@@ -455,15 +462,19 @@ public static class GameHelpers
 
             var master = new AddonMaster.SelectString(addonPtr);
             var entries = new List<string>();
-            var expected = NormalizeAddonText(expectedEntry).Trim();
+            var expected = expectedEntries
+                .Select(entry => NormalizeAddonText(entry).Trim())
+                .Where(entry => !string.IsNullOrWhiteSpace(entry))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             for (var i = 0; i < master.EntryCount; i++)
             {
                 var text = NormalizeAddonText(master.Entries[i].Text).Trim();
                 entries.Add($"{i}:{text}");
-                if (!string.Equals(text, expected, StringComparison.OrdinalIgnoreCase))
+                if (!expected.Contains(text))
                     continue;
 
                 visibleEntries = string.Join(", ", entries);
+                selectedEntry = text;
                 FireAddonCallback("SelectString", true, i);
                 Plugin.Log.Information($"[SelectString] Selected exact entry {i}: '{text}'");
                 return true;

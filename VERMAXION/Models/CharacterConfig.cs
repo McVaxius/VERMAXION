@@ -35,6 +35,7 @@ public class CharacterConfig
     public bool EnableLootGoblinMapGather { get; set; } = false;
     public bool EnableFishing { get; set; } = false;
     public bool AlwaysFishOnThisCharacterIfWindowOpen { get; set; } = false;
+    public OceanFishingRoutePreference? OceanFishingRouteOverride { get; set; }
     public int FishingLureRestockTarget { get; set; } = FishingDefaults.LureRestockTarget;
     public Dictionary<uint, FishingStockSetting> FishingStockItems { get; set; } =
         FishingStockCatalogPolicy.CreateDefaultSettings();
@@ -312,6 +313,7 @@ public class CharacterConfig
             EnableLootGoblinMapGather = EnableLootGoblinMapGather,
             EnableFishing = EnableFishing,
             AlwaysFishOnThisCharacterIfWindowOpen = AlwaysFishOnThisCharacterIfWindowOpen,
+            OceanFishingRouteOverride = OceanFishingRouteOverride,
             FishingLureRestockTarget = FishingLureRestockTarget,
             FishingStockItems = FishingStockItems.ToDictionary(
                 pair => pair.Key,

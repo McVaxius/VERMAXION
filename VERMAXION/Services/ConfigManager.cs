@@ -516,6 +516,7 @@ public class ConfigManager
         target.EnableLootGoblinMapGather = source.EnableLootGoblinMapGather;
         target.EnableFishing = source.EnableFishing;
         target.AlwaysFishOnThisCharacterIfWindowOpen = source.AlwaysFishOnThisCharacterIfWindowOpen;
+        // OceanFishingRouteOverride is character-owned and intentionally survives default sync.
         CopyFishingOperationSettings(source, target);
         target.FishingStockItems = source.FishingStockItems.ToDictionary(
             pair => pair.Key,

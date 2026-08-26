@@ -453,6 +453,25 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawHelpMarker("Controls whether Fishing only runs on the current character or may relog through AutoRetainer to another enabled character on the current account.");
 
+            var routePreference = config.OceanFishingRoutePreference;
+            if (ImGui.BeginCombo("Ocean Fishing route preference", routePreference.ToString()))
+            {
+                foreach (var preference in Enum.GetValues<OceanFishingRoutePreference>())
+                {
+                    var selected = preference == routePreference;
+                    if (ImGui.Selectable(preference.ToString(), selected))
+                    {
+                        config.OceanFishingRoutePreference = preference;
+                        config.Save();
+                    }
+
+                    if (selected)
+                        ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
+            }
+            DrawHelpMarker("Preferred Ocean Fishing route family for characters that do not have an explicit override.");
+
             var maxFisherLevel = config.FishingMaxFisherLevel;
             ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
             if (ImGui.InputInt("Max Fisher level", ref maxFisherLevel))
@@ -1125,6 +1144,39 @@ public class ConfigWindow : Window, IDisposable
             if (cc.EnableFishing)
             {
                 ImGui.Indent();
+
+                if (!isDefault)
+                {
+                    var routeOverride = cc.OceanFishingRouteOverride;
+                    var routeOverrideLabel = routeOverride?.ToString() ?? "Use global";
+                    if (ImGui.BeginCombo("Ocean Fishing route override", routeOverrideLabel))
+                    {
+                        var useGlobal = routeOverride == null;
+                        if (ImGui.Selectable("Use global", useGlobal))
+                        {
+                            cc.OceanFishingRouteOverride = null;
+                            changed = true;
+                        }
+
+                        if (useGlobal)
+                            ImGui.SetItemDefaultFocus();
+
+                        foreach (var preference in Enum.GetValues<OceanFishingRoutePreference>())
+                        {
+                            var selected = routeOverride == preference;
+                            if (ImGui.Selectable(preference.ToString(), selected))
+                            {
+                                cc.OceanFishingRouteOverride = preference;
+                                changed = true;
+                            }
+
+                            if (selected)
+                                ImGui.SetItemDefaultFocus();
+                        }
+                        ImGui.EndCombo();
+                    }
+                    DrawHelpMarker("Use the global route preference or keep an explicit route family for this character.");
+                }
 
                 var alwaysFish = cc.AlwaysFishOnThisCharacterIfWindowOpen;
                 if (ImGui.Checkbox("Always fish on this character if window open", ref alwaysFish))

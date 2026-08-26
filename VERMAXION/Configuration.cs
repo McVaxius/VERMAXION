@@ -35,6 +35,8 @@ public class Configuration : IPluginConfiguration
     public FishingExecutionMode FishingExecutionMode { get; set; } = FishingDefaults.ExecutionMode;
     public int FishingMaxFisherLevel { get; set; } = FishingDefaults.MaxFisherLevel;
     public int OceanFishingPreWindowOffsetMinutes { get; set; } = FishingDefaults.OceanFishingPreWindowOffsetMinutes;
+    public OceanFishingRoutePreference OceanFishingRoutePreference { get; set; } =
+        Models.OceanFishingRoutePreference.Indigo;
     public bool OceanFishingWindowWatchEnabled { get; set; } = false;
     public bool SuppressAutoHookAutoOceanFishWarning { get; set; } = false;
 
