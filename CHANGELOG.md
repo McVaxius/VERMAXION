@@ -12,6 +12,7 @@
 - The task dashboard continues to display `Teleporter` while resolving readiness through the verified `TeleporterPlugin` internal name.
 - Ruby-route registration now accepts the completed Thavnair embark question when it is followed by the Endwalker eligibility warning, while still rejecting route text without `?`.
 - I212: FC Buff refill now recognizes active Seal Sweetener II/III by live status strength and uses the enabled localized context-menu action, completing only after activation is verified.
+- I227: The FC Buff rank 1-7 shortcut now records daily, weekly, and monthly completions at the configured cadence. Every AR uses the next daily reset only while the FC remains rank 1-7; rank 8+ and unknown ranks retain ordinary Every AR behavior.
 
 ### Changed
 
@@ -21,6 +22,7 @@
 
 ### Verification
 
+- The focused I227 FC-buff recovery matrix passes 28/28 tests across ranks 1, 7, 8, 30, unknown rank, and all four cadences. A fresh Debug x64 `--no-restore` plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 warning.
 - A fresh Debug x64 `--no-restore` plugin build for the global-master and dependency-name fixes succeeds with zero errors and only the existing `PInvoke.User32` NU1601 warning. The existing Ruby/Thavnair matcher and regression remain unchanged; no tests or live-client checks were run for these narrow fixes.
 - The focused provider, reflection, route, ownership, and dependency regression set passes 30/30 tests.
 - The focused `FishingPolicyTests.RegistrationEmbarkPromptAcceptsRouteSpecificEnglishPrompt` regression passes 1/1. A fresh Debug x64 plugin project build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning.

@@ -16,6 +16,8 @@ public static class TaskWatchdogPolicy
 
 public static class FCBuffRecoveryPolicy
 {
+    private const int DailyResetHourUtc = 9;
+    private const int WeeklyResetHourUtc = 9;
     public const int MaxPurchaseAttempts = 15;
     public const int MaxTeleportRetries = 3;
     public static readonly TimeSpan TeleportRetryInterval = TimeSpan.FromSeconds(15);
@@ -28,6 +30,68 @@ public static class FCBuffRecoveryPolicy
         => elapsed < TeleportTimeout
            && retries < MaxTeleportRetries
            && sinceLastRetry >= TeleportRetryInterval;
+
+    public static bool UsesRankOneToSevenShortcut(int? freeCompanyRank)
+        => freeCompanyRank is >= 1 and <= 7;
+
+    public static bool ShouldRun(
+        FCBuffFrequency frequency,
+        int? freeCompanyRank,
+        DateTime lastCompleted,
+        DateTime nextReset,
+        DateTime now)
+    {
+        return frequency switch
+        {
+            FCBuffFrequency.EveryAR when !UsesRankOneToSevenShortcut(freeCompanyRank) => true,
+            FCBuffFrequency.EveryAR or FCBuffFrequency.Daily or FCBuffFrequency.Weekly or FCBuffFrequency.Monthly =>
+                lastCompleted == DateTime.MinValue || nextReset == DateTime.MinValue || now >= nextReset,
+            _ => true,
+        };
+    }
+
+    public static FCBuffFrequency ResolveCompletionFrequency(
+        FCBuffFrequency configuredFrequency,
+        bool usedRankOneToSevenShortcut)
+        => usedRankOneToSevenShortcut && configuredFrequency == FCBuffFrequency.EveryAR
+            ? FCBuffFrequency.Daily
+            : configuredFrequency;
+
+    public static (DateTime LastCompleted, DateTime NextReset)? GetCompletionTimestamps(
+        FCBuffFrequency configuredFrequency,
+        bool usedRankOneToSevenShortcut,
+        DateTime completedAt)
+    {
+        var completionFrequency = ResolveCompletionFrequency(configuredFrequency, usedRankOneToSevenShortcut);
+        return completionFrequency == FCBuffFrequency.EveryAR
+            ? null
+            : (completedAt, GetNextReset(completionFrequency, completedAt));
+    }
+
+    public static DateTime GetNextReset(FCBuffFrequency frequency, DateTime now)
+    {
+        var utc = now.ToUniversalTime();
+        return frequency switch
+        {
+            FCBuffFrequency.Daily => GetNextDailyReset(utc),
+            FCBuffFrequency.Weekly => GetNextWeeklyReset(utc),
+            FCBuffFrequency.Monthly => new DateTime(utc.Year, utc.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1),
+            _ => DateTime.MinValue,
+        };
+    }
+
+    private static DateTime GetNextDailyReset(DateTime now)
+    {
+        var reset = now.Date.AddHours(DailyResetHourUtc);
+        return now >= reset ? reset.AddDays(1) : reset;
+    }
+
+    private static DateTime GetNextWeeklyReset(DateTime now)
+    {
+        var daysUntilTuesday = ((int)DayOfWeek.Tuesday - (int)now.DayOfWeek + 7) % 7;
+        var reset = now.Date.AddDays(daysUntilTuesday).AddHours(WeeklyResetHourUtc);
+        return now >= reset ? reset.AddDays(7) : reset;
+    }
 }
 
 public static class RegistrableRetryPolicy
