@@ -27,6 +27,8 @@ public class MainWindow : Window, IDisposable
         "ADS",
         "Teleporter",
         "Saucy",
+        "TextAdvance",
+        "XASlave",
         "QSTCompanion",
         "LootGoblin",
         "mom",
@@ -833,7 +835,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TableSetColumnIndex(5);
         ImGui.TableHeader("Dependencies");
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Informational only. Installed but unloaded plugins are reported missing and task eligibility is unchanged.");
+            ImGui.SetTooltip("Informational only. Reports Ready, Missing, or Needs setup; task eligibility is unchanged except Fishing validates its provider before run acquisition.");
     }
 
     private void DrawDashboardRows(
@@ -881,6 +883,7 @@ public class MainWindow : Window, IDisposable
         IReadOnlySet<string> loadedPluginInternalNames)
     {
         var isFavorite = row.Feature != null && IsFavorite(row.Feature.Id);
+        var dependencySummary = BuildTaskDependencySummary(row, loadedPluginInternalNames);
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
         if (row.Feature != null)
@@ -897,9 +900,12 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.TableSetColumnIndex(1);
-        ImGui.TextUnformatted(row.Task);
+        if (dependencySummary.State == TaskDependencyState.Ready)
+            ImGui.TextUnformatted(row.Task);
+        else
+            ImGui.TextColored(new Vector4(1f, 0.75f, 0.15f, 1f), row.Task);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(BuildTaskTooltip(row));
+            ImGui.SetTooltip($"{BuildTaskTooltip(row)}\nDependencies: {dependencySummary.Tooltip}");
 
         ImGui.TableSetColumnIndex(2);
         ImGui.TextColored(GetSectionColor(row.Section), FormatWhen(row));
@@ -944,33 +950,102 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.TableSetColumnIndex(5);
-        DrawTaskDependencies(row.Dependencies, loadedPluginInternalNames);
+        DrawTaskDependencies(dependencySummary);
     }
 
-    private static void DrawTaskDependencies(
-        IReadOnlyList<string> required,
+    private TaskDependencySummary BuildTaskDependencySummary(
+        TaskRowDescriptor row,
         IReadOnlySet<string> loadedPluginInternalNames)
     {
-        if (required.Count == 0)
+        var checks = row.Dependencies
+            .Select(name => BuildDependencyCheck(row.Task, name, loadedPluginInternalNames))
+            .ToList();
+
+        if (row.Task is "Mini Cactpot" or "Jumbo Cactpot" or "Fashion Report")
         {
-            ImGui.TextColored(new Vector4(0.55f, 0.55f, 0.55f, 1f), "—");
+            checks.Add(TaskDependencyPolicy.Alternative(
+                "Dialogue automation (TextAdvance or XA Slave Skip Dialogue)",
+                BuildTextAdvanceCheck(loadedPluginInternalNames),
+                BuildXaSlaveSkipDialogueCheck(loadedPluginInternalNames)));
+        }
+
+        return TaskDependencyPolicy.Aggregate(checks);
+    }
+
+    private TaskDependencyCheck BuildDependencyCheck(
+        string task,
+        string name,
+        IReadOnlySet<string> loadedPluginInternalNames)
+    {
+        var loaded = loadedPluginInternalNames.Contains(name);
+        if (task == "Fishing" && name == "AutoHook")
+        {
+            if (!loaded)
+                return TaskDependencyCheck.Loaded(name, false);
+
+            var read = plugin.AutoHookIPC.ReadAutoOceanFish();
+            var provider = plugin.Configuration.OceanFishingProvider;
+            return TaskDependencyPolicy.FishingProviderAlignment(
+                provider,
+                autoHookLoaded: true,
+                read.Success,
+                read.Enabled,
+                read.Status);
+        }
+
+        if (task == "Mini Cactpot" && name == "Saucy")
+        {
+            var status = "Saucy is not loaded.";
+            var configured = loaded && SaucyMiniCactpotService.TryValidateConfiguration(out status);
+            return TaskDependencyCheck.Configured(name, loaded, configured, status);
+        }
+
+        return TaskDependencyCheck.Loaded(name, loaded);
+    }
+
+    private static TaskDependencyCheck BuildTextAdvanceCheck(
+        IReadOnlySet<string> loadedPluginInternalNames)
+    {
+        var loaded = loadedPluginInternalNames.Contains("TextAdvance");
+        var enabled = false;
+        var status = "TextAdvance is not loaded.";
+        var readable = loaded && DependencyConfigurationInspector.TryReadTextAdvanceEnabled(
+            Plugin.PluginInterface,
+            out enabled,
+            out status);
+        return TaskDependencyCheck.Configured("TextAdvance", loaded, readable && enabled, status);
+    }
+
+    private static TaskDependencyCheck BuildXaSlaveSkipDialogueCheck(
+        IReadOnlySet<string> loadedPluginInternalNames)
+    {
+        var loaded = loadedPluginInternalNames.Contains("XASlave");
+        var enabled = false;
+        var status = "XA Slave is not loaded.";
+        var readable = loaded && DependencyConfigurationInspector.TryReadXaSlaveSkipDialogueEnabled(
+            out enabled,
+            out status);
+        return TaskDependencyCheck.Configured("XA Slave Skip Dialogue", loaded, readable && enabled, status);
+    }
+
+    private static void DrawTaskDependencies(TaskDependencySummary summary)
+    {
+        if (summary.Checks.Count == 0)
+        {
+            ImGui.TextColored(new Vector4(0.55f, 0.55f, 0.55f, 1f), "-");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Required: None\nMissing: None");
+                ImGui.SetTooltip(summary.Tooltip);
             return;
         }
 
-        var missing = required.Where(plugin => !loadedPluginInternalNames.Contains(plugin)).ToList();
-        if (missing.Count == 0)
-            ImGui.TextColored(new Vector4(0.25f, 1f, 0.35f, 1f), "Ready");
-        else
-            ImGui.TextColored(new Vector4(1f, 0.75f, 0.15f, 1f), $"Missing {missing.Count}");
+        ImGui.TextColored(
+            summary.State == TaskDependencyState.Ready
+                ? new Vector4(0.25f, 1f, 0.35f, 1f)
+                : new Vector4(1f, 0.75f, 0.15f, 1f),
+            summary.Label);
 
         if (ImGui.IsItemHovered())
-        {
-            ImGui.SetTooltip(
-                $"Required: {string.Join(", ", required)}\n" +
-                $"Missing: {(missing.Count == 0 ? "None" : string.Join(", ", missing))}");
-        }
+            ImGui.SetTooltip(summary.Tooltip);
     }
 
     private TaskEligibility GetDashboardEligibility(

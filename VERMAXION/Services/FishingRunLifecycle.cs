@@ -18,6 +18,7 @@ public sealed class FishingRunLifecycle
     public bool IsCleanupPending => Current?.CleanupPending == true;
     public FishingRunMode? Mode => Current?.Mode;
     public string StatusPrefix => Current?.StatusPrefix ?? string.Empty;
+    public string LastBeginError { get; private set; } = string.Empty;
     public DateTimeOffset? LastQueueRegistrationConfirmedStartUtc { get; private set; }
     public DateTimeOffset? LastTerminalFailureBeforeQueueConfirmationStartUtc { get; private set; }
 
@@ -35,6 +36,7 @@ public sealed class FishingRunLifecycle
 
     public bool TryBegin(
         FishingRunMode mode,
+        OceanFishingProvider provider,
         string targetCharacterKey,
         DateTimeOffset registrationStartUtc,
         DateTimeOffset registrationDeadlineUtc,
@@ -52,12 +54,14 @@ public sealed class FishingRunLifecycle
             }
 
             error = "Another Ocean Fishing run already owns external plugin state.";
+            LastBeginError = error;
             return false;
         }
 
         var context = new FishingRunContext
         {
             Mode = mode,
+            Provider = provider,
             TargetCharacterKey = targetCharacterKey.Trim(),
             RegistrationStartUtc = registrationStartUtc.ToUniversalTime(),
             RegistrationDeadlineUtc = registrationDeadlineUtc.ToUniversalTime(),
@@ -69,6 +73,7 @@ public sealed class FishingRunLifecycle
         if (!context.YesAlreadyLeaseOwned)
         {
             error = "Could not acquire the VERMAXION YesAlready pause lease.";
+            LastBeginError = error;
             Cleanup("startup lease failure");
             return false;
         }
@@ -77,6 +82,7 @@ public sealed class FishingRunLifecycle
         if (!multiMode.Success)
         {
             error = $"Could not read AutoRetainer multi-mode: {multiMode.Error}";
+            LastBeginError = error;
             Cleanup("AutoRetainer snapshot failure");
             return false;
         }
@@ -87,6 +93,7 @@ public sealed class FishingRunLifecycle
             if (!autoRetainer.TrySetMultiModeEnabled(false, out error))
             {
                 error = $"Could not disable AutoRetainer multi-mode: {error}";
+                LastBeginError = error;
                 Cleanup("AutoRetainer disable failure");
                 return false;
             }
@@ -98,14 +105,32 @@ public sealed class FishingRunLifecycle
         if (!autoHookState.Success)
         {
             error = $"Could not read AutoHook state: {autoHookState.Error}";
+            LastBeginError = error;
             Cleanup("AutoHook snapshot failure");
             return false;
         }
 
         context.InitialAutoHookEnabled = autoHookState.Enabled;
-        log.Information($"[Fishing][Lifecycle] Began {mode} run for {context.TargetCharacterKey}; registration={context.RegistrationStartUtc:u}, deadline={context.RegistrationDeadlineUtc:u}, AR={multiMode.Enabled}, AutoHook={autoHookState.Enabled}");
+        if (provider == OceanFishingProvider.AutoHookAutoOceanFish && !autoHookState.Enabled)
+        {
+            if (!autoHook.TrySetPluginState(true, out error))
+            {
+                error = $"Could not enable AutoHook for AutoHook AutoOceanFish provider: {error}";
+                LastBeginError = error;
+                Cleanup("AutoHook provider enable failure");
+                return false;
+            }
+
+            context.AutoHookChanged = true;
+        }
+
+        LastBeginError = string.Empty;
+        log.Information($"[Fishing][Lifecycle] Began {mode} run for {context.TargetCharacterKey}; provider={provider}, registration={context.RegistrationStartUtc:u}, deadline={context.RegistrationDeadlineUtc:u}, AR={multiMode.Enabled}, AutoHook={autoHookState.Enabled}");
         return true;
     }
+
+    public void ReportBeginFailure(string error)
+        => LastBeginError = error;
 
     /// <summary>
     /// Temporarily releases the YesAlready pause so vendor purchasing can complete.

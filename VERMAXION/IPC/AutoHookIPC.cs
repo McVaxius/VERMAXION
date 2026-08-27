@@ -1,13 +1,18 @@
 using System;
+using System.Reflection;
+using System.Runtime.Loader;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
+using ECommons.Reflection;
 using VERMAXION.Models;
+using VERMAXION.Services;
 
 namespace VERMAXION.IPC;
 
 public sealed class AutoHookIPC
 {
+    private const string AutoHookInternalName = "AutoHook";
     private readonly IPluginLog log;
     private readonly ICallGateSubscriber<bool> getPluginStateSubscriber;
     private readonly ICallGateSubscriber<bool, object> setPluginStateSubscriber;
@@ -61,4 +66,68 @@ public sealed class AutoHookIPC
             return false;
         }
     }
+
+    public AutoHookAutoOceanFishReadResult ReadAutoOceanFish()
+    {
+        if (!TryGetConfigurationAccessor(out var accessor, out var error))
+            return new AutoHookAutoOceanFishReadResult(false, null, error);
+
+        var result = accessor.Read();
+        return new AutoHookAutoOceanFishReadResult(result.Success, result.Value, result.Status);
+    }
+
+    public bool TrySynchronizeAutoOceanFish(OceanFishingProvider provider, out string status)
+    {
+        if (!TryGetConfigurationAccessor(out var accessor, out status))
+            return false;
+
+        var expected = OceanFishingProviderPolicy.ExpectedAutoOceanFish(provider);
+        var result = accessor.Synchronize(expected);
+        status = result.Status;
+        if (result.Success)
+            log.Information($"[AutoHook] {status}");
+        else
+            log.Warning($"[AutoHook] {status}");
+        return result.Success;
+    }
+
+    private static bool TryGetConfigurationAccessor(
+        out AutoHookConfigurationAccessor accessor,
+        out string status)
+    {
+        accessor = null!;
+        try
+        {
+            if (!DalamudReflector.TryGetDalamudPlugin(
+                    AutoHookInternalName,
+                    out object autoHookPlugin,
+                    out AssemblyLoadContext? _,
+                    true,
+                    true) ||
+                autoHookPlugin == null)
+            {
+                status = "AutoHook plugin is not loaded.";
+                return false;
+            }
+
+            const BindingFlags staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+            var serviceType = autoHookPlugin.GetType().Assembly.GetType("AutoHook.Service");
+            var configuration = serviceType?.GetProperty("Configuration", staticFlags)?.GetValue(null) ??
+                                serviceType?.GetField("Configuration", staticFlags)?.GetValue(null);
+            if (configuration == null)
+            {
+                status = "AutoHook Service.Configuration is not available.";
+                return false;
+            }
+
+            return AutoHookConfigurationAccessor.TryCreate(configuration, out accessor, out status);
+        }
+        catch (Exception ex)
+        {
+            status = $"Could not inspect AutoHook AutoOceanFish configuration: {ex.Message}";
+            return false;
+        }
+    }
 }
+
+public readonly record struct AutoHookAutoOceanFishReadResult(bool Success, bool? Enabled, string Status);

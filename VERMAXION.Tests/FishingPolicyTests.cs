@@ -1858,6 +1858,63 @@ public sealed class FishingPolicyTests
     private static DateTimeOffset Utc(int year, int month, int day, int hour, int minute, int second)
         => new(year, month, day, hour, minute, second, TimeSpan.Zero);
 
+    [Theory]
+    [InlineData(OceanFishingProvider.VermaxionAutoHook, false)]
+    [InlineData(OceanFishingProvider.AutoHookAutoOceanFish, true)]
+    public void ProviderMapsToExpectedAutoOceanFish(
+        OceanFishingProvider provider,
+        bool expected)
+    {
+        Assert.Equal(expected, OceanFishingProviderPolicy.ExpectedAutoOceanFish(provider));
+    }
+
+    [Fact]
+    public void AutoHookProviderRetainsLifecycleAndOwnsNoInDutyActions()
+    {
+        var responsibilities = OceanFishingProviderPolicy.GetVermaxionResponsibilities(
+            OceanFishingProvider.AutoHookAutoOceanFish);
+        var retained = OceanFishingRunResponsibility.Preparation |
+                       OceanFishingRunResponsibility.Registration |
+                       OceanFishingRunResponsibility.Results |
+                       OceanFishingRunResponsibility.Cleanup |
+                       OceanFishingRunResponsibility.Return;
+        var inDuty = OceanFishingRunResponsibility.InDutyBaiting |
+                     OceanFishingRunResponsibility.InDutyMovement |
+                     OceanFishingRunResponsibility.InDutyFacing |
+                     OceanFishingRunResponsibility.InDutyCasting |
+                     OceanFishingRunResponsibility.InDutyPlacement |
+                     OceanFishingRunResponsibility.InDutyRecovery;
+
+        Assert.Equal(retained, responsibilities);
+        Assert.Equal(OceanFishingRunResponsibility.None, responsibilities & inDuty);
+    }
+
+    [Theory]
+    [InlineData(OceanFishingRoutePreference.Indigo, OceanFishingRoutePreference.Indigo, 0)]
+    [InlineData(OceanFishingRoutePreference.Ruby, OceanFishingRoutePreference.Ruby, 1)]
+    [InlineData(OceanFishingRoutePreference.Thavnair, OceanFishingRoutePreference.Ruby, 1)]
+    public void RoutePreferenceNormalizesToTwoDialogFamilies(
+        OceanFishingRoutePreference configured,
+        OceanFishingRoutePreference normalized,
+        int dialogIndex)
+    {
+        Assert.Equal(normalized, OceanFishingRoutePolicy.Normalize(configured));
+        Assert.Equal(dialogIndex, OceanFishingRoutePolicy.GetDialogEntryIndex(configured));
+    }
+
+    [Theory]
+    [InlineData(0, 2, 0)]
+    [InlineData(1, 2, 1)]
+    [InlineData(1, 1, 0)]
+    [InlineData(1, 0, 0)]
+    public void RouteDialogIndexUsesSafeFirstEntryFallback(
+        int requested,
+        int available,
+        int selected)
+    {
+        Assert.Equal(selected, OceanFishingRoutePolicy.ResolveAvailableDialogEntry(requested, available));
+    }
+
     private static FishingCastEvaluation EvaluateCast(
         bool enabled = true,
         bool inFishingContext = true,
