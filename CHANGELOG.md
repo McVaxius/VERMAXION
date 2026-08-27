@@ -6,6 +6,10 @@
 
 - Added one global Ocean Fishing provider choice. `VerMAXION + AutoHook` remains the compatibility default and retains the existing placement, bait, facing, `/ahstart`, `/ac cast`, and recovery path. `AutoHook AutoOceanFish` gives AutoHook all in-duty fishing while VERMAXION retains preparation, registration, result handling, cleanup, and return.
 
+### Fixed
+
+- Ruby-route registration now accepts the completed Thavnair embark question when it is followed by the Endwalker eligibility warning, while still rejecting route text without `?`.
+
 ### Changed
 
 - Provider changes now persist AutoHook's `AutoOceanFish` setting immediately, and every Fishing run verifies the same alignment before taking lifecycle ownership. The AutoHook-owned provider also enables AutoHook before any relog or duty entry. An unavailable Boolean setting or static `Save()` surface blocks startup with an actionable status; the aligned `AutoOceanFish` value is not restored after the run.
@@ -14,7 +18,8 @@
 
 ### Verification
 
-- The focused provider, reflection, route, ownership, and dependency regression set passes 30/30 tests. The Debug x64 plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning.
+- The focused provider, reflection, route, ownership, and dependency regression set passes 30/30 tests.
+- The focused `FishingPolicyTests.RegistrationEmbarkPromptAcceptsRouteSpecificEnglishPrompt` regression passes 1/1. A fresh Debug x64 plugin project build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning.
 - The full suite, live clients, packaging, deployment, and release workflows were not run.
 
 ## 2026-08-26 - Ocean Fishing route and aethernet ownership
