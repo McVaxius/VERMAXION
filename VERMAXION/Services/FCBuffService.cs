@@ -120,6 +120,7 @@ public class FCBuffService : IDisposable
     public bool IsComplete => state == FCBuffState.Complete;
     public bool IsFailed => state == FCBuffState.Failed;
     public string StatusText => state.ToString();
+    internal bool CompletedViaRankOneToSevenShortcut { get; private set; }
 
     public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager, ConfigManager configManager, Plugin plugin)
     {
@@ -137,10 +138,12 @@ public class FCBuffService : IDisposable
     {
         if (IsActive) return;
 
-        var freeCompany = InfoProxyFreeCompany.Instance();
-        if (freeCompany != null && freeCompany->Rank is >= 1 and <= 7)
+        CompletedViaRankOneToSevenShortcut = false;
+        var freeCompanyRank = GetCurrentFreeCompanyRank();
+        if (FCBuffRecoveryPolicy.UsesRankOneToSevenShortcut(freeCompanyRank))
         {
-            log.Information($"[FCBuff] Free Company rank {freeCompany->Rank} cannot purchase Seal Sweetener actions; completing without purchase work.");
+            CompletedViaRankOneToSevenShortcut = true;
+            log.Information($"[FCBuff] Free Company rank {freeCompanyRank} cannot purchase Seal Sweetener actions; completing without purchase work.");
             SetState(FCBuffState.Complete);
             return;
         }
@@ -173,6 +176,12 @@ public class FCBuffService : IDisposable
         lastSealSweetenerListIndex = -1;
         SetState(FCBuffState.CheckingFCPoints);
         log.Information($"[FCBuff] Starting FC buff refill (max attempts: {purchaseAttempts})");
+    }
+
+    internal unsafe int? GetCurrentFreeCompanyRank()
+    {
+        var freeCompany = InfoProxyFreeCompany.Instance();
+        return freeCompany == null ? null : freeCompany->Rank;
     }
 
     public void RunTask()
