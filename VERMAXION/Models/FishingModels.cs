@@ -2197,13 +2197,14 @@ public static class OceanFishingDialoguePolicy
             return true;
 
         var normalized = NormalizeWhitespace(actualText);
-        if (!normalized.StartsWith(EnglishEmbarkPrefix, StringComparison.Ordinal) ||
-            !normalized.EndsWith("?", StringComparison.Ordinal))
-        {
+        if (!normalized.StartsWith(EnglishEmbarkPrefix, StringComparison.Ordinal))
             return false;
-        }
 
-        var destination = normalized[EnglishEmbarkPrefix.Length..^1].Trim();
+        var questionMarkIndex = normalized.IndexOf('?', EnglishEmbarkPrefix.Length);
+        if (questionMarkIndex < 0)
+            return false;
+
+        var destination = normalized[EnglishEmbarkPrefix.Length..questionMarkIndex].Trim();
         return destination.Length > 0;
     }
 

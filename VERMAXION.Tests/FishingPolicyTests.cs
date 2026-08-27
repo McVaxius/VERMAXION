@@ -631,6 +631,12 @@ public sealed class FishingPolicyTests
         Assert.True(OceanFishingDialoguePolicy.MatchesEmbarkPrompt(
             "Embark to the Northern Strait of Merlthor?",
             "Localized embark text"));
+        Assert.True(OceanFishingDialoguePolicy.MatchesEmbarkPrompt(
+            "Embark to the Thavnairian coast?\n※Party members who have not completed the main scenario quest “Endwalker” cannot embark upon this route.",
+            "Localized embark text"));
+        Assert.False(OceanFishingDialoguePolicy.MatchesEmbarkPrompt(
+            "Embark to the Thavnairian coast\n※Party members who have not completed the main scenario quest “Endwalker” cannot embark upon this route.",
+            "Localized embark text"));
     }
 
     [Theory]
