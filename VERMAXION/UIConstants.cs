@@ -12,7 +12,7 @@ public static class UIConstants
         public const string DtrBarEntry = "DTR Bar Entry";
         
         // Character Settings
-        public const string Enabled = "Enabled";
+        public const string Enabled = "Character automation enabled";
         public const string FCBuffRefill = "FC Buff Refill (Seal Sweetener)";
         public const string MaxPurchaseAttempts = "Max Purchase Attempts";
         public const string MinFCPoints = "Min FC Points";

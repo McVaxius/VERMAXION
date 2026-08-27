@@ -269,7 +269,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
             Log,
             OnARCharacterReady,
             ArmBeforeArSuppressionFromPostprocess,
-            () => !DadHandoffBlocksNewWork);
+            () => Configuration.Enabled && !DadHandoffBlocksNewWork);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
         FishingService = new FishingService(Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC, AutoRetainerIPC, FishingRunLifecycle, FisherGearsetRuntime, DutyState);
         CharacterSelectStallRecovery = new CharacterSelectStallRecoveryService(Log);
@@ -561,6 +561,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
         pendingFishingPostprocessHandoff = false;
 
+        if (!Configuration.Enabled)
+        {
+            const string reason = "Global automation is disabled";
+            Engine.RecordSkippedOpportunity($"Postprocess skipped: {reason}");
+            FinishReleaseOnlyPostprocess(reason);
+            ReleaseOwnedSuppressionAfterSkippedPostprocess(reason);
+            return true;
+        }
+
         var fishingStartup = RunFishingStartupTrigger(FishingStartupTrigger.AutoRetainerPostprocess);
         if (fishingStartup.ClaimsStartup)
         {
@@ -825,11 +834,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         {
             case "on":
             case "off":
-                var cfg = ConfigManager.GetActiveConfig();
-                cfg.Enabled = arg == "on";
-                ConfigManager.SaveCurrentAccount();
-                Log.Information($"Vermaxion {(cfg.Enabled ? "enabled" : "disabled")} via /vmx {arg}");
-                ChatGui.Print($"[Vermaxion] {(cfg.Enabled ? "Enabled" : "Disabled")}");
+                Configuration.Enabled = arg == "on";
+                Configuration.Save();
+                Log.Information($"Vermaxion {(Configuration.Enabled ? "enabled" : "disabled")} globally via /vmx {arg}");
+                ChatGui.Print($"[Vermaxion] Globally {(Configuration.Enabled ? "enabled" : "disabled")}");
                 break;
 
             case "run":
@@ -952,6 +960,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void BeginBeforeArLoginPendingFromPluginLoad()
     {
+        if (!Configuration.Enabled)
+        {
+            SkipBeforeArForLogin("Global automation is disabled");
+            return;
+        }
+
         var configuredCount = GetConfiguredBeforeAutoRetainerTaskCount();
         var suppression = AutoRetainerIPC.GetSuppressionSnapshot();
         var arBusy = AutoRetainerIPC.IsBusy();
@@ -976,6 +990,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void BeginBeforeArLoginPending(string reason)
     {
+        if (!Configuration.Enabled)
+        {
+            SkipBeforeArForLogin("Global automation is disabled");
+            return;
+        }
+
         if (beforeArStartedThisLogin)
         {
             Log.Information($"[AR] Ignoring before-AR login trigger after start this login: reason={reason}");
@@ -1033,6 +1053,24 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void ArmBeforeArSuppressionFromPostprocess()
     {
+        if (!Configuration.Enabled)
+        {
+            const string reason = "Global automation is disabled";
+            beforeArArmedByPostprocess = false;
+            ClearBeforeArArmedTracking();
+            if (AutoRetainerIPC.SuppressionOwnedByVermaxion)
+            {
+                SetBeforeArGate(BeforeArGateState.ReleasePending, reason);
+                ProcessBeforeArReleasePending();
+            }
+            else
+            {
+                SetBeforeArGate(BeforeArGateState.Skipped, reason);
+            }
+            Log.Information("[AR] Skipped before-AR arming because global automation is disabled.");
+            return;
+        }
+
         if (DadHandoffBlocksNewWork)
         {
             beforeArArmedByPostprocess = false;
@@ -1087,10 +1125,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void ProcessPendingBeforeArLogin()
     {
-        if (DadHandoffBlocksNewWork)
+        if (!pendingBeforeArLogin)
             return;
 
-        if (!pendingBeforeArLogin)
+        if (!Configuration.Enabled)
+        {
+            SkipBeforeArForLogin("Global automation is disabled");
+            return;
+        }
+
+        if (DadHandoffBlocksNewWork)
             return;
 
         try
@@ -1348,6 +1392,13 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
 
     private void ProcessBeforeArSuppressionRecovery()
     {
+        if (!Configuration.Enabled)
+        {
+            if (BeforeArGate is BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady)
+                SkipBeforeArForLogin("Global automation is disabled");
+            return;
+        }
+
         if (BeforeArGate is not (BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady))
             return;
         if (BeforeArGate == BeforeArGateState.WaitingForWorldReady && !AutoRetainerIPC.SuppressionOwnedByVermaxion)
@@ -1632,7 +1683,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     /// Throttled to every 30s; skips entirely when a run or relog is already in progress.</summary>
     private void ProcessFishingFakeReady()
     {
-        if (!Configuration.OceanFishingFakeReadyEnabled)
+        if (!Configuration.Enabled || !Configuration.OceanFishingFakeReadyEnabled)
             return;
         if (FishingService.IsActive || FishingRelogCoordinator.IsActive)
             return;
@@ -1673,7 +1724,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
     /// AutoRetainer wakes the char beside a summoning bell rather than inside the bell-less inn.</summary>
     private void ProcessIdleInnPark()
     {
-        if (!Configuration.OceanIdleInnParkEnabled)
+        if (!Configuration.Enabled || !Configuration.OceanIdleInnParkEnabled)
             return;
         if (FishingService.IsActive || FishingRelogCoordinator.IsActive)
             return;
@@ -1809,13 +1860,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         CharacterSelectStallRecovery.Update(
             DateTime.UtcNow,
             Configuration.EnableCharacterSelectStallRecovery,
+            Configuration.Enabled && Configuration.EnableCharacterSelectStallRecovery,
             GameHelpers.IsAddonVisible("CharaSelect"),
             ClientState.IsLoggedIn);
 
         ProcessBeforeArSuppressionRecovery();
         FishingRunLifecycle.Update();
         ProcessFishingRecovery();
-        if (Configuration.OceanFishingWindowWatchEnabled)
+        if (Configuration.Enabled && Configuration.OceanFishingWindowWatchEnabled)
             RunFishingStartupTrigger(FishingStartupTrigger.WindowWatch);
         ProcessStuckDetectionSuppression();
         ProcessFishingFakeReady();
@@ -1917,7 +1969,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         if (!Configuration.DtrBarEnabled) return;
 
         var config = ConfigManager.GetActiveConfig();
-        var isEnabled = config?.Enabled ?? false;
+        var isEnabled = Configuration.Enabled && (config?.Enabled ?? false);
         
         // DTR modes: 0=text-only, 1=icon+text, 2=icon-only
         var iconEnabled = string.IsNullOrEmpty(Configuration.DtrIconEnabled) ? "\uE03C" : Configuration.DtrIconEnabled;
