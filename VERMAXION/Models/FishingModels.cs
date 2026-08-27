@@ -19,6 +19,29 @@ public enum FishingRunMode
     Test = 1,
 }
 
+public enum OceanFishingProvider
+{
+    VermaxionAutoHook = 0,
+    AutoHookAutoOceanFish = 1,
+}
+
+[Flags]
+public enum OceanFishingRunResponsibility
+{
+    None = 0,
+    Preparation = 1 << 0,
+    Registration = 1 << 1,
+    InDutyBaiting = 1 << 2,
+    InDutyMovement = 1 << 3,
+    InDutyFacing = 1 << 4,
+    InDutyCasting = 1 << 5,
+    InDutyPlacement = 1 << 6,
+    InDutyRecovery = 1 << 7,
+    Results = 1 << 8,
+    Cleanup = 1 << 9,
+    Return = 1 << 10,
+}
+
 public enum OceanFishingRoutePreference
 {
     Indigo = 0,
@@ -26,9 +49,56 @@ public enum OceanFishingRoutePreference
     Thavnair = 2,
 }
 
+public static class OceanFishingProviderPolicy
+{
+    private const OceanFishingRunResponsibility SharedResponsibilities =
+        OceanFishingRunResponsibility.Preparation |
+        OceanFishingRunResponsibility.Registration |
+        OceanFishingRunResponsibility.Results |
+        OceanFishingRunResponsibility.Cleanup |
+        OceanFishingRunResponsibility.Return;
+
+    private const OceanFishingRunResponsibility VermaxionInDutyResponsibilities =
+        OceanFishingRunResponsibility.InDutyBaiting |
+        OceanFishingRunResponsibility.InDutyMovement |
+        OceanFishingRunResponsibility.InDutyFacing |
+        OceanFishingRunResponsibility.InDutyCasting |
+        OceanFishingRunResponsibility.InDutyPlacement |
+        OceanFishingRunResponsibility.InDutyRecovery;
+
+    public static bool ExpectedAutoOceanFish(OceanFishingProvider provider)
+        => provider == OceanFishingProvider.AutoHookAutoOceanFish;
+
+    public static OceanFishingRunResponsibility GetVermaxionResponsibilities(OceanFishingProvider provider)
+        => SharedResponsibilities |
+           (provider == OceanFishingProvider.AutoHookAutoOceanFish
+               ? OceanFishingRunResponsibility.None
+               : VermaxionInDutyResponsibilities);
+
+    public static bool VermaxionOwnsInDutyFishing(OceanFishingProvider provider)
+        => (GetVermaxionResponsibilities(provider) & VermaxionInDutyResponsibilities) != 0;
+}
+
+public static class OceanFishingRoutePolicy
+{
+    public static OceanFishingRoutePreference Normalize(OceanFishingRoutePreference preference)
+        => preference == OceanFishingRoutePreference.Thavnair
+            ? OceanFishingRoutePreference.Ruby
+            : preference;
+
+    public static int GetDialogEntryIndex(OceanFishingRoutePreference preference)
+        => Normalize(preference) == OceanFishingRoutePreference.Ruby ? 1 : 0;
+
+    public static int ResolveAvailableDialogEntry(int requestedIndex, int entryCount)
+        => entryCount > 0 && requestedIndex >= 0 && requestedIndex < entryCount
+            ? requestedIndex
+            : 0;
+}
+
 public sealed class FishingRunContext
 {
     public FishingRunMode Mode { get; init; }
+    public OceanFishingProvider Provider { get; init; }
     public string TargetCharacterKey { get; init; } = string.Empty;
     public DateTimeOffset RegistrationStartUtc { get; init; }
     public DateTimeOffset RegistrationDeadlineUtc { get; init; }

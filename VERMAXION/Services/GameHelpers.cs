@@ -499,6 +499,37 @@ public static class GameHelpers
         return TryFireAddonCallback("SelectString", true, 0);
     }
 
+    public static unsafe bool TrySelectStringEntry(
+        int requestedIndex,
+        out int selectedIndex,
+        out int entryCount)
+    {
+        selectedIndex = 0;
+        entryCount = 0;
+        try
+        {
+            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectString", 1);
+            if (addonPtr == 0 || !((AtkUnitBase*)addonPtr)->IsVisible)
+                return false;
+
+            var master = new AddonMaster.SelectString(addonPtr);
+            entryCount = master.EntryCount;
+            if (entryCount <= 0)
+                return false;
+
+            selectedIndex = OceanFishingRoutePolicy.ResolveAvailableDialogEntry(requestedIndex, entryCount);
+            FireAddonCallback("SelectString", true, selectedIndex);
+            Plugin.Log.Information(
+                $"[SelectString] Selected guarded entry {selectedIndex}; requested={requestedIndex}, available={entryCount}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[SelectString] Guarded index selection failed: {ex.Message}");
+            return false;
+        }
+    }
+
     public static bool TryCommenceDuty()
     {
         if (!IsAddonVisible("ContentsFinderConfirm"))

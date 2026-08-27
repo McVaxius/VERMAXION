@@ -118,6 +118,7 @@ public sealed class FishingService
     private DateTime returnStartedAt = DateTime.MinValue;
     private uint returnStartedTerritory;
     private FishingRunMode activeRunMode;
+    private OceanFishingProvider activeProvider;
     private string lastError = string.Empty;
     private string statusDetail = string.Empty;
     private FisherGearsetEquipOperation? fisherGearsetOperation;
@@ -258,6 +259,7 @@ public sealed class FishingService
         }
 
         activeRunMode = runLifecycle.Current.Mode;
+        activeProvider = runLifecycle.Current.Provider;
         lastError = string.Empty;
         sawFishingContext = IsFishingContextActive();
         statusDetail = string.Empty;
@@ -318,9 +320,11 @@ public sealed class FishingService
     public void Reset(bool releaseRun = true)
     {
         vendorStockService.Reset();
-        if (CurrentRailDestination.HasValue && IsOceanFishingDutyActive())
+        if (OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider) &&
+            CurrentRailDestination.HasValue &&
+            IsOceanFishingDutyActive())
             StopFishingNavigationAndFaceOutward("fishing service reset");
-        else
+        else if (!IsOceanFishingDutyActive())
             vnavmesh.Stop();
 
         state = FishingState.Idle;
@@ -1975,50 +1979,18 @@ public sealed class FishingService
 
     private bool TrySelectOceanFishingRoute()
     {
-        var preference = configManager.GetActiveConfig().OceanFishingRouteOverride ??
-                         configuration.OceanFishingRoutePreference;
-        var routeNames = GetOceanFishingRouteNames(preference);
-        if (routeNames.Count > 0 &&
-            GameHelpers.TrySelectStringExact(routeNames, out _, out var selectedRoute))
-        {
-            log.Information($"[Fishing] Selected {preference} Ocean Fishing route: '{selectedRoute}'");
-            return true;
-        }
+        var configuredPreference = configManager.GetActiveConfig().OceanFishingRouteOverride ??
+                                   configuration.OceanFishingRoutePreference;
+        var preference = OceanFishingRoutePolicy.Normalize(configuredPreference);
+        var requestedIndex = OceanFishingRoutePolicy.GetDialogEntryIndex(preference);
+        if (!GameHelpers.TrySelectStringEntry(requestedIndex, out var selectedIndex, out var entryCount))
+            return false;
 
-        var selectedFallback = GameHelpers.TrySelectFirstStringEntry();
-        if (selectedFallback)
-        {
-            log.Information(
-                $"[Fishing] Preferred {preference} Ocean Fishing route was unavailable or unreadable; selected route entry 0");
-        }
-
-        return selectedFallback;
-    }
-
-    private static IReadOnlyList<string> GetOceanFishingRouteNames(OceanFishingRoutePreference preference)
-    {
-        var (firstRow, lastRow) = preference switch
-        {
-            OceanFishingRoutePreference.Ruby => (13u, 18u),
-            OceanFishingRoutePreference.Thavnair => (19u, 21u),
-            _ => (1u, 12u),
-        };
-
-        try
-        {
-            return Plugin.DataManager.GetExcelSheet<IKDRoute>()
-                .Where(row => row.RowId >= firstRow && row.RowId <= lastRow)
-                .Select(row => row.Name.ToString().Trim())
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.Warning(
-                $"[Fishing] Could not read localized IKDRoute rows {firstRow}-{lastRow} for {preference}: {ex.Message}");
-            return Array.Empty<string>();
-        }
+        log.Information(
+            selectedIndex == requestedIndex
+                ? $"[Fishing] Selected {preference} Ocean Fishing route at dialog entry {selectedIndex}"
+                : $"[Fishing] Requested {preference} Ocean Fishing route entry {requestedIndex}, but only {entryCount} entries were available; selected safe fallback entry 0");
+        return true;
     }
 
     private static string GetOceanFishingDialogueText(uint rowId)
@@ -2400,8 +2372,15 @@ public sealed class FishingService
         var resultVisible = IsOceanFishingResultAddonAvailable();
         if (dutyCompletionObserved || resultVisible)
         {
-            StopFishingNavigationAndFaceOutward("voyage result/completion");
+            if (OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider))
+                StopFishingNavigationAndFaceOutward("voyage result/completion");
             SetState(FishingState.HandlingResult);
+            return;
+        }
+
+        if (!OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider))
+        {
+            TickAutoHookOwnedFishingLoop(now, elapsed, inFishingContext);
             return;
         }
 
@@ -2543,8 +2522,73 @@ public sealed class FishingService
            Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
            Plugin.Condition[ConditionFlag.WatchingCutscene];
 
+    private void TickAutoHookOwnedFishingLoop(DateTime now, TimeSpan elapsed, bool inFishingContext)
+    {
+        if (IsVoyageRouteTransitionActive())
+        {
+            if (zoneTransitionStartedAt == DateTime.MinValue)
+                zoneTransitionStartedAt = now;
+
+            if (now - zoneTransitionStartedAt >= ZoneTransitionTimeout)
+            {
+                Fail("Ocean Fishing zone transition remained stalled for 90 seconds.", FishingAttemptFailureKind.Stop);
+                return;
+            }
+
+            statusDetail = "AutoHook AutoOceanFish owns the in-duty route transition";
+            return;
+        }
+
+        zoneTransitionStartedAt = DateTime.MinValue;
+        if (!inFishingContext)
+        {
+            if (OceanFishingCompletionPolicy.ShouldInferFromDutyContextLoss(
+                    sawFishingContext,
+                    Plugin.ClientState.TerritoryType is 900 or 1163,
+                    GameHelpers.IsPlayerAvailable(),
+                    Plugin.Condition[ConditionFlag.BetweenAreas] ||
+                    Plugin.Condition[ConditionFlag.BetweenAreas51]))
+            {
+                log.Information("[Fishing] AutoHook-owned voyage context disappeared; inferring voyage completion");
+                dutyCompletionObserved = true;
+                SetState(FishingState.HandlingResult);
+                return;
+            }
+
+            if (dutyContextLostAt == DateTime.MinValue)
+                dutyContextLostAt = now;
+
+            if (sawFishingContext && now - dutyContextLostAt >= TimeSpan.FromSeconds(30))
+            {
+                Fail("Ocean Fishing duty context disappeared without a settled post-duty state.", FishingAttemptFailureKind.Stop);
+                return;
+            }
+
+            if (elapsed >= DutyCompletionTimeout)
+                Fail("Timed out waiting for Ocean Fishing duty completion.");
+            return;
+        }
+
+        sawFishingContext = true;
+        dutyContextLostAt = DateTime.MinValue;
+        statusDetail = "AutoHook AutoOceanFish owns in-duty fishing; VERMAXION is monitoring completion";
+    }
+
     private void BeginVoyageFishing(string reason)
     {
+        if (!OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider))
+        {
+            voyageState.Reset();
+            currentRailDestination = null;
+            railSampleExclusionDestination = null;
+            zoneTransitionStartedAt = DateTime.MinValue;
+            log.Information(
+                $"[Fishing][Provider] AutoHook AutoOceanFish owns all in-duty fishing for {reason}; " +
+                "VERMAXION retains result, cleanup, and return handling");
+            SetState(FishingState.Fishing);
+            return;
+        }
+
         var localPlayer = Plugin.ObjectTable.LocalPlayer;
         if (localPlayer == null)
         {
@@ -3825,9 +3869,11 @@ public sealed class FishingService
         vendorStockService.Reset();
         fisherFallbackService.Reset();
         ResetFishingStockPurchase(cancelOwned: true);
-        if (CurrentRailDestination.HasValue && IsOceanFishingDutyActive())
+        if (OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider) &&
+            CurrentRailDestination.HasValue &&
+            IsOceanFishingDutyActive())
             StopFishingNavigationAndFaceOutward("terminal voyage failure");
-        else
+        else if (!IsOceanFishingDutyActive())
             vnavmesh.Stop();
         SetState(FishingState.Failed);
         runLifecycle.Cleanup(message);

@@ -1,5 +1,22 @@
 # VERMAXION Changelog
 
+## 2026-08-27 - Ocean Fishing providers, route families, and dependency readiness
+
+### Added
+
+- Added one global Ocean Fishing provider choice. `VerMAXION + AutoHook` remains the compatibility default and retains the existing placement, bait, facing, `/ahstart`, `/ac cast`, and recovery path. `AutoHook AutoOceanFish` gives AutoHook all in-duty fishing while VERMAXION retains preparation, registration, result handling, cleanup, and return.
+
+### Changed
+
+- Provider changes now persist AutoHook's `AutoOceanFish` setting immediately, and every Fishing run verifies the same alignment before taking lifecycle ownership. The AutoHook-owned provider also enables AutoHook before any relog or duty entry. An unavailable Boolean setting or static `Save()` surface blocks startup with an actionable status; the aligned `AutoOceanFish` value is not restored after the run.
+- Ocean Fishing route selection now uses the game's two dialog families instead of localized route-name matching: Indigo selects entry 0 and Ruby selects entry 1 for Ruby Sea, Thavnair, and Unknown Island destinations. Legacy serialized Thavnair preferences behave as Ruby and are hidden from both selectors; unavailable requested entries fall back to entry 0.
+- The task dashboard now reports `Ready`, `Missing`, or `Needs setup`. Fishing reports provider drift; Mini Cactpot, Jumbo Cactpot, and Fashion Report accept either enabled TextAdvance or XA Slave Skip Dialogue; required Saucy checks configuration accessibility. Reporting remains informational except that Fishing refuses to start when provider synchronization fails.
+
+### Verification
+
+- The focused provider, reflection, route, ownership, and dependency regression set passes 30/30 tests. The Debug x64 plugin build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning.
+- The full suite, live clients, packaging, deployment, and release workflows were not run.
+
 ## 2026-08-26 - Ocean Fishing route and aethernet ownership
 
 ### Changed

@@ -93,6 +93,14 @@ public sealed class SaucyMiniCactpotService
         }
     }
 
+    public static bool TryValidateConfiguration(out string status)
+    {
+        if (!TryGetSaucyConfig(out var config, out status))
+            return false;
+
+        return SaucyConfigurationAccessor.TryCreate(config, out _, out status);
+    }
+
     private static bool TryGetSaucyConfig(
         out object config,
         out string status)

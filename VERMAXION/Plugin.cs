@@ -144,6 +144,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
                 return prefix + FishingRelogCoordinator.StatusText;
             if (FishingStartupCoordinator.HasPendingRelogContinuation)
                 return prefix + $"Relog pending {FishingStartupCoordinator.PendingRelogCharacterKey}";
+            if (!string.IsNullOrWhiteSpace(FishingRunLifecycle.LastBeginError))
+                return prefix + FishingRunLifecycle.LastBeginError;
             return FishingService.StatusText;
         }
     }
@@ -2134,7 +2136,17 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime
         DateTimeOffset registrationStartUtc,
         DateTimeOffset registrationDeadlineUtc)
     {
-        if (FishingRunLifecycle.TryBegin(mode, targetCharacterKey, registrationStartUtc, registrationDeadlineUtc, out var error))
+        var provider = Configuration.OceanFishingProvider;
+        if (!AutoHookIPC.TrySynchronizeAutoOceanFish(provider, out var synchronizationStatus))
+        {
+            var synchronizationError =
+                $"Fishing provider setup failed: {synchronizationStatus} Open AutoHook settings and try again.";
+            FishingRunLifecycle.ReportBeginFailure(synchronizationError);
+            Log.Warning($"[Fishing][Startup] {synchronizationError}");
+            return false;
+        }
+
+        if (FishingRunLifecycle.TryBegin(mode, provider, targetCharacterKey, registrationStartUtc, registrationDeadlineUtc, out var error))
             return true;
 
         Log.Warning($"[Fishing][Startup] Could not begin run: {error}");
