@@ -4,10 +4,12 @@
 
 ### Added
 
+- Added an enabled-by-default persisted global automation master, controlled by the Main Window `Enabled` checkbox and `/vmx on|off`. It blocks new automatic entry points while preserving per-character automation gates, manual controls, and already-owned cleanup/recovery.
 - Added one global Ocean Fishing provider choice. `VerMAXION + AutoHook` remains the compatibility default and retains the existing placement, bait, facing, `/ahstart`, `/ac cast`, and recovery path. `AutoHook AutoOceanFish` gives AutoHook all in-duty fishing while VERMAXION retains preparation, registration, result handling, cleanup, and return.
 
 ### Fixed
 
+- The task dashboard continues to display `Teleporter` while resolving readiness through the verified `TeleporterPlugin` internal name.
 - Ruby-route registration now accepts the completed Thavnair embark question when it is followed by the Endwalker eligibility warning, while still rejecting route text without `?`.
 - I212: FC Buff refill now recognizes active Seal Sweetener II/III by live status strength and uses the enabled localized context-menu action, completing only after activation is verified.
 
@@ -19,6 +21,7 @@
 
 ### Verification
 
+- A fresh Debug x64 `--no-restore` plugin build for the global-master and dependency-name fixes succeeds with zero errors and only the existing `PInvoke.User32` NU1601 warning. The existing Ruby/Thavnair matcher and regression remain unchanged; no tests or live-client checks were run for these narrow fixes.
 - The focused provider, reflection, route, ownership, and dependency regression set passes 30/30 tests.
 - The focused `FishingPolicyTests.RegistrationEmbarkPromptAcceptsRouteSpecificEnglishPrompt` regression passes 1/1. A fresh Debug x64 plugin project build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning.
 - The full suite, live clients, packaging, deployment, and release workflows were not run.

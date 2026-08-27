@@ -37,13 +37,19 @@ public sealed class CharacterSelectStallRecoveryService
         StatusText = "Manual first-character recovery queued.";
     }
 
-    public void Update(DateTime nowUtc, bool recoveryEnabled, bool charaSelectVisible, bool loggedIn)
+    public void Update(
+        DateTime nowUtc,
+        bool recoveryEnabled,
+        bool automaticRecoveryEnabled,
+        bool charaSelectVisible,
+        bool loggedIn)
     {
-        state.UpdateStall(nowUtc, recoveryEnabled, charaSelectVisible);
+        automaticRecoveryEnabled &= recoveryEnabled;
+        state.UpdateStall(nowUtc, automaticRecoveryEnabled, charaSelectVisible);
         state.ResetAttemptHistoryWhenLoggedOutAndIdle(loggedIn);
 
-        if (state.TryConsumeAutomaticExpiry(nowUtc, recoveryEnabled))
-            ExecuteAttempt(recoveryEnabled, "automatic");
+        if (state.TryConsumeAutomaticExpiry(nowUtc, automaticRecoveryEnabled))
+            ExecuteAttempt(automaticRecoveryEnabled, "automatic");
 
         if (manualAttemptQueued)
         {
@@ -67,6 +73,10 @@ public sealed class CharacterSelectStallRecoveryService
         else if (!recoveryEnabled)
         {
             StatusText = "Disabled by global setting.";
+        }
+        else if (!automaticRecoveryEnabled)
+        {
+            StatusText = "Automatic recovery disabled by the VERMAXION master switch.";
         }
         else if (state.LoginConfirmationAccepted)
         {

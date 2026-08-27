@@ -73,7 +73,7 @@ public class ARPostProcessService : IDisposable
         {
             if (!canRequestPostprocess())
             {
-                log.Information("[AR] DAD handoff reservation owns the next cycle; VERMAXION did not request character postprocess.");
+                log.Information("[AR] New automatic work is gated; VERMAXION did not request character postprocess.");
                 return;
             }
 

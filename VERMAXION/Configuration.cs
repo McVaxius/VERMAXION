@@ -14,6 +14,7 @@ public class Configuration : IPluginConfiguration
     public int Version { get; set; } = 1;
 
     // --- Global UI Settings ---
+    public bool Enabled { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool AutoWidthMainTaskColumns { get; set; } = true;
     public bool DtrBarEnabled { get; set; } = true;

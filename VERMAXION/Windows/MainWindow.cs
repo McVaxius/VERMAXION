@@ -25,7 +25,7 @@ public class MainWindow : Window, IDisposable
         "vnavmesh",
         "YesAlready",
         "ADS",
-        "Teleporter",
+        "TeleporterPlugin",
         "Saucy",
         "TextAdvance",
         "XASlave",
@@ -121,11 +121,11 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.TextDisabled($"Account: {(string.IsNullOrWhiteSpace(account?.AccountAlias) ? "Not selected" : account.AccountAlias)}");
         ImGui.SameLine();
-        var enabled = config.Enabled;
+        var enabled = plugin.Configuration.Enabled;
         if (ImGui.Checkbox("Enabled", ref enabled))
         {
-            config.Enabled = enabled;
-            plugin.ConfigManager.SaveCurrentAccount();
+            plugin.Configuration.Enabled = enabled;
+            plugin.Configuration.Save();
         }
 
         ImGui.SameLine();
@@ -977,7 +977,8 @@ public class MainWindow : Window, IDisposable
         string name,
         IReadOnlySet<string> loadedPluginInternalNames)
     {
-        var loaded = loadedPluginInternalNames.Contains(name);
+        var internalName = name == "Teleporter" ? "TeleporterPlugin" : name;
+        var loaded = loadedPluginInternalNames.Contains(internalName);
         if (task == "Fishing" && name == "AutoHook")
         {
             if (!loaded)
