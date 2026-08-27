@@ -29,6 +29,11 @@ public class FCBuffService : IDisposable
     private readonly Plugin plugin;
 
     private const int BaseMinGil = 16000; // Base minimum gil required
+    private const string ContextMenuAddonName = "ContextMenu";
+    private const uint SealSweetenerStatusId = 414;
+    private const ushort SealSweetenerTwoMinimumStrength = 10;
+    private const uint SealSweetenerTwoCompanyActionId = 36;
+    private const uint ActivateEntryAddonRowId = 2817;
     private const int MaxPurchaseConfirmRetries = 3;
     private const int MaxPurchaseConfirmPromptReadRetries = 3;
     private const float QuartermasterWaypointArrivalDistance = 2.5f;
@@ -42,8 +47,8 @@ public class FCBuffService : IDisposable
     private static readonly TimeSpan WindowCloseEscapeFallbackDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan WindowCloseTimeout = TimeSpan.FromSeconds(20);
     private static readonly string[] QuartermasterNames = ["Quartermaster", "OIC Quartermaster"];
-    private static readonly string[] FcCleanupAddonNames = ["SelectYesno", "FreeCompanyExchange", "FreeCompanyAction", "SelectString", "FreeCompany"];
-    private static readonly string[] FcCallbackCloseAddonNames = ["FreeCompanyAction", "SelectString", "FreeCompany"];
+    private static readonly string[] FcCleanupAddonNames = ["SelectYesno", ContextMenuAddonName, "FreeCompanyExchange", "FreeCompanyAction", "SelectString", "FreeCompany"];
+    private static readonly string[] FcCallbackCloseAddonNames = [ContextMenuAddonName, "FreeCompanyAction", "SelectString", "FreeCompany"];
 
     private FCBuffState state = FCBuffState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -104,6 +109,7 @@ public class FCBuffService : IDisposable
         PurchaseLoop,
         ClosingWindows,
         ActivatingBuff,
+        WaitingForActivationMenu,
         WaitingForActivation,
         Complete,
         Failed
@@ -890,12 +896,39 @@ public class FCBuffService : IDisposable
                 }
                 activationAttempts++;
                 log.Information(
-                    $"[FCBuff] Requesting Seal Sweetener II activation from stock row {lastSealSweetenerListIndex}; attempt={activationAttempts}");
-                GameHelpers.FireAddonCallback(
+                    $"[FCBuff] Opening Seal Sweetener II context menu for stock row {lastSealSweetenerListIndex}; attempt={activationAttempts}");
+                if (!GameHelpers.TryFireAddonCallback(
                     "FreeCompanyAction",
                     true,
-                    2,
-                    (uint)Math.Max(0, lastSealSweetenerListIndex));
+                    1,
+                    (uint)Math.Max(0, lastSealSweetenerListIndex)))
+                {
+                    HandleUnverifiedActivation("The FreeCompanyAction context-menu callback failed.");
+                    break;
+                }
+                SetState(FCBuffState.WaitingForActivationMenu);
+                break;
+
+            case FCBuffState.WaitingForActivationMenu:
+                if (!GameHelpers.IsAddonVisible(ContextMenuAddonName))
+                {
+                    if (elapsed < 10)
+                        return;
+
+                    HandleUnverifiedActivation("The FC action context menu did not appear.");
+                    break;
+                }
+
+                if (elapsed < 0.5)
+                    return;
+
+                if (!TrySelectLocalizedActivateEntry(out var activationMenuDetail))
+                {
+                    HandleUnverifiedActivation(activationMenuDetail);
+                    break;
+                }
+
+                log.Information($"[FCBuff] {activationMenuDetail}");
                 SetState(FCBuffState.WaitingForActivation);
                 break;
 
@@ -916,29 +949,101 @@ public class FCBuffService : IDisposable
 
                 if (GameHelpers.IsAddonVisible("SelectYesno"))
                 {
-                    GameHelpers.TryClickYesIfPromptContains(
-                        ["Seal Sweetener II"],
-                        "FC action activation",
-                        allowUnreadable: false,
-                        out _);
+                    var localizedActionName = GetLocalizedSealSweetenerTwoName();
+                    if (!string.IsNullOrWhiteSpace(localizedActionName))
+                    {
+                        GameHelpers.TryClickYesIfPromptContains(
+                            [localizedActionName],
+                            "FC action activation",
+                            allowUnreadable: false,
+                            out _);
+                    }
                 }
 
                 if (elapsed < 10)
                     return;
 
-                if (activationAttempts == 1)
-                {
-                    log.Warning("[FCBuff] Cached activation was not verified; forcing FC stock reconciliation.");
-                    reconciliationRequired = true;
-                    lastSealSweetenerListIndex = -1;
-                    SetState(FCBuffState.CheckingBuffInventory);
-                }
-                else
-                {
-                    log.Error("[FCBuff] Seal Sweetener II activation remained unverified after reconciliation.");
-                    SetState(FCBuffState.Failed);
-                }
+                HandleUnverifiedActivation("Seal Sweetener II did not become active after confirmation.");
                 break;
+        }
+    }
+
+    private void HandleUnverifiedActivation(string reason)
+    {
+        if (GameHelpers.IsAddonVisible("SelectYesno"))
+            TryClickSelectYesnoNo("unverified FC action activation");
+        GameHelpers.TryCloseAddonByCallback(ContextMenuAddonName);
+
+        if (activationAttempts == 1)
+        {
+            log.Warning($"[FCBuff] {reason} Forcing FC stock reconciliation before the second activation attempt.");
+            reconciliationRequired = true;
+            lastSealSweetenerListIndex = -1;
+            SetState(FCBuffState.CheckingBuffInventory);
+            return;
+        }
+
+        log.Error($"[FCBuff] {reason} Seal Sweetener II activation remained unverified after reconciliation.");
+        SetState(FCBuffState.Failed);
+    }
+
+    private bool TrySelectLocalizedActivateEntry(out string detail)
+    {
+        detail = string.Empty;
+        var localizedActivateText = GetLocalizedAddonText(ActivateEntryAddonRowId);
+        if (string.IsNullOrWhiteSpace(localizedActivateText))
+        {
+            detail = $"Localized Activate text was unavailable from Addon row {ActivateEntryAddonRowId}.";
+            return false;
+        }
+
+        var addonPtr = Plugin.GameGui.GetAddonByName(ContextMenuAddonName, 1);
+        if (addonPtr == 0)
+        {
+            detail = "The FC action context menu was not available.";
+            return false;
+        }
+
+        try
+        {
+            var menu = new AddonMaster.ContextMenu(addonPtr);
+            var entries = menu.Entries.ToList();
+            var visibleEntries = string.Join(", ", entries.Select((entry, index) =>
+                $"{index}:'{NormalizeAddonText(entry.Text)}' enabled={entry.Enabled}"));
+            var matchingEntryWasDisabled = false;
+
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                var entryText = NormalizeAddonText(entry.Text);
+                if (!string.Equals(entryText, localizedActivateText, StringComparison.Ordinal))
+                    continue;
+
+                if (!entry.Enabled)
+                {
+                    matchingEntryWasDisabled = true;
+                    continue;
+                }
+
+                if (!entry.Select())
+                {
+                    detail = $"Localized Activate entry {i}:'{entryText}' could not be selected. Entries: {visibleEntries}";
+                    return false;
+                }
+
+                detail = $"Selected localized Activate entry {i}:'{entryText}'. Entries: {visibleEntries}";
+                return true;
+            }
+
+            detail = matchingEntryWasDisabled
+                ? $"The localized Activate entry was disabled. Entries: {visibleEntries}"
+                : $"The localized Activate entry was not present. Entries: {visibleEntries}";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            detail = $"Failed to inspect the FC action context menu: {ex.Message}";
+            return false;
         }
     }
 
@@ -1313,6 +1418,36 @@ public class FCBuffService : IDisposable
         return builder.ToString().Trim();
     }
 
+    private static string GetLocalizedAddonText(uint rowId)
+    {
+        try
+        {
+            var sheet = Plugin.DataManager.GetExcelSheet<Addon>();
+            return sheet.TryGetRow(rowId, out var row)
+                ? NormalizeAddonText(row.Text.ToString())
+                : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string GetLocalizedSealSweetenerTwoName()
+    {
+        try
+        {
+            var sheet = Plugin.DataManager.GetExcelSheet<CompanyAction>();
+            return sheet.TryGetRow(SealSweetenerTwoCompanyActionId, out var row)
+                ? NormalizeAddonText(row.Name.ToString())
+                : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
     private unsafe FcActionInventoryReadResult ReadSealSweetenerBuffs()
     {
         try
@@ -1425,17 +1560,13 @@ public class FCBuffService : IDisposable
         try
         {
             var player = Plugin.ObjectTable.LocalPlayer;
-            var sheet = Plugin.DataManager.GetExcelSheet<Status>();
-            if (player == null || sheet == null)
+            if (player == null)
                 return false;
 
             foreach (var status in player.StatusList)
             {
-                if (sheet.TryGetRow(status.StatusId, out var row) &&
-                    string.Equals(
-                        row.Name.ToString(),
-                        "Seal Sweetener II",
-                        StringComparison.Ordinal))
+                if (status.StatusId == SealSweetenerStatusId &&
+                    status.Param >= SealSweetenerTwoMinimumStrength)
                 {
                     return true;
                 }
