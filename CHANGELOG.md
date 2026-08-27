@@ -9,6 +9,7 @@
 ### Fixed
 
 - Ruby-route registration now accepts the completed Thavnair embark question when it is followed by the Endwalker eligibility warning, while still rejecting route text without `?`.
+- I212: FC Buff refill now recognizes active Seal Sweetener II/III by live status strength and uses the enabled localized context-menu action, completing only after activation is verified.
 
 ### Changed
 
