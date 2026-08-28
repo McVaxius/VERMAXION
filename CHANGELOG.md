@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-28 - Shared ground-navigation recovery
+
+### Changed
+
+- Centralized every VERMAXION ground movement and stop through VNavmeshIPC, which now suppresses healthy duplicate destinations and performs one jump plus one reissue only after a 12-second stall without 0.5 yalms of progress; Fashion Report and Cactpot no longer run separate recovery loops.
+
 ## 2026-08-28 - I243 progress-gated Fashion Report navigation
 
 ### Changed

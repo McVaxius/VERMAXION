@@ -666,7 +666,6 @@ public class FCBuffService : IDisposable
                 if (pathRetryCount < 5 &&
                     (pathRetryCount == 0 || (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 3))
                 {
-                    pathRetryCount++;
                     lastPathRetryTime = DateTime.UtcNow;
                     
                     // Navigate to Quartermaster location based on GC
@@ -674,8 +673,11 @@ public class FCBuffService : IDisposable
                     var navTarget = GetQuartermasterNavigationTarget(gcTerritory);
                     if (navTarget != Vector3.Zero)
                     {
-                        log.Information($"[FCBuff] Attempting to start navigation to Quartermaster (attempt {pathRetryCount}/5) via VNavmesh IPC");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(navTarget);
+                        if (plugin.VNavmeshIPC.PathfindAndMoveTo(navTarget))
+                        {
+                            pathRetryCount++;
+                            log.Information($"[FCBuff] Started navigation to Quartermaster (dispatch {pathRetryCount}/5) via VNavmesh IPC");
+                        }
                         SetState(FCBuffState.WaitingForQuartermasterArrival);
                     }
                     else
@@ -726,14 +728,15 @@ public class FCBuffService : IDisposable
                     plugin.VNavmeshIPC.Stop();
                     SetState(FCBuffState.TargetingQuartermaster);
                 }
-                // Retry pathfinding every 5 seconds if we haven't arrived (max 10 retries)
+                // Observe navigation every 5 seconds; the shared owner dispatches only for real recovery.
                 else if (pathRetryCount < 10 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
                 {
-                    pathRetryCount++;
                     lastPathRetryTime = DateTime.UtcNow;
-                    log.Information($"[FCBuff] Re-attempting pathfinding to Quartermaster (retry {pathRetryCount}/10, distance: {distance:F1}y)");
-                    plugin.VNavmeshIPC.Stop();
-                    plugin.VNavmeshIPC.PathfindAndMoveTo(targetPos);
+                    if (plugin.VNavmeshIPC.PathfindAndMoveTo(targetPos))
+                    {
+                        pathRetryCount++;
+                        log.Information($"[FCBuff] Dispatched Quartermaster navigation recovery {pathRetryCount}/10 (distance: {distance:F1}y)");
+                    }
                 }
                 else if (pathRetryCount >= 10 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
                 {
@@ -744,10 +747,10 @@ public class FCBuffService : IDisposable
                     // Try moving to a nearby position instead
                     var nearbyPos = targetPos + new Vector3(2, 0, 2); // Offset by 2 yalms
                     log.Information($"[FCBuff] Trying nearby position: {nearbyPos}");
-                    plugin.VNavmeshIPC.PathfindAndMoveTo(nearbyPos);
+                    var nearbyDispatched = plugin.VNavmeshIPC.PathfindAndMoveTo(nearbyPos);
                     
                     // Reset retry counter for the new attempt
-                    pathRetryCount = 1;
+                    pathRetryCount = nearbyDispatched ? 1 : 0;
                     lastPathRetryTime = DateTime.UtcNow;
                 }
                 else if (elapsed > 1)

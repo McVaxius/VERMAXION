@@ -5,6 +5,7 @@ using System.Numerics;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using VERMAXION.IPC;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -17,6 +18,7 @@ public class CactpotService : IDisposable
     private readonly IClientState clientState;
     private readonly ConfigManager configManager;
     private readonly SaucyMiniCactpotService saucyMiniCactpotService;
+    private readonly VNavmeshIPC vnavmesh;
 
     private const ushort GoldSaucerTerritoryId = 144;
     private const string MiniBrokerNpcName = "Mini Cactpot Broker";
@@ -29,7 +31,6 @@ public class CactpotService : IDisposable
         "purchase another",
     ];
     private static readonly Vector3 MiniBrokerPosition = new(-46.655319213867f, 1.5999846458435f, 20.395349502563f);
-    private const string MiniBrokerMoveCommand = "/vnav moveto -46.655319213867 1.5999846458435 20.395349502563";
     private const double MiniAetheryteSettleDelay = 8.0;
     private const double MiniNavigationRetryInterval = 5.0;
     private const float MiniArrivalDistance = 3.0f;
@@ -41,17 +42,10 @@ public class CactpotService : IDisposable
     private const double MiniLotteryDailyOpenTimeout = 20.0;
     private const double MiniLotteryDailyCloseTimeout = 120.0;
     private const double MiniNextTicketRetargetDelay = 2.0;
-    private const int MiniMaxPathfindsWithJumpAssist = 3;
-    private const int MiniJumpsPerArmedPathfind = 2;
-    private const int MiniMaxJumpsPerRun = 6;
-    private const double MiniJumpInterval = 4.0;
-    private const float MiniJumpStopDistance = 10f;
     private static readonly Vector3 JumboBrokerPosition = new(121.13345336914f, 13.001298904419f, -11.011554718018f);
     private static readonly Vector3 JumboCashierPosition = new(124.05115509033f, 13.002527236938f, -19.590528488159f);
     private const string JumboCashierNpcName = "Cactpot Cashier";
     private const int JumboMaxPayoutClaimCount = 3;
-    private const string JumboBrokerMoveCommand = "/vnav moveto 121.13345336914 13.001298904419 -11.011554718018";
-    private const string JumboCashierMoveCommand = "/vnav moveto 124.05115509033 13.002527236938 -19.590528488159";
     private const double JumboAetheryteSettleDelay = 8.0;
     private const double JumboNavigationRetryInterval = 5.0;
     private const float JumboArrivalDistance = 3.0f;
@@ -78,11 +72,7 @@ public class CactpotService : IDisposable
     private int currentJumboNumber;
     private DateTime lastMiniNavigationAttempt = DateTime.MinValue;
     private DateTime lastMiniTargetAttempt = DateTime.MinValue;
-    private DateTime lastMiniJumpTime = DateTime.MinValue;
-    private int miniPathfindAttempts;
     private int miniTargetAttempts;
-    private int miniJumpAssistAvailableJumps;
-    private int miniJumpAssistTotalJumps;
     private DateTime lastJumboNavigationAttempt = DateTime.MinValue;
     private DateTime lastJumboTargetAttempt = DateTime.MinValue;
     private DateTime lastJumboConfirmationAttemptAt = DateTime.MinValue;
@@ -168,13 +158,15 @@ public class CactpotService : IDisposable
         IPluginLog log,
         IClientState clientState,
         ConfigManager configManager,
-        SaucyMiniCactpotService saucyMiniCactpotService)
+        SaucyMiniCactpotService saucyMiniCactpotService,
+        VNavmeshIPC vnavmesh)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.clientState = clientState;
         this.configManager = configManager;
         this.saucyMiniCactpotService = saucyMiniCactpotService;
+        this.vnavmesh = vnavmesh;
     }
 
     public void StartMiniCactpot()
@@ -432,7 +424,7 @@ public class CactpotService : IDisposable
                     GameHelpers.IsPlayerAvailable())
                 {
                     log.Information("[Cactpot] Mini broker aetheryte travel settled, starting navigation");
-                    IssueMiniNavigation(MiniBrokerMoveCommand, MiniBrokerNpcName, true);
+                    IssueMiniNavigation(MiniBrokerPosition, MiniBrokerNpcName);
                     SetState(CactpotState.MiniWaitingForArrival);
                 }
                 else if (elapsed > 30)
@@ -459,12 +451,10 @@ public class CactpotService : IDisposable
                     SetState(CactpotState.Failed);
                     break;
                 }
-                else if (RetryMiniNavigationIfNeeded(MiniBrokerMoveCommand, MiniBrokerNpcName, true))
+                else if (RetryMiniNavigationIfNeeded(MiniBrokerPosition, MiniBrokerNpcName))
                 {
-                    // Keep feeding the broker waypoint until arrival is confirmed.
+                    // Shared navigation observes progress here and suppresses healthy duplicate requests.
                 }
-
-                TrySendMiniJumpAssist();
                 break;
 
             case CactpotState.MiniClosingToBroker:
@@ -723,7 +713,7 @@ public class CactpotService : IDisposable
 
             case CactpotState.JumboNavigatingToBroker:
                 log.Information("[Cactpot] Navigating to Jumbo Cactpot Broker");
-                IssueJumboNavigation(JumboBrokerMoveCommand, "Jumbo Cactpot Broker");
+                IssueJumboNavigation(JumboBrokerPosition, "Jumbo Cactpot Broker");
                 SetState(CactpotState.JumboWaitingForArrival);
                 break;
 
@@ -746,9 +736,9 @@ public class CactpotService : IDisposable
                     log.Error("[Cactpot] Timeout waiting to reach Jumbo Cactpot Broker");
                     SetState(CactpotState.Failed);
                 }
-                else if (RetryJumboNavigationIfNeeded(JumboBrokerMoveCommand, "Jumbo Cactpot Broker"))
+                else if (RetryJumboNavigationIfNeeded(JumboBrokerPosition, "Jumbo Cactpot Broker"))
                 {
-                    // Keep feeding the original waypoint path until it is time to stop and target.
+                    // Shared navigation observes progress here and suppresses healthy duplicate requests.
                 }
                 break;
 
@@ -979,7 +969,7 @@ public class CactpotService : IDisposable
 
             case CactpotState.JumboCheckNavigatingToCashier:
                 log.Information("[Cactpot] Navigating to {CashierName}", JumboCashierNpcName);
-                IssueJumboNavigation(JumboCashierMoveCommand, JumboCashierNpcName);
+                IssueJumboNavigation(JumboCashierPosition, JumboCashierNpcName);
                 SetState(CactpotState.JumboCheckWaitingForArrival);
                 break;
 
@@ -1002,9 +992,9 @@ public class CactpotService : IDisposable
                     log.Error("[Cactpot] Timeout waiting to reach {CashierName}", JumboCashierNpcName);
                     SetState(CactpotState.Failed);
                 }
-                else if (RetryJumboNavigationIfNeeded(JumboCashierMoveCommand, JumboCashierNpcName))
+                else if (RetryJumboNavigationIfNeeded(JumboCashierPosition, JumboCashierNpcName))
                 {
-                    // Keep feeding the original waypoint path until it is time to stop and target.
+                    // Shared navigation observes progress here and suppresses healthy duplicate requests.
                 }
                 break;
 
@@ -1363,12 +1353,10 @@ public class CactpotService : IDisposable
         {
             lastMiniTargetAttempt = DateTime.MinValue;
             miniTargetAttempts = 0;
-            miniJumpAssistAvailableJumps = 0;
         }
         else if (newState == CactpotState.MiniClosingToBroker)
         {
             lastMiniNavigationAttempt = DateTime.MinValue;
-            miniJumpAssistAvailableJumps = 0;
         }
         else if (newState == CactpotState.MiniNavigating)
         {
@@ -1724,11 +1712,7 @@ public class CactpotService : IDisposable
     {
         lastMiniNavigationAttempt = DateTime.MinValue;
         lastMiniTargetAttempt = DateTime.MinValue;
-        lastMiniJumpTime = DateTime.MinValue;
-        miniPathfindAttempts = 0;
         miniTargetAttempts = 0;
-        miniJumpAssistAvailableJumps = 0;
-        miniJumpAssistTotalJumps = 0;
     }
 
     private bool TryTransitionMiniWaypointToTargeting()
@@ -1776,14 +1760,13 @@ public class CactpotService : IDisposable
             return false;
         }
 
-        var dynamicMoveCommand = TryBuildMiniApproachMoveCommand(npcPosition, maxDistance, out var approachMoveCommand)
-            ? approachMoveCommand
-            : BuildMoveCommand(npcPosition);
+        var destination = TryBuildMiniApproachPosition(npcPosition, maxDistance, out var approachPosition)
+            ? approachPosition
+            : npcPosition;
 
         return RetryMiniNavigationIfNeeded(
-            dynamicMoveCommand,
-            $"{MiniBrokerNpcName} ({distance:F1}y > {maxDistance:F1}y, close approach after stop)",
-            false);
+            destination,
+            $"{MiniBrokerNpcName} ({distance:F1}y > {maxDistance:F1}y, close approach after stop)");
     }
 
     private bool TryTargetAndInteractMiniNpc()
@@ -1853,76 +1836,29 @@ public class CactpotService : IDisposable
 
     private void StopMiniNavigation()
     {
-        commandManager.ProcessCommand("/vnav stop");
+        vnavmesh.Stop();
     }
 
-    private void IssueMiniNavigation(string command, string destinationLabel, bool armJumpAssist)
+    private void IssueMiniNavigation(Vector3 destination, string destinationLabel)
     {
         lastMiniNavigationAttempt = DateTime.UtcNow;
-        commandManager.ProcessCommand(command);
-
-        if (!armJumpAssist)
-        {
-            log.Information($"[Cactpot] Mini close-in retry toward {destinationLabel}");
-            return;
-        }
-
-        miniPathfindAttempts++;
-        var addedJumpBudget = 0;
-        if (miniPathfindAttempts <= MiniMaxPathfindsWithJumpAssist &&
-            miniJumpAssistTotalJumps + miniJumpAssistAvailableJumps < MiniMaxJumpsPerRun)
-        {
-            var remainingBudget = MiniMaxJumpsPerRun - miniJumpAssistTotalJumps - miniJumpAssistAvailableJumps;
-            addedJumpBudget = Math.Min(MiniJumpsPerArmedPathfind, remainingBudget);
-            miniJumpAssistAvailableJumps += addedJumpBudget;
-        }
-
-        log.Information($"[Cactpot] Mini pathfind attempt {miniPathfindAttempts} toward {destinationLabel}; jump assist +{addedJumpBudget}, queued {miniJumpAssistAvailableJumps}, used {miniJumpAssistTotalJumps}/{MiniMaxJumpsPerRun}");
+        if (vnavmesh.PathfindAndMoveTo(destination))
+            log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
     }
 
-    private bool RetryMiniNavigationIfNeeded(string command, string destinationLabel, bool armJumpAssist)
+    private bool RetryMiniNavigationIfNeeded(Vector3 destination, string destinationLabel)
     {
         var now = DateTime.UtcNow;
         if ((now - lastMiniNavigationAttempt).TotalSeconds < MiniNavigationRetryInterval)
             return false;
 
-        IssueMiniNavigation(command, destinationLabel, armJumpAssist);
+        IssueMiniNavigation(destination, destinationLabel);
         return true;
     }
 
-    private void TrySendMiniJumpAssist()
+    private bool TryBuildMiniApproachPosition(Vector3 npcPosition, float maxDistance, out Vector3 position)
     {
-        if (miniJumpAssistAvailableJumps <= 0 || miniJumpAssistTotalJumps >= MiniMaxJumpsPerRun)
-            return;
-
-        if (!GameHelpers.IsPlayerAvailable())
-            return;
-
-        var player = Plugin.ObjectTable.LocalPlayer;
-        if (player == null)
-            return;
-
-        var distance = Vector3.Distance(player.Position, MiniBrokerPosition);
-        if (distance <= MiniJumpStopDistance)
-            return;
-
-        var now = DateTime.UtcNow;
-        if (lastMiniJumpTime != DateTime.MinValue &&
-            (now - lastMiniJumpTime).TotalSeconds < MiniJumpInterval)
-        {
-            return;
-        }
-
-        GameHelpers.SendJump();
-        lastMiniJumpTime = now;
-        miniJumpAssistAvailableJumps--;
-        miniJumpAssistTotalJumps++;
-        log.Information($"[Cactpot] Mini jump assist {miniJumpAssistTotalJumps}/{MiniMaxJumpsPerRun}; queued {miniJumpAssistAvailableJumps}, broker waypoint {distance:F1}y away");
-    }
-
-    private bool TryBuildMiniApproachMoveCommand(Vector3 npcPosition, float maxDistance, out string command)
-    {
-        command = string.Empty;
+        position = default;
 
         var player = Plugin.ObjectTable.LocalPlayer;
         if (player == null)
@@ -1934,8 +1870,7 @@ public class CactpotService : IDisposable
 
         direction = Vector3.Normalize(direction);
         var desiredStandOffDistance = MathF.Max(0.5f, maxDistance - 0.35f);
-        var approachPosition = npcPosition + (direction * desiredStandOffDistance);
-        command = BuildMoveCommand(approachPosition);
+        position = npcPosition + (direction * desiredStandOffDistance);
         return true;
     }
 
@@ -1958,7 +1893,7 @@ public class CactpotService : IDisposable
         }
 
         lastJumboNavigationStopAttempt = now;
-        commandManager.ProcessCommand("/vnav stop");
+        vnavmesh.Stop();
     }
 
     private void TickJumboCleanup(CactpotState settlingState)
@@ -2049,12 +1984,12 @@ public class CactpotService : IDisposable
             return false;
         }
 
-        var dynamicMoveCommand = TryBuildJumboApproachMoveCommand(npcPosition, maxDistance, out var approachMoveCommand)
-            ? approachMoveCommand
-            : BuildJumboMoveCommand(npcPosition);
+        var destination = TryBuildJumboApproachPosition(npcPosition, maxDistance, out var approachPosition)
+            ? approachPosition
+            : npcPosition;
 
         return RetryJumboNavigationIfNeeded(
-            dynamicMoveCommand,
+            destination,
             $"{npcName} ({distance:F1}y > {maxDistance:F1}y, close approach after stop)");
     }
 
@@ -2071,20 +2006,9 @@ public class CactpotService : IDisposable
         return true;
     }
 
-    private static string BuildJumboMoveCommand(Vector3 destination)
-        => BuildMoveCommand(destination);
-
-    private static string BuildMoveCommand(Vector3 destination)
+    private bool TryBuildJumboApproachPosition(Vector3 npcPosition, float maxDistance, out Vector3 position)
     {
-        var x = destination.X.ToString("0.############", CultureInfo.InvariantCulture);
-        var y = destination.Y.ToString("0.############", CultureInfo.InvariantCulture);
-        var z = destination.Z.ToString("0.############", CultureInfo.InvariantCulture);
-        return $"/vnav moveto {x} {y} {z}";
-    }
-
-    private bool TryBuildJumboApproachMoveCommand(Vector3 npcPosition, float maxDistance, out string command)
-    {
-        command = string.Empty;
+        position = default;
 
         var player = Plugin.ObjectTable.LocalPlayer;
         if (player == null)
@@ -2096,8 +2020,7 @@ public class CactpotService : IDisposable
 
         direction = Vector3.Normalize(direction);
         var desiredStandOffDistance = MathF.Max(0.5f, maxDistance - 0.35f);
-        var approachPosition = npcPosition + (direction * desiredStandOffDistance);
-        command = BuildJumboMoveCommand(approachPosition);
+        position = npcPosition + (direction * desiredStandOffDistance);
         return true;
     }
 
@@ -2121,21 +2044,21 @@ public class CactpotService : IDisposable
         return true;
     }
 
-    private void IssueJumboNavigation(string command, string destinationLabel)
+    private void IssueJumboNavigation(Vector3 destination, string destinationLabel)
     {
         lastJumboNavigationAttempt = DateTime.UtcNow;
         lastJumboNavigationStopAttempt = DateTime.MinValue;
-        commandManager.ProcessCommand(command);
-        log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
+        if (vnavmesh.PathfindAndMoveTo(destination))
+            log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
     }
 
-    private bool RetryJumboNavigationIfNeeded(string command, string destinationLabel)
+    private bool RetryJumboNavigationIfNeeded(Vector3 destination, string destinationLabel)
     {
         var now = DateTime.UtcNow;
         if ((now - lastJumboNavigationAttempt).TotalSeconds < JumboNavigationRetryInterval)
             return false;
 
-        IssueJumboNavigation(command, destinationLabel);
+        IssueJumboNavigation(destination, destinationLabel);
         return true;
     }
 

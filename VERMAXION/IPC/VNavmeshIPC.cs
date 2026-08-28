@@ -4,6 +4,8 @@ using System.Numerics;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
+using VERMAXION.Models;
+using VERMAXION.Services;
 
 namespace VERMAXION.IPC;
 
@@ -20,6 +22,7 @@ public class VNavmeshIPC : IDisposable
     private readonly ICallGateSubscriber<bool> pathIsRunningSubscriber;
     private readonly ICallGateSubscriber<bool> navIsReadySubscriber;
     private readonly ICallGateSubscriber<bool> pathfindInProgressSubscriber;
+    private readonly GroundNavigationRecoveryTracker groundRecovery = new();
     private DateTime nextFloorQueryFailureLogAt = DateTime.MinValue;
     private DateTime nextPathStatusFailureLogAt = DateTime.MinValue;
     private DateTime nextNavStatusFailureLogAt = DateTime.MinValue;
@@ -44,8 +47,22 @@ public class VNavmeshIPC : IDisposable
     
     public bool PathfindAndMoveTo(Vector3 position, bool fly = false)
     {
+        var action = GroundNavigationRecoveryAction.Suppress;
         try
         {
+            Vector3? playerPosition = !fly && GameHelpers.IsPlayerAvailable()
+                ? Plugin.ObjectTable.LocalPlayer?.Position
+                : null;
+            action = groundRecovery.Evaluate(position, fly, playerPosition, DateTime.UtcNow);
+            if (action == GroundNavigationRecoveryAction.Suppress)
+                return false;
+
+            if (action == GroundNavigationRecoveryAction.Recover)
+            {
+                log.Warning($"[VNavmeshIPC] Ground navigation stalled for {GroundNavigationRecoveryTracker.StallTimeout.TotalSeconds:F0}s; jumping once and reissuing {position}");
+                GameHelpers.SendJump();
+            }
+
             var x = position.X.ToString("F2", CultureInfo.InvariantCulture);
             var y = position.Y.ToString("F2", CultureInfo.InvariantCulture);
             var z = position.Z.ToString("F2", CultureInfo.InvariantCulture);
@@ -54,10 +71,15 @@ public class VNavmeshIPC : IDisposable
                 : $"/vnav moveto {x} {y} {z}";
             
             log.Debug($"[VNavmeshIPC] Sending: {cmd}");
-            return commandManager.ProcessCommand(cmd);
+            var dispatched = commandManager.ProcessCommand(cmd);
+            if (!dispatched && action == GroundNavigationRecoveryAction.Dispatch && !fly)
+                groundRecovery.Reset();
+            return dispatched;
         }
         catch (Exception ex)
         {
+            if (action == GroundNavigationRecoveryAction.Dispatch && !fly)
+                groundRecovery.Reset();
             log.Error($"[VNavmeshIPC] PathfindAndMoveTo failed: {ex.Message}");
             return false;
         }
@@ -65,6 +87,7 @@ public class VNavmeshIPC : IDisposable
     
     public bool Stop()
     {
+        groundRecovery.Reset();
         try
         {
             log.Debug("[VNavmeshIPC] Sending: /vnav stop");
@@ -195,5 +218,6 @@ public class VNavmeshIPC : IDisposable
 
     public void Dispose()
     {
+        groundRecovery.Reset();
     }
 }
