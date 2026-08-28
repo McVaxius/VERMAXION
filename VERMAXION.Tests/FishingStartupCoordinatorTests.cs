@@ -54,6 +54,7 @@ public sealed class FishingStartupCoordinatorTests
         Assert.True(coordinator.HasPendingRelogContinuation);
         Assert.Equal(1, runtime.RelogRequests);
         Assert.Equal("Low Fisher@World", runtime.LastRelogTarget);
+        Assert.Equal(FishingStartupTrigger.AutoRetainerPostprocess, runtime.LastStartupTrigger);
     }
 
     [Fact]
@@ -69,6 +70,7 @@ public sealed class FishingStartupCoordinatorTests
         Assert.True(coordinator.HasPendingRelogContinuation);
         Assert.Equal("Low Fisher@World", result.Selection.CharacterKey);
         Assert.Equal(1, runtime.RelogRequests);
+        Assert.Equal(FishingStartupTrigger.Manual, runtime.LastStartupTrigger);
     }
 
     [Fact]
@@ -854,6 +856,7 @@ public sealed class FishingStartupCoordinatorTests
         public int AbortRequests { get; private set; }
         public string LastRelogTarget { get; private set; } = string.Empty;
         public FishingRunMode LastRunMode { get; private set; }
+        public FishingStartupTrigger LastStartupTrigger { get; private set; }
         public DateTimeOffset LastRegistrationDeadline { get; private set; }
         public DateTimeOffset? ActiveRunRegistrationStartUtc { get; set; }
         public DateTimeOffset? QueueConfirmedRegistrationStartUtc { get; set; }
@@ -897,10 +900,16 @@ public sealed class FishingStartupCoordinatorTests
                 TerminalFailureRegistrationStartUtc = null;
         }
 
-        public bool BeginRun(FishingRunMode mode, string targetCharacterKey, DateTimeOffset registrationStartUtc, DateTimeOffset registrationDeadlineUtc)
+        public bool BeginRun(
+            FishingRunMode mode,
+            FishingStartupTrigger startupTrigger,
+            string targetCharacterKey,
+            DateTimeOffset registrationStartUtc,
+            DateTimeOffset registrationDeadlineUtc)
         {
             BeginRunRequests++;
             LastRunMode = mode;
+            LastStartupTrigger = startupTrigger;
             LastRegistrationDeadline = registrationDeadlineUtc;
             ActiveRunRegistrationStartUtc = registrationStartUtc.ToUniversalTime();
             return true;

@@ -1,5 +1,44 @@
 # VERMAXION Changelog
 
+## 2026-08-28 - I237 Choke-abo breeding-aware racing
+
+### Added
+
+- Added per-character Chocobo automation mode and Target Pedigree settings: Always Race by default, target pedigree G9, retirement rank 40, and preferred feed Grade 3. Defaults, character cloning, and account-default copying preserve all four values without silently normalizing corrupt saved ranges.
+- Added strict built-in-JSON clients for `ChokeAbo.Breeding.EnsureTargetCycle.V2`, `GetTargetCycleStatus.V2`, and `PauseTargetCycle.V2`. Version, unsigned Content ID, request ranges, required response fields, UTC eligibility, and known phases fail closed; V2 never falls back to V1.
+- Added current-character Choke-abo phase, racing block, readiness, game-action, reason, and covering-eligibility status to the existing Chocobo configuration area.
+
+### Changed
+
+- Always Race retains the fail-open `ChokeAbo.Breeding.ShouldBlockRacing.V1` behavior and makes no V2 calls.
+- Target Pedigree invokes Ensure at the real start boundary and after each completed race. VERMAXION retains the active task while Choke-abo owns immediate navigation/UI/purchase/feed work, resumes racing when yielded, and continues the ordinary race batch without further breeding calls once the target racer is ready.
+- Stable Target Pedigree waits and blocks use a distinct deferred terminal result, allow unrelated queued tasks to continue, and write neither completion nor failure timestamps. Only a completed configured daily race batch uses the existing daily completion fields.
+- Disabling active target racing, changing it to Always Race, global stop, and plugin disposal request a best-effort Choke-abo pause without blocking Full Stop or Always Race.
+- Exact retirement, covering, fledgling-selector, and adoption behavior remains capture-blocked in Choke-abo Stage 1; no live target-cycle acceptance is claimed.
+
+### Verification
+
+- Focused target-cycle and existing lifecycle policy coverage passes 60 tests. The Debug x64 VERMAXION project builds with zero errors and only the existing `PInvoke.User32` NU1601 warning. Packaging, publication, client control, and live-game testing were not performed.
+
+## 2026-08-28 - I236 scheduled Ocean Fishing offline hold
+
+### Added
+
+- Added the default-off global `Log out between scheduled Ocean Fishing voyages` setting and a persisted hold record containing its phase, completed/next registration times, snapshotted startup gate and wake time, logout/wake attempt times, and AutoRetainer multi-mode restoration ownership.
+- After an automatically scheduled voyage completes a verified Home or Inn return and `FishingRunLifecycle` finishes restoring AutoHook, AutoRetainer multi-mode, and YesAlready, the hold disables AutoRetainer multi-mode, sends `/logout`, confirms the ready Yes/No dialog, retries every five seconds, and waits offline until the snapshotted configured startup gate.
+- Wake restores AutoRetainer, requests one guarded first-character bootstrap login, waits for stable world readiness and character registration, then invokes the existing fishing startup coordinator with a dedicated scheduled-wake trigger. The existing candidate queue and relog coordinator still choose the eligible fisher.
+
+### Changed
+
+- Intentional holds suppress ordinary character-select recovery, window watching, fake-ready nudges, idle inn parking, AutoRetainer postprocess requests, and Before-AR startup. Disabling the feature or global master, and Full Stop, cancel the hold and restore AutoRetainer without forcing a login.
+- A logout that does not complete within 45 seconds is treated as a successful voyage with a warning: AutoRetainer is restored, the hold is cleared, and the character remains logged in. Manual/test runs and returns other than Home or Inn never create a hold.
+- Global Settings now retains its existing controls inside three collapsed groups: Display & DTR, Automation & Recovery, and Fishing. The account/character settings and Main Window window-watcher control are unchanged.
+
+### Verification
+
+- The focused Debug x64 offline-hold and protected Ocean Fishing regression command passes 14/14 tests, including default/legacy configuration, scheduled/manual and Home/Inn boundaries, future snapshotted wake calculation, persisted-phase resume, ordinary-automation suppression, one wake, cancellation, logout timeout restoration, return settlement, paired start cadence, and permanent movement lock.
+- The Debug x64 plugin build with `--no-restore` succeeds with zero errors and only the existing `PInvoke.User32` NU1601 resolution warning. The full suite, packaging, release flows, and live clients were not run; title-screen logout/wake/bootstrap acceptance remains explicitly not tested.
+
 ## 2026-08-27 - Ocean Fishing providers, route families, and dependency readiness
 
 ### Added
@@ -368,7 +407,7 @@
 - FCBuffService: Seal Sweetener check and purchase flow (stub - needs addon research)
 - VerminionService: Lord of Verminion 5x queue (stub - needs ContentsFinder research)
 - CactpotService: Mini Cactpot via Saucy, Jumbo Cactpot (stub - needs addon research)
-- ChocoboRaceService: Chocobo racing via Chocoholic commands (stub)
+- ChocoboRaceService: legacy external-command racing stub (later replaced by VERMAXION's native observable queue loop)
 - MainWindow: Status overview with task table, reset timers, manual run button
 - ConfigWindow: Left panel character list, right panel settings (FrenRider-style layout)
 - DTR bar entry with status display
@@ -379,4 +418,4 @@
 - FCBuffService: FreeCompanyAction addon interaction not implemented
 - CactpotService: Saucy command syntax needs verification
 - CactpotService: Jumbo Cactpot addon interaction not implemented
-- ChocoboRaceService: Chocoholic command syntax needs verification
+- ChocoboRaceService: legacy external-command path was still a stub (later superseded by native VERMAXION racing)

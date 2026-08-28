@@ -117,6 +117,7 @@ public class VermaxionEngine
     private readonly VerminionService verminionService;
     private readonly CactpotService cactpotService;
     private readonly ChocoboRaceService chocoboRaceService;
+    private readonly ChokeAboIpcClient chokeAboIpcClient;
     private readonly FashionReportService fashionReportService;
     private readonly VendorStockService vendorStockService;
     private readonly FishingService fishingService;
@@ -274,6 +275,7 @@ public class VermaxionEngine
         VerminionService verminionService,
         CactpotService cactpotService,
         ChocoboRaceService chocoboRaceService,
+        ChokeAboIpcClient chokeAboIpcClient,
         FashionReportService fashionReportService,
         VendorStockService vendorStockService,
         FishingService fishingService,
@@ -309,6 +311,7 @@ public class VermaxionEngine
         this.verminionService = verminionService;
         this.cactpotService = cactpotService;
         this.chocoboRaceService = chocoboRaceService;
+        this.chokeAboIpcClient = chokeAboIpcClient;
         this.fashionReportService = fashionReportService;
         this.vendorStockService = vendorStockService;
         this.fishingService = fishingService;
@@ -596,8 +599,40 @@ public class VermaxionEngine
             : TaskEligibility.NotDue($"Fashion Report is not due until {config.FashionReportNextReset:u}.");
     }
 
-    private static TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
-        => Due(config.EnableChocoboRacing, "Chocobo Racing", config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset);
+    private TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
+    {
+        var eligibility = Due(
+            config.EnableChocoboRacing,
+            "Chocobo Racing",
+            config.ChocoboRacingLastCompleted,
+            config.ChocoboRacingNextReset);
+        if (!eligibility.IsRunnable)
+            return eligibility;
+
+        if (!Enum.IsDefined(config.ChocoboAutomationMode))
+            return TaskEligibility.Blocked($"Saved Chocobo automation mode value {(int)config.ChocoboAutomationMode} is invalid.");
+
+        if (config.ChocoboAutomationMode == ChocoboAutomationMode.AlwaysRace)
+        {
+            return chokeAboIpcClient.ShouldBlockRacing()
+                ? TaskEligibility.Blocked("Choke-abo is breeding and no race chocobo is ready.")
+                : eligibility;
+        }
+
+        if (!ChokeAboTargetCycleProtocol.TryValidateSettings(
+                config.ChocoboTargetPedigree,
+                config.ChocoboRetirementRank,
+                config.ChocoboPreferredFeedGrade,
+                out var settingsError))
+        {
+            return TaskEligibility.Blocked(settingsError);
+        }
+
+        var status = chokeAboIpcClient.GetTargetCycleStatus(Plugin.PlayerState.ContentId);
+        return !status.Succeeded || status.Status == null
+            ? TaskEligibility.Blocked(status.Error)
+            : TaskEligibility.Runnable($"Choke-abo V2 phase: {status.Status.Phase}. {status.Status.Reason}");
+    }
 
     private static TaskEligibility EvaluateLootGoblin(CharacterConfig config)
         => Due(config.EnableLootGoblinMapGather, "LootGoblin Map Gather", config.LootGoblinMapGatherLastCompleted, config.LootGoblinMapGatherNextReset);
@@ -1431,40 +1466,62 @@ public class VermaxionEngine
                 if (activeConfig!.EnableChocoboRacing &&
                     ResetDetectionService.TaskNeedsRun(activeConfig.ChocoboRacingLastCompleted, activeConfig.ChocoboRacingNextReset))
                 {
-                    if (!chocoboRaceService.IsActive && !chocoboRaceService.IsComplete && !chocoboRaceService.IsFailed)
+                    if (!chocoboRaceService.IsActive &&
+                        !chocoboRaceService.IsComplete &&
+                        !chocoboRaceService.IsFailed &&
+                        !chocoboRaceService.IsDeferred)
                     {
-                        // Clean slate before starting Chocobo Racing
-                        log.Information("[Engine] Clean slate: clearing open UI before Chocobo Racing");
-                        ResetInteractionState();
+                        if (!chocoboRaceService.Start())
+                        {
+                            log.Information($"[Engine] Chocobo Racing deferred: {chocoboRaceService.StatusText}");
+                            AdvanceToNextTask(EngineState.RunningChocoboRacing);
+                            break;
+                        }
+
+                        if (chocoboRaceService.State != ChocoboRaceService.ChocoboState.WaitingForTargetCycle)
+                        {
+                            log.Information("[Engine] Clean slate: clearing open UI before Chocobo Racing");
+                            ResetInteractionState();
+                        }
 
                         MarkCurrentTaskWorkStarted();
-                        chocoboRaceService.Start();
                         return;
                     }
 
                     taskBindings[PostProcessTaskOrder.ChocoboRacing].Tick();
 
-                    if (chocoboRaceService.IsComplete)
+                    switch (ChocoboTargetCyclePolicy.ClassifyTerminal(
+                                chocoboRaceService.IsComplete,
+                                chocoboRaceService.IsFailed,
+                                chocoboRaceService.IsDeferred))
                     {
-                        var completedAt = DateTime.UtcNow;
-                        PersistCurrentCharacterConfig(config =>
+                        case ChocoboTaskTerminalAction.PersistCompletion:
                         {
-                            config.ChocoboRacingLastCompleted = completedAt;
-                            config.ChocoboRacingNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
-                            config.ChocoboRacingCompletedToday = true;
-                        }, "Chocobo Racing completion");
-                        chocoboRaceService.Reset();
-                        AdvanceToNextTask(EngineState.RunningChocoboRacing);
-                    }
-                    else if (chocoboRaceService.IsFailed)
-                    {
-                        log.Warning("[Engine] Chocobo Racing failed - continuing");
-                        runHadFailure = true;
-                        MarkDailyTaskFailed(
-                            taskName: "Chocobo Racing",
-                            clearLegacyFlag: config => config.ChocoboRacingCompletedToday = false);
-                        chocoboRaceService.Reset();
-                        AdvanceToNextTask(EngineState.RunningChocoboRacing);
+                            var completedAt = DateTime.UtcNow;
+                            PersistCurrentCharacterConfig(config =>
+                            {
+                                config.ChocoboRacingLastCompleted = completedAt;
+                                config.ChocoboRacingNextReset = ResetDetectionService.GetNextDailyReset(completedAt);
+                                config.ChocoboRacingCompletedToday = true;
+                            }, "Chocobo Racing completion");
+                            chocoboRaceService.Reset();
+                            AdvanceToNextTask(EngineState.RunningChocoboRacing);
+                            break;
+                        }
+                        case ChocoboTaskTerminalAction.PersistFailure:
+                            log.Warning("[Engine] Chocobo Racing failed - continuing");
+                            runHadFailure = true;
+                            MarkDailyTaskFailed(
+                                taskName: "Chocobo Racing",
+                                clearLegacyFlag: config => config.ChocoboRacingCompletedToday = false);
+                            chocoboRaceService.Reset();
+                            AdvanceToNextTask(EngineState.RunningChocoboRacing);
+                            break;
+                        case ChocoboTaskTerminalAction.AdvanceDeferred:
+                            log.Information($"[Engine] Chocobo Racing yielded without timestamps: {chocoboRaceService.StatusText}");
+                            chocoboRaceService.Reset();
+                            AdvanceToNextTask(EngineState.RunningChocoboRacing);
+                            break;
                     }
                 }
                 else

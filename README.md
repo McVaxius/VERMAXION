@@ -38,7 +38,7 @@ The persisted, enabled-by-default global `Enabled` master switch is controlled b
 - **Lord of Verminion** — Queue 5 intentional fails per week
 - **Mini Cactpot** — 3x daily via Saucy plugin
 - **Jumbo Cactpot** — Weekly submission (Saturdays)
-- **Chocobo Racing** — Configurable daily races via Chocoholic plugin
+- **Chocobo Racing** — Native observable daily race loop with Always Race and optional Choke-abo Target Pedigree modes
 - **Ocean Fishing** — Ordered per-account character fallback, ordered ADS fishing-stock preparation, verified queue/voyage lifecycle, and optional post-voyage discard/sell cleanup
 
 - **Character-select stall recovery** - An enabled-by-default recovery that arms whenever `CharaSelect` remains visible and the global master is on. After five minutes, it makes one guarded attempt to load entry 0. The Main Window shows a live `m:ss` countdown and keeps the same guarded `Load first character now` test control available manually.
@@ -47,6 +47,10 @@ The persisted, enabled-by-default global `Enabled` master switch is controlled b
 ## Automation ownership and ordering
 
 Every per-character `Enable*` feature has one explicit owner. The Task Order tab contains only the 18 engine-dispatched tasks and shows their catalog cadence/ownership metadata. Existing custom order and Before-AR/After-AR phase choices are retained during normalization.
+
+Chocobo Racing defaults to **Always Race**, which preserves the existing fail-open V1 Choke-abo guard and makes no V2 calls. **Target Pedigree** adds per-character target pedigree G2-G9, retirement rank 40-50, and preferred feed grade 1-3. It validates strict Content-ID-bound V2 status, invokes Ensure only at the real race-start boundary and after each completed race, waits while Choke-abo owns an immediate game action, and yields other VERMAXION tasks with a distinct deferred result at stable breeding waits or blocks. Deferred work records neither completion nor failure; only a completed configured daily race batch writes the existing timestamps. Disabling target racing, changing to Always Race, global stop, and plugin disposal request a best-effort safe-boundary pause.
+
+Stage 1 intentionally leaves Choke-abo's retirement, covering, fledgling-selector, and adoption actions capture-blocked. Use Choke-abo's `/chokeabo dpopup` recorder and supply its four generated capture files before treating the target cycle as complete or live-accepted.
 
 - **Ordered engine tasks:** Run through the configured task order. Retainer Equipping runs Before AR by default and is fully registered alongside Gear Updater, Highest Combat Job, Current Job Equipment, Seasonal Gear, Minion Roulette, and the existing tasks.
 - **Misc Commands hook:** Runs once at the beginning of an applicable After-AR or manual engine run, including when it is the only work. It never arms a Before-AR pass by itself.
@@ -88,7 +92,8 @@ Each AutoRetainer/manual run records a structured plan for every catalog entry: 
 - **AutoRetainer** (required for post-process hook)
 - **Ocean Fishing:** XA Database, AutoRetainer, Lifestream, AutoHook, and vnavmesh. ADS provides ordered fishing-stock purchases and is the only supported repair provider.
 - **Retainer Equipping:** AutoRetainer and a reachable retainer bell through the configured Lifestream route.
-- Saucy (Mini Cactpot) and Chocoholic (Chocobo Racing) — optional per feature
+- **Mini Cactpot:** Saucy is optional per feature.
+- **Chocobo Racing:** Choke-abo is optional for Always Race and required for Target Pedigree mode.
 
 Ocean Fishing does not require Questionable. It does not manage AutoHook presets, choose bait dynamically, or use local/self repair.
 

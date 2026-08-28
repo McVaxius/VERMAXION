@@ -38,6 +38,7 @@
     <Compile Include="..\VERMAXION\Models\SetupWizardModels.cs" Link="SetupWizardModels.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterSortPolicy.cs" Link="CharacterSortPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterConfig.cs" Link="CharacterConfig.cs" />
+    <Compile Include="..\VERMAXION\Models\ChokeAboTargetCycleModels.cs" Link="ChokeAboTargetCycleModels.cs" />
     <Compile Include="..\VERMAXION\Models\DadRunRequest.cs" Link="DadRunRequest.cs" />
     <Compile Include="..\VERMAXION\Models\DadRunStatus.cs" Link="DadRunStatus.cs" />
     <Compile Include="..\VERMAXION\Models\DadSelectionModels.cs" Link="DadSelectionModels.cs" />
@@ -50,6 +51,7 @@
     <Compile Include="..\VERMAXION\Models\EquipmentAutomationModels.cs" Link="EquipmentAutomationModels.cs" />
     <Compile Include="..\VERMAXION\Models\DadHandoffModels.cs" Link="DadHandoffModels.cs" />
     <Compile Include="..\VERMAXION\Services\FishingStartupCoordinator.cs" Link="FishingStartupCoordinator.cs" />
+    <Compile Include="..\VERMAXION\Services\ScheduledOfflineHoldCoordinator.cs" Link="ScheduledOfflineHoldCoordinator.cs" />
     <Compile Include="..\VERMAXION\Services\AccountConfigPersistence.cs" Link="AccountConfigPersistence.cs" />
     <Compile Include="..\VERMAXION\Services\AutoRetainerSelectionGuard.cs" Link="AutoRetainerSelectionGuard.cs" />
     <Compile Include="..\VERMAXION\Services\SaucyConfigurationAccessor.cs" Link="SaucyConfigurationAccessor.cs" />

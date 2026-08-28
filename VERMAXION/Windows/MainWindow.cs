@@ -124,6 +124,8 @@ public class MainWindow : Window, IDisposable
         var enabled = plugin.Configuration.Enabled;
         if (ImGui.Checkbox("Enabled", ref enabled))
         {
+            if (!enabled)
+                plugin.PauseCurrentTargetCycleBestEffort("VERMAXION global automation disabled");
             plugin.Configuration.Enabled = enabled;
             plugin.Configuration.Save();
         }

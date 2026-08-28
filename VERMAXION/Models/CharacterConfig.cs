@@ -67,6 +67,10 @@ public class CharacterConfig
     // --- Settings ---
     public int ChocoboRacesPerDay { get; set; } = 5;
     public bool SkipChocoboRacingAtRank50 { get; set; } = true;
+    public ChocoboAutomationMode ChocoboAutomationMode { get; set; } = ChocoboAutomationMode.AlwaysRace;
+    public int ChocoboTargetPedigree { get; set; } = 9;
+    public int ChocoboRetirementRank { get; set; } = 40;
+    public int ChocoboPreferredFeedGrade { get; set; } = 3;
     public int FCBuffPurchaseAttempts { get; set; } = 15;
     public int FCBuffMinPoints { get; set; } = 500000;
     public int FCBuffMinGil { get; set; } = 16000;
@@ -334,6 +338,10 @@ public class CharacterConfig
             RetainerEquipmentOriginalCollectOnly = RetainerEquipmentOriginalCollectOnly,
             ChocoboRacesPerDay = ChocoboRacesPerDay,
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
+            ChocoboAutomationMode = ChocoboAutomationMode,
+            ChocoboTargetPedigree = ChocoboTargetPedigree,
+            ChocoboRetirementRank = ChocoboRetirementRank,
+            ChocoboPreferredFeedGrade = ChocoboPreferredFeedGrade,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
             FCBuffMinGil = FCBuffMinGil,

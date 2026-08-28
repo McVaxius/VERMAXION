@@ -19,6 +19,17 @@ public enum FishingRunMode
     Test = 1,
 }
 
+public enum FishingStartupTrigger
+{
+    Clock,
+    WindowWatch,
+    AutoRetainerPostprocess,
+    Manual,
+    Test,
+    RelogContinuation,
+    ScheduledWake,
+}
+
 public enum OceanFishingProvider
 {
     VermaxionAutoHook = 0,
@@ -98,6 +109,7 @@ public static class OceanFishingRoutePolicy
 public sealed class FishingRunContext
 {
     public FishingRunMode Mode { get; init; }
+    public FishingStartupTrigger StartupTrigger { get; init; }
     public OceanFishingProvider Provider { get; init; }
     public string TargetCharacterKey { get; init; } = string.Empty;
     public DateTimeOffset RegistrationStartUtc { get; init; }
@@ -1122,6 +1134,106 @@ public readonly record struct OceanFishingRegistrationWindow(
     DateTimeOffset StartUtc,
     DateTimeOffset EndUtc);
 
+public enum ScheduledOfflineHoldPhase
+{
+    PreparingLogout = 0,
+    LoggingOut = 1,
+    Offline = 2,
+    Waking = 3,
+    WaitingForWorldReady = 4,
+    StartingFishing = 5,
+    Cancelling = 6,
+}
+
+public sealed class ScheduledOfflineHoldState
+{
+    public ScheduledOfflineHoldPhase Phase { get; set; }
+    public DateTimeOffset CompletedRegistrationStartUtc { get; set; }
+    public DateTimeOffset NextRegistrationStartUtc { get; set; }
+    public DateTimeOffset NextRegistrationEndUtc { get; set; }
+    public DateTimeOffset StartupWindowStartUtc { get; set; }
+    public DateTimeOffset StartupWindowEndUtc { get; set; }
+    public DateTimeOffset WakeAtUtc { get; set; }
+    public int PreWindowOffsetMinutes { get; set; }
+    public bool? InitialAutoRetainerMultiModeEnabled { get; set; }
+    public bool AutoRetainerMultiModeRestoreRequired { get; set; }
+    public DateTimeOffset? LogoutStartedAtUtc { get; set; }
+    public DateTimeOffset? LastLogoutAttemptUtc { get; set; }
+    public DateTimeOffset? LoggedOutAtUtc { get; set; }
+    public DateTimeOffset? WakeStartedAtUtc { get; set; }
+    public DateTimeOffset? WakeAttemptedAtUtc { get; set; }
+    public DateTimeOffset? WorldReadyAtUtc { get; set; }
+    public string CancellationReason { get; set; } = string.Empty;
+}
+
+public static class ScheduledOfflineHoldPolicy
+{
+    public static readonly TimeSpan LogoutRetryInterval = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan LogoutTimeout = TimeSpan.FromSeconds(45);
+
+    public static bool IsEligible(
+        bool featureEnabled,
+        bool masterEnabled,
+        FishingRunMode mode,
+        FishingStartupTrigger startupTrigger,
+        FishingReturnDestination returnDestination)
+        => featureEnabled &&
+           masterEnabled &&
+           mode == FishingRunMode.Scheduled &&
+           startupTrigger is not FishingStartupTrigger.Manual and not FishingStartupTrigger.Test &&
+           returnDestination is FishingReturnDestination.Home or FishingReturnDestination.Inn;
+
+    public static ScheduledOfflineHoldState Create(
+        DateTimeOffset nowUtc,
+        DateTimeOffset completedRegistrationStartUtc,
+        int preWindowOffsetMinutes)
+    {
+        var normalizedOffset = OceanFishingSchedulePolicy.NormalizePreWindowOffsetMinutes(preWindowOffsetMinutes);
+        var normalizedNow = nowUtc.ToUniversalTime();
+        var nextRegistration = OceanFishingSchedulePolicy.GetNextRegistrationWindowAfter(
+            nowUtc,
+            completedRegistrationStartUtc);
+        var startupWindow = OceanFishingSchedulePolicy.BuildStartupWindow(nextRegistration.StartUtc, normalizedOffset);
+        while (startupWindow.StartUtc <= normalizedNow)
+        {
+            nextRegistration = OceanFishingSchedulePolicy.BuildRegistrationWindow(
+                nextRegistration.StartUtc.AddHours(FishingDefaults.OceanFishingRegistrationIntervalHours));
+            startupWindow = OceanFishingSchedulePolicy.BuildStartupWindow(
+                nextRegistration.StartUtc,
+                normalizedOffset);
+        }
+        return new ScheduledOfflineHoldState
+        {
+            Phase = ScheduledOfflineHoldPhase.PreparingLogout,
+            CompletedRegistrationStartUtc = completedRegistrationStartUtc.ToUniversalTime(),
+            NextRegistrationStartUtc = nextRegistration.StartUtc,
+            NextRegistrationEndUtc = nextRegistration.EndUtc,
+            StartupWindowStartUtc = startupWindow.StartUtc,
+            StartupWindowEndUtc = startupWindow.EndUtc,
+            WakeAtUtc = startupWindow.StartUtc,
+            PreWindowOffsetMinutes = normalizedOffset,
+            LogoutStartedAtUtc = normalizedNow,
+        };
+    }
+
+    public static bool SuppressesOrdinaryAutomation(ScheduledOfflineHoldState? hold)
+        => hold != null;
+
+    public static bool ShouldAttemptLogout(ScheduledOfflineHoldState hold, DateTimeOffset nowUtc)
+        => !hold.LastLogoutAttemptUtc.HasValue ||
+           nowUtc.ToUniversalTime() - hold.LastLogoutAttemptUtc.Value >= LogoutRetryInterval;
+
+    public static bool HasLogoutTimedOut(ScheduledOfflineHoldState hold, DateTimeOffset nowUtc)
+        => hold.LogoutStartedAtUtc.HasValue &&
+           nowUtc.ToUniversalTime() - hold.LogoutStartedAtUtc.Value >= LogoutTimeout;
+
+    public static bool ShouldWake(ScheduledOfflineHoldState hold, DateTimeOffset nowUtc)
+        => nowUtc.ToUniversalTime() >= hold.WakeAtUtc;
+
+    public static bool HasWakeWindowExpired(ScheduledOfflineHoldState hold, DateTimeOffset nowUtc)
+        => nowUtc.ToUniversalTime() >= hold.StartupWindowEndUtc;
+}
+
 public static class OceanFishingSchedulePolicy
 {
     public static int NormalizePreWindowOffsetMinutes(int offsetMinutes)
@@ -1184,6 +1296,21 @@ public static class OceanFishingSchedulePolicy
 
     public static OceanFishingRegistrationWindow GetCurrentOrNextRegistrationWindow(DateTimeOffset nowUtc)
         => BuildRegistrationWindow(GetNextRegistrationStart(nowUtc.ToUniversalTime()));
+
+    public static OceanFishingRegistrationWindow GetNextRegistrationWindowAfter(
+        DateTimeOffset nowUtc,
+        DateTimeOffset previousRegistrationStartUtc)
+    {
+        var candidate = GetCurrentOrNextRegistrationWindow(nowUtc.ToUniversalTime());
+        var previous = previousRegistrationStartUtc.ToUniversalTime();
+        while (candidate.StartUtc <= previous)
+        {
+            candidate = BuildRegistrationWindow(
+                candidate.StartUtc.AddHours(FishingDefaults.OceanFishingRegistrationIntervalHours));
+        }
+
+        return candidate;
+    }
 
     private static DateTimeOffset GetNextRegistrationStart(DateTimeOffset nowUtc)
     {

@@ -60,6 +60,7 @@ public sealed class FishingService
     private readonly LifestreamIPC lifestream;
     private readonly AutoRetainerIPC autoRetainer;
     private readonly FishingRunLifecycle runLifecycle;
+    private readonly ScheduledOfflineHoldCoordinator scheduledOfflineHold;
     private readonly IFisherGearsetRuntime fisherGearsetRuntime;
     private readonly FisherFallbackService fisherFallbackService;
     private readonly IDutyState dutyState;
@@ -118,6 +119,9 @@ public sealed class FishingService
     private DateTime returnStartedAt = DateTime.MinValue;
     private uint returnStartedTerritory;
     private FishingRunMode activeRunMode;
+    private FishingStartupTrigger activeStartupTrigger;
+    private DateTimeOffset activeRegistrationStartUtc;
+    private FishingReturnDestination settledReturnDestination;
     private OceanFishingProvider activeProvider;
     private string lastError = string.Empty;
     private string statusDetail = string.Empty;
@@ -222,6 +226,7 @@ public sealed class FishingService
         LifestreamIPC lifestream,
         AutoRetainerIPC autoRetainer,
         FishingRunLifecycle runLifecycle,
+        ScheduledOfflineHoldCoordinator scheduledOfflineHold,
         IFisherGearsetRuntime fisherGearsetRuntime,
         IDutyState dutyState)
     {
@@ -235,6 +240,7 @@ public sealed class FishingService
         this.lifestream = lifestream;
         this.autoRetainer = autoRetainer;
         this.runLifecycle = runLifecycle;
+        this.scheduledOfflineHold = scheduledOfflineHold;
         this.fisherGearsetRuntime = fisherGearsetRuntime;
         fisherFallbackService = new FisherFallbackService(
             Plugin.DataManager,
@@ -259,7 +265,10 @@ public sealed class FishingService
         }
 
         activeRunMode = runLifecycle.Current.Mode;
+        activeStartupTrigger = runLifecycle.Current.StartupTrigger;
+        activeRegistrationStartUtc = runLifecycle.Current.RegistrationStartUtc;
         activeProvider = runLifecycle.Current.Provider;
+        settledReturnDestination = FishingReturnDestination.None;
         lastError = string.Empty;
         sawFishingContext = IsFishingContextActive();
         statusDetail = string.Empty;
@@ -364,6 +373,9 @@ public sealed class FishingService
         {
             runLifecycle.Cleanup("fishing service reset");
             activeRunMode = FishingRunMode.Scheduled;
+            activeStartupTrigger = FishingStartupTrigger.Clock;
+            activeRegistrationStartUtc = default;
+            settledReturnDestination = FishingReturnDestination.None;
         }
     }
 
@@ -662,7 +674,16 @@ public sealed class FishingService
             case FishingState.CleaningUpLifecycle:
                 runLifecycle.Update();
                 if (!runLifecycle.IsActive)
+                {
+                    scheduledOfflineHold.BeginAfterSuccessfulRun(
+                        activeRunMode,
+                        activeStartupTrigger,
+                        settledReturnDestination,
+                        activeRegistrationStartUtc,
+                        DateTimeOffset.UtcNow,
+                        configuration.OceanFishingPreWindowOffsetMinutes);
                     SetState(FishingState.Complete);
+                }
                 else
                     statusDetail = "Restoring AutoHook, AutoRetainer, and YesAlready";
                 break;
@@ -3687,7 +3708,9 @@ public sealed class FishingService
         if (TryReenterResultHandlingBeforeReturn("starting the configured return"))
             return;
 
-        var command = ResolveReturnCommand();
+        var operationSettings = GetActiveOperationSettings();
+        settledReturnDestination = operationSettings.ReturnDestination;
+        var command = FishingOperationPolicy.ResolveReturnCommand(operationSettings);
         if (!string.IsNullOrWhiteSpace(command))
         {
             log.Information($"[Fishing] Fishing context ended; returning with {command}");
