@@ -675,6 +675,15 @@ public class VermaxionEngine
         return TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false, automatedRun: false, "manual");
     }
 
+    public void TestNagYourMomSeriesRank()
+    {
+        var snapshot = momIPCClient.GetSeriesRank();
+        NagYourMomStatusText = snapshot.Success
+            ? $"Series rank test: {snapshot.Rank}"
+            : $"Series rank test failed: {snapshot.FailureReason}";
+        Plugin.ChatGui.Print($"[Vermaxion] {NagYourMomStatusText}");
+    }
+
     public bool ManualStartRetainerEquipping()
     {
         return TryBeginRun(
@@ -1539,6 +1548,27 @@ public class VermaxionEngine
                     }
 
                     var stopAtSeriesRank25 = nagRoutePlan.StopAtSeriesRank25;
+                    if (nagRoutePlan.Route == MomRunRoutes.CasualCc && stopAtSeriesRank25)
+                    {
+                        var rankSnapshot = momIPCClient.GetSeriesRank();
+                        if (!rankSnapshot.Success)
+                        {
+                            NagYourMomStatusText = $"Series rank read failed: {rankSnapshot.FailureReason}";
+                            runHadFailure = true;
+                            log.Warning($"[Engine] nag your mom Casual CC rank read failed; dispatch blocked: {rankSnapshot.FailureReason}");
+                            nagYourMomRouteCursor++;
+                            break;
+                        }
+
+                        if (rankSnapshot.Rank >= 25)
+                        {
+                            NagYourMomStatusText = $"Series rank {rankSnapshot.Rank} reached; Casual CC skipped";
+                            log.Information($"[Engine] nag your mom Casual CC skipped because series rank is already {rankSnapshot.Rank}");
+                            nagYourMomRouteCursor++;
+                            break;
+                        }
+                    }
+
                     var startResult = momIPCClient.StartRun(nagRoutePlan.RemainingRuns, activeConfig!.NagYourMomJob, stopAtSeriesRank25, nagRoutePlan.Route);
                     NagYourMomStatusText = startResult.Summary;
 

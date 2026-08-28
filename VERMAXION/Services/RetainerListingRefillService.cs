@@ -766,7 +766,7 @@ public sealed class RetainerListingRefillService
 
         closeThenFail = false;
         closeThenComplete = true;
-        closeMode = RetainerUiCloseMode.FullClose;
+        closeMode = RetainerUiCloseMode.ReturnToRetainerList;
         SetState(RefillState.ClosingRetainerUi, $"{status} Closing retainer UI...");
     }
 

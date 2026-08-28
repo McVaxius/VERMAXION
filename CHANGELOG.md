@@ -13,6 +13,8 @@
 - Ruby-route registration now accepts the completed Thavnair embark question when it is followed by the Endwalker eligibility warning, while still rejecting route text without `?`.
 - I212: FC Buff refill now recognizes active Seal Sweetener II/III by live status strength and uses the enabled localized context-menu action, completing only after activation is verified.
 - I227: The FC Buff rank 1-7 shortcut now records daily, weekly, and monthly completions at the configured cadence. Every AR uses the next daily reset only while the FC remains rank 1-7; rank 8+ and unknown ranks retain ordinary Every AR behavior.
+- I232: Restored the configured Casual CC series-rank-25 gate before mom dispatch and added a read-only dashboard/chat series-rank test.
+- I234: Low-inventory Refill Listings completion now closes child retainer surfaces while preserving the retainer list.
 
 ### Changed
 

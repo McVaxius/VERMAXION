@@ -390,7 +390,10 @@ public class MainWindow : Window, IDisposable
                     var remainingRuns = Math.Max(1, GetRemainingNagYourMomRuns(config, route));
                     var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route);
                     Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
-                }, "OK");
+                }, "OK",
+                secondaryButtonLabel: "Test Series Rank##MomSeriesRank",
+                secondaryOnClick: engine.TestNagYourMomSeriesRank,
+                secondaryButtonTooltip: "Read the current PvP series rank once without starting mom or changing configuration.");
             DrawTaskRow("nag your dad", config.EnableNagYourDad,
                 GetNagYourDadStatus(config, engine.NagYourDadStatusText, plugin.DadIPCClient.LastSubmissionStatus),
                 "run##Dad", () =>
@@ -1426,6 +1429,12 @@ public class MainWindow : Window, IDisposable
 
     private static string GetNagYourMomStatus(Models.CharacterConfig config, string engineStatus)
     {
+        if (engineStatus.StartsWith("Series rank test:", StringComparison.Ordinal) ||
+            engineStatus.StartsWith("Series rank test failed:", StringComparison.Ordinal))
+        {
+            return engineStatus;
+        }
+
         if (!config.EnableNagYourMom)
             return "Off";
 

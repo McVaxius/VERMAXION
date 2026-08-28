@@ -18,6 +18,7 @@ public sealed class MomIPCClient
     private readonly ICallGateSubscriber<bool> isReadySubscriber;
     private readonly ICallGateSubscriber<string> statusSubscriber;
     private readonly ICallGateSubscriber<string> rivalWingsAchievementGateSubscriber;
+    private readonly ICallGateSubscriber<string> seriesRankSubscriber;
     private readonly ICallGateSubscriber<string, string> startRunSubscriber;
     private readonly ICallGateSubscriber<int, string, string> startRunsSubscriber;
     private readonly ICallGateSubscriber<int, string, bool, string> startRunsWithOptionsSubscriber;
@@ -34,6 +35,7 @@ public sealed class MomIPCClient
         isReadySubscriber = pluginInterface.GetIpcSubscriber<bool>("mom.IsReady");
         statusSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetStatus");
         rivalWingsAchievementGateSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetRivalWingsAchievementGate");
+        seriesRankSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetSeriesRank");
         startRunSubscriber = pluginInterface.GetIpcSubscriber<string, string>("mom.StartRun");
         startRunsSubscriber = pluginInterface.GetIpcSubscriber<int, string, string>("mom.StartCcRuns");
         startRunsWithOptionsSubscriber = pluginInterface.GetIpcSubscriber<int, string, bool, string>("mom.StartCcRunsWithOptions");
@@ -72,6 +74,21 @@ public sealed class MomIPCClient
             Summary = "mom Rival Wings achievement gate unavailable.",
             FailureReason = "mom.GetRivalWingsAchievementGate failed or is not registered.",
         }, "[mom IPC] GetRivalWingsAchievementGate failed");
+
+    public SeriesRankSnapshot GetSeriesRank()
+    {
+        var snapshot = InvokeJson(seriesRankSubscriber, new SeriesRankSnapshot
+        {
+            FailureReason = "mom.GetSeriesRank failed or returned an unreadable result.",
+            Source = "mom IPC",
+            CapturedAtUtc = DateTime.UtcNow,
+        }, "[mom IPC] GetSeriesRank failed");
+
+        if (!snapshot.Success && string.IsNullOrWhiteSpace(snapshot.FailureReason))
+            snapshot.FailureReason = "mom.GetSeriesRank returned an invalid series rank.";
+
+        return snapshot;
+    }
 
     public bool TryGetStatus(out MomRunResult result)
     {
