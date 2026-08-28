@@ -164,6 +164,56 @@ public sealed class SixItemConfigurationTests
     }
 
     [Fact]
+    public void FcBuffActivationDefaultsOffPropagatesAndKeepsRefillActive()
+    {
+        var fresh = CharacterConfig.CreateNew();
+        Assert.False(fresh.AllowFCBuffActivation);
+
+        var legacy = JsonSerializer.Deserialize<CharacterConfig>("{\"EnableFCBuffRefill\":true}")!;
+        Assert.True(legacy.EnableFCBuffRefill);
+        Assert.False(legacy.AllowFCBuffActivation);
+
+        var configured = fresh;
+        configured.EnableFCBuffRefill = true;
+        configured.AllowFCBuffActivation = true;
+        Assert.True(configured.Clone().AllowFCBuffActivation);
+
+        var wizardTarget = CharacterConfig.CreateNew();
+        var wizardImpact = SetupWizardPolicy.GetImpact(SetupWizardKind.FcBuff, wizardTarget, configured);
+        SetupWizardPolicy.Apply(SetupWizardKind.FcBuff, configured, wizardTarget);
+        Assert.Contains(wizardImpact, change => change.Key == nameof(CharacterConfig.AllowFCBuffActivation));
+        Assert.True(wizardTarget.AllowFCBuffActivation);
+
+        var liveStock = new FcActionStockEntry { KnownSealSweetenerTwoCount = 3 };
+        Assert.Equal(
+            FcBuffStockAction.Reconcile,
+            FcBuffStockPolicy.Decide(
+                allowActivation: false,
+                sealSweetenerTwoAlreadyActive: true,
+                liveStock,
+                reconciliationRequired: true));
+
+        liveStock.KnownSealSweetenerTwoCount = 0;
+        Assert.Equal(
+            FcBuffStockAction.Purchase,
+            FcBuffStockPolicy.Decide(false, false, liveStock, reconciliationRequired: false));
+
+        liveStock.KnownSealSweetenerTwoCount = 3;
+        Assert.Equal(
+            FcBuffStockAction.Satisfied,
+            FcBuffStockPolicy.Decide(false, false, liveStock, reconciliationRequired: false));
+        Assert.Equal(3, liveStock.KnownSealSweetenerTwoCount);
+
+        Assert.Equal(
+            FcBuffStockAction.ActivateCached,
+            FcBuffStockPolicy.Decide(true, false, liveStock, reconciliationRequired: false));
+        const ulong fcId = 88;
+        var ledger = new Dictionary<ulong, FcActionStockEntry> { [fcId] = liveStock };
+        Assert.True(FcBuffStockPolicy.ApplyConfirmedActivation(ledger, fcId, DateTime.UtcNow));
+        Assert.Equal(2, liveStock.KnownSealSweetenerTwoCount);
+    }
+
+    [Fact]
     public void FcActiveActionNeverDecrementsButConfirmedActivationDoes()
     {
         const ulong fcId = 88;
@@ -174,7 +224,7 @@ public sealed class SixItemConfigurationTests
 
         Assert.Equal(
             FcBuffStockAction.Satisfied,
-            FcBuffStockPolicy.Decide(true, ledger[fcId], activationFailed: false));
+            FcBuffStockPolicy.Decide(true, true, ledger[fcId], reconciliationRequired: false));
         Assert.Equal(3, ledger[fcId].KnownSealSweetenerTwoCount);
         Assert.True(FcBuffStockPolicy.ApplyConfirmedActivation(ledger, fcId, DateTime.UtcNow));
         Assert.Equal(2, ledger[fcId].KnownSealSweetenerTwoCount);
@@ -196,7 +246,7 @@ public sealed class SixItemConfigurationTests
 
         Assert.Equal(
             FcBuffStockAction.Reconcile,
-            FcBuffStockPolicy.Decide(false, ledger[fcId], activationFailed: true));
+            FcBuffStockPolicy.Decide(true, false, ledger[fcId], reconciliationRequired: true));
         Assert.False(FcBuffStockPolicy.ApplyReconciliation(
             ledger,
             fcId,
@@ -223,6 +273,8 @@ public sealed class SixItemConfigurationTests
 
         Assert.Equal(0, reloaded[fcId].KnownSealSweetenerTwoCount);
         Assert.Equal(verified, reloaded[fcId].LastVerifiedAtUtc);
-        Assert.Equal(FcBuffStockAction.Reconcile, FcBuffStockPolicy.Decide(false, reloaded[fcId], false));
+        Assert.Equal(
+            FcBuffStockAction.Reconcile,
+            FcBuffStockPolicy.Decide(true, false, reloaded[fcId], reconciliationRequired: true));
     }
 }

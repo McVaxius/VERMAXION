@@ -1,5 +1,25 @@
 # VERMAXION Changelog
 
+## 2026-08-28 - I243 progress-gated Fashion Report navigation
+
+### Changed
+
+- Fashion Report now keeps a healthy Masked Rose vnavmesh path instead of replacing it every five seconds; a jump and fixed-route retry occur only after player movement remains below 0.5 yalms for 12 seconds.
+
+## 2026-08-28 - I242 default-off FC Buff activation
+
+### Added
+
+- Added the per-character `Allow VERMAXION to activate Seal Sweetener II` checkbox to the existing FC Buff controls and setup wizard. It defaults off for new and legacy configurations and follows character cloning and account-default synchronization.
+
+### Changed
+
+- FC Buff Refill still reconciles live Seal Sweetener II stock and uses the existing purchase flow when stock is empty. With activation disabled, positive stock completes without opening the activation menu, consuming a buff, or decrementing the VERMAXION stock ledger; explicit opt-in retains the verified activation path.
+
+### Verification
+
+- Added one focused regression for default-off configuration propagation, forced reconciliation, zero-stock purchasing, positive-stock no-activation, and preserved opt-in activation. The full suite, packaging, publication, clients, and live testing remain outside I242 scope.
+
 ## 2026-08-28 - I237 Choke-abo breeding-aware racing
 
 ### Added

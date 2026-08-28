@@ -37,6 +37,7 @@ public static class SetupWizardPolicy
                 break;
             case SetupWizardKind.FcBuff:
                 Add(nameof(CharacterConfig.EnableFCBuffRefill), "FC Buff enabled", current.EnableFCBuffRefill, draft.EnableFCBuffRefill);
+                Add(nameof(CharacterConfig.AllowFCBuffActivation), "Allow VERMAXION activation", current.AllowFCBuffActivation, draft.AllowFCBuffActivation);
                 Add(nameof(CharacterConfig.FCBuffPurchaseAttempts), "Purchase quantity", current.FCBuffPurchaseAttempts, draft.FCBuffPurchaseAttempts);
                 Add(nameof(CharacterConfig.FCBuffMinPoints), "Minimum FC points", current.FCBuffMinPoints, draft.FCBuffMinPoints);
                 Add(nameof(CharacterConfig.FCBuffMinGil), "Minimum gil", current.FCBuffMinGil, draft.FCBuffMinGil);
@@ -78,6 +79,7 @@ public static class SetupWizardPolicy
                 break;
             case SetupWizardKind.FcBuff:
                 target.EnableFCBuffRefill = source.EnableFCBuffRefill;
+                target.AllowFCBuffActivation = source.AllowFCBuffActivation;
                 target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
                 target.FCBuffMinPoints = source.FCBuffMinPoints;
                 target.FCBuffMinGil = source.FCBuffMinGil;

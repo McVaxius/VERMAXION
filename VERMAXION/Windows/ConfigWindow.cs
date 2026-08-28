@@ -927,6 +927,16 @@ public class ConfigWindow : Window, IDisposable
             if (fcBuff)
             {
                 ImGui.Indent();
+                var allowActivation = cc.AllowFCBuffActivation;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.AllowFCBuffActivation, ref allowActivation))
+                {
+                    cc.AllowFCBuffActivation = allowActivation;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "AllowFCBuffActivation", UIConstants.ConfigLabels.AllowFCBuffActivation,
+                    (source, target) => target.AllowFCBuffActivation = source.AllowFCBuffActivation);
+                ImGui.TextWrapped("Purchasing and live stock reconciliation remain enabled when activation is off.");
+
                 ImGui.Text("Frequency:");
                 ImGui.SameLine();
                 var fcBuffFrequency = cc.FCBuffFrequency;
@@ -3498,6 +3508,9 @@ public class ConfigWindow : Window, IDisposable
                 var enabled = wizardDraft.EnableFCBuffRefill;
                 if (ImGui.Checkbox("Enable FC Buff", ref enabled))
                     wizardDraft.EnableFCBuffRefill = enabled;
+                var allowActivation = wizardDraft.AllowFCBuffActivation;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.AllowFCBuffActivation, ref allowActivation))
+                    wizardDraft.AllowFCBuffActivation = allowActivation;
                 var frequency = wizardDraft.FCBuffFrequency;
                 if (ImGui.BeginCombo("Frequency", frequency.ToString()))
                 {
@@ -3524,7 +3537,7 @@ public class ConfigWindow : Window, IDisposable
                 var gil = wizardDraft.FCBuffMinGil;
                 if (ImGui.InputInt("Minimum gil", ref gil))
                     wizardDraft.FCBuffMinGil = Math.Max(0, gil);
-                ImGui.TextWrapped("Requires Free Company action access. Stock is cached by Free Company ID and only decremented after confirmed activation.");
+                ImGui.TextWrapped("Requires Free Company action access. Purchasing and live stock reconciliation remain enabled when activation is off; stock is decremented only after confirmed VERMAXION activation.");
                 break;
             }
             case SetupWizardKind.Fishing:
