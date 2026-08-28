@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Numerics;
 using System.Text.Json;
 using VERMAXION.Models;
 using Xunit;
@@ -37,6 +38,84 @@ public sealed class RecoveryPolicyTests : IDisposable
         { null, FCBuffFrequency.Weekly },
         { null, FCBuffFrequency.Monthly },
     };
+
+    [Fact]
+    public void GroundNavigationProgressRestartsTheStallWindow()
+    {
+        var tracker = new GroundNavigationRecoveryTracker();
+        var now = new DateTime(2026, 8, 28, 12, 0, 0, DateTimeKind.Utc);
+        var destination = new Vector3(10, 0, 10);
+
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, new Vector3(0.5f, 0, 0), now.AddSeconds(11)));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, new Vector3(0.5f, 0, 0), now.AddSeconds(22)));
+        Assert.Equal(GroundNavigationRecoveryAction.Recover, tracker.Evaluate(destination, false, new Vector3(0.5f, 0, 0), now.AddSeconds(23)));
+    }
+
+    [Fact]
+    public void GroundNavigationRecoversAtTwelveSecondsOnlyOncePerWindow()
+    {
+        var tracker = new GroundNavigationRecoveryTracker();
+        var now = new DateTime(2026, 8, 28, 12, 0, 0, DateTimeKind.Utc);
+        var destination = new Vector3(10, 0, 10);
+
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, Vector3.Zero, now.AddSeconds(11.999)));
+        Assert.Equal(GroundNavigationRecoveryAction.Recover, tracker.Evaluate(destination, false, Vector3.Zero, now.AddSeconds(12)));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, Vector3.Zero, now.AddSeconds(12)));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, Vector3.Zero, now.AddSeconds(23.999)));
+        Assert.Equal(GroundNavigationRecoveryAction.Recover, tracker.Evaluate(destination, false, Vector3.Zero, now.AddSeconds(24)));
+    }
+
+    [Fact]
+    public void GroundNavigationDispatchesOnlyMaterialDestinationChanges()
+    {
+        var tracker = new GroundNavigationRecoveryTracker();
+        var now = new DateTime(2026, 8, 28, 12, 0, 0, DateTimeKind.Utc);
+        var destination = new Vector3(10, 0, 10);
+
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination + new Vector3(0.49f, 0, 0), false, Vector3.Zero, now.AddSeconds(1)));
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination + new Vector3(0.5f, 0, 0), false, Vector3.Zero, now.AddSeconds(2)));
+    }
+
+    [Fact]
+    public void GroundNavigationResetMakesTheSameDestinationNewAgain()
+    {
+        var tracker = new GroundNavigationRecoveryTracker();
+        var now = new DateTime(2026, 8, 28, 12, 0, 0, DateTimeKind.Utc);
+        var destination = new Vector3(10, 0, 10);
+
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now));
+        tracker.Reset();
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now.AddSeconds(30)));
+    }
+
+    [Fact]
+    public void GroundNavigationUnavailablePlayerRestartsObservationWithoutRecovery()
+    {
+        var tracker = new GroundNavigationRecoveryTracker();
+        var now = new DateTime(2026, 8, 28, 12, 0, 0, DateTimeKind.Utc);
+        var destination = new Vector3(10, 0, 10);
+
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, null, now.AddSeconds(12)));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, Vector3.Zero, now.AddMinutes(5)));
+        Assert.Equal(GroundNavigationRecoveryAction.Recover, tracker.Evaluate(destination, false, Vector3.Zero, now.AddMinutes(5).AddSeconds(12)));
+    }
+
+    [Fact]
+    public void GroundNavigationFlyDispatchesDirectlyAndClearsGroundRecovery()
+    {
+        var tracker = new GroundNavigationRecoveryTracker();
+        var now = new DateTime(2026, 8, 28, 12, 0, 0, DateTimeKind.Utc);
+        var destination = new Vector3(10, 0, 10);
+
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now));
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, true, Vector3.Zero, now.AddSeconds(12)));
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, true, null, now.AddSeconds(12.5)));
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, Vector3.Zero, now.AddSeconds(13)));
+    }
 
     [Fact]
     public void WatchdogTimesOutOnlyWhenUnpausedWithoutProgress()

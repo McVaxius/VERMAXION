@@ -1,7 +1,7 @@
 using System;
-using System.Globalization;
 using System.Numerics;
 using Dalamud.Plugin.Services;
+using VERMAXION.IPC;
 
 namespace VERMAXION.Services;
 
@@ -16,6 +16,7 @@ public class FashionReportService : IDisposable
     private readonly IClientState clientState;
     private readonly IObjectTable objectTable;
     private readonly IPluginLog log;
+    private readonly VNavmeshIPC vnavmesh;
 
     private FashionReportState state = FashionReportState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -27,11 +28,8 @@ public class FashionReportService : IDisposable
     private const ushort GoldSaucerTerritoryId = 144;
     private const string MaskedRoseName = "Masked Rose";
     private static readonly Vector3 MaskedRosePosition = new(55.864311218262f, 3.9997265338898f, 64.584785461426f);
-    private const string MaskedRoseMoveCommand = "/vnav moveto 55.864311218262 3.9997265338898 64.584785461426";
     private const double AetheryteSettleDelaySeconds = 8.0;
     private const double NavigationRetryIntervalSeconds = 5.0;
-    private const float NavigationProgressDistance = 0.5f;
-    private const double NavigationNoProgressThresholdSeconds = 12.0;
     private const float ArrivalDistance = 3.0f;
     private const double ArrivalTimeoutSeconds = 60.0;
     private const double CloseApproachTimeoutSeconds = 20.0;
@@ -46,8 +44,6 @@ public class FashionReportService : IDisposable
     private DateTime lastTargetAttempt = DateTime.MinValue;
     private DateTime lastDialogueAdvanceTime = DateTime.MinValue;
     private DateTime lastFashionCheckCloseTime = DateTime.MinValue;
-    private Vector3? mainNavigationProgressPosition;
-    private DateTime mainNavigationLastProgressAt = DateTime.MinValue;
     private int targetAttempts;
 
     public enum FashionReportState
@@ -73,12 +69,18 @@ public class FashionReportService : IDisposable
     public bool IsComplete => state == FashionReportState.Complete;
     public bool IsFailed => state == FashionReportState.Failed;
 
-    public FashionReportService(ICommandManager commandManager, IClientState clientState, IObjectTable objectTable, IPluginLog log)
+    public FashionReportService(
+        ICommandManager commandManager,
+        IClientState clientState,
+        IObjectTable objectTable,
+        IPluginLog log,
+        VNavmeshIPC vnavmesh)
     {
         this.commandManager = commandManager;
         this.clientState = clientState;
         this.objectTable = objectTable;
         this.log = log;
+        this.vnavmesh = vnavmesh;
     }
 
     public void Start()
@@ -113,7 +115,6 @@ public class FashionReportService : IDisposable
         lastTargetAttempt = DateTime.MinValue;
         lastDialogueAdvanceTime = DateTime.MinValue;
         lastFashionCheckCloseTime = DateTime.MinValue;
-        ResetMainNavigationProgressTracking();
         targetAttempts = 0;
     }
 
@@ -153,8 +154,7 @@ public class FashionReportService : IDisposable
                     GameHelpers.IsPlayerAvailable())
                 {
                     log.Information("[FashionReport] Gold Saucer travel settled, starting navigation to Masked Rose");
-                    IssueNavigation(MaskedRoseMoveCommand, MaskedRoseName);
-                    StartMainNavigationProgressTracking();
+                    IssueNavigation(MaskedRosePosition, MaskedRoseName);
                     SetState(FashionReportState.WaitingForArrival);
                 }
                 else if (elapsed > 30)
@@ -178,9 +178,9 @@ public class FashionReportService : IDisposable
                 {
                     RetryOrFail("Timed out navigating to Masked Rose");
                 }
-                else if (RecoverMainNavigationIfStuck())
+                else if (RetryNavigationIfNeeded(MaskedRosePosition, MaskedRoseName))
                 {
-                    // Recover only after measured lack of movement; normal travel keeps its active path.
+                    // Shared navigation observes progress here and suppresses healthy duplicate requests.
                 }
                 break;
 
@@ -347,7 +347,6 @@ public class FashionReportService : IDisposable
     {
         lastNavigationAttempt = DateTime.MinValue;
         lastTargetAttempt = DateTime.MinValue;
-        ResetMainNavigationProgressTracking();
         targetAttempts = 0;
     }
 
@@ -396,12 +395,12 @@ public class FashionReportService : IDisposable
             return false;
         }
 
-        var dynamicMoveCommand = TryBuildApproachMoveCommand(npcPosition, maxDistance, out var approachMoveCommand)
-            ? approachMoveCommand
-            : BuildMoveCommand(npcPosition);
+        var destination = TryBuildApproachPosition(npcPosition, maxDistance, out var approachPosition)
+            ? approachPosition
+            : npcPosition;
 
         return RetryNavigationIfNeeded(
-            dynamicMoveCommand,
+            destination,
             $"{MaskedRoseName} ({distance:F1}y > {maxDistance:F1}y, close approach after stop)");
     }
 
@@ -472,85 +471,29 @@ public class FashionReportService : IDisposable
 
     private void StopNavigation()
     {
-        commandManager.ProcessCommand("/vnav stop");
+        vnavmesh.Stop();
     }
 
-    private void IssueNavigation(string command, string destinationLabel)
+    private void IssueNavigation(Vector3 destination, string destinationLabel)
     {
         lastNavigationAttempt = DateTime.UtcNow;
-        commandManager.ProcessCommand(command);
-        log.Debug($"[FashionReport] Issued vnav movement toward {destinationLabel}");
+        if (vnavmesh.PathfindAndMoveTo(destination))
+            log.Debug($"[FashionReport] Issued vnav movement toward {destinationLabel}");
     }
 
-    private bool RecoverMainNavigationIfStuck()
-    {
-        if (!GameHelpers.IsPlayerAvailable() || objectTable.LocalPlayer is not { } player)
-        {
-            ResetMainNavigationProgressTracking();
-            return false;
-        }
-
-        var now = DateTime.UtcNow;
-        if (!mainNavigationProgressPosition.HasValue || mainNavigationLastProgressAt == DateTime.MinValue)
-        {
-            StartMainNavigationProgressTracking(player.Position, now);
-            return false;
-        }
-
-        var movement = Vector3.Distance(player.Position, mainNavigationProgressPosition.Value);
-        if (movement >= NavigationProgressDistance)
-        {
-            StartMainNavigationProgressTracking(player.Position, now);
-            return false;
-        }
-
-        var noProgressAge = (now - mainNavigationLastProgressAt).TotalSeconds;
-        if (noProgressAge < NavigationNoProgressThresholdSeconds)
-            return false;
-
-        log.Warning($"[FashionReport] Masked Rose navigation made less than {NavigationProgressDistance:F1}y of progress for {noProgressAge:F1}s; jumping once and retrying the fixed route");
-        GameHelpers.SendJump();
-        IssueNavigation(MaskedRoseMoveCommand, MaskedRoseName);
-        StartMainNavigationProgressTracking(player.Position, now);
-        return true;
-    }
-
-    private void StartMainNavigationProgressTracking()
-    {
-        if (objectTable.LocalPlayer is { } player)
-        {
-            StartMainNavigationProgressTracking(player.Position, DateTime.UtcNow);
-            return;
-        }
-
-        ResetMainNavigationProgressTracking();
-    }
-
-    private void StartMainNavigationProgressTracking(Vector3 position, DateTime now)
-    {
-        mainNavigationProgressPosition = position;
-        mainNavigationLastProgressAt = now;
-    }
-
-    private void ResetMainNavigationProgressTracking()
-    {
-        mainNavigationProgressPosition = null;
-        mainNavigationLastProgressAt = DateTime.MinValue;
-    }
-
-    private bool RetryNavigationIfNeeded(string command, string destinationLabel)
+    private bool RetryNavigationIfNeeded(Vector3 destination, string destinationLabel)
     {
         var now = DateTime.UtcNow;
         if ((now - lastNavigationAttempt).TotalSeconds < NavigationRetryIntervalSeconds)
             return false;
 
-        IssueNavigation(command, destinationLabel);
+        IssueNavigation(destination, destinationLabel);
         return true;
     }
 
-    private bool TryBuildApproachMoveCommand(Vector3 npcPosition, float maxDistance, out string command)
+    private bool TryBuildApproachPosition(Vector3 npcPosition, float maxDistance, out Vector3 position)
     {
-        command = string.Empty;
+        position = default;
 
         var player = objectTable.LocalPlayer;
         if (player == null)
@@ -562,17 +505,8 @@ public class FashionReportService : IDisposable
 
         direction = Vector3.Normalize(direction);
         var desiredStandOffDistance = MathF.Max(0.5f, maxDistance - 0.35f);
-        var approachPosition = npcPosition + (direction * desiredStandOffDistance);
-        command = BuildMoveCommand(approachPosition);
+        position = npcPosition + (direction * desiredStandOffDistance);
         return true;
-    }
-
-    private static string BuildMoveCommand(Vector3 destination)
-    {
-        var x = destination.X.ToString("0.############", CultureInfo.InvariantCulture);
-        var y = destination.Y.ToString("0.############", CultureInfo.InvariantCulture);
-        var z = destination.Z.ToString("0.############", CultureInfo.InvariantCulture);
-        return $"/vnav moveto {x} {y} {z}";
     }
 
     private bool IsFashionReportUiVisible()
@@ -665,7 +599,6 @@ public class FashionReportService : IDisposable
         {
             lastNavigationAttempt = DateTime.MinValue;
             lastTargetAttempt = DateTime.MinValue;
-            ResetMainNavigationProgressTracking();
         }
         else if (newState == FashionReportState.ClosingToMaskedRose)
         {
@@ -675,7 +608,6 @@ public class FashionReportService : IDisposable
         {
             lastNavigationAttempt = DateTime.MinValue;
             lastTargetAttempt = DateTime.MinValue;
-            ResetMainNavigationProgressTracking();
             targetAttempts = 0;
         }
     }

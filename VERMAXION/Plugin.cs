@@ -203,13 +203,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         ConfigManager.OnCharacterChanged += OnCharacterChanged;
 
         // Initialize services
+        VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
         ResetDetectionService = new ResetDetectionService(Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
-        CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log));
+        CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient);
-        FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log);
+        FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
         StylistIPC = new StylistIPC(PluginInterface, Log);
         EquipmentAutomationRuntime = new NativeEquipmentAutomationRuntime(
@@ -233,7 +234,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             FisherGearsetRuntime,
             Log,
             message => ChatGui.Print(message));
-        VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
         LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         var alliedSocietyBridge = new QuestionableCompanionAlliedSocietyBridge();
         AlliedSocietyService = new AlliedSocietyService(

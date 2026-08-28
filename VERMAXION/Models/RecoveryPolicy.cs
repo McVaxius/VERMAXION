@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Numerics;
 using System.Text.Json;
 
 namespace VERMAXION.Models;
@@ -12,6 +13,80 @@ public static class TaskWatchdogPolicy
         => !paused
            && lastProgressAt != DateTime.MinValue
            && now - lastProgressAt >= (timeout ?? Timeout);
+}
+
+public enum GroundNavigationRecoveryAction
+{
+    Suppress,
+    Dispatch,
+    Recover,
+}
+
+public sealed class GroundNavigationRecoveryTracker
+{
+    public const float EquivalentDestinationDistance = 0.5f;
+    public static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(12);
+
+    private Vector3? destination;
+    private Vector3? progressPosition;
+    private DateTime lastProgressAt = DateTime.MinValue;
+
+    public GroundNavigationRecoveryAction Evaluate(
+        Vector3 requestedDestination,
+        bool fly,
+        Vector3? playerPosition,
+        DateTime now)
+    {
+        if (fly)
+        {
+            Reset();
+            return GroundNavigationRecoveryAction.Dispatch;
+        }
+
+        if (!destination.HasValue ||
+            Vector3.Distance(destination.Value, requestedDestination) >= EquivalentDestinationDistance)
+        {
+            destination = requestedDestination;
+            RestartProgressWindow(playerPosition, now);
+            return GroundNavigationRecoveryAction.Dispatch;
+        }
+
+        if (!playerPosition.HasValue)
+        {
+            RestartProgressWindow(null, now);
+            return GroundNavigationRecoveryAction.Suppress;
+        }
+
+        if (!progressPosition.HasValue || lastProgressAt == DateTime.MinValue)
+        {
+            RestartProgressWindow(playerPosition, now);
+            return GroundNavigationRecoveryAction.Suppress;
+        }
+
+        if (Vector3.Distance(progressPosition.Value, playerPosition.Value) >= EquivalentDestinationDistance)
+        {
+            RestartProgressWindow(playerPosition, now);
+            return GroundNavigationRecoveryAction.Suppress;
+        }
+
+        if (now - lastProgressAt < StallTimeout)
+            return GroundNavigationRecoveryAction.Suppress;
+
+        RestartProgressWindow(playerPosition, now);
+        return GroundNavigationRecoveryAction.Recover;
+    }
+
+    public void Reset()
+    {
+        destination = null;
+        RestartProgressWindow(null, DateTime.MinValue);
+    }
+
+    private void RestartProgressWindow(Vector3? playerPosition, DateTime now)
+    {
+        progressPosition = playerPosition;
+        lastProgressAt = playerPosition.HasValue ? now : DateTime.MinValue;
+    }
 }
 
 public static class FCBuffRecoveryPolicy
