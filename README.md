@@ -33,7 +33,7 @@ The persisted, enabled-by-default global `Enabled` master switch is controlled b
 
 ## Features
 
-- **FC Buff Refill** — Seal Sweetener II purchase/cast on an every-AR, daily, weekly, or monthly schedule
+- **FC Buff Refill** — Seal Sweetener II stock reconciliation and purchasing on an every-AR, daily, weekly, or monthly schedule, with per-character VERMAXION activation disabled by default
 - **Retainer Equipping** — Upgrade AutoRetainer-enabled combat retainers by compatible average item level and gatherers by Perception
 - **Lord of Verminion** — Queue 5 intentional fails per week
 - **Mini Cactpot** — 3x daily via Saucy plugin
@@ -66,7 +66,7 @@ Equipment automation uses the game's native gearset and recommended-equipment mo
 
 Retainer Equipping considers only retainers enabled in AutoRetainer for the current character. Combat completion and allocation use AutoRetainer-compatible average item level; gathering uses total Perception only. Its three source modes are inventory only, inventory plus Armoury Chest excluding saved-gearset items (default), and all inventory/Armoury gear. Player-equipped containers remain excluded, the non-unique filter is independent, and distinct physical items are allocated across both ring slots. AutoRetainer's collect-only state is checkpointed and restored on every exit path. Its yellow `WIP` Main Window row shows live readiness and can run only this ordered-engine task; an explicit click ignores the Retainer Equipping scheduling checkbox but does not run Misc Commands or any other configured task.
 
-FC Buff Refill keeps a persistent Seal Sweetener II stock ledger per Free Company ID. An already-active action does not consume cached stock; a verified activation decrements it once. Unknown stock, zero stock, and failed activation are reconciled through the FC interface before purchase checks.
+FC Buff Refill keeps a persistent Seal Sweetener II stock ledger per Free Company ID. VERMAXION activation is disabled by default per character: the task still reconciles live stock and follows the existing purchase flow at zero stock, but positive stock completes without opening the activation menu or decrementing the ledger. Enabling `Allow VERMAXION to activate Seal Sweetener II` preserves the opt-in activation path; an already-active action does not consume cached stock, and a verified VERMAXION activation decrements it once.
 
 Fishing stock is an ordered global catalog with explicit per-account/per-character enabled and target values. Versatile Lure defaults to enabled at 22; Plump Worm, Ragworm, and Krill default to disabled at 99. Catalog default changes never silently overwrite characters: use the row sync, all-catalog sync, or `Apply Default to ALL` controls. ADS receives each exact missing quantity in catalog order. Optional bait failures are reported without forfeiting fishing; Versatile Lure permits continuation when at least one remains and blocks at zero. If no saved Fisher gearset exists, or ten equip requests do not verify Fisher, VERMAXION reuses or buys exactly one Weathered Fishing Rod and equips it without creating or changing a saved gearset. Before any current-character or post-relog fishing preparation starts, VERMAXION also reads the live native Fisher level. Unavailable live state waits fail-closed, and a character at or above the configured cap is rejected even if XADB's saved roster is lower; only an explicit `Always Fish` selection can bypass that cap.
 

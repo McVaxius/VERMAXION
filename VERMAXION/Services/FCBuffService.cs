@@ -75,6 +75,7 @@ public class FCBuffService : IDisposable
     private ulong currentFreeCompanyId;
     private bool reconciliationRequired;
     private bool resumeAfterPurchase;
+    private bool allowActivation;
     private int activationAttempts;
     private int lastSealSweetenerListIndex = -1;
 
@@ -156,7 +157,7 @@ public class FCBuffService : IDisposable
         var config = configManager.GetActiveConfig();
         log.Information($"[FCBuff] Config Debug: CurrentAccountId='{configManager.CurrentAccountId}', SelectedCharacterKey='{configManager.SelectedCharacterKey}'");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
-        log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}");
+        log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}, AllowFCBuffActivation={config.AllowFCBuffActivation}");
         
         purchaseAttempts = FCBuffRecoveryPolicy.ClampPurchaseAttempts(config.FCBuffPurchaseAttempts);
         buyCount = 0;
@@ -165,12 +166,14 @@ public class FCBuffService : IDisposable
         ResetWindowCloseTracking();
         ResetCachedGCTerritory();
         currentFreeCompanyId = GetCurrentFreeCompanyId();
-        reconciliationRequired =
-            currentFreeCompanyId == 0 ||
-            !plugin.Configuration.FcActionStockByFreeCompanyId.TryGetValue(
-                currentFreeCompanyId,
-                out var cachedStock) ||
-            cachedStock.KnownSealSweetenerTwoCount <= 0;
+        allowActivation = config.AllowFCBuffActivation;
+        plugin.Configuration.FcActionStockByFreeCompanyId.TryGetValue(currentFreeCompanyId, out var cachedStock);
+        reconciliationRequired = FcBuffStockPolicy.Decide(
+            allowActivation,
+            sealSweetenerTwoAlreadyActive: false,
+            cachedStock,
+            reconciliationRequired: !allowActivation || currentFreeCompanyId == 0 || cachedStock == null || cachedStock.KnownSealSweetenerTwoCount <= 0)
+            == FcBuffStockAction.Reconcile;
         resumeAfterPurchase = false;
         activationAttempts = 0;
         lastSealSweetenerListIndex = -1;
@@ -388,7 +391,7 @@ public class FCBuffService : IDisposable
         {
             case FCBuffState.CheckingFCPoints:
                 if (elapsed < 1) return;
-                if (IsSealSweetenerTwoActive())
+                if (allowActivation && IsSealSweetenerTwoActive())
                 {
                     log.Information("[FCBuff] Seal Sweetener II is already active; stock is unchanged.");
                     SetState(FCBuffState.Complete);
@@ -521,15 +524,25 @@ public class FCBuffService : IDisposable
                     reconciliationRequired = false;
                     log.Information($"[FCBuff] Reconciled Seal Sweetener II count: {sealSweetenerCount}");
                     
-                    if (sealSweetenerCount == 0)
+                    var stockAction = FcBuffStockPolicy.Decide(
+                        allowActivation,
+                        sealSweetenerTwoAlreadyActive: false,
+                        plugin.Configuration.FcActionStockByFreeCompanyId[currentFreeCompanyId],
+                        reconciliationRequired: false);
+                    if (stockAction == FcBuffStockAction.Purchase)
                     {
                         log.Information("[FCBuff] No Seal Sweetener II found, proceeding with refill");
                         SetState(FCBuffState.CheckingIfRefillNeeded);
                     }
-                    else
+                    else if (stockAction == FcBuffStockAction.ActivateCached)
                     {
                         log.Information($"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II; activating one.");
                         SetState(FCBuffState.ActivatingBuff);
+                    }
+                    else
+                    {
+                        log.Information($"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II; activation is disabled, completing without consuming stock.");
+                        SetState(FCBuffState.Complete);
                     }
                 }
                 catch (Exception ex)
@@ -893,6 +906,14 @@ public class FCBuffService : IDisposable
             case FCBuffState.ActivatingBuff:
                 if (elapsed < 0.5)
                     return;
+                if (!allowActivation)
+                {
+                    log.Warning("[FCBuff] Activation state was reached while activation is disabled; forcing live stock reconciliation.");
+                    reconciliationRequired = true;
+                    lastSealSweetenerListIndex = -1;
+                    SetState(FCBuffState.CheckingBuffInventory);
+                    break;
+                }
                 if (lastSealSweetenerListIndex < 0)
                 {
                     var read = ReadSealSweetenerBuffs();

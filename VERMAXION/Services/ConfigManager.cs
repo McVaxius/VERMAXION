@@ -494,6 +494,7 @@ public class ConfigManager
         target.EnableMiniCactpot = source.EnableMiniCactpot;
         target.EnableChocoboRacing = source.EnableChocoboRacing;
         target.EnableFCBuffRefill = source.EnableFCBuffRefill;
+        target.AllowFCBuffActivation = source.AllowFCBuffActivation;
         target.EnableMinionRoulette = source.EnableMinionRoulette;
         target.EnableSeasonalGearRoulette = source.EnableSeasonalGearRoulette;
         target.EnableGearUpdater = source.EnableGearUpdater;

@@ -39,17 +39,20 @@ public enum FcBuffStockAction
 public static class FcBuffStockPolicy
 {
     public static FcBuffStockAction Decide(
+        bool allowActivation,
         bool sealSweetenerTwoAlreadyActive,
-        FcActionStockEntry? cachedStock,
-        bool activationFailed)
+        FcActionStockEntry? stock,
+        bool reconciliationRequired)
     {
-        if (sealSweetenerTwoAlreadyActive)
+        if (allowActivation && sealSweetenerTwoAlreadyActive)
             return FcBuffStockAction.Satisfied;
-        if (activationFailed)
+        if (reconciliationRequired || stock == null)
             return FcBuffStockAction.Reconcile;
-        return cachedStock is { KnownSealSweetenerTwoCount: > 0 }
+        if (stock.KnownSealSweetenerTwoCount <= 0)
+            return FcBuffStockAction.Purchase;
+        return allowActivation
             ? FcBuffStockAction.ActivateCached
-            : FcBuffStockAction.Reconcile;
+            : FcBuffStockAction.Satisfied;
     }
 
     public static bool ApplyReconciliation(

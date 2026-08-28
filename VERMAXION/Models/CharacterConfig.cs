@@ -13,6 +13,7 @@ public class CharacterConfig
     public bool EnableMiniCactpot { get; set; } = false;
     public bool EnableChocoboRacing { get; set; } = false;
     public bool EnableFCBuffRefill { get; set; } = false;
+    public bool AllowFCBuffActivation { get; set; } = false;
     public bool EnableMinionRoulette { get; set; } = false;
     public bool EnableSeasonalGearRoulette { get; set; } = false;
     public bool EnableGearUpdater { get; set; } = false;
@@ -295,6 +296,7 @@ public class CharacterConfig
             EnableMiniCactpot = EnableMiniCactpot,
             EnableChocoboRacing = EnableChocoboRacing,
             EnableFCBuffRefill = EnableFCBuffRefill,
+            AllowFCBuffActivation = AllowFCBuffActivation,
             EnableMinionRoulette = EnableMinionRoulette,
             EnableSeasonalGearRoulette = EnableSeasonalGearRoulette,
             EnableGearUpdater = EnableGearUpdater,

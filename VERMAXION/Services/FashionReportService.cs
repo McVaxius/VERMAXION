@@ -30,6 +30,8 @@ public class FashionReportService : IDisposable
     private const string MaskedRoseMoveCommand = "/vnav moveto 55.864311218262 3.9997265338898 64.584785461426";
     private const double AetheryteSettleDelaySeconds = 8.0;
     private const double NavigationRetryIntervalSeconds = 5.0;
+    private const float NavigationProgressDistance = 0.5f;
+    private const double NavigationNoProgressThresholdSeconds = 12.0;
     private const float ArrivalDistance = 3.0f;
     private const double ArrivalTimeoutSeconds = 60.0;
     private const double CloseApproachTimeoutSeconds = 20.0;
@@ -44,6 +46,8 @@ public class FashionReportService : IDisposable
     private DateTime lastTargetAttempt = DateTime.MinValue;
     private DateTime lastDialogueAdvanceTime = DateTime.MinValue;
     private DateTime lastFashionCheckCloseTime = DateTime.MinValue;
+    private Vector3? mainNavigationProgressPosition;
+    private DateTime mainNavigationLastProgressAt = DateTime.MinValue;
     private int targetAttempts;
 
     public enum FashionReportState
@@ -109,6 +113,7 @@ public class FashionReportService : IDisposable
         lastTargetAttempt = DateTime.MinValue;
         lastDialogueAdvanceTime = DateTime.MinValue;
         lastFashionCheckCloseTime = DateTime.MinValue;
+        ResetMainNavigationProgressTracking();
         targetAttempts = 0;
     }
 
@@ -149,6 +154,7 @@ public class FashionReportService : IDisposable
                 {
                     log.Information("[FashionReport] Gold Saucer travel settled, starting navigation to Masked Rose");
                     IssueNavigation(MaskedRoseMoveCommand, MaskedRoseName);
+                    StartMainNavigationProgressTracking();
                     SetState(FashionReportState.WaitingForArrival);
                 }
                 else if (elapsed > 30)
@@ -172,9 +178,9 @@ public class FashionReportService : IDisposable
                 {
                     RetryOrFail("Timed out navigating to Masked Rose");
                 }
-                else if (RetryNavigationIfNeeded(MaskedRoseMoveCommand, MaskedRoseName))
+                else if (RecoverMainNavigationIfStuck())
                 {
-                    // Keep feeding the waypoint until arrival is confirmed.
+                    // Recover only after measured lack of movement; normal travel keeps its active path.
                 }
                 break;
 
@@ -341,6 +347,7 @@ public class FashionReportService : IDisposable
     {
         lastNavigationAttempt = DateTime.MinValue;
         lastTargetAttempt = DateTime.MinValue;
+        ResetMainNavigationProgressTracking();
         targetAttempts = 0;
     }
 
@@ -475,6 +482,62 @@ public class FashionReportService : IDisposable
         log.Debug($"[FashionReport] Issued vnav movement toward {destinationLabel}");
     }
 
+    private bool RecoverMainNavigationIfStuck()
+    {
+        if (!GameHelpers.IsPlayerAvailable() || objectTable.LocalPlayer is not { } player)
+        {
+            ResetMainNavigationProgressTracking();
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (!mainNavigationProgressPosition.HasValue || mainNavigationLastProgressAt == DateTime.MinValue)
+        {
+            StartMainNavigationProgressTracking(player.Position, now);
+            return false;
+        }
+
+        var movement = Vector3.Distance(player.Position, mainNavigationProgressPosition.Value);
+        if (movement >= NavigationProgressDistance)
+        {
+            StartMainNavigationProgressTracking(player.Position, now);
+            return false;
+        }
+
+        var noProgressAge = (now - mainNavigationLastProgressAt).TotalSeconds;
+        if (noProgressAge < NavigationNoProgressThresholdSeconds)
+            return false;
+
+        log.Warning($"[FashionReport] Masked Rose navigation made less than {NavigationProgressDistance:F1}y of progress for {noProgressAge:F1}s; jumping once and retrying the fixed route");
+        GameHelpers.SendJump();
+        IssueNavigation(MaskedRoseMoveCommand, MaskedRoseName);
+        StartMainNavigationProgressTracking(player.Position, now);
+        return true;
+    }
+
+    private void StartMainNavigationProgressTracking()
+    {
+        if (objectTable.LocalPlayer is { } player)
+        {
+            StartMainNavigationProgressTracking(player.Position, DateTime.UtcNow);
+            return;
+        }
+
+        ResetMainNavigationProgressTracking();
+    }
+
+    private void StartMainNavigationProgressTracking(Vector3 position, DateTime now)
+    {
+        mainNavigationProgressPosition = position;
+        mainNavigationLastProgressAt = now;
+    }
+
+    private void ResetMainNavigationProgressTracking()
+    {
+        mainNavigationProgressPosition = null;
+        mainNavigationLastProgressAt = DateTime.MinValue;
+    }
+
     private bool RetryNavigationIfNeeded(string command, string destinationLabel)
     {
         var now = DateTime.UtcNow;
@@ -602,6 +665,7 @@ public class FashionReportService : IDisposable
         {
             lastNavigationAttempt = DateTime.MinValue;
             lastTargetAttempt = DateTime.MinValue;
+            ResetMainNavigationProgressTracking();
         }
         else if (newState == FashionReportState.ClosingToMaskedRose)
         {
@@ -611,6 +675,7 @@ public class FashionReportService : IDisposable
         {
             lastNavigationAttempt = DateTime.MinValue;
             lastTargetAttempt = DateTime.MinValue;
+            ResetMainNavigationProgressTracking();
             targetAttempts = 0;
         }
     }
