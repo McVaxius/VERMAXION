@@ -36,6 +36,7 @@ public sealed class FishingRunLifecycle
 
     public bool TryBegin(
         FishingRunMode mode,
+        FishingStartupTrigger startupTrigger,
         OceanFishingProvider provider,
         string targetCharacterKey,
         DateTimeOffset registrationStartUtc,
@@ -61,6 +62,7 @@ public sealed class FishingRunLifecycle
         var context = new FishingRunContext
         {
             Mode = mode,
+            StartupTrigger = startupTrigger,
             Provider = provider,
             TargetCharacterKey = targetCharacterKey.Trim(),
             RegistrationStartUtc = registrationStartUtc.ToUniversalTime(),
@@ -125,7 +127,7 @@ public sealed class FishingRunLifecycle
         }
 
         LastBeginError = string.Empty;
-        log.Information($"[Fishing][Lifecycle] Began {mode} run for {context.TargetCharacterKey}; provider={provider}, registration={context.RegistrationStartUtc:u}, deadline={context.RegistrationDeadlineUtc:u}, AR={multiMode.Enabled}, AutoHook={autoHookState.Enabled}");
+        log.Information($"[Fishing][Lifecycle] Began {mode} run for {context.TargetCharacterKey}; trigger={startupTrigger}, provider={provider}, registration={context.RegistrationStartUtc:u}, deadline={context.RegistrationDeadlineUtc:u}, AR={multiMode.Enabled}, AutoHook={autoHookState.Enabled}");
         return true;
     }
 

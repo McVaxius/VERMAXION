@@ -39,6 +39,9 @@ public class ConfigWindow : Window, IDisposable
     private bool wizardFcBuffCadenceResetRequested;
     private string oceanFishingProviderSyncStatus = string.Empty;
     private bool? oceanFishingProviderSyncSucceeded;
+    private ChokeAboTargetCycleCallResult? chokeAboTargetStatus;
+    private ulong chokeAboTargetStatusContentId;
+    private DateTime chokeAboTargetStatusNextRefreshUtc = DateTime.MinValue;
 
     private enum ConfigTab
     {
@@ -287,6 +290,8 @@ public class ConfigWindow : Window, IDisposable
         // --- Global Settings ---
         if (ImGui.CollapsingHeader(UIConstants.ConfigLabels.GlobalSettings, ImGuiTreeNodeFlags.DefaultOpen))
         {
+            if (ImGui.CollapsingHeader("Display & DTR"))
+            {
             var autoWidthMainTaskColumns = config.AutoWidthMainTaskColumns;
             if (ImGui.Checkbox(
                     UIConstants.ConfigLabels.AutoWidthMainTaskColumns,
@@ -309,47 +314,6 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
 
-            var autoRestoreRetainerChecking = config.AutoRestoreRetainerCheckingAfterWork;
-            if (ImGui.Checkbox(
-                    UIConstants.ConfigLabels.AutoRestoreRetainerCheckingAfterWork,
-                    ref autoRestoreRetainerChecking))
-            {
-                config.AutoRestoreRetainerCheckingAfterWork = autoRestoreRetainerChecking;
-                config.Save();
-            }
-            DrawHelpMarker(UIConstants.Tooltips.AutoRestoreRetainerCheckingAfterWork);
-            ImGui.Indent();
-            ImGui.TextWrapped("Works even when VERMAXION skips all tasks. Turn this off before intentionally disabling AutoRetainer checking for the current or previous character.");
-            ImGui.Unindent();
-
-            var enableCharacterSelectStallRecovery = config.EnableCharacterSelectStallRecovery;
-            if (ImGui.Checkbox(
-                    UIConstants.ConfigLabels.EnableCharacterSelectStallRecovery,
-                    ref enableCharacterSelectStallRecovery))
-            {
-                config.EnableCharacterSelectStallRecovery = enableCharacterSelectStallRecovery;
-                config.Save();
-            }
-            DrawHelpMarker(UIConstants.Tooltips.EnableCharacterSelectStallRecovery);
-
-            var listingActionDelay = Math.Clamp(config.RefillListingsActionDelayMs, 0, 2000);
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-            if (ImGui.InputInt("Listing action delay (ms)", ref listingActionDelay, 50, 250))
-            {
-                config.RefillListingsActionDelayMs = Math.Clamp(listingActionDelay, 0, 2000);
-                config.Save();
-            }
-            DrawHelpMarker("Delay after ordinary Refill Listings actions. Range: 0–2000 ms. Default: 250 ms. Setting 0 performs the next action without an added delay. Timeouts, navigation, close retries, and UI-settlement waits are unchanged.");
-
-            var listingInterItemDelay = Math.Clamp(config.RefillListingsInterItemDelayMs, 0, 2000);
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-            if (ImGui.InputInt("Listing inter-item delay (ms)", ref listingInterItemDelay, 50, 250))
-            {
-                config.RefillListingsInterItemDelayMs = Math.Clamp(listingInterItemDelay, 0, 2000);
-                config.Save();
-            }
-            DrawHelpMarker("Delay after a returned listing is verified and before the next listing is selected. Range: 0–2000 ms. Default: 250 ms. Menu clicks, verification polling, timeouts, navigation, closing, and UI-settlement waits are unchanged.");
-
             var dtrEnabled = config.DtrBarEnabled;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
             {
@@ -360,9 +324,9 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show/hide the DTR bar entry (server info bar).");
-            
+
             ImGui.SameLine();
-            
+
             var dtrMode = config.DtrBarMode;
             var dtrModes = new[] { "Text Only", "Icon+Text", "Icon Only" };
             ImGui.SetNextItemWidth(150);
@@ -407,6 +371,52 @@ public class ConfigWindow : Window, IDisposable
                 config.DtrIconDisabled = disabledIcon;
                 config.Save();
             }
+            }
+
+            if (ImGui.CollapsingHeader("Automation & Recovery"))
+            {
+
+            var autoRestoreRetainerChecking = config.AutoRestoreRetainerCheckingAfterWork;
+            if (ImGui.Checkbox(
+                    UIConstants.ConfigLabels.AutoRestoreRetainerCheckingAfterWork,
+                    ref autoRestoreRetainerChecking))
+            {
+                config.AutoRestoreRetainerCheckingAfterWork = autoRestoreRetainerChecking;
+                config.Save();
+            }
+            DrawHelpMarker(UIConstants.Tooltips.AutoRestoreRetainerCheckingAfterWork);
+            ImGui.Indent();
+            ImGui.TextWrapped("Works even when VERMAXION skips all tasks. Turn this off before intentionally disabling AutoRetainer checking for the current or previous character.");
+            ImGui.Unindent();
+
+            var enableCharacterSelectStallRecovery = config.EnableCharacterSelectStallRecovery;
+            if (ImGui.Checkbox(
+                    UIConstants.ConfigLabels.EnableCharacterSelectStallRecovery,
+                    ref enableCharacterSelectStallRecovery))
+            {
+                config.EnableCharacterSelectStallRecovery = enableCharacterSelectStallRecovery;
+                config.Save();
+            }
+            DrawHelpMarker(UIConstants.Tooltips.EnableCharacterSelectStallRecovery);
+
+            var listingActionDelay = Math.Clamp(config.RefillListingsActionDelayMs, 0, 2000);
+            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+            if (ImGui.InputInt("Listing action delay (ms)", ref listingActionDelay, 50, 250))
+            {
+                config.RefillListingsActionDelayMs = Math.Clamp(listingActionDelay, 0, 2000);
+                config.Save();
+            }
+            DrawHelpMarker("Delay after ordinary Refill Listings actions. Range: 0–2000 ms. Default: 250 ms. Setting 0 performs the next action without an added delay. Timeouts, navigation, close retries, and UI-settlement waits are unchanged.");
+
+            var listingInterItemDelay = Math.Clamp(config.RefillListingsInterItemDelayMs, 0, 2000);
+            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+            if (ImGui.InputInt("Listing inter-item delay (ms)", ref listingInterItemDelay, 50, 250))
+            {
+                config.RefillListingsInterItemDelayMs = Math.Clamp(listingInterItemDelay, 0, 2000);
+                config.Save();
+            }
+            DrawHelpMarker("Delay after a returned listing is verified and before the next listing is selected. Range: 0–2000 ms. Default: 250 ms. Menu clicks, verification polling, timeouts, navigation, closing, and UI-settlement waits are unchanged.");
+
 
             ImGui.Spacing();
             ImGui.Separator();
@@ -423,10 +433,10 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.SmallButton("Retainer Equipping"))
                 OpenWizard(SetupWizardKind.RetainerEquipping);
             ImGui.TextWrapped("Wizards stage changes and edit only the current account's Default Config after Apply. Existing characters remain unchanged until an explicit row sync or Apply Default to ALL.");
+            }
 
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Text("Fishing");
+            if (ImGui.CollapsingHeader("Fishing"))
+            {
 
             var fishingMode = config.FishingExecutionMode;
             if (ImGui.BeginCombo("Fishing mode", FormatFishingExecutionMode(fishingMode)))
@@ -522,11 +532,30 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawHelpMarker("Minutes relative to Ocean Fishing registration start. VERMAXION starts from this offset through the full 15-minute registration period; the closing boundary is excluded.");
 
+            var logoutBetweenVoyages = config.LogoutBetweenScheduledOceanFishingVoyages;
+            if (ImGui.Checkbox(
+                    "Log out between scheduled Ocean Fishing voyages",
+                    ref logoutBetweenVoyages))
+            {
+                config.LogoutBetweenScheduledOceanFishingVoyages = logoutBetweenVoyages;
+                config.Save();
+            }
+            DrawHelpMarker(
+                "After a successful automatically scheduled voyage returns Home or Inn and restores its external state, log out and wake at the snapshotted Ocean Fishing startup gate. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client.");
+            ImGui.TextDisabled($"Offline hold: {plugin.ScheduledOfflineHoldCoordinator.StatusText}");
+            if (config.ScheduledOfflineHold is { } hold)
+            {
+                ImGui.TextWrapped(
+                    $"Phase: {hold.Phase} · wake {hold.WakeAtUtc:u} · " +
+                    $"registration {hold.NextRegistrationStartUtc:u}–{hold.NextRegistrationEndUtc:u}");
+            }
+
             if (ImGui.SmallButton("Reset Fishing startup gate"))
                 plugin.ResetFishingStartupGate();
             DrawHelpMarker("Clears the current Ocean Fishing startup-window attempt guard so an explicit Fishing run can retry.");
 
             DrawFishingStockCatalogEditor();
+            }
         }
 
         ImGui.Separator();
@@ -596,6 +625,7 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.TextDisabled("Chocobo Racing:");
         ImGui.BulletText("VERMAXION - Handles observable one-race queue and completion loop");
+        ImGui.BulletText("Choke-abo - Owns Target Pedigree planning, feeding, and breeding handoffs when that mode is selected");
         ImGui.Spacing();
 
         ImGui.TextDisabled("dad / Astrope:");
@@ -770,7 +800,9 @@ public class ConfigWindow : Window, IDisposable
                     RequestConfirmation(
                         "Reset character settings?",
                         $"Replace all synchronized settings for {displayName} in {accountLabel} with the current Account default? Character completion history is reset only where the existing reset operation already does so.",
-                        () => configManager.ResetCharacterToDefault(charKey));
+                        () => RunConfigMutationWithTargetPause(
+                            () => configManager.ResetCharacterToDefault(charKey),
+                            "current character reset to account default"));
                 }
                 if (ImGui.MenuItem("Delete"))
                 {
@@ -829,7 +861,9 @@ public class ConfigWindow : Window, IDisposable
                     $"Replace synchronized settings for all {count} characters in {accountLabel} with the current Account default? Completion history remains character-specific.",
                     () =>
                     {
-                        var applied = configManager.ApplyDefaultToAllCharacters();
+                        var applied = RunConfigMutationWithTargetPause(
+                            configManager.ApplyDefaultToAllCharacters,
+                            "account default applied to all characters");
                         Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {applied} characters.");
                     });
             }
@@ -846,6 +880,12 @@ public class ConfigWindow : Window, IDisposable
         var enabled = cc.Enabled;
         if (ImGui.Checkbox($"{UIConstants.ConfigLabels.Enabled}##CharEnabled", ref enabled))
         {
+            if (!enabled &&
+                string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal) &&
+                cc.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
+            {
+                plugin.PauseCurrentTargetCycleBestEffort("current-character automation disabled");
+            }
             cc.Enabled = enabled;
             changed = true;
         }
@@ -1666,6 +1706,12 @@ public class ConfigWindow : Window, IDisposable
             var chocobo = cc.EnableChocoboRacing;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.ChocoboRacing, ref chocobo))
             {
+                if (!chocobo &&
+                    string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal) &&
+                    cc.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
+                {
+                    plugin.PauseCurrentTargetCycleBestEffort("Chocobo Racing disabled");
+                }
                 cc.EnableChocoboRacing = chocobo;
                 changed = true;
             }
@@ -1682,6 +1728,86 @@ public class ConfigWindow : Window, IDisposable
             if (chocobo)
             {
                 ImGui.Indent();
+
+                var chocoboMode = cc.ChocoboAutomationMode;
+                var modePreview = Enum.IsDefined(chocoboMode)
+                    ? chocoboMode == ChocoboAutomationMode.AlwaysRace ? "Always Race" : "Target Pedigree"
+                    : $"Invalid ({(int)chocoboMode})";
+                if (ImGui.BeginCombo("Automation mode", modePreview))
+                {
+                    foreach (var mode in Enum.GetValues<ChocoboAutomationMode>())
+                    {
+                        var selected = mode == chocoboMode;
+                        var label = mode == ChocoboAutomationMode.AlwaysRace ? "Always Race" : "Target Pedigree";
+                        if (ImGui.Selectable(label, selected))
+                        {
+                            if (chocoboMode == ChocoboAutomationMode.TargetPedigree &&
+                                mode == ChocoboAutomationMode.AlwaysRace &&
+                                string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
+                            {
+                                plugin.PauseCurrentTargetCycleBestEffort("Chocobo automation changed to Always Race");
+                            }
+
+                            cc.ChocoboAutomationMode = mode;
+                            chocoboMode = mode;
+                            changed = true;
+                        }
+                        if (selected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "ChocoboAutomationMode", "Chocobo automation mode",
+                    (source, target) => target.ChocoboAutomationMode = source.ChocoboAutomationMode);
+                ImGui.TextDisabled("Always Race keeps the existing fail-open V1 racing behavior. Target Pedigree requires strict Choke-abo V2 status.");
+
+                if (cc.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
+                {
+                    var targetPedigree = cc.ChocoboTargetPedigree;
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (ImGui.InputInt("Target pedigree", ref targetPedigree))
+                    {
+                        cc.ChocoboTargetPedigree = Math.Clamp(targetPedigree, 2, 9);
+                        changed = true;
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "ChocoboTargetPedigree", "Chocobo target pedigree",
+                        (source, target) => target.ChocoboTargetPedigree = source.ChocoboTargetPedigree);
+
+                    var retirementRank = cc.ChocoboRetirementRank;
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (ImGui.InputInt("Retirement rank", ref retirementRank))
+                    {
+                        cc.ChocoboRetirementRank = Math.Clamp(retirementRank, 40, 50);
+                        changed = true;
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "ChocoboRetirementRank", "Chocobo retirement rank",
+                        (source, target) => target.ChocoboRetirementRank = source.ChocoboRetirementRank);
+
+                    var preferredFeedGrade = cc.ChocoboPreferredFeedGrade;
+                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (ImGui.InputInt("Preferred feed grade", ref preferredFeedGrade))
+                    {
+                        cc.ChocoboPreferredFeedGrade = Math.Clamp(preferredFeedGrade, 1, 3);
+                        changed = true;
+                    }
+                    DrawDefaultOverrideButton(isDefault, configManager, "ChocoboPreferredFeedGrade", "Chocobo preferred feed grade",
+                        (source, target) => target.ChocoboPreferredFeedGrade = source.ChocoboPreferredFeedGrade);
+
+                    if (!ChokeAboTargetCycleProtocol.TryValidateSettings(
+                            cc.ChocoboTargetPedigree,
+                            cc.ChocoboRetirementRank,
+                            cc.ChocoboPreferredFeedGrade,
+                            out var targetSettingsError))
+                    {
+                        ImGui.TextColored(new Vector4(1f, 0.35f, 0.25f, 1f), targetSettingsError);
+                    }
+
+                    if (string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
+                        DrawChokeAboTargetStatus();
+                    else
+                        ImGui.TextDisabled("Choke-abo status is shown only for the live current character.");
+                }
+
                 var races = cc.ChocoboRacesPerDay;
                 ImGui.Text($"{UIConstants.ConfigLabels.RacesPerDay}:");
                 ImGui.SameLine();
@@ -2340,7 +2466,9 @@ public class ConfigWindow : Window, IDisposable
                     $"Apply the Account default to {differing} differing characters in {accountLabel}? Completion history remains character-specific.",
                     () =>
                     {
-                        var count = configManager.ApplyDefaultToAllCharacters();
+                        var count = RunConfigMutationWithTargetPause(
+                            configManager.ApplyDefaultToAllCharacters,
+                            "all default settings applied to all characters");
                         Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
                         Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
                     });
@@ -2775,6 +2903,69 @@ public class ConfigWindow : Window, IDisposable
     private static float GetCompactNumericInputWidth()
         => Math.Max(72f, ImGui.CalcTextSize("00000").X + (ImGui.GetStyle().FramePadding.X * 2f) + 18f);
 
+    private void DrawChokeAboTargetStatus()
+    {
+        var contentId = Plugin.PlayerState.ContentId;
+        var now = DateTime.UtcNow;
+        if (contentId != chokeAboTargetStatusContentId || now >= chokeAboTargetStatusNextRefreshUtc)
+        {
+            chokeAboTargetStatusContentId = contentId;
+            chokeAboTargetStatus = plugin.ChokeAboIpcClient.GetTargetCycleStatus(contentId);
+            chokeAboTargetStatusNextRefreshUtc = now.AddSeconds(1);
+        }
+
+        if (!chokeAboTargetStatus.HasValue)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Choke-abo V2: status unavailable");
+            return;
+        }
+
+        var result = chokeAboTargetStatus.Value;
+        if (!result.Succeeded || result.Status == null)
+        {
+            ImGui.TextColored(
+                new Vector4(1f, 0.55f, 0.2f, 1f),
+                $"Choke-abo V2: {result.Error}");
+            return;
+        }
+
+        var status = result.Status;
+        ImGui.Text($"Choke-abo V2: {status.Phase}");
+        ImGui.TextDisabled(
+            $"Block racing: {(status.ShouldBlockRacing ? "yes" : "no")} · " +
+            $"target ready: {(status.TargetReady ? "yes" : "no")} · " +
+            $"game action: {(status.GameActionInProgress ? "yes" : "no")}");
+        ImGui.TextWrapped(status.Reason);
+        if (status.NextCoveringEligibilityUtc.HasValue)
+            ImGui.TextDisabled($"Next covering eligibility: {status.NextCoveringEligibilityUtc.Value:u}");
+    }
+
+    private T RunConfigMutationWithTargetPause<T>(Func<T> mutation, string reason)
+    {
+        var targetWasActive = IsCurrentTargetAutomationEnabled();
+        var result = mutation();
+        if (targetWasActive && !IsCurrentTargetAutomationEnabled())
+            plugin.PauseCurrentTargetCycleBestEffort(reason, targetModeWasActive: true);
+        return result;
+    }
+
+    private void RunConfigMutationWithTargetPause(System.Action mutation, string reason)
+        => RunConfigMutationWithTargetPause(
+            () =>
+            {
+                mutation();
+                return true;
+            },
+            reason);
+
+    private bool IsCurrentTargetAutomationEnabled()
+    {
+        var active = plugin.ConfigManager.GetActiveConfig();
+        return active?.Enabled == true &&
+               active.EnableChocoboRacing &&
+               active.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree;
+    }
+
     private bool DrawResetButton(string id, System.Action reset)
     {
         ImGui.SameLine();
@@ -2830,8 +3021,13 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 if (ImGui.SmallButton($"Use default##{id}"))
                 {
-                    copy(account.DefaultConfig, selected);
-                    configManager.SaveCurrentAccount();
+                    RunConfigMutationWithTargetPause(
+                        () =>
+                        {
+                            copy(account.DefaultConfig, selected);
+                            configManager.SaveCurrentAccount();
+                        },
+                        $"account default changed {label}");
                 }
             }
             return;
@@ -2853,7 +3049,9 @@ public class ConfigWindow : Window, IDisposable
                 $"Apply the Account default value for {label} to {differing} differing characters in {accountLabel}?",
                 () =>
                 {
-                    var count = configManager.ApplyDefaultSettingToAllCharacters(label, copy);
+                    var count = RunConfigMutationWithTargetPause(
+                        () => configManager.ApplyDefaultSettingToAllCharacters(label, copy),
+                        $"account default {label} applied to all characters");
                     Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
                     Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
                 });
@@ -3512,7 +3710,9 @@ public class ConfigWindow : Window, IDisposable
 
         plugin.ConfigManager.SaveCurrentAccount();
         var appliedCharacterCount = applyToAllCharacters
-            ? plugin.ConfigManager.ApplyDefaultToAllCharacters()
+            ? RunConfigMutationWithTargetPause(
+                plugin.ConfigManager.ApplyDefaultToAllCharacters,
+                "setup wizard default applied to all characters")
             : 0;
         if (applyToAllCharacters && activeWizard == SetupWizardKind.FcBuff && wizardFcBuffCadenceResetRequested)
         {

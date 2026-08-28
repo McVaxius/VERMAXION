@@ -526,8 +526,7 @@ public class ConfigManager
         target.RetainerGearNonUniqueOnly = source.RetainerGearNonUniqueOnly;
         target.RetainerCombatItemLevelTarget = source.RetainerCombatItemLevelTarget;
         target.RetainerGatheringPerceptionTarget = source.RetainerGatheringPerceptionTarget;
-        target.ChocoboRacesPerDay = source.ChocoboRacesPerDay;
-        target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50;
+        ChocoboTargetCyclePolicy.CopySettings(source, target);
         target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
         target.FCBuffMinPoints = source.FCBuffMinPoints;
         target.FCBuffMinGil = source.FCBuffMinGil;

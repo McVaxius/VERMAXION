@@ -5,6 +5,7 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using VERMAXION.IPC;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -22,6 +23,7 @@ public class ChocoboRaceService : IDisposable
     private readonly ICondition condition;
     private readonly IPluginLog log;
     private readonly ConfigManager configManager;
+    private readonly ChokeAboIpcClient chokeAboIpcClient;
 
     // Open the Gold Saucer duty pane through the same CFC anchor used in the older working path,
     // then select Chocobo Racing by row for characters that have the full set unlocked.
@@ -40,10 +42,15 @@ public class ChocoboRaceService : IDisposable
     private DateTime lastJoinRetry = DateTime.MinValue;
     private uint returnHomeOriginTerritory;
     private string rankGateCheckReason = string.Empty;
+    private bool targetCycleEnabledForBatch;
+    private bool targetReadyForBatch;
+    private DateTime nextTargetStatusPollAt = DateTime.MinValue;
+    private string targetCycleStatusReason = string.Empty;
 
     public enum ChocoboState
     {
         Idle,
+        WaitingForTargetCycle,
         CheckingRaceChocoboRank,
         OpeningGoldSaucerRankCheck,
         ReadingGoldSaucerRankCheck,
@@ -61,16 +68,23 @@ public class ChocoboRaceService : IDisposable
         TestingGoldSaucerRank,
         Complete,
         Failed,
+        Deferred,
     }
 
     public ChocoboState State => state;
     public int CurrentAttempt => currentAttempt;
-    public bool IsActive => state != ChocoboState.Idle && state != ChocoboState.Complete && state != ChocoboState.Failed;
+    public bool IsActive => state != ChocoboState.Idle &&
+                            state != ChocoboState.Complete &&
+                            state != ChocoboState.Failed &&
+                            state != ChocoboState.Deferred;
     public bool IsComplete => state == ChocoboState.Complete;
     public bool IsFailed => state == ChocoboState.Failed;
+    public bool IsDeferred => state == ChocoboState.Deferred;
     public string StatusText => state switch
     {
         ChocoboState.Idle => "Idle",
+        ChocoboState.WaitingForTargetCycle => $"Choke-abo target work: {targetCycleStatusReason}",
+        ChocoboState.Deferred => $"Deferred: {targetCycleStatusReason}",
         ChocoboState.CheckingRaceChocoboRank => $"Checking rank before race {Math.Min(currentAttempt + 1, maxAttempts)}/{maxAttempts}",
         ChocoboState.OpeningGoldSaucerRankCheck => $"Opening GoldSaucerInfo rank fallback ({currentAttempt}/{maxAttempts})",
         ChocoboState.ReadingGoldSaucerRankCheck => $"Reading GoldSaucerInfo rank fallback ({currentAttempt}/{maxAttempts})",
@@ -78,15 +92,20 @@ public class ChocoboRaceService : IDisposable
     };
     public string GoldSaucerRankTestStatus { get; private set; } = "Not tested yet.";
 
-    public ChocoboRaceService(ICommandManager commandManager, IPluginLog log, ConfigManager configManager)
+    public ChocoboRaceService(
+        ICommandManager commandManager,
+        IPluginLog log,
+        ConfigManager configManager,
+        ChokeAboIpcClient chokeAboIpcClient)
     {
         this.commandManager = commandManager;
         this.log = log;
         this.condition = Plugin.Condition;
         this.configManager = configManager;
+        this.chokeAboIpcClient = chokeAboIpcClient;
     }
 
-    public void Start()
+    public bool Start()
     {
         // Get configured number of races from active character config
         var activeConfig = configManager?.GetActiveConfig();
@@ -97,8 +116,35 @@ public class ChocoboRaceService : IDisposable
         dutySelectionAttempts = 0;
         lastJoinRetry = DateTime.MinValue;
         returnHomeOriginTerritory = 0;
+        targetCycleEnabledForBatch = false;
+        targetReadyForBatch = false;
+        nextTargetStatusPollAt = DateTime.MinValue;
+        targetCycleStatusReason = string.Empty;
         isActive = true;
 
+        var mode = activeConfig?.ChocoboAutomationMode ?? ChocoboAutomationMode.AlwaysRace;
+        if (!Enum.IsDefined(mode))
+            return Defer($"Saved Chocobo automation mode value {(int)mode} is invalid.");
+
+        if (mode == ChocoboAutomationMode.AlwaysRace)
+        {
+            if (chokeAboIpcClient.ShouldBlockRacing())
+                return Defer("Choke-abo reports breeding with no race chocobo ready.");
+
+            BeginNextRace();
+            return true;
+        }
+
+        if (activeConfig == null)
+            return Defer("No active character configuration is available for Target Pedigree mode.");
+
+        targetCycleEnabledForBatch = true;
+        return HandleTargetCycleResult(
+            chokeAboIpcClient.EnsureTargetCycle(Plugin.PlayerState.ContentId, activeConfig));
+    }
+
+    private void BeginNextRace()
+    {
         if (IsRankGateEnabled())
         {
             BeginRankGateCheckForNextRace();
@@ -106,13 +152,14 @@ public class ChocoboRaceService : IDisposable
         }
 
         log.Information("[ChocoboRace] Using VERMAXION observable one-race loop");
-        StartFirstManualRace();
+        ContinueToNextRaceQueue();
     }
 
     public void RunTask()
     {
         log.Information("[VERMAXION] Manual Chocobo Racing triggered");
-        Start();
+        if (!Start())
+            Plugin.ChatGui.Print($"[Vermaxion] Chocobo Racing deferred: {targetCycleStatusReason}");
     }
 
     public void RequestGoldSaucerRankTest()
@@ -148,6 +195,10 @@ public class ChocoboRaceService : IDisposable
         lastJoinRetry = DateTime.MinValue;
         returnHomeOriginTerritory = 0;
         rankGateCheckReason = string.Empty;
+        targetCycleEnabledForBatch = false;
+        targetReadyForBatch = false;
+        nextTargetStatusPollAt = DateTime.MinValue;
+        targetCycleStatusReason = string.Empty;
     }
 
     public void Dispose() { }
@@ -271,13 +322,24 @@ public class ChocoboRaceService : IDisposable
 
     public void Update()
     {
-        if (state == ChocoboState.Idle || state == ChocoboState.Complete || state == ChocoboState.Failed)
+        if (state == ChocoboState.Idle ||
+            state == ChocoboState.Complete ||
+            state == ChocoboState.Failed ||
+            state == ChocoboState.Deferred)
             return;
 
         var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
 
         switch (state)
         {
+            case ChocoboState.WaitingForTargetCycle:
+                if (DateTime.UtcNow < nextTargetStatusPollAt)
+                    return;
+
+                HandleTargetCycleResult(
+                    chokeAboIpcClient.GetTargetCycleStatus(Plugin.PlayerState.ContentId));
+                return;
+
             case ChocoboState.CheckingRaceChocoboRank:
                 if (elapsed < 0.1)
                     return;
@@ -568,22 +630,26 @@ public class ChocoboRaceService : IDisposable
                     currentAttempt++;
                     log.Information($"[ChocoboRace] Race {currentAttempt}/{maxAttempts} complete");
 
-                    if (currentAttempt >= maxAttempts)
+                    if (targetCycleEnabledForBatch && !targetReadyForBatch)
+                    {
+                        var activeConfig = configManager.GetActiveConfig();
+                        if (activeConfig == null || activeConfig.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree)
+                        {
+                            Defer("Target Pedigree mode changed before the post-race Choke-abo handoff.");
+                            return;
+                        }
+
+                        HandleTargetCycleResult(
+                            chokeAboIpcClient.EnsureTargetCycle(Plugin.PlayerState.ContentId, activeConfig));
+                    }
+                    else if (currentAttempt >= maxAttempts)
                     {
                         log.Information($"[ChocoboRace] All {maxAttempts} races complete!");
                         SetState(ChocoboState.Complete);
                     }
                     else
                     {
-                        if (IsRankGateEnabled())
-                        {
-                            BeginRankGateCheckForNextRace();
-                        }
-                        else
-                        {
-                            log.Information($"[ChocoboRace] Starting race {currentAttempt + 1}/{maxAttempts}");
-                            SetState(ChocoboState.OpeningDutyFinder);
-                        }
+                        BeginNextRace();
                     }
                 }
                 else if (elapsed > 30)
@@ -651,6 +717,46 @@ public class ChocoboRaceService : IDisposable
         stateEnteredAt = DateTime.UtcNow;
         isActive = newState != ChocoboState.Idle &&
                    newState != ChocoboState.Complete &&
-                   newState != ChocoboState.Failed;
+                   newState != ChocoboState.Failed &&
+                   newState != ChocoboState.Deferred;
+    }
+
+    private bool HandleTargetCycleResult(ChokeAboTargetCycleCallResult result)
+    {
+        var decision = ChocoboTargetCyclePolicy.DecideHandoff(result, currentAttempt, maxAttempts);
+        targetCycleStatusReason = string.IsNullOrWhiteSpace(decision.Reason)
+            ? "Choke-abo returned no target-cycle reason."
+            : decision.Reason;
+
+        switch (decision.Action)
+        {
+            case ChocoboTargetHandoffAction.Wait:
+                if (state != ChocoboState.WaitingForTargetCycle)
+                    SetState(ChocoboState.WaitingForTargetCycle);
+                nextTargetStatusPollAt = DateTime.UtcNow.AddSeconds(1);
+                return true;
+
+            case ChocoboTargetHandoffAction.Race:
+                targetReadyForBatch |= decision.TargetReady;
+                log.Information($"[ChocoboRace] Choke-abo yielded racing: {targetCycleStatusReason}");
+                BeginNextRace();
+                return true;
+
+            case ChocoboTargetHandoffAction.Complete:
+                log.Information($"[ChocoboRace] Daily race batch completed after Choke-abo handoff: {targetCycleStatusReason}");
+                SetState(ChocoboState.Complete);
+                return true;
+
+            default:
+                return Defer(targetCycleStatusReason);
+        }
+    }
+
+    private bool Defer(string reason)
+    {
+        targetCycleStatusReason = reason;
+        log.Information($"[ChocoboRace] Deferred: {reason}");
+        SetState(ChocoboState.Deferred);
+        return false;
     }
 }

@@ -28,6 +28,22 @@ public sealed class CharacterSelectStallRecoveryService
     internal CharacterSelectRecoveryEligibility GetEligibility(bool recoveryEnabled)
         => CharacterSelectRecoveryPolicy.Evaluate(ReadSafetySnapshot(recoveryEnabled));
 
+    internal CharacterSelectRecoveryEligibility GetIntentionalFishingWakeEligibility()
+        => CharacterSelectRecoveryPolicy.Evaluate(ReadSafetySnapshot(recoveryEnabled: true));
+
+    public bool TryRequestIntentionalFishingWake(out string error)
+    {
+        var succeeded = ExecuteAttempt(recoveryEnabled: true, "scheduled fishing wake");
+        error = succeeded ? string.Empty : LastBlockedReason;
+        return succeeded;
+    }
+
+    public void CompleteIntentionalFishingWake()
+    {
+        Reset();
+        log.Information("[CharacterSelectRecovery] Scheduled fishing wake handed off; ordinary recovery state reset for any candidate relog.");
+    }
+
     public void QueueManualAttempt()
     {
         if (manualAttemptQueued)
@@ -108,7 +124,7 @@ public sealed class CharacterSelectStallRecoveryService
         state.Reset();
     }
 
-    private void ExecuteAttempt(bool recoveryEnabled, string source)
+    private bool ExecuteAttempt(bool recoveryEnabled, string source)
     {
         var eligibility = GetEligibility(recoveryEnabled);
         if (!eligibility.CanAttempt)
@@ -116,7 +132,7 @@ public sealed class CharacterSelectStallRecoveryService
             LastBlockedReason = eligibility.Reason;
             StatusText = $"{source} recovery blocked: {eligibility.Reason}";
             log.Information($"[CharacterSelectRecovery] {source} attempt blocked: {eligibility.Reason}");
-            return;
+            return false;
         }
 
   if (!GameHelpers.TryFireAddonCallback(
@@ -139,20 +155,21 @@ public sealed class CharacterSelectStallRecoveryService
             LastBlockedReason = "Character-select callback sequence for entry 0 was not accepted.";
             StatusText = $"{source} recovery blocked: {LastBlockedReason}";
             log.Warning($"[CharacterSelectRecovery] {source} attempt failed: {LastBlockedReason}");
-            return;
+            return false;
         }
 
         if (!state.TryBeginLoginConfirmation(eligibility))
         {
             LastBlockedReason = "A recovery login confirmation is already pending.";
             StatusText = $"{source} recovery blocked: {LastBlockedReason}";
-            return;
+            return false;
         }
 
         LastBlockedReason = string.Empty;
         confirmationClickPending = true;
         StatusText = "Character selected; waiting for the OK confirmation.";
         log.Information("[CharacterSelectRecovery] Fired _CharaSelectListMenu callbacks 29/0 then 21/0; waiting to click OK.");
+        return true;
     }
 
     private CharacterSelectRecoverySafetySnapshot ReadSafetySnapshot(bool recoveryEnabled)

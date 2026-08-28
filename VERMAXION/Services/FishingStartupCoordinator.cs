@@ -4,16 +4,6 @@ using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
-public enum FishingStartupTrigger
-{
-    Clock,
-    WindowWatch,
-    AutoRetainerPostprocess,
-    Manual,
-    Test,
-    RelogContinuation,
-}
-
 public enum FishingStartupAction
 {
     None,
@@ -57,7 +47,12 @@ public interface IFishingStartupRuntime
     bool IsQueueRegistrationConfirmedForWindow(DateTimeOffset registrationStartUtc);
     bool IsTerminalFailureBeforeQueueConfirmationForWindow(DateTimeOffset registrationStartUtc);
     void ClearFishingWindowOutcome(DateTimeOffset registrationStartUtc);
-    bool BeginRun(FishingRunMode mode, string targetCharacterKey, DateTimeOffset registrationStartUtc, DateTimeOffset registrationDeadlineUtc);
+    bool BeginRun(
+        FishingRunMode mode,
+        FishingStartupTrigger startupTrigger,
+        string targetCharacterKey,
+        DateTimeOffset registrationStartUtc,
+        DateTimeOffset registrationDeadlineUtc);
     void AbortRun(string reason);
     bool RequestRelog(string characterKey, DateTimeOffset registrationDeadlineUtc);
     bool StartFishing();
@@ -87,6 +82,7 @@ public sealed class FishingStartupCoordinator
     private DateTimeOffset? recoveryReadyAtUtc;
     private string recoveryReason = string.Empty;
     private FishingRunMode activeMode;
+    private FishingStartupTrigger activeStartupTrigger = FishingStartupTrigger.Clock;
     private DateTimeOffset activeRegistrationStartUtc;
     private DateTimeOffset activeRegistrationDeadlineUtc;
     private DateTimeOffset decisionNowUtc;
@@ -104,12 +100,16 @@ public sealed class FishingStartupCoordinator
     public FishingRunMode? PendingRelogMode => HasPendingRelogContinuation ? pendingRelogMode : null;
     public bool HasRecoveryPending => recoveryReadyAtUtc.HasValue;
 
-    public FishingStartupResult Poll(DateTimeOffset nowUtc, FishingStartupTrigger trigger)
+    public FishingStartupResult Poll(
+        DateTimeOffset nowUtc,
+        FishingStartupTrigger trigger,
+        int? preWindowOffsetMinutes = null)
     {
         decisionNowUtc = nowUtc.ToUniversalTime();
+        var startupOffset = preWindowOffsetMinutes ?? runtime.PreWindowOffsetMinutes;
         if (!OceanFishingSchedulePolicy.TryGetActiveStartupWindow(
                 nowUtc,
-                runtime.PreWindowOffsetMinutes,
+                startupOffset,
                 out var window))
         {
             return None(
@@ -117,7 +117,7 @@ public sealed class FishingStartupCoordinator
                 FishingRunMode.Scheduled,
                 OceanFishingSchedulePolicy.DescribeInactiveStartupWindow(
                     nowUtc,
-                    runtime.PreWindowOffsetMinutes));
+                    startupOffset));
         }
 
         TrackWindow(window.RegistrationStartUtc);
@@ -133,7 +133,7 @@ public sealed class FishingStartupCoordinator
                 "Ambient clock polling does not start Ocean Fishing.");
         }
 
-        EnsureCandidateQueue(FishingRunMode.Scheduled, window);
+        EnsureCandidateQueue(FishingRunMode.Scheduled, window, trigger);
         var selection = GetActiveCandidate();
         if (attemptSequenceStopped)
         {
@@ -174,6 +174,8 @@ public sealed class FishingStartupCoordinator
         activeCandidateIndex = 0;
         transientRetriesScheduled = 0;
         attemptSequenceStopped = false;
+        activeStartupTrigger = FishingStartupTrigger.Test;
+        CaptureActiveRun(FishingRunMode.Test, window, FishingStartupTrigger.Test);
         var selection = GetActiveCandidate();
         if (!selection.Selected)
         {
@@ -333,7 +335,12 @@ public sealed class FishingStartupCoordinator
             return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "A fishing relog sequence is already active.");
 
-        if (!runtime.BeginRun(mode, selection.CharacterKey, window.RegistrationStartUtc, window.EndUtc))
+        if (!runtime.BeginRun(
+                mode,
+                ResolveOwnershipTrigger(trigger),
+                selection.CharacterKey,
+                window.RegistrationStartUtc,
+                window.EndUtc))
             return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Could not acquire Ocean Fishing run ownership; polling will retry.");
         if (!runtime.RequestRelog(selection.CharacterKey, window.EndUtc))
@@ -345,7 +352,7 @@ public sealed class FishingStartupCoordinator
 
         if (mutateScheduledGuards)
             relogAttempted = true;
-        CaptureActiveRun(mode, window);
+        CaptureActiveRun(mode, window, trigger);
         RecordPendingRelogContinuation(selection.CharacterKey, mode, window.RegistrationStartUtc, window.EndUtc);
         return Result(trigger, mode, FishingStartupAction.RelogStarted, window, selection,
             $"Selected {selection.CharacterKey} (Fisher {FormatLevel(selection.FisherLevel)}) and started relog.");
@@ -461,7 +468,12 @@ public sealed class FishingStartupCoordinator
         }
 
         if (!runOwnedForWindow &&
-            !runtime.BeginRun(mode, selection.CharacterKey, window.RegistrationStartUtc, window.EndUtc))
+            !runtime.BeginRun(
+                mode,
+                ResolveOwnershipTrigger(trigger),
+                selection.CharacterKey,
+                window.RegistrationStartUtc,
+                window.EndUtc))
         {
             return Result(trigger, mode, FishingStartupAction.Waiting, window, selection,
                 "Could not acquire Ocean Fishing run ownership; polling will retry.");
@@ -483,7 +495,7 @@ public sealed class FishingStartupCoordinator
 
         if (mutateScheduledGuards)
             fishingStartAttempted = true;
-        CaptureActiveRun(mode, window);
+        CaptureActiveRun(mode, window, trigger);
         ClearPendingRelogContinuation();
         return Result(trigger, mode, FishingStartupAction.FishingStarted, window, selection,
             $"Selected current character {selection.CharacterKey} (Fisher {FormatLevel(selection.FisherLevel)}) and started fishing prep.");
@@ -699,7 +711,10 @@ public sealed class FishingStartupCoordinator
         return result;
     }
 
-    private void EnsureCandidateQueue(FishingRunMode mode, OceanFishingStartupWindow window)
+    private void EnsureCandidateQueue(
+        FishingRunMode mode,
+        OceanFishingStartupWindow window,
+        FishingStartupTrigger trigger)
     {
         if (candidateQueueBuilt &&
             activeRegistrationStartUtc == window.RegistrationStartUtc &&
@@ -713,7 +728,7 @@ public sealed class FishingStartupCoordinator
         activeCandidateIndex = 0;
         transientRetriesScheduled = 0;
         attemptSequenceStopped = false;
-        CaptureActiveRun(mode, window);
+        CaptureActiveRun(mode, window, trigger);
     }
 
     private FishingSelectionResult GetActiveCandidate(string? currentCharacterKey = null)
@@ -734,12 +749,22 @@ public sealed class FishingStartupCoordinator
         };
     }
 
-    private void CaptureActiveRun(FishingRunMode mode, OceanFishingStartupWindow window)
+    private void CaptureActiveRun(
+        FishingRunMode mode,
+        OceanFishingStartupWindow window,
+        FishingStartupTrigger trigger)
     {
         activeMode = mode;
+        if (trigger != FishingStartupTrigger.RelogContinuation)
+            activeStartupTrigger = trigger;
         activeRegistrationStartUtc = window.RegistrationStartUtc;
         activeRegistrationDeadlineUtc = window.EndUtc;
     }
+
+    private FishingStartupTrigger ResolveOwnershipTrigger(FishingStartupTrigger trigger)
+        => trigger == FishingStartupTrigger.RelogContinuation
+            ? activeStartupTrigger
+            : trigger;
 
     private static string FormatLevel(int? fisherLevel)
         => fisherLevel?.ToString() ?? "unknown";
