@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-29 - I255 Gold Saucer route resets
+
+### Fixed
+
+- Mini Cactpot, Jumbo broker and cashier, and Fashion Report starts now reset through `/li saucer`; during Jumbo broker and cashier travel, VERMAXION again jumps every 500 ms until within 10 yalms of the destination.
+
 ## 2026-08-29 - I253/I254 Jumbo travel settlement and unlock blockers
 
 ### Fixed

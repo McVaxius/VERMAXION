@@ -49,6 +49,8 @@ public class CactpotService : IDisposable
     private const int JumboMaxPayoutClaimCount = 3;
     private const double JumboAetheryteSettleDelay = 8.0;
     private const double JumboNavigationRetryInterval = 5.0;
+    private const double JumboJumpInterval = 0.5;
+    private const float JumboJumpStopDistance = 10f;
     private const float JumboArrivalDistance = 3.0f;
     private const double JumboArrivalTimeout = 60.0;
     private const double JumboCloseApproachTimeout = 20.0;
@@ -75,6 +77,7 @@ public class CactpotService : IDisposable
     private DateTime lastMiniTargetAttempt = DateTime.MinValue;
     private int miniTargetAttempts;
     private DateTime lastJumboNavigationAttempt = DateTime.MinValue;
+    private DateTime lastJumboJumpTime = DateTime.MinValue;
     private DateTime lastJumboTargetAttempt = DateTime.MinValue;
     private DateTime lastJumboConfirmationAttemptAt = DateTime.MinValue;
     private DateTime lastJumboNavigationStopAttempt = DateTime.MinValue;
@@ -213,15 +216,7 @@ public class CactpotService : IDisposable
 
         miniRunActive = true;
 
-        if (clientState.TerritoryType == GoldSaucerTerritoryId)
-        {
-            log.Information("[Cactpot] Already in Gold Saucer, skipping teleport");
-            SetState(CactpotState.MiniNavigating);
-        }
-        else
-        {
-            SetState(CactpotState.MiniTeleporting);
-        }
+        SetState(CactpotState.MiniTeleporting);
     }
 
     public void StartJumboCactpot()
@@ -404,8 +399,8 @@ public class CactpotService : IDisposable
         {
             // ==================== MINI CACTPOT ====================
             case CactpotState.MiniTeleporting:
-                log.Information("[Cactpot] Teleporting to Gold Saucer: /tp gold");
-                commandManager.ProcessCommand("/tp gold");
+                log.Information("[Cactpot] Resetting to the Gold Saucer main aetheryte: /li saucer");
+                commandManager.ProcessCommand("/li saucer");
                 SetState(CactpotState.MiniWaitingForZone);
                 break;
 
@@ -695,8 +690,8 @@ public class CactpotService : IDisposable
 
             // ==================== JUMBO CACTPOT BUY ====================
             case CactpotState.JumboLifestreaming:
-                log.Information("[Cactpot] Lifestreaming to Cactpot area: /li Cactpot");
-                commandManager.ProcessCommand("/li Cactpot");
+                log.Information("[Cactpot] Resetting to the Gold Saucer main aetheryte: /li saucer");
+                commandManager.ProcessCommand("/li saucer");
                 SetState(CactpotState.JumboWaitingForZone);
                 break;
 
@@ -738,9 +733,14 @@ public class CactpotService : IDisposable
                     log.Error("[Cactpot] Timeout waiting to reach Jumbo Cactpot Broker");
                     SetState(CactpotState.Failed);
                 }
-                else if (RetryJumboNavigationIfNeeded(JumboBrokerPosition, "Jumbo Cactpot Broker"))
+                else
                 {
-                    // Shared navigation observes progress here and suppresses healthy duplicate requests.
+                    if (RetryJumboNavigationIfNeeded(JumboBrokerPosition, "Jumbo Cactpot Broker"))
+                    {
+                        // Shared navigation observes progress here and suppresses healthy duplicate requests.
+                    }
+
+                    SendPeriodicJumboJump(JumboBrokerPosition);
                 }
                 break;
 
@@ -949,8 +949,8 @@ public class CactpotService : IDisposable
 
             // ==================== JUMBO CACTPOT CHECK (Saturday) ====================
             case CactpotState.JumboCheckLifestreaming:
-                log.Information("[Cactpot] Lifestreaming to Cactpot area for check: /li Cactpot");
-                commandManager.ProcessCommand("/li Cactpot");
+                log.Information("[Cactpot] Resetting to the Gold Saucer main aetheryte for cashier travel: /li saucer");
+                commandManager.ProcessCommand("/li saucer");
                 SetState(CactpotState.JumboCheckWaitingForZone);
                 break;
 
@@ -992,9 +992,14 @@ public class CactpotService : IDisposable
                     log.Error("[Cactpot] Timeout waiting to reach {CashierName}", JumboCashierNpcName);
                     SetState(CactpotState.Failed);
                 }
-                else if (RetryJumboNavigationIfNeeded(JumboCashierPosition, JumboCashierNpcName))
+                else
                 {
-                    // Shared navigation observes progress here and suppresses healthy duplicate requests.
+                    if (RetryJumboNavigationIfNeeded(JumboCashierPosition, JumboCashierNpcName))
+                    {
+                        // Shared navigation observes progress here and suppresses healthy duplicate requests.
+                    }
+
+                    SendPeriodicJumboJump(JumboCashierPosition);
                 }
                 break;
 
@@ -1386,6 +1391,9 @@ public class CactpotService : IDisposable
         {
             ResetJumboCleanupTracking();
         }
+
+        if (newState is CactpotState.JumboWaitingForArrival or CactpotState.JumboCheckWaitingForArrival)
+            lastJumboJumpTime = DateTime.MinValue;
 
         if (miniRunActive &&
             IsMiniCactpotState(previousState) &&
@@ -2081,6 +2089,20 @@ public class CactpotService : IDisposable
 
         IssueJumboNavigation(destination, destinationLabel);
         return true;
+    }
+
+    private void SendPeriodicJumboJump(Vector3 destination)
+    {
+        var now = DateTime.UtcNow;
+        if ((now - lastJumboJumpTime).TotalSeconds < JumboJumpInterval)
+            return;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player != null && Vector3.Distance(player.Position, destination) <= JumboJumpStopDistance)
+            return;
+
+        GameHelpers.SendJump();
+        lastJumboJumpTime = now;
     }
 
     private bool TryTargetAndInteractJumboNpc(string npcName)
