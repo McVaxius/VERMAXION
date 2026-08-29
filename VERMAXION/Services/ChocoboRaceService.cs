@@ -466,13 +466,6 @@ public class ChocoboRaceService : IDisposable
 
                     if (!dutySelected)
                     {
-                        if (currentAttempt > 0)
-                        {
-                            log.Information($"[ChocoboRace] Reusing prior Chocobo selection for attempt {currentAttempt + 1}");
-                            dutySelected = true;
-                            return;
-                        }
-
                         log.Information($"[ChocoboRace] Selecting Chocobo Racing row {ChocoboRaceSelectionIndex} from ContentsFinder");
                         GameHelpers.FireAddonCallback("ContentsFinder", true, 3, ChocoboRaceSelectionIndex);
                         dutySelectionAttempts++;
