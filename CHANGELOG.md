@@ -1,5 +1,18 @@
 # VERMAXION Changelog
 
+## 2026-08-29 - I253/I254 Jumbo travel settlement and unlock blockers
+
+### Fixed
+
+- Jumbo Cactpot broker and cashier routes now wait for Lifestream to be idle and for territory 144 and player availability to remain continuously settled for eight seconds before starting ground navigation.
+- Enabled Mini Cactpot, Jumbo Cactpot, and Fashion Report tasks now show the existing red Blocked prerequisite state when `Scratch It Rich`, `Hitting the Cactpot`, or `Passion for Fashion` is incomplete, before cadence, route, or availability checks.
+
+## 2026-08-29 - I250 offline-hold human test controls
+
+### Added
+
+- Global Fishing settings now open by default and state the scheduled Home/Inn prerequisite; Advanced test controls adds bounded main-menu logout and full next-gate Ocean Fishing hold actions using the existing coordinator paths.
+
 ## 2026-08-28 - Shared ground-navigation recovery
 
 ### Changed

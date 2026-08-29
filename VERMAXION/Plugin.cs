@@ -134,6 +134,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public string BeforeArArmedCharacterKey { get; private set; } = string.Empty;
     public string BeforeArStatusText => BuildBeforeArStatusText();
     private bool IsScheduledOfflineHoldActive => Configuration.ScheduledOfflineHold != null;
+    private bool OfflineLogoutBlocksOrdinaryAutomation
+        => IsScheduledOfflineHoldActive || ScheduledOfflineHoldCoordinator?.BlocksOrdinaryAutomation == true;
     public bool IsFishingRunActive => FishingRunLifecycle.IsActive ||
                                       FishingService.IsActive ||
                                       FishingRelogCoordinator.IsActive ||
@@ -204,11 +206,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
         // Initialize services
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
+        LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         ResetDetectionService = new ResetDetectionService(Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
-        CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC);
+        CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC, LifestreamIPC);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
@@ -234,7 +237,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             FisherGearsetRuntime,
             Log,
             message => ChatGui.Print(message));
-        LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         var alliedSocietyBridge = new QuestionableCompanionAlliedSocietyBridge();
         AlliedSocietyService = new AlliedSocietyService(
             EquipmentAutomationRuntime,
@@ -273,7 +275,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             Log,
             OnARCharacterReady,
             ArmBeforeArSuppressionFromPostprocess,
-            () => Configuration.Enabled && !DadHandoffBlocksNewWork && !IsScheduledOfflineHoldActive);
+            () => Configuration.Enabled && !DadHandoffBlocksNewWork && !OfflineLogoutBlocksOrdinaryAutomation);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
         CharacterSelectStallRecovery = new CharacterSelectStallRecoveryService(Log);
         ScheduledOfflineHoldCoordinator = new ScheduledOfflineHoldCoordinator(
@@ -640,6 +642,105 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             ChatGui.Print("[Vermaxion] Fisher gearset test is already active.");
     }
 
+    internal bool CanStartMainMenuTest(bool waitForOceanFishing, out string reason)
+    {
+        if (!ClientState.IsLoggedIn)
+        {
+            reason = "A character must be logged in.";
+            return false;
+        }
+
+        if (DadHandoffBlocksNewWork)
+        {
+            reason = "A granted or pending DAD handoff reservation blocks new work.";
+            return false;
+        }
+
+        if (ScheduledOfflineHoldCoordinator.IsActive)
+        {
+            reason = "Offline-hold or main-menu test work is already active.";
+            return false;
+        }
+
+        if (Engine.OwnsLiveWork ||
+            ARPostProcessService.IsRequested ||
+            pendingFishingPostprocessHandoff ||
+            pendingBeforeArLogin ||
+            BeforeArGate is BeforeArGateState.Armed
+                or BeforeArGateState.WaitingForWorldReady
+                or BeforeArGateState.Running
+                or BeforeArGateState.ReleasePending ||
+            releaseOnlyPostprocessFinishPending ||
+            AutoRetainerIPC.IsBusy())
+        {
+            reason = "VERMAXION engine or AutoRetainer postprocess work is active.";
+            return false;
+        }
+
+        if (IsFishingRunActive ||
+            FishingStartupCoordinator.HasRecoveryPending ||
+            FishingRelogCoordinator.IsFailed)
+        {
+            reason = "Fishing, relog, or fishing recovery work is active.";
+            return false;
+        }
+
+        var manual = GetActiveManualService();
+        if (manual.Active)
+        {
+            reason = $"Existing test or manual work is active: {manual.Summary}";
+            return false;
+        }
+
+        if (waitForOceanFishing && !Configuration.Enabled)
+        {
+            reason = "Global automation must be enabled for the full-cycle action.";
+            return false;
+        }
+
+        if (waitForOceanFishing && !Configuration.LogoutBetweenScheduledOceanFishingVoyages)
+        {
+            reason = "Enable 'Log out between scheduled Ocean Fishing voyages' in Config > Global Settings > Fishing.";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    internal void GoToMainMenu()
+    {
+        if (!CanStartMainMenuTest(waitForOceanFishing: false, out var reason) ||
+            !ScheduledOfflineHoldCoordinator.BeginHumanLogoutOnly(DateTimeOffset.UtcNow, out reason))
+        {
+            Log.Warning($"[Fishing][OfflineHold] Human main-menu action rejected: {reason}");
+            ChatGui.Print($"[Vermaxion] Main-menu action unavailable: {reason}");
+            return;
+        }
+
+        ChatGui.Print("[Vermaxion] Logging out to the main menu; no automatic wake will be requested.");
+    }
+
+    internal void GoToMainMenuAndWaitForOceanFishing()
+    {
+        if (!CanStartMainMenuTest(waitForOceanFishing: true, out var reason) ||
+            !ScheduledOfflineHoldCoordinator.BeginHumanWaitForNextGate(
+                DateTimeOffset.UtcNow,
+                Configuration.OceanFishingPreWindowOffsetMinutes,
+                out reason))
+        {
+            Log.Warning($"[Fishing][OfflineHold] Human full-cycle action rejected: {reason}");
+            ChatGui.Print($"[Vermaxion] Full-cycle action unavailable: {reason}");
+            return;
+        }
+
+        var hold = Configuration.ScheduledOfflineHold;
+        ChatGui.Print(
+            hold == null
+                ? "[Vermaxion] Ocean Fishing offline hold started."
+                : $"[Vermaxion] Logging out; scheduled wake is {hold.WakeAtUtc:u}.");
+    }
+
     public void ResetFishingStartupGate()
     {
         FishingStartupCoordinator.ResetCurrentWindow(DateTimeOffset.UtcNow);
@@ -986,9 +1087,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void BeginBeforeArLoginPendingFromPluginLoad()
     {
-        if (IsScheduledOfflineHoldActive)
+        if (OfflineLogoutBlocksOrdinaryAutomation)
         {
-            SkipBeforeArForLogin("Scheduled Ocean Fishing wake suppresses Before-AR startup");
+            SkipBeforeArForLogin("Offline logout work suppresses Before-AR startup");
             return;
         }
 
@@ -1022,9 +1123,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void BeginBeforeArLoginPending(string reason)
     {
-        if (IsScheduledOfflineHoldActive)
+        if (OfflineLogoutBlocksOrdinaryAutomation)
         {
-            SkipBeforeArForLogin("Scheduled Ocean Fishing wake suppresses Before-AR startup");
+            SkipBeforeArForLogin("Offline logout work suppresses Before-AR startup");
             return;
         }
 
@@ -1091,12 +1192,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ArmBeforeArSuppressionFromPostprocess()
     {
-        if (IsScheduledOfflineHoldActive)
+        if (OfflineLogoutBlocksOrdinaryAutomation)
         {
             beforeArArmedByPostprocess = false;
             ClearBeforeArArmedTracking();
-            SetBeforeArGate(BeforeArGateState.Skipped, "Scheduled Ocean Fishing wake suppresses Before-AR startup");
-            Log.Information("[Fishing][OfflineHold] Suppressed Before-AR arming during the intentional hold/wake.");
+            SetBeforeArGate(BeforeArGateState.Skipped, "Offline logout work suppresses Before-AR startup");
+            Log.Information("[Fishing][OfflineHold] Suppressed Before-AR arming during offline logout work.");
             return;
         }
 
@@ -1175,9 +1276,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (!pendingBeforeArLogin)
             return;
 
-        if (IsScheduledOfflineHoldActive)
+        if (OfflineLogoutBlocksOrdinaryAutomation)
         {
-            SkipBeforeArForLogin("Scheduled Ocean Fishing wake suppresses Before-AR startup");
+            SkipBeforeArForLogin("Offline logout work suppresses Before-AR startup");
             return;
         }
 
@@ -1738,7 +1839,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         if (!Configuration.Enabled ||
             !Configuration.OceanFishingFakeReadyEnabled ||
-            IsScheduledOfflineHoldActive)
+            OfflineLogoutBlocksOrdinaryAutomation)
             return;
         if (FishingService.IsActive || FishingRelogCoordinator.IsActive)
             return;
@@ -1781,7 +1882,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         if (!Configuration.Enabled ||
             !Configuration.OceanIdleInnParkEnabled ||
-            IsScheduledOfflineHoldActive)
+            OfflineLogoutBlocksOrdinaryAutomation)
             return;
         if (FishingService.IsActive || FishingRelogCoordinator.IsActive)
             return;
@@ -1916,10 +2017,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
         CharacterSelectStallRecovery.Update(
             DateTime.UtcNow,
-            Configuration.EnableCharacterSelectStallRecovery && !IsScheduledOfflineHoldActive,
+            Configuration.EnableCharacterSelectStallRecovery && !OfflineLogoutBlocksOrdinaryAutomation,
             Configuration.Enabled &&
             Configuration.EnableCharacterSelectStallRecovery &&
-            !IsScheduledOfflineHoldActive,
+            !OfflineLogoutBlocksOrdinaryAutomation,
             GameHelpers.IsAddonVisible("CharaSelect"),
             ClientState.IsLoggedIn);
 
@@ -1929,7 +2030,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         ProcessFishingRecovery();
         if (Configuration.Enabled &&
             Configuration.OceanFishingWindowWatchEnabled &&
-            !IsScheduledOfflineHoldActive)
+            !OfflineLogoutBlocksOrdinaryAutomation)
             RunFishingStartupTrigger(FishingStartupTrigger.WindowWatch);
         ProcessStuckDetectionSuppression();
         ProcessFishingFakeReady();

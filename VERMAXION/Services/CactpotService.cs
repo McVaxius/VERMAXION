@@ -19,6 +19,7 @@ public class CactpotService : IDisposable
     private readonly ConfigManager configManager;
     private readonly SaucyMiniCactpotService saucyMiniCactpotService;
     private readonly VNavmeshIPC vnavmesh;
+    private readonly LifestreamIPC lifestream;
 
     private const ushort GoldSaucerTerritoryId = 144;
     private const string MiniBrokerNpcName = "Mini Cactpot Broker";
@@ -77,6 +78,7 @@ public class CactpotService : IDisposable
     private DateTime lastJumboTargetAttempt = DateTime.MinValue;
     private DateTime lastJumboConfirmationAttemptAt = DateTime.MinValue;
     private DateTime lastJumboNavigationStopAttempt = DateTime.MinValue;
+    private DateTime jumboTravelSettledSince = DateTime.MinValue;
     private DateTime lastJumboCleanupAttempt = DateTime.MinValue;
     private DateTime jumboCleanupQuietSince = DateTime.MinValue;
     private int jumboPurchasesVerified;
@@ -159,7 +161,8 @@ public class CactpotService : IDisposable
         IClientState clientState,
         ConfigManager configManager,
         SaucyMiniCactpotService saucyMiniCactpotService,
-        VNavmeshIPC vnavmesh)
+        VNavmeshIPC vnavmesh,
+        LifestreamIPC lifestream)
     {
         this.commandManager = commandManager;
         this.log = log;
@@ -167,6 +170,7 @@ public class CactpotService : IDisposable
         this.configManager = configManager;
         this.saucyMiniCactpotService = saucyMiniCactpotService;
         this.vnavmesh = vnavmesh;
+        this.lifestream = lifestream;
     }
 
     public void StartMiniCactpot()
@@ -697,9 +701,7 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboWaitingForZone:
-                if (elapsed > JumboAetheryteSettleDelay &&
-                    clientState.TerritoryType == GoldSaucerTerritoryId &&
-                    GameHelpers.IsPlayerAvailable())
+                if (IsJumboTravelSettled())
                 {
                     log.Information("[Cactpot] Jumbo broker aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboNavigatingToBroker);
@@ -953,9 +955,7 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboCheckWaitingForZone:
-                if (elapsed > JumboAetheryteSettleDelay &&
-                    clientState.TerritoryType == GoldSaucerTerritoryId &&
-                    GameHelpers.IsPlayerAvailable())
+                if (IsJumboTravelSettled())
                 {
                     log.Information("[Cactpot] Jumbo cashier aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboCheckNavigatingToCashier);
@@ -1362,6 +1362,10 @@ public class CactpotService : IDisposable
         {
             lastMiniNavigationAttempt = DateTime.MinValue;
             lastMiniTargetAttempt = DateTime.MinValue;
+        }
+        else if (newState is CactpotState.JumboWaitingForZone or CactpotState.JumboCheckWaitingForZone)
+        {
+            jumboTravelSettledSince = DateTime.MinValue;
         }
         else if (newState == CactpotState.JumboNavigatingToBroker ||
                  newState == CactpotState.JumboClosingToBroker ||
@@ -1950,6 +1954,23 @@ public class CactpotService : IDisposable
     {
         lastJumboCleanupAttempt = DateTime.MinValue;
         jumboCleanupQuietSince = DateTime.MinValue;
+    }
+
+    private bool IsJumboTravelSettled()
+    {
+        if (lifestream.IsBusy() ||
+            clientState.TerritoryType != GoldSaucerTerritoryId ||
+            !GameHelpers.IsPlayerAvailable())
+        {
+            jumboTravelSettledSince = DateTime.MinValue;
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (jumboTravelSettledSince == DateTime.MinValue)
+            jumboTravelSettledSince = now;
+
+        return (now - jumboTravelSettledSince).TotalSeconds >= JumboAetheryteSettleDelay;
     }
 
     private bool TryTransitionJumboWaypointToTargeting(string npcName, Vector3 waypointPosition, CactpotState targetingState)
