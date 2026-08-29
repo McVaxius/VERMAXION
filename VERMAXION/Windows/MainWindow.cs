@@ -187,6 +187,7 @@ public class MainWindow : Window, IDisposable
                                 plugin.AlliedSocietyService.OwnsRotation ||
                                 plugin.AfterArParkService.IsActive ||
                                 plugin.ARPostProcessService.IsProcessing ||
+                                plugin.ScheduledOfflineHoldCoordinator.IsActive ||
                                 plugin.AutoRetainerIPC.SuppressionOwnedByVermaxion;
         if (highlightFullStop)
         {
@@ -447,6 +448,28 @@ public class MainWindow : Window, IDisposable
             if (ImGui.SmallButton("Current Fisher gearset test"))
                 plugin.RunFishingGearsetTest();
             ImGui.EndDisabled();
+
+            var canGoToMainMenu = plugin.CanStartMainMenuTest(
+                waitForOceanFishing: false,
+                out var goToMainMenuBlockedReason);
+            ImGui.SameLine();
+            ImGui.BeginDisabled(!canGoToMainMenu);
+            if (ImGui.SmallButton("Go to main menu"))
+                plugin.GoToMainMenu();
+            ImGui.EndDisabled();
+            if (!canGoToMainMenu && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(goToMainMenuBlockedReason);
+
+            var canWaitForOceanFishing = plugin.CanStartMainMenuTest(
+                waitForOceanFishing: true,
+                out var waitForOceanFishingBlockedReason);
+            ImGui.SameLine();
+            ImGui.BeginDisabled(!canWaitForOceanFishing);
+            if (ImGui.SmallButton("Go to main menu and wait for Ocean Fishing"))
+                plugin.GoToMainMenuAndWaitForOceanFishing();
+            ImGui.EndDisabled();
+            if (!canWaitForOceanFishing && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(waitForOceanFishingBlockedReason);
             
             if (ImGui.SmallButton("Check FC Buff Inventory"))
             {

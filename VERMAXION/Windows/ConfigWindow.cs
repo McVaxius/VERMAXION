@@ -435,7 +435,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped("Wizards stage changes and edit only the current account's Default Config after Apply. Existing characters remain unchanged until an explicit row sync or Apply Default to ALL.");
             }
 
-            if (ImGui.CollapsingHeader("Fishing"))
+            if (ImGui.CollapsingHeader("Fishing", ImGuiTreeNodeFlags.DefaultOpen))
             {
 
             var fishingMode = config.FishingExecutionMode;
@@ -542,6 +542,8 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawHelpMarker(
                 "After a successful automatically scheduled voyage returns Home or Inn and restores its external state, log out and wake at the snapshotted Ocean Fishing startup gate. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client.");
+            ImGui.TextWrapped(
+                "Scheduled hold prerequisite: an automatically scheduled Ocean Fishing run must finish with Return after Fishing set to Home or Inn.");
             ImGui.TextDisabled($"Offline hold: {plugin.ScheduledOfflineHoldCoordinator.StatusText}");
             if (config.ScheduledOfflineHold is { } hold)
             {

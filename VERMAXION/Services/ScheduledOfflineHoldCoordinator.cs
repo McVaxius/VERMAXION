@@ -32,6 +32,11 @@ public sealed class ScheduledOfflineHoldCoordinator
     private readonly Action<string> warning;
     private DateTimeOffset nextStartupPollUtc;
     private DateTimeOffset nextRestoreAttemptUtc;
+    // The plain human action is deliberately session-only: it never becomes a persisted
+    // scheduled hold and cannot request a wake.
+    private DateTimeOffset? humanLogoutStartedAtUtc;
+    private DateTimeOffset? humanLogoutLastAttemptUtc;
+    private bool humanLogoutReachedMainMenu;
     private string statusDetail = string.Empty;
 
     public ScheduledOfflineHoldCoordinator(
@@ -44,14 +49,27 @@ public sealed class ScheduledOfflineHoldCoordinator
         this.warning = warning ?? (_ => { });
     }
 
-    public bool IsActive => runtime.PersistedHold != null;
+    public bool IsActive => runtime.PersistedHold != null ||
+                            humanLogoutStartedAtUtc.HasValue ||
+                            humanLogoutReachedMainMenu;
     public bool SuppressesOrdinaryAutomation
         => ScheduledOfflineHoldPolicy.SuppressesOrdinaryAutomation(runtime.PersistedHold);
+    internal bool BlocksOrdinaryAutomation
+        => SuppressesOrdinaryAutomation ||
+           humanLogoutStartedAtUtc.HasValue ||
+           (humanLogoutReachedMainMenu && !runtime.IsLoggedIn);
 
     public string StatusText
     {
         get
         {
+            if (humanLogoutReachedMainMenu)
+                return "At main menu; no automatic wake requested";
+            if (humanLogoutStartedAtUtc.HasValue)
+                return string.IsNullOrWhiteSpace(statusDetail)
+                    ? "Logging out to the main menu"
+                    : statusDetail;
+
             var hold = runtime.PersistedHold;
             if (hold == null)
                 return runtime.FeatureEnabled ? "Idle" : "Disabled";
@@ -60,6 +78,81 @@ public sealed class ScheduledOfflineHoldCoordinator
                 ? $"{hold.Phase}; wake {hold.WakeAtUtc:u}"
                 : $"{hold.Phase}: {statusDetail}";
         }
+    }
+
+    internal bool BeginHumanLogoutOnly(DateTimeOffset nowUtc, out string reason)
+    {
+        if (!runtime.IsLoggedIn)
+        {
+            reason = "A character must be logged in.";
+            return false;
+        }
+
+        if (IsActive)
+        {
+            reason = "Offline-hold or main-menu test work is already active.";
+            return false;
+        }
+
+        var now = nowUtc.ToUniversalTime();
+        humanLogoutStartedAtUtc = now;
+        humanLogoutLastAttemptUtc = null;
+        humanLogoutReachedMainMenu = false;
+        statusDetail = "Logging out to the main menu";
+        information("[Fishing][OfflineHold] Human main-menu action started without a persisted hold or wake.");
+        ProcessHumanLogout(now);
+        reason = string.Empty;
+        return true;
+    }
+
+    internal bool BeginHumanWaitForNextGate(
+        DateTimeOffset nowUtc,
+        int preWindowOffsetMinutes,
+        out string reason)
+    {
+        if (!runtime.IsLoggedIn)
+        {
+            reason = "A character must be logged in.";
+            return false;
+        }
+
+        if (!runtime.MasterEnabled)
+        {
+            reason = "Global automation must be enabled.";
+            return false;
+        }
+
+        if (!runtime.FeatureEnabled)
+        {
+            reason = "Log out between scheduled Ocean Fishing voyages must be enabled.";
+            return false;
+        }
+
+        if (IsActive)
+        {
+            reason = "Offline-hold or main-menu test work is already active.";
+            return false;
+        }
+
+        var now = nowUtc.ToUniversalTime();
+        var currentOrNextRegistration = OceanFishingSchedulePolicy.GetCurrentOrNextRegistrationWindow(now);
+        // Seed the existing hold policy with the preceding cadence slot. It advances past
+        // any configured startup gate that has already begun and snapshots the next one.
+        var previousRegistrationStart = currentOrNextRegistration.StartUtc.AddHours(
+            -FishingDefaults.OceanFishingRegistrationIntervalHours);
+        var hold = ScheduledOfflineHoldPolicy.Create(
+            now,
+            previousRegistrationStart,
+            preWindowOffsetMinutes);
+        runtime.PersistHold(hold);
+        statusDetail = $"Preparing human-requested logout until scheduled wake at {hold.WakeAtUtc:u}";
+        information(
+            $"[Fishing][OfflineHold] Human full-cycle action persisted the next future startup gate; " +
+            $"registration={hold.NextRegistrationStartUtc:u}, wake={hold.WakeAtUtc:u}, " +
+            $"offset={hold.PreWindowOffsetMinutes}m.");
+        Update(now);
+        reason = string.Empty;
+        return true;
     }
 
     public bool BeginAfterSuccessfulRun(
@@ -101,6 +194,13 @@ public sealed class ScheduledOfflineHoldCoordinator
 
     public void Update(DateTimeOffset nowUtc)
     {
+        var now = nowUtc.ToUniversalTime();
+        if (humanLogoutStartedAtUtc.HasValue || humanLogoutReachedMainMenu)
+        {
+            ProcessHumanLogout(now);
+            return;
+        }
+
         var hold = runtime.PersistedHold;
         if (hold == null)
         {
@@ -108,7 +208,6 @@ public sealed class ScheduledOfflineHoldCoordinator
             return;
         }
 
-        var now = nowUtc.ToUniversalTime();
         if (!runtime.MasterEnabled || !runtime.FeatureEnabled)
         {
             BeginCancellation(
@@ -153,6 +252,12 @@ public sealed class ScheduledOfflineHoldCoordinator
 
     public void Cancel(string reason, DateTimeOffset nowUtc)
     {
+        if (humanLogoutStartedAtUtc.HasValue || humanLogoutReachedMainMenu)
+        {
+            ClearHumanLogout();
+            information($"[Fishing][OfflineHold] Cleared human main-menu action: {reason}");
+        }
+
         var hold = runtime.PersistedHold;
         if (hold == null)
             return;
@@ -161,6 +266,63 @@ public sealed class ScheduledOfflineHoldCoordinator
         hold = runtime.PersistedHold;
         if (hold != null)
             ProcessCancellation(hold, nowUtc.ToUniversalTime());
+    }
+
+    private void ProcessHumanLogout(DateTimeOffset now)
+    {
+        if (humanLogoutReachedMainMenu)
+        {
+            if (runtime.IsLoggedIn)
+            {
+                ClearHumanLogout();
+                information("[Fishing][OfflineHold] Manual login observed; human main-menu action cleared.");
+            }
+            else
+            {
+                statusDetail = "At main menu; no automatic wake requested";
+            }
+
+            return;
+        }
+
+        if (!humanLogoutStartedAtUtc.HasValue)
+            return;
+
+        if (!runtime.IsLoggedIn)
+        {
+            humanLogoutStartedAtUtc = null;
+            humanLogoutLastAttemptUtc = null;
+            humanLogoutReachedMainMenu = true;
+            statusDetail = "At main menu; no automatic wake requested";
+            information("[Fishing][OfflineHold] Human main-menu logout confirmed; no persisted hold or wake was created.");
+            return;
+        }
+
+        if (now - humanLogoutStartedAtUtc.Value >= ScheduledOfflineHoldPolicy.LogoutTimeout)
+        {
+            warning("[Fishing][OfflineHold] Human main-menu logout did not complete within 45 seconds; no hold or wake was created.");
+            ClearHumanLogout();
+            return;
+        }
+
+        runtime.TryConfirmLogout();
+        if (humanLogoutLastAttemptUtc.HasValue &&
+            now - humanLogoutLastAttemptUtc.Value < ScheduledOfflineHoldPolicy.LogoutRetryInterval)
+        {
+            return;
+        }
+
+        humanLogoutLastAttemptUtc = now;
+        runtime.SendLogoutCommand();
+        statusDetail = "Waiting for logout confirmation";
+    }
+
+    private void ClearHumanLogout()
+    {
+        humanLogoutStartedAtUtc = null;
+        humanLogoutLastAttemptUtc = null;
+        humanLogoutReachedMainMenu = false;
+        statusDetail = string.Empty;
     }
 
     private void PrepareLogout(ScheduledOfflineHoldState hold, DateTimeOffset now)

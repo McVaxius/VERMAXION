@@ -6,6 +6,7 @@ using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
 using VERMAXION.Models;
 using static VERMAXION.Services.GameHelpers;
+using Quest = Lumina.Excel.Sheets.Quest;
 
 namespace VERMAXION.Services;
 
@@ -13,6 +14,9 @@ public class VermaxionEngine
 {
     public Func<string?> StartBlocker { get; set; } = static () => null;
     private static readonly TimeSpan HandoffQuietPeriod = TimeSpan.FromSeconds(2);
+    private const uint MiniCactpotUnlockQuestId = 66024;
+    private const uint JumboCactpotUnlockQuestId = 66025;
+    private const uint FashionReportUnlockQuestId = 68617;
     private static readonly TimeSpan HandoffBlockerLogThrottle = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan HandoffBlockerWarningThrottle = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusGrace = TimeSpan.FromSeconds(60);
@@ -570,12 +574,20 @@ public class VermaxionEngine
         => Due(config.EnableVerminionQueue, "Verminion Queue", config.VerminionLastCompleted, config.VerminionNextReset);
 
     private static TaskEligibility EvaluateMiniCactpot(CharacterConfig config)
-        => Due(config.EnableMiniCactpot, "Mini Cactpot", config.MiniCactpotLastCompleted, config.MiniCactpotNextReset);
+    {
+        if (!config.EnableMiniCactpot)
+            return TaskEligibility.Disabled("Mini Cactpot is disabled for this character.");
+        if (!HasCompletedQuest(MiniCactpotUnlockQuestId))
+            return TaskEligibility.Blocked("Mini Cactpot requires completion of the quest \"Scratch It Rich\".");
+        return Due(true, "Mini Cactpot", config.MiniCactpotLastCompleted, config.MiniCactpotNextReset);
+    }
 
     private TaskEligibility EvaluateJumboCactpot(CharacterConfig config)
     {
         if (!config.EnableJumboCactpot)
             return TaskEligibility.Disabled("Jumbo Cactpot is disabled for this character.");
+        if (!HasCompletedQuest(JumboCactpotUnlockQuestId))
+            return TaskEligibility.Blocked("Jumbo Cactpot requires completion of the quest \"Hitting the Cactpot\".");
         var now = DateTime.UtcNow;
         var decision = JumboCactpotRoutingPolicy.Decide(
             now,
@@ -592,11 +604,19 @@ public class VermaxionEngine
     {
         if (!config.EnableFashionReport)
             return TaskEligibility.Disabled("Fashion Report is disabled for this character.");
+        if (!HasCompletedQuest(FashionReportUnlockQuestId))
+            return TaskEligibility.Blocked("Fashion Report requires completion of the quest \"Passion for Fashion\".");
         if (!ResetDetectionService.IsFashionReportAvailable(DateTime.UtcNow))
             return TaskEligibility.Blocked("Fashion Report is outside its Friday-to-reset availability window.");
         return ResetDetectionService.TaskNeedsRun(config.FashionReportLastCompleted, config.FashionReportNextReset)
             ? TaskEligibility.Runnable()
             : TaskEligibility.NotDue($"Fashion Report is not due until {config.FashionReportNextReset:u}.");
+    }
+
+    private static bool HasCompletedQuest(uint questId)
+    {
+        var quests = Plugin.DataManager.GetExcelSheet<Quest>();
+        return quests.TryGetRow(questId, out var quest) && Plugin.UnlockState.IsQuestCompleted(quest);
     }
 
     private TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
