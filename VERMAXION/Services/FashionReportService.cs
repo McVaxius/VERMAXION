@@ -94,15 +94,7 @@ public class FashionReportService : IDisposable
         currentAttempt = 1;
         completedJudgings = 0;
         ResetNavigationState();
-        if (clientState.TerritoryType == GoldSaucerTerritoryId)
-        {
-            log.Information("[FashionReport] Already in Gold Saucer, skipping teleport");
-            SetState(FashionReportState.NavigatingToMaskedRose);
-        }
-        else
-        {
-            SetState(FashionReportState.TeleportingToSaucer);
-        }
+        SetState(FashionReportState.TeleportingToSaucer);
     }
 
     public void Reset()
