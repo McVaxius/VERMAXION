@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-29 - I256 Chocobo repeat queue selection
+
+### Fixed
+
+- Chocobo Racing now reselects row `10` before Join on every race attempt, preventing later attempts from joining the CFC anchor duty, The Whorleater.
+
 ## 2026-08-29 - I255 Gold Saucer route resets
 
 ### Fixed
