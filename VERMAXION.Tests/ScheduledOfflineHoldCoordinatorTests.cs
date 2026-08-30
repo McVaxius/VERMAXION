@@ -26,23 +26,28 @@ public sealed class ScheduledOfflineHoldCoordinatorTests
     }
 
     [Fact]
-    public void EligibilityRequiresAutomaticScheduledHomeOrInnReturn()
+    public void EligibilityRequiresEnabledAutomaticScheduledVoyage()
     {
-        Assert.True(IsEligible(FishingStartupTrigger.WindowWatch, FishingReturnDestination.Home));
-        Assert.True(IsEligible(FishingStartupTrigger.AutoRetainerPostprocess, FishingReturnDestination.Inn));
-        Assert.True(IsEligible(FishingStartupTrigger.ScheduledWake, FishingReturnDestination.Home));
+        Assert.True(IsEligible(FishingStartupTrigger.WindowWatch));
+        Assert.True(IsEligible(FishingStartupTrigger.AutoRetainerPostprocess));
+        Assert.True(IsEligible(FishingStartupTrigger.ScheduledWake));
 
-        Assert.False(IsEligible(FishingStartupTrigger.Manual, FishingReturnDestination.Home));
+        Assert.False(IsEligible(FishingStartupTrigger.Manual));
         Assert.False(ScheduledOfflineHoldPolicy.IsEligible(
             true,
             true,
             FishingRunMode.Test,
-            FishingStartupTrigger.Test,
-            FishingReturnDestination.Inn));
-        Assert.False(IsEligible(FishingStartupTrigger.WindowWatch, FishingReturnDestination.None));
-        Assert.False(IsEligible(FishingStartupTrigger.WindowWatch, FishingReturnDestination.Limsa));
-        Assert.False(IsEligible(FishingStartupTrigger.WindowWatch, FishingReturnDestination.FreeCompany));
-        Assert.False(IsEligible(FishingStartupTrigger.WindowWatch, FishingReturnDestination.Custom));
+            FishingStartupTrigger.Test));
+        Assert.False(ScheduledOfflineHoldPolicy.IsEligible(
+            false,
+            true,
+            FishingRunMode.Scheduled,
+            FishingStartupTrigger.WindowWatch));
+        Assert.False(ScheduledOfflineHoldPolicy.IsEligible(
+            true,
+            false,
+            FishingRunMode.Scheduled,
+            FishingStartupTrigger.WindowWatch));
     }
 
     [Fact]
@@ -174,7 +179,6 @@ public sealed class ScheduledOfflineHoldCoordinatorTests
         Assert.True(coordinator.BeginAfterSuccessfulRun(
             FishingRunMode.Scheduled,
             FishingStartupTrigger.WindowWatch,
-            FishingReturnDestination.Inn,
             CompletedRegistration,
             CompletedAt,
             preWindowOffsetMinutes: -1));
@@ -191,15 +195,12 @@ public sealed class ScheduledOfflineHoldCoordinatorTests
         Assert.Null(runtime.PersistedHold);
     }
 
-    private static bool IsEligible(
-        FishingStartupTrigger trigger,
-        FishingReturnDestination destination)
+    private static bool IsEligible(FishingStartupTrigger trigger)
         => ScheduledOfflineHoldPolicy.IsEligible(
             featureEnabled: true,
             masterEnabled: true,
             FishingRunMode.Scheduled,
-            trigger,
-            destination);
+            trigger);
 
     private static FakeRuntime RuntimeWithPersistedOfflineHold()
     {

@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-30 - Post-voyage logout and FC buff travel settlement
+
+### Fixed
+
+- Scheduled Ocean Fishing logout now overrides every configured return after cleanup and lifecycle restoration, while FC buff refills always settle canonical `/li gc` travel continuously for eight seconds before Quartermaster pathing.
+
 ## 2026-08-30 - I259/I260 Jumbo Cactpot recovery and Mini requirements
 
 ### Fixed

@@ -111,6 +111,7 @@ public sealed class FishingService
     private int cleanupCommandIndex;
     private bool cleanupCommandSent;
     private bool cleanupBusyObserved;
+    private bool scheduledOfflineHoldPending;
     private OceanFishingRailDestination? currentRailDestination;
     private OceanFishingRailDestination? railSampleExclusionDestination;
     private DateTime nextRailSampleAt = DateTime.MinValue;
@@ -121,7 +122,6 @@ public sealed class FishingService
     private FishingRunMode activeRunMode;
     private FishingStartupTrigger activeStartupTrigger;
     private DateTimeOffset activeRegistrationStartUtc;
-    private FishingReturnDestination settledReturnDestination;
     private OceanFishingProvider activeProvider;
     private string lastError = string.Empty;
     private string statusDetail = string.Empty;
@@ -268,7 +268,6 @@ public sealed class FishingService
         activeStartupTrigger = runLifecycle.Current.StartupTrigger;
         activeRegistrationStartUtc = runLifecycle.Current.RegistrationStartUtc;
         activeProvider = runLifecycle.Current.Provider;
-        settledReturnDestination = FishingReturnDestination.None;
         lastError = string.Empty;
         sawFishingContext = IsFishingContextActive();
         statusDetail = string.Empty;
@@ -308,6 +307,7 @@ public sealed class FishingService
         cleanupCommandIndex = 0;
         cleanupCommandSent = false;
         cleanupBusyObserved = false;
+        scheduledOfflineHoldPending = false;
         failureKind = FishingAttemptFailureKind.Stop;
         failureReported = false;
         currentRailDestination = null;
@@ -363,6 +363,7 @@ public sealed class FishingService
         ownedTelepotTownVisibleAt = DateTime.MinValue;
         lastError = string.Empty;
         statusDetail = string.Empty;
+        scheduledOfflineHoldPending = false;
         currentRailDestination = null;
         railSampleExclusionDestination = null;
         nextRailSampleAt = DateTime.MinValue;
@@ -375,7 +376,6 @@ public sealed class FishingService
             activeRunMode = FishingRunMode.Scheduled;
             activeStartupTrigger = FishingStartupTrigger.Clock;
             activeRegistrationStartUtc = default;
-            settledReturnDestination = FishingReturnDestination.None;
         }
     }
 
@@ -675,13 +675,22 @@ public sealed class FishingService
                 runLifecycle.Update();
                 if (!runLifecycle.IsActive)
                 {
-                    scheduledOfflineHold.BeginAfterSuccessfulRun(
-                        activeRunMode,
-                        activeStartupTrigger,
-                        settledReturnDestination,
-                        activeRegistrationStartUtc,
-                        DateTimeOffset.UtcNow,
-                        configuration.OceanFishingPreWindowOffsetMinutes);
+                    if (scheduledOfflineHoldPending)
+                    {
+                        scheduledOfflineHoldPending = false;
+                        if (!scheduledOfflineHold.IsEligibleAfterSuccessfulRun(activeRunMode, activeStartupTrigger))
+                        {
+                            ReturnAfterFishing();
+                            break;
+                        }
+
+                        scheduledOfflineHold.BeginAfterSuccessfulRun(
+                            activeRunMode,
+                            activeStartupTrigger,
+                            activeRegistrationStartUtc,
+                            DateTimeOffset.UtcNow,
+                            configuration.OceanFishingPreWindowOffsetMinutes);
+                    }
                     SetState(FishingState.Complete);
                 }
                 else
@@ -3708,8 +3717,16 @@ public sealed class FishingService
         if (TryReenterResultHandlingBeforeReturn("starting the configured return"))
             return;
 
+        if (scheduledOfflineHold.IsEligibleAfterSuccessfulRun(activeRunMode, activeStartupTrigger))
+        {
+            log.Information("[Fishing][OfflineHold] Scheduled logout overrides the configured return; restoring lifecycle state before creating the hold");
+            scheduledOfflineHoldPending = true;
+            runLifecycle.Cleanup("Ocean Fishing completed before scheduled offline hold");
+            SetState(FishingState.CleaningUpLifecycle);
+            return;
+        }
+
         var operationSettings = GetActiveOperationSettings();
-        settledReturnDestination = operationSettings.ReturnDestination;
         var command = FishingOperationPolicy.ResolveReturnCommand(operationSettings);
         if (!string.IsNullOrWhiteSpace(command))
         {
