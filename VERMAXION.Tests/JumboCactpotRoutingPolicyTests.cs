@@ -22,8 +22,8 @@ public sealed class JumboCactpotRoutingPolicyTests
         Assert.Equal(JumboCactpotRoute.RecoveryCashier, decision.Route);
         Assert.Equal(2, decision.ExpectedClaims);
         Assert.True(decision.ContinueToBrokerAfterClaims);
-        Assert.True(JumboCactpotPayoutProgressPolicy.CanCompleteClaims(2, 2, discoveryExhausted: false));
-        Assert.False(JumboCactpotPayoutProgressPolicy.CanCompleteClaims(2, 1, discoveryExhausted: false));
+        Assert.True(JumboCactpotPayoutProgressPolicy.CanCompleteClaims(2, 2, cashierExhaustionConfirmed: false));
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanCompleteClaims(2, 1, cashierExhaustionConfirmed: false));
     }
 
     [Fact]
@@ -133,19 +133,23 @@ public sealed class JumboCactpotRoutingPolicyTests
         Assert.False(decision.UsesCashier);
     }
 
-    [Fact]
-    public void ScheduledTwoTicketPayoutFinishesWithoutReturningToBroker()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void ScheduledTwoTicketPayoutReturnsToBrokerOnlyWhenPurchaseIsDue(
+        bool purchaseDue,
+        bool expectedContinue)
     {
         var decision = JumboCactpotRoutingPolicy.Decide(
             Now,
             scheduledPayoutWindow: true,
             unclaimedTickets: 2,
             payoutAvailableAt: Now,
-            purchaseDue: true);
+            purchaseDue);
 
         Assert.Equal(JumboCactpotRoute.ScheduledCashier, decision.Route);
         Assert.Equal(2, decision.ExpectedClaims);
-        Assert.False(decision.ContinueToBrokerAfterClaims);
+        Assert.Equal(expectedContinue, decision.ContinueToBrokerAfterClaims);
     }
 
     [Fact]
@@ -158,12 +162,43 @@ public sealed class JumboCactpotRoutingPolicyTests
     }
 
     [Fact]
-    public void ZeroDiscoveryRequiresDialogueAndTheFullTimeout()
+    public void ZeroResultRequiresCashierDialogueNoPayoutUiAndTheFullTimeout()
     {
-        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, false, false, 0, 10, 10));
-        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, true, false, 0, 9.9, 10));
-        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, true, true, 0, 10, 10));
-        Assert.True(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, true, false, 0, 10, 10));
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(false, false, 0, 10, 10));
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, false, 0, 9.9, 10));
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, true, 0, 10, 10));
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, false, 1, 10, 10));
+        Assert.True(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, false, 0, 10, 10));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void StalePositiveCountCanContinueAfterAuthoritativeZeroOnlyWhenPurchaseIsDue(
+        bool purchaseDue,
+        bool expectedContinue)
+    {
+        var decision = JumboCactpotRoutingPolicy.Decide(
+            Now,
+            scheduledPayoutWindow: true,
+            unclaimedTickets: 3,
+            payoutAvailableAt: Now,
+            purchaseDue);
+
+        Assert.Equal(3, decision.ExpectedClaims);
+        Assert.Equal(expectedContinue, decision.ContinueToBrokerAfterZero);
+        Assert.True(JumboCactpotPayoutProgressPolicy.CanAcceptZeroResult(true, false, 0, 10, 10));
+    }
+
+    [Fact]
+    public void TwoVerifiedClaimsSatisfyStaleExpectedThreeOnlyAfterFullBatchExhaustion()
+    {
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptPartialBatchExhaustion(3, false, 2, 10, 10));
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanAcceptPartialBatchExhaustion(3, true, 2, 9.9, 10));
+        Assert.True(JumboCactpotPayoutProgressPolicy.CanAcceptPartialBatchExhaustion(3, true, 2, 10, 10));
+
+        Assert.False(JumboCactpotPayoutProgressPolicy.CanCompleteClaims(3, 2, cashierExhaustionConfirmed: false));
+        Assert.True(JumboCactpotPayoutProgressPolicy.CanCompleteClaims(3, 2, cashierExhaustionConfirmed: true));
     }
 
     [Fact]

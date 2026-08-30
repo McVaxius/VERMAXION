@@ -608,7 +608,7 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.TextDisabled("Mini Cactpot:");
         ImGui.BulletText("Saucy - Handles Mini Cactpot solving (/saucy -> Other Games -> Enable Auto Mini-Cactpot)");
-        ImGui.BulletText("Teleporter - /tp gold (teleport to Gold Saucer)");
+        ImGui.BulletText("Lifestream - /li saucer (travel to the Gold Saucer main aetheryte)");
         ImGui.BulletText("vnavmesh - Navigation to Cactpot Board");
         ImGui.Spacing();
 

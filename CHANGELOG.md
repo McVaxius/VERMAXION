@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-30 - I259/I260 Jumbo Cactpot recovery and Mini requirements
+
+### Fixed
+
+- Jumbo broker and cashier travel now uses `/li Cactpot` without a forced-jump loop, reconciles authoritative cashier exhaustion against stale payout counts, and continues into the three-ticket broker purchase when due; Mini Cactpot now reports its actual Lifestream `/li saucer` and vnavmesh requirements without Teleporter.
+
 ## 2026-08-29 - I256 Chocobo repeat queue selection
 
 ### Fixed

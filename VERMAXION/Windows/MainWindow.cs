@@ -25,7 +25,6 @@ public class MainWindow : Window, IDisposable
         "vnavmesh",
         "YesAlready",
         "ADS",
-        "TeleporterPlugin",
         "Saucy",
         "TextAdvance",
         "XASlave",
@@ -818,8 +817,8 @@ public class MainWindow : Window, IDisposable
                 return ["Lifestream", "vnavmesh"];
             case "Mini Cactpot":
                 return config.RequireSaucyForMiniCactpot
-                    ? ["Teleporter", "Lifestream", "vnavmesh", "Saucy"]
-                    : ["Teleporter", "Lifestream", "vnavmesh"];
+                    ? ["Lifestream", "vnavmesh", "Saucy"]
+                    : ["Lifestream", "vnavmesh"];
             case "Allied Society":
                 return ["QSTCompanion"];
             case "LootGoblin Map Gather":
@@ -1005,8 +1004,7 @@ public class MainWindow : Window, IDisposable
         string name,
         IReadOnlySet<string> loadedPluginInternalNames)
     {
-        var internalName = name == "Teleporter" ? "TeleporterPlugin" : name;
-        var loaded = loadedPluginInternalNames.Contains(internalName);
+        var loaded = loadedPluginInternalNames.Contains(name);
         if (task == "Fishing" && name == "AutoHook")
         {
             if (!loaded)
