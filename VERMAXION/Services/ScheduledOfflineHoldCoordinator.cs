@@ -158,17 +158,11 @@ public sealed class ScheduledOfflineHoldCoordinator
     public bool BeginAfterSuccessfulRun(
         FishingRunMode mode,
         FishingStartupTrigger startupTrigger,
-        FishingReturnDestination returnDestination,
         DateTimeOffset completedRegistrationStartUtc,
         DateTimeOffset nowUtc,
         int preWindowOffsetMinutes)
     {
-        if (!ScheduledOfflineHoldPolicy.IsEligible(
-                runtime.FeatureEnabled,
-                runtime.MasterEnabled,
-                mode,
-                startupTrigger,
-                returnDestination))
+        if (!IsEligibleAfterSuccessfulRun(mode, startupTrigger))
         {
             return false;
         }
@@ -186,11 +180,20 @@ public sealed class ScheduledOfflineHoldCoordinator
         runtime.PersistHold(hold);
         statusDetail = $"Preparing logout until scheduled wake at {hold.WakeAtUtc:u}";
         information(
-            $"[Fishing][OfflineHold] Persisted hold after {returnDestination} return; " +
+            $"[Fishing][OfflineHold] Persisted hold after scheduled voyage completion; " +
             $"next registration={hold.NextRegistrationStartUtc:u}, wake={hold.WakeAtUtc:u}, " +
             $"offset={hold.PreWindowOffsetMinutes}m.");
         return true;
     }
+
+    public bool IsEligibleAfterSuccessfulRun(
+        FishingRunMode mode,
+        FishingStartupTrigger startupTrigger)
+        => ScheduledOfflineHoldPolicy.IsEligible(
+            runtime.FeatureEnabled,
+            runtime.MasterEnabled,
+            mode,
+            startupTrigger);
 
     public void Update(DateTimeOffset nowUtc)
     {

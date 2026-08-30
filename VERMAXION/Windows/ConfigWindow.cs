@@ -541,9 +541,9 @@ public class ConfigWindow : Window, IDisposable
                 config.Save();
             }
             DrawHelpMarker(
-                "After a successful automatically scheduled voyage returns Home or Inn and restores its external state, log out and wake at the snapshotted Ocean Fishing startup gate. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client.");
+                "After a successful automatically scheduled voyage finishes result handling and optional cleanup, override Return after Fishing, restore external state, then log out and wake at the snapshotted Ocean Fishing startup gate. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client.");
             ImGui.TextWrapped(
-                "Scheduled hold prerequisite: an automatically scheduled Ocean Fishing run must finish with Return after Fishing set to Home or Inn.");
+                "Scheduled logout overrides every Return after Fishing destination. Manual and test voyages, and scheduled voyages while this setting is disabled, still use the configured return.");
             ImGui.TextDisabled($"Offline hold: {plugin.ScheduledOfflineHoldCoordinator.StatusText}");
             if (config.ScheduledOfflineHold is { } hold)
             {
@@ -1364,7 +1364,7 @@ public class ConfigWindow : Window, IDisposable
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "FishingReturnDestination", "Fishing return destination",
                     (source, target) => target.FishingReturnDestination = source.FishingReturnDestination);
-                DrawHelpMarker("Where this character should go after the fishing duty or window ends.");
+                DrawHelpMarker("Where this character should go after the fishing duty or window ends. An eligible scheduled logout overrides this return.");
 
                 var returnCommand = cc.FishingReturnCommand;
                 if (ImGui.InputText("Return slash command", ref returnCommand, 128))

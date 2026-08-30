@@ -42,6 +42,7 @@ public class FCBuffService : IDisposable
     private static readonly TimeSpan PurchaseConfirmPromptFallbackDelay = TimeSpan.FromSeconds(1.5);
     private static readonly TimeSpan PurchaseConfirmPromptReadLogThrottle = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan NavigationLogThrottle = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan TravelSettlementDuration = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan WindowCloseRetryInterval = TimeSpan.FromMilliseconds(750);
     private static readonly TimeSpan WindowCloseLogThrottle = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan WindowCloseEscapeFallbackDelay = TimeSpan.FromSeconds(5);
@@ -61,6 +62,7 @@ public class FCBuffService : IDisposable
     private DateTime lastNavigationLogTime = DateTime.MinValue;
     private int teleportRetryCount = 0;
     private DateTime lastTeleportRetryAt = DateTime.MinValue;
+    private DateTime travelSettlementStartedAt = DateTime.MinValue;
     private int purchaseConfirmRetryCount = 0;
     private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
     private int purchaseConfirmPromptReadFailureCount = 0;
@@ -587,49 +589,21 @@ public class FCBuffService : IDisposable
                 
                 // Get current GC territory to determine navigation
                 var currentGCTerritory = GetCurrentGCTerritory();
-                var currentTerritory = clientState.TerritoryType;
-                
-                // Check if we're already in the right GC territory
+                CommandHelper.SendCommand("/li gc");
+
                 switch (currentGCTerritory)
                 {
                     case 129: // Limsa Lominsa (Upper Decks/Aft)
-                        if (currentTerritory == 129)
-                        {
-                            log.Information("[FCBuff] Already in Limsa GC territory, skipping teleport");
-                            SetState(FCBuffState.NavigatingToQuartermaster);
-                        }
-                        else
-                        {
-                            log.Information("[FCBuff] Navigating to Limsa GC: /li aft");
-                            CommandHelper.SendCommand("/li aft");
-                            SetState(FCBuffState.WaitingForAftArrival);
-                        }
+                        log.Information("[FCBuff] Navigating to Limsa GC: /li gc");
+                        SetState(FCBuffState.WaitingForAftArrival);
                         break;
                     case 132: // Gridania
-                        if (currentTerritory == 132) // Gridania is territory 132
-                        {
-                            log.Information("[FCBuff] Already in Gridania GC territory, skipping teleport");
-                            SetState(FCBuffState.NavigatingToQuartermaster);
-                        }
-                        else
-                        {
-                            log.Information("[FCBuff] Navigating to Gridania GC: /li gridania");
-                            CommandHelper.SendCommand("/li gridania");
-                            SetState(FCBuffState.WaitingForGridaniaArrival);
-                        }
+                        log.Information("[FCBuff] Navigating to Gridania GC: /li gc");
+                        SetState(FCBuffState.WaitingForGridaniaArrival);
                         break;
                     case 130: // Ul'dah
-                        if (currentTerritory == 130)
-                        {
-                            log.Information("[FCBuff] Already in Ul'dah GC territory, skipping teleport");
-                            SetState(FCBuffState.NavigatingToQuartermaster);
-                        }
-                        else
-                        {
-                            log.Information("[FCBuff] Navigating to Ul'dah GC: /li dah");
-                            CommandHelper.SendCommand("/li dah");
-                            SetState(FCBuffState.WaitingForDahArrival);
-                        }
+                        log.Information("[FCBuff] Navigating to Ul'dah GC: /li gc");
+                        SetState(FCBuffState.WaitingForDahArrival);
                         break;
                     default:
                         log.Error($"[FCBuff] Unknown GC territory: {currentGCTerritory}");
@@ -639,25 +613,30 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForAftArrival:
-                TickTeleportArrival(elapsed, 129, "/li aft", "Limsa Aft");
+                TickTeleportArrival(elapsed, 129, "Limsa Aft");
                 return;
 
             case FCBuffState.WaitingForGridaniaArrival:
-                TickTeleportArrival(elapsed, 132, "/li gridania", "Gridania");
+                TickTeleportArrival(elapsed, 132, "Gridania");
                 return;
 
             case FCBuffState.WaitingForDahArrival:
-                TickTeleportArrival(elapsed, 130, "/li dah", "Ul'dah");
+                TickTeleportArrival(elapsed, 130, "Ul'dah");
                 return;
 
             case FCBuffState.NavigatingToQuartermaster:
-                if (elapsed < 2) return;
-                
-                if (!IsTravelSettlementReady())
+                var navigationNow = DateTime.UtcNow;
+                var expectedGCTerritory = (ushort)GetCurrentGCTerritory();
+                if (!TryGetTravelSettlementDuration(expectedGCTerritory, navigationNow, out var settledFor) ||
+                    settledFor < TravelSettlementDuration)
                 {
-                    LogNavigationStatusThrottled("[FCBuff] Waiting for player and Lifestream travel to settle before pathing...", debug: true);
+                    LogNavigationStatusThrottled(
+                        $"[FCBuff] Waiting for GC travel to remain settled before pathing ({settledFor.TotalSeconds:F1}/{TravelSettlementDuration.TotalSeconds:F0}s)...",
+                        debug: true);
                     return;
                 }
+
+                if (elapsed < 2) return;
 
                 if (TryTransitionToQuartermasterInteraction("navigation start"))
                     return;
@@ -1129,18 +1108,24 @@ public class FCBuffService : IDisposable
         }
     }
 
-    private void TickTeleportArrival(double elapsedSeconds, ushort expectedTerritory, string retryCommand, string destination)
+    private void TickTeleportArrival(double elapsedSeconds, ushort expectedTerritory, string destination)
     {
         if (elapsedSeconds < 1)
             return;
 
+        var now = DateTime.UtcNow;
         var settlementReady = IsTravelSettlementReady();
-        if (clientState.TerritoryType == expectedTerritory
-            && settlementReady
-            && elapsedSeconds >= 3)
+        if (TryGetTravelSettlementDuration(expectedTerritory, now, out var settledFor))
         {
-            log.Information($"[FCBuff] Arrived at {destination}, navigating to Quartermaster");
-            SetState(FCBuffState.NavigatingToQuartermaster);
+            if (settledFor >= TravelSettlementDuration)
+            {
+                log.Information($"[FCBuff] {destination} travel remained settled for {TravelSettlementDuration.TotalSeconds:F0}s; navigating to Quartermaster");
+                SetState(FCBuffState.NavigatingToQuartermaster);
+                return;
+            }
+
+            LogNavigationStatusThrottled(
+                $"[FCBuff] Waiting for {destination} travel settlement ({settledFor.TotalSeconds:F1}/{TravelSettlementDuration.TotalSeconds:F0}s)");
             return;
         }
 
@@ -1152,7 +1137,6 @@ public class FCBuffService : IDisposable
             return;
         }
 
-        var now = DateTime.UtcNow;
         var sinceLastRetry = lastTeleportRetryAt == DateTime.MinValue
             ? elapsed
             : now - lastTeleportRetryAt;
@@ -1162,7 +1146,7 @@ public class FCBuffService : IDisposable
             teleportRetryCount++;
             lastTeleportRetryAt = now;
             log.Warning($"[FCBuff] Retrying teleport to {destination} ({teleportRetryCount}/{FCBuffRecoveryPolicy.MaxTeleportRetries})");
-            CommandHelper.SendCommand(retryCommand);
+            CommandHelper.SendCommand("/li gc");
             return;
         }
 
@@ -1174,6 +1158,25 @@ public class FCBuffService : IDisposable
            && !condition[ConditionFlag.BetweenAreas51]
            && objects.LocalPlayer != null
            && !plugin.LifestreamIPC.IsBusy();
+
+    private bool TryGetTravelSettlementDuration(
+        ushort expectedTerritory,
+        DateTime now,
+        out TimeSpan settledFor)
+    {
+        if (clientState.TerritoryType != expectedTerritory || !IsTravelSettlementReady())
+        {
+            travelSettlementStartedAt = DateTime.MinValue;
+            settledFor = TimeSpan.Zero;
+            return false;
+        }
+
+        if (travelSettlementStartedAt == DateTime.MinValue)
+            travelSettlementStartedAt = now;
+
+        settledFor = now - travelSettlementStartedAt;
+        return true;
+    }
 
     private string GetExpectedPurchaseActionName() => isSealSweetenerTwo ? "Seal Sweetener II" : "Seal Sweetener I";
 
@@ -1650,6 +1653,7 @@ public class FCBuffService : IDisposable
         {
             teleportRetryCount = 0;
             lastTeleportRetryAt = DateTime.MinValue;
+            travelSettlementStartedAt = DateTime.MinValue;
         }
     }
 

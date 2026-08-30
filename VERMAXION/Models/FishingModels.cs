@@ -1175,13 +1175,11 @@ public static class ScheduledOfflineHoldPolicy
         bool featureEnabled,
         bool masterEnabled,
         FishingRunMode mode,
-        FishingStartupTrigger startupTrigger,
-        FishingReturnDestination returnDestination)
+        FishingStartupTrigger startupTrigger)
         => featureEnabled &&
            masterEnabled &&
            mode == FishingRunMode.Scheduled &&
-           startupTrigger is not FishingStartupTrigger.Manual and not FishingStartupTrigger.Test &&
-           returnDestination is FishingReturnDestination.Home or FishingReturnDestination.Inn;
+           startupTrigger is not FishingStartupTrigger.Manual and not FishingStartupTrigger.Test;
 
     public static ScheduledOfflineHoldState Create(
         DateTimeOffset nowUtc,
