@@ -81,10 +81,10 @@ public sealed class JumboCactpotRecoveryPolicyTests
     }
 
     [Fact]
-    public void VerifiedStalePayoutContinuesIntoPurchase()
+    public void VerifiedPayoutContinuesIntoPurchaseWhenPurchaseIsDue()
     {
         var action = JumboCactpotRecoveryPolicy.GetPayoutCompletionAction(
-            stalePayoutRecovery: true,
+            purchaseDue: true,
             payoutUiObserved: true,
             verifiedClaims: 3,
             expectedClaims: 3);
@@ -93,10 +93,10 @@ public sealed class JumboCactpotRecoveryPolicyTests
     }
 
     [Fact]
-    public void VerifiedScheduledPayoutDoesNotContinueIntoPurchase()
+    public void VerifiedPayoutDoesNotContinueIntoPurchaseWhenPurchaseIsNotDue()
     {
         var action = JumboCactpotRecoveryPolicy.GetPayoutCompletionAction(
-            stalePayoutRecovery: false,
+            purchaseDue: false,
             payoutUiObserved: true,
             verifiedClaims: 3,
             expectedClaims: 3);

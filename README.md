@@ -92,12 +92,12 @@ Each AutoRetainer/manual run records a structured plan for every catalog entry: 
 - **AutoRetainer** (required for post-process hook)
 - **Ocean Fishing:** XA Database, AutoRetainer, Lifestream, AutoHook, and vnavmesh. ADS provides ordered fishing-stock purchases and is the only supported repair provider.
 - **Retainer Equipping:** AutoRetainer and a reachable retainer bell through the configured Lifestream route.
-- **Mini Cactpot:** Saucy is optional per feature.
+- **Mini Cactpot:** Lifestream (`/li saucer`) and vnavmesh; Saucy is optional per feature.
 - **Chocobo Racing:** Choke-abo is optional for Always Race and required for Target Pedigree mode.
 
 Ocean Fishing does not require Questionable. It does not manage AutoHook presets, choose bait dynamically, or use local/self repair.
 
-The task dashboard distinguishes `Ready`, `Missing`, and `Needs setup`. Mini Cactpot, Jumbo Cactpot, and Fashion Report accept either enabled TextAdvance or XA Slave's enabled Skip Dialogue setting; required Saucy readiness also verifies that its Mini Cactpot configuration is accessible. The displayed `Teleporter` dependency resolves the plugin's `TeleporterPlugin` internal name. Fishing reports whether AutoHook `AutoOceanFish` matches the selected provider. These dependency cells are informational, while Fishing separately blocks run acquisition if the required AutoHook synchronization cannot be completed.
+The task dashboard distinguishes `Ready`, `Missing`, and `Needs setup`. Mini Cactpot, Jumbo Cactpot, and Fashion Report accept either enabled TextAdvance or XA Slave's enabled Skip Dialogue setting; required Saucy readiness also verifies that its Mini Cactpot configuration is accessible. Mini Cactpot uses Lifestream's `/li saucer` route and vnavmesh rather than Teleporter. Fishing reports whether AutoHook `AutoOceanFish` matches the selected provider. These dependency cells are informational, while Fishing separately blocks run acquisition if the required AutoHook synchronization cannot be completed.
 
 Character-select recovery never opens, navigates, or backs out of character select. Its automatic timer arms only while `CharaSelect` is visible and resets as soon as it is hidden. Both the automatic and manual paths require only that visible addon, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. The Main Window shows the global state, live `m:ss` countdown, and any blocking reason.
 

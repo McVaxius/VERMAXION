@@ -51,10 +51,11 @@ internal readonly record struct JumboCactpotRouteDecision(
     public bool IsDiscovery => UsesCashier && ExpectedClaims == null;
 
     public bool ContinueToBrokerAfterClaims =>
-        Route is JumboCactpotRoute.RecoveryCashier or JumboCactpotRoute.DiscoveryCashier;
+        Route is JumboCactpotRoute.RecoveryCashier or JumboCactpotRoute.DiscoveryCashier ||
+        Route == JumboCactpotRoute.ScheduledCashier && PurchaseDue;
 
     public bool ContinueToBrokerAfterZero =>
-        Route == JumboCactpotRoute.DiscoveryCashier && PurchaseDue;
+        UsesCashier && PurchaseDue;
 }
 
 internal static class JumboCactpotRoutingPolicy
@@ -105,22 +106,36 @@ internal static class JumboCactpotPayoutProgressPolicy
     }
 
     public static bool CanAcceptZeroResult(
-        bool discovery,
         bool cashierDialogueObserved,
         bool payoutUiObserved,
         int verifiedClaims,
         double elapsedSeconds,
         double fullTimeoutSeconds)
-        => discovery &&
-           cashierDialogueObserved &&
+        => cashierDialogueObserved &&
            !payoutUiObserved &&
            verifiedClaims == 0 &&
            elapsedSeconds >= fullTimeoutSeconds;
 
-    public static bool CanCompleteClaims(int? expectedClaims, int verifiedClaims, bool discoveryExhausted)
+    public static bool CanAcceptPartialBatchExhaustion(
+        int? expectedClaims,
+        bool payoutUiObserved,
+        int verifiedClaims,
+        double elapsedSeconds,
+        double fullTimeoutSeconds)
+        => expectedClaims is { } expected &&
+           expected > 0 &&
+           payoutUiObserved &&
+           verifiedClaims >= 1 &&
+           verifiedClaims < expected &&
+           elapsedSeconds >= fullTimeoutSeconds;
+
+    public static bool CanCompleteClaims(int? expectedClaims, int verifiedClaims, bool cashierExhaustionConfirmed)
         => expectedClaims is { } expected
-            ? expected > 0 && verifiedClaims == expected
-            : discoveryExhausted && verifiedClaims is >= 1 and <= 3;
+            ? expected > 0 &&
+              (verifiedClaims == expected ||
+               cashierExhaustionConfirmed && verifiedClaims >= 1 && verifiedClaims < expected)
+            : verifiedClaims == 3 ||
+              cashierExhaustionConfirmed && verifiedClaims is >= 1 and < 3;
 
     public static bool IsStableDiscoveryExhaustion(
         bool discovery,
@@ -164,7 +179,7 @@ internal static class JumboCactpotRecoveryPolicy
     }
 
     public static JumboPayoutCompletionAction GetPayoutCompletionAction(
-        bool stalePayoutRecovery,
+        bool purchaseDue,
         bool payoutUiObserved,
         int verifiedClaims,
         int expectedClaims)
@@ -172,7 +187,7 @@ internal static class JumboCactpotRecoveryPolicy
         if (!payoutUiObserved || expectedClaims <= 0 || verifiedClaims < expectedClaims)
             return JumboPayoutCompletionAction.Fail;
 
-        return stalePayoutRecovery
+        return purchaseDue
             ? JumboPayoutCompletionAction.ContinueToPurchase
             : JumboPayoutCompletionAction.CompleteScheduledPayout;
     }
