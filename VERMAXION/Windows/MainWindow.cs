@@ -206,7 +206,7 @@ public class MainWindow : Window, IDisposable
         
         ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
         if (ImGui.Button("Run All"))
-            engine.ManualStart();
+            plugin.RunDashboardAction(() => engine.ManualStart());
         ImGui.EndDisabled();
         if (engine.IsRunning)
         {
@@ -943,7 +943,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TableSetColumnIndex(4);
         ImGui.BeginDisabled(row.ButtonDisabled);
         if (ImGui.SmallButton(row.ButtonLabel))
-            row.OnClick();
+            plugin.RunDashboardAction(row.OnClick);
         ImGui.EndDisabled();
         if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered())
             ImGui.SetTooltip(row.ButtonTooltip);

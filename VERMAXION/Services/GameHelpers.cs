@@ -665,7 +665,7 @@ public static class GameHelpers
                 return false;
 
             var addon = (AddonSelectYesno*)addonPtr;
-            if (!addon->AtkUnitBase.IsVisible)
+            if (!addon->AtkUnitBase.IsVisible || !addon->AtkUnitBase.IsReady)
                 return false;
 
             var yesNo = new AddonMaster.SelectYesno(&addon->AtkUnitBase);
