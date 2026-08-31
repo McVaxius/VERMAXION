@@ -36,6 +36,44 @@ public sealed class SixItemConfigurationTests
     }
 
     [Theory]
+    [InlineData(1, 0)]
+    [InlineData(5, 5)]
+    [InlineData(8, 10)]
+    [InlineData(12, 12)]
+    [InlineData(18, 14)]
+    [InlineData(20, 15)]
+    [InlineData(30, 15)]
+    public void FcBuffInactiveActionCapacityFollowsFreeCompanyRank(int rank, int expectedCapacity)
+    {
+        Assert.Equal(expectedCapacity, FcBuffStockPolicy.InactiveActionCapacityForRank(rank));
+    }
+
+    [Fact]
+    public void FcBuffInactiveActionCapacityRejectsUnknownRanks()
+    {
+        Assert.Null(FcBuffStockPolicy.InactiveActionCapacityForRank(null));
+        Assert.Null(FcBuffStockPolicy.InactiveActionCapacityForRank(0));
+        Assert.Null(FcBuffStockPolicy.InactiveActionCapacityForRank(31));
+    }
+
+    [Theory]
+    [InlineData(0, 12)]
+    [InlineData(4, 8)]
+    public void FcBuffTwelveSlotCompanyBuysOnlyTheLiveShortfall(int liveCount, int expectedPurchaseQuantity)
+    {
+        var capacity = FcBuffStockPolicy.InactiveActionCapacityForRank(12);
+
+        Assert.Equal(
+            expectedPurchaseQuantity,
+            FcBuffStockPolicy.RequiredPurchaseQuantity(
+                maintainTarget: true,
+                configuredQuantity: 15,
+                inactiveActionCapacity: capacity!.Value,
+                liveCount: liveCount,
+                willActivate: false));
+    }
+
+    [Theory]
     [InlineData(0, false, FishingStockCatalogPolicy.DefaultVersatileLureTarget)]
     [InlineData(37, true, 37)]
     public void LegacyLureMigrationPreservesPositiveAndDisablesZero(
@@ -239,6 +277,7 @@ public sealed class SixItemConfigurationTests
             FcBuffStockPolicy.RequiredPurchaseQuantity(
                 maintainTarget,
                 configuredQuantity: 15,
+                inactiveActionCapacity: 15,
                 liveCount: liveCount,
                 willActivate: willActivate));
     }
@@ -251,6 +290,7 @@ public sealed class SixItemConfigurationTests
             FcBuffStockPolicy.RequiredPurchaseQuantity(
                 maintainTarget: true,
                 configuredQuantity: int.MaxValue,
+                inactiveActionCapacity: 15,
                 liveCount: 0,
                 willActivate: true));
     }
@@ -272,6 +312,7 @@ public sealed class SixItemConfigurationTests
             FcBuffStockPolicy.RequiredPurchaseQuantity(
                 maintainTarget: true,
                 configuredQuantity: 15,
+                inactiveActionCapacity: 15,
                 liveCount: ledger[fcId].KnownSealSweetenerTwoCount,
                 willActivate: false));
         Assert.Equal(3, ledger[fcId].KnownSealSweetenerTwoCount);

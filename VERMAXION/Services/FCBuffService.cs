@@ -13,6 +13,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using Lumina.Excel.Sheets;
+using VERMAXION.IPC;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
@@ -26,6 +27,7 @@ public class FCBuffService : IDisposable
     private readonly IObjectTable objects;
     private readonly ITargetManager targetManager;
     private readonly ConfigManager configManager;
+    private readonly YesAlreadyIPC yesAlready;
     private readonly Plugin plugin;
 
     private const int BaseMinGil = 16000; // Base minimum gil required
@@ -34,10 +36,8 @@ public class FCBuffService : IDisposable
     private const ushort SealSweetenerTwoMinimumStrength = 10;
     private const uint SealSweetenerTwoCompanyActionId = 36;
     private const uint ActivateEntryAddonRowId = 2817;
-    private const int MaxPurchaseConfirmRetries = 3;
     private const int MaxPurchaseConfirmPromptReadRetries = 3;
     private const float QuartermasterWaypointArrivalDistance = 2.5f;
-    private static readonly TimeSpan PurchaseConfirmRetryInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PurchaseConfirmTimeout = TimeSpan.FromSeconds(12);
     private static readonly TimeSpan PurchaseConfirmPromptFallbackDelay = TimeSpan.FromSeconds(1.5);
     private static readonly TimeSpan PurchaseConfirmPromptReadLogThrottle = TimeSpan.FromMilliseconds(500);
@@ -63,8 +63,7 @@ public class FCBuffService : IDisposable
     private int teleportRetryCount = 0;
     private DateTime lastTeleportRetryAt = DateTime.MinValue;
     private DateTime travelSettlementStartedAt = DateTime.MinValue;
-    private int purchaseConfirmRetryCount = 0;
-    private DateTime lastPurchaseConfirmRetryAt = DateTime.MinValue;
+    private DateTime purchaseCallbackFiredAt = DateTime.MinValue;
     private int purchaseConfirmPromptReadFailureCount = 0;
     private DateTime firstPurchaseConfirmPromptReadFailureAt = DateTime.MinValue;
     private DateTime lastPurchaseConfirmPromptReadLogAt = DateTime.MinValue;
@@ -79,6 +78,8 @@ public class FCBuffService : IDisposable
     private bool resumeAfterPurchase;
     private bool allowActivation;
     private bool maintainStockTarget;
+    private int inactiveActionCapacity;
+    private bool yesAlreadyPauseOwned;
     private int activationAttempts;
     private int lastSealSweetenerListIndex = -1;
 
@@ -126,7 +127,7 @@ public class FCBuffService : IDisposable
     public string StatusText => state.ToString();
     internal bool CompletedViaRankOneToSevenShortcut { get; private set; }
 
-    public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager, ConfigManager configManager, Plugin plugin)
+    public FCBuffService(ICommandManager commandManager, IPluginLog log, IClientState clientState, ICondition condition, IObjectTable objects, ITargetManager targetManager, ConfigManager configManager, YesAlreadyIPC yesAlready, Plugin plugin)
     {
         this.commandManager = commandManager;
         this.log = log;
@@ -135,6 +136,7 @@ public class FCBuffService : IDisposable
         this.objects = objects;
         this.targetManager = targetManager;
         this.configManager = configManager;
+        this.yesAlready = yesAlready;
         this.plugin = plugin;
     }
 
@@ -151,6 +153,15 @@ public class FCBuffService : IDisposable
             SetState(FCBuffState.Complete);
             return;
         }
+
+        var capacity = FcBuffStockPolicy.InactiveActionCapacityForRank(freeCompanyRank);
+        if (!capacity.HasValue)
+        {
+            log.Error($"[FCBuff] Free Company rank/capacity could not be read (rank: {freeCompanyRank?.ToString() ?? "unknown"}); stopping before purchase work.");
+            SetState(FCBuffState.Failed);
+            return;
+        }
+        inactiveActionCapacity = capacity.Value;
         
         // Force load config from file to get latest values
         configManager.LoadAllAccounts();
@@ -196,6 +207,12 @@ public class FCBuffService : IDisposable
     public void RunTask()
     {
         log.Information("[VERMAXION] Manual FC Buff Refill triggered");
+        if (!TryAcquireManualYesAlreadyPause())
+        {
+            log.Error("[FCBuff] Could not acquire the VERMAXION YesAlready pause for the manual run.");
+            SetState(FCBuffState.Failed);
+            return;
+        }
         var config = configManager.GetActiveConfig();
         Start(config.FCBuffPurchaseAttempts);
     }
@@ -385,7 +402,7 @@ public class FCBuffService : IDisposable
     }
 
     public void Reset() => SetState(FCBuffState.Idle);
-    public void Dispose() { }
+    public void Dispose() => ReleaseOwnedYesAlreadyPause("service disposal");
 
     public unsafe void Update()
     {
@@ -535,13 +552,14 @@ public class FCBuffService : IDisposable
                     buyMax = FcBuffStockPolicy.RequiredPurchaseQuantity(
                         maintainStockTarget,
                         purchaseAttempts,
+                        inactiveActionCapacity,
                         sealSweetenerCount,
                         willActivate);
                     if (buyMax > 0)
                     {
                         log.Information(
                             maintainStockTarget
-                                ? $"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II; buying {buyMax} to finish at stock target {purchaseAttempts}{(willActivate ? " after one activation" : string.Empty)}."
+                                ? $"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II; buying {buyMax} to finish at effective stock target {Math.Min(purchaseAttempts, inactiveActionCapacity)}/{inactiveActionCapacity}{(willActivate ? " after one activation" : string.Empty)}."
                                 : "[FCBuff] No Seal Sweetener II found, proceeding with refill");
                         SetState(FCBuffState.CheckingIfRefillNeeded);
                     }
@@ -552,7 +570,7 @@ public class FCBuffService : IDisposable
                     }
                     else if (maintainStockTarget && alreadyActive)
                     {
-                        log.Information($"[FCBuff] Seal Sweetener II is already active and stock target {purchaseAttempts} is satisfied; completing without another activation.");
+                        log.Information($"[FCBuff] Seal Sweetener II is already active and effective stock target {Math.Min(purchaseAttempts, inactiveActionCapacity)}/{inactiveActionCapacity} is satisfied; completing without another activation.");
                         SetState(FCBuffState.Complete);
                     }
                     else
@@ -828,7 +846,7 @@ public class FCBuffService : IDisposable
                         var config = configManager.GetActiveConfig();
                         if (!isSealSweetenerTwo)
                             buyMax = 1;
-                        ResetPurchaseConfirmRetryState();
+                        ResetPurchaseConfirmationState();
                         log.Information($"[FCBuff] Purchase setup: buyMax={buyMax}, isSealSweetenerTwo={isSealSweetenerTwo}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
                         SetState(FCBuffState.PurchasingBuff);
                     }
@@ -850,8 +868,8 @@ public class FCBuffService : IDisposable
                 }
                 
                 var buffIndex = isSealSweetenerTwo ? 22 : 5; // 22u for SS2, 5u for SS1
-                ResetPurchaseConfirmRetryState();
-                lastPurchaseConfirmRetryAt = DateTime.UtcNow;
+                ResetPurchaseConfirmationState();
+                purchaseCallbackFiredAt = DateTime.UtcNow;
                 log.Information($"[FCBuff] Purchasing buff {buyCount + 1}/{buyMax} (index: {buffIndex})");
                 GameHelpers.FireAddonCallback("FreeCompanyExchange", false, 2, (uint)buffIndex);
                 SetState(FCBuffState.WaitingForPurchaseConfirm);
@@ -864,34 +882,20 @@ public class FCBuffService : IDisposable
                     return;
                 }
 
-                var now = DateTime.UtcNow;
                 var exchangeVisible = GameHelpers.IsAddonVisible("FreeCompanyExchange");
-                if (exchangeVisible &&
-                    purchaseConfirmRetryCount < MaxPurchaseConfirmRetries &&
-                    lastPurchaseConfirmRetryAt != DateTime.MinValue &&
-                    now - lastPurchaseConfirmRetryAt >= PurchaseConfirmRetryInterval)
-                {
-                    purchaseConfirmRetryCount++;
-                    lastPurchaseConfirmRetryAt = now;
-
-                    var retryBuffIndex = isSealSweetenerTwo ? 22u : 5u;
-                    log.Warning($"[FCBuff] Purchase confirmation not visible yet for buff {buyCount + 1}/{buyMax}; retrying exchange callback ({purchaseConfirmRetryCount}/{MaxPurchaseConfirmRetries})");
-                    GameHelpers.FireAddonCallback("FreeCompanyExchange", false, 2, retryBuffIndex);
-                }
-
                 if (elapsed < PurchaseConfirmTimeout.TotalSeconds)
                 {
                     return;
                 }
 
-                ResetPurchaseConfirmRetryState();
+                ResetPurchaseConfirmationState();
                 if (!exchangeVisible)
                 {
                     log.Error("[FCBuff] FreeCompanyExchange closed before purchase confirmation appeared");
                 }
                 else
                 {
-                    log.Error($"[FCBuff] Purchase confirmation did not appear after {MaxPurchaseConfirmRetries} retries");
+                    log.Error($"[FCBuff] Purchase confirmation did not appear within {PurchaseConfirmTimeout.TotalSeconds:F0}s; the exchange callback will not be repeated");
                 }
                 SetState(FCBuffState.Failed);
                 break;
@@ -1113,7 +1117,7 @@ public class FCBuffService : IDisposable
             }
 
             failAfterClosingWindows = true;
-            ResetPurchaseConfirmRetryState();
+            ResetPurchaseConfirmationState();
             SetState(FCBuffState.ClosingWindows);
             return;
         }
@@ -1267,7 +1271,7 @@ public class FCBuffService : IDisposable
         if (GameHelpers.ClickYesIfVisible())
         {
             buyCount++;
-            ResetPurchaseConfirmRetryState();
+            ResetPurchaseConfirmationState();
             SetState(FCBuffState.PurchasingBuff);
             return;
         }
@@ -1283,7 +1287,7 @@ public class FCBuffService : IDisposable
         if (buyCount >= buyMax)
             return false;
 
-        if (lastPurchaseConfirmRetryAt == DateTime.MinValue)
+        if (purchaseCallbackFiredAt == DateTime.MinValue)
             return false;
 
         if (!GameHelpers.IsAddonVisible("FreeCompanyExchange"))
@@ -1305,7 +1309,7 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] Confirming purchase prompt for {expectedActionName} index {expectedActionIndex} via {confirmationSource}: '{promptText}'");
         yesNo.Yes();
         buyCount++;
-        ResetPurchaseConfirmRetryState();
+        ResetPurchaseConfirmationState();
         SetState(FCBuffState.PurchasingBuff);
     }
 
@@ -1651,6 +1655,7 @@ public class FCBuffService : IDisposable
 
         if (newState == FCBuffState.Idle || newState == FCBuffState.Complete || newState == FCBuffState.Failed)
         {
+            ReleaseOwnedYesAlreadyPause($"state {newState}");
             ResetCachedGCTerritory();
             ResetWindowCloseTracking();
             failAfterClosingWindows = false;
@@ -1685,10 +1690,34 @@ public class FCBuffService : IDisposable
             log.Information(message);
     }
 
-    private void ResetPurchaseConfirmRetryState()
+    private bool TryAcquireManualYesAlreadyPause()
     {
-        purchaseConfirmRetryCount = 0;
-        lastPurchaseConfirmRetryAt = DateTime.MinValue;
+        if (yesAlready.IsPaused)
+            return true;
+
+        yesAlready.Pause();
+        yesAlreadyPauseOwned = yesAlready.IsPaused;
+        if (yesAlreadyPauseOwned)
+            log.Information("[FCBuff] Manual run acquired the VERMAXION YesAlready pause.");
+        return yesAlreadyPauseOwned;
+    }
+
+    private void ReleaseOwnedYesAlreadyPause(string reason)
+    {
+        if (!yesAlreadyPauseOwned)
+            return;
+
+        yesAlready.Unpause();
+        yesAlreadyPauseOwned = yesAlready.IsPaused;
+        if (yesAlreadyPauseOwned)
+            log.Warning($"[FCBuff] Could not release the owned YesAlready pause during {reason}.");
+        else
+            log.Information($"[FCBuff] Released the owned YesAlready pause during {reason}.");
+    }
+
+    private void ResetPurchaseConfirmationState()
+    {
+        purchaseCallbackFiredAt = DateTime.MinValue;
         purchaseConfirmPromptReadFailureCount = 0;
         firstPurchaseConfirmPromptReadFailureAt = DateTime.MinValue;
         lastPurchaseConfirmPromptReadLogAt = DateTime.MinValue;
