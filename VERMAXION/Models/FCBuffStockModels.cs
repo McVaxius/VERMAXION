@@ -38,6 +38,20 @@ public enum FcBuffStockAction
 
 public static class FcBuffStockPolicy
 {
+    public static int RequiredPurchaseQuantity(
+        bool maintainTarget,
+        int configuredQuantity,
+        int liveCount,
+        bool willActivate)
+    {
+        var quantityOrTarget = FCBuffRecoveryPolicy.ClampPurchaseAttempts(configuredQuantity);
+        var stock = Math.Max(0, liveCount);
+        if (!maintainTarget)
+            return stock == 0 ? quantityOrTarget : 0;
+
+        return Math.Max(0, quantityOrTarget + (willActivate ? 1 : 0) - stock);
+    }
+
     public static FcBuffStockAction Decide(
         bool allowActivation,
         bool sealSweetenerTwoAlreadyActive,

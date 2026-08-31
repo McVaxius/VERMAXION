@@ -121,9 +121,10 @@ public sealed class ScheduledOfflineHoldCoordinatorTests
     }
 
     [Fact]
-    public void ScheduledWakeWaitsForWorldReadyThenUsesExistingStartupCoordinatorHandoff()
+    public void CommittedHoldSurvivesCheckboxDriftAndUsesExistingStartupCoordinatorHandoff()
     {
         var runtime = RuntimeWithPersistedOfflineHold();
+        runtime.FeatureEnabled = false;
         var coordinator = new ScheduledOfflineHoldCoordinator(runtime);
         var wakeAt = runtime.PersistedHold!.WakeAtUtc;
         coordinator.Update(wakeAt);
@@ -145,10 +146,10 @@ public sealed class ScheduledOfflineHoldCoordinatorTests
     }
 
     [Fact]
-    public void FeatureDisableCancelsOfflineWithoutRequestingLoginAndRestoresAutoRetainer()
+    public void MasterDisableCancelsOfflineWithoutRequestingLoginAndRestoresAutoRetainer()
     {
         var runtime = RuntimeWithPersistedOfflineHold();
-        runtime.FeatureEnabled = false;
+        runtime.MasterEnabled = false;
         var coordinator = new ScheduledOfflineHoldCoordinator(runtime);
 
         coordinator.Update(CompletedAt);

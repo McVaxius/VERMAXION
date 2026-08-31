@@ -150,6 +150,7 @@ public sealed class UiUxPolicyTests
         target.EnableJumboCactpot = true;
         var draft = target.Clone();
         draft.EnableFCBuffRefill = true;
+        draft.MaintainFCBuffStockTarget = true;
         draft.FCBuffPurchaseAttempts = 17;
         draft.FCBuffMinPoints = 123;
         draft.FCBuffMinGil = 456;
@@ -159,6 +160,7 @@ public sealed class UiUxPolicyTests
         SetupWizardPolicy.Apply(SetupWizardKind.FcBuff, draft, target);
 
         Assert.True(target.EnableFCBuffRefill);
+        Assert.True(target.MaintainFCBuffStockTarget);
         Assert.Equal(17, target.FCBuffPurchaseAttempts);
         Assert.Equal(123, target.FCBuffMinPoints);
         Assert.Equal(456, target.FCBuffMinGil);

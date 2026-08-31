@@ -1,10 +1,15 @@
 # VERMAXION Changelog
 
-## 2026-08-30 - Post-voyage logout and FC buff travel settlement
+## 2026-08-30 - Ocean Fishing hold commitment and FC buff stock/travel
+
+### Added
+
+- Added the default-off per-character `Maintain configured Seal Sweetener II stock target` setting to FC Buff controls, account-default propagation, and the existing setup wizard. When enabled, the configured purchase quantity becomes the final stock target and only the live shortfall is bought, including one replacement before a VERMAXION activation.
 
 ### Fixed
 
-- Scheduled Ocean Fishing logout now overrides every configured return after cleanup and lifecycle restoration, while FC buff refills always settle canonical `/li gc` travel continuously for eight seconds before Quartermaster pathing.
+- Scheduled Ocean Fishing logout now overrides every configured return after cleanup and lifecycle restoration. Once its hold is persisted, later checkbox changes no longer cancel the automatic wake, login, and fishing handoff; the global master and Main Window `FULL STOP` remain cancellation paths.
+- Maelstrom FC buff travel now recognizes canonical `/li gc` completion in territory 128, while preserving the continuous eight-second settlement before Quartermaster pathing. Ocean Fishing retains its separate territory-129 Limsa route.
 
 ## 2026-08-30 - I259/I260 Jumbo Cactpot recovery and Mini requirements
 

@@ -15,7 +15,8 @@ public static class UIConstants
         public const string Enabled = "Character automation enabled";
         public const string FCBuffRefill = "FC Buff Refill (Seal Sweetener)";
         public const string AllowFCBuffActivation = "Allow VERMAXION to activate Seal Sweetener II";
-        public const string MaxPurchaseAttempts = "Max Purchase Attempts";
+        public const string MaintainFCBuffStockTarget = "Maintain configured Seal Sweetener II stock target";
+        public const string MaxPurchaseAttempts = "Purchase quantity / stock target";
         public const string MinFCPoints = "Min FC Points";
         public const string MinGil = "Min Gil";
         public const string MinionRoulette = "Minion Roulette";

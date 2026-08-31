@@ -168,21 +168,27 @@ public sealed class SixItemConfigurationTests
     {
         var fresh = CharacterConfig.CreateNew();
         Assert.False(fresh.AllowFCBuffActivation);
+        Assert.False(fresh.MaintainFCBuffStockTarget);
 
         var legacy = JsonSerializer.Deserialize<CharacterConfig>("{\"EnableFCBuffRefill\":true}")!;
         Assert.True(legacy.EnableFCBuffRefill);
         Assert.False(legacy.AllowFCBuffActivation);
+        Assert.False(legacy.MaintainFCBuffStockTarget);
 
         var configured = fresh;
         configured.EnableFCBuffRefill = true;
         configured.AllowFCBuffActivation = true;
+        configured.MaintainFCBuffStockTarget = true;
         Assert.True(configured.Clone().AllowFCBuffActivation);
+        Assert.True(configured.Clone().MaintainFCBuffStockTarget);
 
         var wizardTarget = CharacterConfig.CreateNew();
         var wizardImpact = SetupWizardPolicy.GetImpact(SetupWizardKind.FcBuff, wizardTarget, configured);
         SetupWizardPolicy.Apply(SetupWizardKind.FcBuff, configured, wizardTarget);
         Assert.Contains(wizardImpact, change => change.Key == nameof(CharacterConfig.AllowFCBuffActivation));
+        Assert.Contains(wizardImpact, change => change.Key == nameof(CharacterConfig.MaintainFCBuffStockTarget));
         Assert.True(wizardTarget.AllowFCBuffActivation);
+        Assert.True(wizardTarget.MaintainFCBuffStockTarget);
 
         var liveStock = new FcActionStockEntry { KnownSealSweetenerTwoCount = 3 };
         Assert.Equal(
@@ -213,8 +219,44 @@ public sealed class SixItemConfigurationTests
         Assert.Equal(2, liveStock.KnownSealSweetenerTwoCount);
     }
 
+    [Theory]
+    [InlineData(false, 0, false, 15)]
+    [InlineData(false, 4, false, 0)]
+    [InlineData(true, 0, false, 15)]
+    [InlineData(true, 4, false, 11)]
+    [InlineData(true, 15, false, 0)]
+    [InlineData(true, 18, false, 0)]
+    [InlineData(true, 15, true, 1)]
+    [InlineData(true, 0, true, 16)]
+    public void FcBuffStockTargetBuysOnlyTheRequiredQuantity(
+        bool maintainTarget,
+        int liveCount,
+        bool willActivate,
+        int expectedPurchaseQuantity)
+    {
+        Assert.Equal(
+            expectedPurchaseQuantity,
+            FcBuffStockPolicy.RequiredPurchaseQuantity(
+                maintainTarget,
+                configuredQuantity: 15,
+                liveCount: liveCount,
+                willActivate: willActivate));
+    }
+
     [Fact]
-    public void FcActiveActionNeverDecrementsButConfirmedActivationDoes()
+    public void FcBuffStockTargetKeepsTheExistingBoundAndAddsAtMostOneReplacement()
+    {
+        Assert.Equal(
+            FCBuffRecoveryPolicy.MaxPurchaseAttempts + 1,
+            FcBuffStockPolicy.RequiredPurchaseQuantity(
+                maintainTarget: true,
+                configuredQuantity: int.MaxValue,
+                liveCount: 0,
+                willActivate: true));
+    }
+
+    [Fact]
+    public void FcActiveActionTopsOffWithoutReplacementButConfirmedActivationDecrements()
     {
         const ulong fcId = 88;
         var ledger = new Dictionary<ulong, FcActionStockEntry>
@@ -225,6 +267,13 @@ public sealed class SixItemConfigurationTests
         Assert.Equal(
             FcBuffStockAction.Satisfied,
             FcBuffStockPolicy.Decide(true, true, ledger[fcId], reconciliationRequired: false));
+        Assert.Equal(
+            12,
+            FcBuffStockPolicy.RequiredPurchaseQuantity(
+                maintainTarget: true,
+                configuredQuantity: 15,
+                liveCount: ledger[fcId].KnownSealSweetenerTwoCount,
+                willActivate: false));
         Assert.Equal(3, ledger[fcId].KnownSealSweetenerTwoCount);
         Assert.True(FcBuffStockPolicy.ApplyConfirmedActivation(ledger, fcId, DateTime.UtcNow));
         Assert.Equal(2, ledger[fcId].KnownSealSweetenerTwoCount);

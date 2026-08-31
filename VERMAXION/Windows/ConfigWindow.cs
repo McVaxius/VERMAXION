@@ -541,7 +541,7 @@ public class ConfigWindow : Window, IDisposable
                 config.Save();
             }
             DrawHelpMarker(
-                "After a successful automatically scheduled voyage finishes result handling and optional cleanup, override Return after Fishing, restore external state, then log out and wake at the snapshotted Ocean Fishing startup gate. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client.");
+                "After a successful automatically scheduled voyage finishes result handling and optional cleanup, override Return after Fishing, restore external state, then log out and wake at the snapshotted Ocean Fishing startup gate. Disabling this checkbox prevents future holds but does not cancel a hold already underway; use Main Window FULL STOP to cancel it. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client.");
             ImGui.TextWrapped(
                 "Scheduled logout overrides every Return after Fishing destination. Manual and test voyages, and scheduled voyages while this setting is disabled, still use the configured return.");
             ImGui.TextDisabled($"Offline hold: {plugin.ScheduledOfflineHoldCoordinator.StatusText}");
@@ -939,6 +939,16 @@ public class ConfigWindow : Window, IDisposable
                     (source, target) => target.AllowFCBuffActivation = source.AllowFCBuffActivation);
                 ImGui.TextWrapped("Purchasing and live stock reconciliation remain enabled when activation is off.");
 
+                var maintainStockTarget = cc.MaintainFCBuffStockTarget;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.MaintainFCBuffStockTarget, ref maintainStockTarget))
+                {
+                    cc.MaintainFCBuffStockTarget = maintainStockTarget;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "MaintainFCBuffStockTarget", UIConstants.ConfigLabels.MaintainFCBuffStockTarget,
+                    (source, target) => target.MaintainFCBuffStockTarget = source.MaintainFCBuffStockTarget);
+                ImGui.TextWrapped("Off buys the configured quantity only at zero stock. On reads live stock and buys only the shortfall; a run that activates one also buys one replacement.");
+
                 ImGui.Text("Frequency:");
                 ImGui.SameLine();
                 var fcBuffFrequency = cc.FCBuffFrequency;
@@ -971,7 +981,11 @@ public class ConfigWindow : Window, IDisposable
                 DrawResetButton("FC Buff cadence", cc.ResetFCBuffState);
 
                 var attempts = cc.FCBuffPurchaseAttempts;
-                if (ImGui.SliderInt(UIConstants.ConfigLabels.MaxPurchaseAttempts, ref attempts, 1, 30))
+                if (ImGui.SliderInt(
+                        UIConstants.ConfigLabels.MaxPurchaseAttempts,
+                        ref attempts,
+                        1,
+                        FCBuffRecoveryPolicy.MaxPurchaseAttempts))
                 {
                     cc.FCBuffPurchaseAttempts = attempts;
                     changed = true;
@@ -3513,6 +3527,9 @@ public class ConfigWindow : Window, IDisposable
                 var allowActivation = wizardDraft.AllowFCBuffActivation;
                 if (ImGui.Checkbox(UIConstants.ConfigLabels.AllowFCBuffActivation, ref allowActivation))
                     wizardDraft.AllowFCBuffActivation = allowActivation;
+                var maintainStockTarget = wizardDraft.MaintainFCBuffStockTarget;
+                if (ImGui.Checkbox(UIConstants.ConfigLabels.MaintainFCBuffStockTarget, ref maintainStockTarget))
+                    wizardDraft.MaintainFCBuffStockTarget = maintainStockTarget;
                 var frequency = wizardDraft.FCBuffFrequency;
                 if (ImGui.BeginCombo("Frequency", frequency.ToString()))
                 {
@@ -3531,15 +3548,18 @@ public class ConfigWindow : Window, IDisposable
                 if (wizardFcBuffCadenceResetRequested)
                     ImGui.TextDisabled("Cadence completion state will be reset to due when this wizard is applied.");
                 var quantity = wizardDraft.FCBuffPurchaseAttempts;
-                if (ImGui.InputInt("Purchase quantity", ref quantity))
-                    wizardDraft.FCBuffPurchaseAttempts = Math.Max(1, quantity);
+                if (ImGui.InputInt(UIConstants.ConfigLabels.MaxPurchaseAttempts, ref quantity))
+                    wizardDraft.FCBuffPurchaseAttempts = Math.Clamp(
+                        quantity,
+                        1,
+                        FCBuffRecoveryPolicy.MaxPurchaseAttempts);
                 var points = wizardDraft.FCBuffMinPoints;
                 if (ImGui.InputInt("Minimum FC points", ref points))
                     wizardDraft.FCBuffMinPoints = Math.Max(0, points);
                 var gil = wizardDraft.FCBuffMinGil;
                 if (ImGui.InputInt("Minimum gil", ref gil))
                     wizardDraft.FCBuffMinGil = Math.Max(0, gil);
-                ImGui.TextWrapped("Requires Free Company action access. Purchasing and live stock reconciliation remain enabled when activation is off; stock is decremented only after confirmed VERMAXION activation.");
+                ImGui.TextWrapped("Requires Free Company action access. Target mode buys only the live shortfall and replaces an action this run activates; without it, positive stock still suppresses purchasing. Stock is decremented only after confirmed VERMAXION activation.");
                 break;
             }
             case SetupWizardKind.Fishing:
