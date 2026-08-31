@@ -122,6 +122,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private DateTime fishingRelogWorldReadySince = DateTime.MinValue;
     private DateTime fishingRelogLastDiagnosticAt = DateTime.MinValue;
     private bool retainerCollectOnlyObservedArProcessing;
+    private bool dashboardRunYesAlreadyPauseOwned;
     private int loggedDadBeforeArYield;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
@@ -547,6 +548,49 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             return (true, "HighestCombatJob", HighestCombatJobService.StatusText);
 
         return (false, "Idle", "VERMAXION is idle.");
+    }
+
+    internal void RunDashboardAction(Action action)
+    {
+        var engineWasRunningBefore = Engine.IsRunning;
+        var fishingLifecycleActiveBefore = FishingRunLifecycle.IsActive;
+
+        if (!YesAlreadyIPC.IsPaused)
+        {
+            YesAlreadyIPC.Pause();
+            if (!YesAlreadyIPC.IsPaused)
+            {
+                Log.Warning("[Dashboard] Run action blocked because VERMAXION could not pause YesAlready.");
+                return;
+            }
+
+            dashboardRunYesAlreadyPauseOwned = true;
+        }
+
+        try
+        {
+            action();
+        }
+        finally
+        {
+            if (dashboardRunYesAlreadyPauseOwned &&
+                ((!engineWasRunningBefore && Engine.IsRunning) ||
+                 (!fishingLifecycleActiveBefore && FishingRunLifecycle.IsActive)))
+            {
+                dashboardRunYesAlreadyPauseOwned = false;
+            }
+
+            ReleaseDashboardRunYesAlreadyPauseIfIdle();
+        }
+    }
+
+    private void ReleaseDashboardRunYesAlreadyPauseIfIdle()
+    {
+        if (!dashboardRunYesAlreadyPauseOwned || GetActiveManualService().Active)
+            return;
+
+        dashboardRunYesAlreadyPauseOwned = false;
+        YesAlreadyIPC.Unpause();
     }
 
     private void OnChatMessage(IChatMessage message)
@@ -2079,6 +2123,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             AfterArParkService.Update();
             FishingService.Update();
         }
+
+        ReleaseDashboardRunYesAlreadyPauseIfIdle();
     }
 
     private void ProcessRetainerCollectOnlyRecovery()
@@ -2292,6 +2338,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
         // Unpause YesAlready
         YesAlreadyIPC.Unpause();
+        dashboardRunYesAlreadyPauseOwned = false;
         Log.Information("[FULL STOP] YesAlready unpaused");
 
         AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);

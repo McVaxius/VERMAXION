@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## 2026-08-31 - I280/I281 Dashboard pause and dialog readiness
+
+### Fixed
+
+- Dashboard Run actions now hold the VERMAXION YesAlready pause for their manual-service lifetime, while policy-guarded Yes/No handling waits for a ready dialog before reading its prompt.
+
 ## 2026-08-30 - Ocean Fishing hold commitment and FC buff stock/travel
 
 ### Added
