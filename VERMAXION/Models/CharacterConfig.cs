@@ -14,6 +14,7 @@ public class CharacterConfig
     public bool EnableChocoboRacing { get; set; } = false;
     public bool EnableFCBuffRefill { get; set; } = false;
     public bool AllowFCBuffActivation { get; set; } = false;
+    public bool MaintainFCBuffStockTarget { get; set; } = false;
     public bool EnableMinionRoulette { get; set; } = false;
     public bool EnableSeasonalGearRoulette { get; set; } = false;
     public bool EnableGearUpdater { get; set; } = false;
@@ -297,6 +298,7 @@ public class CharacterConfig
             EnableChocoboRacing = EnableChocoboRacing,
             EnableFCBuffRefill = EnableFCBuffRefill,
             AllowFCBuffActivation = AllowFCBuffActivation,
+            MaintainFCBuffStockTarget = MaintainFCBuffStockTarget,
             EnableMinionRoulette = EnableMinionRoulette,
             EnableSeasonalGearRoulette = EnableSeasonalGearRoulette,
             EnableGearUpdater = EnableGearUpdater,

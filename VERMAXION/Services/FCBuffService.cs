@@ -78,6 +78,7 @@ public class FCBuffService : IDisposable
     private bool reconciliationRequired;
     private bool resumeAfterPurchase;
     private bool allowActivation;
+    private bool maintainStockTarget;
     private int activationAttempts;
     private int lastSealSweetenerListIndex = -1;
 
@@ -159,7 +160,7 @@ public class FCBuffService : IDisposable
         var config = configManager.GetActiveConfig();
         log.Information($"[FCBuff] Config Debug: CurrentAccountId='{configManager.CurrentAccountId}', SelectedCharacterKey='{configManager.SelectedCharacterKey}'");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
-        log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}, AllowFCBuffActivation={config.AllowFCBuffActivation}");
+        log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}, AllowFCBuffActivation={config.AllowFCBuffActivation}, MaintainFCBuffStockTarget={config.MaintainFCBuffStockTarget}");
         
         purchaseAttempts = FCBuffRecoveryPolicy.ClampPurchaseAttempts(config.FCBuffPurchaseAttempts);
         buyCount = 0;
@@ -169,13 +170,16 @@ public class FCBuffService : IDisposable
         ResetCachedGCTerritory();
         currentFreeCompanyId = GetCurrentFreeCompanyId();
         allowActivation = config.AllowFCBuffActivation;
+        maintainStockTarget = config.MaintainFCBuffStockTarget;
         plugin.Configuration.FcActionStockByFreeCompanyId.TryGetValue(currentFreeCompanyId, out var cachedStock);
-        reconciliationRequired = FcBuffStockPolicy.Decide(
-            allowActivation,
-            sealSweetenerTwoAlreadyActive: false,
-            cachedStock,
-            reconciliationRequired: !allowActivation || currentFreeCompanyId == 0 || cachedStock == null || cachedStock.KnownSealSweetenerTwoCount <= 0)
-            == FcBuffStockAction.Reconcile;
+        reconciliationRequired = maintainStockTarget ||
+                                 FcBuffStockPolicy.Decide(
+                                     allowActivation,
+                                     sealSweetenerTwoAlreadyActive: false,
+                                     cachedStock,
+                                     reconciliationRequired: !allowActivation || currentFreeCompanyId == 0 || cachedStock == null || cachedStock.KnownSealSweetenerTwoCount <= 0)
+                                 == FcBuffStockAction.Reconcile;
+        buyMax = 0;
         resumeAfterPurchase = false;
         activationAttempts = 0;
         lastSealSweetenerListIndex = -1;
@@ -269,10 +273,10 @@ public class FCBuffService : IDisposable
 
                 cachedGCTerritory = gcChoice switch
                 {
-                    1 => 129, // Maelstrom (Limsa - Upper Decks/Aft)
+                    1 => 128, // Maelstrom (Limsa - Upper Decks/Aft)
                     2 => 132, // Order of the Twin Adder (Gridania) - territory 132
                     3 => 130, // Immortal Flames (Ul'dah)
-                    _ => 129, // Default to Limsa
+                    _ => 128, // Default to Limsa
                 };
 
                 log.Information($"[FCBuff] Using FC GC Choice: {gcChoice} ({gcString}) -> territory {cachedGCTerritory.Value}");
@@ -306,10 +310,10 @@ public class FCBuffService : IDisposable
                 var gcId = gc.RowId;
                 return gcId switch
                 {
-                    1 => 129, // Maelstrom (Limsa - Upper Decks/Aft)
+                    1 => 128, // Maelstrom (Limsa - Upper Decks/Aft)
                     2 => 132, // Order of the Twin Adder (Gridania) - territory 132
                     3 => 130, // Immortal Flames (Ul'dah)
-                    _ => 129, // Default to Limsa
+                    _ => 128, // Default to Limsa
                 };
             }
         }
@@ -317,14 +321,14 @@ public class FCBuffService : IDisposable
         {
             log.Warning("[FCBuff] Failed to get player GC, defaulting to Limsa");
         }
-        return 129; // Default to Limsa
+        return 128; // Default to Limsa
     }
 
     private Vector3 GetQuartermasterPosition(int gcTerritory)
     {
         return gcTerritory switch
         {
-            129 => new Vector3(94f, 40.5f, 74.5f),       // Limsa (Upper Decks/Aft)
+            128 => new Vector3(94f, 40.5f, 74.5f),       // Limsa (Upper Decks/Aft)
             132 => new Vector3(-68.5f, -0.5f, -8.5f),   // Gridania
             130 => new Vector3(-141.7f, 4.1f, -106.8f), // Ul'dah
             _ => Vector3.Zero
@@ -393,7 +397,7 @@ public class FCBuffService : IDisposable
         {
             case FCBuffState.CheckingFCPoints:
                 if (elapsed < 1) return;
-                if (allowActivation && IsSealSweetenerTwoActive())
+                if (allowActivation && IsSealSweetenerTwoActive() && !maintainStockTarget)
                 {
                     log.Information("[FCBuff] Seal Sweetener II is already active; stock is unchanged.");
                     SetState(FCBuffState.Complete);
@@ -526,20 +530,30 @@ public class FCBuffService : IDisposable
                     reconciliationRequired = false;
                     log.Information($"[FCBuff] Reconciled Seal Sweetener II count: {sealSweetenerCount}");
                     
-                    var stockAction = FcBuffStockPolicy.Decide(
-                        allowActivation,
-                        sealSweetenerTwoAlreadyActive: false,
-                        plugin.Configuration.FcActionStockByFreeCompanyId[currentFreeCompanyId],
-                        reconciliationRequired: false);
-                    if (stockAction == FcBuffStockAction.Purchase)
+                    var alreadyActive = IsSealSweetenerTwoActive();
+                    var willActivate = allowActivation && !alreadyActive;
+                    buyMax = FcBuffStockPolicy.RequiredPurchaseQuantity(
+                        maintainStockTarget,
+                        purchaseAttempts,
+                        sealSweetenerCount,
+                        willActivate);
+                    if (buyMax > 0)
                     {
-                        log.Information("[FCBuff] No Seal Sweetener II found, proceeding with refill");
+                        log.Information(
+                            maintainStockTarget
+                                ? $"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II; buying {buyMax} to finish at stock target {purchaseAttempts}{(willActivate ? " after one activation" : string.Empty)}."
+                                : "[FCBuff] No Seal Sweetener II found, proceeding with refill");
                         SetState(FCBuffState.CheckingIfRefillNeeded);
                     }
-                    else if (stockAction == FcBuffStockAction.ActivateCached)
+                    else if (willActivate)
                     {
                         log.Information($"[FCBuff] Found {sealSweetenerCount} Seal Sweetener II; activating one.");
                         SetState(FCBuffState.ActivatingBuff);
+                    }
+                    else if (maintainStockTarget && alreadyActive)
+                    {
+                        log.Information($"[FCBuff] Seal Sweetener II is already active and stock target {purchaseAttempts} is satisfied; completing without another activation.");
+                        SetState(FCBuffState.Complete);
                     }
                     else
                     {
@@ -593,7 +607,7 @@ public class FCBuffService : IDisposable
 
                 switch (currentGCTerritory)
                 {
-                    case 129: // Limsa Lominsa (Upper Decks/Aft)
+                    case 128: // Limsa Lominsa (Upper Decks/Aft)
                         log.Information("[FCBuff] Navigating to Limsa GC: /li gc");
                         SetState(FCBuffState.WaitingForAftArrival);
                         break;
@@ -613,7 +627,7 @@ public class FCBuffService : IDisposable
                 break;
 
             case FCBuffState.WaitingForAftArrival:
-                TickTeleportArrival(elapsed, 129, "Limsa Aft");
+                TickTeleportArrival(elapsed, 128, "Limsa Aft");
                 return;
 
             case FCBuffState.WaitingForGridaniaArrival:
@@ -812,7 +826,8 @@ public class FCBuffService : IDisposable
                         log.Information("[FCBuff] FreeCompanyExchange appeared, starting purchase loop");
                         buyCount = 0;
                         var config = configManager.GetActiveConfig();
-                        buyMax = isSealSweetenerTwo ? FCBuffRecoveryPolicy.ClampPurchaseAttempts(config.FCBuffPurchaseAttempts) : 1; // Buy configured amount of SS2, only 1 of SS1
+                        if (!isSealSweetenerTwo)
+                            buyMax = 1;
                         ResetPurchaseConfirmRetryState();
                         log.Information($"[FCBuff] Purchase setup: buyMax={buyMax}, isSealSweetenerTwo={isSealSweetenerTwo}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
                         SetState(FCBuffState.PurchasingBuff);

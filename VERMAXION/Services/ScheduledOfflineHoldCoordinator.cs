@@ -211,13 +211,9 @@ public sealed class ScheduledOfflineHoldCoordinator
             return;
         }
 
-        if (!runtime.MasterEnabled || !runtime.FeatureEnabled)
+        if (!runtime.MasterEnabled)
         {
-            BeginCancellation(
-                hold,
-                !runtime.MasterEnabled
-                    ? "Global automation was disabled."
-                    : "Scheduled offline hold was disabled.");
+            BeginCancellation(hold, "Global automation was disabled.");
             hold = runtime.PersistedHold;
             if (hold == null)
                 return;

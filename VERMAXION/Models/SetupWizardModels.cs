@@ -38,7 +38,8 @@ public static class SetupWizardPolicy
             case SetupWizardKind.FcBuff:
                 Add(nameof(CharacterConfig.EnableFCBuffRefill), "FC Buff enabled", current.EnableFCBuffRefill, draft.EnableFCBuffRefill);
                 Add(nameof(CharacterConfig.AllowFCBuffActivation), "Allow VERMAXION activation", current.AllowFCBuffActivation, draft.AllowFCBuffActivation);
-                Add(nameof(CharacterConfig.FCBuffPurchaseAttempts), "Purchase quantity", current.FCBuffPurchaseAttempts, draft.FCBuffPurchaseAttempts);
+                Add(nameof(CharacterConfig.MaintainFCBuffStockTarget), "Maintain stock target", current.MaintainFCBuffStockTarget, draft.MaintainFCBuffStockTarget);
+                Add(nameof(CharacterConfig.FCBuffPurchaseAttempts), "Purchase quantity / stock target", current.FCBuffPurchaseAttempts, draft.FCBuffPurchaseAttempts);
                 Add(nameof(CharacterConfig.FCBuffMinPoints), "Minimum FC points", current.FCBuffMinPoints, draft.FCBuffMinPoints);
                 Add(nameof(CharacterConfig.FCBuffMinGil), "Minimum gil", current.FCBuffMinGil, draft.FCBuffMinGil);
                 Add(nameof(CharacterConfig.FCBuffFrequency), "Cadence", current.FCBuffFrequency, draft.FCBuffFrequency);
@@ -80,6 +81,7 @@ public static class SetupWizardPolicy
             case SetupWizardKind.FcBuff:
                 target.EnableFCBuffRefill = source.EnableFCBuffRefill;
                 target.AllowFCBuffActivation = source.AllowFCBuffActivation;
+                target.MaintainFCBuffStockTarget = source.MaintainFCBuffStockTarget;
                 target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts;
                 target.FCBuffMinPoints = source.FCBuffMinPoints;
                 target.FCBuffMinGil = source.FCBuffMinGil;
