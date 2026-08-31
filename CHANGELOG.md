@@ -10,6 +10,7 @@
 
 - Scheduled Ocean Fishing logout now overrides every configured return after cleanup and lifecycle restoration. Once its hold is persisted, later checkbox changes no longer cancel the automatic wake, login, and fishing handoff; the global master and Main Window `FULL STOP` remain cancellation paths.
 - Maelstrom FC buff travel now recognizes canonical `/li gc` completion in territory 128, while preserving the continuous eight-second settlement before Quartermaster pathing. Ocean Fishing retains its separate territory-129 Limsa route.
+- Manual FC Buff refill now owns a YesAlready pause, caps stock targets to the Free Company rank's inactive-action capacity, and fires each purchase callback only once before waiting for VERMAXION's validated confirmation.
 
 ## 2026-08-30 - I259/I260 Jumbo Cactpot recovery and Mini requirements
 

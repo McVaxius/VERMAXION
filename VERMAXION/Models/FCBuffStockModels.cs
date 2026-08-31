@@ -38,9 +38,22 @@ public enum FcBuffStockAction
 
 public static class FcBuffStockPolicy
 {
+    public static int? InactiveActionCapacityForRank(int? freeCompanyRank)
+        => freeCompanyRank switch
+        {
+            >= 1 and <= 4 => 0,
+            >= 5 and <= 7 => 5,
+            >= 8 and <= 11 => 10,
+            >= 12 and <= 17 => 12,
+            >= 18 and <= 19 => 14,
+            >= 20 and <= 30 => 15,
+            _ => null,
+        };
+
     public static int RequiredPurchaseQuantity(
         bool maintainTarget,
         int configuredQuantity,
+        int inactiveActionCapacity,
         int liveCount,
         bool willActivate)
     {
@@ -49,7 +62,8 @@ public static class FcBuffStockPolicy
         if (!maintainTarget)
             return stock == 0 ? quantityOrTarget : 0;
 
-        return Math.Max(0, quantityOrTarget + (willActivate ? 1 : 0) - stock);
+        var effectiveTarget = Math.Min(quantityOrTarget, Math.Max(0, inactiveActionCapacity));
+        return Math.Max(0, effectiveTarget + (willActivate ? 1 : 0) - stock);
     }
 
     public static FcBuffStockAction Decide(

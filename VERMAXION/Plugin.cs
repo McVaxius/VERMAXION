@@ -208,7 +208,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
         LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         ResetDetectionService = new ResetDetectionService(Log);
-        FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, this);
+        YesAlreadyIPC = new YesAlreadyIPC(Log);
+        FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, YesAlreadyIPC, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC, LifestreamIPC);
@@ -230,7 +231,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         GearUpdaterService = new GearUpdaterService(EquipmentAutomationRuntime, Log);
         HighestCombatJobService = new HighestCombatJobService(EquipmentAutomationRuntime, Log);
         CurrentJobEquipmentService = new CurrentJobEquipmentService(EquipmentAutomationRuntime, Log);
-        YesAlreadyIPC = new YesAlreadyIPC(Log);
         FishingRunLifecycle = new FishingRunLifecycle(Log, YesAlreadyIPC, AutoRetainerIPC, AutoHookIPC);
         FisherGearsetRuntime = new FisherGearsetRuntime();
         FisherGearsetTestService = new FisherGearsetTestService(
@@ -373,6 +373,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         MainWindow.Dispose();
 
         ARPostProcessService.Dispose();
+        FCBuffService.Dispose();
         FishingService.Dispose();
         FishingRunLifecycle.ForceCleanup("plugin disposal");
         RetainerEquippingService.Cancel();
