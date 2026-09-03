@@ -2325,9 +2325,12 @@ public class VermaxionEngine
     private string? GetFinalHandoffBlocker()
     {
         if (runOwnedWorkStarted)
-            return GetHandoffBlocker();
+            return GetServiceOwnedHandoffBlocker() ??
+                   GetExternalHandoffBlocker(requireActiveSession: fishingService.IsActive);
 
-        return arService.IsProcessing ? GetExternalHandoffBlocker() : null;
+        return arService.IsProcessing
+            ? GetExternalHandoffBlocker(requireActiveSession: fishingService.IsActive)
+            : null;
     }
 
     private string? GetServiceOwnedHandoffBlocker()
@@ -2376,7 +2379,7 @@ public class VermaxionEngine
         return null;
     }
 
-    private string? GetExternalHandoffBlocker()
+    private string? GetExternalHandoffBlocker(bool requireActiveSession = true)
     {
         var resultAddon = GameHelpers.GetIKDResultAddonSnapshot();
         return ExternalHandoffPolicy.GetBlocker(new ExternalHandoffSnapshot(
@@ -2395,7 +2398,7 @@ public class VermaxionEngine
             Plugin.Condition[ConditionFlag.WatchingCutscene],
             Plugin.Condition[ConditionFlag.InCombat] || Plugin.Condition[ConditionFlag.Casting],
             clientState.IsLoggedIn,
-            IsPlayerAvailable()));
+            IsPlayerAvailable()), requireActiveSession);
     }
 
     private void TickOrphanOceanFishingResult()

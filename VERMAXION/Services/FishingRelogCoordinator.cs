@@ -21,6 +21,7 @@ public sealed class FishingRelogCoordinator
     private DateTimeOffset startedAtUtc;
     private DateTimeOffset? lastRelogCommandAtUtc;
     private DateTimeOffset registrationDeadlineUtc;
+    private DateTimeOffset? characterSelectVisibleAtUtc;
     private DateTimeOffset lastWaitLogAtUtc;
     private string lastWaitReason = string.Empty;
     private int relogAttempts;
@@ -59,6 +60,7 @@ public sealed class FishingRelogCoordinator
         startedAtUtc = DateTimeOffset.UtcNow;
         lastRelogCommandAtUtc = null;
         this.registrationDeadlineUtc = registrationDeadlineUtc.ToUniversalTime();
+        characterSelectVisibleAtUtc = null;
         lastWaitLogAtUtc = default;
         lastWaitReason = string.Empty;
         relogAttempts = 0;
@@ -91,6 +93,7 @@ public sealed class FishingRelogCoordinator
         startedAtUtc = default;
         lastRelogCommandAtUtc = null;
         registrationDeadlineUtc = default;
+        characterSelectVisibleAtUtc = null;
         lastWaitLogAtUtc = default;
         lastWaitReason = string.Empty;
         relogAttempts = 0;
@@ -173,7 +176,8 @@ public sealed class FishingRelogCoordinator
             blockedReason,
             targetReached,
             observableProgress,
-            wrongCharacterArrived);
+            wrongCharacterArrived,
+            characterSelectVisibleAtUtc: characterSelectVisibleAtUtc);
 
         switch (decision.Action)
         {
@@ -270,6 +274,9 @@ public sealed class FishingRelogCoordinator
 
     private void UpdateObservableProgress()
     {
+        if (!characterSelectVisibleAtUtc.HasValue && GameHelpers.IsAddonVisible("CharaSelect"))
+            characterSelectVisibleAtUtc = DateTimeOffset.UtcNow;
+
         if (observableProgress)
             return;
 

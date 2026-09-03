@@ -176,6 +176,72 @@ public readonly record struct OceanFishingRailDestination(
     float Rotation,
     float ArrivalClearance);
 
+/// <summary>Deterministically assigns one fixed rail spot per passenger without IPC.</summary>
+internal static class OceanFishingSpotAssignment
+{
+    public static int Resolve(string myKey, IReadOnlyList<string> rosterKeys, int spotCount)
+    {
+        if (string.IsNullOrEmpty(myKey) || rosterKeys.Count == 0 || spotCount <= 0)
+            return -1;
+
+        var roster = Normalise(rosterKeys);
+        var rank = Array.IndexOf(roster, myKey);
+        return rank < 0 ? -1 : ShuffledOrder(roster, spotCount)[rank % spotCount];
+    }
+
+    public static HashSet<int> ResolveClaimed(IReadOnlyList<string> rosterKeys, int spotCount)
+    {
+        var claimed = new HashSet<int>();
+        if (rosterKeys.Count == 0 || spotCount <= 0)
+            return claimed;
+
+        var roster = Normalise(rosterKeys);
+        var order = ShuffledOrder(roster, spotCount);
+        for (var rank = 0; rank < roster.Length; rank++)
+            claimed.Add(order[rank % spotCount]);
+        return claimed;
+    }
+
+    private static string[] Normalise(IReadOnlyList<string> rosterKeys)
+        => rosterKeys
+            .Where(key => !string.IsNullOrEmpty(key))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
+
+    private static int[] ShuffledOrder(string[] roster, int spotCount)
+    {
+        var seed = 0;
+        foreach (var key in roster)
+            seed = unchecked(seed * 31 + StableHash(key));
+
+        var order = Enumerable.Range(0, spotCount).ToArray();
+        var random = new Random(seed);
+        for (var i = order.Length - 1; i > 0; i--)
+        {
+            var j = random.Next(i + 1);
+            (order[i], order[j]) = (order[j], order[i]);
+        }
+
+        return order;
+    }
+
+    private static int StableHash(string value)
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            foreach (var character in value)
+            {
+                hash ^= character;
+                hash *= 16777619u;
+            }
+
+            return (int)hash;
+        }
+    }
+}
+
 /// <summary>
 /// Discrete fixed-spot rail (mode 2): VMX positions toons only at an explicit operator-supplied list of
 /// (Position, Rotation) points — the deck-rail live-test picks (24 primary + 8 backup) — instead of sampling
@@ -193,6 +259,11 @@ internal static class OceanFishingDiscreteSpotPolicy
     // hand-authored list, unlike the edge policy's dense ring where 1.5y is a tiny neighborhood).
     private const float ExclusionRadiusYalms = 0.5f;
     private static OceanFishingRailDestination[] _spots = Array.Empty<OceanFishingRailDestination>();
+
+    public static int SpotCount => _spots.Length;
+    public static float SpotClearanceYalms { get; private set; } = 2.0f;
+    public static OceanFishingRailDestination SpotAt(int index) => _spots[index];
+    private const float SpotSeparationSafety = 0.9f;
 
     /// <summary>The vessel's fishing spots, compiled in (world X/Y/Z + outward-facing rotation): 24 primary
     /// + 8 backup positions walked and validated on the live deck. The vessel's geometry is identical for
@@ -251,12 +322,33 @@ internal static class OceanFishingDiscreteSpotPolicy
         // Stamp the SAMPLER-GUARANTEED clearance tier (PlayerAoe), NOT max(Min, PlayerAoe): the sampler only
         // accepts a spot at the PlayerAoe tier, so stamping a higher arrival clearance it never enforced makes
         // the 3D arrival gate unreachable when Min > PlayerAoe -> full-voyage livelock.
+        SpotClearanceYalms = ResolveSpotClearance(BuiltInSpots, PlayerAoeYalms);
         _spots = BuiltInSpots
-            .Select(s => new OceanFishingRailDestination(new Vector3(s.X, s.Y, s.Z), s.Rotation, PlayerAoeYalms))
+            .Select(s => new OceanFishingRailDestination(new Vector3(s.X, s.Y, s.Z), s.Rotation, SpotClearanceYalms))
             .ToArray();
         // A rebuilt _spots invalidates the raw indices in the avoid set (a live ConfigWindow save re-runs this),
         // so drop them rather than avoid the wrong spots or fast-path a now-avoided assigned index.
         _avoidThisLeg.Clear();
+    }
+
+    internal static float ResolveSpotClearance(
+        IReadOnlyList<(float X, float Y, float Z, float Rotation)> spots,
+        float configuredAoeYalms)
+    {
+        var closestSquared = float.PositiveInfinity;
+        for (var i = 0; i < spots.Count; i++)
+        {
+            for (var j = i + 1; j < spots.Count; j++)
+            {
+                var dx = spots[i].X - spots[j].X;
+                var dz = spots[i].Z - spots[j].Z;
+                closestSquared = MathF.Min(closestSquared, dx * dx + dz * dz);
+            }
+        }
+
+        return float.IsPositiveInfinity(closestSquared)
+            ? configuredAoeYalms
+            : MathF.Min(configuredAoeYalms, MathF.Sqrt(closestSquared) * SpotSeparationSafety);
     }
 
     private static float MinDistanceTo(Vector3 p, IReadOnlyList<Vector3> others)
@@ -276,6 +368,8 @@ internal static class OceanFishingDiscreteSpotPolicy
         Vector3 myPosition,
         IReadOnlyList<Vector3> otherPlayerPositions,
         OceanFishingRailDestination? excludedDestination,
+        int assignedSpot,
+        IReadOnlySet<int>? claimedByRoster,
         out OceanFishingRailDestination destination)
     {
         destination = default;
@@ -303,6 +397,13 @@ internal static class OceanFishingDiscreteSpotPolicy
             }
         }
 
+        // Assignment wins before occupancy checks: on entry every passenger is still at the spawn point.
+        if (assignedSpot >= 0 && assignedSpot < _spots.Length && !_avoidThisLeg.Contains(assignedSpot))
+        {
+            destination = _spots[assignedSpot];
+            return true;
+        }
+
         // Settled-stay: a character already standing at a listed spot keeps it while the spot still clears
         // every player by the plain AoE radius. New picks below must clear AoE + hysteresis — the
         // asymmetric bands stop boundary jitter from re-triggering moves once placed.
@@ -312,7 +413,7 @@ internal static class OceanFishingDiscreteSpotPolicy
             var dxs = _spots[i].Position.X - myPosition.X;
             var dzs = _spots[i].Position.Z - myPosition.Z;
             if (dxs * dxs + dzs * dzs > 0.25f) continue;      // within 0.5y = standing on it
-            if (MinDistanceTo(_spots[i].Position, otherPlayerPositions) >= PlayerAoeYalms)
+            if (MinDistanceTo(_spots[i].Position, otherPlayerPositions) >= SpotClearanceYalms)
             {
                 destination = _spots[i];
                 return true;
@@ -323,18 +424,10 @@ internal static class OceanFishingDiscreteSpotPolicy
         // Nearest non-avoided spot clearing every other player by AoE + hysteresis. Since every
         // dead/contested spot is in the avoid set, the toon settles forward onto a fresh spot each
         // advance and CONVERGES, rather than ping-ponging back to a known-bad one.
-        var clearNeeded = PlayerAoeYalms + HysteresisYalms;
-        var best = -1;
-        var bestDist = float.PositiveInfinity;
-        for (var i = 0; i < _spots.Length; i++)
-        {
-            if (_avoidThisLeg.Contains(i)) continue;
-            if (MinDistanceTo(_spots[i].Position, otherPlayerPositions) < clearNeeded) continue;
-            var dx = _spots[i].Position.X - myPosition.X;
-            var dz = _spots[i].Position.Z - myPosition.Z;
-            var d = MathF.Sqrt(dx * dx + dz * dz);
-            if (d < bestDist) { bestDist = d; best = i; }
-        }
+        var clearNeeded = SpotClearanceYalms + HysteresisYalms;
+        var best = assignedSpot >= 0 && assignedSpot < _spots.Length
+            ? FallbackFrom(assignedSpot, claimedByRoster, otherPlayerPositions, clearNeeded)
+            : NearestTo(myPosition, otherPlayerPositions, clearNeeded);
         if (best >= 0) { destination = _spots[best]; return true; }
 
         // Degrade like the other policies: best-clearance non-avoided spot rather than failing closed.
@@ -357,6 +450,62 @@ internal static class OceanFishingDiscreteSpotPolicy
         }
         destination = _spots[fb] with { ArrivalClearance = OceanFishingContinuousRailPolicy.FallbackPlayerClearance };
         return true;
+    }
+
+    private static int FallbackFrom(
+        int assignedSpot,
+        IReadOnlySet<int>? claimedByRoster,
+        IReadOnlyList<Vector3> otherPlayerPositions,
+        float clearNeeded)
+    {
+        if (claimedByRoster != null)
+        {
+            var free = new List<int>();
+            for (var i = 0; i < _spots.Length; i++)
+            {
+                if (claimedByRoster.Contains(i) || _avoidThisLeg.Contains(i)) continue;
+                if (MinDistanceTo(_spots[i].Position, otherPlayerPositions) >= clearNeeded)
+                    free.Add(i);
+            }
+
+            if (free.Count > 0)
+                return free[Random.Shared.Next(free.Count)];
+        }
+
+        for (var offset = 1; offset < _spots.Length; offset++)
+        {
+            var index = (assignedSpot + offset) % _spots.Length;
+            if (!_avoidThisLeg.Contains(index) &&
+                MinDistanceTo(_spots[index].Position, otherPlayerPositions) >= clearNeeded)
+                return index;
+        }
+
+        return -1;
+    }
+
+    private static int NearestTo(
+        Vector3 myPosition,
+        IReadOnlyList<Vector3> otherPlayerPositions,
+        float clearNeeded)
+    {
+        var best = -1;
+        var bestDistance = float.PositiveInfinity;
+        for (var i = 0; i < _spots.Length; i++)
+        {
+            if (_avoidThisLeg.Contains(i) || MinDistanceTo(_spots[i].Position, otherPlayerPositions) < clearNeeded)
+                continue;
+
+            var dx = _spots[i].Position.X - myPosition.X;
+            var dz = _spots[i].Position.Z - myPosition.Z;
+            var distance = MathF.Sqrt(dx * dx + dz * dz);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = i;
+            }
+        }
+
+        return best;
     }
 }
 
@@ -725,6 +874,7 @@ internal sealed class OceanFishingVoyageState
     private DateTimeOffset? pathStoppedAt;
     private DateTimeOffset? pathStatusUnavailableAt;
     private DateTimeOffset? facingUnverifiedAt;
+    private DateTimeOffset positioningStartedAt;
     private TimeSpan destinationNavigationTime;
     private TimeSpan noProgressTime;
     private TimeSpan canFishFalseTime;
@@ -734,6 +884,7 @@ internal sealed class OceanFishingVoyageState
     public bool FishingEverStarted { get; private set; }
     public bool MovementLocked { get; private set; }
     public bool DestinationArrived { get; private set; }
+    public DateTimeOffset? ArrivedAtUtc => arrivalAt;
     public bool PositioningActive { get; private set; }
     public int DestinationAttemptNumber { get; private set; }
     public int SessionNumber { get; private set; }
@@ -754,6 +905,7 @@ internal sealed class OceanFishingVoyageState
     // indefinitely on a public boat. At the cap the run abandons to a quiet logout rather
     // than keep performing.
     public const int MaxDestinationAttempts = 10;
+    public static readonly TimeSpan MinPositioningTimeBeforeAbandon = TimeSpan.FromSeconds(120);
 
     /// <summary>True once positioning has burned the whole attempt budget without ever starting to fish —
     /// the give-up signal that routes the voyage to a logout instead of another resample.</summary>
@@ -778,6 +930,7 @@ internal sealed class OceanFishingVoyageState
     {
         PositioningActive = true;
         DestinationAttemptNumber = 1;
+        positioningStartedAt = nowUtc;
         ResetDestinationRecovery(nowUtc);
     }
 
@@ -785,8 +938,9 @@ internal sealed class OceanFishingVoyageState
     {
         if (MovementLocked || FishingEverStarted || !PositioningActive)
             return false;
-        if (DestinationAttemptNumber >= MaxDestinationAttempts)
-            return false; // exhausted — caller routes to logout via DestinationAttemptsExhausted
+        if (DestinationAttemptNumber >= MaxDestinationAttempts &&
+            nowUtc - positioningStartedAt >= MinPositioningTimeBeforeAbandon)
+            return false; // exhausted - caller routes to logout via DestinationAttemptsExhausted
 
         DestinationAttemptNumber++;
         ResetDestinationRecovery(nowUtc);
@@ -1595,6 +1749,48 @@ public static class FishingRecoveryPolicy
            };
 }
 
+public static class FishingInventoryRecoveryPolicy
+{
+    public const string InsufficientInventoryMessage = "Unable to gather. Insufficient inventory space.";
+
+    public static bool IsInsufficientInventoryMessage(string text)
+        => string.Equals(text.Trim(), InsufficientInventoryMessage, StringComparison.Ordinal);
+
+    public static bool ShouldStart(
+        string text,
+        bool activelyFishing,
+        bool oceanFishingDutyActive,
+        bool recoveryActive)
+        => activelyFishing && oceanFishingDutyActive && !recoveryActive &&
+           IsInsufficientInventoryMessage(text);
+
+    public static FishingInventoryRecoverySellDecision DecideSell(
+        bool busyStateReadable,
+        bool busy,
+        bool busyObserved,
+        bool timedOut)
+    {
+        if (!busyStateReadable)
+            return timedOut
+                ? FishingInventoryRecoverySellDecision.ResumeWithoutSale
+                : FishingInventoryRecoverySellDecision.Wait;
+        if (busy)
+            return FishingInventoryRecoverySellDecision.Wait;
+        if (busyObserved)
+            return FishingInventoryRecoverySellDecision.Complete;
+        return timedOut
+            ? FishingInventoryRecoverySellDecision.ResumeWithoutSale
+            : FishingInventoryRecoverySellDecision.Wait;
+    }
+}
+
+public enum FishingInventoryRecoverySellDecision
+{
+    Wait,
+    Complete,
+    ResumeWithoutSale,
+}
+
 public enum FishingCleanupCommand
 {
     None,
@@ -2040,6 +2236,7 @@ public static class FishingRelogCommandPolicy
 {
     public static readonly TimeSpan DefaultRetryInterval = TimeSpan.FromSeconds(45);
     public static readonly TimeSpan DefaultOverallTimeout = TimeSpan.FromMinutes(4);
+    public static readonly TimeSpan CharacterSelectRecoveryCompletionMargin = TimeSpan.FromMinutes(1);
 
     public static FishingRelogRuntimeDecision Evaluate(
         DateTimeOffset nowUtc,
@@ -2052,7 +2249,8 @@ public static class FishingRelogCommandPolicy
         bool observableProgress,
         bool wrongCharacterArrived,
         TimeSpan? retryInterval = null,
-        TimeSpan? overallTimeout = null)
+        TimeSpan? overallTimeout = null,
+        DateTimeOffset? characterSelectVisibleAtUtc = null)
     {
         if (targetReached)
             return new(FishingRelogRuntimeAction.Complete, "Arrived on the target character.");
@@ -2061,8 +2259,18 @@ public static class FishingRelogCommandPolicy
             return new(FishingRelogRuntimeAction.Fail, "Ocean Fishing registration closed before relog completed.");
 
         var cappedOverallTimeout = overallTimeout ?? DefaultOverallTimeout;
-        if (startedAtUtc != default && nowUtc - startedAtUtc >= cappedOverallTimeout)
-            return new(FishingRelogRuntimeAction.Fail, $"Relog did not reach the selected character within {cappedOverallTimeout.TotalSeconds:F0}s.");
+        var timeoutAtUtc = startedAtUtc + cappedOverallTimeout;
+        if (characterSelectVisibleAtUtc.HasValue)
+        {
+            var recoveryTimeoutAtUtc = characterSelectVisibleAtUtc.Value +
+                                       CharacterSelectStallRecoveryState.DefaultRecoveryDelay +
+                                       CharacterSelectRecoveryCompletionMargin;
+            if (recoveryTimeoutAtUtc > timeoutAtUtc)
+                timeoutAtUtc = recoveryTimeoutAtUtc;
+        }
+
+        if (startedAtUtc != default && nowUtc >= timeoutAtUtc)
+            return new(FishingRelogRuntimeAction.Fail, $"Relog did not reach the selected character within {(timeoutAtUtc - startedAtUtc).TotalSeconds:F0}s.");
 
         if (!readyForRelog)
             return new(FishingRelogRuntimeAction.Wait, string.IsNullOrWhiteSpace(blockedReason) ? "Waiting for relog readiness." : blockedReason);

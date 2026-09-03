@@ -95,7 +95,7 @@ internal readonly record struct ExternalHandoffSnapshot(
 
 internal static class ExternalHandoffPolicy
 {
-    public static string? GetBlocker(ExternalHandoffSnapshot snapshot)
+    public static string? GetBlocker(ExternalHandoffSnapshot snapshot, bool requireActiveSession = true)
     {
         if (snapshot.IKDResultVisible)
         {
@@ -117,9 +117,9 @@ internal static class ExternalHandoffPolicy
             return "player is occupied";
         if (snapshot.CombatOrCasting)
             return "player is in combat or casting";
-        if (!snapshot.LoggedIn)
+        if (requireActiveSession && !snapshot.LoggedIn)
             return "client is not logged in";
-        if (!snapshot.PlayerAvailable)
+        if (requireActiveSession && !snapshot.PlayerAvailable)
             return "player is not available";
 
         return null;

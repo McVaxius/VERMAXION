@@ -1,5 +1,32 @@
 # VERMAXION Changelog
 
+## Unreleased - Ocean Fishing recovery and inn parking
+
+### Fixed
+
+- Assign fixed rail spots from a settled passenger roster, prefer unclaimed fallbacks, and cap clearance by the built-in spot spacing.
+- Pause placement during the boarding lobby, retain a short post-arrival clearance check, and allow at least two minutes before exhausting positioning retries.
+- Recover from the English full-inventory game message by attempting an onboard sell and returning to the saved fishing position; hand off to result handling if the voyage ends.
+- Allow character-select recovery to finish during fishing relogs while retaining the registration deadline.
+- Release the final AutoRetainer handoff while logged out when fishing is inactive, without bypassing other safety blockers.
+- Recognize the full inn catalog, yield idle parking to AutoRetainer, and leave already-parked characters in their inn.
+- Omit character identity from the roster-assignment diagnostic.
+
+### Verification
+
+- The full native suite passed 671/671, including an independent rerun. Regressions check roster-order-independent assignment, unclaimed fallbacks, geometry-based clearance, the minimum retry interval, inventory-recovery decisions and relog/handoff policies; source-wiring checks cover chat delivery, inn-parking guards and diagnostic privacy.
+- An isolated x64 Release build succeeded with zero errors using cached packages. NuGet source/vulnerability checks were unavailable, and the existing PInvoke.User32 version-resolution warning remains.
+- These results verify the tested policies, wiring and compilation, not full in-game acceptance.
+
+### Observed live behavior (2026-09-03)
+
+Existing deployment logs were checked after the build, without starting new runs. The inspected deployed build's runtime source matches this proposal except for the removed identity diagnostic; the proposal also adds tests and documentation. Loaded module identity matched the inspected disk build across all sampled clients.
+
+- Historical validation: the contributor reports that these features have worked live in previous versions. Paths absent from the current sample are not newly re-exercised here; this does not mean they have never worked. That earlier-version confirmation is separate from the directly inspected observations below.
+- Two retained fishing sequences latched settled passenger rosters, reached their assigned built-in spots, acknowledged fishing after one paired start attempt, completed the duty, and settled the result screen. One explicitly held positioning for 28.244 seconds during the lobby with no cast sends or destination selections; later route transitions retained the movement lock.
+- Retained logs contain 10 idle-inn entry requests, 23 in-inn/AutoRetainer-enable confirmations, 1,265 normal AutoRetainer finish signals and 1,265 engine continuation messages. These are aggregate event counts, not individually paired events, distinct characters or proof that the logged-out handoff edge case ran.
+- Limits: the two positioning samples had only two and four passengers. Contested fallback, simultaneous multi-client assignment, retry exhaustion, full-inventory recovery, character-select timeout extension and logged-out final handoff were not revalidated by this sample. Log rotation and size caps limit coverage; silence is not a failed run. No new deployment or forced failure test was performed for the anonymised candidate.
+
 ## 2026-08-31 - I280/I281 Dashboard pause and dialog readiness
 
 ### Fixed
