@@ -82,7 +82,7 @@ public class Configuration : IPluginConfiguration
 
     /// <summary>Idle inn-parking: during downtime (outside a fishing window with margin, AR idle, nothing
     /// due soon) send the logged-in character to an inn; once confirmed inside, enable it in AutoRetainer,
-    /// and pre-emptively exit before its next venture comes due so AR wakes it beside a bell.</summary>
+    /// and leave it there.</summary>
     public bool OceanIdleInnParkEnabled { get; set; } = false;
     public int OceanIdleInnParkMinMinutesToWindow { get; set; } = 5;
     public int OceanIdleInnParkExitLeadMinutes { get; set; } = 5;

@@ -236,6 +236,62 @@ public sealed class FishingPolicyTests
         Assert.DoesNotContain(destination.Position, players);
     }
 
+    [Fact]
+    public void DiscreteAssignmentIsStableForTheSamePassengerRoster()
+    {
+        var roster = new[] { "Beta@2", "Alpha@1", "Gamma@3" };
+        var reordered = new[] { "Gamma@3", "Beta@2", "Alpha@1" };
+
+        foreach (var key in roster)
+        {
+            Assert.Equal(
+                OceanFishingSpotAssignment.Resolve(key, roster, 32),
+                OceanFishingSpotAssignment.Resolve(key, reordered, 32));
+        }
+
+        Assert.Equal(3, roster
+            .Select(key => OceanFishingSpotAssignment.Resolve(key, roster, 32))
+            .Distinct()
+            .Count());
+    }
+
+    [Fact]
+    public void DiscreteFallbackSkipsClaimedAndExcludedSpots()
+    {
+        OceanFishingDiscreteSpotPolicy.ApplyConfiguration(new Configuration
+        {
+            OceanRailSpreadMode = 2,
+            OceanRailEdgePlayerAoeYalms = 2f,
+        });
+
+        var assigned = 0;
+        var excluded = OceanFishingDiscreteSpotPolicy.SpotAt(assigned);
+        var claimed = Enumerable.Range(0, OceanFishingDiscreteSpotPolicy.SpotCount - 1).ToHashSet();
+
+        Assert.True(OceanFishingDiscreteSpotPolicy.TrySample(
+            excluded.Position,
+            [excluded.Position],
+            excluded,
+            assigned,
+            claimed,
+            out var destination));
+
+        var destinationIndex = Enumerable.Range(0, OceanFishingDiscreteSpotPolicy.SpotCount)
+            .Single(index => OceanFishingDiscreteSpotPolicy.SpotAt(index).Position == destination.Position);
+        Assert.DoesNotContain(destinationIndex, claimed);
+        Assert.NotEqual(assigned, destinationIndex);
+    }
+
+    [Fact]
+    public void DiscreteSpotClearanceIsDerivedFromTheClosestSpotPair()
+    {
+        var clearance = OceanFishingDiscreteSpotPolicy.ResolveSpotClearance(
+            [(0f, 0f, 0f, 0f), (1f, 0f, 0f, 0f)],
+            configuredAoeYalms: 2f);
+
+        Assert.Equal(0.9f, clearance, precision: 3);
+    }
+
     [Theory]
     [InlineData(1.5f, 1.5f, true)]
     [InlineData(1.549f, 1.5f, true)]
@@ -590,6 +646,53 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
+    public void FullInventoryChatStartsOneActiveOceanFishingRecoveryRegardlessOfProvider()
+    {
+        Assert.True(FishingInventoryRecoveryPolicy.ShouldStart(
+            "Unable to gather. Insufficient inventory space.",
+            activelyFishing: true,
+            oceanFishingDutyActive: true,
+            recoveryActive: false));
+        Assert.False(FishingInventoryRecoveryPolicy.ShouldStart(
+            "Unable to gather. Insufficient inventory space.",
+            activelyFishing: true,
+            oceanFishingDutyActive: true,
+            recoveryActive: true));
+        Assert.True(FishingInventoryRecoveryPolicy.ShouldStart(
+            "Unable to gather. Insufficient inventory space. ",
+            activelyFishing: true,
+            oceanFishingDutyActive: true,
+            recoveryActive: false));
+        Assert.False(FishingInventoryRecoveryPolicy.ShouldStart(
+            "Unable to gather. Insufficient inventory space.",
+            activelyFishing: false,
+            oceanFishingDutyActive: true,
+            recoveryActive: false));
+
+        Assert.Equal(
+            FishingInventoryRecoverySellDecision.Wait,
+            FishingInventoryRecoveryPolicy.DecideSell(
+                busyStateReadable: true,
+                busy: false,
+                busyObserved: false,
+                timedOut: false));
+        Assert.Equal(
+            FishingInventoryRecoverySellDecision.ResumeWithoutSale,
+            FishingInventoryRecoveryPolicy.DecideSell(
+                busyStateReadable: true,
+                busy: false,
+                busyObserved: false,
+                timedOut: true));
+        Assert.Equal(
+            FishingInventoryRecoverySellDecision.Complete,
+            FishingInventoryRecoveryPolicy.DecideSell(
+                busyStateReadable: true,
+                busy: false,
+                busyObserved: true,
+                timedOut: false));
+    }
+
+    [Fact]
     public void InventoryCleanupAndReturnPoliciesAreOrderedAndObserved()
     {
         Assert.Equal(
@@ -877,6 +980,38 @@ public sealed class FishingPolicyTests
         Assert.Equal(FishingRelogRuntimeAction.Fail, expired.Action);
         Assert.Contains("intermediate character", wrong.Reason);
         Assert.Contains("registration closed", expired.Reason);
+    }
+
+    [Fact]
+    public void RelogTimeoutExtendsOnlyAfterCharacterSelectIsObserved()
+    {
+        var started = Utc(2026, 7, 2, 12, 0, 0);
+        var visible = started.AddMinutes(3).AddSeconds(30);
+
+        var beforeRecovery = FishingRelogCommandPolicy.Evaluate(
+            nowUtc: started.AddMinutes(4),
+            startedAtUtc: started,
+            lastRelogCommandAtUtc: started,
+            registrationOpen: true,
+            readyForRelog: false,
+            blockedReason: "Waiting for character select",
+            targetReached: false,
+            observableProgress: true,
+            wrongCharacterArrived: false);
+        var duringRecovery = FishingRelogCommandPolicy.Evaluate(
+            nowUtc: started.AddMinutes(4).AddSeconds(1),
+            startedAtUtc: started,
+            lastRelogCommandAtUtc: started,
+            registrationOpen: true,
+            readyForRelog: false,
+            blockedReason: "Waiting for character select",
+            targetReached: false,
+            observableProgress: true,
+            wrongCharacterArrived: false,
+            characterSelectVisibleAtUtc: visible);
+
+        Assert.Equal(FishingRelogRuntimeAction.Fail, beforeRecovery.Action);
+        Assert.Equal(FishingRelogRuntimeAction.Wait, duringRecovery.Action);
     }
 
     [Theory]
@@ -1480,6 +1615,22 @@ public sealed class FishingPolicyTests
             Assert.True(voyage.AdvanceDestination(now.AddSeconds(expected)));
             Assert.Equal(expected, voyage.DestinationAttemptNumber);
         }
+    }
+
+    [Fact]
+    public void PositioningDoesNotAbandonBeforeTwoMinutes()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(now);
+
+        for (var attempt = 2; attempt <= OceanFishingVoyageState.MaxDestinationAttempts; attempt++)
+            Assert.True(voyage.AdvanceDestination(now.AddSeconds(1)));
+
+        Assert.True(voyage.AdvanceDestination(now.AddSeconds(119)));
+        Assert.Equal(OceanFishingVoyageState.MaxDestinationAttempts + 1, voyage.DestinationAttemptNumber);
+        Assert.False(voyage.AdvanceDestination(now.AddSeconds(120)));
     }
 
     [Fact]
