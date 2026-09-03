@@ -13,6 +13,7 @@ using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ECommons;
+using ECommons.ExcelServices.TerritoryEnumeration;
 using VERMAXION.IPC;
 using VERMAXION.Services;
 using VERMAXION.Models;
@@ -599,6 +600,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             message.LogKind.ToString(),
             message.Sender.TextValue,
             message.Message.TextValue);
+        FishingService.HandleChatMessage(message.Message.TextValue);
     }
 
     private void OnARCharacterReady(string pluginName)
@@ -1915,14 +1917,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private DateTime nextInnParkCheckUtc = DateTime.MinValue;
     private bool innParkEnableLogged;
-    private static readonly ushort[] InnTerritories = [177, 178, 179];
 
-    /// <summary>Idle inn-parking (checked every 60s): during downtime — no fishing run/relog, outside any
-    /// startup window with at least OceanIdleInnParkMinMinutesToWindow to the next even-UTC registration,
-    /// and no venture due within the exit lead — send the logged-in char to an inn. Once confirmed inside an
-    /// inn: (a) enable the char in AutoRetainer (the organic enable rollout — a char is only enabled from a
-    /// known-clean inn location), and (b) watch its earliest VentureEndsAt, exiting to Limsa ahead of it so
-    /// AutoRetainer wakes the char beside a summoning bell rather than inside the bell-less inn.</summary>
+    /// <summary>Idle inn-parking (checked every 60s): when the logged-in character is not already in an inn,
+    /// during downtime — no fishing run/relog, outside any startup window with at least
+    /// OceanIdleInnParkMinMinutesToWindow to the next even-UTC registration, and no venture due within the exit
+    /// lead — send the character to an inn. Once confirmed inside an
+    /// inn: optionally enable the character in AutoRetainer from a confirmed inn location.
+    /// An already-parked character is left in the inn; this maintenance pass does not
+    /// send it back to Limsa.</summary>
     private void ProcessIdleInnPark()
     {
         if (!Configuration.Enabled ||
@@ -1930,6 +1932,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             OfflineLogoutBlocksOrdinaryAutomation)
             return;
         if (FishingService.IsActive || FishingRelogCoordinator.IsActive)
+            return;
+        if (ARPostProcessService.IsRequested)
+            return;
+        var arBusy = AutoRetainerIPC.ReadBusyState();
+        if (!arBusy.Success || arBusy.Busy)
             return;
         var now = DateTime.UtcNow;
         if (now < nextInnParkCheckUtc)
@@ -1941,22 +1948,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             return;
 
         var territory = ClientState.TerritoryType;
-        var inInn = Array.IndexOf(InnTerritories, territory) >= 0;
-
-        // Earliest venture across the CURRENT char's retainers (unix seconds); unreadable -> be conservative
-        // and treat as due-now so we never park a char AR is about to need.
-        var earliest = 0L;
-        if (!AutoRetainerIPC.TryReadEarliestVenture(contentId, out earliest, out var ventureError))
-        {
-            Log.Debug($"[InnPark] Venture read unavailable ({ventureError}); skipping this pass.");
-            return;
-        }
-        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var exitLeadSeconds = Math.Clamp(Configuration.OceanIdleInnParkExitLeadMinutes, 1, 60) * 60L;
+        var inInn = Inns.List.Any(inn => inn == territory);
 
         if (inInn)
         {
-            // (a) organic AR-enable at the safe location (log only on an actual state change, not per tick).
+            // Enable at the confirmed inn location (log only on an actual state change, not per tick).
             if (Configuration.OceanIdleInnParkEnableAutoRetainer)
             {
                 if (AutoRetainerIPC.TryEnableCharacter(contentId, out var who, out var enableError))
@@ -1972,17 +1968,20 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                     Log.Debug($"[InnPark] AR enable not applied: {enableError}");
                 }
             }
-
-            // (b) pre-emptive exit so AR wakes the char beside a bell — never while Lifestream is already
-            // mid-chain (re-firing would reset its task queue).
-            if (earliest != long.MaxValue && earliest - nowUnix <= exitLeadSeconds && !LifestreamIPC.IsBusy())
-            {
-                Log.Information($"[InnPark] Venture due in {(earliest - nowUnix) / 60.0:F1}min; exiting inn to Limsa ahead of AutoRetainer.");
-                LifestreamIPC.ExecuteCommand("/li limsa");
-            }
             return;
         }
         innParkEnableLogged = false;
+
+        // Earliest venture across the CURRENT char's retainers (unix seconds); unreadable -> be conservative
+        // and treat as due-now so we never park a char AR is about to need.
+        var earliest = 0L;
+        if (!AutoRetainerIPC.TryReadEarliestVenture(contentId, out earliest, out var ventureError))
+        {
+            Log.Debug($"[InnPark] Venture read unavailable ({ventureError}); skipping this pass.");
+            return;
+        }
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var exitLeadSeconds = Math.Clamp(Configuration.OceanIdleInnParkExitLeadMinutes, 1, 60) * 60L;
 
         // Not in an inn: park only in genuine downtime.
         if (OceanFishingSchedulePolicy.TryGetActiveStartupWindow(

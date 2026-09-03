@@ -111,10 +111,22 @@ public sealed class FishingService
     private int cleanupCommandIndex;
     private bool cleanupCommandSent;
     private bool cleanupBusyObserved;
+    private bool inventoryRecoveryActive;
+    private Vector3? inventoryRecoveryReturnPosition;
+    private float inventoryRecoveryReturnRotation;
+    private DateTime inventoryRecoveryReturnStartedAt = DateTime.MinValue;
     private bool scheduledOfflineHoldPending;
     private OceanFishingRailDestination? currentRailDestination;
     private OceanFishingRailDestination? railSampleExclusionDestination;
     private DateTime nextRailSampleAt = DateTime.MinValue;
+    private string[] rosterCandidateKeys = Array.Empty<string>();
+    private DateTime rosterCandidateSince = DateTime.MinValue;
+    private int assignedSpotIndex = -1;
+    private HashSet<int>? rosterClaimedSpots;
+    private DateTime rosterDeadline = DateTime.MinValue;
+    private static readonly TimeSpan RosterStabilityWindow = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan RosterResolveTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan PlacementClearanceSettle = TimeSpan.FromSeconds(3);
     private readonly OceanFishingVoyageState voyageState = new();
     private string lastCastGate = string.Empty;
     private DateTime returnStartedAt = DateTime.MinValue;
@@ -252,6 +264,46 @@ public sealed class FishingService
         dutyState.DutyCompleted += OnDutyCompleted;
     }
 
+    public void HandleChatMessage(string text)
+    {
+        var activelyFishing = state == FishingState.Fishing;
+        var oceanFishingDutyActive = IsOceanFishingDutyActive();
+        if (!FishingInventoryRecoveryPolicy.ShouldStart(
+                text,
+                activelyFishing,
+                oceanFishingDutyActive,
+                recoveryActive: inventoryRecoveryActive))
+        {
+            if (FishingInventoryRecoveryPolicy.IsInsufficientInventoryMessage(text))
+            {
+                log.Information(
+                    $"[Fishing][InventoryRecovery] Full-inventory message ignored " +
+                    $"(activelyFishing={activelyFishing}, dutyActive={oceanFishingDutyActive}, " +
+                    $"recoveryActive={inventoryRecoveryActive})");
+            }
+            return;
+        }
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null)
+        {
+            log.Warning("[Fishing][InventoryRecovery] Full-inventory message accepted but local player is unavailable");
+            return;
+        }
+
+        inventoryRecoveryActive = true;
+        inventoryRecoveryReturnPosition = player.Position;
+        inventoryRecoveryReturnRotation = player.Rotation;
+        inventoryRecoveryReturnStartedAt = DateTime.MinValue;
+        vnavmesh.Stop();
+        cleanupCommands = [FishingCleanupCommand.Sell];
+        cleanupCommandIndex = 0;
+        cleanupCommandSent = false;
+        cleanupBusyObserved = false;
+        log.Information("[Fishing][InventoryRecovery] Inventory full; interrupting fishing for onboard sell");
+        SetState(FishingState.WaitingForCleanupReady);
+    }
+
     public void Start()
     {
         if (IsActive)
@@ -307,6 +359,10 @@ public sealed class FishingService
         cleanupCommandIndex = 0;
         cleanupCommandSent = false;
         cleanupBusyObserved = false;
+        inventoryRecoveryActive = false;
+        inventoryRecoveryReturnPosition = null;
+        inventoryRecoveryReturnRotation = 0f;
+        inventoryRecoveryReturnStartedAt = DateTime.MinValue;
         scheduledOfflineHoldPending = false;
         failureKind = FishingAttemptFailureKind.Stop;
         failureReported = false;
@@ -364,6 +420,10 @@ public sealed class FishingService
         lastError = string.Empty;
         statusDetail = string.Empty;
         scheduledOfflineHoldPending = false;
+        inventoryRecoveryActive = false;
+        inventoryRecoveryReturnPosition = null;
+        inventoryRecoveryReturnRotation = 0f;
+        inventoryRecoveryReturnStartedAt = DateTime.MinValue;
         currentRailDestination = null;
         railSampleExclusionDestination = null;
         nextRailSampleAt = DateTime.MinValue;
@@ -508,7 +568,23 @@ public sealed class FishingService
             return;
 
         var elapsed = DateTime.UtcNow - stateEnteredAt;
-        TryEatFishingFood();
+        if (inventoryRecoveryActive &&
+            (dutyCompletionObserved || IsOceanFishingResultAddonAvailable()))
+        {
+            vnavmesh.Stop();
+            inventoryRecoveryActive = false;
+            inventoryRecoveryReturnPosition = null;
+            cleanupCommands = Array.Empty<FishingCleanupCommand>();
+            cleanupCommandIndex = 0;
+            cleanupCommandSent = false;
+            cleanupBusyObserved = false;
+            log.Information("[Fishing][InventoryRecovery] Voyage ended during recovery; switching to result handling");
+            SetState(FishingState.HandlingResult);
+            return;
+        }
+
+        if (!inventoryRecoveryActive)
+            TryEatFishingFood();
         switch (state)
         {
             case FishingState.SwitchingToFisher:
@@ -1793,6 +1869,12 @@ public sealed class FishingService
             return;
         }
 
+        if (inventoryRecoveryActive && inventoryRecoveryReturnPosition.HasValue)
+        {
+            TickReturnFromInventoryRecovery(now);
+            return;
+        }
+
         if (voyageState.SessionNumber == 0 && !BeginFishingSession("initial voyage session"))
             return;
 
@@ -2546,7 +2628,8 @@ public sealed class FishingService
 
     private static bool IsVoyageRouteTransitionActive()
         => (TryGetOceanFishingStatus(out var oceanStatus) &&
-            oceanStatus == InstanceContentOceanFishing.OceanFishingStatus.NewZone) ||
+            oceanStatus is InstanceContentOceanFishing.OceanFishingStatus.NewZone or
+                InstanceContentOceanFishing.OceanFishingStatus.WaitingForPlayers) ||
            Plugin.Condition[ConditionFlag.BetweenAreas] ||
            Plugin.Condition[ConditionFlag.BetweenAreas51] ||
            Plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
@@ -2634,6 +2717,11 @@ public sealed class FishingService
         fencePushPhase = FencePushPhase.NotStarted;
         railSampleExclusionDestination = null;
         nextRailSampleAt = DateTime.MinValue;
+        rosterCandidateKeys = Array.Empty<string>();
+        rosterCandidateSince = DateTime.MinValue;
+        assignedSpotIndex = -1;
+        rosterClaimedSpots = null;
+        rosterDeadline = DateTime.UtcNow + RosterResolveTimeout;
         var nowUtc = new DateTimeOffset(DateTime.UtcNow, TimeSpan.Zero);
         voyageState.BeginPositioning(nowUtc);
         TrySelectRailDestination(
@@ -2672,6 +2760,19 @@ public sealed class FishingService
             return false;
         }
 
+        var assignedSpot = -1;
+        if (OceanFishingDiscreteSpotPolicy.Enabled)
+        {
+            assignedSpot = ResolveAssignedSpot(now, RosterKey(localPlayer));
+            if (assignedSpot < 0 && now < rosterDeadline)
+            {
+                vnavmesh.Stop();
+                nextRailSampleAt = now + RailSampleRetryInterval;
+                statusDetail = "Waiting for the passenger roster to settle before claiming a fishing spot";
+                return false;
+            }
+        }
+
         var otherPlayers = SnapshotOtherPlayerPositions(localPlayer.Address);
         var excludedDestination = previousDestination ?? railSampleExclusionDestination;
         // Positioning: the discrete fixed-spot policy (default) resolves against the configured spot list;
@@ -2685,6 +2786,8 @@ public sealed class FishingService
                 localPlayer.Position,
                 otherPlayers,
                 excludedDestination,
+                assignedSpot,
+                rosterClaimedSpots,
                 out destination);
             // The fixed list is finite: when no listed spot is usable (empty list, every spot dead or
             // contested by foreign players), retrying a set that cannot change this leg is a livelock —
@@ -2872,13 +2975,20 @@ public sealed class FishingService
         if (reason == OceanFishingAdvanceReason.None)
             return false;
 
+        var clearanceRaceBeforePin =
+            reason == OceanFishingAdvanceReason.PlayerClearanceLost &&
+            OceanFishingDiscreteSpotPolicy.Enabled &&
+            voyageState.DestinationArrived &&
+            !IsPlacementPinned(nowUtc);
+
         // (B rule 5) Mode-2 placed fisher: reposition is the LAST resort. Return FALSE here (not handled) so the
         // tick continues to the in-place ladder -- the facing re-assert/sweep runs at the bottom of the loop
         // (TryImproveRailPlacement) EVERY tick, which it would NOT if we returned true. PlayerClearanceLost /
         // FacingUnverified / StartUnacknowledged never move a fixed spot; only CannotFish moves, and only after
         // the facing sweep completed a full circle AND a one-shot re-bait had its grace to work. Navigation
         // stall/timeout fire while still MOVING (DestinationArrived == false), so they bypass this gate.
-        if (OceanFishingDiscreteSpotPolicy.Enabled &&
+        if (!clearanceRaceBeforePin &&
+            OceanFishingDiscreteSpotPolicy.Enabled &&
             voyageState.DestinationArrived &&
             reason is OceanFishingAdvanceReason.PlayerClearanceLost
                    or OceanFishingAdvanceReason.FacingUnverified
@@ -2989,7 +3099,7 @@ public sealed class FishingService
         // ShouldResample/PlayerClearanceLost AND keeps placement Ready so it keeps casting. The pre-arrival
         // gate is unchanged (DestinationArrived is still false at selection/arrival), so we still refuse to
         // settle ONTO an occupied spot at the start.
-        var placedNoRelocate = OceanFishingDiscreteSpotPolicy.Enabled && voyageState.DestinationArrived;
+        var placedNoRelocate = IsPlacementPinned(nowUtc);
         var playerClear = placedNoRelocate ||
                           !atDestination ||
                           (playerAvailable &&
@@ -3083,6 +3193,59 @@ public sealed class FishingService
         // got the sweep that fixes it and idled the whole voyage. Modes 0/1 and the reposition path still
         // return true (advance handled), preserving their behavior.
         return TryAdvanceFishingDestination(reason, nowUtc);
+    }
+
+    private bool IsPlacementPinned(DateTimeOffset nowUtc)
+        => OceanFishingDiscreteSpotPolicy.Enabled &&
+           voyageState.DestinationArrived &&
+           voyageState.ArrivedAtUtc is { } arrivedAt &&
+           nowUtc - arrivedAt >= PlacementClearanceSettle;
+
+    private static string RosterKey(Dalamud.Game.ClientState.Objects.Types.IGameObject? gameObject)
+        => gameObject is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter player
+            ? $"{player.Name.TextValue}@{player.HomeWorld.RowId}"
+            : string.Empty;
+
+    private static string[] SnapshotRosterKeys()
+        => Plugin.ObjectTable
+            .Where(gameObject => gameObject.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Pc)
+            .Select(RosterKey)
+            .Where(key => key.Length > 1)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
+
+    private int ResolveAssignedSpot(DateTime now, string myKey)
+    {
+        if (assignedSpotIndex >= 0)
+            return assignedSpotIndex;
+
+        var keys = SnapshotRosterKeys();
+        if (keys.Length == 0)
+            return -1;
+
+        if (!keys.SequenceEqual(rosterCandidateKeys, StringComparer.Ordinal))
+        {
+            rosterCandidateKeys = keys;
+            rosterCandidateSince = now;
+        }
+
+        var settled = now - rosterCandidateSince >= RosterStabilityWindow;
+        if (!settled && now < rosterDeadline)
+            return -1;
+
+        assignedSpotIndex = OceanFishingSpotAssignment.Resolve(
+            myKey,
+            keys,
+            OceanFishingDiscreteSpotPolicy.SpotCount);
+        rosterClaimedSpots = OceanFishingSpotAssignment.ResolveClaimed(
+            keys,
+            OceanFishingDiscreteSpotPolicy.SpotCount);
+        log.Information(
+            $"[Fishing][Position] Roster latched with {keys.Length} passengers " +
+            $"({(settled ? "settled" : "deadline reached")}); " +
+            $"assignedSpot={assignedSpotIndex}, clearance={OceanFishingDiscreteSpotPolicy.SpotClearanceYalms:F2}y");
+        return assignedSpotIndex;
     }
 
     private static Vector3[] SnapshotOtherPlayerPositions(nint localPlayerAddress)
@@ -3547,8 +3710,16 @@ public sealed class FishingService
             if (elapsed < CleanupReadyTimeout)
                 return;
 
-            log.Warning($"[Fishing][Cleanup] AutoRetainer state stayed unreadable; skipping remaining cleanup: {busy.Error}");
-            ReturnAfterFishing();
+            if (inventoryRecoveryActive)
+            {
+                log.Warning($"[Fishing][InventoryRecovery] AutoRetainer state unreadable; resuming placement: {busy.Error}");
+                ResumeAfterInventoryRecovery("AutoRetainer state stayed unreadable before selling");
+            }
+            else
+            {
+                log.Warning($"[Fishing][Cleanup] AutoRetainer state stayed unreadable; skipping remaining cleanup: {busy.Error}");
+                ReturnAfterFishing();
+            }
             return;
         }
 
@@ -3558,8 +3729,16 @@ public sealed class FishingService
             if (elapsed < CleanupReadyTimeout)
                 return;
 
-            log.Warning("[Fishing][Cleanup] AutoRetainer stayed busy; skipping remaining cleanup");
-            ReturnAfterFishing();
+            if (inventoryRecoveryActive)
+            {
+                log.Warning("[Fishing][InventoryRecovery] AutoRetainer stayed busy; resuming placement");
+                ResumeAfterInventoryRecovery("AutoRetainer stayed busy before selling");
+            }
+            else
+            {
+                log.Warning("[Fishing][Cleanup] AutoRetainer stayed busy; skipping remaining cleanup");
+                ReturnAfterFishing();
+            }
             return;
         }
 
@@ -3577,6 +3756,43 @@ public sealed class FishingService
 
     private void TickNavigateToCleanupVendor(TimeSpan elapsed)
     {
+        if (inventoryRecoveryActive)
+        {
+            var onboardVendor = GameHelpers.FindObjectByDataId(MerchantAndMenderDataId) ??
+                                GameHelpers.FindObjectByName("Merchant & Mender");
+            if (onboardVendor != null)
+            {
+                var approach = onboardVendor.Position;
+                var onboardDistance = DistanceTo(approach);
+                if (onboardDistance <= OceanFishingDockPreparationPolicy.InteractDistance)
+                {
+                    vnavmesh.Stop();
+                    SetState(FishingState.RunningInventoryCleanup);
+                    return;
+                }
+
+                if (lastNavigationCommandAt == DateTime.MinValue ||
+                    DateTime.UtcNow - lastNavigationCommandAt >= TimeSpan.FromSeconds(3))
+                {
+                    lastNavigationCommandAt = DateTime.UtcNow;
+                    vnavmesh.PathfindAndMoveTo(approach);
+                }
+
+                statusDetail = "Moving to onboard Merchant & Mender for /ays itemsell";
+            }
+            else
+            {
+                statusDetail = "Waiting for onboard Merchant & Mender";
+            }
+
+            if (elapsed >= RegistrarNavigationTimeout)
+            {
+                log.Warning("[Fishing][InventoryRecovery] Onboard merchant unavailable; resuming fishing placement");
+                ResumeAfterInventoryRecovery("onboard merchant navigation timed out");
+            }
+            return;
+        }
+
         if (!IsInLimsaAndReady())
         {
             // Same idle-gate + 75s wedge escape as boarding travel (see TickTravelToLimsa).
@@ -3665,6 +3881,42 @@ public sealed class FishingService
         }
 
         var busy = autoRetainer.ReadBusyState();
+        if (inventoryRecoveryActive)
+        {
+            if (busy.Success && busy.Busy && !cleanupBusyObserved)
+                log.Information("[Fishing][InventoryRecovery] AutoRetainer busy observed for /ays itemsell");
+            if (busy.Success && busy.Busy)
+                cleanupBusyObserved = true;
+
+            var decision = FishingInventoryRecoveryPolicy.DecideSell(
+                busy.Success,
+                busy.Success && busy.Busy,
+                cleanupBusyObserved,
+                elapsed >= CleanupWorkTimeout);
+            if (decision == FishingInventoryRecoverySellDecision.Wait)
+            {
+                statusDetail = cleanupBusyObserved
+                    ? "Waiting for AutoRetainer /ays itemsell to finish"
+                    : "Waiting for AutoRetainer /ays itemsell to become busy";
+                return;
+            }
+
+            if (decision == FishingInventoryRecoverySellDecision.Complete)
+            {
+                log.Information("[Fishing][InventoryRecovery] AutoRetainer busy cleared; /ays itemsell complete");
+                AdvanceInventoryCleanup();
+            }
+            else
+            {
+                log.Warning(
+                    busy.Success
+                        ? "[Fishing][InventoryRecovery] /ays itemsell never made AutoRetainer busy; returning to fishing"
+                        : $"[Fishing][InventoryRecovery] AutoRetainer state unreadable; returning to fishing: {busy.Error}");
+                ResumeAfterInventoryRecovery("AutoRetainer sell was not observed");
+            }
+            return;
+        }
+
         if (!busy.Success)
         {
             if (elapsed < CleanupWorkTimeout)
@@ -3698,6 +3950,47 @@ public sealed class FishingService
         }
     }
 
+    private void ResumeAfterInventoryRecovery(string reason)
+    {
+        cleanupCommands = Array.Empty<FishingCleanupCommand>();
+        cleanupCommandIndex = 0;
+        cleanupCommandSent = false;
+        cleanupBusyObserved = false;
+        inventoryRecoveryReturnStartedAt = DateTime.UtcNow;
+        lastNavigationCommandAt = DateTime.MinValue;
+        log.Information($"[Fishing][InventoryRecovery] {reason}; returning to saved fishing position");
+        SetState(FishingState.MovingToFishingSpot);
+    }
+
+    private void TickReturnFromInventoryRecovery(DateTime now)
+    {
+        var position = inventoryRecoveryReturnPosition!.Value;
+        var distance = (float)DistanceTo(position);
+        if (distance <= BoatFishingPositionTolerance ||
+            now - inventoryRecoveryReturnStartedAt >= TimeSpan.FromSeconds(60))
+        {
+            vnavmesh.Stop();
+            GameHelpers.TrySetLocalPlayerRotation(inventoryRecoveryReturnRotation);
+            inventoryRecoveryActive = false;
+            inventoryRecoveryReturnPosition = null;
+            inventoryRecoveryReturnStartedAt = DateTime.MinValue;
+            log.Information(
+                distance <= BoatFishingPositionTolerance
+                    ? "[Fishing][InventoryRecovery] Saved fishing position restored; resuming fishing"
+                    : "[Fishing][InventoryRecovery] Return timed out; resuming fishing from current position");
+            SetState(FishingState.Fishing);
+            return;
+        }
+
+        if (lastNavigationCommandAt == DateTime.MinValue ||
+            now - lastNavigationCommandAt >= TimeSpan.FromSeconds(2))
+        {
+            lastNavigationCommandAt = now;
+            vnavmesh.PathfindAndMoveTo(position);
+        }
+        statusDetail = $"Returning to saved fishing position ({distance:F1}y)";
+    }
+
     private void AdvanceInventoryCleanup()
     {
         cleanupCommandIndex++;
@@ -3705,7 +3998,10 @@ public sealed class FishingService
         cleanupBusyObserved = false;
         if (cleanupCommandIndex >= cleanupCommands.Count)
         {
-            ReturnAfterFishing();
+            if (inventoryRecoveryActive)
+                ResumeAfterInventoryRecovery("sell complete");
+            else
+                ReturnAfterFishing();
             return;
         }
 
