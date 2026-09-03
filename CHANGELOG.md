@@ -1,5 +1,17 @@
 # VERMAXION Changelog
 
+## Unreleased - Ocean Fishing recovery and inn parking
+
+### Fixed
+
+- Assign fixed rail spots from a settled passenger roster, prefer unclaimed fallbacks, and cap clearance by the built-in spot spacing.
+- Pause placement during the boarding lobby, retain a short post-arrival clearance check, and allow at least two minutes before exhausting positioning retries.
+- Recover from the English full-inventory game message by attempting an onboard sell and returning to the saved fishing position; hand off to result handling if the voyage ends.
+- Allow character-select recovery to finish during fishing relogs while retaining the registration deadline.
+- Release the final AutoRetainer handoff while logged out when fishing is inactive, without bypassing other safety blockers.
+- Recognize the full inn catalog, yield idle parking to AutoRetainer, and leave already-parked characters in their inn.
+- Omit character identity from the roster-assignment diagnostic.
+
 ## 2026-08-31 - I280/I281 Dashboard pause and dialog readiness
 
 ### Fixed
