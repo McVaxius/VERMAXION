@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using VERMAXION.Models;
@@ -11,6 +12,146 @@ namespace VERMAXION.Tests;
 
 public sealed class FishingPolicyTests
 {
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"OceanRailSpreadMode\":0,\"OceanRailSliceCount\":24,\"OceanRailSliceIndex\":5}")]
+    [InlineData("{\"OceanRailSpreadMode\":2}")]
+    [InlineData("{\"OceanFishingPositioningMode\":-1}")]
+    [InlineData("{\"OceanFishingPositioningMode\":99}")]
+    [InlineData("{\"OceanFishingPositioningMode\":\"unknown\"}")]
+    [InlineData("{\"OceanFishingPositioningMode\":null}")]
+    [InlineData("{\"OceanFishingPositioningMode\":true}")]
+    [InlineData("{\"OceanFishingPositioningMode\":1.5}")]
+    [InlineData("{\"OceanFishingPositioningMode\":{}}")]
+    [InlineData("{\"OceanFishingPositioningMode\":[]}")]
+    public void MissingLegacyAndInvalidPositioningChoicesUseFixedLocations(string json)
+    {
+        var config = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(json)!;
+        Assert.Equal(OceanFishingPositioningMode.FixedLocations, config.OceanFishingPositioningMode);
+        Assert.False(OceanFishingPositioningPolicy.RequiresPlayerClearance(config.OceanFishingPositioningMode));
+    }
+
+    [Theory]
+    [InlineData(OceanFishingPositioningMode.FixedLocations)]
+    [InlineData(OceanFishingPositioningMode.ContinuousRail)]
+    [InlineData(OceanFishingPositioningMode.Spacing)]
+    public void ExplicitPositioningChoicesSurviveGlobalSaveAndReload(OceanFishingPositioningMode mode)
+    {
+        var config = new Configuration { OceanFishingPositioningMode = mode, OceanRailSpreadMode = 0 };
+        config.Save();
+        var reloaded = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(Plugin.PluginInterface.SavedConfiguration!)!;
+        Assert.Equal(mode, reloaded.OceanFishingPositioningMode);
+        Assert.Equal(mode == OceanFishingPositioningMode.Spacing,
+            OceanFishingPositioningPolicy.RequiresPlayerClearance(reloaded.OceanFishingPositioningMode));
+    }
+
+    [Theory]
+    [InlineData(OceanFishingPositioningMode.FixedLocations)]
+    [InlineData(OceanFishingPositioningMode.ContinuousRail)]
+    public void RandomModesIgnoreSpacingStateAndLegacySlices(OceanFishingPositioningMode mode)
+    {
+        var baseline = new Random(451);
+        var changed = new Random(451);
+        OceanFishingDiscreteSpotPolicy.ApplyConfiguration(new Configuration());
+        OceanFishingContinuousRailPolicy.ApplyConfiguration(new Configuration());
+        var expected = Enumerable.Range(0, 100).Select(_ => OceanFishingPositioningPolicy.SampleRandom(mode, baseline)).ToArray();
+        try
+        {
+            for (var i = 0; i < expected.Length; i++)
+            {
+                var config = new Configuration
+                {
+                    OceanRailSpreadMode = i % 3,
+                    OceanRailSliceCount = 24,
+                    OceanRailSliceIndex = i % 24,
+                    OceanRailMinimumPlayerClearance = 10f,
+                    OceanRailEdgePlayerAoeYalms = 5f,
+                    OceanRailStepYalms = 5f,
+                };
+                OceanFishingDiscreteSpotPolicy.ApplyConfiguration(config);
+                OceanFishingContinuousRailPolicy.ApplyConfiguration(config);
+                var roster = Enumerable.Range(0, i + 1).Select(n => $"Passenger{n}").ToArray();
+                var assignment = OceanFishingSpotAssignment.Resolve(roster[0], roster, 32);
+                var occupied = OceanFishingDiscreteSpotPolicy.SpotAt(assignment);
+                OceanFishingDiscreteSpotPolicy.TrySample(occupied.Position, [occupied.Position], occupied,
+                    assignment, OceanFishingSpotAssignment.ResolveClaimed(roster, 32), out _);
+                Assert.Equal(expected[i], OceanFishingPositioningPolicy.SampleRandom(mode, changed));
+            }
+        }
+        finally
+        {
+            OceanFishingDiscreteSpotPolicy.ApplyConfiguration(new Configuration());
+            OceanFishingContinuousRailPolicy.ApplyConfiguration(new Configuration());
+        }
+    }
+
+    [Fact]
+    public void FixedRandomChoicesCoverAll32BuiltInSpotsAndAllowDuplicates()
+    {
+        OceanFishingDiscreteSpotPolicy.ApplyConfiguration(new Configuration());
+        var random = new Random(132);
+        var samples = Enumerable.Range(0, 1000)
+            .Select(_ => OceanFishingPositioningPolicy.SampleRandom(OceanFishingPositioningMode.FixedLocations, random)).ToArray();
+        Assert.Equal(32, samples.Distinct().Count());
+        Assert.All(samples, sample => Assert.Contains(Enumerable.Range(0, 32), index =>
+            OceanFishingDiscreteSpotPolicy.SpotAt(index).Position == sample.Position &&
+            OceanFishingDiscreteSpotPolicy.SpotAt(index).Rotation == sample.Rotation));
+        Assert.Equal(samples[0], OceanFishingPositioningPolicy.SampleRandom(OceanFishingPositioningMode.FixedLocations, new Random(132)));
+        Assert.Throws<ArgumentException>(() => OceanFishingPositioningPolicy.SampleRandom(OceanFishingPositioningMode.Spacing, random));
+    }
+
+    [Theory]
+    [InlineData(OceanFishingPositioningMode.FixedLocations)]
+    [InlineData(OceanFishingPositioningMode.ContinuousRail)]
+    public void OccupiedDestinationThenDepartureDoesNotBlockRandomModeCasting(OceanFishingPositioningMode mode)
+    {
+        var destination = OceanFishingPositioningPolicy.SampleRandom(mode, new Random(7));
+        var voyage = ArrivedVoyage(out var now);
+        // The other player occupies the destination at arrival, stays through two attempts, then leaves.
+        foreach (var seconds in new[] { 0, 1, 4, 7 })
+        {
+            var players = seconds < 7 ? new[] { destination.Position } : Array.Empty<Vector3>();
+            var playerClear = !OceanFishingPositioningPolicy.RequiresPlayerClearance(mode) ||
+                OceanFishingContinuousRailPolicy.HasPlayerClearance(destination.Position, players, destination.ArrivalClearance);
+            var placement = EvaluatePlacement(voyage, now.AddSeconds(seconds), playerClear: playerClear, pathRunning: false);
+            Assert.False(placement.ShouldResample);
+            Assert.False(placement.ShouldAbort);
+            var start = voyage.EvaluateFishingStart(now.AddSeconds(seconds), true, true, false, true,
+                false, false, false, true, placement.Ready, placement.Gate);
+            Assert.Equal(seconds == 0 ? FishingCastDecision.Suppressed : FishingCastDecision.Attempt, start.Decision);
+            Assert.Equal(1, voyage.DestinationAttemptNumber);
+        }
+        Assert.Equal(3, voyage.SessionStartAttemptCount);
+        var acknowledgement = voyage.EvaluateFishingStart(now.AddSeconds(8), true, true, false, true,
+            true, true, false, true, true);
+        Assert.Equal(FishingCastDecision.Acknowledged, acknowledgement.Decision);
+        Assert.True(voyage.MovementLocked);
+        Assert.False(voyage.AdvanceDestination(now.AddMinutes(3)));
+    }
+
+    [Fact]
+    public void RandomServiceBranchDoesNotConsultSpacingAndUiLocksChoice()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        var service = File.ReadAllText(Path.Combine(root, "VERMAXION", "Services", "FishingService.cs"));
+        var start = service.IndexOf("private bool TrySelectRailDestination(", StringComparison.Ordinal);
+        var selection = service[start..service.IndexOf("private bool BeginFishingSession", start, StringComparison.Ordinal)];
+        Assert.Contains("if (IsVoyageRouteTransitionActive() || now < nextRailSampleAt)", selection);
+        Assert.Contains("if (SpacingEnabled)", selection);
+        Assert.Contains("var otherPlayers = SpacingEnabled", selection);
+        Assert.Contains("destination = OceanFishingPositioningPolicy.SampleRandom(activePositioningMode, Random.Shared);", selection);
+        Assert.Contains("!OceanFishingPositioningPolicy.RequiresPlayerClearance(activePositioningMode)", service);
+        Assert.DoesNotContain("OceanRailSpreadMode", service);
+        Assert.DoesNotContain("OceanFishingDiscreteSpotPolicy.Enabled", service);
+        var ui = File.ReadAllText(Path.Combine(root, "VERMAXION", "Windows", "ConfigWindow.cs"));
+        var controls = ui[ui.IndexOf("ImGui.BeginDisabled(plugin.IsFishingRunActive ||", StringComparison.Ordinal)..];
+        controls = controls[..controls.IndexOf("ImGui.EndDisabled();", StringComparison.Ordinal)];
+        Assert.Contains("!OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(provider)", controls);
+        Assert.Contains("ImGui.RadioButton(\"Fixed locations\"", controls);
+        Assert.Contains("ImGui.RadioButton(\"Continuous rail\"", controls);
+        Assert.Contains("ImGui.RadioButton(\"Spacing mode\"", controls);
+    }
+
     [Fact]
     public void DefaultExecutionModeUsesAutoRetainerCurrentAccountRelog()
     {
@@ -234,6 +375,62 @@ public sealed class FishingPolicyTests
             previousDestination: null,
             out var destination));
         Assert.DoesNotContain(destination.Position, players);
+    }
+
+    [Fact]
+    public void DiscreteAssignmentIsStableForTheSamePassengerRoster()
+    {
+        var roster = new[] { "Beta@2", "Alpha@1", "Gamma@3" };
+        var reordered = new[] { "Gamma@3", "Beta@2", "Alpha@1" };
+
+        foreach (var key in roster)
+        {
+            Assert.Equal(
+                OceanFishingSpotAssignment.Resolve(key, roster, 32),
+                OceanFishingSpotAssignment.Resolve(key, reordered, 32));
+        }
+
+        Assert.Equal(3, roster
+            .Select(key => OceanFishingSpotAssignment.Resolve(key, roster, 32))
+            .Distinct()
+            .Count());
+    }
+
+    [Fact]
+    public void DiscreteFallbackSkipsClaimedAndExcludedSpots()
+    {
+        OceanFishingDiscreteSpotPolicy.ApplyConfiguration(new Configuration
+        {
+            OceanRailSpreadMode = 2,
+            OceanRailEdgePlayerAoeYalms = 2f,
+        });
+
+        var assigned = 0;
+        var excluded = OceanFishingDiscreteSpotPolicy.SpotAt(assigned);
+        var claimed = Enumerable.Range(0, OceanFishingDiscreteSpotPolicy.SpotCount - 1).ToHashSet();
+
+        Assert.True(OceanFishingDiscreteSpotPolicy.TrySample(
+            excluded.Position,
+            [excluded.Position],
+            excluded,
+            assigned,
+            claimed,
+            out var destination));
+
+        var destinationIndex = Enumerable.Range(0, OceanFishingDiscreteSpotPolicy.SpotCount)
+            .Single(index => OceanFishingDiscreteSpotPolicy.SpotAt(index).Position == destination.Position);
+        Assert.DoesNotContain(destinationIndex, claimed);
+        Assert.NotEqual(assigned, destinationIndex);
+    }
+
+    [Fact]
+    public void DiscreteSpotClearanceIsDerivedFromTheClosestSpotPair()
+    {
+        var clearance = OceanFishingDiscreteSpotPolicy.ResolveSpotClearance(
+            [(0f, 0f, 0f, 0f), (1f, 0f, 0f, 0f)],
+            configuredAoeYalms: 2f);
+
+        Assert.Equal(0.9f, clearance, precision: 3);
     }
 
     [Theory]
@@ -590,6 +787,57 @@ public sealed class FishingPolicyTests
     }
 
     [Fact]
+    public void FullInventoryGameErrorStartsOneActiveOwnedOceanFishingRecovery()
+    {
+        Assert.True(FishingInventoryRecoveryPolicy.ShouldStart(
+            "ErrorMessage", "",
+            "Unable to gather. Insufficient inventory space.",
+            activelyFishing: true,
+            oceanFishingDutyActive: true,
+            recoveryActive: false, provider: OceanFishingProvider.VermaxionAutoHook));
+        Assert.False(FishingInventoryRecoveryPolicy.ShouldStart(
+            "ErrorMessage", "",
+            "Unable to gather. Insufficient inventory space.",
+            activelyFishing: true,
+            oceanFishingDutyActive: true,
+            recoveryActive: true, provider: OceanFishingProvider.VermaxionAutoHook));
+        Assert.True(FishingInventoryRecoveryPolicy.ShouldStart(
+            "ErrorMessage", "",
+            "Unable to gather. Insufficient inventory space. ",
+            activelyFishing: true,
+            oceanFishingDutyActive: true,
+            recoveryActive: false, provider: OceanFishingProvider.VermaxionAutoHook));
+        Assert.False(FishingInventoryRecoveryPolicy.ShouldStart(
+            "ErrorMessage", "",
+            "Unable to gather. Insufficient inventory space.",
+            activelyFishing: false,
+            oceanFishingDutyActive: true,
+            recoveryActive: false, provider: OceanFishingProvider.VermaxionAutoHook));
+
+        Assert.Equal(
+            FishingInventoryRecoverySellDecision.Wait,
+            FishingInventoryRecoveryPolicy.DecideSell(
+                busyStateReadable: true,
+                busy: false,
+                busyObserved: false,
+                timedOut: false));
+        Assert.Equal(
+            FishingInventoryRecoverySellDecision.ResumeWithoutSale,
+            FishingInventoryRecoveryPolicy.DecideSell(
+                busyStateReadable: true,
+                busy: false,
+                busyObserved: false,
+                timedOut: true));
+        Assert.Equal(
+            FishingInventoryRecoverySellDecision.Complete,
+            FishingInventoryRecoveryPolicy.DecideSell(
+                busyStateReadable: true,
+                busy: false,
+                busyObserved: true,
+                timedOut: false));
+    }
+
+    [Fact]
     public void InventoryCleanupAndReturnPoliciesAreOrderedAndObserved()
     {
         Assert.Equal(
@@ -612,6 +860,45 @@ public sealed class FishingPolicyTests
         Assert.False(FishingReturnPolicy.ShouldRetry(2, TimeSpan.FromSeconds(120)));
         Assert.True(FishingReturnPolicy.ShouldSuppressCommand(resultAddonVisible: true));
         Assert.False(FishingReturnPolicy.ShouldSuppressCommand(resultAddonVisible: false));
+    }
+
+    [Theory]
+    [InlineData("Say", "Player", true, true, false, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("Party", "Player", true, true, false, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("TellIncoming", "Player", true, true, false, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("ErrorMessage", "Player", true, true, false, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("SystemMessage", "", true, true, false, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("ErrorMessage", "", false, true, false, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("ErrorMessage", "", true, false, false, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("ErrorMessage", "", true, true, true, OceanFishingProvider.VermaxionAutoHook)]
+    [InlineData("ErrorMessage", "", true, true, false, OceanFishingProvider.AutoHookAutoOceanFish)]
+    public void InventoryRecoveryRejectsChatDuplicatesInactiveDutyAndForeignOwnership(
+        string channel, string sender, bool active, bool inDuty, bool recovering, OceanFishingProvider provider)
+    {
+        Assert.False(FishingInventoryRecoveryPolicy.ShouldStart(channel, sender,
+            FishingInventoryRecoveryPolicy.InsufficientInventoryMessage, active, inDuty, recovering, provider));
+    }
+
+    [Theory]
+    [InlineData(true, true, true, true, FishingInventoryRecoverySellDecision.Wait)]
+    [InlineData(false, false, true, false, FishingInventoryRecoverySellDecision.Wait)]
+    [InlineData(false, false, true, true, FishingInventoryRecoverySellDecision.ResumeWithoutSale)]
+    [InlineData(true, false, true, true, FishingInventoryRecoverySellDecision.Complete)]
+    public void InventorySellWaitsForBusyEvenBeyondTimeout(bool readable, bool busy, bool observed,
+        bool timedOut, FishingInventoryRecoverySellDecision expected)
+        => Assert.Equal(expected, FishingInventoryRecoveryPolicy.DecideSell(readable, busy, observed, timedOut));
+
+    [Fact]
+    public void CharacterSelectRecoveryStopsAtItsMarginAndNeverExtendsRegistration()
+    {
+        var start = Utc(2026, 9, 8, 12, 0, 0);
+        var visible = start.AddMinutes(3);
+        FishingRelogRuntimeDecision Evaluate(DateTimeOffset now, bool open)
+            => FishingRelogCommandPolicy.Evaluate(now, start, start, open, false, "character select",
+                false, true, false, characterSelectVisibleAtUtc: visible);
+        Assert.Equal(FishingRelogRuntimeAction.Wait, Evaluate(start.AddMinutes(9).AddTicks(-1), true).Action);
+        Assert.Equal(FishingRelogRuntimeAction.Fail, Evaluate(start.AddMinutes(9), true).Action);
+        Assert.Equal(FishingRelogRuntimeAction.Fail, Evaluate(start.AddMinutes(4), false).Action);
     }
 
     [Fact]
@@ -877,6 +1164,38 @@ public sealed class FishingPolicyTests
         Assert.Equal(FishingRelogRuntimeAction.Fail, expired.Action);
         Assert.Contains("intermediate character", wrong.Reason);
         Assert.Contains("registration closed", expired.Reason);
+    }
+
+    [Fact]
+    public void RelogTimeoutExtendsOnlyAfterCharacterSelectIsObserved()
+    {
+        var started = Utc(2026, 7, 2, 12, 0, 0);
+        var visible = started.AddMinutes(3).AddSeconds(30);
+
+        var beforeRecovery = FishingRelogCommandPolicy.Evaluate(
+            nowUtc: started.AddMinutes(4),
+            startedAtUtc: started,
+            lastRelogCommandAtUtc: started,
+            registrationOpen: true,
+            readyForRelog: false,
+            blockedReason: "Waiting for character select",
+            targetReached: false,
+            observableProgress: true,
+            wrongCharacterArrived: false);
+        var duringRecovery = FishingRelogCommandPolicy.Evaluate(
+            nowUtc: started.AddMinutes(4).AddSeconds(1),
+            startedAtUtc: started,
+            lastRelogCommandAtUtc: started,
+            registrationOpen: true,
+            readyForRelog: false,
+            blockedReason: "Waiting for character select",
+            targetReached: false,
+            observableProgress: true,
+            wrongCharacterArrived: false,
+            characterSelectVisibleAtUtc: visible);
+
+        Assert.Equal(FishingRelogRuntimeAction.Fail, beforeRecovery.Action);
+        Assert.Equal(FishingRelogRuntimeAction.Wait, duringRecovery.Action);
     }
 
     [Theory]
@@ -1480,6 +1799,22 @@ public sealed class FishingPolicyTests
             Assert.True(voyage.AdvanceDestination(now.AddSeconds(expected)));
             Assert.Equal(expected, voyage.DestinationAttemptNumber);
         }
+    }
+
+    [Fact]
+    public void PositioningDoesNotAbandonBeforeTwoMinutes()
+    {
+        var voyage = new OceanFishingVoyageState();
+        var now = Utc(2026, 7, 21, 22, 0, 0);
+        voyage.Reset();
+        voyage.BeginPositioning(now);
+
+        for (var attempt = 2; attempt <= OceanFishingVoyageState.MaxDestinationAttempts; attempt++)
+            Assert.True(voyage.AdvanceDestination(now.AddSeconds(1)));
+
+        Assert.True(voyage.AdvanceDestination(now.AddSeconds(119)));
+        Assert.Equal(OceanFishingVoyageState.MaxDestinationAttempts + 1, voyage.DestinationAttemptNumber);
+        Assert.False(voyage.AdvanceDestination(now.AddSeconds(120)));
     }
 
     [Fact]
