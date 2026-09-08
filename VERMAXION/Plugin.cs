@@ -600,7 +600,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             message.LogKind.ToString(),
             message.Sender.TextValue,
             message.Message.TextValue);
-        FishingService.HandleChatMessage(message.Message.TextValue);
+        FishingService.HandleChatMessage(
+            message.LogKind.ToString(),
+            message.Sender.TextValue,
+            message.Message.TextValue);
     }
 
     private void OnARCharacterReady(string pluginName)

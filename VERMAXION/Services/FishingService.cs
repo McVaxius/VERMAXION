@@ -135,6 +135,8 @@ public sealed class FishingService
     private FishingStartupTrigger activeStartupTrigger;
     private DateTimeOffset activeRegistrationStartUtc;
     private OceanFishingProvider activeProvider;
+    private OceanFishingPositioningMode activePositioningMode;
+    private bool SpacingEnabled => activePositioningMode == OceanFishingPositioningMode.Spacing;
     private string lastError = string.Empty;
     private string statusDetail = string.Empty;
     private FisherGearsetEquipOperation? fisherGearsetOperation;
@@ -264,15 +266,18 @@ public sealed class FishingService
         dutyState.DutyCompleted += OnDutyCompleted;
     }
 
-    public void HandleChatMessage(string text)
+    public void HandleChatMessage(string channel, string sender, string text)
     {
         var activelyFishing = state == FishingState.Fishing;
         var oceanFishingDutyActive = IsOceanFishingDutyActive();
         if (!FishingInventoryRecoveryPolicy.ShouldStart(
+                channel,
+                sender,
                 text,
                 activelyFishing,
                 oceanFishingDutyActive,
-                recoveryActive: inventoryRecoveryActive))
+                recoveryActive: inventoryRecoveryActive,
+                provider: activeProvider))
         {
             if (FishingInventoryRecoveryPolicy.IsInsufficientInventoryMessage(text))
             {
@@ -320,6 +325,7 @@ public sealed class FishingService
         activeStartupTrigger = runLifecycle.Current.StartupTrigger;
         activeRegistrationStartUtc = runLifecycle.Current.RegistrationStartUtc;
         activeProvider = runLifecycle.Current.Provider;
+        activePositioningMode = configuration.OceanFishingPositioningMode;
         lastError = string.Empty;
         sawFishingContext = IsFishingContextActive();
         statusDetail = string.Empty;
@@ -1923,8 +1929,7 @@ public sealed class FishingService
             return;
 
         // (B rule 1) Game-timing first: pause the not-catching timers until the fishing phase is open.
-        var phaseGate = OceanFishingDiscreteSpotPolicy.Enabled &&
-                        voyageState.DestinationArrived &&
+        var phaseGate = voyageState.DestinationArrived &&
                         IsOceanFishingPhaseNotYetOpen();
         var recovery = voyageState.EvaluateRecovery(
             nowUtc,
@@ -2585,11 +2590,8 @@ public sealed class FishingService
             return;
         }
 
-        // (B rule 1) Game-timing first: while the voyage's fishing phase is not open (status != Fishing),
-        // CanFish is false for a reason unrelated to this spot, so WAIT -- do not let the CannotFish /
-        // StartUnacknowledged timers accumulate and relocate a placed mode-2 toon.
-        var phaseGate = OceanFishingDiscreteSpotPolicy.Enabled &&
-                        voyageState.DestinationArrived &&
+        // Pause failure recovery in every mode until the fishing phase opens.
+        var phaseGate = voyageState.DestinationArrived &&
                         IsOceanFishingPhaseNotYetOpen();
         var recovery = voyageState.EvaluateRecovery(
             nowUtc,
@@ -2747,7 +2749,7 @@ public sealed class FishingService
         OceanFishingRailDestination? previousDestination,
         string reason)
     {
-        if (now < nextRailSampleAt)
+        if (IsVoyageRouteTransitionActive() || now < nextRailSampleAt)
             return false;
 
         var localPlayer = Plugin.ObjectTable.LocalPlayer;
@@ -2761,7 +2763,7 @@ public sealed class FishingService
         }
 
         var assignedSpot = -1;
-        if (OceanFishingDiscreteSpotPolicy.Enabled)
+        if (SpacingEnabled)
         {
             assignedSpot = ResolveAssignedSpot(now, RosterKey(localPlayer));
             if (assignedSpot < 0 && now < rosterDeadline)
@@ -2773,14 +2775,14 @@ public sealed class FishingService
             }
         }
 
-        var otherPlayers = SnapshotOtherPlayerPositions(localPlayer.Address);
+        var otherPlayers = SpacingEnabled
+            ? SnapshotOtherPlayerPositions(localPlayer.Address)
+            : Array.Empty<Vector3>();
         var excludedDestination = previousDestination ?? railSampleExclusionDestination;
-        // Positioning: the discrete fixed-spot policy (default) resolves against the configured spot list;
-        // the continuous sweep sampler backs it up. Both produce the same OceanFishingRailDestination
-        // shape, so arrival/facing/cast logic downstream is unchanged.
+        // Only spacing consults passenger assignment, occupancy, exclusions, or legacy rail slices.
         bool sampled;
         OceanFishingRailDestination destination;
-        if (OceanFishingDiscreteSpotPolicy.Enabled)
+        if (SpacingEnabled)
         {
             sampled = OceanFishingDiscreteSpotPolicy.TrySample(
                 localPlayer.Position,
@@ -2804,11 +2806,8 @@ public sealed class FishingService
         }
         else
         {
-            sampled = OceanFishingContinuousRailPolicy.TrySample(
-                Random.Shared,
-                otherPlayers,
-                excludedDestination,
-                out destination);
+            destination = OceanFishingPositioningPolicy.SampleRandom(activePositioningMode, Random.Shared);
+            sampled = true;
         }
         if (!sampled)
         {
@@ -2839,14 +2838,16 @@ public sealed class FishingService
         fencePushStableTicks = 0;
         // The caller no longer writes a generic status after this returns (it hid the failure-path
         // messages), so the success path owns its own.
-        statusDetail = $"Moving to a sampled rail point ({destination.ArrivalClearance:F1}y clearance tier)";
+        statusDetail = SpacingEnabled
+            ? $"Moving to a spaced rail point ({destination.ArrivalClearance:F1}y clearance tier)"
+            : $"Moving to a random {activePositioningMode} fishing point";
         log.Information(
-            $"[Fishing][Position] Sampled continuous rail destination attempt " +
+            $"[Fishing][Position] Sampled {activePositioningMode} destination attempt " +
             $"{voyageState.DestinationAttemptNumber} for {reason}: " +
             $"({destination.Position.X:F3}, {destination.Position.Y:F3}, {destination.Position.Z:F3}), " +
             $"outwardRotation={destination.Rotation:F3}, otherPlayers={otherPlayers.Length}, " +
             $"clearance={destination.ArrivalClearance:F1}y" +
-            (destination.ArrivalClearance < OceanFishingContinuousRailPolicy.MinimumPlayerClearance
+            (SpacingEnabled && destination.ArrivalClearance < OceanFishingContinuousRailPolicy.MinimumPlayerClearance
                 ? " (fallback tier)"
                 : string.Empty));
         return true;
@@ -2977,18 +2978,15 @@ public sealed class FishingService
 
         var clearanceRaceBeforePin =
             reason == OceanFishingAdvanceReason.PlayerClearanceLost &&
-            OceanFishingDiscreteSpotPolicy.Enabled &&
+            SpacingEnabled &&
             voyageState.DestinationArrived &&
             !IsPlacementPinned(nowUtc);
 
-        // (B rule 5) Mode-2 placed fisher: reposition is the LAST resort. Return FALSE here (not handled) so the
-        // tick continues to the in-place ladder -- the facing re-assert/sweep runs at the bottom of the loop
-        // (TryImproveRailPlacement) EVERY tick, which it would NOT if we returned true. PlayerClearanceLost /
-        // FacingUnverified / StartUnacknowledged never move a fixed spot; only CannotFish moves, and only after
-        // the facing sweep completed a full circle AND a one-shot re-bait had its grace to work. Navigation
-        // stall/timeout fire while still MOVING (DestinationArrived == false), so they bypass this gate.
+        // Fixed locations and spacing retain the in-place facing/bait recovery before relocation.
+        // Returning false lets the fishing loop continue that recovery. Only spacing can report
+        // a clearance race; random modes never consult player clearance.
         if (!clearanceRaceBeforePin &&
-            OceanFishingDiscreteSpotPolicy.Enabled &&
+            activePositioningMode != OceanFishingPositioningMode.ContinuousRail &&
             voyageState.DestinationArrived &&
             reason is OceanFishingAdvanceReason.PlayerClearanceLost
                    or OceanFishingAdvanceReason.FacingUnverified
@@ -3000,7 +2998,7 @@ public sealed class FishingService
                 railRebaitApplied = true;
                 railRebaitAppliedAt = nowUtc.UtcDateTime;
                 log.Warning(
-                    $"[Fishing][Position] Placed mode-2 spot not catching ({DescribeAdvanceReason(reason)}); " +
+                    $"[Fishing][Position] Placed fixed spot not catching ({DescribeAdvanceReason(reason)}); " +
                     "in-place recovery (facing + bait) before any relocate. Reposition is the last resort.");
                 CommandHelper.SendCommand("/bait Versatile Lure");
             }
@@ -3085,22 +3083,13 @@ public sealed class FishingService
         var playerAvailable = GameHelpers.IsPlayerAvailable() &&
                               player != null &&
                               player.Address != nint.Zero;
-        // Arrival is gated at the tier the sampler accepted THIS point under: full minimum for
-        // preferred-tier points, the fallback floor for busy-vessel fallback points. One fixed value
-        // here is wrong in both directions — the full minimum livelocks fallback destinations, and the
-        // fallback floor would silently weaken the first-cast guard at fully-clear ones. Clamped at
-        // zero, never escalated: every producer stamps a tier, and zeroing the fallback
-        // knob makes the sampler accept at 0y — escalating that stamp to the full minimum here would
-        // recreate the walk-fail-resample livelock the tier exists to prevent.
+        // Spacing verifies the clearance tier accepted by its sampler. Random modes bypass player
+        // clearance entirely while retaining arrival, stopped-path settlement, and facing checks.
         var requiredClearance = MathF.Max(0f, destination.ArrivalClearance);
-        // (A) Mode-2 fixed spots: clearance is a START-ONLY gate. Once this toon has MARKED ARRIVED at its
-        // assigned spot, a foreign player wandering into the first-cast radius must NOT relocate it -- "don't
-        // move once placed, just fish". Pinning playerClear post-arrival stops !playerClear from re-firing
-        // ShouldResample/PlayerClearanceLost AND keeps placement Ready so it keeps casting. The pre-arrival
-        // gate is unchanged (DestinationArrived is still false at selection/arrival), so we still refuse to
-        // settle ONTO an occupied spot at the start.
+        // Spacing stops clearance-driven relocation after its existing three-second arrival check.
         var placedNoRelocate = IsPlacementPinned(nowUtc);
-        var playerClear = placedNoRelocate ||
+        var playerClear = !OceanFishingPositioningPolicy.RequiresPlayerClearance(activePositioningMode) ||
+                          placedNoRelocate ||
                           !atDestination ||
                           (playerAvailable &&
                            OceanFishingContinuousRailPolicy.HasPlayerClearance(
@@ -3187,16 +3176,16 @@ public sealed class FishingService
         var reason = placement.Gate.StartsWith("outward character facing", StringComparison.Ordinal)
             ? OceanFishingAdvanceReason.FacingUnverified
             : OceanFishingAdvanceReason.PlayerClearanceLost;
-        // Return the advance RESULT, not an unconditional true: for a placed mode-2 fisher the B2 gate keeps it
+        // Return the advance RESULT, not an unconditional true: for a placed fixed fisher the recovery gate keeps it
         // in place (returns false) so this tick can fall through to the in-place facing sweep
         // (TryImproveRailPlacement). Returning true here short-circuited that -> a FacingUnverified stall never
-        // got the sweep that fixes it and idled the whole voyage. Modes 0/1 and the reposition path still
+        // got the sweep that fixes it and idled the whole voyage. Continuous rail and the reposition path still
         // return true (advance handled), preserving their behavior.
         return TryAdvanceFishingDestination(reason, nowUtc);
     }
 
     private bool IsPlacementPinned(DateTimeOffset nowUtc)
-        => OceanFishingDiscreteSpotPolicy.Enabled &&
+        => SpacingEnabled &&
            voyageState.DestinationArrived &&
            voyageState.ArrivedAtUtc is { } arrivedAt &&
            nowUtc - arrivedAt >= PlacementClearanceSettle;

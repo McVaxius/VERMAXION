@@ -1,29 +1,24 @@
-using System.Collections.Generic;
-using System.Linq;
-using VERMAXION.Models;
-
-namespace VERMAXION;
-
-public sealed class Configuration
+// Only the Dalamud persistence boundary is substituted; tests use the real global Configuration.
+namespace Dalamud.Configuration
 {
-    public bool AutoWidthMainTaskColumns { get; set; } = true;
-    public List<string> FavoriteAutomationIds { get; set; } = new();
-    public int RefillListingsActionDelayMs { get; set; } = 250;
-    public int RefillListingsInterItemDelayMs { get; set; } = 250;
-    public bool LogoutBetweenScheduledOceanFishingVoyages { get; set; } = false;
-    public ScheduledOfflineHoldState? ScheduledOfflineHold { get; set; }
-    public List<string> PostProcessTaskOrder { get; set; } = VERMAXION.PostProcessTaskOrder.DefaultOrder.ToList();
-    public Dictionary<string, PostProcessTaskPhase> PostProcessTaskPlacement { get; set; } = VERMAXION.PostProcessTaskOrder.CreateDefaultPlacement();
+    public interface IPluginConfiguration
+    {
+        int Version { get; set; }
+    }
+}
 
-    // Rail-positioning members read by FishingModels' ApplyConfiguration paths. Kept in sync with the
-    // real Configuration; the test default mirrors production (discrete spots, empty list is fine for
-    // the policies under test).
-    public int OceanRailSpreadMode { get; set; } = 2;
-    public float OceanRailMinimumPlayerClearance { get; set; } = 1.9f;
-    public float OceanRailFallbackPlayerClearance { get; set; } = 1.25f;
-    public float OceanRailStepYalms { get; set; } = 0.5f;
-    public float OceanRailFacingSweepDegreesPerSecond { get; set; } = 180f;
-    public float OceanRailEdgePlayerAoeYalms { get; set; } = 2.0f;
-    public int OceanRailSliceIndex { get; set; } = 0;
-    public int OceanRailSliceCount { get; set; } = 1;
+namespace VERMAXION
+{
+    internal static class Plugin
+    {
+        public static TestPluginInterface PluginInterface { get; } = new();
+    }
+
+    internal sealed class TestPluginInterface
+    {
+        public string? SavedConfiguration { get; private set; }
+
+        public void SavePluginConfig(Configuration configuration)
+            => SavedConfiguration = Newtonsoft.Json.JsonConvert.SerializeObject(configuration);
+    }
 }

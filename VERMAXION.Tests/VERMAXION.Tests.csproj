@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\VERMAXION\Configuration.cs" Link="ProductionConfiguration.cs" />
     <Compile Include="..\VERMAXION\Models\AccountConfig.cs" Link="AccountConfig.cs" />
     <Compile Include="..\VERMAXION\Models\AccountSelectionPolicy.cs" Link="AccountSelectionPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\AutoRetainerSelectionModels.cs" Link="AutoRetainerSelectionModels.cs" />
