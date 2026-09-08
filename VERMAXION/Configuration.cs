@@ -8,6 +8,26 @@ using VERMAXION.Models;
 
 namespace VERMAXION;
 
+// Dalamud loads global configuration with Newtonsoft. Malformed or unknown choices must not
+// discard the rest of the configuration or opt an existing installation into spacing.
+internal sealed class OceanFishingPositioningModeConverter : Newtonsoft.Json.JsonConverter<OceanFishingPositioningMode>
+{
+    public override OceanFishingPositioningMode ReadJson(
+        Newtonsoft.Json.JsonReader reader, Type objectType, OceanFishingPositioningMode existingValue,
+        bool hasExistingValue, Newtonsoft.Json.JsonSerializer serializer)
+    {
+        var token = Newtonsoft.Json.Linq.JToken.Load(reader);
+        return token.Type is Newtonsoft.Json.Linq.JTokenType.Integer or Newtonsoft.Json.Linq.JTokenType.String &&
+               Enum.TryParse<OceanFishingPositioningMode>(token.ToString(), out var mode)
+            ? OceanFishingPositioningPolicy.Normalize(mode)
+            : Models.OceanFishingPositioningMode.FixedLocations;
+    }
+
+    public override void WriteJson(Newtonsoft.Json.JsonWriter writer, OceanFishingPositioningMode value,
+        Newtonsoft.Json.JsonSerializer serializer)
+        => writer.WriteValue((int)OceanFishingPositioningPolicy.Normalize(value));
+}
+
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
@@ -40,6 +60,13 @@ public class Configuration : IPluginConfiguration
     public int OceanFishingPreWindowOffsetMinutes { get; set; } = FishingDefaults.OceanFishingPreWindowOffsetMinutes;
     public OceanFishingProvider OceanFishingProvider { get; set; } =
         Models.OceanFishingProvider.VermaxionAutoHook;
+    private OceanFishingPositioningMode oceanFishingPositioningMode;
+    [Newtonsoft.Json.JsonConverter(typeof(OceanFishingPositioningModeConverter))]
+    public OceanFishingPositioningMode OceanFishingPositioningMode
+    {
+        get => oceanFishingPositioningMode;
+        set => oceanFishingPositioningMode = OceanFishingPositioningPolicy.Normalize(value);
+    }
     public OceanFishingRoutePreference OceanFishingRoutePreference { get; set; } =
         Models.OceanFishingRoutePreference.Indigo;
     public bool OceanFishingWindowWatchEnabled { get; set; } = false;
@@ -62,12 +89,7 @@ public class Configuration : IPluginConfiguration
     /// snaps in 15-degree increments — this only sets how fast it steps through them.</summary>
     public float OceanRailFacingSweepDegreesPerSecond { get; set; } = 180f;
 
-    /// <summary>Ocean rail positioning mode: 2 (default) = the compiled-in fixed-spot list — characters
-    /// position only at the built-in walked deck spots, each client deterministically owning one spot by
-    /// index and otherwise taking the nearest listed spot that clears other players by the AoE
-    /// (<see cref="OceanRailEdgePlayerAoeYalms"/>); when no listed spot is usable the continuous rail
-    /// sampler takes over automatically. 0 = continuous sweep-sampling only (legacy). Mode 1 (edge spread)
-    /// was retired; saved configs with 1 behave as 0.</summary>
+    /// <summary>Legacy mode retained for config compatibility; it no longer selects positioning behavior.</summary>
     public int OceanRailSpreadMode { get; set; } = 2;
 
     // The mode-2 fishing spots are COMPILED IN (OceanFishingDiscreteSpotPolicy.BuiltInSpots): the vessel's

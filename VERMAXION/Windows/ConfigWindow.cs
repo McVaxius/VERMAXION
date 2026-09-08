@@ -482,6 +482,29 @@ public class ConfigWindow : Window, IDisposable
                 "VerMAXION + AutoHook owns placement, bait, facing, casting, and recovery. AutoHook AutoOceanFish gives AutoHook all in-duty fishing while VERMAXION retains preparation, registration, results, cleanup, and return.");
             if (plugin.IsFishingRunActive)
                 ImGui.TextDisabled("Provider is locked to the active Fishing run snapshot.");
+            ImGui.BeginDisabled(plugin.IsFishingRunActive ||
+                                !OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(provider));
+            var positioningMode = config.OceanFishingPositioningMode;
+            ImGui.TextUnformatted("Ocean Fishing positioning");
+            if (ImGui.RadioButton("Fixed locations", positioningMode == OceanFishingPositioningMode.FixedLocations))
+            {
+                config.OceanFishingPositioningMode = OceanFishingPositioningMode.FixedLocations;
+                config.Save();
+            }
+            ImGui.SameLine();
+            if (ImGui.RadioButton("Continuous rail", positioningMode == OceanFishingPositioningMode.ContinuousRail))
+            {
+                config.OceanFishingPositioningMode = OceanFishingPositioningMode.ContinuousRail;
+                config.Save();
+            }
+            ImGui.SameLine();
+            if (ImGui.RadioButton("Spacing mode", positioningMode == OceanFishingPositioningMode.Spacing))
+            {
+                config.OceanFishingPositioningMode = OceanFishingPositioningMode.Spacing;
+                config.Save();
+            }
+            ImGui.EndDisabled();
+            DrawHelpMarker("Applies when VERMAXION owns positioning. Fixed locations randomly chooses one of 32 built-in spots; Continuous rail randomly chooses along the rail. Both allow shared spots and ignore nearby players. Spacing mode enables passenger assignment and player clearance. Locked during a Fishing run.");
             if (!string.IsNullOrWhiteSpace(oceanFishingProviderSyncStatus))
             {
                 ImGui.TextColored(

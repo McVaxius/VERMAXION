@@ -28,7 +28,10 @@ public sealed class InnParkTerritoryPolicyTests
         var end = plugin.IndexOf("private void OnARCharacterReady", start, StringComparison.Ordinal);
         var method = plugin[start..end];
 
-        Assert.Contains("FishingService.HandleChatMessage(message.Message.TextValue);", method);
+        var fishingCall = method[method.IndexOf("FishingService.HandleChatMessage(", StringComparison.Ordinal)..];
+        Assert.Contains("message.LogKind.ToString()", fishingCall);
+        Assert.Contains("message.Sender.TextValue", fishingCall);
+        Assert.Contains("message.Message.TextValue", fishingCall);
     }
 
     [Fact]

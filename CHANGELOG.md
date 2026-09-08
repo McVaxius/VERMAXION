@@ -4,15 +4,21 @@
 
 ### Fixed
 
-- Assign fixed rail spots from a settled passenger roster, prefer unclaimed fallbacks, and cap clearance by the built-in spot spacing.
-- Pause placement during the boarding lobby, retain a short post-arrival clearance check, and allow at least two minutes before exhausting positioning retries.
-- Recover from the English full-inventory game message by attempting an onboard sell and returning to the saved fishing position; hand off to result handling if the voyage ends.
+- Add global Fixed locations, Continuous rail, and Spacing mode radio controls beside the Ocean Fishing provider. Fixed locations defaults to an independent random choice among 32 built-in positions; Continuous rail samples the existing ranges. Neither random mode uses passenger assignment, reserved slices, or nearby-player clearance. Spacing mode retains passenger assignment and spacing explicitly.
+- Persist the new positioning choice, default missing or invalid values to Fixed locations regardless of legacy rail settings, and lock controls during active Fishing runs.
+- Pause placement during the boarding lobby and transitions, retain arrival/facing/path-stop verification, and allow at least two minutes before exhausting positioning retries. Only Spacing mode retains the post-arrival player-clearance check.
+- Recover from the English full-inventory game error by attempting an onboard sell and returning to the saved fishing position; hand off to result handling if the voyage ends. Require the ErrorMessage channel, no player sender, an active Ocean Fishing duty, and VERMAXION provider ownership; ignore identical player chat and duplicate recovery triggers.
 - Allow character-select recovery to finish during fishing relogs while retaining the registration deadline.
 - Release the final AutoRetainer handoff while logged out when fishing is inactive, without bypassing other safety blockers.
 - Recognize the full inn catalog, yield idle parking to AutoRetainer, and leave already-parked characters in their inn.
 - Omit character identity from the roster-assignment diagnostic.
 
-### Verification
+### Local correction verification
+
+- Focused fishing/lifecycle checks passed 311/311; the full native suite passed 706/706. Coverage includes production configuration save/reload, all three positioning choices, missing/invalid/legacy settings, random-mode independence from spacing state, occupied-destination regression, inventory-message origin and provider ownership, and relog/handoff boundaries.
+- The x64 Release build succeeded with zero errors and the existing PInvoke.User32 version-resolution warning. Git whitespace checks passed. Vendor return, voyage completion during recovery, and inn-parking ownership were reviewed in source; no new live-client testing or deployment was performed.
+
+### Contributor verification (PR #6, before these corrections)
 
 - The full native suite passed 671/671, including an independent rerun. Regressions check roster-order-independent assignment, unclaimed fallbacks, geometry-based clearance, the minimum retry interval, inventory-recovery decisions and relog/handoff policies; source-wiring checks cover chat delivery, inn-parking guards and diagnostic privacy.
 - An isolated x64 Release build succeeded with zero errors using cached packages. NuGet source/vulnerability checks were unavailable, and the existing PInvoke.User32 version-resolution warning remains.
@@ -20,7 +26,7 @@
 
 ### Observed live behavior (2026-09-03)
 
-Existing deployment logs were checked after the build, without starting new runs. The inspected deployed build's runtime source matches this proposal except for the removed identity diagnostic; the proposal also adds tests and documentation. Loaded module identity matched the inspected disk build across all sampled clients.
+The PR contributor checked existing deployment logs after the build, without starting new runs. The contributor reported that the inspected deployed build's runtime source matched the original PR except for the removed identity diagnostic, and that loaded module identity matched the inspected disk build across all sampled clients. These observations predate the positioning-mode and inventory-message corrections above.
 
 - Historical validation: the contributor reports that these features have worked live in previous versions. Paths absent from the current sample are not newly re-exercised here; this does not mean they have never worked. That earlier-version confirmation is separate from the directly inspected observations below.
 - Two retained fishing sequences latched settled passenger rosters, reached their assigned built-in spots, acknowledged fishing after one paired start attempt, completed the duty, and settled the result screen. One explicitly held positioning for 28.244 seconds during the lobby with no cast sends or destination selections; later route transitions retained the movement lock.

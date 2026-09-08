@@ -36,6 +36,35 @@ public enum OceanFishingProvider
     AutoHookAutoOceanFish = 1,
 }
 
+public enum OceanFishingPositioningMode
+{
+    FixedLocations = 0,
+    ContinuousRail = 1,
+    Spacing = 2,
+}
+
+internal static class OceanFishingPositioningPolicy
+{
+    public static OceanFishingPositioningMode Normalize(OceanFishingPositioningMode mode)
+        => mode is OceanFishingPositioningMode.ContinuousRail or OceanFishingPositioningMode.Spacing
+            ? mode
+            : OceanFishingPositioningMode.FixedLocations;
+
+    // Random modes deliberately take no roster, occupancy, exclusion-set, or slice inputs.
+    public static OceanFishingRailDestination SampleRandom(OceanFishingPositioningMode mode, Random random)
+    {
+        if (Normalize(mode) == OceanFishingPositioningMode.Spacing)
+            throw new ArgumentException("Spacing uses passenger assignment.", nameof(mode));
+        if (Normalize(mode) == OceanFishingPositioningMode.ContinuousRail)
+            return OceanFishingContinuousRailPolicy.SampleCandidate(random) with { ArrivalClearance = 0f };
+
+        return OceanFishingDiscreteSpotPolicy.SampleRandom(random);
+    }
+
+    public static bool RequiresPlayerClearance(OceanFishingPositioningMode mode)
+        => Normalize(mode) == OceanFishingPositioningMode.Spacing;
+}
+
 [Flags]
 public enum OceanFishingRunResponsibility
 {
@@ -252,7 +281,6 @@ internal static class OceanFishingSpotAssignment
 /// </summary>
 internal static class OceanFishingDiscreteSpotPolicy
 {
-    public static bool Enabled;
     public static float PlayerAoeYalms = 2.0f;
     public static float HysteresisYalms = 0.3f;
     // Small so an excluded/dead spot poisons only itself, not deliberately-nearby backup spots (a sparse
@@ -317,7 +345,6 @@ internal static class OceanFishingDiscreteSpotPolicy
 
     public static void ApplyConfiguration(Configuration configuration)
     {
-        Enabled = configuration.OceanRailSpreadMode == 2;
         PlayerAoeYalms = Math.Clamp(configuration.OceanRailEdgePlayerAoeYalms, 0.5f, 5f);
         // Stamp the SAMPLER-GUARANTEED clearance tier (PlayerAoe), NOT max(Min, PlayerAoe): the sampler only
         // accepts a spot at the PlayerAoe tier, so stamping a higher arrival clearance it never enforced makes
@@ -349,6 +376,12 @@ internal static class OceanFishingDiscreteSpotPolicy
         return float.IsPositiveInfinity(closestSquared)
             ? configuredAoeYalms
             : MathF.Min(configuredAoeYalms, MathF.Sqrt(closestSquared) * SpotSeparationSafety);
+    }
+
+    public static OceanFishingRailDestination SampleRandom(Random random)
+    {
+        var spot = BuiltInSpots[random.Next(BuiltInSpots.Length)];
+        return new(new Vector3(spot.X, spot.Y, spot.Z), spot.Rotation, 0f);
     }
 
     private static float MinDistanceTo(Vector3 p, IReadOnlyList<Vector3> others)
@@ -1757,11 +1790,17 @@ public static class FishingInventoryRecoveryPolicy
         => string.Equals(text.Trim(), InsufficientInventoryMessage, StringComparison.Ordinal);
 
     public static bool ShouldStart(
+        string channel,
+        string sender,
         string text,
         bool activelyFishing,
         bool oceanFishingDutyActive,
-        bool recoveryActive)
+        bool recoveryActive,
+        OceanFishingProvider provider)
         => activelyFishing && oceanFishingDutyActive && !recoveryActive &&
+           OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(provider) &&
+           string.Equals(channel, "ErrorMessage", StringComparison.Ordinal) &&
+           string.IsNullOrWhiteSpace(sender) &&
            IsInsufficientInventoryMessage(text);
 
     public static FishingInventoryRecoverySellDecision DecideSell(
