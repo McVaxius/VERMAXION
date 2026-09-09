@@ -275,8 +275,7 @@ public class MainWindow : Window, IDisposable
                 "run##Listings", () =>
                 {
                     plugin.ConfigManager.SaveCurrentAccount();
-                    var activeConfig = plugin.ConfigManager.GetActiveConfig();
-                    plugin.RetainerListingRefillService.Start(activeConfig);
+                    engine.ManualStartRefillListings();
                 }, "OK");
             var retainerEquippingFeature = AutomationCatalog.Get(AutomationCatalog.RetainerEquipping);
             var retainerEquippingReadiness = GetRetainerEquippingReadiness(config, forceRefresh: false);

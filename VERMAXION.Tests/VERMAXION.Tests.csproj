@@ -49,6 +49,7 @@
     <Compile Include="..\VERMAXION\Models\AutomationDashboardModels.cs" Link="AutomationDashboardModels.cs" />
     <Compile Include="..\VERMAXION\Models\RegistrableEditorPolicy.cs" Link="RegistrableEditorPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\RefillListingPacingPolicy.cs" Link="RefillListingPacingPolicy.cs" />
+    <Compile Include="..\VERMAXION\Models\RetainerListingProgress.cs" Link="RetainerListingProgress.cs" />
     <Compile Include="..\VERMAXION\Models\EquipmentAutomationModels.cs" Link="EquipmentAutomationModels.cs" />
     <Compile Include="..\VERMAXION\Models\DadHandoffModels.cs" Link="DadHandoffModels.cs" />
     <Compile Include="..\VERMAXION\Services\FishingStartupCoordinator.cs" Link="FishingStartupCoordinator.cs" />

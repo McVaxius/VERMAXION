@@ -1,5 +1,14 @@
 # VERMAXION Changelog
 
+## Unreleased - Retainer ownership and refill recovery
+
+### Fixed
+
+- Maintain verified AutoRetainer suppression throughout Before-AR work and retainer cleanup, retaining the two-second recovery throttle. Wait for queued AutoRetainer work to drain before retainer actions, recheck after Lifestream routing, and preserve the formal After-AR completion handoff.
+- Run manual Refill Listings through the single-task engine path. Keep suppression through verified bell closure and the handoff quiet period, releasing only VERMAXION's current lease before the next-login arm callback.
+- Resume interrupted refills by returning to the retainer list, reselecting the current retainer, and rescanning live rows. Preserve original Random selections and remaining counts, reconcile pending withdrawals against matching item/quantity/quality counts, and retain interrupted step time limits. Clear transient recovery state on completion, Full Stop, or character change.
+- Recognize the localized buyback prompt from Addon row 215 during retainer cleanup, confirm Yes once per visible dialog, and wait for its UI transition. Use the localized Quit entry; leave unrelated or unreadable confirmations untouched with a blocked status. Intermediate exits return to the retainer list; final and inventory-limit exits close the entire bell session.
+
 ## Unreleased - Ocean Fishing recovery and inn parking
 
 ### Fixed
