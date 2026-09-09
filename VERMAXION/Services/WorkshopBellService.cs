@@ -45,6 +45,8 @@ public sealed class WorkshopBellService
     private bool routeDoneLogged;
     private bool bellFoundLogged;
     private RefillFromListingsRoute route = RefillFromListingsRoute.Workshop;
+    private Func<bool, string?>? controlBlocker;
+    internal bool IsWaitingForRoute => state == BellRouteState.WaitingForRoute;
 
     public bool IsActive => state is not (BellRouteState.Idle or BellRouteState.Complete or BellRouteState.Failed);
     public bool IsComplete => state == BellRouteState.Complete;
@@ -60,20 +62,28 @@ public sealed class WorkshopBellService
     }
 
     public void Start(RefillFromListingsRoute route)
+        => StartCore(route, null);
+
+    internal void StartOwned(RefillFromListingsRoute route, Func<bool, string?> ownershipBlocker)
+        => StartCore(route, ownershipBlocker);
+
+    private void StartCore(RefillFromListingsRoute route, Func<bool, string?>? ownershipBlocker)
     {
         if (IsActive)
             return;
 
         Reset();
+        controlBlocker = ownershipBlocker;
         this.route = route;
         log.Information($"[WorkshopBell] Start route={route}, mode=Lifestream-first, territory={Plugin.ClientState.TerritoryType}, map={Plugin.ClientState.MapId}");
         SetState(BellRouteState.Routing, $"Routing to {GetRouteLabel(route)}...");
-        TickRouting();
+        Update();
     }
 
     public void Reset()
     {
         vnavmesh.Stop();
+        controlBlocker = null;
         state = BellRouteState.Idle;
         stateEnteredAt = DateTime.MinValue;
         routeStartedAt = DateTime.MinValue;
@@ -92,6 +102,13 @@ public sealed class WorkshopBellService
     {
         if (state is BellRouteState.Idle or BellRouteState.Complete or BellRouteState.Failed)
             return;
+
+        var blocker = controlBlocker?.Invoke(IsWaitingForRoute);
+        if (blocker != null)
+        {
+            StatusText = blocker;
+            return;
+        }
 
         if (DateTime.UtcNow < nextActionAt)
             return;

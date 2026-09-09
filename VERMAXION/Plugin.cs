@@ -258,7 +258,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         RetainerListingRefillService = new RetainerListingRefillService(
             Log,
             Configuration,
-            ConfigManager,
             VNavmeshIPC,
             WorkshopBellService,
             AutoRetainerIPC);
@@ -1596,17 +1595,24 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessBeforeArSuppressionRecovery()
     {
-        if (!Configuration.Enabled)
+        var activeRun = Engine.RequiresAutoRetainerSuppression;
+        if (!Configuration.Enabled && !activeRun)
         {
             if (BeforeArGate is BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady)
                 SkipBeforeArForLogin("Global automation is disabled");
             return;
         }
 
-        if (BeforeArGate is not (BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady))
+        if (!activeRun && BeforeArGate is not (BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady))
             return;
-        if (BeforeArGate == BeforeArGateState.WaitingForWorldReady && !AutoRetainerIPC.SuppressionOwnedByVermaxion)
+        if (!activeRun && BeforeArGate == BeforeArGateState.WaitingForWorldReady && !AutoRetainerIPC.SuppressionOwnedByVermaxion)
             return;
+
+        var suppression = AutoRetainerIPC.GetSuppressionSnapshot();
+        if (suppression.RemoteKnown && suppression.RemoteSuppressed && suppression.OwnedByVermaxion)
+            return;
+        if (activeRun)
+            Engine.NotifyRetainerOwnershipLost("AutoRetainer suppression is lost or unreadable; waiting for ownership recovery");
 
         var now = DateTime.UtcNow;
         if (beforeArSuppressionRecoveryLastAttemptAt != DateTime.MinValue &&

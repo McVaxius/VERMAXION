@@ -12,6 +12,25 @@ namespace VERMAXION.Services;
 
 public class VermaxionEngine
 {
+    private bool retainerSuppressionRequired;
+    private bool suppressionReleasedForHandoff;
+    private bool retainerCleanupPending;
+    private bool retainerUiOwned;
+    private ulong retainerWorkCharacterId;
+    private string retainerCleanupStatus = string.Empty;
+    internal bool RequiresAutoRetainerSuppression => IsRunning && !suppressionReleasedForHandoff &&
+        (activePhaseFilter == RunTaskPhaseFilter.BeforeAR || retainerSuppressionRequired);
+
+    internal void NotifyRetainerOwnershipLost(string reason)
+    {
+        retainerListingRefillService.SuspendForOwnershipLoss(reason);
+        handoffQuietSince = DateTime.MinValue;
+    }
+
+    private string? GetRetainerControlBlocker(bool waitingForRoute = false)
+        => RetainerControlPolicy.GetBlocker(autoRetainerIPC.GetSuppressionSnapshot(),
+            autoRetainerIPC.ReadBusyState(), arService.IsProcessing, waitingForRoute);
+
     public Func<string?> StartBlocker { get; set; } = static () => null;
     private static readonly TimeSpan HandoffQuietPeriod = TimeSpan.FromSeconds(2);
     private const uint MiniCactpotUnlockQuestId = 66024;
@@ -329,6 +348,7 @@ public class VermaxionEngine
         this.minionRouletteService = minionRouletteService;
         this.equipmentRuntime = equipmentRuntime;
         this.retainerListingRefillService = retainerListingRefillService;
+        retainerListingRefillService.ControlBlocker = GetRetainerControlBlocker;
         this.retainerEquippingService = retainerEquippingService;
         this.workshopBellService = workshopBellService;
         this.arService = arService;
@@ -750,6 +770,11 @@ public class VermaxionEngine
             AutomationRunScope.SingleTask(PostProcessTaskOrder.RetainerEquipping));
     }
 
+    internal bool ManualStartRefillListings()
+        => TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false,
+            automatedRun: false, "manual Refill Listings",
+            AutomationRunScope.SingleTask(PostProcessTaskOrder.RefillListings));
+
     public void RecordSkippedOpportunity(string summary)
     {
         if (!IsRunning)
@@ -797,6 +822,9 @@ public class VermaxionEngine
         }
 
         ResetRunTracking();
+        retainerSuppressionRequired = runScope.SingleTaskId == PostProcessTaskOrder.RefillListings;
+        suppressionReleasedForHandoff = false;
+        retainerCleanupPending = false;
         activePhaseFilter = phaseFilter;
         activeRunScope = runScope;
         requireEnabledConfig = requireEnabled;
@@ -885,6 +913,18 @@ public class VermaxionEngine
 
         try
         {
+            if (retainerUiOwned && Plugin.PlayerState.ContentId != retainerWorkCharacterId)
+            {
+                retainerListingRefillService.CancelForCharacterChange();
+                retainerUiOwned = false;
+                retainerCleanupPending = false;
+            }
+            if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker(waitingForRoute: true) is { } ownershipBlocker)
+            {
+                NotifyRetainerOwnershipLost(ownershipBlocker);
+                StatusText = ownershipBlocker;
+                return;
+            }
             if (TickTaskWatchdog())
                 return;
             UpdateCore();
@@ -911,6 +951,11 @@ public class VermaxionEngine
         switch (state)
         {
             case EngineState.Starting:
+                if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker() is { } startBlocker)
+                {
+                    StatusText = startBlocker;
+                    return;
+                }
                 if (elapsed < 1.5) return; // AR settle delay
                 RevalidatePlannedQueue();
                 var miscHookRunnable = AutomationRunScopePolicy.ShouldRunMiscHook(
@@ -1191,13 +1236,20 @@ public class VermaxionEngine
 
             case EngineState.RunningRetainerListingRefill:
                 activeConfig = GetLiveActiveConfig();
-                if (ShouldRunRefillFromListings(activeConfig!))
+                if (retainerListingRefillService.IsActive || retainerListingRefillService.IsFailed ||
+                    retainerListingRefillService.IsComplete || GetActiveRunEligibility(PostProcessTaskOrder.RefillListings, activeConfig!).IsRunnable)
                 {
                     if (!retainerListingRefillService.IsActive && !retainerListingRefillService.IsComplete && !retainerListingRefillService.IsFailed)
                     {
+                        if (GetRetainerControlBlocker() is { } refillBlocker)
+                        {
+                            StatusText = refillBlocker;
+                            return;
+                        }
                         log.Information("[Engine] Starting Retainer Listing Refill");
-                        ResetInteractionState();
                         MarkCurrentTaskWorkStarted();
+                        retainerUiOwned = true;
+                        retainerWorkCharacterId = Plugin.PlayerState.ContentId;
                         retainerListingRefillService.Start(activeConfig!);
                         return;
                     }
@@ -1215,7 +1267,6 @@ public class VermaxionEngine
                     {
                         log.Warning($"[Engine] Retainer Listing Refill failed - continuing: {retainerListingRefillService.LastError}");
                         runHadFailure = true;
-                        retainerListingRefillService.Reset();
                         AdvanceToNextTask(EngineState.RunningRetainerListingRefill);
                     }
                 }
@@ -1821,6 +1872,16 @@ public class VermaxionEngine
                     break;
                 }
 
+                // Release the current run's lease before FinishPostProcess can arm the next login.
+                if (RequiresAutoRetainerSuppression)
+                {
+                    if (!autoRetainerIPC.ReleaseSuppressionIfOwned())
+                    {
+                        StatusText = "Waiting to release AutoRetainer suppression";
+                        break;
+                    }
+                    suppressionReleasedForHandoff = true;
+                }
                 if (arService.IsProcessing)
                 {
                     if (!arService.FinishPostProcess())
@@ -1830,14 +1891,6 @@ public class VermaxionEngine
                     }
 
                     log.Information("[Engine] Signaled AR to continue");
-                }
-                if (activePhaseFilter == RunTaskPhaseFilter.BeforeAR)
-                {
-                    if (!autoRetainerIPC.ReleaseSuppressionIfOwned())
-                    {
-                        StatusText = "Waiting to release AutoRetainer suppression";
-                        break;
-                    }
                 }
 
                 yesAlreadyIPC.Unpause();
@@ -2264,6 +2317,9 @@ public class VermaxionEngine
         StopMovementForHandoff();
         yesAlreadyIPC.Pause();
 
+        if (retainerUiOwned && (retainerCleanupPending || RetainerListingRefillService.HasVisibleRetainerUi))
+            retainerCleanupPending = retainerListingRefillService.TickFinalUiClose(out retainerCleanupStatus);
+
         if (finalHandoff && arService.IsProcessing && !fishingService.IsActive)
             TickOrphanOceanFishingResult();
 
@@ -2316,6 +2372,10 @@ public class VermaxionEngine
             return false;
 
         log.Information($"[Engine] {phase} quiet-period complete");
+        if (retainerUiOwned)
+        {
+            retainerListingRefillService.Reset();
+        }
         return true;
     }
 
@@ -2335,6 +2395,10 @@ public class VermaxionEngine
 
     private string? GetServiceOwnedHandoffBlocker()
     {
+        if (retainerCleanupPending)
+            return retainerCleanupStatus;
+        if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker() is { } ownershipBlocker)
+            return ownershipBlocker;
         if (fcBuffService.IsActive)
             return $"FC Buff service active ({fcBuffService.StatusText})";
         if (fcBuffInventoryService.IsActive)
@@ -2467,6 +2531,13 @@ public class VermaxionEngine
 
     private void TryCloseOwnedUiBestEffort(UiCloseFallbackMode fallbackMode = UiCloseFallbackMode.Always)
     {
+        if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker() != null)
+            return;
+        if (retainerUiOwned && RetainerListingRefillService.HasVisibleRetainerUi)
+        {
+            retainerCleanupPending = retainerListingRefillService.TickFinalUiClose(out retainerCleanupStatus);
+            return;
+        }
         var knownAddonWasVisible = TaskOwnedAddonNames.Any(IsAddonVisible);
 
         foreach (var addonName in TaskOwnedAddonNames)
@@ -2613,6 +2684,10 @@ public class VermaxionEngine
                 continue;
             }
 
+            if (nextState == EngineState.RunningRetainerListingRefill)
+                retainerSuppressionRequired = true;
+            else
+                retainerUiOwned = false;
             SetState(nextState);
             return;
         }
@@ -2629,6 +2704,10 @@ public class VermaxionEngine
 
     private TaskEligibility GetActiveRunEligibility(string taskId, CharacterConfig config)
     {
+        if (activeRunScope.BypassSelectedScheduling &&
+            activeRunScope.SingleTaskId == PostProcessTaskOrder.RefillListings &&
+            taskId == PostProcessTaskOrder.RefillListings)
+            return TaskEligibility.Runnable();
         if (activeRunScope.BypassSelectedScheduling &&
             string.Equals(
                 activeRunScope.SingleTaskId,
@@ -2717,6 +2796,12 @@ public class VermaxionEngine
 
     private void ResetRunTracking()
     {
+        retainerSuppressionRequired = false;
+        suppressionReleasedForHandoff = false;
+        retainerCleanupPending = false;
+        retainerUiOwned = false;
+        retainerWorkCharacterId = 0;
+        retainerCleanupStatus = string.Empty;
         runQueue.Clear();
         runQueueIndex = -1;
         currentTaskOwnedWorkStarted = false;
@@ -3176,6 +3261,8 @@ public class VermaxionEngine
 
     private void OnTerritoryChanged(uint territoryType)
     {
+        if (!IsRunning || retainerUiOwned)
+            return;
         try
         {
             log.Information($"[Engine] Territory changed to {territoryType} - clearing known task UI");
