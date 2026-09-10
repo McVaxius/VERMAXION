@@ -28,6 +28,7 @@ public sealed class FishingService
     private const uint VersatileLureItemId = OceanFishingDockPreparationPolicy.VersatileLureItemId;
     private const string OceanFishingResultAddonName = "IKDResult";
     private const string TelepotTownAddonName = "TelepotTown";
+    private const int MaxStartupTravelAttempts = 3;
     private const float BoatFishingPositionTolerance = 0.5f;
     private const ConditionFlag GatheringCondition = (ConditionFlag)6;
     private const ConditionFlag FishingCondition = (ConditionFlag)43;
@@ -74,6 +75,9 @@ public sealed class FishingService
     private DateTime lastFishingLoopPollAt = DateTime.MinValue;
     private DateTime lastTravelCommandAt = DateTime.MinValue;
     private DateTime travelStartedAt = DateTime.MinValue;
+    private int startupTravelAttempt;
+    private bool limsaTravelOwned;
+    private bool startupNavigationOwned;
     private DateTime lastNavigationCommandAt = DateTime.MinValue;
     private DateTime lastInteractionAttemptAt = DateTime.MinValue;
     private DateTime departureWaitStartedAt = DateTime.MinValue;
@@ -97,7 +101,7 @@ public sealed class FishingService
     private bool resultClosureLogged;
     private bool aethernetAttempted;
     private bool aethernetTeleportOwned;
-    private DateTime ownedTelepotTownVisibleAt = DateTime.MinValue;
+    private DateTime aethernetIdleStartedAt = DateTime.MinValue;
     private bool aethernetAttunementAttempted;
     private DateTime aethernetAttunementStartedAt = DateTime.MinValue;
     private DateTime aethernetAttunementNavigationStartedAt = DateTime.MinValue;
@@ -337,6 +341,9 @@ public sealed class FishingService
         ResetFishingStockPurchase(cancelOwned: true);
         lastTravelCommandAt = DateTime.MinValue;
         travelStartedAt = DateTime.MinValue;
+        startupTravelAttempt = 1;
+        limsaTravelOwned = false;
+        startupNavigationOwned = false;
         lastNavigationCommandAt = DateTime.MinValue;
         lastInteractionAttemptAt = DateTime.MinValue;
         departureWaitStartedAt = DateTime.MinValue;
@@ -351,7 +358,7 @@ public sealed class FishingService
         dutyCompletionObserved = false;
         aethernetAttempted = false;
         aethernetTeleportOwned = false;
-        ownedTelepotTownVisibleAt = DateTime.MinValue;
+        aethernetIdleStartedAt = DateTime.MinValue;
         aethernetAttunementAttempted = false;
         aethernetAttunementStartedAt = DateTime.MinValue;
         aethernetAttunementNavigationStartedAt = DateTime.MinValue;
@@ -409,6 +416,9 @@ public sealed class FishingService
         ResetFishingStockPurchase(cancelOwned: true);
         lastTravelCommandAt = DateTime.MinValue;
         travelStartedAt = DateTime.MinValue;
+        startupTravelAttempt = 0;
+        limsaTravelOwned = false;
+        startupNavigationOwned = false;
         lastNavigationCommandAt = DateTime.MinValue;
         lastInteractionAttemptAt = DateTime.MinValue;
         departureWaitStartedAt = DateTime.MinValue;
@@ -422,7 +432,7 @@ public sealed class FishingService
         lateQueueRecognitionLogged = false;
         dutyReadyAccepted = false;
         aethernetTeleportOwned = false;
-        ownedTelepotTownVisibleAt = DateTime.MinValue;
+        aethernetIdleStartedAt = DateTime.MinValue;
         lastError = string.Empty;
         statusDetail = string.Empty;
         scheduledOfflineHoldPending = false;
@@ -864,6 +874,7 @@ public sealed class FishingService
 
         if (IsInLimsaAndReady())
         {
+            limsaTravelOwned = false;
             log.Information(
                 $"[Fishing][DockPrep] Limsa settlement confirmed in territory {LimsaTerritoryType}; evaluating repair and lure requirements");
             SetState(FishingState.CheckingPreparation);
@@ -875,7 +886,7 @@ public sealed class FishingService
 
         if (elapsed > LimsaTravelTimeout)
         {
-            Fail("Timed out traveling to Limsa for Ocean Fishing registration.", FishingAttemptFailureKind.SharedTransient);
+            RetryStartupTravel("Timed out traveling to Limsa for Ocean Fishing registration.");
             return;
         }
 
@@ -896,8 +907,50 @@ public sealed class FishingService
         {
             lastTravelCommandAt = DateTime.UtcNow;
             log.Information("[Fishing] Traveling to Limsa for Ocean Fishing: /li limsa");
-            lifestream.ExecuteCommand("/li limsa");
+            limsaTravelOwned |= lifestream.ExecuteCommand("/li limsa");
         }
+    }
+
+    private void RetryStartupTravel(string message)
+    {
+        if (aethernetTeleportOwned && GameHelpers.IsAddonVisible(TelepotTownAddonName))
+            GameHelpers.TryCloseAddonByCallback(TelepotTownAddonName);
+        if (limsaTravelOwned || aethernetTeleportOwned)
+            CommandHelper.SendCommand("/lifestream cancel");
+        if (startupNavigationOwned)
+            vnavmesh.Stop();
+
+        limsaTravelOwned = false;
+        startupNavigationOwned = false;
+        aethernetAttempted = false;
+        aethernetTeleportOwned = false;
+        aethernetIdleStartedAt = DateTime.MinValue;
+        aethernetAttunementAttempted = false;
+        aethernetAttunementStartedAt = DateTime.MinValue;
+        aethernetAttunementNavigationStartedAt = DateTime.MinValue;
+        lastTravelCommandAt = DateTime.MinValue;
+        travelStartedAt = DateTime.MinValue;
+        lastNavigationCommandAt = DateTime.MinValue;
+        lastInteractionAttemptAt = DateTime.MinValue;
+
+        var context = runLifecycle.Current;
+        if (context == null || queueRegistrationObserved || DateTimeOffset.UtcNow >= context.RegistrationDeadlineUtc)
+        {
+            Fail($"{message} No further startup travel is allowed for this registration window.");
+            return;
+        }
+
+        if (startupTravelAttempt >= MaxStartupTravelAttempts)
+        {
+            Fail($"{message} Ocean Fishing travel failed after {MaxStartupTravelAttempts} attempts.",
+                FishingAttemptFailureKind.SharedTransient);
+            return;
+        }
+
+        startupTravelAttempt++;
+        log.Warning($"[Fishing][DockRoute] {message} Restarting travel attempt {startupTravelAttempt}/{MaxStartupTravelAttempts}.");
+        SetState(FishingState.TravelingToLimsa);
+        statusDetail = $"Retrying Ocean Fishing travel ({startupTravelAttempt}/{MaxStartupTravelAttempts})";
     }
 
     private void TickCheckDockPreparation()
@@ -1386,8 +1439,21 @@ public sealed class FishingService
 
     private void TickNavigateToPreparationDock(TimeSpan elapsed)
     {
+        if (elapsed > DockNavigationTimeout)
+        {
+            RetryStartupTravel(
+                $"Bounded dock navigation timed out waiting for Merchant & Mender dataId={MerchantAndMenderDataId}; distance={DistanceTo(MerchantAndMenderPosition):F1}y.");
+            return;
+        }
+
         if (!IsInLimsaAndReady())
         {
+            if (aethernetTeleportOwned)
+            {
+                TryRecoverOwnedTelepotTown(DistanceTo(MerchantAndMenderPosition), "Merchant & Mender");
+                return;
+            }
+
             SetState(FishingState.TravelingToLimsa);
             return;
         }
@@ -1407,6 +1473,7 @@ public sealed class FishingService
         if (vendor != null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
         {
             vnavmesh.Stop();
+            startupNavigationOwned = false;
             var source = dataIdVendor != null ? "data ID" : "name fallback";
             log.Information(
                 $"[Fishing][DockPrep] Vendor acquisition: Merchant & Mender dataId={MerchantAndMenderDataId} resolved by {source} at {vendor.Position}");
@@ -1417,15 +1484,8 @@ public sealed class FishingService
         if (vendor == null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
         {
             vnavmesh.Stop();
+            startupNavigationOwned = false;
             statusDetail = "Waiting for Merchant & Mender to load at the Limsa dock";
-        }
-
-        if (elapsed > DockNavigationTimeout)
-        {
-            Fail(
-                $"Bounded dock navigation timed out waiting for Merchant & Mender dataId={MerchantAndMenderDataId}; distance={distance:F1}y.",
-                FishingAttemptFailureKind.SharedTransient);
-            return;
         }
 
         if (vendor == null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
@@ -1438,7 +1498,7 @@ public sealed class FishingService
             var source = vendor == null ? "fixed fallback" : dataIdVendor != null ? "data ID" : "name fallback";
             log.Information(
                 $"[Fishing][DockPrep] Dock navigation to Merchant & Mender ({distance:F1}y, source={source}, dataId={MerchantAndMenderDataId})");
-            vnavmesh.PathfindAndMoveTo(approachPosition);
+            startupNavigationOwned |= vnavmesh.PathfindAndMoveTo(approachPosition);
         }
     }
 
@@ -1450,7 +1510,7 @@ public sealed class FishingService
         if (distance <= 100)
         {
             aethernetTeleportOwned = false;
-            ownedTelepotTownVisibleAt = DateTime.MinValue;
+            aethernetIdleStartedAt = DateTime.MinValue;
             return false;
         }
 
@@ -1470,7 +1530,7 @@ public sealed class FishingService
                     if (DateTime.UtcNow - aethernetAttunementNavigationStartedAt < TimeSpan.FromSeconds(60))
                     {
                         statusDetail = "Moving to locked Arcanists' Guild shard for attunement";
-                        vnavmesh.PathfindAndMoveTo(shardPosition);
+                        startupNavigationOwned |= vnavmesh.PathfindAndMoveTo(shardPosition);
                         return true;
                     }
                 }
@@ -1485,11 +1545,12 @@ public sealed class FishingService
                 if (shardDistance > 3.0)
                 {
                     statusDetail = $"Moving to locked Arcanists' Guild shard ({shardDistance:F1}y)";
-                    vnavmesh.PathfindAndMoveTo(shard.Position);
+                    startupNavigationOwned |= vnavmesh.PathfindAndMoveTo(shard.Position);
                     return true;
                 }
 
                 vnavmesh.Stop();
+                startupNavigationOwned = false;
                 aethernetAttunementAttempted = true;
                 aethernetAttunementStartedAt = DateTime.UtcNow;
                 Plugin.TargetManager.Target = shard;
@@ -1519,7 +1580,9 @@ public sealed class FishingService
             if (lifestream.AethernetTeleportById(ArcanistsGuildAethernetId))
             {
                 vnavmesh.Stop();
+                startupNavigationOwned = false;
                 aethernetTeleportOwned = true;
+                aethernetIdleStartedAt = DateTime.MinValue;
                 log.Information(
                     $"[Fishing][DockRoute] Traveling toward {directDestinationName} via Arcanists' Guild aethernet id {ArcanistsGuildAethernetId}");
                 statusDetail = "Traveling to Arcanists' Guild";
@@ -1538,42 +1601,32 @@ public sealed class FishingService
         if (!aethernetTeleportOwned)
             return false;
 
-        if (!GameHelpers.IsAddonVisible(TelepotTownAddonName))
+        // Navigation states keep their existing timeout while Lifestream is busy, including zoning.
+        if (lifestream.IsBusy())
         {
-            if (ownedTelepotTownVisibleAt != DateTime.MinValue)
-                ownedTelepotTownVisibleAt = DateTime.MinValue;
+            aethernetIdleStartedAt = DateTime.MinValue;
+            statusDetail = "Traveling to Arcanists' Guild";
+            return true;
+        }
 
-            if (lifestream.IsBusy() || distance > 100)
-            {
-                statusDetail = "Traveling to Arcanists' Guild";
-                return true;
-            }
-
+        if (!GameHelpers.IsAddonVisible(TelepotTownAddonName) && distance <= 100)
+        {
             aethernetTeleportOwned = false;
+            aethernetIdleStartedAt = DateTime.MinValue;
             return false;
         }
 
         var now = DateTime.UtcNow;
-        if (ownedTelepotTownVisibleAt == DateTime.MinValue)
-        {
-            ownedTelepotTownVisibleAt = now;
-            log.Information("[Fishing][DockRoute] Waiting for the owned Arcanists' Guild aethernet window to close");
-        }
+        if (aethernetIdleStartedAt == DateTime.MinValue)
+            aethernetIdleStartedAt = now;
 
-        if (now - ownedTelepotTownVisibleAt < TelepotTownRecoveryDelay)
+        if (now - aethernetIdleStartedAt < TelepotTownRecoveryDelay)
         {
             statusDetail = "Waiting for Arcanists' Guild aethernet travel";
             return true;
         }
 
-        GameHelpers.TryCloseAddonByCallback(TelepotTownAddonName);
-        CommandHelper.SendCommand("/lifestream cancel");
-        vnavmesh.Stop();
-        aethernetTeleportOwned = false;
-        ownedTelepotTownVisibleAt = DateTime.MinValue;
-        lastNavigationCommandAt = DateTime.MinValue;
-        log.Warning(
-            $"[Fishing][DockRoute] Recovered a stuck Arcanists' Guild aethernet window; continuing directly to {directDestinationName}");
+        RetryStartupTravel($"Arcanists' Guild aethernet travel toward {directDestinationName} stalled while Lifestream was idle.");
         return true;
     }
 
@@ -1585,8 +1638,20 @@ public sealed class FishingService
             return;
         }
 
+        if (elapsed > RegistrarNavigationTimeout)
+        {
+            RetryStartupTravel($"Timed out navigating to Dryskthota; distance={DistanceTo(DryskthotaPosition):F1}y.");
+            return;
+        }
+
         if (!IsInLimsaAndReady())
         {
+            if (aethernetTeleportOwned)
+            {
+                TryRecoverOwnedTelepotTown(DistanceTo(DryskthotaPosition), "Dryskthota");
+                return;
+            }
+
             SetState(FishingState.TravelingToLimsa);
             return;
         }
@@ -1604,6 +1669,7 @@ public sealed class FishingService
         if (registrar != null && OceanFishingRegistrarPolicy.IsWithinInteractionRange(distance))
         {
             vnavmesh.Stop();
+            startupNavigationOwned = false;
             SetState(FishingState.InteractingRegistrar);
             return;
         }
@@ -1611,13 +1677,8 @@ public sealed class FishingService
         if (registrar == null && OceanFishingRegistrarPolicy.IsWithinInteractionRange(distance))
         {
             vnavmesh.Stop();
+            startupNavigationOwned = false;
             statusDetail = "Waiting for Dryskthota to load";
-            return;
-        }
-
-        if (elapsed > RegistrarNavigationTimeout)
-        {
-            Fail($"Timed out navigating to Dryskthota; distance={distance:F1}y.", FishingAttemptFailureKind.SharedTransient);
             return;
         }
 
@@ -1626,7 +1687,7 @@ public sealed class FishingService
         {
             lastNavigationCommandAt = DateTime.UtcNow;
             log.Information($"[Fishing] Navigating to Dryskthota ({distance:F1}y, source={(registrar == null ? "fallback" : "live")})");
-            vnavmesh.PathfindAndMoveTo(approachPosition);
+            startupNavigationOwned |= vnavmesh.PathfindAndMoveTo(approachPosition);
         }
     }
 

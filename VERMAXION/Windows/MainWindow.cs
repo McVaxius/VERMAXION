@@ -728,9 +728,7 @@ public class MainWindow : Window, IDisposable
                 feature?.Id,
                 eligibility.Reason),
             GetNextEligibleAt(feature?.Id, plugin.ConfigManager.GetActiveConfig()),
-            feature == null
-                ? null
-                : AutomationDashboardPolicy.GetRecoverySection(feature.Id, eligibility.Reason),
+            GetTaskSettingsSection(feature?.Id),
             GetTaskDependencies(task, plugin.ConfigManager.GetActiveConfig()),
             buttonLabel,
             onClick,
@@ -947,11 +945,18 @@ public class MainWindow : Window, IDisposable
         if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered())
             ImGui.SetTooltip(row.ButtonTooltip);
 
-        if (row.Section == AutomationDashboardSection.Blocked && row.RecoverySection.HasValue)
+        if (row.SettingsSection.HasValue)
         {
             ImGui.SameLine();
-            if (ImGui.SmallButton($"Settings##Recovery_{row.Feature?.Id}"))
-                plugin.ConfigWindow.OpenAutomationSettings(row.RecoverySection.Value);
+            var characterKnown = !string.IsNullOrWhiteSpace(plugin.ConfigManager.CurrentCharacterKey);
+            ImGui.BeginDisabled(!characterKnown);
+            if (ImGui.SmallButton($"Settings##Task_{row.Feature?.Id}"))
+                plugin.ConfigWindow.OpenAutomationSettings(row.SettingsSection.Value);
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(characterKnown
+                    ? "Open settings for the current or last loaded character in this session."
+                    : "Load a character first to open its task settings.");
         }
 
         if (showDiagnosticActions && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
@@ -1277,6 +1282,35 @@ public class MainWindow : Window, IDisposable
                 feature => string.Equals(feature.Label, task, StringComparison.Ordinal));
     }
 
+    private static ConfigurationSection? GetTaskSettingsSection(string? automationId)
+        => automationId switch
+        {
+            AutomationCatalog.MiscCommands or
+            AutomationCatalog.FCBuffRefill or
+            AutomationCatalog.MinionRoulette or
+            AutomationCatalog.SeasonalGear or
+            AutomationCatalog.GearUpdater or
+            AutomationCatalog.HighestCombatJob or
+            AutomationCatalog.CurrentJobEquipment or
+            AutomationCatalog.AfterArPark or
+            AutomationCatalog.VendorStock or
+            AutomationCatalog.Fishing or
+            AutomationCatalog.RetainerEquipping => ConfigurationSection.EveryAr,
+            AutomationCatalog.VerminionQueue or
+            AutomationCatalog.JumboCactpot or
+            AutomationCatalog.FashionReport or
+            AutomationCatalog.RegisterRegistrables => ConfigurationSection.Weekly,
+            AutomationCatalog.MiniCactpot or
+            AutomationCatalog.ChocoboRacing or
+            AutomationCatalog.AlliedSociety or
+            AutomationCatalog.LootGoblinMapGather => ConfigurationSection.Daily,
+            AutomationCatalog.RefillListings or
+            AutomationCatalog.NagYourMom or
+            AutomationCatalog.NagYourDad => ConfigurationSection.VariableTime,
+            AutomationCatalog.EvercoldAdventurerActivity => ConfigurationSection.Wip,
+            _ => null,
+        };
+
     private sealed record TaskRowDescriptor(
         AutomationFeatureDefinition? Feature,
         string Task,
@@ -1285,7 +1319,7 @@ public class MainWindow : Window, IDisposable
         TaskEligibility Eligibility,
         AutomationDashboardSection Section,
         DateTime? NextEligibleAtUtc,
-        ConfigurationSection? RecoverySection,
+        ConfigurationSection? SettingsSection,
         IReadOnlyList<string> Dependencies,
         string ButtonLabel,
         Action OnClick,
