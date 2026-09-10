@@ -66,11 +66,25 @@ public class ConfigWindow : Window, IDisposable
 
     public void OpenAutomationSettings(ConfigurationSection section)
     {
+        var configManager = plugin.ConfigManager;
+        var characterKey = configManager.CurrentCharacterKey;
+        if (string.IsNullOrWhiteSpace(characterKey))
+            return;
+
+        var accountId = configManager.Accounts
+            .Where(pair => pair.Value.Characters.ContainsKey(characterKey))
+            .OrderByDescending(pair => pair.Value.Characters.Count)
+            .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(pair => pair.Key)
+            .FirstOrDefault();
+        if (accountId == null)
+            return;
+
+        configManager.CurrentAccountId = accountId;
+        configManager.SelectedCharacterKey = characterKey;
         IsOpen = true;
         requestedTab = ConfigTab.Settings;
         requestedConfigurationSection = section;
-        if (!string.IsNullOrWhiteSpace(plugin.ConfigManager.CurrentCharacterKey))
-            plugin.ConfigManager.SelectedCharacterKey = plugin.ConfigManager.CurrentCharacterKey;
     }
 
     private sealed class DadDutyOption

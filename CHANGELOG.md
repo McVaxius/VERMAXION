@@ -1,5 +1,13 @@
 # VERMAXION Changelog
 
+## Unreleased - I329/I330/I331 travel, listings, and task settings
+
+### Fixed
+
+- Retry failed Ocean Fishing startup travel up to three total attempts, resetting the Limsa-to-dock route and rechecking preparation within the existing registration deadline. Bound stalled aethernet waits and cancel only owned travel before retrying.
+- Let Refill Listings wait for its context menu within the existing twelve-second timeout after dispatching the item-row callback once; retain detailed diagnostics if the menu never opens.
+- Show Settings beside every configurable task in both dashboard views, opening its configuration section for the current or last loaded character in this session and selecting that character's account. Disable these links until a character is known.
+
 ## Unreleased - Retainer ownership and refill recovery
 
 ### Fixed

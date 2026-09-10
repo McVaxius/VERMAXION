@@ -663,7 +663,8 @@ public sealed class RetainerListingRefillService
 
         if (contextOpenRequested)
         {
-            Fail(BuildContextMenuOpenFailure(pendingListing));
+            StatusText = "Waiting for listing context menu...";
+            ScheduleListingAction();
             return;
         }
 
@@ -2020,6 +2021,7 @@ public sealed class RetainerListingRefillService
             RefillState.PreparingTargets => $"Timed out waiting for RetainerManager readiness. {StatusText}",
             RefillState.OpeningWorkshopBell => $"Timed out opening retainer bell. {workshopBellService.StatusText}",
             RefillState.OpeningSellList => $"Timed out opening retainer sell-items menu. Visible SelectString entries: {FormatSelectStringEntries()}",
+            RefillState.OpeningContextMenu when contextOpenRequested && pendingListing != null => BuildContextMenuOpenFailure(pendingListing),
             RefillState.ScanningListings => $"Timed out waiting for RetainerMarket inventory. {lastRetainerMarketScanDetail}",
             RefillState.SelectingRetainer => $"Timed out selecting retainer {CurrentTarget?.Name ?? "unknown"}. Visible RetainerList: {FormatRetainerListNames()}",
             _ => $"Timed out during {state}.",
