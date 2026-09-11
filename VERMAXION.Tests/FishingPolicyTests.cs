@@ -901,6 +901,171 @@ public sealed class FishingPolicyTests
         Assert.Equal(FishingRelogRuntimeAction.Fail, Evaluate(start.AddMinutes(4), false).Action);
     }
 
+    [Theory]
+    [InlineData("delayed readiness and ignored clicks", 2, 2)]
+    [InlineData("sparse updates", 1, 1)]
+    [InlineData("boarding exhaustion", 8, 0)]
+    [InlineData("route exhaustion", 1, 8)]
+    [InlineData("final boarding acknowledgement", 8, 1)]
+    [InlineData("final route queue acknowledgement", 1, 8)]
+    [InlineData("deadline expiry", 2, 0)]
+    [InlineData("reset", 10, 1)]
+    [InlineData("unrecognized menus", 2, 2)]
+    [InlineData("failed dispatch", 3, 2)]
+    [InlineData("direct embark", 0, 0)]
+    [InlineData("already queued", 0, 0)]
+    public void RegistrationDialogWaitsForObservedProgressAndBoundsCallbacks(
+        string scenario, int expectedBoardingCallbacks, int expectedRouteCallbacks)
+    {
+        var dialog = new OceanFishingDialogState();
+        var start = Utc(2026, 9, 10, 12, 0, 0);
+        const string boardingText = "Lokalisierte Anmeldung";
+        string[] boarding = ["Information", boardingText, "Cancel"];
+        string[] routes = ["Indigo", "Ruby", "Cancel"];
+        var boardingCallbacks = 0;
+        var routeCallbacks = 0;
+
+        void Poll(double seconds, string[]? menu, OceanFishingDialogAction expected,
+            bool dispatched = true, bool embark = false, bool queued = false,
+            string localizedText = boardingText, double deadlineSeconds = 120)
+        {
+            var action = dialog.Decide(start.AddSeconds(seconds), start.AddSeconds(deadlineSeconds),
+                menu, localizedText, embark, queued);
+            Assert.Equal(expected, action);
+            if (action is OceanFishingDialogAction.SelectBoarding or OceanFishingDialogAction.SelectRoute)
+            {
+                if (action == OceanFishingDialogAction.SelectBoarding)
+                {
+                    boardingCallbacks++;
+                    Assert.False(dialog.BoardingConfirmed);
+                }
+                else
+                {
+                    routeCallbacks++;
+                    Assert.True(dialog.BoardingConfirmed);
+                }
+
+                var attemptsBeforeDispatch = dialog.AttemptCount;
+                dialog.RecordCallbackAttempt(start.AddSeconds(seconds), dispatched);
+                Assert.Equal(attemptsBeforeDispatch + 1, dialog.AttemptCount);
+                Assert.InRange(dialog.AttemptCount, 1, 8);
+            }
+        }
+
+        switch (scenario)
+        {
+            case "delayed readiness and ignored clicks":
+                Poll(0, null, OceanFishingDialogAction.Wait);
+                Poll(10, [], OceanFishingDialogAction.Wait);
+                Poll(20, [boardingText, ""], OceanFishingDialogAction.Wait);
+                Assert.Equal(0, dialog.AttemptCount);
+                Poll(30, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(31, boarding, OceanFishingDialogAction.Wait);
+                Poll(34.999, boarding, OceanFishingDialogAction.Wait);
+                Poll(35, null, OceanFishingDialogAction.Wait);
+                Assert.Equal(1, dialog.AttemptCount);
+                Poll(36, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(37, routes, OceanFishingDialogAction.SelectRoute);
+                Assert.Equal(1, dialog.AttemptCount);
+                Poll(41.999, routes, OceanFishingDialogAction.Wait);
+                Poll(42, routes, OceanFishingDialogAction.SelectRoute);
+                Poll(43, null, OceanFishingDialogAction.Complete, embark: true);
+                Poll(60, routes, OceanFishingDialogAction.Complete);
+                break;
+            case "sparse updates":
+                Poll(0, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(12, routes, OceanFishingDialogAction.SelectRoute);
+                Poll(35, routes, OceanFishingDialogAction.Complete, embark: true);
+                Poll(80, boarding, OceanFishingDialogAction.Complete);
+                break;
+            case "boarding exhaustion":
+                for (var attempt = 0; attempt < 8; attempt++)
+                    Poll(attempt * 5, boarding, OceanFishingDialogAction.SelectBoarding, dispatched: false);
+                Poll(39.999, boarding, OceanFishingDialogAction.Wait);
+                Poll(40, null, OceanFishingDialogAction.Exhausted);
+                Poll(45, boarding, OceanFishingDialogAction.Exhausted);
+                break;
+            case "route exhaustion":
+                Poll(0, boarding, OceanFishingDialogAction.SelectBoarding);
+                for (var attempt = 0; attempt < 8; attempt++)
+                    Poll(5 + attempt * 5, routes, OceanFishingDialogAction.SelectRoute);
+                Poll(44.999, routes, OceanFishingDialogAction.Wait);
+                Poll(45, routes, OceanFishingDialogAction.Exhausted);
+                Poll(60, routes, OceanFishingDialogAction.Exhausted);
+                break;
+            case "final boarding acknowledgement":
+                for (var attempt = 0; attempt < 8; attempt++)
+                    Poll(attempt * 5, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(40, routes, OceanFishingDialogAction.SelectRoute);
+                Assert.Equal(1, dialog.AttemptCount);
+                Poll(45, null, OceanFishingDialogAction.Complete, embark: true);
+                break;
+            case "final route queue acknowledgement":
+                Poll(0, boarding, OceanFishingDialogAction.SelectBoarding);
+                for (var attempt = 0; attempt < 8; attempt++)
+                    Poll(5 + attempt * 5, routes, OceanFishingDialogAction.SelectRoute);
+                Poll(45, routes, OceanFishingDialogAction.Complete, queued: true, deadlineSeconds: 45);
+                Poll(180, boarding, OceanFishingDialogAction.Complete);
+                break;
+            case "deadline expiry":
+                Poll(0, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(119, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(120, routes, OceanFishingDialogAction.RegistrationExpired);
+                Poll(121, boarding, OceanFishingDialogAction.RegistrationExpired);
+                break;
+            case "reset":
+                for (var attempt = 0; attempt < 8; attempt++)
+                    Poll(attempt * 5, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(40, boarding, OceanFishingDialogAction.Exhausted);
+                dialog.Reset();
+                Assert.Equal(0, dialog.AttemptCount);
+                Assert.False(dialog.BoardingConfirmed);
+                Poll(41, routes, OceanFishingDialogAction.Wait);
+                Poll(42, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(43, routes, OceanFishingDialogAction.SelectRoute);
+                dialog.Reset();
+                Poll(44, routes, OceanFishingDialogAction.Wait);
+                Poll(45, boarding, OceanFishingDialogAction.SelectBoarding);
+                Assert.Equal(1, dialog.AttemptCount);
+                break;
+            case "unrecognized menus":
+                Poll(0, routes, OceanFishingDialogAction.Wait);
+                Poll(1, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(6, [boardingText, "Different boarding entries"], OceanFishingDialogAction.Wait);
+                Poll(7, boarding, OceanFishingDialogAction.Wait, localizedText: "");
+                Poll(8, routes, OceanFishingDialogAction.Wait, localizedText: "");
+                Poll(9, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(10, routes, OceanFishingDialogAction.SelectRoute);
+                Poll(15, ["Unrelated", "Cancel"], OceanFishingDialogAction.Wait);
+                Poll(16, routes, OceanFishingDialogAction.SelectRoute);
+                Poll(17, null, OceanFishingDialogAction.Wait);
+                Poll(18, null, OceanFishingDialogAction.Complete, embark: true);
+                break;
+            case "failed dispatch":
+                Poll(0, boarding, OceanFishingDialogAction.SelectBoarding, dispatched: false);
+                Poll(5, routes, OceanFishingDialogAction.Wait);
+                Poll(6, boarding, OceanFishingDialogAction.SelectBoarding, dispatched: false);
+                Poll(11, boarding, OceanFishingDialogAction.SelectBoarding);
+                Poll(12, routes, OceanFishingDialogAction.SelectRoute, dispatched: false);
+                Poll(17, routes, OceanFishingDialogAction.SelectRoute);
+                Poll(18, null, OceanFishingDialogAction.Complete, embark: true);
+                break;
+            case "direct embark":
+                Poll(0, null, OceanFishingDialogAction.Complete, embark: true);
+                Poll(5, boarding, OceanFishingDialogAction.Complete);
+                break;
+            case "already queued":
+                Poll(0, boarding, OceanFishingDialogAction.Complete, queued: true, deadlineSeconds: 0);
+                Poll(5, boarding, OceanFishingDialogAction.Complete);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(scenario));
+        }
+
+        Assert.Equal(expectedBoardingCallbacks, boardingCallbacks);
+        Assert.Equal(expectedRouteCallbacks, routeCallbacks);
+    }
+
     [Fact]
     public void RegistrationDialogueUsesLocalizedCustomSheetRows()
     {

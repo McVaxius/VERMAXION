@@ -447,7 +447,7 @@ public static class GameHelpers
     public static bool TrySelectStringExact(string expectedEntry, out string visibleEntries)
         => TrySelectStringExact([expectedEntry], out visibleEntries, out _);
 
-    public static unsafe bool TrySelectStringExact(
+    public static bool TrySelectStringExact(
         IEnumerable<string> expectedEntries,
         out string visibleEntries,
         out string selectedEntry)
@@ -456,31 +456,28 @@ public static class GameHelpers
         selectedEntry = string.Empty;
         try
         {
-            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectString", 1);
-            if (addonPtr == 0 || !((AtkUnitBase*)addonPtr)->IsVisible)
+            if (!TryReadSelectStringEntries(out var entries))
                 return false;
 
-            var master = new AddonMaster.SelectString(addonPtr);
-            var entries = new List<string>();
+            visibleEntries = string.Join(", ", entries.Select((entry, index) => $"{index}:{entry}"));
             var expected = expectedEntries
                 .Select(entry => NormalizeAddonText(entry).Trim())
                 .Where(entry => !string.IsNullOrWhiteSpace(entry))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            for (var i = 0; i < master.EntryCount; i++)
+            for (var i = 0; i < entries.Length; i++)
             {
-                var text = NormalizeAddonText(master.Entries[i].Text).Trim();
-                entries.Add($"{i}:{text}");
+                var text = entries[i];
                 if (!expected.Contains(text))
                     continue;
 
-                visibleEntries = string.Join(", ", entries);
+                if (!TryFireReadyAddonCallback("SelectString", true, i))
+                    return false;
+
                 selectedEntry = text;
-                FireAddonCallback("SelectString", true, i);
-                Plugin.Log.Information($"[SelectString] Selected exact entry {i}: '{text}'");
+                Plugin.Log.Information($"[SelectString] Dispatched exact entry {i}: '{text}'");
                 return true;
             }
 
-            visibleEntries = string.Join(", ", entries);
             return false;
         }
         catch (Exception ex)
@@ -499,28 +496,65 @@ public static class GameHelpers
         return TryFireAddonCallback("SelectString", true, 0);
     }
 
-    public static unsafe bool TrySelectStringEntry(
-        int requestedIndex,
-        out int selectedIndex,
-        out int entryCount)
+    public static unsafe bool TryReadSelectStringEntries(out string[] entries)
     {
-        selectedIndex = 0;
-        entryCount = 0;
+        entries = Array.Empty<string>();
         try
         {
             nint addonPtr = Plugin.GameGui.GetAddonByName("SelectString", 1);
-            if (addonPtr == 0 || !((AtkUnitBase*)addonPtr)->IsVisible)
+            var addon = (AtkUnitBase*)addonPtr;
+            if (addon == null || !addon->IsVisible || !addon->IsReady ||
+                !ECommons.GenericHelpers.IsAddonReady(addon))
                 return false;
 
             var master = new AddonMaster.SelectString(addonPtr);
-            entryCount = master.EntryCount;
-            if (entryCount <= 0)
+            var count = master.EntryCount;
+            if (count <= 0)
                 return false;
 
+            var snapshot = new string[count];
+            var menuEntries = master.Entries;
+            for (var i = 0; i < count; i++)
+            {
+                snapshot[i] = NormalizeAddonText(menuEntries[i].Text).Trim();
+                if (string.IsNullOrWhiteSpace(snapshot[i]))
+                    return false;
+            }
+
+            entries = snapshot;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Debug($"[SelectString] Could not read ready menu: {ex.Message}");
+            return false;
+        }
+    }
+
+    public static bool TrySelectStringEntry(
+        int requestedIndex,
+        IReadOnlyList<string> expectedEntries,
+        out int selectedIndex,
+        out int entryCount,
+        out bool callbackAttempted)
+    {
+        selectedIndex = 0;
+        entryCount = 0;
+        callbackAttempted = false;
+        try
+        {
+            if (!TryReadSelectStringEntries(out var entries) ||
+                !entries.SequenceEqual(expectedEntries, StringComparer.Ordinal))
+                return false;
+
+            entryCount = entries.Length;
             selectedIndex = OceanFishingRoutePolicy.ResolveAvailableDialogEntry(requestedIndex, entryCount);
-            FireAddonCallback("SelectString", true, selectedIndex);
+            callbackAttempted = true;
+            if (!TryFireReadyAddonCallback("SelectString", true, selectedIndex))
+                return false;
+
             Plugin.Log.Information(
-                $"[SelectString] Selected guarded entry {selectedIndex}; requested={requestedIndex}, available={entryCount}");
+                $"[SelectString] Dispatched guarded entry {selectedIndex}; requested={requestedIndex}, available={entryCount}");
             return true;
         }
         catch (Exception ex)
