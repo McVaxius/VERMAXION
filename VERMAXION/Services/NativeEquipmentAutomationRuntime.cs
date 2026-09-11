@@ -173,6 +173,8 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
 
     public bool TryEquipGearset(int gearsetId, out string error)
     {
+        if (!CanStartNativeEquipment(out error))
+            return false;
         try
         {
             var module = RaptureGearsetModule.Instance();
@@ -198,6 +200,8 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
 
     public bool TryConfirmGearsetChangePrompt()
     {
+        if (!CanStartNativeEquipment(out _))
+            return false;
         try
         {
             nint addonAddress = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
@@ -220,7 +224,21 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
     }
 
     public bool TryBeginRecommendedEquipment(uint classJobId, out string error)
-        => recommendedEquip.TryBegin(classJobId, out error);
+        => CanStartNativeEquipment(out error) && recommendedEquip.TryBegin(classJobId, out error);
+
+    private bool CanStartNativeEquipment(out string error)
+    {
+        var statusKnown = stylist.TryReadBusy(out var busy, out var statusError);
+        if (busy || (!statusKnown && stylist.UpdateMayBeActive))
+        {
+            error = busy ? "Stylist is still busy; native equipment was not started."
+                : $"Stylist idle could not be verified; native equipment was not started: {statusError}";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
 
     public RecommendedEquipmentProgress PollRecommendedEquipment(out string error)
         => recommendedEquip.Poll(out error);
@@ -539,6 +557,8 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
 
     public bool TryMoveSeasonalItemToEquipped(SeasonalInventoryItem item, out string error)
     {
+        if (!CanStartNativeEquipment(out error))
+            return false;
         if (!framework.IsInFrameworkUpdateThread)
         {
             error = "Inventory moves must run on the framework update thread.";
@@ -591,6 +611,9 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
         module = RaptureGearsetModule.Instance();
         nativePlayerState = PlayerState.Instance();
         equipped = null;
+
+        if (!CanStartNativeEquipment(out error))
+            return false;
 
         if (!framework.IsInFrameworkUpdateThread)
         {

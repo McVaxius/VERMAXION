@@ -127,6 +127,8 @@ internal sealed class GearsetConfirmationWindow
 
 public static class EquipmentAutomationPolicy
 {
+    // Stylist's equipment comparison alone can wait for 30 seconds before releasing its queue.
+    public static readonly TimeSpan StylistTimeout = TimeSpan.FromSeconds(45);
     public static IReadOnlyList<GearsetSnapshot> BuildGearUpdaterTargets(IEnumerable<GearsetSnapshot> gearsets)
         => gearsets
             .Where(gearset => gearset.Level > 0 && gearset.ClassJobId > 0)
@@ -389,7 +391,7 @@ public sealed class GearUpdaterStateMachine
                         : stylistProgressError;
                     SetState(State.StartingRecommended, $"Stylist failed for {target!.Name}; using native updater: {fallbackReason}");
                 }
-                else if (StepTimedOut())
+                else if (runtime.UtcNow - stateEnteredAt >= EquipmentAutomationPolicy.StylistTimeout)
                 {
                     FailWithRestore($"Stylist remained busy beyond the bounded wait for {target!.Name}.");
                 }
@@ -1030,10 +1032,13 @@ public sealed class CurrentJobEquipmentStateMachine
     private IReadOnlyList<uint> expectedItems = [];
     private DateTime stateEnteredAt;
     private ulong startingContentId;
+    private bool verifyingStylistSave;
 
     public enum State
     {
         Idle,
+        StartingStylist,
+        WaitingForStylist,
         StartingRecommended,
         WaitingForRecommended,
         SettlingRecommended,
@@ -1070,7 +1075,7 @@ public sealed class CurrentJobEquipmentStateMachine
         }
 
         startingContentId = runtime.CharacterContentId;
-        SetState(State.StartingRecommended, $"Preparing recommended gear for {startingGearset.Name}.");
+        SetState(State.StartingStylist, $"Checking Stylist for gearset {startingGearset.GearsetId}.");
         reason = Status;
         return true;
     }
@@ -1091,7 +1096,29 @@ public sealed class CurrentJobEquipmentStateMachine
 
         switch (CurrentState)
         {
+            case State.StartingStylist:
+                if (runtime.TryBeginStylistGearsetUpdate(startingGearset.GearsetId, out var stylistError))
+                    SetState(State.WaitingForStylist, $"Stylist dispatched for gearset {startingGearset.GearsetId}; waiting for completion.");
+                else
+                    SetState(State.StartingRecommended, $"Stylist unavailable; trying native fallback: {stylistError}");
+                break;
+
+            case State.WaitingForStylist:
+                var stylistProgress = runtime.PollStylistGearsetUpdate(out var stylistProgressError);
+                if (stylistProgress == StylistGearsetUpdateProgress.Complete)
+                {
+                    expectedItems = runtime.GetEquippedItemIds().ToArray();
+                    verifyingStylistSave = true;
+                    SetState(State.WaitingForSave, "Verifying the exact Stylist gearset save.");
+                }
+                else if (stylistProgress == StylistGearsetUpdateProgress.Failed)
+                    SetState(State.StartingRecommended, $"Stylist failed; trying native fallback: {stylistProgressError}");
+                else if (runtime.UtcNow - stateEnteredAt >= EquipmentAutomationPolicy.StylistTimeout)
+                    SetState(State.Failed, "Stylist remained busy beyond the bounded wait; native fallback was not started.");
+                break;
+
             case State.StartingRecommended:
+                verifyingStylistSave = false;
                 if (!runtime.TryBeginRecommendedEquipment(startingGearset.ClassJobId, out var beginError))
                     SetState(State.Failed, $"Recommended equipment setup failed: {beginError}");
                 else
@@ -1126,11 +1153,14 @@ public sealed class CurrentJobEquipmentStateMachine
 
             case State.WaitingForSave:
                 if (runtime.IsGearsetSaveVerified(startingGearset.GearsetId, startingGearset.ClassJobId, expectedItems, out _))
-                    SetState(State.Complete, $"Updated gearset {startingGearset.GearsetId}.");
+                    SetState(State.Complete, $"{(verifyingStylistSave ? "Stylist" : "Native")} completion verified for gearset {startingGearset.GearsetId}.");
                 else if (StepTimedOut())
                 {
                     runtime.IsGearsetSaveVerified(startingGearset.GearsetId, startingGearset.ClassJobId, expectedItems, out var verifyError);
-                    SetState(State.Failed, $"Native save verification timed out: {verifyError}");
+                    if (verifyingStylistSave)
+                        SetState(State.StartingRecommended, $"Stylist save verification timed out; trying native fallback: {verifyError}");
+                    else
+                        SetState(State.Failed, $"Native save verification timed out: {verifyError}");
                 }
                 break;
         }
@@ -1148,6 +1178,7 @@ public sealed class CurrentJobEquipmentStateMachine
         startingGearset = null;
         expectedItems = [];
         startingContentId = 0;
+        verifyingStylistSave = false;
         CurrentState = State.Idle;
         stateEnteredAt = DateTime.MinValue;
         Status = "Idle";

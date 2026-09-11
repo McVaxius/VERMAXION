@@ -35,6 +35,20 @@ public sealed class LifestreamIPC
         }
     }
 
+    public bool TryReadBusy(out bool busy)
+    {
+        try
+        {
+            busy = isBusySubscriber.InvokeFunc();
+            return true;
+        }
+        catch
+        {
+            busy = false;
+            return false;
+        }
+    }
+
     public bool ExecuteCommand(string command)
     {
         var normalized = command.Trim();

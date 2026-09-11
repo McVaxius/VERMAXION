@@ -2128,6 +2128,31 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Unindent();
             }
 
+            var returnBeforeNag = cc.EnableReturnBeforeNag;
+            if (ImGui.Checkbox("Return before nag your mom / dad", ref returnBeforeNag))
+            {
+                cc.EnableReturnBeforeNag = returnBeforeNag;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "ReturnBeforeNag", "Return before nag your mom / dad",
+                (source, target) => target.EnableReturnBeforeNag = source.EnableReturnBeforeNag);
+            if (cc.EnableReturnBeforeNag)
+            {
+                ImGui.Indent();
+                var returnCommand = cc.ReturnBeforeNagCommand ?? string.Empty;
+                if (ImGui.InputText("Return command##BeforeNag", ref returnCommand, 256))
+                {
+                    cc.ReturnBeforeNagCommand = returnCommand;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "ReturnBeforeNagCommand", "Return before mom / dad command",
+                    (source, target) => target.ReturnBeforeNagCommand = source.ReturnBeforeNagCommand);
+                if (!cc.TryGetReturnBeforeNagCommand(out _))
+                    ImGui.TextDisabled("Enter one nonempty slash command on a single line; mom / dad will not start with invalid input.");
+                ImGui.TextDisabled("Shared by mom and dad. Waits for travel and two seconds without movement before each new request.");
+                ImGui.Unindent();
+            }
+
             var nagYourMom = cc.EnableNagYourMom;
             if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMom, ref nagYourMom))
             {

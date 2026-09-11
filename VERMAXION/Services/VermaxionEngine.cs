@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
@@ -25,6 +26,7 @@ public class VermaxionEngine
     {
         retainerListingRefillService.SuspendForOwnershipLoss(reason);
         handoffQuietSince = DateTime.MinValue;
+        nagReturnSettledSince = DateTime.MinValue;
     }
 
     private string? GetRetainerControlBlocker(bool waitingForRoute = false)
@@ -186,6 +188,13 @@ public class VermaxionEngine
     private DateTime nagYourMomLostStatusSince = DateTime.MinValue;
     private DateTime nagYourMomLostStatusLastLoggedAt = DateTime.MinValue;
     private DadSelectionExecution? activeDadExecution;
+    private DateTime nagReturnStartedAt = DateTime.MinValue;
+    private DateTime nagReturnSettledSince = DateTime.MinValue;
+    private bool nagReturnCommandIssued;
+    private bool nagReturnActivityObserved;
+    private ulong nagReturnContentId;
+    private Vector3 nagReturnPosition;
+    private uint nagReturnTerritory;
     private bool taskStartHoldLogged = false;
     private EngineState taskStartHoldState = EngineState.Idle;
     private JumboCactpotRouteDecision? activeJumboCactpotRoute = null;
@@ -1725,6 +1734,9 @@ public class VermaxionEngine
                         break;
                     }
 
+                    if (!TickReturnBeforeNag(activeConfig!))
+                        break;
+
                     var stopAtSeriesRank25 = nagRoutePlan.StopAtSeriesRank25;
                     var startResult = momIPCClient.StartRun(nagRoutePlan.RemainingRuns, activeConfig!.NagYourMomJob, stopAtSeriesRank25, nagRoutePlan.Route);
                     nagYourMomWaitingForSeriesRank = startResult.WaitingForSeriesRank;
@@ -1834,6 +1846,9 @@ public class VermaxionEngine
                         AdvanceToNextTask(EngineState.RunningNagYourDad);
                         break;
                     }
+
+                    if (!TickReturnBeforeNag(activeConfig!))
+                        break;
 
                     activeDadExecution = dadIPCClient.StartSelection(
                         activeConfig!.NagYourDadSelectionKind,
@@ -2194,6 +2209,7 @@ public class VermaxionEngine
 
     private void CancelTaskServices()
     {
+        ResetReturnBeforeNag(cancelTravel: true);
         foreach (var cancel in taskBindings.Values.Select(binding => binding.Cancel).Distinct())
             cancel();
         fcBuffInventoryService.Reset();
@@ -2313,6 +2329,7 @@ public class VermaxionEngine
 
     private void CleanupFaultingWork(EngineState faultingState, string reason)
     {
+        ResetReturnBeforeNag(cancelTravel: true);
         if (TaskIdByState.TryGetValue(faultingState, out var taskId) &&
             taskBindings.TryGetValue(taskId, out var binding))
         {
@@ -2866,6 +2883,7 @@ public class VermaxionEngine
 
     private void SetState(EngineState newState)
     {
+        ResetReturnBeforeNag(cancelTravel: true);
         log.Debug($"[Engine] State: {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
@@ -2953,6 +2971,118 @@ public class VermaxionEngine
         return start <= end
             ? now >= start && now <= end
             : now >= start || now <= end;
+    }
+
+    private bool TickReturnBeforeNag(CharacterConfig config)
+    {
+        if (nagReturnStartedAt == DateTime.MinValue && !config.EnableReturnBeforeNag)
+            return true;
+
+        var now = DateTime.UtcNow;
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (nagReturnStartedAt == DateTime.MinValue)
+        {
+            nagReturnStartedAt = now;
+            nagReturnContentId = Plugin.PlayerState.ContentId;
+            nagReturnPosition = player?.Position ?? Vector3.Zero;
+            nagReturnTerritory = clientState.TerritoryType;
+        }
+
+        if (nagReturnContentId == 0 || Plugin.PlayerState.ContentId != nagReturnContentId)
+            return FailReturnBeforeNag("Character changed during return travel.");
+        if (now - nagReturnStartedAt >= TimeSpan.FromMinutes(3))
+            return FailReturnBeforeNag("Return travel did not finish within three minutes; no retry or mom / dad request was issued.");
+        if (!lifestreamIPC.TryReadBusy(out var lifestreamBusy) ||
+            !vNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) ||
+            !vNavmeshIPC.TryGetPathIsRunning(out var moving))
+            return FailReturnBeforeNag("Could not read Lifestream or vnav travel status.");
+
+        var playerAvailable = clientState.IsLoggedIn && player != null && IsPlayerAvailable();
+        var positionChanged = player != null && player.Position != nagReturnPosition;
+        var territoryChanged = clientState.TerritoryType != nagReturnTerritory;
+        var busy = lifestreamBusy || pathfinding || moving || !playerAvailable;
+        if (nagReturnCommandIssued && (busy || positionChanged || territoryChanged))
+            nagReturnActivityObserved = true;
+
+        if (!nagReturnCommandIssued)
+        {
+            if (!config.TryGetReturnBeforeNagCommand(out var command))
+                return FailReturnBeforeNag("Return command must be one nonempty slash command on a single line.");
+            if (busy || GetNonDutyTaskStartBlockReason() != null)
+            {
+                SetReturnBeforeNagStatus("Waiting for travel and character readiness before return.");
+                return false;
+            }
+
+            // Capture immediately before dispatch so earlier movement cannot acknowledge this command.
+            nagReturnPosition = player!.Position;
+            nagReturnTerritory = clientState.TerritoryType;
+            nagReturnCommandIssued = true;
+            MarkCurrentTaskWorkStarted();
+            if (!CommandHelper.TrySendCommand(command))
+                return FailReturnBeforeNag("Return command could not be dispatched.");
+            log.Information("[Engine][ReturnBeforeNag] Return command dispatched once; waiting for travel and settlement.");
+            SetReturnBeforeNagStatus("Waiting for return travel to start.");
+            return false;
+        }
+
+        nagReturnPosition = player?.Position ?? nagReturnPosition;
+        nagReturnTerritory = clientState.TerritoryType;
+        if (!nagReturnActivityObserved || busy || positionChanged || territoryChanged || GetNonDutyTaskStartBlockReason() != null)
+        {
+            nagReturnSettledSince = DateTime.MinValue;
+            SetReturnBeforeNagStatus(nagReturnActivityObserved
+                ? "Waiting for return travel and character movement to finish."
+                : "Waiting for return travel to start.");
+            return false;
+        }
+
+        if (nagReturnSettledSince == DateTime.MinValue)
+            nagReturnSettledSince = now;
+        if (now - nagReturnSettledSince < TimeSpan.FromSeconds(2))
+        {
+            SetReturnBeforeNagStatus("Return travel idle; waiting for two seconds without movement.");
+            return false;
+        }
+
+        log.Information("[Engine][ReturnBeforeNag] Lifestream, vnav and character settled for two seconds; allowing the new handoff.");
+        ResetReturnBeforeNag();
+        return true;
+    }
+
+    private void SetReturnBeforeNagStatus(string status)
+    {
+        StatusText = status;
+        if (state == EngineState.RunningNagYourMom)
+            NagYourMomStatusText = status;
+        else
+            NagYourDadStatusText = status;
+    }
+
+    private bool FailReturnBeforeNag(string reason)
+    {
+        SetReturnBeforeNagStatus(reason);
+        log.Warning($"[Engine][ReturnBeforeNag] {reason}");
+        runHadFailure = true;
+        CleanupFaultingWork(state, "return travel failed");
+        AdvanceToNextTask(state);
+        return false;
+    }
+
+    private void ResetReturnBeforeNag(bool cancelTravel = false)
+    {
+        if (cancelTravel && nagReturnCommandIssued)
+        {
+            CommandHelper.SendCommand("/lifestream cancel");
+            vNavmeshIPC.Stop();
+        }
+        nagReturnStartedAt = DateTime.MinValue;
+        nagReturnSettledSince = DateTime.MinValue;
+        nagReturnCommandIssued = false;
+        nagReturnActivityObserved = false;
+        nagReturnContentId = 0;
+        nagReturnPosition = Vector3.Zero;
+        nagReturnTerritory = 0;
     }
 
     private void RollNagYourMomLocalDay(CharacterConfig config)

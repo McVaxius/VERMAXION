@@ -513,6 +513,8 @@ public class ConfigManager
         target.EnableNagYourMomFrontline = source.EnableNagYourMomFrontline;
         target.EnableNagYourMomRivalWings = source.EnableNagYourMomRivalWings;
         target.EnableNagYourDad = source.EnableNagYourDad;
+        target.EnableReturnBeforeNag = source.EnableReturnBeforeNag;
+        target.ReturnBeforeNagCommand = source.ReturnBeforeNagCommand;
         target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity;
         target.EnableMiscCmd = source.EnableMiscCmd;
         target.EnableLootGoblinMapGather = source.EnableLootGoblinMapGather;

@@ -1,5 +1,13 @@
 # VERMAXION Changelog
 
+## Unreleased - I333/I334/I338 equipment, Fashion Report, and return travel
+
+### Fixed
+
+- Use Stylist for Current Job Equipment with exact gearset-save verification and the existing native fallback. Block native equipment while Stylist is busy or a dispatched update cannot be confirmed idle.
+- Complete Fashion Report after one judging, retaining result-window closure and weekly completion handling.
+- Add shared per-character return settings for mom/dad, enabled by default with `/li fc`. Send one single-line slash command before each new request, require observed travel and two stationary seconds with Lifestream and vnav idle, and fail through existing cleanup after three minutes without retrying.
+
 ## Unreleased - Ocean Fishing registration acknowledgement
 
 ### Fixed

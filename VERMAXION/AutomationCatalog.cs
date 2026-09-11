@@ -93,6 +93,7 @@ public static class AutomationCatalog
     public const string NagYourMomFrontline = "nag_your_mom_frontline";
     public const string NagYourMomRivalWings = "nag_your_mom_rival_wings";
     public const string NagYourDad = "nag_your_dad";
+    public const string ReturnBeforeNag = "return_before_nag";
     public const string EvercoldAdventurerActivity = "evercold_adventurer_activity";
     public const string MiscCommands = "misc_commands";
     public const string LootGoblinMapGather = "lootgoblin_map_gather";
@@ -128,6 +129,7 @@ public static class AutomationCatalog
         new(NagYourMomFrontline, nameof(CharacterConfig.EnableNagYourMomFrontline), "Frontline route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
         new(NagYourMomRivalWings, nameof(CharacterConfig.EnableNagYourMomRivalWings), "Rival Wings route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
         Engine(NagYourDad, nameof(CharacterConfig.EnableNagYourDad), "nag your dad", AutomationCadence.Scheduled),
+        new(ReturnBeforeNag, nameof(CharacterConfig.EnableReturnBeforeNag), "Return before mom / dad", AutomationCadence.EveryRun, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
         new(EvercoldAdventurerActivity, nameof(CharacterConfig.EnableEvercoldAdventurerActivity), "Adventurer Activity (Evercold)", AutomationCadence.ConfigOnly, AutomationMaturity.Wip, PostProcessTaskPhase.AfterAR, AutomationOwner.ConfigOnlyWip),
         new(MiscCommands, nameof(CharacterConfig.EnableMiscCmd), "Misc Commands", AutomationCadence.EveryRun, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.RunHook),
         Engine(LootGoblinMapGather, nameof(CharacterConfig.EnableLootGoblinMapGather), "LootGoblin Map Gather", AutomationCadence.Daily),
