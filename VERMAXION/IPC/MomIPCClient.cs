@@ -139,10 +139,14 @@ public sealed class MomIPCClient
         bool stopAtSeriesRank25,
         string route = MomRunRoutes.CasualCc,
         string requestedBy = "VERMAXION",
-        bool enableAutomation = true)
+        bool enableAutomation = true,
+        DateTime? queueDeadlineUtc = null)
     {
         var safeJob = job ?? string.Empty;
         var safeRoute = route ?? MomRunRoutes.CasualCc;
+        if (queueDeadlineUtc.HasValue && !GetReadiness(useCache: false).SupportsQueueDeadline)
+            return RejectedStartResult(runCount, safeJob, safeRoute, stopAtSeriesRank25,
+                MomSchedule.DeadlineSupportBlocker);
         var request = new MomStartRunRequest
         {
             Route = safeRoute,
@@ -151,6 +155,7 @@ public sealed class MomIPCClient
             StopAtSeriesRank25 = stopAtSeriesRank25,
             RequestedBy = requestedBy,
             EnableAutomation = enableAutomation,
+            QueueDeadlineUtc = queueDeadlineUtc,
         };
 
         try
@@ -161,6 +166,9 @@ public sealed class MomIPCClient
         }
         catch (Exception ex)
         {
+            if (queueDeadlineUtc.HasValue)
+                return FailedStartResult(runCount, safeJob, safeRoute, stopAtSeriesRank25,
+                    $"mom deadline-aware start failed: {ex.Message}. Legacy IPC cannot enforce the cutoff.");
             log.Debug($"[mom IPC] StartRun failed: {ex.Message}; trying legacy CC start IPC");
             return StartRunLegacyFallback(runCount, safeJob, stopAtSeriesRank25, safeRoute, ex);
         }
@@ -343,6 +351,7 @@ public sealed class MomIPCClient
 
 public sealed class MomIpcReadiness
 {
+    public bool SupportsQueueDeadline { get; set; }
     public bool IpcReady { get; set; }
     public bool CanStart { get; set; }
     public bool PluginEnabled { get; set; }
@@ -441,6 +450,7 @@ public sealed class MomIpcReadiness
 
 internal sealed class MomStartRunRequest
 {
+    public DateTime? QueueDeadlineUtc { get; set; }
     public string Route { get; set; } = MomRunRoutes.CasualCc;
     public int RunCount { get; set; }
     public string Job { get; set; } = string.Empty;

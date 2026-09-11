@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## Unreleased - nag your mom window cutoff
+
+### Fixed
+
+- Pass each batch its local window's closing UTC timestamp, including overnight windows. Block starts at the cutoff and visibly require mom queue-deadline support; never fall back to legacy starts for scheduled work.
+- After mom confirms expiry and queue/match cleanup, complete the mom task for that cycle and skip remaining routes. Credit only observed completed matches, once, without filling daily caps or changing character settings. Keep withdrawal blockers, task settling, and AutoRetainer handoff ownership intact.
+
 ## Unreleased - I333/I334/I338 equipment, Fashion Report, and return travel
 
 ### Fixed

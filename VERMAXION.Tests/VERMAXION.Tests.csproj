@@ -17,6 +17,27 @@
 
   <ItemGroup>
     <Compile Include="..\VERMAXION\Configuration.cs" Link="ProductionConfiguration.cs" />
+    <Compile Include="..\VERMAXION\Models\MomSchedule.cs" Link="MomSchedule.cs" />
+    <Compile Include="..\VERMAXION\Models\MomRunResult.cs" Link="MomRunResult.cs" />
+    <Compile Include="..\VERMAXION\Models\MomRunStatus.cs" Link="MomRunStatus.cs" />
+    <Compile Include="..\VERMAXION\Models\MomRunRoutes.cs" Link="MomRunRoutes.cs" />
+    <Compile Include="..\VERMAXION\Models\SeriesRankSnapshot.cs" Link="SeriesRankSnapshot.cs" />
+    <Compile Include="..\VERMAXION\Models\RivalWingsAchievementGateResult.cs" Link="RivalWingsAchievementGateResult.cs" />
+    <Compile Include="..\VERMAXION\IPC\MomIPCClient.cs" Link="MomIPCClient.cs" />
+    <Compile Include="..\..\mom\mom\Models\MomRunRequest.cs" Link="MomProvider/MomRunRequest.cs" />
+    <Compile Include="..\..\mom\mom\Models\MomRunResult.cs" Link="MomProvider/MomRunResult.cs" />
+    <Compile Include="..\..\mom\mom\Models\MomRunStatus.cs" Link="MomProvider/MomRunStatus.cs" />
+    <Compile Include="..\..\mom\mom\Models\MomRunRoutes.cs" Link="MomProvider/MomRunRoutes.cs" />
+    <Compile Include="..\..\mom\mom\Models\MomReadinessResult.cs" Link="MomProvider/MomReadinessResult.cs" />
+    <Compile Include="..\..\mom\mom\Models\MatchSnapshot.cs" Link="MomProvider/MatchSnapshot.cs" />
+    <Compile Include="..\..\mom\mom\Models\TerritoryProfileSnapshot.cs" Link="MomProvider/TerritoryProfileSnapshot.cs" />
+    <Compile Include="..\..\mom\mom\Models\PvpArenaMode.cs" Link="MomProvider/PvpArenaMode.cs" />
+    <Compile Include="..\..\mom\mom\Models\StartupHealth.cs" Link="MomProvider/StartupHealth.cs" />
+    <Compile Include="..\..\mom\mom\Models\SeriesRankSnapshot.cs" Link="MomProvider/SeriesRankSnapshot.cs" />
+    <Compile Include="..\..\mom\mom\Models\AchievementProgressStatus.cs" Link="MomProvider/AchievementProgressStatus.cs" />
+    <Compile Include="..\..\mom\mom\Services\RunCoordinatorService.cs" Link="MomProvider/RunCoordinatorService.cs" />
+    <Compile Include="..\..\mom\mom\Services\CcQueueService.Deadline.cs" Link="MomProvider/CcQueueService.Deadline.cs" />
+    <Compile Include="..\..\mom\mom\Services\MomIpcJson.cs" Link="MomProvider/MomIpcJson.cs" />
     <Compile Include="..\VERMAXION\Models\AccountConfig.cs" Link="AccountConfig.cs" />
     <Compile Include="..\VERMAXION\Models\AccountSelectionPolicy.cs" Link="AccountSelectionPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\AutoRetainerSelectionModels.cs" Link="AutoRetainerSelectionModels.cs" />
