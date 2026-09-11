@@ -12,6 +12,7 @@ public sealed class MomRunResult
     public int RequestedRunCount { get; set; }
     public int CompletedRunCount { get; set; }
     public bool StopAtSeriesRank25 { get; set; }
+    public bool WaitingForSeriesRank { get; set; }
     public bool DisableRouteRecommended { get; set; }
     public string DisableRouteReason { get; set; } = string.Empty;
     public string FailureReason { get; set; } = string.Empty;

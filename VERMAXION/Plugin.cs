@@ -365,6 +365,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     public void Dispose()
     {
+        Engine.CancelNagYourMomSeriesRankTest();
         PauseCurrentTargetCycleBestEffort("VERMAXION disposal");
         DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();

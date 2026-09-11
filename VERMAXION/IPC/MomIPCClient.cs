@@ -19,6 +19,8 @@ public sealed class MomIPCClient
     private readonly ICallGateSubscriber<string> statusSubscriber;
     private readonly ICallGateSubscriber<string> rivalWingsAchievementGateSubscriber;
     private readonly ICallGateSubscriber<string> seriesRankSubscriber;
+    private readonly ICallGateSubscriber<string> seriesRankStatusSubscriber;
+    private readonly ICallGateSubscriber<string> cancelSeriesRankSubscriber;
     private readonly ICallGateSubscriber<string, string> startRunSubscriber;
     private readonly ICallGateSubscriber<int, string, string> startRunsSubscriber;
     private readonly ICallGateSubscriber<int, string, bool, string> startRunsWithOptionsSubscriber;
@@ -36,6 +38,8 @@ public sealed class MomIPCClient
         statusSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetStatus");
         rivalWingsAchievementGateSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetRivalWingsAchievementGate");
         seriesRankSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetSeriesRank");
+        seriesRankStatusSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.GetSeriesRankStatus");
+        cancelSeriesRankSubscriber = pluginInterface.GetIpcSubscriber<string>("mom.CancelSeriesRank");
         startRunSubscriber = pluginInterface.GetIpcSubscriber<string, string>("mom.StartRun");
         startRunsSubscriber = pluginInterface.GetIpcSubscriber<int, string, string>("mom.StartCcRuns");
         startRunsWithOptionsSubscriber = pluginInterface.GetIpcSubscriber<int, string, bool, string>("mom.StartCcRunsWithOptions");
@@ -76,16 +80,25 @@ public sealed class MomIPCClient
         }, "[mom IPC] GetRivalWingsAchievementGate failed");
 
     public SeriesRankSnapshot GetSeriesRank()
+        => ReadSeriesRank(seriesRankSubscriber, "GetSeriesRank");
+
+    public SeriesRankSnapshot GetSeriesRankStatus()
+        => ReadSeriesRank(seriesRankStatusSubscriber, "GetSeriesRankStatus");
+
+    public void CancelSeriesRank()
+        => ReadSeriesRank(cancelSeriesRankSubscriber, "CancelSeriesRank");
+
+    private SeriesRankSnapshot ReadSeriesRank(ICallGateSubscriber<string> subscriber, string endpoint)
     {
-        var snapshot = InvokeJson(seriesRankSubscriber, new SeriesRankSnapshot
+        var snapshot = InvokeJson(subscriber, new SeriesRankSnapshot
         {
-            FailureReason = "mom.GetSeriesRank failed or returned an unreadable result.",
+            FailureReason = $"mom.{endpoint} failed or returned an unreadable result.",
             Source = "mom IPC",
             CapturedAtUtc = DateTime.UtcNow,
-        }, "[mom IPC] GetSeriesRank failed");
+        }, $"[mom IPC] {endpoint} failed");
 
-        if (!snapshot.Success && string.IsNullOrWhiteSpace(snapshot.FailureReason))
-            snapshot.FailureReason = "mom.GetSeriesRank returned an invalid series rank.";
+        if (!snapshot.Pending && !snapshot.Success && string.IsNullOrWhiteSpace(snapshot.FailureReason))
+            snapshot.FailureReason = $"mom.{endpoint} returned an invalid series rank.";
 
         return snapshot;
     }
