@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## Unreleased - I332 reload debug task
+
+### Added
+
+- Add `/vmx debug` with one saved task selection for the next plugin reload. After character registration, consume one attempt, run existing FULL STOP cleanup, refresh dashboard availability, and invoke the existing manual action through its normal wrapper. Keep configuration-only stubs unavailable and preserve task prerequisites and scheduling.
+- Show pending, dispatched, or blocked status in the debug window and existing logs, with no debug retry. Keep the checkbox selected after an attempt; unchecking or replacing it cancels pending startup, while FULL STOP cancels this reload's pending attempt without clearing the saved selection.
+
 ## Unreleased - I329/I330/I331 travel, listings, and task settings
 
 ### Fixed

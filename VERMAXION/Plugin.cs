@@ -100,12 +100,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public readonly WindowSystem WindowSystem = new("VERMAXION");
     public ConfigWindow ConfigWindow { get; init; }
     public MainWindow MainWindow { get; init; }
+    internal DebugWindow DebugWindow { get; init; }
     public RegistrableConfigWindow RegistrableConfigWindow { get; init; }
 
     private IDtrBarEntry? dtrEntry;
     private bool wasLoggedIn;
     private bool pendingCharacterRegistration;
     private bool characterRegistrationCompletedThisLogin;
+    private string? pendingDebugTaskId;
+    internal string DebugTaskStatus { get; private set; } = "No task selected.";
     private string characterRegistrationFailureReason = string.Empty;
     private DateTime characterRegistrationWorldReadySince = DateTime.MinValue;
     private bool pendingBeforeArLogin;
@@ -168,6 +171,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             storedConfiguration?.SetupWizardStateMigrated ?? false,
             storedConfiguration?.SetupWizardCompleted ?? false);
         Configuration = storedConfiguration ?? new Configuration();
+        pendingDebugTaskId = string.IsNullOrWhiteSpace(Configuration.DebugTaskId) ? null : Configuration.DebugTaskId;
+        if (pendingDebugTaskId != null)
+            SetDebugTaskStatus("Pending: waiting for character registration.");
         if (Configuration.SetupWizardCompleted != setupWizardDecision.Completed ||
             Configuration.SetupWizardStateMigrated != setupWizardDecision.Migrated)
         {
@@ -311,9 +317,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         // Windows
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
+        DebugWindow = new DebugWindow(this);
         RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager);
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(DebugWindow);
         WindowSystem.AddWindow(RegistrableConfigWindow);
         if (setupWizardDecision.ShouldAutoOpen && !Configuration.SetupWizardCompleted)
         {
@@ -328,7 +336,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         });
         CommandManager.AddHandler(AliasCommandName, new CommandInfo(OnAliasCommand)
         {
-            HelpMessage = "Vermaxion: /vmx [on|off|run|config] or /vmx to open UI."
+            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug] or /vmx to open UI."
         });
 
         // Events
@@ -550,7 +558,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         return (false, "Idle", "VERMAXION is idle.");
     }
 
-    internal void RunDashboardAction(Action action)
+    internal bool RunDashboardAction(Action action)
     {
         var engineWasRunningBefore = Engine.IsRunning;
         var fishingLifecycleActiveBefore = FishingRunLifecycle.IsActive;
@@ -561,7 +569,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             if (!YesAlreadyIPC.IsPaused)
             {
                 Log.Warning("[Dashboard] Run action blocked because VERMAXION could not pause YesAlready.");
-                return;
+                return false;
             }
 
             dashboardRunYesAlreadyPauseOwned = true;
@@ -581,6 +589,71 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             }
 
             ReleaseDashboardRunYesAlreadyPauseIfIdle();
+        }
+
+        return true;
+    }
+
+    internal void SetDebugTaskSelection(string? taskId)
+    {
+        if (string.Equals(Configuration.DebugTaskId, taskId, StringComparison.Ordinal))
+            return;
+
+        Configuration.DebugTaskId = taskId;
+        // Edits arm only the next reload, and cancel any older pending selection.
+        pendingDebugTaskId = null;
+        Configuration.Save();
+        SetDebugTaskStatus(taskId == null ? "No task selected." : "Pending: next plugin reload.");
+    }
+
+    private void SetDebugTaskStatus(string status)
+    {
+        DebugTaskStatus = status;
+        Log.Information($"[DebugReload] task={Configuration.DebugTaskId ?? "none"}; {status}");
+    }
+
+    private void ProcessPendingDebugTask()
+    {
+        if (pendingDebugTaskId == null)
+            return;
+
+        if (!characterRegistrationCompletedThisLogin)
+        {
+            if (!string.IsNullOrEmpty(characterRegistrationFailureReason))
+            {
+                pendingDebugTaskId = null;
+                SetDebugTaskStatus("Blocked: character registration failed; see the [Config] log.");
+            }
+            return;
+        }
+
+        // Consume before cleanup or dispatch, including failures and reentrant callbacks.
+        var taskId = pendingDebugTaskId;
+        pendingDebugTaskId = null;
+        try
+        {
+            FullStop();
+            var row = MainWindow.GetDashboardTaskRows(forceRefresh: true)
+                .FirstOrDefault(candidate => string.Equals(candidate.Id, taskId, StringComparison.Ordinal));
+            if (row == null)
+            {
+                SetDebugTaskStatus("Blocked: the saved task is no longer in the dashboard.");
+                return;
+            }
+
+            if (row.DebugBlockedReason is { } reason)
+            {
+                SetDebugTaskStatus($"Blocked: {row.Task}. {reason}");
+                return;
+            }
+
+            SetDebugTaskStatus(RunDashboardAction(row.OnClick)
+                ? $"Dispatched: {row.Task}. Check its existing task status for progress."
+                : $"Blocked: {row.Task}. VERMAXION could not pause YesAlready.");
+        }
+        catch (Exception ex)
+        {
+            SetDebugTaskStatus($"Blocked: reload attempt failed. {ex.Message}");
         }
     }
 
@@ -1038,6 +1111,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
             case "config":
                 ConfigWindow.Toggle();
+                break;
+
+            case "debug":
+                DebugWindow.Toggle();
                 break;
 
             case "fcpoints":
@@ -2061,6 +2138,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         ProcessPendingCharacterRegistration();
+        ProcessPendingDebugTask();
 
         AutoRetainerSelectionGuard.Update(
             Configuration.AutoRestoreRetainerCheckingAfterWork,
@@ -2296,6 +2374,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// </summary>
     public void FullStop()
     {
+        if (pendingDebugTaskId != null)
+        {
+            pendingDebugTaskId = null;
+            SetDebugTaskStatus("Cancelled for this reload; selection is saved for the next reload.");
+        }
+
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
         PauseCurrentTargetCycleBestEffort("VERMAXION Full Stop");
 
