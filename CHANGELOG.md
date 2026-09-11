@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## Unreleased - nag your mom rank checking
+
+### Fixed
+
+- Let Test Series Rank finish through framework updates while idle or with windows closed. Reuse a pending request and poll mom's read-only status every two seconds; keep loading distinct from IPC errors and cancel pending tests on Stop, logout, character change, or disposal.
+- Let mom own the Casual CC rank-25 gate and suspend the task watchdog during its rank wait. Preserve the selected reload task and normal run dispatch.
+
 ## Unreleased - I332 reload debug task
 
 ### Added

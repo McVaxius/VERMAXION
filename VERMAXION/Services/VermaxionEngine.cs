@@ -40,6 +40,10 @@ public class VermaxionEngine
     private static readonly TimeSpan HandoffBlockerWarningThrottle = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusGrace = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan NagYourMomLostStatusLogThrottle = TimeSpan.FromSeconds(30);
+    private bool seriesRankTestPending;
+    private ulong seriesRankTestCharacterId;
+    private DateTime nextSeriesRankTestCheckAt;
+    private bool nagYourMomWaitingForSeriesRank;
     private static readonly string[] NagYourMomRouteOrder =
     [
         MomRunRoutes.CasualCc,
@@ -752,11 +756,55 @@ public class VermaxionEngine
 
     public void TestNagYourMomSeriesRank()
     {
-        var snapshot = momIPCClient.GetSeriesRank();
-        NagYourMomStatusText = snapshot.Success
+        if (seriesRankTestPending)
+            return;
+
+        seriesRankTestCharacterId = Plugin.PlayerState.ContentId;
+        ApplySeriesRankTestResult(momIPCClient.GetSeriesRank());
+    }
+
+    private void ApplySeriesRankTestResult(SeriesRankSnapshot snapshot)
+    {
+        seriesRankTestPending = snapshot.Pending && string.IsNullOrWhiteSpace(snapshot.FailureReason);
+        nextSeriesRankTestCheckAt = DateTime.UtcNow.AddSeconds(2);
+        NagYourMomStatusText = seriesRankTestPending
+            ? "Series rank test: Checking..."
+            : snapshot.Success
             ? $"Series rank test: {snapshot.Rank}"
             : $"Series rank test failed: {snapshot.FailureReason}";
         Plugin.ChatGui.Print($"[Vermaxion] {NagYourMomStatusText}");
+    }
+
+    private void UpdateNagYourMomSeriesRankTest()
+    {
+        if (seriesRankTestCharacterId != 0
+            && (!clientState.IsLoggedIn || Plugin.PlayerState.ContentId != seriesRankTestCharacterId))
+        {
+            // mom clears its read at the session boundary; don't cancel a new character's request.
+            seriesRankTestPending = false;
+            seriesRankTestCharacterId = 0;
+            NagYourMomStatusText = "Idle";
+            return;
+        }
+
+        if (!seriesRankTestPending || DateTime.UtcNow < nextSeriesRankTestCheckAt)
+            return;
+
+        nextSeriesRankTestCheckAt = DateTime.UtcNow.AddSeconds(2);
+        var snapshot = momIPCClient.GetSeriesRankStatus();
+        if (!snapshot.Pending || !string.IsNullOrWhiteSpace(snapshot.FailureReason))
+            ApplySeriesRankTestResult(snapshot);
+    }
+
+    public void CancelNagYourMomSeriesRankTest()
+    {
+        if (seriesRankTestPending || nagYourMomWaitingForSeriesRank)
+        {
+            momIPCClient.CancelSeriesRank();
+            NagYourMomStatusText = "Series rank test cancelled.";
+        }
+        seriesRankTestPending = false;
+        seriesRankTestCharacterId = 0;
     }
 
     public bool ManualStartRetainerEquipping()
@@ -865,6 +913,7 @@ public class VermaxionEngine
 
     public void ForceStop()
     {
+        CancelNagYourMomSeriesRankTest();
         log.Warning("[Engine] Full Stop force-releasing ownership");
         momIPCClient.CancelActiveRun();
         dadIPCClient.CancelActiveRun();
@@ -908,6 +957,7 @@ public class VermaxionEngine
 
     public void Update()
     {
+        UpdateNagYourMomSeriesRankTest();
         if (state == EngineState.Idle)
             return;
 
@@ -1676,28 +1726,8 @@ public class VermaxionEngine
                     }
 
                     var stopAtSeriesRank25 = nagRoutePlan.StopAtSeriesRank25;
-                    if (nagRoutePlan.Route == MomRunRoutes.CasualCc && stopAtSeriesRank25)
-                    {
-                        var rankSnapshot = momIPCClient.GetSeriesRank();
-                        if (!rankSnapshot.Success)
-                        {
-                            NagYourMomStatusText = $"Series rank read failed: {rankSnapshot.FailureReason}";
-                            runHadFailure = true;
-                            log.Warning($"[Engine] nag your mom Casual CC rank read failed; dispatch blocked: {rankSnapshot.FailureReason}");
-                            nagYourMomRouteCursor++;
-                            break;
-                        }
-
-                        if (rankSnapshot.Rank >= 25)
-                        {
-                            NagYourMomStatusText = $"Series rank {rankSnapshot.Rank} reached; Casual CC skipped";
-                            log.Information($"[Engine] nag your mom Casual CC skipped because series rank is already {rankSnapshot.Rank}");
-                            nagYourMomRouteCursor++;
-                            break;
-                        }
-                    }
-
                     var startResult = momIPCClient.StartRun(nagRoutePlan.RemainingRuns, activeConfig!.NagYourMomJob, stopAtSeriesRank25, nagRoutePlan.Route);
+                    nagYourMomWaitingForSeriesRank = startResult.WaitingForSeriesRank;
                     NagYourMomStatusText = startResult.Summary;
 
                     if (ApplyMomDisableRouteRecommendation(startResult))
@@ -1732,6 +1762,7 @@ public class VermaxionEngine
                     return;
                 }
 
+                nagYourMomWaitingForSeriesRank = false;
                 if (!momIPCClient.TryGetStatus(out var currentMomStatus))
                 {
                     NagYourMomStatusText = currentMomStatus.Summary;
@@ -1747,6 +1778,7 @@ public class VermaxionEngine
                 }
 
                 NagYourMomStatusText = currentMomStatus.Summary;
+                nagYourMomWaitingForSeriesRank = currentMomStatus.WaitingForSeriesRank;
                 ApplyMomDisableRouteRecommendation(currentMomStatus);
                 nagYourMomLostStatusSince = DateTime.MinValue;
                 nagYourMomLastCompletedRuns = Math.Max(nagYourMomLastCompletedRuns, currentMomStatus.CompletedRunCount);
@@ -2130,6 +2162,7 @@ public class VermaxionEngine
 
     private void CancelForSettling(string status)
     {
+        CancelNagYourMomSeriesRankTest();
         momIPCClient.CancelActiveRun();
         if (activeDadExecution != null)
             dadIPCClient.CancelSelection(activeDadExecution);
@@ -2227,6 +2260,8 @@ public class VermaxionEngine
 
     private string? GetTaskWatchdogPauseReason()
     {
+        if (state == EngineState.RunningNagYourMom && nagYourMomWaitingForSeriesRank)
+            return "mom is checking series rank";
         if (!clientState.IsLoggedIn)
             return "client logged out";
         if (Plugin.ObjectTable.LocalPlayer == null)
@@ -3071,6 +3106,7 @@ public class VermaxionEngine
 
     private void ClearNagYourMomTracking()
     {
+        nagYourMomWaitingForSeriesRank = false;
         nagYourMomRequestIssued = false;
         nagYourMomActiveRequestId = string.Empty;
         nagYourMomActiveRoute = MomRunRoutes.CasualCc;
