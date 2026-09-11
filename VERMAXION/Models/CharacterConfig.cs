@@ -32,6 +32,8 @@ public class CharacterConfig
     public bool EnableNagYourMomFrontline { get; set; } = false;
     public bool EnableNagYourMomRivalWings { get; set; } = false;
     public bool EnableNagYourDad { get; set; } = false;
+    public bool EnableReturnBeforeNag { get; set; } = true;
+    public string ReturnBeforeNagCommand { get; set; } = "/li fc";
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
     public bool EnableMiscCmd { get; set; } = true;
     public bool EnableLootGoblinMapGather { get; set; } = false;
@@ -226,6 +228,14 @@ public class CharacterConfig
         FCBuffNextReset = DateTime.MinValue;
     }
 
+    public bool TryGetReturnBeforeNagCommand(out string command)
+    {
+        var input = ReturnBeforeNagCommand ?? string.Empty;
+        command = input.Trim();
+        return command.Length > 1 && command[0] == '/' && !char.IsWhiteSpace(command[1]) &&
+               !input.Any(c => char.IsControl(c) || c is '\u2028' or '\u2029');
+    }
+
     public void ResetNagYourMomDailyState()
     {
         NagYourMomAttemptsToday = 0;
@@ -316,6 +326,8 @@ public class CharacterConfig
             EnableNagYourMomFrontline = EnableNagYourMomFrontline,
             EnableNagYourMomRivalWings = EnableNagYourMomRivalWings,
             EnableNagYourDad = EnableNagYourDad,
+            EnableReturnBeforeNag = EnableReturnBeforeNag,
+            ReturnBeforeNagCommand = ReturnBeforeNagCommand,
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
             EnableMiscCmd = EnableMiscCmd,
             EnableLootGoblinMapGather = EnableLootGoblinMapGather,

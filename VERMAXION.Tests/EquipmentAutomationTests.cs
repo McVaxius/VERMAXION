@@ -377,6 +377,7 @@ public sealed class EquipmentAutomationTests
         };
         var machine = new CurrentJobEquipmentStateMachine(runtime);
         Assert.True(machine.Start(out _));
+        machine.Tick(); // Stylist is unavailable in this fixture; enter the native fallback.
         machine.Tick();
         runtime.Advance(TimeSpan.FromSeconds(16));
         machine.Tick();

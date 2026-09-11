@@ -7,7 +7,7 @@ namespace VERMAXION.Services;
 
 /// <summary>
 /// Fashion Report automation service.
-/// Travels to the Gold Saucer, interacts with Masked Rose, completes the full judging loop four times,
+/// Travels to the Gold Saucer, interacts with Masked Rose, completes one full judging loop,
 /// then returns control to the engine once the player is back in the world with no Fashion Report UI open.
 /// </summary>
 public class FashionReportService : IDisposable
@@ -24,7 +24,7 @@ public class FashionReportService : IDisposable
     private int completedJudgings;
 
     private const int MaxRetries = 3;
-    private const int RequiredJudgings = 4;
+    private const int RequiredJudgings = 1;
     private const ushort GoldSaucerTerritoryId = 144;
     private const string MaskedRoseName = "Masked Rose";
     private static readonly Vector3 MaskedRosePosition = new(55.864311218262f, 3.9997265338898f, 64.584785461426f);
@@ -317,7 +317,7 @@ public class FashionReportService : IDisposable
                 {
                     if (completedJudgings >= RequiredJudgings)
                     {
-                        log.Information("[FashionReport] All four Fashion Report judgings complete");
+                        log.Information("[FashionReport] Fashion Report judging complete");
                         SetState(FashionReportState.Complete);
                     }
                     else

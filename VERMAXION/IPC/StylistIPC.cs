@@ -10,6 +10,7 @@ public sealed class StylistIPC
     private readonly IPluginLog log;
     private readonly ICallGateSubscriber<int, bool?, bool?, object> updateGearsetSubscriber;
     private readonly ICallGateSubscriber<bool> isBusySubscriber;
+    internal bool UpdateMayBeActive { get; private set; }
 
     public StylistIPC(IDalamudPluginInterface pluginInterface, IPluginLog log)
     {
@@ -23,15 +24,18 @@ public sealed class StylistIPC
     {
         try
         {
-            if (isBusySubscriber.InvokeFunc())
+            UpdateMayBeActive = isBusySubscriber.InvokeFunc();
+            if (UpdateMayBeActive)
             {
                 error = "Stylist is already busy.";
                 return false;
             }
 
-            updateGearsetSubscriber.InvokeAction(gearsetId, null, false);
+            // Keep uncertain dispatches owned until a successful idle read, including cancellation.
+            UpdateMayBeActive = true;
+            updateGearsetSubscriber.InvokeAction(gearsetId, null, true);
             error = string.Empty;
-            log.Information($"[Stylist] Requested UpdateGearsetIfNeededEx({gearsetId}, null, false).");
+            log.Information($"[Stylist] Requested UpdateGearsetIfNeededEx({gearsetId}, null, true).");
             return true;
         }
         catch (Exception ex)
@@ -46,6 +50,7 @@ public sealed class StylistIPC
         try
         {
             busy = isBusySubscriber.InvokeFunc();
+            UpdateMayBeActive = busy;
             error = string.Empty;
             return true;
         }

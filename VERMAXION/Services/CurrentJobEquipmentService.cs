@@ -30,7 +30,13 @@ public sealed class CurrentJobEquipmentService : IDisposable
     }
 
     public void RunTask() => Start();
-    public void Update() => machine.Tick();
+    public void Update()
+    {
+        var previousState = machine.CurrentState;
+        machine.Tick();
+        if (machine.CurrentState != previousState)
+            log.Information($"[CurrentJobEquipment] {machine.Status}");
+    }
     public void Cancel(string reason = "Current Job Equipment cancelled") => machine.Cancel(reason);
     public void Reset() => machine.Reset();
     public void Dispose() => Cancel("Current Job Equipment disposed");

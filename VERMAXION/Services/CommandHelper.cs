@@ -8,7 +8,9 @@ namespace VERMAXION.Services;
 
 public static class CommandHelper
 {
-    public static unsafe void SendCommand(string command)
+    public static void SendCommand(string command) => TrySendCommand(command);
+
+    public static unsafe bool TrySendCommand(string command)
     {
         try
         {
@@ -17,24 +19,26 @@ public static class CommandHelper
             if (Plugin.CommandManager.ProcessCommand(command))
             {
                 Plugin.Log.Debug($"[CommandHelper] CommandManager processed: {command}");
-                return;
+                return true;
             }
 
             var uiModule = UIModule.Instance();
             if (uiModule == null)
             {
                 Plugin.Log.Error("UIModule is null, cannot send command");
-                return;
+                return false;
             }
 
             var bytes = Encoding.UTF8.GetBytes(command);
             var utf8String = Utf8String.FromSequence(bytes);
             uiModule->ProcessChatBoxEntry(utf8String, nint.Zero);
             Plugin.Log.Debug($"[CommandHelper] Sent via UIModule: {command}");
+            return true;
         }
         catch (Exception ex)
         {
             Plugin.Log.Error($"Command failed [{command}]: {ex.Message}");
+            return false;
         }
     }
 }
