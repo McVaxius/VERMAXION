@@ -2547,6 +2547,120 @@ public static class OceanFishingQueueEvidencePolicy
     }
 }
 
+public enum OceanFishingDialogAction
+{
+    Wait,
+    SelectBoarding,
+    SelectRoute,
+    Complete,
+    Exhausted,
+    RegistrationExpired,
+}
+
+public sealed class OceanFishingDialogState
+{
+    public const int MaxAttempts = 8;
+    public static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(5);
+
+    private string[]? boardingEntries;
+    private string[]? routeEntries;
+    private DateTimeOffset lastAttemptUtc;
+    private bool callbackDispatched;
+    private OceanFishingDialogAction? terminalAction;
+
+    public bool BoardingConfirmed { get; private set; }
+    public int AttemptCount { get; private set; }
+
+    public void Reset()
+    {
+        boardingEntries = null;
+        routeEntries = null;
+        lastAttemptUtc = DateTimeOffset.MinValue;
+        callbackDispatched = false;
+        terminalAction = null;
+        BoardingConfirmed = false;
+        AttemptCount = 0;
+    }
+
+    public OceanFishingDialogAction Decide(
+        DateTimeOffset nowUtc,
+        DateTimeOffset registrationDeadlineUtc,
+        IReadOnlyList<string>? readyEntries,
+        string localizedBoardingText,
+        bool embarkPromptMatched,
+        bool queueConfirmed)
+    {
+        if (terminalAction.HasValue)
+            return terminalAction.Value;
+
+        // Progress wins over the retry/exhaustion clock, including sparse updates
+        // that never observe the old menu closing between the two menus.
+        if (queueConfirmed || embarkPromptMatched)
+        {
+            BoardingConfirmed = true;
+            terminalAction = OceanFishingDialogAction.Complete;
+            return terminalAction.Value;
+        }
+
+        if (nowUtc >= registrationDeadlineUtc)
+        {
+            terminalAction = OceanFishingDialogAction.RegistrationExpired;
+            return terminalAction.Value;
+        }
+
+        var ready = readyEntries is { Count: > 0 } &&
+                    readyEntries.All(entry => !string.IsNullOrWhiteSpace(entry));
+        var hasBoardingEntry = ready && !string.IsNullOrWhiteSpace(localizedBoardingText) &&
+                              readyEntries!.Any(entry => string.Equals(
+                                  entry, localizedBoardingText.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (ready)
+        {
+            if (boardingEntries == null && hasBoardingEntry)
+                boardingEntries = readyEntries!.ToArray();
+            else if (!BoardingConfirmed && callbackDispatched &&
+                     !string.IsNullOrWhiteSpace(localizedBoardingText) && !hasBoardingEntry &&
+                     !readyEntries!.SequenceEqual(boardingEntries!, StringComparer.Ordinal))
+            {
+                BoardingConfirmed = true;
+                routeEntries = readyEntries!.ToArray();
+                AttemptCount = 0;
+                callbackDispatched = false;
+                lastAttemptUtc = DateTimeOffset.MinValue;
+            }
+        }
+
+        if (AttemptCount > 0 && nowUtc - lastAttemptUtc < RetryInterval)
+            return OceanFishingDialogAction.Wait;
+
+        // The last dispatch gets the same acknowledgement interval as a retry.
+        // Unready frames spend no attempts, but do not extend this final wait.
+        if (AttemptCount >= MaxAttempts)
+        {
+            terminalAction = OceanFishingDialogAction.Exhausted;
+            return terminalAction.Value;
+        }
+
+        var expectedEntries = BoardingConfirmed ? routeEntries : boardingEntries;
+        if (!ready || expectedEntries == null || (!BoardingConfirmed && !hasBoardingEntry) ||
+            !readyEntries!.SequenceEqual(expectedEntries, StringComparer.Ordinal))
+            return OceanFishingDialogAction.Wait;
+
+        return BoardingConfirmed
+            ? OceanFishingDialogAction.SelectRoute
+            : OceanFishingDialogAction.SelectBoarding;
+    }
+
+    public void RecordCallbackAttempt(DateTimeOffset nowUtc, bool dispatched)
+    {
+        if (terminalAction.HasValue)
+            return;
+
+        AttemptCount++;
+        lastAttemptUtc = nowUtc;
+        callbackDispatched |= dispatched;
+    }
+}
+
 public static class OceanFishingDialoguePolicy
 {
     public const string SheetName = "custom/006/CtsIkdEntrance_00663";

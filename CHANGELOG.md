@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## Unreleased - Ocean Fishing registration acknowledgement
+
+### Fixed
+
+- Wait for a fully ready Dryskthota menu and observed dialog progress before completing boarding or route selection. Compare menu contents across sparse updates, preserve localized boarding/embark checks and route preferences, and retry an unchanged recognized menu up to eight times with five seconds between attempts and after the final attempt. Retain queue recognition, the registration deadline, and existing failure cleanup.
+- Increase Ocean Fishing startup travel to eight total attempts within the existing travel timeouts and registration deadline.
+
 ## Unreleased - nag your mom rank checking
 
 ### Fixed

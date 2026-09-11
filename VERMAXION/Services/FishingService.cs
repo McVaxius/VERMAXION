@@ -28,7 +28,7 @@ public sealed class FishingService
     private const uint VersatileLureItemId = OceanFishingDockPreparationPolicy.VersatileLureItemId;
     private const string OceanFishingResultAddonName = "IKDResult";
     private const string TelepotTownAddonName = "TelepotTown";
-    private const int MaxStartupTravelAttempts = 3;
+    private const int MaxStartupTravelAttempts = 8;
     private const float BoatFishingPositionTolerance = 0.5f;
     private const ConditionFlag GatheringCondition = (ConditionFlag)6;
     private const ConditionFlag FishingCondition = (ConditionFlag)43;
@@ -83,8 +83,7 @@ public sealed class FishingService
     private DateTime departureWaitStartedAt = DateTime.MinValue;
     private DateTime dutyStartedAt = DateTime.MinValue;
     private bool sawFishingContext;
-    private bool registrationEntrySelected;
-    private bool routeSelectionHandled;
+    private readonly OceanFishingDialogState registrationDialog = new();
     private bool embarkConfirmationAccepted;
     private bool queueRegistrationObserved;
     private bool queueRecognitionGraceEntered;
@@ -348,8 +347,7 @@ public sealed class FishingService
         lastInteractionAttemptAt = DateTime.MinValue;
         departureWaitStartedAt = DateTime.MinValue;
         dutyStartedAt = DateTime.MinValue;
-        registrationEntrySelected = false;
-        routeSelectionHandled = false;
+        registrationDialog.Reset();
         embarkConfirmationAccepted = false;
         queueRegistrationObserved = false;
         queueRecognitionGraceEntered = false;
@@ -424,8 +422,7 @@ public sealed class FishingService
         departureWaitStartedAt = DateTime.MinValue;
         dutyStartedAt = DateTime.MinValue;
         sawFishingContext = false;
-        registrationEntrySelected = false;
-        routeSelectionHandled = false;
+        registrationDialog.Reset();
         embarkConfirmationAccepted = false;
         queueRegistrationObserved = false;
         queueRecognitionGraceEntered = false;
@@ -1725,19 +1722,12 @@ public sealed class FishingService
             return;
         }
 
-        var boardingText = GetOceanFishingDialogueText(OceanFishingDialoguePolicy.BoardingRow);
-        var entries = string.Empty;
-        if (!string.IsNullOrWhiteSpace(boardingText) &&
-            GameHelpers.TrySelectStringExact(boardingText, out entries))
+        if (GameHelpers.IsAddonVisible("SelectString") || GameHelpers.IsAddonVisible("SelectYesno"))
         {
-            registrationEntrySelected = true;
-            log.Information($"[Fishing] Selected localized registration entry from CtsIkdEntrance_00663 row 4: '{boardingText}'");
             SetState(FishingState.ConfirmingRegistration);
+            TickConfirmRegistration(TimeSpan.Zero);
             return;
         }
-
-        if (GameHelpers.IsAddonVisible("SelectString") && !string.IsNullOrWhiteSpace(entries))
-            statusDetail = $"Waiting for Register to board entry ({entries})";
 
         if (lastInteractionAttemptAt == DateTime.MinValue ||
             DateTime.UtcNow - lastInteractionAttemptAt >= TimeSpan.FromSeconds(5))
@@ -1784,28 +1774,65 @@ public sealed class FishingService
             return;
         }
 
-        if (TryHandleOceanFishingYesNo())
+        if (TryHandleOceanFishingYesNo(out var embarkPromptMatched))
         {
             embarkConfirmationAccepted = true;
             log.Information("[Fishing] Confirmed Ocean Fishing embark prompt");
-            statusDetail = "Waiting for queue registration";
-            return;
         }
 
-        if (GameHelpers.IsAddonVisible("SelectString") && !routeSelectionHandled)
+        var boardingText = GetOceanFishingDialogueText(OceanFishingDialoguePolicy.BoardingRow);
+        var ready = GameHelpers.TryReadSelectStringEntries(out var entries);
+        var action = registrationDialog.Decide(
+            DateTimeOffset.UtcNow,
+            context.RegistrationDeadlineUtc,
+            ready ? entries : null,
+            boardingText,
+            embarkPromptMatched,
+            queueRegistrationObserved);
+        switch (action)
         {
-            routeSelectionHandled = TrySelectOceanFishingRoute();
-            return;
+            case OceanFishingDialogAction.SelectBoarding:
+            {
+                var index = Array.FindIndex(entries, entry => string.Equals(
+                    entry, boardingText.Trim(), StringComparison.OrdinalIgnoreCase));
+                var dispatched = GameHelpers.TrySelectStringEntry(index, entries, out _, out _, out var attempted);
+                if (!attempted)
+                    return;
+                registrationDialog.RecordCallbackAttempt(DateTimeOffset.UtcNow, dispatched);
+                log.Information(
+                    $"[Fishing] Localized boarding callback attempt {registrationDialog.AttemptCount}/{OceanFishingDialogState.MaxAttempts}; " +
+                    $"dispatched={dispatched}, awaiting menu/embark/queue progress");
+                statusDetail = "Waiting for boarding selection acknowledgement";
+                return;
+            }
+            case OceanFishingDialogAction.SelectRoute:
+            {
+                var dispatched = TrySelectOceanFishingRoute(entries, out var attempted);
+                if (!attempted)
+                    return;
+                registrationDialog.RecordCallbackAttempt(DateTimeOffset.UtcNow, dispatched);
+                log.Information(
+                    $"[Fishing] Route callback attempt {registrationDialog.AttemptCount}/{OceanFishingDialogState.MaxAttempts}; " +
+                    $"dispatched={dispatched}, awaiting embark/queue progress");
+                statusDetail = "Waiting for route selection acknowledgement";
+                return;
+            }
+            case OceanFishingDialogAction.Complete:
+                statusDetail = "Waiting for embark/queue registration";
+                return;
+            case OceanFishingDialogAction.Exhausted:
+                Fail(
+                    $"Ocean Fishing {(registrationDialog.BoardingConfirmed ? "route" : "boarding")} selection received no acknowledgement after {OceanFishingDialogState.MaxAttempts} attempts.",
+                    FishingAttemptFailureKind.Stop);
+                return;
+            case OceanFishingDialogAction.RegistrationExpired:
+                Fail("Ocean Fishing registration closed before queue confirmation was observed.", FishingAttemptFailureKind.Stop);
+                return;
         }
 
-        var window = new OceanFishingStartupWindow(
-            context.RegistrationStartUtc,
-            context.RegistrationStartUtc,
-            context.RegistrationDeadlineUtc);
-
-        statusDetail = registrationEntrySelected
-            ? $"Waiting for route/embark confirmation (deadline {window.EndUtc:u})"
-            : "Waiting for registration selection";
+        statusDetail = registrationDialog.BoardingConfirmed
+            ? $"Waiting for route/embark confirmation (deadline {context.RegistrationDeadlineUtc:u})"
+            : "Waiting for ready boarding menu or selection acknowledgement";
     }
 
     private void TickWaitForQueueRecognitionGrace()
@@ -2144,30 +2171,33 @@ public sealed class FishingService
                registrationDecision == OceanFishingRegistrationDecision.ContinueDialogs;
     }
 
-    private static bool TryHandleOceanFishingYesNo()
+    private static bool TryHandleOceanFishingYesNo(out bool promptMatched)
     {
         var embarkText = GetOceanFishingDialogueText(OceanFishingDialoguePolicy.EmbarkRow);
-        return GameHelpers.TryClickYesIfPromptAllowed(
-            prompt => OceanFishingDialoguePolicy.MatchesEmbarkPrompt(prompt, embarkText),
+        var matched = false;
+        var accepted = GameHelpers.TryClickYesIfPromptAllowed(
+            prompt => matched = OceanFishingDialoguePolicy.MatchesEmbarkPrompt(prompt, embarkText),
             "Ocean Fishing registration/embark",
             allowUnreadable: false,
             out _,
             OceanFishingDialoguePolicy.DescribeEmbarkExpectation(embarkText));
+        promptMatched = matched;
+        return accepted;
     }
 
-    private bool TrySelectOceanFishingRoute()
+    private bool TrySelectOceanFishingRoute(IReadOnlyList<string> expectedEntries, out bool callbackAttempted)
     {
         var configuredPreference = configManager.GetActiveConfig().OceanFishingRouteOverride ??
                                    configuration.OceanFishingRoutePreference;
         var preference = OceanFishingRoutePolicy.Normalize(configuredPreference);
         var requestedIndex = OceanFishingRoutePolicy.GetDialogEntryIndex(preference);
-        if (!GameHelpers.TrySelectStringEntry(requestedIndex, out var selectedIndex, out var entryCount))
+        if (!GameHelpers.TrySelectStringEntry(requestedIndex, expectedEntries, out var selectedIndex, out var entryCount, out callbackAttempted))
             return false;
 
         log.Information(
             selectedIndex == requestedIndex
-                ? $"[Fishing] Selected {preference} Ocean Fishing route at dialog entry {selectedIndex}"
-                : $"[Fishing] Requested {preference} Ocean Fishing route entry {requestedIndex}, but only {entryCount} entries were available; selected safe fallback entry 0");
+                ? $"[Fishing] Dispatched {preference} Ocean Fishing route at dialog entry {selectedIndex}"
+                : $"[Fishing] Requested {preference} Ocean Fishing route entry {requestedIndex}, but only {entryCount} entries were available; dispatched safe fallback entry 0");
         return true;
     }
 
