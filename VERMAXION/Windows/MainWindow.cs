@@ -583,7 +583,13 @@ public class MainWindow : Window, IDisposable
             {
                 var route = GetFirstDueNagYourMomRoute(config);
                 var remainingRuns = Math.Max(1, GetRemainingNagYourMomRuns(config, route));
-                var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route);
+                if (!MomSchedule.TryGetQueueDeadlineUtc(config.NagYourMomWindowStartLocal, config.NagYourMomWindowEndLocal, DateTime.Now, out var deadlineUtc))
+                {
+                    Plugin.ChatGui.Print("[Vermaxion] mom start blocked: outside the configured local window.");
+                    return;
+                }
+                var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route,
+                    queueDeadlineUtc: deadlineUtc);
                 Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
             }, "OK",
             secondaryButtonLabel: "Test Series Rank##MomSeriesRank",
@@ -1146,14 +1152,12 @@ public class MainWindow : Window, IDisposable
             return DateTime.MinValue;
         }
 
-        var inWindow = start <= end
-            ? now.TimeOfDay >= start && now.TimeOfDay <= end
-            : now.TimeOfDay >= start || now.TimeOfDay <= end;
+        var inWindow = MomSchedule.TryGetQueueDeadlineUtc(config.NagYourMomWindowStartLocal, config.NagYourMomWindowEndLocal, now, out _);
         if (inWindow)
             return DateTime.UtcNow;
 
         var nextStart = now.Date.Add(start);
-        if (start <= end && now.TimeOfDay > end)
+        if (start <= end && now.TimeOfDay >= end)
             nextStart = nextStart.AddDays(1);
         return nextStart.ToUniversalTime();
     }
@@ -1500,6 +1504,10 @@ public class MainWindow : Window, IDisposable
         if (!config.EnableNagYourMom)
             return "Off";
 
+        if (engineStatus.Contains("Window closed", StringComparison.OrdinalIgnoreCase)
+            || engineStatus.StartsWith("Scheduled mom work blocked:", StringComparison.Ordinal))
+            return engineStatus;
+
         if (string.IsNullOrWhiteSpace(config.NagYourMomJob))
             return "Set job";
 
@@ -1509,10 +1517,7 @@ public class MainWindow : Window, IDisposable
         if (!TimeSpan.TryParse(config.NagYourMomWindowStartLocal, out var start) || !TimeSpan.TryParse(config.NagYourMomWindowEndLocal, out var end))
             return "Bad local window";
 
-        var now = DateTime.Now.TimeOfDay;
-        var inWindow = start <= end
-            ? now >= start && now <= end
-            : now >= start || now <= end;
+        var inWindow = MomSchedule.TryGetQueueDeadlineUtc(config.NagYourMomWindowStartLocal, config.NagYourMomWindowEndLocal, DateTime.Now, out _);
 
         if (!inWindow)
             return "Outside local window";

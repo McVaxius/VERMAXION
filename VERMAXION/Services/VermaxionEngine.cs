@@ -46,6 +46,8 @@ public class VermaxionEngine
     private ulong seriesRankTestCharacterId;
     private DateTime nextSeriesRankTestCheckAt;
     private bool nagYourMomWaitingForSeriesRank;
+    private bool nagYourMomWindowExpired;
+    private DateTime? nagYourMomQueueDeadlineUtc;
     private static readonly string[] NagYourMomRouteOrder =
     [
         MomRunRoutes.CasualCc,
@@ -699,12 +701,14 @@ public class VermaxionEngine
         if (!TryParseLocalTime(config.NagYourMomWindowStartLocal, out var start) ||
             !TryParseLocalTime(config.NagYourMomWindowEndLocal, out var end))
             return TaskEligibility.Blocked("The mom local-time window is invalid.");
-        if (!IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end))
+        if (!MomSchedule.TryGetQueueDeadlineUtc(config.NagYourMomWindowStartLocal, config.NagYourMomWindowEndLocal, DateTime.Now, out _))
             return TaskEligibility.NotDue($"Outside mom window ({config.NagYourMomWindowStartLocal}-{config.NagYourMomWindowEndLocal}).");
         RollNagYourMomLocalDay(config);
         if (!NagYourMomRouteOrder.Any(route => IsNagYourMomRouteDue(config, route)))
             return TaskEligibility.NotDue("All enabled mom routes reached their local-day caps.");
         var readiness = momIPCClient.GetReadiness();
+        if (!readiness.SupportsQueueDeadline)
+            return TaskEligibility.Blocked(MomSchedule.DeadlineSupportBlocker);
         return readiness.CanStart
             ? TaskEligibility.Runnable()
             : TaskEligibility.Blocked(string.IsNullOrWhiteSpace(readiness.BlockReason) ? readiness.Summary : readiness.BlockReason);
@@ -1734,11 +1738,27 @@ public class VermaxionEngine
                         break;
                     }
 
+                    if (!momReadiness.SupportsQueueDeadline)
+                    {
+                        NagYourMomStatusText = MomSchedule.DeadlineSupportBlocker;
+                        AdvanceToNextTask(EngineState.RunningNagYourMom);
+                        break;
+                    }
+
                     if (!TickReturnBeforeNag(activeConfig!))
                         break;
 
+                    if (!MomSchedule.TryGetQueueDeadlineUtc(activeConfig!.NagYourMomWindowStartLocal,
+                        activeConfig.NagYourMomWindowEndLocal, DateTime.Now, out var queueDeadlineUtc))
+                    {
+                        NagYourMomStatusText = "mom window closed before dispatch; mom task complete for this cycle.";
+                        AdvanceToNextTask(EngineState.RunningNagYourMom);
+                        break;
+                    }
+
                     var stopAtSeriesRank25 = nagRoutePlan.StopAtSeriesRank25;
-                    var startResult = momIPCClient.StartRun(nagRoutePlan.RemainingRuns, activeConfig!.NagYourMomJob, stopAtSeriesRank25, nagRoutePlan.Route);
+                    var startResult = momIPCClient.StartRun(nagRoutePlan.RemainingRuns, activeConfig!.NagYourMomJob, stopAtSeriesRank25, nagRoutePlan.Route,
+                        queueDeadlineUtc: queueDeadlineUtc);
                     nagYourMomWaitingForSeriesRank = startResult.WaitingForSeriesRank;
                     NagYourMomStatusText = startResult.Summary;
 
@@ -1758,12 +1778,20 @@ public class VermaxionEngine
                     }
 
                     TrackAcceptedNagYourMomRequest(startResult, nagRoutePlan);
+                    nagYourMomQueueDeadlineUtc = queueDeadlineUtc;
+                    nagYourMomWindowExpired = startResult.WindowExpired;
+                    CreditNagYourMomObservedResult(startResult);
                     MarkCurrentTaskWorkStarted();
                     log.Information($"[Engine] nag your mom accepted: route={startResult.Route}, job={activeConfig!.NagYourMomJob}, requestedRuns={nagYourMomRequestedRuns}, stopAtSeriesRank25={stopAtSeriesRank25}, status={startResult.Status}");
 
                     if (startResult.Status == MomRunStatus.Completed)
                     {
-                        CreditNagYourMomTerminalResult(startResult);
+                        if (MomSchedule.CompletesCycle(startResult))
+                        {
+                            NagYourMomStatusText = $"{startResult.Summary} mom task complete for this cycle; remaining routes skipped.";
+                            AdvanceToNextTask(EngineState.RunningNagYourMom);
+                            break;
+                        }
                         ClearNagYourMomTracking();
                         nagYourMomRouteCursor++;
                         log.Information("[Engine] nag your mom completed immediately");
@@ -1775,13 +1803,16 @@ public class VermaxionEngine
                 }
 
                 nagYourMomWaitingForSeriesRank = false;
-                if (!momIPCClient.TryGetStatus(out var currentMomStatus))
+                if (!momIPCClient.TryGetStatus(out var currentMomStatus)
+                    || !string.Equals(currentMomStatus.RequestId, nagYourMomActiveRequestId, StringComparison.Ordinal))
                 {
+                    if (!string.Equals(currentMomStatus.RequestId, nagYourMomActiveRequestId, StringComparison.Ordinal))
+                        currentMomStatus.Summary = "Waiting for status of the accepted mom request.";
                     NagYourMomStatusText = currentMomStatus.Summary;
                     if (ShouldWaitForLostNagYourMomStatus(currentMomStatus.Summary))
                         return;
 
-                    var creditedAfterLostStatus = CreditNagYourMomRunCount(nagYourMomActiveRoute, nagYourMomLastCompletedRuns, currentMomStatus.Summary);
+                    var creditedAfterLostStatus = nagYourMomLastCompletedRuns;
                     runHadFailure = true;
                     log.Warning($"[Engine] nag your mom status lost after active request; advancing as failed after grace. reason={currentMomStatus.FailureReason}, creditedRuns={creditedAfterLostStatus}, requestedRuns={nagYourMomRequestedRuns}");
                     ClearNagYourMomTracking();
@@ -1791,9 +1822,10 @@ public class VermaxionEngine
 
                 NagYourMomStatusText = currentMomStatus.Summary;
                 nagYourMomWaitingForSeriesRank = currentMomStatus.WaitingForSeriesRank;
+                nagYourMomWindowExpired = currentMomStatus.WindowExpired;
                 ApplyMomDisableRouteRecommendation(currentMomStatus);
                 nagYourMomLostStatusSince = DateTime.MinValue;
-                nagYourMomLastCompletedRuns = Math.Max(nagYourMomLastCompletedRuns, currentMomStatus.CompletedRunCount);
+                var newlyCreditedMomRuns = CreditNagYourMomObservedResult(currentMomStatus);
                 if (currentMomStatus.Status is MomRunStatus.Queued or MomRunStatus.Running)
                     return;
 
@@ -1802,7 +1834,7 @@ public class VermaxionEngine
                     if (ShouldWaitForLostNagYourMomStatus("mom returned Idle during an active Nag Mom request."))
                         return;
 
-                    var creditedAfterIdle = CreditNagYourMomRunCount(nagYourMomActiveRoute, nagYourMomLastCompletedRuns, currentMomStatus.Summary);
+                    var creditedAfterIdle = nagYourMomLastCompletedRuns;
                     runHadFailure = true;
                     log.Warning($"[Engine] nag your mom returned Idle during active request; advancing as failed after grace. creditedRuns={creditedAfterIdle}, requestedRuns={nagYourMomRequestedRuns}");
                     ClearNagYourMomTracking();
@@ -1812,14 +1844,20 @@ public class VermaxionEngine
 
                 if (currentMomStatus.Status == MomRunStatus.Completed)
                 {
-                    var creditedRuns = CreditNagYourMomTerminalResult(currentMomStatus);
+                    var creditedRuns = newlyCreditedMomRuns;
+                    if (MomSchedule.CompletesCycle(currentMomStatus))
+                    {
+                        NagYourMomStatusText = $"{currentMomStatus.Summary} mom task complete for this cycle; remaining routes skipped.";
+                        AdvanceToNextTask(EngineState.RunningNagYourMom);
+                        break;
+                    }
                     ClearNagYourMomTracking();
                     nagYourMomRouteCursor++;
                     log.Information($"[Engine] nag your mom completed successfully: route={currentMomStatus.Route}, creditedRuns={creditedRuns}, completedRuns={currentMomStatus.CompletedRunCount}, requestedRuns={currentMomStatus.RequestedRunCount}");
                 }
                 else
                 {
-                    var creditedRuns = CreditNagYourMomTerminalResult(currentMomStatus);
+                    var creditedRuns = newlyCreditedMomRuns;
                     runHadFailure = true;
                     ClearNagYourMomTracking();
                     nagYourMomRouteCursor++;
@@ -2276,6 +2314,9 @@ public class VermaxionEngine
 
     private string? GetTaskWatchdogPauseReason()
     {
+        if (state == EngineState.RunningNagYourMom && nagYourMomRequestIssued
+            && (nagYourMomWindowExpired || DateTime.UtcNow >= nagYourMomQueueDeadlineUtc))
+            return "mom window closed; awaiting confirmed withdrawal or match exit";
         if (state == EngineState.RunningNagYourMom && nagYourMomWaitingForSeriesRank)
             return "mom is checking series rank";
         if (!clientState.IsLoggedIn)
@@ -2966,13 +3007,6 @@ public class VermaxionEngine
         return TimeSpan.TryParse(value, out result);
     }
 
-    private static bool IsWithinLocalWindow(TimeSpan now, TimeSpan start, TimeSpan end)
-    {
-        return start <= end
-            ? now >= start && now <= end
-            : now >= start || now <= end;
-    }
-
     private bool TickReturnBeforeNag(CharacterConfig config)
     {
         if (nagReturnStartedAt == DateTime.MinValue && !config.EnableReturnBeforeNag)
@@ -3135,7 +3169,7 @@ public class VermaxionEngine
             return false;
         }
 
-        return IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end);
+        return MomSchedule.TryGetQueueDeadlineUtc(config.NagYourMomWindowStartLocal, config.NagYourMomWindowEndLocal, DateTime.Now, out _);
     }
 
     private bool TryGetNextNagYourMomRoute(CharacterConfig config, out NagYourMomRoutePlan plan, out string reason)
@@ -3158,7 +3192,7 @@ public class VermaxionEngine
             return false;
         }
 
-        if (!IsWithinLocalWindow(DateTime.Now.TimeOfDay, start, end))
+        if (!MomSchedule.TryGetQueueDeadlineUtc(config.NagYourMomWindowStartLocal, config.NagYourMomWindowEndLocal, DateTime.Now, out _))
         {
             reason = $"Outside mom window ({config.NagYourMomWindowStartLocal}-{config.NagYourMomWindowEndLocal})";
             return false;
@@ -3229,13 +3263,15 @@ public class VermaxionEngine
         nagYourMomActiveRequestId = result.RequestId ?? string.Empty;
         nagYourMomActiveRoute = string.IsNullOrWhiteSpace(result.Route) ? plan.Route : result.Route;
         nagYourMomRequestedRuns = result.RequestedRunCount > 0 ? result.RequestedRunCount : plan.RemainingRuns;
-        nagYourMomLastCompletedRuns = Math.Max(0, result.CompletedRunCount);
+        nagYourMomLastCompletedRuns = 0;
         nagYourMomLostStatusSince = DateTime.MinValue;
         nagYourMomLostStatusLastLoggedAt = DateTime.MinValue;
     }
 
     private void ClearNagYourMomTracking()
     {
+        nagYourMomWindowExpired = false;
+        nagYourMomQueueDeadlineUtc = null;
         nagYourMomWaitingForSeriesRank = false;
         nagYourMomRequestIssued = false;
         nagYourMomActiveRequestId = string.Empty;
@@ -3246,13 +3282,10 @@ public class VermaxionEngine
         nagYourMomLostStatusLastLoggedAt = DateTime.MinValue;
     }
 
-    private int CreditNagYourMomTerminalResult(MomRunResult result)
+    private int CreditNagYourMomObservedResult(MomRunResult result)
     {
         var route = string.IsNullOrWhiteSpace(result.Route) ? nagYourMomActiveRoute : result.Route;
-        var observedCompletedRuns = Math.Max(nagYourMomLastCompletedRuns, result.CompletedRunCount);
-        var runsToCredit = result.Status == MomRunStatus.Completed
-            ? Math.Max(result.RequestedRunCount > 0 ? result.RequestedRunCount : nagYourMomRequestedRuns, observedCompletedRuns)
-            : observedCompletedRuns;
+        var runsToCredit = MomSchedule.ObserveCompletedRuns(result, ref nagYourMomLastCompletedRuns);
 
         return CreditNagYourMomRunCount(route, runsToCredit, result.Summary);
     }
@@ -3334,6 +3367,11 @@ public class VermaxionEngine
     private bool ShouldWaitForLostNagYourMomStatus(string reason)
     {
         var now = DateTime.UtcNow;
+        if (nagYourMomWindowExpired || now >= nagYourMomQueueDeadlineUtc)
+        {
+            NagYourMomStatusText = $"{reason} Window closed; retaining mom ownership until withdrawal or match exit is confirmed.";
+            return true;
+        }
         var dutyOrQueueActive = IsNagYourMomDutyOrQueueActive();
 
         if (dutyOrQueueActive)
