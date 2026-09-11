@@ -56,7 +56,6 @@ public class MainWindow : Window, IDisposable
     private readonly Plugin plugin;
     private readonly RetainerEquippingArProbeCache retainerEquippingReadinessCache =
         new(TimeSpan.FromSeconds(5));
-    private List<TaskRowDescriptor>? taskRowsBeingBuilt;
 
     public MainWindow(Plugin plugin)
         : base(
@@ -220,7 +219,7 @@ public class MainWindow : Window, IDisposable
 
         void DrawTaskSurface(bool favoritesOnly)
         {
-            taskRowsBeingBuilt = new List<TaskRowDescriptor>();
+            var taskRows = GetDashboardTaskRows();
             var loadedPluginInternalNames = GetLoadedTaskDependencyNames();
 
         // Task table with run buttons
@@ -242,187 +241,7 @@ public class MainWindow : Window, IDisposable
             ImGui.TableSetupColumn("Dependencies", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 112f);
             DrawTaskTableHeaders();
 
-            // --- Every AR PostProcess ---
-            DrawTaskCategory("Run-start hook", AutomationCatalog.Get(AutomationCatalog.MiscCommands));
-            DrawTaskRow("Misc Cmd", config.EnableMiscCmd,
-                config.EnableMiscCmd ? AutomationCatalog.Get(AutomationCatalog.MiscCommands).CadenceLabel : "Off",
-                "run##MiscCmd", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
-            DrawTaskCategory("Ordered engine tasks", AutomationCatalog.Get(AutomationCatalog.FCBuffRefill));
-            DrawTaskRow("FC Buff Refill", config.EnableFCBuffRefill, AutomationCatalog.Get(AutomationCatalog.FCBuffRefill).CadenceLabel,
-                "run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
-            DrawTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
-                "run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
-            var fishingButtonsDisabled = engine.IsRunning ||
-                                         plugin.IsFishingRunActive ||
-                                         plugin.FisherGearsetTestService.IsActive;
-            DrawTaskCategory("Preemptive coordinator", AutomationCatalog.Get(AutomationCatalog.Fishing));
-            DrawTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingRunStatusText),
-                "R##Fishing", plugin.RunFishingStartupManual, "OK",
-                buttonDisabled: fishingButtonsDisabled,
-                buttonTooltip: fishingButtonsDisabled ? "Fishing, relog, or engine work is active. Use FULL STOP to cancel." : null,
-                secondaryButtonLabel: "T##FishingTest",
-                secondaryOnClick: plugin.RunFishingStartupTest,
-                secondaryButtonDisabled: fishingButtonsDisabled,
-                secondaryButtonTooltip: "Run a full account-level Ocean Fishing test using the next real registration.",
-                tertiaryButtonLabel: "F##FishingGearsetTest",
-                tertiaryOnClick: plugin.RunFishingGearsetTest,
-                tertiaryButtonDisabled: fishingButtonsDisabled,
-                tertiaryButtonTooltip: "Equip and verify the current character's first saved Fisher gearset.");
-            DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.RegisterRegistrables));
-            DrawTaskRow("Register Registrables", config.EnableRegisterRegistrables, AutomationCatalog.Get(AutomationCatalog.RegisterRegistrables).CadenceLabel,
-                "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
-            DrawTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
-                "run##Listings", () =>
-                {
-                    plugin.ConfigManager.SaveCurrentAccount();
-                    engine.ManualStartRefillListings();
-                }, "OK");
-            var retainerEquippingFeature = AutomationCatalog.Get(AutomationCatalog.RetainerEquipping);
-            var retainerEquippingReadiness = GetRetainerEquippingReadiness(config, forceRefresh: false);
-            var retainerEquippingExecuting =
-                engine.State == VermaxionEngine.EngineState.RunningRetainerEquipping;
-            var retainerEquippingStatus = retainerEquippingExecuting
-                ? plugin.RetainerEquippingService.StatusText
-                : retainerEquippingReadiness.StatusText;
-            var retainerEquippingTooltip = retainerEquippingExecuting
-                ? plugin.RetainerEquippingService.StatusText
-                : retainerEquippingReadiness.DisabledReason;
-            DrawTaskRow(
-                retainerEquippingFeature.Label,
-                config.EnableRetainerEquipping,
-                retainerEquippingStatus,
-                "run##RetainerEquipping",
-                RunRetainerEquipping,
-                retainerEquippingFeature.Maturity == AutomationMaturity.Wip ? "WIP" : "OK",
-                statusTooltip: retainerEquippingTooltip,
-                buttonDisabled: !retainerEquippingReadiness.CanRun,
-                buttonTooltip: retainerEquippingReadiness.CanRun
-                    ? "Run only Retainer Equipping. This explicit run ignores its scheduling checkbox."
-                    : retainerEquippingReadiness.DisabledReason);
-            DrawTaskCategory("Manual utility", null);
-            DrawTaskRow("Retainer Bell", true, plugin.WorkshopBellService.StatusText,
-                "run##WorkshopBell", () =>
-                {
-                    plugin.ConfigManager.SaveCurrentAccount();
-                    var activeConfig = plugin.ConfigManager.GetActiveConfig();
-                    plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
-                }, "OK");
-            var equipmentAutomationBusy = IsEquipmentAutomationBusy();
-            DrawTaskRow("Bootstrap Gearsets", true, plugin.GearUpdaterService.StatusText,
-                "run##BootstrapGearsets", plugin.GearUpdaterService.StartBootstrap, "OK",
-                buttonDisabled: equipmentAutomationBusy,
-                buttonTooltip: equipmentAutomationBusy
-                    ? "An engine or equipment task is active."
-                    : "Persist the current job, then bootstrap missing unlocked class/job gearsets from already-owned main hands.");
-            DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.SeasonalGear));
-            DrawTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, AutomationCatalog.Get(AutomationCatalog.SeasonalGear).CadenceLabel,
-                "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
-            DrawTaskRow("Minion Roulette", config.EnableMinionRoulette, AutomationCatalog.Get(AutomationCatalog.MinionRoulette).CadenceLabel,
-                "run##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
-            DrawTaskRow("Gear Updater", config.EnableGearUpdater, AutomationCatalog.Get(AutomationCatalog.GearUpdater).CadenceLabel,
-                "run##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
-            DrawTaskRow("After-AR Park", config.EnableAfterArPark, GetAfterArParkStatus(config),
-                "run##AfterArPark", () => plugin.AfterArParkService.Start(config), "OK",
-                buttonDisabled: engine.IsRunning || plugin.AfterArParkService.IsActive ||
-                                !AfterArParkService.TryResolveCommand(
-                                    config.AfterArParkDestination,
-                                    config.AfterArParkCustomCommand,
-                                    out _,
-                                    out _),
-                buttonTooltip: "Issues the configured /li route once and waits for Lifestream/player settlement.");
-
-            // --- Weekly Tasks ---
-            DrawTaskRow("Verminion (5x)", config.EnableVerminionQueue,
-                GetWeeklyTaskStatus(config.VerminionLastCompleted, config.VerminionNextReset, "Done this week", "Weekly"),
-                "run##Verm", () => plugin.VerminionService.RunTask(), "OK");
-            DrawTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
-                GetJumboCactpotStatus(config),
-                "run##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");
-            DrawTaskRow("Fashion Report", config.EnableFashionReport,
-                GetFashionReportStatus(config),
-                "run##Fashion", () => plugin.FashionReportService.Start(), "OK");
-
-            // --- Daily Tasks ---
-            DrawTaskRow("Mini Cactpot", config.EnableMiniCactpot,
-                GetDailyTaskStatus(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset, "Done today", "Daily"),
-                "run##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
-            DrawTaskRow("Chocobo Racing", config.EnableChocoboRacing,
-                GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
-                "run##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
-            var alliedGearsetValid = IsAlliedSocietyGearsetValid(config);
-            DrawTaskRow("Allied Society", config.EnableAlliedSociety,
-                GetAlliedSocietyStatus(config),
-                "run##AlliedSociety", () => plugin.AlliedSocietyService.Start(config), "OK",
-                buttonDisabled: equipmentAutomationBusy || !alliedGearsetValid,
-                buttonTooltip: alliedGearsetValid
-                    ? "Runs Questionable Companion's Allied Society rotation for only the current Name@HomeWorld character."
-                    : "Select a valid current or saved gearset before starting.");
-            var lootGoblinDailyStatus = GetDailyTaskStatus(
-                config.LootGoblinMapGatherLastCompleted,
-                config.LootGoblinMapGatherNextReset,
-                "Done today",
-                "Daily");
-            var lootGoblinStatus = LootGoblinMapGatherRowPolicy.GetStatus(
-                lootGoblinDailyStatus,
-                plugin.LootGoblinMapGatherService.State,
-                plugin.LootGoblinMapGatherService.StatusText);
-            var lootGoblinStatusTooltip = plugin.LootGoblinMapGatherService.State == LootGoblinMapGatherServiceState.Idle
-                ? lootGoblinDailyStatus
-                : $"{plugin.LootGoblinMapGatherService.State}: {plugin.LootGoblinMapGatherService.StatusText}";
-            DrawTaskRow("LootGoblin Map Gather", config.EnableLootGoblinMapGather,
-                lootGoblinStatus,
-                "run##LootGoblinMapGather", () =>
-                {
-                    var response = plugin.LootGoblinMapGatherManualRunCoordinator.Start(engine.IsRunning);
-                    var result = response.Accepted
-                        ? response.Terminal && response.Success ? "completed" : "accepted"
-                        : "rejected";
-                    var detail = string.IsNullOrWhiteSpace(response.Message) ? response.State : response.Message;
-                    Plugin.ChatGui.Print($"[Vermaxion] LootGoblin map gather {result}: {detail}");
-                }, "OK",
-                statusTooltip: lootGoblinStatusTooltip,
-                buttonDisabled: engine.IsRunning,
-                buttonTooltip: "Manual map gather is unavailable while VERMAXION engine is running.");
-            DrawTaskRow("nag your mom", config.EnableNagYourMom,
-                GetNagYourMomStatus(config, engine.NagYourMomStatusText),
-                "run##Mom", () =>
-                {
-                    var route = GetFirstDueNagYourMomRoute(config);
-                    var remainingRuns = Math.Max(1, GetRemainingNagYourMomRuns(config, route));
-                    var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route);
-                    Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
-                }, "OK",
-                secondaryButtonLabel: "Test Series Rank##MomSeriesRank",
-                secondaryOnClick: engine.TestNagYourMomSeriesRank,
-                secondaryButtonTooltip: "Read the current PvP series rank once without starting mom or changing configuration.");
-            DrawTaskRow("nag your dad", config.EnableNagYourDad,
-                GetNagYourDadStatus(config, engine.NagYourDadStatusText, plugin.DadIPCClient.LastSubmissionStatus),
-                "run##Dad", () =>
-                {
-                    var activeConfig = plugin.ConfigManager.GetActiveConfig();
-                    var result = plugin.DadIPCClient.StartSelection(
-                        activeConfig.NagYourDadSelectionKind,
-                        activeConfig.NagYourDadSelectionId,
-                        activeConfig.NagYourDadSelectionDisplayName);
-                    Plugin.ChatGui.Print($"[Vermaxion] {result.StatusText}");
-                }, "OK");
-            DrawTaskCategory("Configuration-only WIP", AutomationCatalog.Get(AutomationCatalog.EvercoldAdventurerActivity));
-            DrawTaskRow("Adventurer Activity (Evercold)", config.EnableEvercoldAdventurerActivity,
-                GetEvercoldAdventurerActivityStatus(config),
-                "Stub##EvercoldActivity", () =>
-                {
-                    Plugin.Log.Information("[EvercoldActivity] WIP stub requested from main window.");
-                    Plugin.ChatGui.Print("[Vermaxion] Adventurer Activity (Evercold) is WIP. Progress is config-only for now.");
-                }, "WIP");
-
-            // --- Utility Tasks ---
-            DrawTaskCategory("Ordered engine tasks (continued)", AutomationCatalog.Get(AutomationCatalog.HighestCombatJob));
-            DrawTaskRow("Highest Combat Job", config.EnableHighestCombatJob, AutomationCatalog.Get(AutomationCatalog.HighestCombatJob).CadenceLabel,
-                "run##Highest", () => plugin.HighestCombatJobService.RunTask(), "OK");
-            DrawTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, AutomationCatalog.Get(AutomationCatalog.CurrentJobEquipment).CadenceLabel,
-                "run##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
-
-            DrawDashboardRows(taskRowsBeingBuilt, favoritesOnly, loadedPluginInternalNames);
+            DrawDashboardRows(taskRows, favoritesOnly, loadedPluginInternalNames);
 
             ImGui.EndTable();
         }
@@ -547,9 +366,9 @@ public class MainWindow : Window, IDisposable
             ImGui.EndDisabled();
         }
 
-        if (favoritesOnly && (taskRowsBeingBuilt?.All(row => row.Feature == null || !IsFavorite(row.Feature.Id)) ?? true))
+        if (favoritesOnly && taskRows.All(row => row.Feature == null || !IsFavorite(row.Feature.Id)))
             ImGui.TextWrapped("No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here.");
-        taskRowsBeingBuilt = null;
+
         }
 
         if (ImGui.BeginChild("MainBody", new Vector2(0, 0), false))
@@ -614,6 +433,243 @@ public class MainWindow : Window, IDisposable
             }
         }
         ImGui.EndChild();
+    }
+
+    // Shared manual actions and live availability; safe to build without drawing either window.
+    internal IReadOnlyList<TaskRowDescriptor> GetDashboardTaskRows(bool forceRefresh = false)
+    {
+        var config = plugin.ConfigManager.GetActiveConfig();
+        var engine = plugin.Engine;
+        var rows = new List<TaskRowDescriptor>();
+
+        // --- Every AR PostProcess ---
+        AddTaskRow("Misc Cmd", config.EnableMiscCmd,
+            config.EnableMiscCmd ? AutomationCatalog.Get(AutomationCatalog.MiscCommands).CadenceLabel : "Off",
+            "run##MiscCmd", () => plugin.Engine.SendRunShutdownCommandBundle(), "OK");
+        AddTaskRow("FC Buff Refill", config.EnableFCBuffRefill, AutomationCatalog.Get(AutomationCatalog.FCBuffRefill).CadenceLabel,
+            "run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
+        AddTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
+            "run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
+        var fishingButtonsDisabled = engine.IsRunning ||
+                                     plugin.IsFishingRunActive ||
+                                     plugin.FisherGearsetTestService.IsActive;
+        AddTaskRow("Fishing", config.EnableFishing, GetFishingStatus(config, plugin.FishingRunStatusText),
+            "R##Fishing", plugin.RunFishingStartupManual, "OK",
+            buttonDisabled: fishingButtonsDisabled,
+            buttonTooltip: fishingButtonsDisabled ? "Fishing, relog, or engine work is active. Use FULL STOP to cancel." : null,
+            secondaryButtonLabel: "T##FishingTest",
+            secondaryOnClick: plugin.RunFishingStartupTest,
+            secondaryButtonDisabled: fishingButtonsDisabled,
+            secondaryButtonTooltip: "Run a full account-level Ocean Fishing test using the next real registration.",
+            tertiaryButtonLabel: "F##FishingGearsetTest",
+            tertiaryOnClick: plugin.RunFishingGearsetTest,
+            tertiaryButtonDisabled: fishingButtonsDisabled,
+            tertiaryButtonTooltip: "Equip and verify the current character's first saved Fisher gearset.");
+        AddTaskRow("Register Registrables", config.EnableRegisterRegistrables, AutomationCatalog.Get(AutomationCatalog.RegisterRegistrables).CadenceLabel,
+            "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
+        AddTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
+            "run##Listings", () =>
+            {
+                plugin.ConfigManager.SaveCurrentAccount();
+                engine.ManualStartRefillListings();
+            }, "OK");
+        var retainerEquippingFeature = AutomationCatalog.Get(AutomationCatalog.RetainerEquipping);
+        var retainerEquippingReadiness = GetRetainerEquippingReadiness(config, forceRefresh);
+        var retainerEquippingExecuting =
+            engine.State == VermaxionEngine.EngineState.RunningRetainerEquipping;
+        var retainerEquippingStatus = retainerEquippingExecuting
+            ? plugin.RetainerEquippingService.StatusText
+            : retainerEquippingReadiness.StatusText;
+        var retainerEquippingTooltip = retainerEquippingExecuting
+            ? plugin.RetainerEquippingService.StatusText
+            : retainerEquippingReadiness.DisabledReason;
+        AddTaskRow(
+            retainerEquippingFeature.Label,
+            config.EnableRetainerEquipping,
+            retainerEquippingStatus,
+            "run##RetainerEquipping",
+            RunRetainerEquipping,
+            retainerEquippingFeature.Maturity == AutomationMaturity.Wip ? "WIP" : "OK",
+            statusTooltip: retainerEquippingTooltip,
+            buttonDisabled: !retainerEquippingReadiness.CanRun,
+            buttonTooltip: retainerEquippingReadiness.CanRun
+                ? "Run only Retainer Equipping. This explicit run ignores its scheduling checkbox."
+                : retainerEquippingReadiness.DisabledReason);
+        AddTaskRow("Retainer Bell", true, plugin.WorkshopBellService.StatusText,
+            "run##WorkshopBell", () =>
+            {
+                plugin.ConfigManager.SaveCurrentAccount();
+                var activeConfig = plugin.ConfigManager.GetActiveConfig();
+                plugin.WorkshopBellService.Start(activeConfig.RefillFromListingsRoute);
+            }, "OK");
+        var equipmentAutomationBusy = IsEquipmentAutomationBusy();
+        AddTaskRow("Bootstrap Gearsets", true, plugin.GearUpdaterService.StatusText,
+            "run##BootstrapGearsets", plugin.GearUpdaterService.StartBootstrap, "OK",
+            buttonDisabled: equipmentAutomationBusy,
+            buttonTooltip: equipmentAutomationBusy
+                ? "An engine or equipment task is active."
+                : "Persist the current job, then bootstrap missing unlocked class/job gearsets from already-owned main hands.");
+        AddTaskRow("Seasonal Gear", config.EnableSeasonalGearRoulette, AutomationCatalog.Get(AutomationCatalog.SeasonalGear).CadenceLabel,
+            "run##Seasonal", () => plugin.SeasonalGearService.RunTask(), "OK");
+        AddTaskRow("Minion Roulette", config.EnableMinionRoulette, AutomationCatalog.Get(AutomationCatalog.MinionRoulette).CadenceLabel,
+            "run##Minion", () => plugin.MinionRouletteService.RunTask(), "OK");
+        AddTaskRow("Gear Updater", config.EnableGearUpdater, AutomationCatalog.Get(AutomationCatalog.GearUpdater).CadenceLabel,
+            "run##Gear", () => plugin.GearUpdaterService.RunTask(), "OK");
+        var afterArParkCommandValid = AfterArParkService.TryResolveCommand(
+            config.AfterArParkDestination, config.AfterArParkCustomCommand, out _, out var afterArParkCommandReason);
+        AddTaskRow("After-AR Park", config.EnableAfterArPark, GetAfterArParkStatus(config),
+            "run##AfterArPark", () => plugin.AfterArParkService.Start(config), "OK",
+            buttonDisabled: engine.IsRunning || plugin.AfterArParkService.IsActive || !afterArParkCommandValid,
+            buttonTooltip: engine.IsRunning ? "The VERMAXION engine is running."
+                : plugin.AfterArParkService.IsActive ? "After-AR Park is already active."
+                : !afterArParkCommandValid ? afterArParkCommandReason
+                : "Issues the configured /li route once and waits for Lifestream/player settlement.");
+
+        // --- Weekly Tasks ---
+        AddTaskRow("Verminion (5x)", config.EnableVerminionQueue,
+            GetWeeklyTaskStatus(config.VerminionLastCompleted, config.VerminionNextReset, "Done this week", "Weekly"),
+            "run##Verm", () => plugin.VerminionService.RunTask(), "OK");
+        AddTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
+            GetJumboCactpotStatus(config),
+            "run##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");
+        AddTaskRow("Fashion Report", config.EnableFashionReport,
+            GetFashionReportStatus(config),
+            "run##Fashion", () => plugin.FashionReportService.Start(), "OK");
+
+        // --- Daily Tasks ---
+        AddTaskRow("Mini Cactpot", config.EnableMiniCactpot,
+            GetDailyTaskStatus(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset, "Done today", "Daily"),
+            "run##Mini", () => plugin.CactpotService.RunMiniCactpot(), "OK");
+        AddTaskRow("Chocobo Racing", config.EnableChocoboRacing,
+            GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
+            "run##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
+        var alliedGearsetValid = IsAlliedSocietyGearsetValid(config);
+        AddTaskRow("Allied Society", config.EnableAlliedSociety,
+            GetAlliedSocietyStatus(config),
+            "run##AlliedSociety", () => plugin.AlliedSocietyService.Start(config), "OK",
+            buttonDisabled: equipmentAutomationBusy || !alliedGearsetValid,
+            buttonTooltip: !alliedGearsetValid ? "Select a valid current or saved gearset before starting."
+                : equipmentAutomationBusy ? "An engine or equipment task is active."
+                : "Runs Questionable Companion's Allied Society rotation for only the current Name@HomeWorld character.");
+        var lootGoblinDailyStatus = GetDailyTaskStatus(
+            config.LootGoblinMapGatherLastCompleted,
+            config.LootGoblinMapGatherNextReset,
+            "Done today",
+            "Daily");
+        var lootGoblinStatus = LootGoblinMapGatherRowPolicy.GetStatus(
+            lootGoblinDailyStatus,
+            plugin.LootGoblinMapGatherService.State,
+            plugin.LootGoblinMapGatherService.StatusText);
+        var lootGoblinStatusTooltip = plugin.LootGoblinMapGatherService.State == LootGoblinMapGatherServiceState.Idle
+            ? lootGoblinDailyStatus
+            : $"{plugin.LootGoblinMapGatherService.State}: {plugin.LootGoblinMapGatherService.StatusText}";
+        AddTaskRow("LootGoblin Map Gather", config.EnableLootGoblinMapGather,
+            lootGoblinStatus,
+            "run##LootGoblinMapGather", () =>
+            {
+                var response = plugin.LootGoblinMapGatherManualRunCoordinator.Start(engine.IsRunning);
+                var result = response.Accepted
+                    ? response.Terminal && response.Success ? "completed" : "accepted"
+                    : "rejected";
+                var detail = string.IsNullOrWhiteSpace(response.Message) ? response.State : response.Message;
+                Plugin.ChatGui.Print($"[Vermaxion] LootGoblin map gather {result}: {detail}");
+            }, "OK",
+            statusTooltip: lootGoblinStatusTooltip,
+            buttonDisabled: engine.IsRunning,
+            buttonTooltip: "Manual map gather is unavailable while VERMAXION engine is running.");
+        AddTaskRow("nag your mom", config.EnableNagYourMom,
+            GetNagYourMomStatus(config, engine.NagYourMomStatusText),
+            "run##Mom", () =>
+            {
+                var route = GetFirstDueNagYourMomRoute(config);
+                var remainingRuns = Math.Max(1, GetRemainingNagYourMomRuns(config, route));
+                var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route);
+                Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
+            }, "OK",
+            secondaryButtonLabel: "Test Series Rank##MomSeriesRank",
+            secondaryOnClick: engine.TestNagYourMomSeriesRank,
+            secondaryButtonTooltip: "Read the current PvP series rank once without starting mom or changing configuration.");
+        AddTaskRow("nag your dad", config.EnableNagYourDad,
+            GetNagYourDadStatus(config, engine.NagYourDadStatusText, plugin.DadIPCClient.LastSubmissionStatus),
+            "run##Dad", () =>
+            {
+                var activeConfig = plugin.ConfigManager.GetActiveConfig();
+                var result = plugin.DadIPCClient.StartSelection(
+                    activeConfig.NagYourDadSelectionKind,
+                    activeConfig.NagYourDadSelectionId,
+                    activeConfig.NagYourDadSelectionDisplayName);
+                Plugin.ChatGui.Print($"[Vermaxion] {result.StatusText}");
+            }, "OK");
+        AddTaskRow("Adventurer Activity (Evercold)", config.EnableEvercoldAdventurerActivity,
+            GetEvercoldAdventurerActivityStatus(config),
+            "Stub##EvercoldActivity", () =>
+            {
+                Plugin.Log.Information("[EvercoldActivity] WIP stub requested from main window.");
+                Plugin.ChatGui.Print("[Vermaxion] Adventurer Activity (Evercold) is WIP. Progress is config-only for now.");
+            }, "WIP");
+
+        // --- Utility Tasks ---
+        AddTaskRow("Highest Combat Job", config.EnableHighestCombatJob, AutomationCatalog.Get(AutomationCatalog.HighestCombatJob).CadenceLabel,
+            "run##Highest", () => plugin.HighestCombatJobService.RunTask(), "OK");
+        AddTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, AutomationCatalog.Get(AutomationCatalog.CurrentJobEquipment).CadenceLabel,
+            "run##Current", () => plugin.CurrentJobEquipmentService.RunTask(), "OK");
+
+        return rows;
+
+        void AddTaskRow(
+            string task,
+            bool enabled,
+            string status,
+            string buttonLabel,
+            Action onClick,
+            string maturity = "-",
+            string? statusTooltip = null,
+            bool buttonDisabled = false,
+            string? buttonTooltip = null,
+            string? secondaryButtonLabel = null,
+            Action? secondaryOnClick = null,
+            bool secondaryButtonDisabled = false,
+            string? secondaryButtonTooltip = null,
+            string? tertiaryButtonLabel = null,
+            Action? tertiaryOnClick = null,
+            bool tertiaryButtonDisabled = false,
+            string? tertiaryButtonTooltip = null)
+        {
+            var feature = GetDisplayedFeature(task);
+            var eligibility = GetDashboardEligibility(feature, enabled, buttonDisabled, buttonTooltip, status);
+            var dadHandoffBlocker = plugin.DadHandoffBlocksNewWork
+                ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
+                : null;
+            var row = new TaskRowDescriptor(
+                feature,
+                task,
+                enabled,
+                status,
+                eligibility,
+                AutomationDashboardPolicy.Classify(
+                    eligibility.Status,
+                    IsCompletedStatus(status),
+                    feature?.Id,
+                    eligibility.Reason),
+                GetNextEligibleAt(feature?.Id, plugin.ConfigManager.GetActiveConfig()),
+                GetTaskSettingsSection(feature?.Id),
+                GetTaskDependencies(task, plugin.ConfigManager.GetActiveConfig()),
+                buttonLabel,
+                onClick,
+                maturity,
+                statusTooltip,
+                buttonDisabled || plugin.DadHandoffBlocksNewWork,
+                dadHandoffBlocker ?? buttonTooltip,
+                secondaryButtonLabel,
+                secondaryOnClick,
+                secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
+                dadHandoffBlocker ?? secondaryButtonTooltip,
+                tertiaryButtonLabel,
+                tertiaryOnClick,
+                tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
+                dadHandoffBlocker ?? tertiaryButtonTooltip);
+            rows.Add(row);
+        }
     }
 
     private void RunRetainerEquipping()
@@ -687,65 +743,7 @@ public class MainWindow : Window, IDisposable
             : RetainerEquippingArProbe.RetainerReadFailed(retainers.Error);
     }
 
-    private void DrawTaskCategory(string label, AutomationFeatureDefinition? feature)
-    {
-        // Category calls remain beside their row definitions; the dashboard renders explicit state sections.
-    }
 
-    private void DrawTaskRow(
-        string task,
-        bool enabled,
-        string status,
-        string buttonLabel,
-        Action onClick,
-        string maturity = "-",
-        string? statusTooltip = null,
-        bool buttonDisabled = false,
-        string? buttonTooltip = null,
-        string? secondaryButtonLabel = null,
-        Action? secondaryOnClick = null,
-        bool secondaryButtonDisabled = false,
-        string? secondaryButtonTooltip = null,
-        string? tertiaryButtonLabel = null,
-        Action? tertiaryOnClick = null,
-        bool tertiaryButtonDisabled = false,
-        string? tertiaryButtonTooltip = null)
-    {
-        var feature = GetDisplayedFeature(task);
-        var eligibility = GetDashboardEligibility(feature, enabled, buttonDisabled, buttonTooltip, status);
-        var dadHandoffBlocker = plugin.DadHandoffBlocksNewWork
-            ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
-            : null;
-        var row = new TaskRowDescriptor(
-            feature,
-            task,
-            enabled,
-            status,
-            eligibility,
-            AutomationDashboardPolicy.Classify(
-                eligibility.Status,
-                IsCompletedStatus(status),
-                feature?.Id,
-                eligibility.Reason),
-            GetNextEligibleAt(feature?.Id, plugin.ConfigManager.GetActiveConfig()),
-            GetTaskSettingsSection(feature?.Id),
-            GetTaskDependencies(task, plugin.ConfigManager.GetActiveConfig()),
-            buttonLabel,
-            onClick,
-            maturity,
-            statusTooltip,
-            buttonDisabled || plugin.DadHandoffBlocksNewWork,
-            dadHandoffBlocker ?? buttonTooltip,
-            secondaryButtonLabel,
-            secondaryOnClick,
-            secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
-            dadHandoffBlocker ?? secondaryButtonTooltip,
-            tertiaryButtonLabel,
-            tertiaryOnClick,
-            tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
-            dadHandoffBlocker ?? tertiaryButtonTooltip);
-        taskRowsBeingBuilt?.Add(row);
-    }
 
     private static HashSet<string> GetLoadedTaskDependencyNames()
     {
@@ -1311,7 +1309,7 @@ public class MainWindow : Window, IDisposable
             _ => null,
         };
 
-    private sealed record TaskRowDescriptor(
+    internal sealed record TaskRowDescriptor(
         AutomationFeatureDefinition? Feature,
         string Task,
         bool Enabled,
@@ -1334,7 +1332,15 @@ public class MainWindow : Window, IDisposable
         string? TertiaryButtonLabel,
         Action? TertiaryOnClick,
         bool TertiaryButtonDisabled,
-        string? TertiaryButtonTooltip);
+        string? TertiaryButtonTooltip)
+    {
+        // Manual utilities already have unique, stable dashboard button IDs.
+        public string Id => Feature?.Id ?? ButtonLabel;
+        public bool IsConfigurationOnly => Feature?.Owner == AutomationOwner.ConfigOnlyWip;
+        public string? DebugBlockedReason => IsConfigurationOnly
+            ? "Configuration-only WIP; no runtime dispatch is available."
+            : ButtonDisabled ? ButtonTooltip ?? "The dashboard manual action is unavailable." : null;
+    }
 
     private static string GetWeeklyTaskStatus(DateTime lastCompleted, DateTime nextReset, string completedText, string pendingText)
     {

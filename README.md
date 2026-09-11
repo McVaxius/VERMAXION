@@ -117,6 +117,11 @@ Character-select recovery never opens, navigates, or backs out of character sele
 | `/vmx run` | Manual trigger |
 | `/vmx cancel` | Cancel current run |
 | `/vmx config` | Open config window |
+| `/vmx debug` | Select one manual task to attempt after the next plugin reload |
+
+In `/vmx debug`, checking a task saves it for the next reload without starting it immediately. After character registration, VERMAXION runs FULL STOP cleanup, checks the task's current manual availability, and invokes its normal dashboard action once. The window can stay closed. Configuration-only stubs cannot be selected, and an unavailable task reports its reason without a debug retry. The task keeps its existing prerequisites and scheduling; `Dispatched` means its manual action was invoked, not that it completed.
+
+The checkbox stays selected for subsequent reloads. Uncheck it to cancel pending startup; choosing a different task cancels the old pending attempt and saves the replacement for the next reload. FULL STOP (also `/vmx stop`) cancels a pending attempt for the current reload while preserving the saved selection. The debug window and existing `[DebugReload]` log entries show pending, dispatched, or blocked status.
 
 ## Installation
 
