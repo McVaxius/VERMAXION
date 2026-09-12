@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## Unreleased - GitHub Actions plugin build
+
+### Fixed
+
+- Build only the VERMAXION plugin project in GitHub Actions so releases do not require the sibling mom repository used by offline tests. Keep the solution and tests available locally.
+
 ## Unreleased - nag your mom window cutoff
 
 ### Fixed
