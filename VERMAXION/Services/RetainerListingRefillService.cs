@@ -48,7 +48,6 @@ public sealed class RetainerListingRefillService
 
     private sealed record RetainerTarget(string Name, ulong RetainerId, int RetainerIndex, int DisplayOrder, int MarketItemCount);
     private sealed record RetainerListEntry(int Index, string Name);
-    private sealed record RetainerSellListRow(int RowIndex, ListingSlot Listing);
 
     private const string RetainerListAddonName = "RetainerList";
     private const string RetainerSellListAddonName = "RetainerSellList";
@@ -661,9 +660,9 @@ public sealed class RetainerListingRefillService
             return;
         }
 
-        if (!GameHelpers.IsAddonVisible(RetainerSellListAddonName))
+        if (!GameHelpers.IsAddonVisible(RetainerSellListAddonName) || !GameHelpers.IsAddonReady(RetainerSellListAddonName))
         {
-            StatusText = "Waiting for RetainerSellList before opening context menu...";
+            StatusText = "Waiting for RetainerSellList readiness before opening context menu...";
             nextActionAt = DateTime.UtcNow.AddSeconds(1);
             return;
         }
@@ -942,9 +941,9 @@ public sealed class RetainerListingRefillService
         unsafe
         {
             var addon = (AtkUnitBase*)addonPtr;
-            if (!addon->IsVisible)
+            if (!addon->IsVisible || !ECommons.GenericHelpers.IsAddonReady(addon))
             {
-                detail = "RetainerSellList addon is not visible.";
+                detail = "RetainerSellList addon is not ready.";
                 return false;
             }
 
@@ -1082,13 +1081,6 @@ public sealed class RetainerListingRefillService
             var readable = TryReadWithdrawalDiagnosticListings(out var live, out var readDetail);
             if (captureBefore)
                 withdrawalDiagnosticBefore = readable ? live : null;
-            if (!withdrawalDiagnosticRow.HasValue && readable && listing != null)
-            {
-                var calculatedRow = live.FindIndex(item => item.Slot == listing.Slot && item.ItemId == listing.ItemId &&
-                    item.Quantity == listing.Quantity && item.IsHq == listing.IsHq);
-                if (calculatedRow >= 0)
-                    withdrawalDiagnosticRow = calculatedRow;
-            }
 
             var difference = "unknown (before/after inventory unavailable)";
             if (withdrawalDiagnosticBefore != null && readable && listing != null)
@@ -1108,7 +1100,7 @@ public sealed class RetainerListingRefillService
                     $"decreased=[{string.Join("; ", removed.Select(change => $"item={change.Identity.ItemId},qty={change.Identity.Quantity},hq={change.Identity.IsHq},count={change.Count}"))}]";
             }
 
-            log.Information($"[ListingsDiag] {phase}: calculatedRow={withdrawalDiagnosticRow?.ToString() ?? "unknown"} (occupied inventory order), " +
+            log.Information($"[ListingsDiag] {phase}: nativeRow={withdrawalDiagnosticRow?.ToString() ?? "unknown"}, " +
                 $"before=[{FormatWithdrawalDiagnosticListings(withdrawalDiagnosticBefore)}], " +
                 $"current=[{(readable ? FormatWithdrawalDiagnosticListings(live) : $"unreadable: {readDetail}")}], {difference}");
 
@@ -1292,11 +1284,7 @@ public sealed class RetainerListingRefillService
         if (!TryReadRetainerSellListRows(out var rows, out detail))
             return false;
 
-        var match = rows.FirstOrDefault(candidate =>
-            candidate.Listing.Slot == listing.Slot &&
-            candidate.Listing.ItemId == listing.ItemId &&
-            candidate.Listing.Quantity == listing.Quantity &&
-            candidate.Listing.IsHq == listing.IsHq);
+        var match = RetainerSellListMapping.FindRow(rows, listing);
 
         if (match == null)
         {
@@ -1309,10 +1297,17 @@ public sealed class RetainerListingRefillService
         return true;
     }
 
-    private bool TryReadRetainerSellListRows(out List<RetainerSellListRow> rows, out string detail)
+    private unsafe bool TryReadRetainerSellListRows(out List<RetainerSellListRow> rows, out string detail)
     {
         rows = new List<RetainerSellListRow>();
         detail = string.Empty;
+
+        var addon = (AtkUnitBase*)(nint)Plugin.GameGui.GetAddonByName(RetainerSellListAddonName, 1);
+        if (addon == null || !addon->IsVisible || !ECommons.GenericHelpers.IsAddonReady(addon) || addon->AtkValues == null)
+        {
+            detail = "RetainerSellList addon values are not ready.";
+            return false;
+        }
 
         if (!TryScanRetainerMarketListings(out var slots, out var scanDetail))
         {
@@ -1320,10 +1315,24 @@ public sealed class RetainerListingRefillService
             return false;
         }
 
-        for (var i = 0; i < slots.Count; i++)
-            rows.Add(new RetainerSellListRow(i, slots[i]));
+        var manager = InventoryManager.Instance();
+        var container = manager == null ? null : manager->GetInventoryContainer(InventoryType.RetainerMarket);
+        if (container == null || !container->IsLoaded)
+        {
+            detail = "RetainerMarket inventory container is not loaded.";
+            return false;
+        }
 
-        detail = $"{scanDetail} {RetainerSellListAddonName} inventoryRows={rows.Count}. Rows: {FormatRetainerSellListRows(rows)}";
+        if (!RetainerSellListMapping.TryReadRows(slots, container->Size, addon->AtkValuesCount,
+                index => addon->AtkValues[index].Type switch
+                {
+                    AtkValueType.Int => addon->AtkValues[index].Int,
+                    AtkValueType.UInt when addon->AtkValues[index].UInt <= int.MaxValue => (int)addon->AtkValues[index].UInt,
+                    _ => null,
+                }, out rows, out detail))
+            return false;
+
+        detail = $"{scanDetail} {RetainerSellListAddonName} nativeRows={rows.Count}. Rows: {FormatRetainerSellListRows(rows)}";
         return true;
     }
 

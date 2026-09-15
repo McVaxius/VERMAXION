@@ -18,6 +18,74 @@ public sealed class RetainerListingRecoveryTests
         new(3, 300, 1, false, "Unselected"),
     ];
 
+    [Fact]
+    public void NativeRowsSelectExactStacksAcrossShufflesRemovalsAndInvalidMappings()
+    {
+        var live = new List<RetainerListing>
+        {
+            new(2, 100, 2, false, "Duplicate"),
+            new(7, 100, 2, false, "Duplicate"),
+            new(19, 200, 1, true, "Other"),
+        };
+        var values = new int?[263]; // Twenty native rows; unused values deliberately remain unreadable.
+        values[15] = 7;
+        values[28] = 19;
+        values[41] = 2;
+        var reads = new List<int>();
+        bool Read(IReadOnlyList<RetainerListing> inventory, out List<RetainerSellListRow> rows,
+            int valueCount = 263, int inventorySize = 20)
+            => RetainerSellListMapping.TryReadRows(inventory, inventorySize, valueCount,
+                index => { reads.Add(index); return values[index]; }, out rows, out _);
+
+        Assert.True(Read(live, out var rows));
+        Assert.Equal(new[] { 15, 28, 41 }, reads);
+        Assert.Equal(new[] { 7, 19, 2 }, rows.Select(row => row.Listing.Slot));
+        Assert.Equal(0, RetainerSellListMapping.FindRow(rows, live[1])!.RowIndex);
+        Assert.Equal(2, RetainerSellListMapping.FindRow(rows, live[0])!.RowIndex);
+        Assert.Equal(1, RetainerSellListMapping.FindRow(rows, live[2])!.RowIndex);
+        Assert.Null(RetainerSellListMapping.FindRow(rows, live[1] with { Slot = 8 }));
+        Assert.Null(RetainerSellListMapping.FindRow(rows, live[1] with { ItemId = 200 }));
+        Assert.Null(RetainerSellListMapping.FindRow(rows, live[1] with { Quantity = 1 }));
+        Assert.Null(RetainerSellListMapping.FindRow(rows, live[1] with { IsHq = true }));
+
+        // Remove exactly the requested duplicate, then resolve fresh after the UI reorders.
+        var selected = live[1];
+        live.Remove(RetainerSellListMapping.FindRow(rows, selected)!.Listing);
+        values[15] = 2;
+        values[28] = 19;
+        // AtkValues[41] still contains slot 2, but that stale third row must not be read.
+        reads.Clear();
+        Assert.True(Read(live, out rows));
+        Assert.Equal(new[] { 15, 28 }, reads);
+        Assert.Null(RetainerSellListMapping.FindRow(rows, selected));
+        Assert.Equal(0, RetainerSellListMapping.FindRow(rows, live[0])!.RowIndex);
+        Assert.Equal(200u, live[1].ItemId);
+
+        foreach (var invalidSlot in new int?[] { null, -1, 20, int.MaxValue, 3, 19 })
+        {
+            values[15] = invalidSlot; // Non-numeric, invalid bounds, empty slot, or duplicate reference.
+            Assert.False(Read(live, out _));
+        }
+        values[15] = 2;
+        reads.Clear();
+        Assert.False(Read(live, out _, valueCount: 28));
+        Assert.Empty(reads); // Reject the truncated array before reading native memory.
+        Assert.False(Read(live, out _, inventorySize: 0));
+        Assert.False(Read(Enumerable.Repeat(live[0], 21).ToList(), out _));
+        Assert.False(Read(new[] { live[0] with { ItemId = 0 }, live[1] }, out _));
+        Assert.False(Read(new[] { live[0] with { Quantity = 0 }, live[1] }, out _));
+
+        var full = Enumerable.Range(0, 20).Select(slot => new RetainerListing(slot, 100, 1, false, "Full")).ToList();
+        for (var row = 0; row < full.Count; row++)
+            values[15 + row * 13] = 19 - row;
+        Assert.True(Read(full, out rows));
+        Assert.Equal(19, RetainerSellListMapping.FindRow(rows, full[0])!.RowIndex);
+        reads.Clear();
+        Assert.True(Read(Array.Empty<RetainerListing>(), out rows, valueCount: 0));
+        Assert.Empty(rows);
+        Assert.Empty(reads);
+    }
+
     public static IEnumerable<object[]> Interruptions()
     {
         foreach (var lossPoint in new[] { "before dispatch", "dispatch pending", "dispatch completed" })

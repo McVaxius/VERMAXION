@@ -1,9 +1,14 @@
 # VERMAXION Changelog
 
+## Unreleased - Refill Listings native row selection
+
+- Resolve each withdrawal from the current sell-list row's native inventory slot, validating row bounds, numeric values, unique occupied slots, and the intended item's quantity and quality. Wait for addon readiness within the existing timeout; invalid mappings use existing failure cleanup.
+- Report the native row in existing withdrawal diagnostics without an inventory-order fallback. Preserve callbacks, selection rules, pacing, withdrawal verification, inventory cutoff, and AutoRetainer handoff. I353 closed after Account 1 verification: all remaining selected listings withdrawn, retainer UI closed, and AutoRetainer suppression released.
+
 ## Unreleased - Refill Listings withdrawal diagnostics
 
-- When the saved debug reload task is Refill Listings, log withdrawal dispatch and outcomes with the planned slot/item/quantity/quality, calculated sell-list row, context-menu readiness/ownership, selected entry and callback arguments. Compare listing snapshots by item/quantity/quality counts, including changes to other listings, and distinguish unreadable inventory from a readable empty inventory.
-- Capture failure evidence before progress resets; diagnostic read failures preserve the existing cleanup path. Withdrawal callbacks, selection, pacing, inventory cutoff, and acknowledgement checks are unchanged. I353 remains open pending a captured reproduction and a verified fix.
+- When the saved debug reload task is Refill Listings, log withdrawal dispatch and outcomes with the planned slot/item/quantity/quality, native sell-list row, context-menu readiness/ownership, selected entry and callback arguments. Compare listing snapshots by item/quantity/quality counts, including changes to other listings, and distinguish unreadable inventory from a readable empty inventory.
+- Capture failure evidence before progress resets; diagnostic read failures preserve the existing cleanup path. Withdrawal callbacks, selection, pacing, inventory cutoff, and acknowledgement checks are unchanged.
 
 ## Unreleased - Refill Listings failure handoff
 

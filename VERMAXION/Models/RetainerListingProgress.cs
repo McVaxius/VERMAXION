@@ -6,6 +6,57 @@ namespace VERMAXION.Models;
 
 internal sealed record RetainerListing(int Slot, uint ItemId, int Quantity, bool IsHq, string ItemName);
 internal sealed record RetainerListingIdentity(uint ItemId, int Quantity, bool IsHq);
+internal sealed record RetainerSellListRow(int RowIndex, RetainerListing Listing);
+
+internal static class RetainerSellListMapping
+{
+    public static bool TryReadRows(IReadOnlyList<RetainerListing> listings, int inventorySize,
+        int valueCount, Func<int, int?> readSlotValue, out List<RetainerSellListRow> rows, out string detail)
+    {
+        rows = new();
+        detail = string.Empty;
+        if (listings.Count > 20 || inventorySize <= 0 || valueCount < 0)
+        {
+            detail = "Invalid sell-list count or inventory/value bounds.";
+            return false;
+        }
+
+        // API 15 RetainerSellList stores the inventory slot at 15 + row * 13.
+        // Read only occupied rows; unused row values can retain stale slots.
+        if (listings.Count > 0 && 15 + (listings.Count - 1) * 13 >= valueCount)
+        {
+            detail = "RetainerSellList values do not contain every occupied row.";
+            return false;
+        }
+
+        for (var rowIndex = 0; rowIndex < listings.Count; rowIndex++)
+        {
+            var valueIndex = 15 + rowIndex * 13;
+            var slot = readSlotValue(valueIndex);
+            if (!slot.HasValue || slot.Value < 0 || slot.Value >= inventorySize ||
+                rows.Any(row => row.Listing.Slot == slot.Value))
+            {
+                detail = $"Invalid or duplicate RetainerSellList slot at AtkValues[{valueIndex}].";
+                return false;
+            }
+
+            var listing = listings.FirstOrDefault(item => item.Slot == slot.Value && item.ItemId != 0 && item.Quantity > 0);
+            if (listing == null)
+            {
+                detail = $"RetainerSellList row {rowIndex} references unoccupied RetainerMarket[{slot.Value}].";
+                return false;
+            }
+            rows.Add(new RetainerSellListRow(rowIndex, listing));
+        }
+
+        return true;
+    }
+
+    public static RetainerSellListRow? FindRow(IEnumerable<RetainerSellListRow> rows, RetainerListing listing)
+        => rows.FirstOrDefault(row => row.Listing.Slot == listing.Slot &&
+            row.Listing.ItemId == listing.ItemId && row.Listing.Quantity == listing.Quantity &&
+            row.Listing.IsHq == listing.IsHq);
+}
 
 // Lives only for the current retainer. Row positions are always rebuilt from a fresh scan.
 internal sealed class RetainerListingProgress
