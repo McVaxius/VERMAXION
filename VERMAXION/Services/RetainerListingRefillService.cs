@@ -9,6 +9,7 @@ using Dalamud.Plugin.Services;
 using ECommons.DalamudServices;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using VERMAXION.IPC;
@@ -141,6 +142,10 @@ public sealed class RetainerListingRefillService
     private string lastRetainerMarketScanDetail = string.Empty;
     private bool reopenSellListForCurrentPlan;
     private bool contextOpenRequested;
+    private List<ListingSlot>? withdrawalDiagnosticBefore;
+    private int? withdrawalDiagnosticRow;
+    private string withdrawalDiagnosticEntry = "none";
+    private bool withdrawalDiagnosticDispatched;
     private int minFreeInventorySlots = DefaultMinFreeInventorySlots;
     private RefillListingPacingSnapshot listingPacing = RefillListingPacingSnapshot.Capture(
         RefillListingPacingSnapshot.DefaultDelayMs,
@@ -581,6 +586,7 @@ public sealed class RetainerListingRefillService
         if (rescanAfterInterruption)
         {
             var withdrawn = progress.ReconcileAfterInterruption(slots);
+            LogWithdrawalDiagnostics(withdrawn ? "recovery-verified" : "recovery-unverified");
             pendingListing = null;
             rescanAfterInterruption = false;
             if (withdrawn)
@@ -631,6 +637,7 @@ public sealed class RetainerListingRefillService
 
         if (listing != null)
         {
+            ResetWithdrawalDiagnostics();
             pendingListing = listing;
             progress.BeginWithdrawal(listing, slots);
             SetState(RefillState.OpeningContextMenu, $"Opening context menu for {listing.ItemName}...");
@@ -696,6 +703,7 @@ public sealed class RetainerListingRefillService
         {
             case ContextSelectResult.Selected:
                 progress.MarkDispatched();
+                LogWithdrawalDiagnostics("return-selected");
                 log.Information(detail);
                 SetState(RefillState.ConfirmingReturn, "Confirming listing return...");
                 ScheduleListingAction();
@@ -739,6 +747,7 @@ public sealed class RetainerListingRefillService
 
         if (IsWithdrawalVerified(pendingListing, out var detail))
         {
+            LogWithdrawalDiagnostics("verified");
             log.Information(detail);
             interruptedElapsed.Clear();
             pendingListing = null;
@@ -836,6 +845,7 @@ public sealed class RetainerListingRefillService
 
     private void CompleteDueToInventoryGuard(int freeSlots, string context, string detail)
     {
+        LogWithdrawalDiagnostics("inventory-cutoff");
         var status = $"Main inventory free slots {freeSlots} <= minimum {minFreeInventorySlots}. Refill from listings complete for current cycle.";
         log.Information($"[Listings] {status} context={context}, {detail}");
         vnavmesh.Stop();
@@ -957,6 +967,7 @@ public sealed class RetainerListingRefillService
 
             pendingListingCount = GetRetainerMarketListingCount();
             pendingMarketItemCount = GetActiveRetainerMarketItemCount();
+            LogWithdrawalDiagnostics("open-context-dispatch", captureBefore: true, row: row.RowIndex);
             if (!GameHelpers.TryFireAddonCallback(RetainerSellListAddonName, true, 0, row.RowIndex, 1))
             {
                 detail = $"Failed to fire {RetainerSellListAddonName} callback true 0 {row.RowIndex} 1 for RetainerMarket[{listing.Slot}] {FormatListing(listing)}. listingCount={pendingListingCount}, marketItemCount={pendingMarketItemCount}. {FormatVisibleAddonDiagnostics()}";
@@ -1012,6 +1023,7 @@ public sealed class RetainerListingRefillService
                     return ContextSelectResult.Disabled;
                 }
                 progress.BeginWithdrawal(pendingListing, live);
+                LogWithdrawalDiagnostics("return-dispatch", captureBefore: true, entry: entry);
                 if (!entry.Select())
                 {
                     detail = $"Return to Inventory context entry {i}:'{text}' was found but could not be selected for {FormatPendingListing()}. Entries: {visibleEntriesWithState}";
@@ -1047,6 +1059,156 @@ public sealed class RetainerListingRefillService
 
     private static IEnumerable<ListingSlot> OrderListings(IEnumerable<ListingSlot> slots)
         => slots.OrderByDescending(slot => slot.Slot);
+
+    // Event-only diagnostics for the saved reload selection. Never gate an action or cleanup on a read.
+    private void LogWithdrawalDiagnostics(string phase, bool captureBefore = false, int? row = null,
+        AddonMaster.ContextMenu.Entry? entry = null)
+    {
+        if (!string.Equals(configuration.DebugTaskId, AutomationCatalog.RefillListings, StringComparison.Ordinal))
+            return;
+
+        try
+        {
+            if (row.HasValue)
+                withdrawalDiagnosticRow = row;
+            if (phase == "return-selected")
+                withdrawalDiagnosticDispatched = true;
+
+            var listing = pendingListing;
+            var planned = listing == null ? "none" : FormatWithdrawalDiagnosticListing(listing);
+            log.Information($"[ListingsDiag] {phase}: state={state}, targetIndex={targetIndex}, planned={planned}, " +
+                $"contextOpenRequested={contextOpenRequested}, returnSelected={withdrawalDiagnosticDispatched}, remaining={progress.Remaining}");
+
+            var readable = TryReadWithdrawalDiagnosticListings(out var live, out var readDetail);
+            if (captureBefore)
+                withdrawalDiagnosticBefore = readable ? live : null;
+            if (!withdrawalDiagnosticRow.HasValue && readable && listing != null)
+            {
+                var calculatedRow = live.FindIndex(item => item.Slot == listing.Slot && item.ItemId == listing.ItemId &&
+                    item.Quantity == listing.Quantity && item.IsHq == listing.IsHq);
+                if (calculatedRow >= 0)
+                    withdrawalDiagnosticRow = calculatedRow;
+            }
+
+            var difference = "unknown (before/after inventory unavailable)";
+            if (withdrawalDiagnosticBefore != null && readable && listing != null)
+            {
+                // Compare multiplicities, not slots: removals can compact rows and duplicate stacks can remain.
+                var plannedIdentity = new RetainerListingIdentity(listing.ItemId, listing.Quantity, listing.IsHq);
+                var before = withdrawalDiagnosticBefore.GroupBy(item =>
+                    new RetainerListingIdentity(item.ItemId, item.Quantity, item.IsHq));
+                var removed = before.Select(group => new
+                {
+                    Identity = group.Key,
+                    Count = group.Count() - live.Count(item => item.ItemId == group.Key.ItemId &&
+                        item.Quantity == group.Key.Quantity && item.IsHq == group.Key.IsHq),
+                }).Where(change => change.Count > 0).ToList();
+                difference = $"plannedIdentityDecreased={removed.Any(change => change.Identity == plannedIdentity)}, " +
+                    $"differentIdentityDecreased={removed.Any(change => change.Identity != plannedIdentity)}, " +
+                    $"decreased=[{string.Join("; ", removed.Select(change => $"item={change.Identity.ItemId},qty={change.Identity.Quantity},hq={change.Identity.IsHq},count={change.Count}"))}]";
+            }
+
+            log.Information($"[ListingsDiag] {phase}: calculatedRow={withdrawalDiagnosticRow?.ToString() ?? "unknown"} (occupied inventory order), " +
+                $"before=[{FormatWithdrawalDiagnosticListings(withdrawalDiagnosticBefore)}], " +
+                $"current=[{(readable ? FormatWithdrawalDiagnosticListings(live) : $"unreadable: {readDetail}")}], {difference}");
+
+            var freeSlotsReadable = TryGetMainInventoryFreeSlots(out var freeSlots, out _);
+            log.Information($"[ListingsDiag] {phase}: mainInventoryFreeSlots={(freeSlotsReadable ? freeSlots.ToString() : "unreadable")}, " +
+                $"cutoff={minFreeInventorySlots}, selection={selectionMode}, actionDelayMs={listingPacing.ActionDelayMs}, interItemDelayMs={listingPacing.InterItemDelayMs}");
+            LogWithdrawalContextDiagnostics(phase, entry);
+        }
+        catch (Exception ex)
+        {
+            // Keep diagnostic failures, including logger failures, outside the operational failure path.
+            try { log.Warning($"[ListingsDiag] {phase}: diagnostic read failed ({ex.GetType().Name}); continuing existing flow."); }
+            catch { }
+        }
+    }
+
+    private unsafe void LogWithdrawalContextDiagnostics(string phase, AddonMaster.ContextMenu.Entry? selectedEntry)
+    {
+        var sellList = (AtkUnitBase*)(nint)Plugin.GameGui.GetAddonByName(RetainerSellListAddonName, 1);
+        var context = (AtkUnitBase*)(nint)Plugin.GameGui.GetAddonByName(ContextMenuAddonName, 1);
+        var agent = AgentContext.Instance();
+        var inventoryAgent = AgentInventoryContext.Instance();
+        var contextReady = context != null && ECommons.GenericHelpers.IsAddonReady(context);
+        var sellListReady = sellList != null && ECommons.GenericHelpers.IsAddonReady(sellList);
+        var owner = agent == null ? "unavailable" : agent->OwnerAddon.ToString();
+        var ownerMatches = agent == null || sellList == null || context == null || !context->IsVisible
+            ? "unknown" : (agent->OwnerAddon == sellList->Id).ToString();
+        log.Information($"[ListingsDiag] {phase}: sellListPresent={sellList != null}, sellListReady={sellListReady}, " +
+            $"sellListId={(sellList == null ? "unavailable" : sellList->Id.ToString())}, " +
+            $"contextPresent={context != null}, contextVisible={context != null && context->IsVisible}, contextReady={contextReady}, " +
+            $"contextParentId={(context == null ? "unavailable" : context->ParentId.ToString())}, agentOwnerAddon={owner}, ownerMatchesSellList={ownerMatches}");
+        log.Information(inventoryAgent == null
+            ? $"[ListingsDiag] {phase}: inventoryContext=unavailable"
+            : $"[ListingsDiag] {phase}: inventoryContextOwnerAddon={inventoryAgent->OwnerAddonId}, " +
+              $"inventoryContextTargetContainer={inventoryAgent->TargetInventoryId}, inventoryContextTargetSlot={inventoryAgent->TargetInventorySlotId}");
+
+        // ECommons Entry properties read native values and list renderers; validate both before inspecting.
+        var entries = "unreadable (menu absent/not ready)";
+        if (contextReady && context->AtkValues != null && context->AtkValuesCount >= 8)
+        {
+            var menu = new AddonMaster.ContextMenu(context);
+            if (menu.EntriesCount >= 0 && menu.EntriesCount <= context->AtkValuesCount - 8 &&
+                menu.ListComponent != null && menu.ListItems.Count >= menu.EntriesCount)
+            {
+                if (selectedEntry is { } entry && entry.Index >= 0 && entry.Index < menu.EntriesCount)
+                    withdrawalDiagnosticEntry = $"index={entry.Index}, text='{CleanAddonText(entry.Text)}', enabled={entry.Enabled}, native={entry.IsNativeEntry}, callback=ContextMenu true 0 {entry.Index} 0";
+                entries = FormatContextMenuEntries(menu.Entries, includeEnabled: true);
+            }
+            else
+                entries = "unreadable (context values/list renderers incomplete)";
+        }
+        log.Information($"[ListingsDiag] {phase}: selectedEntry={withdrawalDiagnosticEntry}, " +
+            $"openCallback=RetainerSellList true 0 {withdrawalDiagnosticRow?.ToString() ?? "unknown"} 1, " +
+            $"entries={entries}");
+    }
+
+    private unsafe bool TryReadWithdrawalDiagnosticListings(out List<ListingSlot> slots, out string detail)
+    {
+        slots = new List<ListingSlot>();
+        detail = "active retainer unavailable/mismatched";
+        if (CurrentTarget == null || !IsExpectedActiveRetainer(CurrentTarget, out _))
+            return false;
+        var manager = InventoryManager.Instance();
+        detail = "InventoryManager unavailable";
+        if (manager == null)
+            return false;
+        var container = manager->GetInventoryContainer(InventoryType.RetainerMarket);
+        detail = "RetainerMarket unavailable/not loaded";
+        if (container == null || !container->IsLoaded || container->Size <= 0)
+            return false;
+        for (var i = 0; i < container->Size; i++)
+        {
+            var item = container->GetInventorySlot(i);
+            if (item == null)
+            {
+                detail = $"RetainerMarket slot {i} unreadable";
+                return false;
+            }
+            if (item->ItemId != 0 && item->Quantity > 0)
+                slots.Add(new ListingSlot(i, item->ItemId, item->Quantity,
+                    (item->Flags & InventoryItem.ItemFlags.HighQuality) != 0, string.Empty));
+        }
+        detail = "readable";
+        return true;
+    }
+
+    private static string FormatWithdrawalDiagnosticListing(ListingSlot listing)
+        => $"slot={listing.Slot},item={listing.ItemId},qty={listing.Quantity},hq={listing.IsHq}";
+
+    private static string FormatWithdrawalDiagnosticListings(List<ListingSlot>? slots)
+        => slots == null ? "unavailable/not captured" : slots.Count == 0 ? "empty (readable)"
+            : string.Join("; ", slots.Select(FormatWithdrawalDiagnosticListing));
+
+    private void ResetWithdrawalDiagnostics()
+    {
+        withdrawalDiagnosticBefore = null;
+        withdrawalDiagnosticRow = null;
+        withdrawalDiagnosticEntry = "none";
+        withdrawalDiagnosticDispatched = false;
+    }
 
     private static string FormatListingSlotOrder(IReadOnlyCollection<ListingSlot> slots)
         => slots.Count == 0 ? "none" : string.Join(",", slots.Select(slot => slot.Slot));
@@ -1971,6 +2133,7 @@ public sealed class RetainerListingRefillService
 
     private void Fail(string message, bool closeRetainerUi = true)
     {
+        LogWithdrawalDiagnostics("failed");
         LastError = message;
         recoveringToList = false;
         rescanAfterInterruption = false;
@@ -2048,6 +2211,7 @@ public sealed class RetainerListingRefillService
         {
             case RefillState.Complete:
             case RefillState.Failed:
+                ResetWithdrawalDiagnostics();
                 progress.Reset();
                 interruptedElapsed.Clear();
                 ownershipLostAt = DateTime.MinValue;
@@ -2076,6 +2240,7 @@ public sealed class RetainerListingRefillService
 
     private void ResetRetainerPhaseFlags()
     {
+        ResetWithdrawalDiagnostics();
         bellInteracted = false;
         retainerSelected = false;
         sellMenuSelected = false;
