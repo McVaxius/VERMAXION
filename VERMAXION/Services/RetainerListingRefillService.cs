@@ -1977,7 +1977,8 @@ public sealed class RetainerListingRefillService
         progress.Reset();
         interruptedElapsed.Clear();
         log.Warning($"[Listings] {message}");
-        vnavmesh.Stop();
+        // The bell helper is no longer ticked once failure starts closing the retainer UI.
+        workshopBellService.Reset();
         if (!closeRetainerUi)
         {
             SetState(RefillState.Failed, message);
