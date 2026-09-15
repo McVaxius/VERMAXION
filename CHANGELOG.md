@@ -1,5 +1,10 @@
 # VERMAXION Changelog
 
+## Unreleased - Refill Listings withdrawal diagnostics
+
+- When the saved debug reload task is Refill Listings, log withdrawal dispatch and outcomes with the planned slot/item/quantity/quality, calculated sell-list row, context-menu readiness/ownership, selected entry and callback arguments. Compare listing snapshots by item/quantity/quality counts, including changes to other listings, and distinguish unreadable inventory from a readable empty inventory.
+- Capture failure evidence before progress resets; diagnostic read failures preserve the existing cleanup path. Withdrawal callbacks, selection, pacing, inventory cutoff, and acknowledgement checks are unchanged. I353 remains open pending a captured reproduction and a verified fix.
+
 ## Unreleased - Refill Listings failure handoff
 
 - Reset the owned bell helper when Refill Listings fails. A failed bell-opening task can now finish the existing UI cleanup and handoff checks instead of leaving AutoRetainer held indefinitely by an abandoned active helper.
