@@ -35,6 +35,9 @@ public class ConfigWindow : Window, IDisposable
     private string confirmationTitle = string.Empty;
     private string confirmationMessage = string.Empty;
     private System.Action? confirmedAction;
+    private Func<bool>? confirmationContextValid;
+    private Func<string>? confirmationWarning;
+    private Func<bool>? wizardContextValid;
     private bool wizardApplyAllConfirmationRequested;
     private bool wizardFcBuffCadenceResetRequested;
     private string oceanFishingProviderSyncStatus = string.Empty;
@@ -54,6 +57,7 @@ public class ConfigWindow : Window, IDisposable
         var account = plugin.ConfigManager.GetCurrentAccount();
         wizardDraft = (account?.DefaultConfig ?? CharacterConfig.CreateNew()).Clone();
         activeWizard = kind;
+        wizardContextValid = CaptureConfigurationContext();
         wizardFcBuffCadenceResetRequested = false;
         wizardPopupRequested = true;
     }
@@ -108,6 +112,12 @@ public class ConfigWindow : Window, IDisposable
     }
 
     public void Dispose() { }
+
+    public override void OnClose()
+    {
+        ClearConfirmation();
+        CloseWizard();
+    }
 
     public override void Draw()
     {
@@ -841,7 +851,9 @@ public class ConfigWindow : Window, IDisposable
                         $"Replace all synchronized settings for {displayName} in {accountLabel} with the current Account default? Character completion history is reset only where the existing reset operation already does so.",
                         () => RunConfigMutationWithTargetPause(
                             () => configManager.ResetCharacterToDefault(charKey),
-                            "current character reset to account default"));
+                            "current character reset to account default"),
+                        () => GetPvpEnableWarning(configManager.GetCurrentAccount()?.DefaultConfig,
+                            new[] { configManager.GetConfigForKey(charKey) }, ConfigManager.CopyDefaultSettings));
                 }
                 if (ImGui.MenuItem("Delete"))
                 {
@@ -904,7 +916,8 @@ public class ConfigWindow : Window, IDisposable
                             configManager.ApplyDefaultToAllCharacters,
                             "account default applied to all characters");
                         Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {applied} characters.");
-                    });
+                    },
+                    () => GetPvpEnableWarning(account?.DefaultConfig, account?.Characters.Values, ConfigManager.CopyDefaultSettings));
             }
             ImGui.SameLine();
             ImGui.TextDisabled("Explicitly replaces each existing character's synchronized settings.");
@@ -2197,10 +2210,24 @@ public class ConfigWindow : Window, IDisposable
                 }
 
                 var momFrontline = cc.EnableNagYourMomFrontline;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomFrontline, ref momFrontline))
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.2f, 0.2f, 1f));
+                var frontlineChanged = ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomFrontline, ref momFrontline);
+                ImGui.PopStyleColor();
+                if (frontlineChanged)
                 {
-                    cc.EnableNagYourMomFrontline = momFrontline;
-                    changed = true;
+                    if (momFrontline)
+                        RequestConfirmation("Enable Frontline?", string.Empty,
+                            () =>
+                            {
+                                cc.EnableNagYourMomFrontline = true;
+                                configManager.SaveCurrentAccount();
+                            },
+                            () => PvpEnableWarning(UIConstants.ConfigLabels.NagYourMomFrontline));
+                    else
+                    {
+                        cc.EnableNagYourMomFrontline = false;
+                        changed = true;
+                    }
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomFrontline", UIConstants.ConfigLabels.NagYourMomFrontline,
                     (source, target) => target.EnableNagYourMomFrontline = source.EnableNagYourMomFrontline);
@@ -2222,10 +2249,24 @@ public class ConfigWindow : Window, IDisposable
                 }
 
                 var momRivalWings = cc.EnableNagYourMomRivalWings;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomRivalWings, ref momRivalWings))
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.2f, 0.2f, 1f));
+                var rivalWingsChanged = ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomRivalWings, ref momRivalWings);
+                ImGui.PopStyleColor();
+                if (rivalWingsChanged)
                 {
-                    cc.EnableNagYourMomRivalWings = momRivalWings;
-                    changed = true;
+                    if (momRivalWings)
+                        RequestConfirmation("Enable Rival Wings?", string.Empty,
+                            () =>
+                            {
+                                cc.EnableNagYourMomRivalWings = true;
+                                configManager.SaveCurrentAccount();
+                            },
+                            () => PvpEnableWarning(UIConstants.ConfigLabels.NagYourMomRivalWings));
+                    else
+                    {
+                        cc.EnableNagYourMomRivalWings = false;
+                        changed = true;
+                    }
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRivalWings", UIConstants.ConfigLabels.NagYourMomRivalWings,
                     (source, target) => target.EnableNagYourMomRivalWings = source.EnableNagYourMomRivalWings);
@@ -2559,7 +2600,8 @@ public class ConfigWindow : Window, IDisposable
                             "all default settings applied to all characters");
                         Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
                         Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
-                    });
+                    },
+                    () => GetPvpEnableWarning(account?.DefaultConfig, account?.Characters.Values, ConfigManager.CopyDefaultSettings));
             }
             ImGui.PopStyleColor(2);
             ImGui.TextDisabled("Copies all toggles and values from Default to every character. Preserves completion flags.");
@@ -3109,13 +3151,18 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 if (ImGui.SmallButton($"Use default##{id}"))
                 {
-                    RunConfigMutationWithTargetPause(
+                    void ApplyDefault() => RunConfigMutationWithTargetPause(
                         () =>
                         {
                             copy(account.DefaultConfig, selected);
                             configManager.SaveCurrentAccount();
                         },
                         $"account default changed {label}");
+                    if (GetPvpEnableWarning(account.DefaultConfig, new[] { selected }, copy).Length > 0)
+                        RequestConfirmation($"Use default for {label}?", string.Empty, ApplyDefault,
+                            () => GetPvpEnableWarning(account.DefaultConfig, new[] { selected }, copy));
+                    else
+                        ApplyDefault();
                 }
             }
             return;
@@ -3142,7 +3189,8 @@ public class ConfigWindow : Window, IDisposable
                         $"account default {label} applied to all characters");
                     Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
                     Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
-                });
+                },
+                () => GetPvpEnableWarning(account.DefaultConfig, account.Characters.Values, copy));
         }
         ImGui.EndDisabled();
     }
@@ -3550,20 +3598,27 @@ public class ConfigWindow : Window, IDisposable
 
     private void DrawWizardPopup()
     {
+        if (activeWizard != null && wizardContextValid?.Invoke() != true)
+            CloseWizard();
+
         if (wizardPopupRequested)
         {
             ImGui.OpenPopup("Setup Wizard");
             wizardPopupRequested = false;
         }
 
-        if (activeWizard == null || wizardDraft == null)
-            return;
-
         var open = true;
         if (!ImGui.BeginPopupModal("Setup Wizard", ref open, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            if (!open)
-                CloseWizard();
+            CloseWizard();
+            return;
+        }
+
+        if (!open || activeWizard == null || wizardDraft == null)
+        {
+            ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
+            CloseWizard();
             return;
         }
 
@@ -3772,7 +3827,13 @@ public class ConfigWindow : Window, IDisposable
             var characterCount = account?.Characters.Count ?? 0;
             var accountLabel = account?.AccountAlias ?? "current account";
             ImGui.TextWrapped($"Apply these staged fields to the Account default, then copy all synchronized default settings to all {characterCount} characters in {accountLabel}? This does not start automation.");
-            if (ImGui.Button("Confirm apply to all"))
+            // Wizard fields do not change either PvP route, but its full default copy can enable them.
+            var warning = GetPvpEnableWarning(account?.DefaultConfig, account?.Characters.Values, ConfigManager.CopyDefaultSettings);
+            if (warning.Length > 0)
+                ImGui.TextWrapped(warning);
+            if (!confirmOpen || ImGui.IsKeyPressed(ImGuiKey.Escape))
+                ImGui.CloseCurrentPopup();
+            else if (ImGui.Button(warning.Length > 0 ? "Yes" : "Confirm apply to all"))
             {
                 if (ApplyWizard(applyToAllCharacters: true))
                 {
@@ -3781,7 +3842,7 @@ public class ConfigWindow : Window, IDisposable
                 }
             }
             ImGui.SameLine();
-            if (ImGui.Button("Cancel##WizardApplyAll"))
+            if (ImGui.Button(warning.Length > 0 ? "No##WizardApplyAll" : "Cancel##WizardApplyAll"))
                 ImGui.CloseCurrentPopup();
             ImGui.EndPopup();
         }
@@ -3791,7 +3852,7 @@ public class ConfigWindow : Window, IDisposable
 
     private bool ApplyWizard(bool applyToAllCharacters)
     {
-        if (activeWizard == null || wizardDraft == null)
+        if (activeWizard == null || wizardDraft == null || wizardContextValid?.Invoke() != true)
             return false;
 
         var account = plugin.ConfigManager.GetCurrentAccount();
@@ -3833,46 +3894,113 @@ public class ConfigWindow : Window, IDisposable
         wizardPopupRequested = false;
         wizardApplyAllConfirmationRequested = false;
         wizardFcBuffCadenceResetRequested = false;
+        wizardContextValid = null;
     }
 
-    private void RequestConfirmation(string title, string message, System.Action action)
+    private static string PvpEnableWarning(string mode)
+        => $"Other players may be watching for automated play in {mode}. Enable it anyway?";
+
+    private static string GetPvpEnableWarning(CharacterConfig? source, IEnumerable<CharacterConfig>? targets,
+        Action<CharacterConfig, CharacterConfig> copy)
+    {
+        if (source == null || targets == null) return string.Empty;
+        var frontline = false;
+        var rivalWings = false;
+        foreach (var target in targets)
+        {
+            var projected = target.Clone();
+            copy(source, projected);
+            frontline |= !target.EnableNagYourMomFrontline && projected.EnableNagYourMomFrontline;
+            rivalWings |= !target.EnableNagYourMomRivalWings && projected.EnableNagYourMomRivalWings;
+        }
+        var warnings = new List<string>();
+        if (frontline) warnings.Add(PvpEnableWarning(UIConstants.ConfigLabels.NagYourMomFrontline));
+        if (rivalWings) warnings.Add(PvpEnableWarning(UIConstants.ConfigLabels.NagYourMomRivalWings));
+        return string.Join("\n\n", warnings);
+    }
+
+    private Func<bool> CaptureConfigurationContext()
+    {
+        var manager = plugin.ConfigManager;
+        var accountId = manager.CurrentAccountId;
+        var characterKey = manager.SelectedCharacterKey;
+        var account = manager.GetCurrentAccount();
+        var profile = account == null ? null : manager.GetSelectedConfig();
+        return () => manager.CurrentAccountId == accountId
+            && manager.SelectedCharacterKey == characterKey
+            && ReferenceEquals(manager.GetCurrentAccount(), account)
+            && (account == null || ReferenceEquals(manager.GetSelectedConfig(), profile));
+    }
+
+    private void RequestConfirmation(string title, string message, System.Action action, Func<string>? warning = null)
     {
         confirmationTitle = title;
         confirmationMessage = message;
         confirmedAction = action;
+        confirmationContextValid = CaptureConfigurationContext();
+        confirmationWarning = warning;
         confirmationPopupRequested = true;
+    }
+
+    private void ClearConfirmation()
+    {
+        confirmedAction = null;
+        confirmationContextValid = null;
+        confirmationWarning = null;
+        confirmationPopupRequested = false;
     }
 
     private void DrawConfirmationPopup()
     {
+        if (confirmedAction != null && confirmationContextValid?.Invoke() != true)
+            ClearConfirmation();
+
         if (confirmationPopupRequested)
         {
             ImGui.OpenPopup("Confirm configuration action");
             confirmationPopupRequested = false;
         }
 
+        ImGui.SetNextWindowSize(new Vector2(ImGui.GetFontSize() * 34f, 0), ImGuiCond.Always);
+        var open = true;
         if (!ImGui.BeginPopupModal(
                 "Confirm configuration action",
+                ref open,
                 ImGuiWindowFlags.AlwaysAutoResize))
         {
+            ClearConfirmation();
+            return;
+        }
+
+        if (!open || confirmedAction == null || ImGui.IsKeyPressed(ImGuiKey.Escape))
+        {
+            ClearConfirmation();
+            ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
             return;
         }
 
         ImGui.Text(confirmationTitle);
         ImGui.Separator();
-        ImGui.TextWrapped(confirmationMessage);
+        if (confirmationMessage.Length > 0) ImGui.TextWrapped(confirmationMessage);
+        var warning = confirmationWarning?.Invoke() ?? string.Empty;
+        if (warning.Length > 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextWrapped(warning);
+        }
         ImGui.Spacing();
-        if (ImGui.Button("Confirm"))
+        if (ImGui.Button(warning.Length > 0 ? "Yes" : "Confirm"))
         {
             var action = confirmedAction;
-            confirmedAction = null;
+            ClearConfirmation();
             action?.Invoke();
             ImGui.CloseCurrentPopup();
         }
         ImGui.SameLine();
-        if (ImGui.Button("Cancel"))
+        if (ImGui.Button(warning.Length > 0 ? "No" : "Cancel"))
         {
-            confirmedAction = null;
+            ClearConfirmation();
             ImGui.CloseCurrentPopup();
         }
 

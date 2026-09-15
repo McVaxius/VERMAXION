@@ -1,5 +1,14 @@
 # VERMAXION Changelog
 
+## Unreleased - Refill Listings failure handoff
+
+- Reset the owned bell helper when Refill Listings fails. A failed bell-opening task can now finish the existing UI cleanup and handoff checks instead of leaving AutoRetainer held indefinitely by an abandoned active helper.
+
+## Unreleased - PvP route enable warnings
+
+- Show Frontline and Rival Wings checkboxes in red in account-default and character settings. Require a Yes/No warning before enabling either route; disabling remains immediate.
+- Include route warnings in default-copy confirmations, including character reset, row/all-character sync, and setup-wizard bulk apply. Cancel pending actions on No, dismissal, window closure, or account/profile changes. Keep acceptance in memory with no saved setting or scheduled-run popup.
+
 ## Unreleased - GitHub Actions plugin build
 
 ### Fixed
