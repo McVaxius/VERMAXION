@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## Unreleased - Feature sync and release recovery
+
+- Keep one Register Registrables sync control beside the scheduling checkbox. It copies scheduling enablement, source choice, and an independent personal list to each character; character default matching and Use default cover the same three settings. Remove the separate source/list sync controls and source explanation.
+- Apply row and all-character defaults, fishing-stock row/catalog defaults, and setup-wizard bulk sync immediately without confirmation. Preserve the existing save paths, completion-history behavior, and target-automation pause handling. Individual character reset/delete, task reset, and direct PvP enable warnings retain their existing confirmations.
+- Verification: 110 existing registrable, persistence, UI/wizard, fishing-stock, and Choke-abo policy checks pass. A focused check compiles the production copy/default-matching callbacks in memory and passes 12 scenarios covering each feature field, independent character lists, preserved unrelated state, and no registrable Use default warning; production syntax confirms one control and immediate bulk sync. The Debug x64 build through `Z:\vmx.bat` succeeds with matching Dalamud 15.0.3.5 references and only the existing PInvoke.User32 dependency warning. Live UI interaction was not performed. Tests, workflow, and version `0.4.0.7` remain unchanged.
+- Recover release `v0.4.0.7` using only GitHub's release-job rerun operation. The first retry failed with `Error creating asset temp dir`; after inspecting that failure, the next retry succeeded without a workflow change. Attempt 3 of run `35266275538` reused the original build artifact and published against commit `2729f131e498ed6813ee819b3b7f932d53310f86`, with `latest.zip` (1,170,204 bytes) and `VERMAXION.json` (887 bytes), both uploaded. This recovered release contains the existing commit, not these uncommitted sync edits; GitHub Actions did not run tests.
+
 ## Unreleased - Registrable unlock detection and default source
 
 - Decode native registration result 2 as unregistered and registrable, and result 1 as registered. Other results, unavailable native components, and exceptions fail closed with the actual result or failure detail in existing logging.

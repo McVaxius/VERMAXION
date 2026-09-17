@@ -38,7 +38,6 @@ public class ConfigWindow : Window, IDisposable
     private Func<bool>? confirmationContextValid;
     private Func<string>? confirmationWarning;
     private Func<bool>? wizardContextValid;
-    private bool wizardApplyAllConfirmationRequested;
     private bool wizardFcBuffCadenceResetRequested;
     private string oceanFishingProviderSyncStatus = string.Empty;
     private bool? oceanFishingProviderSyncSucceeded;
@@ -902,22 +901,12 @@ public class ConfigWindow : Window, IDisposable
         if (isDefault)
         {
             ImGui.TextDisabled(UIConstants.ConfigLabels.NewCharactersInheritThese);
-            if (ImGui.SmallButton("Apply Default to ALL..."))
+            if (ImGui.SmallButton("Apply Default to ALL"))
             {
-                var account = configManager.GetCurrentAccount();
-                var count = account?.Characters.Count ?? 0;
-                var accountLabel = account?.AccountAlias ?? "current account";
-                RequestConfirmation(
-                    "Apply default to all characters?",
-                    $"Replace synchronized settings for all {count} characters in {accountLabel} with the current Account default? Completion history remains character-specific.",
-                    () =>
-                    {
-                        var applied = RunConfigMutationWithTargetPause(
-                            configManager.ApplyDefaultToAllCharacters,
-                            "account default applied to all characters");
-                        Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {applied} characters.");
-                    },
-                    () => GetPvpEnableWarning(account?.DefaultConfig, account?.Characters.Values, ConfigManager.CopyDefaultSettings));
+                var applied = RunConfigMutationWithTargetPause(
+                    configManager.ApplyDefaultToAllCharacters,
+                    "account default applied to all characters");
+                Plugin.ChatGui.Print($"[Vermaxion] Default Config applied to {applied} characters.");
             }
             ImGui.SameLine();
             ImGui.TextDisabled("Explicitly replaces each existing character's synchronized settings.");
@@ -1700,7 +1689,12 @@ public class ConfigWindow : Window, IDisposable
                 changed = true;
             }
             DrawDefaultOverrideButton(isDefault, configManager, "RegisterRegistrables", "Register Registrables",
-                (source, target) => target.EnableRegisterRegistrables = source.EnableRegisterRegistrables);
+                (source, target) =>
+                {
+                    target.EnableRegisterRegistrables = source.EnableRegisterRegistrables;
+                    target.RegisterUnregisteredItemsFromInventory = source.RegisterUnregisteredItemsFromInventory;
+                    target.PersonalRegistrableItems = new List<uint>(source.PersonalRegistrableItems);
+                });
 
             DrawHelpMarker("Controls scheduled runs. Manual Run and the saved debug reload task remain available when unchecked.");
             ImGui.Indent();
@@ -1729,16 +1723,6 @@ public class ConfigWindow : Window, IDisposable
             {
                 plugin.RegistrableConfigWindow.IsOpen = true;
             }
-            DrawDefaultOverrideButton(isDefault, configManager, "PersonalRegistrableItems", "Registrable personal item list",
-                (source, target) => target.PersonalRegistrableItems = new List<uint>(source.PersonalRegistrableItems));
-            ImGui.TextDisabled("Source applies to scheduled and manual runs. Switching source keeps your list.");
-            DrawDefaultOverrideButton(
-                isDefault,
-                configManager,
-                "RegisterUnregisteredItemsFromInventory",
-                "Registrable item source",
-                (source, target) => target.RegisterUnregisteredItemsFromInventory =
-                    source.RegisterUnregisteredItemsFromInventory);
             ImGui.Unindent();
         }
 
@@ -2595,21 +2579,13 @@ public class ConfigWindow : Window, IDisposable
             var account = configManager.GetCurrentAccount();
             var differing = account?.Characters.Values.Count(character =>
                 !SettingsMatchDefault(account.DefaultConfig, character)) ?? 0;
-            if (ImGui.Button($"Apply Default Settings to ALL Characters ({differing})...", new Vector2(-1, 30)))
+            if (ImGui.Button($"Apply Default Settings to ALL Characters ({differing})", new Vector2(-1, 30)))
             {
-                var accountLabel = account?.AccountAlias ?? "current account";
-                RequestConfirmation(
-                    "Apply all default settings?",
-                    $"Apply the Account default to {differing} differing characters in {accountLabel}? Completion history remains character-specific.",
-                    () =>
-                    {
-                        var count = RunConfigMutationWithTargetPause(
-                            configManager.ApplyDefaultToAllCharacters,
-                            "all default settings applied to all characters");
-                        Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
-                        Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
-                    },
-                    () => GetPvpEnableWarning(account?.DefaultConfig, account?.Characters.Values, ConfigManager.CopyDefaultSettings));
+                var count = RunConfigMutationWithTargetPause(
+                    configManager.ApplyDefaultToAllCharacters,
+                    "all default settings applied to all characters");
+                Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
+                Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
             }
             ImGui.PopStyleColor(2);
             ImGui.TextDisabled("Copies all toggles and values from Default to every character. Preserves completion flags.");
@@ -3182,23 +3158,13 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextDisabled($"{differing} characters differ");
         ImGui.SameLine();
         ImGui.BeginDisabled(differing == 0);
-        if (ImGui.SmallButton($"Apply to all...##{id}"))
+        if (ImGui.SmallButton($"Apply to all##{id}"))
         {
-            var accountLabel = string.IsNullOrWhiteSpace(account.AccountAlias)
-                ? "current account"
-                : account.AccountAlias;
-            RequestConfirmation(
-                $"Apply {label} to all characters?",
-                $"Apply the Account default value for {label} to {differing} differing characters in {accountLabel}?",
-                () =>
-                {
-                    var count = RunConfigMutationWithTargetPause(
-                        () => configManager.ApplyDefaultSettingToAllCharacters(label, copy),
-                        $"account default {label} applied to all characters");
-                    Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
-                    Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
-                },
-                () => GetPvpEnableWarning(account.DefaultConfig, account.Characters.Values, copy));
+            var count = RunConfigMutationWithTargetPause(
+                () => configManager.ApplyDefaultSettingToAllCharacters(label, copy),
+                $"account default {label} applied to all characters");
+            Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
+            Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
         }
         ImGui.EndDisabled();
     }
@@ -3461,17 +3427,10 @@ public class ConfigWindow : Window, IDisposable
                 : new[] { currentAccount.DefaultConfig }
                     .Concat(currentAccount.Characters.Values)
                     .Count(record => !FishingStockRowMatches(record, row));
-            if (ImGui.SmallButton($"Sync row ({differingRecords})..."))
+            if (ImGui.SmallButton($"Sync row ({differingRecords})"))
             {
-                var accountLabel = currentAccount?.AccountAlias ?? "current account";
-                RequestConfirmation(
-                    "Apply fishing-stock row to current account?",
-                    $"Apply {GetItemName(row.ItemId)} defaults to {differingRecords} differing default/character records in {accountLabel}?",
-                    () =>
-                    {
-                        var count = configManager.SyncFishingStockRowToCurrentAccount(row);
-                        Plugin.ChatGui.Print($"[Vermaxion] {GetItemName(row.ItemId)} defaults synchronized to {count} current-account records.");
-                    });
+                var count = configManager.SyncFishingStockRowToCurrentAccount(row);
+                Plugin.ChatGui.Print($"[Vermaxion] {GetItemName(row.ItemId)} defaults synchronized to {count} current-account records.");
             }
 
             if (ImGui.BeginPopupModal("Remove fishing-stock item?", ImGuiWindowFlags.AlwaysAutoResize))
@@ -3572,17 +3531,10 @@ public class ConfigWindow : Window, IDisposable
             : new[] { account.DefaultConfig }
                 .Concat(account.Characters.Values)
                 .Count(record => configuration.FishingStockCatalog.Any(row => !FishingStockRowMatches(record, row)));
-        if (ImGui.SmallButton($"Sync ALL catalog defaults ({allDifferingRecords})..."))
+        if (ImGui.SmallButton($"Sync ALL catalog defaults ({allDifferingRecords})"))
         {
-            var accountLabel = account?.AccountAlias ?? "current account";
-            RequestConfirmation(
-                "Apply all fishing-stock defaults to current account?",
-                $"Apply every global fishing-stock row to {allDifferingRecords} differing default/character records in {accountLabel}?",
-                () =>
-                {
-                    var count = configManager.SyncAllFishingStockRowsToCurrentAccount(configuration.FishingStockCatalog);
-                    Plugin.ChatGui.Print($"[Vermaxion] All fishing-stock defaults synchronized to {count} current-account records.");
-                });
+            var count = configManager.SyncAllFishingStockRowsToCurrentAccount(configuration.FishingStockCatalog);
+            Plugin.ChatGui.Print($"[Vermaxion] All fishing-stock defaults synchronized to {count} current-account records.");
         }
         ImGui.TextWrapped("Changing a global default does not alter existing account or character values until a row or all-catalog sync is explicitly used.");
 
@@ -3811,48 +3763,20 @@ public class ConfigWindow : Window, IDisposable
             }
         }
         ImGui.SameLine();
-        if (ImGui.Button("Apply default to all characters..."))
-            wizardApplyAllConfirmationRequested = true;
+        if (ImGui.Button("Apply default to all characters"))
+        {
+            if (ApplyWizard(applyToAllCharacters: true))
+            {
+                ImGui.CloseCurrentPopup();
+                CloseWizard();
+            }
+        }
         ImGui.EndDisabled();
         ImGui.SameLine();
         if (ImGui.Button("Cancel"))
         {
             ImGui.CloseCurrentPopup();
             CloseWizard();
-        }
-
-        if (wizardApplyAllConfirmationRequested)
-        {
-            ImGui.OpenPopup("Apply wizard default to all characters?");
-            wizardApplyAllConfirmationRequested = false;
-        }
-        var confirmOpen = true;
-        if (ImGui.BeginPopupModal(
-                "Apply wizard default to all characters?",
-                ref confirmOpen,
-                ImGuiWindowFlags.AlwaysAutoResize))
-        {
-            var characterCount = account?.Characters.Count ?? 0;
-            var accountLabel = account?.AccountAlias ?? "current account";
-            ImGui.TextWrapped($"Apply these staged fields to the Account default, then copy all synchronized default settings to all {characterCount} characters in {accountLabel}? This does not start automation.");
-            // Wizard fields do not change either PvP route, but its full default copy can enable them.
-            var warning = GetPvpEnableWarning(account?.DefaultConfig, account?.Characters.Values, ConfigManager.CopyDefaultSettings);
-            if (warning.Length > 0)
-                ImGui.TextWrapped(warning);
-            if (!confirmOpen || ImGui.IsKeyPressed(ImGuiKey.Escape))
-                ImGui.CloseCurrentPopup();
-            else if (ImGui.Button(warning.Length > 0 ? "Yes" : "Confirm apply to all"))
-            {
-                if (ApplyWizard(applyToAllCharacters: true))
-                {
-                    ImGui.CloseCurrentPopup();
-                    CloseWizard();
-                }
-            }
-            ImGui.SameLine();
-            if (ImGui.Button(warning.Length > 0 ? "No##WizardApplyAll" : "Cancel##WizardApplyAll"))
-                ImGui.CloseCurrentPopup();
-            ImGui.EndPopup();
         }
 
         ImGui.EndPopup();
@@ -3900,7 +3824,6 @@ public class ConfigWindow : Window, IDisposable
         activeWizard = null;
         wizardDraft = null;
         wizardPopupRequested = false;
-        wizardApplyAllConfirmationRequested = false;
         wizardFcBuffCadenceResetRequested = false;
         wizardContextValid = null;
     }
