@@ -42,6 +42,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
+    private const string DebugAttemptMarker = "registrables-native-unlock-20260917-02";
     private const string ExpectedDebugPluginPath = @"D:\temp\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
@@ -360,7 +361,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var assembly = Assembly.GetExecutingAssembly();
         var version = assembly.GetName().Version?.ToString() ?? "unknown";
         var path = string.IsNullOrWhiteSpace(assembly.Location) ? "unknown" : assembly.Location;
-        Log.Information($"[Plugin] VERMAXION assembly loaded from '{path}', version '{version}', expected debug path '{ExpectedDebugPluginPath}'");
+        Log.Information($"[Plugin] VERMAXION assembly loaded from '{path}', version '{version}', expected debug path '{ExpectedDebugPluginPath}', attempt marker '{DebugAttemptMarker}'");
     }
 
     public void Dispose()
@@ -528,7 +529,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (VendorStockService.IsActive)
             return (true, VendorStockService.State.ToString(), VendorStockService.StatusText);
         if (RegisterRegistrablesService.IsActive)
-            return (true, RegisterRegistrablesService.State.ToString(), $"Register Registrables: {RegisterRegistrablesService.State}");
+            return (true, RegisterRegistrablesService.State.ToString(), $"Register Registrables: {RegisterRegistrablesService.StatusText}");
         if (RetainerListingRefillService.IsActive)
             return (true, "RetainerListingRefill", RetainerListingRefillService.StatusText);
         if (WorkshopBellService.IsActive)
@@ -610,7 +611,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private void SetDebugTaskStatus(string status)
     {
         DebugTaskStatus = status;
-        Log.Information($"[DebugReload] task={Configuration.DebugTaskId ?? "none"}; {status}");
+        Log.Information($"[DebugReload] marker={DebugAttemptMarker}; task={Configuration.DebugTaskId ?? "none"}; {status}");
     }
 
     private void ProcessPendingDebugTask()

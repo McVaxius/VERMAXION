@@ -11,8 +11,8 @@ using VERMAXION.Models;
 namespace VERMAXION.Services;
 
 /// <summary>
-/// Registers configured personal items or, when opted in, direct registrables
-/// discovered from one ordered snapshot of the four main inventory bags.
+/// Registers direct registrables discovered from one ordered snapshot of the
+/// four main inventory bags, or configured personal items when selected.
 /// </summary>
 public class RegisterRegistrablesService : IDisposable
 {
@@ -35,6 +35,9 @@ public class RegisterRegistrablesService : IDisposable
     private int currentItemIndex;
     private int currentItemAttempts;
     private int exhaustedItemCount;
+    private int verifiedItemCount;
+    private int skippedItemCount;
+    private string? failureReason;
     private List<QueuedRegistrable> foundItems = [];
 
     private sealed record QueuedRegistrable(
@@ -57,6 +60,17 @@ public class RegisterRegistrablesService : IDisposable
     public bool IsActive => isActive;
     public bool IsComplete => currentState == RegisterState.Complete;
     public bool IsFailed => currentState == RegisterState.Failed;
+    public string StatusText => currentState switch
+    {
+        RegisterState.Idle => "Ready for manual run",
+        RegisterState.ScanningInventory => "Scanning inventory",
+        RegisterState.ProcessingItems => $"Processing item {Math.Min(currentItemIndex + 1, foundItems.Count)}/{foundItems.Count}",
+        RegisterState.WaitingForNextItem => $"Verifying item {currentItemIndex + 1}/{foundItems.Count}, attempt {currentItemAttempts}/{RegistrableRetryPolicy.MaxAttemptsPerItem}",
+        RegisterState.Complete when foundItems.Count == 0 => "No eligible items found",
+        RegisterState.Complete => $"Complete: {verifiedItemCount} registrations verified, {skippedItemCount} skipped, {exhaustedItemCount} exhausted",
+        RegisterState.Failed => $"Failed: {failureReason}",
+        _ => currentState.ToString(),
+    };
 
     public RegisterRegistrablesService(
         IPluginLog log,
@@ -68,7 +82,26 @@ public class RegisterRegistrablesService : IDisposable
         this.dataManager = dataManager;
     }
 
-    public void Start()
+    public string? GetManualStartBlockedReason()
+    {
+        if (isActive)
+            return "Register Registrables is already running.";
+
+        var config = configManager.GetActiveConfig();
+        return config == null
+            ? "Active character configuration is unavailable."
+            : RegistrableRegistrationPolicy.GetStartBlockedReason(
+                config.EnableRegisterRegistrables,
+                config.RegisterUnregisteredItemsFromInventory,
+                config.PersonalRegistrableItems.Count,
+                manualStart: true);
+    }
+
+    public void Start() => Start(manualStart: false);
+
+    public void StartManual() => Start(manualStart: true);
+
+    private void Start(bool manualStart)
     {
         if (isActive)
         {
@@ -77,23 +110,28 @@ public class RegisterRegistrablesService : IDisposable
         }
 
         var activeConfig = configManager.GetActiveConfig();
-        if (activeConfig == null || !activeConfig.EnableRegisterRegistrables)
+        if (activeConfig == null)
         {
-            log.Information("[RegisterRegistrables] Feature disabled for character");
+            FailRun("active character configuration is unavailable");
             return;
         }
 
         automaticInventoryModeForRun = activeConfig.RegisterUnregisteredItemsFromInventory;
-        if (!RegistrableRegistrationPolicy.CanStart(
+        var blockedReason = RegistrableRegistrationPolicy.GetStartBlockedReason(
                 activeConfig.EnableRegisterRegistrables,
                 automaticInventoryModeForRun,
-                activeConfig.PersonalRegistrableItems.Count))
+                activeConfig.PersonalRegistrableItems.Count,
+                manualStart);
+        if (blockedReason != null)
         {
-            log.Warning("[RegisterRegistrables] Blocked: no personal registrable items are configured; enablement was preserved");
-            SetState(RegisterState.Failed);
+            if (!manualStart && !activeConfig.EnableRegisterRegistrables)
+                log.Information($"[RegisterRegistrables] {blockedReason}");
+            else
+                FailRun(blockedReason);
             return;
         }
 
+        log.Information($"[RegisterRegistrables] Accepted {(manualStart ? "manual" : "scheduled")} start; scheduled enablement={activeConfig.EnableRegisterRegistrables}");
         log.Information(automaticInventoryModeForRun
             ? "[RegisterRegistrables] Starting automatic inventory discovery; the personal list is ignored for this run"
             : $"[RegisterRegistrables] Starting with {activeConfig.PersonalRegistrableItems.Count} items in personal list");
@@ -102,6 +140,9 @@ public class RegisterRegistrablesService : IDisposable
         currentItemIndex = 0;
         currentItemAttempts = 0;
         exhaustedItemCount = 0;
+        verifiedItemCount = 0;
+        skippedItemCount = 0;
+        failureReason = null;
         SetState(RegisterState.ScanningInventory);
     }
 
@@ -115,6 +156,9 @@ public class RegisterRegistrablesService : IDisposable
         currentItemIndex = 0;
         currentItemAttempts = 0;
         exhaustedItemCount = 0;
+        verifiedItemCount = 0;
+        skippedItemCount = 0;
+        failureReason = null;
         foundItems.Clear();
     }
 
@@ -136,9 +180,6 @@ public class RegisterRegistrablesService : IDisposable
             case RegisterState.ProcessingItems:
                 if (currentItemIndex >= foundItems.Count)
                 {
-                    log.Information(exhaustedItemCount == 0
-                        ? "[RegisterRegistrables] All items processed successfully"
-                        : $"[RegisterRegistrables] Processing complete with {exhaustedItemCount} item(s) exhausted after retry limit");
                     SetState(RegisterState.Complete);
                     return;
                 }
@@ -227,10 +268,10 @@ public class RegisterRegistrablesService : IDisposable
                 source = category.ToString();
             }
 
-            var unlockState = ReadUnlockState(itemId);
+            var unlockState = ReadUnlockState(itemId, out var unlockError);
             if (unlockState == RegistrableUnlockState.Unreadable)
             {
-                FailRun($"registration state was unreadable while building the queue for item {itemId}");
+                FailRun($"registration state was unreadable while building the queue for item {itemId}: {unlockError}");
                 return;
             }
             if (unlockState == RegistrableUnlockState.Unlocked)
@@ -260,10 +301,10 @@ public class RegisterRegistrablesService : IDisposable
             return false;
 
         var item = foundItems[currentItemIndex];
-        var unlockState = ReadUnlockState(item.ItemId);
+        var unlockState = ReadUnlockState(item.ItemId, out var unlockError);
         if (unlockState == RegistrableUnlockState.Unreadable)
         {
-            FailRun($"registration state became unreadable before using {item.ItemName}");
+            FailRun($"registration state became unreadable before using {item.ItemName}: {unlockError}");
             return false;
         }
 
@@ -278,13 +319,15 @@ public class RegisterRegistrablesService : IDisposable
         switch (RegistrableRegistrationPolicy.EvaluateBeforeUse(unlockState, currentQuantity))
         {
             case RegistrablePreUseDecision.AdvanceUnlocked:
+                skippedItemCount++;
                 AdvanceCurrentItem($"{item.ItemName} is already registered");
                 return false;
             case RegistrablePreUseDecision.AdvanceMissing:
+                skippedItemCount++;
                 AdvanceCurrentItem($"{item.ItemName} is no longer present");
                 return false;
             case RegistrablePreUseDecision.FailUnreadable:
-                FailRun($"registration state became unreadable before using {item.ItemName}");
+                FailRun($"registration state became unreadable before using {item.ItemName}: {unlockError}");
                 return false;
         }
 
@@ -313,7 +356,7 @@ public class RegisterRegistrablesService : IDisposable
         }
 
         var item = foundItems[currentItemIndex];
-        var unlockState = ReadUnlockState(item.ItemId);
+        var unlockState = ReadUnlockState(item.ItemId, out var unlockError);
         var currentQuantity = item.SnapshotQuantity;
         if (unlockState == RegistrableUnlockState.Locked &&
             !TryReadMainInventoryQuantity(item.ItemId, out currentQuantity, out var quantityError))
@@ -329,10 +372,12 @@ public class RegisterRegistrablesService : IDisposable
                     currentItemAttempts))
         {
             case RegistrablePostUseDecision.AdvanceUnlocked:
+                verifiedItemCount++;
                 AdvanceCurrentItem($"{item.ItemName} registration verified");
                 SetState(RegisterState.ProcessingItems);
                 break;
             case RegistrablePostUseDecision.AdvanceMissing:
+                skippedItemCount++;
                 AdvanceCurrentItem($"{item.ItemName} is no longer present");
                 SetState(RegisterState.ProcessingItems);
                 break;
@@ -347,7 +392,7 @@ public class RegisterRegistrablesService : IDisposable
                 SetState(RegisterState.ProcessingItems);
                 break;
             case RegistrablePostUseDecision.FailUnreadable:
-                FailRun($"registration state became unreadable while verifying {item.ItemName}");
+                FailRun($"registration state became unreadable while verifying {item.ItemName}: {unlockError}");
                 break;
         }
     }
@@ -361,6 +406,7 @@ public class RegisterRegistrablesService : IDisposable
 
     private void FailRun(string reason)
     {
+        failureReason = reason;
         log.Error($"[RegisterRegistrables] Failed closed: {reason}");
         SetState(RegisterState.Failed);
     }
@@ -386,24 +432,34 @@ public class RegisterRegistrablesService : IDisposable
         }
     }
 
-    private static unsafe RegistrableUnlockState ReadUnlockState(uint itemId)
+    private static unsafe RegistrableUnlockState ReadUnlockState(uint itemId, out string error)
     {
+        error = string.Empty;
         try
         {
             var exdItem = ExdModule.GetItemRowById(itemId);
-            var uiState = UIState.Instance();
-            if (exdItem == null || uiState == null)
-                return RegistrableUnlockState.Unreadable;
-
-            return uiState->IsItemActionUnlocked(exdItem) switch
+            if (exdItem == null)
             {
-                0 => RegistrableUnlockState.Locked,
-                1 => RegistrableUnlockState.Unlocked,
-                _ => RegistrableUnlockState.Unreadable,
-            };
+                error = $"EXD item row {itemId} is unavailable";
+                return RegistrableUnlockState.Unreadable;
+            }
+
+            var uiState = UIState.Instance();
+            if (uiState == null)
+            {
+                error = "UIState is unavailable";
+                return RegistrableUnlockState.Unreadable;
+            }
+
+            var result = uiState->IsItemActionUnlocked(exdItem);
+            var state = RegistrableRegistrationPolicy.DecodeNativeUnlockState(result);
+            if (state == RegistrableUnlockState.Unreadable)
+                error = $"IsItemActionUnlocked returned unexpected native result {result}";
+            return state;
         }
-        catch
+        catch (Exception ex)
         {
+            error = ex.ToString();
             return RegistrableUnlockState.Unreadable;
         }
     }
@@ -521,7 +577,7 @@ public class RegisterRegistrablesService : IDisposable
         switch (newState)
         {
             case RegisterState.Complete:
-                log.Information("[RegisterRegistrables] Register Registrables completed successfully");
+                log.Information($"[RegisterRegistrables] {StatusText}");
                 isActive = false;
                 break;
             case RegisterState.Failed:

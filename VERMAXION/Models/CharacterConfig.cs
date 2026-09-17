@@ -22,7 +22,7 @@ public class CharacterConfig
     public bool EnableCurrentJobEquipment { get; set; } = false;
     public bool EnableFashionReport { get; set; } = false;
     public bool EnableRegisterRegistrables { get; set; } = false;
-    public bool RegisterUnregisteredItemsFromInventory { get; set; } = false;
+    public bool RegisterUnregisteredItemsFromInventory { get; set; } = true;
     public bool EnableVendorStock { get; set; } = false;
     public bool EnableRefillFromListings { get; set; } = false;
     public bool EnableAfterArPark { get; set; } = false;

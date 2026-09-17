@@ -465,8 +465,16 @@ public class MainWindow : Window, IDisposable
             tertiaryOnClick: plugin.RunFishingGearsetTest,
             tertiaryButtonDisabled: fishingButtonsDisabled,
             tertiaryButtonTooltip: "Equip and verify the current character's first saved Fisher gearset.");
-        AddTaskRow("Register Registrables", config.EnableRegisterRegistrables, AutomationCatalog.Get(AutomationCatalog.RegisterRegistrables).CadenceLabel,
-            "run##Register", () => plugin.RegisterRegistrablesService.Start(), "OK");
+        var registrables = plugin.RegisterRegistrablesService;
+        var registrableBlocker = registrables.GetManualStartBlockedReason();
+        var registrableSource = config.RegisterUnregisteredItemsFromInventory ? "Inventory discovery" : "Personal list";
+        var registrableStatus = !registrables.IsActive && registrableBlocker != null
+            ? $"Blocked: {registrableBlocker}"
+            : registrables.StatusText;
+        AddTaskRow("Register Registrables", config.EnableRegisterRegistrables, $"{registrableSource}: {registrableStatus}",
+            "run##Register", registrables.StartManual,
+            buttonDisabled: registrableBlocker != null,
+            buttonTooltip: registrableBlocker ?? "Run the selected source once, regardless of scheduled enablement.");
         AddTaskRow("Refill Listings", config.EnableRefillFromListings, GetRefillFromListingsStatus(config),
             "run##Listings", () =>
             {
@@ -946,7 +954,7 @@ public class MainWindow : Window, IDisposable
         if (ImGui.SmallButton(row.ButtonLabel))
             plugin.RunDashboardAction(row.OnClick);
         ImGui.EndDisabled();
-        if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered())
+        if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             ImGui.SetTooltip(row.ButtonTooltip);
 
         if (row.SettingsSection.HasValue)
@@ -961,6 +969,11 @@ public class MainWindow : Window, IDisposable
                 ImGui.SetTooltip(characterKnown
                     ? "Open settings for the current or last loaded character in this session."
                     : "Load a character first to open its task settings.");
+        }
+
+        if (row.Id == AutomationCatalog.RegisterRegistrables)
+        {
+            ImGui.TextWrapped(row.Status);
         }
 
         if (showDiagnosticActions && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)

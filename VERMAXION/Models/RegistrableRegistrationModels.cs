@@ -52,6 +52,14 @@ public static class RegistrableRegistrationPolicy
     public const int RequiredInventoryBagCount = 4;
     public static readonly TimeSpan VerificationDelay = TimeSpan.FromSeconds(7);
 
+    public static RegistrableUnlockState DecodeNativeUnlockState(long result)
+        => result switch
+        {
+            1 => RegistrableUnlockState.Unlocked,
+            2 => RegistrableUnlockState.Locked,
+            _ => RegistrableUnlockState.Unreadable,
+        };
+
     public static bool TryClassifyDirectAction(
         uint actionId,
         bool isFadedOrchestrionCopy,
@@ -106,8 +114,20 @@ public static class RegistrableRegistrationPolicy
     public static bool CanStart(
         bool featureEnabled,
         bool automaticInventoryMode,
-        int personalItemCount)
-        => featureEnabled && (automaticInventoryMode || personalItemCount > 0);
+        int personalItemCount,
+        bool manualStart = false)
+        => GetStartBlockedReason(featureEnabled, automaticInventoryMode, personalItemCount, manualStart) == null;
+
+    public static string? GetStartBlockedReason(
+        bool featureEnabled,
+        bool automaticInventoryMode,
+        int personalItemCount,
+        bool manualStart = false)
+        => !manualStart && !featureEnabled
+            ? "Register Registrables is disabled for scheduled runs."
+            : !automaticInventoryMode && personalItemCount <= 0
+                ? "The personal list is empty. Configure the list or select inventory discovery."
+                : null;
 
     public static bool TryFilterLockedItems(
         IReadOnlyList<uint> itemIds,
