@@ -1,5 +1,10 @@
 # VERMAXION Changelog
 
+## Unreleased - Stable Dalamud builds
+
+- Download stable Dalamud latest.zip and remove the obsolete pinned-version message. Keep the plugin-only build, plugin version 0.4.0.8, action versions, and release behavior unchanged.
+- Verified workflow YAML and run-block syntax, the existing Release x64 restore/build commands against Dalamud 15.0.3.5, and nonempty ZIP/JSON packages with matching versions. The build passes with the existing PInvoke.User32 NU1601 warning. GitHub verification awaits publication.
+
 ## Unreleased - Feature sync and release recovery
 
 - Keep one Register Registrables sync control beside the scheduling checkbox. It copies scheduling enablement, source choice, and an independent personal list to each character; character default matching and Use default cover the same three settings. Remove the separate source/list sync controls and source explanation.
