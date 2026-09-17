@@ -1,6 +1,4 @@
 using System;
-using System.Text;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 
@@ -29,9 +27,15 @@ public static class CommandHelper
                 return false;
             }
 
-            var bytes = Encoding.UTF8.GetBytes(command);
-            var utf8String = Utf8String.FromSequence(bytes);
-            uiModule->ProcessChatBoxEntry(utf8String, nint.Zero);
+            var utf8String = Utf8String.FromString(command);
+            try
+            {
+                uiModule->ProcessChatBoxEntry(utf8String, nint.Zero);
+            }
+            finally
+            {
+                utf8String->Dtor(true);
+            }
             Plugin.Log.Debug($"[CommandHelper] Sent via UIModule: {command}");
             return true;
         }

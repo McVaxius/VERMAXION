@@ -9,6 +9,20 @@ namespace VERMAXION.Tests;
 public sealed class RegisterRegistrablesPolicyTests
 {
     [Theory]
+    [InlineData(1L, RegistrableUnlockState.Unlocked)]
+    [InlineData(2L, RegistrableUnlockState.Locked)]
+    [InlineData(0L, RegistrableUnlockState.Unreadable)]
+    [InlineData(3L, RegistrableUnlockState.Unreadable)]
+    [InlineData(4L, RegistrableUnlockState.Unreadable)]
+    [InlineData(-1L, RegistrableUnlockState.Unreadable)]
+    [InlineData(long.MinValue, RegistrableUnlockState.Unreadable)]
+    [InlineData(long.MaxValue, RegistrableUnlockState.Unreadable)]
+    public void NativeUnlockResultsFollowRegistrationContract(long result, RegistrableUnlockState expected)
+    {
+        Assert.Equal(expected, RegistrableRegistrationPolicy.DecodeNativeUnlockState(result));
+    }
+
+    [Theory]
     [InlineData(1322u, RegistrableCategory.Mount)]
     [InlineData(853u, RegistrableCategory.Minion)]
     [InlineData(20086u, RegistrableCategory.FashionAccessory)]
@@ -150,6 +164,43 @@ public sealed class RegisterRegistrablesPolicyTests
     }
 
     [Theory]
+    [InlineData(false, false, false, 0, false)]
+    [InlineData(false, false, false, 1, false)]
+    [InlineData(false, false, true, 0, false)]
+    [InlineData(false, false, true, 1, false)]
+    [InlineData(false, true, false, 0, false)]
+    [InlineData(false, true, false, 1, true)]
+    [InlineData(false, true, true, 0, true)]
+    [InlineData(false, true, true, 1, true)]
+    [InlineData(true, false, false, 0, false)]
+    [InlineData(true, false, false, 1, true)]
+    [InlineData(true, false, true, 0, true)]
+    [InlineData(true, false, true, 1, true)]
+    [InlineData(true, true, false, 0, false)]
+    [InlineData(true, true, false, 1, true)]
+    [InlineData(true, true, true, 0, true)]
+    [InlineData(true, true, true, 1, true)]
+    public void ManualStartBypassesOnlyScheduledEnablement(
+        bool manualStart,
+        bool featureEnabled,
+        bool automaticInventoryMode,
+        int personalItemCount,
+        bool expected)
+    {
+        Assert.Equal(expected, RegistrableRegistrationPolicy.CanStart(
+            featureEnabled, automaticInventoryMode, personalItemCount, manualStart));
+
+        var reason = RegistrableRegistrationPolicy.GetStartBlockedReason(
+            featureEnabled, automaticInventoryMode, personalItemCount, manualStart);
+        if (expected)
+            Assert.Null(reason);
+        else if (!manualStart && !featureEnabled)
+            Assert.Contains("disabled for scheduled runs", reason);
+        else
+            Assert.Contains("personal list is empty", reason);
+    }
+
+    [Theory]
     [InlineData(RegistrableUnlockState.Unreadable, 1, RegistrablePreUseDecision.FailUnreadable)]
     [InlineData(RegistrableUnlockState.Unlocked, 2, RegistrablePreUseDecision.AdvanceUnlocked)]
     [InlineData(RegistrableUnlockState.Locked, 0, RegistrablePreUseDecision.AdvanceMissing)]
@@ -226,21 +277,41 @@ public sealed class RegisterRegistrablesPolicyTests
                 attempts: 1));
     }
 
-    [Fact]
-    public void ConfigurationDefaultsFalseAndSurvivesCloneAndDefaultCopy()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConfigurationDefaultsToInventoryAndPreservesSavedSourceAndList(bool savedSource)
     {
-        Assert.False(new CharacterConfig().RegisterUnregisteredItemsFromInventory);
-        Assert.False(
+        Assert.True(new CharacterConfig().RegisterUnregisteredItemsFromInventory);
+        Assert.True(CharacterConfig.CreateNew().RegisterUnregisteredItemsFromInventory);
+        Assert.True(
             JsonSerializer.Deserialize<CharacterConfig>("{}")!
                 .RegisterUnregisteredItemsFromInventory);
 
         var account = new AccountConfig();
-        account.DefaultConfig.RegisterUnregisteredItemsFromInventory = true;
-        var clonedDefault = account.DefaultConfig.Clone();
-        var copiedCharacter = account.DefaultConfig.Clone();
+        Assert.True(account.DefaultConfig.RegisterUnregisteredItemsFromInventory);
+        account.DefaultConfig.RegisterUnregisteredItemsFromInventory = savedSource;
+        account.DefaultConfig.PersonalRegistrableItems = [10, 20];
+        account.Characters["character-a"] = new CharacterConfig
+        {
+            RegisterUnregisteredItemsFromInventory = !savedSource,
+            PersonalRegistrableItems = [30, 40],
+        };
 
-        Assert.True(clonedDefault.RegisterUnregisteredItemsFromInventory);
-        Assert.True(copiedCharacter.RegisterUnregisteredItemsFromInventory);
+        var restored = JsonSerializer.Deserialize<AccountConfig>(JsonSerializer.Serialize(account))!;
+        Assert.Equal(savedSource, restored.DefaultConfig.RegisterUnregisteredItemsFromInventory);
+        Assert.Equal([10u, 20u], restored.DefaultConfig.PersonalRegistrableItems);
+        Assert.Equal(!savedSource, restored.Characters["character-a"].RegisterUnregisteredItemsFromInventory);
+        Assert.Equal([30u, 40u], restored.Characters["character-a"].PersonalRegistrableItems);
+
+        var copiedCharacter = restored.DefaultConfig.Clone();
+        Assert.Equal(savedSource, copiedCharacter.RegisterUnregisteredItemsFromInventory);
+        Assert.Equal([10u, 20u], copiedCharacter.PersonalRegistrableItems);
+        Assert.NotSame(restored.DefaultConfig.PersonalRegistrableItems, copiedCharacter.PersonalRegistrableItems);
+
+        var clonedCharacter = restored.Characters["character-a"].Clone();
+        Assert.Equal(!savedSource, clonedCharacter.RegisterUnregisteredItemsFromInventory);
+        Assert.Equal([30u, 40u], clonedCharacter.PersonalRegistrableItems);
     }
 
     private static RegistrableInventoryBagSnapshot Bag(

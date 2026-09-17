@@ -49,6 +49,8 @@ internal sealed class DebugWindow : Window
             if (row.DebugBlockedReason is { } reason &&
                 ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 ImGui.SetTooltip(reason);
+            if (selected && row.Id == AutomationCatalog.RegisterRegistrables)
+                ImGui.TextWrapped(row.Status);
         }
     }
 }

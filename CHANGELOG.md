@@ -1,5 +1,23 @@
 # VERMAXION Changelog
 
+## Unreleased - Registrable unlock detection and default source
+
+- Decode native registration result 2 as unregistered and registrable, and result 1 as registered. Other results, unavailable native components, and exceptions fail closed with the actual result or failure detail in existing logging.
+- Default new configurations and missing saved source fields to inventory discovery. Preserve explicit saved source choices and personal lists, manual starts, filtering, seven-second verification, the three-attempt limit, and FULL STOP behavior.
+- Add native-result regression coverage, extend source/default persistence coverage, and advance the startup attempt marker without changing release versions.
+- Verified with 191 targeted registrable, recovery, catalog, and persistence checks and a Debug x64 build through `Z:\vmx.bat` using Dalamud 15.0.3.5 references. The build retains the existing PInvoke.User32 dependency warning.
+- Free to Play 4 loaded marker `registrables-native-unlock-20260917-02` at 15:28:09 on 2026-09-17 and dispatched once after character registration. All eight queued items, including Ramuh Crystal, verified successfully by 15:29:34 with no retries, skips, or exhausted items. Native UseAction returned false for these requests, producing existing warning messages, but the subsequent unlock checks confirmed every registration.
+
+## Unreleased - Native command string lifetime
+
+- Use the native UTF-8 string constructor for command text and free the allocation in a finally block after chat dispatch, including failures. This fixes missing termination and cleanup found during the patch 7.56h compatibility review; command routing and task logic remain unchanged.
+
+## Unreleased - Register Registrables manual runs and source settings
+
+- Group inventory discovery and the personal list as two source choices under the existing scheduling checkbox, with Configure list beside the personal-list option. Preserve saved selections, lists, defaults, and character overrides; source controls remain usable with scheduling off.
+- Route dashboard Run and saved debug reload attempts through the same manual start, bypassing only scheduled enablement. Share source checks so inventory discovery accepts an empty list while personal-list mode explains its empty-list blocker.
+- Show the selected source and service progress or failure. Report verified registrations, skipped or exhausted items, and no eligible items separately. Preserve filtering, unlock checks, seven-second verification, the three-attempt limit, and FULL STOP cleanup; emit a distinct attempt marker in existing startup logging without changing versions.
+
 ## Unreleased - Refill Listings native row selection
 
 - Resolve each withdrawal from the current sell-list row's native inventory slot, validating row bounds, numeric values, unique occupied slots, and the intended item's quantity and quality. Wait for addon readiness within the existing timeout; invalid mappings use existing failure cleanup.

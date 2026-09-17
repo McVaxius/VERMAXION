@@ -1702,19 +1702,13 @@ public class ConfigWindow : Window, IDisposable
             DrawDefaultOverrideButton(isDefault, configManager, "RegisterRegistrables", "Register Registrables",
                 (source, target) => target.EnableRegisterRegistrables = source.EnableRegisterRegistrables);
 
-            var registerFromInventory = cc.RegisterUnregisteredItemsFromInventory;
-            if (ImGui.Checkbox("Register unregistered items from inventory", ref registerFromInventory))
+            DrawHelpMarker("Controls scheduled runs. Manual Run and the saved debug reload task remain available when unchecked.");
+            ImGui.Indent();
+            if (ImGui.RadioButton("All unregistered registrables discovered in inventory", cc.RegisterUnregisteredItemsFromInventory))
             {
-                cc.RegisterUnregisteredItemsFromInventory = registerFromInventory;
+                cc.RegisterUnregisteredItemsFromInventory = true;
                 changed = true;
             }
-            DrawDefaultOverrideButton(
-                isDefault,
-                configManager,
-                "RegisterUnregisteredItemsFromInventory",
-                "Register unregistered items from inventory",
-                (source, target) => target.RegisterUnregisteredItemsFromInventory =
-                    source.RegisterUnregisteredItemsFromInventory);
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
@@ -1725,13 +1719,27 @@ public class ConfigWindow : Window, IDisposable
                     "emotes/hairstyles, bardings, and Triple Triad cards that are still locked are used.");
             }
 
+            if (ImGui.RadioButton("Specific items from my list", !cc.RegisterUnregisteredItemsFromInventory))
+            {
+                cc.RegisterUnregisteredItemsFromInventory = false;
+                changed = true;
+            }
             ImGui.SameLine();
-            if (ImGui.Button("Configure##RegistrableConfig"))
+            if (ImGui.Button("Configure list##RegistrableConfig"))
             {
                 plugin.RegistrableConfigWindow.IsOpen = true;
             }
             DrawDefaultOverrideButton(isDefault, configManager, "PersonalRegistrableItems", "Registrable personal item list",
                 (source, target) => target.PersonalRegistrableItems = new List<uint>(source.PersonalRegistrableItems));
+            ImGui.TextDisabled("Source applies to scheduled and manual runs. Switching source keeps your list.");
+            DrawDefaultOverrideButton(
+                isDefault,
+                configManager,
+                "RegisterUnregisteredItemsFromInventory",
+                "Registrable item source",
+                (source, target) => target.RegisterUnregisteredItemsFromInventory =
+                    source.RegisterUnregisteredItemsFromInventory);
+            ImGui.Unindent();
         }
 
         if (BeginConfigurationSection(UIConstants.ConfigLabels.DailyTasks, ConfigurationSection.Daily))
