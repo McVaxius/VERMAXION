@@ -29,9 +29,8 @@ jobs:
       - name: Download Dalamud
         run: |
           $devPath = Join-Path $env:AppData "XIVLauncher\addon\Hooks\dev"
-          Invoke-WebRequest -Uri https://raw.githubusercontent.com/goatcorp/dalamud-distrib/4b9175ec411f15a84f4d59dc24881095aef2d999/stg/latest.zip -OutFile latest.zip
+          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
           Expand-Archive -Force latest.zip $devPath
-          Write-Host "Expected pinned Dalamud: version 15.0.2.2, GitSha 4a6abae25b8a156a102ed3869429ef026a3d7cfe, revision 7312"
           foreach ($metadataFile in @("commit_hash.txt", "revision.txt")) {
             $metadataPath = Join-Path $devPath $metadataFile
             if (Test-Path $metadataPath) {
