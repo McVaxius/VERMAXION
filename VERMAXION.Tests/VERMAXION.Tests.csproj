@@ -24,6 +24,7 @@
     <Compile Include="..\VERMAXION\Models\SeriesRankSnapshot.cs" Link="SeriesRankSnapshot.cs" />
     <Compile Include="..\VERMAXION\Models\RivalWingsAchievementGateResult.cs" Link="RivalWingsAchievementGateResult.cs" />
     <Compile Include="..\VERMAXION\IPC\MomIPCClient.cs" Link="MomIPCClient.cs" />
+    <Compile Include="..\VERMAXION\IPC\YesAlreadyIPC.cs" Link="YesAlreadyIPC.cs" />
     <Compile Include="..\..\mom\mom\Models\MomRunRequest.cs" Link="MomProvider/MomRunRequest.cs" />
     <Compile Include="..\..\mom\mom\Models\MomRunResult.cs" Link="MomProvider/MomRunResult.cs" />
     <Compile Include="..\..\mom\mom\Models\MomRunStatus.cs" Link="MomProvider/MomRunStatus.cs" />
