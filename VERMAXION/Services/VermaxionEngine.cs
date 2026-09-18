@@ -1937,7 +1937,7 @@ public class VermaxionEngine
                     break;
 
                 ResetHandoffTracking();
-                DispatchNextQueuedTask();
+                DispatchNextQueuedTask(handoffSettled: true);
                 break;
 
             case EngineState.SettlingFinalHandoff:
@@ -2762,7 +2762,7 @@ public class VermaxionEngine
             : $"No runnable work. {string.Join(" | ", reasons)}";
     }
 
-    private void DispatchNextQueuedTask()
+    private void DispatchNextQueuedTask(bool handoffSettled = false)
     {
         currentTaskOwnedWorkStarted = false;
         while (++runQueueIndex < runQueue.Count)
@@ -2785,7 +2785,11 @@ public class VermaxionEngine
             return;
         }
 
-        BeginFinalHandoffSettling();
+        // The last task already supplied the quiet period; SignalingARDone still checks for new blockers.
+        if (handoffSettled)
+            SetState(EngineState.SignalingARDone);
+        else
+            BeginFinalHandoffSettling();
     }
 
     private void RevalidatePlannedQueue()

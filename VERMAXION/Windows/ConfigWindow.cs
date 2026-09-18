@@ -458,7 +458,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped("Wizards stage changes and edit only the current account's Default Config after Apply. Existing characters remain unchanged until an explicit row sync or Apply Default to ALL.");
             }
 
-            if (ImGui.CollapsingHeader("Fishing", ImGuiTreeNodeFlags.DefaultOpen))
+            if (ImGui.CollapsingHeader("Fishing"))
             {
 
             var fishingMode = config.FishingExecutionMode;
@@ -1116,7 +1116,7 @@ public class ConfigWindow : Window, IDisposable
             var equipmentAutomationBusy = IsEquipmentAutomationBusy();
             ImGui.BeginDisabled(equipmentAutomationBusy);
             if (ImGui.SmallButton("Bootstrap missing gearsets"))
-                plugin.GearUpdaterService.StartBootstrap();
+                plugin.RunDashboardAction(plugin.GearUpdaterService.StartBootstrap);
             ImGui.EndDisabled();
             if (ImGui.IsItemHovered())
             {

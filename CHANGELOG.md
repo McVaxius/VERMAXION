@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## Unreleased - Fishing display and task handoff fixes
+
+- Start Global Fishing collapsed while retaining ImGui expansion memory.
+- Restore VERMAXION's YesAlready pause entry if it disappears during work or cleanup, preserve other plugins' entries and Ocean Fishing's bait-shopping exception, and cover the remaining manual task buttons with the existing pause wrapper.
+- Reuse the last task's two-second settlement for final handoff, retaining the final blocker check and normal settlement if a new blocker appears. Stylist timing is unchanged.
+
 ## Unreleased - Stable Dalamud builds
 
 - Download stable Dalamud latest.zip and remove the obsolete pinned-version message. Keep the plugin-only build, plugin version 0.4.0.8, action versions, and release behavior unchanged.

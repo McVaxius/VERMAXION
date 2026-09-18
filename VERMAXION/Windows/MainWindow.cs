@@ -260,10 +260,10 @@ public class MainWindow : Window, IDisposable
                                       plugin.FisherGearsetTestService.IsActive;
             ImGui.BeginDisabled(fishingTestDisabled);
             if (ImGui.SmallButton("Ocean Fishing account test"))
-                plugin.RunFishingStartupTest();
+                plugin.RunDashboardAction(plugin.RunFishingStartupTest);
             ImGui.SameLine();
             if (ImGui.SmallButton("Current Fisher gearset test"))
-                plugin.RunFishingGearsetTest();
+                plugin.RunDashboardAction(plugin.RunFishingGearsetTest);
             ImGui.EndDisabled();
 
             var canGoToMainMenu = plugin.CanStartMainMenuTest(
@@ -293,7 +293,7 @@ public class MainWindow : Window, IDisposable
                 // Force config save before test
                 plugin.ConfigManager.SaveCurrentAccount();
                 Plugin.Log.Information("[UI] Forced config save before FC Buff Inventory test");
-                plugin.FCBuffInventoryService.Start();
+                plugin.RunDashboardAction(plugin.FCBuffInventoryService.Start);
             }
             
             ImGui.SameLine();
@@ -981,7 +981,7 @@ public class MainWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.BeginDisabled(row.SecondaryButtonDisabled);
             if (ImGui.SmallButton(row.SecondaryButtonLabel))
-                row.SecondaryOnClick();
+                plugin.RunDashboardAction(row.SecondaryOnClick);
             ImGui.EndDisabled();
             if (!string.IsNullOrWhiteSpace(row.SecondaryButtonTooltip) && ImGui.IsItemHovered())
                 ImGui.SetTooltip(row.SecondaryButtonTooltip);
@@ -991,7 +991,7 @@ public class MainWindow : Window, IDisposable
             ImGui.SameLine();
             ImGui.BeginDisabled(row.TertiaryButtonDisabled);
             if (ImGui.SmallButton(row.TertiaryButtonLabel))
-                row.TertiaryOnClick();
+                plugin.RunDashboardAction(row.TertiaryOnClick);
             ImGui.EndDisabled();
             if (!string.IsNullOrWhiteSpace(row.TertiaryButtonTooltip) && ImGui.IsItemHovered())
                 ImGui.SetTooltip(row.TertiaryButtonTooltip);

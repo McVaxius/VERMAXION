@@ -22,14 +22,13 @@ public class YesAlreadyIPC : IDisposable
 
     public void Pause()
     {
-        if (isPaused) return;
-
         try
         {
             var stopRequests = Plugin.PluginInterface.GetOrCreateData<HashSet<string>>(StopRequestsKey, () => []);
-            stopRequests.Add(LockName);
+            var added = stopRequests.Add(LockName);
             isPaused = true;
-            log.Information("[YesAlready] Paused (added VERMAXION to StopRequests)");
+            if (added)
+                log.Information("[YesAlready] Paused (added VERMAXION to StopRequests)");
         }
         catch (Exception ex)
         {

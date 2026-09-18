@@ -565,9 +565,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var engineWasRunningBefore = Engine.IsRunning;
         var fishingLifecycleActiveBefore = FishingRunLifecycle.IsActive;
 
-        if (!YesAlreadyIPC.IsPaused)
+        var yesAlreadyWasPaused = YesAlreadyIPC.IsPaused;
+        YesAlreadyIPC.Pause();
+        if (!yesAlreadyWasPaused)
         {
-            YesAlreadyIPC.Pause();
             if (!YesAlreadyIPC.IsPaused)
             {
                 Log.Warning("[Dashboard] Run action blocked because VERMAXION could not pause YesAlready.");
@@ -2118,6 +2119,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void OnFrameworkUpdate(IFramework fw)
     {
+        // Reassert our owned entry if the shared list changes. Shopping deliberately releases it.
+        if (YesAlreadyIPC.IsPaused)
+            YesAlreadyIPC.Pause();
+
         DadHandoffIpcProvider.Update();
 
         // Login detection
