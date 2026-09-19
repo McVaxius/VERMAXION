@@ -85,6 +85,60 @@ public sealed class EquipmentAutomationTests
         Assert.True(runtime.RecommendedCancelCount > 0);
     }
 
+    [Theory]
+    [InlineData(StylistGearsetUpdateProgress.Complete, CurrentJobEquipmentStateMachine.State.Complete)]
+    [InlineData(StylistGearsetUpdateProgress.Failed, CurrentJobEquipmentStateMachine.State.Failed)]
+    [InlineData(StylistGearsetUpdateProgress.Pending, CurrentJobEquipmentStateMachine.State.Failed)]
+    public void CurrentJobEquipmentAcceptedStylistNeverRunsNativeEquipmentOrSave(
+        StylistGearsetUpdateProgress stylistProgress,
+        CurrentJobEquipmentStateMachine.State expectedState)
+    {
+        var runtime = new FakeRuntime
+        {
+            CurrentGearsetId = 12,
+            CurrentJobId = 21,
+            Gearsets = [Gearset(12, 21, items: [1, 2, 3])],
+            EquippedItems = [1, 2, 3],
+            StylistBeginSucceeds = true,
+            StylistProgress = StylistGearsetUpdateProgress.Pending,
+        };
+        var machine = new CurrentJobEquipmentStateMachine(runtime);
+        Assert.True(machine.Start(out _));
+        machine.Tick();
+        machine.Tick();
+        Assert.Equal(CurrentJobEquipmentStateMachine.State.WaitingForStylist, machine.CurrentState);
+
+        if (stylistProgress == StylistGearsetUpdateProgress.Pending)
+        {
+            runtime.Advance(EquipmentAutomationPolicy.StylistTimeout - TimeSpan.FromMilliseconds(1));
+            machine.Tick();
+            Assert.Equal(CurrentJobEquipmentStateMachine.State.WaitingForStylist, machine.CurrentState);
+            runtime.Advance(TimeSpan.FromMilliseconds(1));
+        }
+
+        runtime.StylistProgress = stylistProgress;
+        machine.Tick();
+
+        // Stylist completion must finish on this poll even though the fake has no verified save.
+        Assert.Equal(expectedState, machine.CurrentState);
+        Assert.False(machine.IsActive);
+        if (stylistProgress == StylistGearsetUpdateProgress.Failed)
+            Assert.Contains("Stylist polling failed", machine.Status);
+
+        for (var i = 0; i < 8; i++)
+        {
+            runtime.Advance(TimeSpan.FromSeconds(16));
+            machine.Tick();
+        }
+
+        Assert.Equal(expectedState, machine.CurrentState);
+        Assert.Equal(0, runtime.RecommendedBeginCount);
+        Assert.Equal(0, runtime.RecommendedPollCount);
+        Assert.Empty(runtime.EquipRequests);
+        Assert.Empty(runtime.UpdatedGearsets);
+        Assert.Equal(0, runtime.SaveVerificationCount);
+    }
+
     [Fact]
     public void GearUpdaterRestoresStartingGearsetAfterPartialFailure()
     {
@@ -418,12 +472,15 @@ public sealed class EquipmentAutomationTests
         public bool AutoReadyConfirmation { get; set; } = true;
         public bool ConfirmationReady { get; set; } = true;
         public bool UpdateSucceeds { get; set; } = true;
+        public bool StylistBeginSucceeds { get; set; }
+        public StylistGearsetUpdateProgress StylistProgress { get; set; } = StylistGearsetUpdateProgress.Failed;
         public RecommendedEquipmentProgress RecommendedProgress { get; set; } = RecommendedEquipmentProgress.Complete;
         public int RecommendedBeginCount { get; private set; }
         public int RecommendedPollCount { get; private set; }
         public int RecommendedCancelCount { get; private set; }
         public int ConfirmationPollCount { get; private set; }
         public int ConfirmationClickCount { get; private set; }
+        public int SaveVerificationCount { get; private set; }
         public List<int> EquipRequests { get; } = [];
         public List<int> UpdatedGearsets { get; } = [];
         private readonly Dictionary<int, IReadOnlyList<uint>> saved = [];
@@ -492,14 +549,14 @@ public sealed class EquipmentAutomationTests
 
         public bool TryBeginStylistGearsetUpdate(int gearsetId, out string error)
         {
-            error = "Stylist unavailable";
-            return false;
+            error = StylistBeginSucceeds ? string.Empty : "Stylist unavailable";
+            return StylistBeginSucceeds;
         }
 
         public StylistGearsetUpdateProgress PollStylistGearsetUpdate(out string error)
         {
-            error = "Stylist unavailable";
-            return StylistGearsetUpdateProgress.Failed;
+            error = StylistProgress == StylistGearsetUpdateProgress.Failed ? "Stylist polling failed" : string.Empty;
+            return StylistProgress;
         }
 
         public bool TryMoveBestMainHandToEquipped(UnlockedJobSnapshot job, out string error)
@@ -549,6 +606,7 @@ public sealed class EquipmentAutomationTests
             IReadOnlyList<uint> expectedItemIds,
             out string error)
         {
+            SaveVerificationCount++;
             var verified = saved.TryGetValue(gearsetId, out var actual) &&
                            EquipmentAutomationPolicy.ItemSignaturesMatch(expectedItemIds, actual);
             error = verified ? string.Empty : "not saved";

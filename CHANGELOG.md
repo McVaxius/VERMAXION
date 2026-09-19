@@ -1,5 +1,9 @@
 # VERMAXION Changelog
 
+## Unreleased - I384 Current Job Equipment after Stylist
+
+- Complete Current Job Equipment as soon as an accepted Stylist update reports idle, without an extra save-verification wait or duplicate native equipment pass. Fail on Stylist polling errors or busy timeout; preserve native fallback when Stylist cannot start, its overlap protection, and native save verification.
+
 ## Unreleased - Refill Listings gil withdrawal
 
 - Add a default-on Refill Listings suboption that enables AutoRetainer gil withdrawal for the current character's retainers on login/reload and at refill start. Set withdrawal mode while preserving each retainer's percentage and unrelated settings; save through AutoRetainer only when a setting changes. Disabling the suboption stops applying it without undoing AR settings.
