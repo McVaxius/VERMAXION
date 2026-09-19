@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using VERMAXION.Models;
 using VERMAXION.Services;
@@ -12,6 +13,81 @@ public sealed class AccountConfigPersistenceTests
     private const string AccountId = "test-account";
     private static readonly DateTime CreatedAtUtc =
         new(2026, 7, 1, 12, 0, 0, DateTimeKind.Utc);
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void RegistrableDefaultUpgradeIsAtomicAndPreservesLaterSelections(
+        bool defaultRegistrationEnabled,
+        bool omitCompletionFlag)
+    {
+        using var directory = new TemporaryDirectory();
+        var persistence = new AccountConfigPersistence(directory.Path);
+        var expected = CreateAccount(
+            "disabled-personal", "disabled-inventory", "enabled-personal", "enabled-inventory");
+        expected.DefaultConfig.EnableRegisterRegistrables = defaultRegistrationEnabled;
+        expected.DefaultConfig.RegisterUnregisteredItemsFromInventory = false;
+        expected.DefaultConfig.Enabled = !defaultRegistrationEnabled;
+        expected.Characters["disabled-personal"].RegisterUnregisteredItemsFromInventory = false;
+        expected.Characters["enabled-personal"].EnableRegisterRegistrables = true;
+        expected.Characters["enabled-personal"].RegisterUnregisteredItemsFromInventory = false;
+        expected.Characters["enabled-personal"].Enabled = false;
+        expected.Characters["enabled-inventory"].EnableRegisterRegistrables = true;
+        foreach (var profile in expected.Characters.Values.Append(expected.DefaultConfig))
+        {
+            profile.PersonalRegistrableItems = [123u, 456u, 123u];
+            profile.EnableJumboCactpot = true;
+            profile.JumboCactpotLastCompleted = CreatedAtUtc;
+            profile.FishingReturnCommand = "/echo persistence fixture";
+        }
+
+        var legacy = JsonSerializer.SerializeToNode(expected)!;
+        if (omitCompletionFlag)
+            legacy.AsObject().Remove(nameof(AccountConfig.RegistrableInventoryDefaultV04011Applied));
+        var legacyJson = legacy.ToJsonString();
+        File.WriteAllText(persistence.GetPrimaryPath(AccountId), legacyJson);
+        Assert.False(ReadPrimary(directory.Path).RegistrableInventoryDefaultV04011Applied);
+
+        // Block the existing atomic writer, then retry the same load after removing the obstruction.
+        Directory.CreateDirectory(persistence.GetTemporaryPath(AccountId));
+        var failed = Assert.Single(persistence.LoadAll());
+        Assert.False(failed.Succeeded);
+        Assert.Null(failed.Account);
+        Assert.NotEmpty(failed.Error);
+        Assert.Equal(legacyJson, File.ReadAllText(persistence.GetPrimaryPath(AccountId)));
+        Assert.False(File.Exists(persistence.GetBackupPath(AccountId)));
+        Directory.Delete(persistence.GetTemporaryPath(AccountId));
+
+        var loaded = LoadSingle(persistence);
+        expected.DefaultConfig.RegisterUnregisteredItemsFromInventory = true;
+        expected.Characters["disabled-personal"].RegisterUnregisteredItemsFromInventory = true;
+        expected.RegistrableInventoryDefaultV04011Applied = true;
+        Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(loaded));
+        Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(ReadPrimary(directory.Path)));
+        Assert.Equal(legacyJson, File.ReadAllText(persistence.GetBackupPath(AccountId)));
+        Assert.False(File.Exists(persistence.GetTemporaryPath(AccountId)));
+
+        var otherPersistence = new AccountConfigPersistence(directory.Path);
+        var other = LoadSingle(otherPersistence);
+        foreach (var profile in loaded.Characters.Values.Append(loaded.DefaultConfig))
+            profile.RegisterUnregisteredItemsFromInventory = !profile.RegisterUnregisteredItemsFromInventory;
+        var save = persistence.Save(AccountId, loaded);
+        Assert.True(save.Succeeded, save.Error);
+        Assert.Equal(JsonSerializer.Serialize(loaded), JsonSerializer.Serialize(save.Account));
+
+        // A stale instance must preserve both the completed upgrade and the newer source choices.
+        other.AccountAlias = "Renamed after upgrade";
+        other.RegistrableInventoryDefaultV04011Applied = false;
+        var otherSave = otherPersistence.Save(AccountId, other);
+        Assert.True(otherSave.Succeeded, otherSave.Error);
+        loaded.AccountAlias = other.AccountAlias;
+        Assert.Equal(JsonSerializer.Serialize(loaded), JsonSerializer.Serialize(otherSave.Account));
+        Assert.Equal(
+            JsonSerializer.Serialize(loaded),
+            JsonSerializer.Serialize(LoadSingle(new AccountConfigPersistence(directory.Path))));
+    }
 
     [Fact]
     public void StaleClientsEditingDifferentCharactersPreserveBothChanges()
@@ -185,18 +261,29 @@ public sealed class AccountConfigPersistenceTests
         using var directory = new TemporaryDirectory();
         var persistence = new AccountConfigPersistence(directory.Path);
         var account = CreateAccount("character-a");
-        Assert.True(persistence.Save(AccountId, account).Succeeded);
+        Assert.False(account.RegistrableInventoryDefaultV04011Applied);
+        var firstSave = persistence.Save(AccountId, account);
+        Assert.True(firstSave.Succeeded, firstSave.Error);
+        Assert.True(firstSave.Account!.RegistrableInventoryDefaultV04011Applied);
+        var firstSaved = ReadPrimary(directory.Path);
+        Assert.True(firstSaved.RegistrableInventoryDefaultV04011Applied);
+        Assert.True(firstSaved.DefaultConfig.RegisterUnregisteredItemsFromInventory);
+        Assert.True(firstSaved.Characters["character-a"].RegisterUnregisteredItemsFromInventory);
 
         account.AccountAlias = "Second version";
+        account.DefaultConfig.RegisterUnregisteredItemsFromInventory = false;
+        account.Characters["character-a"].RegisterUnregisteredItemsFromInventory = false;
         Assert.True(persistence.Save(AccountId, account).Succeeded);
 
         Assert.Equal("Second version", ReadPrimary(directory.Path).AccountAlias);
         Assert.Equal("Initial", ReadAccount(persistence.GetBackupPath(AccountId)).AccountAlias);
         Assert.False(File.Exists(persistence.GetTemporaryPath(AccountId)));
         Assert.Single(Directory.GetFiles(directory.Path, "*_Vermaxion.json.bak"));
-        Assert.Equal(
-            "Second version",
-            LoadSingle(new AccountConfigPersistence(directory.Path)).AccountAlias);
+        var reloaded = LoadSingle(new AccountConfigPersistence(directory.Path));
+        Assert.Equal("Second version", reloaded.AccountAlias);
+        Assert.True(reloaded.RegistrableInventoryDefaultV04011Applied);
+        Assert.False(reloaded.DefaultConfig.RegisterUnregisteredItemsFromInventory);
+        Assert.False(reloaded.Characters["character-a"].RegisterUnregisteredItemsFromInventory);
     }
 
     private static void Seed(string directory, AccountConfig account)
