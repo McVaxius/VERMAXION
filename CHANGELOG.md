@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## 0.4.0.11 - Registrable inventory default upgrade
+
+- On the first successful load after upgrading, set every saved account's default profile and character profiles with Register Registrables disabled to `All unregistered registrables discovered in inventory`. Preserve enabled character profiles' source choices, all enablement checkboxes, personal lists, and unrelated settings.
+- Save the upgrade and its completion flag together through the existing atomic account writer. Failed writes leave the upgrade incomplete; new accounts are marked complete on their first save. Later source changes remain saved, including changes on disabled profiles, and the upgrade remains available when skipping directly to a later version.
+- Advance the project, plugin/repository manifests, versioned download URLs, and release workflow fallback to `0.4.0.11`.
+- Verification: all 66 targeted registrable and account-persistence tests pass, including four migration cases and new-account save coverage. The isolated Debug x64 plugin build succeeds with only the existing PInvoke.User32 NU1601 warning; version metadata and download URLs validate.
+
 ## Unreleased - Fishing display and task handoff fixes
 
 - Start Global Fishing collapsed while retaining ImGui expansion memory.

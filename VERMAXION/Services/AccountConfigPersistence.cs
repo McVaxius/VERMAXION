@@ -78,6 +78,20 @@ internal sealed class AccountConfigPersistence
                     continue;
                 }
 
+                // Keep this upgrade for accounts that skip v0.4.0.11.
+                if (!disk.Account.RegistrableInventoryDefaultV04011Applied)
+                {
+                    disk.Account.DefaultConfig.RegisterUnregisteredItemsFromInventory = true;
+                    foreach (var character in disk.Account.Characters.Values)
+                    {
+                        if (!character.EnableRegisterRegistrables)
+                            character.RegisterUnregisteredItemsFromInventory = true;
+                    }
+
+                    disk.Account.RegistrableInventoryDefaultV04011Applied = true;
+                    WriteAtomically(accountId, disk.Account, disk.PrimaryValid);
+                }
+
                 baselines[accountId] = Clone(disk.Account);
                 results.Add(new AccountConfigLoadResult(
                     accountId,
@@ -133,6 +147,8 @@ internal sealed class AccountConfigPersistence
                 : CreateEmptyAccount(accountId);
             var newestDisk = disk.Account ?? CreateEmptyAccount(accountId);
             var merged = Merge(baseline, localAccount, newestDisk);
+            if (!disk.HasAnyCopy)
+                merged.RegistrableInventoryDefaultV04011Applied = true;
 
             if (!IsValidAccount(merged, accountId, out validationError))
                 return new AccountConfigSaveResult(false, null, disk.UsedBackup, validationError);
@@ -321,6 +337,7 @@ internal sealed class AccountConfigPersistence
     {
         var merged = Clone(newestDisk);
         merged.AccountId = local.AccountId;
+        merged.RegistrableInventoryDefaultV04011Applied |= local.RegistrableInventoryDefaultV04011Applied;
 
         if (!string.Equals(local.AccountAlias, baseline.AccountAlias, StringComparison.Ordinal))
             merged.AccountAlias = local.AccountAlias;

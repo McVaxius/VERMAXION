@@ -720,6 +720,7 @@ public class ConfigManager
     {
         target.AccountId = merged.AccountId;
         target.AccountAlias = merged.AccountAlias;
+        target.RegistrableInventoryDefaultV04011Applied = merged.RegistrableInventoryDefaultV04011Applied;
 
         if (!AccountConfigPersistence.AreEquivalent(target.DefaultConfig, merged.DefaultConfig))
             target.DefaultConfig = merged.DefaultConfig;
