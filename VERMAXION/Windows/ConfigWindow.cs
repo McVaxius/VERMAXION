@@ -2036,6 +2036,16 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.Indent();
 
+                var withdrawGil = cc.RefillFromListingsWithdrawGil;
+                if (ImGui.Checkbox("Enable AutoRetainer gil withdrawal for this character's retainers", ref withdrawGil))
+                {
+                    cc.RefillFromListingsWithdrawGil = withdrawGil;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "RefillFromListingsWithdrawGil", "Refill from listings gil withdrawal",
+                    (source, target) => target.RefillFromListingsWithdrawGil = source.RefillFromListingsWithdrawGil);
+                DrawHelpMarker("Enables AutoRetainer's withdraw-gil setting for this character's retainers on login or plugin reload and when Refill Listings starts. Preserves each retainer's withdrawal percentage. Turning this off stops applying the setting; it does not undo AutoRetainer settings.");
+
                 ImGui.Text("Frequency:");
                 ImGui.SameLine();
                 var refillFrequency = cc.RefillFromListingsFrequency;

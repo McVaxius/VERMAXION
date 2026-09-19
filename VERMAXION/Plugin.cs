@@ -1196,6 +1196,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             characterRegistrationCompletedThisLogin = true;
             characterRegistrationWorldReadySince = DateTime.MinValue;
             Log.Information($"[Config] Character registration completed: accountId={ConfigManager.CurrentAccountId}, characterKey='{ConfigManager.CurrentCharacterKey}'");
+            var activeConfig = ConfigManager.GetActiveConfig();
+            if (Configuration.Enabled && activeConfig.Enabled)
+                AutoRetainerIPC.ConfigureRetainerGilWithdrawal(activeConfig, contentId);
         }
         catch (Exception ex)
         {

@@ -538,6 +538,7 @@ public class ConfigManager
         target.VendorStockGysahlGreensTarget = source.VendorStockGysahlGreensTarget;
         target.VendorStockGrade8DarkMatterTarget = source.VendorStockGrade8DarkMatterTarget;
         target.RefillFromListingsFrequency = source.RefillFromListingsFrequency;
+        target.RefillFromListingsWithdrawGil = source.RefillFromListingsWithdrawGil;
         target.RefillFromListingsSelectionMode = source.RefillFromListingsSelectionMode;
         target.RefillFromListingsRoute = source.RefillFromListingsRoute;
         target.RefillFromListingsMinFreeInventorySlots = source.RefillFromListingsMinFreeInventorySlots;
