@@ -161,6 +161,67 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         }
     }
 
+    public void ConfigureRetainerGilWithdrawal(CharacterConfig characterConfig, ulong contentId)
+    {
+        if (!characterConfig.EnableRefillFromListings ||
+            !characterConfig.RefillFromListingsWithdrawGil || contentId == 0)
+            return;
+
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out var error) ||
+                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+                throw new InvalidOperationException(error);
+
+            var character = (ReadMember(config, "OfflineData") as IEnumerable)?.Cast<object>()
+                .FirstOrDefault(value => ReadUInt64(value, "CID") == contentId);
+            if (character == null || ReadMember(character, "RetainerData") is not IEnumerable retainers)
+                throw new InvalidOperationException("AutoRetainer retainer data for the current character was not readable.");
+
+            const BindingFlags staticMembers = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+            const BindingFlags instanceMembers = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            var assembly = plugin.GetType().Assembly;
+            var getAdditionalData = assembly.GetType("AutoRetainer.Helpers.Utils")?.GetMethod(
+                "GetAdditionalData", staticMembers, null, [typeof(ulong), typeof(string)], null);
+            var save = assembly.GetType("AutoRetainer.Modules.OfflineDataManager")?.GetMethod(
+                "WriteOfflineData", staticMembers, null, [typeof(bool), typeof(bool)], null);
+            var withdraw = getAdditionalData?.ReturnType.GetField("WithdrawGil", instanceMembers);
+            var deposit = getAdditionalData?.ReturnType.GetField("Deposit", instanceMembers);
+            if (getAdditionalData == null || save == null ||
+                withdraw == null || withdraw.FieldType != typeof(bool) || withdraw.IsInitOnly ||
+                deposit == null || deposit.FieldType != typeof(bool) || deposit.IsInitOnly)
+                throw new InvalidOperationException("AutoRetainer gil-withdrawal settings or save method were not available.");
+
+            var changed = 0;
+            foreach (var retainer in retainers.Cast<object>())
+            {
+                var name = ReadString(retainer, "Name");
+                if (string.IsNullOrEmpty(name))
+                    continue;
+
+                var additional = getAdditionalData.Invoke(null, [contentId, name]);
+                if (additional == null)
+                    throw new InvalidOperationException("AutoRetainer additional retainer data was not available.");
+                if (withdraw.GetValue(additional) is true && deposit.GetValue(additional) is false)
+                    continue;
+
+                withdraw.SetValue(additional, true);
+                deposit.SetValue(additional, false);
+                changed++;
+            }
+
+            if (changed > 0)
+            {
+                save.Invoke(null, [false, true]);
+                log.Information($"[Listings] Enabled AutoRetainer gil withdrawal for {changed} retainer(s) on the current character; withdrawal percentages preserved.");
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[Listings] Could not enable AutoRetainer gil withdrawal: {ex.GetBaseException().Message}");
+        }
+    }
+
     public AutoRetainerCollectOnlyReadResult ReadCollectOnly()
     {
         try

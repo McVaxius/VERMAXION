@@ -1,5 +1,9 @@
 # VERMAXION Changelog
 
+## Unreleased - Refill Listings gil withdrawal
+
+- Add a default-on Refill Listings suboption that enables AutoRetainer gil withdrawal for the current character's retainers on login/reload and at refill start. Set withdrawal mode while preserving each retainer's percentage and unrelated settings; save through AutoRetainer only when a setting changes. Disabling the suboption stops applying it without undoing AR settings.
+
 ## 0.4.0.11 - Registrable inventory default upgrade
 
 - On the first successful load after upgrading, set every saved account's default profile and character profiles with Register Registrables disabled to `All unregistered registrables discovered in inventory`. Preserve enabled character profiles' source choices, all enablement checkboxes, personal lists, and unrelated settings.

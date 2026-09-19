@@ -177,6 +177,7 @@ public sealed class RetainerListingRefillService
 
         Reset();
         characterId = Plugin.PlayerState.ContentId;
+        autoRetainerIPC.ConfigureRetainerGilWithdrawal(config, characterId);
         selectionMode = config.RefillFromListingsSelectionMode;
         route = config.RefillFromListingsRoute;
         minFreeInventorySlots = ClampMinFreeInventorySlots(config.RefillFromListingsMinFreeInventorySlots);

@@ -82,6 +82,7 @@ public class CharacterConfig
     public int VendorStockGysahlGreensTarget { get; set; } = 0;
     public int VendorStockGrade8DarkMatterTarget { get; set; } = 0;
     public RefillFromListingsFrequency RefillFromListingsFrequency { get; set; } = RefillFromListingsFrequency.Weekly;
+    public bool RefillFromListingsWithdrawGil { get; set; } = true;
     public RefillFromListingsSelectionMode RefillFromListingsSelectionMode { get; set; } = RefillFromListingsSelectionMode.All;
     public RefillFromListingsRoute RefillFromListingsRoute { get; set; } = RefillFromListingsRoute.Workshop;
     public int RefillFromListingsMinFreeInventorySlots { get; set; } = 20;
@@ -365,6 +366,7 @@ public class CharacterConfig
             VendorStockGysahlGreensTarget = VendorStockGysahlGreensTarget,
             VendorStockGrade8DarkMatterTarget = VendorStockGrade8DarkMatterTarget,
             RefillFromListingsFrequency = RefillFromListingsFrequency,
+            RefillFromListingsWithdrawGil = RefillFromListingsWithdrawGil,
             RefillFromListingsSelectionMode = RefillFromListingsSelectionMode,
             RefillFromListingsRoute = RefillFromListingsRoute,
             RefillFromListingsMinFreeInventorySlots = RefillFromListingsMinFreeInventorySlots,
