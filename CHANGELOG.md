@@ -1,5 +1,9 @@
 # VERMAXION Changelog
 
+## Unreleased - I388 FC Buff Refill stock count
+
+- Count only current FC action list entries so stale row text cannot inflate Seal Sweetener II stock or shorten a refill. Accept an empty list as zero stock, fail unreadable current entries, and preserve activation row indices.
+
 ## Unreleased - I384 Current Job Equipment after Stylist
 
 - Complete Current Job Equipment as soon as an accepted Stylist update reports idle, without an extra save-verification wait or duplicate native equipment pass. Fail on Stylist polling errors or busy timeout; preserve native fallback when Stylist cannot start, its overlap protection, and native save verification.
