@@ -1505,6 +1505,7 @@ public class FCBuffService : IDisposable
 
     private unsafe FcActionInventoryReadResult ReadSealSweetenerBuffs()
     {
+        lastSealSweetenerListIndex = -1;
         try
         {
             // At this point, FreeCompanyAction window should already be open and visible
@@ -1517,78 +1518,61 @@ public class FCBuffService : IDisposable
                     "FreeCompanyAction addon was not visible.");
             }
 
-            // Count occurrences of specific buff names
+            // Resolve the existing FC action list through nodes 1, 10, and 14.
+            var node1 = addon->GetNodeById(1);
+            if (node1 == null)
+                return FcActionInventoryReadResult.Failed("FC action root node was unavailable.");
+
+            var node10 = node1->ChildNode;
+            if (node10 == null)
+                return FcActionInventoryReadResult.Failed("FC action container node was unavailable.");
+
+            var node14 = node10->ChildNode;
+            while (node14 != null && (int)node14->Type < 1000)
+                node14 = node14->PrevSiblingNode;
+
+            if (node14 == null)
+                return FcActionInventoryReadResult.Failed("FC action list node was unavailable.");
+
+            var list = node14->GetAsAtkComponentList();
+            if (list == null)
+                return FcActionInventoryReadResult.Failed("FC action list component was unavailable.");
+
+            var itemCount = list->GetItemCount();
+            if (itemCount < 0 || itemCount > 16)
+                return FcActionInventoryReadResult.Failed($"FC action list count was invalid: {itemCount}.");
+
             int sealSweetenerCount = 0;
-            int readableSlots = 0;
-            lastSealSweetenerListIndex = -1;
-            
-            // Navigate the node path: GetNode(1, 10, 14, i, 3)
-            for (uint i = 51001; i <= 51016; i++)
+            int firstSealSweetenerListIndex = -1;
+            // Allocated renderers can retain stale text beyond the current list length.
+            for (int listIndex = 0; listIndex < itemCount; listIndex++)
             {
-                try
+                var renderer = list->GetItemRenderer(listIndex);
+                if (renderer == null)
+                    return FcActionInventoryReadResult.Failed($"FC action inventory row {listIndex} was unavailable.");
+
+                var textNode = renderer->GetTextNodeById(3);
+                if (textNode == null)
+                    return FcActionInventoryReadResult.Failed($"FC action inventory row {listIndex} text was unavailable.");
+
+                var text = textNode->NodeText.ToString();
+                if (string.IsNullOrWhiteSpace(text))
+                    return FcActionInventoryReadResult.Failed($"FC action inventory row {listIndex} text was empty.");
+
+                if (text == "Seal Sweetener II")
                 {
-                    // Step 1: Get node 1 from addon
-                    var node1 = addon->GetNodeById(1);
-                    if (node1 == null) continue;
-                    
-                    // Step 2: Get child node 10 from node 1
-                    var node10 = node1->ChildNode;
-                    if (node10 == null) continue;
-                    
-                    // Step 3: Find the actual List Component Node 14 from children of node 10
-                    var node14 = node10->ChildNode;
-                    
-                    // Search for List Component Node (type >= 1000)
-                    while (node14 != null && (int)node14->Type < 1000)
-                    {
-                        node14 = node14->PrevSiblingNode;
-                    }
-                    
-                    if (node14 == null) continue;
-                    
-                    // Step 4: Access ListItemRenderer via UldManager.NodeList
-                    var listComponent = node14->GetComponent();
-                    if (listComponent == null) continue;
-                    
-                    var nodeList = listComponent->UldManager.NodeList;
-                    int listIndex = (int)(i - 51001) + 1; // List items start at index 1
-                    
-                    var listItemNode = nodeList[listIndex];
-                    if (listItemNode == null) continue;
-                    
-                    // Step 5: Get text from node 3
-                    var listItemComponent = listItemNode->GetAsAtkComponentNode();
-                    if (listItemComponent == null) continue;
-                    
-                    var listItemComp = listItemComponent->GetComponent();
-                    if (listItemComp == null) continue;
-                    
-                    var textNode = listItemComp->GetTextNodeById(3);
-                    if (textNode == null) continue;
-                    
-                    var text = textNode->NodeText.ToString();
-                    readableSlots++;
-                    if (text == "Seal Sweetener II")
-                    {
-                        sealSweetenerCount++;
-                        if (lastSealSweetenerListIndex < 0)
-                            lastSealSweetenerListIndex = listIndex - 1;
-                        log.Debug($"[FCBuff] Found Seal Sweetener II at slot {i}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    log.Debug($"[FCBuff] Error checking buff slot {i}: {ex.Message}");
+                    sealSweetenerCount++;
+                    if (firstSealSweetenerListIndex < 0)
+                        firstSealSweetenerListIndex = listIndex;
+                    log.Debug($"[FCBuff] Found Seal Sweetener II at stock row {listIndex}");
                 }
             }
-            
+
+            lastSealSweetenerListIndex = firstSealSweetenerListIndex;
             log.Information($"[FCBuff] Seal Sweetener II count: {sealSweetenerCount}");
             commandManager.ProcessCommand($"/echo Seal Sweetener II count: {sealSweetenerCount}");
-            
-            return readableSlots > 0
-                ? FcActionInventoryReadResult.Succeeded(sealSweetenerCount)
-                : FcActionInventoryReadResult.Failed(
-                    "No FC action inventory rows were readable.");
+
+            return FcActionInventoryReadResult.Succeeded(sealSweetenerCount);
         }
         catch (Exception ex)
         {
