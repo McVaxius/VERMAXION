@@ -51,6 +51,7 @@ public sealed class RetainerListingRefillService
 
     private const string RetainerListAddonName = "RetainerList";
     private const string RetainerSellListAddonName = "RetainerSellList";
+    private const string TalkAddonName = "Talk";
     private const string SelectStringAddonName = "SelectString";
     private const string ContextMenuAddonName = "ContextMenu";
     private const float MaxBellSearchDistance = 200f;
@@ -70,6 +71,7 @@ public sealed class RetainerListingRefillService
     private static readonly string[] RetainerCloseAddonPriority =
     {
         "SelectYesno",
+        TalkAddonName,
         ContextMenuAddonName,
         RetainerSellListAddonName,
         "RetainerItemTransferList",
@@ -120,6 +122,7 @@ public sealed class RetainerListingRefillService
     private RetainerUiCloseMode closeMode = RetainerUiCloseMode.FullClose;
     private bool bellInteracted;
     private bool retainerSelected;
+    private bool retainerSessionOwned;
     private bool sellMenuSelected;
     private RefillFromListingsSelectionMode selectionMode = RefillFromListingsSelectionMode.All;
     private RefillFromListingsRoute route = RefillFromListingsRoute.Workshop;
@@ -227,7 +230,12 @@ public sealed class RetainerListingRefillService
         SetState(RefillState.SelectingRetainer, "Selecting retainer...");
     }
 
-    public void Reset()
+    public void Reset() => Reset(preserveRetainerSession: false);
+
+    // Cancellation stops the refill, but handoff still owns its dialogue and UI cleanup.
+    internal void Cancel() => Reset(preserveRetainerSession: true);
+
+    private void Reset(bool preserveRetainerSession)
     {
         vnavmesh.Stop();
         workshopBellService.Reset();
@@ -244,7 +252,11 @@ public sealed class RetainerListingRefillService
         ownershipLostAt = DateTime.MinValue;
         recoveringToList = false;
         rescanAfterInterruption = false;
-        characterId = 0;
+        if (!preserveRetainerSession)
+        {
+            characterId = 0;
+            retainerSessionOwned = false;
+        }
         preparingClosePending = false;
         targetIndex = 0;
         pendingListing = null;
@@ -296,6 +308,11 @@ public sealed class RetainerListingRefillService
                 SetState(RefillState.ClosingRetainerUi, "Recovering retainer ownership: returning to retainer list...");
             }
         }
+
+        if (GameHelpers.IsAddonVisible(RetainerListAddonName))
+            retainerSessionOwned = true;
+        if (closeNoSurfaceSince != DateTime.MinValue && GetVisibleRetainerCloseAddons(closeMode).Count > 0)
+            closeNoSurfaceSince = DateTime.MinValue;
 
         if (DateTime.UtcNow < nextActionAt)
             return;
@@ -359,7 +376,9 @@ public sealed class RetainerListingRefillService
     internal bool TickFinalUiClose(out string status)
         => TryCloseVisibleRetainerUi(RetainerUiCloseMode.FullClose, out status);
 
-    internal static bool HasVisibleRetainerUi => IsRetainerUiVisible();
+    internal bool HasPendingRetainerUi => retainerSessionOwned || IsRetainerUiVisible();
+
+    private bool IsOwnedRetainerDialogueVisible => retainerSessionOwned && GameHelpers.IsAddonVisible(TalkAddonName);
 
     internal void CancelForCharacterChange()
     {
@@ -490,6 +509,16 @@ public sealed class RetainerListingRefillService
             return;
         }
 
+        if (IsOwnedRetainerDialogueVisible)
+        {
+            StatusText = "Advancing retainer greeting...";
+            if (TryAdvanceRetainerDialogue())
+                ScheduleListingAction();
+            else
+                nextActionAt = DateTime.UtcNow.AddMilliseconds(150);
+            return;
+        }
+
         if (GameHelpers.IsAddonVisible(SelectStringAddonName) && retainerSelected)
         {
             if (!IsExpectedActiveRetainer(target, out var detail))
@@ -516,8 +545,11 @@ public sealed class RetainerListingRefillService
             }
 
             log.Information($"[Listings] RetainerList target '{target.Name}' matched row {index}.");
-            GameHelpers.FireAddonCallback(RetainerListAddonName, true, 2, index, 0, 0);
-            retainerSelected = true;
+            if (GameHelpers.TryFireAddonCallback(RetainerListAddonName, true, 2, index, 0, 0))
+            {
+                retainerSelected = true;
+                retainerSessionOwned = true;
+            }
             ScheduleListingAction();
             return;
         }
@@ -832,7 +864,7 @@ public sealed class RetainerListingRefillService
     {
         if (!TryGetMainInventoryFreeSlots(out var freeSlots, out var detail))
         {
-            Fail($"Unable to read main inventory free slots before {context}: {detail}", closeRetainerUi: IsRetainerUiVisible());
+            Fail($"Unable to read main inventory free slots before {context}: {detail}", closeRetainerUi: HasPendingRetainerUi);
             return false;
         }
 
@@ -851,7 +883,7 @@ public sealed class RetainerListingRefillService
         vnavmesh.Stop();
         workshopBellService.Reset();
 
-        if (!IsRetainerUiVisible())
+        if (!HasPendingRetainerUi)
         {
             SetState(RefillState.Complete, status);
             return;
@@ -863,8 +895,19 @@ public sealed class RetainerListingRefillService
         SetState(RefillState.ClosingRetainerUi, $"{status} Closing retainer UI...");
     }
 
-    private static bool IsRetainerUiVisible()
+    private bool IsRetainerUiVisible()
         => GetVisibleRetainerCloseAddons().Count > 0;
+
+    private unsafe bool TryAdvanceRetainerDialogue()
+    {
+        if (!IsOwnedRetainerDialogueVisible ||
+            !ECommons.GenericHelpers.TryGetAddonByName<AtkUnitBase>(TalkAddonName, out var addon) ||
+            !ECommons.GenericHelpers.IsAddonReady(addon))
+            return false;
+
+        new AddonMaster.Talk(addon).Click();
+        return true;
+    }
 
     private static int ClampMinFreeInventorySlots(int value)
         => Math.Clamp(value, MinFreeInventorySlotsFloor, MinFreeInventorySlotsCeiling);
@@ -1952,12 +1995,25 @@ public sealed class RetainerListingRefillService
         var now = DateTime.UtcNow;
         status = "Closing retainer UI...";
 
+        if (retainerSessionOwned && Plugin.PlayerState.ContentId != characterId)
+        {
+            CancelForCharacterChange();
+            status = LastError;
+            return false;
+        }
+
         var blocker = ControlBlocker(false);
         if (blocker != null)
         {
             SuspendForOwnershipLoss(blocker);
             status = blocker;
             return true;
+        }
+
+        if (GameHelpers.IsAddonVisible(RetainerListAddonName))
+        {
+            retainerSessionOwned = true;
+            characterId = Plugin.PlayerState.ContentId;
         }
 
         // Resolve this modal before any lower surface, including a queued list-close callback.
@@ -1990,6 +2046,31 @@ public sealed class RetainerListingRefillService
         {
             buybackConfirmationClicked = false;
             nextActionAt = now.Add(CloseRetryInterval);
+            return true;
+        }
+
+        // Farewell dialogue can appear after Quit, even while the list is already visible.
+        if (IsOwnedRetainerDialogueVisible)
+        {
+            closeNoSurfaceSince = DateTime.MinValue;
+            retainerListCloseSecondPending = false;
+            status = "Waiting for retainer dialogue to close...";
+            if (now - lastRetainerCloseAttemptAt < CloseRetryInterval)
+            {
+                nextActionAt = lastRetainerCloseAttemptAt.Add(CloseRetryInterval);
+                return true;
+            }
+
+            if (TryAdvanceRetainerDialogue())
+            {
+                LogRetainerCloseAction(++closeAttemptCount, TalkAddonName, "Advance retainer dialogue", GetVisibleRetainerCloseAddons(mode));
+                lastRetainerCloseAttemptAt = now;
+                nextActionAt = now.Add(CloseRetryInterval);
+            }
+            else
+            {
+                nextActionAt = now.AddMilliseconds(150);
+            }
             return true;
         }
 
@@ -2030,6 +2111,8 @@ public sealed class RetainerListingRefillService
             if (mode == RetainerUiCloseMode.FullClose)
                 log.Information($"[Listings] Retainer UI full close confirmed after {CloseNoSurfaceGrace.TotalSeconds:F1}s with no close surfaces visible.");
 
+            retainerSessionOwned = mode == RetainerUiCloseMode.ReturnToRetainerList &&
+                GameHelpers.IsAddonVisible(RetainerListAddonName);
             ResetCloseTracking();
             return false;
         }
@@ -2096,11 +2179,13 @@ public sealed class RetainerListingRefillService
         return true;
     }
 
-    private static List<string> GetVisibleRetainerCloseAddons(RetainerUiCloseMode mode = RetainerUiCloseMode.FullClose)
+    private List<string> GetVisibleRetainerCloseAddons(RetainerUiCloseMode mode = RetainerUiCloseMode.FullClose)
     {
         var visibleAddons = new List<string>();
         foreach (var addonName in RetainerCloseAddonPriority)
         {
+            if (addonName == TalkAddonName && !retainerSessionOwned)
+                continue;
             if (mode == RetainerUiCloseMode.ReturnToRetainerList && addonName == RetainerListAddonName)
                 continue;
 
