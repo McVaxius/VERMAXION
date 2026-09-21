@@ -416,7 +416,7 @@ public class VermaxionEngine
         {
             Bind(PostProcessTaskOrder.RefillListings, EvaluateRefillListings, retainerListingRefillService.Update,
                 () => { retainerListingRefillService.Reset(); workshopBellService.Reset(); },
-                () => retainerListingRefillService.StatusText),
+                () => retainerListingRefillService.StatusText, retainerListingRefillService.Cancel),
             Bind(PostProcessTaskOrder.RetainerEquipping, EvaluateRetainerEquipping, retainerEquippingService.Update,
                 retainerEquippingService.Cancel, () => retainerEquippingService.StatusText,
                 retainerEquippingService.Cancel, retainerEquippingService.CleanupAfterDispatch),
@@ -934,6 +934,7 @@ public class VermaxionEngine
         CancelTaskServices();
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort();
+        retainerListingRefillService.Reset();
         if (arService.IsProcessing)
             arService.FinishPostProcess(force: true);
         yesAlreadyIPC.Unpause();
@@ -2410,7 +2411,7 @@ public class VermaxionEngine
         StopMovementForHandoff();
         yesAlreadyIPC.Pause();
 
-        if (retainerUiOwned && (retainerCleanupPending || RetainerListingRefillService.HasVisibleRetainerUi))
+        if (retainerUiOwned && (retainerCleanupPending || retainerListingRefillService.HasPendingRetainerUi))
             retainerCleanupPending = retainerListingRefillService.TickFinalUiClose(out retainerCleanupStatus);
 
         if (finalHandoff && arService.IsProcessing && !fishingService.IsActive)
@@ -2626,9 +2627,11 @@ public class VermaxionEngine
     {
         if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker() != null)
             return;
-        if (retainerUiOwned && RetainerListingRefillService.HasVisibleRetainerUi)
+        if (retainerUiOwned)
         {
-            retainerCleanupPending = retainerListingRefillService.TickFinalUiClose(out retainerCleanupStatus);
+            if (retainerCleanupPending || retainerListingRefillService.HasPendingRetainerUi)
+                retainerCleanupPending = retainerListingRefillService.TickFinalUiClose(out retainerCleanupStatus);
+            // Refill cleanup must not fall through to generic Talk/ESC handling.
             return;
         }
         var knownAddonWasVisible = TaskOwnedAddonNames.Any(IsAddonVisible);

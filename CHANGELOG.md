@@ -1,5 +1,10 @@
 # VERMAXION Changelog
 
+## Unreleased - Refill Listings retainer dialogue cleanup
+
+- Advance greeting and farewell dialogue only while Refill Listings owns a retainer session. Wait for dialogue readiness and observed UI closure before continuing or releasing AutoRetainer, preserving the retainer list between targets and closing it at final cleanup.
+- Retain dialogue ownership through failure, cancellation, and suppression recovery; clear it after closure, character changes, or Full Stop. Preserve confirmation safeguards, cleanup pacing, handoff settlement, saved settings, and version 0.4.0.14.
+
 ## Unreleased - I388 FC Buff Refill stock count
 
 - Count only current FC action list entries so stale row text cannot inflate Seal Sweetener II stock or shorten a refill. Accept an empty list as zero stock, fail unreadable current entries, and preserve activation row indices.
