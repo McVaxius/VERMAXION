@@ -1,5 +1,9 @@
 # VERMAXION Changelog
 
+## Unreleased - I393 character setting filter
+
+- Add a character-list filter for enabled settings such as Fishing and nag your mom. Keep Default Config and the editing selection intact; reset to All characters when the configuration window closes.
+
 ## Unreleased - Refill Listings retainer dialogue cleanup
 
 - Advance greeting and farewell dialogue only while Refill Listings owns a retainer session. Wait for dialogue readiness and observed UI closure before continuing or releasing AutoRetainer, preserving the retainer list between targets and closing it at final cleanup.

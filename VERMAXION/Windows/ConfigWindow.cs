@@ -17,6 +17,7 @@ public class ConfigWindow : Window, IDisposable
     private const string StylistRepositoryUrl = "https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json";
     private readonly Plugin plugin;
     private string editAccountAlias = "";
+    private AutomationFeatureDefinition? characterFilter;
     private readonly List<DadDutyOption> dadDutyOptions = new();
     private string dadDungeonSearch = "";
     private bool dadDutyOptionsLoaded;
@@ -114,6 +115,7 @@ public class ConfigWindow : Window, IDisposable
 
     public override void OnClose()
     {
+        characterFilter = null;
         ClearConfirmation();
         CloseWizard();
     }
@@ -804,6 +806,27 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Text(UIConstants.ConfigLabels.Characters);
         ImGui.SameLine();
         DrawCharacterSortSelector();
+
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.BeginCombo("##CharacterFilter", characterFilter?.Label ?? "All characters"))
+        {
+            if (ImGui.Selectable("All characters", characterFilter == null))
+                characterFilter = null;
+            if (characterFilter == null)
+                ImGui.SetItemDefaultFocus();
+
+            foreach (var feature in AutomationCatalog.Features)
+            {
+                var selected = characterFilter == feature;
+                if (ImGui.Selectable(feature.Label, selected))
+                    characterFilter = feature;
+                if (selected)
+                    ImGui.SetItemDefaultFocus();
+            }
+            ImGui.EndCombo();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Show characters with the selected setting enabled.");
         ImGui.Separator();
 
         // Default config entry
@@ -820,8 +843,14 @@ public class ConfigWindow : Window, IDisposable
             ? $"{charName}@{worldName}" 
             : "";
 
+        var filterProperty = characterFilter == null
+            ? null
+            : typeof(CharacterConfig).GetProperty(characterFilter.FlagProperty);
         foreach (var charKey in configManager.GetSortedCharacterKeys(plugin.Configuration.CharacterListSortMode))
         {
+            if (characterFilter != null && filterProperty?.GetValue(configManager.GetConfigForKey(charKey)) is not true)
+                continue;
+
             var displayName = plugin.Configuration.KrangleEnabled
                 ? KrangleService.KrangleName(CleanLuminaText(charKey))
                 : charKey;
