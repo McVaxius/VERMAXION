@@ -57,6 +57,7 @@ public class VermaxionEngine
 
     private static readonly string[] StartupMiscCommands =
     [
+        "/dduck stop",
         "/rotation Cancel",
         "/at enable",
         "/vbmai off",
