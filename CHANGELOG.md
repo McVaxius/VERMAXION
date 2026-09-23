@@ -1,5 +1,9 @@
 # VERMAXION Changelog
 
+## Unreleased - Deep Duck FULL STOP in Misc Commands
+
+- Send `/dduck stop` first in the Misc Commands startup and Send now bundle to stop Deep Duck automation, and show it in the configuration command list. Preserve the existing Misc Cmd toggle and applicable run-start timing.
+
 ## Unreleased - I393 character setting filter
 
 - Add a character-list filter for enabled settings such as Fishing and nag your mom. Keep Default Config and the editing selection intact; reset to All characters when the configuration window closes.
