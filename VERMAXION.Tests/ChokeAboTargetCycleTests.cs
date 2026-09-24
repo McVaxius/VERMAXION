@@ -10,6 +10,101 @@ public sealed class ChokeAboTargetCycleTests
     private const ulong ContentId = 1234567890123456789UL;
 
     [Fact]
+    public void OwnedInteractionReadinessRequiresTypedV3EvidenceForTheActiveCharacter()
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            version = 3, contentId = ContentId, phase = "Paused", shouldBlockRacing = true,
+            targetReady = false, gameActionInProgress = false, reason = "Pending owned covering confirmation",
+            nextCoveringEligibilityUtc = (string?)null, pedigree = 0, racingRank = 0, progressionComplete = false,
+            canResumeOwnedInteraction = true,
+        });
+        Assert.True(ChokeAboTargetCycleProtocol.TryParseStatus(json, ContentId, out var status, out var error, 3), error);
+        Assert.True(status!.CanResumeOwnedInteraction);
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(json, ContentId + 1, out _, out _, 3));
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(json.Replace("\"canResumeOwnedInteraction\":true", "\"canResumeOwnedInteraction\":\"true\""), ContentId, out _, out _, 3));
+        var older = json.Replace(",\"canResumeOwnedInteraction\":true", "");
+        Assert.True(ChokeAboTargetCycleProtocol.TryParseStatus(older, ContentId, out status, out error, 3), error);
+        Assert.False(status!.CanResumeOwnedInteraction);
+    }
+
+    [Fact]
+    public void AllowanceSamplesExcludePreparationAndRetainOnlyVerifiedActivityAcrossReload()
+    {
+        var config = CharacterConfig.CreateNew();
+        var now = new DateTime(2026, 9, 23, 10, 0, 0, DateTimeKind.Utc);
+        ChocoboDailyAllowance.Sample(config, now, false);
+        ChocoboDailyAllowance.Sample(config, now.AddMinutes(20), true);
+        Assert.Equal(0, config.ChocoboAllowanceSecondsUsed);
+        ChocoboDailyAllowance.Sample(config, now.AddMinutes(21), true);
+        var reloaded = JsonSerializer.Deserialize<CharacterConfig>(JsonSerializer.Serialize(config))!;
+        ChocoboDailyAllowance.Sample(reloaded, now.AddMinutes(22), true, afterReload: true);
+        Assert.Equal(120, reloaded.ChocoboAllowanceSecondsUsed);
+        ChocoboDailyAllowance.Sample(reloaded, now.AddMinutes(23), false);
+        Assert.Equal(180, reloaded.ChocoboAllowanceSecondsUsed);
+        Assert.False(reloaded.ChocoboRacePending);
+        Assert.Equal(DateTime.MinValue, reloaded.ChocoboAllowanceSampleUtc);
+        ChocoboDailyAllowance.Sample(reloaded, now.AddHours(2), true, afterReload: true);
+        Assert.Equal(180, reloaded.ChocoboAllowanceSecondsUsed);
+        ChocoboDailyAllowance.Sample(reloaded, now.AddHours(3), false, afterReload: true);
+        Assert.Equal(180, reloaded.ChocoboAllowanceSecondsUsed); // A finished queue cannot charge an unknown unload interval.
+    }
+
+    [Fact]
+    public void ProgressionAllowanceAndV3BoundariesSurviveReloadWithoutLosingLimits()
+    {
+        var config = CharacterConfig.CreateNew();
+        config.ChocoboAutomationMode = ChocoboAutomationMode.TargetPedigree;
+        config.ChocoboProgressionPaused = false;
+        Assert.Equal(ChocoboFeedPolicy.Skip, config.ChocoboFeedPolicy);
+        Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, config, out var request, out var error), error);
+        using (var doc = JsonDocument.Parse(request))
+        {
+            Assert.Equal(3, doc.RootElement.GetProperty("version").GetInt32());
+            Assert.Equal(100000, doc.RootElement.GetProperty("gilReserve").GetInt32());
+            Assert.Equal(50000, doc.RootElement.GetProperty("mgpReserve").GetInt32());
+            Assert.Equal((int)ChocoboFeedPolicy.Skip, doc.RootElement.GetProperty("feedPolicy").GetInt32());
+            Assert.True(doc.RootElement.GetProperty("raceAdmissionAllowed").GetBoolean());
+        }
+        var day = new DateTime(2026, 9, 23, 9, 0, 0, DateTimeKind.Utc);
+        ChocoboDailyAllowance.Account(config, day, day.AddHours(2), racingActivity: true);
+        Assert.Equal(3600, ChocoboDailyAllowance.Remaining(config, day.AddHours(2)));
+        ChocoboDailyAllowance.Account(config, day.AddHours(2), day.AddHours(4), racingActivity: false);
+        Assert.Equal(3600, ChocoboDailyAllowance.Remaining(config, day.AddHours(4)));
+        var resumed = JsonSerializer.Deserialize<CharacterConfig>(JsonSerializer.Serialize(config))!;
+        ChocoboDailyAllowance.Account(resumed, day.AddHours(4), day.AddHours(5), racingActivity: true);
+        Assert.Equal(0, ChocoboDailyAllowance.Remaining(resumed, day.AddHours(5)));
+        ChocoboDailyAllowance.Account(resumed, day.AddDays(1).AddSeconds(-30), day.AddDays(1).AddSeconds(30), racingActivity: true);
+        Assert.Equal(30, resumed.ChocoboAllowanceSecondsUsed);
+        Assert.Equal(10770, ChocoboDailyAllowance.Remaining(resumed, day.AddDays(1).AddSeconds(30)));
+        resumed.ChocoboProgressionPaused = true;
+        Assert.True(resumed.Clone().ChocoboProgressionPaused);
+        Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, resumed, out var pausedRequest, out error), error);
+        using (var paused = JsonDocument.Parse(pausedRequest))
+            Assert.False(paused.RootElement.GetProperty("raceAdmissionAllowed").GetBoolean());
+        var exhausted = config.Clone();
+        exhausted.ChocoboAllowanceResetUtc = ChocoboDailyAllowance.ResetAt(DateTime.UtcNow);
+        exhausted.ChocoboAllowanceSecondsUsed = ChocoboDailyAllowance.LimitSeconds;
+        Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, exhausted, out var exhaustedRequest, out error), error);
+        using (var noAllowance = JsonDocument.Parse(exhaustedRequest))
+            Assert.False(noAllowance.RootElement.GetProperty("raceAdmissionAllowed").GetBoolean());
+        var copied = CharacterConfig.CreateNew();
+        copied.ChocoboAllowanceSecondsUsed = 321;
+        ChocoboTargetCyclePolicy.CopySettings(resumed, copied);
+        Assert.Equal(321, copied.ChocoboAllowanceSecondsUsed); // Account defaults cannot replenish a character's allowance.
+
+        var legacy = StatusJson("Racing", false, false, false);
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(legacy, ContentId, out _, out _, 3));
+        var complete = JsonSerializer.Serialize(new { version = 3, contentId = ContentId, phase = "TargetReady",
+            shouldBlockRacing = false, targetReady = true, gameActionInProgress = false, reason = "G9 rank 50",
+            pedigree = 9, racingRank = 50, progressionComplete = true });
+        Assert.True(ChokeAboTargetCycleProtocol.TryParseStatus(complete, ContentId, out var status, out error, 3), error);
+        Assert.Equal(ChocoboTargetHandoffAction.Complete,
+            ChocoboTargetCyclePolicy.DecideHandoff(ChokeAboTargetCycleCallResult.Success(status!), 0, 5).Action);
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(complete.Replace("\"racingRank\":50", "\"racingRank\":49"), ContentId, out _, out _, 3));
+    }
+
+    [Fact]
     public void FreshAndLegacyCharactersKeepAlwaysRaceDefaults()
     {
         var fresh = CharacterConfig.CreateNew();

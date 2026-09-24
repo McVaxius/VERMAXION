@@ -657,7 +657,11 @@ public class VermaxionEngine
 
     private TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
     {
-        var eligibility = Due(
+        var eligibility = config.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree
+            ? !config.EnableChocoboRacing ? TaskEligibility.Disabled("Chocobo progression is disabled.")
+                : config.ChocoboProgressionPaused ? TaskEligibility.Blocked("Chocobo progression is paused; use Resume.")
+                : TaskEligibility.Runnable()
+            : Due(
             config.EnableChocoboRacing,
             "Chocobo Racing",
             config.ChocoboRacingLastCompleted,
@@ -687,7 +691,7 @@ public class VermaxionEngine
         var status = chokeAboIpcClient.GetTargetCycleStatus(Plugin.PlayerState.ContentId);
         return !status.Succeeded || status.Status == null
             ? TaskEligibility.Blocked(status.Error)
-            : TaskEligibility.Runnable($"Choke-abo V2 phase: {status.Status.Phase}. {status.Status.Reason}");
+            : TaskEligibility.Runnable($"Choke-abo V3 phase: {status.Status.Phase}. {status.Status.Reason}");
     }
 
     private static TaskEligibility EvaluateLootGoblin(CharacterConfig config)
@@ -915,18 +919,21 @@ public class VermaxionEngine
 
     public void Cancel()
     {
+        StopTargetProgression();
         log.Warning("[Engine] Cancelled by user");
         CancelForSettling("Cancelled");
     }
 
-    public void Stop()
+    public void Stop(bool userRequested = true)
     {
+        if (userRequested) StopTargetProgression();
         log.Information("[Engine] Stopped by user");
         CancelForSettling("Stopped");
     }
 
     public void ForceStop()
     {
+        StopTargetProgression();
         CancelNagYourMomSeriesRankTest();
         log.Warning("[Engine] Full Stop force-releasing ownership");
         momIPCClient.CancelActiveRun();
@@ -944,6 +951,12 @@ public class VermaxionEngine
         RecordRunCompletion(RunOutcome.ForceStopped, "Full Stop force-released ownership");
         ResetRunTracking();
         SetState(EngineState.Idle);
+    }
+
+    private void StopTargetProgression()
+    {
+        if (Plugin.PlayerState.ContentId != 0 && configManager.GetActiveConfig().ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
+            chocoboRaceService.PauseProgression();
     }
 
     public void SendRunShutdownCommandBundle()
@@ -1600,7 +1613,8 @@ public class VermaxionEngine
             case EngineState.RunningChocoboRacing:
                 activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableChocoboRacing &&
-                    ResetDetectionService.TaskNeedsRun(activeConfig.ChocoboRacingLastCompleted, activeConfig.ChocoboRacingNextReset))
+                    (activeConfig.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree ||
+                     ResetDetectionService.TaskNeedsRun(activeConfig.ChocoboRacingLastCompleted, activeConfig.ChocoboRacingNextReset)))
                 {
                     if (!chocoboRaceService.IsActive &&
                         !chocoboRaceService.IsComplete &&

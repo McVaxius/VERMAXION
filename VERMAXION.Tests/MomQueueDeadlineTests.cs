@@ -81,6 +81,101 @@ namespace VERMAXION.Tests
             Assert.True(f.Coordinator.CurrentResult.WindowExpired);
         }
 
+        [Theory]
+        [InlineData("capped", false)]
+        [InlineData("below-cap", false)]
+        [InlineData("below-cap", true)]
+        [InlineData("pending", false)]
+        [InlineData("failed", false)]
+        [InlineData("refresh-failed", false)]
+        public void SeriesRankIsCheckedBeforeSwitchingJobs(string outcome, bool alreadyOnJob)
+        {
+            var f = new Fixture();
+            f.Job.Current = alreadyOnJob;
+            f.Series.RefreshAccepted = outcome != "refresh-failed";
+            f.Series.LastSnapshot = mom.Models.SeriesRankSnapshot.Failure("test", "rank unavailable");
+            f.Start(series: true);
+            Assert.True(f.Coordinator.CurrentResult.WaitingForSeriesRank);
+            Assert.Equal(0, f.Job.Switches);
+            Assert.Equal(0, f.Queue.Starts);
+
+            f.Coordinator.Update();
+            Assert.Equal(1, f.Series.RefreshRequests);
+            Assert.Equal(0, f.Job.Switches);
+            Assert.Equal(0, f.Queue.Starts);
+            if (outcome == "refresh-failed")
+            {
+                Assert.Equal(Status.Failed, f.Coordinator.CurrentResult.Status);
+                Assert.Contains("rank unavailable", f.Coordinator.CurrentResult.FailureReason);
+                Assert.False(f.Coordinator.CurrentResult.WaitingForSeriesRank);
+                return;
+            }
+
+            // Time spent reading Series rank must not consume the job-switch timeout.
+            f.Clock.Now = f.Clock.Now.AddSeconds(11);
+            f.Coordinator.Update();
+            Assert.True(f.Coordinator.CurrentResult.WaitingForSeriesRank);
+            Assert.Equal(1, f.Series.RefreshRequests);
+            Assert.Equal(0, f.Job.Switches);
+            Assert.Equal(0, f.Queue.Starts);
+            if (outcome == "pending")
+            {
+                f.Coordinator.CancelActiveRun();
+                f.Coordinator.Update();
+                Assert.Equal(Status.Cancelled, f.Coordinator.CurrentResult.Status);
+                Assert.False(f.Series.IsRefreshPending);
+                Assert.Equal(0, f.Job.Switches);
+                Assert.Equal(0, f.Queue.Starts);
+                return;
+            }
+
+            f.Series.IsRefreshPending = false;
+            if (outcome != "failed")
+                f.Series.LastSnapshot = new() { Rank = outcome == "capped" ? 25 : 24 };
+            f.Coordinator.Update();
+            Assert.False(f.Coordinator.CurrentResult.WaitingForSeriesRank);
+            Assert.Equal(0, f.Job.Switches);
+            Assert.Equal(0, f.Queue.Starts);
+            if (outcome is "capped" or "failed")
+            {
+                Assert.Equal(outcome == "capped" ? Status.Completed : Status.Failed, f.Coordinator.CurrentResult.Status);
+                Assert.Equal(0, f.Coordinator.CurrentResult.CompletedRunCount);
+                Assert.False(f.Coordinator.IsBusy);
+                if (outcome == "failed")
+                    Assert.Contains("rank unavailable", f.Coordinator.CurrentResult.FailureReason);
+                return;
+            }
+
+            if (!alreadyOnJob)
+            {
+                f.Coordinator.Update();
+                f.Coordinator.Update();
+                Assert.Equal(1, f.Job.Switches);
+                Assert.Equal(0, f.Queue.Starts);
+                Assert.Equal(Status.Queued, f.Coordinator.CurrentResult.Status);
+                f.Job.Current = true;
+            }
+            f.Coordinator.Update();
+            Assert.Equal(1, f.Queue.Starts);
+            Assert.Equal(alreadyOnJob ? 0 : 1, f.Job.Switches);
+            Assert.Equal(1, f.Series.RefreshRequests);
+
+            // The next match must still get a fresh rank check.
+            f.EnterMatch();
+            f.Coordinator.ObserveDutyCompletion();
+            f.ExitMatch();
+            Assert.True(f.Coordinator.CurrentResult.WaitingForSeriesRank);
+            f.Coordinator.Update();
+            Assert.Equal(2, f.Series.RefreshRequests);
+            f.Series.LastSnapshot = new() { Rank = 25 };
+            f.Series.IsRefreshPending = false;
+            f.Coordinator.Update();
+            Assert.Equal(Status.Completed, f.Coordinator.CurrentResult.Status);
+            Assert.Equal(1, f.Coordinator.CurrentResult.CompletedRunCount);
+            Assert.Equal(1, f.Queue.Starts);
+            Assert.Equal(alreadyOnJob ? 0 : 1, f.Job.Switches);
+        }
+
         [Fact]
         public void VisiblePopAtCutoffWithdrawsWithoutCommencing()
         {
@@ -359,6 +454,7 @@ namespace VERMAXION.Tests
             public ICondition Conditions { get; } = new();
             public CcQueueService Queue { get; }
             public JobSelectionService Job { get; } = new();
+            public SeriesRankService Series { get; } = new();
             public MatchStateService Match { get; } = new();
             public TerritoryProfileService Territory { get; } = new();
             public RunCoordinatorService Coordinator { get; }
@@ -371,7 +467,7 @@ namespace VERMAXION.Tests
                     new IPluginLog(), new mom.Configuration(), new StartupHealth
                     {
                         ConfigLoaded = true, ConfigManagerReady = true, ServiceGraphReady = true, WindowsReady = true, IpcReady = true,
-                    }, Job, Queue, new SeriesRankService(), new AchievementStatusService(), Match, Territory, Clock);
+                    }, Job, Queue, Series, new AchievementStatusService(), Match, Territory, Clock);
             }
 
             public void Start(bool series = false, string route = "casual-cc")
@@ -529,10 +625,12 @@ namespace mom.Services
     public sealed class SeriesRankService
     {
         public const int MaxSeriesRank = 25;
-        public bool IsRefreshPending { get; private set; }
-        public mom.Models.SeriesRankSnapshot LastSnapshot => new() { Rank = 1 };
+        public bool IsRefreshPending { get; set; }
+        public mom.Models.SeriesRankSnapshot LastSnapshot { get; set; } = new() { Rank = 1 };
+        public bool RefreshAccepted = true;
+        public int RefreshRequests;
         public string StatusSummary => "pending";
-        public bool RequestRefresh() { IsRefreshPending = true; return true; }
+        public bool RequestRefresh() { RefreshRequests++; IsRefreshPending = RefreshAccepted; return RefreshAccepted; }
         public void Cancel(string reason = "") => IsRefreshPending = false;
     }
     public sealed class AchievementStatusService

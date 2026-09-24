@@ -42,7 +42,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "registrables-native-unlock-20260917-02";
+    private const string DebugAttemptMarker = "chocobo-progression-v3-20260924-65";
+    private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"D:\temp\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
@@ -109,6 +110,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private bool pendingCharacterRegistration;
     private bool characterRegistrationCompletedThisLogin;
     private string? pendingDebugTaskId;
+    private string? pendingDebugDispatchTaskId;
+    private DateTime debugDispatchReadyDeadline;
+    private ulong debugDispatchContentId;
     internal string DebugTaskStatus { get; private set; } = "No task selected.";
     private string characterRegistrationFailureReason = string.Empty;
     private DateTime characterRegistrationWorldReadySince = DateTime.MinValue;
@@ -222,7 +226,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log);
         CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC, LifestreamIPC);
-        ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient);
+        ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient,
+            () => CanStartChocoboProgression(out var reason) ? null : reason);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
         StylistIPC = new StylistIPC(PluginInterface, Log);
@@ -367,7 +372,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public void Dispose()
     {
         Engine.CancelNagYourMomSeriesRankTest();
-        PauseCurrentTargetCycleBestEffort("VERMAXION disposal");
+        ChocoboRaceService.Dispose();
+        ChokeAboIpcClient.SuspendTargetCycle(PlayerState.ContentId);
         DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
@@ -603,8 +609,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             return;
 
         Configuration.DebugTaskId = taskId;
+        Configuration.DebugTaskCharacterKey = taskId == null ? null : ConfigManager.CurrentCharacterKey;
         // Edits arm only the next reload, and cancel any older pending selection.
         pendingDebugTaskId = null;
+        pendingDebugDispatchTaskId = null;
         Configuration.Save();
         SetDebugTaskStatus(taskId == null ? "No task selected." : "Pending: next plugin reload.");
     }
@@ -617,6 +625,23 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessPendingDebugTask()
     {
+        if (pendingDebugDispatchTaskId != null)
+        {
+            if (PlayerState.ContentId != debugDispatchContentId)
+            {
+                pendingDebugDispatchTaskId = null;
+                SetDebugTaskStatus("Cancelled: the character changed during cleanup.");
+                return;
+            }
+            var ready = GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _);
+            if (!ready && DateTime.UtcNow < debugDispatchReadyDeadline) return;
+            var dispatchId = pendingDebugDispatchTaskId;
+            pendingDebugDispatchTaskId = null;
+            if (!ready)
+            { SetDebugTaskStatus("Blocked: cleanup did not release the character for dispatch."); return; }
+            DispatchDebugTask(dispatchId);
+            return;
+        }
         if (pendingDebugTaskId == null)
             return;
 
@@ -633,9 +658,34 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         // Consume before cleanup or dispatch, including failures and reentrant callbacks.
         var taskId = pendingDebugTaskId;
         pendingDebugTaskId = null;
+        if (!string.IsNullOrEmpty(Configuration.DebugTaskCharacterKey) &&
+            Configuration.DebugTaskCharacterKey != ConfigManager.CurrentCharacterKey)
+        { SetDebugTaskStatus("Blocked: this reload task belongs to a different character."); return; }
+        if (taskId == AutomationCatalog.ChocoboRacing && ConfigManager.GetActiveConfig().ChocoboProgressionPaused)
+        {
+            SetDebugTaskStatus("Chocobo progression is paused; explicit Resume is required before reload continuation.");
+            return;
+        }
         try
         {
+            if (taskId == AutomationCatalog.ChocoboRacing)
+                CommandManager.ProcessCommand("/chokeabo inspect");
             FullStop();
+            pendingDebugDispatchTaskId = taskId;
+            debugDispatchContentId = PlayerState.ContentId;
+            debugDispatchReadyDeadline = DateTime.UtcNow.AddSeconds(30);
+            SetDebugTaskStatus("Consumed: cleanup sent; waiting for character readiness before dispatch.");
+        }
+        catch (Exception ex)
+        {
+            SetDebugTaskStatus($"Blocked: reload cleanup failed. {ex.Message}");
+        }
+    }
+
+    private void DispatchDebugTask(string taskId)
+    {
+        try
+        {
             var row = MainWindow.GetDashboardTaskRows(forceRefresh: true)
                 .FirstOrDefault(candidate => string.Equals(candidate.Id, taskId, StringComparison.Ordinal));
             if (row == null)
@@ -1053,7 +1103,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             if (Engine.IsRunning)
             {
                 Log.Information("[Plugin] Stopping engine due to character change");
-                Engine.Stop();
+                Engine.Stop(userRequested: false);
             }
             else if (pendingBeforeArLogin)
             {
@@ -1868,7 +1918,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var hasLocalPlayer = ObjectTable.LocalPlayer != null;
         var betweenAreas = Condition[ConditionFlag.BetweenAreas];
         var betweenAreas51 = Condition[ConditionFlag.BetweenAreas51];
-        var playerAvailable = GameHelpers.IsPlayerAvailable();
+        var playerAvailable = GameHelpers.IsPlayerAvailable() || loggedIn && hasLocalPlayer && !betweenAreas && !betweenAreas51 &&
+            contentId != 0 && ChokeAboIpcClient.GetTargetCycleStatus(contentId).Status?.CanResumeOwnedInteraction == true;
 
         if (!loggedIn ||
             !hasLocalPlayer ||
@@ -2149,6 +2200,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
         ProcessPendingCharacterRegistration();
         ProcessPendingDebugTask();
+        ProcessChocoboContinuation();
 
         AutoRetainerSelectionGuard.Update(
             Configuration.AutoRestoreRetainerCheckingAfterWork,
@@ -2384,6 +2436,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// </summary>
     public void FullStop()
     {
+        pendingDebugDispatchTaskId = null;
         if (pendingDebugTaskId != null)
         {
             pendingDebugTaskId = null;
@@ -2462,6 +2515,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (!targetModeWasActive && activeConfig?.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree)
             return;
 
+        if (activeConfig != null)
+        {
+            activeConfig.ChocoboProgressionPaused = true;
+            ConfigManager.SaveCurrentAccount();
+        }
+
         var contentId = PlayerState.ContentId;
         if (contentId == 0)
             return;
@@ -2475,6 +2534,42 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         {
             Log.Warning($"[ChocoboRace] Best-effort Choke-abo V2 pause failed for {reason}: {result.Error}");
         }
+    }
+
+    private bool CanStartChocoboProgression(out string reason)
+    {
+        if (!characterRegistrationCompletedThisLogin || !GameHelpers.IsPlayerAvailable() &&
+            ChokeAboIpcClient.GetTargetCycleStatus(PlayerState.ContentId).Status?.CanResumeOwnedInteraction != true)
+        { reason = "Waiting for the current character to be ready."; return false; }
+        if (!CanStartMainMenuTest(waitForOceanFishing: false, out reason)) return false;
+        if (Condition[ConditionFlag.BoundByDuty] && !ChocoboRaceService.CanReconcileRacingActivity())
+        { reason = "Another duty owns the character."; return false; }
+        if (LifestreamIPC.IsBusy()) { reason = "Travel owns the character."; return false; }
+        if (PluginInterface.InstalledPlugins.Any(plugin => plugin.IsLoaded && plugin.InternalName is "Questionable" or "WigglyQuest"))
+        {
+            try
+            {
+                var prefix = PluginInterface.InstalledPlugins.Any(plugin => plugin.IsLoaded && plugin.InternalName == "WigglyQuest")
+                    ? "WigglyQuest" : "Questionable";
+                if (PluginInterface.GetIpcSubscriber<bool>($"{prefix}.IsRunning").InvokeFunc() && !ChocoboRaceService.OwnsCurrentUnlockQuest())
+                { reason = "Questionable owns the character."; return false; }
+            }
+            catch { reason = "Questionable ownership could not be read."; return false; }
+        }
+        reason = string.Empty;
+        return true;
+    }
+
+    private void ProcessChocoboContinuation()
+    {
+        if (DateTime.UtcNow < nextChocoboContinuationUtc) return;
+        nextChocoboContinuationUtc = DateTime.UtcNow.AddSeconds(5);
+        if (!Configuration.Enabled || !characterRegistrationCompletedThisLogin || ChocoboRaceService.IsActive ||
+            DateTime.UtcNow < ChocoboRaceService.NextContinuationUtc) return;
+        var config = ConfigManager.GetActiveConfig();
+        if (!config.Enabled || !config.EnableChocoboRacing || config.ChocoboProgressionPaused ||
+            config.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree || !CanStartChocoboProgression(out _)) return;
+        RunDashboardAction(() => ChocoboRaceService.Start());
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();

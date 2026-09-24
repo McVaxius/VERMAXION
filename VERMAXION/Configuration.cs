@@ -48,6 +48,7 @@ public class Configuration : IPluginConfiguration
     public ScheduledOfflineHoldState? ScheduledOfflineHold { get; set; }
     public List<string> FavoriteAutomationIds { get; set; } = new();
     public string? DebugTaskId { get; set; }
+    public string? DebugTaskCharacterKey { get; set; }
     public int RefillListingsActionDelayMs { get; set; } = 250;
     public int RefillListingsInterItemDelayMs { get; set; } = 250;
     public float LeftPanelWidth { get; set; } = 240f;

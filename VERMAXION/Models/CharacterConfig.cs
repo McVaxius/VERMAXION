@@ -75,6 +75,17 @@ public class CharacterConfig
     public int ChocoboTargetPedigree { get; set; } = 9;
     public int ChocoboRetirementRank { get; set; } = 40;
     public int ChocoboPreferredFeedGrade { get; set; } = 3;
+    public ChocoboBreedingMode ChocoboBreedingMode { get; set; } = ChocoboBreedingMode.NpcPermits;
+    public ChocoboFeedPolicy ChocoboFeedPolicy { get; set; } = ChocoboFeedPolicy.Skip;
+    public uint ChocoboGilReserve { get; set; } = 100000;
+    public uint ChocoboMgpReserve { get; set; } = 50000;
+    public bool ChocoboProgressionPaused { get; set; } = true;
+    public DateTime ChocoboAllowanceResetUtc { get; set; } = DateTime.MinValue;
+    public double ChocoboAllowanceSecondsUsed { get; set; }
+    public bool ChocoboRacePending { get; set; }
+    public DateTime ChocoboAllowanceSampleUtc { get; set; } = DateTime.MinValue;
+    public ushort ChocoboUnlockQuestId { get; set; }
+    public bool ChocoboUnlockPriorityInserted { get; set; }
     public int FCBuffPurchaseAttempts { get; set; } = 15;
     public int FCBuffMinPoints { get; set; } = 500000;
     public int FCBuffMinGil { get; set; } = 16000;
@@ -359,6 +370,17 @@ public class CharacterConfig
             ChocoboTargetPedigree = ChocoboTargetPedigree,
             ChocoboRetirementRank = ChocoboRetirementRank,
             ChocoboPreferredFeedGrade = ChocoboPreferredFeedGrade,
+            ChocoboBreedingMode = ChocoboBreedingMode,
+            ChocoboFeedPolicy = ChocoboFeedPolicy,
+            ChocoboGilReserve = ChocoboGilReserve,
+            ChocoboMgpReserve = ChocoboMgpReserve,
+            ChocoboProgressionPaused = ChocoboProgressionPaused,
+            ChocoboAllowanceResetUtc = ChocoboAllowanceResetUtc,
+            ChocoboAllowanceSecondsUsed = ChocoboAllowanceSecondsUsed,
+            ChocoboRacePending = ChocoboRacePending,
+            ChocoboAllowanceSampleUtc = ChocoboAllowanceSampleUtc,
+            ChocoboUnlockQuestId = ChocoboUnlockQuestId,
+            ChocoboUnlockPriorityInserted = ChocoboUnlockPriorityInserted,
             FCBuffPurchaseAttempts = FCBuffPurchaseAttempts,
             FCBuffMinPoints = FCBuffMinPoints,
             FCBuffMinGil = FCBuffMinGil,
