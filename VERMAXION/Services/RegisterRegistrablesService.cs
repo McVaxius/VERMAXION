@@ -4,7 +4,6 @@ using System.Linq;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using FFXIVClientStructs.FFXIV.Component.Exd;
 using Lumina.Excel.Sheets;
 using VERMAXION.Models;
 
@@ -432,15 +431,14 @@ public class RegisterRegistrablesService : IDisposable
         }
     }
 
-    private static unsafe RegistrableUnlockState ReadUnlockState(uint itemId, out string error)
+    private unsafe RegistrableUnlockState ReadUnlockState(uint itemId, out string error)
     {
         error = string.Empty;
         try
         {
-            var exdItem = ExdModule.GetItemRowById(itemId);
-            if (exdItem == null)
+            if (!Plugin.PlayerState.IsLoaded)
             {
-                error = $"EXD item row {itemId} is unavailable";
+                error = "Player data is not loaded";
                 return RegistrableUnlockState.Unreadable;
             }
 
@@ -451,11 +449,21 @@ public class RegisterRegistrablesService : IDisposable
                 return RegistrableUnlockState.Unreadable;
             }
 
-            var result = uiState->IsItemActionUnlocked(exdItem);
-            var state = RegistrableRegistrationPolicy.DecodeNativeUnlockState(result);
-            if (state == RegistrableUnlockState.Unreadable)
-                error = $"IsItemActionUnlocked returned unexpected native result {result}";
-            return state;
+            if (itemId == 0 || !TryGetItem(itemId, out var item))
+            {
+                error = $"Item row {itemId} is unavailable";
+                return RegistrableUnlockState.Unreadable;
+            }
+
+            if (!Plugin.UnlockState.IsItemUnlockable(item))
+            {
+                error = $"Item {itemId} is not unlockable";
+                return RegistrableUnlockState.Unreadable;
+            }
+
+            return Plugin.UnlockState.IsItemUnlocked(item)
+                ? RegistrableUnlockState.Unlocked
+                : RegistrableUnlockState.Locked;
         }
         catch (Exception ex)
         {

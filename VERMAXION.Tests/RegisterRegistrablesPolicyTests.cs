@@ -9,20 +9,6 @@ namespace VERMAXION.Tests;
 public sealed class RegisterRegistrablesPolicyTests
 {
     [Theory]
-    [InlineData(1L, RegistrableUnlockState.Unlocked)]
-    [InlineData(2L, RegistrableUnlockState.Locked)]
-    [InlineData(0L, RegistrableUnlockState.Unreadable)]
-    [InlineData(3L, RegistrableUnlockState.Unreadable)]
-    [InlineData(4L, RegistrableUnlockState.Unreadable)]
-    [InlineData(-1L, RegistrableUnlockState.Unreadable)]
-    [InlineData(long.MinValue, RegistrableUnlockState.Unreadable)]
-    [InlineData(long.MaxValue, RegistrableUnlockState.Unreadable)]
-    public void NativeUnlockResultsFollowRegistrationContract(long result, RegistrableUnlockState expected)
-    {
-        Assert.Equal(expected, RegistrableRegistrationPolicy.DecodeNativeUnlockState(result));
-    }
-
-    [Theory]
     [InlineData(1322u, RegistrableCategory.Mount)]
     [InlineData(853u, RegistrableCategory.Minion)]
     [InlineData(20086u, RegistrableCategory.FashionAccessory)]

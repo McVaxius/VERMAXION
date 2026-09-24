@@ -52,14 +52,6 @@ public static class RegistrableRegistrationPolicy
     public const int RequiredInventoryBagCount = 4;
     public static readonly TimeSpan VerificationDelay = TimeSpan.FromSeconds(7);
 
-    public static RegistrableUnlockState DecodeNativeUnlockState(long result)
-        => result switch
-        {
-            1 => RegistrableUnlockState.Unlocked,
-            2 => RegistrableUnlockState.Locked,
-            _ => RegistrableUnlockState.Unreadable,
-        };
-
     public static bool TryClassifyDirectAction(
         uint actionId,
         bool isFadedOrchestrionCopy,
