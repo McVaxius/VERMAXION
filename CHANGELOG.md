@@ -1,5 +1,10 @@
 # VERMAXION Changelog
 
+## Unreleased - Register Registrables queue creation
+
+- Read registration state through Dalamud's unlock service and managed item rows so unloaded native EXD rows no longer abort queue creation. Use the same reader before item use and during registration verification; require loaded player data, available UI state, and a valid unlockable item, with explicit failures for missing data or exceptions.
+- Preserve inventory order, personal-list selection, duplicate handling, seven-second verification, and three item-use attempts. Remove the obsolete native-result decoder and its tests; keep version 0.5.0.1.
+
 ## Unreleased - Deep Duck FULL STOP in Misc Commands
 
 - Send `/dduck stop` first in the Misc Commands startup and Send now bundle to stop Deep Duck automation, and show it in the configuration command list. Preserve the existing Misc Cmd toggle and applicable run-start timing.
