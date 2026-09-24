@@ -444,6 +444,128 @@ public static class GameHelpers
         return true;
     }
 
+    public static unsafe bool TrySelectNativeListEntry(string addonName, string label)
+    {
+        var handle = Plugin.GameGui.GetAddonByName(addonName);
+        if (handle.IsNull || !handle.IsVisible || !handle.IsReady) return false;
+        var addon = (AtkUnitBase*)handle.Address;
+        if (addon->UldManager.NodeListCount > 512) return false;
+        for (var i = 0; i < addon->UldManager.NodeListCount; ++i)
+        {
+            var node = addon->UldManager.NodeList[i];
+            if (node == null || !node->IsVisible() || (ushort)node->Type < 1000) continue;
+            var component = node->GetAsAtkComponentNode()->Component;
+            if (component == null || component->GetComponentType() is not (ComponentType.List or ComponentType.TreeList)) continue;
+            var list = (AtkComponentList*)component;
+            if (list->ListLength is <= 0 or > 512) continue;
+            var registered = false;
+            var count = 0;
+            for (var evt = node->AtkEventManager.Event; evt != null && count++ < 32; evt = evt->NextEvent)
+                registered |= evt->State.EventType == AtkEventType.ListItemClick && evt->Listener != null &&
+                    !evt->State.StateFlags.HasFlag(AtkEventStateFlags.IsGlobalEvent);
+            if (!registered) continue;
+            for (var row = 0; row < list->ListLength; ++row)
+            {
+                var renderer = list->GetItemRenderer(row);
+                if (renderer == null || renderer->ListItemIndex != row || !renderer->IsEnabled || renderer->ButtonTextNode == null ||
+                    renderer->ButtonTextNode->NodeText.ToString().Trim() != label) continue;
+                Plugin.Log.Information($"[NativeUI] Selecting registered list action: addon={addonName}; node={node->NodeId}; row={row}; text={label}");
+                list->DispatchItemEvent(row, AtkEventType.ListItemClick);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static unsafe bool TryClickNativeButton(string addonName, string? label, uint? observedNodeId = null)
+    {
+        var handle = Plugin.GameGui.GetAddonByName(addonName);
+        if (handle.IsNull || !handle.IsVisible || !handle.IsReady) return false;
+        var addon = (AtkUnitBase*)handle.Address;
+        if (addon->UldManager.NodeListCount > 512) return false;
+        AtkEvent* selected = null;
+        uint selectedNode = 0;
+        for (var i = 0; i < addon->UldManager.NodeListCount; ++i)
+        {
+            var node = addon->UldManager.NodeList[i];
+            if (node == null || !node->IsVisible() || (ushort)node->Type < 1000 ||
+                observedNodeId.HasValue && node->NodeId != observedNodeId.Value) continue;
+            var component = node->GetAsAtkComponentNode()->Component;
+            if (component == null || component->GetComponentType() is not (ComponentType.Button or ComponentType.RadioButton)) continue;
+            var button = (AtkComponentButton*)component;
+            if (!button->IsEnabled || label != null &&
+                (button->ButtonTextNode == null || button->ButtonTextNode->NodeText.ToString().Trim() != label)) continue;
+            var count = 0;
+            for (var evt = node->AtkEventManager.Event; evt != null && count++ < 32; evt = evt->NextEvent)
+            {
+                if (evt->State.EventType != AtkEventType.ButtonClick || evt->Listener != (AtkEventListener*)addon ||
+                    evt->State.StateFlags.HasFlag(AtkEventStateFlags.IsGlobalEvent)) continue;
+                if (selected != null) return false;
+                selected = evt;
+                selectedNode = node->NodeId;
+            }
+        }
+        if (selected == null) return false;
+        var click = *selected;
+        var data = new AtkEventData();
+        Plugin.Log.Information($"[NativeUI] Clicking registered button: addon={addonName}; node={selectedNode}; param={click.Param}; label={label}");
+        click.Listener->ReceiveEvent(AtkEventType.ButtonClick, checked((int)click.Param), &click, &data);
+        return true;
+    }
+
+    public static unsafe bool TryCheckNativeListRow(string addonName, string label, uint observedChildId)
+    {
+        var handle = Plugin.GameGui.GetAddonByName(addonName);
+        if (handle.IsNull || !handle.IsVisible || !handle.IsReady) return false;
+        var addon = (AtkUnitBase*)handle.Address;
+        if (addon->UldManager.NodeListCount > 512) return false;
+        for (var i = 0; i < addon->UldManager.NodeListCount; ++i)
+        {
+            var node = addon->UldManager.NodeList[i];
+            if (node == null || !node->IsVisible() || (ushort)node->Type < 1000) continue;
+            var component = node->GetAsAtkComponentNode()->Component;
+            if (component == null || component->GetComponentType() is not (ComponentType.List or ComponentType.TreeList)) continue;
+            var list = (AtkComponentList*)component;
+            var row = list->SelectedItemIndex;
+            if (row < 0 || row >= list->ListLength) continue;
+            var renderer = list->GetItemRenderer(row);
+            if (renderer == null || renderer->ListItemIndex != row || renderer->ButtonTextNode == null ||
+                renderer->ButtonTextNode->NodeText.ToString().Trim() != label) continue;
+            if (renderer->UldManager.NodeListCount > 128) continue;
+            AtkResNode* child = null;
+            for (var childIndex = 0; childIndex < renderer->UldManager.NodeListCount; ++childIndex)
+            {
+                var candidate = renderer->UldManager.NodeList[childIndex];
+                if (candidate != null && candidate->NodeId == observedChildId) { child = candidate; break; }
+            }
+            if (child == null || !child->IsVisible() || (ushort)child->Type < 1000)
+            {
+                Plugin.Log.Information($"[NativeUI] Selected row {row} child {observedChildId} is unavailable.");
+                continue;
+            }
+            var checkbox = child->GetAsAtkComponentNode()->Component;
+            if (checkbox == null) continue;
+            Plugin.Log.Information($"[NativeUI] Selected row {row} child {observedChildId}: component={checkbox->GetComponentType()}");
+            if (checkbox->GetComponentType() is not (ComponentType.CheckBox or ComponentType.Button)) continue;
+            var button = (AtkComponentButton*)checkbox;
+            Plugin.Log.Information($"[NativeUI] Selected row checkbox enabled={button->IsEnabled}; checked={button->IsChecked}");
+            if (!button->IsEnabled || button->IsChecked) return false;
+            var eventCount = 0;
+            for (var evt = child->AtkEventManager.Event; evt != null && eventCount++ < 16; evt = evt->NextEvent)
+            {
+                if (evt->State.EventType != AtkEventType.ButtonClick || evt->Listener != (AtkEventListener*)renderer ||
+                    evt->State.StateFlags.HasFlag(AtkEventStateFlags.IsGlobalEvent)) continue;
+                var click = *evt;
+                var data = new AtkEventData();
+                button->SetChecked(true);
+                Plugin.Log.Information($"[NativeUI] Checking observed list row: addon={addonName}; row={row}; child={observedChildId}; param={click.Param}; label={label}");
+                click.Listener->ReceiveEvent(AtkEventType.ButtonClick, checked((int)click.Param), &click, &data);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static bool TrySelectStringExact(string expectedEntry, out string visibleEntries)
         => TrySelectStringExact([expectedEntry], out visibleEntries, out _);
 

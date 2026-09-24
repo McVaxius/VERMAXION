@@ -1,5 +1,24 @@
 # VERMAXION Changelog
 
+## Unreleased - Choke-abo progression V3 (runtime acceptance pending)
+
+- Require Choke-abo V3 for target progression and expose owned parents/NPC permits, Grade 1-3 feed, gil/MGP reserves, and Fall back/Skip/Stop. Keep legacy Always Race behavior and existing V1/V2 protocol parsing available.
+- Recognize the V3 required-supplies phase separately from optional feeding while Choke-abo owns the action.
+- Track three hours of queue/racing activity per character at the 09:00 UTC reset, retain consumption across reload, and split activity across the reset boundary. Exhaustion stops new race admissions while breeding remains eligible; a race already underway may finish.
+- Add explicit progression Pause/Resume/Stop, saved stop state, and continuation through the existing readiness/ownership checks and manual action path. Report current pedigree, racing rank, allowance and the next-action reason. Target completion requires current rank-50 evidence from V3.
+- Route missing Gold Saucer/racing/breeding unlocks through existing single-quest paths. Recognize the installed WigglyQuest IPC names, retain only the selected unlock in its priority list while owned, and clean up that entry on completion or Stop. Ordinary level/MSQ prerequisites remain explicit blockers.
+- Bind new reload selections to the selected character and wait for owned UI cleanup before dispatch; FULL STOP cancels that pending dispatch.
+- Reconcile the registrar's tutorial queue into the existing racing loop. Send current race-admission allowance through V3 and identify owned queues by actual racing territories; the shared Gold Saucer content type alone is insufficient.
+- Resume confirmed racing/tutorial activity even when an earlier handoff lost its pending flag. Keep saved Stop gating and release tutorial movement keys on Stop, state exit and unload.
+- Carry an explicit Resume through an existing race to the next Choke-abo handoff. Handle tutorial instructions using current keyboard bindings and native menu events, and exclude messages from earlier courses on a new admission.
+- Queue pedigree progression from the current location after feeding; avoid the manual batch's unnecessary return-home logout transition.
+- Select the observed Gold Saucer/Sagolii Road controls, verify native roulette 18 and reject mixed or unrelated selections before Join/Commence. Include this exact queue in allowance accounting and cancellation.
+- Confirm the selected row's checkbox before Join, recognize the initial InDutyQueue state, and leave race results through the native LeaveButton with closure verification.
+- Persist allowance activity only after native queue admission, clear its sample at activity end, and exclude result display and travel from reload reconciliation. Do not overwrite an unchanged allowance on unload.
+- Reassess through the existing continuation path when Choke-abo's V3 endpoints return after a reload; keep saved Stop and ownership gates in effect.
+- Recover an owned covering confirmation through normal Resume using V3 evidence that verifies its selected stock, parent window and fee. Permit character-settings initialization during that exact owned interaction while retaining Stop and competing-automation gates.
+- Preserve version 0.5.0.2 and unrelated work. Isolated Debug builds and focused decision checks do not establish live queue cancellation, reload/resume, breeding or gameplay acceptance.
+
 ## Unreleased - Register Registrables queue creation
 
 - Read registration state through Dalamud's unlock service and managed item rows so unloaded native EXD rows no longer abort queue creation. Use the same reader before item use and during registration verification; require loaded player data, available UI state, and a valid unlockable item, with explicit failures for missing data or exceptions.
@@ -338,7 +357,7 @@ The PR contributor checked existing deployment logs after the build, without sta
 
 ### Changed
 
-- FC Buff refill now completes without purchase work for Free Company ranks 1–7, while unknown ranks preserve the existing flow.
+- FC Buff refill now completes without purchase work for Free Company ranks 1â€“7, while unknown ranks preserve the existing flow.
 - Enabling Fishing now warns when AutoHook's AutoOceanFish setting is active, with direct settings access and a persistent opt-out.
 - The task dashboard now shows informational loaded-plugin dependency readiness without changing task eligibility.
 
@@ -387,7 +406,7 @@ The PR contributor checked existing deployment logs after the build, without sta
 ### Changed
 
 - Corrected the Main Window to keep its identity, readiness, recovery, and primary actions fixed above exactly one scrolling body. The task table no longer owns a nested scrollbar or forces an empty minimum height, so short Favorites views do not reserve a blank table area.
-- Replaced the multiline six-column task table with a single-line `★ | Task | When | Type | Actions` layout. Compact local timing and owner/cadence codes carry full legends in header tooltips, while each task tooltip retains its complete status, blocker, maturity, schedule, and disabled-action context without increasing row height.
+- Replaced the multiline six-column task table with a single-line `â˜… | Task | When | Type | Actions` layout. Compact local timing and owner/cadence codes carry full legends in header tooltips, while each task tooltip retains its complete status, blocker, maturity, schedule, and disabled-action context without increasing row height.
 - Automatic task-column sizing now fits the compact columns to their contents, assigns the remaining width to Task, and prevents divider dragging. Disabling it restores the shared, natively persisted manual layout for All Tasks and Favorites.
 - Configuration, task-order, wizard, and registrable-editor layouts retain their stretch/scroll tables, wrapped explanations, stable action columns, and explicit empty/error states at their existing minimum sizes.
 - Configuration recovery selects the active character, opens the correct tab and section, and scrolls it into view. Runtime-only blockers remain informational.
@@ -402,7 +421,7 @@ The PR contributor checked existing deployment logs after the build, without sta
 ### Added
 
 - Added global saved Favorites for catalog automations. The main window now defaults to `All Tasks`, provides a flat `Favorites` tab using the same task status and run actions, and keeps manual utilities and test controls in `All Tasks` only.
-- Added an independent Refill Listings inter-item delay, defaulting to 250 ms and clamped to 0–2000 ms. It is used only after a listing withdrawal is verified and before the next listing is selected.
+- Added an independent Refill Listings inter-item delay, defaulting to 250 ms and clamped to 0â€“2000 ms. It is used only after a listing withdrawal is verified and before the next listing is selected.
 
 ### Changed
 
@@ -424,7 +443,7 @@ The PR contributor checked existing deployment logs after the build, without sta
 
 ### Changed
 
-- Added one absolute Refill Listings action delay, defaulting to 250 ms and clamped to 0–2000 ms, for ordinary listing action pacing.
+- Added one absolute Refill Listings action delay, defaulting to 250 ms and clamped to 0â€“2000 ms, for ordinary listing action pacing.
 - Existing Current Job Equipment, Seasonal Gear, Ocean Fishing, and W40 behavior remain on their prior paths.
 
 ### Verification
@@ -658,8 +677,8 @@ The PR contributor checked existing deployment logs after the build, without sta
 - Full plugin scaffold with account-based per-character configuration (FrenRider pattern)
 - ConfigManager with account/character system, JSON persistence, KrangleService
 - ARPostProcessService: Two-phase IPC integration with AutoRetainer
-  - Subscribe to OnCharacterAdditionalTask → RequestCharacterPostprocess
-  - Subscribe to OnCharacterReadyForPostprocess → run tasks → FinishCharacterPostprocessRequest
+  - Subscribe to OnCharacterAdditionalTask â†’ RequestCharacterPostprocess
+  - Subscribe to OnCharacterReadyForPostprocess â†’ run tasks â†’ FinishCharacterPostprocessRequest
 - VermaxionEngine: State machine orchestrator that sequences all tasks
 - ResetDetectionService: Weekly (Tue 8:00 UTC), daily (15:00 UTC), Saturday detection
 - HenchmanService: Stop/start via /henchman off and /henchman on slash commands

@@ -5,6 +5,9 @@ using System.Text.Json;
 
 namespace VERMAXION.Models;
 
+public enum ChocoboBreedingMode { OwnedParents, NpcPermits }
+public enum ChocoboFeedPolicy { FallBack, Skip, Stop }
+
 public enum ChocoboAutomationMode
 {
     AlwaysRace = 0,
@@ -26,6 +29,7 @@ public enum ChokeAboTargetCyclePhase
     Paused,
     TargetReady,
     Blocked,
+    PurchasingSupplies,
 }
 
 public sealed record ChokeAboTargetCycleStatus(
@@ -36,7 +40,11 @@ public sealed record ChokeAboTargetCycleStatus(
     bool TargetReady,
     bool GameActionInProgress,
     string Reason,
-    DateTimeOffset? NextCoveringEligibilityUtc);
+    DateTimeOffset? NextCoveringEligibilityUtc,
+    int Pedigree = 0,
+    int RacingRank = 0,
+    bool ProgressionComplete = false,
+    bool CanResumeOwnedInteraction = false);
 
 public readonly record struct ChokeAboTargetCycleCallResult(
     bool Succeeded,
@@ -53,6 +61,24 @@ public readonly record struct ChokeAboTargetCycleCallResult(
 public static class ChokeAboTargetCycleProtocol
 {
     public const int Version = 2;
+
+    public static bool TryCreateEnsureRequestJson(ulong contentId, CharacterConfig config, out string json, out string error)
+    {
+        json = string.Empty;
+        if (!TryValidateIdentity(contentId, out error) ||
+            !TryValidateSettings(config.ChocoboTargetPedigree, config.ChocoboRetirementRank, config.ChocoboPreferredFeedGrade, out error)) return false;
+        if (!Enum.IsDefined(config.ChocoboBreedingMode) || !Enum.IsDefined(config.ChocoboFeedPolicy))
+        {
+            error = "Invalid breeding mode or feeding policy.";
+            return false;
+        }
+        json = JsonSerializer.Serialize(new { version = 3, contentId, targetPedigree = config.ChocoboTargetPedigree,
+            retirementRank = 40, preferredFeedGrade = config.ChocoboPreferredFeedGrade,
+            breedingMode = (int)config.ChocoboBreedingMode, feedPolicy = (int)config.ChocoboFeedPolicy,
+            gilReserve = config.ChocoboGilReserve, mgpReserve = config.ChocoboMgpReserve,
+            raceAdmissionAllowed = ChocoboDailyAllowance.Remaining(config, DateTime.UtcNow) > 0 && !config.ChocoboProgressionPaused });
+        return true;
+    }
 
     public static bool TryCreateEnsureRequestJson(
         ulong contentId,
@@ -80,13 +106,13 @@ public static class ChokeAboTargetCycleProtocol
         return true;
     }
 
-    public static bool TryCreateIdentityRequestJson(ulong contentId, out string json, out string error)
+    public static bool TryCreateIdentityRequestJson(ulong contentId, out string json, out string error, int version = Version)
     {
         json = string.Empty;
         if (!TryValidateIdentity(contentId, out error))
             return false;
 
-        json = JsonSerializer.Serialize(new { version = Version, contentId });
+        json = JsonSerializer.Serialize(new { version, contentId });
         return true;
     }
 
@@ -94,7 +120,7 @@ public static class ChokeAboTargetCycleProtocol
         string json,
         ulong expectedContentId,
         out ChokeAboTargetCycleStatus? status,
-        out string error)
+        out string error, int expectedVersion = Version)
     {
         status = null;
         if (!TryValidateIdentity(expectedContentId, out error))
@@ -137,9 +163,9 @@ public static class ChokeAboTargetCycleProtocol
                 return false;
             }
 
-            if (version != Version)
+            if (version != expectedVersion)
             {
-                error = $"Choke-abo returned V{version}; V{Version} is required.";
+                error = $"Choke-abo returned V{version}; V{expectedVersion} is required.";
                 return false;
             }
             if (contentId != expectedContentId)
@@ -159,6 +185,24 @@ public static class ChokeAboTargetCycleProtocol
                 return false;
             }
 
+            var pedigree = 0;
+            var racingRank = 0;
+            var complete = false;
+            var canResumeOwnedInteraction = false;
+            if (expectedVersion == 3)
+            {
+                if (!TryReadInt32(root, "pedigree", out pedigree, out error) ||
+                    !TryReadInt32(root, "racingRank", out racingRank, out error) ||
+                    !TryReadBoolean(root, "progressionComplete", out complete, out error)) return false;
+                if (pedigree is < 0 or > 9 || racingRank is < 0 or > 50 ||
+                    complete && (racingRank != 50 || pedigree < 2 || !targetReady || phase != ChokeAboTargetCyclePhase.TargetReady || gameActionInProgress))
+                {
+                    error = "Choke-abo V3 progress is inconsistent with current game-state completion.";
+                    return false;
+                }
+                if (root.TryGetProperty("canResumeOwnedInteraction", out _) &&
+                    !TryReadBoolean(root, "canResumeOwnedInteraction", out canResumeOwnedInteraction, out error)) return false;
+            }
             status = new ChokeAboTargetCycleStatus(
                 version,
                 contentId,
@@ -167,7 +211,7 @@ public static class ChokeAboTargetCycleProtocol
                 targetReady,
                 gameActionInProgress,
                 reason,
-                nextCoveringEligibilityUtc);
+                nextCoveringEligibilityUtc, pedigree, racingRank, complete, canResumeOwnedInteraction);
             error = string.Empty;
             return true;
         }
@@ -352,9 +396,11 @@ public static class ChocoboTargetCyclePolicy
             return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Defer, false, result.Error);
 
         var status = result.Status;
+        if (status.Version == 3 && status.ProgressionComplete)
+            return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Complete, true, status.Reason);
         if (status.GameActionInProgress)
             return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Wait, false, status.Reason);
-        if (completedRaces >= configuredRaces)
+        if (status.Version < 3 && completedRaces >= configuredRaces)
             return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Complete, status.TargetReady, status.Reason);
         if (status.TargetReady)
             return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Race, true, status.Reason);
@@ -386,5 +432,56 @@ public static class ChocoboTargetCyclePolicy
         target.ChocoboTargetPedigree = source.ChocoboTargetPedigree;
         target.ChocoboRetirementRank = source.ChocoboRetirementRank;
         target.ChocoboPreferredFeedGrade = source.ChocoboPreferredFeedGrade;
+        target.ChocoboBreedingMode = source.ChocoboBreedingMode;
+        target.ChocoboFeedPolicy = source.ChocoboFeedPolicy;
+        target.ChocoboGilReserve = source.ChocoboGilReserve;
+        target.ChocoboMgpReserve = source.ChocoboMgpReserve;
     }
+}
+
+public static class ChocoboDailyAllowance
+{
+    public const double LimitSeconds = 3 * 60 * 60;
+
+    public static bool Sample(CharacterConfig config, DateTime utc, bool racingActivity, bool afterReload = false)
+    {
+        var wasActive = config.ChocoboRacePending;
+        var changed = Account(config, config.ChocoboAllowanceSampleUtc, utc,
+            wasActive && (!afterReload || racingActivity));
+        config.ChocoboRacePending = racingActivity;
+        config.ChocoboAllowanceSampleUtc = racingActivity ? utc : DateTime.MinValue;
+        return changed || wasActive != racingActivity;
+    }
+
+    public static DateTime ResetAt(DateTime utc)
+    {
+        var reset = utc.Date.AddHours(9);
+        return utc < reset ? reset.AddDays(-1) : reset;
+    }
+
+    public static bool Account(CharacterConfig config, DateTime fromUtc, DateTime toUtc, bool racingActivity)
+    {
+        var reset = ResetAt(toUtc);
+        var changed = false;
+        if (reset > config.ChocoboAllowanceResetUtc)
+        {
+            config.ChocoboAllowanceResetUtc = reset;
+            config.ChocoboAllowanceSecondsUsed = 0;
+            changed = true;
+        }
+        // Only the current server day survives a reset. The interval before
+        // 09:00 belongs to the preceding allowance, even during the same race.
+        var start = fromUtc > config.ChocoboAllowanceResetUtc ? fromUtc : config.ChocoboAllowanceResetUtc;
+        if (racingActivity && fromUtc != DateTime.MinValue && toUtc > start)
+        {
+            config.ChocoboAllowanceSecondsUsed += (toUtc - start).TotalSeconds;
+            changed = true;
+        }
+        return changed;
+    }
+
+    public static double Remaining(CharacterConfig config, DateTime utc)
+        => ResetAt(utc) > config.ChocoboAllowanceResetUtc ? LimitSeconds
+            : !double.IsFinite(config.ChocoboAllowanceSecondsUsed) || config.ChocoboAllowanceSecondsUsed < 0 ? 0
+            : Math.Max(0, LimitSeconds - config.ChocoboAllowanceSecondsUsed);
 }

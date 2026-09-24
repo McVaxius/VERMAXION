@@ -699,7 +699,7 @@ public class ConfigManager
         }
     }
 
-    private void SaveAccount(string accountId)
+    internal void SaveAccount(string accountId)
     {
         if (!accounts.TryGetValue(accountId, out var account)) return;
 

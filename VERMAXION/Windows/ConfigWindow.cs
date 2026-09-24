@@ -1856,7 +1856,7 @@ public class ConfigWindow : Window, IDisposable
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "ChocoboAutomationMode", "Chocobo automation mode",
                     (source, target) => target.ChocoboAutomationMode = source.ChocoboAutomationMode);
-                ImGui.TextDisabled("Always Race keeps the existing fail-open V1 racing behavior. Target Pedigree requires strict Choke-abo V2 status.");
+                ImGui.TextDisabled("Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted.");
 
                 if (cc.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
                 {
@@ -1870,15 +1870,21 @@ public class ConfigWindow : Window, IDisposable
                     DrawDefaultOverrideButton(isDefault, configManager, "ChocoboTargetPedigree", "Chocobo target pedigree",
                         (source, target) => target.ChocoboTargetPedigree = source.ChocoboTargetPedigree);
 
-                    var retirementRank = cc.ChocoboRetirementRank;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt("Retirement rank", ref retirementRank))
-                    {
-                        cc.ChocoboRetirementRank = Math.Clamp(retirementRank, 40, 50);
-                        changed = true;
-                    }
-                    DrawDefaultOverrideButton(isDefault, configManager, "ChocoboRetirementRank", "Chocobo retirement rank",
-                        (source, target) => target.ChocoboRetirementRank = source.ChocoboRetirementRank);
+                    ImGui.TextDisabled("Intermediate chocobos retire at racing rank 40; retain the target pedigree to racing rank 50.");
+
+                    var breedingMode = (int)cc.ChocoboBreedingMode;
+                    if (ImGui.Combo("Breeding mode", ref breedingMode, "Owned parents\0NPC covering permits\0"))
+                    { cc.ChocoboBreedingMode = (ChocoboBreedingMode)breedingMode; changed = true; }
+                    var feedPolicy = (int)cc.ChocoboFeedPolicy;
+                    if (ImGui.Combo("When feeding cannot proceed", ref feedPolicy, "Fall back\0Skip\0Stop\0"))
+                    { cc.ChocoboFeedPolicy = (ChocoboFeedPolicy)feedPolicy; changed = true; }
+                    var gilReserve = (int)Math.Min(int.MaxValue, cc.ChocoboGilReserve);
+                    if (ImGui.InputInt("Gil reserve", ref gilReserve))
+                    { cc.ChocoboGilReserve = (uint)Math.Max(0, gilReserve); changed = true; }
+                    var mgpReserve = (int)Math.Min(int.MaxValue, cc.ChocoboMgpReserve);
+                    if (ImGui.InputInt("MGP reserve", ref mgpReserve))
+                    { cc.ChocoboMgpReserve = (uint)Math.Max(0, mgpReserve); changed = true; }
+                    ImGui.TextDisabled("Use stocked feed first. Fall back tries Grade 1 within reserves, then skips. Stop requires Resume.");
 
                     var preferredFeedGrade = cc.ChocoboPreferredFeedGrade;
                     ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
@@ -3060,6 +3066,15 @@ public class ConfigWindow : Window, IDisposable
     {
         var contentId = Plugin.PlayerState.ContentId;
         var now = DateTime.UtcNow;
+        var config = plugin.ConfigManager.GetActiveConfig();
+        ImGui.Text($"Daily racing allowance: {TimeSpan.FromSeconds(ChocoboDailyAllowance.Remaining(config, now)):hh\\:mm\\:ss} remaining");
+        ImGui.Text(config.ChocoboProgressionPaused ? "Progression paused" : "Progression enabled");
+        if (ImGui.Button("Resume##ChocoboProgression"))
+            plugin.RunDashboardAction(() => plugin.ChocoboRaceService.ResumeProgression());
+        ImGui.SameLine();
+        if (ImGui.Button("Pause##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
+        ImGui.SameLine();
+        if (ImGui.Button("Stop##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
         if (contentId != chokeAboTargetStatusContentId || now >= chokeAboTargetStatusNextRefreshUtc)
         {
             chokeAboTargetStatusContentId = contentId;
@@ -3069,7 +3084,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (!chokeAboTargetStatus.HasValue)
         {
-            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Choke-abo V2: status unavailable");
+            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Choke-abo V3: status unavailable");
             return;
         }
 
@@ -3078,12 +3093,13 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.TextColored(
                 new Vector4(1f, 0.55f, 0.2f, 1f),
-                $"Choke-abo V2: {result.Error}");
+                $"Choke-abo V3: {result.Error}");
             return;
         }
 
         var status = result.Status;
-        ImGui.Text($"Choke-abo V2: {status.Phase}");
+        ImGui.Text($"Pedigree: G{status.Pedigree} | Racing rank: {status.RacingRank}/50");
+        ImGui.Text($"Choke-abo: {status.Phase}");
         ImGui.TextDisabled(
             $"Block racing: {(status.ShouldBlockRacing ? "yes" : "no")} · " +
             $"target ready: {(status.TargetReady ? "yes" : "no")} · " +
