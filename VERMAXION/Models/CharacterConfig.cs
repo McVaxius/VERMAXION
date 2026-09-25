@@ -9,6 +9,7 @@ public class CharacterConfig
 {
     // --- Feature Toggles ---
     public bool EnableVerminionQueue { get; set; } = false;
+    public bool VerminionPaused { get; set; }
     public bool EnableJumboCactpot { get; set; } = false;
     public bool EnableMiniCactpot { get; set; } = false;
     public bool EnableChocoboRacing { get; set; } = false;
@@ -315,6 +316,7 @@ public class CharacterConfig
         return new CharacterConfig
         {
             EnableVerminionQueue = EnableVerminionQueue,
+            VerminionPaused = VerminionPaused,
             EnableJumboCactpot = EnableJumboCactpot,
             EnableMiniCactpot = EnableMiniCactpot,
             EnableChocoboRacing = EnableChocoboRacing,

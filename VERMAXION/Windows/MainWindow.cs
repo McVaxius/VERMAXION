@@ -535,8 +535,12 @@ public class MainWindow : Window, IDisposable
 
         // --- Weekly Tasks ---
         AddTaskRow("Verminion (5x)", config.EnableVerminionQueue,
-            GetWeeklyTaskStatus(config.VerminionLastCompleted, config.VerminionNextReset, "Done this week", "Weekly"),
-            "run##Verm", () => plugin.VerminionService.RunTask(), "OK");
+            config.VerminionPaused ? "Paused — use Resume" : plugin.VerminionService.State != VerminionService.VerminionState.Idle
+                ? plugin.VerminionService.StatusText
+                : GetWeeklyTaskStatus(config.VerminionLastCompleted, config.VerminionNextReset, "Done this week", "Weekly"),
+            config.VerminionPaused ? "resume##Verm" : "run##Verm", () => plugin.VerminionService.RunTask(), "WIP",
+            buttonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
+            buttonTooltip: "CPU Verminion control proof is in development. Current progress and blockers appear here.");
         AddTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
             GetJumboCactpotStatus(config),
             "run##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");

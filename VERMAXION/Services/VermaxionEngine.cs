@@ -607,7 +607,9 @@ public class VermaxionEngine
                 : TaskEligibility.NotDue($"{label} is not due until {next:u}.");
 
     private static TaskEligibility EvaluateVerminion(CharacterConfig config)
-        => Due(config.EnableVerminionQueue, "Verminion Queue", config.VerminionLastCompleted, config.VerminionNextReset);
+        => config.EnableVerminionQueue && config.VerminionPaused
+            ? TaskEligibility.Blocked("Verminion is paused; use Resume.")
+            : Due(config.EnableVerminionQueue, "Verminion Queue", config.VerminionLastCompleted, config.VerminionNextReset);
 
     private static TaskEligibility EvaluateMiniCactpot(CharacterConfig config)
     {
