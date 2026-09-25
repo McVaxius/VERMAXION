@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
+using Dalamud.Hooking;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using NativeFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Enums;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -55,8 +59,6 @@ internal static unsafe class VerminionGameInteraction
     {
         if (CurrentCpuDutyId() == 0) return;
         PrepareBattlefieldRendering();
-        var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-        if (window != 0) PInvoke.User32.SetForegroundWindow(window);
         HideBattlefieldPanels();
     }
 
@@ -382,6 +384,13 @@ internal static unsafe class VerminionGameInteraction
         return found || popped.ContentType == ContentsType.Regular && popped.Id == 551 + stage;
     }
 
+    public static void CancelChallengeQueue(int stage)
+    {
+        if (!HasChallengeQueue(stage)) return;
+        ContentsFinder.Instance()->QueueInfo.CancelQueue();
+        Plugin.Log.Information($"[VerminionControl] withdrawal requested for owned Stage {stage} queue; no result recorded");
+    }
+
     public static bool TryCommenceChallenge(int stage) => HasChallengeQueue(stage) &&
         GameHelpers.TryGetAddonText("ContentsFinderConfirm", 49, out var title) && title == ChallengeName(stage) &&
         GameHelpers.TryClickNativeButton("ContentsFinderConfirm", "Commence", 63);
@@ -499,10 +508,166 @@ internal static unsafe class VerminionGameInteraction
         return null;
     }
 
-    private static PInvoke.POINT? cursorBeforeBattlefieldInput;
-    private static PInvoke.POINT injectedCursor;
-    private static bool? injectedRightButton;
+    // The installed ClientStructs cursor fields at 0x14/0x18 are mislabeled.
+    // Native MouseDevice.ProcessMouseInputMessage writes button-up to 0x18;
+    // MouseDevice.Update writes RepeatCounter output to 0x1C (observed 2026-09-25).
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit, Size = 0x30)]
+    private struct NativeCursorButtonEdges
+    {
+        [System.Runtime.InteropServices.FieldOffset(0x14)] public MouseButtonFlags DoubleClicked;
+        [System.Runtime.InteropServices.FieldOffset(0x18)] public MouseButtonFlags Released;
+        [System.Runtime.InteropServices.FieldOffset(0x1C)] public MouseButtonFlags Repeated;
+    }
+
+    private sealed class BattlefieldClick
+    {
+        public System.Numerics.Vector2 Point;
+        public PInvoke.POINT ScreenPoint;
+        public bool Right, DoubleClick, Positioned, Pressed, ReleaseRequested;
+        public int Wheel;
+        public uint Duty;
+        public DateTime Expires;
+    }
+
+    private static Hook<MouseDeviceInterface.Delegates.GetData>? battlefieldInputHook;
+    private static Hook<NativeFramework.Delegates.Tick>? battlefieldFrameHook;
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private delegate bool ReadCursorPosition(PInvoke.POINT* point);
+    private static Hook<ReadCursorPosition>? battlefieldCursorHook;
+    private static int frameThreadId, frameCursorQueries;
+    private static Func<bool>? backgroundInputAllowed;
+    private static BattlefieldClick? battlefieldClick, battlefieldPointer;
+    private static bool inBattlefieldFrame, frameInputRelease;
+    private static CursorInputData* frameDeviceData;
+    private static CursorInputData originalDeviceData;
+    private static Cursor* frameCursor;
+    private static bool originalCursorOutside, originalWindowInactive;
+    private static MouseDeviceInterface* battlefieldMouse;
+    private static ulong clickedMinion;
+    private static DateTime clickedMinionUtc;
     private static readonly Dictionary<string, nint> hiddenBattlefieldPanels = new();
+
+    public static bool BattlefieldClickPending => battlefieldClick != null;
+
+    public static ulong ReadBattlefieldClickHit() =>
+        (DateTime.UtcNow - clickedMinionUtc).TotalSeconds <= 2 ? clickedMinion : 0;
+
+    public static void ConfigureBackgroundInput(Func<bool> allowed) => backgroundInputAllowed = allowed;
+
+    public static void DisposeBackgroundInput()
+    {
+        ReleaseBattlefieldInput();
+        backgroundInputAllowed = null;
+        battlefieldInputHook?.Dispose();
+        battlefieldInputHook = null;
+        battlefieldFrameHook?.Dispose();
+        battlefieldFrameHook = null;
+        battlefieldCursorHook?.Dispose();
+        battlefieldCursorHook = null;
+        battlefieldMouse = null;
+    }
+
+    private static bool ReadBattlefieldCursor(PInvoke.POINT* point)
+    {
+        var click = battlefieldClick ?? battlefieldPointer;
+        if (point == null || Environment.CurrentManagedThreadId != frameThreadId ||
+            click == null || DateTime.UtcNow >= click.Expires || CurrentCpuDutyId() != click.Duty || backgroundInputAllowed?.Invoke() != true)
+            return battlefieldCursorHook!.Original(point);
+        // Only the game's import sees this virtual position. No OS cursor is moved.
+        *point = click.ScreenPoint;
+        ++frameCursorQueries;
+        return true;
+    }
+
+    private static bool HandleBattlefieldFrame(NativeFramework* framework)
+    {
+        inBattlefieldFrame = true;
+        frameThreadId = Environment.CurrentManagedThreadId;
+        frameCursorQueries = 0;
+        try { return battlefieldFrameHook!.Original(framework); }
+        finally
+        {
+            inBattlefieldFrame = false;
+            if (frameDeviceData != null)
+            {
+                // The device owns this buffer. Never replace its pointer or its
+                // bindings, and restore it before the next hardware poll.
+                *frameDeviceData = originalDeviceData;
+                frameDeviceData = null;
+                var outsideDuringSample = frameCursor != null && frameCursor->IsCursorOutsideViewPort;
+                if (frameCursor != null) frameCursor->IsCursorOutsideViewPort = originalCursorOutside;
+                frameCursor = null;
+                var inactiveDuringSample = framework->WindowInactive;
+                framework->WindowInactive = originalWindowInactive;
+                if (frameInputRelease)
+                {
+                    // Later hover frames may point at a moving enemy. Preserve
+                    // the hit that belonged to this completed click.
+                    clickedMinion = ReadMinionInfoId();
+                    clickedMinionUtc = DateTime.UtcNow;
+                    var input = UIInputData.Instance();
+                    var stage = AtkStage.Instance();
+                    var collision = stage == null ? null : stage->AtkCollisionManager;
+                    Plugin.Log.Information($"[VerminionControl] background device frame; minionInfo={clickedMinion}; inactive={inactiveDuringSample}; restoredInactive={framework->WindowInactive}; foreground={PInvoke.User32.GetForegroundWindow() == System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle}; primary={framework->CursorInputs.PositionX},{framework->CursorInputs.PositionY}/{framework->CursorInputs.MouseButtonHeldFlags}; filtered={(input == null ? "none" : $"{input->UIFilteredCursorInputs.PositionX},{input->UIFilteredCursorInputs.PositionY}/{input->UIFilteredCursorInputs.MouseButtonHeldFlags}")}; outside={outsideDuringSample}; cursorQueries={frameCursorQueries}; collision={(collision == null || collision->IntersectingAddon == null ? "none" : collision->IntersectingAddon->NameString)}");
+                }
+                if (frameInputRelease)
+                {
+                    battlefieldPointer = battlefieldClick;
+                    if (battlefieldPointer != null) battlefieldPointer.Expires = DateTime.UtcNow.AddSeconds(3);
+                    battlefieldClick = null;
+                }
+            }
+        }
+    }
+
+    private static CursorInputData* HandleBattlefieldInput(MouseDeviceInterface* device)
+    {
+        var data = battlefieldInputHook!.Original(device);
+        var hovering = battlefieldClick == null;
+        var click = battlefieldClick ?? battlefieldPointer;
+        if (!inBattlefieldFrame || frameDeviceData != null || data == null || device != battlefieldMouse || click == null ||
+            CurrentCpuDutyId() != click.Duty || backgroundInputAllowed?.Invoke() != true) return data;
+
+        if (hovering && DateTime.UtcNow >= click.Expires) { battlefieldPointer = null; return data; }
+        var release = !hovering && click.Pressed && (click.ReleaseRequested || DateTime.UtcNow >= click.Expires);
+        var position = !hovering && !click.Positioned;
+        var down = !hovering && !position && !click.Pressed;
+        if (!click.Pressed && DateTime.UtcNow >= click.Expires)
+        {
+            battlefieldClick = null;
+            return data;
+        }
+        originalDeviceData = *data;
+        frameDeviceData = data;
+        frameInputRelease = release;
+        var button = click.Wheel != 0 ? MouseButtonFlags.None : click.Right ? MouseButtonFlags.RBUTTON : MouseButtonFlags.LBUTTON;
+        data->PositionX = (int)click.Point.X;
+        data->PositionY = (int)click.Point.Y;
+        var framework = NativeFramework.Instance();
+        // Keep the client's frame-level gate consistent with this virtual
+        // device sample. Restore it after this frame; never activate the window.
+        originalWindowInactive = framework->WindowInactive;
+        framework->WindowInactive = false;
+        frameCursor = framework->Cursor;
+        if (frameCursor != null)
+        {
+            originalCursorOutside = frameCursor->IsCursorOutsideViewPort;
+            frameCursor->IsCursorOutsideViewPort = false;
+        }
+        data->DeltaX = position ? data->PositionX - framework->CursorInputs.PositionX : 0;
+        data->DeltaY = position ? data->PositionY - framework->CursorInputs.PositionY : 0;
+        data->MouseWheel = down ? click.Wheel : 0;
+        data->IsGameWindowFocused = true; // Transient client input only; no window activation.
+        data->MouseButtonHeldFlags = hovering || release || position ? 0 : button;
+        data->MouseButtonPressedFlags = down ? button : 0;
+        var edges = (NativeCursorButtonEdges*)data;
+        edges->DoubleClicked = down && click.DoubleClick ? button : 0;
+        edges->Released = release ? button : 0;
+        edges->Repeated = 0;
+        click.Positioned = true;
+        if (down) click.Pressed = true;
+        return data;
+    }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
@@ -524,7 +689,7 @@ internal static unsafe class VerminionGameInteraction
     public static bool TryFocusMiniMap(System.Numerics.Vector3 world, out System.Numerics.Vector2 click)
     {
         click = default;
-        if (CurrentCpuDutyId() is not (560 or 563) || injectedRightButton != null) return false;
+        if (CurrentCpuDutyId() is not (560 or 563 or 570) || battlefieldClick != null) return false;
         ReleaseBattlefieldInput(restoreRendering: false);
         var handle = Plugin.GameGui.GetAddonByName("LovmMiniMap");
         if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
@@ -559,56 +724,61 @@ internal static unsafe class VerminionGameInteraction
         return true;
     }
 
-    public static bool SendBattlefieldClick(System.Numerics.Vector2 screen, bool release, bool rightClick = false, bool keepMiniMap = false)
+    public static bool SendBattlefieldClick(System.Numerics.Vector2 screen, bool release, bool rightClick = false, bool keepMiniMap = false, bool doubleClick = false, int wheel = 0)
     {
-        if (!release)
+        if (release)
         {
-            if (CurrentCpuDutyId() == 0 || injectedRightButton != null ||
-                !float.IsFinite(screen.X) || !float.IsFinite(screen.Y)) return false;
-            HideBattlefieldPanels(keepMiniMap);
-            var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-            if (window == 0 || PInvoke.User32.IsIconic(window) ||
-                !PInvoke.User32.GetClientRect(window, out var bounds) ||
-                screen.X < 0 || screen.Y < 0 || screen.X >= bounds.right || screen.Y >= bounds.bottom) return false;
-            if (PInvoke.User32.GetForegroundWindow() != window)
-                PInvoke.User32.SetForegroundWindow(window);
-            if (PInvoke.User32.GetForegroundWindow() != window)
+            if (battlefieldClick is { } pending && pending.Right == rightClick)
             {
-                Plugin.Log.Warning("[VerminionControl] own game window did not become foreground; no mouse input sent");
-                return false;
+                pending.ReleaseRequested = true;
             }
-            var position = new PInvoke.POINT { x = (int)screen.X, y = (int)screen.Y };
-            if (!ClientToScreen(window, ref position)) return false;
-            var underPointer = PInvoke.User32.WindowFromPoint(position);
-            if (underPointer != window && !PInvoke.User32.IsChild(window, underPointer)) return false;
-            cursorBeforeBattlefieldInput ??= PInvoke.User32.GetCursorPos();
-            injectedCursor = position;
-            if (!PInvoke.User32.SetCursorPos(position.x, position.y)) return false;
+            return true;
         }
-        else if (injectedRightButton != rightClick) return true;
-
-        var framework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
-        if (framework != null)
-            Plugin.Log.Information($"[VerminionControl] cursor before input; inactive={framework->WindowInactive}; primary={framework->CursorInputs.PositionX},{framework->CursorInputs.PositionY}/{framework->CursorInputs.MouseButtonHeldFlags}; focused={framework->CursorInputs.IsGameWindowFocused}");
-        var uiInput = FFXIVClientStructs.FFXIV.Client.UI.UIInputData.Instance();
-        if (uiInput != null)
-            Plugin.Log.Information($"[VerminionControl] UI cursor={uiInput->CursorInputs.PositionX},{uiInput->CursorInputs.PositionY}/{uiInput->CursorInputs.MouseButtonHeldFlags}; filtered={uiInput->UIFilteredCursorInputs.PositionX},{uiInput->UIFilteredCursorInputs.PositionY}/{uiInput->UIFilteredCursorInputs.MouseButtonHeldFlags}; OS left={PInvoke.User32.GetAsyncKeyState(1)}; right={PInvoke.User32.GetAsyncKeyState(2)}");
-        var stage = AtkStage.Instance();
-        if (stage != null && stage->AtkCollisionManager != null)
+        var duty = CurrentCpuDutyId();
+        if (duty == 0 || battlefieldClick != null || backgroundInputAllowed?.Invoke() != true ||
+            !float.IsFinite(screen.X) || !float.IsFinite(screen.Y) || !IsBattlefieldPointVisible(screen)) return false;
+        var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+        var screenPoint = new PInvoke.POINT { x = (int)screen.X, y = (int)screen.Y };
+        if (window == 0 || !ClientToScreen(window, ref screenPoint)) return false;
+        if (battlefieldInputHook == null)
         {
-            var collision = stage->AtkCollisionManager;
-            Plugin.Log.Information($"[VerminionControl] mouse collision addon={(collision->IntersectingAddon == null ? "none" : collision->IntersectingAddon->NameString)}; node={(collision->IntersectingCollisionNode == null ? 0 : collision->IntersectingCollisionNode->NodeId)}");
+            var manager = InputDeviceManager.Instance();
+            var mouse = manager == null ? null : manager->MouseDevice;
+            var framework = NativeFramework.Instance();
+            if (mouse == null || mouse->VirtualTable == null || framework == null || framework->VirtualTable == null) return false;
+            battlefieldMouse = &mouse->MouseDeviceInterface;
+            battlefieldFrameHook = Plugin.GameInterop.HookFromAddress<NativeFramework.Delegates.Tick>(
+                (nint)framework->VirtualTable->Tick, HandleBattlefieldFrame);
+            battlefieldInputHook = Plugin.GameInterop.HookFromAddress<MouseDeviceInterface.Delegates.GetData>(
+                (nint)battlefieldMouse->VirtualTable->GetData, HandleBattlefieldInput);
+            battlefieldCursorHook = Plugin.GameInterop.HookFromImport<ReadCursorPosition>(
+                null, "user32.dll", "GetCursorPos", 0, ReadBattlefieldCursor);
+            battlefieldFrameHook.Enable();
+            battlefieldInputHook.Enable();
+            battlefieldCursorHook.Enable();
         }
-        if (Dalamud.Bindings.ImGui.ImGui.GetCurrentContext().Handle != null)
-            Plugin.Log.Information($"[VerminionControl] ImGui mouse capture={Dalamud.Bindings.ImGui.ImGui.GetIO().WantCaptureMouse}");
-        var input = new PInvoke.User32.INPUT { type = PInvoke.User32.InputType.INPUT_MOUSE };
-        input.Inputs.mi.dwFlags = rightClick
-            ? release ? PInvoke.User32.MOUSEEVENTF.MOUSEEVENTF_RIGHTUP : PInvoke.User32.MOUSEEVENTF.MOUSEEVENTF_RIGHTDOWN
-            : release ? PInvoke.User32.MOUSEEVENTF.MOUSEEVENTF_LEFTUP : PInvoke.User32.MOUSEEVENTF.MOUSEEVENTF_LEFTDOWN;
-        var sent = PInvoke.User32.SendInput(1, &input, sizeof(PInvoke.User32.INPUT)) == 1;
-        if (sent) injectedRightButton = release ? null : rightClick;
-        Plugin.Log.Information($"[VerminionControl] foreground game mouse input; right={rightClick}; release={release}; client={screen}; sent={sent}");
-        return sent;
+        HideBattlefieldPanels(keepMiniMap);
+        clickedMinion = 0;
+        battlefieldClick = new() { Point = screen, ScreenPoint = screenPoint, Right = rightClick, DoubleClick = doubleClick, Wheel = wheel, Duty = duty, Expires = DateTime.UtcNow.AddSeconds(1) };
+        Plugin.Log.Information($"[VerminionControl] queued background battlefield click; right={rightClick}; double={doubleClick}; wheel={wheel}; client={screen}");
+        return true;
+    }
+
+    public static float? ReadBattlefieldCameraDistance()
+    {
+        var manager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance();
+        if (CurrentCpuDutyId() != 570 || manager == null || manager->ActiveCameraIndex is not (0 or 3)) return null;
+        var camera = manager->GetActiveCamera();
+        return camera != null && float.IsFinite(camera->Distance) && camera->Distance > 0 ? camera->Distance : null;
+    }
+
+    public static bool TryZoomBattlefieldOut(out System.Numerics.Vector2 point)
+    {
+        point = default;
+        var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+        if (CurrentCpuDutyId() != 570 || window == 0 || !PInvoke.User32.GetClientRect(window, out var bounds)) return false;
+        point = new(bounds.right / 2f, bounds.bottom / 2f);
+        return SendBattlefieldClick(point, release: false, wheel: -1);
     }
 
     public static void ReleaseBattlefieldInput(bool restoreRendering = true)
@@ -618,7 +788,8 @@ internal static unsafe class VerminionGameInteraction
             restoreCaptureGameScale = null;
             Plugin.CommandManager.ProcessCommand("/gres " + scale);
         }
-        if (injectedRightButton is { } right) SendBattlefieldClick(default, release: true, right);
+        battlefieldClick = battlefieldPointer = null;
+        clickedMinion = 0;
         foreach (var (name, address) in hiddenBattlefieldPanels)
         {
             var addon = Plugin.GameGui.GetAddonByName(name);
@@ -626,12 +797,6 @@ internal static unsafe class VerminionGameInteraction
                 ((AtkUnitBase*)addon.Address)->Show(true, 0);
         }
         hiddenBattlefieldPanels.Clear();
-        if (cursorBeforeBattlefieldInput is not { } previous) return;
-        cursorBeforeBattlefieldInput = null;
-        var current = PInvoke.User32.GetCursorPos();
-        // Preserve any intervening user movement instead of restoring over it.
-        if (current.x == injectedCursor.x && current.y == injectedCursor.y)
-            PInvoke.User32.SetCursorPos(previous.x, previous.y);
     }
 
     public static bool IsChallengeMenu => Plugin.ClientState.TerritoryType == 388 &&
@@ -722,7 +887,10 @@ internal static unsafe class VerminionGameInteraction
             Plugin.Log.Information($"[VerminionControl] palette={string.Join(',', palette->HotbarMinions.ToArray())}");
         foreach (var row in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Companion>())
             if (row.RowId != 0 && UIState.Instance() != null && UIState.Instance()->IsCompanionUnlocked(row.RowId))
-                Plugin.Log.Information($"[VerminionControl] ownedMinion={row.RowId}; name={row.Singular}");
+            {
+                var combat = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.CompanionTransient>().GetRow(row.RowId);
+                Plugin.Log.Information($"[VerminionControl] ownedMinion={row.RowId}; name={row.Singular}; hp={row.HP}; cost={row.Cost}; type={row.MinionRace.RowId}; attack={combat.Attack}; defense={combat.Defense}; speed={combat.Speed}; area={combat.HasAreaAttack}; arcana={combat.StrengthArcana}; special={combat.SpecialActionName}; effect={combat.SpecialActionDescription}");
+            }
     }
 
     public static void CaptureNearbyObjects()
@@ -751,8 +919,30 @@ internal static unsafe class VerminionGameInteraction
         CaptureAddon("ContentsFinder");
     }
 
+    private static DateTime nextRoutineCaptureUtc, movementCaptureUtc;
+
     public static void CaptureBattle(string reason, bool detailed = true)
     {
+        // Keep paired position evidence without filling Dalamud's capped log
+        // with every selection retry. Opening, phase, special and result
+        // snapshots are independent of this routine sampling interval.
+        if (CurrentCpuDutyId() != 552 && reason is "selection readback before movement" or
+            "after tutorial movement command" or "boss selection mismatch")
+        {
+            var now = DateTime.UtcNow;
+            if (reason == "after tutorial movement command")
+            {
+                if (movementCaptureUtc == DateTime.MinValue || (now - movementCaptureUtc).TotalSeconds > 3) return;
+                movementCaptureUtc = DateTime.MinValue;
+            }
+            else
+            {
+                if (now < nextRoutineCaptureUtc) return;
+                nextRoutineCaptureUtc = now.AddSeconds(15);
+                movementCaptureUtc = reason == "selection readback before movement" ? now : DateTime.MinValue;
+            }
+            detailed = false;
+        }
         Plugin.Log.Information($"[VerminionControl] snapshot={reason}; territory={Plugin.ClientState.TerritoryType}; playing={Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion]}");
         var chat = RaptureLogModule.Instance();
         if (detailed && chat != null)
@@ -773,6 +963,13 @@ internal static unsafe class VerminionGameInteraction
             foreach (var name in new[] { "LovmReady", "LovmPalette", "LovmPartyList", "LovmQueueList", "LovmMiniMap", "LovmNamePlate", "LovmStatus", "LovmConfirm", "LovmResult", "LovmHelp", "Talk", "SelectString", "SelectYesno", "SelectOk", "ContentsFinderConfirm", "ActiveHelp" })
                 CaptureAddon(name);
         }
+        var cameraManager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance();
+        if (CurrentCpuDutyId() == 570 && cameraManager != null && cameraManager->ActiveCameraIndex is 0 or 3)
+        {
+            var camera = cameraManager->GetActiveCamera();
+            if (camera != null)
+                Plugin.Log.Information($"[VerminionControl] camera distance={camera->Distance}; limits={camera->MinDistance},{camera->MaxDistance}; fov={camera->FoV}");
+        }
         var finder = ContentsFinder.Instance();
         if (finder != null)
             Plugin.Log.Information($"[VerminionControl] queue state={finder->QueueInfo.QueueState}; popped={finder->QueueInfo.PoppedQueueEntry.ContentType}/{finder->QueueInfo.PoppedQueueEntry.Id}");
@@ -783,7 +980,10 @@ internal static unsafe class VerminionGameInteraction
             var character = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)native;
             Plugin.Log.Information($"[VerminionControl] minion index={obj.ObjectIndex}; id={obj.GameObjectId}; data={obj.BaseId}; name={obj.Name}; hp={obj.CurrentHp}/{obj.MaxHp}; position={obj.Position}; battalion={character->CharacterData.Battalion}; targetable={obj.IsTargetable}; target={obj.TargetObjectId}");
             if (obj.IsCasting)
-                Plugin.Log.Information($"[VerminionControl] minionCast id={obj.GameObjectId}; action={obj.CastActionId}; elapsed={obj.CurrentCastTime}; total={obj.TotalCastTime}; target={obj.CastTargetObjectId}");
+            {
+                var cast = character->GetCastInfo();
+                Plugin.Log.Information($"[VerminionControl] minionCast id={obj.GameObjectId}; action={obj.CastActionId}; elapsed={obj.CurrentCastTime}; total={obj.TotalCastTime}; target={obj.CastTargetObjectId}; location={(cast == null ? "unavailable" : cast->TargetLocation.ToString())}");
+            }
             foreach (var status in obj.StatusList.Where(status => status.StatusId != 0))
                 Plugin.Log.Information($"[VerminionControl] minionStatus id={obj.GameObjectId}; status={status.StatusId}; name={status.GameData.Value.Name}; remaining={status.RemainingTime}; param={status.Param}");
         }
@@ -859,10 +1059,10 @@ internal static unsafe class VerminionGameInteraction
             Plugin.Log.Information($"[VerminionControl] {name}.value[{i}]={text}; type={value.Type}");
         }
         CaptureNodes(name, &addon->UldManager, 0, tooltips);
-        if (name == "LovmMiniMap" && CurrentCpuDutyId() == 560)
+        if (name == "LovmMiniMap" && CurrentCpuDutyId() is 560 or 570)
         {
-            // Stage 9's bounded control capture also supplies minimap geometry
-            // for checking camera/transport routes without guessed coordinates.
+            // Bounded control captures supply minimap geometry for checking
+            // camera routes against current gate and stone positions.
             for (var i = 0; i < Math.Min((int)addon->UldManager.NodeListCount, 128); ++i)
             {
                 var node = addon->UldManager.NodeList[i];

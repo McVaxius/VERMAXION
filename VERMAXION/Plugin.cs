@@ -32,6 +32,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
     [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
+    [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
     [PluginService] internal static IDtrBar DtrBar { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ITargetManager TargetManager { get; private set; } = null!;
@@ -42,7 +43,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260925-127";
+    private const string DebugAttemptMarker = "verminion-control-20260925-189";
     private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
