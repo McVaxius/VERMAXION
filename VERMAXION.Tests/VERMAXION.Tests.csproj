@@ -40,6 +40,8 @@
     <Compile Include="..\..\mom\mom\Services\CcQueueService.Deadline.cs" Link="MomProvider/CcQueueService.Deadline.cs" />
     <Compile Include="..\..\mom\mom\Services\MomIpcJson.cs" Link="MomProvider/MomIpcJson.cs" />
     <Compile Include="..\VERMAXION\Models\AccountConfig.cs" Link="AccountConfig.cs" />
+    <Compile Include="..\VERMAXION\Models\VerminionProgress.cs" Link="VerminionProgress.cs" />
+    <Compile Include="..\VERMAXION\Services\VerminionBattleStrategy.cs" Link="VerminionBattleStrategy.cs" />
     <Compile Include="..\VERMAXION\Models\AccountSelectionPolicy.cs" Link="AccountSelectionPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\AutoRetainerSelectionModels.cs" Link="AutoRetainerSelectionModels.cs" />
     <Compile Include="..\VERMAXION\Models\LifecycleStatus.cs" Link="LifecycleStatus.cs" />

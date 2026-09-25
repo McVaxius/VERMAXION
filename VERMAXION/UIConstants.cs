@@ -22,7 +22,7 @@ public static class UIConstants
         public const string MinionRoulette = "Minion Roulette";
         public const string SeasonalGearRoulette = "Seasonal Gear Roulette";
         public const string GearUpdater = "Gear Updater";
-        public const string VerminionQueue = "Lord of Verminion (5 fails)";
+        public const string VerminionQueue = "Lord of Verminion";
         public const string JumboCactpot = "Jumbo Cactpot (auto DC timing)";
         public const string MiniCactpot = "Mini Cactpot";
         public const string ChocoboRacing = "Chocobo Racing";

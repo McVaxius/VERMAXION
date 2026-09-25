@@ -534,13 +534,17 @@ public class MainWindow : Window, IDisposable
                 : "Issues the configured /li route once and waits for Lifestream/player settlement.");
 
         // --- Weekly Tasks ---
-        AddTaskRow("Verminion (5x)", config.EnableVerminionQueue,
-            config.VerminionPaused ? "Paused — use Resume" : plugin.VerminionService.State != VerminionService.VerminionState.Idle
+        AddTaskRow("Verminion", config.EnableVerminionQueue,
+            config.VerminionPaused ? $"Paused — use Resume | {VerminionService.ProgressSummary(config)}" : plugin.VerminionService.State != VerminionService.VerminionState.Idle
                 ? plugin.VerminionService.StatusText
-                : GetWeeklyTaskStatus(config.VerminionLastCompleted, config.VerminionNextReset, "Done this week", "Weekly"),
-            config.VerminionPaused ? "resume##Verm" : "run##Verm", () => plugin.VerminionService.RunTask(), "WIP",
+                : (VerminionService.WeeklyGoalReached(config) ? "Complete: " : string.Empty) + VerminionService.ProgressSummary(config),
+            config.VerminionPaused ? "resume##Verm" : "run##Verm",
+            () => { if (config.VerminionPaused) plugin.VerminionService.ResumeTask(); else plugin.VerminionService.RunTask(); }, "WIP",
             buttonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
-            buttonTooltip: "CPU Verminion control proof is in development. Current progress and blockers appear here.");
+            buttonTooltip: "Runs the selected weekly CPU goal; Resume continues the paused goal. Current strategy, progress and blockers appear here.",
+            secondaryButtonLabel: "Clear all challenges##Verminion", secondaryOnClick: () => plugin.VerminionService.RunChallenges(),
+            secondaryButtonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
+            secondaryButtonTooltip: "Clears unfinished challenges in order. Later-stage strategies are still in development; stops before an unsupported stage.");
         AddTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
             GetJumboCactpotStatus(config),
             "run##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");
@@ -822,7 +826,7 @@ public class MainWindow : Window, IDisposable
             case "Retainer Bell":
                 return ["Lifestream", "vnavmesh"];
             case "After-AR Park":
-            case "Verminion (5x)":
+            case "Verminion":
             case "Chocobo Racing":
                 return ["Lifestream"];
             case "Jumbo Cactpot":
@@ -1137,7 +1141,8 @@ public class MainWindow : Window, IDisposable
     {
         var next = automationId switch
         {
-            AutomationCatalog.VerminionQueue => config.VerminionNextReset,
+            AutomationCatalog.VerminionQueue => VerminionService.WeeklyGoalReached(config)
+                ? ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow) : DateTime.MinValue,
             AutomationCatalog.MiniCactpot => config.MiniCactpotNextReset,
             AutomationCatalog.ChocoboRacing => config.ChocoboRacingNextReset,
             AutomationCatalog.LootGoblinMapGather => config.LootGoblinMapGatherNextReset,
@@ -1292,7 +1297,7 @@ public class MainWindow : Window, IDisposable
         var id = task switch
         {
             "Misc Cmd" => AutomationCatalog.MiscCommands,
-            "Verminion (5x)" => AutomationCatalog.VerminionQueue,
+            "Verminion" => AutomationCatalog.VerminionQueue,
             _ => null,
         };
         return id != null
