@@ -489,7 +489,7 @@ public class ConfigManager
     internal static void CopyDefaultSettings(CharacterConfig source, CharacterConfig target)
     {
         target.Enabled = source.Enabled;
-        target.EnableVerminionQueue = source.EnableVerminionQueue;
+        target.CopyVerminionSettingsFrom(source);
         target.EnableJumboCactpot = source.EnableJumboCactpot;
         target.EnableMiniCactpot = source.EnableMiniCactpot;
         target.EnableChocoboRacing = source.EnableChocoboRacing;

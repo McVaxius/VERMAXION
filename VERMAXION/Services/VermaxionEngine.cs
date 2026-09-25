@@ -607,9 +607,13 @@ public class VermaxionEngine
                 : TaskEligibility.NotDue($"{label} is not due until {next:u}.");
 
     private static TaskEligibility EvaluateVerminion(CharacterConfig config)
-        => config.EnableVerminionQueue && config.VerminionPaused
+        => !config.EnableVerminionQueue
+            ? TaskEligibility.Disabled("Verminion is disabled for this character.")
+            : config.VerminionPaused
             ? TaskEligibility.Blocked("Verminion is paused; use Resume.")
-            : Due(config.EnableVerminionQueue, "Verminion Queue", config.VerminionLastCompleted, config.VerminionNextReset);
+            : VerminionService.WeeklyGoalReached(config)
+                ? TaskEligibility.NotDue("The selected Verminion weekly goal is complete.")
+                : TaskEligibility.Runnable();
 
     private static TaskEligibility EvaluateMiniCactpot(CharacterConfig config)
     {
@@ -1358,8 +1362,8 @@ public class VermaxionEngine
 
             case EngineState.RunningVerminion:
                 activeConfig = GetLiveActiveConfig();
-                if (activeConfig!.EnableVerminionQueue &&
-                    ResetDetectionService.TaskNeedsRun(activeConfig.VerminionLastCompleted, activeConfig.VerminionNextReset))
+                if (verminionService.IsActive || verminionService.IsComplete || verminionService.IsFailed ||
+                    activeConfig!.EnableVerminionQueue && !activeConfig.VerminionPaused && !VerminionService.WeeklyGoalReached(activeConfig))
                 {
                     if (!verminionService.IsActive && !verminionService.IsComplete && !verminionService.IsFailed)
                     {
@@ -1376,13 +1380,7 @@ public class VermaxionEngine
 
                     if (verminionService.IsComplete)
                     {
-                        var completedAt = DateTime.UtcNow;
-                        PersistCurrentCharacterConfig(config =>
-                        {
-                            config.VerminionLastCompleted = completedAt;
-                            config.VerminionNextReset = ResetDetectionService.GetNextWeeklyReset(completedAt);
-                            config.VerminionCompletedThisWeek = true;
-                        }, "Verminion completion");
+                        // The coordinator stamps only the goal supported by current game evidence.
                         verminionService.Reset();
                         AdvanceToNextTask(EngineState.RunningVerminion);
                     }
@@ -1390,9 +1388,6 @@ public class VermaxionEngine
                     {
                         log.Warning("[Engine] Verminion failed - continuing");
                         runHadFailure = true;
-                        MarkWeeklyTaskFailed(
-                            taskName: "Verminion",
-                            clearLegacyFlag: config => config.VerminionCompletedThisWeek = false);
                         verminionService.Reset();
                         AdvanceToNextTask(EngineState.RunningVerminion);
                     }

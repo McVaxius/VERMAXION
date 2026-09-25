@@ -42,9 +42,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260924-20";
+    private const string DebugAttemptMarker = "verminion-control-20260925-127";
     private DateTime nextChocoboContinuationUtc;
-    private const string ExpectedDebugPluginPath = @"D:\temp\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
+    private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
     public ConfigManager ConfigManager { get; init; }
@@ -707,7 +707,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 return;
             }
 
-            SetDebugTaskStatus(RunDashboardAction(row.OnClick)
+            Action selectedAction = taskId == AutomationCatalog.VerminionQueue ? VerminionService.ResumeTask : row.OnClick;
+            SetDebugTaskStatus(RunDashboardAction(selectedAction)
                 ? $"Dispatched: {row.Task}. Check its existing task status for progress."
                 : $"Blocked: {row.Task}. VERMAXION could not pause YesAlready.");
         }
@@ -1961,7 +1962,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var player = ObjectTable.LocalPlayer;
         return Configuration.DebugTaskId == AutomationCatalog.VerminionQueue && player != null &&
             Configuration.DebugTaskCharacterKey == $"{player.Name}@{player.HomeWorld.Value.Name}" &&
-            (ClientState.TerritoryType == 388 || Condition[ConditionFlag.PlayingLordOfVerminion]);
+            (VerminionGameInteraction.IsSetupMenu || VerminionGameInteraction.CurrentCpuDutyId() != 0);
     }
 
     private bool TryGetWorldReadyCharacterForFishing(out string charName, out string worldName, out ulong contentId, out string reason)

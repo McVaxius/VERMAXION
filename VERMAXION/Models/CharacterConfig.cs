@@ -10,6 +10,11 @@ public class CharacterConfig
     // --- Feature Toggles ---
     public bool EnableVerminionQueue { get; set; } = false;
     public bool VerminionPaused { get; set; }
+    public VerminionMode VerminionMode { get; set; } = VerminionMode.Participation;
+    public int VerminionVictoryTarget { get; set; } = 5;
+    public uint VerminionGilPurchaseCap { get; set; }
+    public uint VerminionMgpPurchaseCap { get; set; }
+    public VerminionProgress VerminionProgress { get; set; } = new();
     public bool EnableJumboCactpot { get; set; } = false;
     public bool EnableMiniCactpot { get; set; } = false;
     public bool EnableChocoboRacing { get; set; } = false;
@@ -191,6 +196,15 @@ public class CharacterConfig
         JumboCactpotUnclaimedTickets = 0,
     };
 
+    public void CopyVerminionSettingsFrom(CharacterConfig source)
+    {
+        EnableVerminionQueue = source.EnableVerminionQueue;
+        VerminionMode = source.VerminionMode;
+        VerminionVictoryTarget = source.VerminionVictoryTarget;
+        VerminionGilPurchaseCap = source.VerminionGilPurchaseCap;
+        VerminionMgpPurchaseCap = source.VerminionMgpPurchaseCap;
+    }
+
     public void ResetVerminionState()
     {
         VerminionCompletedThisWeek = false;
@@ -317,6 +331,11 @@ public class CharacterConfig
         {
             EnableVerminionQueue = EnableVerminionQueue,
             VerminionPaused = VerminionPaused,
+            VerminionMode = VerminionMode,
+            VerminionVictoryTarget = VerminionVictoryTarget,
+            VerminionGilPurchaseCap = VerminionGilPurchaseCap,
+            VerminionMgpPurchaseCap = VerminionMgpPurchaseCap,
+            VerminionProgress = VerminionProgress.Clone(),
             EnableJumboCactpot = EnableJumboCactpot,
             EnableMiniCactpot = EnableMiniCactpot,
             EnableChocoboRacing = EnableChocoboRacing,

@@ -130,6 +130,7 @@ public class ChocoboRaceService : IDisposable
         this.configManager = configManager;
         this.chokeAboIpcClient = chokeAboIpcClient;
         this.progressionStartBlock = progressionStartBlock;
+        log.Information("[ChocoboRace] Build marker chocobo-reload-recovery-20260925-1.");
     }
 
     public bool Start(bool resume = false)
@@ -581,6 +582,8 @@ public class ChocoboRaceService : IDisposable
     public void Update()
     {
         TrackAllowance();
+        if (targetCycleEnabledForBatch && state == ChocoboState.Deferred && !chokeAboIpcClient.IsV3Available)
+            waitingForChokeAbo = true;
         if (waitingForChokeAbo && chokeAboIpcClient.IsV3Available)
         {
             waitingForChokeAbo = false;
