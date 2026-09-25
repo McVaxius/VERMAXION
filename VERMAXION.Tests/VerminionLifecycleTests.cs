@@ -1,3 +1,4 @@
+using System.Linq;
 using Newtonsoft.Json;
 using VERMAXION.Models;
 using VERMAXION.Services;
@@ -134,43 +135,60 @@ public sealed class VerminionLifecycleTests
 
         var gilgamesh = new VerminionBossStrategy(19);
         gilgamesh.ObserveUnits([]);
-        for (var request = 0; request < 3; ++request)
-        {
-            Assert.Equal(VerminionBossStrategy.Action.Summon, gilgamesh.Decide(true, 0, 0, 0, 60, 0, 0, false));
-            gilgamesh.Dispatched(VerminionBossStrategy.Action.Summon);
-        }
-        Assert.Equal(VerminionBossStrategy.Action.Wait, gilgamesh.Decide(true, 0, 0, 0, 60, 0, 0, false));
-        Assert.Equal(3, gilgamesh.ObserveUnits([1, 2, 3]));
-        Assert.Equal(VerminionBossStrategy.Action.Summon, gilgamesh.Decide(true, 3, 0, 60, 240, 0, 0, false));
-        Assert.Equal(VerminionBossStrategy.Action.SendWave, gilgamesh.Decide(true, 4, 0, 80, 240, 0, 0, false));
-
-        var odin = new VerminionBossStrategy(15);
-        odin.ObserveUnits([]);
-        odin.Defenders.ObserveUnits([]);
-        odin.Support.ObserveUnits([]);
+        gilgamesh.Defenders.ObserveUnits([]);
+        Assert.Equal((ushort)243, gilgamesh.CurrentMinion);
+        Assert.Equal((ushort)41, gilgamesh.CurrentDefenderMinion);
+        Assert.Equal(20, gilgamesh.MinionCost);
+        Assert.Equal(20, gilgamesh.CurrentDefenderCost);
+        Assert.Equal(8, gilgamesh.CurrentDefenderCount);
+        Assert.Equal(0, gilgamesh.AttackCapacity(60, 0)); // Initial capacity belongs to area defenders.
+        Assert.Equal(80, gilgamesh.AttackCapacity(240, 0));
         for (var request = 0; request < 4; ++request)
         {
             Assert.Equal(VerminionBossStrategy.Action.Summon,
-                odin.Decide(true, 0, 0, 0, odin.AttackCapacity(240, 0), 0, 0, false));
-            odin.Dispatched(VerminionBossStrategy.Action.Summon);
+                gilgamesh.Decide(true, 0, 0, 0, gilgamesh.AttackCapacity(240, 0), 0, 0, false));
+            gilgamesh.Dispatched(VerminionBossStrategy.Action.Summon);
         }
         Assert.Equal(VerminionBossStrategy.Action.Wait,
-            odin.Decide(true, 0, 0, 0, odin.AttackCapacity(240, 0), 0, 0, false));
-        for (var request = 0; request < 4; ++request)
+            gilgamesh.Decide(true, 0, 0, 0, gilgamesh.AttackCapacity(240, 0), 0, 0, false));
+        for (var guard = 0; guard < 6; ++guard)
         {
-            Assert.True(odin.CanRequestDefender(0, 0, 240));
-            odin.Defenders.Requested();
+            Assert.True(gilgamesh.CanRequestDefender(0, 0, 240));
+            gilgamesh.Defenders.Requested();
         }
-        Assert.False(odin.CanRequestDefender(0, 0, 240));
-        for (var request = 0; request < 4; ++request)
+        Assert.False(gilgamesh.CanRequestDefender(0, 0, 240)); // Six-request bound even with space for two more.
+        Assert.Equal(2, gilgamesh.Defenders.ObserveUnits([100, 101]));
+        for (var guard = 0; guard < 2; ++guard)
         {
-            Assert.True(odin.CanRequestSupport(0, 0, 240));
-            odin.Support.Requested();
+            Assert.True(gilgamesh.CanRequestDefender(2, 40, 240));
+            gilgamesh.Defenders.Requested();
         }
-        Assert.False(odin.CanRequestSupport(0, 0, 240));
-        Assert.False(odin.CanRequestDefender(0, 0, 240));
-        Assert.Equal(4, odin.Support.ObserveUnits([21, 22, 23, 24]));
-        Assert.False(odin.CanRequestSupport(4, 40, 240));
+        Assert.False(gilgamesh.CanRequestDefender(2, 40, 240));
+        Assert.Equal(4, gilgamesh.ObserveUnits([1, 2, 3, 4]));
+        Assert.Equal(6, gilgamesh.Defenders.ObserveUnits([102, 103, 104, 105, 106, 107]));
+        Assert.Equal(240, gilgamesh.AttackCapacity(240, 8));
+        Assert.False(gilgamesh.CanRequestDefender(8, 240, 240));
+        Assert.Equal(220, gilgamesh.AttackCapacity(240, 7));
+        Assert.True(gilgamesh.CanRequestDefender(7, 220, 240));
+        Assert.Equal(VerminionBossStrategy.Action.Wait,
+            gilgamesh.Decide(true, 0, 4, 220, gilgamesh.AttackCapacity(240, 7), 0, 0, false));
+
+        var odin = new VerminionBossStrategy(15);
+        odin.ObserveUnits([]);
+        for (var wave = 0; wave < 4; ++wave)
+        {
+            for (var request = 0; request < 6; ++request)
+            {
+                Assert.Equal(VerminionBossStrategy.Action.Summon,
+                    odin.Decide(true, wave * 6, 0, wave * 60, 240, 90, 90, true, assemble: true));
+                odin.Dispatched(VerminionBossStrategy.Action.Summon);
+            }
+            Assert.Equal(VerminionBossStrategy.Action.Wait,
+                odin.Decide(true, wave * 6, 0, wave * 60, 240, 90, 90, true, assemble: true));
+            Assert.Equal(6, odin.ObserveUnits(Enumerable.Range(wave * 6 + 1, 6).Select(id => (ulong)id)));
+        }
+        Assert.Equal(VerminionBossStrategy.Action.SendWave, odin.Decide(true, 24, 0, 240, 240, 90, 90, true));
+        Assert.Equal(VerminionBossStrategy.Action.Summon, odin.Decide(true, 0, 23, 230, 240, 0, 0, false));
     }
 
     [Fact]

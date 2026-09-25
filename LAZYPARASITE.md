@@ -10,7 +10,1108 @@ Runtime target: `R:\XIVLauncher3`, with Lord of Verminion selected in `/vmx debu
 Source edits, Debug builds, DLL replacement and this client's selected reload tests
 are authorized. Do not change release versions or operate other clients.
 
-## Current attempt
+## Goal additions and requested pause — 2026-09-25
+
+David explicitly requested recording these requirements in the goal and pausing
+it for now. They extend the approved plan; the full original acceptance criteria
+remain outstanding. Do not resume implementation, builds, deployment or gameplay
+until David resumes the goal.
+
+- Consult relevant Verminion guides before continuing strategy implementation or
+  runtime attempts. Use the official guide for rules and unlocks and stage guides
+  for tactics; record the relevant sources in this existing checkpoint. Compare
+  guide advice with current game data and observed results rather than treating
+  advice as a verified clear.
+- Select specific minions and tactics for each of all 24 challenges, including
+  their roles, composition, summoning costs, opening, specials and boss phases.
+  Choose the repeatable farming roster explicitly as well. Prefer broadly
+  available minions; Wuk Lamat and other rare or expansion-specific collection
+  minions must not be baseline prerequisites. Such minions may be optional only.
+- Reassess Wind-up Airship as a baseline candidate and verify its area special
+  in battle. Previous selection/movement failures confounded roster comparisons;
+  they do not establish that Airships are ineffective. Do not assume a single
+  roster is suitable for every stage without guide and runtime evidence.
+- Check the chosen strategy's required minions before starting wherever game
+  data permits. Require the selected composition to be available before battle;
+  report exactly what is missing and how to obtain it. Reuse authorized setup
+  and registration handling. Purchases remain subject to the existing cumulative
+  per-character gil/MGP caps, both default zero; never raise caps silently.
+- Expand the existing configuration UI so users can understand each mode, the
+  selected stage and strategy, required/owned/missing minions and acquisition
+  requirements, readiness/blocking reasons, goal and verified progress, purchase
+  limits/spending, and pause/Resume state. Explain roster choices and separate
+  unverified strategies from observed clears. Keep the information actionable.
+- Retain the background-control constraint: no game-window activation, OS cursor
+  movement or global input injection. Development remains limited to the already
+  authorized client and reload route.
+- Consider standalone use for all Verminion features through `/vmx v`, with the
+  same Verminion interface launchable from the main window and settings. Include
+  setup, weekly modes, campaign, tournament opportunities, prerequisites,
+  progress and existing Start/Stop/Resume controls. Reuse the task/service paths
+  so manual use does not require the broader scheduled automation to be running
+  and still respects ownership, accounting and FULL STOP.
+- Include the narrowly scoped proposal in `Z:\devhub179.md`, selected ticket
+  I412, in the goal's review: optional paired-player win trading, with one player
+  attacking and the other not defending while avoiding AFK penalties. Consider
+  feasibility, role selection and how it would fit the standalone interface
+  before implementation. This is a proposed extension to the CPU plan, not an
+  implemented feature or authorization to operate a second client. Preserve
+  working behavior and make only necessary changes. The packet's unrelated
+  Ocean Fishing W40 metadata is context only and does not change this goal.
+
+These standalone/interface and I412 additions were recorded at David's explicit
+request while the goal remained paused. No DevHub records or runtime state were
+changed; `Z:\devhub179.md` is the supplied reference, not a separate checkpoint.
+
+Resume from guide research and a stage-by-stage accessible roster review, then
+implement prerequisite checks and clearer configuration in the existing code.
+Do not resume the obsolete Tora-jiro/Goobbue Stage 19 experiment unchanged.
+
+## Latest state at pause
+
+Carried-forward runtime evidence (not re-read during this pause-only update):
+match 99 LOST at 13:30:11 on 2026-09-25 (-04:00), credited once to 82 matches /
+23 wins; the three-attempt pause was observed at 13:30:25. Stages 1–18 are cleared
+(mask 262143); Stage 19 remains unfinished. Matches 85 and 95 remain uncredited.
+The last loaded marker is `verminion-control-20260925-187`; source/isolated build
+189 includes 188's zoom guard and 189's selection reframe/defender recall changes,
+but neither change has runtime verification. The accessible-roster revision and
+new UI/prerequisite requirements above are not implemented. Last full suite:
+817 passed under 186; subsequent 187–189 isolated compilation passed. Version
+remains 0.5.0.3.
+
+Before a future authorized Resume, reconcile fresh runtime and saved state:
+expected paused true, sequence 99, pending 0, stage/run attempts 3, consecutive
+losses 3, totals 82/23, mask 262143, both purchase caps/spending zero. Preserve
+unknown outcomes and existing progress. Logging was nearing the main 100 MiB cap;
+independent logging was not selected. Do not infer results from missing evidence.
+This pause update performs no runtime/config mutation, build, deployment or Resume.
+The historical entries below are superseded by this state where they disagree.
+
+## Attempt history
+
+99 reached the first buff at 13:28:37 (boss 12,574, ATK Up 962/500 for 30 seconds).
+All four Tora selection clicks returned the boss ID instead; no retreat movement
+was issued. Most of the army died by 13:28:55, boss 11,570, capacity only 40.
+The buff ended 13:29:13. 99 still owns its result; HOLD watched reload.
+Source 189 retains 188's idempotent zoom, reframes once after the first failed
+Stage 19 selection using the existing minimap, and recalls defenders after the
+attacker retreat command rather than waiting for attacker arrival. Still requires
+native friendly selection before any movement. No roster or config changes.
+Compile isolated; review 99's result/pause before another guarded Resume.
+
+99 remains under 187. At 13:28:26, boss HP 13,612/16,000 and central stone
+4,655/5,000; sustained damage is materially better than 97/98. Still no clear.
+188 isolated build PASSED; whitespace clean. Hold watched deployment through
+99's actual result. Do not change roster or Resume while this result is pending.
+Need observe the first buff/retreat phase; current code recalls attackers only,
+so defender survival is an explicit remaining concern. Fresh 99 avoids 98's
+possible repeated-zoom confound; do not attribute all differences to the flag fix.
+
+98 LOST 13:25:39, credited once to 81 matches / 23 wins; boss 14,706/16,000.
+99 admitted 13:25:56, battlefield 13:26:03; third permitted attempt remains live
+under 187. No new Resume/config edits. 188 source-only fixes repeat zoom on reload:
+read native distance and skip wheel events once the verified 10.5 distance is
+already reached. Keep the six-event bound. No roster, geometry, goal or input-gate
+change. Compile isolated and HOLD watched reload until 99 settles and pauses.
+
+187 watched build PASSED and dispatched 13:21:24, resuming Stage 19's next owned
+admission. Native 13:21:58-13:22:06 confirms inactive false during click sampling,
+restoration to the saved flag, and foreground false. This proves the local flag
+handling only; command reliability and the result remain pending. Hold the battle
+through its result. No Resume or config changes since the reviewed paused-96 run.
+Verified the existing ECommons keyboard helper sends window messages only to the
+current process; it does not use global keyboard injection or change focus.
+
+97 LOST 13:20:42, explicitly credited once to 80 matches / 23 wins. Boss remained
+15,316/16,000; roster still unproven. 187 isolated build PASSED, whitespace clean.
+Intent: watched 187 during the reconciled result/setup interval; preserve any
+subsequent admission and existing remaining two-attempt budget. No new Resume or
+config edits. Verify exact startup, frame flag restoration with foreground false,
+whole-group movement and final outcome. Do not infer success from button requests.
+
+186 dispatched 13:16:43; 97 admitted 13:16:50 and entered 13:16:58. Eight Goobbue
+Sproutlings reached the +3X central rally by 13:18:30; boss lost 580 HP. Four
+Tora-jiro remain at gate despite the 13:18:15 ground order. Keep 97 uninterrupted.
+Source-only 187 tests a concrete input inconsistency: completed clicks alternate
+WindowInactive true/false while the virtual device reports focused. Temporarily
+clear that client flag alongside the sample and restore it at the frame boundary.
+No OS activation/input/cursor changes, roster change or config mutation. Compile
+isolated; HOLD watched deployment until 97's explicit result/reconciled admission.
+All 817 tests passed for 186; 187 runtime effect remains unverified.
+
+186 isolated build PASSED; all 817 tests PASSED; whitespace clean. Intent now:
+apply reviewed Resume only if selected character still matches paused 96 exactly
+(79/23, mask 262143, pending 0, stage/run attempts 3, losses 2, zero caps/spend).
+Preserve all facts and sequence, reset only existing Resume budgets, then build
+the watched Debug output. Verify 186 startup and whole match 97 without reload.
+No change to window focus, OS cursor, global input, version or purchase caps.
+
+Source 186 replaces the failed Airship/Bell roster with owned type counters:
+four Tora-jiro (65 ATK, critter, cost 20) for the poppet boss, eight Goobbue
+Sproutlings (55 ATK, monster, area attack, cost 20) for critter adds. Total 240.
+Attackers hold the stone unless Gilgamesh enters; defenders share the exposed
++3X rally. Removed obsolete gadget-buff probing and defender trap-disarm casts.
+Retains 185's bounded diagnostics and one-second ability readback. No purchases,
+input geometry changes or config changes. Compile isolated and run regressions
+before guarded Resume of paused 96. Review result and positions; no clear claimed.
+
+96 LOST 13:04:32, credited once to 79 weekly matches / 23 wins. Three-attempt
+pause confirmed 13:04:46. Fresh saved-state read confirms paused true, pending 0,
+sequence 96, stage 19 attempts 3, run attempts 3, consecutive losses 2; campaign
+mask 262143, both caps and spending zero. 95 remains uncredited. 184 remains the
+loaded artifact; isolated 185 passed and is source only. No pending tool sessions.
+Reviewing 96's failed central defense before a new guarded Resume. No stage 19
+clear or Airship ATK effect claimed. Log snapshots remain bounded and unfocused.
+
+184 loaded13:00:27/dispatched13:00:31;96 admitted13:00:44, battle13:00:51.
+Third permitted attempt, still running. HOLD all watched reloads through96's
+explicit result. Source185 reduces repetitive routine snapshots to one paired
+sample per15seconds (opening/phase/result retained independently), because
+Dalamud log was95,207,095bytes at13:04, approaching its100MiB cap. Adds a native
+snapshot1second after19 special requests to verify actual effect, not just button
+execution. No new sink/files/dependencies or game tactics. Compile isolated185;
+184 retains96. No Resume/settings edits since paused93, source-only185 pending.
+
+184 watched build PASSED, whitespace clean. No pending build/test sessions.
+Reconcile fresh184 startup and96 admission next; do not reload its battlefield.
+Source and watched artifact match184; version remains0.5.0.3. No settings edits
+since guarded Resume of paused93. Overall objective remains incomplete.
+
+95 ended UNOBSERVED across183 reload.183 loaded12:58:56/resumed12:59:00;
+native12:59:05 confirms territory388/playingFalse/queueNone, then explicit
+uncredited failure. Saved state: matches78/wins23/mask262143, pending0/seq95,
+pausedFalse, attempts2/stage19attempts2/losses1. Never invent credit for95.
+Intent184: executable marker only to dispatch the existing third permitted
+attempt from this reconciled outside-battle state. No Resume/counter/config edits.
+Retain183's rally correction and Airship/Bell roster. Leave the next whole battle
+uninterrupted through its explicit result; last full817 tests PASS under181.
+
+183 isolated compile PASSED. Intent: watched183 now, correcting the idle stone
+collision while preserving95/current admission and its existing remaining
+attempt budget. No Resume/settings edits. Reconcile load and result separately;
+last known confirmed totals78matches/23wins, mask262143.
+
+182 loaded12:55:15/resumed95 at12:55:19. Airship native action fired12:55:53 and
+12:56:25; ATK status effect itself not yet captured. Four-Airship movement proven
+12:56:40->41 (all four advance toward the requested point), foregroundFalse.
+Source183 corrects an actual rally collision: native friendly StoneB is(0,0,2),
+enemy StoneB(0,0,-2); old attacker idle offset -4Z lands exactly on the enemy
+stone model. Airships repeatedly ended nearz-8 while idle. Rally +3X beside the
+defended stone instead. Preserve both roster and owned95/current admission.
+Compile isolated183 first. No Resume/settings edits;95 remains attempt2.
+
+94 LOST12:53:04, credited once78matches/23wins.95 admitted12:53:20, entered
+12:53:28; second attempt under181.182 isolated compile PASSED. Intent watched
+182 now before95's first central engagement; same Airship/Bell roster, admission
+and attempt budget retained. No Resume or settings edits. Need positive support
+buff/status and final result evidence before claiming the composition works.
+
+181 loaded12:50:28/resumed94 at12:50:32; all817 tests PASS.94 center fell from
+4855 at12:51:20 to100 at12:52:58 while Tinker specials fired and Airship's buff
+never did. Source182 addresses support selection starvation: when four nearby
+Airships can buff four Bells that lack native962(ATK Up), prioritize inspecting
+that party over repeated movement. The ally buff need not wait for enemy contact.
+Native readiness still gates casting; existing probe bounds/cadence remain.
+This changes no roster/cost/input/counters. Compile isolated182;181 still owns94
+or its subsequent permitted admission. No Resume/settings edits since paused93.
+
+180 loaded12:48:13/dispatched12:48:16;94 admitted12:48:24, battle12:48:32.
+At12:50:01 all eight Tinker's Bells are gathered near center with400HP; four
+Airships positively present at220/240 total capacity and moving from the gate.
+Regrouping has native position evidence. First airship buff/result not yet seen.
+181 isolated compile PASSED. Intent: watched181 while94 is still early, preserving
+its admission/budget/roster and pause. This narrowly repairs the click-hit lifetime;
+no Resume or settings edits. Keep the actual result owned and separately verify
+181's load, selection evidence and the roster's native ATK buff.
+
+180 watched build PASSED after guarded Resume matched paused93 exactly. Load,
+94 admission and composition proof still need reconciliation. Source181 fixes a
+concrete hit-sample lifetime bug found during crowded-selection review: the
+frame hook overwrote clickedMinion/timestamp on EVERY virtual hover frame after
+a completed click, allowing moving enemies to replace its sample. Capture only
+on that click's release, and use ReadBattlefieldClickHit for the same-type check
+instead of live hover info. No input geometry, roster or counters changed.
+Compile181 isolated first and HOLD watched pending180's fresh native evidence.
+
+93 LOST12:45:34, credited once77matches/23wins. Three-attempt pause confirmed
+12:45:48. Saved12:47:24 state: pausedTrue/pending0/sequence93, mask262143,
+stage19attempts3/runattempts3/losses3, modeWinTarget/target10, zero caps/spending.
+180 isolated compile PASSED. Reviewed gadget-buff composition warrants guarded
+Resume of this exact state and watched180, preserving all facts and sequence.
+The new Airship palette must be prepared before admission. No Stage19 clear or
+retreat survival claimed; no new control method introduced.
+
+Source180 candidate follows93's observed poor damage (boss15768 at12:45 despite
+center contact). Owned setup proves Airship52:465HP/50ATK/75DEF/cost25/gadget,
+special +40 gadget ATK. Replace four Aymerics with four Airships alongside eight
+Tinker's Bells (220capacity total). The Bells' base20ATK struggles against45DEF
+adds; Airship's observed description supplies a relevant area buff instead of
+Aymeric's unused shield action. Probe both same-type action parties, and treat
+220/240 as filled when another25-point attacker cannot fit. Keep six-request and
+replacement reservations. Test changed mixed25/15 costs. No purchases. Compile
+isolated180; HOLD watched until93 settles, since palette must be prepared outside
+battle.179 still owns93, third attempt; no Resume/reset/account edits.
+
+179 watched build passed; loaded12:39:35/resumed92 at12:39:38.92 LOST12:40:00,
+credited once76matches/23wins.179 had only a short end-of-match interval; the
+next permitted93 is the useful fresh test. No Resume or config edits, third
+attempt remains. Leave179 loaded and reconcile93's admission, role movement,
+local defense and explicit result. Current source matches watched179.
+
+179 isolated build PASSED and diff whitespace clean. Intent: watched179 now,
+retaining92/current owned admission and remaining attempt budget. Same roster;
+this addresses the observed defender-command starvation without a new Resume.
+Verify load and actual attacker departure before claiming the fix works.
+
+178 loaded12:36:52/resumed92 at12:36:56. Tinker's special fired12:37:35.
+92 at12:37:58 exposes movement starvation: four Aymerics summoned from12:37:18
+remain at gate while repetitive defender orders run. Source179 computes attacker
+intent before Stage19 defender work, alternates pending movement between roles,
+and timestamps defensive wave dispatch too. Retreat still overrides defense.
+No roster/input/count changes;177 full817 passed,178 builds passed. Compile179
+isolated first;178/current92 still owns the result. No Resume or account edits.
+
+91 LOST12:36:06, credited once75matches/23wins.92 admitted12:36:22 and entered
+12:36:30, second permitted attempt.178 isolated build PASSED with anchor fix.
+Intent: watched178 now at92's opening; retain the same roster, owned admission
+and attempt budget. No Resume/settings edits. Native91 defeat snapshot confirms
+surviving defenders strandedz-9..-12 while Enkidu attack the center stone.
+
+Source178 fixes idle defender dispersion observed91 at12:34:11: four Tinker's
+Bells atz-6, three atx7/z4, and one gate reserve; army health mostly full while
+boss15926/16000 and B4345. Idle groups never received a regroup order. Regroup
+the farthest deployed cluster onto ground two yalms ahead of the stone when no
+local threat remains. Defender interception now shares the attacker's six-yalm
+containment and refreshes live target position before its ground movement order.
+Honor the selected Stage19 cluster anchor before density when picking a clickable
+member; otherwise the idle regroup could select the already-gathered majority.
+No roster/cost/attempt changes. Compile isolated178 before watched deployment;
+177 still owns91. No Resume/reset while that admission is pending.
+
+177 watched build passed, loaded12:31:19/dispatched12:31:22. Match91 admitted
+12:31:30, battlefield12:31:38. Guarded Resume matched paused90 exactly and
+preserved74matches/23wins/mask262143/zero caps and spending. Native wheel zoom
+confirmed: camera distance6 at12:31:43 ->10.5 at12:31:50 after six events;
+foregroundFalse remains observed. Eight Tinker's Bell deployment and Aymeric
+summons verified by12:32:32. All817 tests PASS on final177, no failing checks.
+Continue91 to buff/retreat/result evidence; no new candidate or reset pending.
+
+177 final isolated build PASSED (including wheel/retreat changes). 89 lost
+12:24:47 and 90 lost12:29:33; both explicitly credited once. Saved state at
+12:30:11 is pausedTrue, pending0, sequence90, matches74/wins23, mask262143,
+stage19attempts3/runattempts3/losses3. The bounded176 run has settled outside
+battle without a clear. Reviewed177 now warrants guarded Resume of exactly this
+state and watched deployment, preserving all facts/sequence/caps/spending.
+Intent: prepare owned Aymeric/Tinker's Bell palette outside battle, verify177
+load/dispatch, camera distance and actual new roster, then reconcile its result.
+No foreground activation, OS cursor movement, or global input is permitted.
+
+177 candidate also addresses a concrete retreat failure. In88, seven surviving
+Succubus kept EXACT x/z positions from12:20:04.233 to12:20:05.506 after the gate
+order. The reused selection had just undergone minimap framing. Always freshly
+select the attacker group for19's retreat. To reduce camera jumps, exercise six
+native -1 wheel events at19 battle setup through the existing frame/device hook;
+no mouse buttons, OS pointer or focus changes. MouseWheel=-1 is declared in
+ClientStructs InputData.cs and wheel zoom is documented in the official guide.
+Capture native camera distance/projection after the bounded sequence. This is
+not a minimap-right-click experiment (that control is not documented). Recompile
+isolated177; new zoom/retreat and high-defense roster all remain unverified.
+176 stays loaded while89/current run settles.177 must prepare both new owned
+palette entries outside battle; do not deploy into a living old army.
+
+176 loaded12:16:09/dispatched12:16:13; guarded Resume matched paused87 exactly.
+88 admitted12:16:21. Local containment confirmed12:17:41 and12:18:32: targets
+leaving the stone are rejected before movement. B2730/boss14955 at12:19:12.
+Source-only177 now prepares4Aymeric(cost30,465HP/80ATK/75DEF) +8Tinker's Bell
+(cost15,400HP/20ATK/60DEF,AoE); all owned, no purchases. Compared with published
+Morbol/Gentleman bunker (both75DEF), prior roster25/40DEF collapsed during basic
+attacks before the boss buff phase. Tinker native special deals30 area damage
+and reduces enemyDEF30%; use defender parties, skip Aymeric's shield action.
+Reserve120 capacity for each role and keep six-request queue bounds. Focused
+regression updated for eight defenders and mixed15/30 costs. Compile/test isolated
+177; HOLD watched until88/current bounded run settles. Do not replace a living
+Succubus army. No new Resume or account edits after paused87.
+
+87 LOST12:13:56, credited once71/23. Limit pause confirmed12:14:10; pending0,
+sequence87, stage19attempts3/runattempts3, consecutiveLosses2, mask262143.
+176 isolated compile passed. Reviewed local-target containment correction now
+warrants a fresh bounded test, keeping175's4Goobbue/16Succubus composition so
+its effect can be evaluated. Intent: exact-state guarded Resume then watched176;
+retain every confirmed fact, both zero caps/spending and sequence. No false credit
+for85. Do not claim Stage19 clear or buff-retreat survival from this failed run.
+
+87 first Succubus special fired12:11:51;16 attackers fielded by12:11:57. B4555HP
+at12:12:01; boss15739HP. Source176 fixes live target drift: targets are chosen
+within6yalms of the bunker, but pending movement refreshed their position after
+selection even when they had left (85 orderedGilgamesh11:59:30, final movement
+captured himx-16 by11:59:38). Immediately recheck the surviving defended stone
+before a19 attack order; cancel/reassess if enemy left its6yalm area. No roster,
+attempt or purchase changes. Compile isolated176 first.175 still owns87's result.
+
+175 watched build passed; loaded12:10:13/resumed87 at12:10:17.87 was admitted
+12:09:54 and entered12:10:01 under174, but only the shared Goobbue opening had
+been summoned before reload. Native12:10:40-47 verifies Succubus attackers and
+no Uma army;175 began before attacker deployment. Third permitted attempt;
+70/23/mask262143 remain the confirmed totals. No settings edits or Resume.
+Retain175 for native buff, add defense and explicit result evidence. No source
+candidate or tool session pending.5focused tests pass; prior full suite817pass.
+
+86 LOST12:09:38, credited once70/23; no clear. Result is positively reconciled.
+Intent: watched175 immediately after this settled result, retaining the existing
+third-attempt budget. Both rosters share the initial Goobbue opening; verify the
+next admission's actual attacker roster and queue after load before calling it
+a fresh175 test. No Resume, purchase or account edits.175 isolated build and5
+focused lifecycle tests passed. This deployment must not credit85's unknown exit.
+
+174 loaded12:04:34/dispatched12:04:38.86 admitted12:04:51, battlefield12:04:58,
+second attempt of the current bounded run. At12:08:00 both outer stones gone,
+B3670HP, boss15404HP; defender losses start12:08:02. No result yet observed.
+175 IS SOURCE/ISOLATED ONLY: isolated compile and all5 VerminionLifecycleTests
+pass; whitespace clean. No pending tool sessions. Last full suite817passed171.
+Do not deploy the roster switch into a living Uma army: retain174 through86 and
+any remaining87, reconciling native results and saved accounting. If174 clears19,
+keep that proven roster and discard only175's unneeded Succubus roster candidate.
+If the bounded run pauses without a clear, the reviewed +40 monster-buff roster
+may then justify guarded Resume after exact paused-state reconciliation and a
+watched175 build. No further Resume or account edits have occurred since84.
+Loaded174 still uses4Goobbue/8Uma;175 candidate is4Goobbue/16Succubus.
+
+174 watched build passed; load/admission not yet reconciled. Source-only175
+prepares an owned-roster alternative for repeated add overruns: keep4Goobbues,
+replace8Uma(cost20 each) with16Succubus(cost10 each). Succubus's observed +40
+monster ATK area special also buffs Goobbue AoE, unlike Uma's +20 own-party buff.
+This reuses15/16's verified minion and native special; no purchases or new control.
+Focused queue/capacity assertions updated for10-point requests. Compile/test
+isolated175, but HOLD watched deployment until174's fresh attempt settles and
+its defender movement has been reviewed. No Resume/reset or config edits.
+
+173 watched build passed/loaded12:02:31, resumed85 at12:02:35, but85 ended
+without a result observed12:02:40. No credit:69/23/mask262143, pending0,
+sequence85, stage19attempts1/runattempts1, pausedFalse. Explicitly unresolved
+result; do not repair totals from inference. No additional settings changes.
+Intent174: executable marker only to dispatch the next permitted fresh attempt
+under173's reviewed contact fixes. Preserve remaining two attempts; no Resume
+or counter reset. Confirm174 load/admission and allow the result to settle before
+another watched reload so result observation is not interrupted.
+
+85 center B fell by12:01:51; boss13899HP at12:01:53. Defender stale-contact
+correction173 isolated compile passed; final review confines changed arrival
+threshold/rounding to19. Intent: watched173 now, preserving85 or whichever owned
+admission is current and its existing attempt limit. No settings or Resume.
+
+85 native12:00:14 confirms172 exposed rally: Uma atz-0.3..-3.9, versus stone
+model obstruction. B3510HP, boss15494HP; twelve adds mostly480/480HP approach
+fromx-2/z5 while four Goobbues standx2..3/z3..4. A ground-only defender order
+was kept30seconds for the same moving add. Source173 refreshes Stage19 defenders
+at5seconds while most remain outside2yalm melee; leaves engaged groups alone.
+Attacker arrival reassessment likewise requires2yalm contact, not6. No roster,
+attempt or purchase change. Compile isolated173; hold watched until85's next
+phase/result evidence. No new Resume;85 is first attempt of this run.
+
+172 watched build passed; loaded11:57:54/dispatched11:57:58. Guarded Resume
+matched exactly paused84 and preserved all confirmed facts.85 admitted11:58:06,
+battlefield11:58:13. Background click evidence still foregroundFalse11:58-59.
+No new source candidate or tool session. Continue85 through buff/defense/result
+milestones; do not alter attempts while it is owned. Stages19-24 remain pending.
+
+84 LOST11:56:04, credited once69matches/23wins; boss13251HP. Three-attempt
+pause confirmed11:56:18, pending0/sequence84/stage19attempts3/mask262143.
+172 isolated compile and whitespace passed;817tests passed on171. Reviewed
+movement-priority/exposed-rally correction warrants the next bounded test.
+Intent: guarded Resume of that exact paused84 state, preserving all result
+facts, sequence, both zero caps and spending, then watched172. Reconcile load
+and new admission; no Stage19 clear or buff retreat success claimed yet.
+
+171 loaded11:50:25/resumed83 at11:50:29.83 LOST11:52:07, credited once68/23;
+boss9743HP.84 admitted11:52:23, third allowed attempt, fresh171.817tests pass.
+Source172 corrects priority: Stage19 optional single-party readiness probes ran
+before movement decisions, potentially deferring pursuit through every candidate.
+Now probe only when its ordinary action is Wait; preserve Stage15 final probing.
+Idle Stage19 attackers use exposed ground4yalms in front of the stone, avoiding
+the same stone-model obstruction already corrected for defenders. No roster,
+caps or accounting change. Compile isolated172 first;84 still owns its result.
+Do not Resume/reset before reconciling the third attempt and exact saved state.
+
+82 LOST11:47:37, credited once67/23; boss15565HP. Center held through11:46:29
+then fell to converging adds.83 admitted11:47:54, second attempt under170.
+Source171 fixes a concrete selection ownership bug in FollowBoss: native party
+inspection selects ONE member and sets groupSelectionVerified, but movement
+reuse treated it as the whole group. Reuse now also requires !groupSelectionOnly
+and no singleUnitSelection. Ordinary party orders reselect the nearby type after
+an ability probe. No roster, attempt or accounting changes. Intent: compile then
+watched171 preserving83 or the current owned admission and its pause. No Resume.
+
+82 milestone11:46:29 under170: centerB still4555HP with both outer stones gone;
+boss15565HP. Goobbues now engage (one80/410HP), and Uma82 dispatched against adds
+11:46:23. The new exposed defense holds B longer than prior placements. No native
+boss buff has occurred yet in this attempt, so early-warning retreat is still
+unverified. Retain170; let82 reach its phase/result within normal time/attempt
+limits instead of changing the now-functional deployment. No settings edits.
+
+170 final isolated/watched builds and whitespace passed;817tests passed before
+the final probe-priority review (those service changes are compile-checked).
+Guarded Resume matched paused81/pending0/66/23/stage19attempts3/mask262143 exactly;
+all facts, sequence, zero caps/spending preserved.170 loaded11:43:10/dispatched
+11:43:14.82 admitted11:43:21, battlefield11:43:29. Exposed defender positions
+verified11:44:48: four Goobbuesx-0.4..-1.9,z-0.5..1.1 beside/front ofB, versus
+previousz8..9.5. Center4555HP at that snapshot, boss still16000 atouterA. Keep
+170 running for phase/ability/result evidence. No source-only candidate or tool
+session remains. Stage19 clear, stages20-24, purchases/tournaments, FULL STOP
+runtime cases and ten fresh background farming wins remain open.
+
+170 final review keeps defender deployment ahead of optional party probes and
+requires four nearby same-type units before probing Stage19 specials. This
+prevents ability inspection from delaying stranded groups/defense when only a
+partial party is in combat. Rebuild this final source before watched deployment.
+
+169 built/loaded11:39:43/resumed owned81 at11:39:47.81 LOST11:40:31, credited
+once66matches/23wins; boss10894HP. No counter edits. Important correction to the
+168 diagnosis:81's every-frame observer still saw962 at23.79sec,964 at26.88sec,
+966 at29.97sec. Buffs are staggered about3sec each; requiring ALL three delayed
+retreat6sec independently of pending controls.170 now enters on ANY of962/964/
+966 and leaves after all expire, keeping168's phase preemption. This observed
+phase correction plus169's exposed defense/action-party checks warrants a fresh
+bounded test after build/tests and exact paused81/pending0/66/23/mask262143/
+stage19attempts3 reconciliation. Use existing reviewed Resume accounting only;
+preserve match sequence/results and zero caps/spending. Version0.5.0.3 unchanged.
+
+81 native11:36:47 explains weak center defense: all four Goobbues had410HP and
+stoodz7.9-9.5, behind the stone atz2, while Gilgamesh attacked atz2.8. The direct
+stone-center order left them outside melee.169 also sends defenders to an
+exposed point4yalms beside the stone, or to an observed nearby Enkidu position.
+Orders stay ground-only so a moving add cannot drag the group out of the defense
+area during camera work. Keep four defenders/eight Uma and all limits unchanged.
+Compile this geometry correction; deploy169 to the still-owned81 after build,
+or retain its limit pause if81 has already settled. No Resume/reset authorized
+by this deployment. Native arrival/damage and any victory still require evidence.
+
+80 LOST11:34:43, credited once65/23. The168 add-special condition dispatched82
+at11:34:02 with boss still16000HP; the collapsed army could not recover.81
+admitted11:34:59, third allowed attempt, fresh168. Source-only169 reuses Stage15
+native action-party probing for Stage19 at full capacity, against nearby adds
+or boss. Selecting defenders previously left Uma specials unattended until the
+next movement order. Keep attacks active while selecting living party members;
+wait10seconds after the bounded candidate set, clear probes at phase transitions.
+No composition, budget or accounting change. Compile separately; hold watched
+169 until81's phase result or a concrete runtime failure warrants intervention.
+
+168 isolated/watched builds,817tests and whitespace passed. Loaded11:33:12 and
+resumed owned80 at11:33:16. No account edits.80 still had untouched16000HP boss
+and center4605HP; outer stones were gone. Review phase-preemption effectiveness
+only once a fresh native buff occurs. Queue-ownership change is built but live
+FULL STOP acceptance remains open. No source-only candidate or tool session.
+
+79 LOST11:29:43, credited once64/23. Early Goobbue defense and Uma special are
+verified: native82 at11:27:22, boss13700HP then;79 ended with boss9705HP. Center
+survived until11:29:38. Stage19 minimap framing confirmed scale3.5 and subsequent
+unit selection/movement.80 admitted11:30:00, second permitted attempt under167.
+Native962 had only23.45seconds remaining when detected11:27:36: pending controls
+postponed phase observation by about6.5seconds.168 now observes phase ahead of
+selection/camera steps, cancels their stale destination, prioritizes retreat,
+and allows defender replacements once attackers reach their gate. Area special
+may target nearby adds even while the boss is farther away. Includes reviewed
+queue-ownership fix. Intent: compile then watched168 preserving80/attempt2 or
+whatever next owned admission is current, no Resume/reset or purchase changes.
+
+Source-only168 fixes a lifecycle gap found in review: Start formerly adopted any
+matching queue with admissionConfirmed=true, even after its saved match had been
+abandoned. Now resume requires the existing saved match/duty. Abandon persists
+its removal before requesting native CancelQueue, guarded by the same character
+and exact single-stage queue. Reload of an owned admission remains supported.
+Reuse the existing native cancellation method used by ChocoboRace; no new state
+or tools. Live FULL STOP/queue cancellation acceptance remains pending. Compile
+this candidate separately and hold watched deployment while79 runs under167.
+
+167 isolated/watched builds,817tests and whitespace passed. Guarded reviewed
+Resume applied to exactly paused78, preserving all confirmed facts and zero
+caps/spending.167 loaded11:25:29, dispatched11:25:33.79 admitted11:25:41 and
+entered19 at11:25:48. Three Goobbue opening requests verified11:25:54-56 at60
+capacity. No pending build/tool session. Continue79 through explicit evidence.
+
+167 isolated compile passed. Saved selected character reconciled: pauseTrue,
+pending0/sequence78/stage19attempts3,63matches23wins/mask262143, zero purchase
+caps/spending. Reviewed early-defense/area-special/gate-recovery corrections now
+justify one new bounded run. Intent: after tests pass apply existing Resume to
+that exact state, then watched167; no result fact or sequence will change.
+
+78 LOST11:21:16, credited once63matches/23wins; boss11474/16000HP. Limit paused
+11:21:30. Center fell before the final stone. Roster evidence confirms owned
+Uma-no-unicolt529:480HP/65ATK/35DEF/cost20/speed3, area120 special plus partyATK20.
+Source167 adds a reviewed strategy correction to the camera change: summon four
+Goobbues first (reserve initial60 for defenders), keep them on the center stone,
+then eight Uma attackers defend the center/nearby boss and adds. Their damage
+special replaces Tora's slow. Recover at the gate during native962/964/966 phase.
+No purchases. After build/tests, guarded development Resume may reset only the
+exact paused78/pending0/63/23/stage19attempts3/mask262143 state. Preserve all result
+facts, sequence, caps/spending. Fresh attempt required to test this opening.
+
+Source-only167 extends the existing Stage9/12 minimap camera path to Stage19.
+Current code already tries that helper for19, but the interaction duty gate
+rejected570. Reuse the live gate/stone geometry consistency checks and subsequent
+projection validation; include570 in the existing bounded minimap node capture.
+No new control method, signatures, input injection, files or attempts. Hold the
+watched deployment until78 settles; loaded166 remains responsible for its result.
+
+77 LOST11:16:53, credited once62/23.78 admitted11:17:09, its third permitted
+Stage19 attempt.166 built successfully and loaded11:18:11/resumed78 at11:18:14;
+no counters/settings changed. Native pursuit now reaches boss: HP14679/16000
+at11:19:47 (previous77 barely87damage). Goobbues target Enkidu; B2990HP and
+C4680HP at11:19:46. Continue78 to its explicit result; no clear claimed.
+
+77 mid-fight evidence11:16:16: boss15913/16000HP atx11 while all8Tora were at
+x-10, the previous destination. Goobbues had been repeatedly ordered onto the
+moving boss, contrary to the intended stationary add-defense role. Source166
+uses existing Stage12 three-second pursuit/verified-selection reuse for Stage19,
+and excludes Gilgamesh from its defenders' nearby threats. No new controls,
+roster or budget. Intent: compile then watched166 preserving current77/any next
+ordinary admission and all attempt/result facts. No Resume or settings changes.
+Expected verminion-control-20260925-166; version remains0.5.0.3.
+
+165 watched build succeeded,817tests and whitespace passed. Loaded11:13:10;
+76 had already exited and remains uncredited. New match77 admitted11:13:26,
+Stage19 entered11:13:33 under the unchanged second attempt. Native background
+selection/movement verified11:14:05-17; first Tora group crossed from gate toward
+Gilgamesh with foregroundFalse and no click-settlement failure. Continue77;
+no further build or settings edits until a concrete strategy observation.
+
+164 built and loaded; admission76 reached Stage19 at11:08:22, then stopped
+uncredited11:08:53. Its selection-clear click remained queued when the next
+selection was issued96ms later. The prompt clock was sampled before native
+projection/panel work and did not prove the device consumed its release.
+Saved76/pending0/61matches23wins/stage19attempts1/mask262143, caps/spending0.
+Source165 now waits for the actual pending native click to clear before reading
+selection or issuing another command, with a2second settlement bound. This
+preserves the existing click protocol and never changes focus or the OS cursor.
+Intent: isolated compile/tests, then watched165 preserving current admission
+facts, attempt count and pause; do not recreate abandoned76 or reset its budget.
+Expected verminion-control-20260925-165; version0.5.0.3 unchanged.
+
+164 final isolated build/817tests/whitespace passed. Fresh11:07:15 state exactly
+pausedtrue/pending0/sequence75/stage19attempts3/61matches23wins/mask262143/caps0.
+Intent now: apply the existing reviewed Resume accounting for the role/pursuit
+and stranded-unit corrections, then watched164. Preserve confirmed progress and
+purchases. Fresh new admission is required; all prior75 results remain terminal.
+Expected verminion-control-20260925-164, version0.5.0.3 unchanged.
+
+75 LOST11:04:22, credited once61/23; closure11:04:26, campaign limit paused
+11:04:36. Goobbues reached center, but boss remained15255/16000HP. Keeping both
+parties at the stone left attackers idle while Gilgamesh was elsewhere.164 now
+separates roles through existing controls: Goobbues defend the stone; Tora chase
+Gilgamesh. Native buff transitions immediately reconsider orders, and exposed
+attackers retreat before fresh deployments/defender updates during the buff.
+Includes the observed stranded-gate correction. After final compile/tests, a
+reviewed development Resume may reset only the exact paused75/pending0/61/23/
+stage19attempts3 state. Preserve all result facts and zero caps. No new attempt
+has yet been dispatched. Source164; loaded163.
+
+75 admitted11:00:10. Mixed deployment verified: four Goobbues reached the center
+by11:02:32, all410HP; eight Tora exist. Three Tora stayed at their gate despite
+11:01:53 SendWave and were still there11:02:34. The dispatched-ID set excluded
+these stranded units permanently, so FollowBoss kept selecting the center party.
+Source164 rechecks Stage19 units still at gates after15seconds and permits a
+partial departure at full capacity when no summons remain. No extra retries or
+budgets; native positions drive the existing rally decision. Preserve75/attempt3
+and all facts; no Resume/reset. Deploy this specific correction after compile.
+
+Fresh saved state11:00:34: pending75/duty570, Stage19 attempts3, pausefalse,
+60weeklymatches/23wins, clearedmask262143 (1-18), gil/MGP caps and spending0.
+Loaded163, mixed Goobbue/Tora strategy. Let75 settle before another watched build
+unless fresh evidence identifies a concrete correction. Reconcile its outcome
+before any new admission or Resume. Remaining: Stage19-24 clears, background
+farming repeatability, FULL STOP runtime cases, purchases and CPU tournaments.
+
+163 loaded10:59:23/resumed pending74 at10:59:26. Goobbue defender requests began
+10:59:32; the earlier battle's damage was already severe.74 LOST10:59:53, credited
+once60matches/23wins. Next ordinary campaign admission is the third allowed
+Stage19 attempt, now with the mixed composition available from the start. No
+Resume/reset authorized just by reaching the limit; review fresh result evidence.
+Source and watched build both163; no source-only candidate or tool session remains.
+All817tests and whitespace checks passed. Version0.5.0.3, zero purchase caps intact.
+
+163 final isolated compile and817tests passed. Fresh74 evidence10:58:44 shows
+boss10342/16000HP, four attackers remaining in combat with four replacements ready.
+The second attempt also loses groups to clustered Enkidus. Intent now: watched163,
+preserving whichever owned admission is current and any saved pause, no settings
+edits. Goobbue is already on the native palette, so existing-field recovery can
+summon defenders as capacity frees. Stage24 research stays bounded120seconds.
+Expected verminion-control-20260925-163; version unchanged.
+
+Stage19 match73 LOST10:54:52, credited once59/23; boss12458/16000HP survived.
+Twelve Tora-jiro fell to adds; center4705HP was then lost in about40seconds after
+retreat. Native962/964/966 buff detection and retreat dispatch are confirmed;
+winning phase behavior is not. Second74 admitted10:55:09. Palette already has
+Goobbue41. Source163 now also reuses Stage6's existing four-defender deployment
+for four Goobbue Sproutlings (AoE monster55ATK,cost20) in Stage19, reserving80
+capacity and leaving160 for Tora. Tora prioritizes the boss near the stone while
+Goobbues intercept adds. Skip the Goobbue trap-disarm special without traps.
+Includes focused existing-test reservation coverage. No attempt/counter edits;
+load this observed-failure correction into74 after compile/tests, preserving it.
+
+Stage19 first attempt running under162;12 Tora-jiro at240capacity. At10:52:35,
+Gilgamesh14482/16000HP, friendlyB4705HP, all three stones still positive. Native
+central defense commands are working; no clear or buffed-phase proof yet.163
+isolated build passed before a final null guard on the optional collision logger;
+that guard avoids dereferencing a missing AtkStage during teardown. Source163
+still undeployed; keep current attempt intact until a result/observed failure.
+
+New source-only163 (replaces the withdrawn flank candidate): permit one bounded
+Stage24 phase observation once campaign reaches it. Use already-owned Haurchefant
+with existing boss controls; capture native casts/positions/field objects every
+15seconds for at most120seconds, then stop uncredited unless an explicit owned
+result already occurred. The normal three-attempt gate remains. No tower/dodge
+mechanics are assumed or claimed. Native observations are required to implement
+those mechanics. No impact to Stage19-23 recipes; hold deployment until transition.
+
+Stage18 match72 WON10:50:39 under162, credited once58matches/23wins. Friendly
+C3645HP survived. The prepared flank-only163 was not deployed and has now been
+withdrawn: retain the strategy that produced this clear. Source matches loaded162
+again; the isolated output still contains the unused163 candidate. No watched
+reload required. Continue normal Stage19 admission and inspect its native phases.
+Verified campaign mask now262143 (1-18). No settings or attempt resets.
+
+162 loaded10:48:44/resumed pending72 at10:48:47. Owned stats confirm Wuk speed1,
+35ATK/25DEF/cost10 with Arcana strength; Haurchefant85ATK/speed4/cost30. No owned
+minion has an HP-healing special. Stage24 remains gated. Source-only163 changes
+Stage18 to A/C/B gate order: the observed first center group died without stone
+damage, while both flanks succeeded. Use existing six-Wuk groups and converge
+from fallen flank stones; no new controls, roster or budget. Hold watched163
+until72 settles, and verify on a fresh admission if another attempt is needed.
+
+Stage18 match71 LOST10:46:57, credited once57/22. Last enemy B1205HP survived;
+its initial six Wuks caused no center-stone damage before dying. Other two stones
+fell. Native foes include Goobbue, Slime, Golem, Baby Bat, Mindflayer and birds.
+Second match72 admitted10:47:14, battlefield10:47:21. Intent before watched162:
+load the compiled roster/cast diagnostics while retaining pending72 and attempts2;
+no composition or budget change. Need owned combat stats for this observed loss
+as well as the later bosses. Expected verminion-control-20260925-162.
+
+Stage17 match70 WON10:43:03, credited once56/22; closure10:43:06. Stage18
+match71 admitted10:43:19, battlefield10:43:27, first opening order confirmed.
+Loaded161. Isolated162 passed; hold watched deployment until Stage18 settles.
+No settings changes. Sequential background clears16/17 now have positive results.
+
+161 loaded10:40:31/resumed Stage17 pending70 at10:40:34, preserving its admission.
+Source-only162 enriches existing bounded setup snapshots with owned minion combat
+stats/special descriptions and existing cast snapshots with native target position.
+This resolves the available healing/tower roster for Stage24 without purchases or
+new diagnostics files. Hold watched162 until the ordinary campaign reaches a
+useful transition; no new strategy or settings changes are included.
+
+69 WON10:39:39, credited exactly once55matches/21wins; Stage16 clear verified.
+Last friendly stone640HP remained. Group redirect across the field eventually
+brought the army to the final stone. Closure10:39:43, Stage17 match70 admitted
+10:39:56. This is the first complete background battle victory with selection,
+movement, buffs and native result evidence under160. Intent before watched161:
+deploy the reviewed opening/reinforcement distinction during Stage17 entry,
+preserving pending70, all facts and pause. No settings/attempt resets. Isolated161
+passed; expected marker verminion-control-20260925-161, version0.5.0.3 unchanged.
+
+Source-only161 review tightens160's preservation condition: mark a reinforcement
+selection explicitly. OpeningComplete advances when selection is requested, so
+it was not sufficient to distinguish the final opening group from reinforcements.
+Opening failures still stop; only marked late reinforcements use the ordinary
+cadence deferral. Hold watched161 for match69's result; loaded160 unchanged.
+
+160 loaded10:34:12/dispatched10:34:16. Earlier68 had already left duty, still
+uncredited. Fresh69 admitted10:34:29 and battlefield10:34:36. Opening selection,
+group movement and buff dispatched with actual foregroundFalse. Retain160 while
+this result-preservation correction is exercised. No additional settings edits.
+
+68 failed10:31:20 on an obscured late reinforcement, abandoned with no credit;
+saved54/20, mask32767, pending0, sequence68, stage16attempts3, pausedtrue. The
+prepared160 directly fixes this failure path without issuing unverified orders.
+Fresh817 tests passed. Intent before watched160: guarded development Resume using
+that exact saved state after this reviewed correction; reset only existing run/
+stage attempt fields and pause, preserve all result facts and zero caps/spending.
+If physical68 remains, resume without recreating its abandoned match. Expected
+verminion-control-20260925-160. Background special confirmed in159: native ATK Up
+status962 on six units10:29:25 after82 at10:29:24. No Stage16 clear yet.
+
+159 loaded10:27:45; prior67 had ended outside duty, still uncredited.68 admitted
+10:28:02 under the unchanged third-attempt budget. Source-only160 extends native
+selection checks to every ordinary stage, and reuses the existing boss behavior
+for obscured late ordinary reinforcements: issue no unverified order, preserve
+current attacks/result observation, reconsider at the existing20second cadence.
+The old proof-stage failure abandoned67 despite two destroyed enemy stones.
+Opening control failures and exact carrier failures still stop; no loss/attempt
+limit is removed. Hold watched160 until68 settles unless a concrete failure needs
+this correction. No settings/counter edits. Loaded159; candidate160 not deployed.
+
+67 stopped10:24:58 on six failed late group selections, abandoning its identity
+without result credit (54/20 retained). Two enemy stones had fallen.159 now also
+preserves a button-up virtual pointer for up to3seconds between related clicks,
+and answers same-thread game cursor queries between native frames. The old OS
+path left the cursor in place until movement cleanup; the new path prematurely
+snapped to the real outside cursor after every release. This is a scoped game-read
+substitution only, never OS cursor/focus mutation; ownership/expiry/Stop clear it.
+Intent: watched159 to resume the physical67 if available, never recreate its
+abandoned admission; preserve all attempt facts and any saved pause. Expected159.
+
+158 loaded10:20:08/resumed66; its earlier single-unit delays led to Defeat10:20:51,
+credited once54matches/20wins.67 admitted10:21:08, attempt2, clean corrected input.
+This run positively proves group movement: six friendly Succubi all crossed the
+center by10:22:18 after the10:21:42 order, while six later spawns stayed at their
+gate. Native82 buff dispatched10:22:07. Both input frames and native troop positions
+are required evidence; foregroundFalse verified in157/158 logs, no OS mouse calls.
+Source-only159 reduces diagnostic input logging to release edges and reuses the
+existing one-second observation delay after ordinary attack buffs, so their native
+status can be captured before expiring. Hold watched159 until67 settles. No settings
+or accounting changes. Current loaded158; next expected159 when intentionally built.
+
+157 loaded10:16:35;66 admitted10:16:51. ActualforegroundFalse throughout the
+first selection and right-click frames proves background dispatch. Native hit
+1073768741 verified10:17:22, order10:17:25. But10:18:01 shows the other five
+members still near GateB; only the clicked unit attacked. Earlier small all-unit
+position deltas were insufficient group-movement proof. Double-only flags do not
+expand the selection.158 supplies pressed+double together on the same-type step,
+matching batched click edges, and retains all hit guards. Reload pending66 without
+changing attempt1 or any facts. Expected158. Only single-unit background control
+has sufficient evidence; group/special/Stage16 acceptance remains open.
+Stage24 research: https://ffxiverminion.com/stage24-the-final-coil requires tower
+soaks, lethal circle avoidance, healing and Twintania adds; keep its gate until
+native telegraph/tower state and phase commands are observed.
+
+156 loaded10:15:16 and resumed abandoned65 at10:15:20, but its physical duty
+ended10:15:25 without an observed result. Correctly no credit or replacement
+admission.157 intent: settings-only marker reload from this resolved outside-duty
+state to test the corrected background single/double/release path on a clean
+Stage16 admission. No config, counters or pause edits. Expected157.
+
+65 had failed10:13:28 on exhausted selectable candidates, so155 loaded10:14:19
+but correctly remained paused10:14:22. No credit; no155 input ran. Intent156:
+after the now-reviewed release/double-click fixes, guard the exact paused saved
+state pending0/sequence65/stage16attempts3/53matches20wins/mask32767/caps0,
+apply existing development Resume accounting and reload. If the physical65 still
+exists it remains abandoned/uncredited. Expected156; same0.5.0.3.
+
+155 deployment now warranted:154 repeatedly selects a friendly on its first click
+but its same-type second click clears index17 (10:12:39-41). Native mouse-message
+code confirms +0x14 is double-click, distinct from pressed +0x10.155 explicitly
+supplies that event for the existing same-type selection step. Native down/double
+handlers set held+pressed or held+double respectively; release stays +0x18.
+Include removal of window messages and real foreground observation. Preserve
+pending65 if still owned and its third attempt; do not reset pause/counters.
+Expected155. Normal single selection and bomb carrier semantics are unchanged.
+
+154 loaded10:09:42;65 admitted under the existing third-attempt budget.
+Correct release offsets produced positive native selection10:10:31 (inactivetrue),
+all six units advanced after the10:10:34 order, native82 special dispatched10:10:57,
+second group selected10:11:08 and ordered10:11:11. Battle65 continues; no win yet.
+Prepared155 removes the now-unneeded window-message experiment and logs actual
+OS foreground equality (Framework.WindowInactive alone may reflect message state).
+Keep155 source-only until65 settles unless an observed control failure warrants
+reload. No settings changes. Retain154 as this battle's loaded marker.
+
+153 loaded10:06:14/resumed64; right-click proof10:06:25->31 did NOT move any
+unit toward the requested lateral destination. No credit; stopped10:06:31.
+Native151 code capture revealed a concrete installed-struct mismatch:
+MouseDevice.Update cursor base2AE8CA8, ProcessMouseInputMessage button-up writes
+2AE8CC0 (+0x18), RepeatCounter result2AE8CC4 (+0x1C). Installed fields label
++0x14 Released and +0x18 HeldThrottled, so our samples erased real release edges.
+154 corrects those three button-edge offsets locally, removes the movement probe,
+and restores all native hit guards. No inferred function/address is executed;
+RVA values above are research evidence only. Intent: watched154, preserve abandoned
+64 and all attempt/result facts; no Resume/accounting edits. Expected154.
+
+152 loaded10:03:55;64 admitted10:04:12, failed10:04:47 without credit.
+The diagnostic destination was offscreen (gate origin+6X), so no movement was
+sent; this cannot reject the hover/readback hypothesis.153 corrects the probe
+origin to the actual clicked unit plus3X, a short lateral order. Preserve all
+accounting/attempts and resume the existing physical64 if still present; never
+recreate its abandoned identity. Expected153; no pause/Resume edits.
+
+151 loaded10:00:39 and stayed paused. Declared input queries confirm pressed/down
+read the propagated filtered button fields. A remaining ambiguity: index17 is
+hover information, not durable selection, so its absence may reject a working
+selection before any movement command.152 makes one bounded diagnostic right
+click after the first unverified Stage16 selection, records native units before
+and six seconds after, then fails without inferring selection/result. No normal
+strategy bypass and no credit from the diagnostic. Remove temporary code captures.
+Intent after isolated build: clear only this diagnostic pause, retain sequence63,
+attempt1/pending0/53matches20wins/mask32767/caps0. Expected152. Actual movement
+is required; input dispatch alone still proves nothing.
+
+150 loaded09:58:13/resumed abandoned63, failed09:58:28 with no credit.
+Primary, secondary and UI pressed/released edges propagate correctly; no native
+cursor caller could be unwound through the managed detour. Remove that trace.
+151 intent: diagnostic pause only (no result/budget change), read bounded bodies
+of declared InputData queries and mouse Update while paused. No new battle or
+control dispatch. The native consumer still has to be identified. Expected151.
+
+149 loaded09:54:44; match63 failed09:55:35 after six unverified group candidates.
+No result credit.817 tests passed. Window messages plus device samples remain
+insufficient.150 traces bounded GetCursorPos native callers and primary/secondary
+button edges to identify the actual consumer; no inferred address is executed.
+Intent: watched150 using existing accounting and remaining attempt budget, with
+no further Resume/reset. Preserve abandoned63 if its physical battle survives.
+Expected20260925-150; no background selection/movement claim.
+
+149 isolated build passed. Review added own-window button release on pre-sample
+expiry and direct hook disposal (normal service Reset already releases input).
+Fresh saved state exactly matches paused/pending0/sequence62/stage16attempts3,
+53matches/20wins/mask32767 and zero caps/spending. Intent now: guarded reviewed
+Resume accounting, then watched149. No existing result credit will change.
+
+148 native handler is camera-only: RawInputData readsPAD_MOUSE_L, pointer events
+update minimap/camera coordinates. It does not select battlefield minions. Remove
+all temporary code-body capture and RVA reads.149 combines native device samples
+with own-window WM_MOUSEMOVE/button messages, so both sampled and window-event
+input paths receive the command. Earlier window messages alone did not reach
+Framework; device samples alone reached it but did not select. All messages target
+this client's window, with owned releases on stop; no global input/focus calls.
+After isolated compile, reviewed development Resume may restart the exhausted
+control attempt budget only for paused/pending0/sequence62/stage16attempts3/53/20.
+Preserve result facts and zero caps. Expected149; selection remains unverified.
+
+147 constructor read confirms the original vtable atRVA22C65D8 (LEA at16E1F62).
+148 reads its declared ReceiveEvent entry and captures8192 bounded code bytes,
+still without executing any inferred address or entering battle. Expected148.
+
+146 loaded09:46:20, paused. Named factory resolves to executableRVA134850 and
+calls constructor16E1F50 after allocatingCC0 bytes.147 follows that observed call
+with a bounded read-only constructor snapshot, guarded by the factory identity;
+no inferred native call is executed. Expected147; no admissions or input.
+
+145 loaded09:44:07 after the battle ended; addon absent, pause preserved.
+146 reads the named LovmMiniMap factory from declared RaptureAtkModule tables
+while outside battle. This enables native code inspection without another
+admission or failure-budget reset. Expected146; no live controls.
+
+144 confirmed the current addon receiver is Dalamud's managed vtable wrapper.
+145 uses public IAddonLifecycle.GetOriginalVirtualTable for the same read-only
+bounded code capture. Still paused, no controls/admissions. Expected145.
+
+143 loaded09:41:15 and stayed paused; no handler bytes captured at constructor
+time.144 defers this single read to the normal service framework update and
+reports why a handler is unavailable. No control dispatch or Resume. Expected144.
+
+142 loaded09:38:59, match62 admitted09:39:16 (third allowed attempt). Game's
+GetCursorPos import is queried2-3times during the synthetic frames, but selection
+still unverified. Failed09:39:51, no credit; saved campaign pause reached.
+143 read-only intent: keep that pause and capture the declared LovmMiniMap
+ReceiveEvent body, without invoking it, to trace the actual battlefield consumer.
+No more admissions or budget reset. Expected143; existing53matches/20wins remain.
+
+141 in-viewport flag remainsfalse through frame end, filtered coordinates/buttons
+are valid, but no minion readback; failed09:35:58 without credit.142 intent:
+also answer the game's own GetCursorPos import with the synthetic screen point,
+only during the owned native frame on its thread. This is a read-result override
+inside this process, not OS cursor movement or input to another application.
+Count those queries to verify this separate position source is used. Preserve
+all accounting/attempt limits. Expected142; no background victory claim.
+
+140 positions/buttons reached filtered input with collision=none, but every
+sample reports Cursor.IsCursorOutsideViewPort=true despite its valid synthetic
+point. Failed09:34:10 with no credit.141 intent: give the existing native cursor
+that point's in-viewport flag during the device sample and restore the original
+flag at frame end, with the device buffer. This changes no OS cursor or window
+focus. Preserve abandoned61 and all admission budgets; expected141.
+
+139 device samples propagate into Framework and UI with the requested positions
+and buttons, proving the source boundary. No minion selection yet; failed
+09:32:41 without result credit.140 intent: supply a neutral positioning frame
+with correct cursor delta before the button press, matching the natural
+move-then-click sequence, and capture filtered state/collision/outside flag.
+Keep abandoned match identity and all accounting; no Resume/reset edits.
+Expected140; background selection still unverified.
+
+138 loaded09:27:52 and confirmed paused09:27:55. AtkModule.HandleInput capture
+shows ordinary UI collision processing; changing its input is not sufficient.
+Installed structs declare MouseDeviceInterface.GetData (virtual4), returning the
+device's CursorInputData, and InputDeviceManager.MouseDevice.139 replaces the
+unsuccessful AtkModule hook with this device getter, retaining natural processing
+and restoring the device-owned buffer at native frame end. No raw event calls,
+new signatures, OS mouse injection or focus mutation. Remove temporary code dump.
+Intent after isolated compile: clear only the diagnostic development pause,
+preserve all budgets/results (53/20, pending0, abandoned60), then test selection
+and actual movement. No campaign win is claimed. Expected20260925-139.
+
+137 native samples also produced no minion readback through frame end; failed
+09:25:08 without credit.138 intent: pause the development run without changing
+result/attempt facts, capture one bounded4096byte body of the already-declared
+AtkModule.HandleInput for read-only control-flow inspection, and remain paused.
+The supplied minidump contains globals/exception code but not this function.
+No automatic battle retry while tracing the actual cursor consumer. Expected138.
+
+136 loaded09:21:05, match60 admitted09:21:22, no selection verified and failed
+09:21:57 without credit. Native cursor samples reached HandleInput with live
+bindings, consumed0, but no minion readback changed. The UI boundary ended before
+battlefield consumers could read the sample.137 intent: keep the transient UI
+and Framework cursor samples through the same natural frame, restore them in
+the declared Framework.Tick hook's finally, and retain only the immediate native
+hit readback for the existing selection check. No OS input/focus calls. Resume
+the existing physical battle without recreating abandoned60; if already outside,
+normal admission/attempt gates apply. No further accounting edits. Expected137.
+
+135 verified loaded09:11:01; reload dispatch blocked09:11:05 by the saved
+campaign pause. Match59 had already stopped09:10:33 without credit; pending0,
+53matches/20wins/mask32767/stage16attempts3. Returned to388 at09:14:46.
+136 intent: remove all Verminion OS focus/cursor/global mouse code, including
+the screenshot helper. Camera keys use ECommons messages to this process's
+window. Use installed ClientStructs AtkModule.HandleInput at its normal frame
+boundary, substituting/restoring only live cursor samples and change flags;
+retain native bindings and event dispatch, never call a raw receiver manually.
+This is a control candidate, not yet a verified selection or movement contract.
+After isolated compile, apply reviewed development Resume only for the exact
+paused/pending0/sequence59/stage16attempts3/53matches/20wins state, preserving
+all result facts and zero purchasecaps/spending. Use the existing native readback
+checks to stop on failed selection. Expected20260925-136, version0.5.0.3.
+
+USER STEERING: David is actively using the target PC. Background controls are
+now required; do not focus its game window or move/inject the global cursor.
+135 immediate containment intent: disable new OS battlefield mouse presses and
+focus/cursor mutation while retaining release cleanup for already-owned input.
+Current Stage16 match59 admitted09:10:03; preserve its identity/results, but a
+control stop is not a result.134 loaded09:09:46 and started fresh from Minion
+Square; abandoned58 remained uncredited (53matches/20wins). No pending result
+was recreated. Next: research verified in-client/background commands. Never
+restore the raw AtkInputData receiver experiment that previously crashed.
+Expected20260925-135; unchangedversion. This replaces live focus authorization.
+
+
+134 reconciliation intent:58 stopped09:06:31 with no result credit. The blank
+field point projected successfully, but native own-window focus request was
+rejected; no mouse input was sent. This is an input-availability failure,
+not a strategy result or failed geometry search. Preserve abandoned58 and
+stage16attempts2, totals53/20. No Resume or accounting edits. Reload once to
+observe/close any existing result without recreating its admission. Carry the
+source-prepared Stage15 final-reload probing fix. Expected20260925-134.
+Do not force focus using another process or operate another client.
+
+
+133 runtime loaded09:05:53/resumed Stage16 at09:05:57; native queue drained
+09:06:02.58 is the second Stage16 admission. At reload twelve old Wuk units
+occupied120capacity; new Succubus groups are assembling through the existing
+queue. Preserve58 and its attempt budget. No purchases or config edits.
+Source-only next134: final-phase party probing no longer depends on the
+in-memory odinRegrouped flag, allowing a final-phase reload to find charged
+parties too. Native phase/party readiness still gates every command. Do not
+reload58 merely for this later-stage lifecycle fix; next marker134 on deployment.
+
+
+133 intent: Stage16 match57 lost09:04:41; credited53/20, closed09:04:44.
+One enemy stone remained3170HP. Native enemy roster consists of Wayward,
+Storm, Serpent, Princely and Heavy Hatchlings, matching the guide's critter
+army. Extend the verified Stage7 Succubus counter opening and native attack
+buff to16. Preserve the next normal admission and stage attempt budget; no
+Resume or result/config changes. If58 has begun, existing Wuk units consume
+capacity while Succubus groups assemble; never invent a new admission.
+Expected20260925-133, unchangedversion. Stage15's verified132 logic preserved.
+
+
+Stage15 CLEAR:56 won09:00:26 (4:21), credited once52matches/20wins.
+Single-minion selection09:00:05 exposed first native buff; a different party
+selection09:00:15 exposed a second buff. Explicit You Win09:00:26 proves the
+full24 Succubus/early gate recovery/one-third-health party rotation strategy.
+Loaded132 is the proven Stage15 baseline. Closure09:00:29; Stage16 match57
+admitted09:00:42/battlefield09:00:49. Stages1-15 cleared(mask32767).
+Source matches132; both purchasecaps and spending remain0. Next milestone:
+observe57's ordinary objectives/result, then16-18 and prepared19 boss logic.
+Do not reload merely for documentation. Next deliberate marker133.
+All817 tests passed under131;132 build and whitespace check passed.
+No pending tool sessions. External baseline commit830a8dd remains unchanged;
+current edits are unstaged. Preserve unrelated ChocoboRace change in that commit.
+
+
+132 loaded08:57:54/resumed56 at08:57:58, preserving admission56 and attempt1.
+At resume boss15777/17000HP; the first final cast now uses a single selected
+friendly minion, followed by candidate rotation and native82 readiness checks.
+Source matches132; build/diff checks pass, full817 tests passed under131.
+No pending tool sessions. Next milestone:56's healed final phase and result.
+
+
+132 intent before56 final phase: use the new single-minion selection for the
+first final buff as well as subsequent probes. The official special contract
+requires one selected member of a nearby charged party; avoid selecting the
+entire army when only its special is requested. Leave existing attacks intact.
+Preserve56/admission/attempt1 and all result/budget facts; no Resume mutation.
+Expected20260925-132, unchangedversion.131 isolated/watched builds passed,
+and current regression suite passed817/817. No stage15 clear yet.
+
+
+131 runtime: loaded08:55:20, dispatched once08:55:23. Reviewed Resume persisted;
+56 admitted08:55:31, first reviewed attempt. Totals51/19, mask16383 and caps/
+spending0. Source matches131. Next: observe early recovery and additional native
+party selection during final phase, then explicit result. All prior clears1-14
+remain; no stage15 success yet. Changelog consolidated to current behavior;
+detailed experiments remain in this checkpoint and Git. No build sessions pending.
+
+
+131 intent:55 early retreat08:48:34 at10015HP, safely disengaged8650HP.
+All24 healed08:49:15, finalphase08:50:13 at5605HP, buff08:50:15 at5374HP.
+Only one final buff executed; lost08:50:45 with515HP, credited51/19.
+Three-attempt pause08:50:59. Official guide confirms action readiness depends
+on selecting a charged nearby four-minion party.131 selects another nearby
+friendly candidate without issuing movement, then checks native82 readiness;
+6.5sec buff spacing, bounded living roster probes. Avoid redundant final pursuit.
+After build checks apply reviewed Resume only for pausedtrue/pending0/sequence55/
+stage15attempts3/51matches/19wins/mask16383/capsandspending0, no later FULL STOP.
+Preserve every result fact. Expected20260925-131, unchangedversion0.5.0.3.
+
+
+130 runtime:55 admitted08:45:18/battlefield08:45:25.130 loaded08:46:18,
+resumed55 once08:46:22. Pending55 is preserved, attempt3; totals50/19 and
+clearedmask16383. No purchases. Await early recovery, full24 redeployment and
+actual result before any further strategy change. Source matches130.
+
+
+130 intent:129 loaded08:43:19/resumed54 at08:43:22, queue drained08:43:27.
+54 withdrew08:44:25 at6510HP, but retreat latency left5228HP before units
+escaped. Boss stopped moving then; all stones were destroyed08:45:01 with
+5228HP still remaining. Defeat credited50/19. This disproves treating25% as
+an exact final-phase trigger.53 crossed roughly33% at08:40:08 and lost33sec
+later;54 crossed roughly33% during retreat and lost about30sec later.
+130 recovers at60% to leave a withdrawal margin, then saves the healed army's
+buff until boss<=one-third HP. Final party concentration also uses one-third.
+Preserve next normal pending match and third-attempt budget; no Resume/reset.
+Expected20260925-130, unchangedversion. Stage15 remains unverified.
+
+
+129 intent:53 full24 departure08:38:28, firstbuff08:38:58. Early damage strong,
+but finalphase08:40:25 had only11 deployed,4 atgate.53 lost08:40:45 with1874HP;
+credited49/19, closed08:40:49.54 admitted08:41:02/battlefield08:41:09.
+129 preserves54 and attempt2. Add one gate recovery below40%/above25%HP,
+requiring24 living,95%HP,near gate and20sec before redeployment;90sec bound.
+Use existing minimap camera path for15 after offscreen group diagnostic.
+No Resume/accounting/config edits. Expected20260925-129, unchangedversion.
+All817 tests passed128;129 isolated build precedes watched deployment.
+
+
+128 runtime: loaded08:36:20, dispatched once08:36:24 after standard cleanup.
+Reviewed Resume persisted. Match53 admitted08:36:32; result still pending.
+48verified matches/19wins, clearedmask16383; both purchasecaps/spending0.
+DebugDLL length1978880 (compiletimestamp08:34:18, then reused by watched build).
+Source matches128. Observe full24 opening, native buffs and explicit result;
+do not treat admission as success. No pending build/test sessions.
+
+
+128 deployment intent:52 lost08:34:53 with1598HP, credited48matches/19wins;
+closed08:34:57 and three-attempt pause08:35:07. The healed mixed army failed
+three times. Deploy the prepared24-Succubus opening and6.5sec native buffs.
+Apply reviewed Resume only for pausedtrue/pending0/sequence52/stage15 attempts3/
+48matches/19wins/mask16383/capsandspending0, and no later FULL STOP. Reset only
+pause and existing run/stage attempt budgets; preserve all result facts.
+Isolated128/all817 tests/diff check pass. Expectedmarker20260925-128,
+unchanged0.5.0.3, solely the existing watched DebugDLL path. New composition
+is unverified; do not infer a clear from build or dispatch.
+
+
+128 source-only preparation (all817 tests now pass): 127 loaded08:15:52/dispatched08:15:56.
+50 admitted08:16:04. Gate regroup08:19:32 positively completed08:20:18 with
+all twelve healed, but50 lost08:21:45 with2626HP; credited46/19.
+51 admitted08:22:02, lost08:28:31 with357HP; credited47/19.
+52 admitted08:28:47/battlefield08:28:54, third allowed attempt, still pending.
+Do not reload this mixed-army battle merely to change composition.
+The repository was externally committed as830a8dd at08:23:51; its contents
+match the inherited127 work. No commit was made by this continuation.
+Preserve that baseline, including the unrelated ChocoboRace change.
+Source-only next composition uses24 owned Succubus82 before engaging Odin,
+bounded six-request queue and6.5sec buff interval. Mixed-party/regroup logic
+removed from source; old127 remains loaded. Isolated build and lifecycle5/5
+pass, diff whitespace check passes. Wait for52's explicit result and normal
+attempt pause before considering reviewed Resume. No purchases or budget edits.
+
 
 127 source/test intent:48 lost08:05:51(3:59), boss1144; credited44/19.49 admitted
 08:06:08. An unexpected same-marker126 reload occurred08:06:47/resumed08:06:50;

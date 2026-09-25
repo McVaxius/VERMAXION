@@ -1,6 +1,6 @@
 namespace VERMAXION.Services;
 
-/// <summary>Split objective attackers across the field, countering Stage 7's critters.</summary>
+/// <summary>Split objective attackers across the field, countering critter armies.</summary>
 internal sealed class VerminionBattleStrategy(int stage = 2)
 {
     public static bool IsStoneStage(int stage) => stage is 2 or 3 or 5 or 7 or 8 or
@@ -16,8 +16,8 @@ internal sealed class VerminionBattleStrategy(int stage = 2)
     public bool OpeningComplete => lane >= 3;
     public int Gate => (lane % 3) switch { 0 => 1, 1 => 0, _ => 2 };
     public int EnemyLane => 2 - Gate; // Enemy A/C labels are mirrored across the field.
-    public ushort CurrentMinion => stage == 7 ? CritterCounter : Minion;
-    public string CurrentMinionName => stage == 7 ? CritterCounterName : MinionName;
+    public ushort CurrentMinion => stage is 7 or 16 ? CritterCounter : Minion;
+    public string CurrentMinionName => stage is 7 or 16 ? CritterCounterName : MinionName;
     public int GroupSize => 6;
     public int MinionCost => 10;
     public uint TargetBaseId => 2006537u;
@@ -81,24 +81,24 @@ internal sealed class VerminionBossStrategy(int stage = 4)
     public const string DefenderName = "Wind-up Haurchefant";
     public const int DefenderCost = 30;
     public const int DefenderCount = 4;
+    // Stage 19: monsters counter Enkidu; critters counter Gilgamesh.
+    public ushort CurrentDefenderMinion => stage == 19 ? (ushort)41 : DefenderMinion;
+    public string CurrentDefenderName => stage == 19 ? "Goobbue Sproutling" : DefenderName;
+    public int CurrentDefenderCost => stage == 19 ? 20 : DefenderCost;
+    public int CurrentDefenderCount => stage == 19 ? 8 : DefenderCount;
     // Haurchefant's ATK and poppet affinity penetrate armored monster bosses.
-    private bool UsesHaurchefant => stage is 12 or 23;
+    private bool UsesHaurchefant => stage is 12 or 23 or 24;
     public bool DefendsStone => stage is 12 or 19;
-    public ushort CurrentMinion => stage == 15 ? (ushort)546 : stage == 19 ? (ushort)243 : UsesHaurchefant ? DefenderMinion : Minion;
-    public string CurrentMinionName => stage == 15 ? "Wind-up Gulool Ja Ja" : stage == 19 ? "Tora-jiro" : UsesHaurchefant ? DefenderName : MinionName;
-    public int MinionCost => stage is 15 or 19 ? 20 : UsesHaurchefant ? DefenderCost : 10;
-    public int WaveSize => UsesHaurchefant || stage is 15 or 19 ? 4 : 6;
+    public ushort CurrentMinion => stage == 15 ? VerminionBattleStrategy.CritterCounter : stage == 19 ? (ushort)243 : UsesHaurchefant ? DefenderMinion : Minion;
+    public string CurrentMinionName => stage == 15 ? VerminionBattleStrategy.CritterCounterName : stage == 19 ? "Tora-jiro" : UsesHaurchefant ? DefenderName : MinionName;
+    public int MinionCost => stage == 19 ? 20 : UsesHaurchefant ? DefenderCost : 10;
+    public int WaveSize => UsesHaurchefant || stage == 19 ? 4 : 6;
     public VerminionSummonTracker Defenders { get; } = new();
-    public VerminionSummonTracker Support { get; } = new();
-    public int AttackCapacity(int capacity, int defenders, int support = 0) => capacity <= 60 ? capacity :
-        System.Math.Max(0, capacity - System.Math.Max(0, DefenderCount - defenders) * DefenderCost -
-            (stage == 15 ? System.Math.Max(0, 4 - support) * 10 : 0));
+    public int AttackCapacity(int capacity, int defenders) => capacity <= 60 ? (stage == 19 ? 0 : capacity) :
+        System.Math.Max(0, capacity - System.Math.Max(0, CurrentDefenderCount - defenders) * CurrentDefenderCost);
     public bool CanRequestDefender(int defenders, int usedCapacity, int capacity) =>
-        defenders + Defenders.Pending < DefenderCount &&
-        Defenders.CanRequest(usedCapacity + PendingSummons * MinionCost + Support.Pending * 10, capacity, DefenderCost);
-    public bool CanRequestSupport(int support, int usedCapacity, int capacity) => stage == 15 &&
-        support + Support.Pending < 4 &&
-        Support.CanRequest(usedCapacity + PendingSummons * MinionCost + Defenders.Pending * DefenderCost, capacity);
+        defenders + Defenders.Pending < CurrentDefenderCount &&
+        Defenders.CanRequest(usedCapacity + PendingSummons * MinionCost, capacity, CurrentDefenderCost);
     public static bool IsInvulnerabilityAdd(int stage, string name) => stage == 6 &&
         (name.Equals("Infant Imp", System.StringComparison.OrdinalIgnoreCase) ||
          name.Equals("Imp", System.StringComparison.OrdinalIgnoreCase));
@@ -109,16 +109,16 @@ internal sealed class VerminionBossStrategy(int stage = 4)
     public int ObserveUnits(System.Collections.Generic.IEnumerable<ulong> units) => summons.ObserveUnits(units);
 
     public Action Decide(bool gateSelected, int readyUnits, int deployedUnits,
-        int usedCapacity, int capacity, double waveSeconds, double orderSeconds, bool bossMoved, bool gateAvailable = true)
+        int usedCapacity, int capacity, double waveSeconds, double orderSeconds, bool bossMoved, bool gateAvailable = true, bool assemble = false)
     {
-        if (readyUnits >= WaveSize || readyUnits > 0 && waveSeconds >= 60) return Action.SendWave;
-        if (deployedUnits >= 4 && orderSeconds >= 10 && bossMoved) return Action.FollowBoss;
+        if (!assemble && (readyUnits >= WaveSize || readyUnits > 0 && waveSeconds >= 60)) return Action.SendWave;
+        if (!assemble && deployedUnits >= 4 && orderSeconds >= 10 && bossMoved) return Action.FollowBoss;
         // Reserve capacity for requests whose units have not appeared yet.
         if (gateAvailable && summons.CanRequest(usedCapacity, capacity, MinionCost))
             return gateSelected ? Action.Summon : Action.SelectGate;
         // Repeated selection/movement takes time away from filling the queue.
         // Refresh a stationary group only after reinforcements are accounted for.
-        if (deployedUnits >= 4 && orderSeconds >= 40) return Action.FollowBoss;
+        if (!assemble && deployedUnits >= 4 && orderSeconds >= 40) return Action.FollowBoss;
         return Action.Wait;
     }
 
