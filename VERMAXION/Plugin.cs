@@ -42,7 +42,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "chocobo-progression-v3-20260924-65";
+    private const string DebugAttemptMarker = "verminion-control-20260924-20";
     private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"D:\temp\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
@@ -224,7 +224,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, YesAlreadyIPC, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
-        VerminionService = new VerminionService(CommandManager, Condition, Log);
+        VerminionService = new VerminionService(CommandManager, Condition, Log, ConfigManager, LifestreamIPC, VNavmeshIPC);
         CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC, LifestreamIPC);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient,
             () => CanStartChocoboProgression(out var reason) ? null : reason);
@@ -378,6 +378,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
         Framework.Update -= OnFrameworkUpdate;
+        VerminionService.Dispose();
         ClientState.Login -= OnLoginEvent;
         ConfigManager.OnCharacterChanged -= OnCharacterChanged;
 
@@ -633,7 +634,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 SetDebugTaskStatus("Cancelled: the character changed during cleanup.");
                 return;
             }
-            var ready = GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _);
+            var ready = GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _) ||
+                pendingDebugDispatchTaskId == AutomationCatalog.VerminionQueue && CanObserveVerminionForReload();
             if (!ready && DateTime.UtcNow < debugDispatchReadyDeadline) return;
             var dispatchId = pendingDebugDispatchTaskId;
             pendingDebugDispatchTaskId = null;
@@ -666,11 +668,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             SetDebugTaskStatus("Chocobo progression is paused; explicit Resume is required before reload continuation.");
             return;
         }
+        if (taskId == AutomationCatalog.VerminionQueue && ConfigManager.GetActiveConfig().VerminionPaused)
+        {
+            SetDebugTaskStatus("Verminion is paused; explicit Run/Resume is required before reload continuation.");
+            return;
+        }
         try
         {
             if (taskId == AutomationCatalog.ChocoboRacing)
                 CommandManager.ProcessCommand("/chokeabo inspect");
-            FullStop();
+            FullStop(preparingDebugTask: true);
             pendingDebugDispatchTaskId = taskId;
             debugDispatchContentId = PlayerState.ContentId;
             debugDispatchReadyDeadline = DateTime.UtcNow.AddSeconds(30);
@@ -1919,7 +1926,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var betweenAreas = Condition[ConditionFlag.BetweenAreas];
         var betweenAreas51 = Condition[ConditionFlag.BetweenAreas51];
         var playerAvailable = GameHelpers.IsPlayerAvailable() || loggedIn && hasLocalPlayer && !betweenAreas && !betweenAreas51 &&
-            contentId != 0 && ChokeAboIpcClient.GetTargetCycleStatus(contentId).Status?.CanResumeOwnedInteraction == true;
+            contentId != 0 && (ChokeAboIpcClient.GetTargetCycleStatus(contentId).Status?.CanResumeOwnedInteraction == true || CanObserveVerminionForReload());
 
         if (!loggedIn ||
             !hasLocalPlayer ||
@@ -1947,6 +1954,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
         reason = "world-ready";
         return true;
+    }
+
+    private bool CanObserveVerminionForReload()
+    {
+        var player = ObjectTable.LocalPlayer;
+        return Configuration.DebugTaskId == AutomationCatalog.VerminionQueue && player != null &&
+            Configuration.DebugTaskCharacterKey == $"{player.Name}@{player.HomeWorld.Value.Name}" &&
+            (ClientState.TerritoryType == 388 || Condition[ConditionFlag.PlayingLordOfVerminion]);
     }
 
     private bool TryGetWorldReadyCharacterForFishing(out string charName, out string worldName, out ulong contentId, out string reason)
@@ -2434,7 +2449,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// <summary>
     /// FULL STOP - Immediately halts ALL plugin operations, services, and navigation.
     /// </summary>
-    public void FullStop()
+    public void FullStop(bool preparingDebugTask = false)
     {
         pendingDebugDispatchTaskId = null;
         if (pendingDebugTaskId != null)
@@ -2444,6 +2459,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
+        if (!preparingDebugTask && PlayerState.ContentId != 0 && !string.IsNullOrEmpty(ConfigManager.CurrentCharacterKey))
+        {
+            ConfigManager.GetActiveConfig().VerminionPaused = true;
+            ConfigManager.SaveCurrentAccount();
+        }
         PauseCurrentTargetCycleBestEffort("VERMAXION Full Stop");
 
         ScheduledOfflineHoldCoordinator.Cancel("Full Stop", DateTimeOffset.UtcNow);

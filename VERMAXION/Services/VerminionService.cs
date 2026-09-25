@@ -1,388 +1,361 @@
 using System;
+using System.Linq;
+using System.Numerics;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
+using Dalamud.Game.ClientState.Keys;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using VERMAXION.IPC;
 
 namespace VERMAXION.Services;
 
-/// <summary>
-/// Lord of Verminion queue service.
-/// Uses AgentContentsFinder.OpenRegularDuty() for direct duty queuing.
-/// LoV.lua: QueueDuty(576) for Normal mode, wait for Condition[14] (playingLordOfVerminion),
-/// click ContentsFinderConfirm Commence, wait for LovmResult, callback LovmResult false -2 then true -1.
-/// This pattern is reusable for Chocobo Racing and other Gold Saucer duties.
-/// </summary>
-public class VerminionService : IDisposable
+/// <summary>Coordinates the existing Verminion task and its bounded control proof.</summary>
+public sealed class VerminionService : IDisposable
 {
     private readonly ICommandManager commandManager;
     private readonly ICondition condition;
     private readonly IPluginLog log;
-
-    // LoV.lua: ModeIDs = { Normal = 576, Hard = 577, Extreme = 578 }
-    // ContentFinderCondition row ID for Lord of Verminion (Normal)
-    private const uint LovNormalCfcId = 576;
-
-    private bool isActive = false;
-    private VerminionState state = VerminionState.Idle;
-    private DateTime stateEnteredAt = DateTime.MinValue;
-    private int currentAttempt = 0;
-    private const int MaxAttempts = 5;
-    private bool joinAttempted = false;
-    private bool dutySelected = false;
-    private DateTime lastJoinRetry = DateTime.MinValue;
-    private int dutySelectionAttempts = 0;
-    private uint returnHomeOriginTerritory;
+    private readonly ConfigManager configManager;
+    private readonly LifestreamIPC lifestream;
+    private readonly VNavmeshIPC navigation;
+    private DateTime stateEnteredAt;
+    private ulong owner;
+    private bool navigationRequested;
+    private bool ownsTravel;
+    private DateTime nextInteractionUtc;
+    private bool admissionConfirmed;
+    private bool admissionSnapshot;
+    private int tutorialPromptFloor;
+    private string handledPrompt = string.Empty;
+    private DateTime promptHandledUtc;
+    private DateTime nextPromptCheckUtc;
+    private VirtualKey? heldKey;
+    private DateTime releaseKeyUtc;
+    private bool pendingGateSummon;
+    private int pendingTutorialSummons;
+    private bool pendingTutorialMove;
+    private string reason = "Idle";
 
     public enum VerminionState
     {
-        Idle,
-        ReturningHome,
-        WaitingForHomeReady,
-        OpeningDutyFinder,
-        QueueingForDuty,
-        WaitingForDutyPop,
-        ClickingCommence,
-        InDuty,
-        WaitingForResult,
-        DismissingResult,
-        WaitingForPlayerAvailable,
-        Complete,
-        Failed,
+        Idle, TravellingToSaucer, TravellingToMinionSquare, ApproachingTable,
+        InspectingControls, SelectingTutorial, WaitingForTutorial, InDuty, Complete, Failed,
     }
 
-    public VerminionState State => state;
-    public int CurrentAttempt => currentAttempt;
-    public bool IsActive => state != VerminionState.Idle && state != VerminionState.Complete && state != VerminionState.Failed;
-    public bool IsComplete => state == VerminionState.Complete;
-    public bool IsFailed => state == VerminionState.Failed;
-    public string StatusText => state == VerminionState.Idle ? "Idle" : $"{state} ({currentAttempt}/{MaxAttempts})";
+    public VerminionState State { get; private set; }
+    public int CurrentAttempt => 0;
+    public bool IsActive => State is not (VerminionState.Idle or VerminionState.Complete or VerminionState.Failed);
+    public bool IsComplete => State == VerminionState.Complete;
+    public bool IsFailed => State == VerminionState.Failed;
+    public string StatusText => reason;
 
-    public VerminionService(ICommandManager commandManager, ICondition condition, IPluginLog log)
+    public VerminionService(ICommandManager commandManager, ICondition condition, IPluginLog log,
+        ConfigManager configManager, LifestreamIPC lifestream, VNavmeshIPC navigation)
     {
         this.commandManager = commandManager;
         this.condition = condition;
         this.log = log;
+        this.configManager = configManager;
+        this.lifestream = lifestream;
+        this.navigation = navigation;
     }
 
     public void Start()
     {
-        isActive = true;
-        currentAttempt = 0;
-        SetState(VerminionState.ReturningHome);
-        log.Information($"[Verminion] Preparing Verminion queue cycle (0/{MaxAttempts}) with /li home");
+        if (IsActive) return;
+        if (configManager.GetActiveConfig().VerminionPaused)
+        { Fail("Paused by FULL STOP; use Run/Resume."); return; }
+        owner = Plugin.PlayerState.ContentId;
+        if (owner == 0) { Fail("No current character."); return; }
+        VerminionGameInteraction.CaptureSetup();
+        VerminionGameInteraction.CaptureBattle("start observation");
+        admissionConfirmed = false;
+        admissionSnapshot = false;
+        tutorialPromptFloor = VerminionGameInteraction.CurrentLogIndex();
+        handledPrompt = string.Empty;
+        pendingGateSummon = false;
+        pendingTutorialSummons = 0;
+        pendingTutorialMove = false;
+        nextPromptCheckUtc = DateTime.MinValue;
+        if (VerminionGameInteraction.HasTutorialQueue())
+        {
+            admissionConfirmed = true;
+            SetState(VerminionState.WaitingForTutorial, "Resuming the verified Stage 1 queue");
+            return;
+        }
+        if (VerminionGameInteraction.IsAdmissionPrompt)
+        { SetState(VerminionState.WaitingForTutorial, "Resuming tutorial admission"); return; }
+        if (VerminionGameInteraction.IsChallengeMenu)
+        { SetState(VerminionState.SelectingTutorial, "Resuming tutorial selection"); return; }
+        if (VerminionGameInteraction.IsSetupMenu)
+        { SetState(VerminionState.InspectingControls, "Resuming the verified Verminion setup menu"); return; }
+        if (condition[ConditionFlag.PlayingLordOfVerminion])
+        {
+            SetState(VerminionState.InDuty, "Resuming tutorial control proof");
+            return;
+        }
+        if (!GameHelpers.IsPlayerAvailable() || condition[ConditionFlag.BoundByDuty] ||
+            condition[ConditionFlag.InDutyQueue] || condition[ConditionFlag.WaitingForDutyFinder] ||
+            !lifestream.TryReadBusy(out var busy) || busy)
+        { Fail("Character, duty queue, or travel is busy/unavailable."); return; }
+        if (!VerminionGameInteraction.PrepareOwnedPalette())
+        { Fail("Three owned minions could not be verified on the palette. No purchases made."); return; }
+        if (Plugin.ClientState.TerritoryType == 388)
+        { SetState(VerminionState.ApproachingTable, "Approaching the Verminion table"); return; }
+        if (Plugin.ClientState.TerritoryType == 144)
+        { TravelToMinionSquare(); return; }
+        ownsTravel = lifestream.ExecuteCommand("/li saucer");
+        if (!ownsTravel) { Fail("Gold Saucer travel was rejected."); return; }
+        SetState(VerminionState.TravellingToSaucer, "Travelling to the Gold Saucer");
     }
 
     public void RunTask()
     {
-        log.Information("[VERMAXION] Manual Verminion queue triggered");
+        if (IsActive) return;
+        configManager.GetActiveConfig().VerminionPaused = false;
+        configManager.SaveCurrentAccount();
         Start();
     }
 
     public void Reset()
     {
-        // If we're being reset while active, mark as Complete to clear pending count
-        if (isActive)
-        {
-            log.Information("[Verminion] Reset called while active, marking as Complete");
-            SetState(VerminionState.Complete);
-        }
-        else
-        {
-            SetState(VerminionState.Idle);
-        }
-        isActive = false;
-        state = VerminionState.Idle;
-        stateEnteredAt = DateTime.MinValue;
-        currentAttempt = 0;
-        joinAttempted = false;
-        dutySelected = false;
-        lastJoinRetry = DateTime.MinValue;
-        dutySelectionAttempts = 0;
-        returnHomeOriginTerritory = 0;
+        StopOwnedMovement();
+        owner = 0;
+        navigationRequested = false;
+        SetState(VerminionState.Idle, "Idle");
     }
 
-    public void Dispose() { }
+    public void Dispose() => Reset();
 
-    /// <summary>
-    /// Open the Duty Finder to a specific duty using AgentContentsFinder.
-    /// Reusable for LoV, Chocobo Racing, and other Gold Saucer duties.
-    /// </summary>
-    /// <param name="contentFinderConditionId">ContentFinderCondition row ID</param>
+    // Shared with other Gold Saucer tasks; opening is not selection or admission.
     public static unsafe bool OpenDutyFinder(uint contentFinderConditionId)
     {
-        try
-        {
-            var agent = AgentContentsFinder.Instance();
-            if (agent == null)
-            {
-                Plugin.Log.Error("[DutyQueue] AgentContentsFinder is null");
-                return false;
-            }
-            agent->OpenRegularDuty(contentFinderConditionId);
-            Plugin.Log.Information($"[DutyQueue] Opened duty finder for CFC ID {contentFinderConditionId}");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.Error($"[DutyQueue] Failed to open duty finder: {ex.Message}");
-            return false;
-        }
+        var agent = AgentContentsFinder.Instance();
+        if (agent == null) return false;
+        agent->OpenRegularDuty(contentFinderConditionId);
+        return true;
     }
 
     public void Update()
     {
-        if (state == VerminionState.Idle || state == VerminionState.Complete || state == VerminionState.Failed)
-            return;
-
+        if (!IsActive) return;
+        if (owner == 0 || Plugin.PlayerState.ContentId != owner)
+        { Fail("Character changed; no result recorded."); return; }
+        if (configManager.GetActiveConfig().VerminionPaused)
+        { Fail("Paused; no result recorded."); return; }
         var elapsed = (DateTime.UtcNow - stateEnteredAt).TotalSeconds;
-
-        switch (state)
+        try
         {
-            case VerminionState.ReturningHome:
-                if (elapsed < 0.5)
+            switch (State)
+            {
+                case VerminionState.TravellingToSaucer:
+                    if (elapsed > 120) { Fail("Gold Saucer travel timed out."); return; }
+                    if (elapsed < 3 || !TravelSettled() || Plugin.ClientState.TerritoryType != 144) return;
+                    ownsTravel = false;
+                    TravelToMinionSquare();
                     return;
-
-                returnHomeOriginTerritory = Plugin.ClientState.TerritoryType;
-                log.Information("[Verminion] Returning home before opening ContentsFinder: /li home");
-                commandManager.ProcessCommand("/li home");
-                SetState(VerminionState.WaitingForHomeReady);
-                return;
-
-            case VerminionState.WaitingForHomeReady:
-                if (elapsed < 3)
+                case VerminionState.TravellingToMinionSquare:
+                    if (elapsed > 90) { Fail("Minion Square travel timed out."); return; }
+                    if (elapsed < 3 || !TravelSettled() || Plugin.ClientState.TerritoryType != 388) return;
+                    ownsTravel = false;
+                    SetState(VerminionState.ApproachingTable, "Approaching the Verminion table");
                     return;
-
-                if (Plugin.ClientState.TerritoryType != returnHomeOriginTerritory && GameHelpers.IsPlayerAvailable())
-                {
-                    log.Information("[Verminion] /li home completed, opening duty finder");
-                    SetState(VerminionState.OpeningDutyFinder);
-                }
-                else if (elapsed > 12 && GameHelpers.IsPlayerAvailable())
-                {
-                    log.Information("[Verminion] /li home settled without a territory change, opening duty finder");
-                    SetState(VerminionState.OpeningDutyFinder);
-                }
-                else if (elapsed > 25)
-                {
-                    log.Warning("[Verminion] Timed out waiting for /li home to settle, opening duty finder anyway");
-                    SetState(VerminionState.OpeningDutyFinder);
-                }
-                return;
-
-            case VerminionState.OpeningDutyFinder:
-                if (elapsed < 1) return;
-                log.Information($"[Verminion] Starting LoV queue (attempt {currentAttempt + 1}/{MaxAttempts})");
-                
-                // Use AgentContentsFinder to open DF directly to LoV Normal
-                if (OpenDutyFinder(LovNormalCfcId))
-                {
-                    joinAttempted = false;
-                    dutySelected = false;
-                    lastJoinRetry = DateTime.MinValue;
-                    dutySelectionAttempts = 0;
-                    SetState(VerminionState.QueueingForDuty);
-                }
-                else
-                {
-                    log.Error("[Verminion] Failed to open duty finder");
-                    SetState(VerminionState.Failed);
-                }
-                break;
-
-            case VerminionState.QueueingForDuty:
-                // Wait for ContentsFinder addon to appear, select duty, then click Join
-                // Need to wait 5-8 seconds for DF window to fully load
-                if (elapsed < 6) return;
-                
-                if (GameHelpers.IsAddonVisible("ContentsFinder"))
-                {
-                    // Clear duty selection on first run (currentAttempt == 0)
-                    if (currentAttempt == 0 && elapsed < 6.5)
+                case VerminionState.ApproachingTable:
+                    if (elapsed > 60) { Fail("Could not reach the Verminion table."); return; }
+                    var player = Plugin.ObjectTable.LocalPlayer;
+                    if (player == null || !GameHelpers.IsPlayerAvailable()) return;
+                    var table = Plugin.ObjectTable.Where(obj => obj.BaseId == 2006529 && obj.IsTargetable)
+                        .OrderBy(obj => Vector3.DistanceSquared(player.Position, obj.Position)).FirstOrDefault();
+                    if (table == null) { Fail("No Verminion table is loaded."); return; }
+                    if (Vector3.Distance(player.Position, table.Position) > 3.8f)
                     {
-                        log.Information("[Verminion] Clearing duty selection for first run");
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 1);
-                        return; // Give it a moment to process
+                        var direction = Vector3.Normalize(new Vector3(player.Position.X - table.Position.X, 0, player.Position.Z - table.Position.Z));
+                        var approach = table.Position + direction * 2.4f;
+                        approach.Y = player.Position.Y;
+                        if (!navigationRequested) navigationRequested = navigation.PathfindAndMoveTo(approach);
+                        return;
                     }
-                    
-                    if (!dutySelected)
+                    if (navigationRequested) { navigation.Stop(); navigationRequested = false; }
+                    if (DateTime.UtcNow < nextInteractionUtc) return;
+                    nextInteractionUtc = DateTime.UtcNow.AddSeconds(2);
+                    if (!VerminionGameInteraction.InteractWithTable(table)) return;
+                    SetState(VerminionState.InspectingControls, "Reading the Verminion setup menu");
+                    return;
+                case VerminionState.InspectingControls:
+                    if (elapsed < 3) return;
+                    if (GameHelpers.TrySelectStringExact("Verminion Challenge", out _))
+                        SetState(VerminionState.SelectingTutorial, "Selecting the tutorial");
+                    else if (elapsed > 10) Fail("The verified Verminion Challenge menu is unavailable.");
+                    return;
+                case VerminionState.SelectingTutorial:
+                    if (elapsed < 2) return;
+                    VerminionGameInteraction.CaptureAddon("SelectString");
+                    VerminionGameInteraction.CaptureAddon("SelectIconString");
+                    if (GameHelpers.TrySelectStringExact("Stage 1: Tutorial", out _))
+                        SetState(VerminionState.WaitingForTutorial, "Waiting for tutorial admission");
+                    else Fail("Challenge menu captured; the tutorial entry requires verification.");
+                    return;
+                case VerminionState.WaitingForTutorial:
+                    if (elapsed > 60) { VerminionGameInteraction.CaptureBattle("admission timeout"); Fail("Tutorial admission timed out; no result recorded."); return; }
+                    if (elapsed < 2) return;
+                    if (!admissionConfirmed && VerminionGameInteraction.IsAdmissionPrompt)
+                        admissionConfirmed = GameHelpers.TryClickNativeButton("SelectYesno", "Yes", 8);
+                    if (admissionConfirmed && DateTime.UtcNow >= nextInteractionUtc && VerminionGameInteraction.TryCommenceTutorial())
+                        nextInteractionUtc = DateTime.UtcNow.AddSeconds(5);
+                    if (elapsed > 10 && !admissionSnapshot)
                     {
-                        // Skip duty selection for 2nd+ attempts (currentAttempt > 0)
-                        if (currentAttempt > 0)
-                        {
-                            log.Information($"[Verminion] Skipping duty selection for attempt {currentAttempt + 1}, directly joining");
-                            dutySelected = true;
-                            return;
-                        }
-                        
-                        // Try duty selection multiple times if needed (only for first attempt)
-                        if (dutySelectionAttempts < 3)
-                        {
-                            log.Information($"[Verminion] ContentsFinder visible, selecting Player Battle (Non-RP) (attempt {dutySelectionAttempts + 1}/3)");
-                            // User confirmed: callback 3, 5 selects the correct duty
-                            // Format: /callback ContentsFinder true 3 5
-                            GameHelpers.FireAddonCallback("ContentsFinder", true, 3, 5);
-                            
-                            // Also try Join after each selection attempt
-                            // Format: /callback ContentsFinder True 12 0
-                            log.Information($"[Verminion] Attempting Join after selection (attempt {dutySelectionAttempts + 1})");
-                            GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
-                            
-                            dutySelected = true; // Mark as selected since we tried
-                            dutySelectionAttempts++;
-                            return; // Give it a moment to process
-                        }
-                        else
-                        {
-                            log.Warning("[Verminion] Failed to select duty after 3 attempts, retrying from start");
-                            SetState(VerminionState.OpeningDutyFinder);
-                            return;
-                        }
+                        admissionSnapshot = true;
+                        VerminionGameInteraction.CaptureBattle("ten seconds after admission selection");
                     }
-                    else if (!joinAttempted && elapsed > 8)
-                    {
-                        log.Information("[Verminion] Duty selected, clicking Join");
-                        // ContentsFinder Join button = callback true 12 0 (Register for duty)
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
-                        joinAttempted = true;
-                    }
-                    else if (elapsed > 15 && elapsed % 5 < 0.1) // Rate limit retries to every 5 seconds
-                    {
-                        // If still showing after 15s, try clicking Join again (rate limited)
-                        log.Information($"[Verminion] ContentsFinder still visible after {elapsed:F1}s, retrying Join");
-                        GameHelpers.FireAddonCallback("ContentsFinder", true, 12, 0);
-                    }
-                }
-                if (joinAttempted &&
-                    (condition[ConditionFlag.WaitingForDutyFinder] || condition[ConditionFlag.WaitingForDuty]))
-                {
-                    log.Information("[Verminion] Duty queue registered, waiting for duty pop");
-                    SetState(VerminionState.WaitingForDutyPop);
-                }
-                else if (elapsed > 8 && !GameHelpers.IsAddonVisible("ContentsFinder"))
-                {
-                    log.Information("[Verminion] ContentsFinder closed, waiting for duty pop");
-                    SetState(VerminionState.WaitingForDutyPop);
-                }
-                else if (elapsed > 30)
-                {
-                    log.Warning("[Verminion] Timeout waiting for queue registration, retrying");
-                    SetState(VerminionState.OpeningDutyFinder);
-                }
-                break;
-
-            case VerminionState.WaitingForDutyPop:
-                // LoV.lua: while not Svc.Condition[14] do wait
-                // Check for ContentsFinderConfirm addon (duty pop)
-                if (GameHelpers.IsAddonVisible("ContentsFinderConfirm"))
-                {
-                    log.Information("[Verminion] Duty pop! Clicking Commence");
-                    SetState(VerminionState.ClickingCommence);
-                }
-                // Also check if already in duty (Condition 14 = playingLordOfVerminion)
-                else if (condition[ConditionFlag.BoundByDuty])
-                {
-                    log.Information("[Verminion] Already in duty");
-                    SetState(VerminionState.InDuty);
-                }
-                else if (elapsed > 120) // 2 min timeout
-                {
-                    log.Warning("[Verminion] Duty queue timeout - retrying");
-                    SetState(VerminionState.OpeningDutyFinder);
-                }
-                break;
-
-            case VerminionState.ClickingCommence:
-                // LoV.lua: /click ContentsFinderConfirm Commence
-                if (elapsed < 1) return;
-                if (GameHelpers.IsAddonVisible("ContentsFinderConfirm"))
-                {
-                    log.Information("[Verminion] Clicking Commence on ContentsFinderConfirm");
-                    // Fire commence callback - typically callback index 8 = Commence button
-                    GameHelpers.FireAddonCallback("ContentsFinderConfirm", true, 8);
-                    SetState(VerminionState.InDuty);
-                }
-                else
-                {
-                    SetState(VerminionState.WaitingForDutyPop);
-                }
-                break;
-
-            case VerminionState.InDuty:
-                // LoV.lua: The match plays out, we do nothing (intentional lose)
-                // Wait for LovmResult addon to appear
-                if (GameHelpers.IsAddonVisible("LovmResult"))
-                {
-                    log.Information("[Verminion] LoV match ended, result screen visible");
-                    SetState(VerminionState.WaitingForResult);
-                }
-                else if (!condition[ConditionFlag.BoundByDuty] && elapsed > 10)
-                {
-                    // Duty ended without result screen
-                    log.Information("[Verminion] Duty ended");
-                    SetState(VerminionState.WaitingForPlayerAvailable);
-                }
-                else if (elapsed > 600) // 10 min timeout
-                {
-                    log.Warning("[Verminion] LoV match timeout");
-                    SetState(VerminionState.Failed);
-                }
-                break;
-
-            case VerminionState.WaitingForResult:
-                if (elapsed < 1) return;
-                // LoV.lua: /callback LovmResult false -2  then  /callback LovmResult true -1
-                if (GameHelpers.IsAddonVisible("LovmResult"))
-                {
-                    log.Information("[Verminion] Dismissing LoV result screen");
-                    GameHelpers.FireAddonCallback("LovmResult", false, -2);
-                    SetState(VerminionState.DismissingResult);
-                }
-                else
-                {
-                    SetState(VerminionState.WaitingForPlayerAvailable);
-                }
-                break;
-
-            case VerminionState.DismissingResult:
-                if (elapsed < 1) return;
-                if (GameHelpers.IsAddonVisible("LovmResult"))
-                {
-                    GameHelpers.FireAddonCallback("LovmResult", true, -1);
-                }
-                SetState(VerminionState.WaitingForPlayerAvailable);
-                break;
-
-            case VerminionState.WaitingForPlayerAvailable:
-                // LoV.lua: repeat until Player.Available and not Player.IsBusy
-                if (elapsed < 2) return;
-                if (GameHelpers.IsPlayerAvailable() || elapsed > 30)
-                {
-                    currentAttempt++;
-                    log.Information($"[Verminion] Run {currentAttempt}/{MaxAttempts} complete");
-
-                    if (currentAttempt >= MaxAttempts)
-                    {
-                        log.Information($"[Verminion] All {MaxAttempts} runs complete!");
-                        SetState(VerminionState.Complete);
-                    }
-                    else
-                    {
-                        log.Information($"[Verminion] Starting run {currentAttempt + 1}/{MaxAttempts}");
-                        SetState(VerminionState.OpeningDutyFinder);
-                    }
-                }
-                break;
+                    if (condition[ConditionFlag.PlayingLordOfVerminion])
+                        SetState(VerminionState.InDuty, "Observing the tutorial battlefield");
+                    return;
+                case VerminionState.InDuty:
+                    if (elapsed < 3) return;
+                    if (!VerminionGameInteraction.IsTutorialBattle())
+                    { Fail("The current battle is not the verified Stage 1 tutorial."); return; }
+                    UpdateTutorialProof();
+                    return;
+            }
         }
+        catch (Exception ex) { Fail($"Interaction failed: {ex.Message}. No result recorded."); }
     }
 
-    private void SetState(VerminionState newState)
+    private bool TravelSettled() => GameHelpers.IsPlayerAvailable() && lifestream.TryReadBusy(out var busy) && !busy;
+
+    private void TravelToMinionSquare()
     {
-        log.Information($"[Verminion] {state} -> {newState}");
-        state = newState;
+        ownsTravel = lifestream.AethernetTeleportById(89);
+        if (!ownsTravel) { Fail("Minion Square aethernet travel was rejected."); return; }
+        SetState(VerminionState.TravellingToMinionSquare, "Travelling to Minion Square");
+    }
+
+    private void StopOwnedMovement()
+    {
+        ReleaseKey();
+        if (owner != 0 && owner == Plugin.PlayerState.ContentId)
+        {
+            if (navigationRequested) navigation.Stop();
+            if (ownsTravel) commandManager.ProcessCommand("/li stop");
+        }
+        navigationRequested = false;
+        ownsTravel = false;
+    }
+
+    private void ReleaseKey()
+    {
+        if (heldKey is not { } key) return;
+        heldKey = null;
+        GameHelpers.KeyUp(key);
+    }
+
+    private unsafe bool TryMoveCamera()
+    {
+        var input = UIInputData.Instance();
+        var binding = input == null ? null : input->GetKeybind(InputId.MOVE_FORE);
+        if (binding == null) return false;
+        foreach (var setting in binding->KeySettings)
+        {
+            if ((byte)setting.Key == 0 || (byte)setting.KeyModifier != 0) continue;
+            heldKey = (VirtualKey)setting.Key;
+            releaseKeyUtc = DateTime.UtcNow.AddSeconds(1);
+            GameHelpers.KeyDown(heldKey.Value);
+            log.Information("[VerminionControl] camera input dispatched using Move Forward binding; awaiting tutorial readback");
+            return true;
+        }
+        return false;
+    }
+
+    private void UpdateTutorialProof()
+    {
+        var now = DateTime.UtcNow;
+        if (heldKey != null && now >= releaseKeyUtc) ReleaseKey();
+        if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51])
+        { ReleaseKey(); return; }
+        if (now < nextPromptCheckUtc) return;
+        nextPromptCheckUtc = now.AddSeconds(1);
+        if (pendingTutorialMove)
+        {
+            pendingTutorialMove = false;
+            VerminionGameInteraction.CaptureBattle("after hatchling selection, before movement");
+            var marker = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2005110);
+            if (marker == null || !VerminionGameInteraction.TryClickBattlefield(marker.Position, rightClick: true))
+                Fail("Tutorial destination marker or movement control unavailable; no result recorded.");
+            return;
+        }
+        if (pendingGateSummon)
+        {
+            pendingGateSummon = false;
+            VerminionGameInteraction.CaptureAddon("LovmPalette");
+            if (!VerminionGameInteraction.TrySummonPaletteSlot(0))
+                Fail("Gate selection sent but summon unavailable; no result recorded.");
+            return;
+        }
+        if (pendingTutorialSummons > 0)
+        {
+            if (!VerminionGameInteraction.TrySummonPaletteSlot(0))
+            { Fail("Tutorial summon queue is unavailable; no result recorded."); return; }
+            --pendingTutorialSummons;
+            return;
+        }
+        var prompt = VerminionGameInteraction.ReadTutorialPrompt(tutorialPromptFloor);
+        if (string.IsNullOrEmpty(prompt) || prompt == handledPrompt)
+        {
+            if ((now - (handledPrompt.Length == 0 ? stateEnteredAt : promptHandledUtc)).TotalSeconds > 60)
+            {
+                VerminionGameInteraction.CaptureBattle("tutorial instruction/readback timeout");
+                Fail("No new tutorial instruction after 60 seconds; no result recorded.");
+            }
+            return;
+        }
+        ReleaseKey();
+        log.Information($"[VerminionControl] fresh tutorial instruction: {prompt}");
+        var dispatched = prompt switch
+        {
+            "Use the movement keys to shift your viewpoint around." => TryMoveCamera(),
+            "Select a minion from the minion hotbar." =>
+                GameHelpers.TryGetAddonText("LovmPalette", 67, out var capacity) && capacity == "0/60" &&
+                VerminionGameInteraction.TrySummonPaletteSlot(0),
+            "Left-click on the “A” found on the display above the hotbar, and try summoning a minion from Gate A." =>
+                pendingGateSummon = VerminionGameInteraction.TryClickPaletteIcon(73),
+            "Summon several minions, and view them in the summoning queue." =>
+                (pendingTutorialSummons = 3) > 0,
+            "Select the hatchling, and move it inside the yellow circle. Left-click to select a minion, and right-click to select the destination." =>
+                TrySelectTutorialHatchling(),
+            _ => false,
+        };
+        if (!dispatched)
+        {
+            VerminionGameInteraction.CaptureBattle("unhandled tutorial instruction");
+            Fail($"Control proof stopped at tutorial instruction: {prompt}");
+            return;
+        }
+        handledPrompt = prompt;
+        promptHandledUtc = now;
+        reason = $"Tutorial: {prompt}";
+    }
+
+    private bool TrySelectTutorialHatchling()
+    {
+        var hatchling = Plugin.ObjectTable.FirstOrDefault(obj => obj.Name.TextValue == "Wayward Hatchling");
+        return pendingTutorialMove = hatchling != null &&
+            VerminionGameInteraction.TryClickBattlefield(hatchling.Position + new Vector3(0, 0.1f, 0), rightClick: false);
+    }
+
+    private void Fail(string message)
+    {
+        StopOwnedMovement();
+        SetState(VerminionState.Failed, message);
+    }
+
+    private void SetState(VerminionState state, string message)
+    {
+        log.Information($"[Verminion] {State} -> {state}: {message}");
+        State = state;
+        reason = message;
         stateEnteredAt = DateTime.UtcNow;
-        isActive = newState != VerminionState.Idle &&
-                   newState != VerminionState.Complete &&
-                   newState != VerminionState.Failed;
     }
 }

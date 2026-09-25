@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## Unreleased - Verminion control proof (in progress)
+
+- Begin the CPU bot control milestone with bounded native duty, roster, palette and UI observations through the existing debug reload action. Verify Minion Square travel, table interaction, tutorial admission and three owned palette entries without purchases. Live tutorial evidence confirms minion spawning, camera input, Gate A selection and the summoning queue. Unit selection, movement, abilities and result detection remain under investigation.
+- Handle observed tutorial instructions once per step, exclude earlier log messages on admission/reload, and release held camera keys on timeout, stop and unload. Unknown instructions stop visibly without recording a result.
+- Replace the old player-battle callback and unknown-exit completion path. Unresolved admission, timeout, cancellation and inspection do not record a match or weekly completion.
+- Persist FULL STOP's per-character Verminion pause across reloads, expose Resume and the current blocker, and stop owned movement on cleanup. Add pause persistence and character isolation regression coverage.
+
 ## Unreleased - Choke-abo progression V3 (runtime acceptance pending)
 
 - Require Choke-abo V3 for target progression and expose owned parents/NPC permits, Grade 1-3 feed, gil/MGP reserves, and Fall back/Skip/Stop. Keep legacy Always Race behavior and existing V1/V2 protocol parsing available.
