@@ -268,7 +268,12 @@ public class ConfigManager
         }
         else if (account.Characters.ContainsKey(charKey))
         {
+            var verminionProgress = account.Characters[charKey].VerminionProgress;
+            var verminionPaused = account.Characters[charKey].VerminionPaused;
             account.Characters[charKey] = account.DefaultConfig.Clone();
+            // Settings reset must not erase spending/reservations or another run's pause.
+            account.Characters[charKey].VerminionProgress = verminionProgress.Clone();
+            account.Characters[charKey].VerminionPaused = verminionPaused;
             account.Characters[charKey].ResetFCBuffState();
             account.Characters[charKey].JumboCactpotUnclaimedTickets = 0;
             account.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
@@ -699,15 +704,17 @@ public class ConfigManager
         }
     }
 
-    internal void SaveAccount(string accountId)
+    internal void SaveAccount(string accountId) => TrySaveAccount(accountId);
+
+    internal bool TrySaveAccount(string accountId)
     {
-        if (!accounts.TryGetValue(accountId, out var account)) return;
+        if (!accounts.TryGetValue(accountId, out var account)) return false;
 
         var result = persistence.Save(accountId, account);
         if (!result.Succeeded || result.Account == null)
         {
             log.Error($"Failed to save account {accountId}: {result.Error}");
-            return;
+            return false;
         }
 
         ApplyMergedAccount(account, result.Account);
@@ -715,6 +722,7 @@ public class ConfigManager
         if (result.UsedBackup)
             log.Warning($"[ConfigManager] Recovered account {accountId} from its last-known-good backup while saving");
         log.Debug($"Saved account {accountId}");
+        return true;
     }
 
     private static void ApplyMergedAccount(AccountConfig target, AccountConfig merged)

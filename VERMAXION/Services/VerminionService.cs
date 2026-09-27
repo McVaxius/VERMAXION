@@ -16,7 +16,7 @@ using VERMAXION.Models;
 namespace VERMAXION.Services;
 
 /// <summary>Coordinates CPU setup, verified results and the selected Verminion goal.</summary>
-public sealed class VerminionService : IDisposable
+public sealed partial class VerminionService : IDisposable
 {
     private readonly ICommandManager commandManager;
     private readonly ICondition condition;
@@ -31,6 +31,12 @@ public sealed class VerminionService : IDisposable
     private int challengeStage = 1;
     private bool navigationRequested;
     private bool ownsTravel;
+    private bool ownsMinionShop;
+    private bool ownsTournamentInspection;
+    private VerminionVendorMinion? purchasingMinion;
+    private bool minionPurchaseSent;
+    private bool minionPurchaseConfirmationSent;
+    private bool minionShopCaptured;
     private DateTime nextInteractionUtc;
     private bool admissionConfirmed;
     private bool admissionSnapshot;
@@ -85,6 +91,8 @@ public sealed class VerminionService : IDisposable
     private DateTime bombDropUtc;
     private DateTime bombTriggerUtc;
     private int bombCycles;
+    private readonly HashSet<uint> observedFinalStageCasts = new();
+    private readonly HashSet<uint> observedFinalStageObjects = new();
     private bool bossBurstStarted;
     private bool bossContactCaptured;
     private bool bossEnraged;
@@ -120,7 +128,7 @@ public sealed class VerminionService : IDisposable
 
     public enum VerminionState
     {
-        Idle, UnlockingPrerequisite, RegisteringMinions, TravellingToSaucer, TravellingToMinionSquare, ApproachingTable,
+        Idle, UnlockingPrerequisite, RegisteringMinions, ShoppingForMinion, ClosingMinionShop, TravellingToSaucer, TravellingToMinionSquare, ApproachingTable, InspectingTournament,
         InspectingControls, SelectingTutorial, WaitingForTutorial, InDuty, LeavingResult, InspectingProgress, Complete, Failed,
     }
 
@@ -131,7 +139,7 @@ public sealed class VerminionService : IDisposable
     public bool IsFailed => State == VerminionState.Failed;
     private bool IsStoneStage => VerminionBattleStrategy.IsStoneStage(challengeStage);
     private bool IsBossStage => challengeStage is 4 or 6 or 9 or 12 or 15 or 19 or 23 or 24;
-    private bool HasBossDefenders => challengeStage is 6 or 19;
+    private bool HasBossDefenders => VerminionRoster.HasDefenders(challengeStage);
     private bool VerifyBattleGroup => IsBossStage || IsStoneStage;
     public string StatusText => $"{(IsComplete ? "Complete: " : string.Empty)}{reason} | {ProgressSummary(configManager.GetActiveConfig())}";
 
@@ -158,6 +166,8 @@ public sealed class VerminionService : IDisposable
     public void Start()
     {
         if (IsActive) return;
+        if (HasQuestAcquisition)
+        { reason = "Questionable acquisition owns the handoff; wait for it or use FULL STOP."; return; }
         if (configManager.GetActiveConfig().VerminionPaused)
         { Fail("Paused by FULL STOP; use Run/Resume."); return; }
         owner = Plugin.PlayerState.ContentId;
@@ -172,6 +182,12 @@ public sealed class VerminionService : IDisposable
         runMode = config.VerminionMode;
         victoryTarget = Math.Clamp(config.VerminionVictoryTarget, 1, 1000);
         var progress = config.VerminionProgress;
+        if (progress.PendingPurchase != null && !ReconcileMinionPurchase())
+        {
+            if (TryResumeMinionPurchase()) return;
+            Fail("A previous minion purchase is unresolved. Item and currency evidence must agree before another purchase or run.");
+            return;
+        }
         progress.ObserveWeek(ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow));
         progress.EnsureRun(config.VerminionMode, config.VerminionVictoryTarget);
         var pendingQueue = progress.PendingDuty is >= 552 and <= 575 &&
@@ -179,6 +195,21 @@ public sealed class VerminionService : IDisposable
         if (progress.PendingMatch != 0 && currentDuty != progress.PendingDuty && !pendingQueue)
             progress.AbandonMatch();
         configManager.SaveCurrentAccount();
+        // A reload can leave the challenge menu open after the target is met.
+        // Do not bypass the goal check by resuming that menu. Active admissions
+        // still reconcile their existing result before completion is considered.
+        if (currentDuty == 0 && !pendingQueue && progress.PendingMatch == 0 && TryCompleteWeeklyGoal()) return;
+        if (!campaign && runMode == VerminionMode.CpuRewards && currentDuty == 0 && !pendingQueue &&
+            TournamentWorldRequirement() is { } worldRequirement)
+        { Fail(worldRequirement); return; }
+        if (!campaign && runMode == VerminionMode.CpuRewards && currentDuty == 0 && !pendingQueue &&
+            VerminionGameInteraction.IsSetupMenu)
+        {
+            // An open ordinary challenge menu must not bypass CPU-mode setup.
+            VerminionGameInteraction.CloseChallengeMenu();
+            Fail("CPU tournament registration and reward collection are not yet verified; no ordinary challenge substituted.");
+            return;
+        }
         if (!campaign && progress.PendingMatch == 0 && progress.WinningRunLimitReached &&
             progress.Remaining(config.VerminionMode, config.VerminionVictoryTarget) > 0)
         {
@@ -258,18 +289,77 @@ public sealed class VerminionService : IDisposable
         SetState(VerminionState.TravellingToSaucer, "Travelling to the Gold Saucer");
     }
 
+    internal static int PlannedStage(CharacterConfig config, bool challenges) =>
+        challenges ? config.VerminionProgress.NextUnclearedChallenge :
+        (config.VerminionProgress.ClearedChallengeMask & 1) == 0 ? 1 : 2;
+
+    private bool CheckRoster(int stage)
+    {
+        if (stage == 24)
+        {
+            var observe = false;
+#if DEBUG
+            // The existing character-bound reload selection opts into bounded
+            // development observation; ordinary/release runs retain the gate.
+            var selection = Plugin.PluginInterface.GetPluginConfig() as Configuration;
+            observe = selection?.DebugTaskId == "verminion_queue" &&
+                selection.DebugTaskCharacterKey == configManager.CurrentCharacterKey;
+#endif
+            if (!observe)
+            { Fail("Stage 24 tower assignment and dangerous-attack handling are not implemented; no admission requested."); return false; }
+            log.Information("[Verminion] Selected Stage 24 debug observation: bounded to 120 seconds; tower/attack strategy remains unverified");
+        }
+        var config = configManager.GetActiveConfig();
+        if (!VerminionRoster.NeedsBattleRoster(stage, campaign, runMode, config.VerminionProgress.ClearedChallengeMask)) return true;
+        var missing = VerminionRoster.Missing(stage, VerminionGameInteraction.OwnsMinion);
+        if (missing != null)
+        {
+            var requirements = VerminionRoster.Required(stage);
+            var requirement = requirements.FirstOrDefault(minion => VerminionGameInteraction.OwnsMinion(minion.Id) != true);
+            var offer = requirement?.Id switch
+            {
+                2 => VerminionRoster.MammetOffer,
+                3 => VerminionRoster.HatchlingOffer,
+                83 => VerminionRoster.ZuOffer,
+                174 => VerminionRoster.NeroOffer,
+                _ => null,
+            };
+            var missingVendorMinion = offer != null && VerminionGameInteraction.OwnsMinion(offer.MinionId) == false;
+            var canBuy = missingVendorMinion &&
+                config.VerminionProgress.CanSpend(offer!.Gil, offer.Mgp,
+                    config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap);
+            if (canBuy && Plugin.ClientState.TerritoryType == 388)
+            {
+                if (!GameHelpers.TrySelectStringExact("Return", out _))
+                { Fail("Could not leave the challenge list for the Minion Trader; no purchase submitted."); return false; }
+                BeginMinionPurchase(offer!);
+                return false;
+            }
+            if (missingVendorMinion && !canBuy)
+                missing += offer!.Mgp > 0
+                    ? $" Cumulative MGP cap: {config.VerminionMgpPurchaseCap:N0}; spent: {config.VerminionProgress.MgpSpent:N0}. Register an owned item or set a cap of at least {config.VerminionProgress.MgpSpent + offer.Mgp:N0} MGP."
+                    : $" Cumulative gil cap: {config.VerminionGilPurchaseCap:N0}; spent: {config.VerminionProgress.GilSpent:N0}. Register an owned item or set a cap of at least {config.VerminionProgress.GilSpent + offer.Gil:N0} gil.";
+            Fail(missing);
+            return false;
+        }
+        foreach (var minion in VerminionRoster.Required(stage))
+            if (!VerminionGameInteraction.PrepareOwnedMinion(minion.Id))
+            { Fail($"Stage {stage}: add {minion.Name} to the Verminion palette or free a slot. No admission requested."); return false; }
+        return true;
+    }
+
     public void RunTask() => RunGoal(false);
     public void RunChallenges() => RunGoal(true);
     public void ResumeTask() => RunGoal(configManager.GetActiveConfig().VerminionProgress.CampaignRequested);
 
     private void RunGoal(bool clearChallenges)
     {
-        if (IsActive) return;
+        if (IsActive || HasQuestAcquisition) return;
         var config = configManager.GetActiveConfig();
         if (config.VerminionPaused)
         {
             config.VerminionProgress.EnsureRun(config.VerminionMode, config.VerminionVictoryTarget, restart: true);
-            config.VerminionProgress.CampaignStageAttempts = 0;
+            if (clearChallenges) config.VerminionProgress.CampaignStageAttempts = 0;
         }
         config.VerminionProgress.CampaignRequested = clearChallenges;
         config.VerminionPaused = false;
@@ -315,6 +405,7 @@ public sealed class VerminionService : IDisposable
 
     public void Update()
     {
+        UpdateQuestAcquisition();
         if (!IsActive) return;
         if (owner == 0 || Plugin.PlayerState.ContentId != owner)
         { Fail("Character changed; no result recorded."); return; }
@@ -333,6 +424,8 @@ public sealed class VerminionService : IDisposable
                     return;
                 case VerminionState.RegisteringMinions:
                     if (elapsed > 300) { Fail("Minion registration timed out."); return; }
+                    if (DateTime.UtcNow < nextInteractionUtc) return;
+                    nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
                     if (!GameHelpers.IsPlayerAvailable()) return;
                     if (registeringItem != 0)
                     {
@@ -345,7 +438,10 @@ public sealed class VerminionService : IDisposable
                     if (!VerminionGameInteraction.TryFindUnregisteredMinion(out var minionItem))
                     { Fail("Minion inventory or unlock state is unavailable."); return; }
                     if (minionItem == 0) { BeginTravel(); return; }
-                    if (!GameHelpers.UseItem(minionItem))
+                    var itemStatus = GameHelpers.GetItemActionStatus(minionItem);
+                    if (itemStatus != 0)
+                    { reason = $"Waiting for minion item {minionItem} to become usable (game status {itemStatus})"; return; }
+                    if (!VerminionGameInteraction.TryRegisterInventoryMinion(minionItem))
                     { Fail($"Minion item {minionItem} use was rejected."); return; }
                     registeringItem = minionItem;
                     registrationSentUtc = DateTime.UtcNow;
@@ -356,6 +452,18 @@ public sealed class VerminionService : IDisposable
                     if (elapsed < 3 || !TravelSettled() || Plugin.ClientState.TerritoryType != 144) return;
                     ownsTravel = false;
                     TravelToMinionSquare();
+                    return;
+                case VerminionState.ShoppingForMinion:
+                    if (elapsed >= 10 && !minionShopCaptured)
+                    { minionShopCaptured = true; VerminionGameInteraction.CaptureMinionShop(); }
+                    if (elapsed > 180) { Fail("Minion vendor setup or purchase timed out; any pending reservation is retained."); return; }
+                    UpdateMinionShop();
+                    return;
+                case VerminionState.ClosingMinionShop:
+                    if (elapsed > 10) { Fail("The owned minion shop did not close."); return; }
+                    if (!CloseOwnedMinionShop()) return;
+                    registeringItem = 0;
+                    SetState(VerminionState.RegisteringMinions, "Registering the acquired minion");
                     return;
                 case VerminionState.TravellingToMinionSquare:
                     if (elapsed > 90) { Fail("Minion Square travel timed out."); return; }
@@ -384,6 +492,9 @@ public sealed class VerminionService : IDisposable
                     if (!VerminionGameInteraction.InteractWithTable(table)) return;
                     SetState(VerminionState.InspectingControls, "Reading the Verminion setup menu");
                     return;
+                case VerminionState.InspectingTournament:
+                    UpdateTournamentInspection(elapsed);
+                    return;
                 case VerminionState.InspectingControls:
                     if (elapsed < 3) return;
                     if (GameHelpers.TrySelectStringExact("Verminion Challenge", out _))
@@ -392,6 +503,7 @@ public sealed class VerminionService : IDisposable
                     return;
                 case VerminionState.SelectingTutorial:
                     if (elapsed < 2) return;
+                    if (TryCompleteWeeklyGoal()) return;
                     VerminionGameInteraction.CaptureAddon("SelectString");
                     VerminionGameInteraction.CaptureAddon("SelectIconString");
                     var highestStage = VerminionGameInteraction.ReadHighestAvailableChallenge();
@@ -413,13 +525,8 @@ public sealed class VerminionService : IDisposable
                     { Fail($"Stage {challengeStage} needs its battle strategy implemented and verified before admission."); return; }
                     opening = new(challengeStage);
                     bossStrategy = new(challengeStage);
-                    if (IsStoneStage && (campaign || runMode == VerminionMode.WinTarget || (challengeProgress.ClearedChallengeMask & 2) == 0) &&
-                        !VerminionGameInteraction.PrepareOwnedMinion(opening.CurrentMinion))
-                    { Fail($"The Stage {challengeStage} opening requires owned {opening.CurrentMinionName} and a palette slot. No purchase made."); return; }
-                    if (IsBossStage && !VerminionGameInteraction.PrepareOwnedMinion(bossStrategy.CurrentMinion))
-                    { Fail($"Stage {challengeStage} requires owned {bossStrategy.CurrentMinionName} and a palette slot. No purchase made."); return; }
-                    if (HasBossDefenders && !VerminionGameInteraction.PrepareOwnedMinion(bossStrategy.CurrentDefenderMinion))
-                    { Fail($"Stage {challengeStage} defense requires owned {bossStrategy.CurrentDefenderName} and a palette slot. No purchase made."); return; }
+                    // Refresh the game's sequential unlocks before applying the roster gate.
+                    if (!CheckRoster(challengeStage)) return;
                     challengeProgress.SelectedChallengeStage = challengeStage;
                     configManager.SaveCurrentAccount();
                     if (GameHelpers.TrySelectStringExact(VerminionGameInteraction.ChallengeName(challengeStage), out _))
@@ -440,6 +547,13 @@ public sealed class VerminionService : IDisposable
                         queuedProgress.BeginMatch((uint)(551 + challengeStage));
                         configManager.SaveCurrentAccount();
                         log.Information($"[Verminion] Verified CPU queue; match={queuedProgress.PendingMatch}; stage={challengeStage}");
+                        if (!campaign && runMode == VerminionMode.WinTarget && victoryTarget == 38 && challengeStage == 2 &&
+                            queuedProgress.PendingMatch == 128)
+                        {
+                            log.Information("[VerminionLifecycle] Native Stage 2 queue saved; invoking /vmx stop before Commence.");
+                            commandManager.ProcessCommand("/vmx stop");
+                            return;
+                        }
                     }
                     if (admissionConfirmed && DateTime.UtcNow >= nextInteractionUtc && VerminionGameInteraction.TryCommenceChallenge(challengeStage))
                         nextInteractionUtc = DateTime.UtcNow.AddSeconds(5);
@@ -508,10 +622,18 @@ public sealed class VerminionService : IDisposable
                             // casts and tower objects; no inferred mechanics yet.
                             if (elapsed > 120)
                             { Fail("Stage 24 phase observation ended; tower and attack handling still need verification. No result recorded."); return; }
-                            if (DateTime.UtcNow >= nextInteractionUtc)
+                            var newCast = false;
+                            foreach (var unit in Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>())
+                                if (unit.IsCasting && unit.CastActionId != 0 && observedFinalStageCasts.Count < 8)
+                                    newCast |= observedFinalStageCasts.Add(unit.CastActionId);
+                            var newObject = false;
+                            foreach (var obj in Plugin.ObjectTable.Where(obj => obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj))
+                                if (observedFinalStageObjects.Count < 24) newObject |= observedFinalStageObjects.Add(obj.BaseId);
+                            if (newCast || newObject || DateTime.UtcNow >= nextInteractionUtc)
                             {
                                 nextInteractionUtc = DateTime.UtcNow.AddSeconds(15);
-                                VerminionGameInteraction.CaptureBattle("Stage 24 bounded phase observation");
+                                VerminionGameInteraction.CaptureBattle(newCast ? "Stage 24 new native cast" :
+                                    newObject ? "Stage 24 new field object" : "Stage 24 bounded phase observation");
                             }
                         }
                         if (IsBossStage)
@@ -545,6 +667,16 @@ public sealed class VerminionService : IDisposable
                             if (confirmed > 0) ordinarySpawnUtc = DateTime.UtcNow;
                             if (opening.Reinforcements.Pending > 0 && (DateTime.UtcNow - ordinarySpawnUtc).TotalSeconds > 90)
                             { Fail($"Stage {challengeStage} reinforcements produced no new minions within 90 seconds; no result recorded."); return; }
+                            if (HasBossDefenders)
+                            {
+                                var guards = bossStrategy.Defenders.ObserveUnits(Plugin.ObjectTable
+                                    .OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+                                    .Where(obj => VerminionGameInteraction.IsFriendlyMinion(obj) && obj.Name.TextValue == bossStrategy.CurrentDefenderName)
+                                    .Select(obj => obj.GameObjectId));
+                                if (guards > 0) bossDefenderSpawnUtc = DateTime.UtcNow;
+                                if (bossStrategy.Defenders.Pending > 0 && (DateTime.UtcNow - bossDefenderSpawnUtc).TotalSeconds > 90)
+                                { Fail($"Stage {challengeStage} defenders did not spawn within 90 seconds; no result recorded."); return; }
+                            }
                         }
                         if (elapsed > 600)
                         { Fail("CPU result observation timed out; no result recorded."); return; }
@@ -639,6 +771,9 @@ public sealed class VerminionService : IDisposable
     private bool OwnsUnlockQuest()
     {
         var progress = configManager.GetActiveConfig().VerminionProgress;
+        // Older development saves used this field for Hildibrand. A matching
+        // quest ID alone does not authorize taking over a native chain.
+        if (VerminionRoster.GentlemanQuests.Contains(progress.UnlockQuestId)) return false;
         return progress.UnlockQuestId != 0 && progress.UnlockQuestProvider is "WigglyQuest" or "Questionable" &&
             Plugin.PluginInterface.GetIpcSubscriber<string?>($"{progress.UnlockQuestProvider}.GetCurrentQuestId")
                 .InvokeFunc() == progress.UnlockQuestId.ToString();
@@ -648,6 +783,11 @@ public sealed class VerminionService : IDisposable
     {
         var progress = configManager.GetActiveConfig().VerminionProgress;
         var next = new ushort[] { 434, 435, 1431 }.FirstOrDefault(id => !QuestManager.IsQuestComplete(id));
+        if (VerminionRoster.GentlemanQuests.Contains(progress.UnlockQuestId))
+        {
+            try { ReconcileLegacyAcquisitionMetadata(); }
+            catch (Exception ex) { Fail(ex.Message); return true; }
+        }
         if (progress.UnlockQuestId != 0 && progress.UnlockQuestId != next)
         {
             StopOwnedUnlockQuest();
@@ -657,7 +797,16 @@ public sealed class VerminionService : IDisposable
             progress.UnlockQuestProvider = string.Empty;
             configManager.SaveCurrentAccount();
         }
-        if (next == 0) return false;
+        if (next == 0)
+        {
+            try
+            {
+                if (ChocoboRaceService.QuestIpcPrefix is { } provider && QuestCall<bool>(provider, "IsRunning"))
+                { Fail("Questionable already owns the character; finish or stop its run before resuming Verminion."); return true; }
+            }
+            catch (Exception ex) { Fail($"Questionable ownership is unavailable: {ex.Message}"); return true; }
+            return false;
+        }
         if (!Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Quest>().TryGetRow((uint)next + 65536, out var quest))
         { Fail("Required Verminion unlock quest data is unavailable."); return true; }
         var prefix = ChocoboRaceService.QuestIpcPrefix;
@@ -672,7 +821,10 @@ public sealed class VerminionService : IDisposable
                 else Fail("Another quest automation owns the character.");
                 return true;
             }
-            if (Plugin.ObjectTable.LocalPlayer?.Level < quest.ClassJobLevel[0])
+            var unsyncedLevel = VerminionGameInteraction.ReadUnsyncedJobLevel();
+            if (unsyncedLevel == null)
+            { Fail("Current job level is unavailable; no unlock quest started."); return true; }
+            if (unsyncedLevel < quest.ClassJobLevel[0])
             { Fail($"{quest.Name} requires level {quest.ClassJobLevel[0]} on the current job."); return true; }
             if (Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{prefix}.IsQuestLocked").InvokeFunc(next.ToString()))
             {
@@ -738,7 +890,7 @@ public sealed class VerminionService : IDisposable
     {
         if (owner == 0 || owner != Plugin.PlayerState.ContentId) return;
         var progress = configManager.GetActiveConfig().VerminionProgress;
-        if (progress.UnlockQuestId == 0) return;
+        if (progress.UnlockQuestId == 0 || VerminionRoster.GentlemanQuests.Contains(progress.UnlockQuestId)) return;
         try
         {
             if (OwnsUnlockQuest())
@@ -765,18 +917,9 @@ public sealed class VerminionService : IDisposable
         if (config.VerminionMode != runMode || Math.Clamp(config.VerminionVictoryTarget, 1, 1000) != victoryTarget)
         { Fail("Verminion settings changed; use Run with the new goal."); return; }
         progress.EnsureRun(runMode, victoryTarget);
-        if (WeeklyGoalReached(config))
-        {
-            StopOwnedMovement();
-            config.VerminionCompletedThisWeek = progress.WeeklyMatches >= 5;
-            config.VerminionLastCompleted = DateTime.UtcNow;
-            config.VerminionNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
-            configManager.SaveCurrentAccount();
-            SetState(VerminionState.Complete, runMode == VerminionMode.WinTarget ? "Weekly victory target reached" : "Weekly participation complete");
-            return;
-        }
+        if (TryCompleteWeeklyGoal()) return;
         if (!campaign && runMode == VerminionMode.CpuRewards)
-        { Fail("CPU tournament registration and reward collection are not yet verified."); return; }
+        { BeginTournamentInspection(); return; }
         if (!campaign && progress.WinningRunLimitReached)
         {
             config.VerminionPaused = true;
@@ -784,8 +927,26 @@ public sealed class VerminionService : IDisposable
             Fail("Winning attempt limit reached; use Resume after reviewing the strategy.");
             return;
         }
+        if (!VerminionGameInteraction.TryReadOwnedMinions(out var ownedMinions))
+        { Fail("Registered minion data is unavailable; no entry purchase or admission requested."); return; }
+        var entryPurchases = VerminionRoster.EntryPurchases(ownedMinions);
+        if (entryPurchases.Length > 0)
+        {
+            var entryGil = (uint)entryPurchases.Sum(offer => (long)offer.Gil);
+            if (!progress.CanSpend(entryGil, 0, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap) ||
+                !VerminionGameInteraction.TryReadPurchaseInventory(entryPurchases[0].ItemId, out var gil, out _, out _) ||
+                !VerminionProgress.PreservesGilReserve(gil, entryGil, config.VerminionGilReserve))
+            {
+                Fail($"Entry requires three registered minions; {ownedMinions.Length} owned. " +
+                    $"Register owned inventory items or allow {entryGil:N0} gil within the remaining cumulative cap for " +
+                    $"{string.Join(", ", entryPurchases.Select(offer => offer.Name))}, leaving at least {config.VerminionGilReserve:N0} gil. No purchase submitted.");
+                return;
+            }
+            BeginMinionPurchase(entryPurchases[0]);
+            return;
+        }
         if (!VerminionGameInteraction.PrepareOwnedPalette())
-        { Fail("Three owned minions could not be verified on the palette. No purchases made."); return; }
+        { Fail("Three registered minions exist, but their palette slots could not be prepared. Free a slot or add them manually. No admission requested."); return; }
         admissionConfirmed = false;
         admissionSnapshot = false;
         resultExitRequested = false;
@@ -814,7 +975,91 @@ public sealed class VerminionService : IDisposable
     {
         configManager.GetActiveConfig().VerminionPaused = true;
         configManager.SaveCurrentAccount();
-        Fail($"Stage {challengeStage} reached three attempts without a verified clear; use Resume after reviewing its strategy.");
+        var missing = VerminionRoster.Missing(challengeStage, VerminionGameInteraction.OwnsMinion);
+        Fail($"Stage {challengeStage} reached three attempts without a verified clear; use Resume after reviewing its strategy." +
+            (missing == null ? string.Empty : " " + missing));
+    }
+
+    private void BeginTournamentInspection()
+    {
+        if (TournamentWorldRequirement() is { } worldRequirement)
+        { Fail(worldRequirement); return; }
+#if DEBUG
+        var selection = Plugin.PluginInterface.GetPluginConfig() as Configuration;
+        if (selection?.DebugTaskId == "verminion_queue" &&
+            selection.DebugTaskCharacterKey == configManager.CurrentCharacterKey &&
+            Plugin.ClientState.TerritoryType == 388)
+        {
+            ownsTournamentInspection = false;
+            SetState(VerminionState.InspectingTournament, "Inspecting the Tournament Recordkeeper; registration and rewards remain unverified");
+            return;
+        }
+#endif
+        Fail("CPU tournament registration and reward collection are not yet verified.");
+    }
+
+    internal static string? TournamentWorldRequirement()
+    {
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null || player.HomeWorld.RowId == 0 || player.CurrentWorld.RowId == 0)
+            return "Current and Home World information is unavailable; tournament eligibility cannot be verified.";
+        return player.HomeWorld.RowId == player.CurrentWorld.RowId ? null :
+            "CPU tournaments require your Home World. Return there, then use Run weekly goal; no tournament interaction requested.";
+    }
+
+    private void UpdateTournamentInspection(double elapsed)
+    {
+        // ENpcBase1011594 uses Verminion event2949121. The similarly named
+        //1010479 belongs to Triple Triad and must never be used here.
+        const uint recordkeeperId = 1011594;
+        if (TournamentWorldRequirement() is { } worldRequirement)
+        { Fail(worldRequirement); return; }
+        if (elapsed > 60 || Plugin.ClientState.TerritoryType != 388)
+        {
+            VerminionGameInteraction.CaptureNearbyObjects();
+            Fail("Tournament menu inspection ended without readable evidence; no registration or reward claim made.");
+            return;
+        }
+        if (ownsTournamentInspection)
+        {
+            if (DateTime.UtcNow < nextInteractionUtc) return;
+            VerminionGameInteraction.CaptureNearbyObjects();
+            VerminionGameInteraction.CaptureAddon("SelectYesno");
+            VerminionGameInteraction.CaptureAddon("LovmRanking");
+            var dialogVisible = Plugin.TargetManager.Target?.BaseId == recordkeeperId &&
+                new[] { "SelectString", "SelectIconString", "Talk", "SelectYesno", "LovmRanking" }.Any(GameHelpers.IsAddonVisible);
+            Fail(dialogVisible
+                ? "Tournament Recordkeeper dialog observed for control verification; no registration, battle or reward claim made."
+                : "Tournament Recordkeeper interaction produced no visible dialog; registration, battles and rewards remain unverified.");
+            return;
+        }
+        var player = Plugin.ObjectTable.LocalPlayer;
+        var npc = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == recordkeeperId && obj.IsTargetable);
+        if (player == null || !GameHelpers.IsPlayerAvailable()) return;
+        if (npc == null) { Fail("The Verminion Tournament Recordkeeper is not loaded."); return; }
+        if (Vector3.Distance(player.Position, npc.Position) > GameHelpers.GetValidInteractionDistance(npc))
+        {
+            if (!navigationRequested) navigationRequested = navigation.PathfindAndMoveTo(npc.Position);
+            return;
+        }
+        if (navigationRequested) { navigation.Stop(); navigationRequested = false; }
+        if (!GameHelpers.TargetAndInteractByDataId(recordkeeperId, "Tournament Recordkeeper")) return;
+        ownsTournamentInspection = true;
+        nextInteractionUtc = DateTime.UtcNow.AddSeconds(3);
+    }
+
+    private bool TryCompleteWeeklyGoal()
+    {
+        var config = configManager.GetActiveConfig();
+        if (campaign || !WeeklyGoalReached(config)) return false;
+        StopOwnedMovement();
+        VerminionGameInteraction.CloseChallengeMenu();
+        config.VerminionCompletedThisWeek = config.VerminionProgress.WeeklyMatches >= 5;
+        config.VerminionLastCompleted = DateTime.UtcNow;
+        config.VerminionNextReset = ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow);
+        configManager.SaveCurrentAccount();
+        SetState(VerminionState.Complete, runMode == VerminionMode.WinTarget ? "Weekly victory target reached" : "Weekly participation complete");
+        return true;
     }
 
     private void CompleteCampaign()
@@ -843,6 +1088,11 @@ public sealed class VerminionService : IDisposable
 
     private void StopOwnedMovement()
     {
+        if (ownsTournamentInspection && owner != 0 && owner == Plugin.PlayerState.ContentId &&
+            Plugin.TargetManager.Target?.BaseId == 1011594 && GameHelpers.IsAddonVisible("SelectString"))
+            GameHelpers.TryCloseAddonByCallback("SelectString");
+        ownsTournamentInspection = false;
+        CloseOwnedMinionShop();
         StopOwnedUnlockQuest();
         ReleaseKey();
         if (pendingBattlefieldClick is { } screen)
@@ -858,6 +1108,165 @@ public sealed class VerminionService : IDisposable
         navigationRequested = false;
         ownsTravel = false;
         ownsChallengeLog = false;
+    }
+
+    private bool ReconcileMinionPurchase()
+    {
+        var progress = configManager.GetActiveConfig().VerminionProgress;
+        var pending = progress.PendingPurchase;
+        if (pending == null) return true;
+        if (!VerminionGameInteraction.TryReadPurchaseInventory(pending.ItemId, out var gil, out var mgp, out var count) ||
+            !progress.ConfirmPurchase(gil, mgp, count, VerminionGameInteraction.OwnsMinion(pending.MinionId) == true)) return false;
+        if (!configManager.TrySaveAccount(ownerAccount))
+        {
+            progress.GilSpent -= pending.Gil;
+            progress.MgpSpent -= pending.Mgp;
+            progress.PendingPurchase = pending;
+            return false;
+        }
+        log.Information($"[Verminion] Minion purchase verified once: item={pending.ItemId}; gil={pending.Gil}; mgp={pending.Mgp}");
+        return true;
+    }
+
+    private void BeginMinionPurchase(VerminionVendorMinion offer)
+    {
+        purchasingMinion = offer;
+        minionPurchaseSent = minionPurchaseConfirmationSent = false;
+        minionShopCaptured = false;
+        SetState(VerminionState.ShoppingForMinion, $"Preparing a capped {offer.Name} purchase at the Minion Trader");
+    }
+
+    private bool TryResumeMinionPurchase()
+    {
+        var pending = configManager.GetActiveConfig().VerminionProgress.PendingPurchase;
+        if (pending == null || VerminionRoster.VendorOffer(pending.ItemId, pending.MinionId) is not { } offer ||
+            pending.Gil != offer.Gil || pending.Mgp != offer.Mgp ||
+            !VerminionGameInteraction.IsMinionPurchaseConfirmation(offer) ||
+            !VerminionGameInteraction.TryReadMinionOffer(offer, out _, out _) ||
+            !VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var gil, out var mgp, out var items) ||
+            gil != pending.GilBefore || mgp != pending.MgpBefore || items != pending.ItemsBefore ||
+            VerminionGameInteraction.OwnsMinion(offer.MinionId) != false) return false;
+        // Adopt only the already visible, exactly matched confirmation. Never
+        // issue another Shop callback for this saved reservation.
+        BeginMinionPurchase(offer);
+        ownsMinionShop = minionPurchaseSent = true;
+        log.Information("[Verminion] Resuming the visible reserved minion purchase confirmation; no repeat shop submission");
+        return true;
+    }
+
+    private void UpdateMinionShop()
+    {
+        if (DateTime.UtcNow < nextInteractionUtc) return;
+        nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
+        if (Plugin.ClientState.TerritoryType != 388)
+        { Fail("Minion purchase left Minion Square; no further shop commands issued."); return; }
+        var offer = purchasingMinion;
+        if (offer == null) { Fail("No minion purchase was selected; no shop command issued."); return; }
+        var config = configManager.GetActiveConfig();
+        var progress = config.VerminionProgress;
+        if (progress.PendingPurchase != null)
+        {
+            if (ReconcileMinionPurchase())
+            { SetState(VerminionState.ClosingMinionShop, "Closing the verified minion purchase"); return; }
+            if (!minionPurchaseSent)
+            { Fail("Unresolved purchase will not be submitted again."); return; }
+            if (!minionPurchaseConfirmationSent && GameHelpers.IsAddonVisible("SelectYesno"))
+            {
+                if (!VerminionGameInteraction.IsMinionPurchaseConfirmation(offer))
+                { VerminionGameInteraction.CaptureMinionShop(); Fail($"Minion purchase confirmation did not match {offer.Name} and its verified {offer.Currency} price."); return; }
+                // A cap may have been lowered while the confirmation was open.
+                var pending = progress.PendingPurchase;
+                if (progress.GilSpent + pending.Gil > config.VerminionGilPurchaseCap ||
+                    progress.MgpSpent + pending.Mgp > config.VerminionMgpPurchaseCap)
+                { Fail("Purchase cap changed before confirmation; reservation retained for reconciliation."); return; }
+                if (!VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var remainingGil, out var remainingMgp, out var remainingItems) ||
+                    remainingGil != pending.GilBefore || remainingMgp != pending.MgpBefore || remainingItems != pending.ItemsBefore ||
+                    !VerminionProgress.PreservesGilReserve(remainingGil, pending.Gil, config.VerminionGilReserve))
+                { Fail("Purchase inventory or gil reserve changed before confirmation; reservation retained for reconciliation."); return; }
+                minionPurchaseConfirmationSent = GameHelpers.TryClickNativeButton("SelectYesno", offer.Mgp > 0 ? "Yes" : "OK", 8);
+            }
+            reason = "Waiting for both minion acquisition and the exact currency deduction; purchase will not repeat";
+            return;
+        }
+        if (minionPurchaseSent) { Fail("Purchase state changed unexpectedly; no repeat submitted."); return; }
+        if (!VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var gil, out var mgp, out var items))
+        { Fail("Inventory or currencies are unavailable; no purchase submitted."); return; }
+        var owned = VerminionGameInteraction.OwnsMinion(offer.MinionId);
+        if (owned == null) { Fail("Minion ownership is unavailable; no purchase submitted."); return; }
+        if (owned == true || items > 0)
+        { SetState(VerminionState.ClosingMinionShop, "Minion already available; purchase skipped"); return; }
+        if (!progress.CanSpend(offer.Gil, offer.Mgp, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap) ||
+            gil < offer.Gil || mgp < offer.Mgp ||
+            !VerminionProgress.PreservesGilReserve(gil, offer.Gil, config.VerminionGilReserve))
+        { Fail($"{offer.Name} needs {offer.Price:N0} {offer.Currency} within the remaining cumulative cap and funds, leaving the configured gil reserve. No purchase submitted."); return; }
+        if (VerminionGameInteraction.IsSetupMenu)
+        {
+            var exit = VerminionGameInteraction.IsChallengeMenu ? "Return" : "Cancel";
+            if (!GameHelpers.TrySelectStringExact(exit, out _))
+            { VerminionGameInteraction.CaptureMinionShop(); Fail("Could not close the Verminion table menu before shopping; no purchase submitted."); }
+            return;
+        }
+        if (GameHelpers.IsAddonVisible(offer.Shop))
+        {
+            if (!ownsMinionShop || !VerminionGameInteraction.TryReadMinionOffer(offer, out var index, out var price))
+            { VerminionGameInteraction.CaptureMinionShop(); Fail("Minion Trader item, price or shop ownership could not be verified; no purchase submitted."); return; }
+            if (!progress.ReservePurchase(offer.ItemId, offer.MinionId,
+                    offer.Gil, offer.Mgp, gil, mgp, items, false, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap, config.VerminionGilReserve))
+            { Fail("Minion purchase could not reserve its budget."); return; }
+            var reserved = progress.PendingPurchase;
+            if (!configManager.TrySaveAccount(ownerAccount))
+            { Fail("Purchase reservation could not be saved; no purchase submitted."); return; }
+            var saved = configManager.GetActiveConfig(); // Saving can merge an external Stop or cap change.
+            if (saved.VerminionPaused || saved.VerminionProgress.PendingPurchase != reserved ||
+                saved.VerminionProgress.GilSpent + offer.Gil > saved.VerminionGilPurchaseCap ||
+                saved.VerminionProgress.MgpSpent + offer.Mgp > saved.VerminionMgpPurchaseCap ||
+                !VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var currentGil, out var currentMgp, out var currentItems) ||
+                currentGil != gil || currentMgp != mgp || currentItems != items ||
+                !VerminionProgress.PreservesGilReserve(currentGil, offer.Gil, saved.VerminionGilReserve))
+            { Fail("Purchase reservation, pause or cap changed while saving; no purchase submitted."); return; }
+            minionPurchaseSent = true;
+            GameHelpers.FireAddonCallback(offer.Shop, true, 0, index, 1);
+            log.Information($"[Verminion] Reserved and submitted one {offer.Name} purchase: gil={offer.Gil}; mgp={offer.Mgp}; awaiting item/currency evidence");
+            return;
+        }
+        if (ownsMinionShop && (GameHelpers.IsAddonVisible("SelectString") || GameHelpers.IsAddonVisible("SelectIconString")))
+        {
+            var category = offer.Mgp > 0 ? "Purchase Minions (MGP)" : "Purchase Minions (Gil)";
+            if (!GameHelpers.TrySelectStringExact(category, out _))
+                GameHelpers.TrySelectNativeListEntry("SelectIconString", category);
+            return;
+        }
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (player == null) return;
+        var vendor = GameHelpers.FindObjectByDataId(VerminionGameInteraction.MinionTraderId);
+        var position = vendor?.Position ?? new Vector3(82.4139f, 0.411926f, 44.9377f);
+        var interactionDistance = vendor == null ? 2.5f : GameHelpers.GetValidInteractionDistance(vendor);
+        if (Vector3.Distance(player.Position, position) > interactionDistance)
+        {
+            if (!navigationRequested)
+            {
+                navigationRequested = navigation.PathfindAndMoveTo(position);
+                if (!navigationRequested) Fail("Minion Trader navigation was rejected; no purchase submitted.");
+            }
+            return;
+        }
+        if (navigationRequested) { navigation.Stop(); navigationRequested = false; }
+        if (vendor != null && GameHelpers.TargetAndInteractByDataId(VerminionGameInteraction.MinionTraderId, "Minion Trader"))
+            ownsMinionShop = true;
+    }
+
+    private bool CloseOwnedMinionShop()
+    {
+        if (!ownsMinionShop) return true;
+        // Never close another character's or another vendor's UI.
+        if (owner == 0 || Plugin.PlayerState.ContentId != owner || Plugin.TargetManager.Target?.BaseId != VerminionGameInteraction.MinionTraderId)
+        { ownsMinionShop = false; return true; }
+        if (purchasingMinion is { } offer && VerminionGameInteraction.IsMinionPurchaseConfirmation(offer))
+        { GameHelpers.TryClickNativeButton("SelectYesno", offer.Mgp > 0 ? "No" : "Cancel", 11); return false; }
+        foreach (var addon in new[] { "Shop", "ShopExchangeCurrency", "SelectString", "SelectIconString" })
+            if (GameHelpers.IsAddonVisible(addon)) { GameHelpers.TryCloseAddonByCallback(addon); return false; }
+        ownsMinionShop = false;
+        return true;
     }
 
     private void ReleaseKey()
@@ -1346,10 +1755,11 @@ public sealed class VerminionService : IDisposable
 
     private void UpdateStoneOpening()
     {
-        if ((challengeStage is 7 or 16) && groupSelectionVerified && DateTime.UtcNow >= nextBossSpecialUtc &&
+        var specialMinion = challengeStage == 20 ? bossStrategy.CurrentDefenderName : opening.CurrentMinionName;
+        if ((challengeStage is 7 or 16 or 20) && groupSelectionVerified && DateTime.UtcNow >= nextBossSpecialUtc &&
             Plugin.ObjectTable.Any(unit => unit.GameObjectId == groupSelectionAnchor &&
-                unit.Name.TextValue == opening.CurrentMinionName && VerminionGameInteraction.IsFriendlyMinion(unit) &&
-                Plugin.ObjectTable.Any(target => (VerminionGameInteraction.IsEnemyMinion(target) || target.BaseId == 2006537) &&
+                unit.Name.TextValue == specialMinion && VerminionGameInteraction.IsFriendlyMinion(unit) &&
+                Plugin.ObjectTable.Any(target => (VerminionGameInteraction.IsEnemyMinion(target) || challengeStage != 20 && target.BaseId == 2006537) &&
                     Vector3.DistanceSquared(unit.Position, target.Position) < 25)) &&
             VerminionGameInteraction.IsPaletteActionReady(82))
         {
@@ -1357,9 +1767,22 @@ public sealed class VerminionService : IDisposable
             if (VerminionGameInteraction.TryClickPaletteIcon(82))
             {
                 movementSnapshotUtc = DateTime.UtcNow.AddSeconds(1);
-                log.Information($"[VerminionControl] Stage {challengeStage} monster attack buff near objective/enemy; observing native status next");
+                log.Information($"[VerminionControl] Stage {challengeStage} {specialMinion} special near objective/enemy; observing native status next");
                 return;
             }
+        }
+        if (challengeStage == 20 && opening.HasDeployedGroup &&
+            VerminionGameInteraction.TryReadSummoningCapacity(out var totalUsed, out var totalCapacity))
+        {
+            var guardGate = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2006534 && obj.Name.TextValue == "Gate B");
+            var guards = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+                .Where(obj => VerminionGameInteraction.IsFriendlyMinion(obj) && obj.CurrentHp > 0 &&
+                    obj.Name.TextValue == bossStrategy.CurrentDefenderName).ToArray();
+            var attackers = Plugin.ObjectTable.Count(obj => VerminionGameInteraction.IsFriendlyMinion(obj) &&
+                obj.Name.TextValue == opening.CurrentMinionName);
+            if (guardGate != null && UpdateBossDefenders(guardGate.Position, guards, attackers,
+                totalUsed + opening.Reinforcements.Pending * opening.MinionCost, totalCapacity, 1,
+                !reconcilingSummonQueue && VerminionGameInteraction.IsSummoningGateAvailable(1))) return;
         }
         if (opening.OpeningComplete) { ReinforceRemainingStone(); return; }
         if ((DateTime.UtcNow - openingStepUtc).TotalSeconds > 90)
@@ -1367,6 +1790,8 @@ public sealed class VerminionService : IDisposable
         var gate = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2006534 && obj.Name.TextValue == $"Gate {(char)('A' + opening.Gate)}");
         var stone = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == opening.TargetBaseId && obj.Name.TextValue == opening.TargetName);
         if (gate == null || stone == null || !VerminionGameInteraction.TryReadSummoningCapacity(out var used, out var capacity)) return;
+        if (HasBossDefenders) capacity = bossStrategy.AttackCapacity(capacity, Plugin.ObjectTable.Count(obj =>
+            VerminionGameInteraction.IsFriendlyMinion(obj) && obj.Name.TextValue == bossStrategy.CurrentDefenderName));
         if (reconcilingSummonQueue) capacity = used;
         if (VerminionGameInteraction.ReadStoneHp(enemy: true, opening.EnemyLane) == 0 ||
             Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
@@ -1408,8 +1833,10 @@ public sealed class VerminionService : IDisposable
         var targetName = $"Arcana Stone {(char)('A' + remaining)}";
         var target = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2006537 && obj.Name.TextValue == targetName);
         if (target == null) return;
-        var canRequest = VerminionGameInteraction.TryReadSummoningCapacity(out var used, out var capacity) &&
-            !reconcilingSummonQueue && opening.Reinforcements.CanRequest(used, capacity);
+        if (!VerminionGameInteraction.TryReadSummoningCapacity(out var used, out var capacity)) return;
+        if (HasBossDefenders) capacity = bossStrategy.AttackCapacity(capacity, Plugin.ObjectTable.Count(obj =>
+            VerminionGameInteraction.IsFriendlyMinion(obj) && obj.Name.TextValue == bossStrategy.CurrentDefenderName));
+        var canRequest = !reconcilingSummonQueue && opening.Reinforcements.CanRequest(used, capacity, opening.MinionCost);
         var units = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
             .Where(obj => VerminionGameInteraction.IsFriendlyMinion(obj) && obj.CurrentHp > 0 &&
                 obj.Name.TextValue == opening.CurrentMinionName).ToArray();
@@ -1477,6 +1904,8 @@ public sealed class VerminionService : IDisposable
         bombDropUtc = DateTime.MinValue;
         bombTriggerUtc = DateTime.MinValue;
         bombCycles = 0;
+        observedFinalStageCasts.Clear();
+        observedFinalStageObjects.Clear();
     }
 
     private void ObserveGilgameshPhase()
@@ -1511,12 +1940,25 @@ public sealed class VerminionService : IDisposable
     private void UpdateBossBattle()
     {
         var now = DateTime.UtcNow;
-        var boss = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
-            .Where(obj => VerminionGameInteraction.IsEnemyMinion(obj) && obj.CurrentHp > 0)
+        var enemies = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+            .Where(VerminionGameInteraction.IsEnemyMinion).ToArray();
+        var boss = enemies.Where(obj => obj.CurrentHp > 0)
             // Stage 6's living Imps sustain the boss's invulnerability. Clear
             // them first; Smallshells are not a reason to leave the boss.
             .OrderByDescending(obj => VerminionBossStrategy.IsInvulnerabilityAdd(challengeStage, obj.Name.TextValue))
             .ThenByDescending(obj => obj.MaxHp).FirstOrDefault();
+        if (challengeStage == 24)
+        {
+            // Identify Bahamut separately from his adds: their maximum HP must
+            // not cause the generic boss selector to abandon the final target.
+            var bahamut = enemies.FirstOrDefault(enemy => enemy.CurrentHp > 0 &&
+                VerminionBossStrategy.IsFinalCoilBoss(enemy.Name.TextValue));
+            if (bahamut == null)
+            { reason = "Stage 24: waiting for Wind-up Bahamut or an explicit result"; return; }
+            var target = bossStrategy.ChooseFinalCoilTarget(bahamut.GameObjectId,
+                enemies.Select(enemy => (enemy.GameObjectId, enemy.Name.TextValue, enemy.CurrentHp)));
+            boss = enemies.FirstOrDefault(enemy => enemy.GameObjectId == target && enemy.CurrentHp > 0) ?? bahamut;
+        }
         if (boss == null) { reason = $"Stage {challengeStage}: waiting for the boss or explicit result"; return; }
         var gateIndex = new[] { 1, 0, 2 }.FirstOrDefault(VerminionGameInteraction.IsSummoningGateAvailable, -1);
         var gateAvailable = gateIndex >= 0 && !reconcilingSummonQueue;
@@ -1545,7 +1987,7 @@ public sealed class VerminionService : IDisposable
                 var adds = invaders.Where(enemy => enemy.GameObjectId != boss.GameObjectId)
                     .OrderBy(enemy => Vector3.DistanceSquared(enemy.Position, stone.Position)).ToArray();
                 var target = challengeStage == 19
-                    ? invaders.FirstOrDefault(enemy => enemy.GameObjectId == boss.GameObjectId)
+                    ? invaders.FirstOrDefault(enemy => enemy.GameObjectId == boss.GameObjectId) ?? adds.FirstOrDefault()
                     : adds.Length >= 3
                     ? adds.FirstOrDefault(enemy => enemy.GameObjectId == bossOrderTarget) ?? adds[0]
                     : invaders.FirstOrDefault(enemy => enemy.GameObjectId == bossOrderTarget) ??
@@ -1661,7 +2103,7 @@ public sealed class VerminionService : IDisposable
             // Cheap monsters need the complete army for Odin's final damage check.
             // Reconcile an already engaged army after a reload.
             var gates = Plugin.ObjectTable.Where(obj => obj.BaseId == 2006534).ToArray();
-            bossArmyReady = units.Length >= 24 || gates.Length > 0 && units.Any(unit =>
+            bossArmyReady = units.Length >= bossStrategy.ArmySize || gates.Length > 0 && units.Any(unit =>
                 gates.All(spawn => Vector3.DistanceSquared(unit.Position, spawn.Position) >= 100));
         }
         if (challengeStage == 15 && capacity > 60)
@@ -1671,9 +2113,9 @@ public sealed class VerminionService : IDisposable
                 odinRegrouping = true;
                 odinRegroupUtc = now;
                 bossOrderUtc = DateTime.MinValue;
-                VerminionGameInteraction.CaptureBattle("Stage 15 recover full monster army before final cast");
+                VerminionGameInteraction.CaptureBattle($"Stage {challengeStage} recover army at gate before losses");
             }
-            if (odinRegrouping && (now - odinRegroupUtc).TotalSeconds >= 20 && units.Length >= 24 &&
+            if (odinRegrouping && (now - odinRegroupUtc).TotalSeconds >= 20 && units.Length >= bossStrategy.ArmySize &&
                 units.All(unit => unit.CurrentHp >= unit.MaxHp * 0.95f && Vector3.DistanceSquared(unit.Position, gate.Position) < 36))
             {
                 odinRegrouping = false;
@@ -1681,12 +2123,12 @@ public sealed class VerminionService : IDisposable
                 deployedBossUnits.Clear();
                 bossOrderUtc = DateTime.MinValue;
                 bossWaveUtc = now.AddSeconds(-60);
-                VerminionGameInteraction.CaptureBattle("Stage 15 full monster army healed and ready");
+                VerminionGameInteraction.CaptureBattle($"Stage {challengeStage} full army healed and ready");
             }
             if (odinRegrouping)
             {
                 if ((now - odinRegroupUtc).TotalSeconds > 90)
-                { Fail("Stage 15 full army recovery exceeded 90 seconds; no result recorded."); return; }
+                { Fail($"Stage {challengeStage} full army recovery exceeded 90 seconds; no result recorded."); return; }
                 destination = gate.Position;
                 combatTarget = null;
                 commandTargetName = "heal and assemble at gate";
@@ -1694,7 +2136,7 @@ public sealed class VerminionService : IDisposable
         }
         var selected = groupSelectionVerified
             ? units.Concat(defenders).FirstOrDefault(obj => obj.GameObjectId == groupSelectionAnchor) : null;
-        var selectedDefender = selected?.Name.TextValue == bossStrategy.CurrentDefenderName;
+        var selectedDefender = HasBossDefenders && selected?.Name.TextValue == bossStrategy.CurrentDefenderName;
         if (challengeStage == 12 && !bossContactCaptured && selected != null &&
             Vector3.DistanceSquared(selected.Position, boss.Position) < 36)
         {
@@ -1718,8 +2160,8 @@ public sealed class VerminionService : IDisposable
         }
         var savingOdinBuff = challengeStage == 15 && odinRegrouped && boss.CurrentHp > boss.MaxHp / 3;
         if (!odinRegrouping && !savingOdinBuff && !(challengeStage == 19 && bossEnraged) &&
+            bossStrategy.ShouldUseSpecial(boss.CurrentHp, boss.MaxHp, units.Length) &&
             now >= nextBossSpecialUtc && selected != null &&
-            !(challengeStage == 19 && selectedDefender) &&
             (selectedDefender ? Plugin.ObjectTable.Any(enemy => VerminionGameInteraction.IsEnemyMinion(enemy) &&
                 Vector3.DistanceSquared(selected.Position, enemy.Position) < 36) :
                 Vector3.DistanceSquared(selected.Position, boss.Position) < 25 &&
@@ -1729,7 +2171,7 @@ public sealed class VerminionService : IDisposable
             nextBossSpecialUtc = now.AddSeconds(challengeStage == 15 ? 6.5 : 3);
             if (VerminionGameInteraction.TryClickPaletteIcon(82))
             {
-                if (challengeStage is 15 or 19)
+                if (challengeStage is 15 or 19 or 23)
                 {
                     bossSpecialProbes.Clear();
                     bossSpecialProbes.Add(selected.GameObjectId);
@@ -1757,18 +2199,19 @@ public sealed class VerminionService : IDisposable
         // A dispatched selection is not proof the entire group left its gate.
         // At full capacity, send stranded survivors without waiting for a fourth
         // unit that cannot be summoned. Give the prior order time to move first.
-        if (challengeStage == 19 && waveSeconds >= 15 && used >= capacity && bossStrategy.PendingSummons == 0)
+        if (challengeStage == 19 && waveSeconds >= 15 && used + bossStrategy.MinionCost > capacity && bossStrategy.PendingSummons == 0)
             waveSeconds = Math.Max(60, waveSeconds);
         var orderSeconds = (now - bossOrderUtc).TotalSeconds;
         var turned = challengeStage == 12 && combatTarget == boss.GameObjectId && bossOrderPosition != null &&
             MathF.Cos(boss.Rotation - bossOrderRotation) < 0.7f;
         var moved = bossOrderTarget != (combatTarget ?? 0) || bossOrderPosition == null ||
             turned ||
-            Vector3.DistanceSquared(destination, bossOrderPosition.Value) >= 16 ||
+            Vector3.DistanceSquared(destination, bossOrderPosition.Value) >= (challengeStage is 23 or 24 ? 1 : 16) ||
             // Reconcile actual arrival, including units stranded by a prior
             // command. Most of the deployed army should be near its target.
             orderSeconds >= 15 && deployed.Count(unit => Vector3.DistanceSquared(unit.Position, destination) <
-                (challengeStage == 19 ? 4 : 36)) < (challengeStage == 19 ? (deployed.Length + 1) / 2 : deployed.Length / 2);
+                (challengeStage == 19 ? 4 : challengeStage is 23 or 24 ? 2.25f : 36)) <
+                (challengeStage is 19 or 23 or 24 ? (deployed.Length + 1) / 2 : deployed.Length / 2);
         // Let a party already in melee finish its attacks. Repeated ground
         // orders and switching between nearby adds interrupt that engagement.
         if (bossStrategy.DefendsStone && !turned && combatTarget == bossOrderTarget && deployed.Length > 0 &&
@@ -1786,19 +2229,21 @@ public sealed class VerminionService : IDisposable
             action == VerminionBossStrategy.Action.FollowBoss && deployed.Count(unit =>
                 Vector3.DistanceSquared(unit.Position, boss.Position) < 25) >= (deployed.Length + 1) / 2)
             action = VerminionBossStrategy.Action.Wait;
-        if (now >= nextBossSpecialUtc &&
+        if (now >= nextBossSpecialUtc && bossStrategy.ShouldUseSpecial(boss.CurrentHp, boss.MaxHp, units.Length) &&
             (challengeStage == 15 && !odinRegrouping && boss.CurrentHp <= boss.MaxHp / 3 ||
-             challengeStage == 19 && !bossEnraged && units.Length >= 4 &&
-                used + bossStrategy.MinionCost > capacity &&
-                bossStrategy.PendingSummons == 0 && bossStrategy.Defenders.Pending == 0 &&
+             challengeStage is 19 or 23 && !bossEnraged && !odinRegrouping && units.Length >= 4 &&
+                (challengeStage == 23 || used + bossStrategy.MinionCost > capacity &&
+                    bossStrategy.PendingSummons == 0 && bossStrategy.Defenders.Pending == 0) &&
                 action == VerminionBossStrategy.Action.Wait))
         {
             // Readiness belongs to the selected minion's nearby action party.
             // Selecting another living minion can expose another charged party;
             // the native button must still confirm readiness before casting.
+            // Twintania attrition can prevent a cheap roster ever reaching full
+            // capacity. Probe during queue waits without delaying its summons.
             var candidate = units.Where(unit => !bossSpecialProbes.Contains(unit.GameObjectId) &&
                 unit.GameObjectId != groupSelectionAnchor &&
-                (challengeStage != 19 || units.Count(ally => Vector3.DistanceSquared(ally.Position, unit.Position) < 16) >= 4) &&
+                (challengeStage is not (19 or 23) || units.Count(ally => Vector3.DistanceSquared(ally.Position, unit.Position) < 16) >= 4) &&
                 Vector3.DistanceSquared(unit.Position, boss.Position) < 25)
                 .OrderByDescending(unit => unit.CurrentHp).FirstOrDefault();
             if (candidate != null)
@@ -1808,7 +2253,7 @@ public sealed class VerminionService : IDisposable
                     1, candidate.Position, selectionOnly: true);
                 return;
             }
-            if (challengeStage == 19)
+            if (challengeStage is 19 or 23)
             {
                 // Revisit charging parties at the ability cadence. Defender
                 // selections must not leave ready attacker specials unattended.
@@ -1838,9 +2283,15 @@ public sealed class VerminionService : IDisposable
                 sent = TrySelectGroup(destination, bossStrategy.CurrentMinionName, Math.Min(bossStrategy.WaveSize, ready.Length), rally?.Position ?? gate.Position, combatTarget);
                 foreach (var unit in ready) deployedBossUnits.Add(unit.GameObjectId);
                 bossWaveUtc = now;
-                bossOrderUtc = now;
-                bossOrderPosition = destination;
-                bossOrderTarget = combatTarget ?? 0;
+                // A reserve wave's destination says nothing about where the
+                // existing army is attacking. Do not postpone its pursuit each
+                // time a replacement leaves the gate during either final boss.
+                if (challengeStage is not (23 or 24) || deployed.Length == 0)
+                {
+                    bossOrderUtc = now;
+                    bossOrderPosition = destination;
+                    bossOrderTarget = combatTarget ?? 0;
+                }
                 break;
             case VerminionBossStrategy.Action.FollowBoss:
                 // Lead the main group to a new phase target. Selecting the unit
@@ -1876,14 +2327,15 @@ public sealed class VerminionService : IDisposable
         { bossWaveUtc = now; bossSpawnUtc = now; }
         bossStrategy.Dispatched(action);
         reason = $"Stage {challengeStage}: {(bunkerStone.Length > 0 ? $"defend {bunkerStone}; " : string.Empty)}{boss.Name} {boss.CurrentHp}/{boss.MaxHp} HP; {units.Length} damage minions";
-        if (challengeStage == 15 && !bossArmyReady) reason = $"Stage 15: assembling Succubus army ({units.Length}/24)";
-        if (odinRegrouping) reason = $"Stage 15: recovering Succubus army at gate ({units.Length}/24)";
+        if (challengeStage == 15 && !bossArmyReady) reason = $"Stage 15: assembling {bossStrategy.CurrentMinionName} army ({units.Length}/{bossStrategy.ArmySize})";
+        if (odinRegrouping) reason = $"Stage {challengeStage}: recovering {bossStrategy.CurrentMinionName} army at gate ({units.Length}/{bossStrategy.ArmySize})";
     }
 
     private bool UpdateBossDefenders(Vector3 gate, Dalamud.Game.ClientState.Objects.Types.IBattleNpc[] defenders,
         int attackers, int used, int capacity, int gateIndex, bool gateAvailable)
     {
-        if (challengeStage != 19 && (capacity <= 60 || attackers < bossStrategy.WaveSize && defenders.Length == 0)) return false;
+        if (challengeStage != 19 && capacity <= 60 ||
+            challengeStage is not (19 or 20) && attackers < bossStrategy.WaveSize && defenders.Length == 0) return false;
         if (VerminionGameInteraction.FindPaletteMinion(bossStrategy.CurrentDefenderMinion) < 0)
         { Fail($"Stage {challengeStage} defender palette must be prepared outside the current battle; no result recorded."); return true; }
         var now = DateTime.UtcNow;
@@ -1970,7 +2422,8 @@ public sealed class VerminionService : IDisposable
     {
         var projected = VerminionGameInteraction.ProjectBattlefield(world, out point);
         if (projected && VerminionGameInteraction.IsBattlefieldPointVisible(point)) return true;
-        if (cameraAdjustments == 0 && (challengeStage is 9 or 12 or 15 or 19 or 23) && VerminionGameInteraction.TryFocusMiniMap(world, out var mapClick))
+        if (cameraAdjustments == 0 && (IsStoneStage || challengeStage is 9 or 12 or 15 or 19 or 23 or 24) &&
+            VerminionGameInteraction.TryFocusMiniMap(world, out var mapClick))
         {
             pendingBattlefieldClick = mapClick;
             pendingBattlefieldRightClick = false;

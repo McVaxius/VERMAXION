@@ -43,9 +43,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260925-189";
+    private const string DebugAttemptMarker = "verminion-control-20260926-286";
+    private DateTime? verminionLifecycleTestDeadline;
+    private DateTime? verminionLifecycleTestStoppedAt;
+    private ulong verminionLifecycleTestOwner;
     private DateTime nextChocoboContinuationUtc;
-    private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
+    private const string ExpectedDebugPluginPath = @"A:\ff14\parasite\vmx\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
     public ConfigManager ConfigManager { get; init; }
@@ -104,6 +107,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public ConfigWindow ConfigWindow { get; init; }
     public MainWindow MainWindow { get; init; }
     internal DebugWindow DebugWindow { get; init; }
+    internal VerminionWindow VerminionWindow { get; init; }
     public RegistrableConfigWindow RegistrableConfigWindow { get; init; }
 
     private IDtrBarEntry? dtrEntry;
@@ -289,7 +293,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             Log,
             OnARCharacterReady,
             ArmBeforeArSuppressionFromPostprocess,
-            () => Configuration.Enabled && !DadHandoffBlocksNewWork && !OfflineLogoutBlocksOrdinaryAutomation);
+            () => Configuration.Enabled && !DadHandoffBlocksNewWork && !OfflineLogoutBlocksOrdinaryAutomation && !VerminionService.HasQuestAcquisition);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
         CharacterSelectStallRecovery = new CharacterSelectStallRecoveryService(Log);
         ScheduledOfflineHoldCoordinator = new ScheduledOfflineHoldCoordinator(
@@ -312,6 +316,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
+            : VerminionService.HasQuestAcquisition ? "Questionable minion acquisition blocks new VERMAXION work."
             : null;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
         DadHandoffIpcProvider = new DadHandoffIpcProvider(
@@ -325,10 +330,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
         DebugWindow = new DebugWindow(this);
+        VerminionWindow = new VerminionWindow(this);
         RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager);
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(DebugWindow);
+        WindowSystem.AddWindow(VerminionWindow);
         WindowSystem.AddWindow(RegistrableConfigWindow);
         if (setupWizardDecision.ShouldAutoOpen && !Configuration.SetupWizardCompleted)
         {
@@ -343,7 +350,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         });
         CommandManager.AddHandler(AliasCommandName, new CommandInfo(OnAliasCommand)
         {
-            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug] or /vmx to open UI."
+            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|v] or /vmx to open UI."
         });
 
         // Events
@@ -570,6 +577,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     internal bool RunDashboardAction(Action action)
     {
+        if (VerminionService.HasQuestAcquisition)
+        {
+            ChatGui.Print("[Vermaxion] Questionable owns minion acquisition. Wait for it to finish or use FULL STOP.");
+            return false;
+        }
         var engineWasRunningBefore = Engine.IsRunning;
         var fishingLifecycleActiveBefore = FishingRunLifecycle.IsActive;
 
@@ -603,6 +615,39 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         return true;
+    }
+
+    internal void AcquireVerminionMinion(ushort minionId)
+    {
+        // No parent engine/manual task or AR suppression may survive the handoff.
+        // Do not make the ownership IPC lie to admit a child duty.
+        var automation = BuildAutomationStatus();
+        var blocker = !characterRegistrationCompletedThisLogin ? "Waiting for character registration." :
+            automation.IsBusy ? automation.Summary :
+            DadHandoffBlocksNewWork ? "DAD owns the character." :
+            OfflineLogoutBlocksOrdinaryAutomation ? "An offline logout hold is active." :
+            VerminionService.HasQuestAcquisition ? "A minion acquisition handoff is already reserved." :
+            AutoRetainerIPC.IsBusy() ? "AutoRetainer is busy or its state is unavailable." :
+            pendingDebugTaskId != null || pendingDebugDispatchTaskId != null ? "A reload action is pending." : null;
+        if (blocker != null)
+        {
+            ChatGui.Print($"[Vermaxion] Minion acquisition unavailable: {blocker}");
+            Log.Warning($"[Verminion] Minion acquisition unavailable: {blocker}");
+            return;
+        }
+        try
+        {
+            var multi = AutoRetainerIPC.ReadMultiModeEnabled();
+            if (!multi.Success || multi.Enabled)
+                throw new InvalidOperationException("AutoRetainer multi mode must be confirmed off for the quest handoff.");
+            if (!PluginInterface.GetIpcSubscriber<bool>("dad.Duty.IsStopped").InvokeFunc())
+                throw new InvalidOperationException("DAD already owns a duty.");
+            VerminionService.AcquireMinion(minionId);
+        }
+        catch (Exception ex)
+        {
+            ChatGui.Print($"[Vermaxion] Minion acquisition unavailable: {ex.Message}");
+        }
     }
 
     internal void SetDebugTaskSelection(string? taskId)
@@ -664,6 +709,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (!string.IsNullOrEmpty(Configuration.DebugTaskCharacterKey) &&
             Configuration.DebugTaskCharacterKey != ConfigManager.CurrentCharacterKey)
         { SetDebugTaskStatus("Blocked: this reload task belongs to a different character."); return; }
+        if (VerminionService.HasQuestAcquisition)
+        {
+
+            SetDebugTaskStatus("Questionable owns minion acquisition; this reload only observes the saved handoff.");
+            return;
+        }
         if (taskId == AutomationCatalog.ChocoboRacing && ConfigManager.GetActiveConfig().ChocoboProgressionPaused)
         {
             SetDebugTaskStatus("Chocobo progression is paused; explicit Resume is required before reload continuation.");
@@ -671,6 +722,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
         if (taskId == AutomationCatalog.VerminionQueue && ConfigManager.GetActiveConfig().VerminionPaused)
         {
+            StartVerminionQueueStopTest();
             SetDebugTaskStatus("Verminion is paused; explicit Run/Resume is required before reload continuation.");
             return;
         }
@@ -688,6 +740,55 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         {
             SetDebugTaskStatus($"Blocked: reload cleanup failed. {ex.Message}");
         }
+    }
+
+    private void StartVerminionQueueStopTest()
+    {
+        var config = ConfigManager.GetActiveConfig();
+        var progress = config.VerminionProgress;
+        var multi = AutoRetainerIPC.ReadMultiModeEnabled();
+        if (Configuration.DebugTaskCharacterKey != ConfigManager.CurrentCharacterKey ||
+            ClientState.TerritoryType != 145 || !GameHelpers.IsPlayerAvailable() ||
+            Engine.IsRunning || VerminionService.IsActive || VerminionService.HasQuestAcquisition ||
+            DadHandoffBlocksNewWork || AutoRetainerIPC.IsBusy() || !multi.Success || multi.Enabled ||
+            config.VerminionMode != VerminionMode.WinTarget || config.VerminionVictoryTarget != 37 ||
+            !config.VerminionPaused || !progress.CampaignRequested || progress.PendingMatch != 0 ||
+            progress.WeeklyMatches != 109 || progress.WeeklyWins != 37 || progress.MatchSequence != 127 ||
+            progress.CampaignStage != 23 || progress.CampaignStageAttempts != 3 || progress.ClearedChallengeMask != 4194303)
+        { Log.Warning("[VerminionLifecycle] Queue-stop test not started: idle baseline guard did not match."); return; }
+        verminionLifecycleTestOwner = PlayerState.ContentId;
+        verminionLifecycleTestDeadline = DateTime.UtcNow.AddSeconds(180);
+        config.VerminionVictoryTarget = 38;
+        Log.Information("[VerminionLifecycle] Queue-stop test: native weekly Run, target38; campaign attempts preserved; 180-second bound.");
+        RunDashboardAction(VerminionService.RunTask);
+    }
+
+    private void UpdateVerminionQueueStopTest()
+    {
+        if (verminionLifecycleTestDeadline == null || PlayerState.ContentId != verminionLifecycleTestOwner) return;
+        var config = ConfigManager.GetActiveConfig();
+        if (verminionLifecycleTestStoppedAt == null)
+        {
+            if (!config.VerminionPaused && (DateTime.UtcNow >= verminionLifecycleTestDeadline || VerminionService.IsFailed))
+            {
+                Log.Warning("[VerminionLifecycle] Test ended before queue checkpoint; FULL STOP.");
+                FullStop();
+            }
+            if (!config.VerminionPaused || VerminionService.IsActive) return;
+            verminionLifecycleTestStoppedAt = DateTime.UtcNow;
+        }
+        if ((DateTime.UtcNow - verminionLifecycleTestStoppedAt.Value).TotalSeconds < 3) return;
+        var progress = config.VerminionProgress;
+        Log.Information($"[VerminionLifecycle] Queue-stop settled: active={VerminionService.IsActive}; paused={config.VerminionPaused}; nativeQueue={VerminionGameInteraction.HasChallengeQueue(2)}; duty={VerminionGameInteraction.CurrentCpuDutyId()}; pending={progress.PendingMatch}; matches={progress.WeeklyMatches}; wins={progress.WeeklyWins}; mask={progress.ClearedChallengeMask}; campaignStage={progress.CampaignStage}; campaignAttempts={progress.CampaignStageAttempts}");
+        if (config.VerminionVictoryTarget == 38 && progress.PendingMatch == 0)
+        {
+            config.VerminionVictoryTarget = 37;
+            progress.CampaignRequested = true;
+            progress.EnsureRun(config.VerminionMode, 37);
+            ConfigManager.SaveCurrentAccount();
+            Log.Information("[VerminionLifecycle] Restored original target37 and campaign selection; pause preserved.");
+        }
+        verminionLifecycleTestDeadline = null;
     }
 
     private void DispatchDebugTask(string taskId)
@@ -828,6 +929,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     internal bool CanStartMainMenuTest(bool waitForOceanFishing, out string reason)
     {
+        if (VerminionService.HasQuestAcquisition)
+        { reason = "Questionable owns minion acquisition."; return false; }
         if (!ClientState.IsLoggedIn)
         {
             reason = "A character must be logged in.";
@@ -1175,6 +1278,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 ConfigWindow.Toggle();
                 break;
 
+            case "v":
+                VerminionWindow.IsOpen = true;
+                break;
+
             case "debug":
                 DebugWindow.Toggle();
                 break;
@@ -1256,7 +1363,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             characterRegistrationWorldReadySince = DateTime.MinValue;
             Log.Information($"[Config] Character registration completed: accountId={ConfigManager.CurrentAccountId}, characterKey='{ConfigManager.CurrentCharacterKey}'");
             var activeConfig = ConfigManager.GetActiveConfig();
-            if (Configuration.Enabled && activeConfig.Enabled)
+            if (activeConfig.VerminionProgress.QuestAcquisition?.Owner == contentId)
+                SkipBeforeArForLogin("Questionable owns the saved minion acquisition; released the unstarted login gate");
+            else if (Configuration.Enabled && activeConfig.Enabled)
                 AutoRetainerIPC.ConfigureRetainerGilWithdrawal(activeConfig, contentId);
         }
         catch (Exception ex)
@@ -1278,6 +1387,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void BeginBeforeArLoginPendingFromPluginLoad()
     {
+        // This also runs before services are constructed; character registration
+        // rechecks the saved handoff before any Before-AR work may start.
+        if (VerminionService?.HasQuestAcquisition == true)
+        { SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
             SkipBeforeArForLogin("Offline logout work suppresses Before-AR startup");
@@ -1314,6 +1427,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void BeginBeforeArLoginPending(string reason)
     {
+        if (VerminionService?.HasQuestAcquisition == true)
+        { SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
             SkipBeforeArForLogin("Offline logout work suppresses Before-AR startup");
@@ -1383,6 +1498,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ArmBeforeArSuppressionFromPostprocess()
     {
+        if (VerminionService.HasQuestAcquisition) return;
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
             beforeArArmedByPostprocess = false;
@@ -1464,6 +1580,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessPendingBeforeArLogin()
     {
+        if (VerminionService.HasQuestAcquisition)
+        { if (pendingBeforeArLogin) SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
         if (!pendingBeforeArLogin)
             return;
 
@@ -2044,6 +2162,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// Throttled to every 30s; skips entirely when a run or relog is already in progress.</summary>
     private void ProcessFishingFakeReady()
     {
+        if (VerminionService.HasQuestAcquisition) return;
         if (!Configuration.Enabled ||
             !Configuration.OceanFishingFakeReadyEnabled ||
             OfflineLogoutBlocksOrdinaryAutomation)
@@ -2087,6 +2206,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// send it back to Limsa.</summary>
     private void ProcessIdleInnPark()
     {
+        if (VerminionService.HasQuestAcquisition) return;
         if (!Configuration.Enabled ||
             !Configuration.OceanIdleInnParkEnabled ||
             OfflineLogoutBlocksOrdinaryAutomation)
@@ -2290,6 +2410,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         ReleaseDashboardRunYesAlreadyPauseIfIdle();
+        UpdateVerminionQueueStopTest();
     }
 
     private void ProcessRetainerCollectOnlyRecovery()
@@ -2453,6 +2574,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// </summary>
     public void FullStop(bool preparingDebugTask = false)
     {
+        VerminionService.CancelQuestAcquisition();
         pendingDebugDispatchTaskId = null;
         if (pendingDebugTaskId != null)
         {
@@ -2528,7 +2650,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Log.Information("[FULL STOP] AutoRetainer suppression released if owned");
 
         Log.Information("[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
-        ChatGui.Print("[Vermaxion] FULL STOP - All operations halted.");
+        ChatGui.Print(VerminionService.HasQuestAcquisition
+            ? "[Vermaxion] FULL STOP - Vermaxion halted. Questionable acquisition cancellation or cleanup remains pending."
+            : "[Vermaxion] FULL STOP - All operations halted.");
     }
 
     public void PauseCurrentTargetCycleBestEffort(string reason, bool targetModeWasActive = false)
@@ -2612,7 +2736,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
            !Condition[ConditionFlag.BetweenAreas] &&
            !Condition[ConditionFlag.BetweenAreas51] &&
            !Engine.IsRunning &&
-           !DadHandoffBlocksNewWork;
+           !DadHandoffBlocksNewWork && !VerminionService.HasQuestAcquisition;
 
     bool IFishingStartupRuntime.IsFishingActive => FishingService.IsActive;
     bool IFishingStartupRuntime.IsRelogActive => FishingRelogCoordinator.IsActive;

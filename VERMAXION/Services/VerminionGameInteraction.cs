@@ -6,6 +6,7 @@ using Dalamud.Hooking;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using NativeFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
+using QuestManager = FFXIVClientStructs.FFXIV.Client.Game.QuestManager;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Enums;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -118,6 +119,14 @@ internal static unsafe class VerminionGameInteraction
     }
 
     public static int CompletedStages() => PlayerState.Instance() is var player && player != null ? player->CompletedLoVMStages : -1;
+
+    public static int? ReadUnsyncedJobLevel()
+    {
+        var player = PlayerState.Instance();
+        var job = Plugin.ObjectTable.LocalPlayer?.ClassJob.RowId ?? 0;
+        return player != null && Plugin.PlayerState.IsLoaded && job != 0
+            ? player->GetClassJobLevel((int)job, false) : null;
+    }
 
     public static string ChallengeName(int stage) => stage is >= 1 and <= 24
         ? Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().GetRow((uint)(551 + stage)).Name.ToString()
@@ -294,6 +303,197 @@ internal static unsafe class VerminionGameInteraction
             ((AtkComponentButton*)component)->IsEnabled;
     }
 
+    public static bool? OwnsMinion(ushort minion)
+    {
+        var ui = UIState.Instance();
+        return Plugin.PlayerState.IsLoaded && ui != null ? ui->IsCompanionUnlocked(minion) : null;
+    }
+
+    public const uint MinionTraderId = 1011595;
+
+    public static bool TryReadOwnedMinions(out ushort[] owned)
+    {
+        owned = [];
+        var ui = UIState.Instance();
+        if (!Plugin.PlayerState.IsLoaded || ui == null) return false;
+        owned = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Companion>()
+            .Where(row => row.RowId is > 0 and <= ushort.MaxValue && ui->IsCompanionUnlocked(row.RowId))
+            .Select(row => (ushort)row.RowId).ToArray();
+        return true;
+    }
+
+    public static bool TryReadPurchaseInventory(uint itemId, out uint gil, out uint mgp, out uint count)
+    {
+        gil = mgp = count = 0;
+        var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
+        if (!Plugin.PlayerState.IsLoaded || inventory == null) return false;
+        foreach (var type in new[]
+        {
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory1,
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory2,
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory3,
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory4,
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Currency,
+        })
+        {
+            var bag = inventory->GetInventoryContainer(type);
+            if (bag == null || !bag->IsLoaded) return false;
+        }
+        gil = (uint)inventory->GetInventoryItemCount(1);
+        mgp = (uint)inventory->GetInventoryItemCount(29);
+        count = (uint)inventory->GetInventoryItemCount(itemId);
+        return true;
+    }
+
+    public static bool TryReadMinionOffer(VerminionVendorMinion offer, out int index, out uint price)
+    {
+        index = -1;
+        price = 0;
+        if (Plugin.ClientState.TerritoryType != 388 || Plugin.TargetManager.Target?.BaseId != MinionTraderId ||
+            !GameHelpers.IsAddonVisible(offer.Shop) || (offer.Gil == 0) == (offer.Mgp == 0)) return false;
+        if (offer.Mgp > 0) return TryReadMgpMinionOffer(offer, out index, out price);
+        var handle = Plugin.GameGui.GetAddonByName("Shop");
+        if (handle.IsNull || !handle.IsReady) return false;
+        var addon = (AtkUnitBase*)handle.Address;
+        // Basic gil shops use the Shop addon arrays, not AgentShop's exchange
+        // arrays. The item/price mapping matches ECommons AddonMaster.Shop.
+        if (addon->AtkValues == null || addon->AtkValuesCount < 442 ||
+            addon->AtkValues[1].Type != AtkValueType.UInt || addon->AtkValues[1].UInt != 0 ||
+            addon->AtkValues[2].Type != AtkValueType.UInt) return false;
+        var count = addon->AtkValues[2].UInt;
+        if (count is < 1 or > 61 || addon->AtkValuesCount < 441 + count) return false;
+        for (var i = 0; i < count; ++i)
+        {
+            var item = addon->AtkValues[441 + i];
+            if (item.Type != AtkValueType.UInt || item.UInt != offer.ItemId) continue;
+            var cost = addon->AtkValues[75 + i];
+            var name = addon->AtkValues[14 + i];
+            if (cost.Type != AtkValueType.UInt || cost.UInt != offer.Gil ||
+                name.Type is not (AtkValueType.String or AtkValueType.ManagedString) || !name.String.HasValue ||
+                Dalamud.Memory.MemoryHelper.ReadSeStringNullTerminated(new nint(name.String)).TextValue.Trim() != offer.Name) return false;
+            index = i;
+            price = cost.UInt;
+            Plugin.Log.Information($"[VerminionControl] verified gil shop offer: row={index}; item={item.UInt}; price={price}; name={offer.Name}");
+            return true;
+        }
+        return false;
+    }
+
+    private static bool TryReadMgpMinionOffer(VerminionVendorMinion offer, out int index, out uint price)
+    {
+        index = -1;
+        price = 0;
+        var handle = Plugin.GameGui.GetAddonByName(offer.Shop);
+        if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
+        var addon = (AtkUnitBase*)handle.Address;
+        // ECommons AddonMaster.ShopExchangeCurrency's basic currency layout.
+        // Match the actual MGP icon/balance, item, and exact price before use.
+        if (addon->AtkValues == null || addon->AtkValuesCount < 1311 ||
+            addon->AtkValues[4].Type != AtkValueType.UInt || addon->AtkValues[4].UInt is < 1 or > 122 ||
+            addon->AtkValuesCount < 1310 + addon->AtkValues[4].UInt ||
+            addon->AtkValues[86].Type != AtkValueType.UInt || addon->AtkValues[87].Type != AtkValueType.Int ||
+            !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(29, out var currency) ||
+            addon->AtkValues[87].Int != currency.Icon ||
+            !TryReadPurchaseInventory(offer.ItemId, out _, out var balance, out _) || addon->AtkValues[86].UInt != balance ||
+            !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(offer.ItemId, out var itemRow) ||
+            itemRow.Name.ToString() != offer.Name || itemRow.ItemAction.Value.Data[0] != offer.MinionId) return false;
+        for (var i = 0; i < addon->AtkValues[4].UInt; ++i)
+        {
+            var item = addon->AtkValues[1066 + i];
+            if (item.Type != AtkValueType.UInt || item.UInt != offer.ItemId) continue;
+            var cost = addon->AtkValues[456 + i];
+            var entry = addon->AtkValues[1310 + i];
+            if (cost.Type != AtkValueType.UInt || cost.UInt != offer.Mgp ||
+                entry.Type != AtkValueType.UInt || entry.UInt > 1000) return false;
+            index = (int)entry.UInt;
+            price = cost.UInt;
+            Plugin.Log.Information($"[VerminionControl] verified MGP shop offer: row={i}; callbackIndex={index}; item={item.UInt}; price={price}; balance={balance}; name={offer.Name}");
+            return true;
+        }
+        return false;
+    }
+
+    public static bool IsMinionPurchaseConfirmation(VerminionVendorMinion offer)
+    {
+        if (Plugin.ClientState.TerritoryType != 388 || Plugin.TargetManager.Target?.BaseId != MinionTraderId) return false;
+        if (offer.Mgp > 0)
+        {
+            var handle = Plugin.GameGui.GetAddonByName("SelectYesno");
+            if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
+            var addon = (AtkUnitBase*)handle.Address;
+            if (addon->AtkValues == null || addon->AtkValuesCount <= 15 ||
+                addon->AtkValues[14].Type != AtkValueType.UInt || addon->AtkValues[14].UInt != offer.ItemId) return false;
+            var prompt = addon->AtkValues[0];
+            var name = addon->AtkValues[15];
+            if (prompt.Type is not (AtkValueType.String or AtkValueType.ManagedString) || !prompt.String.HasValue ||
+                name.Type is not (AtkValueType.String or AtkValueType.ManagedString) || !name.String.HasValue ||
+                Dalamud.Memory.MemoryHelper.ReadSeStringNullTerminated(new nint(name.String)).TextValue != offer.Name ||
+                Dalamud.Memory.MemoryHelper.ReadSeStringNullTerminated(new nint(prompt.String)).TextValue.Replace(",", string.Empty) !=
+                    $"Exchange {offer.Mgp} MGP for the following item?") return false;
+            // The observed quantity is in SelectYesno/3/2/7. Item/price alone
+            // must not confirm a different quantity of the requested minion.
+            var panel = addon->GetNodeById(3);
+            var quantityPanel = FindConfirmationChild(panel, 2);
+            var quantity = FindConfirmationChild(quantityPanel, 7);
+            return IsVisibleThroughParents(quantity) && quantity->Type == NodeType.Text &&
+                quantity->GetAsAtkTextNode()->NodeText.ToString() == "1";
+        }
+        return GameHelpers.TryGetAddonText("SelectYesno", 2, out var gilPrompt) &&
+            gilPrompt.StartsWith("Purchase 1 ", StringComparison.Ordinal) &&
+            gilPrompt.Contains(offer.Name, StringComparison.OrdinalIgnoreCase) &&
+            System.Text.RegularExpressions.Regex.IsMatch(gilPrompt.Replace(",", string.Empty),
+                @"(?<!\d)" + offer.Gil.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"(?!\d)\s*gil", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    }
+
+    private static AtkResNode* FindConfirmationChild(AtkResNode* parent, uint id)
+    {
+        if (!IsVisibleThroughParents(parent) || (ushort)parent->Type < 1000) return null;
+        var component = parent->GetAsAtkComponentNode()->Component;
+        if (component == null || component->UldManager.NodeList == null || component->UldManager.NodeListCount > 512) return null;
+        for (var i = 0; i < component->UldManager.NodeListCount; ++i)
+        {
+            var child = component->UldManager.NodeList[i];
+            if (child != null && child->NodeId == id) return child;
+        }
+        return null;
+    }
+
+    public static void CaptureMinionShop()
+    {
+        var vendor = GameHelpers.FindObjectByDataId(MinionTraderId);
+        Plugin.Log.Information($"[VerminionControl] minion shop snapshot: position={Plugin.ObjectTable.LocalPlayer?.Position}; vendor={vendor?.Position}; target={Plugin.TargetManager.Target?.BaseId}; available={GameHelpers.IsPlayerAvailable()}; setupMenu={IsSetupMenu}");
+        foreach (var name in new[] { "SelectString", "SelectIconString", "Shop", "ShopExchangeCurrency", "SelectYesno", "Talk" }) CaptureAddon(name);
+        var exchange = Plugin.GameGui.GetAddonByName("ShopExchangeCurrency");
+        if (!exchange.IsNull && exchange.IsReady && exchange.IsVisible)
+        {
+            var addon = (AtkUnitBase*)exchange.Address;
+            if (addon->AtkValues != null && addon->AtkValuesCount >= 1311 && addon->AtkValues[4].Type == AtkValueType.UInt &&
+                addon->AtkValues[4].UInt is >= 1 and <= 122 && addon->AtkValuesCount >= 1310 + addon->AtkValues[4].UInt)
+                for (var i = 0; i < Math.Min(addon->AtkValues[4].UInt, 16); ++i)
+                    Plugin.Log.Information($"[VerminionControl] MGP shop row={i}; item={addon->AtkValues[1066 + i].UInt}; itemType={addon->AtkValues[1066 + i].Type}; price={addon->AtkValues[456 + i].UInt}; priceType={addon->AtkValues[456 + i].Type}; index={addon->AtkValues[1310 + i].UInt}; indexType={addon->AtkValues[1310 + i].Type}");
+        }
+        var handle = Plugin.GameGui.GetAddonByName("Shop");
+        if (!handle.IsNull && handle.IsReady && handle.IsVisible)
+        {
+            var addon = (AtkUnitBase*)handle.Address;
+            if (addon->AtkValues != null && addon->AtkValuesCount >= 442 && addon->AtkValues[2].Type == AtkValueType.UInt &&
+                addon->AtkValues[2].UInt is >= 1 and <= 61 && addon->AtkValuesCount >= 441 + addon->AtkValues[2].UInt)
+                for (var i = 0; i < Math.Min(addon->AtkValues[2].UInt, 10); ++i)
+                    Plugin.Log.Information($"[VerminionControl] gil shop row={i}; item={addon->AtkValues[441 + i].UInt}; itemType={addon->AtkValues[441 + i].Type}; price={addon->AtkValues[75 + i].UInt}; priceType={addon->AtkValues[75 + i].Type}");
+        }
+        var shop = AgentShop.Instance();
+        if (shop == null || !shop->IsAgentActive()) return;
+        Plugin.Log.Information($"[VerminionControl] shop receives={shop->ItemReceiveCount}; costs={shop->ItemCostCount}");
+        if (shop->ItemReceive == null || shop->ItemCost == null || shop->ItemReceiveCount is < 1 or > 100 ||
+            shop->ItemCostCount != shop->ItemReceiveCount * 3) return;
+        for (var i = 0; i < Math.Min(shop->ItemReceiveCount, 10); ++i)
+        {
+            var received = shop->ItemReceive + i;
+            var cost = shop->ItemCost + i * 3;
+            Plugin.Log.Information($"[VerminionControl] shop row={i}; item={received->ItemId}; count={received->ItemCount}; currency={cost->ItemId}; price={cost->ItemCount}; otherCosts={cost[1].ItemCount},{cost[2].ItemCount}");
+        }
+    }
+
     public static bool PrepareOwnedMinion(ushort minion)
     {
         var ui = UIState.Instance();
@@ -345,6 +545,38 @@ internal static unsafe class VerminionGameInteraction
     public static bool IsMinionItemRegistered(uint itemId) => Plugin.PlayerState.IsLoaded &&
         Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(itemId, out var item) &&
         item.ItemAction.Value.Action.Value.RowId == 853 && Plugin.UnlockState.IsItemUnlocked(item);
+
+    public static bool TryRegisterInventoryMinion(uint itemId)
+    {
+        if (!GameHelpers.IsPlayerAvailable() || !Plugin.PlayerState.IsLoaded ||
+            !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(itemId, out var item) ||
+            item.ItemAction.Value.Action.Value.RowId != 853 || !Plugin.UnlockState.IsItemUnlockable(item) ||
+            Plugin.UnlockState.IsItemUnlocked(item)) return false;
+        var context = AgentInventoryContext.Instance();
+        var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
+        if (context == null || inventory == null) return false;
+        foreach (var type in new[]
+        {
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory1,
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory2,
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory3,
+            FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory4,
+        })
+        {
+            var bag = inventory->GetInventoryContainer(type);
+            if (bag == null || !bag->IsLoaded) return false;
+            for (var i = 0; i < bag->Size; ++i)
+            {
+                var slot = bag->GetInventorySlot(i);
+                if (slot == null) return false;
+                if (slot->ItemId != itemId || slot->Quantity == 0) continue;
+                var result = context->UseItem(itemId, type, (uint)i);
+                Plugin.Log.Information($"[VerminionControl] inventory minion use requested: item={itemId}; bag={type}; slot={i}; nativeReturn={result}; awaiting unlock readback");
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static int CurrentLogIndex()
     {
@@ -689,7 +921,7 @@ internal static unsafe class VerminionGameInteraction
     public static bool TryFocusMiniMap(System.Numerics.Vector3 world, out System.Numerics.Vector2 click)
     {
         click = default;
-        if (CurrentCpuDutyId() is not (560 or 563 or 570) || battlefieldClick != null) return false;
+        if (CurrentCpuDutyId() is not (>= 553 and <= 575) || battlefieldClick != null) return false;
         ReleaseBattlefieldInput(restoreRendering: false);
         var handle = Plugin.GameGui.GetAddonByName("LovmMiniMap");
         if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
@@ -699,9 +931,38 @@ internal static unsafe class VerminionGameInteraction
         var gateA = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2006534 && obj.Name.TextValue == "Gate A");
         var gateB = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2006534 && obj.Name.TextValue == "Gate B");
         var stoneB = Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2006533 && obj.Name.TextValue == "Arcana Stone B");
-        var nodeA = addon->GetNodeById(60010);
-        var nodeB = addon->GetNodeById(60009);
-        var nodeStone = addon->GetNodeById(60015);
+        // The 175x210 native map covers 50x60 world units (observed scale3.5).
+        // Component IDs are allocated to markers, not current array rows: new
+        // minions increase the array count without moving the structure nodes.
+        // Locate current marker centers relative to the scaled map bounds, then
+        // independently verify gate/stone geometry before issuing a camera click.
+        var mapNode = addon->GetNodeById(16);
+        if (!IsVisibleThroughParents(mapNode) || mapNode->Type != NodeType.Collision) return false;
+        var map = new FFXIVClientStructs.FFXIV.Common.Math.Bounds();
+        mapNode->GetBounds(&map);
+        var mapScaleX = map.Width / 50f;
+        var mapScaleZ = map.Height / 60f;
+        var mapCenterX = map.CenterX;
+        var mapCenterY = map.CenterY;
+        if (mapScaleX is < 1 or > 12 || mapScaleZ is < 1 or > 12 || Math.Abs(mapScaleX - mapScaleZ) > 0.2f) return false;
+        AtkResNode* StructureNode(Dalamud.Game.ClientState.Objects.Types.IGameObject? obj)
+        {
+            if (obj == null) return null;
+            var expectedX = mapCenterX + obj.Position.X * mapScaleX;
+            var expectedY = mapCenterY + obj.Position.Z * mapScaleZ;
+            for (var index = 0; index < Math.Min((int)addon->UldManager.NodeListCount, 128); ++index)
+            {
+                var node = addon->UldManager.NodeList[index];
+                if (!IsVisibleThroughParents(node) || node->NodeId < 60000 || (ushort)node->Type < 1000) continue;
+                var bounds = new FFXIVClientStructs.FFXIV.Common.Math.Bounds();
+                node->GetBounds(&bounds);
+                if (Math.Abs(bounds.CenterX - expectedX) <= 2 && Math.Abs(bounds.CenterY - expectedY) <= 2) return node;
+            }
+            return null;
+        }
+        var nodeA = StructureNode(gateA);
+        var nodeB = StructureNode(gateB);
+        var nodeStone = StructureNode(stoneB);
         if (gateA == null || gateB == null || stoneB == null || !IsVisibleThroughParents(nodeA) ||
             !IsVisibleThroughParents(nodeB) || !IsVisibleThroughParents(nodeStone)) return false;
         var a = new FFXIVClientStructs.FFXIV.Common.Math.Bounds();
@@ -867,8 +1128,21 @@ internal static unsafe class VerminionGameInteraction
 
     public static void CaptureSetup()
     {
+        var localPlayer = Plugin.ObjectTable.LocalPlayer;
+        if (localPlayer != null)
+            Plugin.Log.Information($"[VerminionControl] tournament homeWorld={localPlayer.HomeWorld.RowId}; currentWorld={localPlayer.CurrentWorld.RowId}; homeDc={localPlayer.HomeWorld.Value.DataCenter.RowId}; currentDc={localPlayer.CurrentWorld.Value.DataCenter.RowId}");
         var player = PlayerState.Instance();
         Plugin.Log.Information($"[VerminionControl] completedStages={(player == null ? -1 : player->CompletedLoVMStages)}");
+#if DEBUG
+        var questManager = QuestManager.Instance();
+        foreach (ushort questId in VerminionRoster.GentlemanQuests)
+            Plugin.Log.Information($"[VerminionControl] Hildibrand quest={questId}; complete={QuestManager.IsQuestComplete(questId)}; accepted={questManager != null && questManager->IsQuestAccepted(questId)}; sequence={QuestManager.GetQuestSequence(questId)}");
+        var providers = Plugin.PluginInterface.InstalledPlugins.Where(p => p.IsLoaded &&
+            p.InternalName is "WigglyQuest" or "Questionable" or "ADS" or "dad" or "FrenRider" or "BossMod" or "BossModReborn" or "RotationSolver").Select(p => p.InternalName);
+        Plugin.Log.Information($"[VerminionControl] acquisition level={localPlayer?.Level}; unsyncedLevel={ReadUnsyncedJobLevel()}; job={localPlayer?.ClassJob.RowId}; providers={string.Join(',', providers)}");
+#endif
+        if (TryReadPurchaseInventory(VerminionRoster.MammetOffer.ItemId, out var gil, out var mgp, out var mammetItems))
+            Plugin.Log.Information($"[VerminionControl] purchase funds gil={gil}; mgp={mgp}; mammetItems={mammetItems}");
         foreach (var quest in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Quest>())
             if (quest.Name.ToString() is "It Could Happen to You" or "World of Wonders" or "Rising to the Challenge")
                 Plugin.Log.Information($"[VerminionControl] prerequisite={quest.Name}; quest={quest.RowId & 0xFFFF}; complete={FFXIVClientStructs.FFXIV.Client.Game.QuestManager.IsQuestComplete((ushort)(quest.RowId & 0xFFFF))}");
@@ -908,6 +1182,9 @@ internal static unsafe class VerminionGameInteraction
         if (agent != null)
         {
             Plugin.Log.Information($"[VerminionControl] selected={agent->SelectedDuty.ContentType}/{agent->SelectedDuty.Id}");
+            Plugin.Log.Information($"[VerminionControl] selectedContentCount={agent->SelectedContent.Count}");
+            for (var index = 0; index < Math.Min(agent->SelectedContent.Count, 5); ++index)
+                Plugin.Log.Information($"[VerminionControl] selectedContent[{index}]={agent->SelectedContent[index].ContentType}/{agent->SelectedContent[index].Id}");
             var count = 0;
             foreach (var entry in agent->ContentList)
             {
@@ -1059,7 +1336,7 @@ internal static unsafe class VerminionGameInteraction
             Plugin.Log.Information($"[VerminionControl] {name}.value[{i}]={text}; type={value.Type}");
         }
         CaptureNodes(name, &addon->UldManager, 0, tooltips);
-        if (name == "LovmMiniMap" && CurrentCpuDutyId() is 560 or 570)
+        if (name == "LovmMiniMap" && CurrentCpuDutyId() is 560 or 570 or 571 or 575)
         {
             // Bounded control captures supply minimap geometry for checking
             // camera routes against current gate and stone positions.
