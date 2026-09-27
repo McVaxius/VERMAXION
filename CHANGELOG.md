@@ -2,6 +2,17 @@
 
 ## Unreleased - Verminion CPU bot (in progress)
 
+- Add Baby Bat to capped minion acquisition through Junkmonger Nonoroon in Upper La Noscea. Reuse travel, native flight controls and the existing purchase receipt checks; require existing flight access and stop if the vendor is absent. Correct the acquisition hint: nearby FATEs temporarily remove the vendor. Travel and purchase remain pending live verification.
+- Verify fresh uninterrupted clears of challenges 1-5 on the current test character and remove the temporary first-three replay path. Challenge 6 correctly stops before admission when Baby Bat is missing.
+- Select a registered minion from an occupied palette slot for tutorial briefing summons. Empty slots and stale entries for unowned minions cannot progress the tutorial. Reloading an active tutorial reads its current instruction instead of waiting for a new one before acting. Runtime revalidation is in progress.
+- Skip dead or obscured hatchlings when selecting an individual tutorial unit, so a candidate hidden by the top UI does not prevent selecting a visible one for its special action.
+- Reuse the existing clear-then-select battle control for the tutorial special and bring an isolated hatchling back to its action party before checking Execute Action. Verify the clicked friendly unit and let movement settle before trying the special. Live testing confirmed regrouping enabled the special and advanced the tutorial to healing.
+- Accept the tutorial's explicit Victory result only against its matching saved admission, recording its permanent clear separately from weekly wins. Refresh participation from the native Challenge Log. Abandoned, unknown and duplicate tutorial results cannot advance the campaign. A fresh uninterrupted tutorial replay and automatic Stage 2 transition are now verified.
+
+- Read native constant strings in the existing bounded addon diagnostics, so tournament information text is captured rather than reported as a non-numeric value.
+
+- Include the observed duty, result and saved counters in the existing paused reload diagnostic without starting a run or recording a result. Live FULL STOP is verified at the owned queue and after battlefield selection/movement: queue withdrawal, cleared admission, paused reload without restarting, and no credit for the cancelled battle's later defeat. Weekly counts and campaign progress stay unchanged. Remove all temporary lifecycle test hooks; retain permanent required-minion acquisition through Questionable.
+
 - Explain the Hildibrand handoff's existing duty-provider setup in the acquisition panel: solo unsynced trial settings, FrenRider's eight-player ADS handoff, and ADS maturity eligibility. Keep these settings under the providers' control and distinguish route setup from a verified trial clear.
 - Release the unstarted Before-AR login gate as soon as registration identifies this character's saved minion acquisition, before reload actions and ownership readback. Preserve truthful ownership instead of hiding an active hold from DAD.
 - Explain the actual minion-acquisition admission blocker, including existing Vermaxion work, DAD ownership, AutoRetainer state, registration or a pending reload action.

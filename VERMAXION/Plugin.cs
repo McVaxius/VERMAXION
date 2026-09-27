@@ -43,10 +43,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260926-286";
-    private DateTime? verminionLifecycleTestDeadline;
-    private DateTime? verminionLifecycleTestStoppedAt;
-    private ulong verminionLifecycleTestOwner;
+    private const string DebugAttemptMarker = "verminion-control-20260927-307";
     private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"A:\ff14\parasite\vmx\VERMAXION.dll";
 
@@ -722,7 +719,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
         if (taskId == AutomationCatalog.VerminionQueue && ConfigManager.GetActiveConfig().VerminionPaused)
         {
-            StartVerminionQueueStopTest();
+            var progress = ConfigManager.GetActiveConfig().VerminionProgress;
+            Log.Information($"[Verminion] Paused reload observation: duty={VerminionGameInteraction.CurrentCpuDutyId()}; result={VerminionGameInteraction.ReadBattleOutcome()}; pending={progress.PendingMatch}; matches={progress.WeeklyMatches}; wins={progress.WeeklyWins}; no admission or credit.");
             SetDebugTaskStatus("Verminion is paused; explicit Run/Resume is required before reload continuation.");
             return;
         }
@@ -740,55 +738,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         {
             SetDebugTaskStatus($"Blocked: reload cleanup failed. {ex.Message}");
         }
-    }
-
-    private void StartVerminionQueueStopTest()
-    {
-        var config = ConfigManager.GetActiveConfig();
-        var progress = config.VerminionProgress;
-        var multi = AutoRetainerIPC.ReadMultiModeEnabled();
-        if (Configuration.DebugTaskCharacterKey != ConfigManager.CurrentCharacterKey ||
-            ClientState.TerritoryType != 145 || !GameHelpers.IsPlayerAvailable() ||
-            Engine.IsRunning || VerminionService.IsActive || VerminionService.HasQuestAcquisition ||
-            DadHandoffBlocksNewWork || AutoRetainerIPC.IsBusy() || !multi.Success || multi.Enabled ||
-            config.VerminionMode != VerminionMode.WinTarget || config.VerminionVictoryTarget != 37 ||
-            !config.VerminionPaused || !progress.CampaignRequested || progress.PendingMatch != 0 ||
-            progress.WeeklyMatches != 109 || progress.WeeklyWins != 37 || progress.MatchSequence != 127 ||
-            progress.CampaignStage != 23 || progress.CampaignStageAttempts != 3 || progress.ClearedChallengeMask != 4194303)
-        { Log.Warning("[VerminionLifecycle] Queue-stop test not started: idle baseline guard did not match."); return; }
-        verminionLifecycleTestOwner = PlayerState.ContentId;
-        verminionLifecycleTestDeadline = DateTime.UtcNow.AddSeconds(180);
-        config.VerminionVictoryTarget = 38;
-        Log.Information("[VerminionLifecycle] Queue-stop test: native weekly Run, target38; campaign attempts preserved; 180-second bound.");
-        RunDashboardAction(VerminionService.RunTask);
-    }
-
-    private void UpdateVerminionQueueStopTest()
-    {
-        if (verminionLifecycleTestDeadline == null || PlayerState.ContentId != verminionLifecycleTestOwner) return;
-        var config = ConfigManager.GetActiveConfig();
-        if (verminionLifecycleTestStoppedAt == null)
-        {
-            if (!config.VerminionPaused && (DateTime.UtcNow >= verminionLifecycleTestDeadline || VerminionService.IsFailed))
-            {
-                Log.Warning("[VerminionLifecycle] Test ended before queue checkpoint; FULL STOP.");
-                FullStop();
-            }
-            if (!config.VerminionPaused || VerminionService.IsActive) return;
-            verminionLifecycleTestStoppedAt = DateTime.UtcNow;
-        }
-        if ((DateTime.UtcNow - verminionLifecycleTestStoppedAt.Value).TotalSeconds < 3) return;
-        var progress = config.VerminionProgress;
-        Log.Information($"[VerminionLifecycle] Queue-stop settled: active={VerminionService.IsActive}; paused={config.VerminionPaused}; nativeQueue={VerminionGameInteraction.HasChallengeQueue(2)}; duty={VerminionGameInteraction.CurrentCpuDutyId()}; pending={progress.PendingMatch}; matches={progress.WeeklyMatches}; wins={progress.WeeklyWins}; mask={progress.ClearedChallengeMask}; campaignStage={progress.CampaignStage}; campaignAttempts={progress.CampaignStageAttempts}");
-        if (config.VerminionVictoryTarget == 38 && progress.PendingMatch == 0)
-        {
-            config.VerminionVictoryTarget = 37;
-            progress.CampaignRequested = true;
-            progress.EnsureRun(config.VerminionMode, 37);
-            ConfigManager.SaveCurrentAccount();
-            Log.Information("[VerminionLifecycle] Restored original target37 and campaign selection; pause preserved.");
-        }
-        verminionLifecycleTestDeadline = null;
     }
 
     private void DispatchDebugTask(string taskId)
@@ -2410,7 +2359,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         ReleaseDashboardRunYesAlreadyPauseIfIdle();
-        UpdateVerminionQueueStopTest();
     }
 
     private void ProcessRetainerCollectOnlyRecovery()

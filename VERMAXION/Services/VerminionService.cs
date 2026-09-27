@@ -34,6 +34,7 @@ public sealed partial class VerminionService : IDisposable
     private bool ownsMinionShop;
     private bool ownsTournamentInspection;
     private VerminionVendorMinion? purchasingMinion;
+    private Vector3? minionVendorDestination;
     private bool minionPurchaseSent;
     private bool minionPurchaseConfirmationSent;
     private bool minionShopCaptured;
@@ -128,7 +129,7 @@ public sealed partial class VerminionService : IDisposable
 
     public enum VerminionState
     {
-        Idle, UnlockingPrerequisite, RegisteringMinions, ShoppingForMinion, ClosingMinionShop, TravellingToSaucer, TravellingToMinionSquare, ApproachingTable, InspectingTournament,
+        Idle, UnlockingPrerequisite, RegisteringMinions, ShoppingForMinion, ClosingMinionShop, TravellingToMinionVendor, TravellingToSaucer, TravellingToMinionSquare, ApproachingTable, InspectingTournament,
         InspectingControls, SelectingTutorial, WaitingForTutorial, InDuty, LeavingResult, InspectingProgress, Complete, Failed,
     }
 
@@ -223,7 +224,7 @@ public sealed partial class VerminionService : IDisposable
         reconcilingSummonQueue = currentDuty != 0;
         admissionConfirmed = false;
         admissionSnapshot = false;
-        tutorialPromptFloor = VerminionGameInteraction.CurrentLogIndex();
+        tutorialPromptFloor = currentDuty == 552 ? -1 : VerminionGameInteraction.CurrentLogIndex();
         handledPrompt = string.Empty;
         pendingGateSummon = false;
         pendingTutorialSummons = 0;
@@ -320,6 +321,7 @@ public sealed partial class VerminionService : IDisposable
             {
                 2 => VerminionRoster.MammetOffer,
                 3 => VerminionRoster.HatchlingOffer,
+                26 => VerminionRoster.BatOffer,
                 83 => VerminionRoster.ZuOffer,
                 174 => VerminionRoster.NeroOffer,
                 _ => null,
@@ -459,6 +461,12 @@ public sealed partial class VerminionService : IDisposable
                     if (elapsed > 180) { Fail("Minion vendor setup or purchase timed out; any pending reservation is retained."); return; }
                     UpdateMinionShop();
                     return;
+                case VerminionState.TravellingToMinionVendor:
+                    if (elapsed > 120) { Fail("Camp Bronze Lake travel did not complete; existing aetheryte access is required. No purchase submitted."); return; }
+                    if (elapsed < 3 || !TravelSettled() || Plugin.ClientState.TerritoryType != purchasingMinion?.Territory) return;
+                    ownsTravel = false;
+                    SetState(VerminionState.ShoppingForMinion, "Approaching Junkmonger Nonoroon at Poor Maid's Mill");
+                    return;
                 case VerminionState.ClosingMinionShop:
                     if (elapsed > 10) { Fail("The owned minion shop did not close."); return; }
                     if (!CloseOwnedMinionShop()) return;
@@ -547,13 +555,6 @@ public sealed partial class VerminionService : IDisposable
                         queuedProgress.BeginMatch((uint)(551 + challengeStage));
                         configManager.SaveCurrentAccount();
                         log.Information($"[Verminion] Verified CPU queue; match={queuedProgress.PendingMatch}; stage={challengeStage}");
-                        if (!campaign && runMode == VerminionMode.WinTarget && victoryTarget == 38 && challengeStage == 2 &&
-                            queuedProgress.PendingMatch == 128)
-                        {
-                            log.Information("[VerminionLifecycle] Native Stage 2 queue saved; invoking /vmx stop before Commence.");
-                            commandManager.ProcessCommand("/vmx stop");
-                            return;
-                        }
                     }
                     if (admissionConfirmed && DateTime.UtcNow >= nextInteractionUtc && VerminionGameInteraction.TryCommenceChallenge(challengeStage))
                         nextInteractionUtc = DateTime.UtcNow.AddSeconds(5);
@@ -585,10 +586,16 @@ public sealed partial class VerminionService : IDisposable
                         if (lastBattleOutcome == VerminionBattleOutcome.Unknown)
                         { Fail("Unknown battle result; no result recorded."); return; }
                         var resultProgress = configManager.GetActiveConfig().VerminionProgress;
-                        lastResultCredited = resultProgress.PendingDuty == VerminionGameInteraction.CurrentCpuDutyId() &&
-                            resultProgress.RecordResult(resultProgress.PendingMatch, lastBattleOutcome,
-                                ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow));
-                        if (lastResultCredited) configManager.SaveCurrentAccount();
+                        var resultDuty = VerminionGameInteraction.CurrentCpuDutyId();
+                        lastResultCredited = resultProgress.PendingDuty == resultDuty &&
+                            (resultDuty == 552
+                                ? resultProgress.RecordTutorialCompletion(resultProgress.PendingMatch, lastBattleOutcome)
+                                : resultProgress.RecordResult(resultProgress.PendingMatch, lastBattleOutcome,
+                                    ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow)));
+                        if (lastResultCredited)
+                        {
+                            configManager.SaveCurrentAccount();
+                        }
                         log.Information($"[Verminion] Verified outcome={lastBattleOutcome}; credited={lastResultCredited}; matches={resultProgress.WeeklyMatches}; wins={resultProgress.WeeklyWins}");
                         StopOwnedMovement();
                         SetState(VerminionState.LeavingResult, $"CPU {lastBattleOutcome} verified; leaving the result screen");
@@ -1131,9 +1138,10 @@ public sealed partial class VerminionService : IDisposable
     private void BeginMinionPurchase(VerminionVendorMinion offer)
     {
         purchasingMinion = offer;
+        minionVendorDestination = null;
         minionPurchaseSent = minionPurchaseConfirmationSent = false;
         minionShopCaptured = false;
-        SetState(VerminionState.ShoppingForMinion, $"Preparing a capped {offer.Name} purchase at the Minion Trader");
+        SetState(VerminionState.ShoppingForMinion, $"Preparing a capped {offer.Name} purchase at {offer.VendorName}");
     }
 
     private bool TryResumeMinionPurchase()
@@ -1158,14 +1166,14 @@ public sealed partial class VerminionService : IDisposable
     {
         if (DateTime.UtcNow < nextInteractionUtc) return;
         nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
-        if (Plugin.ClientState.TerritoryType != 388)
-        { Fail("Minion purchase left Minion Square; no further shop commands issued."); return; }
         var offer = purchasingMinion;
         if (offer == null) { Fail("No minion purchase was selected; no shop command issued."); return; }
         var config = configManager.GetActiveConfig();
         var progress = config.VerminionProgress;
         if (progress.PendingPurchase != null)
         {
+            if (Plugin.ClientState.TerritoryType != offer.Territory)
+            { Fail("The reserved minion purchase left its vendor territory; no further shop commands issued."); return; }
             if (ReconcileMinionPurchase())
             { SetState(VerminionState.ClosingMinionShop, "Closing the verified minion purchase"); return; }
             if (!minionPurchaseSent)
@@ -1206,10 +1214,22 @@ public sealed partial class VerminionService : IDisposable
             { VerminionGameInteraction.CaptureMinionShop(); Fail("Could not close the Verminion table menu before shopping; no purchase submitted."); }
             return;
         }
+        if (Plugin.ClientState.TerritoryType != offer.Territory)
+        {
+            if (offer.MinionId != 26)
+            { Fail("Minion purchase left Minion Square; no further shop commands issued."); return; }
+            if (!VerminionGameInteraction.HasNonoroonFlightAccess())
+            { Fail("Automatic Baby Bat travel needs existing flight access in Upper La Noscea. Acquire it from Nonoroon and Resume; no character progression started."); return; }
+            if (!TravelSettled()) return;
+            ownsTravel = lifestream.ExecuteCommand("/li Camp Bronze Lake");
+            if (!ownsTravel) { Fail("Camp Bronze Lake travel was rejected; no purchase submitted."); return; }
+            SetState(VerminionState.TravellingToMinionVendor, "Travelling to Camp Bronze Lake for Baby Bat");
+            return;
+        }
         if (GameHelpers.IsAddonVisible(offer.Shop))
         {
             if (!ownsMinionShop || !VerminionGameInteraction.TryReadMinionOffer(offer, out var index, out var price))
-            { VerminionGameInteraction.CaptureMinionShop(); Fail("Minion Trader item, price or shop ownership could not be verified; no purchase submitted."); return; }
+            { VerminionGameInteraction.CaptureMinionShop(); Fail("Minion vendor item, price or shop ownership could not be verified; no purchase submitted."); return; }
             if (!progress.ReservePurchase(offer.ItemId, offer.MinionId,
                     offer.Gil, offer.Mgp, gil, mgp, items, false, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap, config.VerminionGilReserve))
             { Fail("Minion purchase could not reserve its budget."); return; }
@@ -1231,35 +1251,60 @@ public sealed partial class VerminionService : IDisposable
         }
         if (ownsMinionShop && (GameHelpers.IsAddonVisible("SelectString") || GameHelpers.IsAddonVisible("SelectIconString")))
         {
-            var category = offer.Mgp > 0 ? "Purchase Minions (MGP)" : "Purchase Minions (Gil)";
+            var category = offer.MinionId == 26 ? "Purchase Items" : offer.Mgp > 0 ? "Purchase Minions (MGP)" : "Purchase Minions (Gil)";
             if (!GameHelpers.TrySelectStringExact(category, out _))
                 GameHelpers.TrySelectNativeListEntry("SelectIconString", category);
             return;
         }
         var player = Plugin.ObjectTable.LocalPlayer;
         if (player == null) return;
-        var vendor = GameHelpers.FindObjectByDataId(VerminionGameInteraction.MinionTraderId);
-        var position = vendor?.Position ?? new Vector3(82.4139f, 0.411926f, 44.9377f);
+        var vendor = VerminionGameInteraction.FindMinionVendor(offer);
+        if (offer.MinionId == 26 && vendor == null && minionVendorDestination == null)
+        {
+            if (!navigation.TryGetNavReady(out var ready) || !ready) return;
+            // Map (11.8, 24.7), size factor 100. Resolve the actual ground height
+            // before approaching; replace this map point with the loaded NPC.
+            if (!navigation.TryFindReachablePointOnFloor(new Vector3(-484, 0, 160), 10, out var destination))
+            { Fail("Nonoroon's vendor area could not be resolved on the navmesh; no purchase submitted."); return; }
+            minionVendorDestination = destination;
+        }
+        var position = vendor?.Position ?? minionVendorDestination ?? new Vector3(82.4139f, 0.411926f, 44.9377f);
+        var distance = Vector3.Distance(player.Position, position);
+        if (offer.MinionId == 26 && vendor == null && distance < 25)
+        { Fail("Junkmonger Nonoroon is currently unavailable near Poor Maid's Mill, possibly during a nearby FATE. No purchase submitted; Resume when he returns."); return; }
         var interactionDistance = vendor == null ? 2.5f : GameHelpers.GetValidInteractionDistance(vendor);
-        if (Vector3.Distance(player.Position, position) > interactionDistance)
+        if (distance > interactionDistance)
         {
             if (!navigationRequested)
             {
-                navigationRequested = navigation.PathfindAndMoveTo(position);
-                if (!navigationRequested) Fail("Minion Trader navigation was rejected; no purchase submitted.");
+                var fly = offer.MinionId == 26 && distance > 20;
+                if (fly)
+                {
+                    if (!VerminionGameInteraction.HasNonoroonFlightAccess())
+                    { Fail("Reaching Nonoroon automatically requires existing flight access; no purchase submitted."); return; }
+                    if (!condition[ConditionFlag.Mounted]) { VerminionGameInteraction.TryUseVendorTravelAction(9); return; }
+                    if (!condition[ConditionFlag.InFlight]) { VerminionGameInteraction.TryUseVendorTravelAction(2); return; }
+                }
+                navigationRequested = navigation.PathfindAndMoveTo(position, fly);
+                if (!navigationRequested) Fail("Minion vendor navigation was rejected; no purchase submitted.");
             }
             return;
         }
         if (navigationRequested) { navigation.Stop(); navigationRequested = false; }
-        if (vendor != null && GameHelpers.TargetAndInteractByDataId(VerminionGameInteraction.MinionTraderId, "Minion Trader"))
-            ownsMinionShop = true;
+        if (condition[ConditionFlag.Mounted]) { VerminionGameInteraction.TryUseVendorTravelAction(23); return; }
+        if (vendor != null)
+        {
+            Plugin.TargetManager.Target = vendor;
+            if (GameHelpers.InteractWithObject(vendor)) ownsMinionShop = true;
+        }
     }
 
     private bool CloseOwnedMinionShop()
     {
         if (!ownsMinionShop) return true;
         // Never close another character's or another vendor's UI.
-        if (owner == 0 || Plugin.PlayerState.ContentId != owner || Plugin.TargetManager.Target?.BaseId != VerminionGameInteraction.MinionTraderId)
+        if (owner == 0 || Plugin.PlayerState.ContentId != owner || purchasingMinion is not { } selectedOffer ||
+            !VerminionGameInteraction.IsMinionVendor(selectedOffer, Plugin.TargetManager.Target))
         { ownsMinionShop = false; return true; }
         if (purchasingMinion is { } offer && VerminionGameInteraction.IsMinionPurchaseConfirmation(offer))
         { GameHelpers.TryClickNativeButton("SelectYesno", offer.Mgp > 0 ? "No" : "Cancel", 11); return false; }
@@ -1408,7 +1453,8 @@ public sealed partial class VerminionService : IDisposable
             pendingSameTypeSelection = first.GameObjectId;
             return;
         }
-        if (pendingTutorialAction is { } action)
+        if (pendingTutorialAction is { } action && pendingSameTypeSelection == null &&
+            !pendingTutorialMove && movementSnapshotUtc == DateTime.MinValue)
         {
             if (!tutorialActionPanelsRestored)
             {
@@ -1430,15 +1476,16 @@ public sealed partial class VerminionService : IDisposable
         }
         if (pendingSameTypeSelection is { } objectId)
         {
-            var selectedId = VerifyBattleGroup && !groupSingleSelectionVerified ? VerminionGameInteraction.ReadBattlefieldClickHit() : objectId;
+            var selectedId = (VerifyBattleGroup || groupSelectionOnly || singleUnitSelection != null) && !groupSingleSelectionVerified
+                ? VerminionGameInteraction.ReadBattlefieldClickHit() : objectId;
             var selected = Plugin.ObjectTable.FirstOrDefault(obj => obj.GameObjectId ==
                 selectedId && obj.Name.TextValue == tutorialGroupName && VerminionGameInteraction.IsFriendlyMinion(obj) &&
                 (singleUnitSelection == null || !requireExactSingleSelection || obj.GameObjectId == singleUnitSelection) &&
                 (groupOrigin == null || Vector3.DistanceSquared(obj.Position, groupOrigin.Value) < 100));
-            if (singleUnitSelection != null)
+            if (singleUnitSelection != null && !groupSelectionOnly)
             {
                 pendingSameTypeSelection = null;
-                if (selected == null) { Fail("The bomb carrier selection could not be verified; no result recorded."); return; }
+                if (selected == null) { Fail("The requested individual minion selection could not be verified; no result recorded."); return; }
                 groupSelectionAnchor = selected.GameObjectId;
                 groupSelectionVerified = true;
                 pendingTutorialMove = true;
@@ -1585,13 +1632,13 @@ public sealed partial class VerminionService : IDisposable
         {
             pendingGateSummon = false;
             VerminionGameInteraction.CaptureAddon("LovmPalette");
-            if (!VerminionGameInteraction.TrySummonPaletteSlot(0))
+            if (!VerminionGameInteraction.TrySummonPaletteSlot(VerminionGameInteraction.FindTutorialSummonSlot()))
                 Fail("Gate selection sent but summon unavailable; no result recorded.");
             return;
         }
         if (pendingTutorialSummons > 0)
         {
-            if (!VerminionGameInteraction.TrySummonPaletteSlot(0))
+            if (!VerminionGameInteraction.TrySummonPaletteSlot(VerminionGameInteraction.FindTutorialSummonSlot()))
             { Fail("Tutorial summon queue is unavailable; no result recorded."); return; }
             --pendingTutorialSummons;
             return;
@@ -1614,7 +1661,7 @@ public sealed partial class VerminionService : IDisposable
             "Use the movement keys to shift your viewpoint around." => TryMoveCamera(),
             "Select a minion from the minion hotbar." =>
                 GameHelpers.TryGetAddonText("LovmPalette", 67, out var capacity) && capacity == "0/60" &&
-                VerminionGameInteraction.TrySummonPaletteSlot(0),
+                VerminionGameInteraction.TrySummonPaletteSlot(VerminionGameInteraction.FindTutorialSummonSlot()),
             "Left-click on the “A” found on the display above the hotbar, and try summoning a minion from Gate A." =>
                 pendingGateSummon = VerminionGameInteraction.TryClickPaletteIcon(73),
             "Summon several minions, and view them in the summoning queue." =>
@@ -1656,25 +1703,49 @@ public sealed partial class VerminionService : IDisposable
     private bool TrySelectTutorialHatchling(bool move = true)
     {
         var foes = Plugin.ObjectTable.Where(obj => obj.Name.TextValue == "Baby Behemoth").ToArray();
-        var hatchling = Plugin.ObjectTable.Where(obj => obj.Name.TextValue == "Wayward Hatchling")
+        var hatchlings = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+            .Where(obj => obj.CurrentHp > 0 && obj.Name.TextValue == "Wayward Hatchling" &&
+                VerminionGameInteraction.IsFriendlyMinion(obj))
             .OrderByDescending(obj => foes.Length == 0 ? obj.Position.X :
-                foes.Min(foe => Vector3.DistanceSquared(obj.Position, foe.Position))).FirstOrDefault();
-        if (hatchling == null) return false;
-        Vector2 screen;
-        if (!(move ? VerminionGameInteraction.ProjectBattlefield(hatchling.Position + new Vector3(0, 0.1f, 0), out screen) :
-            VerminionGameInteraction.ProjectObjectCenter(hatchling, out screen))) return false;
-        if (!VerminionGameInteraction.SendBattlefieldClick(screen, release: false)) return false;
-        pendingBattlefieldClick = screen;
-        pendingBattlefieldRightClick = false;
-        battlefieldClickReleaseUtc = DateTime.UtcNow.AddMilliseconds(150);
-        pendingTutorialMove = move;
-        tutorialDestination = new Vector3(0, 0, 12);
-        return true;
+                foes.Min(foe => Vector3.DistanceSquared(obj.Position, foe.Position)));
+        foreach (var hatchling in hatchlings)
+        {
+            Vector2 screen;
+            if (!(move ? VerminionGameInteraction.ProjectBattlefield(hatchling.Position + new Vector3(0, 0.1f, 0), out screen) :
+                VerminionGameInteraction.ProjectObjectCenter(hatchling, out screen)) ||
+                !VerminionGameInteraction.IsBattlefieldPointVisible(screen)) continue;
+            if (!move)
+                return TrySelectGroup(hatchling.Position, "Wayward Hatchling", 1, hatchling.Position,
+                    singleUnit: hatchling.GameObjectId, requireExactSingle: false, selectionOnly: true);
+            if (!VerminionGameInteraction.SendBattlefieldClick(screen, release: false)) return false;
+            pendingBattlefieldClick = screen;
+            pendingBattlefieldRightClick = false;
+            battlefieldClickReleaseUtc = DateTime.UtcNow.AddMilliseconds(150);
+            pendingTutorialMove = move;
+            tutorialDestination = new Vector3(0, 0, 12);
+            return true;
+        }
+        return false;
     }
 
     private bool TryTutorialSpecial()
     {
-        if (!TrySelectTutorialHatchling(move: false)) return false;
+        var hatchlings = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+            .Where(unit => unit.CurrentHp > 0 && unit.Name.TextValue == "Wayward Hatchling" &&
+                VerminionGameInteraction.IsFriendlyMinion(unit)).ToArray();
+        if (hatchlings.Length < 4) return false;
+        // Specials require four charged minions nearby. The preceding fights
+        // can leave one defending the stone while the other three move on.
+        var rally = hatchlings.OrderByDescending(candidate => hatchlings.Count(unit =>
+            Vector3.DistanceSquared(unit.Position, candidate.Position) < 16)).First();
+        var straggler = hatchlings.OrderByDescending(unit => Vector3.DistanceSquared(unit.Position, rally.Position)).First();
+        if (Vector3.DistanceSquared(straggler.Position, rally.Position) >= 16)
+        {
+            if (!TrySelectGroup(rally.Position, "Wayward Hatchling", 1, straggler.Position,
+                singleUnit: straggler.GameObjectId)) return false;
+            log.Information("[VerminionControl] regrouping the isolated tutorial hatchling before checking its special");
+        }
+        else if (!TrySelectTutorialHatchling(move: false)) return false;
         tutorialActionPanelsRestored = false;
         pendingTutorialAction = 82;
         return true;

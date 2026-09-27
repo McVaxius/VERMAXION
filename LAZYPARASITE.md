@@ -1,5 +1,477 @@
 # Verminion bot development checkpoint
 
+CURRENT307 BUILT, NOT DEPLOYED; PAUSED (2026-09-27): user requested a pause
+after this source/build checkpoint to reload the CLI. Z:\vmx.bat passed with
+zero errors and two existing NU1601 PInvoke warnings. Fixed the missing native
+ActionManager/ActionType imports found by the first build. Fresh existing
+Verminion tests passed18/18 with Debug --no-build --no-restore and filter
+FullyQualifiedName~Verminion. Use the test project's default Any CPU platform:
+the solution maps its x64 build to Any CPU; a separate x64 test invocation
+selected an older output with no matching tests and is not validation evidence.
+git diff --check passed. No deployment, reload or runtime action occurred.
+Do not copy the DLL, reload VMX, or start another runtime attempt until the user
+resumes. Version remains0.5.0.3; built artifact is
+Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll. Dirty files: existing
+CHANGELOG.md, LAZYPARASITE.md, tutorial lifecycle test/progress model, Plugin.cs,
+and the three Verminion service/strategy/interaction files. No commit made.
+
+306 is the last verified loaded build. Fresh uninterrupted Stage1sequence5
+cleared00:15:32; Stage2sequence6 cleared, Stage3sequence7 cleared00:21:23.914,
+Stage4sequence8 cleared00:24:45.856, Stage5sequence9 cleared00:27:42.307.
+The run failed before Stage6 at00:27:56 for missing Baby Bat. No battle or
+purchase is pending. Saved mask31, next stage6, sequence9/pending0/duty0,
+weekly9matches/4wins, losses0, campaign requested, pausedFalse. Character caps
+223588gil/40000MGP, reserve50000gil, own receipts2400gil/0MGP. Do not copy
+another character's receipts or reset progress. Sole runtime target R:\XIVLauncher7.
+
+307 removes the temporary first-three replay path and adds the ordinary Baby
+Bat vendor offer: item6187/companion26,2400gil, BNpcName1237 in territory139.
+Use existing Lifestream travel to Camp Bronze Lake, existing flight eligibility
+(aether-current set19), native mount/takeoff/landing, and navmesh floor lookup
+near world(-484,160). Preserve existing capped reservation/confirmation/receipt
+and registration flow. Nonoroon normally sells the minion; nearby FATEs can
+temporarily remove him. No FATE execution or general progression was added.
+Guide: https://ffxiv.consolegameswiki.com/wiki/Junkmonger_Nonoroon
+Item: https://www.garlandtools.org/db/doc/item/en/3/6187.json
+Vendor travel, actual menu, purchase and Stage6 continuation remain UNVERIFIED.
+Build307 and focused tests passed; native route evidence remains pending.
+After explicit resume, copy only the watched VMX DLL to
+R:\parasite\vmx\VERMAXION.dll, verify307 startup, then observe this bounded route.
+ADS/BotologyUpdates changes stay discarded. Full campaign/tournament acceptance
+remains unfinished. The goal is paused for the requested CLI reload; the former
+blocked reason was stale, not a current duplicate-plugin blocker. This checkpoint
+supersedes the old active-Stage2 note.
+
+Historical306 evidence (2026-09-27 00:15 EDT): fresh Stage1sequence5 queued
+00:08:41.026, entered00:08:48.260; all commands completed without intervention.
+Special enabled00:12:26.552, healing00:12:42.642, gate transfer00:13:13.954,
+stone/shield/final stone completed. Native Victory00:15:32.051 creditedTrue
+consumed the matching tutorial admission while matches4/wins0 remained unchanged.
+Native Challenge Log refresh00:15:41.137 reported5 participations, wins still0.
+Automatic Stage2sequence6 queued00:15:48.977, entered00:15:56.304. That attempt
+subsequently cleared and advanced through Stage5, as recorded above.306 is
+built/copied/loaded; version0.5.0.3 unchanged. Full830
+tests last passed with304's new tutorial accounting, later native selection and
+Debug shortcut cleanup builds passed; no native input claim rests on unit tests.
+Caps remain223588gil/40000MGP with50000gil reserve; own spending2400gil/0MGP.
+No ADS/BotologyUpdates changes restored. Full campaign/tournament acceptance is
+still unfinished. Sole runtime remains R7. Goal-tool blocked status is stale;
+user-resolved duplicate ownership is not a current runtime blocker.
+
+306 build passed zero errors/two existing NU1601 warnings; diff clean. Copying
+only watched VMX DLL. Fresh admission/result and Stage2 transition are pending.
+
+305 loaded00:03:38.453 and dispatched00:03:41.834. Accepted a nearby friendly
+special candidate; special executed00:03:52.935. All remaining lessons completed,
+fresh conclusion/Victory00:06:58.902; creditedFalse, matches3/wins0, exit safely
+failed00:07:02.485 because sequence4 was abandoned. This verifies the corrected
+overlapping-friendly selection and protects cancelled/failed result accounting.
+Now build/copy prepared306 for a fresh Stage1sequence5 with unchanged limits.
+
+306 source-only preparation while305 finishes: remove the unverified generic
+DutyCompleted-event replay shortcut. Tutorial replay now advances only through
+its observed explicit Victory plus matching admission; a raw exit fails closed.
+305 special enabled00:03:52.935 and tutorial advanced to healing00:04:12.079,
+then gate transfer00:04:43.356. Hold306 build/copy until current abandoned
+sequence4 finishes; source marker306 is NOT yet built or loaded.
+
+305 build passed zero errors/two existing warnings; diff clean. Copy watched DLL
+for the narrowly corrected friendly special selection. Loaded marker and native
+outcome pending;304 full suite830/830 remains the latest full test result.
+
+305 intent:304 loaded23:58:24.442, fresh Stage1sequence4 queued23:58:40.965,
+entered23:58:48.311. Owned summon slot4 and all combat lessons passed. At
+00:02:20.706 special selection hit another living friendly Hatchling overlapping
+the requested one; exact-ID guard rejected it00:02:21.542 and abandoned sequence4.
+Specials may use ANY friendly Hatchling in the nearby party; relax exact-ID only
+for the selection-only special path. Preserve exact selection for regrouping,
+bomb carriers and other movement. Build/copy305; if still in tutorial, prove
+special/completion controls without recreating sequence4 or crediting its result.
+Fresh complete replay remains pending. No counter/cap/attempt reset.
+
+304 build passed (zero errors/two existing NU1601 warnings), diff clean. All830
+tests passed. Copying watched DLL for a fresh tutorial admission; verify exact304
+loaded marker and admission. Keep existing302/303 control evidence separate from
+the required uninterrupted fresh replay.
+
+304 intent:303 passed healing, gate transfer, Stone B and Shield commands. Native
+tutorial conclusion index306 and Victory result observed23:55:38.373; closure
+23:55:42.301 correctly failed credit because pending0. No DutyCompleted event was
+observed. This exposed that RecordResult deliberately rejects duty552, so even
+a fresh admitted tutorial result could not continue. Add separate admission-bound
+tutorial completion (Victory only, permanent Stage1 clear, no direct weekly
+match/win increment), retaining native Challenge Log refresh for participation.
+One focused regression covers unknown/defeat/stale/cancelled/duplicate/reloaded
+admissions and preserving weekly/spending/other-character facts. Build304/test,
+copy watched DLL and allow a FRESH Stage1 admission from Minion Square. No attempt
+reset, cap change, old-result adoption or reload during its useful battle.
+
+303 live: exact marker loaded23:52:12.359, dispatched23:52:15.781 into existing
+Stage1. Isolated Hatchling exact native hit23:52:24.804, move23:52:26.824,
+readback23:52:32.669. Execute Action enabled and clicked23:52:34.693. Tutorial
+advanced to healing23:52:50.812. This verifies party regrouping and special;
+continue remaining instructions without another reload. Pending0 remains;
+this abandoned admission must not receive a replay clear or weekly result.
+
+303 built successfully (zero errors/two existing NU1601 warnings), diff clean.
+Copying the watched DLL now; load, regrouping and ability verdict pending.
+
+303 intent:302 loaded and dispatched23:49:52.232. Clear click and exact friendly
+hit verified23:49:59/23:50:00; Execute Action still disabled23:50:03.372. One
+Hatchling remains at(1.39,0.63), with three around(-3,8); the official guide
+requires four charged nearby units. Source303 uses the existing single-unit
+selection/movement path to bring that straggler into the cluster, waits for the
+ordinary movement readback, then checks the special. Exact hit verification now
+also applies to this tutorial single-unit move. No new admission or result;
+sequence3/pending0/Stage1/weekly2matches0wins/spending2400gil0MGP retained.
+302 focused lifecycle tests passed17/17. Build/copy303 via existing authorized
+paths, unchanged version. Observe regrouping and special before judging success.
+
+302 build passed (zero errors, two existing NU1601 warnings); diff check passed.
+Copy the built x64 Debug DLL to the existing watched VMX path for the bounded
+selection test. Exact loaded marker and native special-action result are pending.
+
+302 intent: caps reconfirmed for the bound R7 character at223588gil/40000MGP,
+50000gil reserve, own spending2400/0.301 loaded23:41:46.380 and consumed the
+reviewed attempt reset at23:41:49.409. Remove that temporary reset. Its visible
+Hatchling click hit a friendly unit, but Execute Action remained disabled and
+the run failed23:41:57.850. Pending admission stays0; no clear or win credited.
+Official guide reconfirmed: four charged nearby minions, then select one and
+press Execute Action. Source302 reuses existing clear-then-select with exact
+friendly hit verification for the tutorial special; ability waits for selection
+readback. This isolates selection from possible party-proximity failure. Build
+with Z:\vmx.bat, preserve0.5.0.3, then copy only watched R:\parasite\vmx DLL.
+If physically still in the abandoned tutorial, observe controls only; never
+recreate its admission. If outside, the existing bounded replay may admit a fresh
+attempt. Verify302 marker and actual result before any completion claim.
+
+301 build passed zero errors/two existing warnings; diff check passed. Copied
+watched DLL for the reviewed visible-target/owned-slot correction. Load/dispatch
+and the fresh tutorial verdict remain unverified until the next bounded snapshot.
+
+301 correction intent: third replay accepted all briefing commands and both
+movement/combat exercises. At23:37:52 special-action selection chose the isolated
+1HP Hatchling near the top UI; its model center falls outside the existing safe
+click bounds. Three healthy alternatives were visible around(146,200). The code
+now iterates living friendly candidates and skips projected points outside those
+bounds, using the same native input path. Failure23:37:57.911 abandoned sequence3
+without credit.300 compiled but was not copied.301 includes the generic owned-slot
+briefing fix and this visible-candidate correction. Exact R7/bound selection/
+sequence3/pending0/Stage1attempts3 may reset ONLY the development attempt count
+after this reviewed correction, and only after the ordinary saved-pause guard
+has returned for any FULL STOP. Preserve mask3, weekly counts and spending2400.
+If still physically in the tutorial, resume its control proof without recreating
+the admission; if outside, allow a fresh bounded replay. Build/copy301 after
+success; remove the one-shot retest reset once observed. No goal clear claimed.
+
+299 progress: Hatchling registration verified23:33:37.233; fresh Stage1sequence3
+saved23:33:51.354, entered23:33:58.405. Owned-slot summon accepted: tutorial
+advanced through camera23:34:27, Gate A23:34:44, queued minions23:34:59, then
+single-unit selection/movement23:35:17. No clear yet. Ownership, not merely a
+matching saved palette ID, is required for briefing summons. Historical original
+proof used owned32/41/50 at slots0/1/2 (not Hatchlings), so do not introduce an
+unnecessary tutorial minion requirement. Source300 uses first occupied REGISTERED
+palette slot and removes the temporary early-Hatchling purchase condition. The
+already bought Hatchling is still required forStage20 and its receipt remains.
+Keep299 running this useful attempt; hold300 until a suitable result boundary.
+
+299 native outcome: client was already outside tutorial on reload, so no Retreat
+action or observer ran. Existing campaign flow reached Minion Trader; Hatchling
+purchase submitted23:33:27.145, exact2400gil confirmation23:33:28.146, item/currency
+receipt verified once23:33:29.163. Registration then started. Source-only300
+removes the unused Retreat observer AND its unused generic dropdown-helper change;
+do not retain untested code for a cleanup that proved unnecessary. Keep current
+attempt uninterrupted until its result. No purchase cap or receipt reset.
+
+299 compile passed, zero errors/two existing warnings; diff check passed. Copied
+only watched VMX DLL. Await actual marker and cleanup/preflight verdict.
+
+299 intent: second tutorial dispatched actual Hatchling slot5 at23:25:43.944,
+but no summon/readback followed; timeout23:26:44.481 abandoned sequence2 with
+no bot credit. The character has an unowned Hatchling entry already on its palette.
+Acquire the Stage20-required Hatchling early using existing2400gil capped flow
+before another tutorial admission. This tests real ownership and remains useful
+for the campaign. Temporary replay preflight requests it only if still missing.
+First clean the abandoned tutorial: its observed LovmPalette83 is a native
+DropDownList with registered ListItemClick. Extend existing list helper to its
+declared nested List. On exact R7/bound character/sequence2/pending0/unpaused/
+duty552 only, dispatch label Retreat once and capture LovmConfirm/SelectYesno
+three seconds later; do not confirm an unseen prompt or credit any result.
+If already outside, normal debug dispatch/preflight runs instead. Remove this
+temporary cleanup observer after evidence. Build/copy299; version unchanged.
+
+298 loaded23:25:05.266 and dispatch23:25:09.649. Actual runtime was already
+outside the failed tutorial; it did not adopt/recreate sequence1. Native weekly
+Challenge Log now reports1 participation/0 wins, which was read rather than an
+outcome inferred from timeout. Fresh Stage1 sequence2 saved23:25:22.544; entered
+23:25:29.831. This is a fresh corrected-slot attempt with its own saved admission.
+Await summon/control readback and positive completion; replay still atStage1.
+
+298 built successfully (zero errors/two existing warnings), diff check passed,
+copied watched DLL. Runtime load and Hatchling-slot correction remain unverified.
+
+298 correction intent: Stage1 sequence1 entered23:20:49.781 but summon slot0 at
+23:21:03.910 did nothing; timeout23:22:04.411 abandoned admission without credit.
+Native palette shows empty slot0 and Hatchling3 in slot5, unlike old-client layout.
+All three tutorial summons now use existing FindPaletteMinion(3). Active tutorial
+reload reads the latest current instruction (old floor excluded all pre-reload
+prompts). Preserve pending0, mask3, attempts1 and all counters/caps. Resume only
+this existing physical tutorial through the bound reload hook; never recreate
+sequence1 or credit its abandoned result. Fresh tutorial replay completion gate
+still requires saved admission; if it finishes, observe/control proof separately
+and perform a fresh admission for the replay verdict. Build/copy298 only after
+successful compile. One-shot launcher/cap setter is removed. No ADS/BT changes.
+
+297 live verified23:20:11.754; cap application and character-bound selection saved
+23:20:14.864; RunChallenges accepted23:20:14.900. Current-character config confirms
+223588gil/40000MGP caps and50000reserve, spending0/0, no old receipts transferred.
+Inventory item24635 registered23:20:23.118; travel to388 and weekly progress0/0
+verified. Menu highest available3 at23:20:37.520 proves TWO old clears (mask3),
+correcting the earlier interpretation of native completedStages3 as a count.
+Stage1 admission sequence1 saved23:20:40.438. Source-only298 removes the one-shot
+launcher/cap setter; retain temporary first-three replay until its evidence is
+complete. Do not copy during tutorial unless a concrete correction is needed.
+
+297 build passed zero errors/two existing NU1601 warnings;17/17 focused existing
+Verminion lifecycle tests passed. Watched DLL copied. Await exact297 marker,
+initial-dispatch verdict and persisted cap/binding readback before claiming a run.
+
+297 supersedes undelivered296: user explicitly requests the same purchase caps as
+the previous test character. Read-only source-config inspection confirms gil cap
+223588, MGP cap40000, minimum gil50000. Apply these three settings only to R7's
+current initial-idle character through its existing ConfigManager before dispatch;
+preserve its own spending receipts (do NOT transfer old4800/40000 spending).
+296 compiled successfully but was never copied. Build/copy297 with the same
+guarded first-three replay and native campaign continuation. Expected marker297;
+version0.5.0.3 unchanged. Earlier zero-cap restriction is superseded.
+
+295 verified23:14:51.235, inspection23:14:54.294: single development load,
+territory144/duty0, no active run/pause/admission, saved mask/sequence/counts0;
+native completedStages3. Level80 job27; all Saucer prerequisites complete;
+owned Mammet/Airship/Gentleman, missing Baby Bat and Wayward Hatchling. Gil/MGP
+caps both0 and retained. No Hildibrand acquisition needed on this character.
+296 intent: one-shot guarded existing RunChallenges dispatch on R7's observed
+initial idle state, using SetDebugTaskSelection to bind only its current character.
+Temporary Debug replay uses existing SelectedChallengeStage for stages1-3,
+preserves native clear mask, advances2/3 only on credited victories, and requires
+a fresh native completion event plus exit for tutorial replay (no weekly credit).
+Replay stages retain three-attempt admission limit. Then ordinary campaign
+continues from native first uncleared stage. FULL STOP prevents reload dispatch;
+the one-shot launcher cannot rearm after sequence changes. Remove temporary
+launcher/replay after evidence. Build via Z:\vmx.bat/copy only watched VMX DLL;
+expected marker296. Do not buy minions under this character's zero caps.
+
+LATEST USER STEERING: user discarded ADS and BotologyUpdates changes. Fresh Git
+status is clean in both repositories. Preserve that decision; do not restore the
+regression, territory rules, index or changelog edits. DAD changes are separate.
+
+295 R7 inspection intent: user confirmed duplicate cleanup. Installed entry now
+disabled in profile; native unload finished23:11:45.646. Development entry remains
+enabled, but its command handlers need fresh registration after the duplicate.
+Build via Z:\vmx.bat and copy only R:\parasite\vmx\VERMAXION.dll. Temporary
+Debug-only one-shot inspection is confined to XIVLauncher7 after character
+registration. It reads setup, native clears, roster and this character's own
+saved progress/caps; it performs no binding, travel, queue, purchase or Resume.
+Expected marker verminion-control-20260926-295, unchanged version0.5.0.3. Remove
+the temporary observer after evidence; choose the campaign/replay path from actual
+native progress without erasing clears. No old-client run is authorized.
+
+R7 HANDOVER VERIFIED / DUPLICATE PLUGIN BLOCKER (2026-09-26): user confirmed
+development enablement and stronger job, and explicitly requested all24 challenge
+missions tested again from the beginning. Exact294 startup verified23:06:18.068,
+version0.5.0.3/client-native A:\ff14\parasite\vmx\VERMAXION.dll. Gold Saucer144
+arrival already observed23:03:43.885. However installed0.5.0.2 remains enabled
+alongside dev294: native duplicate-assembly warning23:06:17.997, duplicate /vmx
+and /vermaxion registration23:06:19.021, DTR ownership conflict23:06:19.022;
+Dalamud profile confirms installed and development entries enabled. No new run,
+binding, purchase, client mutation or build performed. Current debug selection
+is empty. Ask user to disable only installed0.5.0.2, then reload dev0.5.0.3 to
+restore its command registration. After confirmation verify single ownership,
+inspect current character's own progress/roster/caps, bind the existing debug
+selection, and test from Stage1 without erasing existing clears. R7 is the sole
+runtime target; earlier R3 restrictions below are historical.
+ADS/DAD inquiry: ADS remains the focused regression+changelog only; user explicitly
+keeps it. DAD task changes are setting-name/readback compatibility and checked-duty
+selection proof, with60 tests/eight lab scenarios and observed unsynced Big Bridge
+clear18:48:04, exit18:48:36, quest completion18:49:12. These helped admission and
+quest continuation, not Dragon's Neck combat. DAD reconnect-window edits belong
+to separate I429 work; preserve them. No DAD/ADS edits performed this continuation.
+
+294 build and watched-file copy completed; R3's last observed marker is still293,
+so294 reload is NOT verified. Its six-second inspection had already closed,
+and saved paused/no-dispatch was confirmed; no active old-client test remains.
+R7 routing changed while the user prepared it: logs23:01:29 scanned/attempted
+A:\ff14\parasite\vmx\VERMAXION.dll and current Dalamud config now enables that
+same shared path. Earlier D:\temp path was missing. R7 also updated its installed
+VMX to0.5.0.2 at23:01:34; do not mistake that old registrables marker for294.
+Check the actual active dev assembly after the user finishes travel/setup, before
+binding or running Verminion. R7 DAD duty IPC registered22:59:32 and Q bridge
+patched7.5.27 at23:01:40. OCE travel toSophia was in progress at23:02:19. No
+Gold Saucer arrival observed yet; no new-client control or config mutation done.
+User asked whether Z:\ads was edited: fresh Git diff confirms exactly the33-line
+positional-rule regression and4-line CHANGELOG entry. No ADS production code or
+DLL changes. Explained the separate Botology rule edits/disabled Typhon row.
+
+RUNTIME TARGET CHANGE (user instruction): next testing client is explicitly
+R:\XIVLauncher7, replacing R:\XIVLauncher3. User is loading the stronger
+character and travelling to OCE first; DO NOT begin automation until it is in
+the Gold Saucer after that travel. Read-only routing inspection while loading
+is authorized. R7 exists; fresh23:00:50 territory132 and23:01:02 registration.
+R7 debug selection is empty, Enabledtrue; do not copy R3's character binding or
+progress. R7 Dalamud dev location is enabled at client-native
+D:\temp\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll, not the R3 parasite
+path. Verify its actual marker before runtime testing. ADS/FrenRider/WigglyQuest
+are present/loaded by available evidence; DAD readiness still needs checking.
+294 clean build passed. Finish copying clean294 only to old R3's watched DLL
+to remove its temporary UI inspection code, preserving its saved pause. No
+further old-client runs. No new-client automation, world travel or saved debug
+binding until the user's travel/Gold Saucer prerequisite is met.
+
+USER STEERING: switch to a stronger character on the same authorized client and
+start campaign verification from the beginning. Current test character remains
+stopped. Asked which replacement character on R:\XIVLauncher3 and when logged in;
+await actual identity/readiness before rebinding debug or running its automation.
+Inspect its real unlocks/minions/progress; never erase existing character clears
+to simulate a fresh run. Dragon's Neck was already unsynced with BMR AI enabled;
+the new gear may change viability. No trial or ADS extension approval inferred.
+
+293 tournament information proof22:58:29-32EDT: native GoldSaucerInfo Verminion
+tab node7 accepted. GSInfoMinionBattle loaded13values/21nodes. value1/title node10
+="The 820th Lord of Verminion Tournament";value2/info node11="Matches available
+until 10:45 a.m. 9/28/2026". value3false; value5/7/9 ints0 with labels6/8/10
+Matches:/Wins:/Points:. These counters' components were NOT visible, so do not
+infer registered status or exhausted allowance from zero values. value11 empty,
+12"Available:", result node16"There are no results to display." Native parent
+close accepted22:58:32.438. No registration/claim/battle/travel/settings change.
+ConstString diagnostic support now positively captured the labels and parent
+"Receiving data..." text. A later reader must wait for server loading and use
+visibility plus registered/claimable-state evidence, not only the raw zero ints.
+
+294 clean-delivery intent before character handover: removed both inspection
+fields, arming block, update callback and method. Keep only ConstString support
+and existing paused diagnostics/permanent minion handoff. Build Z:\vmx.bat and
+copy only watched DLL after success; require paused or character-bound blocked
+reload, no dispatch. Debug selection stays on the previous character for now.
+
+293 build passed zero errors/two existing warnings; copied watched DLL for the
+correct observed Verminion tab inspection. No run/counter/quest/provider changes.
+
+292 observation verified: load22:56:44.936, native GoldSaucerInfo opened22:56:48.
+Tab label is "Verminion", native node7/ButtonClick param5 (22:56:51.462).
+"Lord of Verminion" did not match, so no tab was selected; owned window closed
+22:56:54.482. No account settings/progress changed.293 corrects only the exact
+observed label/node for the same six-second information capture and includes
+ConstString support in existing addon diagnostics. Build/copy293 after success,
+inspect GSInfoMinionBattle once, close the owned parent, then clean hooks.
+
+292 independent tournament research intent (ADS choice still unanswered): current
+ClientStructs declares AddonGSInfoMinionBattle TournamentMatches/Wins/Points/Info
+components and TournamentResults node. GoldSaucerModule holds only the palette;
+GoldSaucerManager has GATE/lottery state, not a tournament contract. Official
+guide freshly reconfirmed15matches, NPC strength by preceding victories, and
+Recordkeeper reward claims. Gold Saucer information may expose usable tournament
+readback away from Home World even though Recordkeeper rejected interaction.
+Selected paused/idle388/sequence129/no admission or acquisition only: open native
+/goldsaucer once, capture after3seconds, attempt exact visible Lord of Verminion
+tab via its registered native button, capture GSInfoMinionBattle after6seconds,
+then close the owned parent. No registration, battle, world travel or config
+change. Build/copy292 through authorized route; remove temporary inspection
+hooks after evidence. Permanent acquisition remains unchanged. Not a full CPU
+tournament implementation or a claim of live eligibility.
+
+291 verified delivery (2026-09-26): clean watched DLL loaded22:49:46.411EDT;
+22:49:49.883 paused/no-dispatch and duty0/resultUnknown/pending0/109matches/
+37wins. Native abandoned result cleanup already exited to388. Saved facts:
+modeWinTarget,target37,pausedtrue,campaigntrue,Stage23attempts3,mask4194303(22/24),
+sequence129,pending0,no acquisition,GilSpent4800,MgpSpent40000. All temporary
+queue/battle/result lifecycle test fields, methods and calls are removed; the
+permanent Questionable required-minion action remains. Build Z:\vmx.bat passed
+with zero errors/two existing NU1601 warnings, same0.5.0.3;829/829 tests passed,
+diff checks pass. No active runtime test, build or tool session remains.
+This turn adds live queue/battle FULL STOP, paused reload, and late cancelled
+result rejection evidence. Goal remains active/incomplete. David asked whether
+trials used BossMod/unsynced; answered with observed FR AI-on/unrestricted-entry
+evidence and absent installed Dragon's Neck module. That question is not approval
+for cast-aware ADS expansion; the existing include/lean/skip choice stays pending.
+Next campaign work still needs Gentleman acquisition/trial mechanics, then23/24;
+Stage24 towers/circles and CPU tournaments remain unimplemented. Do not reset
+campaign failures or start another trial without a justified strategy change.
+
+290 later-result acceptance verified22:47:30.492EDT: native Defeat while service
+inactive/paused,pending0,109matches/37wins,mask4194303,Stage23attempts3. No credit.
+Native Quit accepted once22:47:30.492; exit388 confirmed22:47:32.072. This closes
+the live queue/battle FULL STOP plus paused-reload/no-result-credit checks.
+291 clean build already passed zero errors/two existing NU1601 warnings. Copy
+only watched VMX DLL now, then verify291 paused/no-dispatch outside duty and
+saved accounting. All temporary lifecycle launch/stop/observer/restore code is
+removed. Permanent required-minion Q handoff remains. No provider settings changed.
+
+290 build passed zero errors/two existing NU1601 warnings; copied watched DLL.
+Source-only291 removes abandoned-result deadline, arming block, callback and
+observer method. Only permanent paused readback and Q acquisition remain.
+Compile291 now; copy only after290 cleanup verdict/native exit is reconciled.
+
+289 clean reload verified22:44:04.046;22:44:07.499 readback duty553,resultUnknown,
+pending0,109/37 and paused/no-dispatch. No adoption of abandoned battle.
+290 cleanup intent: keep service paused/inactive. Only exact selected sequence129
+with no admission/acquisition may observe native result for at most6minutes.
+On visible result log actual outcome and unchanged counters, invoke existing
+native Quit once without credit or Resume. If already outside, do nothing.
+Build/copy290; remove this temporary observer for final291 only after settled.
+Git baseline changed externally to efa8f3e22:36:13 during work; it captured286
+and permanent prior changes. No commit was made by this agent. Preserve the
+committed permanent acquisition; remove this task's temporary lifecycle hooks.
+
+288 battle-stop verified: load22:42:34.106; native weekly Run22:42:37.552,
+queue sequence129 saved22:42:50.456, battle553 entered22:42:57.473. Selection
+and movement input positively observed22:43:20-24, then movement readback and
+/vmx stop22:43:24.868. Settled22:43:28.333: activefalse,pausedtrue,duty553,
+nativeQueuefalse,pending0,109/37,mask4194303,Stage23attempts3. Original target37
+and campaigntrue restored22:43:28.341. The physical battle continues with no
+bot ownership/result eligibility. After289 build succeeds, copy clean289 now
+to verify paused reload does not resume this battlefield. Later result cleanup
+must not create an admission, count a result, or automatically Resume.
+
+288 build passed, zero errors/two existing warnings, copied only watched DLL.
+Source-only289 removes the entire temporary battle test, including launch,
+timer/restoration fields and the movement-boundary stop. Retain one ordinary
+paused-reload diagnostic for native duty/result and saved counters, with no
+action or credit. Compile289 now; DO NOT copy until288 settles and restores.
+
+287 clean paused reload verified22:40:00.980/load and22:40:04.492/no-dispatch.
+288 intent: selected same character, exact restored baseline sequence128 from
+idle Minion Square388. Ordinary weekly Run at temporary target38 admits Stage2.
+After verified selection/movement readback, invoke native /vmx stop during the
+battle, with180second outer bound and stop on service failure. Read settled
+pause/pending/native duty/counters after3seconds, restore target37/campaigntrue.
+Preserve Stage23attempts3 and22/24 mask. Build/copy only watched VMX DLL. Following
+clean reload must not adopt the abandoned battlefield or credit a later result.
+Remove all temporary test hooks afterwards; permanent Q acquisition remains.
+
+286 queue-stop verified: native Stage2 sequence128 saved22:38:41.602; /vmx stop
+invoked before Commence; owned queue withdrawal22:38:42.009. Settled22:38:45.044:
+activefalse,pausedtrue,nativeQueuefalse,duty0,pending0,109/37,mask4194303,
+Stage23attempts3. Original target37/campaigntrue restored22:38:45.058. Fresh
+saved config matches; real MatchSequence128 retained. All829 VMX tests passed.
+After clean287 build succeeds, copy only watched DLL to verify saved pause
+prevents dispatch. No test launcher or queue-stop hook remains in287 source.
+
+286 loaded22:38:08.494EDT, guarded weekly Run accepted22:38:11.863. Native
+travel reached Minion Square, existing109/37 observed, Stage2 selection22:38:36.
+Do not copy another DLL until the real queue-stop or180second bound settles.
+Source-only287 removes all temporary lifecycle fields/methods/calls and queue
+boundary trigger. Build now for subsequent clean paused/no-dispatch verification;
+permanent required-minion acquisition remains. No runtime completion claim yet.
+
+User's BossMod/unsynced question checked before286 delivery:284 logs show native
+unrestricted entry, FR BossMod AI on at22:18:20.758 and22:18:24.487 with passive
+tank preset, movement prohibition disabled. Q initially set BMR off22:18:13.574,
+then FR enabled it after entry. Installed BMR7.5.6.19 class inventory has ARR
+trials1-9 and treasure-hunt Ultros/Typhon, but no Dragon's Neck encounter module.
+This does not authorize the still-pending ADS cast-aware expansion.286 built
+successfully, zero errors/two existing NU1601 warnings; copy for the independent
+native LoVM queue-stop test now. No trial/provider settings changed.
+
 286 intent: independent approved LoVM lifecycle check while the ADS cast-aware
 choice remains unanswered. Saved baseline freshly verified paused, no acquisition,
 pending0, modeWinTarget/target37, campaigntrue,109/37,mask4194303,Stage23attempts3,

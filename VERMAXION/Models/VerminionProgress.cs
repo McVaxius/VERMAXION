@@ -139,6 +139,15 @@ public sealed class VerminionProgress
         PendingMatchesBeforeAdmission = 0;
     }
 
+    public bool RecordTutorialCompletion(long match, VerminionBattleOutcome outcome)
+    {
+        if (match == 0 || match != PendingMatch || PendingDuty != 552 || outcome != VerminionBattleOutcome.Victory)
+            return false;
+        RecordChallengeClear(1);
+        AbandonMatch();
+        return true;
+    }
+
     public bool RecordResult(long match, VerminionBattleOutcome outcome, DateTime weekStartUtc)
     {
         if (match == 0 || match != PendingMatch || PendingDuty is < 553 or > 579 ||

@@ -9,6 +9,43 @@ namespace VERMAXION.Tests;
 public sealed class VerminionLifecycleTests
 {
     [Fact]
+    public void TutorialCompletionNeedsFreshAdmittedVictoryAndDoesNotCreditWeeklyResults()
+    {
+        var character = new CharacterConfig();
+        var progress = character.VerminionProgress;
+        progress.WeeklyMatches = 3;
+        progress.WeeklyWins = 1;
+        progress.GilSpent = 2400;
+        progress.MgpSpent = 10000;
+        var abandoned = progress.BeginMatch(552);
+        progress.AbandonMatch();
+        Assert.False(progress.RecordTutorialCompletion(abandoned, VerminionBattleOutcome.Victory));
+
+        var admitted = progress.BeginMatch(552);
+        character = JsonConvert.DeserializeObject<CharacterConfig>(JsonConvert.SerializeObject(character))!;
+        progress = character.VerminionProgress;
+        Assert.False(progress.RecordTutorialCompletion(abandoned, VerminionBattleOutcome.Victory));
+        Assert.False(progress.RecordTutorialCompletion(admitted, VerminionBattleOutcome.Unknown));
+        Assert.False(progress.RecordTutorialCompletion(admitted, VerminionBattleOutcome.Defeat));
+        Assert.Equal(admitted, progress.PendingMatch);
+        Assert.Equal(0u, progress.ClearedChallengeMask);
+
+        Assert.True(progress.RecordTutorialCompletion(admitted, VerminionBattleOutcome.Victory));
+        Assert.False(progress.RecordTutorialCompletion(admitted, VerminionBattleOutcome.Victory));
+        Assert.Equal(0, progress.PendingMatch);
+        Assert.Equal(1u, progress.ClearedChallengeMask);
+        Assert.Equal(3, progress.WeeklyMatches);
+        Assert.Equal(1, progress.WeeklyWins);
+        Assert.Equal(2400u, progress.GilSpent);
+        Assert.Equal(10000u, progress.MgpSpent);
+        Assert.Equal(0u, new CharacterConfig().VerminionProgress.ClearedChallengeMask);
+
+        var ordinary = progress.BeginMatch(553);
+        Assert.False(progress.RecordTutorialCompletion(ordinary, VerminionBattleOutcome.Victory));
+        Assert.Equal(ordinary, progress.PendingMatch);
+    }
+
+    [Fact]
     public void NativeAcquisitionRetainsOwnershipAndCancellationWithoutSharingCharactersOrCreditingBattles()
     {
         var character = new CharacterConfig { VerminionPaused = true };
