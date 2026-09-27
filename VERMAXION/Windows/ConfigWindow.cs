@@ -1621,29 +1621,12 @@ public class ConfigWindow : Window, IDisposable
             }
             ImGui.TextDisabled(VerminionService.ProgressSummary(cc));
             ImGui.Indent();
-            var verminionMode = (int)cc.VerminionMode;
-            if (ImGui.Combo("Weekly mode##Verminion", ref verminionMode,
-                "Participation — 5 matches\0Win X\0CPU rewards\0"))
-            {
-                cc.VerminionMode = (VerminionMode)verminionMode;
-                changed = true;
-            }
-            if (cc.VerminionMode == VerminionMode.WinTarget)
-            {
-                var target = cc.VerminionVictoryTarget;
-                if (ImGui.InputInt("Weekly victories##Verminion", ref target))
-                { cc.VerminionVictoryTarget = Math.Clamp(target, 1, 1000); changed = true; }
-            }
-            if (cc.VerminionMode == VerminionMode.CpuRewards)
-                ImGui.TextWrapped("CPU tournament registration and reward collection are still in development.");
-            ImGui.TextWrapped("Participation uses intentional CPU losses. Five matches award 27,000 base MGP weekly. Wins require the selected winning strategy's minions.");
-            var gilCap = (int)Math.Min(cc.VerminionGilPurchaseCap, int.MaxValue);
-            var mgpCap = (int)Math.Min(cc.VerminionMgpPurchaseCap, int.MaxValue);
-            if (ImGui.InputInt("Cumulative gil purchase cap##Verminion", ref gilCap))
-            { cc.VerminionGilPurchaseCap = (uint)Math.Max(0, gilCap); changed = true; }
-            if (ImGui.InputInt("Cumulative MGP purchase cap##Verminion", ref mgpCap))
-            { cc.VerminionMgpPurchaseCap = (uint)Math.Max(0, mgpCap); changed = true; }
-            ImGui.TextDisabled($"Spent: {cc.VerminionProgress.GilSpent:N0} gil / {cc.VerminionProgress.MgpSpent:N0} MGP. Vendor purchases are not enabled yet.");
+            changed |= VerminionWindow.DrawSettings(cc);
+            if (ImGui.Button("Open Verminion##Settings")) plugin.VerminionWindow.IsOpen = true;
+            ImGui.TextWrapped("The standalone window runs on the current character. These settings belong to the selected configuration above.");
+            if (ImGui.CollapsingHeader("Next strategy and required minions##VerminionSettings"))
+                VerminionWindow.DrawPlan(cc, VerminionService.PlannedStage(cc, cc.VerminionProgress.CampaignRequested),
+                    !isDefault && charKey == configManager.CurrentCharacterKey && Plugin.PlayerState.IsLoaded);
             ImGui.Unindent();
 
             var jumbo = cc.EnableJumboCactpot;

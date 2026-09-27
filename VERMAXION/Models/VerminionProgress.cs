@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace VERMAXION.Models;
 
@@ -16,6 +17,20 @@ public enum VerminionBattleOutcome
     Victory,
 }
 
+/// <summary>One reserved purchase. A reload must reconcile it, never submit it again.</summary>
+public sealed record VerminionPurchase(uint ItemId, ushort MinionId, uint Gil, uint Mgp,
+    uint GilBefore, uint MgpBefore, uint ItemsBefore);
+
+/// <summary>A native quest handoff, persisted before submission. Reloads only observe it.</summary>
+public sealed record VerminionQuestAcquisition(ulong Owner, ushort MinionId, string Provider,
+    ushort[] Quests, bool DispatchAttempted = false, bool CancellationRequested = false, bool OwnershipReleased = false)
+{
+    public ushort RewardQuest => Quests.LastOrDefault();
+    public bool OwnsQuest(ulong character, string? quest) => character != 0 && character == Owner &&
+        DispatchAttempted && !OwnershipReleased && ushort.TryParse(quest, out var id) && Quests.Contains(id);
+    public VerminionQuestAcquisition Copy() => this with { Quests = (ushort[])Quests.Clone() };
+}
+
 /// <summary>Character-owned facts. Admission and result evidence are supplied by the game interaction layer.</summary>
 public sealed class VerminionProgress
 {
@@ -25,6 +40,7 @@ public sealed class VerminionProgress
     public uint ClearedChallengeMask { get; set; }
     public ulong GilSpent { get; set; }
     public ulong MgpSpent { get; set; }
+    public VerminionPurchase? PendingPurchase { get; set; }
     public long MatchSequence { get; set; }
     public long PendingMatch { get; set; }
     public uint PendingDuty { get; set; }
@@ -39,6 +55,7 @@ public sealed class VerminionProgress
     public ushort UnlockQuestId { get; set; }
     public string UnlockQuestProvider { get; set; } = string.Empty;
     public bool UnlockPriorityInserted { get; set; }
+    public VerminionQuestAcquisition? QuestAcquisition { get; set; }
     public int SelectedChallengeStage { get; set; }
     public bool CampaignRequested { get; set; }
     public int CampaignStage { get; set; }
@@ -72,7 +89,12 @@ public sealed class VerminionProgress
     public bool WinningRunLimitReached => RunMode == VerminionMode.WinTarget &&
         (ConsecutiveLosses >= 3 || RunAttemptLimit > 0 && RunAttempts >= RunAttemptLimit);
 
-    public VerminionProgress Clone() => (VerminionProgress)MemberwiseClone();
+    public VerminionProgress Clone()
+    {
+        var clone = (VerminionProgress)MemberwiseClone();
+        clone.QuestAcquisition = QuestAcquisition?.Copy();
+        return clone;
+    }
 
     public bool ObserveWeek(DateTime weekStartUtc)
     {
@@ -180,6 +202,34 @@ public sealed class VerminionProgress
     }
 
     public bool CanSpend(uint gil, uint mgp, uint gilCap, uint mgpCap) =>
-        GilSpent <= gilCap && MgpSpent <= mgpCap &&
+        PendingPurchase == null && GilSpent <= gilCap && MgpSpent <= mgpCap &&
         gil <= gilCap - GilSpent && mgp <= mgpCap - MgpSpent;
+
+    public static bool PreservesGilReserve(uint balance, uint price, uint reserve) =>
+        price == 0 || balance >= reserve && price <= balance - reserve;
+
+    public bool ReservePurchase(uint itemId, ushort minionId, uint gil, uint mgp,
+        uint gilBefore, uint mgpBefore, uint itemsBefore, bool alreadyOwned, uint gilCap, uint mgpCap, uint gilReserve = 0)
+    {
+        if (itemId == 0 || minionId == 0 || alreadyOwned || itemsBefore != 0 ||
+            (gil == 0) == (mgp == 0) || gil > gilBefore || mgp > mgpBefore ||
+            !PreservesGilReserve(gilBefore, gil, gilReserve) ||
+            !CanSpend(gil, mgp, gilCap, mgpCap)) return false;
+        PendingPurchase = new(itemId, minionId, gil, mgp, gilBefore, mgpBefore, itemsBefore);
+        return true;
+    }
+
+    public bool ConfirmPurchase(uint gilNow, uint mgpNow, uint itemsNow, bool nowOwned)
+    {
+        var pending = PendingPurchase;
+        if (pending == null || pending.Gil > pending.GilBefore || pending.Mgp > pending.MgpBefore ||
+            (itemsNow <= pending.ItemsBefore && !nowOwned) ||
+            gilNow != pending.GilBefore - pending.Gil || mgpNow != pending.MgpBefore - pending.Mgp)
+            return false;
+        // Currency alone or item ownership alone cannot prove this transaction.
+        GilSpent = checked(GilSpent + pending.Gil);
+        MgpSpent = checked(MgpSpent + pending.Mgp);
+        PendingPurchase = null;
+        return true;
+    }
 }

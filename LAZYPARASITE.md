@@ -1,5 +1,580 @@
 # Verminion bot development checkpoint
 
+286 intent: independent approved LoVM lifecycle check while the ADS cast-aware
+choice remains unanswered. Saved baseline freshly verified paused, no acquisition,
+pending0, modeWinTarget/target37, campaigntrue,109/37,mask4194303,Stage23attempts3,
+sequence127. Temporarily invoke ordinary weekly Run with target38 on the selected
+character from idle145. At the actual saved Stage2 native queue (sequence128),
+invoke existing /vmx stop before Commence. Bound the test to180seconds and stop
+on service failure. After3seconds read native queue/service/counters and restore
+target37/campaigntrue while preserving pause, actual sequence and campaign attempts.
+No trial/provider changes, general quest execution or campaign Resume. Build via
+Z:\vmx.bat, copy only watched VMX DLL, require286 startup and fresh result evidence.
+Remove temporary trigger/observation code for the following clean paused reload.
+
+285 verified delivery: ADS hot-loaded304 active rules/67 shards22:26:33.120EDT
+with only the unreliable Typhon row disabled. Clean VMX285 loaded22:26:33.881;
+paused/no-dispatch22:26:37.286. Native trial stop/exit/restoration is complete,
+and all temporary trial test code is removed. Same0.5.0.3. Build/diff checks pass;
+last unchanged-logic tests remain829 VMX and32 ADS rules plus the strengthened
+focused assertion. Fresh saved state remains paused,pending0,no acquisition,
+109/37,mask4194303(22/24),Stage23attempts3. No active runtime/tool/build session.
+This goal turn made progress: live evidence disproved the fixed-position rule,
+isolated the missing cast condition, and removed the unreliable active behavior.
+The next trial change would expand ADS's existing rule schema and movement
+execution beyond the requested static row edits. A user machinery choice is
+required before adding that capability: include cast-aware ADS movement and
+tests; lean alternative is manual completion of blocked trials; skip leaves
+Gentleman acquisition blocked. Do not implement it before the actual choice.
+Goal remains active/incomplete; this is not a third consecutive no-progress turn.
+Independent LoVM FULL STOP queue/battle acceptance also remains available after
+the pending user decision. Do not resume failed trials or reset campaign limits.
+
+285 cleanup intent after284: rule selected Typhon22:19:46.853 at9.0y, but returned
+to Ultros after0.136seconds as Typhon walked out of its region. A later Severe
+Snort started22:23:01.672 at(-258.6865,19.074574,17.903667), over4y from282's
+recorded point. At+5seconds boss=(-258.07587,19.074574,18.112427), while player
+remained(-260.24994,19.074574,10.145461), targetingUltros. At+11seconds the cast
+ended; at the300second bound22:23:13.408 the player was being knocked to
+(-264.0671,18.171013,-3.8427072). No trial completion or post-knockback survival
+claim. The test positively disproves reliable fixed-position activation.
+Manual command was NOT overwritten by FR startup: native bootstraps22:18:20.758
+and22:18:24.487 both precede Manual22:18:28.763. Native cancellation verified
+22:23:15.461, exit22:23:23.259, restoration22:23:23.294 (81absent,false/3/disabled).
+Disable ONLY the new Typhon experiment in source/client; retain known Ultros row.
+285 clean source already built zero errors/two existing warnings, no temporary
+trial methods/fields/calls. Copy285 after disabled JSON validation and verify
+paused reload. Reliable handling now needs cast-aware ADS movement beyond the
+currently authorized static rows; do not invent a VMX trial controller or add
+rule schema/ongoing control machinery without the required user choice.
+
+284 loaded22:18:09.460EDT; permanent acquisition accepted22:18:13.393; native
+Manual command accepted22:18:28.763. Test deadline22:23:13.394 unless an observed
+post-Snort actor reset or quest204 completion ends it earlier. Source-only285
+removes all temporary test methods, fields and calls. Compile285 now but DO NOT
+copy while284 owns the test: its timed stop/restoration must settle first.
+No new run/counter reset, provider setting or rule change is part of285.
+
+284 rule-test intent: previous goal turn made progress with native cast3117
+position, regression coverage and ADS rule deployment. Fresh selected configs
+still match283 idle/pause/pending0/no handoff and restored Q/FR settings. Invoke
+the permanent acquisition action once from guarded145. Temporarily set only
+Q81solo1 and FR eight-playertrue/threshold0, using its selected profile. Native
+Manual targeting once after combat keeps the ADS chosen target. Bound test to
+300seconds, earlier positive post-Snort actor reset or quest204 completion.
+Capture actual player/boss positions/HP/target at cast start and5/11/18/30seconds;
+the first snapshot checks approach, later ones distinguish knockback survival
+from reset. Native Q/DAD/FR/ADS own all trial actions. FULL STOP and restore the
+owned provider settings after exit. Do not credit any LoVM progress from this.
+Build284 via Z:\vmx.bat then copy only watched VMX DLL after success. Remove
+temporary test methods/fields/calls after settling; keep permanent acquisition.
+
+283 verified delivery: clean VMX loaded22:13:11.288EDT and respected saved pause
+without dispatch22:13:14.634. All temporary trial launch/observation/restore
+methods, fields and calls are absent. Permanent minion acquisition and clearer
+provider setup guidance remain. Build via Z:\vmx.bat passed, zero errors/two
+existing NU1601 warnings.829/829 VMX tests passed;32/32 ADS rule tests passed,
+then the strengthened rule-ID assertion passed its focused test. Diff checks
+pass. ADS hot-loaded305 active rules/67 shards at22:13:09.681 after replacing
+only the owned142 shard; the new Typhon positional priority is loaded, NOT
+battle-verified. ADS runtime source/DLL unchanged; only its existing test and
+changelog changed. No publication or commit.
+Fresh saved facts: paused=true,pending0,no acquisition,109matches/37wins,
+mask4194303(22/24),Stage23attempts3,GilSpent4800,MgpSpent40000. Q duty81 override
+absent; FR disabled/eight-playerfalse/threshold3/RotationType0 restored. No active
+trial, build or tool session remains. Goal active/incomplete. Next work is a
+bounded live test of the now-measured positional rule using native Manual
+targeting and approved native ADS handoff settings, checking actual approach,
+Severe Snort survival and explicit trial completion separately. No VMX trial
+controller should be added. Gentleman reward/registration,Stage23/24 clears,
+Stage24 tower/circle logic,CPU tournaments and remaining LoVM acceptance stay open.
+
+283 clean-delivery intent and measured rule:282 captured real Typhon3366 casting
+Severe Snort3117 at22:09:53.172EDT: boss/caster=(-254.5551,19.074574,19.027554),
+player=(-250.22295,19.106905,21.78736), cast remaining9.67seconds. FULL STOP then
+cancelled22:09:55.222; native duty exit22:10:15.059; restoration22:10:15.099
+verified81absent,FR eight-playerfalse/threshold3/disabled. No clear is claimed.
+Add one Botology142 BossFight row for real Typhon3366, priority5, matched within
+1y of that exact measured position; existing Ultros priority10 remains. Native
+ADS supports the actor-position condition and one-last-boss ghost; reaching a
+boss still yields at5y and does NOT provide a persistent center hold. RSR Auto
+can override actual target. The manual command was needed to reach this capture.
+Regression32/32 passed; strengthened rule-ID assertion passed its focused test.
+Source-only283 removes every temporary trial method/field/call and includes the
+permanent provider-setup UI guidance.283 build passed zero errors/two NU1601
+warnings. After JSON/diff validation, install ONLY this shard in the authorized
+existing ADS DEFAULT store and copy the clean VMX DLL. Require fresh283 paused
+reload; no quest/campaign restart. Next justified test is the new positional rule
+with native Manual targeting, verified ADS ownership and a bounded stop. Position
+approach, knockback survival, trial clear and Gentleman acquisition remain open.
+
+282 loaded22:08:14.391; native product acquisition accepted22:08:18.258 and
+/rotation manual accepted22:08:36.294 after combat. Its180second bound expires
+22:11:18.258. Source-only283 removes all observation/setup/restoration methods,
+fields and calls. It also adds permanent acquisition-panel guidance about the
+existing solo-unsynced settings, FR eight-player ADS handoff and maturity gate;
+the product does not silently change provider settings. Rebuild283 after this
+UI addition; only copy after282's native stop/exit/restoration is verified.
+
+282 deployment intent:281 expired22:07:04.288 without3117; cancellation verified
+22:07:06.341, native exit22:07:16.101 and restoration22:07:16.154 (81absent,
+FR eight-playerfalse/threshold3/disabled).282 compiled with zero errors and two
+existing NU1601 warnings. Deploy the reviewed manual-target observation now,
+with the same180second bound and same cleanup. No clear attempt/accounting reset.
+
+281 loaded22:04:00.354, product acquisition accepted22:04:04.284. ADS now owns
+the duty, approaches Ultros and arms its combat ghost. Observed casts3134
+(Megavolt) and3127(Fireball), verified against XIVAPI. Initial attempts reset
+before Severe Snort. The180second bound expires22:07:04.284. Source-only282
+adds one native /rotation manual command during owned combat, preserving saved
+RotationType0, to reproduce264's successful observation of the later cast.
+Do NOT deploy282 while281 remains active; first require stop/exit/restoration.
+If281 captures the needed cast, discard this extra experiment and clean source.
+ADS's new single regression passes with31 existing rule tests:32/32 total.
+It verifies position-based boss priority switches and same-name helper exclusion
+using synthetic coordinates. ADS runtime source/DLL have not been changed.
+
+281 corrected observation intent:279 expired22:00:40 without cast3117, cancelled
+owned Q22:00:42, exited22:00:57.136 and restored solo81=-1/FRdisabled22:00:57.186.
+ADS remained ObservingOnly because FR's restored eight-playerfalse prevented
+its handoff. This was not a valid ADS mechanic observation.280 source cleanup
+built but was NOT deployed.281 repeats the same180second PRODUCT acquisition
+observation with only the already-approved temporary FR eight-playertrue/
+threshold0 and duty81solo1. Guard the selected FR profile and original settings;
+restore false/3/disabled and absent81 after stop/exit. Include up to12 distinct
+native cast snapshots on real bosses and any3117 caster, so helper-owned casts
+are identifiable. Capture real boss3366 position alongside actual3117 caster,
+then FULL STOP. No movement, target or trial controller is added to VMX. Build
+and deploy281 only after success; remove all temporary source after settling.
+Same0.5.0.3,22/24,pending0,Stage23attempts3,109/37. No counter reset.
+
+279 built with zero errors/two existing NU1601 warnings, loaded21:57:36.270EDT,
+and permanent acquisition accepted21:57:40.069. DAD accepted the checked solo
+CFC81 and entry142 occurred21:57:51.424. Observation expires22:00:40.070 if
+cast3117 is not captured first. All829 VMX tests passed. Source-only280 removes
+the entire launcher/observer/restoration block and both fields. Do not copy280
+until279 has stopped its own acquisition, exited and restored settings, or its
+explicit pending cleanup has been resolved. No campaign counters reset.
+
+279 observation intent: guide research confirms Severe Snort can be survived
+near the center, and Imp can trigger from either boss reaching80%. ADS keeps
+one last-reached BossFight ghost, so a higher-priority Typhon rule matching only
+his center position may produce the needed approach after Ultros. It cannot be
+assumed to hold center or repeat while Typhon stays there. Previous snapshots
+do not capture his Severe Snort position; do not invent coordinates.
+Use the permanent Acquire action once from exact selected paused145/stage23/
+attempts3/pending0 with native Q/DAD idle. Temporarily reserve only absent duty81
+override as UnsyncSolo1. Keep FR eight-playerfalse/threshold3 and rotation0.
+Capture real boss3366 position only during cast3117, then ordinary FULL STOP;
+180second maximum even if no cast appears. Restore duty81 override and originally
+disabled FR after native exit. No trial controller, targeting, movement, quest
+steps or campaign Resume added. This is observation, not another clear claim.
+Build279 via Z:\vmx.bat, copy only the authorized VMX DLL after success, verify
+load/start/cast/stop/exit/restoration separately. Remove temporary observation
+code after it settles; permanent required-minion handoff remains in the bot.
+
+278 verified delivery: final Debug/x64 build passed with the same two NU1601
+warnings and no errors. All829 tests passed, zero skips; Git diff check passed.
+Copied only the DLL to the authorized watched path.278 loaded21:35:40.079EDT
+and ordinary paused/no-dispatch message21:35:43.419 verifies the final reload.
+No lifecycle launch, stop timer, observer or provider-restoration hook remains.
+Permanent admission explanations and registration-time Before-AR release remain.
+Live PRODUCT acceptance now proves native acquisition start, persisted handoff,
+active reload with no replay, truthful idle ownership after registration, FULL
+STOP, native priority/reward-stop cleanup, duty exit and cancelled reload.
+Reward quest completion/registration are still UNVERIFIED and incomplete.
+Fresh saved facts: paused=true,pending0,no handoff,109matches/37wins,
+mask4194303(22/24),Stage23-attempts3,GilSpent4800,MgpSpent40000. Native settings
+restored as recorded277; no active quest/duty test or tool/build session remains.
+Goal remains active. Next useful research is a SOLO-specific Dragon's Neck
+strategy: the group guide's Ultros-first order led to Imp/Severe Snort failures.
+Do not infer that higher damage or changing targets solves it. Existing ADS
+position-matching BossFight rules may merit inspection if a guide and actual
+cast-position evidence support a center-position response; none is implemented
+or verified. Google fetch was stopped after hanging; GamerEscape returned403.
+Stages23/24, tower/circle logic, CPU tournaments and remaining LoVM acceptance
+remain open. Do not restart the failed clear without a justified strategy change.
+
+278 final-source intent:276's final owned duty exit verified21:30:28.010.
+277 loaded21:31:36.752 and restoration verified21:31:40.179: native priorities0,
+rewardStopAbsent, solo81OverridePresent=false. Saved configuration independently
+confirms81 absent/stop502 absent and FR disabled/eight-playerfalse/threshold3,
+RotationType0/exit delay20 unchanged. No temporary provider settings remain.
+Remove the last restoration block; no lifecycle launch/observer/timer remains.
+Keep the permanent admission diagnostics and registration-time gate release.
+Update existing changelog with LIVE lifecycle proof; reward acquisition and
+registration remain pending. Build278 through Z:\vmx.bat, full tests, diff check,
+then deploy only the authorized DLL and verify paused/no-restart after reload.
+Same0.5.0.3 and same campaign/accounting facts. Overall goal remains active.
+
+277 cleanup intent:276 loaded21:29:22.160. Registration21:29:49.197 released
+actual Before-AR gate(WaitingForWorldReady->Skipped; suppressionowned=false),
+then active handoff observation21:29:49.198 reported VMXbusy=false/territory142,
+attempted=true/cancelled=false and NO new dispatch. This positively verifies the
+ownership correction. Ordinary FULL STOP21:29:54.223; product cancellation and
+native priority/reward-stop cleanup verified21:29:56.256. Remove all lifecycle
+launch/observer/timer fields and code.277 restores only duty81 override1->absent
+and original FR disabled state, after strict idle145/Qstopped/DADstopped/no
+handoff/no pending match/priority0/no stop502 guards. Require observed exit before
+copy. No campaign/accounting/settings reset. Then remove restoration in278.
+
+276 intent: previous274 exit verified21:26:02.068 after its owned cancel.
+275 loaded21:27:41.662 and accepted the bounded product acquisition21:27:45.446.
+Remove its launcher and reload276 to verify the registration-gate correction
+against the active saved handoff. The observation must report VMXbusy=false;
+then ordinary FULL STOP runs after five seconds. No native settings/counters
+change. Build/copy276; retain the same180second275 bound until reload.
+
+275 ownership correction intent:274 loaded21:24:54.587 and observed the saved
+active handoff21:25:03.289(attempted=true,cancelled=false,territory142), with no
+new quest submission. FULL STOP21:25:08.312 stopped native Q21:25:08.330; product
+cleanup reported cancelled21:25:10.372. ACTIVE reload/no replay and cancellation
+are now verified. The same readback showed VMXbusy=true because constructor
+Before-AR startup's unstarted gate survived until later in the framework tick.
+Narrow permanent fix: after registration loads the CURRENT character's handoff
+and matches its Owner to contentId, call existing SkipBeforeArForLogin before
+debug/manual dispatch and retainer setup. This releases actual gate ownership;
+do not mask AutomationStatus. Repeat only the active-reload ownership assertion
+through the product action, with180second bound, then276 observe/stop. Require
+idle145/Q stopped/DAD stopped; no counter resets or new native setting changes.
+Duty81 override1 from270 remains the only pending provider-setting restoration.
+Build/copy275; verify the reload reports VMXbusy=false after the correction.
+
+274 intent:273 loaded21:23:42.464 and product Acquire accepted21:23:46.220.
+The same saved solo81 override1 was checked before copy. Remove the launcher;
+274 only observes the active saved handoff and invokes ordinary FULL STOP five
+seconds after its reload observation. Current273 has a180second bound from that
+accepted timestamp. No other action/settings/counter changes. Build/copy274 now.
+
+273 active-reload test intent:271 accepted product acquisition21:19:40.108;
+DAD bridge started CFC81/territory14221:19:40.362. Its90second FULL STOP fired
+21:21:10.112 before272 loaded. Native Q stopped21:21:10.127; product observer
+verified cancellation/removed handoff21:21:12.182.272 loaded21:21:23 and ordinary
+paused/no-dispatch21:21:40.331, then ADS clicked Abandon duty21:21:40.383 and
+observed exit21:21:43.920. Thus product start/cancel/cleanup and cancelled reload
+are verified; ACTIVE reload is not. Saved pending0/Stage23-attempts3/pause=true
+unchanged. Repeat only that remaining lifecycle case from stopped idle145, using
+the same PRODUCT action and a180second bound to allow build/reload. No clear
+attempt or campaign Resume. Existing duty81 override1 remains reserved from270;
+no new settings changes.273 launch must be removed immediately in274, which
+observes saved handoff and stops it after five seconds. Build/copy273.
+
+272 intent:271 loaded21:19:36.367. Before cleanup VMXbusy=true with summary
+plugin load while logged in; DAD/AR were idle. Ordinary FULL STOP released that
+unstarted Before-AR gate. Permanent Acquire accepted21:19:40.108 with a saved
+handoff(minion21, six quests204..502, DispatchAttempted=true, Cancellation=false,
+OwnershipReleased=false). VMXbusy=false/VMXactive=false prove it does not publish
+parent duty ownership. No native admission/result claim yet.270 had no submission.
+Remove the launcher.272 only observes the EXISTING handoff on reload, logs that
+it did not dispatch, then invokes the ordinary FULL STOP five seconds later,
+provided the same in-memory handoff still exists.271's90second stop remains its
+bound until reload. Preserve all counters; duty81 override1 still awaits restore.
+Build/copy272 now. Require observed reload, cancellation, native stop/cleanup and
+exit separately. Do not start another quest if any observation is missing.
+
+271 intent:270 built/loaded21:16:41.874 but product wrapper rejected21:16:45
+with its generic existing-automation message; no handoff record and no native
+quest submission occurred. Only duty81 override was reserved as1; it still needs
+restoration. Improve the permanent rejection message to identify the real owner.
+The temporary test skipped the normal debug action's initial FULL STOP cleanup.
+271 uses that existing cleanup, logs prior ownership and invokes the same product
+Acquire wrapper once; it never bypasses an admission check. Require the reserved
+duty81 override to still equal1, and retain the90second bounded owned-record stop.
+Native reload/dispatch remains unverified until positive evidence. Build/copy271.
+
+270 lifecycle-test intent: previous turn made progress, and269 remains the last
+verified loaded DLL. The actual trial clear remains blocked, but permanent
+handoff lifecycle acceptance can advance independently. From exact selected idle
+territory145/paused/Stage23-attempts3/pending0, with WQ and DAD stopped, invoke
+the PRODUCT AcquireVerminionMinion(21) wrapper once. Temporarily set only WQ's
+absent duty81 override to UnsyncSolo(1), so any native admission stays solo.
+All other native settings stay as restored; FR eight-player remains false/3.
+Arm one ordinary FULL STOP after90seconds for this bounded cancellation test.
+Next build will remove dispatch and observe the saved handoff across reload,
+then invoke FULL STOP. This is an intentional lifecycle test, not a trial-clear
+retry or campaign Resume. Restore only duty81 override and original FR disabled
+state after native shutdown; no counters or purchase caps change. Version stays
+0.5.0.3. Build/copy270 only to the authorized watched DLL after build success.
+
+269 verified delivery: Z:\vmx.bat Debug/x64 build passed, zero errors and the
+two existing NU1601 PInvoke warnings. All829 tests passed, zero skips;17 focused
+Verminion lifecycle tests also passed. Git diff check passed. Copied only the
+DLL to R:\parasite\vmx\VERMAXION.dll. Loaded269 at21:10:52.847EDT and ordinary
+paused/no-dispatch message at21:10:56.102 positively verified the final reload.
+No temporary trial observer, rotation command or legacy cleanup code remains.
+Permanent required-minion acquisition stays in the standalone window with native
+Questionable ownership, saved cancellation and explicit pending-cleanup messaging.
+Fresh saved state unchanged: pause=true, Stage23 attempts3, pending0,
+mask4194303(22/24),109 matches/37 wins, no new acquisition record. Legacy trial
+run is stopped, exited and its temporary native provider settings restored as
+recorded below. Full permanent handoff runtime acceptance remains pending; do
+not claim the legacy direct run verified it. Overall goal remains active/open.
+
+269 intent and current boundary:268 loaded21:08:26.661. Native preflight showed
+territory145/WQrunningfalse/DADstoppedtrue. Cleanup21:08:30 positively read zero
+priorities and no reward stop502. Saved native config independently verifies no
+trial76/81/85 overrides, FR disabled/eight-playerfalse/threshold3/RotationType0;
+exit delay20 unchanged. Legacy acquisition is stopped and temporary provider
+settings are restored. No reward or campaign progress;22/24, Stage23 attempts3,
+pending0, pause=true remain. Do not automatically restart the failed trial.
+Remove ALL temporary trial diagnostics, rotation commands and cleanup blocks.
+Keep the permanent acquisition implementation, ownership, UI and FULL STOP fix.
+Build269 using Z:\vmx.bat, test the final source, deploy only the authorized DLL,
+and require a fresh269 startup plus the ordinary paused message. Same0.5.0.3.
+Permanent acquisition live start/reload/cancel/cleanup remains unverified: the
+legacy direct route was deliberately never adopted into the new handoff record.
+Next acquisition research must handle Dragon's Neck Imp/Severe Snort using the
+existing stack before another justified attempt; ADS target priority alone and
+RSR Manual alone did not clear it. Static ADS position rules have no cast/status
+condition; no coordinates or mechanic rules were invented. Campaign23/24 and
+CPU tournament acceptance remain open; the overall goal is active.
+
+268 intent:267 loaded21:06:25, exact preflight confirmed native reentry142,
+WQ automatic quest204 and DAD active with the six original priorities. Native
+WQ stop21:06:31.654 set Manual; its DAD bridge already requested ADS leave.
+Explicit RSR cancel/FR off followed; ADS accepted leave and recognized/clicked
+Abandon duty21:06:35.806. Exit/ADS release observed21:06:39.284. No trial clear.
+Run only the remaining owned-setting restoration from idle territory145 with
+WQ stopped, preserving all unrelated settings/counters. Build/copy268; this
+attempt must not stop or restart any newly running Questionable quest.
+
+267 intent:266 built/loaded21:02:32, cleanup guard rejected21:03:04 without any
+mutation. Bounded logs explain why: native WQ requeued Dragon's Neck after its
+timeout, and ADS is again cycling resets in142. Do not wait another hour or
+restart it. From the exact recorded paused/Stage23-attempts3/pending0/no-handoff,
+quest204/six-priority/stop502 context, stop the failed legacy WQ route. If native
+Q is stopped but character is back in142, stop its RSR/FR combat and call the
+existing ADS.LeaveDuty once, leaving provider settings for the observed exit.
+No direct UI/input/trial implementation and no success credit. The same cleanup
+can restore owned settings only outside duty after DAD is stopped. Log preflight
+truth to distinguish native retry from other guard failures. Build/copy267.
+
+266 cleanup intent: native time-expired message20:56:40.295; ADS released20:56:46;
+DAD explicitly failed the bridge20:56:53 because DutyCompleted was absent. WQ
+ran its native DisableCombatPluginsForDuty20:56:53.835.265 loaded20:57:28 and
+read territory145/WQrunningtrue/current204/DADstoppedtrue at20:57:31; trial204 and
+reward502 incomplete.265 did not restore Auto because the native trial had ended;
+WQ's combat shutdown supersedes the temporary mode test.17 lifecycle tests passed.
+Stop this known failed legacy Q run only at exact quest204, outside duty/queue/
+combat, with its unchanged six priorities/stop502 and Stage23-attempts3/pending0.
+Once native Q stops, remove only those six priorities/stop502, remove trial76/81/85
+overrides only if still1, restore selected FR eight-player true/0 to false/3,
+and restore originally disabled FR through /fr off. Preserve exit delay20 and
+all other provider/user settings. No quest restart, battle admission or counter
+reset. This is cleanup of the recorded257 test, not adoption by permanent handoff.
+Build/copy266 after success; remove the temporary cleanup block after readback.
+
+265 intent:264 loaded20:52:17, native /rotation manual accepted20:53:04.
+All three snapshots held target3367(Ultros); at20:53:49 both bosses still had
+~100kHP and player had Imp613, verified from XIVAPI as allowing only Imp Punch.
+Severe Snort cast3117 observed20:54:33, another arena reset20:54:49. Target-mode
+control passed, trial clear failed. Native one-minute-left message20:55:29 means
+previous timer estimates were inaccurate; await actual exit/failure. Remove all
+three-snapshot diagnostic fields/tick block now.265 restores original RSR Auto
+once if still in territory142 and takes one provider/quest-completion readback.
+No native priorities, trial queue, campaign counters or persistent FR settings
+change. Build/copy265; remove this last restoration block after observation.
+
+264 intent:263 actual target stayed Typhon despite ADS selecting Ultros. Gear is
+71% or better; WAR77 mainhand16329 is the level60 Augmented Shire weapon. The
+trial continues resetting without clear. FR's existing ADS-owned combat branch
+bootstraps once then holds; RSR Auto can select its own target. Test the native
+/rotation manual command once under selected-character/paused/territory142 plus
+WQ-running/ADS-owned guards. No FR saved config change or quest dispatch. Observe
+three target/HP snapshots at5/25/45 seconds. RSR original runtime mode was Auto;
+restore it after diagnosis if the duty lifecycle has not already done so. Build
+and copy264 only to the authorized watched DLL; no counters or provider settings.
+
+263 intent: ADS hot-loaded304 rules/67shards20:39:55 and selected BossFight Ultros.
+This verifies native rule adoption/target priority. A fresh opening still reset
+20:41:39, so priority alone has not produced a clear.31 ADS precedence/shard/
+semantics tests passed; the ADS source worktree stayed clean. The new Botology
+shard/index/changelog are uncommitted and its one context is installed on the
+authorized client. Read three bounded post-rule snapshots at0/20/40seconds and
+include existing equipment-condition, main-hand and available-job readers once.
+This distinguishes failed damage/gear eligibility from remaining arena mechanics.
+No gear change, quest control or new rule is part of263. Build/copy263.
+
+Trial142 rule intent:262 loaded20:36:57, observed real bosses3366(Typhon) and
+3367(Ultros), each158990maxHP. At20:37:43 Ultros150890/Typhon152886; at20:37:55
+target switched toTyphon while both lived (Ultros129443/Typhon115064). Player
+still had75741/77560HP. This proves damage splitting, not the exact wipe mechanic.
+Guide https://ffxiv.consolegameswiki.com/wiki/The_Dragon%27s_Neck says focusUltros.
+Add one BossFight row scoped to territory142/CFC81/base3367 in BotologyUpdates,
+priority10; no helper actors, coordinates, quest logic or combat actions.
+Validate shard/index and test on the authorized client's existing DEFAULT ADS
+store by adding only that missing context and index entry. Preserve all unrelated
+rules. ADS's existing file reload handles it; no ADS DLL reload/start/stop needed.
+Keep the native Q chain running. Verify target selection and actual clear separately.
+
+262 observation correction:261 loaded20:35:07 and remains paused. The fight has
+more than eight untargetable same-name helper actors; increasing a row limit did
+not capture boss health. Filter the observed live target base IDs3366/3367
+(seen in260/261 player target reads) instead, at most two actors. Native targeting
+switches from3367 to3366 during combat while ADS falls back to generic CombatHold.
+No claim about the reason for the switch or boss damage yet. Build/copy262 for
+the same three read-only snapshots; all existing quest actions remain native.
+
+261 observation correction:260 successfully loaded20:33:03.265 and respected
+pause20:33:10.351. ADS owns duty142 in0.9.4.2; Q is running. Player is WAR77,
+77560/77560HP, targeting base3367. The initial two enemy rows were untargetable
+same-name NPCs3368/3369 with2433HP, so they cannot explain boss damage. Expand
+the bounded read to at most eight matching NPCs to include the actual targets;
+retain exactly three snapshots/no actions. Build/copy261, then evaluate actual
+target HP before selecting an ADS rule.260's constructor fix is live-verified.
+
+260 recovery intent:259 reached its assembly marker20:30:41.665 but plugin
+construction FAILED with NullReferenceException in the new acquisition guard:
+BeginBeforeArLoginPendingFromPluginLoad runs at constructor220, before
+VerminionService is created. No diagnostic snapshots or quest commands ran.
+Fix both early Before-AR entry guards to tolerate pre-service initialization;
+the registered-character path still checks the saved handoff before execution.
+Build260 and replace the watched DLL to recover the authorized plugin, then
+require successful startup and the bounded read-only trial snapshots. Q owns
+the existing run independently; no counters, Q priorities or client settings change.
+
+259 intent: goal is active again. Fresh bounded logs through20:25 show repeated
+ADS combat/transition cycles in The Dragon's Neck (CFC81/territory142), without
+clear evidence. XIVAPI confirms the duty identity; its public guide explains that
+all players leaving the arena causes a wipe and describes Typhon knockbacks.
+Do not infer whether positioning, target selection or damage is responsible.
+Add three read-only ADS/native combat snapshots over24seconds through the existing
+character-bound paused Debug branch. No quest actions, duty starts/stops, settings
+changes or counters. Build259 and copy only its DLL to the watched R:\parasite\vmx
+path.257's direct launcher left VMX owner0/paused; unloading it does not own the
+Questionable run.259 preserves pause, never adopts that legacy run, and only logs
+ADS phase/objective plus current player/NPC HP, position, target and status IDs.
+Remove the temporary snapshot code after observed evidence; use the existing ADS
+rules/stack for any proven trial correction. This is not another quest controller.
+259 build passed after correcting quotation syntax in the temporary diagnostic;
+same two dependency warnings, zero errors. Copy259 now after checking the selected
+saved character still has pause=true, Stage23-attempts3 and no pending match.
+Loaded marker and read-only snapshots remain to be observed.
+
+258 local verification complete: final Z:\vmx.bat Debug/x64 build passed with
+zero errors and the same two NU1601 PInvoke dependency warnings. All17 focused
+Verminion lifecycle tests passed, then the full suite passed829/829 with zero
+skips. New regression covers prepared-versus-dispatched quest ownership, native
+quest transitions, cancellation persistence, released ownership, character/settings
+copy isolation, weekly reset and no battle/campaign credit. Git diff check passed.
+The observer and FULL STOP paths have source/build coverage only; the permanent
+handoff has not been dispatched on the live client. Build258 stays local at
+Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll; loaded257 is unchanged.
+No live mutation, deployment or reload was performed during this correction.
+Before later live testing, resolve the directly launched257 chain and restore its
+recorded temporary native settings. Do not adopt it from old quest-ID metadata.
+Next permanent-handoff tests: idle admission, DAD trial admission without a VMX
+parent hold, reload without dispatch, FULL STOP and precise native-setting cleanup.
+Campaign22/24, Stage23 attempts3, Stage24 mechanics and tournament acceptance remain
+open. The goal remains paused; no campaign attempt counter was changed.
+
+258 intent (local implementation only): latest user correction keeps required-minion
+acquisition as permanent bot functionality. Do not remove the capability or leave
+it as a test-only workaround. Added a standalone-window acquisition action for
+the required Gentleman route. WigglyQuest receives unfinished native priorities
+and a stop after Her Last Vow; it owns all quest/trial execution. VMX remains
+paused and inactive, blocks new local automation, and observes saved per-character
+ownership without replaying submission after reload. FULL STOP cancels only the
+owned route; cleanup removes only reserved priorities/stop. Native reward quest
+completion is not registration, victory or campaign credit. Explicit Resume
+re-enters ordinary setup. No shared DAD ownership bypass, trial runner, provider
+configuration changes or automatic character progression added. Remove257's
+temporary launcher and old Debug quest-by-quest acquisition, preserving ordinary
+Gold Saucer single-quest setup. Legacy Hildibrand metadata cannot stop a directly
+launched native run. Version0.5.0.3 stays fixed; expected local marker258.
+Build through Z:\vmx.bat; no copy/reload while the native acquisition is unresolved.
+Goal tool currently reports paused. This correction does not restart campaign work.
+
+257 outcome carried forward: loaded19:45:07.368EDT; native priority/stop prepared
+19:45:10.972; StartQuest204 accepted19:45:11.002; DAD accepted CFC81/territory142
+19:45:11.254; The Dragon's Neck unsynced entry19:45:17.987; FrenRider's ADS inside-duty
+start accepted19:45:35.104. No observed clear or Gentleman reward yet. One bounded
+existing-log snapshot during258 work saw later territory142 transitions through
+19:53:35, but no completion evidence in its sampled window. No live commands,
+settings, reloads or quest probes were issued. Keep the six native priorities,
+stop502, three duty-mode overrides and FR restoration obligations below pending.
+The active257 run has no new258 handoff record and must not be adopted implicitly.
+
+257 intent: acquisition is authoritatively stopped after the duty81 timeout;
+there is no running quest to interrupt. Honor "let Questionable do the quests"
+by one direct provider launch while VMX stays paused, rather than another VMX
+parent-owned quest. Inspected installed WigglyQuest7.5.26 APIs and resolver: its
+manual priority list wins before MSQ, AddStopQuest creates a native Stop condition,
+and StartQuest uses normal automatic questing. Native priorities will be exactly
+204,490,491,492,493,502; native Stop after502 bounds the approved acquisition.
+Current originals: priority list empty, persistencefalse, clearOnCompletionfalse;
+Stop.Enabled=true, Conditions empty, CommandAfterStop empty; MSQ priority0 stays
+unchanged. Remove only these six priority entries and the502 stop after the run.
+Keep the previously recorded duty-mode/FR restoration obligations as well.
+The one-load Debug hook requires selected character, unpaused exact204 checkpoint,
+Stage23-attempts3/pending0, native204 sequence4, WQ stopped, DAD stopped, no native duty/queue/combat,
+readable funds above reserve+1000, and no unrelated priority/quest-stop entries.
+Normal cleanup then persists VMX pause; require its automation status idle before
+setting/reading back native WQ priorities and its stop, then submit StartQuest204
+once. No quest steps, trial runner, ownership bypass, counter reset or new IPC.
+Build Z:\vmx.bat and deploy only this hook to R:\parasite\vmx\VERMAXION.dll after
+successful build. Expected marker257, version0.5.0.3 unchanged. Remove the temporary
+launch block after its observed dispatch; no further reload during active questing.
+257 final build passed (two existing PInvoke warnings, zero errors). Native204
+sequence4 is the preflight guard, rather than the stopped provider's UI selection.
+Copy the built DLL now; dispatch and provider-owned quest continuation are not yet
+verified. The current paused gate still takes precedence over this one-load action.
+
+256 local-only result: implement the Final Coil guide's one-add focus using
+existing enemy observations and group orders. XIVAPI Companion rows78/165 confirm
+the names wind-up Bahamut/clockwork Twintania, not native stage IDs or mechanics.
+Require Bahamut by name before choosing either add. Commit to one living add when
+both appear, retain that identity through temporary absence, and stop add focus
+after its observed HP0. An observer starting with one surviving add stays on the
+boss. No battle/result credit derives from this local phase state. Native tower
+and circle signals remain unknown; ordinary24 admission stays blocked. No quest
+logic, client settings, copy or reload changes. All16 Verminion lifecycle tests
+passed. Z:\vmx.bat Debug/x64 build passed with the same two PInvoke dependency
+warnings and zero errors; Git diff check passed. Source/local build256; last
+deployment254, whose load remains unverified. Version0.5.0.3 unchanged.
+Bounded existing-log windows and a saved-progress read were taken after the local
+work to check acquisition without interrupting it. Saved quest is now204,
+providerWigglyQuest, pausefalse, campaigntrue, Stage23-attempts3, mask4194303,
+sequence127/pending0/matches109/wins37. This is progress since quest166, not proof
+of the later trial or minion acquisition. No quest dispatch, reload or new probe.
+Fresh existing log resolves the attempt: WQ reached204 sequence4 at19:20:06.803
+and DAD accepted a LocalDuty bridge for CFC81/territory142 at19:20:07.041. No
+admission was observed. At19:25:07.037 WQ reported its300-second entry timeout,
+stopped its duty bridge, and became Manual; VMX failed the owned prerequisite at
+19:25:07.255. Acquisition is STOPPED, not still running. Stage23 remains blocked
+by missing Gentleman. Existing source still publishes active VMX prerequisite
+work as busy and DAD's local queue requires externalHeld=false; this is the
+previously proven parent/child ownership conflict. No fresh executor diagnostic
+was injected, so do not claim its exact current blocker from these logs alone.
+Do not blindly restart the same parent-owned quest. User-directed Questionable
+ownership, existing stop rules and the three failed Stage23 attempts remain intact.
+
+255 local-only result: latest user steering also says "dont try to become
+questionable." Leave the active quest provider alone. No client reads, copy or
+reload in this pass. Re-read both final-stage guides: the Lodestone guide explicitly
+uses Gentlemen for both23 and24; its24 strategy dodges plain circles and assigns
+one healthy unit to each pillar. Align24's required roster/cost and replacement
+orders with that guide. Disable its four-caster-withdrawing special to retain
+tower units. Keep ordinary24 admission blocked: native tower/circle recognition
+and add handling remain unimplemented. Show missing ownership and the guide in
+the window. All15 Verminion lifecycle tests passed; Z:\vmx.bat Debug/x64 build
+passed with the two existing PInvoke dependency warnings, no errors. Git diff
+check passed. Local marker verminion-control-20260926-255, version0.5.0.3 unchanged;
+output Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll. No deployment: watched
+DLL remains254 with load unverified. No campaign attempts or character settings
+edited. Next live work requires acquisition to finish and the minion to be
+registered; leave Questionable undisturbed. Stage23/24 clears, Stage24 native
+mechanics, CPU tournament execution and remaining lifecycle checks stay pending.
+
+Latest user steering: "just let questionable do the quests." Leave the existing
+Questionable/WigglyQuest acquisition running; do not interrupt questing with more
+reloads, probes or manual quest actions. No goal pause was requested. Deployment
+254 removed all temporary FATE probes and was copied to the selected watched DLL;
+its loaded marker has not been checked yet. Last positive quest completion1441,
+current saved quest166 at the last read. DAD's two fixes and Big Bridge clear/exit/
+turn-in are verified; later trials and Verminion23/24 are still pending. Preserve
+the recorded temporary provider settings until acquisition ends, then restore.
+
 Scope: implement the approved CPU Verminion plan in VERMAXION, beginning with live
 battlefield observation and control proof. Reuse the existing debug reload hook,
 logging, task identity, configuration, cleanup and AutoRetainer ownership. The
@@ -10,7 +585,1294 @@ Runtime target: `R:\XIVLauncher3`, with Lord of Verminion selected in `/vmx debu
 Source edits, Debug builds, DLL replacement and this client's selected reload tests
 are authorized. Do not change release versions or operate other clients.
 
-## Goal additions and requested pause — 2026-09-25
+238 intent: first trial stopped17:52:49 before queue because WigglyQuest7.5.26
+checks Meta.AutoDutyModeEnum/Unsynced/DutyModeEnum, but Dad only handled legacy
+names and lacked two readbacks. Narrow DadDutyIpcService compatibility fix plus
+existing runtime regression now pass27 Questionable tests. Current headless/lab
+builds passed; progression/cancel/unload/FrenRider/direct-solo scenarios all exited0.
+Dad0.7.1.0 Debug build passed with six existing nullable warnings; version retained.
+Generated lockfile-only build churn restored; no new dependencies or trial runner.
+Fresh saved state matches127/pending0/109-37/mask4194303/Stage23-attempts3,
+quest1318/providerWigglyQuest/priorityfalse/pausefalse, spending4800+40000.
+Use the verified installed Dalamud temporary plugin commands:238 invokes only
+/xldisableplugintemp dad from the guarded idle selected Debug checkpoint. It does
+not start acquisition. After native unload evidence, replace only installed
+dad0.7.1.0/dad.dll, then239 enables Dad. Remove temporary command code and use240
+to resume acquisition only after provider registration and compatibility readback.
+No campaign attempts/settings reset. No client restart or OS input.
+238 loaded18:07:35.661, guarded disable submitted18:07:39.140 and native Dad
+unload finished18:07:40.373. Replace the installed Dad DLL and build/copy239
+now;239 requires Dad absent before submitting its temporary enable and returns
+without quest dispatch. The original installation remains enabled persistently.
+239 loaded18:08:53.423; Dad enable submitted18:08:56.561, load and IPC
+registration completed18:08:57.416 from the replaced installed DLL.240 replaces
+the temporary enable action with read-only legacy/Meta IPC agreement checks for
+all three checked keys, then resumes the ordinary owned quest handoff. Remove
+that temporary proof after its observed result; no setting writes in240.
+240 loaded18:10:23.184; all three IPC legacy/Meta readbacks agreed18:10:26.776
+(Looping/False/Support), proving the fixed provider is loaded. Acquisition resumed
+18:10:26.863; first native Dad bridge session366/76/LocalDuty/loops1 started
+18:10:27.109. This is dispatch evidence, not trial entry/completion.241 removes
+all temporary command/proof code and is source/build only until trial ownership
+and result settle. Do not reload blindly while the duty session is unresolved.
+241 revised intent: no register/commence/entry evidence followed18:10:27.206
+selection clearing; the uncapped main log remains fresh. Inspect the queue's
+actual blocker instead of bypassing ownership gates. Normal authorized unload/
+cleanup will cancel the unresolved owned quest.241 refuses a new dispatch while
+native queued/bound/in-combat, then reuses the ordinary quest handoff and records
+one read-only executor-status snapshot five seconds afterward. No trial success
+or attempt reset is inferred. This temporary diagnostic must be removed afterward.
+241 loaded18:16:29.528, snapshot18:16:38.105 confirms QueuePreparing blocked by
+externalHeld=true/postArReady=false; available/worldStable/ARavailable=true,
+ARbusy/multimode=false. VMX's active unlock parent blocks its own WQ child duty.
+240's attempt had already timed out18:15:27.599; no trial admission/completion.
+Lean acquisition path selected within existing authority: use WQ's existing
+StartSingleQuest directly for the test character's trial quest while VMX stays
+paused. Do not expand the shared IPC/ownership protocol or add a trial runner.
+242 removes the diagnostic and, after ordinary cleanup plus idle/native/no-duty
+guards, saves VerminionPaused=true and starts only quest1318 through existing WQ
+IPC. Preserve Stage23-attempts3 and all results/spending.243 will remove this
+temporary single action; its reload must respect the pause and leave the direct
+WQ quest alone. After positive quest completion, guarded development unpause can
+resume VMX acquisition; ordinary campaign Resume would reset attempts and is wrong.
+242 loaded18:21:49.700; saved pause and direct quest1318 accepted18:21:53.296.
+The independent WQ->Dad attempt passes ownership safety and maps/selects duty76,
+but rehydrates every six seconds before registration. No trial admission yet.
+243 removes the direct-start action and uses the paused reload branch for one
+read-only DAD executor/native-selection snapshot. It must not run cleanup or
+restart WQ. VMX stayed idle for this direct attempt, so its unload owns no quest.
+This distinguishes the native mapping issue from the confirmed parent ownership
+hold. Keep both limitations explicit; no shared ownership protocol was changed.
+243 loaded18:23:48.842, paused without cleanup18:23:52.079. Native selected
+agent Regular76 but interfaceSelectedId20021/HasRouletteSelected=true/queue=false/
+unsynced=true. Snapshot also shows externalHeld again during reload;244 captures
+the parent's exact activity plus the existing bounded Finder snapshot to identify
+the live selection mapping. Read-only paused branch only; no new dispatch.
+244 loaded18:26:41;18:26:44.557 native UI shows Battle on the Big Bridge and
+1/1 selected while DAD waits for interfaceSelectedId20021 (stale roulette/reward
+detail) rather than76. No Join was issued.245 adds the exact selected-content
+vector to the existing bounded Finder diagnostic and repeats a read-only paused
+snapshot. Verify the selection's actual contents before changing the DAD proof.
+245 loaded18:28:52.945;18:28:56.152 reports exactly one selectedContent Regular76.
+WQ's direct attempt ended without trial admission; executor is now absent.
+Focused linked-production native-reader regression reproduced expected76/actual20021.
+Fix only the regular selection readback to require one SelectedContent entry of
+Regular type; reject empty/multiple/roulette and keep existing mapping/stability
+checks. Rename its adapter property for clarity and update the virtual adapter.
+Testing/building this second DAD correction precedes another local reload attempt.
+Reload-time externalHeld was VMX BeforeAutoRetainer/WaitingForWorldReady, not an
+unpaused Verminion task; the direct WQ run did progress to exact selection normally.
+246 intent after DAD tests/build: replace the temporary diagnostic with a guarded
+/xldisableplugintemp dad in the existing paused branch. Require no WQ/DAD run,
+no native queue/duty/combat, quest1318 and retained Stage23-attempts3. Once native
+unload is confirmed, copy the fixed existing Dad DLL, enable with247, and verify
+its renamed CheckedRegularDutyId reader before one direct quest1318 retest.
+246 pre-copy verification: all60 focused DAD tests and all eight selected current
+headless lifecycle scenarios passed (direct solo; unstable/wrong/stale selection;
+cancel before register; deferred restoration; Questionable progression/FrenRider).
+Native/live behavior remains unverified. Fresh bounded log confirms245 is loaded,
+the direct WQ attempt timed out18:26:53 with no admission, and DAD remains idle.
+Copy246 now; its runtime guards must still refuse any active WQ/DAD/native duty.
+246 loaded18:39:41; guarded disable submitted18:39:44 and native Dad unload
+finished18:39:45.623. Replace only installed dad0.7.1.0/dad.dll with the tested
+build, then build/copy247.247 requires Dad unloaded and WQ/native duty idle before
+the existing temporary enable command. Acquisition remains paused and unstarted.
+247 built/loaded18:41:22, Dad enable18:41:26; native load/IPC registration
+completed18:41:26.957 and WQ bridge patched18:41:27.073.248 verifies the loaded
+assembly's CheckedRegularDutyId property returns76, then starts only incomplete
+quest1318 using WQ's single-quest IPC while Verminion remains paused. Existing
+idle/native/progress guards apply. Remove this temporary start block after its
+one observed dispatch; no trial result or campaign attempt reset is inferred.
+248 reached territory366/Big Bridge by18:43:03, WQ entered its wait-for-exit step.
+FrenRider ADS.StartDutyFromInside accepted18:43:05.447; ADS navigated to Gilgamesh
+and entered CombatHold18:43:21.538. Native unsynced-entry messages also observed.
+This verifies admission and FR/ADS handoff, not completion.249 removes the entire
+temporary proof/start block and preserves the ordinary paused-reload return.
+Build source cleanup now; do not interrupt Dad/ADS/WQ ownership during the trial.
+248 loaded reader returned76 and direct WQ accepted18:42:50.692. DAD joined
+exact CFC76 once18:42:53.334.249 cleanup loaded18:47:28.504 without redispatch.
+Big Bridge DutyCompleted observed by ADS, FR and Dad18:48:04.474-.482; FR began
+its existing exit-only takeover. Completion is verified; exit and quest1318
+turn-in remain pending. Full current VMX suite passed825/825; both diffs clean.
+250 prepared intent: resume only when native quest1318 completion, idle overworld,
+WQ stopped, Dad stopped and retained Stage23-attempts3/pending0 are all proven.
+Clear only the development acquisition pause and use ordinary Debug cleanup and
+dispatch; never use campaign Resume while paused or reset its failed attempts.
+Build250 now; copy only after bounded exit/turn-in evidence. Remove the temporary
+unpause block once observed. Normal acquisition should continue with quest1438.
+Exit confirmed18:48:36 (WQ wait-for-instance-exit completed); quest1318 native
+completion wait passed18:49:12.021 and its tasks ended18:49:13.057.250 build
+passed; copy now. Dad successful cleanup reported unavailable /vbmai off and
+/wrath auto off commands; WQ continued its normal combat-disable and turn-in.
+These warnings do not invalidate the observed clear/exit but remain visible.
+250 resumed the ordinary acquisition: quest1438 dispatched18:50:01.800 and
+accepted18:50:09.659. Thus first trial clear, exit and turn-in are all verified.
+251 removes the temporary post-trial unpause block; build only for now, leaving
+the current overworld quest undisturbed. Acquisition continues through1438,
+1439,1440,1441,166,202,203 to204/CFC81. At that trial, use the same deliberate
+paused-parent/direct WQ action instead of weakening DAD ownership checks.
+Quest1438 completion verified18:53:35.244; quest1439 accepted by18:53:47.663.
+251 cleanup build passed, not copied. Still live250, now well past its one-shot
+1318 guard. Retained results/attempts remain unchanged. First-trial runtime needs
+no ADS rule change. Second/third trial runtime and all Verminion23/24 clears remain
+pending. Re-read both published guides before the next campaign attempt; the
+linked Lodestone guide explicitly supports Gentleman-only Stage23/24, whereas
+ffxiverminion's alternate23 also uses Cursor (unowned, two achievement certificates).
+Keep the selected Gentleman-only strategy; no extra currency or minion acquired.
+251 copy intent: remove the dormant development unpause action from the loaded
+plugin during the current overworld quest. Guard saved unlock1439/1440, pausefalse,
+pending0 and Stage23-attempts3 before copy. Normal unload/Debug cleanup may stop
+and resume that owned single quest; no trial or new campaign attempt is permitted.
+251 loaded18:54:57.131, resumed1439 at18:55:01.051; quest1439 positively completed
+18:55:37.344. Current owned quest1440 (Seeds of Rebellion) reached sequence2 by
+18:57:38.524. No temporary plugin enable/disable/start/unpause code remains in
+source or loaded251. Dad's two corrections are loaded. No ADS rules changed.
+252 intent: quest1440 sequence2 stalled in combat; bounded log shows repeated
+"Unable to attack FATE target. Your level is too high" against MandragoraQueen
+2954. Existing route specifies FateEnemies for2950-2954 after the Mandragoras
+event interaction. Add one read-only current/synced FATE plus native enemy-FATE
+snapshot to existing CaptureSetup, then rebuild/reload252. No sync command yet;
+first establish the exact native event and current sync state. Quest timeout and
+campaign/result/spending guards remain. Remove temporary probe after resolving.
+252 loaded19:05:48, but its normal startup diagnostic cannot run because current
+combat prevents character registration. Unload stopped the owned WQ route;
+remaining combat is unresolved.253 performs the same read-only CaptureSetup once
+on the framework thread before registration, gated by the saved Debug character
+and loaded player identity. It does not bypass registration or dispatch work.
+Installed WQ uses a one-time /lsync attempt based on its PublicEvent reader;
+native sync state is still needed. Keep this as temporary existing-hook research.
+Quest1440 completed19:09:22.649;1439/1440 now both positively complete.253
+loaded19:09:06.752; by its setup snapshot sequence2 had already ended, so the
+temporary FATE-specific diagnostic did not execute. No level-sync command or FR
+setting change was made. Current quest1441 (A Case of Indecency) started19:09:22.700.
+Do not claim a proven sync fix from this recovery.254 removes both temporary FATE
+probe blocks, builds and reloads only on the same ordinary overworld checkpoint.
+Expanded bounded evidence resolves252's delayed diagnostic:19:07:46.788 reported
+level50/syncedtrue/currentFate336/syncedFate336, with a matching Mandragora corpse.
+Quest1440 advanced sequence2->3 at19:07:47.521. Thus the event did sync and clear
+before253; no new FATE control or persistent setting was necessary.
+254 build passed. Initial copy guard refused because quest1441 had already
+completed19:11:09.294 and166 started19:11:09.346. Fresh saved state confirms
+166/pausefalse/pending0/Stage23-attempts3/weekly109-37. Copy the cleanup254 only
+with this updated ordinary-overworld guard; this is not a trial dispatch.
+
+Resume235: David installed Dad0.7.1.0 and FrenRider1.3.1.9. Fresh bounded
+evidence confirms Dad duty IPC registered17:37:07.249 and its existing bridge
+patched WigglyQuest7.5.26 at17:37:07.675. FrenRider loaded17:37:14.670 and
+reports readable ADS ownership17:37:14.810. The installation decision is
+resolved; do not ask again or install any additional provider. ADS is0.9.4.2.
+Intent235: update the compiled attempt marker and include our actual stack in
+the existing setup diagnostic, build through Z:\vmx.bat, then guard the saved
+234 pause/quest1207/127-pending0/109matches-37wins/mask4194303/Stage23-attempts3/
+spending4800+40000/caps223588+40000/reserve50000. Clear only the deliberate
+setup-test pause and deploy235. Ordinary campaign Resume must not reset the
+three attempts. Continue the owned Hildibrand chain through existing WigglyQuest
+and Dad/FrenRider/ADS; add rules only if an observed trial failure requires them.
+No campaign attempt reset, new trial controller, dependency or version change.
+235 built/loaded17:40:39.119, resumed1207 at17:40:42.731 with the expected
+six loaded providers. Quest sequence10->11 observed17:41:19.716. Facts retained.
+236 intent: the installed WigglyQuest settings have DefaultDutyMode=Support,
+AutoUnsyncOverleveled=false and no overrides;76/81/85 are whitelisted. Current
+FrenRider profile has eight-player ADS handoff=false/threshold3. Apply existing
+settings through a temporary selected-Debug setup block: only those three trial
+mode overrides become UnsyncSolo; only this character's eight-player handoff
+becomes true/threshold0 so untested trials can be observed. Leave other families,
+follow target, combat settings and enable state unchanged. Save through each
+provider's own methods. No queue command or new trial runner is introduced.
+Original settings for restoration: all three trial overrides absent; selected
+FR AdsEightManEnabled=false, AdsEightManMaturityThreshold=3. Remove temporary
+setup code immediately after runtime/config readback and restore these specific
+settings after acquisition testing. Do not broaden to other characters/duties.
+236 built/loaded17:46:46.403 and applied the existing settings17:46:50.025.
+Saved readback confirms trial76/81/85 modes1(UnsyncSolo), selected FR eight-player
+handoff=true/threshold0, FR still disabled outside its existing Dad duty entry.
+1207 completed17:42:15.419;1315 completed17:45:32.815. Quest1316 resumed
+17:46:50.053. Intent237: remove the temporary setup block, build and copy while
+the owned overworld quest is running. No more provider setting writes on startup.
+Preserve235/236 result/attempt facts and use the existing bridge for first trial.
+237 built and loaded17:48:29.577; owned1317 resumed17:48:33.234. Temporary
+provider setup block is removed.1316 completed17:47:24.319;1317 completed
+17:49:19.486;1318(The Three Collectors) dispatched17:49:19.542, accepted and
+at sequence1 by17:49:22.695. Seven of21 Hildibrand quests have positive clears.
+Next live milestone is sequence6/CFC76 (Big Bridge), using the existing solo
+unsynced Dad queue and FR->ADS handoff; no trial result or rule change claimed.
+
+Standing constraint reaffirmed by David: AutoDuty is forbidden on every client.
+David explicitly selected the existing AIDS/ADS, DAD and FrenRider stack for
+the required Hildibrand trials. Inspect its existing execution/handoff first;
+at most add necessary ADS rules in Z:\botologyupdates. Do not build a special
+trial runner or new integration layer. Repositories: Z:\ads, Z:\dad\dad,
+Z:\frenrider. No other client or publication is authorized.
+Do NOT install or propose installing it. No AutoDuty was installed or configured.
+Its earlier installation question is resolved/rejected. Hildibrand acquisition
+remains authorized using already installed capabilities; verify any trial control
+before dispatch. This is separate from Verminion, which does not use AutoDuty.
+
+Hildibrand authorization (2026-09-26): David answered "Allow Hildibrand
+acquisition work" to the pending scope question. ARR Hildibrand quests and its
+required trials are now authorized for this same test character, to obtain
+Wind-up Gentleman. This supersedes earlier pending-decision/no-quest-chain
+instructions for this character only. Preserve Stage23 attempts3 until minion
+registration and an explicit reviewed development Resume. Local routes contain
+disabled duties76/81/85, so inspect installed-provider behavior before execution.
+Intent230: build a Debug-only21-quest completion/acceptance/sequence snapshot
+plus current level/job and loaded duty providers. Copy with unchanged settings,
+facts and spending; the existing CPU Home World gate ends this read-only run.
+No quest, trial, world transfer or campaign battle is dispatched by230.
+230 build passed after fixing diagnostic-only interpolation/import/API errors;
+earlier failed candidates were never copied. Deploy230 now; config guards passed.
+Installed WigglyQuest7.5.26 uses policy instead of the old Enabled route field,
+but still needs AutoDuty.ContentHasPath. No AutoDuty install folder was found;
+the new loaded-provider readback will distinguish dev-loaded availability.
+230 loaded16:49:01.466; native16:49:04.590 shows all21 Hildibrand quests
+unaccepted/incomplete. Current job21(Warrior),level77; loaded providers are
+WigglyQuest, BossModReborn and RotationSolver, with no AutoDuty. Funds268788gil.
+231 reuses the owned single-quest handoff for an explicitly seeded Hildibrand
+chain, gated to this character's selected Debug run. It does not opt ordinary
+users in, and it does not implement or auto-enable trial execution. Each quest
+retains the existing15minute timeout and native completion requirement.
+Intent: build/test231, then guard existing127/pending0/109/37/mask4194303/
+stage23-attempts3/spent4800+40000/caps/reserve unchanged. Set CampaignRequested
+true, modeWinTarget (target37 preserved), and UnlockQuestId1204/providerempty/
+priorityfalse to seed the now-authorized acquisition. Do NOT reset campaign
+attempts. It will stop for a quest/trial blocker or at Stage23's retained limit
+after minion registration. No new minion spending or trial settings changes.
+231 build passed; all824 tests passed and diff check clean. Apply guarded seed
+and copy231 now. No campaign attempt reset is part of this acquisition start.
+231 dispatched16:52:05.664 after the guarded seed. Quest1204 was accepted
+16:52:31.764, reached sequence2 at16:53:41.800, and WigglyQuest began its
+FateEnemies combat step16:54:53.262 using RotationSolverRebornModule with BMR
+passive movement. Preserve this attempt (15minute quest limit from16:52:05).
+Installed WigglyQuest supports FATE sync; no FATE/quest success has been observed
+yet. Do not confuse "Combat started" with a completed fight or completed quest.
+Trial research: WigglyQuest opens Duty Finder when AutoDuty is unavailable; it
+does not auto-queue that unsupported step. Required trial sequences are1318/6
+for76,204/4 for81,502/4 for85. Installed BMR7.5.6.19 has generic AI/rotation IPC
+and /bmrai commands but no Gilgamesh/Ultros trial-specific modules. No duty,
+BossMod settings, additional plugin, or trial control has been changed yet.
+1204 advanced sequence2->3 at16:59:30.136, positive completion of the FATE
+requirement; quest turn-in is still pending at that observation.
+AutoDuty upstream has existing routes for territories366(Big Bridge),142
+(Dragon's Neck),396(Big Keep), at github.com/ffxivcode/AutoDuty/master/AutoDuty/Paths.
+Asked the dependency-gate choice: include AutoDuty installation on the same
+authorized client and its three solo unsynced trial runs, lean alternative of
+manual trial clears, or skip and stop acquisition at the first trial. Await an
+actual answer before installing a plugin or expanding trial machinery. Continue
+independent authorized quest steps; Hildibrand acquisition itself is approved.
+1204 completion verified17:00:49.465; owned quest cleanup and1205 handoff
+followed17:00:49.527.1205 accepted17:00:57.939. Fresh saved state1205/WigglyQuest/
+priorityowned/unpaused,109matches/37wins/pending0/stage23-attempts3. This proves
+the first acquisition quest and its automatic next-quest handoff; not all21.
+1206 completion verified17:03:37.256 and1207 dispatched17:03:37.397; first
+three quests complete. Intent232: verify the planned FULL STOP during setup.
+Temporary Debug-only code calls the existing FullStop once, five seconds after
+this selected character's Hildibrand handoff becomes active. Build and copy232
+with all current quest/progress/config facts untouched. It resumes the owned
+quest, then must persist pause, stop WigglyQuest and release its inserted priority
+without changing campaign attempts or result facts. Remove this temporary proof
+code immediately after readback; next233 reload must remain paused. Only then
+perform a guarded development unpause preserving Stage23 attempts3. Do not
+install AutoDuty or queue any trial while that separate choice remains pending.
+232 build/diff checks passed; guard confirms active1207 with retained127/109/37/
+mask4194303/attempts3/spending4800+40000 and owned priority. Copy232 now without
+settings edits. The prior231 suite passed824; this is a temporary runtime proof.
+232 loaded17:06:01.514 but the intended FULL STOP proof did NOT execute:
+startup reached Failed17:06:11.464 because displayed Warrior level was22,
+previously77;1207 is accepted at sequence10. Its normal startup cleanup stopped
+WigglyQuest and removed the owned priority. Saved pause remainsfalse,quest1207,
+providerWigglyQuest/priorityfalse and all Verminion facts unchanged. Do not call
+this a successful FULL STOP test.233 retains the temporary one-shot test and
+replaces the displayed-level gate with native GetClassJobLevel(job,false), as
+already used by this repo's equipment runtime. Capture both levels to verify.
+Intent: build233, guard the failed/owned1207 facts, then copy with no config edit
+to resume setup and repeat the still-pending stop proof. No trial/provider change.
+233 loaded and proved unsynced level77 despite displayed22 at17:08:35.823.
+Quest1207 resumed17:08:35.881; the one-shot existing FullStop ran17:08:40.908,
+WigglyQuest stopped17:08:40.915 and Verminion became Idle17:08:40.922.
+Saved pause=true, owned quest priority=false, quest retained. This positively
+verifies FULL STOP during setup, not queue/battle stops. Fresh bounded readback
+reconfirmed the stop evidence before234 preparation.
+Intent234: remove both temporary proof fields and its update block, build/test
+and copy with pause still true. Verify the exact new startup marker and refusal
+to restart before a separately guarded development unpause. Preserve all facts,
+quest1207 and Stage23 attempts3. No trial dispatch is part of234.
+234 built successfully through Z:\vmx.bat;824/824 tests passed and diff check
+passed. Guarded copy retained pause=true and all quest/result/attempt facts.
+Loaded17:14:27.936; refused automatic dispatch17:14:31.107 because Verminion
+is paused. This completes the setup FULL STOP plus paused-reload proof.
+Current marker234, version0.5.0.3. Temporary stop-test code is fully removed.
+Do not reset campaign attempts when clearing this deliberate development pause.
+
+Own-stack inspection: Z:\dad\dad\Services\DadQuestionableReflectionBridge.cs
+already supports WigglyQuest and routes its existing duty calls to dad.Duty IPC.
+DadDutyIpcService owns unsynced local queue/completion/cleanup. FrenRider already
+hands supported duties to ADS. No new trial runner/integration is needed.
+BotologyUpdates has no dedicated142/366/396 shards; absence alone does not
+justify adding rules because ADS provides general progression/combat behavior.
+No ADS, DAD, FrenRider or BotologyUpdates source/config changes were made.
+Client inventory: R:\XIVLauncher3\installedPlugins has ADS0.9.4.2; neither dad
+nor FrenRider has an installed-plugin directory. DevPluginLoadLocations contains
+only the enabled VMX DLL. Old config folders and historical DevPluginSettings
+entries exist for Dad/FrenRider, but are not active plugin load locations.
+Next required choice: enable our released Dad/FrenRider on this test client
+before exercising the existing bridge. Do not install anything without that
+target-specific choice. Keep the verified pause while that decision is pending.
+Independent verification while that choice is pending: inspected scheduler and
+reload pause gates plus owner-bound cancellation; no production change needed.
+Added one focused model regression for a pending match crossing weekly reset
+and serialization/reload, with game participation arriving before its result.
+It checks exactly-once credit, stale/unknown rejection, retained campaign/gil
+facts and a later cancelled admission. All13 VerminionLifecycleTests passed
+against the rebuilt test project; diff check passed. This is accounting coverage,
+not a live reset/cancellation proof. Client DLL remains234 and paused; no copy,
+unpause, quest dispatch, dependency install or trial action in this continuation.
+Blocked audit after the third consecutive turn with this pending decision:
+fresh filesystem/config read still finds ADS installed, no Dad/FrenRider install
+directories or dev load entries, and only VMX configured as a dev plugin.
+Selected character remains paused at quest1207 with Stage23 attempts3,
+pending0 and109/37 weekly facts. Independent focused accounting verification
+is complete. Await David's existing installation choice; do not ask it again,
+install plugins, clear the pause or substitute an external duty provider.
+Goal is blocked, not complete; campaign remains22/24 and tournament acceptance
+remains pending. Resume the existing plan once the decision/setup changes.
+
+Resume229 (2026-09-26): fresh bounded log/config inspection confirms228 loaded
+14:54:05.366, interacted with1011594 at14:54:13.625, and the game rejected it
+14:54:13.635: Home World only. No dialog appeared;228's captured-dialog message
+was inaccurate.127/pending0/109matches/37wins/mask4194303/stage23-attempts3,
+spent4800gil+40000MGP/reservationnull remain unchanged; modeCpuRewards/unpaused,
+campaignfalse. Ten consecutive Mammet farming wins remain verified.
+229 checks native Home/Current World before setup and interaction, exposes the
+requirement in settings and distinguishes visible-dialog evidence from absence.
+Its setup snapshot includes world/DC IDs to assess the existing travel route.
+Intent: build with Z:\vmx.bat, run existing tests, then deploy229 unchanged
+settings to verify the Home World blocker. No world transfer, campaign attempt,
+purchase or tournament admission is requested. Hildibrand decision stays pending.
+229 Debug build and824 tests passed; diff check clean. Installed Lifestream2.5.5.0
+has ChangeWorldById, CanVisitSameDC and CanVisitCrossDC, but ChangeWorld checks
+cross-DC first. Do not invoke it without current world/DC and capability checks.
+Deploy229 now after the same saved-fact guards; settings stay unchanged.
+229 loaded15:03:59.820. Native15:04:02.987 reports currentWorld87/currentDc9
+and homeWorld401/homeDc6. At15:04:03.001 Start failed at the new Home World
+gate before setup/travel/NPC interaction. This verifies the away-world guard;
+the absent-dialog branch remains source-verified only. No world transfer was
+requested. The existing service fails when ContentId disappears, and Plugin
+resets services on character change; cross-DC logout continuation is not ready.
+Final229 source/built/deployed/loaded agree, version0.5.0.3,824 tests passed.
+Selected runtime settings remain CpuRewards/target37/unpaused/campaignfalse;
+serviceFailed with Home World requirement. No battle, purchase or active travel.
+Preserve the Stage23 three-attempt stop and pending Hildibrand scope decision.
+Review caution: native CompletedLoVMStages reports23 while positively verified
+clears remain1-22 (mask4194303). The currently unused CompletedStages reader
+must NOT be treated as a count of proven clears without resolving its semantics.
+Existing model tests cover cancellation/unknown outcomes/reload/reset and separate
+goals, but live FULL STOP during setup/queue/battle remains unverified. No extra
+farming run was needed after the already verified ten-win streak.
+
+Build223 preparation (2026-09-26):222 loaded14:03:30.429 and resumed117 at
+14:03:33.564.117 LOST14:04:48.209, credited once99matches/27wins; closure
+14:04:51.821. Normal three-attempt pause persisted14:05:01.945. Fresh config
+confirms117/pending0/mask4194303/attempts3/run3/losses2/pausedtrue, spending
+4800gil/40000MGP, no pending purchase. No counter or purchase edits made.
+Guide review: ffxiverminion.com/stage23-the-binding-coil uses strong poppets
+with support. The linked Lodestone guide /character/28572768/blog/4629440/
+specifically clears23 with Wind-up Gentleman alone, stream replacements and
+the final20% special. Website minion21 confirms400HP/90ATK/75DEF/speed4/cost30;
+Power of Deduction buffs allies but withdraws its four casters. Require eight
+survivors before casting, and block the ordinary earlier special/probe path.
+223 replaces the failed Zu requirement with this explicit guide roster and
+documents Her Last Vow (ARR Hildibrand level50). The native117 ownership list
+lacks21. It is not sold for gil/MGP; do not automate that unrelated quest chain.
+Keep campaign attempts3 and its pause; no more speculative roster admissions.
+Intent: build223 through vmx.bat and run existing regressions. Deploy first
+with the saved pause intact to verify no auto-restart on reload. Then perform
+the independent approved Stage2 Mammet farming acceptance with an exact target
+of37 weekly wins (ten above27), preserving all campaign attempts/results and
+purchase facts. That separate run has not been configured or dispatched yet.
+Expected marker verminion-control-20260926-223; version remains0.5.0.3.
+223 build succeeded;824/824 tests pass, including the guide-minion prerequisite,
+30-point queue reservations and prevention of sacrificing the last attack party.
+Diff check passes. Deploy223 with pausedtrue and all saved facts unchanged;
+verify the paused reload before setting up the separate farming run.
+223 loaded14:17:06.146 and explicitly refused dispatch14:17:09.254 because
+Verminion is paused. This verifies saved-pause reload suppression while idle;
+it is not a FULL STOP-during-battle test. No admission or progress change.
+Intent for224: same code, new executable marker for the settings-only test.
+Guard117/pending0/99matches/27wins/mask4194303/pausedtrue/campaign23-attempts3/
+run3/losses2/spent4800+40000/reservationnull and unchanged caps/reserve.
+Set weekly WinTarget37, CampaignRequested=false, SelectedChallengeStage=2,
+and unpause this separate authorized farming test. Leave CampaignStage23 and
+CampaignStageAttempts3 untouched; EnsureRun establishes the new weekly limit
+from the changed target. No fabricated wins or clear bits. Build224, then push.
+This tests ten consecutive Stage2 Mammet wins and exact stopping at37; three
+consecutive losses or30 attempts still stop it. Do not resume the campaign.
+224 build passed and guarded settings/copy completed. Loaded14:19:01.387,
+dispatched14:19:04.727, Stage2 match118 saved14:19:12.523 and entered14:19:19.793.
+This is the first current-Mammet farming acceptance match. Preserve this run.
+Source-only225 corrects a reviewed lifecycle gap: Start's existing-menu resume
+could skip ContinueWeeklyGoal and queue after an already completed target.
+Reuse completion handling at Start (outside duty with no pending admission)
+and before challenge selection. Completion closes only the observed challenge
+menu. Weekly Run from pause preserves campaign attempts; only campaign Resume
+resets them. Campaign limit text also includes a currently missing roster item.
+Intent: build/test225 independently while224 runs; HOLD deployment until the
+ten-win test reaches a resolved completion or a concrete correction requires it.
+Then use225 to verify completed-target reload does not admit an extra match.
+225 first build and824 tests passed. Final source adds the same early-menu guard
+for unavailable CPU rewards (prevent ordinary-challenge substitution) and links
+the exact Gentleman-only guide in the stage preview. Rebuild before any copy.
+118 WON14:21:50.309, credited100/28; closure14:21:53.940.119 admitted14:22:06.801,
+entered14:22:14.215. No reload during this streak. Local Questionable has21 ARR
+Hildibrand routes, but Her Last Vow502 includes a disabled automated duty step
+for85 (Battle in the Big Keep). That source does not prove an unattended minion
+acquisition route. No Hildibrand quest was started or changed.
+Final225 build passed, still undeployed.226 now includes a bounded Debug-only
+CPU rewards menu inspection for later independent tournament research: the
+selected character may approach ENpc1011594, interact once, capture the native
+dialog after3seconds, then stop. Maximum60seconds; no registration, claim or
+admission. Exact NPC ID backed by XIVAPI ENpcBase event2949121;1010479 is the
+unrelated Triple Triad Recordkeeper and1011609 has no event. Live NPC/menu
+contract remains unverified. Release CPU rewards remains unavailable. Build226
+without copying while the current224 farming streak continues.226 supersedes
+the held225 candidate and includes its goal/attempt lifecycle corrections.
+226 build and diff checks passed. Still deployed224; no tournament interaction
+or reload performed.119 WON14:24:46.410 (101/29),120 WON14:27:42.176 (102/30):
+three consecutive current-Mammet Stage2 victories.121 entered14:28:05.391.
+226 all824 tests passed.121 WON14:30:37.925 (103/31),122 WON14:33:33.477
+(104/32): five consecutive Stage2 victories.123 entered14:33:57.485.
+Asked David whether to extend this test character's scope to ARR Hildibrand
+quests/trials for Wind-up Gentleman or wait for him to provide it. This decision
+is pending: do not begin that quest chain or infer approval from elapsed time.
+Independent farming and tournament-control research remain authorized.
+123 WON14:36:28.712 (105/33),124 WON14:39:23.143 (106/34),125 WON14:42:19.972
+(107/35). Eight consecutive Stage2 Mammet victories under224;126 entered
+14:42:43.959. Source/built226 is held. Keep target37 and preserve current126.
+126 WON14:45:16.617 (108/36), ninth consecutive Stage2 win.127 admitted
+14:45:33.360; preserve this final required match before any deployment.
+127 WON14:48:13.181, credited109matches/37wins. Target completion14:48:21.907.
+Ten consecutive Stage2 Mammet wins are verified for118-127 on224, no intervening
+loss/unresolved result/reload. The final fight's native input frames repeatedly
+show foreground=False. This satisfies the current-roster farming streak and
+exact stopping from partial weekly progress27->37; no128 admitted.
+Intent: guard127/pending0/109matches/37wins/target37/run10/limit30/losses0/
+campaignfalse/stage23-attempts3/mask4194303/spent4800+40000/reservationnull and
+unchanged caps/reserve, then deploy the built/tested226 without config edits.
+Require fresh226 and immediate completed-goal handling with no extra admission.
+226 loaded14:49:29.996. Fresh observation14:49:33.167: territory388/playingfalse.
+At14:49:33.182 it went directly Idle->Complete for target37; no128 admitted.
+This verifies completed-target reload from the idle world; an open-menu variant
+has source guards but is not independently proven by this observation.
+Intent227: compile the updated Stage2 verification text and new settings marker.
+Guard the same127/pending0/109/37/target37/campaignfalse/stage23-attempts3/
+caps/spending/reservation facts. Change ONLY mode WinTarget->CpuRewards for the
+already prepared60second NPC-menu inspection, then push227. No battle, signup,
+reward claim or additional spending is implemented by this diagnostic. Return
+to the retained campaign blocker after resolving the captured menu contract.
+227 built and copied after exact guards; mode alone changed toCpuRewards.
+Loaded14:51:07.390, inspect state14:51:15.638, one navigation request to the
+recordkeeper79.88/0.44/49.00 at14:51:15.670, then bounded timeout14:52:15.661
+before any interaction. No registration/claim/battle/result occurred. Source
+used a2yalm cutoff despite GameHelpers.GetValidInteractionDistance returning4
+for EventNpc (the same mismatch previously corrected at the Minion Trader).
+228 reuses that helper and captures nearby objects on the bounded timeout.
+Intent: build/diff-check then push228 to repeat only this corrected inspection;
+preserve127/pending0/109/37, campaign23-attempts3 and all spending/caps.
+
+Build218 preparation (2026-09-26):217 loaded00:06:18.171/resumed00:06:21.224.
+Stage23 match113 LOST00:09:44.104, credited96/27; closure00:09:47.535.
+Third Nero match114 admitted00:09:57.688, entered00:10:07.797. Preserve it.
+217 sends main-army pursuit independently, but Nero's army still collapses near
+6000bossHP. Guide reread: stage23-the-binding-coil recommends immediate pressure,
+streaming replacements and supportive specials. Native/guide Nero special only
+triggers enemy traps; it does not contribute this encounter's damage or defense.
+Observed114 wasted repeated5second movement sequences with no queued replacement
+before filling its army.218 keeps two summon requests in flight before pursuit
+and extends existing Cargo party-readiness selection to Stage23. Return to the
+owned MSQ Airship, whose earlier best attempt left1680HP; no new purchase needed.
+Intent: build218 through vmx.bat and run existing tests, but hold deployment until
+114 resolves. If it loses, require the normal three-attempt pause before applying
+a guarded reviewed development Resume. Preserve all result/spending facts and
+50000gil reserve. Source marker218, loaded217 until verified otherwise.
+114 LOST00:15:06.472, credited97/27; closure00:15:10.006 and normal campaign
+limit pause00:15:20.128. All three Nero attempts lost. Intent after218 checks:
+guard sequence114/pending0/97matches/27wins/mask4194303/stage23/attempts3/
+losses3/pausedtrue/spent4800gil+30000MGP/reservationnull. Clear only Resume's
+run/stage attempt counters, losses and pause. Keep caps223588/30000 and reserve
+50000 unchanged. Push218 for a fresh corrected Airship opening.
+218 strategy build PASSED; all823 tests passed, including production-priority
+and closed-gate pursuit assertions. Rebuilding once to include the standalone
+window's corrected roster explanation, with no further strategy changes.
+Final218 build/diff checks passed. Exact guarded Resume and DLL copy completed;
+matches97/wins27/mask4194303/spent4800+30000/caps/reserve unchanged. Verify218
+startup before evaluating the new Airship attempt. No running build/test session.
+218 loaded00:18:15.911/dispatched00:18:19.215. Fresh Stage23 match115 admitted
+00:18:24.279, entered00:18:34.154; first two Airship summons00:18:40/41.
+No result yet. Preserve this full-opening test and its normal attempt limits.
+115 on218 reached3300bossHP00:22:37, then2680HP00:24:36. Native00:22:15/17
+snapshots show eight Airships actually in melee with Cargo ATK Up but mostly
+low HP; the army collapsed00:22:20-38. This is not another projection failure.
+219 source adds one bounded recovery using existing gate movement/healing:
+with six or more Airships and aggregateHP<=55%, retreat before collapse; refill
+to nine and wait for95%HP within6yalms, then attack again. Existing90second
+bound retained. Guide uses healing support; this owned-roster adaptation avoids
+another minion requirement. Build219 now; reconcile115 before deployment or
+record adoption of its normal successor. No attempt/pause/purchase resets.
+219 build/diff checks PASSED.115 is still active00:26:08 at2620bossHP with
+eight living Airships after replenishment. Intent now: deploy the correction
+into this same115 to rescue the observed attrition failure, preserving its saved
+admission and first-attempt count. No new match, result, spending or Resume edit.
+219 loaded00:26:32.681/resumed115 at00:26:35.775. Recovery triggered00:26:41.848
+with boss2220HP, but115 LOST00:27:05.161 before completing healing; credited
+once98/27, closure00:27:09.284.116 admitted00:27:19.411, entered00:27:29.370.
+This second attempt is the first full opening with early HP-triggered recovery.
+Preserve116, attempts2 and unchanged spending. No more source changes after219.
+116 positively verified early recovery: all nine retreated00:29:56.546 at9500
+bossHP, met the full-army/95%HP/near-gate readback00:30:29.870, then reengaged.
+Cargo fired00:30:50,00:30:58 and00:31:11; boss6800HP00:31:18. No result yet.
+116's healed army still lost members rapidly against accumulated adds, with boss
+4960HP00:32:40. Source-only220 prepares Zu Hatchling83/item7565, permanent
+Minion Trader10000MGP, cost10/450HP/30ATK/25DEF/speed3/area auto-attack; Nasty
+Peck buffs its party by60ATK for10seconds. Verified via XIVAPI Companion83,
+CompanionTransient83, Item7565 and ffxiverminion.com/minion-83; vendor price via
+consolegameswiki Minion_Trader. This adapts the guide's rush to the observed add
+attrition with a common vendor minion. Extend existing exact exchange guards and
+cumulative tests; no new purchase mechanism. Stage23 returns to uninterrupted
+pressure (Odin's recovery unchanged). Build/test220 while219 continues; do not
+deploy the new roster into an active Airship battlefield. Reconcile the result
+boundary and any successor before purchase/setup. Spending cap would need only
+30000->40000 under existing MGP authorization; reserve50000gil remains unchanged.
+116 timed out00:37:29.417 with last boss1740HP; no result recorded and its
+admission abandoned. Facts remain98/27/mask4194303, attempts2.220 build passed;
+822/823 tests passed. The remaining test's accessible-minion allowlist still
+omits83; the new cumulative-MGP and queue cases passed. Correct that fixture
+and rerun.220 was copied before this test result was inspected; no fresh battle
+or purchase is authorized by that copy, and the exhausted cap remains unchanged.
+Intent: deploy220 to reconcile the old battlefield/result with116 ineligible,
+without raising the MGP cap yet. The new missing Zu requirement and exhausted
+30000cap prevent new purchase/admission outside battle. Do not recreate116 or
+reset its attempt. Require fresh native setup/result evidence before raising the
+cap for the already authorized10000MGP purchase and next campaign attempt.
+220 loaded13:57:02.639 after the quota interruption. Native13:57:05.767 is
+territory388/playingfalse/queueNone;116 has ended with no credited result.
+Setup blocked13:57:15.905 before purchase/admission for missing Zu and exhausted
+30000MGP cap. Corrected the existing test allowlist for83; all823 tests now PASS.
+Fresh config: sequence116/pending0/98matches/27wins/mask4194303/attempts2/run2/
+losses1/unpaused/spent4800+30000/reservationnull; funds268788gil/602432MGP.
+Intent: compile221 marker, then guard those facts and raise only MGP cap30000 to
+40000 for one Zu purchase under David's existing authorization. Preserve attempt2,
+all results, spending, gil cap223588 and reserve50000. Push221 and require its
+fresh marker, exact10000MGP receipt and registration before the third admission.
+221 build/diff checks passed; guarded cap-only update and DLL push completed.
+No counters, pauses, receipts or other currency settings changed.
+221 loaded13:59:30.979/dispatched13:59:34.324. Zu offer row/index1/item7565
+verified13:59:43.438 at10000MGP/balance602432, submitted once13:59:43.449.
+Exact receipt13:59:45.453 (0gil/10000MGP), inventory use13:59:46.453, registration
+verified13:59:53.505. Cumulative spending4800gil/40000MGP; expected balances
+268788gil/592432MGP. Next admission uses the remaining third attempt; no reset.
+117 admitted14:00:04.544, entered14:00:14.584. Six initial Zu summons verified
+at60capacity; first wave ordered14:00:37.867. This is the third campaign attempt;
+preserve its stop limit. Source-only UI/changelog now show the verified purchase,
+but loaded221 is unchanged. Hold further reloads for actual corrections/evidence.
+117 at14:02:04 has19Zu and boss15230HP. Source reveals party-readiness probes
+still require full capacity/no pending queue (inherited from nine Airships).
+The24-unit army loses members before filling, leaving charged older parties
+unexamined while replacement selections dominate.222 allows Stage23 probes only
+when action=Wait even below capacity/with pending summons, keeping production and
+movement decisions ahead of probes. Existing native readiness still gates casts.
+Intent: build222 and deploy this correction into117 with unchanged roster,
+admission, attempts3,98/27 and all purchase facts. Include UI purchase evidence.
+222 build/diff checks passed. Deploy now to the existing117; no config edits.
+Latest823 tests cover unchanged queue, roster, lifecycle and purchase accounting.
+
+Build 211 preparation: Stage23 match109 LOST23:32:17.681 with Twintania1680HP;
+credited92matches/27wins and closed23:32:21.272. Match110 admitted23:32:34.093,
+entered23:32:41.348 and is still active on209 (second attempt). Mask4194303.
+Inspected23:31:40/41 movement snapshots: the four reserve Airships have no
+logged slow statuses. Guide stage23-the-binding-coil explicitly recommends
+immediate pressure and streaming replacements. Source holds lone full-capacity
+reserves60seconds and requires four deployed units to pursue.211 fixes Stage23:
+send reserves after15seconds or once full with no pending queue, pursue with any
+survivor after5seconds and refresh after a2-yalm boss move. Add focused regression.
+Build through vmx.bat and test; do not reset match/campaign counts.210's prepared
+Stage24 observation remains included. Deploy only after resolving110, or record
+a concrete correction of the same live battle. Preserve the third-attempt stop.
+211 build PASSED. The parallel test compile conflicted with the solution build's
+test assembly write; rerun tests sequentially against the completed build.
+110 LOST23:39:05.108, credited once93/27. Later snapshots prove its waves reached
+the boss; no evidence supports changing background control or buying a new minion
+yet. Intent after tests pass: deploy211 at this resolved result boundary,
+preserving any111 admission and third-attempt limit. No progress or cap edits.
+All823 tests now PASS. The new fixture needed the same initial roster observation
+as production before summon requests are allowed; corrected the fixture only.
+Proceed with the recorded211 DLL push, no config changes or extra admission.
+211 loaded23:41:03.295 and resumed Stage23 at23:41:06.391. Its first observed
+order23:41:12.464 sent the one waiting Airship with eight deployed at225/240,
+confirming the full-capacity delay is removed. Preserve active third attempt111.
+111 LOST23:45:44.990, credited94/27; closure23:45:48.737 and normal three-attempt
+pause23:45:58.901. Boss3980HP before result. Reinforcements now deploy in small
+waves and reach the boss, but the neutral roster still loses the damage race.
+212 replaces Stage23 with permanent-vendor Wind-up Nero tol Scaeva (poppet,
+cost20/ATK50/DEF60/speed3), following the guide's poppet rush. Native load snapshot
+23:41:06 lists34 owned minions with no174. XIVAPI Companion174 and Item14096
+confirm the mapping; consolegameswiki Wind-up_Nero_tol_Scaeva lists30000MGP at
+this same Minion Trader. Implement the ECommons ShopExchangeCurrency basic
+reader (count4, funds86, currency icon87, item1066+i, cost456+i, index1310+i),
+requiring live MGP icon/balance, item and exact price. Confirmation stays narrow
+until observed. Preserve reservation and receipt safeguards for both currencies.
+Intent: build212 and test, then guarded development Resume from111/pending0,
+94/27/mask4194303/attempts3/spent4800/0/pausedtrue. Raise only MGP cap0->30000
+under David's existing authorization; preserve223588gil cap and50000reserve.
+No invented receipt, ownership or battle credit. Require fresh212 and native
+purchase evidence; unknown confirmations remain blocked without resubmission.
+212 build and all823 tests PASS; diff check passes. Fresh saved state confirms
+pausedtrue/111/pending0/94/27/attempts3/runAttempts8/losses3/spent4800/0, no
+pending purchase, gil cap223588/reserve50000/MGP0. Apply only the recorded MGP
+cap and reviewed Resume fields, then push212. Release version stays0.5.0.3.
+212 dispatched23:50:12.238, reached MGP shop23:50:22.369 and rejected the quote
+before reservation/submission. Native3325 values: count4=8 UInt, balance86=632432
+UInt, icon87=65025 Int. The reference reader assumed UInt;213 uses the observed
+Int and adds bounded offer-row diagnostics on rejection. Native row4 is Nero,
+displayed30000MGP, AgentShop receive item14096/count1. Build/push213 to correct
+this concrete setup failure only after confirming no pending purchase/match;
+do not reset counters, caps or pause again. Funds268788gil/632432MGP.
+213 build PASSED; previous823 tests cover unchanged strategy/accounting. Fresh
+guards confirm111/pending0/no purchase/spent4800/0/cap30000/reserve50000 and
+unpaused. Push213 now; no config edits. Native exchange contract still pending.
+213 loaded23:52:17.353, verified row4/index4/item14096/30000MGP at23:52:35.607
+and reserved/submitted once23:52:35.617. Confirmation was rejected23:52:36.605:
+MGP uses prompt "Exchange 30,000 MGP for the following item?", separate name15,
+item14=14096 UInt, and visible quantity atSelectYesno/3/2/7=1. ButtonsYes8/No11.
+214 validates those observed fields exactly (decode SeString before comparison).
+Preserve the existing reservation and funds268788/632432; DO NOT resubmit or
+clear it without positive cancellation/receipt evidence. Build/push214 to fix
+confirmation; the reload's standard cleanup may cancel the visible prompt.
+Reconcile that outcome explicitly before any new request, as for Mammet201/202.
+214 build PASSED and diff check passed. Fresh config guards confirm the same
+pending14096/30000/before632432MGP/268788gil and zero MGP spent. Push214 without
+editing the reservation, counters or budgets; observe confirmation or cancellation.
+214 loaded23:55:36.563 and refused the missing confirmation at23:55:39.623.
+The213 failure cleanup fired ShopExchangeCurrency(true,-1)23:52:36.605 after
+rejecting the prompt; no Yes dispatch occurred.214's fresh start observation
+has no visible SelectYesno, still territory388/playingfalse, and native funds
+remain268788gil/632432MGP. The checkout was cancelled without payment.
+Intent: compile marker215, then clear only that exact cancelled reservation
+under111/pending0/94/27/mask4194303/spent4800/0/before268788/632432 guards and
+push215 for a new checkout using the corrected confirmation. Preserve all
+attempts, caps, pause and purchase totals. Do not add an automatic reservation
+reset; this reconciliation relies on the captured checkout and cancellation.
+215 build/diff checks passed. Exact guarded reservation cancellation and215 DLL
+push completed; no spending or battle facts changed. Await native confirmation,
+receipt and registration before evaluating the poppet strategy.
+215 loaded23:58:12.368; fresh quote and one submission23:58:30.572. Positive
+receipt23:58:32.586 confirms item14096 acquired for30000MGP with no gil change;
+native inventory use23:58:33.588 and registration verified23:58:40.677. Spending
+now4800gil/30000MGP, reservation null, balances268788gil/602432MGP before any
+later match rewards. Stage23 setup resumed23:58:45.723. Preserve next admission
+112 and normal three-attempt limit. Source-only UI now records the MGP purchase
+and registration evidence; no reload needed for those text changes alone.
+112 is active on215, Stage23 first Nero attempt. Saved94/27, pending112/duty574,
+stage attempts1 and confirmed spent4800/30000 with null reservation.216 source
+adds Stage24 to the existing geometry-checked minimap route (same live gate/stone
+validation) and bounded map captures, alongside UI purchase evidence. Build216
+now but retain215 until112 settles; do not reload it for UI updates alone.
+216 build PASSED.112 has twelve Nero units at full240 capacity by00:00:30 and
+boss12024/18000HP at00:01:24; no result yet. Keep deployed215 until the result.
+112 midfight evidence exposes a coordination bug: each replacement wave resets
+bossOrderUtc/Position for the older army, even though only gate units were
+selected. At00:02:42 Twintania is0.686,2.762, old Nero units remain2.334,3.036
+after its prior2.365,3.128 position, and the six-yalm arrival radius treats them
+as in contact. Boss stalls near6500HP while adds kill them.217 keeps Stage23's
+main-order time/position when reserves are sent (unless no deployed army), uses
+one-yalm boss displacement and1.5-yalm arrival radius. Other bosses unchanged.
+Build217, then deploy this correction to the same112 if still active or its
+ordinary successor; preserve admission, stage attempts and every purchase fact.
+217 build/diff checks PASSED.00:05 snapshot shows the next Nero battle has
+started on215 (boss17184HP at00:05:48); reconcile112's explicit result, then
+push217 to correct the pursuit logic in that existing successor, without reset.
+112 LOST00:04:13.413, credited once95/27; closure00:04:16.923.113 admitted
+00:04:27.027 and entered00:04:36.986. Push217 now for this second Nero attempt.
+
+Build 206 preparation: Stage20 match101 explicitly LOST22:56:00.274, credited
+once to84/24; closure22:56:03.925. Match102 admitted22:56:16.810 and entered
+22:56:23.809, second campaign attempt. The first Mammet run destroyed B/C but
+left A until late. Side-group commands took 10-12seconds of keyboard camera
+travel; the guide stage20-guiding-light explicitly permits Mammets in its split
+stone opening. Extend existing observed minimap framing to ordinary stone stages
+with unchanged geometry/readback guards. Compile source through vmx.bat while
+the running205 stays untouched; preserve pending102 and its attempt limit.
+Deploy only at a reconciled result/idle boundary, or with a separately recorded
+reason to correct the same live attempt. No pause/counter/budget changes yet.
+206 build PASSED through vmx.bat, all821 tests passed, diff check passed. Match102
+explicitly LOST23:00:14.584, credited85/24; closure23:00:18.154. The normal loop
+admitted third match103 at23:00:30.993 and entered23:00:38.357 before the snapshot.
+Intent now: push the compiled camera correction into that early live attempt,
+preserving saved103/duty571/attempts3 and all spending/pause facts. This corrects
+the observed slow opening; it is not a new admission or reload-only experiment.
+Require fresh marker206 and adoption of103. A loss still reaches the normal
+three-attempt stop. Do not reset its accounting for this deployment.
+206 loaded23:01:39.670, adopted103 at23:01:42.743. Match103 LOST23:03:51.557,
+credited86/24; closure23:03:55.274; the campaign limit paused23:04:05.435 with
+pending0/sequence103/attempts3. The minimap extension issued no shortcut: ordinary
+maps include enemy structures so the Stage9 fixed marker indices are wrong.
+207 source matches native minimap rows by friendly kind and live X/Z before
+validating node bounds/scale, with Stage20's bounded geometry capture enabled.
+The observed row contract is count4 and four-int rows starting5, with friendly
+gates768 and stones512; node mapping still needs the live geometry check.
+Stage20 source now requires Wayward Hatchling, common2400-gil vendor minion3:
+guide/minion-3 confirms60ATK/speed3/cost15/critter, compared with Mammet001's
+25ATK/speed1. Keep the split opening with four per lane and actual-cost queue
+reservations; use Choco Shuffle near enemies. Native roster ownership is checked
+before entry and the existing capped vendor path can acquire it if absent.
+Intent: build207 via vmx.bat and run tests; then explicitly apply reviewed
+development Resume only from this proven campaign-limit pause, under exact
+103/86/24/mask524287/pending0/attempts3/spent2400 guards. Clear run attempts,
+consecutive losses and stage attempts just as Resume does; preserve every result,
+purchase, cap and50000-gil reserve. This is a justified new strategy test, not an
+automatic reset or claim of a Stage20 clear. Expected fresh marker207.
+207 build PASSED and all822 tests passed. Guarded development Resume and DLL
+push completed without changing results, budgets or reservations.207 dispatched
+23:07:42.322. Wayward Hatchling was missing: one2400-gil purchase reserved and
+submitted23:07:51.477; exact receipt verified23:07:53.478. Registration was
+positively verified23:08:01.561, so the inventory-agent registration route now
+has live readback evidence. Total spending4800gil/0MGP; expected balance268788gil
+if no unrelated spending. New Stage20 match104 queued23:08:15.341. Preserve it
+while observing four-Hatchling groups and minimap calibration. No clear yet.
+104 entered23:08:22.604, first four-Hatchling order23:08:43.888 and special23:09:03.
+The207 marker assumption was rejected by its geometry guards (no map clicks).
+23:08:27 native data resolves the mapping: count16, row13=GateA ->node60002,
+row14=GateB ->60001, row8=friendlyStoneB ->60007. Nodes are assigned in reverse
+row order (60000 + count - 1 - row).208 source corrects that exact mapping;
+compile/test now but preserve the active104 until its result is reconciled.
+104 LOST23:11:45.609, credited87/24; closure23:11:49.549.105 queued23:12:02.439,
+entered23:12:09.743, LOST23:15:27.424, credited88/24 and closed23:15:31.408.
+Hatchlings alone barely damaged stones.208 now retains six Mammet attackers per
+lane with four Hatchling guards using the existing defensive controller. Require
+both owned minions, reserve the defenders' actual60capacity, track both queues,
+and use Choco Shuffle only by a selected Hatchling near enemies. The guide's
+optional defenders support this mixed adaptation.208 build and all822 tests pass.
+Intent: push at this verified105 result transition, preserving any106 admission
+that occurs during copy and its third-attempt count. No further Resume/counter,
+purchase or pause changes. Both minions were prepared by previous admissions;
+native palette validation remains mandatory. Observe the corrected minimap and
+mixed formation, then reconcile its explicit outcome before another change.
+208 loaded23:16:05.218 and resumed106 at23:16:08.295. First Mammet order23:16:41,
+four inherited Hatchlings sent to defend23:16:49, Choco Shuffle23:17:03. Still no
+minimap shortcut.23:16:13 proves node IDs persist while count rises16->25, so
+reverse total-row mapping was also rejected.209 source removes that assumption:
+derive candidate centers from observed collision16 bounds (175x210 covering
+50x60 world units), match visible marker components at current GateA/B/StoneB
+positions, then independently validate their horizontal/vertical scale as before.
+This is supported by map center497,301, GateB497,378 atworld0,22 and StoneB497,308
+atworld0,2, each3.5px/yalm. No raw node pool/array index correspondence is assumed.
+209's first compile caught Bounds member names and a captured address; corrected
+using declared Width/Height and separate center locals. Final build pending.
+Do not push until106 outcome or a recorded reason; preserve third-attempt limit.
+106 WON23:19:26.645, explicit You Win, credited once89matches/25wins; friendly
+center stone1360HP survived. All enemy stones0. Closure23:19:30.625. Stage20 mixed
+Mammet/Hatchling roster has one observed clear (opening inherited four Hatchlings
+from207 before208 supplied Mammets, so its fresh-start ordering still needs a test).
+Mask should advance1048575 (stages1-20); no result was invented for any loss.
+209 final build PASSED. Intent: push the compiled camera-marker correction during
+this result transition, preserving any new Stage21 admission and its saved facts.
+No settings, spending, pause or attempt reset. Stage21 remains the current guide
+Mammet baseline; inspect its result before selecting any new composition.
+209 loaded23:20:09.167, adopted Stage21 match107 at23:20:12.232. The corrected
+minimap finally dispatched23:20:52.932 with verified3.5px/yalm, followed by
+selection/movement readbacks23:20:55.818/23:20:57.101. Enemy B3140HP then, with
+all friendly stones still positive. Preserve this attempt; no result yet.
+Source-only UI text now records Stage20's actual mixed-roster clear caveat and
+both verified vendor purchases. It is not yet rebuilt/deployed (next marker210).
+Stage21 match107 WON23:22:28.453, credited once90/26; closure23:22:32.072.
+Enemy stones0 and friendlyC5000HP at result. Multiple map clicks (23:20:52,
+23:21:47,23:22:08) led to native selection/movement and a positive result; the
+geometry-based marker lookup has live proof. Expected mask2097151, next Stage22.
+Source-only UI now also reports Stage21's one-clear evidence. Compile210 now,
+but do not push over Stage22 merely for these UI text changes. No gameplay,
+configuration or pause changes are needed for the current approved Mammet test.
+210 UI candidate built successfully, not pushed.209 continued Stage22 match108:
+queued23:22:44.912, battlefield23:22:52.245, WON23:25:24.426, credited once91/27.
+Friendly stone HP660/2410/4715, enemy all0. Closure23:25:28.337 and Stage23 setup
+23:25:33.385. Expected mask4194303 (stages1-22). Source-only UI/tactics now also
+report the Stage22 Mammet clear; these latest text edits are not in the first210
+compile. Keep209 running for Stage23's Airship attempt; Stage24 remains gated.
+210 source now prepares the next necessary Stage24 control proof. Ordinary and
+release admission remains blocked; only a Debug build with the existing saved
+verminion_queue selection bound to the current character can enter the existing
+120-second observation. Capture first-seen native casts (8 action IDs maximum)
+and EventObj types (24 maximum), plus the existing15-second snapshots. No guessed
+tower/circle logic or completion claim. The normal timeout abandons the pending
+match, and the three-attempt limit is preserved. This is within the authorized
+single-client research loop, not a new debug setting, script, or logger. Compile
+the candidate now; deploy only after Stage23 settles or another explicit reason.
+
+Latest authorization: David approved using this character's gil as needed while
+leaving 50,000 gil, and MGP as needed. This resolves the pending Mammet budget
+question; do not ask again. Add the gil reserve to the existing purchase settings
+and enforce it at each spending boundary. Expected build 197, same 0.5.0.3.
+Deploy 197 with caps still zero first, so the loaded plugin understands the new
+reserve field before any spending is enabled. This also captures actual funds.
+After confirming that load, guarded settings update on the selected character will set
+gil reserve 50,000 and cumulative gil cap 223,588 (fresh 273,588 balance less
+the reserve; actual funds still bound every purchase). MGP cap stays zero until an implemented route needs
+it; no MGP minion is required for Stage 20. Preserve pause, sequence 100, pending
+0, clear mask 524287, 83/24, and all purchase receipt facts. Then use a marker-only
+198 build/push to reach the existing one-Mammet purchase path. This prevents the
+older 196 schema from dropping an unknown reserve setting during unload/save.
+Native shop contract, item registration and the resulting Stage 20 admission
+remain unverified. No repeat submissions for unresolved reservations.
+197 build PASSED via vmx.bat; all 821 tests passed, including exact reserve
+boundary, changed balance/reserve, reload/copy persistence and no battle credit.
+197 DLL pushed after fresh guards confirmed the idle sequence100/83/24 state
+and zero caps. No configuration changed for this first schema-loading push.
+197 loaded 22:24:51.671 and exposed the reserve field; zero-cap roster rejection
+again left sequence100 unchanged. Native funds at 22:24:54.903 are 273,588 gil,
+631,582 MGP and zero Mammet items. Marker-only 198 build PASSED. Intent now:
+change only selected-character gil cap 0 -> 223,588 and reserve 0 -> 50,000,
+then push 198. Preserve all other file text, pause, progress and purchase facts.
+198 loaded 22:26:50.743, settings persisted with cap223588/reserve50000/MGP0.
+Shopping began 22:26:59.041 and timed out 22:29:59.070. No reservation or submission
+was logged; last saved progress remains sequence100/pending0/spent0/83/24.
+Intent for 199: capture native vendor/menu state once at ten seconds or rejected
+shop readback, and honor the existing navigation API's rejected dispatch instead
+of marking it requested unconditionally. Same approved budget and reserve; no
+new accounting identity or source strategy change. Build/push only after checking
+there is still no unresolved purchase or match. Diagnose this failed setup path
+before claiming purchase success. Preserve MGP and other character settings.
+Historical native menu snapshot at 22:26:53.981 confirms table entries Challenge,
+Battles, Tournament, Play Guide, Cancel. The timed-out path used repeated raw -1
+callbacks. Before first 199 deployment, use the observed native Return entry to
+leave the challenge list and Cancel to close the parent table menu, then navigate.
+Keep the ten-second capture to verify the actual location/menu if it still stalls.
+199 loaded 22:33:19.640. The native Return/Cancel route exited successfully:
+22:33:43.869 snapshot shows available=True, setupMenu=False, no target, player
+(80.665,-0.000001,42.666), trader (82.414,0.438,44.938), about 2.90 yalms apart.
+Navigation stops there but the shop's 2.5-yalm threshold prevents interaction.
+The existing EventNpc helper accepts 4 yalms. Intent for 200: use that same
+GetValidInteractionDistance value in the shop approach gate. Build/push with
+fresh no-reservation/no-match guards; no budget, count, or pause changes. This
+corrects the observed setup stall before purchase, not a battle retry/reset.
+200 verified the approach correction: trader interaction succeeded 22:35:55.052.
+Native Shop 22:35:57.024 shows three entries, Mammet at row1 for2400 gil, balance
+273588. Generic AgentShop receive/cost counts are both0, so the guarded quote
+reader correctly rejected before reservation/spending. Intent for201: use the
+basic gil-shop contract from ECommons/UIHelpers/AddonMasterImplementations/Shop.cs
+(upstream NightmareXIV/ECommons): count value2, item IDs441+i, prices75+i,
+callback(true,0,index,amount). Locally observed price76=2400 and name15=Mammet.
+Require expected item ID, parsed exact name and price together, validate counts/
+types/current-stock tab, retain currency/reserve/receipt guards. Capture native
+ID fields in the existing bounded shop snapshot. Fresh no-purchase/no-match
+guards required for deployment; no changes to cap223588/reserve50000/MGP0.
+201 loaded22:39:29.608. Verified native row1/item6004/price2400 at22:39:47.864;
+one reservation and one Shop submission22:39:47.874. Pending receipt retains
+before-gil273588/MGP631582/items0. Snapshot22:39:53.781 confirms purchase quantity1
+and price2400, but buttons are OK(node8,param0) and Cancel(node11,param1), not
+Yes/No. No funds or item receipt yet. DO NOT resubmit/clear this reservation.
+Intent for202: use observed buttons. On startup, adopt only this existing visible
+confirmation when vendor/offer/one-item prompt and saved pre-purchase funds/items
+match exactly; proceed through the normal fresh cap/reserve checks and never fire
+another Shop callback. Unknown/missing confirmation remains blocked. Preserve
+pending reservation and all progress through build/push. Existing201's incorrect
+No cleanup does not close this OK/Cancel prompt, so it may remain after timeout.
+202 loaded22:43:16.069. The debug hook's required FULL STOP cleanup fired -1
+on SelectYesno and Shop at22:43:19.120, before service dispatch; native Shop closure
+was observed22:43:19.296. Startup snapshot22:43:19.172 still shows273588 gil,
+631582 MGP, zero Mammet items, and no owned Mammet. There was never an OK/Yes
+confirmation click for the sole201 Shop submission. Consequently the exact
+reservation is now a positively cancelled checkout, not a paid receipt.202
+correctly refused an absent confirmation and left it reserved; no retry occurred.
+Intent before203: under exact selected-character/cap/reserve/sequence/facts and
+reservation guards, clear only this cancelled PendingPurchase (no spending,
+match, victory, pause, or ownership edits). This is a one-time development
+reconciliation supported by the observed cancellation and unchanged receipt;
+do not add automatic unknown-reservation resets. Marker-only203 should then
+start a fresh checkout with the corrected native OK/Cancel actions. Keep the
+standard unresolved-reservation refusal for missing evidence.
+203 loaded22:46:09.633. Fresh row1/item6004/2400 quote22:46:27.938, reservation
+and one Shop callback22:46:27.962, native OK22:46:28.952, receipt verified once
+22:46:29.971. Exact receipt means gil271188, MGP631582 and one acquired Mammet.
+Persisted spent2400/MGP0, pending purchase null; all campaign facts still100/83/24.
+Registration at22:46:30.069 was rejected with action status579 (LogMessage:
+"Cannot execute at this time."); native Shop closure followed22:46:30.172.
+Intent for204: reuse GameHelpers.GetItemActionStatus before issuing minion use,
+check at one-second intervals within the existing300-second registration bound.
+No repeated use when not ready. Native acquisition is verified; registration and
+Stage20 admission remain pending. Build/push with spent2400/pending-null guards;
+never repurchase this item. Update standalone purchase-evidence text accordingly.
+204 loaded22:49:13.453; native funds271188/MGP631582/MammetItems1 at22:49:16.548
+verify the retained purchase. Item status was ready, but shared ActionManager
+UseAction(Item,6004,extraParam65535) returned False22:49:16.593. No registration
+or admission occurred. Intent for205: use declared AgentInventoryContext.UseItem
+for the exact verified minion bag/slot, then the existing seven-second positive
+unlock check. This replaces the item-use route only for Verminion, with no
+unknown-outcome retry and no purchase duplication. Slot/ownership/853 item-action
+guards remain mandatory. Build/push with spent2400/pending-null/sequence100 guards.
+205 loaded22:52:07 (see fresh startup record), native setup at22:52:10.538 has
+271188 gil/MGP631582/MammetItems0 and the roster gate accepts owned Mammet.
+No205 inventory-agent use request was logged: ownership became registered before
+its startup, so do not claim that new item-use route has a native execution proof.
+The earlier ActionManager false return was not positive evidence of failure to
+register; only subsequent ownership establishes success, irrespective of cause.
+Stage20 queue match101 saved22:52:24.368, battlefield22:52:31.733. Six Mammets
+were summoned at B and the first objective order sent22:52:53.021; A-gate summons
+followed22:53:01. Preserve this live attempt: no build/push merely for diagnostics.
+Next evidence target: Mammet opening, stone damage and explicit Stage20 result;
+three-attempt campaign limit remains in force. Source/deployed marker205,
+version0.5.0.3; latest full suite821 passed before the subsequent native fixes.
+
+Historical result before spending authorization: match 100 WON at 22:09:55.972, credited
+exactly once to 83 weekly matches / 24 wins; clear mask 524287 (stages 1-19).
+Result closure advanced to Stage 20 at 22:10:04.867. At 22:10:09.896 the roster
+gate stopped before admission: Mammet #001 is not registered and the cumulative
+gil cap remains zero. Saved pending match is 0, sequence 100, no purchase or
+spending, campaign true, pause false. Do not raise the purchase cap without
+David choosing a budget. The Stage 20 guide explicitly supports Mammets; no
+rare-minion substitution or unverified result is needed to bypass this gate.
+
+Intent before build/push 196: now safely between matches, correct the expected
+native debug path, show the exact Mammet cap blocker, report current-roster
+Stage 19 evidence in the standalone window, and avoid carrying Stage 19's attempt
+count into the Stage 20 display. Build through Z:\vmx.bat, then copy changed
+runtime artifacts to R:\parasite\vmx (DLL last). Verify fresh startup 196 and
+one dispatch through the existing hook. Expect Stage 20 to remain blocked with
+sequence 100, pending 0, 83/24, caps zero; no gameplay/config/cap mutation.
+One Airship victory verifies the Stage 19 clear and Cargo activation, not a
+repeatability streak or the full campaign. Tower/AoE behavior on Stage 24 remains
+unimplemented; the reread guide requires dodging circles, assigning a fast unit
+to every tower, and handling the two Twintania adds. Keep its admission gate.
+Retreat evidence resolved: at 22:03:44.718 (buff ended), all nine Airships were
+at Z=20.89-23.15 near Gate B, each 465/465 HP; the strategy read all nine ready
+and none deployed, then dispatched them against Enkidu. At 22:04:02 they were
+back near the center (Z=1.24-2.98). This verifies first-window retreat, recovery
+and return, despite the earlier selection mismatch. Build 196 through vmx.bat
+PASSED (0 errors; existing NU1601 warning), output version remains 0.5.0.3.
+196 delivery VERIFIED: all 820 tests passed; git diff --check passed. The guarded
+copy changed only VERMAXION.dll, comparing all 10 runtime files byte-for-byte.
+Automatic unload began 22:16:20; fresh startup 196 appeared 22:16:21.851 with
+the corrected A:\ff14\parasite\vmx expected path. The existing hook resumed
+22:16:25.119, then the Stage 20 roster gate stopped 22:16:30.198 with the new
+explicit 2,400-gil cap requirement. Fresh config remains sequence 100, pending
+0, 83/24, clear mask 524287, zero caps/spending and no purchase reservation.
+Copy-triggered automatic reload is now proven on the new route. No live settings
+were changed. The next campaign step needs Mammet #001; ask David whether to
+allow a cumulative 2,400-gil cap for its one purchase/registration. Do not infer
+that permission from the existing zero-cap purchase implementation. Other missing
+runtime acceptance remains open; full goal is active and incomplete. No running
+tool/build processes remain at this checkpoint.
+
+New deployment route selected by David: create `R:\parasite\vmx` and push the
+current plugin there. The user will enable this dev-plugin location. Intent:
+copy built marker 195 / version 0.5.0.3, its manifest/deps file, existing runtime
+dependency DLLs and output images. Do not change Dalamud's configured paths or
+enable/reload the new entry on the user's behalf. Future authorized iterations
+can build with vmx.bat then copy the updated artifacts to this explicit folder.
+No new deploy script, dependency, backup, logger or persistent mechanism added.
+The gameplay Resume remains prepared (pause false, sequence 99, pending 0,
+campaign Stage 19, zero purchase caps); enabling the selected debug plugin can
+dispatch it. The old Z: development entry should be disabled before enabling the
+new entry so only one VERMAXION instance owns the run. Source build still logs
+its historical expected Z: path; native load diagnostics must confirm the newly
+selected route. No new build is required just to copy the existing verified DLL.
+Copy completed: created the requested folder and images subfolder; copied and
+verified all 10 runtime files by direct byte comparison (no hashes). DLL and
+manifest both report 0.5.0.3. Target: `R:\parasite\vmx\VERMAXION.dll`, marker 195.
+Await David enabling that location before runtime verification. No client settings
+or source code were changed by this deployment; no plugin was enabled by the agent.
+New route ENABLED by David and verified: client-native path is
+`A:\ff14\parasite\vmx\VERMAXION.dll` (agent view `R:\parasite\vmx\VERMAXION.dll`).
+195 loaded 22:01:04, consumed/dispatched once 22:01:07, verified Stage 19 queue
+match 100 at 22:01:22, entered battlefield 22:01:34. AutomaticReloading is true
+for the new entry. The load/dispatch blocker is resolved. Preserve match 100;
+do not rebuild/push over the active attempt merely to test reloading. Observe the
+Airship opening, selection/movement, Cargo, buff retreat and explicit result.
+The old blocked-audit entries below are historical. Full objective stays active
+and incomplete. Copy-based automatic reload still needs its first observed push.
+Match 100 opening evidence: Airships summoned at 25 capacity each, first wave
+sent 22:02:07, all nine deployed by 22:02:48 at 225/240 capacity. Cargo requested
+22:02:29, 22:02:56 and 22:03:04; subsequent native snapshots show ATK Up (962)
+on the friendly Airships. Gilgamesh reached 12,344/16,000 HP at 22:03:08.
+Buff-phase detection immediately requested gate retreat; a selection mismatch
+appeared 22:03:09. Retreat arrival/survival and outcome remain unverified. Preserve
+owned match 100 while investigating this bounded phase observation.
+
+## Resumed after reboot — 2026-09-25
+
+Current resumed run: David manually reloaded and explicitly resumed the goal.
+Fresh evidence confirms 194 loaded 21:47:59 and respected the saved pause at
+21:48:02. The unavailable-load blocker is resolved; do not carry its audit forward.
+Fresh selected configuration: debug verminion_queue, pause true, mode WinTarget,
+target 10, campaign true, stage 19, sequence 99, pending 0, attempts 0/0, losses 0,
+totals 82/23, clear mask 262143, caps/spend zero, no pending purchase.
+Intent before mutation: apply the established development Resume only under those
+exact guards. Budgets are already reset; change only this character's pause to
+false, preserving all other file text and facts. Build marker 195 through vmx.bat
+to dispatch once through the existing debug reload hook. Verify load/dispatch and
+new owned admission separately. Test Stage 19's one-Airship-group defense, Cargo,
+background selection and buff retreat; no OS focus/cursor/global input changes.
+
+195 watched build PASSED via vmx.bat, DLL timestamp 21:51:28, zero errors and the
+existing NU1601 warning. Guarded Resume changed only the selected character's
+VerminionPaused true -> false; exact file text otherwise preserved. Attempt
+budgets were already zero and remain so. Fresh saved state still sequence 99,
+pending 0, campaign true, stage 19, 82/23, caps zero: no new admission or result.
+Bounded post-build evidence shows 194 remains latest startup; main log last
+updated 21:49:31, preceding the build. Client settings still enable the exact Z:
+DLL path and AutomaticReloading=true. Manual loading works; watched reloads are
+still unverified. Next required user operation: toggle VERMAXION automatic reload
+off/on and reload it once, to attempt rearming the file watcher after the host
+outage. The already-authorized Stage 19 run is now prepared to dispatch at that
+reload; preserve its reviewed budgets and results. No further build/log loop.
+Goal remains incomplete; this is the first new automatic-reload failure after
+the successful manual 194 load, not a continuation of the old blocked audit.
+195 resumed audit: BLOCKED after three consecutive turns with the same missing
+automatic-load evidence (the prepared Resume/build turn and two continuations).
+First turn made progress by confirming manual 194 load and preparing 195; neither
+continuation observed its load or admission. Latest bounded snapshot: main log
+5,017,702 bytes, updated 21:53:42, still only 194 startup and its saved-pause
+acknowledgement. Fresh config: pause false, sequence 99, pending 0, stage 19,
+82 matches/23 wins, attempts 0/0. No runtime mutation, rebuild, result credit or
+running tool handle in these continuations. The reviewed Resume remains prepared
+for the requested watcher toggle/manual reload; goal blocked status does not
+change that saved run selection. Preserve budgets and facts; never invent an
+admission. Need the already-requested user reload operation before meaningful
+native control/strategy verification can continue. Full objective is incomplete.
+
+Prior resumed audit: BLOCKED after three consecutive resumed turns with the
+same unavailable reload evidence. After the prior blocked status, the controller
+became active again and David confirmed being in-world. The first resumed turn
+requested the specific plugin reload; the second and third metadata checks found
+the main log unchanged (4,976,890 bytes, 21:39:31) and the 194 DLL unchanged
+(2,033,664 bytes, 21:41:34). Last verified startup remains 187. No new log scans,
+builds, gameplay or config mutations during those checks. The already-requested
+manual VERMAXION reload on R:\XIVLauncher3 is the required external change.
+No active tool/process handle exists to justify waiting on a running build. The
+full objective remains unfinished; preserve the gameplay pause and verify startup
+194 before the established guarded Resume. Do not keep rebuilding or polling.
+
+Prior blocked audit: the unavailable reload evidence has persisted across the
+resumed 192 build turn, the 193 setup implementation/build turn, and the 194
+post-reconnect build turn. This continuation revalidated the same condition:
+last startup 187, latest main-log timestamp 21:39:31, with no 192-194 startup.
+Source and watched DLL are 194; no process is awaiting build completion. The 193
+setup change was meaningful source progress and its full 820-test suite passed,
+but native setup, controls, campaign and tournament verification now require an
+actual current plugin load. No alternative runtime transport is authorized.
+Fresh config remains paused, sequence 99, pending 0, totals 82/23, clears 1-18,
+stage 19, attempts 0/0, caps zero, no pending purchase. No gameplay/config change.
+Mark goal BLOCKED pending the already-requested manual VERMAXION dev-plugin reload
+on R:\XIVLauncher3. On resume, verify startup 194 and saved state before the
+established guarded development Resume. Do not repeat rebuild/log loops or claim
+the overall objective complete. No additional source or artifact work is pending
+for this setup change; live acceptance and remaining feature work are unfinished.
+
+Previous runtime intent: David explicitly confirmed in-world after reconnect at
+approximately 21:40. Prior 193 build occurred while reconnecting; latest bounded
+log still shows 187, but is fresh through 21:39:31. Trigger one marker-only 194
+build through vmx.bat now that world loading has finished. Keep the runtime pause;
+do not infer reload success or start gameplay without the exact startup marker.
+Source behavior is the already-built/tested 193 setup fix; all 820 tests passed.
+194 watched build PASSED through vmx.bat (zero errors; existing NU1601 warning).
+Whitespace check passed. No test rerun for this marker-only change. Await the
+bounded post-build startup observation; saved gameplay pause remains unchanged.
+194 post-build snapshot still shows only startup 187; latest main-log entry is
+21:39:31, while 194 DLL was built at 21:41:34. Selected character remains paused,
+sequence 99, pending 0, totals 82/23, stage 19, caps zero. No battle/config action
+taken. Ask for one manual VERMAXION reload in Dev Plugins on R:\XIVLauncher3;
+further rebuilds alone have not provided fresh load evidence. Goal remains
+incomplete. Source setup work is progress; native reload/purchase/campaign and
+tournament acceptance remain pending. No active build or research process left.
+
+Previous continuation: previous turn made progress by building the requested 192.
+David has now reported a disconnect and reconnection/loading into world. This is
+new external-state evidence; do not treat stale pre-reconnect logs as a current
+reload failure. Gameplay remains paused until a fresh startup is verified.
+
+193 source corrects the first-entry setup gap: the three-owned-minion gate used
+to reject before purchases could help. Reuse the existing shop/reservation path
+for only the missing entry minions (Mammet #001, Wayward Hatchling, Cherry Bomb),
+requiring the whole entry plan's gil within remaining caps and funds. Distinguish
+unknown ownership, missing minions, and insufficient palette slots. Purchases and
+registration remain sequential and receipt-based. No runtime caps changed.
+Sources: ffxivcollect.com/api/minions/1, /2, /3 confirm each costs 2,400 gil at the
+Minion Trader. xivapi/ffxiv-datamining master csv/en/GilShopItem.csv shop 262574
+contains only items 6003, 6004, 6005, with no quest or achievement requirement.
+Intent: isolated Debug compile and focused/full existing tests; watched 192 is
+left intact while reconnection settles. Live entry/purchase verification pending.
+
+193 isolated compile PASSED after fixing a UI local-name collision; full suite
+820 passed, whitespace clean. Entry planner regression covers existing ownership,
+duplicate/zero IDs, zero/insufficient/exact cumulative caps, sequential receipts,
+reload reservations and no fabricated battle credit. Fresh runtime config remains
+paused true, sequence 99, pending 0, totals 82/23, stage 19, caps zero and no pending
+purchase. Post-reconnect log advances to 21:19:31 but latest startup is still 187.
+Next action: watched build via `Z:\vmx.bat` with pause retained, expecting startup
+193. Do not apply development Resume until that exact load has been observed.
+
+193 watched build PASSED through vmx.bat, zero errors and existing NU1601 warning;
+DLL timestamp 21:24:05. Bounded post-build snapshot still contains latest startup
+187 and latest main-log timestamp 21:19:31 (after the reported reconnect, before
+this build). The source setup fix is built/tested, but live reload remains
+unverified; no development Resume or new match has been dispatched. Need a fresh
+193 load, through the watched route or one manual dev-plugin reload, before Stage
+19 can resume. No repeated log-watching loop or alternate control route added.
+
+Previous resumed attempt: David requested a small executable edit and rebuilding
+through `Z:\vmx.bat`. Expected startup marker: `verminion-control-20260925-192`.
+Intent: run that exact existing script, which builds the solution Debug/x64 to
+`Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll`, then take one bounded
+reload evidence snapshot from R:\XIVLauncher3. Keep the saved gameplay pause until
+the new load is confirmed. Version remains 0.5.0.3. This is a fresh resumed audit;
+the prior blocked state below is historical. No runtime mutation or result claim.
+
+192 requested build completed: `Z:\vmx.bat` PASSED (zero errors; existing NU1601
+dependency warning). Watched DLL timestamp 2026-09-25 21:10:39 local; output path
+matches above. `git diff --check` passed. No behavior changed since the previously
+passing 819-test suite, so tests were not repeated for the marker-only edit.
+The post-build bounded main-log snapshot still has startup 187 at 18:53:39 and
+saved-pause acknowledgement at 18:55:13; newest log entry is 21:05:02, before the
+build. 192 load remains UNVERIFIED. Fresh selected-character config is unchanged:
+paused true, sequence 99, pending 0, attempts 0/0, totals 82/23, stage 19, clear
+mask 262143 and purchase caps/spend zero. No gameplay or config mutation performed.
+Read-only route inspection confirms the Z:\VERMAXION\VERMAXION\bin\x64\Debug
+DLL is enabled in this client's dev-plugin locations and AutomaticReloading is
+true. Built DLL and manifest remain 0.5.0.3. No routing settings changed. The
+requested small edit/build is complete; live acceptance needs fresh 192 startup
+evidence before the established guarded Resume. Campaign remains at Stage 19/24.
+
+Prior blocked audit: the same unavailable reload evidence has persisted for three
+consecutive goal-work turns (the post-file-host reconciliation and two automatic
+continuations). Previous turn was progress: 191 purchase implementation and 819
+passing tests. This turn's fresh read still shows only 187 startup at 18:53:39;
+log contains unrelated activity through 20:49:31 but no 190/191 startup. The
+watched DLL is 190; isolated/source is 191. No build/test process remains live.
+Fresh saved state: paused true, sequence 99, pending match 0, attempts 0/0,
+82 matches / 23 wins, clears 1-18 (262143), caps zero, no pending purchase.
+Independent source changes are built/reviewed; native shop, background strategy,
+remaining campaign and tournament work now need actual client observations.
+Goal status: BLOCKED pending the already-requested manual VERMAXION reload on
+R:\XIVLauncher3. Do not broaden the control route, activate the game, restart a
+client, or manufacture runtime credit. After reload, verify the exact loaded
+marker and saved pause before deploying 191 and applying a reviewed Resume.
+The full objective remains incomplete. No further runtime/config mutation here.
+
+Final 191 isolated build PASSED after the review fixes; whitespace check PASSED.
+Full suite: 819 passed. No pending build/test sessions. This continuation made
+source/test progress, but the same unverified client reload blocks live acceptance.
+191 remains isolated/source only; watched artifact 190 has no verified startup.
+Latest verified runtime remains paused 99 / stage 19, totals 82 matches / 23 wins,
+clears 1-18, caps/spending zero. No further runtime changes made this continuation.
+Goal stays active and incomplete; resume runtime only with fresh client evidence.
+
+Review also removed the early saved-stage roster rejection: refresh the game's
+challenge menu/unlocks first, then check minions/palette or start the capped vendor
+route before admission. This avoids demanding minions for a stage already cleared
+manually since the previous run. UI preview remains based on saved progress until
+that refresh. No new live result or reload evidence claimed.
+
+191 isolated build PASSED and all 819 tests PASSED, including purchase caps,
+insufficient funds, owned/inventory duplicates, serialization, Stop/reset/weekly
+reset, exact currency+item evidence, duplicate receipts and character isolation.
+Final review tightened confirmation amount matching (no numeric substring match)
+and preserves Verminion facts/reservations/pause during character-settings reset.
+Final isolated compile pending for those two review fixes. No watched deployment,
+runtime config mutation, purchase, or new battle in this continuation. Need the
+manual client reload already requested before native shop/battle verification.
+
+Goal controller now reports ACTIVE. Last turn made implementation/verification
+progress; this continuation's bounded reload check still found no 190 startup
+(latest other-plugin log timestamp 20:32:36). Continue source work without client
+mutation. Watched DLL remains 190, saved runtime pause true, no new admission.
+
+191 source adds the Mammet gil vendor path and per-character pending-purchase
+reservation/receipt accounting. A request cannot fire unless reservation saving
+succeeds; ConfigManager now exposes the existing save result without changing
+its other callers. Verify both item acquisition and exact gil/MGP change, keep
+unknown reservations across reload/Stop/reset, and prevent duplicate requests.
+Only this required vendor route is implemented; MGP vendor execution and other
+vendors remain pending. Zero-cap test settings are unchanged. UI shows reservations
+and acquisition limitations. Isolated compile passed before the final save-result
+guard; intent now: final isolated build and full regression suite, no watched build.
+
+Fresh acquisition research corrected an earlier assumption: Baby Bat's vendor
+requires the FATE Poor Maid's Misfortune at Poor Maid's Mill, not an always-present
+vendor at Memeroon's Trading Post. Source: https://ffxivcollect.com/api/minions/26.
+Mammet /api/minions/2 confirms 2,400 gil at the Minion Trader; Airship /api/minions/52
+confirms the starting-city Envoy quest. xivapi/ffxiv-datamining master csv/en Item,
+GilShopItem, GilShop, ENpcBase, ENpcResident and Level rows confirm item 6004,
+shop 262574, NPC 1011595 and position (82.4139, 0.411926, 44.9377), territory 388.
+Native shop quote checks use the installed AgentShop structure; row/cost layout
+must still be observed live and any mismatch fails before purchase. No signature,
+dependency, external artifact or independent logger added.
+
+190 watched DLL was produced 20:26:32, but bounded reload diagnostics contain no
+190 startup/unload/dispatch. Last verified startup remains 187 at 18:53:39. Log
+contains other-plugin activity through 20:26:32, but target-plugin routine output
+ends 20:14:30 near the file-host outage. The automatic reload route is unverified;
+do not claim a 190 runtime result or infer a crash. No repeated watcher/log loop.
+Fresh config reconciliation after the attempted deployment still showed sequence
+99, pending 0, attempts 0, totals 82/23, mask 262143, caps/spend zero. Restored only
+the saved runtime pause to true under those exact guards, preventing a delayed
+reload from starting gameplay. Resume budgets remain reset; no result credited.
+Next required runtime action: manually reload VERMAXION once on R:\XIVLauncher3
+to establish a fresh 190 startup, keeping the saved pause. Then reconcile state
+and apply the established reviewed Resume before the next bounded Stage 19 test.
+User-operation is required because the authorized watched route did not provide
+load evidence; no foreground control, game restart or alternate transport added.
+Source/build/tests remain valid: isolated and watched builds pass, 818 tests pass,
+version 0.5.0.3. Standalone window visual verification remains pending. The larger
+goal is incomplete; user resumed work, but orchestration status still says paused.
+
+190 final isolated and watched builds PASSED (existing NU1601 warning only).
+Guarded Resume matched paused-99 exactly and persisted only the established run
+budget resets/unpause, retaining campaign/facts/caps/sequence. Await fresh load and
+admission/result evidence. Full suite 818 passed. Do not reload an active attempt.
+
+File-host reboot also completed; both shares and saved paused-99 state rechecked
+unchanged. 190 isolated build PASSED and all 818 tests PASSED before that reboot;
+review then corrected defender-role identification for Stage 15 and kept service
+failure details visible while paused. Whitespace clean. Next: compile final source,
+then guarded Resume only on the exact paused-99 state and watched Debug build 190.
+Preserve facts/caps/sequence, resetting only the established Resume attempt budgets.
+Verify 190 load, admission, Airship movement/retreat, Cargo effect and actual result.
+No window focus, OS cursor or global input changes. Goal work was resumed by the
+user; the goal-control tool still reports paused (no assistant resume operation).
+
+David explicitly resumed work after reboot. Fresh bounded evidence confirms saved
+paused-99 state survived: totals 82/23, mask 262143, pending 0, attempts 3/3,
+losses 3, caps/spending zero. Fresh client log: 187 loaded 18:53:39, then respected
+the saved pause at 18:55:13. No runtime/config mutation or Resume yet. Git was
+clean at restart (HEAD 9f7667f); prior work is committed by the user. Preserve it.
+
+Read all Stage 2-24 strategy pages linked by https://ffxiverminion.com/guides and
+the official guide https://na.finalfantasyxiv.com/lodestone/playguide/contentsguide/goldsaucer/lovm/.
+The official guide confirms three owned minions, Stage 2 unlock for other modes,
+four-unit specials, neutral gadgets, 15 tournament matches and harder NPCs after
+wins. Private chosen opponents are supported by Player Battle (Non-RP); I412's
+paired roles and AFK behavior remain unimplemented/unverified and no second-client
+runtime is authorized. No Ocean Fishing/DevHub changes are needed for this review.
+
+Stage guides explicitly allow Mammets instead of Kidragoras for ordinary stone
+attacks. Boss guides require Imp switches (6), two bomb phases (9), rear attacks
+and defending a stone (12), full army/final burn (15), retreat when Gilgamesh buffs
+and center defense (19), focus Twintania (23), dodges/towers/adds (24). They often
+use rare minions; their published rosters cannot simply become our prerequisites.
+
+190 source selects accessible adaptations: Mammet #001 for ordinary stone stages;
+Baby Bat for critter-heavy 7/16 and Odin 15; Airship for 4/6/9/12/19/23/24, with
+four Baby Bat defenders on 6. Stage 19 uses one Airship group (up to nine / 225
+capacity) to reduce selection contention. These replacements are UNVERIFIED.
+Stage 24 is blocked before admission until tower/attack handling exists. Sources
+for stats: https://ffxiverminion.com/minion-2, /minion-26, /minion-52. Airship's
+auto-attack is single-target; Cargo buffs allies in an area by +20 ATK (+40 for
+gadgets) for six seconds. Actual buff effect still requires native observation.
+Supplemental vendor-page requests were unavailable; vendor hints need an in-game
+check before purchasing. Purchase caps remain zero and purchases unimplemented.
+
+190 also adds the standalone `/vmx v` window, launch buttons, shared settings and
+stage/roster/prerequisite details. Requirements are checked after item registration
+before travel and again before admission. Intent: isolated compilation plus tests,
+then review before watched deployment; do not reset runtime attempts yet.
+
+## Goal additions and prior requested pause — 2026-09-25
 
 David explicitly requested recording these requirements in the goal and pausing
 it for now. They extend the approved plan; the full original acceptance criteria

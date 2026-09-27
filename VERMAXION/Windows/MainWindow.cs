@@ -216,6 +216,9 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.Button("Config"))
             plugin.ToggleConfigUi();
+        ImGui.SameLine();
+        if (ImGui.Button("Verminion"))
+            plugin.VerminionWindow.IsOpen = true;
 
         void DrawTaskSurface(bool favoritesOnly)
         {
