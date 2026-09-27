@@ -6,11 +6,8 @@ namespace VERMAXION.Services;
 internal sealed record VerminionMinion(ushort Id, string Name, int Cost, string Acquisition);
 internal sealed record VerminionVendorMinion(ushort MinionId, uint ItemId, string Name, uint Gil, uint Mgp = 0)
 {
-    public string Shop => Mgp > 0 ? "ShopExchangeCurrency" : "Shop";
     public uint Price => Mgp > 0 ? Mgp : Gil;
     public string Currency => Mgp > 0 ? "MGP" : "gil";
-    public uint Territory => MinionId == 26 ? 139u : 388u;
-    public string VendorName => MinionId == 26 ? "Junkmonger Nonoroon" : "Minion Trader";
 }
 
 /// <summary>Accessible baseline choices. Guide adaptations still require live verification.</summary>
@@ -32,7 +29,10 @@ internal static class VerminionRoster
     ];
 
     public static VerminionVendorMinion? VendorOffer(uint itemId, ushort minionId) =>
-        EntryOffers.Append(BatOffer).Append(NeroOffer).Append(ZuOffer).FirstOrDefault(offer => offer.ItemId == itemId && offer.MinionId == minionId);
+        VendorOffer(minionId) is { } offer && offer.ItemId == itemId ? offer : null;
+
+    public static VerminionVendorMinion? VendorOffer(ushort minionId) =>
+        EntryOffers.Append(BatOffer).Append(NeroOffer).Append(ZuOffer).FirstOrDefault(offer => offer.MinionId == minionId);
 
     // Prefer already registered minions, then buy only the distinct minions
     // needed for entry. Mammet also supplies the ordinary-stage battle roster.
@@ -50,7 +50,7 @@ internal static class VerminionRoster
     public static readonly VerminionMinion Airship = new(52, "Wind-up Airship", 25,
         "Reward from your starting city's level 15 Envoy main scenario quest; register the item.");
     public static readonly VerminionMinion Bat = new(26, "Baby Bat", 10,
-        "2,400 gil from Junkmonger Nonoroon at Poor Maid's Mill, Upper La Noscea (11.8, 24.7). He temporarily disappears during nearby FATEs. Automatic travel from Camp Bronze Lake requires existing flight access; no FATE completion is attempted.");
+        "2,400 gil from Junkmonger Nonoroon at Poor Maid's Mill, Upper La Noscea (11.8, 24.7). He temporarily disappears during nearby FATEs. ADS owns vendor discovery, travel and purchase; unavailable routes stop before admission.");
     public static readonly VerminionMinion Nero = new(174, "Wind-up Nero tol Scaeva", 20,
         "30,000 MGP from the Minion Trader in Minion Square; permanent vendor stock with no additional unlock.");
     public static readonly VerminionMinion Zu = new(83, "Zu Hatchling", 10,

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Numerics;
+using Newtonsoft.Json.Linq;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
@@ -36,41 +36,19 @@ public class FCBuffService : IDisposable
     private const ushort SealSweetenerTwoMinimumStrength = 10;
     private const uint SealSweetenerTwoCompanyActionId = 36;
     private const uint ActivateEntryAddonRowId = 2817;
-    private const int MaxPurchaseConfirmPromptReadRetries = 3;
-    private const float QuartermasterWaypointArrivalDistance = 2.5f;
-    private static readonly TimeSpan PurchaseConfirmTimeout = TimeSpan.FromSeconds(12);
-    private static readonly TimeSpan PurchaseConfirmPromptFallbackDelay = TimeSpan.FromSeconds(1.5);
-    private static readonly TimeSpan PurchaseConfirmPromptReadLogThrottle = TimeSpan.FromMilliseconds(500);
-    private static readonly TimeSpan NavigationLogThrottle = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan TravelSettlementDuration = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan WindowCloseRetryInterval = TimeSpan.FromMilliseconds(750);
     private static readonly TimeSpan WindowCloseLogThrottle = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan WindowCloseEscapeFallbackDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan WindowCloseTimeout = TimeSpan.FromSeconds(20);
-    private static readonly string[] QuartermasterNames = ["Quartermaster", "OIC Quartermaster"];
-    private static readonly string[] FcCleanupAddonNames = ["SelectYesno", ContextMenuAddonName, "FreeCompanyExchange", "FreeCompanyAction", "SelectString", "FreeCompany"];
-    private static readonly string[] FcCallbackCloseAddonNames = [ContextMenuAddonName, "FreeCompanyAction", "SelectString", "FreeCompany"];
+    private static readonly string[] FcCleanupAddonNames = ["SelectYesno", ContextMenuAddonName, "FreeCompanyAction", "FreeCompany"];
+    private static readonly string[] FcCallbackCloseAddonNames = [ContextMenuAddonName, "FreeCompanyAction", "FreeCompany"];
 
     private FCBuffState state = FCBuffState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
     private int purchaseAttempts = 0;
-    private int buyCount = 0;
     private int buyMax = 15;
-    private bool isSealSweetenerTwo = true; // Try Seal Sweetener II first
-    private int pathRetryCount = 0;
-    private DateTime lastPathRetryTime = DateTime.MinValue;
-    private DateTime lastNavigationLogTime = DateTime.MinValue;
-    private int teleportRetryCount = 0;
-    private DateTime lastTeleportRetryAt = DateTime.MinValue;
-    private DateTime travelSettlementStartedAt = DateTime.MinValue;
-    private DateTime purchaseCallbackFiredAt = DateTime.MinValue;
-    private int purchaseConfirmPromptReadFailureCount = 0;
-    private DateTime firstPurchaseConfirmPromptReadFailureAt = DateTime.MinValue;
-    private DateTime lastPurchaseConfirmPromptReadLogAt = DateTime.MinValue;
     private DateTime lastWindowCloseAttemptAt = DateTime.MinValue;
     private DateTime lastWindowCloseLogAt = DateTime.MinValue;
     private DateTime windowCloseTargetStartedAt = DateTime.MinValue;
-    private int? cachedGCTerritory = null;
     private string? windowCloseTargetName = null;
     private bool failAfterClosingWindows = false;
     private ulong currentFreeCompanyId;
@@ -82,6 +60,8 @@ public class FCBuffService : IDisposable
     private bool yesAlreadyPauseOwned;
     private int activationAttempts;
     private int lastSealSweetenerListIndex = -1;
+    private string? purchaseOperationId;
+    private DateTime nextPurchaseObservation;
 
     // FC points threshold from FUTA_GC.lua
     private const int MinFCPoints = 500000;
@@ -98,6 +78,7 @@ public class FCBuffService : IDisposable
         CheckingFCPointsInWindow,
         CheckingBuffInventory,
         CheckingIfRefillNeeded,
+        AcquiringThroughAds,
         NavigatingToGC,
         WaitingForAftArrival,
         WaitingForGridaniaArrival,
@@ -174,11 +155,9 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}, AllowFCBuffActivation={config.AllowFCBuffActivation}, MaintainFCBuffStockTarget={config.MaintainFCBuffStockTarget}");
         
         purchaseAttempts = FCBuffRecoveryPolicy.ClampPurchaseAttempts(config.FCBuffPurchaseAttempts);
-        buyCount = 0;
-        isSealSweetenerTwo = true; // Start with Seal Sweetener II
         failAfterClosingWindows = false;
         ResetWindowCloseTracking();
-        ResetCachedGCTerritory();
+
         currentFreeCompanyId = GetCurrentFreeCompanyId();
         allowActivation = config.AllowFCBuffActivation;
         maintainStockTarget = config.MaintainFCBuffStockTarget;
@@ -267,142 +246,18 @@ public class FCBuffService : IDisposable
         }
     }
 
-    private unsafe int GetCurrentGCTerritory()
+    public void Reset()
     {
-        if (cachedGCTerritory.HasValue)
-            return cachedGCTerritory.Value;
-
-        // Get Free Company's Grand Company for teleportation
-        try
-        {
-            var infoProxyFreeCompany = InfoProxyFreeCompany.Instance();
-            if (infoProxyFreeCompany != null)
-            {
-                var fcGrandCompany = infoProxyFreeCompany->GrandCompany;
-                var gcString = fcGrandCompany.ToString();
-                var gcChoice = gcString switch
-                {
-                    "Maelstrom" => 1,
-                    "TwinAdder" => 2,
-                    "ImmortalFlames" => 3,
-                    _ => 1,
-                };
-
-                cachedGCTerritory = gcChoice switch
-                {
-                    1 => 128, // Maelstrom (Limsa - Upper Decks/Aft)
-                    2 => 132, // Order of the Twin Adder (Gridania) - territory 132
-                    3 => 130, // Immortal Flames (Ul'dah)
-                    _ => 128, // Default to Limsa
-                };
-
-                log.Information($"[FCBuff] Using FC GC Choice: {gcChoice} ({gcString}) -> territory {cachedGCTerritory.Value}");
-                return cachedGCTerritory.Value;
-            }
-            else
-            {
-                log.Warning("[FCBuff] InfoProxyFreeCompany is null, using player GC");
-                cachedGCTerritory = GetPlayerGCTerritory();
-                log.Information($"[FCBuff] Using player GC fallback territory {cachedGCTerritory.Value}");
-                return cachedGCTerritory.Value;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.Error($"[FCBuff] Failed to get FC GC: {ex.Message}, using player GC");
-            cachedGCTerritory = GetPlayerGCTerritory();
-            log.Information($"[FCBuff] Using player GC fallback territory {cachedGCTerritory.Value} after FC GC lookup failure");
-            return cachedGCTerritory.Value;
-        }
+        CancelOwnedPurchase();
+        purchaseOperationId = null;
+        SetState(FCBuffState.Idle);
     }
 
-    private int GetPlayerGCTerritory()
+    public void Dispose()
     {
-        // Get player's Grand Company from PlayerState (fallback)
-        try
-        {
-            if (Plugin.PlayerState != null)
-            {
-                var gc = Plugin.PlayerState.GrandCompany;
-                var gcId = gc.RowId;
-                return gcId switch
-                {
-                    1 => 128, // Maelstrom (Limsa - Upper Decks/Aft)
-                    2 => 132, // Order of the Twin Adder (Gridania) - territory 132
-                    3 => 130, // Immortal Flames (Ul'dah)
-                    _ => 128, // Default to Limsa
-                };
-            }
-        }
-        catch
-        {
-            log.Warning("[FCBuff] Failed to get player GC, defaulting to Limsa");
-        }
-        return 128; // Default to Limsa
+        CancelOwnedPurchase();
+        ReleaseOwnedYesAlreadyPause("service disposal");
     }
-
-    private Vector3 GetQuartermasterPosition(int gcTerritory)
-    {
-        return gcTerritory switch
-        {
-            128 => new Vector3(94f, 40.5f, 74.5f),       // Limsa (Upper Decks/Aft)
-            132 => new Vector3(-68.5f, -0.5f, -8.5f),   // Gridania
-            130 => new Vector3(-141.7f, 4.1f, -106.8f), // Ul'dah
-            _ => Vector3.Zero
-        };
-    }
-
-    private Dalamud.Game.ClientState.Objects.Types.IGameObject? FindQuartermasterObject()
-    {
-        var player = objects.LocalPlayer;
-
-        return QuartermasterNames
-            .Select(GameHelpers.FindObjectByName)
-            .OfType<Dalamud.Game.ClientState.Objects.Types.IGameObject>()
-            .OrderBy(obj => player != null ? Vector3.Distance(player.Position, obj.Position) : 0f)
-            .FirstOrDefault();
-    }
-
-    private Vector3 GetQuartermasterNavigationTarget(int gcTerritory)
-    {
-        var quartermaster = FindQuartermasterObject();
-        return quartermaster?.Position ?? GetQuartermasterPosition(gcTerritory);
-    }
-
-    private bool TryGetQuartermasterInteractionDistance(Dalamud.Game.ClientState.Objects.Types.IGameObject quartermaster, out float distance, out float maxDistance)
-    {
-        distance = float.MaxValue;
-        maxDistance = GameHelpers.GetValidInteractionDistance(quartermaster);
-
-        var player = objects.LocalPlayer;
-        if (player == null)
-            return false;
-
-        distance = Vector3.Distance(player.Position, quartermaster.Position);
-        return true;
-    }
-
-    private bool TryTransitionToQuartermasterInteraction(string reason)
-    {
-        var player = objects.LocalPlayer;
-        var quartermaster = FindQuartermasterObject();
-        if (player == null || quartermaster == null)
-            return false;
-
-        if (!TryGetQuartermasterInteractionDistance(quartermaster, out var distance, out var maxDistance))
-            return false;
-
-        if (distance > maxDistance)
-            return false;
-
-        log.Information($"[FCBuff] Quartermaster visible and within interaction range via {reason} (distance: {distance:F1}y, max: {maxDistance:F1}y)");
-        plugin.VNavmeshIPC.Stop();
-        SetState(FCBuffState.TargetingQuartermaster);
-        return true;
-    }
-
-    public void Reset() => SetState(FCBuffState.Idle);
-    public void Dispose() => ReleaseOwnedYesAlreadyPause("service disposal");
 
     public unsafe void Update()
     {
@@ -613,291 +468,11 @@ public class FCBuffService : IDisposable
                     return;
                 }
                 log.Information("[FCBuff] Proceeding with FC buff refill");
-                SetState(FCBuffState.NavigatingToGC);
+                SetState(FCBuffState.AcquiringThroughAds);
                 break;
 
-            case FCBuffState.NavigatingToGC:
-                if (elapsed < 1) return;
-                
-                // Get current GC territory to determine navigation
-                var currentGCTerritory = GetCurrentGCTerritory();
-                CommandHelper.SendCommand("/li gc");
-
-                switch (currentGCTerritory)
-                {
-                    case 128: // Limsa Lominsa (Upper Decks/Aft)
-                        log.Information("[FCBuff] Navigating to Limsa GC: /li gc");
-                        SetState(FCBuffState.WaitingForAftArrival);
-                        break;
-                    case 132: // Gridania
-                        log.Information("[FCBuff] Navigating to Gridania GC: /li gc");
-                        SetState(FCBuffState.WaitingForGridaniaArrival);
-                        break;
-                    case 130: // Ul'dah
-                        log.Information("[FCBuff] Navigating to Ul'dah GC: /li gc");
-                        SetState(FCBuffState.WaitingForDahArrival);
-                        break;
-                    default:
-                        log.Error($"[FCBuff] Unknown GC territory: {currentGCTerritory}");
-                        SetState(FCBuffState.Failed);
-                        break;
-                }
-                break;
-
-            case FCBuffState.WaitingForAftArrival:
-                TickTeleportArrival(elapsed, 128, "Limsa Aft");
-                return;
-
-            case FCBuffState.WaitingForGridaniaArrival:
-                TickTeleportArrival(elapsed, 132, "Gridania");
-                return;
-
-            case FCBuffState.WaitingForDahArrival:
-                TickTeleportArrival(elapsed, 130, "Ul'dah");
-                return;
-
-            case FCBuffState.NavigatingToQuartermaster:
-                var navigationNow = DateTime.UtcNow;
-                var expectedGCTerritory = (ushort)GetCurrentGCTerritory();
-                if (!TryGetTravelSettlementDuration(expectedGCTerritory, navigationNow, out var settledFor) ||
-                    settledFor < TravelSettlementDuration)
-                {
-                    LogNavigationStatusThrottled(
-                        $"[FCBuff] Waiting for GC travel to remain settled before pathing ({settledFor.TotalSeconds:F1}/{TravelSettlementDuration.TotalSeconds:F0}s)...",
-                        debug: true);
-                    return;
-                }
-
-                if (elapsed < 2) return;
-
-                if (TryTransitionToQuartermasterInteraction("navigation start"))
-                    return;
-                
-                // Retry pathfinding every 3 seconds if we haven't started yet (max 5 attempts)
-                if (pathRetryCount < 5 &&
-                    (pathRetryCount == 0 || (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 3))
-                {
-                    lastPathRetryTime = DateTime.UtcNow;
-                    
-                    // Navigate to Quartermaster location based on GC
-                    var gcTerritory = GetCurrentGCTerritory();
-                    var navTarget = GetQuartermasterNavigationTarget(gcTerritory);
-                    if (navTarget != Vector3.Zero)
-                    {
-                        if (plugin.VNavmeshIPC.PathfindAndMoveTo(navTarget))
-                        {
-                            pathRetryCount++;
-                            log.Information($"[FCBuff] Started navigation to Quartermaster (dispatch {pathRetryCount}/5) via VNavmesh IPC");
-                        }
-                        SetState(FCBuffState.WaitingForQuartermasterArrival);
-                    }
-                    else
-                    {
-                        log.Error("[FCBuff] Failed to get Quartermaster position");
-                        SetState(FCBuffState.Failed);
-                    }
-                }
-                else if (pathRetryCount >= 5)
-                {
-                    // All attempts failed, give up
-                    log.Error("[FCBuff] Failed to start pathfinding after 5 attempts - city may be loading too slowly");
-                    SetState(FCBuffState.Failed);
-                }
-                break;
-
-            case FCBuffState.WaitingForQuartermasterArrival:
-                if (!IsTravelSettlementReady())
-                {
-                    LogNavigationStatusThrottled("[FCBuff] Player or Lifestream travel is unsettled during navigation, waiting...", debug: true);
-                    return;
-                }
-                
-                // Final timeout after extended retries (90s total)
-                if (elapsed > 90)
-                {
-                    log.Error("[FCBuff] Timeout waiting for Quartermaster arrival after retries");
-                    plugin.VNavmeshIPC.Stop();
-                    SetState(FCBuffState.Failed);
-                    return;
-                }
-                
-                // Check if we're close enough to target
-                var player = objects.LocalPlayer;
-                if (player == null) return;
-
-                if (TryTransitionToQuartermasterInteraction("live NPC proximity"))
-                    return;
-                
-                var targetGCTerritory = GetCurrentGCTerritory();
-                var quartermaster = FindQuartermasterObject();
-                var targetPos = quartermaster?.Position ?? GetQuartermasterPosition(targetGCTerritory);
-                
-                var distance = Vector3.Distance(player.Position, targetPos);
-                if (quartermaster == null && distance <= QuartermasterWaypointArrivalDistance)
-                {
-                    log.Information($"[FCBuff] Arrived at Quartermaster waypoint (distance: {distance:F1}y), attempting direct interaction");
-                    plugin.VNavmeshIPC.Stop();
-                    SetState(FCBuffState.TargetingQuartermaster);
-                }
-                // Observe navigation every 5 seconds; the shared owner dispatches only for real recovery.
-                else if (pathRetryCount < 10 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
-                {
-                    lastPathRetryTime = DateTime.UtcNow;
-                    if (plugin.VNavmeshIPC.PathfindAndMoveTo(targetPos))
-                    {
-                        pathRetryCount++;
-                        log.Information($"[FCBuff] Dispatched Quartermaster navigation recovery {pathRetryCount}/10 (distance: {distance:F1}y)");
-                    }
-                }
-                else if (pathRetryCount >= 10 && (DateTime.UtcNow - lastPathRetryTime).TotalSeconds >= 5)
-                {
-                    // All retries exhausted, try alternative approach
-                    log.Warning($"[FCBuff] All navigation retries exhausted (distance: {distance:F1}y), trying direct approach");
-                    plugin.VNavmeshIPC.Stop();
-                    
-                    // Try moving to a nearby position instead
-                    var nearbyPos = targetPos + new Vector3(2, 0, 2); // Offset by 2 yalms
-                    log.Information($"[FCBuff] Trying nearby position: {nearbyPos}");
-                    var nearbyDispatched = plugin.VNavmeshIPC.PathfindAndMoveTo(nearbyPos);
-                    
-                    // Reset retry counter for the new attempt
-                    pathRetryCount = nearbyDispatched ? 1 : 0;
-                    lastPathRetryTime = DateTime.UtcNow;
-                }
-                else if (elapsed > 1)
-                {
-                    LogNavigationStatusThrottled($"[FCBuff] Still navigating to Quartermaster... ({elapsed:F0}s elapsed, distance: {distance:F1}y, retries: {pathRetryCount}/10)");
-                }
-                return;
-
-            case FCBuffState.TargetingQuartermaster:
-                if (elapsed < 1) return;
-                log.Information("[FCBuff] Targeting and interacting with quartermaster");
-
-                var quartermasterTarget = FindQuartermasterObject();
-                if (quartermasterTarget != null)
-                {
-                    if (TryGetQuartermasterInteractionDistance(quartermasterTarget, out var directDistance, out var directMaxDistance) &&
-                        directDistance > directMaxDistance)
-                    {
-                        log.Information($"[FCBuff] Quartermaster still too far for direct interaction ({directDistance:F1}y > {directMaxDistance:F1}y); moving closer");
-                        plugin.VNavmeshIPC.PathfindAndMoveTo(quartermasterTarget.Position);
-                        SetState(FCBuffState.WaitingForQuartermasterArrival);
-                        break;
-                    }
-
-                    targetManager.Target = quartermasterTarget;
-                    if (GameHelpers.InteractWithObject(quartermasterTarget))
-                    {
-                        log.Information($"[FCBuff] Successfully interacted with {quartermasterTarget.Name.TextValue}");
-                        SetState(FCBuffState.WaitingForSelectString1);
-                        break;
-                    }
-
-                    log.Warning($"[FCBuff] Direct interaction with {quartermasterTarget.Name.TextValue} did not succeed, retrying approach");
-                    SetState(FCBuffState.WaitingForQuartermasterArrival);
-                    break;
-                }
-                
-                // AutoRetainer pattern: Use TargetAndInteract for same-frame targeting and interaction
-                if (GameHelpers.TargetAndInteract("Quartermaster"))
-                {
-                    log.Information("[FCBuff] Successfully interacted with Quartermaster");
-                    SetState(FCBuffState.WaitingForSelectString1);
-                }
-                else
-                {
-                    // Try fallback with "OIC Quartermaster"
-                    if (GameHelpers.TargetAndInteract("OIC Quartermaster"))
-                    {
-                        log.Information("[FCBuff] Successfully interacted with OIC Quartermaster");
-                        SetState(FCBuffState.WaitingForSelectString1);
-                    }
-                    else
-                    {
-                        log.Error("[FCBuff] Failed to interact with Quartermaster");
-                        SetState(FCBuffState.Failed);
-                    }
-                }
-                break;
-
-            case FCBuffState.WaitingForSelectString1:
-                if (elapsed < 5)
-                {
-                    if (GameHelpers.IsAddonVisible("SelectString"))
-                    {
-                        log.Information("[FCBuff] SelectString appeared, selecting purchase option");
-                        GameHelpers.FireAddonCallback("SelectString", true, 0);
-                        SetState(FCBuffState.WaitingForExchange);
-                    }
-                    return;
-                }
-                log.Error("[FCBuff] SelectString did not appear");
-                SetState(FCBuffState.Failed);
-                break;
-
-            case FCBuffState.WaitingForExchange:
-                if (elapsed < 5)
-                {
-                    if (GameHelpers.IsAddonVisible("FreeCompanyExchange"))
-                    {
-                        log.Information("[FCBuff] FreeCompanyExchange appeared, starting purchase loop");
-                        buyCount = 0;
-                        var config = configManager.GetActiveConfig();
-                        if (!isSealSweetenerTwo)
-                            buyMax = 1;
-                        ResetPurchaseConfirmationState();
-                        log.Information($"[FCBuff] Purchase setup: buyMax={buyMax}, isSealSweetenerTwo={isSealSweetenerTwo}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
-                        SetState(FCBuffState.PurchasingBuff);
-                    }
-                    return;
-                }
-                log.Error("[FCBuff] FreeCompanyExchange did not appear");
-                SetState(FCBuffState.Failed);
-                break;
-
-            case FCBuffState.PurchasingBuff:
-                if (elapsed < 1) return;
-                if (buyCount >= buyMax)
-                {
-                    log.Information($"[FCBuff] Purchase complete: {buyCount} buffs bought");
-                    resumeAfterPurchase = true;
-                    reconciliationRequired = true;
-                    SetState(FCBuffState.ClosingWindows);
-                    return;
-                }
-                
-                var buffIndex = isSealSweetenerTwo ? 22 : 5; // 22u for SS2, 5u for SS1
-                ResetPurchaseConfirmationState();
-                purchaseCallbackFiredAt = DateTime.UtcNow;
-                log.Information($"[FCBuff] Purchasing buff {buyCount + 1}/{buyMax} (index: {buffIndex})");
-                GameHelpers.FireAddonCallback("FreeCompanyExchange", false, 2, (uint)buffIndex);
-                SetState(FCBuffState.WaitingForPurchaseConfirm);
-                break;
-
-            case FCBuffState.WaitingForPurchaseConfirm:
-                if (GameHelpers.IsAddonVisible("SelectYesno"))
-                {
-                    TryHandlePurchaseConfirmation();
-                    return;
-                }
-
-                var exchangeVisible = GameHelpers.IsAddonVisible("FreeCompanyExchange");
-                if (elapsed < PurchaseConfirmTimeout.TotalSeconds)
-                {
-                    return;
-                }
-
-                ResetPurchaseConfirmationState();
-                if (!exchangeVisible)
-                {
-                    log.Error("[FCBuff] FreeCompanyExchange closed before purchase confirmation appeared");
-                }
-                else
-                {
-                    log.Error($"[FCBuff] Purchase confirmation did not appear within {PurchaseConfirmTimeout.TotalSeconds:F0}s; the exchange callback will not be repeated");
-                }
-                SetState(FCBuffState.Failed);
+            case FCBuffState.AcquiringThroughAds:
+                TickAdsPurchase();
                 break;
 
             case FCBuffState.ClosingWindows:
@@ -1018,6 +593,58 @@ public class FCBuffService : IDisposable
         SetState(FCBuffState.Failed);
     }
 
+    private void TickAdsPurchase()
+    {
+        if (DateTime.UtcNow < nextPurchaseObservation) return;
+        nextPurchaseObservation = DateTime.UtcNow.AddSeconds(1);
+        try
+        {
+            if (currentFreeCompanyId == 0 || currentFreeCompanyId != GetCurrentFreeCompanyId())
+                throw new InvalidOperationException("Free Company changed during the purchase request.");
+            if (purchaseOperationId == null)
+            {
+                purchaseOperationId = Guid.NewGuid().ToString("N");
+                var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, uint, int, bool>("ADS.StartCompanyActionPurchase")
+                    .InvokeFunc(purchaseOperationId, SealSweetenerTwoCompanyActionId, buyMax);
+                if (!accepted)
+                {
+                    purchaseOperationId = null;
+                    var rejected = ReadAdsPurchaseStatus();
+                    throw new InvalidOperationException($"ADS rejected the company action purchase: {(string?)rejected["lastStartError"]}");
+                }
+                log.Information($"[FCBuff] ADS accepted {buyMax} Seal Sweetener II actions; awaiting exact action and credit deltas.");
+                return;
+            }
+            var status = ReadAdsPurchaseStatus();
+            if ((string?)status["operationId"] != purchaseOperationId || (bool?)status["companyAction"] != true ||
+                (uint?)status["itemId"] != SealSweetenerTwoCompanyActionId || (int?)status["requestedQuantity"] != buyMax)
+                throw new InvalidOperationException("ADS no longer reports the owned company action purchase; the request will not be repeated.");
+            if ((bool?)status["running"] == true) return;
+            if ((bool?)status["done"] != true || (bool?)status["succeeded"] != true || (int?)status["acquiredQuantity"] != buyMax)
+                throw new InvalidOperationException($"ADS company action acquisition failed: {(string?)status["statusMessage"]}");
+            purchaseOperationId = null;
+            resumeAfterPurchase = true;
+            reconciliationRequired = true;
+            SetState(FCBuffState.ClosingWindows);
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[FCBuff] {ex.Message}");
+            CancelOwnedPurchase();
+            SetState(FCBuffState.Failed);
+        }
+    }
+
+    private static JObject ReadAdsPurchaseStatus() => JObject.Parse(Plugin.PluginInterface
+        .GetIpcSubscriber<string>("ADS.GetShopPurchaseStatusJson").InvokeFunc());
+
+    private void CancelOwnedPurchase()
+    {
+        if (purchaseOperationId == null) return;
+        try { Plugin.PluginInterface.GetIpcSubscriber<string, bool>("ADS.CancelShopPurchase").InvokeFunc(purchaseOperationId); }
+        catch (Exception ex) { log.Warning($"[FCBuff] ADS purchase cancellation remains unresolved: {ex.Message}"); }
+    }
+
     private bool TrySelectLocalizedActivateEntry(out string detail)
     {
         detail = string.Empty;
@@ -1078,241 +705,6 @@ public class FCBuffService : IDisposable
         }
     }
 
-    private unsafe void TryHandlePurchaseConfirmation()
-    {
-        try
-        {
-            nint addonPtr = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
-            if (addonPtr == 0)
-                return;
-
-            var addon = (AddonSelectYesno*)addonPtr;
-            if (!addon->AtkUnitBase.IsVisible)
-                return;
-
-            var yesNo = new AddonMaster.SelectYesno(&addon->AtkUnitBase);
-            var expectedActionName = GetExpectedPurchaseActionName();
-            var expectedActionIndex = GetExpectedPurchaseActionIndex();
-
-            if (!TryReadPurchaseConfirmPrompt(yesNo, out var promptText, out var promptReadFailure))
-            {
-                HandleUnreadablePurchaseConfirmation(yesNo, expectedActionName, expectedActionIndex, promptReadFailure);
-                return;
-            }
-
-            if (promptText.Contains(expectedActionName, StringComparison.OrdinalIgnoreCase))
-            {
-                ConfirmPurchaseYes(yesNo, expectedActionName, expectedActionIndex, "validated text", promptText);
-                return;
-            }
-
-            log.Error($"[FCBuff] Purchase prompt mismatch. Expected '{expectedActionName}' index {expectedActionIndex}, got '{promptText}'. Clicking No and failing cleanup.");
-            try
-            {
-                yesNo.No();
-            }
-            catch (Exception noEx)
-            {
-                log.Warning($"[FCBuff] Failed to click No for mismatched purchase prompt: {noEx.Message}");
-            }
-
-            failAfterClosingWindows = true;
-            ResetPurchaseConfirmationState();
-            SetState(FCBuffState.ClosingWindows);
-            return;
-        }
-        catch (Exception ex)
-        {
-            HandleUnreadablePurchaseConfirmationWithoutAddonMaster(GetExpectedPurchaseActionName(), GetExpectedPurchaseActionIndex(), ex.Message);
-        }
-    }
-
-    private void TickTeleportArrival(double elapsedSeconds, ushort expectedTerritory, string destination)
-    {
-        if (elapsedSeconds < 1)
-            return;
-
-        var now = DateTime.UtcNow;
-        var settlementReady = IsTravelSettlementReady();
-        if (TryGetTravelSettlementDuration(expectedTerritory, now, out var settledFor))
-        {
-            if (settledFor >= TravelSettlementDuration)
-            {
-                log.Information($"[FCBuff] {destination} travel remained settled for {TravelSettlementDuration.TotalSeconds:F0}s; navigating to Quartermaster");
-                SetState(FCBuffState.NavigatingToQuartermaster);
-                return;
-            }
-
-            LogNavigationStatusThrottled(
-                $"[FCBuff] Waiting for {destination} travel settlement ({settledFor.TotalSeconds:F1}/{TravelSettlementDuration.TotalSeconds:F0}s)");
-            return;
-        }
-
-        var elapsed = TimeSpan.FromSeconds(elapsedSeconds);
-        if (elapsed >= FCBuffRecoveryPolicy.TeleportTimeout)
-        {
-            log.Error($"[FCBuff] Timed out waiting for {destination} after {elapsed.TotalSeconds:F0}s and {teleportRetryCount} retries");
-            SetState(FCBuffState.Failed);
-            return;
-        }
-
-        var sinceLastRetry = lastTeleportRetryAt == DateTime.MinValue
-            ? elapsed
-            : now - lastTeleportRetryAt;
-        if (settlementReady
-            && FCBuffRecoveryPolicy.ShouldRetryTeleport(elapsed, sinceLastRetry, teleportRetryCount))
-        {
-            teleportRetryCount++;
-            lastTeleportRetryAt = now;
-            log.Warning($"[FCBuff] Retrying teleport to {destination} ({teleportRetryCount}/{FCBuffRecoveryPolicy.MaxTeleportRetries})");
-            CommandHelper.SendCommand("/li gc");
-            return;
-        }
-
-        LogNavigationStatusThrottled($"[FCBuff] Waiting for {destination} arrival ({elapsed.TotalSeconds:F0}s, retries {teleportRetryCount}/{FCBuffRecoveryPolicy.MaxTeleportRetries})");
-    }
-
-    private bool IsTravelSettlementReady()
-        => !condition[ConditionFlag.BetweenAreas]
-           && !condition[ConditionFlag.BetweenAreas51]
-           && objects.LocalPlayer != null
-           && !plugin.LifestreamIPC.IsBusy();
-
-    private bool TryGetTravelSettlementDuration(
-        ushort expectedTerritory,
-        DateTime now,
-        out TimeSpan settledFor)
-    {
-        if (clientState.TerritoryType != expectedTerritory || !IsTravelSettlementReady())
-        {
-            travelSettlementStartedAt = DateTime.MinValue;
-            settledFor = TimeSpan.Zero;
-            return false;
-        }
-
-        if (travelSettlementStartedAt == DateTime.MinValue)
-            travelSettlementStartedAt = now;
-
-        settledFor = now - travelSettlementStartedAt;
-        return true;
-    }
-
-    private string GetExpectedPurchaseActionName() => isSealSweetenerTwo ? "Seal Sweetener II" : "Seal Sweetener I";
-
-    private uint GetExpectedPurchaseActionIndex() => isSealSweetenerTwo ? 22u : 5u;
-
-    private bool TryReadPurchaseConfirmPrompt(AddonMaster.SelectYesno yesNo, out string promptText, out string failureReason)
-    {
-        promptText = string.Empty;
-        failureReason = string.Empty;
-
-        try
-        {
-            promptText = NormalizeAddonText(yesNo.Text);
-            if (!string.IsNullOrWhiteSpace(promptText))
-                return true;
-
-            failureReason = "prompt text was empty";
-            return false;
-        }
-        catch (Exception ex)
-        {
-            failureReason = ex.Message;
-            return false;
-        }
-    }
-
-    private void HandleUnreadablePurchaseConfirmation(
-        AddonMaster.SelectYesno yesNo,
-        string expectedActionName,
-        uint expectedActionIndex,
-        string failureReason)
-    {
-        var now = DateTime.UtcNow;
-        purchaseConfirmPromptReadFailureCount++;
-        if (firstPurchaseConfirmPromptReadFailureAt == DateTime.MinValue)
-            firstPurchaseConfirmPromptReadFailureAt = now;
-
-        if (now - lastPurchaseConfirmPromptReadLogAt >= PurchaseConfirmPromptReadLogThrottle)
-        {
-            lastPurchaseConfirmPromptReadLogAt = now;
-            log.Warning($"[FCBuff] Purchase confirmation prompt unreadable for expected '{expectedActionName}' index {expectedActionIndex}; readFailures={purchaseConfirmPromptReadFailureCount}/{MaxPurchaseConfirmPromptReadRetries}; reason='{failureReason}'");
-        }
-
-        if (!CanUseGuardedPurchaseConfirmYes(now))
-            return;
-
-        log.Warning($"[FCBuff] Confirming purchase for {expectedActionName} index {expectedActionIndex} via guarded fallback after unreadable SelectYesno prompt; readFailures={purchaseConfirmPromptReadFailureCount}, elapsed={(now - stateEnteredAt).TotalSeconds:F1}s");
-
-        ConfirmPurchaseYes(yesNo, expectedActionName, expectedActionIndex, "guarded fallback", $"unreadable: {failureReason}");
-    }
-
-    private void HandleUnreadablePurchaseConfirmationWithoutAddonMaster(
-        string expectedActionName,
-        uint expectedActionIndex,
-        string failureReason)
-    {
-        var now = DateTime.UtcNow;
-        purchaseConfirmPromptReadFailureCount++;
-        if (firstPurchaseConfirmPromptReadFailureAt == DateTime.MinValue)
-            firstPurchaseConfirmPromptReadFailureAt = now;
-
-        if (now - lastPurchaseConfirmPromptReadLogAt >= PurchaseConfirmPromptReadLogThrottle)
-        {
-            lastPurchaseConfirmPromptReadLogAt = now;
-            log.Warning($"[FCBuff] Purchase confirmation prompt unreadable before addon master was ready for expected '{expectedActionName}' index {expectedActionIndex}; readFailures={purchaseConfirmPromptReadFailureCount}/{MaxPurchaseConfirmPromptReadRetries}; reason='{failureReason}'");
-        }
-
-        if (!CanUseGuardedPurchaseConfirmYes(now))
-            return;
-
-        log.Warning($"[FCBuff] Confirming purchase for {expectedActionName} index {expectedActionIndex} via guarded fallback after SelectYesno read exception; readFailures={purchaseConfirmPromptReadFailureCount}, elapsed={(now - stateEnteredAt).TotalSeconds:F1}s");
-
-        if (GameHelpers.ClickYesIfVisible())
-        {
-            buyCount++;
-            ResetPurchaseConfirmationState();
-            SetState(FCBuffState.PurchasingBuff);
-            return;
-        }
-
-        log.Warning($"[FCBuff] Guarded purchase confirmation Yes click failed for {expectedActionName} index {expectedActionIndex}; will keep waiting within timeout.");
-    }
-
-    private bool CanUseGuardedPurchaseConfirmYes(DateTime now)
-    {
-        if (state != FCBuffState.WaitingForPurchaseConfirm)
-            return false;
-
-        if (buyCount >= buyMax)
-            return false;
-
-        if (purchaseCallbackFiredAt == DateTime.MinValue)
-            return false;
-
-        if (!GameHelpers.IsAddonVisible("FreeCompanyExchange"))
-            return false;
-
-        if (purchaseConfirmPromptReadFailureCount < MaxPurchaseConfirmPromptReadRetries)
-            return false;
-
-        return now - firstPurchaseConfirmPromptReadFailureAt >= PurchaseConfirmPromptFallbackDelay;
-    }
-
-    private void ConfirmPurchaseYes(
-        AddonMaster.SelectYesno yesNo,
-        string expectedActionName,
-        uint expectedActionIndex,
-        string confirmationSource,
-        string promptText)
-    {
-        log.Information($"[FCBuff] Confirming purchase prompt for {expectedActionName} index {expectedActionIndex} via {confirmationSource}: '{promptText}'");
-        yesNo.Yes();
-        buyCount++;
-        ResetPurchaseConfirmationState();
-        SetState(FCBuffState.PurchasingBuff);
-    }
-
     private unsafe void TickClosingWindows(double elapsed)
     {
         if (elapsed < 0.25)
@@ -1365,20 +757,6 @@ public class FCBuffService : IDisposable
             return;
         }
 
-        if (now - windowCloseTargetStartedAt > WindowCloseEscapeFallbackDelay)
-        {
-            log.Warning($"[FCBuff] Callback cleanup fallback for {closeTarget}. Pressing Escape.");
-            GameHelpers.CloseCurrentAddon();
-            return;
-        }
-
-        if (closeTarget == "FreeCompanyExchange")
-        {
-            log.Information("[FCBuff] Closing FreeCompanyExchange with callback true -1");
-            GameHelpers.FireAddonCallback("FreeCompanyExchange", true, -1);
-            return;
-        }
-
         log.Information($"[FCBuff] Closing {closeTarget} with callback true -1");
         GameHelpers.FireAddonCallback(closeTarget, true, -1);
     }
@@ -1428,8 +806,6 @@ public class FCBuffService : IDisposable
         if (GameHelpers.IsAddonVisible("SelectYesno"))
             return "SelectYesno";
 
-        if (GameHelpers.IsAddonVisible("FreeCompanyExchange"))
-            return "FreeCompanyExchange";
 
         return FcCallbackCloseAddonNames.FirstOrDefault(GameHelpers.IsAddonVisible);
     }
@@ -1630,7 +1006,7 @@ public class FCBuffService : IDisposable
         log.Information($"[FCBuff] {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
-        lastNavigationLogTime = DateTime.MinValue;
+
 
         if (newState == FCBuffState.ClosingWindows)
         {
@@ -1640,38 +1016,11 @@ public class FCBuffService : IDisposable
         if (newState == FCBuffState.Idle || newState == FCBuffState.Complete || newState == FCBuffState.Failed)
         {
             ReleaseOwnedYesAlreadyPause($"state {newState}");
-            ResetCachedGCTerritory();
+    
             ResetWindowCloseTracking();
             failAfterClosingWindows = false;
         }
         
-        // Reset pathfinding retry counter when starting navigation
-        if (newState == FCBuffState.NavigatingToQuartermaster)
-        {
-            pathRetryCount = 0;
-            lastPathRetryTime = DateTime.MinValue;
-            log.Debug("[FCBuff] Reset pathfinding retry counters for navigation start");
-        }
-
-        if (newState == FCBuffState.NavigatingToGC)
-        {
-            teleportRetryCount = 0;
-            lastTeleportRetryAt = DateTime.MinValue;
-            travelSettlementStartedAt = DateTime.MinValue;
-        }
-    }
-
-    private void LogNavigationStatusThrottled(string message, bool debug = false)
-    {
-        var now = DateTime.UtcNow;
-        if (now - lastNavigationLogTime < NavigationLogThrottle)
-            return;
-
-        lastNavigationLogTime = now;
-        if (debug)
-            log.Debug(message);
-        else
-            log.Information(message);
     }
 
     private bool TryAcquireManualYesAlreadyPause()
@@ -1699,14 +1048,6 @@ public class FCBuffService : IDisposable
             log.Information($"[FCBuff] Released the owned YesAlready pause during {reason}.");
     }
 
-    private void ResetPurchaseConfirmationState()
-    {
-        purchaseCallbackFiredAt = DateTime.MinValue;
-        purchaseConfirmPromptReadFailureCount = 0;
-        firstPurchaseConfirmPromptReadFailureAt = DateTime.MinValue;
-        lastPurchaseConfirmPromptReadLogAt = DateTime.MinValue;
-    }
-
     private void ResetWindowCloseTracking()
     {
         lastWindowCloseAttemptAt = DateTime.MinValue;
@@ -1715,8 +1056,4 @@ public class FCBuffService : IDisposable
         windowCloseTargetName = null;
     }
 
-    private void ResetCachedGCTerritory()
-    {
-        cachedGCTerritory = null;
-    }
 }

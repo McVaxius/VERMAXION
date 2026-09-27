@@ -7,8 +7,6 @@ using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using NativeFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 using QuestManager = FFXIVClientStructs.FFXIV.Client.Game.QuestManager;
-using ActionManager = FFXIVClientStructs.FFXIV.Client.Game.ActionManager;
-using ActionType = FFXIVClientStructs.FFXIV.Client.Game.ActionType;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Enums;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -321,31 +319,6 @@ internal static unsafe class VerminionGameInteraction
         return Plugin.PlayerState.IsLoaded && ui != null ? ui->IsCompanionUnlocked(minion) : null;
     }
 
-    public const uint MinionTraderId = 1011595;
-
-    public static bool IsMinionVendor(VerminionVendorMinion offer, Dalamud.Game.ClientState.Objects.Types.IGameObject? vendor)
-        => Plugin.ClientState.TerritoryType == offer.Territory && vendor != null &&
-            (offer.MinionId == 26
-                ? vendor is Dalamud.Game.ClientState.Objects.Types.IBattleNpc npc && npc.NameId == 1237
-                : vendor.BaseId == MinionTraderId);
-
-    public static Dalamud.Game.ClientState.Objects.Types.IGameObject? FindMinionVendor(VerminionVendorMinion offer)
-        => Plugin.ObjectTable.FirstOrDefault(obj => IsMinionVendor(offer, obj) && obj.IsTargetable);
-
-    public static bool HasNonoroonFlightAccess()
-    {
-        var player = FFXIVClientStructs.FFXIV.Client.Game.UI.PlayerState.Instance();
-        return player != null && player->IsAetherCurrentZoneComplete(19);
-    }
-
-    public static bool TryUseVendorTravelAction(uint action)
-    {
-        if (Plugin.ClientState.TerritoryType != 139 || action is not (2 or 9 or 23)) return false;
-        var manager = ActionManager.Instance();
-        return manager != null && manager->GetActionStatus(ActionType.GeneralAction, action) == 0 &&
-            manager->UseAction(ActionType.GeneralAction, action);
-    }
-
     public static bool TryReadOwnedMinions(out ushort[] owned)
     {
         owned = [];
@@ -357,7 +330,7 @@ internal static unsafe class VerminionGameInteraction
         return true;
     }
 
-    public static bool TryReadPurchaseInventory(uint itemId, out uint gil, out uint mgp, out uint count)
+    public static bool TryReadMinionInventory(uint itemId, out uint gil, out uint mgp, out uint count)
     {
         gil = mgp = count = 0;
         var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
@@ -378,157 +351,6 @@ internal static unsafe class VerminionGameInteraction
         mgp = (uint)inventory->GetInventoryItemCount(29);
         count = (uint)inventory->GetInventoryItemCount(itemId);
         return true;
-    }
-
-    public static bool TryReadMinionOffer(VerminionVendorMinion offer, out int index, out uint price)
-    {
-        index = -1;
-        price = 0;
-        if (!IsMinionVendor(offer, Plugin.TargetManager.Target) ||
-            !GameHelpers.IsAddonVisible(offer.Shop) || (offer.Gil == 0) == (offer.Mgp == 0)) return false;
-        if (!Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(offer.ItemId, out var itemRow) ||
-            itemRow.ItemAction.Value.Data[0] != offer.MinionId) return false;
-        if (offer.Mgp > 0) return TryReadMgpMinionOffer(offer, out index, out price);
-        var handle = Plugin.GameGui.GetAddonByName("Shop");
-        if (handle.IsNull || !handle.IsReady) return false;
-        var addon = (AtkUnitBase*)handle.Address;
-        // Basic gil shops use the Shop addon arrays, not AgentShop's exchange
-        // arrays. The item/price mapping matches ECommons AddonMaster.Shop.
-        if (addon->AtkValues == null || addon->AtkValuesCount < 442 ||
-            addon->AtkValues[1].Type != AtkValueType.UInt || addon->AtkValues[1].UInt != 0 ||
-            addon->AtkValues[2].Type != AtkValueType.UInt) return false;
-        var count = addon->AtkValues[2].UInt;
-        if (count is < 1 or > 61 || addon->AtkValuesCount < 441 + count) return false;
-        for (var i = 0; i < count; ++i)
-        {
-            var item = addon->AtkValues[441 + i];
-            if (item.Type != AtkValueType.UInt || item.UInt != offer.ItemId) continue;
-            var cost = addon->AtkValues[75 + i];
-            var name = addon->AtkValues[14 + i];
-            if (cost.Type != AtkValueType.UInt || cost.UInt != offer.Gil ||
-                name.Type is not (AtkValueType.String or AtkValueType.ManagedString) || !name.String.HasValue ||
-                Dalamud.Memory.MemoryHelper.ReadSeStringNullTerminated(new nint(name.String)).TextValue.Trim() != offer.Name) return false;
-            index = i;
-            price = cost.UInt;
-            Plugin.Log.Information($"[VerminionControl] verified gil shop offer: row={index}; item={item.UInt}; price={price}; name={offer.Name}");
-            return true;
-        }
-        return false;
-    }
-
-    private static bool TryReadMgpMinionOffer(VerminionVendorMinion offer, out int index, out uint price)
-    {
-        index = -1;
-        price = 0;
-        var handle = Plugin.GameGui.GetAddonByName(offer.Shop);
-        if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
-        var addon = (AtkUnitBase*)handle.Address;
-        // ECommons AddonMaster.ShopExchangeCurrency's basic currency layout.
-        // Match the actual MGP icon/balance, item, and exact price before use.
-        if (addon->AtkValues == null || addon->AtkValuesCount < 1311 ||
-            addon->AtkValues[4].Type != AtkValueType.UInt || addon->AtkValues[4].UInt is < 1 or > 122 ||
-            addon->AtkValuesCount < 1310 + addon->AtkValues[4].UInt ||
-            addon->AtkValues[86].Type != AtkValueType.UInt || addon->AtkValues[87].Type != AtkValueType.Int ||
-            !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(29, out var currency) ||
-            addon->AtkValues[87].Int != currency.Icon ||
-            !TryReadPurchaseInventory(offer.ItemId, out _, out var balance, out _) || addon->AtkValues[86].UInt != balance ||
-            !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(offer.ItemId, out var itemRow) ||
-            itemRow.Name.ToString() != offer.Name || itemRow.ItemAction.Value.Data[0] != offer.MinionId) return false;
-        for (var i = 0; i < addon->AtkValues[4].UInt; ++i)
-        {
-            var item = addon->AtkValues[1066 + i];
-            if (item.Type != AtkValueType.UInt || item.UInt != offer.ItemId) continue;
-            var cost = addon->AtkValues[456 + i];
-            var entry = addon->AtkValues[1310 + i];
-            if (cost.Type != AtkValueType.UInt || cost.UInt != offer.Mgp ||
-                entry.Type != AtkValueType.UInt || entry.UInt > 1000) return false;
-            index = (int)entry.UInt;
-            price = cost.UInt;
-            Plugin.Log.Information($"[VerminionControl] verified MGP shop offer: row={i}; callbackIndex={index}; item={item.UInt}; price={price}; balance={balance}; name={offer.Name}");
-            return true;
-        }
-        return false;
-    }
-
-    public static bool IsMinionPurchaseConfirmation(VerminionVendorMinion offer)
-    {
-        if (!IsMinionVendor(offer, Plugin.TargetManager.Target)) return false;
-        if (offer.Mgp > 0)
-        {
-            var handle = Plugin.GameGui.GetAddonByName("SelectYesno");
-            if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
-            var addon = (AtkUnitBase*)handle.Address;
-            if (addon->AtkValues == null || addon->AtkValuesCount <= 15 ||
-                addon->AtkValues[14].Type != AtkValueType.UInt || addon->AtkValues[14].UInt != offer.ItemId) return false;
-            var prompt = addon->AtkValues[0];
-            var name = addon->AtkValues[15];
-            if (prompt.Type is not (AtkValueType.String or AtkValueType.ManagedString) || !prompt.String.HasValue ||
-                name.Type is not (AtkValueType.String or AtkValueType.ManagedString) || !name.String.HasValue ||
-                Dalamud.Memory.MemoryHelper.ReadSeStringNullTerminated(new nint(name.String)).TextValue != offer.Name ||
-                Dalamud.Memory.MemoryHelper.ReadSeStringNullTerminated(new nint(prompt.String)).TextValue.Replace(",", string.Empty) !=
-                    $"Exchange {offer.Mgp} MGP for the following item?") return false;
-            // The observed quantity is in SelectYesno/3/2/7. Item/price alone
-            // must not confirm a different quantity of the requested minion.
-            var panel = addon->GetNodeById(3);
-            var quantityPanel = FindConfirmationChild(panel, 2);
-            var quantity = FindConfirmationChild(quantityPanel, 7);
-            return IsVisibleThroughParents(quantity) && quantity->Type == NodeType.Text &&
-                quantity->GetAsAtkTextNode()->NodeText.ToString() == "1";
-        }
-        return GameHelpers.TryGetAddonText("SelectYesno", 2, out var gilPrompt) &&
-            gilPrompt.StartsWith("Purchase 1 ", StringComparison.Ordinal) &&
-            gilPrompt.Contains(offer.Name, StringComparison.OrdinalIgnoreCase) &&
-            System.Text.RegularExpressions.Regex.IsMatch(gilPrompt.Replace(",", string.Empty),
-                @"(?<!\d)" + offer.Gil.ToString(System.Globalization.CultureInfo.InvariantCulture) + @"(?!\d)\s*gil", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    }
-
-    private static AtkResNode* FindConfirmationChild(AtkResNode* parent, uint id)
-    {
-        if (!IsVisibleThroughParents(parent) || (ushort)parent->Type < 1000) return null;
-        var component = parent->GetAsAtkComponentNode()->Component;
-        if (component == null || component->UldManager.NodeList == null || component->UldManager.NodeListCount > 512) return null;
-        for (var i = 0; i < component->UldManager.NodeListCount; ++i)
-        {
-            var child = component->UldManager.NodeList[i];
-            if (child != null && child->NodeId == id) return child;
-        }
-        return null;
-    }
-
-    public static void CaptureMinionShop()
-    {
-        var vendor = Plugin.TargetManager.Target;
-        Plugin.Log.Information($"[VerminionControl] minion shop snapshot: position={Plugin.ObjectTable.LocalPlayer?.Position}; vendor={vendor?.Position}; target={Plugin.TargetManager.Target?.BaseId}; available={GameHelpers.IsPlayerAvailable()}; setupMenu={IsSetupMenu}");
-        foreach (var name in new[] { "SelectString", "SelectIconString", "Shop", "ShopExchangeCurrency", "SelectYesno", "Talk" }) CaptureAddon(name);
-        var exchange = Plugin.GameGui.GetAddonByName("ShopExchangeCurrency");
-        if (!exchange.IsNull && exchange.IsReady && exchange.IsVisible)
-        {
-            var addon = (AtkUnitBase*)exchange.Address;
-            if (addon->AtkValues != null && addon->AtkValuesCount >= 1311 && addon->AtkValues[4].Type == AtkValueType.UInt &&
-                addon->AtkValues[4].UInt is >= 1 and <= 122 && addon->AtkValuesCount >= 1310 + addon->AtkValues[4].UInt)
-                for (var i = 0; i < Math.Min(addon->AtkValues[4].UInt, 16); ++i)
-                    Plugin.Log.Information($"[VerminionControl] MGP shop row={i}; item={addon->AtkValues[1066 + i].UInt}; itemType={addon->AtkValues[1066 + i].Type}; price={addon->AtkValues[456 + i].UInt}; priceType={addon->AtkValues[456 + i].Type}; index={addon->AtkValues[1310 + i].UInt}; indexType={addon->AtkValues[1310 + i].Type}");
-        }
-        var handle = Plugin.GameGui.GetAddonByName("Shop");
-        if (!handle.IsNull && handle.IsReady && handle.IsVisible)
-        {
-            var addon = (AtkUnitBase*)handle.Address;
-            if (addon->AtkValues != null && addon->AtkValuesCount >= 442 && addon->AtkValues[2].Type == AtkValueType.UInt &&
-                addon->AtkValues[2].UInt is >= 1 and <= 61 && addon->AtkValuesCount >= 441 + addon->AtkValues[2].UInt)
-                for (var i = 0; i < Math.Min(addon->AtkValues[2].UInt, 10); ++i)
-                    Plugin.Log.Information($"[VerminionControl] gil shop row={i}; item={addon->AtkValues[441 + i].UInt}; itemType={addon->AtkValues[441 + i].Type}; price={addon->AtkValues[75 + i].UInt}; priceType={addon->AtkValues[75 + i].Type}");
-        }
-        var shop = AgentShop.Instance();
-        if (shop == null || !shop->IsAgentActive()) return;
-        Plugin.Log.Information($"[VerminionControl] shop receives={shop->ItemReceiveCount}; costs={shop->ItemCostCount}");
-        if (shop->ItemReceive == null || shop->ItemCost == null || shop->ItemReceiveCount is < 1 or > 100 ||
-            shop->ItemCostCount != shop->ItemReceiveCount * 3) return;
-        for (var i = 0; i < Math.Min(shop->ItemReceiveCount, 10); ++i)
-        {
-            var received = shop->ItemReceive + i;
-            var cost = shop->ItemCost + i * 3;
-            Plugin.Log.Information($"[VerminionControl] shop row={i}; item={received->ItemId}; count={received->ItemCount}; currency={cost->ItemId}; price={cost->ItemCount}; otherCosts={cost[1].ItemCount},{cost[2].ItemCount}");
-        }
     }
 
     public static bool PrepareOwnedMinion(ushort minion)
@@ -1178,7 +1000,7 @@ internal static unsafe class VerminionGameInteraction
             p.InternalName is "WigglyQuest" or "Questionable" or "ADS" or "dad" or "FrenRider" or "BossMod" or "BossModReborn" or "RotationSolver").Select(p => p.InternalName);
         Plugin.Log.Information($"[VerminionControl] acquisition level={localPlayer?.Level}; unsyncedLevel={ReadUnsyncedJobLevel()}; job={localPlayer?.ClassJob.RowId}; providers={string.Join(',', providers)}");
 #endif
-        if (TryReadPurchaseInventory(VerminionRoster.MammetOffer.ItemId, out var gil, out var mgp, out var mammetItems))
+        if (TryReadMinionInventory(VerminionRoster.MammetOffer.ItemId, out var gil, out var mgp, out var mammetItems))
             Plugin.Log.Information($"[VerminionControl] purchase funds gil={gil}; mgp={mgp}; mammetItems={mammetItems}");
         foreach (var quest in Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Quest>())
             if (quest.Name.ToString() is "It Could Happen to You" or "World of Wonders" or "Rising to the Challenge")

@@ -1284,7 +1284,7 @@ public class ConfigWindow : Window, IDisposable
                 DrawDefaultOverrideButton(isDefault, configManager, "VendorStockGrade8DarkMatterTarget", "Grade 8 Dark Matter target",
                     (source, target) => target.VendorStockGrade8DarkMatterTarget = source.VendorStockGrade8DarkMatterTarget);
 
-                ImGui.TextDisabled("Gridania: Maisenta for Gysahl Greens. Khetto's Amphitheatre: Alaric for Grade 8 Dark Matter.");
+                ImGui.TextDisabled("ADS selects the vendor route and buys only the missing stock. Requires ADS shop purchasing.");
                 ImGui.Unindent();
             }
 

@@ -60,7 +60,7 @@ public sealed partial class VerminionService
                 throw new InvalidOperationException("The current job does not meet the acquisition quest's level requirement, or its level is unavailable.");
             if (Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{provider}.IsQuestLocked").InvokeFunc(first.ToString()))
                 throw new InvalidOperationException($"{quest.Name} is locked. Complete its existing level/MSQ prerequisites first.");
-            if (!VerminionGameInteraction.TryReadPurchaseInventory(VerminionRoster.MammetOffer.ItemId, out var gil, out _, out _) ||
+            if (!VerminionGameInteraction.TryReadMinionInventory(VerminionRoster.MammetOffer.ItemId, out var gil, out _, out _) ||
                 gil < config.VerminionGilReserve + 1000UL)
                 throw new InvalidOperationException("Quest travel needs at least 1,000 gil above the configured minimum balance.");
 

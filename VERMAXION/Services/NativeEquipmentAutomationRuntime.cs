@@ -202,6 +202,11 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
     {
         if (!CanStartNativeEquipment(out _))
             return false;
+        return TryConfirmReadyGearsetChangePrompt();
+    }
+
+    private bool TryConfirmReadyGearsetChangePrompt()
+    {
         try
         {
             nint addonAddress = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
@@ -213,12 +218,12 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
                 return false;
 
             new AddonMaster.SelectYesno(&addon->AtkUnitBase).Yes();
-            log.Information("[Equipment] Confirmed ready SelectYesno during owned native gearset-change window.");
+            log.Information("[Equipment] Confirmed ready SelectYesno during owned gearset-change window.");
             return true;
         }
         catch (Exception ex)
         {
-            log.Warning($"[Equipment] Native gearset confirmation check failed: {ex.Message}");
+            log.Warning($"[Equipment] Gearset confirmation check failed: {ex.Message}");
             return false;
         }
     }
@@ -282,7 +287,10 @@ internal sealed unsafe class NativeEquipmentAutomationRuntime : IEquipmentAutoma
             return StylistGearsetUpdateProgress.Failed;
         }
         if (busy)
+        {
+            TryConfirmReadyGearsetChangePrompt();
             return StylistGearsetUpdateProgress.Pending;
+        }
 
         stylistUpdateActive = false;
         error = string.Empty;

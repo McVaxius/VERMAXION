@@ -1,4 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace VERMAXION.Models;
 
@@ -12,7 +16,7 @@ internal enum JumboPurchaseUiEvidence
 {
     None,
     PurchaseInput,
-    CurrentTicketsAlreadyOwned,
+    RewardList,
 }
 
 internal enum JumboPayoutCompletionAction
@@ -73,7 +77,10 @@ internal static class JumboCactpotRoutingPolicy
         if (unclaimedTickets > 0)
         {
             if (payoutAvailableAt != DateTime.MinValue && now < payoutAvailableAt)
-                return new JumboCactpotRouteDecision(JumboCactpotRoute.Wait, null, purchaseDue);
+                return new JumboCactpotRouteDecision(
+                    purchaseDue && unclaimedTickets < 3 ? JumboCactpotRoute.Broker : JumboCactpotRoute.Wait,
+                    null,
+                    purchaseDue);
 
             return new JumboCactpotRouteDecision(
                 scheduledPayoutWindow
@@ -82,9 +89,6 @@ internal static class JumboCactpotRoutingPolicy
                 unclaimedTickets,
                 purchaseDue);
         }
-
-        if (scheduledPayoutWindow)
-            return new JumboCactpotRouteDecision(JumboCactpotRoute.Wait, null, purchaseDue);
 
         return new JumboCactpotRouteDecision(
             purchaseDue ? JumboCactpotRoute.Broker : JumboCactpotRoute.Wait,
@@ -174,7 +178,7 @@ internal static class JumboCactpotRecoveryPolicy
             return JumboPurchaseUiEvidence.PurchaseInput;
 
         return rewardListVisible
-            ? JumboPurchaseUiEvidence.CurrentTicketsAlreadyOwned
+            ? JumboPurchaseUiEvidence.RewardList
             : JumboPurchaseUiEvidence.None;
     }
 
@@ -192,9 +196,86 @@ internal static class JumboCactpotRecoveryPolicy
             : JumboPayoutCompletionAction.CompleteScheduledPayout;
     }
 
-    public static bool CanCompletePurchase(bool currentTicketsAlreadyOwned, int verifiedPurchases, int expectedPurchases)
+    public static bool CanCompletePurchase(int? startingTicketCount, int verifiedPurchases)
     {
-        return currentTicketsAlreadyOwned ||
-               (expectedPurchases > 0 && verifiedPurchases >= expectedPurchases);
+        return startingTicketCount is >= 0 and <= 3 &&
+               verifiedPurchases >= 0 && startingTicketCount + verifiedPurchases == 3;
+    }
+}
+
+// Run-local progress. Saved payout counts do not establish current-drawing ownership.
+internal sealed class JumboCactpotPurchaseProgress
+{
+    private static readonly Regex OwnedNumberTextRegex = new(
+        @"^(?:Your Number: \[(?<number>[0-9]{4})\]|Your Numbers: \[(?<number>[0-9]{4})\] \[(?<number>[0-9]{4})\])$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private readonly List<int> ownedNumbers;
+    public int StartingTicketCount { get; }
+    public int ExpectedPurchases => 3 - StartingTicketCount;
+    public int VerifiedPurchases => ownedNumbers.Count - StartingTicketCount;
+    public int? PendingNumber { get; private set; }
+    public bool IsComplete => JumboCactpotRecoveryPolicy.CanCompletePurchase(StartingTicketCount, VerifiedPurchases);
+
+    // Addon 9307, LotteryWeeklyInput value 6. A ready input has room for another
+    // ticket, so this field contains zero, one or two current-drawing numbers.
+    // A null/unreadable field must never be interpreted as an empty ticket list.
+    public static bool TryReadOwnedNumberText(string? text, out int[] numbers)
+    {
+        numbers = [];
+        if (text == null)
+            return false;
+        if (text.Length == 0)
+            return true;
+
+        var match = OwnedNumberTextRegex.Match(text.Trim());
+        if (!match.Success)
+            return false;
+
+        numbers = match.Groups["number"].Captures
+            .Select(capture => int.Parse(capture.Value, CultureInfo.InvariantCulture)).ToArray();
+        return true;
+    }
+
+    public bool MatchesOwnedNumbers(IReadOnlyList<int> numbers)
+        => ownedNumbers.Order().SequenceEqual(numbers.Order());
+
+    public JumboCactpotPurchaseProgress(IReadOnlyList<int> currentCycleNumbers)
+    {
+        if (currentCycleNumbers.Count > 3 || currentCycleNumbers.Any(number => number is < 0 or > 9999))
+            throw new ArgumentException("Invalid current-cycle Jumbo tickets.", nameof(currentCycleNumbers));
+
+        ownedNumbers = new List<int>(currentCycleNumbers);
+        StartingTicketCount = currentCycleNumbers.Count;
+    }
+
+    public int? PrepareNumber(JumboCactpotNumberMode mode, int fixedNumber, Random random)
+    {
+        if (IsComplete || PendingNumber.HasValue)
+            return PendingNumber;
+
+        if (mode == JumboCactpotNumberMode.Fixed)
+            return PendingNumber = Math.Clamp(fixedNumber, 0, 9999);
+
+        // Pick uniformly from the unused numbers without repeatedly drawing duplicates.
+        var excluded = ownedNumbers.Distinct().Order().ToArray();
+        var number = random.Next(10000 - excluded.Length);
+        foreach (var owned in excluded)
+        {
+            if (owned <= number)
+                number++;
+        }
+
+        return PendingNumber = number;
+    }
+
+    public bool RecordPurchase(int number)
+    {
+        if (IsComplete || PendingNumber != number)
+            return false;
+
+        ownedNumbers.Add(number);
+        PendingNumber = null;
+        return true;
     }
 }

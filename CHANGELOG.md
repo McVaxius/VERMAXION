@@ -1,8 +1,17 @@
 # VERMAXION Changelog
 
+## Unreleased - Jumbo Cactpot purchase fixes
+
+- Route overdue ticket purchases to the broker when no payouts remain, including during the payout window, so partial purchases can resume instead of being marked not due.
+- Recognize purchase receipts at any MGP price, preserving four-digit numbers and requiring system-message metadata. Advance only after a matching receipt and handle the native next-ticket prompt.
+- Read current-drawing numbers from the ready purchase input and buy only missing tickets. Random mode excludes existing and newly purchased numbers, keeping each choice stable until its receipt; Fixed mode still permits repeated numbers.
+- Leave unreadable ownership and reward-list-only results incomplete with a clear reason. Existing payout counts and closed confirmation windows cannot establish current-cycle completion. Live verification remains pending.
+
 ## Unreleased - Verminion CPU bot (in progress)
 
-- Add Baby Bat to capped minion acquisition through Junkmonger Nonoroon in Upper La Noscea. Reuse travel, native flight controls and the existing purchase receipt checks; require existing flight access and stop if the vendor is absent. Correct the acquisition hint: nearby FATEs temporarily remove the vendor. Travel and purchase remain pending live verification.
+- Delegate Gysahl Greens, Dark Matter and Versatile Lure stocking to ADS's existing purchase runner. Vermaxion only requests missing quantities, observes the matching result and cancels its owned request; remove its vendor navigation, NPC interaction, shop callbacks and UI cleanup.
+- Delegate minion vendor acquisition exclusively to ADS. Remove direct vendor travel, targeting, shop callbacks and confirmations from Verminion; retain its character budget, receipt accounting and inventory registration. The correlated guarded handoff is under validation.
+- Request required vendor minions through ADS after inventory registration, before unnecessary return travel to the Saucer. Add Baby Bat to capped acquisition; ADS discovers and visits Junkmonger Nonoroon in Upper La Noscea, where nearby FATEs can temporarily remove him. Travel and purchase remain pending live verification.
 - Verify fresh uninterrupted clears of challenges 1-5 on the current test character and remove the temporary first-three replay path. Challenge 6 correctly stops before admission when Baby Bat is missing.
 - Select a registered minion from an occupied palette slot for tutorial briefing summons. Empty slots and stale entries for unowned minions cannot progress the tutorial. Reloading an active tutorial reads its current instruction instead of waiting for a new one before acting. Runtime revalidation is in progress.
 - Skip dead or obscured hatchlings when selecting an individual tutorial unit, so a candidate hidden by the top UI does not prevent selecting a visible one for its special action.
@@ -125,6 +134,10 @@
 ## Unreleased - I388 FC Buff Refill stock count
 
 - Count only current FC action list entries so stale row text cannot inflate Seal Sweetener II stock or shorten a refill. Accept an empty list as zero stock, fail unreadable current entries, and preserve activation row indices.
+
+## Unreleased - I417 Stylist replacement-equipment confirmation
+
+- Accept the ready OK/Cancel prompt while polling a VERMAXION-started Stylist update so Stylist can finish saving the gearset; preserve native equipment's busy protection and existing update timing.
 
 ## Unreleased - I384 Current Job Equipment after Stylist
 

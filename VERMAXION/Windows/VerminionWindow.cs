@@ -101,10 +101,13 @@ internal sealed class VerminionWindow : Window
         { config.VerminionMgpPurchaseCap = (uint)Math.Max(0, mgp); changed = true; }
         if (ImGui.InputInt("Minimum gil balance##Verminion", ref reserve))
         { config.VerminionGilReserve = (uint)Math.Max(0, reserve); changed = true; }
-        ImGui.TextWrapped("Each gil purchase must leave the minimum balance. Setup, purchase submission and confirmation all recheck it against current funds.");
-        ImGui.TextWrapped($"Spent on this character: {config.VerminionProgress.GilSpent:N0}/{config.VerminionGilPurchaseCap:N0} gil; {config.VerminionProgress.MgpSpent:N0}/{config.VerminionMgpPurchaseCap:N0} MGP. Caps are cumulative and do not reset weekly. Zero prevents purchases. The Minion Trader's three basic gil minions, Nero (30,000 MGP) and Zu Hatchling (10,000 MGP) are supported. Mammet #001, Wayward Hatchling, Nero and Zu Hatchling have verified live purchases.");
+        ImGui.TextWrapped("ADS handles every vendor purchase, including travel and menus. Its guarded purchase API is required. Each gil purchase must leave the minimum balance; the saved cap and current funds are checked before ADS submits or confirms it.");
+        ImGui.TextWrapped($"Spent on this character: {config.VerminionProgress.GilSpent:N0}/{config.VerminionGilPurchaseCap:N0} gil; {config.VerminionProgress.MgpSpent:N0}/{config.VerminionMgpPurchaseCap:N0} MGP. Caps are cumulative and do not reset weekly. Zero prevents purchases. Supported requests: Mammet #001, Wayward Hatchling, Cherry Bomb and Baby Bat (2,400 gil each), Nero (30,000 MGP), and Zu Hatchling (10,000 MGP). Earlier purchases predate the ADS handoff; that route is still being verified.");
+        ImGui.TextWrapped("Baby Bat's vendor, Junkmonger Nonoroon, disappears during the Poor Maid's FATE chain and returns afterward. ADS waits within its five-minute purchase limit. If the vendor remains absent, the run stops without crediting a purchase.");
         if (config.VerminionProgress.PendingPurchase is { } pending)
             ImGui.TextWrapped($"Unresolved purchase: {pending.Gil:N0} gil / {pending.Mgp:N0} MGP reserved. Further purchases are blocked until both acquisition and currency evidence agree. Reload, FULL STOP and weekly reset keep this reservation.");
+        if (config.VerminionProgress.MinionAcquisition is { } acquisition)
+            ImGui.TextWrapped($"ADS minion acquisition: item {acquisition.ItemId}. FULL STOP cancels only this request; reload reconciles it without submitting it again.");
         return changed;
     }
 
