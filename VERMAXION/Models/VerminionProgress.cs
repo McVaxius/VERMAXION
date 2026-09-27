@@ -21,6 +21,9 @@ public enum VerminionBattleOutcome
 public sealed record VerminionPurchase(uint ItemId, ushort MinionId, uint Gil, uint Mgp,
     uint GilBefore, uint MgpBefore, uint ItemsBefore);
 
+public sealed record VerminionMinionAcquisition(string OperationId, uint ItemId, ushort MinionId,
+    bool DispatchAttempted = false);
+
 /// <summary>A native quest handoff, persisted before submission. Reloads only observe it.</summary>
 public sealed record VerminionQuestAcquisition(ulong Owner, ushort MinionId, string Provider,
     ushort[] Quests, bool DispatchAttempted = false, bool CancellationRequested = false, bool OwnershipReleased = false)
@@ -41,6 +44,7 @@ public sealed class VerminionProgress
     public ulong GilSpent { get; set; }
     public ulong MgpSpent { get; set; }
     public VerminionPurchase? PendingPurchase { get; set; }
+    public VerminionMinionAcquisition? MinionAcquisition { get; set; }
     public long MatchSequence { get; set; }
     public long PendingMatch { get; set; }
     public uint PendingDuty { get; set; }

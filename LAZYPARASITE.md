@@ -1,5 +1,164 @@
 # Verminion bot development checkpoint
 
+ADS07 RELOAD RECOVERY: x64 build passed,0errors/2existing warnings. R7 attempted
+reload11:11:36 but its manifest was momentarily locked by the build; ADS unloaded
+and the reload failed. The finished manifest is readable. Retrigger the existing
+DLL watcher once now that build output has settled; require the compiled07 marker
+and read-only vendor snapshot before any purchase. No client restart or VMX reload.
+
+RESUMED 2026-09-27: /goal resume is sufficient authorization to continue; the
+user explicitly corrected the mistaken pause. R7 remains the sole runtime target
+(the goal tool's R3 text is stale). Preserve unrelated Cactpot/equipment edits.
+ADS06/VMX312 finished10:52:18: vendor absent at the five-minute limit, acquired0,
+no receipt; VMX entered Failed. Fresh saved state11:07: pending match/purchase/
+handoff all empty, unpaused,5/24 clears, next6, spending2400gil/0MGP unchanged.
+ADS07 INTENT: build the existing x64 watched output for one DEBUG read-only
+availability snapshot near Nonoroon. No VMX reload or redispatch before evidence
+of a returned vendor. Official game data and the community guide distinguish
+FC action purchases (FreeCompanyExchange) from ADS's current FccShop item path;
+FC vendor migration remains outstanding. UI text now includes Baby Bat and
+distinguishes older purchase evidence from the unverified ADS handoff.
+
+312 READY: both builds passed; ADS133/133 focused tests passed including vendor
+return after45seconds and absence through the five-minute bound (no commands,
+no success). Copy312 after the matched ADS06 startup and saved idle-state check.
+No recurring reload/redispatch is authorized by this test; observe this one wait.
+
+ADS06/VMX312 INTENT:311 loaded and ADS05 accepted10:42:26.722. Diagnostic at
+10:42:48.816 proves landed/unmounted at the mill and no BNpcBase1307; Salthound
+FATE enemies are present. Acquired0, no callback, terminal failure10:42:49.391.
+Do not infer a UI/control failure from this absence.06 gives missing vendors the
+remaining EXISTING five-minute run bound before failing, and only starts its
+ordinary20-second shop-opening clock when the NPC appears. One bounded absence
+snapshot at overall timeout; no combat, extra automatic run or unlimited retry.
+Build06 and312, test, verify06 startup, then copy312 for this bounded availability
+wait. Main campaign still5/24 complete, next6, receipts unchanged. FC-buff vendor
+migration remains a separate outstanding part of the hard vendor ownership rule.
+
+311 DEPLOY: both builds passed, ADS05 loaded10:40:18.160.131 focused ADS tests
+passed, including landing waits preserving interaction attempts;18 VMX tests
+passed before marker/API-name-only311. Fresh R7 saved check confirms idle,
+unpaused, no match/purchase/handoff pending. Copy311 now for the corrected ADS
+interaction attempt. Preserve caps, reserve, spending and campaign progress.
+
+ADS05/VMX311 BUILD INTENT:310/ADS04 reached the approach, then failed10:37:09.007
+after three interaction checks with acquired0/no purchase callback. VMX cleared
+the handoff10:37:09.760 and failed without a receipt. Correct ADS to let native
+landing/dismount and absent-NPC waits use the existing20-second opening timeout,
+without consuming an NPC-interaction attempt. Capture one bounded nearby-NPC
+diagnostic at that timeout.05 also removes the temporary catalog preview and
+finishes the gil-only stock API rename;311 matches it. Build both, then copy311
+only after confirming ADS05 loaded and unpaused/no-purchase state. No attempt,
+campaign, spending or cap resets; main selected scenario remains Verminion.
+
+310 LIVE:18 focused tests passed; copied310 and loaded10:35:55.998. Ordinary
+handoff accepted10:36:00.832. ADS teleported to Camp Bronze Lake, resolved the
+offline floor, issued flight navigation10:36:14.612, and stopped at vendor
+approach10:37:02.908. Purchase/receipt remains unverified; do not interrupt ADS.
+Source-only: removed ADS's one-off read-only preview, and narrowed the new stock
+endpoint to ADS.StartGilShopPurchase so stock cannot spend other currencies and
+always closes its shop. This API rename requires the next ADS and VMX builds;
+neither newer source is deployed. Guarded minion API is unchanged.
+
+310 DEPLOY INTENT: combined VMX build through Z:\vmx.bat now passes (0errors,
+2existing NU1601 warnings). ADS04 loaded10:34:06.898; preview10:34:07.884
+selected Baby Bat item6187, GilShop262404/row34, BNpcBase1307, territory139,
+exact2400gil; canPurchase=true, unresolvedRouteCount0. This verifies catalog and
+route selection only, no travel or purchase. After focused VMX tests pass and
+saved unpaused/pending0 state is checked, copy310 to R:\parasite\vmx\VERMAXION.dll.
+Allow only normal capped minion acquisition, retaining approved caps/receipts.
+VendorStock migration is source/build-only; FC-buff vendor code remains pending.
+
+VMX310 BUILD RETRY: the separately edited Cactpot service and tests have now
+changed to follow their new policies. Re-run Z:\vmx.bat against the combined
+worktree without changing those policies.310 also includes the ADS-only stock
+service; no live stock/FC-buff actions selected. R7 remains the sole test target.
+
+ADS04 BUILD INTENT:03 loaded10:31:19.833. Read-only Baby Bat preview10:31:20.938
+proves catalog exception fixed and shop found, but unresolvedRouteCount1/no-route.
+Nonoroon has no usable parsed layer placement. Add its existing published map
+location to ADS's existing offline placement resource (BNpcBase1307, territory139,
+map19, size100/offset0; map11.8/24.7 -> world-484.527/159.844). ADS resolves the
+floor and requires the live targetable NPC before interaction. Build04 and use
+the same single preview before any purchase; no VMX vendor code restored.
+
+ADS03 BUILD INTENT: VMX310 cannot currently build because the unrelated
+CactpotRecoveryPolicy edits also changed its evidence enum and completion
+contract without updating callers/tests. Preserve that work; no310 copied.
+VendorStockService now delegates missing quantities to ADS's correlated ordinary
+purchase IPC. FC-buff vendor migration remains outstanding. ADS03 includes that
+IPC and one DEBUG read-only Baby Bat catalog preview through its existing runner,
+plus full preview exception diagnostics. Build/reload ADS's existing R7 path to
+diagnose the catalog independently; the probe submits no travel or purchase.
+Remove this temporary preview after the route is established. Versions unchanged.
+
+310 BUILD RETRY: the first build failed because concurrent Cactpot policy edits
+added chat-type/speaker arguments while three callers retained the old signature.
+Adapted only those callers to the new signature, retaining the policy changes.
+ADS02 focused shop/catalog/IPC regression passed130/130. No new deployment yet.
+Repository scan also found legacy vendor work in VendorStockService and
+FCBuffService; the user's all-vendors-through-ADS rule still requires those paths
+to be migrated. Do not claim the whole-repository vendor boundary is complete.
+
+310 BUILD/DEPLOY INTENT (2026-09-27):309 loaded10:12:42.963 and ADS rejected
+Baby Bat acquisition10:13:11.672 during catalog resolution, before purchase.
+ADS02 build passed (zero errors, two existing obsolete-distance warnings) and
+guarded-vendor-20260927-02 loaded10:15:06.005. It skips missing battle-handler
+rows and logs catalog exception stacks; its runtime correction is unverified.
+Build VMX310 through Z:\vmx.bat, run focused regression tests, and copy only
+the authorized R7 watched DLL after checking no purchase/admission is pending.
+310 includes the ADS-only handoff, pre-Saucer acquisition and UI explanation.
+Versions unchanged; no counters, caps or pause changes. Preserve unrelated
+equipment/Jumbo Cactpot edits. Continue the full resumed goal after acquisition.
+
+309 DEPLOY INTENT: the R7 watched file was externally refreshed with old307 at
+10:01:49, causing another native-vendor attempt; it failed10:05:33 without a
+reported purchase. Replace it now with built309, which contains NO direct vendor
+code. ADS's existing R7 development route is enabled at
+Z:\ADS\ADS\bin\x64\Debug\ADS.dll; its build auto-reloaded10:11:32 with marker
+guarded-vendor-20260927-01. ADS build passed,130 shop/catalog/IPC tests passed
+before the later native flight/reentrant-stop additions; VMX build and18 tests
+passed. Observe only ADS acquisition after309; no308 copy. Source's newer
+pre-Saucer acquisition optimization is not yet in the309 artifact; keep artifact
+and future build evidence separate. No campaign counter or caps changed.
+
+CURRENT HARD RULE / ADS MIGRATION (2026-09-27): user requires ALL vendor
+interaction and buying through Z:\ads, with no exceptions. No VMX vendor travel,
+NPC interaction, shop observation/callback/confirmation/cleanup code may remain.
+307 remains loaded and failed/inactive, no purchase pending.308 was built but
+NEVER copied. Do not deploy it. The full goal remains resumed; work now migrates
+acquisition to ADS's existing purchase runner before more runtime attempts.
+
+309 source replaces VMX shop commands with a correlated ADS single-item handoff.
+Keep minion requirements, capped spending authorization, saved receipt accounting
+and inventory registration in VMX. ADS owns discovery, navigation, UI and purchase.
+ADS's existing checkpoint callbacks are being exposed through guarded purchase
+IPC with a matched cancellation ID; validate the cap/reserve before submission
+and confirmation. Existing unguarded callers remain unchanged. Source builds,
+regression tests and live deployment are pending. Versions stay VMX0.5.0.3 and
+ADS0.9.4.2. ADS was clean at this migration's start; do not restore discarded
+combat-rule/ADS changes. Preserve unrelated current VMX equipment edits.
+Found ADS only catalogs/interacts with EventNpc vendors; Nonoroon is BNpcName1237
+and Baby Bat appears in GilShop262404 row34. Its BattleNpc catalog link and live
+absence need further research in ADS. No native vendor actions are authorized
+through VMX even for diagnostics.
+
+308 INTENT:307 loaded/dispatched09:46:32; native travel reached territory139,
+mounted/took off and flew to Poor Maid's Mill. Vendor absent09:47:42.094;
+failed closed with no purchase. Existing snapshot was too early to classify
+absence.308 adds bounded nearby BattleNpc identities to the existing shop
+snapshot on absence, and resumes the required purchase in its current territory
+after inventory registration instead of travelling to Saucer first. Build/copy
+308 for a fresh bounded vendor observation; preserve all facts/caps/admissions.
+
+RESUMED307 DEPLOY INTENT (2026-09-27): user explicitly resumed the full goal.
+Fresh R7 config/log inspection confirms Stage1-5 clears, next6, pending match0,
+pending purchase null, caps223588/40000, reserve50000, spending2400/0, unpaused.
+Deploy built307 to the authorized watched R:\parasite\vmx\VERMAXION.dll and
+verify startup before evaluating the Baby Bat route. Continue campaign afterward.
+Prior changes are now in Git3fc8065; preserve unrelated current equipment and
+changelog edits. No pause after individual stages or builds is requested.
+
 CURRENT307 BUILT, NOT DEPLOYED; PAUSED (2026-09-27): user requested a pause
 after this source/build checkpoint to reload the CLI. Z:\vmx.bat passed with
 zero errors and two existing NU1601 PInvoke warnings. Fixed the missing native

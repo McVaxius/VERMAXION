@@ -57,6 +57,16 @@ public sealed class JumboCactpotRoutingPolicyTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void FuturePartialBatchResumesAtBrokerWhenPurchaseIsDue(int ownedCount)
+    {
+        var decision = JumboCactpotRoutingPolicy.Decide(Now, false, ownedCount, Now.AddDays(2), purchaseDue: true);
+        Assert.Equal(JumboCactpotRoute.Broker, decision.Route);
+        Assert.False(decision.UsesCashier);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void LegacyUnknownStateDiscoversAtCashierEvenWhenOldStampIsComplete(bool purchaseDue)
@@ -73,30 +83,24 @@ public sealed class JumboCactpotRoutingPolicyTests
         Assert.Equal(purchaseDue, decision.ContinueToBrokerAfterZero);
     }
 
-    [Fact]
-    public void KnownZeroRoutesToBrokerOnlyWhenPurchaseIsDue()
-    {
-        var due = JumboCactpotRoutingPolicy.Decide(Now, false, 0, DateTime.MinValue, purchaseDue: true);
-        var complete = JumboCactpotRoutingPolicy.Decide(Now, false, 0, DateTime.MinValue, purchaseDue: false);
-
-        Assert.Equal(JumboCactpotRoute.Broker, due.Route);
-        Assert.Equal(JumboCactpotRoute.Wait, complete.Route);
-    }
-
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ScheduledWindowKnownZeroNeverVisitsCashierOrBroker(bool purchaseDue)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void KnownZeroRoutesToBrokerOnlyWhenPurchaseIsDue(bool scheduledPayoutWindow, bool purchaseDue)
     {
         var decision = JumboCactpotRoutingPolicy.Decide(
             Now,
-            scheduledPayoutWindow: true,
+            scheduledPayoutWindow,
             unclaimedTickets: 0,
             payoutAvailableAt: DateTime.MinValue,
             purchaseDue);
 
-        Assert.Equal(JumboCactpotRoute.Wait, decision.Route);
+        Assert.Equal(purchaseDue ? JumboCactpotRoute.Broker : JumboCactpotRoute.Wait, decision.Route);
         Assert.False(decision.UsesCashier);
+        Assert.Null(decision.ExpectedClaims);
+        Assert.Equal(purchaseDue, decision.PurchaseDue);
     }
 
     [Fact]

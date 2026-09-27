@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Newtonsoft.Json.Linq;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
@@ -31,13 +32,8 @@ public sealed partial class VerminionService : IDisposable
     private int challengeStage = 1;
     private bool navigationRequested;
     private bool ownsTravel;
-    private bool ownsMinionShop;
     private bool ownsTournamentInspection;
     private VerminionVendorMinion? purchasingMinion;
-    private Vector3? minionVendorDestination;
-    private bool minionPurchaseSent;
-    private bool minionPurchaseConfirmationSent;
-    private bool minionShopCaptured;
     private DateTime nextInteractionUtc;
     private bool admissionConfirmed;
     private bool admissionSnapshot;
@@ -129,7 +125,7 @@ public sealed partial class VerminionService : IDisposable
 
     public enum VerminionState
     {
-        Idle, UnlockingPrerequisite, RegisteringMinions, ShoppingForMinion, ClosingMinionShop, TravellingToMinionVendor, TravellingToSaucer, TravellingToMinionSquare, ApproachingTable, InspectingTournament,
+        Idle, UnlockingPrerequisite, RegisteringMinions, AcquiringMinion, TravellingToSaucer, TravellingToMinionSquare, ApproachingTable, InspectingTournament,
         InspectingControls, SelectingTutorial, WaitingForTutorial, InDuty, LeavingResult, InspectingProgress, Complete, Failed,
     }
 
@@ -183,9 +179,15 @@ public sealed partial class VerminionService : IDisposable
         runMode = config.VerminionMode;
         victoryTarget = Math.Clamp(config.VerminionVictoryTarget, 1, 1000);
         var progress = config.VerminionProgress;
+        if (progress.MinionAcquisition is { } acquisition)
+        {
+            purchasingMinion = VerminionRoster.VendorOffer(acquisition.ItemId, acquisition.MinionId);
+            if (purchasingMinion == null) { Fail("The saved ADS minion request is unrecognized; no purchase resubmitted."); return; }
+            SetState(VerminionState.AcquiringMinion, "Reconciling the saved ADS minion acquisition");
+            return;
+        }
         if (progress.PendingPurchase != null && !ReconcileMinionPurchase())
         {
-            if (TryResumeMinionPurchase()) return;
             Fail("A previous minion purchase is unresolved. Item and currency evidence must agree before another purchase or run.");
             return;
         }
@@ -281,6 +283,10 @@ public sealed partial class VerminionService : IDisposable
 
     private void BeginTravel()
     {
+        var missing = VerminionRoster.Required(PlannedStage(configManager.GetActiveConfig(), campaign))
+            .FirstOrDefault(minion => VerminionGameInteraction.OwnsMinion(minion.Id) == false);
+        if (missing != null && VerminionRoster.VendorOffer(missing.Id) is { } offer)
+        { BeginMinionPurchase(offer); return; }
         if (Plugin.ClientState.TerritoryType == 388)
         { InspectChallengeProgress(); return; }
         if (Plugin.ClientState.TerritoryType == 144)
@@ -317,15 +323,7 @@ public sealed partial class VerminionService : IDisposable
         {
             var requirements = VerminionRoster.Required(stage);
             var requirement = requirements.FirstOrDefault(minion => VerminionGameInteraction.OwnsMinion(minion.Id) != true);
-            var offer = requirement?.Id switch
-            {
-                2 => VerminionRoster.MammetOffer,
-                3 => VerminionRoster.HatchlingOffer,
-                26 => VerminionRoster.BatOffer,
-                83 => VerminionRoster.ZuOffer,
-                174 => VerminionRoster.NeroOffer,
-                _ => null,
-            };
+            var offer = requirement == null ? null : VerminionRoster.VendorOffer(requirement.Id);
             var missingVendorMinion = offer != null && VerminionGameInteraction.OwnsMinion(offer.MinionId) == false;
             var canBuy = missingVendorMinion &&
                 config.VerminionProgress.CanSpend(offer!.Gil, offer.Mgp,
@@ -455,23 +453,9 @@ public sealed partial class VerminionService : IDisposable
                     ownsTravel = false;
                     TravelToMinionSquare();
                     return;
-                case VerminionState.ShoppingForMinion:
-                    if (elapsed >= 10 && !minionShopCaptured)
-                    { minionShopCaptured = true; VerminionGameInteraction.CaptureMinionShop(); }
-                    if (elapsed > 180) { Fail("Minion vendor setup or purchase timed out; any pending reservation is retained."); return; }
-                    UpdateMinionShop();
-                    return;
-                case VerminionState.TravellingToMinionVendor:
-                    if (elapsed > 120) { Fail("Camp Bronze Lake travel did not complete; existing aetheryte access is required. No purchase submitted."); return; }
-                    if (elapsed < 3 || !TravelSettled() || Plugin.ClientState.TerritoryType != purchasingMinion?.Territory) return;
-                    ownsTravel = false;
-                    SetState(VerminionState.ShoppingForMinion, "Approaching Junkmonger Nonoroon at Poor Maid's Mill");
-                    return;
-                case VerminionState.ClosingMinionShop:
-                    if (elapsed > 10) { Fail("The owned minion shop did not close."); return; }
-                    if (!CloseOwnedMinionShop()) return;
-                    registeringItem = 0;
-                    SetState(VerminionState.RegisteringMinions, "Registering the acquired minion");
+                case VerminionState.AcquiringMinion:
+                    if (elapsed > 330) { Fail("ADS minion acquisition timed out; any pending receipt is retained."); return; }
+                    UpdateMinionAcquisition();
                     return;
                 case VerminionState.TravellingToMinionSquare:
                     if (elapsed > 90) { Fail("Minion Square travel timed out."); return; }
@@ -941,7 +925,7 @@ public sealed partial class VerminionService : IDisposable
         {
             var entryGil = (uint)entryPurchases.Sum(offer => (long)offer.Gil);
             if (!progress.CanSpend(entryGil, 0, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap) ||
-                !VerminionGameInteraction.TryReadPurchaseInventory(entryPurchases[0].ItemId, out var gil, out _, out _) ||
+                !VerminionGameInteraction.TryReadMinionInventory(entryPurchases[0].ItemId, out var gil, out _, out _) ||
                 !VerminionProgress.PreservesGilReserve(gil, entryGil, config.VerminionGilReserve))
             {
                 Fail($"Entry requires three registered minions; {ownedMinions.Length} owned. " +
@@ -1099,7 +1083,7 @@ public sealed partial class VerminionService : IDisposable
             Plugin.TargetManager.Target?.BaseId == 1011594 && GameHelpers.IsAddonVisible("SelectString"))
             GameHelpers.TryCloseAddonByCallback("SelectString");
         ownsTournamentInspection = false;
-        CloseOwnedMinionShop();
+        StopOwnedMinionAcquisition();
         StopOwnedUnlockQuest();
         ReleaseKey();
         if (pendingBattlefieldClick is { } screen)
@@ -1122,7 +1106,7 @@ public sealed partial class VerminionService : IDisposable
         var progress = configManager.GetActiveConfig().VerminionProgress;
         var pending = progress.PendingPurchase;
         if (pending == null) return true;
-        if (!VerminionGameInteraction.TryReadPurchaseInventory(pending.ItemId, out var gil, out var mgp, out var count) ||
+        if (!VerminionGameInteraction.TryReadMinionInventory(pending.ItemId, out var gil, out var mgp, out var count) ||
             !progress.ConfirmPurchase(gil, mgp, count, VerminionGameInteraction.OwnsMinion(pending.MinionId) == true)) return false;
         if (!configManager.TrySaveAccount(ownerAccount))
         {
@@ -1138,180 +1122,138 @@ public sealed partial class VerminionService : IDisposable
     private void BeginMinionPurchase(VerminionVendorMinion offer)
     {
         purchasingMinion = offer;
-        minionVendorDestination = null;
-        minionPurchaseSent = minionPurchaseConfirmationSent = false;
-        minionShopCaptured = false;
-        SetState(VerminionState.ShoppingForMinion, $"Preparing a capped {offer.Name} purchase at {offer.VendorName}");
+        SetState(VerminionState.AcquiringMinion, $"Requesting capped {offer.Name} acquisition through ADS");
     }
 
-    private bool TryResumeMinionPurchase()
-    {
-        var pending = configManager.GetActiveConfig().VerminionProgress.PendingPurchase;
-        if (pending == null || VerminionRoster.VendorOffer(pending.ItemId, pending.MinionId) is not { } offer ||
-            pending.Gil != offer.Gil || pending.Mgp != offer.Mgp ||
-            !VerminionGameInteraction.IsMinionPurchaseConfirmation(offer) ||
-            !VerminionGameInteraction.TryReadMinionOffer(offer, out _, out _) ||
-            !VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var gil, out var mgp, out var items) ||
-            gil != pending.GilBefore || mgp != pending.MgpBefore || items != pending.ItemsBefore ||
-            VerminionGameInteraction.OwnsMinion(offer.MinionId) != false) return false;
-        // Adopt only the already visible, exactly matched confirmation. Never
-        // issue another Shop callback for this saved reservation.
-        BeginMinionPurchase(offer);
-        ownsMinionShop = minionPurchaseSent = true;
-        log.Information("[Verminion] Resuming the visible reserved minion purchase confirmation; no repeat shop submission");
-        return true;
-    }
+    private JObject ReadAdsPurchaseStatus() => JObject.Parse(Plugin.PluginInterface
+        .GetIpcSubscriber<string>("ADS.GetShopPurchaseStatusJson").InvokeFunc());
 
-    private void UpdateMinionShop()
+    private void UpdateMinionAcquisition()
     {
         if (DateTime.UtcNow < nextInteractionUtc) return;
         nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
-        var offer = purchasingMinion;
-        if (offer == null) { Fail("No minion purchase was selected; no shop command issued."); return; }
         var config = configManager.GetActiveConfig();
         var progress = config.VerminionProgress;
-        if (progress.PendingPurchase != null)
-        {
-            if (Plugin.ClientState.TerritoryType != offer.Territory)
-            { Fail("The reserved minion purchase left its vendor territory; no further shop commands issued."); return; }
-            if (ReconcileMinionPurchase())
-            { SetState(VerminionState.ClosingMinionShop, "Closing the verified minion purchase"); return; }
-            if (!minionPurchaseSent)
-            { Fail("Unresolved purchase will not be submitted again."); return; }
-            if (!minionPurchaseConfirmationSent && GameHelpers.IsAddonVisible("SelectYesno"))
-            {
-                if (!VerminionGameInteraction.IsMinionPurchaseConfirmation(offer))
-                { VerminionGameInteraction.CaptureMinionShop(); Fail($"Minion purchase confirmation did not match {offer.Name} and its verified {offer.Currency} price."); return; }
-                // A cap may have been lowered while the confirmation was open.
-                var pending = progress.PendingPurchase;
-                if (progress.GilSpent + pending.Gil > config.VerminionGilPurchaseCap ||
-                    progress.MgpSpent + pending.Mgp > config.VerminionMgpPurchaseCap)
-                { Fail("Purchase cap changed before confirmation; reservation retained for reconciliation."); return; }
-                if (!VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var remainingGil, out var remainingMgp, out var remainingItems) ||
-                    remainingGil != pending.GilBefore || remainingMgp != pending.MgpBefore || remainingItems != pending.ItemsBefore ||
-                    !VerminionProgress.PreservesGilReserve(remainingGil, pending.Gil, config.VerminionGilReserve))
-                { Fail("Purchase inventory or gil reserve changed before confirmation; reservation retained for reconciliation."); return; }
-                minionPurchaseConfirmationSent = GameHelpers.TryClickNativeButton("SelectYesno", offer.Mgp > 0 ? "Yes" : "OK", 8);
-            }
-            reason = "Waiting for both minion acquisition and the exact currency deduction; purchase will not repeat";
-            return;
-        }
-        if (minionPurchaseSent) { Fail("Purchase state changed unexpectedly; no repeat submitted."); return; }
-        if (!VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var gil, out var mgp, out var items))
-        { Fail("Inventory or currencies are unavailable; no purchase submitted."); return; }
-        var owned = VerminionGameInteraction.OwnsMinion(offer.MinionId);
-        if (owned == null) { Fail("Minion ownership is unavailable; no purchase submitted."); return; }
-        if (owned == true || items > 0)
-        { SetState(VerminionState.ClosingMinionShop, "Minion already available; purchase skipped"); return; }
-        if (!progress.CanSpend(offer.Gil, offer.Mgp, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap) ||
-            gil < offer.Gil || mgp < offer.Mgp ||
-            !VerminionProgress.PreservesGilReserve(gil, offer.Gil, config.VerminionGilReserve))
-        { Fail($"{offer.Name} needs {offer.Price:N0} {offer.Currency} within the remaining cumulative cap and funds, leaving the configured gil reserve. No purchase submitted."); return; }
+        var offer = purchasingMinion;
+        if (offer == null) { Fail("No minion acquisition was selected."); return; }
+        // These are Verminion table menus. All vendor UI, travel and purchases belong to ADS.
         if (VerminionGameInteraction.IsSetupMenu)
         {
-            var exit = VerminionGameInteraction.IsChallengeMenu ? "Return" : "Cancel";
-            if (!GameHelpers.TrySelectStringExact(exit, out _))
-            { VerminionGameInteraction.CaptureMinionShop(); Fail("Could not close the Verminion table menu before shopping; no purchase submitted."); }
+            if (!GameHelpers.TrySelectStringExact(VerminionGameInteraction.IsChallengeMenu ? "Return" : "Cancel", out _))
+                Fail("Could not leave the Verminion table before handing acquisition to ADS.");
             return;
         }
-        if (Plugin.ClientState.TerritoryType != offer.Territory)
+        var acquisition = progress.MinionAcquisition;
+        if (acquisition == null)
         {
-            if (offer.MinionId != 26)
-            { Fail("Minion purchase left Minion Square; no further shop commands issued."); return; }
-            if (!VerminionGameInteraction.HasNonoroonFlightAccess())
-            { Fail("Automatic Baby Bat travel needs existing flight access in Upper La Noscea. Acquire it from Nonoroon and Resume; no character progression started."); return; }
-            if (!TravelSettled()) return;
-            ownsTravel = lifestream.ExecuteCommand("/li Camp Bronze Lake");
-            if (!ownsTravel) { Fail("Camp Bronze Lake travel was rejected; no purchase submitted."); return; }
-            SetState(VerminionState.TravellingToMinionVendor, "Travelling to Camp Bronze Lake for Baby Bat");
-            return;
-        }
-        if (GameHelpers.IsAddonVisible(offer.Shop))
-        {
-            if (!ownsMinionShop || !VerminionGameInteraction.TryReadMinionOffer(offer, out var index, out var price))
-            { VerminionGameInteraction.CaptureMinionShop(); Fail("Minion vendor item, price or shop ownership could not be verified; no purchase submitted."); return; }
-            if (!progress.ReservePurchase(offer.ItemId, offer.MinionId,
-                    offer.Gil, offer.Mgp, gil, mgp, items, false, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap, config.VerminionGilReserve))
-            { Fail("Minion purchase could not reserve its budget."); return; }
-            var reserved = progress.PendingPurchase;
+            if (!VerminionGameInteraction.TryReadMinionInventory(offer.ItemId, out var gil, out var mgp, out var items))
+            { Fail("Minion inventory and balances are unavailable."); return; }
+            if (VerminionGameInteraction.OwnsMinion(offer.MinionId) == true || items > 0)
+            { SetState(VerminionState.RegisteringMinions, "Registering the available minion"); return; }
+            if (!progress.CanSpend(offer.Gil, offer.Mgp, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap) ||
+                gil < offer.Gil || mgp < offer.Mgp ||
+                !VerminionProgress.PreservesGilReserve(gil, offer.Gil, config.VerminionGilReserve))
+            { Fail("The minion purchase would exceed the remaining cap, balance or gil reserve."); return; }
+            var capabilities = JObject.Parse(Plugin.PluginInterface.GetIpcSubscriber<string>("ADS.GetCapabilitiesJson").InvokeFunc());
+            if ((int?)capabilities["guardedShopPurchases"] != 1)
+            { Fail("ADS needs its guarded single-item purchase API before minion acquisition can start."); return; }
+            acquisition = new(Guid.NewGuid().ToString("N"), offer.ItemId, offer.MinionId, true);
+            progress.MinionAcquisition = acquisition; // Save before dispatch; reload never repeats this request.
             if (!configManager.TrySaveAccount(ownerAccount))
-            { Fail("Purchase reservation could not be saved; no purchase submitted."); return; }
-            var saved = configManager.GetActiveConfig(); // Saving can merge an external Stop or cap change.
-            if (saved.VerminionPaused || saved.VerminionProgress.PendingPurchase != reserved ||
-                saved.VerminionProgress.GilSpent + offer.Gil > saved.VerminionGilPurchaseCap ||
-                saved.VerminionProgress.MgpSpent + offer.Mgp > saved.VerminionMgpPurchaseCap ||
-                !VerminionGameInteraction.TryReadPurchaseInventory(offer.ItemId, out var currentGil, out var currentMgp, out var currentItems) ||
-                currentGil != gil || currentMgp != mgp || currentItems != items ||
-                !VerminionProgress.PreservesGilReserve(currentGil, offer.Gil, saved.VerminionGilReserve))
-            { Fail("Purchase reservation, pause or cap changed while saving; no purchase submitted."); return; }
-            minionPurchaseSent = true;
-            GameHelpers.FireAddonCallback(offer.Shop, true, 0, index, 1);
-            log.Information($"[Verminion] Reserved and submitted one {offer.Name} purchase: gil={offer.Gil}; mgp={offer.Mgp}; awaiting item/currency evidence");
-            return;
-        }
-        if (ownsMinionShop && (GameHelpers.IsAddonVisible("SelectString") || GameHelpers.IsAddonVisible("SelectIconString")))
-        {
-            var category = offer.MinionId == 26 ? "Purchase Items" : offer.Mgp > 0 ? "Purchase Minions (MGP)" : "Purchase Minions (Gil)";
-            if (!GameHelpers.TrySelectStringExact(category, out _))
-                GameHelpers.TrySelectNativeListEntry("SelectIconString", category);
-            return;
-        }
-        var player = Plugin.ObjectTable.LocalPlayer;
-        if (player == null) return;
-        var vendor = VerminionGameInteraction.FindMinionVendor(offer);
-        if (offer.MinionId == 26 && vendor == null && minionVendorDestination == null)
-        {
-            if (!navigation.TryGetNavReady(out var ready) || !ready) return;
-            // Map (11.8, 24.7), size factor 100. Resolve the actual ground height
-            // before approaching; replace this map point with the loaded NPC.
-            if (!navigation.TryFindReachablePointOnFloor(new Vector3(-484, 0, 160), 10, out var destination))
-            { Fail("Nonoroon's vendor area could not be resolved on the navmesh; no purchase submitted."); return; }
-            minionVendorDestination = destination;
-        }
-        var position = vendor?.Position ?? minionVendorDestination ?? new Vector3(82.4139f, 0.411926f, 44.9377f);
-        var distance = Vector3.Distance(player.Position, position);
-        if (offer.MinionId == 26 && vendor == null && distance < 25)
-        { Fail("Junkmonger Nonoroon is currently unavailable near Poor Maid's Mill, possibly during a nearby FATE. No purchase submitted; Resume when he returns."); return; }
-        var interactionDistance = vendor == null ? 2.5f : GameHelpers.GetValidInteractionDistance(vendor);
-        if (distance > interactionDistance)
-        {
-            if (!navigationRequested)
+            { Fail("Could not save the ADS acquisition identity; no purchase started."); return; }
+            var saved = configManager.GetActiveConfig();
+            if (saved.VerminionPaused || saved.VerminionProgress.MinionAcquisition != acquisition)
+            { Fail("The ADS acquisition was cancelled while saving."); return; }
+            var payload = new JObject
             {
-                var fly = offer.MinionId == 26 && distance > 20;
-                if (fly)
-                {
-                    if (!VerminionGameInteraction.HasNonoroonFlightAccess())
-                    { Fail("Reaching Nonoroon automatically requires existing flight access; no purchase submitted."); return; }
-                    if (!condition[ConditionFlag.Mounted]) { VerminionGameInteraction.TryUseVendorTravelAction(9); return; }
-                    if (!condition[ConditionFlag.InFlight]) { VerminionGameInteraction.TryUseVendorTravelAction(2); return; }
-                }
-                navigationRequested = navigation.PathfindAndMoveTo(position, fly);
-                if (!navigationRequested) Fail("Minion vendor navigation was rejected; no purchase submitted.");
+                ["operationId"] = acquisition.OperationId, ["itemId"] = offer.ItemId,
+                ["currencyKind"] = offer.Mgp > 0 ? "Mgp" : "Gil", ["currencyItemId"] = offer.Mgp > 0 ? 29u : 1u,
+            }.ToString(Newtonsoft.Json.Formatting.None);
+            var operationId = acquisition.OperationId;
+            var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, Func<string, bool>, bool>("ADS.StartGuardedShopPurchase")
+                .InvokeFunc(payload, quote => AuthorizeMinionPurchase(operationId, quote));
+            if (!accepted)
+            {
+                progress.MinionAcquisition = null;
+                configManager.SaveCurrentAccount();
+                Fail($"ADS rejected the minion acquisition: {(string?)ReadAdsPurchaseStatus()["lastStartError"]}");
             }
+            else log.Information($"[Verminion] ADS accepted one {offer.Name} acquisition; awaiting its verified receipt");
             return;
         }
-        if (navigationRequested) { navigation.Stop(); navigationRequested = false; }
-        if (condition[ConditionFlag.Mounted]) { VerminionGameInteraction.TryUseVendorTravelAction(23); return; }
-        if (vendor != null)
+        var status = ReadAdsPurchaseStatus();
+        if ((string?)status["operationId"] != acquisition.OperationId)
         {
-            Plugin.TargetManager.Target = vendor;
-            if (GameHelpers.InteractWithObject(vendor)) ownsMinionShop = true;
+            // A lost ADS run cannot be resubmitted. A saved callback receipt stays unresolved
+            // unless actual inventory and currency evidence prove that it completed.
+            if (progress.PendingPurchase == null || ReconcileMinionPurchase())
+            { progress.MinionAcquisition = null; configManager.SaveCurrentAccount(); }
+            Fail("ADS no longer reports this acquisition. No purchase resubmitted; any unresolved receipt is retained.");
+            return;
         }
+        if ((uint?)status["itemId"] != acquisition.ItemId || (int?)status["requestedQuantity"] != 1)
+        { Fail("ADS acquisition identity does not match the saved minion request."); return; }
+        if ((bool?)status["running"] == true)
+        { reason = $"ADS: {(string?)status["statusMessage"]}"; return; }
+        if ((bool?)status["done"] != true)
+        { Fail("ADS acquisition has no verified terminal result."); return; }
+        var receiptConfirmed = progress.PendingPurchase != null && ReconcileMinionPurchase();
+        if (progress.PendingPurchase != null)
+        { Fail("ADS ended with an unresolved item/currency receipt; it will not be resubmitted."); return; }
+        progress.MinionAcquisition = null;
+        configManager.SaveCurrentAccount();
+        if ((bool?)status["succeeded"] != true || !receiptConfirmed)
+        { Fail($"ADS acquisition did not complete with its exact receipt: {(string?)status["statusMessage"]}"); return; }
+        registeringItem = 0;
+        SetState(VerminionState.RegisteringMinions, "Registering the minion acquired by ADS");
     }
 
-    private bool CloseOwnedMinionShop()
+    private bool AuthorizeMinionPurchase(string operationId, string quoteJson)
     {
-        if (!ownsMinionShop) return true;
-        // Never close another character's or another vendor's UI.
-        if (owner == 0 || Plugin.PlayerState.ContentId != owner || purchasingMinion is not { } selectedOffer ||
-            !VerminionGameInteraction.IsMinionVendor(selectedOffer, Plugin.TargetManager.Target))
-        { ownsMinionShop = false; return true; }
-        if (purchasingMinion is { } offer && VerminionGameInteraction.IsMinionPurchaseConfirmation(offer))
-        { GameHelpers.TryClickNativeButton("SelectYesno", offer.Mgp > 0 ? "No" : "Cancel", 11); return false; }
-        foreach (var addon in new[] { "Shop", "ShopExchangeCurrency", "SelectString", "SelectIconString" })
-            if (GameHelpers.IsAddonVisible(addon)) { GameHelpers.TryCloseAddonByCallback(addon); return false; }
-        ownsMinionShop = false;
-        return true;
+        try
+        {
+            if (State != VerminionState.AcquiringMinion || owner == 0 || owner != Plugin.PlayerState.ContentId ||
+                ownerCharacter != configManager.CurrentCharacterKey || ownerAccount != configManager.CurrentAccountId) return false;
+            var config = configManager.GetActiveConfig();
+            var progress = config.VerminionProgress;
+            var offer = purchasingMinion;
+            if (config.VerminionPaused || offer == null || progress.MinionAcquisition?.OperationId != operationId ||
+                VerminionGameInteraction.OwnsMinion(offer.MinionId) != false) return false;
+            var quote = JObject.Parse(quoteJson);
+            if ((string?)quote["operationId"] != operationId || (uint?)quote["itemId"] != offer.ItemId ||
+                (int?)quote["quantity"] != 1 || (uint?)quote["itemCountBefore"] != 0 ||
+                (string?)quote["currencyKind"] != (offer.Mgp > 0 ? "Mgp" : "Gil") ||
+                (uint?)quote["currencyItemId"] != (offer.Mgp > 0 ? 29u : 1u) ||
+                (uint?)quote["currencyCost"] != offer.Price ||
+                !VerminionGameInteraction.TryReadMinionInventory(offer.ItemId, out var gil, out var mgp, out var items) ||
+                items != 0 || (uint?)quote["currencyBefore"] != (offer.Mgp > 0 ? mgp : gil)) return false;
+            var expected = new VerminionPurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, gil, mgp, items);
+            if (progress.PendingPurchase == null)
+            {
+                if (!progress.ReservePurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, gil, mgp, items,
+                        false, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap, config.VerminionGilReserve) ||
+                    !configManager.TrySaveAccount(ownerAccount)) return false;
+                config = configManager.GetActiveConfig();
+                progress = config.VerminionProgress;
+            }
+            return !config.VerminionPaused && progress.MinionAcquisition?.OperationId == operationId &&
+                progress.PendingPurchase == expected && progress.GilSpent + offer.Gil <= config.VerminionGilPurchaseCap &&
+                progress.MgpSpent + offer.Mgp <= config.VerminionMgpPurchaseCap &&
+                VerminionProgress.PreservesGilReserve(gil, offer.Gil, config.VerminionGilReserve);
+        }
+        catch (Exception ex) { log.Warning($"[Verminion] ADS purchase authorization refused: {ex.Message}"); return false; }
+    }
+
+    private void StopOwnedMinionAcquisition()
+    {
+        if (owner == 0 || !configManager.Accounts.TryGetValue(ownerAccount, out var account) ||
+            !account.Characters.TryGetValue(ownerCharacter, out var config) ||
+            config.VerminionProgress.MinionAcquisition is not { } acquisition) return;
+        try
+        {
+            Plugin.PluginInterface.GetIpcSubscriber<string, bool>("ADS.CancelShopPurchase").InvokeFunc(acquisition.OperationId);
+        }
+        catch (Exception ex) { log.Warning($"[Verminion] ADS acquisition cleanup remains unresolved: {ex.Message}"); }
     }
 
     private void ReleaseKey()

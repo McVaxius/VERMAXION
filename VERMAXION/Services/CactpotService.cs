@@ -5,12 +5,12 @@ using System.Numerics;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using VERMAXION.IPC;
 using VERMAXION.Models;
 
 namespace VERMAXION.Services;
 
-// [OK] - Complete implementation with 3-ticket sequence and NUMPAD+ exit
 public class CactpotService : IDisposable
 {
     private readonly ICommandManager commandManager;
@@ -81,11 +81,12 @@ public class CactpotService : IDisposable
     private DateTime jumboTravelSettledSince = DateTime.MinValue;
     private DateTime lastJumboCleanupAttempt = DateTime.MinValue;
     private DateTime jumboCleanupQuietSince = DateTime.MinValue;
-    private int jumboPurchasesVerified;
+    private JumboCactpotPurchaseProgress? jumboPurchaseProgress;
+    private int? jumboDrawingNumber;
+    private int JumboPurchasesVerified => jumboPurchaseProgress?.VerifiedPurchases ?? 0;
     private int jumboPayoutClaimsVerified;
     private bool jumboPayoutUiObserved;
     private bool staleJumboPayoutEvidenceObserved;
-    private bool jumboCurrentTicketsAlreadyOwned;
     private bool failAfterJumboCleanup;
     private bool jumboCashierDialogueObserved;
     private bool jumboPayoutWasZeroResult;
@@ -221,11 +222,11 @@ public class CactpotService : IDisposable
     {
         currentTicket = 1;
         totalTickets = 3;
-        jumboPurchasesVerified = 0;
+        jumboPurchaseProgress = null;
+        jumboDrawingNumber = null;
         jumboPayoutClaimsVerified = 0;
         jumboPayoutUiObserved = false;
         staleJumboPayoutEvidenceObserved = false;
-        jumboCurrentTicketsAlreadyOwned = false;
         failAfterJumboCleanup = false;
         jumboCashierDialogueObserved = false;
         jumboPayoutWasZeroResult = false;
@@ -236,8 +237,7 @@ public class CactpotService : IDisposable
         lastJumboConfirmationAttemptAt = DateTime.MinValue;
         lastJumboNavigationStopAttempt = DateTime.MinValue;
         ResetJumboCleanupTracking();
-        currentJumboNumber = GetConfiguredJumboNumber();
-        log.Information($"[Cactpot] Starting Jumbo Cactpot Buy sequence using {GetConfiguredJumboModeLabel()} number {currentJumboNumber:0000}");
+        log.Information("[Cactpot] Starting Jumbo Cactpot Buy sequence; reading current-drawing ownership before choosing a number");
         SetState(CactpotState.JumboLifestreaming);
     }
 
@@ -279,7 +279,8 @@ public class CactpotService : IDisposable
         jumboPayoutClaimsVerified = 0;
         jumboPayoutUiObserved = false;
         staleJumboPayoutEvidenceObserved = false;
-        jumboCurrentTicketsAlreadyOwned = false;
+        jumboPurchaseProgress = null;
+        jumboDrawingNumber = null;
         failAfterJumboCleanup = false;
         jumboCashierDialogueObserved = false;
         jumboPayoutWasZeroResult = false;
@@ -355,7 +356,8 @@ public class CactpotService : IDisposable
         FinishMiniCactpotRun("reset");
         failAfterJumboCleanup = false;
         staleJumboPayoutEvidenceObserved = false;
-        jumboCurrentTicketsAlreadyOwned = false;
+        jumboPurchaseProgress = null;
+        jumboDrawingNumber = null;
         jumboCashierDialogueObserved = false;
         jumboPayoutWasZeroResult = false;
         jumboCashierExhaustionConfirmed = false;
@@ -369,7 +371,7 @@ public class CactpotService : IDisposable
 
     public void HandleChatMessage(string chatType, string speaker, string messageText)
     {
-        if (JumboCactpotPurchaseMessagePolicy.TryParsePurchasedNumber(messageText, out var purchasedNumber))
+        if (JumboCactpotPurchaseMessagePolicy.TryParsePurchasedNumber(chatType, speaker, messageText, out var purchasedNumber))
             TryRecordJumboPurchaseFromSystemMessage(purchasedNumber);
 
         if (IsJumboCheckState(state) && JumboCactpotRecoveryPolicy.IsCashierDialogue(chatType, speaker))
@@ -830,18 +832,28 @@ public class CactpotService : IDisposable
 
                 if (purchaseUiEvidence == JumboPurchaseUiEvidence.PurchaseInput)
                 {
+                    if (!GameHelpers.IsAddonReady("LotteryWeeklyInput"))
+                    {
+                        if (elapsed > JumboUiTimeout)
+                            FailJumboPurchase("Current-cycle ticket ownership is unreadable: the purchase input is not ready.");
+                        break;
+                    }
+
+                    if (!TryPrepareJumboPurchaseInput())
+                        break;
+
                     log.Information($"[Cactpot] LotteryWeeklyInput visible for Jumbo ticket {currentTicket}/{totalTickets}, entering number {currentJumboNumber:0000}");
-                    GameHelpers.FireAddonCallback("LotteryWeeklyInput", true, currentJumboNumber);
-                    SetState(CactpotState.JumboWaitingForConfirmation);
+                    if (GameHelpers.TryFireReadyAddonCallback("LotteryWeeklyInput", true, currentJumboNumber))
+                        SetState(CactpotState.JumboWaitingForConfirmation);
+                    else if (elapsed > JumboUiTimeout)
+                        FailJumboPurchase("Could not submit the chosen Jumbo Cactpot number.");
                 }
-                else if (purchaseUiEvidence == JumboPurchaseUiEvidence.CurrentTicketsAlreadyOwned)
+                else if (purchaseUiEvidence == JumboPurchaseUiEvidence.RewardList)
                 {
-                    jumboCurrentTicketsAlreadyOwned = true;
-                    log.Information("[Cactpot] LotteryWeeklyRewardList replaced the purchase input; current Jumbo tickets already exist, completing the purchase phase without cashier routing");
-                    SetState(CactpotState.JumboClosingWindows);
+                    FailJumboPurchase("Current-cycle ticket ownership is unreadable: a reward list does not prove three tickets for the current drawing.");
                 }
-                else if (currentTicket > 1 && GameHelpers.IsAddonVisible("SelectYesno") &&
-                         GameHelpers.ClickYesIfVisible())
+                else if (JumboPurchasesVerified > 0 && GameHelpers.IsAddonVisible("SelectYesno") &&
+                         TryConfirmJumboCactpotPurchaseYes("Jumbo Cactpot next-ticket prompt", allowUnreadable: false, nextTicket: true))
                 {
                     log.Information($"[Cactpot] Accepted follow-up Jumbo Yes/No prompt while waiting for ticket {currentTicket}/{totalTickets}");
                     stateEnteredAt = DateTime.UtcNow;
@@ -859,7 +871,7 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboWaitingForConfirmation:
-                if (jumboPurchasesVerified >= currentTicket)
+                if (JumboPurchasesVerified >= currentTicket)
                 {
                     SetState(CactpotState.JumboVerifyingPurchase);
                 }
@@ -876,28 +888,14 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboVerifyingPurchase:
-                if (jumboPurchasesVerified >= currentTicket)
+                if (JumboPurchasesVerified >= currentTicket)
                 {
                     AdvanceAfterJumboPurchaseVerified("system message");
                     break;
                 }
 
-                if (GameHelpers.IsAddonVisible("SelectYesno"))
-                {
-                    if (elapsed > JumboUiTimeout)
-                    {
-                        log.Error($"[Cactpot] Jumbo purchase confirmation remained open for ticket {currentTicket}/{totalTickets}");
-                        SetState(CactpotState.Failed);
-                    }
-
-                    break;
-                }
-
-                if (elapsed < 0.75)
-                    break;
-
-                jumboPurchasesVerified = Math.Max(jumboPurchasesVerified, currentTicket);
-                AdvanceAfterJumboPurchaseVerified("confirmation closed");
+                if (elapsed > JumboUiTimeout)
+                    FailJumboPurchase($"No matching purchase receipt arrived for Jumbo ticket {currentTicket}/{totalTickets}; a closed confirmation is not purchase evidence.");
                 break;
 
             case CactpotState.JumboRecoveryClosingBroker:
@@ -922,22 +920,15 @@ public class CactpotService : IDisposable
                 break;
 
             case CactpotState.JumboComplete:
-                if (!JumboCactpotRecoveryPolicy.CanCompletePurchase(
-                        jumboCurrentTicketsAlreadyOwned,
-                        jumboPurchasesVerified,
-                        totalTickets))
+                if (jumboPurchaseProgress?.IsComplete != true)
                 {
-                    log.Error("[Cactpot] Refusing Jumbo purchase success with existingTickets={ExistingTickets}, verifiedPurchases={VerifiedPurchases}/{TotalTickets}",
-                        jumboCurrentTicketsAlreadyOwned,
-                        jumboPurchasesVerified,
-                        totalTickets);
-                    SetState(CactpotState.Failed);
+                    FailJumboPurchase("Three current-cycle Jumbo tickets have not been verified.");
                     break;
                 }
 
-                log.Information("[Cactpot] Jumbo Cactpot Buy sequence verified and settled (existingTickets={ExistingTickets}, verifiedPurchases={VerifiedPurchases}/{TotalTickets})",
-                    jumboCurrentTicketsAlreadyOwned,
-                    jumboPurchasesVerified,
+                log.Information("[Cactpot] Jumbo Cactpot Buy sequence verified and settled (startingTickets={StartingTickets}, verifiedPurchases={VerifiedPurchases}/{TotalTickets})",
+                    jumboPurchaseProgress.StartingTicketCount,
+                    JumboPurchasesVerified,
                     totalTickets);
                 JumboCompletionKind = JumboCactpotCompletionKind.PurchaseBatchEstablished;
                 SetState(CactpotState.Complete);
@@ -1534,7 +1525,7 @@ public class CactpotService : IDisposable
         return true;
     }
 
-    private bool TryConfirmJumboCactpotPurchaseYes(string reason, bool allowUnreadable)
+    private bool TryConfirmJumboCactpotPurchaseYes(string reason, bool allowUnreadable, bool nextTicket = false)
     {
         var now = DateTime.UtcNow;
         if (lastJumboConfirmationAttemptAt != DateTime.MinValue &&
@@ -1544,7 +1535,9 @@ public class CactpotService : IDisposable
         }
 
         if (!GameHelpers.TryClickYesIfPromptAllowed(
-                prompt => JumboCactpotPurchaseConfirmationPolicy.ShouldConfirmPurchasePrompt(prompt, allowUnreadable),
+                prompt => nextTicket
+                    ? JumboCactpotPurchaseConfirmationPolicy.ShouldConfirmNextTicketPrompt(prompt)
+                    : JumboCactpotPurchaseConfirmationPolicy.ShouldConfirmPurchasePrompt(prompt, allowUnreadable),
                 reason,
                 allowUnreadable,
                 out var promptText))
@@ -1586,16 +1579,13 @@ public class CactpotService : IDisposable
     {
         currentTicket = 1;
         totalTickets = 3;
-        jumboPurchasesVerified = 0;
-        jumboCurrentTicketsAlreadyOwned = false;
+        jumboPurchaseProgress = null;
+        jumboDrawingNumber = null;
         staleJumboPayoutEvidenceObserved = false;
         jumboPayoutWasZeroResult = false;
         jumboCashierExhaustionConfirmed = false;
         JumboCompletionKind = JumboCactpotCompletionKind.None;
-        currentJumboNumber = GetConfiguredJumboNumber();
-        log.Information("[Cactpot] Jumbo cashier work verified; returning to the broker to buy three current-cycle tickets using {Mode} number {Number:0000}",
-            GetConfiguredJumboModeLabel(),
-            currentJumboNumber);
+        log.Information("[Cactpot] Jumbo cashier work verified; returning to the broker to read current-cycle ownership and buy only missing tickets");
         SetState(CactpotState.JumboNavigatingToBroker);
     }
 
@@ -1687,19 +1677,20 @@ public class CactpotService : IDisposable
             return false;
         }
 
-        if (jumboPurchasesVerified >= currentTicket)
+        if (JumboPurchasesVerified >= currentTicket || jumboPurchaseProgress?.PendingNumber == null)
             return false;
 
         if (purchasedNumber != currentJumboNumber)
         {
-            log.Warning("[Cactpot] Jumbo purchase system message number {PurchasedNumber:0000} did not match expected {ExpectedNumber:0000}; accepting system message as purchase confirmation",
-                purchasedNumber,
-                currentJumboNumber);
+            FailJumboPurchase($"Jumbo purchase receipt number {purchasedNumber:0000} did not match the chosen number {currentJumboNumber:0000}.");
+            return false;
         }
 
-        jumboPurchasesVerified = currentTicket;
+        if (!jumboPurchaseProgress.RecordPurchase(purchasedNumber))
+            return false;
+
         log.Information("[Cactpot] Verified Jumbo purchase {VerifiedPurchases}/{TotalTickets} from system message with number {PurchasedNumber:0000}",
-            jumboPurchasesVerified,
+            JumboPurchasesVerified,
             totalTickets,
             purchasedNumber);
 
@@ -1712,11 +1703,11 @@ public class CactpotService : IDisposable
     private void AdvanceAfterJumboPurchaseVerified(string source)
     {
         log.Information("[Cactpot] Verified Jumbo purchase {VerifiedPurchases}/{TotalTickets} after {Source}",
-            jumboPurchasesVerified,
+            JumboPurchasesVerified,
             totalTickets,
             source);
 
-        if (jumboPurchasesVerified >= totalTickets)
+        if (jumboPurchaseProgress?.IsComplete == true)
         {
             SetState(CactpotState.JumboClosingWindows);
             return;
@@ -1724,12 +1715,9 @@ public class CactpotService : IDisposable
 
         currentTicket++;
 
-        if (GameHelpers.IsAddonVisible("LotteryWeeklyInput") || GameHelpers.IsAddonVisible("SelectYesno"))
-            SetState(CactpotState.JumboWaitingForInputWindow);
-        else if (GameHelpers.IsAddonVisible("SelectString"))
-            SetState(CactpotState.JumboSelectingPurchase);
-        else
-            SetState(CactpotState.JumboTargetingBroker);
+        // The next-ticket prompt may arrive after the receipt. Wait for it before
+        // attempting another broker interaction or submitting another number.
+        SetState(CactpotState.JumboWaitingForInputWindow);
     }
 
     private int GetMiniCactpotTicketsToday()
@@ -2149,22 +2137,76 @@ public class CactpotService : IDisposable
         return GameHelpers.TargetAndInteract(npcName);
     }
 
-    private int GetConfiguredJumboNumber()
+    private unsafe bool TryPrepareJumboPurchaseInput()
     {
-        var activeConfig = configManager.GetActiveConfig();
-        return activeConfig.JumboCactpotNumberMode switch
+        try
         {
-            JumboCactpotNumberMode.Fixed => Math.Clamp(activeConfig.JumboCactpotFixedNumber, 0, 9999),
-            _ => Random.Shared.Next(0, 10000),
-        };
+            if (!ECommons.GenericHelpers.TryGetAddonByName<AtkUnitBase>("LotteryWeeklyInput", out var addon) ||
+                !addon->IsVisible || !ECommons.GenericHelpers.IsAddonReady(addon) ||
+                addon->AtkValues == null || addon->AtkValuesCount != 7)
+            {
+                FailJumboPurchase("Current-cycle ticket ownership is unreadable: unexpected purchase-input layout.");
+                return false;
+            }
+
+            // The native LotteryWeekly opener supplies the drawing number in value 0
+            // and Addon 9307 (existing current-drawing numbers) in value 6. These are
+            // purchase-session data, not the saved count of outstanding payout tickets.
+            var drawing = addon->AtkValues[0];
+            var owned = addon->AtkValues[6];
+            if (drawing.Type != AtkValueType.Int || drawing.Int <= 0 ||
+                owned.Type is not (AtkValueType.String or AtkValueType.ManagedString or AtkValueType.ConstString) ||
+                owned.String.Value == null)
+            {
+                FailJumboPurchase("Current-cycle ticket ownership is unreadable: missing drawing or owned-number data.");
+                return false;
+            }
+
+            var text = Dalamud.Memory.MemoryHelper.ReadSeStringNullTerminated(new nint(owned.String)).TextValue;
+            if (!JumboCactpotPurchaseProgress.TryReadOwnedNumberText(text, out var numbers))
+            {
+                FailJumboPurchase("Current-cycle ticket ownership is unreadable: expected the English 'Your Number(s)' field in the purchase input.");
+                return false;
+            }
+
+            if (jumboPurchaseProgress == null)
+            {
+                jumboPurchaseProgress = new JumboCactpotPurchaseProgress(numbers);
+                jumboDrawingNumber = drawing.Int;
+                totalTickets = jumboPurchaseProgress.ExpectedPurchases;
+                log.Information("[Cactpot] Drawing {Drawing}: {OwnedCount}/3 current-cycle tickets already owned; buying {MissingCount}",
+                    jumboDrawingNumber, numbers.Length, totalTickets);
+            }
+            else if (jumboDrawingNumber != drawing.Int || !jumboPurchaseProgress.MatchesOwnedNumbers(numbers))
+            {
+                FailJumboPurchase("The Jumbo drawing or owned numbers changed unexpectedly; leaving the purchase task incomplete.");
+                return false;
+            }
+
+            var activeConfig = configManager.GetActiveConfig();
+            var number = jumboPurchaseProgress.PrepareNumber(
+                activeConfig.JumboCactpotNumberMode, activeConfig.JumboCactpotFixedNumber, Random.Shared);
+            if (number == null)
+            {
+                SetState(CactpotState.JumboClosingWindows);
+                return false;
+            }
+
+            currentJumboNumber = number.Value;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            FailJumboPurchase($"Current-cycle ticket ownership could not be read: {ex.Message}");
+            return false;
+        }
     }
 
-    private string GetConfiguredJumboModeLabel()
+    private void FailJumboPurchase(string reason)
     {
-        var activeConfig = configManager.GetActiveConfig();
-        return activeConfig.JumboCactpotNumberMode == JumboCactpotNumberMode.Fixed
-            ? "fixed"
-            : "random";
+        log.Error("[Cactpot] Jumbo Cactpot incomplete: {Reason}", reason);
+        Plugin.ChatGui.Print($"[Vermaxion] Jumbo Cactpot incomplete: {reason}");
+        SetState(CactpotState.Failed);
     }
 
     private static string FormatUtc(DateTime timestamp)

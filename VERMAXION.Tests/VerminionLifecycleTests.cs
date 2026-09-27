@@ -633,6 +633,7 @@ public sealed class VerminionLifecycleTests
         Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 1, false, 2400, 0));
         Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 0, true, 2400, 0));
         Assert.True(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 0, false, 2400, 0));
+        progress.MinionAcquisition = new("ads-minion-test", 6004, 2, true);
         Assert.Equal(0ul, progress.GilSpent); // Submission is not a receipt.
         Assert.False(progress.CanSpend(1, 0, 10000, 0));
         Assert.False(progress.ReservePurchase(6187, 26, 2400, 0, 5000, 0, 0, false, 10000, 0));
@@ -643,11 +644,15 @@ public sealed class VerminionLifecycleTests
         progress.ObserveWeek(new System.DateTime(2026, 9, 29, 9, 0, 0, System.DateTimeKind.Utc));
         Assert.True(character.VerminionPaused);
         Assert.NotNull(progress.PendingPurchase);
+        Assert.Equal(new VerminionMinionAcquisition("ads-minion-test", 6004, 2, true), progress.MinionAcquisition);
         Assert.False(progress.ConfirmPurchase(5000, 0, 0, false)); // No receipt; no repeated purchase.
         Assert.False(progress.ConfirmPurchase(2600, 0, 0, false)); // Currency alone.
         Assert.False(progress.ConfirmPurchase(5000, 0, 1, false)); // Item alone.
         Assert.False(progress.ConfirmPurchase(2500, 0, 1, false)); // Unknown additional spending.
         var clone = character.Clone();
+        clone.VerminionProgress.MinionAcquisition = null;
+        Assert.NotNull(progress.MinionAcquisition);
+        Assert.Null(new CharacterConfig().VerminionProgress.MinionAcquisition);
         Assert.True(clone.VerminionProgress.ConfirmPurchase(2600, 0, 0, true)); // Registered during interruption.
         Assert.NotNull(progress.PendingPurchase); // Character clones cannot clear each other's reservation.
         Assert.True(progress.ConfirmPurchase(2600, 0, 1, false));
