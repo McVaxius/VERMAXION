@@ -7,6 +7,8 @@ using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using NativeFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 using QuestManager = FFXIVClientStructs.FFXIV.Client.Game.QuestManager;
+using ActionManager = FFXIVClientStructs.FFXIV.Client.Game.ActionManager;
+using ActionType = FFXIVClientStructs.FFXIV.Client.Game.ActionType;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Enums;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -269,6 +271,16 @@ internal static unsafe class VerminionGameInteraction
         return palette == null ? -1 : Array.IndexOf(palette->HotbarMinions.ToArray(), minion);
     }
 
+    public static int FindTutorialSummonSlot()
+    {
+        if (!IsTutorialBattle()) return -1;
+        var palette = GoldSaucerModule.Instance();
+        // The briefing accepts any registered minion. The later exercises
+        // supply their own units; stale or empty saved palette slots cannot summon.
+        return palette == null ? -1 : Array.FindIndex(palette->HotbarMinions.ToArray(),
+            minion => minion != 0 && OwnsMinion(minion) == true);
+    }
+
     public static int? ReadQueuedSummonCount()
     {
         var stage = AtkStage.Instance();
@@ -311,6 +323,29 @@ internal static unsafe class VerminionGameInteraction
 
     public const uint MinionTraderId = 1011595;
 
+    public static bool IsMinionVendor(VerminionVendorMinion offer, Dalamud.Game.ClientState.Objects.Types.IGameObject? vendor)
+        => Plugin.ClientState.TerritoryType == offer.Territory && vendor != null &&
+            (offer.MinionId == 26
+                ? vendor is Dalamud.Game.ClientState.Objects.Types.IBattleNpc npc && npc.NameId == 1237
+                : vendor.BaseId == MinionTraderId);
+
+    public static Dalamud.Game.ClientState.Objects.Types.IGameObject? FindMinionVendor(VerminionVendorMinion offer)
+        => Plugin.ObjectTable.FirstOrDefault(obj => IsMinionVendor(offer, obj) && obj.IsTargetable);
+
+    public static bool HasNonoroonFlightAccess()
+    {
+        var player = FFXIVClientStructs.FFXIV.Client.Game.UI.PlayerState.Instance();
+        return player != null && player->IsAetherCurrentZoneComplete(19);
+    }
+
+    public static bool TryUseVendorTravelAction(uint action)
+    {
+        if (Plugin.ClientState.TerritoryType != 139 || action is not (2 or 9 or 23)) return false;
+        var manager = ActionManager.Instance();
+        return manager != null && manager->GetActionStatus(ActionType.GeneralAction, action) == 0 &&
+            manager->UseAction(ActionType.GeneralAction, action);
+    }
+
     public static bool TryReadOwnedMinions(out ushort[] owned)
     {
         owned = [];
@@ -349,8 +384,10 @@ internal static unsafe class VerminionGameInteraction
     {
         index = -1;
         price = 0;
-        if (Plugin.ClientState.TerritoryType != 388 || Plugin.TargetManager.Target?.BaseId != MinionTraderId ||
+        if (!IsMinionVendor(offer, Plugin.TargetManager.Target) ||
             !GameHelpers.IsAddonVisible(offer.Shop) || (offer.Gil == 0) == (offer.Mgp == 0)) return false;
+        if (!Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().TryGetRow(offer.ItemId, out var itemRow) ||
+            itemRow.ItemAction.Value.Data[0] != offer.MinionId) return false;
         if (offer.Mgp > 0) return TryReadMgpMinionOffer(offer, out index, out price);
         var handle = Plugin.GameGui.GetAddonByName("Shop");
         if (handle.IsNull || !handle.IsReady) return false;
@@ -415,7 +452,7 @@ internal static unsafe class VerminionGameInteraction
 
     public static bool IsMinionPurchaseConfirmation(VerminionVendorMinion offer)
     {
-        if (Plugin.ClientState.TerritoryType != 388 || Plugin.TargetManager.Target?.BaseId != MinionTraderId) return false;
+        if (!IsMinionVendor(offer, Plugin.TargetManager.Target)) return false;
         if (offer.Mgp > 0)
         {
             var handle = Plugin.GameGui.GetAddonByName("SelectYesno");
@@ -460,7 +497,7 @@ internal static unsafe class VerminionGameInteraction
 
     public static void CaptureMinionShop()
     {
-        var vendor = GameHelpers.FindObjectByDataId(MinionTraderId);
+        var vendor = Plugin.TargetManager.Target;
         Plugin.Log.Information($"[VerminionControl] minion shop snapshot: position={Plugin.ObjectTable.LocalPlayer?.Position}; vendor={vendor?.Position}; target={Plugin.TargetManager.Target?.BaseId}; available={GameHelpers.IsPlayerAvailable()}; setupMenu={IsSetupMenu}");
         foreach (var name in new[] { "SelectString", "SelectIconString", "Shop", "ShopExchangeCurrency", "SelectYesno", "Talk" }) CaptureAddon(name);
         var exchange = Plugin.GameGui.GetAddonByName("ShopExchangeCurrency");
@@ -1330,7 +1367,7 @@ internal static unsafe class VerminionGameInteraction
                 AtkValueType.UInt => value.UInt.ToString(),
                 AtkValueType.Bool => value.Bool.ToString(),
                 AtkValueType.Float => value.Float.ToString(),
-                AtkValueType.String or AtkValueType.ManagedString => value.String.ToString(),
+                AtkValueType.String or AtkValueType.ManagedString or AtkValueType.ConstString => value.String.ToString(),
                 _ => "(non-numeric)",
             };
             Plugin.Log.Information($"[VerminionControl] {name}.value[{i}]={text}; type={value.Type}");

@@ -9,6 +9,8 @@ internal sealed record VerminionVendorMinion(ushort MinionId, uint ItemId, strin
     public string Shop => Mgp > 0 ? "ShopExchangeCurrency" : "Shop";
     public uint Price => Mgp > 0 ? Mgp : Gil;
     public string Currency => Mgp > 0 ? "MGP" : "gil";
+    public uint Territory => MinionId == 26 ? 139u : 388u;
+    public string VendorName => MinionId == 26 ? "Junkmonger Nonoroon" : "Minion Trader";
 }
 
 /// <summary>Accessible baseline choices. Guide adaptations still require live verification.</summary>
@@ -19,6 +21,7 @@ internal static class VerminionRoster
     public static ushort[] AcquisitionQuests(ushort minion) => minion == 21 ? GentlemanQuests : [];
     public static readonly VerminionVendorMinion MammetOffer = new(2, 6004, "Mammet #001", 2400);
     public static readonly VerminionVendorMinion HatchlingOffer = new(3, 6005, "Wayward Hatchling", 2400);
+    public static readonly VerminionVendorMinion BatOffer = new(26, 6187, "Baby Bat", 2400);
     public static readonly VerminionVendorMinion NeroOffer = new(174, 14096, "Wind-up Nero tol Scaeva", 0, 30000);
     public static readonly VerminionVendorMinion ZuOffer = new(83, 7565, "Zu Hatchling", 0, 10000);
     private static readonly VerminionVendorMinion[] EntryOffers =
@@ -29,7 +32,7 @@ internal static class VerminionRoster
     ];
 
     public static VerminionVendorMinion? VendorOffer(uint itemId, ushort minionId) =>
-        EntryOffers.Append(NeroOffer).Append(ZuOffer).FirstOrDefault(offer => offer.ItemId == itemId && offer.MinionId == minionId);
+        EntryOffers.Append(BatOffer).Append(NeroOffer).Append(ZuOffer).FirstOrDefault(offer => offer.ItemId == itemId && offer.MinionId == minionId);
 
     // Prefer already registered minions, then buy only the distinct minions
     // needed for entry. Mammet also supplies the ordinary-stage battle roster.
@@ -47,7 +50,7 @@ internal static class VerminionRoster
     public static readonly VerminionMinion Airship = new(52, "Wind-up Airship", 25,
         "Reward from your starting city's level 15 Envoy main scenario quest; register the item.");
     public static readonly VerminionMinion Bat = new(26, "Baby Bat", 10,
-        "2,400 gil from Junkmonger Nonoroon at Poor Maid's Mill, Upper La Noscea, after the FATE Poor Maid's Misfortune. This vendor is conditional; automatic FATE completion is not supported.");
+        "2,400 gil from Junkmonger Nonoroon at Poor Maid's Mill, Upper La Noscea (11.8, 24.7). He temporarily disappears during nearby FATEs. Automatic travel from Camp Bronze Lake requires existing flight access; no FATE completion is attempted.");
     public static readonly VerminionMinion Nero = new(174, "Wind-up Nero tol Scaeva", 20,
         "30,000 MGP from the Minion Trader in Minion Square; permanent vendor stock with no additional unlock.");
     public static readonly VerminionMinion Zu = new(83, "Zu Hatchling", 10,
