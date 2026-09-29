@@ -803,7 +803,7 @@ public class MainWindow : Window, IDisposable
         {
             case "FC Buff Refill":
             case "Vendor Stock":
-                return ["Lifestream", "vnavmesh"];
+                return ["ADS", "Lifestream", "vnavmesh"];
             case "Fishing":
             {
                 var dependencies = new List<string>
@@ -814,12 +814,8 @@ public class MainWindow : Window, IDisposable
                     "AutoHook",
                     "vnavmesh",
                     "YesAlready",
+                    "ADS",
                 };
-                if (config.FishingRepairMode != FishingRepairMode.Disabled ||
-                    config.FishingStockItems.Values.Any(stock => stock.Enabled && stock.Target > 0))
-                {
-                    dependencies.Add("ADS");
-                }
                 return dependencies;
             }
             case "Refill Listings":

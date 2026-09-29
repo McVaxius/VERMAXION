@@ -14,6 +14,7 @@ public class CharacterConfig
     public int VerminionVictoryTarget { get; set; } = 5;
     public uint VerminionGilPurchaseCap { get; set; }
     public uint VerminionMgpPurchaseCap { get; set; }
+    public uint VerminionCertificatePurchaseCap { get; set; }
     public uint VerminionGilReserve { get; set; }
     public VerminionProgress VerminionProgress { get; set; } = new();
     public bool EnableJumboCactpot { get; set; } = false;
@@ -204,6 +205,7 @@ public class CharacterConfig
         VerminionVictoryTarget = source.VerminionVictoryTarget;
         VerminionGilPurchaseCap = source.VerminionGilPurchaseCap;
         VerminionMgpPurchaseCap = source.VerminionMgpPurchaseCap;
+        VerminionCertificatePurchaseCap = source.VerminionCertificatePurchaseCap;
         VerminionGilReserve = source.VerminionGilReserve;
     }
 
@@ -337,6 +339,7 @@ public class CharacterConfig
             VerminionVictoryTarget = VerminionVictoryTarget,
             VerminionGilPurchaseCap = VerminionGilPurchaseCap,
             VerminionMgpPurchaseCap = VerminionMgpPurchaseCap,
+            VerminionCertificatePurchaseCap = VerminionCertificatePurchaseCap,
             VerminionGilReserve = VerminionGilReserve,
             VerminionProgress = VerminionProgress.Clone(),
             EnableJumboCactpot = EnableJumboCactpot,

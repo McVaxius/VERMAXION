@@ -1508,7 +1508,7 @@ public class ConfigWindow : Window, IDisposable
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "FishingSellAfterVoyage", "Fishing sell cleanup",
                     (source, target) => target.FishingSellAfterVoyage = source.FishingSellAfterVoyage);
-                DrawHelpMarker("After discard cleanup, moves near Limsa's Merchant & Mender and runs /ays itemsell. Cleanup warnings do not prevent the configured return.");
+                DrawHelpMarker("After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return.");
 
                 var eatAnyFood = cc.FishingEatAnyFood;
                 if (ImGui.Checkbox("Eat any food in bags (pre-fishing lobby)", ref eatAnyFood))
@@ -1531,7 +1531,7 @@ public class ConfigWindow : Window, IDisposable
                     (source, target) => target.FishingFoodItemId = source.FishingFoodItemId);
                 DrawHelpMarker("Optional override: eat exactly this item id (NQ+HQ both count; must be in inventory). 0 = let 'Eat any food' pick.");
 
-                ImGui.TextDisabled("Requires XADB, AutoRetainer, Lifestream, AutoHook, and vnavmesh. ADS is the only repair provider and is required when repair is enabled.");
+                ImGui.TextDisabled("Requires XADB, AutoRetainer, Lifestream, AutoHook, vnavmesh, YesAlready, and ADS. ADS handles vendor purchases, selling, and repair.");
                 ImGui.Unindent();
             }
 

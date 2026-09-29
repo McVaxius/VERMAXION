@@ -43,9 +43,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260927-312";
+    private const string DebugAttemptMarker = "verminion-control-20260928-417";
     private DateTime nextChocoboContinuationUtc;
-    private const string ExpectedDebugPluginPath = @"A:\ff14\parasite\vmx\VERMAXION.dll";
+    private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
     public ConfigManager ConfigManager { get; init; }
@@ -637,6 +637,13 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             var multi = AutoRetainerIPC.ReadMultiModeEnabled();
             if (!multi.Success || multi.Enabled)
                 throw new InvalidOperationException("AutoRetainer multi mode must be confirmed off for the quest handoff.");
+            if (VerminionRoster.AchievementOffers.Any(offer => offer.MinionId == minionId))
+            {
+                RunDashboardAction(() => VerminionService.AcquireAchievementMinion(minionId));
+                return;
+            }
+            if (!DadIPCClient.IsReady(useCache: false))
+                throw new InvalidOperationException("Enable DAD before starting Questionable minion acquisition; its duty handoff is unavailable.");
             if (!PluginInterface.GetIpcSubscriber<bool>("dad.Duty.IsStopped").InvokeFunc())
                 throw new InvalidOperationException("DAD already owns a duty.");
             VerminionService.AcquireMinion(minionId);
@@ -2549,7 +2556,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         LootGoblinMapGatherManualRunCoordinator.Cancel();
         Log.Information("[FULL STOP] LootGoblin map gather cancel requested");
 
-        Engine.ForceStop();
+        Engine.ForceStop(preserveVerminionResult: preparingDebugTask &&
+            Configuration.DebugTaskId == AutomationCatalog.VerminionQueue);
         Log.Information("[FULL STOP] Engine force-stopped");
 
         MomIPCClient.CancelActiveRun();
@@ -2714,6 +2722,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         DateTimeOffset registrationStartUtc,
         DateTimeOffset registrationDeadlineUtc)
     {
+        if (!PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "ADS"))
+        {
+            const string adsRequired = "ADS is required for Fishing. Install and enable ADS before starting a fishing run.";
+            FishingRunLifecycle.ReportBeginFailure(adsRequired);
+            Log.Warning($"[Fishing][Startup] {adsRequired}");
+            return false;
+        }
+
         var provider = Configuration.OceanFishingProvider;
         if (!AutoHookIPC.TrySynchronizeAutoOceanFish(provider, out var synchronizationStatus))
         {

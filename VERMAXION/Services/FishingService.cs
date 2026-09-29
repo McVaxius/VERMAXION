@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
+using Newtonsoft.Json.Linq;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.DutyState;
 using Dalamud.Plugin.Services;
@@ -20,10 +21,11 @@ namespace VERMAXION.Services;
 
 public sealed class FishingService
 {
+    private string? npcSaleOperationId;
+    private DateTime nextNpcSaleObservation;
     private const ushort LimsaTerritoryType = OceanFishingDockPreparationPolicy.LimsaTerritoryType;
     private const uint ArcanistsGuildAethernetId = OceanFishingDockPreparationPolicy.ArcanistsGuildAethernetId;
     private const uint OceanFishingUnlockQuestId = 69379;
-    private const uint MerchantAndMenderDataId = OceanFishingDockPreparationPolicy.MerchantAndMenderDataId;
     private const uint DryskthotaDataId = OceanFishingDockPreparationPolicy.DryskthotaDataId;
     private const uint VersatileLureItemId = OceanFishingDockPreparationPolicy.VersatileLureItemId;
     private const string OceanFishingResultAddonName = "IKDResult";
@@ -32,7 +34,6 @@ public sealed class FishingService
     private const float BoatFishingPositionTolerance = 0.5f;
     private const ConditionFlag GatheringCondition = (ConditionFlag)6;
     private const ConditionFlag FishingCondition = (ConditionFlag)43;
-    private static readonly Vector3 MerchantAndMenderPosition = OceanFishingDockPreparationPolicy.MerchantAndMenderPosition;
     private static readonly Vector3 DryskthotaPosition = OceanFishingDockPreparationPolicy.DryskthotaPosition;
     private static readonly TimeSpan FishingLoopPollInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan LimsaTravelTimeout = TimeSpan.FromSeconds(90);
@@ -151,9 +152,6 @@ public sealed class FishingService
     private FishingStockRequirement? activeFishingStockRequirement;
     private DateTime fishingStockPurchaseStartedAt = DateTime.MinValue;
     private bool fishingStockPurchaseOwned;
-    private bool fishingStockFoodWalkDone;
-    private DateTime fishingStockFoodWalkStartedAt = DateTime.MinValue;
-    private DateTime fishingStockFoodWalkLastNavAt = DateTime.MinValue;
     private bool fishingStockNavReadyConfirmed;
     private DateTime fishingStockNavReadyWaitStartedAt = DateTime.MinValue;
     private DateTime fishingStockSettleStartedAt = DateTime.MinValue;
@@ -174,15 +172,7 @@ public sealed class FishingService
     // client would lose every later window too. A bounded bad purchase is always better than a wedged client.
     private static readonly TimeSpan ShopSessionSettleHardCap = TimeSpan.FromSeconds(36);
     private static readonly TimeSpan ShopSessionSettleWarnInterval = TimeSpan.FromSeconds(5);
-    // 90s: generous enough to absorb a still-building navmesh right after the fake-ready login — ADS's own
-    // tighter candidate timeout is exactly what turns nav-not-ready into cross-zone vendor teleports. The hard
-    // cap bounds the extra wait when a pathfind is still PENDING at 90s (handing ADS control with a pending
-    // task both blocks its own movetos and later yanks the toon mid-purchase).
-    private static readonly TimeSpan FoodVendorWalkTimeout = TimeSpan.FromSeconds(90);
-    private static readonly TimeSpan FoodVendorWalkHardCap = TimeSpan.FromSeconds(150);
     private static readonly TimeSpan NavmeshReadyTimeout = TimeSpan.FromSeconds(60);
-    private const uint GerulfDataId = 1003253;                       // Gerulf, Limsa Lower Decks grocer (sells 4674)
-    private static readonly Vector3 GerulfPosition = new(-149.95f, 18.17f, 36.94f);
     private FishingAttemptFailureKind failureKind = FishingAttemptFailureKind.Stop;
     private bool failureReported;
 
@@ -317,6 +307,14 @@ public sealed class FishingService
         if (IsActive)
             return;
 
+        if (!Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "ADS"))
+        {
+            lastError = "ADS is required for Fishing. Install and enable ADS before starting a fishing run.";
+            log.Warning($"[Fishing] {lastError}");
+            state = FishingState.Failed;
+            return;
+        }
+
         if (runLifecycle.Current == null)
         {
             lastError = "Ocean Fishing cannot start without an owned run context.";
@@ -395,6 +393,7 @@ public sealed class FishingService
 
     public void Reset(bool releaseRun = true)
     {
+        CancelOwnedNpcSale();
         vendorStockService.Reset();
         if (OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider) &&
             CurrentRailDestination.HasValue &&
@@ -664,9 +663,6 @@ public sealed class FishingService
                 // Re-entry (e.g. a TravelingToLimsa bounce mid-prep) relocates the toon, so the food walk
                 // and mesh gate must re-run per pass — a stale walkDone would dispatch food from the
                 // aetheryte plaza.
-                fishingStockFoodWalkDone = false;
-                fishingStockFoodWalkStartedAt = DateTime.MinValue;
-                fishingStockFoodWalkLastNavAt = DateTime.MinValue;
                 fishingStockNavReadyConfirmed = false;
                 fishingStockNavReadyWaitStartedAt = DateTime.MinValue;
                 // ARM (not clear) the settle gate for the first dispatch: an at-dock ADS repair is an NPC
@@ -974,12 +970,7 @@ public sealed class FishingService
             $"[Fishing][DockPrep] Requirements evaluated after Limsa arrival: " +
             $"repair={repairDecision.ShouldRepair} ({repairDecision.Reason}), " +
             $"enabledStock={requirements.Count}, missingStock={missingItems}");
-        // When repair is due, go THROUGH the dock walk first: the Merchant & Mender the stock machinery
-        // already navigates to IS a mender, so repairing there needs no teleport at all. The old direct
-        // transition ran CheckingRepair from wherever the character stood (usually the summoning bell),
-        // which forced ADS onto its teleporting repair routes — those can loop
-        // repair-start -> 5-minute wait -> fail through entire registration windows. Arrival at the
-        // vendor transitions to CheckingRepair (TickNavigateToPreparationDock), same as before.
+        // ADS owns vendor routing for both repair and stock purchases.
         SetState(repairDecision.ShouldRepair
             ? FishingState.NavigatingToPreparationDock
             : FishingState.CheckingRepair);
@@ -1010,19 +1001,12 @@ public sealed class FishingService
                 if (!TryEnsureNavmeshReady())
                     return;
 
-                // FOOD: additionally walk the toon INTO GERULF'S RANGE before dispatching (the same
-                // walk-first pattern as the dock preparation). ADS always resolves
-                // 4674 to Gerulf; with the vendor already in interact range its walk is a no-op and the
-                // buy lands in seconds.
-                if (configured.ItemId == FishingStockItemIds.LentilsAndChestnuts && !TryWalkToFoodVendor())
-                    return;
-
                 // Hold the dock vendor's shop open across EVERY dock purchase, so the whole stop costs one
                 // interact; without it the third consecutive interact with that NPC is swallowed by the
                 // stale NPC event the previous close left behind (see IsDockVendorItem). Holding stays on
                 // through the last one too — predicting which purchase is last would close the shop exactly
                 // when the final buy needs it. The chain is closed by ReleaseHeldShop when restocking ends,
-                // and switching to the food vendor turns it off here, before the walk to Gerulf.
+                // and switching vendors turns it off before ADS selects the next route.
                 RequestShopKeepOpen(FishingStockItemIds.IsDockVendorItem(configured.ItemId));
 
                 activeFishingStockRequirement = configured with
@@ -1257,65 +1241,6 @@ public sealed class FishingService
         return false;
     }
 
-    /// <summary>Walks the toon into Gerulf's interact range before the FOOD purchase dispatch (same
-    /// vnavmesh re-issue pattern as the Merchant &amp; Mender dock walk). Returns true when dispatching may
-    /// proceed: vendor in range (vnav stopped), or the bounded walk gave up — in which case it NEVER
-    /// fails open while a pathfind is still pending (a pending task blocks ADS's own movetos and starts
-    /// moving the toon when the mesh finishes), waiting up to the hard cap first.</summary>
-    private bool TryWalkToFoodVendor()
-    {
-        if (fishingStockFoodWalkDone)
-            return true;
-
-        var vendor = GameHelpers.FindObjectByDataId(GerulfDataId) ?? GameHelpers.FindObjectByName("Gerulf");
-        var position = vendor?.Position ?? GerulfPosition;
-        var distance = DistanceTo(position);
-        if (vendor != null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
-        {
-            vnavmesh.Stop();
-            fishingStockFoodWalkDone = true;
-            log.Information($"[Fishing][Stock] Food vendor in range ({distance:F1}y) — dispatching the food purchase");
-            return true;
-        }
-
-        if (fishingStockFoodWalkStartedAt == DateTime.MinValue)
-            fishingStockFoodWalkStartedAt = DateTime.UtcNow;
-        var elapsed = DateTime.UtcNow - fishingStockFoodWalkStartedAt;
-
-        // At destination but the vendor object hasn't loaded: stand and wait (the dock walk's own
-        // pattern) instead of re-issuing movetos to our own position for the rest of the budget.
-        if (vendor == null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
-        {
-            vnavmesh.Stop();
-            statusDetail = "Waiting for Gerulf to load at the food stop";
-            if (elapsed <= FoodVendorWalkTimeout)
-                return false;
-        }
-
-        if (elapsed > FoodVendorWalkTimeout)
-        {
-            var pending = vnavmesh.TryGetPathfindInProgress(out var p) && p;
-            if (pending && elapsed <= FoodVendorWalkHardCap)
-            {
-                statusDetail = "Food-vendor walk over budget; waiting out the pending pathfind";
-                return false;
-            }
-            vnavmesh.Stop();
-            fishingStockFoodWalkDone = true;
-            log.Warning($"[Fishing][Stock] Food-vendor walk gave up at {distance:F1}y (pendingPathfind={pending}) — falling back to ADS vendor resolution");
-            return true;
-        }
-
-        if (fishingStockFoodWalkLastNavAt == DateTime.MinValue ||
-            DateTime.UtcNow - fishingStockFoodWalkLastNavAt >= TimeSpan.FromSeconds(2))
-        {
-            fishingStockFoodWalkLastNavAt = DateTime.UtcNow;
-            statusDetail = $"Walking to Gerulf for the food purchase ({distance:F1}y)";
-            vnavmesh.PathfindAndMoveTo(position);
-        }
-        return false;
-    }
-
     private void CompleteFishingStockRequirement(
         bool adsSucceeded,
         int acquiredQuantity,
@@ -1423,9 +1348,6 @@ public sealed class FishingService
         fishingStockRequirementIndex = 0;
         activeFishingStockRequirement = null;
         fishingStockPurchaseStartedAt = DateTime.MinValue;
-        fishingStockFoodWalkDone = false;
-        fishingStockFoodWalkStartedAt = DateTime.MinValue;
-        fishingStockFoodWalkLastNavAt = DateTime.MinValue;
         fishingStockNavReadyConfirmed = false;
         fishingStockNavReadyWaitStartedAt = DateTime.MinValue;
         fishingStockSettleStartedAt = DateTime.MinValue;
@@ -1435,69 +1357,7 @@ public sealed class FishingService
     }
 
     private void TickNavigateToPreparationDock(TimeSpan elapsed)
-    {
-        if (elapsed > DockNavigationTimeout)
-        {
-            RetryStartupTravel(
-                $"Bounded dock navigation timed out waiting for Merchant & Mender dataId={MerchantAndMenderDataId}; distance={DistanceTo(MerchantAndMenderPosition):F1}y.");
-            return;
-        }
-
-        if (!IsInLimsaAndReady())
-        {
-            if (aethernetTeleportOwned)
-            {
-                TryRecoverOwnedTelepotTown(DistanceTo(MerchantAndMenderPosition), "Merchant & Mender");
-                return;
-            }
-
-            SetState(FishingState.TravelingToLimsa);
-            return;
-        }
-
-        var dataIdVendor = GameHelpers.FindObjectByDataId(MerchantAndMenderDataId);
-        var nameFallbackVendor = GameHelpers.FindObjectByName("Merchant & Mender");
-        var vendor = dataIdVendor ?? nameFallbackVendor;
-        var approachPosition = OceanFishingDockPreparationPolicy.ResolveMerchantApproachPosition(
-            MerchantAndMenderPosition,
-            dataIdVendor?.Position,
-            nameFallbackVendor?.Position);
-        var distance = DistanceTo(approachPosition);
-
-        if (TryRouteViaArcanistsGuild(distance, "Merchant & Mender"))
-            return;
-
-        if (vendor != null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
-        {
-            vnavmesh.Stop();
-            startupNavigationOwned = false;
-            var source = dataIdVendor != null ? "data ID" : "name fallback";
-            log.Information(
-                $"[Fishing][DockPrep] Vendor acquisition: Merchant & Mender dataId={MerchantAndMenderDataId} resolved by {source} at {vendor.Position}");
-            SetState(FishingState.CheckingRepair);
-            return;
-        }
-
-        if (vendor == null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
-        {
-            vnavmesh.Stop();
-            startupNavigationOwned = false;
-            statusDetail = "Waiting for Merchant & Mender to load at the Limsa dock";
-        }
-
-        if (vendor == null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
-            return;
-
-        if (lastNavigationCommandAt == DateTime.MinValue ||
-            DateTime.UtcNow - lastNavigationCommandAt >= TimeSpan.FromSeconds(2))
-        {
-            lastNavigationCommandAt = DateTime.UtcNow;
-            var source = vendor == null ? "fixed fallback" : dataIdVendor != null ? "data ID" : "name fallback";
-            log.Information(
-                $"[Fishing][DockPrep] Dock navigation to Merchant & Mender ({distance:F1}y, source={source}, dataId={MerchantAndMenderDataId})");
-            startupNavigationOwned |= vnavmesh.PathfindAndMoveTo(approachPosition);
-        }
-    }
+        => SetState(FishingState.CheckingRepair);
 
     private bool TryRouteViaArcanistsGuild(double distance, string directDestinationName)
     {
@@ -2518,16 +2378,7 @@ public sealed class FishingService
             return false;
         }
 
-        // Standing at the dock's Merchant & Mender (which CheckingPreparation now routes through when
-        // repair is due), the no-teleport mode is strictly better than whatever is configured: the mender
-        // is right here, and every teleporting mode risks the multi-minute field/inn odyssey that has
-        // missed boats. Configured mode still applies when repair triggers away from the dock.
         var adsMode = decision.AdsMode;
-        if (DistanceTo(MerchantAndMenderPosition) <= OceanFishingDockPreparationPolicy.InteractDistance * 2f)
-        {
-            adsMode = FishingRepairPolicy.ToAdsMode(FishingRepairMode.NpcNoTeleportNoInn);
-            log.Information("[Fishing][DockPrep] At the Merchant & Mender; using no-teleport repair mode.");
-        }
 
         if (!adsIpcClient.StartRepair(adsMode, out var failure))
         {
@@ -2541,9 +2392,7 @@ public sealed class FishingService
                 log.Warning("[Fishing][DockPrep] ADS reports a repair already active; cancelling the stale " +
                             "utility and retrying once.");
                 adsIpcClient.CancelUtility(out _);
-                // Retry with the SAME resolved mode as the first attempt — the at-mender no-teleport
-                // override must survive the retry, or the stale-state self-heal teleports the character
-                // away from the dock in exactly the state both protections exist for.
+                // Preserve the configured repair mode when reissuing the ADS request.
                 if (adsIpcClient.StartRepair(adsMode, out failure))
                 {
                     repairStartedAt = DateTime.UtcNow;
@@ -3835,106 +3684,51 @@ public sealed class FishingService
     }
 
     private void TickNavigateToCleanupVendor(TimeSpan elapsed)
+        => SetState(FishingState.RunningInventoryCleanup);
+
+    private void CancelOwnedNpcSale()
     {
-        if (inventoryRecoveryActive)
+        if (npcSaleOperationId == null) return;
+        try { Plugin.PluginInterface.GetIpcSubscriber<string, bool>("ADS.CancelNpcSale").InvokeFunc(npcSaleOperationId); }
+        catch (Exception ex) { log.Warning($"[Fishing][Cleanup] ADS sale cancellation remains unresolved: {ex.Message}"); }
+        npcSaleOperationId = null;
+    }
+
+    private void TickAdsNpcSale(TimeSpan elapsed)
+    {
+        if (DateTime.UtcNow < nextNpcSaleObservation) return;
+        nextNpcSaleObservation = DateTime.UtcNow.AddSeconds(1);
+        try
         {
-            var onboardVendor = GameHelpers.FindObjectByDataId(MerchantAndMenderDataId) ??
-                                GameHelpers.FindObjectByName("Merchant & Mender");
-            if (onboardVendor != null)
+            if (npcSaleOperationId == null)
             {
-                var approach = onboardVendor.Position;
-                var onboardDistance = DistanceTo(approach);
-                if (onboardDistance <= OceanFishingDockPreparationPolicy.InteractDistance)
-                {
-                    vnavmesh.Stop();
-                    SetState(FishingState.RunningInventoryCleanup);
-                    return;
-                }
-
-                if (lastNavigationCommandAt == DateTime.MinValue ||
-                    DateTime.UtcNow - lastNavigationCommandAt >= TimeSpan.FromSeconds(3))
-                {
-                    lastNavigationCommandAt = DateTime.UtcNow;
-                    vnavmesh.PathfindAndMoveTo(approach);
-                }
-
-                statusDetail = "Moving to onboard Merchant & Mender for /ays itemsell";
-            }
-            else
-            {
-                statusDetail = "Waiting for onboard Merchant & Mender";
-            }
-
-            if (elapsed >= RegistrarNavigationTimeout)
-            {
-                log.Warning("[Fishing][InventoryRecovery] Onboard merchant unavailable; resuming fishing placement");
-                ResumeAfterInventoryRecovery("onboard merchant navigation timed out");
-            }
-            return;
-        }
-
-        if (!IsInLimsaAndReady())
-        {
-            // Same idle-gate + 75s wedge escape as boarding travel (see TickTravelToLimsa).
-            var sinceLastCleanupTravel = lastTravelCommandAt == DateTime.MinValue
-                ? TimeSpan.MaxValue
-                : DateTime.UtcNow - lastTravelCommandAt;
-            if ((!lifestream.IsBusy() && sinceLastCleanupTravel >= TimeSpan.FromSeconds(10)) ||
-                sinceLastCleanupTravel >= TimeSpan.FromSeconds(75))
-            {
-                lastTravelCommandAt = DateTime.UtcNow;
-                lifestream.ExecuteCommand("/li limsa");
-            }
-
-            if (elapsed < LimsaTravelTimeout)
-            {
-                statusDetail = "Traveling to Limsa Merchant & Mender for item selling";
+                npcSaleOperationId = Guid.NewGuid().ToString("N");
+                var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, bool, bool>("ADS.StartNpcSale")
+                    .InvokeFunc(npcSaleOperationId, inventoryRecoveryActive);
+                if (!accepted) throw new InvalidOperationException("ADS did not accept NPC selling.");
+                statusDetail = "ADS is handling vendor travel and AutoRetainer selling";
                 return;
             }
-
-            log.Warning("[Fishing][Cleanup] Could not reach Limsa for /ays itemsell; continuing to return");
+            var status = JObject.Parse(Plugin.PluginInterface.GetIpcSubscriber<string>("ADS.GetNpcSaleStatusJson").InvokeFunc());
+            if ((string?)status["operationId"] != npcSaleOperationId)
+                throw new InvalidOperationException("ADS no longer reports the owned NPC sale; no request repeated.");
+            if ((bool?)status["running"] == true)
+            {
+                if (elapsed > TimeSpan.FromMinutes(3)) throw new InvalidOperationException("ADS NPC selling exceeded its wait limit.");
+                statusDetail = (string?)status["statusMessage"] ?? "ADS NPC selling";
+                return;
+            }
+            if ((bool?)status["done"] != true || (bool?)status["succeeded"] != true)
+                throw new InvalidOperationException((string?)status["statusMessage"] ?? "ADS NPC selling has no verified completion.");
+            npcSaleOperationId = null;
             AdvanceInventoryCleanup();
-            return;
         }
-
-        // Reuse the repair path's vendor acquisition (DataId 1005422 + resolved approach position + 3y
-        // interact), NOT name-only + 12y. /ays itemsell only engages AR's sell task when a GilShop vendor is
-        // within 7y (NpcSaleManager.GetValidNPC); a 12y arrival gate declares "arrived" ~5y short, so
-        // AR never goes busy and the sell silently no-ops. The repair
-        // path reaches this same NPC reliably at InteractDistance, so selling does too.
-        var dataIdVendor = GameHelpers.FindObjectByDataId(MerchantAndMenderDataId);
-        var nameFallbackVendor = GameHelpers.FindObjectByName("Merchant & Mender");
-        var vendor = dataIdVendor ?? nameFallbackVendor;
-        var approachPosition = OceanFishingDockPreparationPolicy.ResolveMerchantApproachPosition(
-            MerchantAndMenderPosition,
-            dataIdVendor?.Position,
-            nameFallbackVendor?.Position);
-        var distance = DistanceTo(approachPosition);
-
-        if (TryRouteViaArcanistsGuild(distance, "Merchant & Mender"))
-            return;
-
-        if (vendor != null && distance <= OceanFishingDockPreparationPolicy.InteractDistance)
+        catch (Exception ex)
         {
-            vnavmesh.Stop();
-            SetState(FishingState.RunningInventoryCleanup);
-            return;
-        }
-
-        if (vendor != null)
-        {
-            statusDetail = $"Moving near Merchant & Mender for /ays itemsell ({distance:F1}y)";
-            vnavmesh.PathfindAndMoveTo(approachPosition);
-        }
-        else
-        {
-            statusDetail = "Waiting for Limsa Merchant & Mender to load";
-        }
-
-        if (elapsed >= RegistrarNavigationTimeout)
-        {
-            log.Warning("[Fishing][Cleanup] Could not navigate near Merchant & Mender; skipping /ays itemsell");
-            AdvanceInventoryCleanup();
+            log.Warning($"[Fishing][Cleanup] {ex.Message}");
+            CancelOwnedNpcSale();
+            if (inventoryRecoveryActive) ResumeAfterInventoryRecovery("ADS NPC sale did not complete");
+            else AdvanceInventoryCleanup();
         }
     }
 
@@ -3946,10 +3740,15 @@ public sealed class FishingService
             return;
         }
 
+        if (cleanupCommands[cleanupCommandIndex] == FishingCleanupCommand.Sell)
+        {
+            TickAdsNpcSale(elapsed);
+            return;
+        }
+
         var command = cleanupCommands[cleanupCommandIndex] switch
         {
             FishingCleanupCommand.Discard => "/ays discard",
-            FishingCleanupCommand.Sell => "/ays itemsell",
             _ => string.Empty,
         };
 
@@ -3961,42 +3760,6 @@ public sealed class FishingService
         }
 
         var busy = autoRetainer.ReadBusyState();
-        if (inventoryRecoveryActive)
-        {
-            if (busy.Success && busy.Busy && !cleanupBusyObserved)
-                log.Information("[Fishing][InventoryRecovery] AutoRetainer busy observed for /ays itemsell");
-            if (busy.Success && busy.Busy)
-                cleanupBusyObserved = true;
-
-            var decision = FishingInventoryRecoveryPolicy.DecideSell(
-                busy.Success,
-                busy.Success && busy.Busy,
-                cleanupBusyObserved,
-                elapsed >= CleanupWorkTimeout);
-            if (decision == FishingInventoryRecoverySellDecision.Wait)
-            {
-                statusDetail = cleanupBusyObserved
-                    ? "Waiting for AutoRetainer /ays itemsell to finish"
-                    : "Waiting for AutoRetainer /ays itemsell to become busy";
-                return;
-            }
-
-            if (decision == FishingInventoryRecoverySellDecision.Complete)
-            {
-                log.Information("[Fishing][InventoryRecovery] AutoRetainer busy cleared; /ays itemsell complete");
-                AdvanceInventoryCleanup();
-            }
-            else
-            {
-                log.Warning(
-                    busy.Success
-                        ? "[Fishing][InventoryRecovery] /ays itemsell never made AutoRetainer busy; returning to fishing"
-                        : $"[Fishing][InventoryRecovery] AutoRetainer state unreadable; returning to fishing: {busy.Error}");
-                ResumeAfterInventoryRecovery("AutoRetainer sell was not observed");
-            }
-            return;
-        }
-
         if (!busy.Success)
         {
             if (elapsed < CleanupWorkTimeout)
@@ -4277,6 +4040,7 @@ public sealed class FishingService
 
     private void Fail(string message, FishingAttemptFailureKind kind = FishingAttemptFailureKind.Stop)
     {
+        CancelOwnedNpcSale();
         lastError = message;
         failureKind = queueRegistrationObserved ? FishingAttemptFailureKind.Stop : kind;
         log.Warning($"[Fishing] {message}");

@@ -19,6 +19,7 @@ namespace VERMAXION.Services;
 // structures. Captures are bounded, at explicit transitions, and use the existing log.
 internal static unsafe class VerminionGameInteraction
 {
+    internal const int FinalStageObservationSeconds = 540;
     private static string? restoreCaptureGameScale;
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     private struct BitmapInfo
@@ -33,6 +34,9 @@ internal static unsafe class VerminionGameInteraction
 
     [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern nint GetDC(nint window);
     [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern int ReleaseDC(nint window, nint dc);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool PrintWindow(nint window, nint dc, uint flags);
     [System.Runtime.InteropServices.DllImport("gdi32.dll")] private static extern nint CreateCompatibleDC(nint dc);
     [System.Runtime.InteropServices.DllImport("gdi32.dll")] private static extern bool DeleteDC(nint dc);
     [System.Runtime.InteropServices.DllImport("gdi32.dll")] private static extern bool DeleteObject(nint obj);
@@ -61,16 +65,31 @@ internal static unsafe class VerminionGameInteraction
         if (CurrentCpuDutyId() == 0) return;
         PrepareBattlefieldRendering();
         HideBattlefieldPanels();
+        if (CurrentCpuDutyId() == 575)
+        {
+            var manager = RaptureAtkUnitManager.Instance();
+            if (manager == null) return;
+            for (var i = 0; i < Math.Min((int)manager->AllLoadedUnitsList.Count, 256); ++i)
+            {
+                var addon = manager->AllLoadedUnitsList.Entries[i].Value;
+                if (addon == null || !addon->IsVisible) continue;
+                var name = addon->NameString;
+                if (!name.Contains("Lovm", StringComparison.Ordinal) || name is "LovmResult" or "LovmReady" or "LovmConfirm") continue;
+                hiddenBattlefieldPanels[name] = (nint)addon;
+                addon->Hide(true, false, 0);
+                Plugin.Log.Information($"[VerminionControl] diagnostic panel hidden: {name}; position={addon->X},{addon->Y}");
+            }
+        }
     }
 
     public static bool CaptureTutorialImage()
     {
         var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
         if (CurrentCpuDutyId() == 0 || window == 0 || PInvoke.User32.IsIconic(window) ||
-            PInvoke.User32.GetForegroundWindow() != window ||
             !PInvoke.User32.GetClientRect(window, out var bounds)) return false;
+        var foreground = PInvoke.User32.GetForegroundWindow() == window;
         var origin = new PInvoke.POINT();
-        if (!ClientToScreen(window, ref origin)) return false;
+        if (foreground && !ClientToScreen(window, ref origin)) return false;
         var width = bounds.right;
         var height = bounds.bottom;
         if (width <= 0 || height <= 0 || (long)width * height > 16000000) return false;
@@ -85,7 +104,11 @@ internal static unsafe class VerminionGameInteraction
             bitmap = CreateDIBSection(screenDc, ref info, 0, out var pixels, 0, 0);
             if (bitmap == 0 || pixels == 0) return false;
             previous = SelectObject(memoryDc, bitmap);
-            if (!BitBlt(memoryDc, 0, 0, width, height, screenDc, origin.x, origin.y, 0x40CC0020)) return false;
+            // Print only this client's surface when another window has focus.
+            // Its renderer may decline this; a saved image still needs inspection.
+            if (!(foreground
+                ? BitBlt(memoryDc, 0, 0, width, height, screenDc, origin.x, origin.y, 0x40CC0020)
+                : PrintWindow(window, memoryDc, 3))) return false; // CLIENTONLY | RENDERFULLCONTENT
             var data = new byte[width * height * 4];
             System.Runtime.InteropServices.Marshal.Copy(pixels, data, 0, data.Length);
             var path = System.IO.Path.Combine(Plugin.PluginInterface.GetPluginConfigDirectory(), "verminion-control.bmp");
@@ -94,7 +117,7 @@ internal static unsafe class VerminionGameInteraction
             output.Write(40); output.Write(width); output.Write(-height); output.Write((ushort)1); output.Write((ushort)32);
             output.Write(0); output.Write(data.Length); output.Write(0); output.Write(0); output.Write(0); output.Write(0);
             output.Write(data);
-            Plugin.Log.Information($"[VerminionControl] bounded game-window image ready; size={width}x{height}; file=verminion-control.bmp");
+            Plugin.Log.Information($"[VerminionControl] bounded game-window image ready; source={(foreground ? "foreground client" : "PrintWindow client surface")}; size={width}x{height}; file=verminion-control.bmp");
             return true;
         }
         finally
@@ -114,11 +137,177 @@ internal static unsafe class VerminionGameInteraction
         var finder = ContentsFinder.Instance();
         return Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion] &&
             finder != null && finder->QueueInfo.PoppedQueueEntry.ContentType == ContentsType.Regular &&
-            finder->QueueInfo.PoppedQueueEntry.Id is >= 552 and <= 579
+            VERMAXION.Models.VerminionDutyRules.IsCpu(finder->QueueInfo.PoppedQueueEntry.Id)
             ? finder->QueueInfo.PoppedQueueEntry.Id : 0;
     }
 
     public static int CompletedStages() => PlayerState.Instance() is var player && player != null ? player->CompletedLoVMStages : -1;
+
+    public static bool OpenTournamentInfo()
+    {
+        var module = AgentModule.Instance();
+        var agent = module == null ? null : module->GetAgentByInternalId(AgentId.GoldSaucer);
+        if (agent == null) return false;
+        agent->Show();
+        return true;
+    }
+
+    public static void CloseTournamentInfo()
+    {
+        var handle = Plugin.GameGui.GetAddonByName("GoldSaucerInfo");
+        if (!handle.IsNull && handle.IsReady) ((AtkUnitBase*)handle.Address)->Close(true);
+    }
+
+    public static bool OpenTournamentFinder()
+    {
+        if (GameHelpers.IsAddonVisible("ContentsFinder")) return false;
+        var agent = AgentContentsFinder.Instance();
+        if (agent == null) return false;
+        foreach (var selected in agent->SelectedContent)
+            if (selected.ContentType != ContentsType.Regular || selected.Id != VERMAXION.Models.VerminionTournamentEntryRules.CpuDuty)
+                return false;
+        agent->OpenRegularDuty(VERMAXION.Models.VerminionTournamentEntryRules.CpuDuty);
+        return true;
+    }
+
+    public static bool IsTournamentFinder =>
+        Plugin.GameGui.GetAddonByName("ContentsFinder") is var handle &&
+        !handle.IsNull && handle.IsReady && handle.IsVisible &&
+        AgentContentsFinder.Instance() is var agent && agent != null &&
+        agent->SelectedDuty.ContentType == ContentsType.Regular && agent->SelectedDuty.Id == 579;
+
+    public static bool HasOnlyTournamentSelection()
+    {
+        if (!IsTournamentFinder) return false;
+        var agent = AgentContentsFinder.Instance();
+        var selected = new List<uint>();
+        foreach (var entry in agent->SelectedContent)
+            selected.Add(entry.ContentType == ContentsType.Regular ? entry.Id : 0);
+        return VERMAXION.Models.VerminionTournamentEntryRules.OnlyCpuSelection(agent->SelectedDuty.Id, selected.ToArray());
+    }
+
+    public static void CloseTournamentFinder()
+    {
+        if (IsTournamentFinder)
+        {
+            if (HasOnlyTournamentSelection())
+                GameHelpers.TryClickNativeButton("ContentsFinder", "Clear Selection", 73);
+            ((AtkUnitBase*)Plugin.GameGui.GetAddonByName("ContentsFinder").Address)->Close(true);
+        }
+    }
+
+    public static bool TryReadTournamentDialogue(out VERMAXION.Models.VerminionTournamentDialogue dialogue)
+        => TryReadTournamentDialogue(out dialogue, out _);
+
+    public static bool TryReadTournamentDialogue(out VERMAXION.Models.VerminionTournamentDialogue dialogue, out string text)
+    {
+        dialogue = VERMAXION.Models.VerminionTournamentDialogue.Unknown;
+        text = string.Empty;
+        if (Plugin.TargetManager.Target?.BaseId != 1011594) return false;
+        var handle = Plugin.GameGui.GetAddonByName("Talk");
+        if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
+        var addon = (AtkUnitBase*)handle.Address;
+        if (addon->UldManager.NodeList == null || addon->UldManager.NodeListCount > 64) return false;
+        var texts = new List<string>();
+        for (var i = 0; i < addon->UldManager.NodeListCount; ++i)
+        {
+            var node = addon->UldManager.NodeList[i];
+            if (node != null && node->Type == NodeType.Text && IsVisibleThroughParents(node))
+                texts.Add(Dalamud.Game.Text.SeStringHandling.SeString.Parse(node->GetAsAtkTextNode()->NodeText.AsSpan()).TextValue.Trim());
+        }
+        if (!texts.Contains("Tournament Recordkeeper")) return false;
+        var recognized = texts.Select(value => (Text: value, Kind: VERMAXION.Models.VerminionTournamentEntryRules.Dialogue(value)))
+            .Where(value => value.Kind != VERMAXION.Models.VerminionTournamentDialogue.Unknown).ToArray();
+        if (recognized.Length != 1) return false;
+        dialogue = recognized[0].Kind;
+        text = recognized[0].Text;
+        return true;
+    }
+
+    public static bool AdvanceTournamentDialogue(VERMAXION.Models.VerminionTournamentDialogue expected)
+    {
+        if (!TryReadTournamentDialogue(out var actual) || actual != expected) return false;
+        new ECommons.UIHelpers.AddonMasterImplementations.AddonMaster.Talk(
+            Plugin.GameGui.GetAddonByName("Talk").Address).Click();
+        return true;
+    }
+
+    // Only called for a ranking window opened by the owned Recordkeeper dialogue.
+    public static bool TryCloseTournamentRanking()
+    {
+        var handle = Plugin.GameGui.GetAddonByName("LovmRanking");
+        if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
+        var addon = (AtkUnitBase*)handle.Address;
+        return addon->AtkValuesCount == 511 && addon->UldManager.NodeListCount == 15 &&
+            GameHelpers.TryClickNativeButton("LovmRanking", "Close", 14);
+    }
+
+    public static bool TryReadMgp(out uint mgp)
+    {
+        mgp = 0;
+        var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
+        if (!Plugin.PlayerState.IsLoaded || inventory == null) return false;
+        var currency = inventory->GetInventoryContainer(FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Currency);
+        if (currency == null || !currency->IsLoaded) return false;
+        var count = inventory->GetInventoryItemCount(29);
+        if (count < 0 || count > VERMAXION.Models.VerminionTournamentRewardRules.MgpMaximum) return false;
+        mgp = (uint)count;
+        return true;
+    }
+
+    public static bool TryReadTournamentInfo(out VERMAXION.Models.VerminionTournamentInfo? info)
+    {
+        info = null;
+        var parent = Plugin.GameGui.GetAddonByName("GoldSaucerInfo");
+        if (parent.IsNull || !parent.IsReady || !parent.IsVisible) return false;
+        var handle = Plugin.GameGui.GetAddonByName("GSInfoMinionBattle");
+        if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
+        var addon = (AddonGSInfoMinionBattle*)handle.Address;
+        // The native panel captured during tournament 820 had these exact
+        // labels and 13 values. Hidden zero counters are not an allowance.
+        if (addon->AtkValues == null || addon->AtkValuesCount != 13 ||
+            addon->TournamentMatches == null || addon->TournamentWins == null || addon->TournamentPoints == null ||
+            addon->TournamentMatches->OwnerNode == null || addon->TournamentWins->OwnerNode == null ||
+            addon->TournamentPoints->OwnerNode == null ||
+            !GameHelpers.TryGetAddonText("GSInfoMinionBattle", 10, out var title) ||
+            !GameHelpers.TryGetAddonText("GSInfoMinionBattle", 11, out var notice)) return false;
+        var visible = Visible(&addon->TournamentMatches->OwnerNode->AtkResNode) &&
+            Visible(&addon->TournamentWins->OwnerNode->AtkResNode) &&
+            Visible(&addon->TournamentPoints->OwnerNode->AtkResNode);
+        var values = addon->AtkValues;
+        if (visible && (values[5].Type != AtkValueType.Int || values[7].Type != AtkValueType.Int ||
+            values[9].Type != AtkValueType.Int)) return false;
+        if (visible)
+            foreach (var (index, label) in new[] { (6, "Matches:"), (8, "Wins:"), (10, "Points:") })
+                if (values[index].Type is not (AtkValueType.String or AtkValueType.ManagedString or AtkValueType.ConstString) ||
+                    values[index].String.ToString() != label) return false;
+        info = VERMAXION.Models.VerminionTournamentInfo.FromDisplay(title, notice, visible,
+            visible ? values[5].Int : 0, visible ? values[7].Int : 0, visible ? values[9].Int : 0,
+            Loading(&((AtkUnitBase*)parent.Address)->UldManager, 0) || Loading(&addon->UldManager, 0));
+        return info != null;
+
+        static bool Visible(AtkResNode* node)
+        {
+            for (var depth = 0; node != null && depth < 32; ++depth, node = node->ParentNode)
+                if (!node->IsVisible()) return false;
+            return node == null;
+        }
+
+        static bool Loading(AtkUldManager* manager, int depth)
+        {
+            if (depth > 4 || manager->NodeListCount > 512) return true;
+            for (var index = 0; index < manager->NodeListCount; ++index)
+            {
+                var node = manager->NodeList[index];
+                if (node == null || !Visible(node)) continue;
+                if (node->Type == NodeType.Text && node->GetAsAtkTextNode()->NodeText.ToString()
+                    .Contains("Receiving data", StringComparison.OrdinalIgnoreCase)) return true;
+                if ((ushort)node->Type >= 1000 && node->GetAsAtkComponentNode()->Component is var component &&
+                    component != null && Loading(&component->UldManager, depth + 1)) return true;
+            }
+            return false;
+        }
+    }
 
     public static int? ReadUnsyncedJobLevel()
     {
@@ -129,8 +318,12 @@ internal static unsafe class VerminionGameInteraction
     }
 
     public static string ChallengeName(int stage) => stage is >= 1 and <= 24
-        ? Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().GetRow((uint)(551 + stage)).Name.ToString()
+        ? CpuDutyName((uint)(551 + stage))
         : string.Empty;
+
+    public static string CpuDutyName(uint duty) => VERMAXION.Models.VerminionDutyRules.IsCpu(duty) &&
+        Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().TryGetRow(duty, out var row)
+        ? row.Name.ToString() : string.Empty;
 
     public static bool HasBattleResult()
     {
@@ -353,6 +546,15 @@ internal static unsafe class VerminionGameInteraction
         return true;
     }
 
+    public static bool TryReadAchievementCertificates(out uint certificates)
+    {
+        certificates = 0;
+        var manager = FFXIVClientStructs.FFXIV.Client.Game.CurrencyManager.Instance();
+        if (!Plugin.PlayerState.IsLoaded || manager == null) return false;
+        certificates = manager->GetItemCount(21172);
+        return true;
+    }
+
     public static bool PrepareOwnedMinion(ushort minion)
     {
         var ui = UIState.Instance();
@@ -459,31 +661,35 @@ internal static unsafe class VerminionGameInteraction
         return string.Empty;
     }
 
-    public static bool HasChallengeQueue(int stage)
+    public static bool HasCpuQueue(uint duty)
     {
-        if (stage is < 1 or > 24) return false;
+        if (!VERMAXION.Models.VerminionDutyRules.IsCpu(duty)) return false;
         var finder = ContentsFinder.Instance();
         if (finder == null || finder->QueueInfo.QueueState is ContentsFinderQueueState.None or ContentsFinderQueueState.InContent) return false;
-        var found = false;
+        var queued = new List<uint>();
         foreach (var entry in finder->QueueInfo.QueuedEntries)
         {
             if (entry.Id == 0) continue;
-            if (entry.ContentType != ContentsType.Regular || entry.Id != 551 + stage) return false;
-            found = true;
+            queued.Add(entry.ContentType == ContentsType.Regular ? entry.Id : uint.MaxValue);
         }
         var popped = finder->QueueInfo.PoppedQueueEntry;
-        return found || popped.ContentType == ContentsType.Regular && popped.Id == 551 + stage;
+        // A previous pop is not evidence about a Pending/Queued admission.
+        var poppedDuty = finder->QueueInfo.QueueState is ContentsFinderQueueState.Ready or ContentsFinderQueueState.Accepted
+            ? popped.Id == 0 ? 0 : popped.ContentType == ContentsType.Regular ? popped.Id : uint.MaxValue
+            : 0;
+        return VERMAXION.Models.VerminionDutyRules.OnlyExpectedQueue(duty, queued.ToArray(), poppedDuty);
     }
 
-    public static void CancelChallengeQueue(int stage)
+    public static void CancelCpuQueue(uint duty)
     {
-        if (!HasChallengeQueue(stage)) return;
+        if (!HasCpuQueue(duty)) return;
         ContentsFinder.Instance()->QueueInfo.CancelQueue();
-        Plugin.Log.Information($"[VerminionControl] withdrawal requested for owned Stage {stage} queue; no result recorded");
+        Plugin.Log.Information($"[VerminionControl] withdrawal requested for owned CPU duty {duty} queue; no result recorded");
     }
 
-    public static bool TryCommenceChallenge(int stage) => HasChallengeQueue(stage) &&
-        GameHelpers.TryGetAddonText("ContentsFinderConfirm", 49, out var title) && title == ChallengeName(stage) &&
+    public static bool TryCommenceCpuDuty(uint duty) => HasCpuQueue(duty) &&
+        CpuDutyName(duty) is { Length: > 0 } expected &&
+        GameHelpers.TryGetAddonText("ContentsFinderConfirm", 49, out var title) && title == expected &&
         GameHelpers.TryClickNativeButton("ContentsFinderConfirm", "Commence", 63);
 
     public static bool TrySummonPaletteSlot(int slot)
@@ -887,7 +1093,7 @@ internal static unsafe class VerminionGameInteraction
     public static float? ReadBattlefieldCameraDistance()
     {
         var manager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance();
-        if (CurrentCpuDutyId() != 570 || manager == null || manager->ActiveCameraIndex is not (0 or 3)) return null;
+        if (CurrentCpuDutyId() is not (563 or 570 or 575) || manager == null || manager->ActiveCameraIndex is not (0 or 3)) return null;
         var camera = manager->GetActiveCamera();
         return camera != null && float.IsFinite(camera->Distance) && camera->Distance > 0 ? camera->Distance : null;
     }
@@ -896,7 +1102,7 @@ internal static unsafe class VerminionGameInteraction
     {
         point = default;
         var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-        if (CurrentCpuDutyId() != 570 || window == 0 || !PInvoke.User32.GetClientRect(window, out var bounds)) return false;
+        if (CurrentCpuDutyId() is not (563 or 570 or 575) || window == 0 || !PInvoke.User32.GetClientRect(window, out var bounds)) return false;
         point = new(bounds.right / 2f, bounds.bottom / 2f);
         return SendBattlefieldClick(point, release: false, wheel: -1);
     }
@@ -1100,7 +1306,7 @@ internal static unsafe class VerminionGameInteraction
                 CaptureAddon(name);
         }
         var cameraManager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance();
-        if (CurrentCpuDutyId() == 570 && cameraManager != null && cameraManager->ActiveCameraIndex is 0 or 3)
+        if (CurrentCpuDutyId() is 563 or 570 or 575 && cameraManager != null && cameraManager->ActiveCameraIndex is 0 or 3)
         {
             var camera = cameraManager->GetActiveCamera();
             if (camera != null)
@@ -1114,7 +1320,7 @@ internal static unsafe class VerminionGameInteraction
             var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
             if (native == null || native->SubKind != 7) continue;
             var character = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)native;
-            Plugin.Log.Information($"[VerminionControl] minion index={obj.ObjectIndex}; id={obj.GameObjectId}; data={obj.BaseId}; name={obj.Name}; hp={obj.CurrentHp}/{obj.MaxHp}; position={obj.Position}; battalion={character->CharacterData.Battalion}; targetable={obj.IsTargetable}; target={obj.TargetObjectId}");
+            Plugin.Log.Information($"[VerminionControl] minion index={obj.ObjectIndex}; id={obj.GameObjectId}; data={obj.BaseId}; name={obj.Name}; hp={obj.CurrentHp}/{obj.MaxHp}; position={obj.Position}; radius={obj.HitboxRadius}; rotation={obj.Rotation}; battalion={character->CharacterData.Battalion}; targetable={obj.IsTargetable}; target={obj.TargetObjectId}");
             if (obj.IsCasting)
             {
                 var cast = character->GetCastInfo();
@@ -1126,11 +1332,14 @@ internal static unsafe class VerminionGameInteraction
         var stage = AtkStage.Instance();
         if (detailed && CurrentCpuDutyId() != 0)
         {
-            foreach (var obj in Plugin.ObjectTable.Where(obj => obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc || obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj).Take(128))
+            foreach (var obj in Plugin.ObjectTable.Where(obj => obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc || obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj ||
+                CurrentCpuDutyId() == 575 && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.AreaObject).Take(128))
             {
                 Plugin.GameGui.WorldToScreen(obj.Position, out var screen);
-                Plugin.Log.Information($"[VerminionControl] fieldObject index={obj.ObjectIndex}; kind={obj.ObjectKind}; base={obj.BaseId}; name={obj.Name}; position={obj.Position}; screen={screen}");
+                var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
+                Plugin.Log.Information($"[VerminionControl] fieldObject index={obj.ObjectIndex}; id={obj.GameObjectId}; kind={obj.ObjectKind}; base={obj.BaseId}; state={(native == null ? -1 : native->EventState)}; name={obj.Name}; position={obj.Position}; screen={screen}");
             }
+            if (CurrentCpuDutyId() == 575) CaptureFinalStageEffects(reason.Contains("image readback", StringComparison.Ordinal));
             if (stage != null)
             {
                 var count = 0;
@@ -1206,6 +1415,320 @@ internal static unsafe class VerminionGameInteraction
                 Plugin.Log.Information($"[VerminionControl] minimap node={node->NodeId}; type={node->Type}; screen={node->ScreenX},{node->ScreenY}; local={node->X},{node->Y}; size={node->Width},{node->Height}; scale={node->ScaleX},{node->ScaleY}");
             }
         }
+    }
+
+    private static bool observingFinalStageEffects;
+    private static int finalStageEffectThread;
+    private static DateTime finalStageEffectDeadline;
+    private static readonly HashSet<string> finalStageEffectPaths = new(StringComparer.Ordinal);
+    private static int finalStageStaticCallbacks, finalStageActorCallbacks;
+    private static int finalStageBossEffectSamples, finalStageSelectionEffectSamples;
+    private static int finalStageDirectorSamples;
+    private static bool ownsFinalStageDirectorProbe;
+    private static string finalStageTimeline = string.Empty;
+    private static int finalStageTimelineSamples;
+    private static string finalStageGroundState = string.Empty;
+    private static int finalStageGroundSamples;
+    public static IReadOnlyList<VerminionGroundOmen> FinalStageOmens { get; private set; } = [];
+
+    public static void BeginFinalStageEffectObservation()
+    {
+        if (observingFinalStageEffects || CurrentCpuDutyId() != 575) return;
+        finalStageEffectPaths.Clear();
+        finalStageStaticCallbacks = finalStageActorCallbacks = 0;
+        finalStageBossEffectSamples = finalStageSelectionEffectSamples = 0;
+        finalStageDirectorSamples = 0;
+        finalStageTimeline = string.Empty;
+        finalStageTimelineSamples = 0;
+        finalStageGroundState = string.Empty;
+        finalStageGroundSamples = 0;
+        FinalStageOmens = [];
+        finalStageEffectThread = Environment.CurrentManagedThreadId;
+        finalStageEffectDeadline = DateTime.UtcNow.AddSeconds(FinalStageObservationSeconds);
+        try
+        {
+            ECommons.Hooks.StaticVfx.StaticVfxCreateEvent += ObserveFinalStageEffect;
+            ECommons.Hooks.StaticVfx.EnableCreate();
+            ECommons.Hooks.ActorVfx.ActorVfxCreateEvent += ObserveFinalStageActorEffect;
+            ECommons.Hooks.ActorVfx.EnableCreate();
+            // Verminion's visible warnings were absent from the complete scene
+            // walk. Observe the existing native director-update channel too.
+            ECommons.Hooks.DirectorUpdate.Init(ObserveFinalStageDirectorUpdate);
+            ownsFinalStageDirectorProbe = true;
+            observingFinalStageEffects = true;
+            CaptureFinalStageDirector();
+            Plugin.Log.Information($"[VerminionControl] Stage 24 static/actor effect observation subscribed; bounded to {FinalStageObservationSeconds} seconds and 64 distinct paths; awaiting native callback evidence");
+        }
+        catch (Exception ex)
+        {
+            observingFinalStageEffects = false;
+            ECommons.Hooks.StaticVfx.StaticVfxCreateEvent -= ObserveFinalStageEffect;
+            ECommons.Hooks.ActorVfx.ActorVfxCreateEvent -= ObserveFinalStageActorEffect;
+            ECommons.Hooks.StaticVfx.DisableCreate();
+            ECommons.Hooks.ActorVfx.DisableCreate();
+            if (ownsFinalStageDirectorProbe) ECommons.Hooks.DirectorUpdate.Dispose();
+            ownsFinalStageDirectorProbe = false;
+            Plugin.Log.Warning(ex, "[VerminionControl] Stage 24 effect-update observation unavailable");
+        }
+    }
+
+    public static void EndFinalStageEffectObservation()
+    {
+        if (!observingFinalStageEffects) return;
+        observingFinalStageEffects = false;
+        FinalStageOmens = [];
+        ECommons.Hooks.StaticVfx.StaticVfxCreateEvent -= ObserveFinalStageEffect;
+        ECommons.Hooks.ActorVfx.ActorVfxCreateEvent -= ObserveFinalStageActorEffect;
+        ECommons.Hooks.StaticVfx.DisableCreate();
+        ECommons.Hooks.ActorVfx.DisableCreate();
+        if (ownsFinalStageDirectorProbe) ECommons.Hooks.DirectorUpdate.Dispose();
+        ownsFinalStageDirectorProbe = false;
+        Plugin.Log.Information($"[VerminionControl] Stage 24 effect observation released; staticCallbacks={finalStageStaticCallbacks}; actorCallbacks={finalStageActorCallbacks}; directorSamples={finalStageDirectorSamples}; paths={finalStageEffectPaths.Count}");
+        finalStageEffectPaths.Clear();
+    }
+
+    private static void ObserveFinalStageEffect(nint address, string path, string source)
+    {
+        if (!observingFinalStageEffects || DateTime.UtcNow >= finalStageEffectDeadline) return;
+        var onFramework = Environment.CurrentManagedThreadId == finalStageEffectThread;
+        if (System.Threading.Interlocked.Increment(ref finalStageStaticCallbacks) == 1)
+            Plugin.Log.Information($"[VerminionControl] first static effect creation callback; frameworkThread={onFramework}");
+        if (!onFramework || finalStageEffectPaths.Count >= 64 || address == 0 ||
+            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
+        if (path.Length == 0 || !finalStageEffectPaths.Add(path)) return;
+        // Creation precedes caller positioning. Do not retain the pointer or
+        // report its constructor transform as a placed battlefield warning.
+        Plugin.Log.Information($"[VerminionControl] createdEffect path={path}; source={source}");
+    }
+
+    private static void ObserveFinalStageDirectorUpdate(nint framework, uint eventId,
+        ECommons.Hooks.DirectorUpdateCategory category, uint arg1, uint arg2, int arg3, int arg4, int arg5, int arg6)
+    {
+        if (!observingFinalStageEffects || DateTime.UtcNow >= finalStageEffectDeadline ||
+            Environment.CurrentManagedThreadId != finalStageEffectThread ||
+            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true || finalStageDirectorSamples >= 64) return;
+        ++finalStageDirectorSamples;
+        Plugin.Log.Information($"[VerminionControl] directorUpdate sample={finalStageDirectorSamples}; event={eventId:X8}; category={(uint)category:X8}; args={arg1:X8},{arg2:X8},{arg3:X8},{arg4:X8},{arg5:X8},{arg6:X8}");
+    }
+
+    public static void ObserveFinalStageTimeline()
+    {
+        if (!observingFinalStageEffects || DateTime.UtcNow >= finalStageEffectDeadline) return;
+        ObserveFinalStageGroundEffects();
+        if (finalStageTimelineSamples >= 64) return;
+        var boss = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+            .FirstOrDefault(unit => unit.BaseId == 562 && IsEnemyMinion(unit));
+        if (boss == null) return;
+        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)boss.Address;
+        var state = $"{native->Timeline.ModelState}/{native->Timeline.AnimationState[0]}/{native->Timeline.AnimationState[1]}; slots={string.Join(',', native->Timeline.TimelineSequencer.TimelineIds.ToArray())}";
+        if (state == finalStageTimeline) return;
+        finalStageTimeline = state;
+        ++finalStageTimelineSamples;
+        Plugin.Log.Information($"[VerminionControl] bossTimeline sample={finalStageTimelineSamples}; state={state}; hp={boss.CurrentHp}; position={boss.Position}");
+    }
+
+    private static void ObserveFinalStageGroundEffects()
+    {
+        FinalStageOmens = [];
+        if (Environment.CurrentManagedThreadId != finalStageEffectThread ||
+            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
+        var framework = FFXIVClientStructs.FFXIV.Client.Game.Event.EventFramework.Instance();
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        var module = process.MainModule;
+        if (framework == null || module == null) return;
+        var start = module.BaseAddress;
+        var directors = framework->DirectorModule.DirectorList;
+        if (directors.LongCount is < 0 or > 16) return;
+        foreach (var item in directors)
+        {
+            var director = item.Value;
+            if (director == null || director->Info.EventId.Id >> 16 != 0x800A ||
+                *(nint*)director != start + 0x21D7330) continue;
+            var rows = new List<string>();
+            var omens = new List<VerminionGroundOmen>();
+            // The captured E7CA10 routine stores ground VfxData at +718 (slot
+            // 11 of the 30-slot array). E77FD0 and E762F0 establish its extent
+            // and ownership. Read on the native update thread, retaining no pointers.
+            for (var slot = 11; slot < 30; ++slot)
+            {
+                var data = *(byte**)((byte*)director + 0x6C0 + slot * sizeof(nint));
+                if (data == null) continue;
+                var dataTable = *(nint*)data - start;
+                if (dataTable != 0x215ED80)
+                { rows.Add($"slot={slot}/dataTable={dataTable:X}/unverified"); continue; }
+                var effect = (FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxData*)data;
+                if ((nint)effect->DataListenner != (nint)director + 0x620) continue;
+                // Native 390630 takes VfxData+1B8 and writes the four matrix
+                // rows at +20..50. Validate the published resource-instance
+                // table before following its declared resource/path fields.
+                var instance = *(byte**)(data + 0x1B8);
+                if (instance == null) continue;
+                var instanceTable = *(nint*)instance - start;
+                if (instanceTable != 0x215ED70)
+                { rows.Add($"slot={slot}/instanceTable={instanceTable:X}/unverified"); continue; }
+                var resource = ((FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxResourceInstance*)instance)->VfxResourceObject;
+                var handle = resource == null ? null : resource->ApricotResourceHandle;
+                var path = handle == null ? "unavailable" : handle->FileName.ToString();
+                var position = *(System.Numerics.Vector3*)(instance + 0x50);
+                var scale = new System.Numerics.Vector3(*(float*)(instance + 0x20), *(float*)(instance + 0x34), *(float*)(instance + 0x48));
+                if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(position.Z) ||
+                    Math.Abs(position.X) > 100 || Math.Abs(position.Y) > 100 || Math.Abs(position.Z) > 100) continue;
+                rows.Add($"slot={slot}/path={path}/position={position}/scale={scale}");
+                if (path is "vfx/omen/eff/m0117_gtae_01s.avfx" or "vfx/omen/eff/m0117_trap_01s.avfx" &&
+                    float.IsFinite(scale.X) && scale.X is > 0 and <= 10 &&
+                    Math.Abs(position.X) <= 23 && Math.Abs(position.Z) <= 23)
+                    omens.Add(new(slot, path.EndsWith("_trap_01s.avfx", StringComparison.Ordinal), position, scale.X));
+            }
+            FinalStageOmens = omens;
+            var state = string.Join(';', rows);
+            if (finalStageGroundSamples >= 64 || state == finalStageGroundState && finalStageGroundSamples > 0) return;
+            finalStageGroundState = state;
+            Plugin.Log.Information($"[VerminionControl] directorGround sample={++finalStageGroundSamples}; effects={state}");
+            return;
+        }
+    }
+
+    private static void CaptureFinalStageDirector()
+    {
+        var framework = FFXIVClientStructs.FFXIV.Client.Game.Event.EventFramework.Instance();
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        var module = process.MainModule;
+        if (framework == null || module == null) return;
+        var start = module.BaseAddress;
+        var end = start + module.ModuleMemorySize;
+        var directors = framework->DirectorModule.DirectorList;
+        if (directors.LongCount is < 0 or > 16) return;
+        // The SDK declares Director's 300-entry table. Read addresses only from
+        // this process's executable image; do not call unknown virtual methods.
+        foreach (var item in directors)
+        {
+            var director = item.Value;
+            if (director == null) continue;
+            var table = *(nint*)director;
+            if (table < start || table > end - 300 * sizeof(nint) || table % sizeof(nint) != 0) continue;
+            var entries = new List<string>();
+            for (var index = 0; index < 300; ++index)
+            {
+                var address = ((nint*)table)[index];
+                if (address >= start && address < end) entries.Add($"{index}:{address - start:X}");
+            }
+            Plugin.Log.Information($"[VerminionControl] directorLayout event={director->Info.EventId.Id:X8}; content={director->ContentId}; sequence={director->Sequence}; tableRva={table - start:X}; entries={string.Join(',', entries)}");
+            // Native readback identifies this as VerminionDirector; its table
+            // matches ClientStructs' published class map. Inspect a bounded code
+            // window at its setup override to locate the battle-state owner.
+            // This is executable code, not a dump of character/instance data.
+            var setup = ((nint*)table)[2];
+            if (director->Info.EventId.Id >> 16 != 0x800A || setup - start != 0xE75BD0) continue;
+            // Follow only targets read from this exact native build's captured
+            // call instructions. These are diagnostic reads, never invocations.
+            foreach (var (label, rva, length) in new[]
+            {
+                ("directorRemainder", 0xE7BBD0, 4096),
+                ("VfxCreateById", 0x858CF0, 1024),
+                ("VfxTransform", 0x390630, 128),
+            })
+            {
+                var address = start + rva;
+                if (address < start || address > end - length) continue;
+                Plugin.Log.Information($"[VerminionControl] directorCode label={label}; rva={rva:X}; bytes={Convert.ToHexString(new ReadOnlySpan<byte>((void*)address, length))}");
+            }
+        }
+    }
+
+    private static void ObserveFinalStageActorEffect(nint address, nint pathAddress, nint casterAddress,
+        nint targetAddress, float a4, byte a5, ushort a6, byte a7)
+    {
+        if (!observingFinalStageEffects || DateTime.UtcNow >= finalStageEffectDeadline) return;
+        var onFramework = Environment.CurrentManagedThreadId == finalStageEffectThread;
+        if (System.Threading.Interlocked.Increment(ref finalStageActorCallbacks) == 1)
+            Plugin.Log.Information($"[VerminionControl] first actor effect callback; frameworkThread={onFramework}");
+        if (!onFramework || address == 0 || pathAddress == 0 ||
+            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
+        var path = Dalamud.Memory.MemoryHelper.ReadString(pathAddress, System.Text.Encoding.ASCII, 256);
+        var caster = Plugin.ObjectTable.FirstOrDefault(obj => obj.Address == casterAddress);
+        // 636 coincided with 358 HP already lost in the native readback. Neither
+        // filename establishes an advance warning or a safe movement interval.
+        // Preserve repeated event timing/HP within this diagnostic's bounds.
+        if (caster?.BaseId == 562 && path is "vfx/lovm/eff/636.avfx" or "vfx/lovm/eff/604.avfx" &&
+            finalStageBossEffectSamples++ < 16)
+        {
+            var units = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+                .Where(unit => IsFriendlyMinion(unit) && unit.CurrentHp > 0).Take(24)
+                .Select(unit => $"{unit.GameObjectId}:{unit.CurrentHp}@{unit.Position}");
+            Plugin.Log.Information($"[VerminionControl] bossEffect sample={finalStageBossEffectSamples}; path={path}; position={caster.Position}; friendlyHp={string.Join(';', units)}");
+        }
+        // 001 appears at selection time. Record individual recipients without
+        // claiming that the effect alone proves the native selection set.
+        if (path == "vfx/lovm/eff/001.avfx" && caster != null && IsFriendlyMinion(caster) &&
+            finalStageSelectionEffectSamples++ < 32)
+            Plugin.Log.Information($"[VerminionControl] selectionEffect sample={finalStageSelectionEffectSamples}; id={caster.GameObjectId}; position={caster.Position}");
+        if (path.Length == 0 || finalStageEffectPaths.Count >= 64 || !finalStageEffectPaths.Add(path)) return;
+        var target = Plugin.ObjectTable.FirstOrDefault(obj => obj.Address == targetAddress);
+        // Actor effects did not expose the static VFX transform layout in the
+        // native probe (NaN scales). Only report resolved GameObject positions.
+        Plugin.Log.Information($"[VerminionControl] actorEffect path={path}; caster={caster?.BaseId}; casterId={caster?.GameObjectId}; casterPosition={caster?.Position}; target={target?.BaseId}; targetId={target?.GameObjectId}; targetPosition={target?.Position}");
+    }
+
+    private static void CaptureFinalStageEffects(bool includeModels)
+    {
+        var world = FFXIVClientStructs.FFXIV.Client.Graphics.Scene.World.Instance();
+        if (world == null) return;
+        // Ground warnings can be scene effects without a battle cast or an
+        // ObjectTable entry. Read the SDK's scene graph on the framework thread
+        // within the existing bounded snapshots; never create or change effects.
+        var pending = new Stack<nint>();
+        var seen = new HashSet<nint>();
+        pending.Push((nint)world->ChildObject);
+        // Character rendering can have a separate scene root. Check the actual
+        // object-table draw objects as well; retain the same total read bound.
+        var drawRoots = new HashSet<nint>();
+        foreach (var entry in Plugin.ObjectTable.Take(128))
+        {
+            var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)entry.Address;
+            if (native != null && native->DrawObject != null && drawRoots.Add((nint)native->DrawObject))
+                pending.Push((nint)native->DrawObject);
+        }
+        var effects = 0;
+        var decals = 0;
+        var types = new Dictionary<FFXIVClientStructs.FFXIV.Client.Graphics.Scene.ObjectType, int>();
+        while (pending.Count > 0 && seen.Count < 512 && effects < 64)
+        {
+            var address = pending.Pop();
+            if (address == 0 || !seen.Add(address)) continue;
+            var obj = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.Object*)address;
+            pending.Push((nint)obj->NextSiblingObject);
+            pending.Push((nint)obj->ChildObject);
+            var type = obj->GetObjectType();
+            types[type] = types.GetValueOrDefault(type) + 1;
+            if (includeModels && type == FFXIVClientStructs.FFXIV.Client.Graphics.Scene.ObjectType.BgObject)
+            {
+                var model = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.BgObject*)obj;
+                var modelResource = model->ModelResourceHandle;
+                var modelPath = modelResource == null ? "unavailable" : modelResource->FileName.ToString();
+                Plugin.Log.Information($"[VerminionControl] sceneModel path={modelPath}; position={obj->Position}; scale={obj->Scale}; visible={model->IsVisible}");
+            }
+            if (type == FFXIVClientStructs.FFXIV.Client.Graphics.Scene.ObjectType.Decal)
+            {
+                // Ground markings may be textured decals rather than VFX.
+                // Observe the declared scene type; no warning meaning is assumed.
+                var decal = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.Decal*)obj;
+                var texture = decal->TextureResourceHandle;
+                var texturePath = texture == null ? "unavailable" : texture->FileName.ToString();
+                Plugin.Log.Information($"[VerminionControl] sceneDecal path={texturePath}; position={obj->Position}; scale={obj->Scale}; visible={decal->IsVisible}");
+                ++decals;
+                ++effects;
+                continue;
+            }
+            if (type != FFXIVClientStructs.FFXIV.Client.Graphics.Scene.ObjectType.VfxObject) continue;
+            var effect = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.VfxObject*)obj;
+            var instance = effect->VfxResourceInstance;
+            var resource = instance == null ? null : instance->VfxResourceObject;
+            var handle = resource == null ? null : resource->ApricotResourceHandle;
+            var path = handle == null ? "unavailable" : handle->FileName.ToString();
+            Plugin.Log.Information($"[VerminionControl] sceneEffect path={path}; position={obj->Position}; scale={obj->Scale}; flags={effect->SomeFlags}");
+            ++effects;
+        }
+        Plugin.Log.Information($"[VerminionControl] sceneEffect snapshot; objects={seen.Count}; drawRoots={drawRoots.Count}; drawRootsSeen={drawRoots.Count(seen.Contains)}; types={string.Join(',', types.Select(pair => $"{pair.Key}:{pair.Value}"))}; effects={effects}; decals={decals}; bounded={pending.Count > 0}");
     }
 
     private static void CaptureNodes(string path, AtkUldManager* uld, int depth, Dictionary<nint, string> tooltips)

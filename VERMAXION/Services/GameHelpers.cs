@@ -1232,6 +1232,7 @@ public static class GameHelpers
     /// </summary>
     public static void CloseCurrentAddon()
     {
+        if (AdsOwnsVendorUi()) return;
         PressKey(VirtualKey.ESCAPE);
     }
 
@@ -1242,6 +1243,22 @@ public static class GameHelpers
     public static void ResetInteractionState()
     {
         CloseCurrentAddon();
+    }
+
+    internal static bool AdsOwnsVendorUi()
+    {
+        if (new[] { "Shop", "ShopExchangeItem", "ShopExchangeCurrency", "ShopExchangeItemDialog",
+            "ShopExchangeCurrencyDialog", "FreeCompanyExchange", "FreeCompanyCreditShop", "GrandCompanyExchange", "Repair" }
+            .Any(IsAddonVisible)) return true;
+        try
+        {
+            var status = Newtonsoft.Json.Linq.JObject.Parse(Plugin.PluginInterface
+                .GetIpcSubscriber<string>("ADS.GetStatusJson").InvokeFunc());
+            var mode = (string?)status["utilityMode"] ?? string.Empty;
+            return (bool?)status["utilityRunning"] == true &&
+                (mode == "npc" || mode.StartsWith("npc-", StringComparison.Ordinal) || mode.StartsWith("shop-", StringComparison.Ordinal));
+        }
+        catch { return false; }
     }
 
     /// <summary>

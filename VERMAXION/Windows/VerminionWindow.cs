@@ -16,7 +16,7 @@ internal sealed class VerminionWindow : Window
     public VerminionWindow(Plugin plugin) : base("Lord of Verminion##VermaxionVerminion")
     {
         this.plugin = plugin;
-        Size = new Vector2(690, 720);
+        Size = new Vector2(690, 650);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new(480, 360), MaximumSize = new(1200, 1200) };
     }
@@ -34,11 +34,6 @@ internal sealed class VerminionWindow : Window
         var stageAttempts = progress.CampaignStage == progress.NextUnclearedChallenge ? progress.CampaignStageAttempts : 0;
         ImGui.TextWrapped($"Campaign: {Math.Min(progress.NextUnclearedChallenge - 1, 24)}/24 sequential stages cleared. Attempts on next uncleared stage: {stageAttempts}/3. Consecutive losses: {progress.ConsecutiveLosses}.");
 
-        ImGui.BeginDisabled(!loggedIn || service.IsActive || service.HasQuestAcquisition);
-        if (DrawSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
-        ImGui.EndDisabled();
-        ImGui.Separator();
-
         ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
         if (ImGui.Button("Run weekly goal")) plugin.RunDashboardAction(service.RunTask);
         ImGui.SameLine();
@@ -50,21 +45,49 @@ internal sealed class VerminionWindow : Window
         }
         ImGui.EndDisabled();
         if (ImGui.Button("FULL STOP")) plugin.FullStop();
-        ImGui.TextWrapped("Setup registers inventory minions first. If fewer than three are registered, it can buy only the missing entry minions from the Minion Trader: Mammet #001, Wayward Hatchling and Cherry Bomb, each 2,400 gil. The whole entry plan must fit your remaining cap and leave the minimum gil balance. Stages 23 and 24 require Wind-up Gentleman from Her Last Vow. Select its acquisition action below to hand the ARR Hildibrand chain to Questionable. The full first-entry sequence, other vendor routes and CPU tournaments remain unverified or unavailable.");
+        ImGui.Separator();
+        if (ImGui.BeginChild("VerminionDetails", new Vector2(0, 0), false))
+            DrawDetails(config, loggedIn);
+        ImGui.EndChild();
+    }
+
+    private void DrawDetails(CharacterConfig config, bool loggedIn)
+    {
+        var service = plugin.VerminionService;
+        var progress = config.VerminionProgress;
+        if (ImGui.CollapsingHeader("Weekly goal and purchase limits"))
+        {
+            ImGui.BeginDisabled(!loggedIn || service.IsActive || service.HasQuestAcquisition);
+            if (DrawSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
+            ImGui.EndDisabled();
+        }
+        ImGui.TextWrapped("Setup registers inventory minions first. If fewer than three are registered, it can buy only the missing entry minions from the Minion Trader: Mammet #001, Wayward Hatchling and Cherry Bomb, each 2,400 gil. The whole entry plan must fit your remaining cap and leave the minimum gil balance. Stages 12, 15, 23 and 24 require Wind-up Gentleman from Her Last Vow. Select its acquisition action below to hand the ARR Hildibrand chain to Questionable. The full first-entry sequence, other vendor routes and CPU tournaments remain unverified or unavailable.");
 
         ImGui.Separator();
         var next = VerminionService.PlannedStage(config, progress.CampaignRequested);
         var stage = previewStage == 0 ? Math.Min(next, 24) : previewStage;
         if (ImGui.SliderInt("Preview challenge", ref stage, 1, 24)) previewStage = stage;
-        ImGui.SameLine();
         if (ImGui.SmallButton("Follow next stage")) { previewStage = 0; stage = Math.Min(next, 24); }
         DrawPlan(config, stage, loggedIn);
+        ImGui.TextWrapped("Achievement minions: acquire guide support separately before selecting a tested composition. ADS visits Jonathas, claims available certificates and buys only the requested missing item. Minion of Light is excluded until its White Mage form can be selected reliably.");
+        ImGui.TextWrapped("CPU rewards checks the Recordkeeper on your Home World, handles the known registration and prize prompts, and reads the game's visible tournament allowance. Claims need the owned prize acknowledgement and exact MGP receipt; interrupted acceptance is never resubmitted. When registration is closed or all 15 matches are used, it finishes any remaining weekly participation through ordinary CPU losses. Entry preparation stops before Join in Master Tournament. Open-period registration and reward collection need live verification; automatic tournament battles remain under development. Hidden counters remain unknown.");
+        foreach (var offer in VerminionRoster.AchievementOffers)
+        {
+            var owned = loggedIn ? VerminionGameInteraction.OwnsMinion(offer.MinionId) : null;
+            ImGui.TextWrapped($"{offer.Name}: {(owned == true ? "registered" : owned == false ? "not registered" : "ownership unknown")}; two certificates.");
+            ImGui.BeginDisabled(!loggedIn || owned != false || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
+            if (ImGui.Button($"Acquire {offer.Name} through ADS")) plugin.AcquireVerminionMinion(offer.MinionId);
+            ImGui.EndDisabled();
+        }
         foreach (var minion in VerminionRoster.Required(stage).Where(minion => VerminionRoster.AcquisitionQuests(minion.Id).Length > 0))
         {
             if (!loggedIn || VerminionGameInteraction.OwnsMinion(minion.Id) != false) continue;
             ImGui.TextWrapped($"Acquire {minion.Name}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting.");
             ImGui.TextWrapped("Hildibrand includes three eight-player trials. For a solo run with this stack, configure those duties as unsynced in Questionable and enable FrenRider's eight-player ADS handoff. Check that ADS permits each trial at your chosen maturity threshold. Verminion uses these provider settings; it does not change them or guarantee a trial clear.");
-            ImGui.BeginDisabled(plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
+            var dadReady = plugin.DadIPCClient.IsReady();
+            if (!dadReady)
+                ImGui.TextWrapped("Enable DAD before starting Questionable minion acquisition; its duty handoff is unavailable.");
+            ImGui.BeginDisabled(!dadReady || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
             if (ImGui.Button($"Acquire {minion.Name} with Questionable")) plugin.AcquireVerminionMinion(minion.Id);
             ImGui.EndDisabled();
             ImGui.TextWrapped("Verminion stays paused while Questionable runs. Reload observes the handoff without starting it again. FULL STOP cancels the owned acquisition. After the reward, Resume registers the minion and continues the selected Verminion goal.");
@@ -82,8 +105,24 @@ internal sealed class VerminionWindow : Window
         {
             VerminionMode.Participation => "Finish the remaining weekly participation matches through intentional CPU losses. Five matches award 27,000 base MGP; existing participation is counted.",
             VerminionMode.WinTarget => "Win on Stage 2 until the weekly victory target is reached. Losses count only toward participation. Stops after three consecutive losses or the attempt limit.",
-            _ => "CPU tournament registration, up to 15 NPC matches, and later reward collection are planned. This mode is currently unavailable; weekly completion does not imply tournament completion.",
+            _ => "Check tournament notices, registration and claimable prizes on your Home World. Entry currently stops before Join. When registration is closed or all 15 matches are used, finish remaining weekly participation through CPU losses. Registration and prize handling await live verification; automatic tournament battles remain under development.",
         });
+        if (config.VerminionProgress.LastTournamentInfo is { } tournament)
+        {
+            ImGui.TextWrapped(config.VerminionProgress.TournamentObservedUtc == default
+                ? "Last tournament observation (time unavailable):"
+                : $"Tournament last checked: {config.VerminionProgress.TournamentObservedUtc:u}");
+            ImGui.TextWrapped(tournament.Summary);
+            ImGui.TextWrapped("Saved observation for this character; CPU rewards reads it again before acting. Weekly completion does not establish tournament completion or a reward claim.");
+        }
+        else if (config.VerminionMode == VerminionMode.CpuRewards)
+            ImGui.TextWrapped("No tournament observation saved for this character. Run weekly goal to check the current notice and registration.");
+        if (config.VerminionProgress.PendingTournamentReward is { } reward)
+            ImGui.TextWrapped($"Unresolved prize: {reward.Title}, {reward.Mgp:N0} MGP. " +
+                (reward.Acknowledged ? "Acknowledgement saved; waiting for the exact MGP receipt. " : "Acceptance outcome is unverified. ") +
+                "Reload and FULL STOP preserve this intent; it will not be submitted again.");
+        if (config.VerminionProgress.LastTournamentReward is { ConfirmedUtc: var claimedAt } claimed && claimedAt != default)
+            ImGui.TextWrapped($"Last verified prize: {claimed.Title}, {claimed.Mgp:N0} MGP at {claimedAt:u}.");
         if (config.VerminionMode == VerminionMode.CpuRewards && VerminionService.TournamentWorldRequirement() is { } worldRequirement)
             ImGui.TextWrapped(worldRequirement);
         if (config.VerminionMode == VerminionMode.WinTarget)
@@ -94,18 +133,23 @@ internal sealed class VerminionWindow : Window
         }
         var gil = (int)Math.Min(config.VerminionGilPurchaseCap, int.MaxValue);
         var mgp = (int)Math.Min(config.VerminionMgpPurchaseCap, int.MaxValue);
+        var certificates = (int)Math.Min(config.VerminionCertificatePurchaseCap, int.MaxValue);
         var reserve = (int)Math.Min(config.VerminionGilReserve, int.MaxValue);
         if (ImGui.InputInt("Cumulative gil purchase cap##Verminion", ref gil))
         { config.VerminionGilPurchaseCap = (uint)Math.Max(0, gil); changed = true; }
         if (ImGui.InputInt("Cumulative MGP purchase cap##Verminion", ref mgp))
         { config.VerminionMgpPurchaseCap = (uint)Math.Max(0, mgp); changed = true; }
+        if (ImGui.InputInt("Cumulative certificate purchase cap##Verminion", ref certificates))
+        { config.VerminionCertificatePurchaseCap = (uint)Math.Max(0, certificates); changed = true; }
+        ImGui.TextWrapped($"Achievement Certificates spent: {config.VerminionProgress.CertificatesSpent:N0}/{config.VerminionCertificatePurchaseCap:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate.");
         if (ImGui.InputInt("Minimum gil balance##Verminion", ref reserve))
         { config.VerminionGilReserve = (uint)Math.Max(0, reserve); changed = true; }
         ImGui.TextWrapped("ADS handles every vendor purchase, including travel and menus. Its guarded purchase API is required. Each gil purchase must leave the minimum balance; the saved cap and current funds are checked before ADS submits or confirms it.");
-        ImGui.TextWrapped($"Spent on this character: {config.VerminionProgress.GilSpent:N0}/{config.VerminionGilPurchaseCap:N0} gil; {config.VerminionProgress.MgpSpent:N0}/{config.VerminionMgpPurchaseCap:N0} MGP. Caps are cumulative and do not reset weekly. Zero prevents purchases. Supported requests: Mammet #001, Wayward Hatchling, Cherry Bomb and Baby Bat (2,400 gil each), Nero (30,000 MGP), and Zu Hatchling (10,000 MGP). Earlier purchases predate the ADS handoff; that route is still being verified.");
-        ImGui.TextWrapped("Baby Bat's vendor, Junkmonger Nonoroon, disappears during the Poor Maid's FATE chain and returns afterward. ADS waits within its five-minute purchase limit. If the vendor remains absent, the run stops without crediting a purchase.");
+        ImGui.TextWrapped($"Spent on this character: {config.VerminionProgress.GilSpent:N0}/{config.VerminionGilPurchaseCap:N0} gil; {config.VerminionProgress.MgpSpent:N0}/{config.VerminionMgpPurchaseCap:N0} MGP. Caps are cumulative and do not reset weekly. Zero prevents purchases. Entry minions cost 2,400 gil each; the campaign's Zu Hatchling costs 10,000 MGP from permanent Gold Saucer stock. Already owned or unregistered inventory minions are used before buying.");
+        ImGui.TextWrapped("The selected roster has no FATE-vendor requirement. Stage 6 cleared with Zu defenders. The Zu-only Stage 7 roster cleared on its third attempt after two defeats; repeated-win reliability is not established. Stage 15 cleared with Wind-up Gentleman on its second attempt. Stage 16 cleared on the first attempt with Mammet stone attackers and Zu defenders, after three Zu-only defeats.");
+        ImGui.TextWrapped("Achievement vendor: Jonathas in Old Gridania sells these minions for two Achievement Certificates each. Wind-up Odin and Wind-up Cursor can be requested below through ADS within the certificate cap. Travel, certificate claiming, both purchases and registration are verified; their support compositions are not yet selected by the battle strategies.");
         if (config.VerminionProgress.PendingPurchase is { } pending)
-            ImGui.TextWrapped($"Unresolved purchase: {pending.Gil:N0} gil / {pending.Mgp:N0} MGP reserved. Further purchases are blocked until both acquisition and currency evidence agree. Reload, FULL STOP and weekly reset keep this reservation.");
+            ImGui.TextWrapped($"Unresolved purchase: {pending.Gil:N0} gil / {pending.Mgp:N0} MGP / {pending.Certificates:N0} certificates reserved. Further purchases are blocked until both acquisition and currency evidence agree. Reload, FULL STOP and weekly reset keep this reservation.");
         if (config.VerminionProgress.MinionAcquisition is { } acquisition)
             ImGui.TextWrapped($"ADS minion acquisition: item {acquisition.ItemId}. FULL STOP cancels only this request; reload reconciles it without submitting it again.");
         return changed;
@@ -120,18 +164,35 @@ internal sealed class VerminionWindow : Window
             ImGui.TextWrapped("Character clear recorded.");
         ImGui.TextWrapped(stage == 1 ? "Tutorial control has historical runtime evidence." :
             stage == 2 ? "Mammet baseline: ten consecutive live victories verified, with exact stopping at the configured weekly victory target and battlefield control while the game is out of focus." :
+            stage == 6 ? "Airship attackers and Zu defenders: one fresh live clear verified, including Imp phases and the next-stage transition." :
+            stage == 7 ? "Zu baseline: one fresh live clear in three attempts. Both losses counted only toward participation. Repeated-win reliability remains unverified." :
+            stage == 12 ? "Gentleman baseline: one fresh live clear in three attempts with named-boss targeting, wider camera framing and rear pursuit. Repeated-win reliability remains unverified." :
+            stage == 15 ? "Gentleman baseline: one fresh live clear in two attempts. The subsequent prompt-replacement change has no live result yet; repeated-win reliability remains unverified." :
+            stage == 16 ? "Mammet attackers with Zu defenders: one fresh live clear on the first mixed-roster attempt, including Nasty Peck and the next-stage transition. Repeated-win reliability remains unverified." :
             stage == 19 ? "Airship baseline: one live clear verified, including Cargo's ATK buff. Repeated-win reliability remains unverified." :
-            stage == 20 ? "Mammet attackers with Wayward Hatchling defenders: one live clear verified. The battle began before the mixed opening was loaded; a fresh start and repeated wins still need verification." :
+            stage == 20 ? "Mammet attackers with Wayward Hatchling defenders: one fresh live clear verified, including the mixed opening, defender summons and special. Repeated-win reliability remains unverified." :
             stage is 21 or 22 ? "Mammet baseline: one live clear verified, including minimap camera positioning. Repeated-win reliability remains unverified." :
-            "Accessible baseline: awaiting fresh runtime verification. Guide suggestions and substitutions are not guaranteed clears.");
+            "Guide-based strategy under development. A recorded character clear does not establish repeated-win reliability.");
         foreach (var minion in VerminionRoster.Required(stage))
         {
             var owned = showOwnership ? VerminionGameInteraction.OwnsMinion(minion.Id) : null;
             ImGui.BulletText($"{minion.Name} - cost {minion.Cost}; {(owned == true ? "registered" : owned == false ? "missing / not registered" : "ownership unknown")}");
             ImGui.TextWrapped(minion.Acquisition);
         }
-        if (stage == 23) ImGui.TextWrapped("Campaign prerequisite: register Wind-up Gentleman, rewarded by Her Last Vow (level 50 ARR Hildibrand). Both published guides recommend it for Twintania. Airship, Nero and Zu attempts failed, so the bot no longer buys a substitute for this stage. This guide roster has not yet been verified by the bot.");
-        if (stage == 24) ImGui.TextWrapped("Blocked in ordinary runs: tower assignment and circle avoidance are not implemented. The Gentleman roster and one-add targeting come from the linked guides and have no live verification by this bot. A development build with this character's Verminion reload test selected can observe one battle for up to two minutes; that observation does not verify these mechanics.");
+        if (VerminionRoster.AchievementSupport(stage) is { } achievementSupport)
+        {
+            ImGui.TextWrapped("Achievement-vendor guide option: " + achievementSupport);
+            ImGui.TextWrapped("Jonathas, Old Gridania (10.6, 6.2): two Achievement Certificates per minion item. Prefer an already registered minion or its inventory item. ADS travel, certificate claiming, Odin and Cursor purchases, and registration are verified.");
+            if (showOwnership && stage is 16 or 19 or 22 or 23)
+            {
+                var supportId = (ushort)(stage == 23 ? 51 : 76);
+                var supportName = stage == 23 ? "Wind-up Cursor" : "Wind-up Odin";
+                var owned = VerminionGameInteraction.OwnsMinion(supportId);
+                ImGui.TextWrapped($"{supportName}: {(owned == true ? "registered" : owned == false ? "not registered (inventory item may still be available)" : "ownership unknown")}. This guide option is not a current admission requirement.");
+            }
+        }
+        if (stage == 23) ImGui.TextWrapped("Campaign prerequisite: register Wind-up Gentleman, rewarded by Her Last Vow (level 50 ARR Hildibrand). Both published guides recommend it for Twintania. Airship, Nero and Zu attempts failed, so the bot no longer buys a substitute for this stage. This guide roster has one observed clear on its first attempt; repeated-win reliability and the special's actual effect remain unverified.");
+        if (stage == 24) ImGui.TextWrapped("Wind-up Gentleman baseline: one live clear verified in 7:51, including circle responses, individual tower orders and replacement summons. All 24 challenges have observed clears on the test character. Repeated-win reliability remains unverified. Stage 24 uses a nine-minute control window and waits for an explicit result; the normal three-attempt campaign limit applies.");
         if (showOwnership && VerminionRoster.Missing(stage, VerminionGameInteraction.OwnsMinion) is { } missing)
             ImGui.TextWrapped(missing);
         ImGui.TextWrapped("Entry also requires three registered minions, Gold Saucer access and the preceding challenge clears. Setup checks these in game.");
@@ -143,7 +204,7 @@ internal sealed class VerminionWindow : Window
                 ImGui.TextWrapped($"After registering inventory items, entry may need {string.Join(", ", entry.Select(offer => offer.Name))} ({entry.Sum(offer => (long)offer.Gil):N0} gil total). Purchases require enough remaining cap and funds.");
         }
         ImGui.TextWrapped("Stage guide: " + VerminionRoster.GuideUrl(stage));
-        if (stage is 23 or 24)
+        if (stage is 12 or 15 or 23 or 24)
             ImGui.TextWrapped("Gentleman-only guide: https://na.finalfantasyxiv.com/lodestone/character/28572768/blog/4629440/");
     }
 }
