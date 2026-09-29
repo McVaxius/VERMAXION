@@ -420,6 +420,7 @@ public sealed partial class VerminionService : IDisposable
 
     public void Reset()
     {
+        preparedAcquisition = null;
         StopOwnedMovement();
         if (owner != 0 && (Plugin.PlayerState.ContentId != owner || configManager.GetActiveConfig().VerminionPaused))
             AbandonPendingMatch();

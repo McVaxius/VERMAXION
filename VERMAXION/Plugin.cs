@@ -43,7 +43,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260928-417";
+    private const string DebugAttemptMarker = "verminion-control-20260929-421";
     private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
@@ -614,6 +614,20 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         return true;
     }
 
+    internal string? VerminionQuestHandoffBlocker()
+    {
+        // Local duty ownership is independent of DAD's network coordinator.
+        try
+        {
+            return PluginInterface.GetIpcSubscriber<bool>("dad.Duty.IsStopped").InvokeFunc()
+                ? null : "DAD already owns a duty.";
+        }
+        catch
+        {
+            return "Enable DAD before starting Questionable minion acquisition; its duty handoff is unavailable.";
+        }
+    }
+
     internal void AcquireVerminionMinion(ushort minionId)
     {
         // No parent engine/manual task or AR suppression may survive the handoff.
@@ -642,10 +656,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 RunDashboardAction(() => VerminionService.AcquireAchievementMinion(minionId));
                 return;
             }
-            if (!DadIPCClient.IsReady(useCache: false))
-                throw new InvalidOperationException("Enable DAD before starting Questionable minion acquisition; its duty handoff is unavailable.");
-            if (!PluginInterface.GetIpcSubscriber<bool>("dad.Duty.IsStopped").InvokeFunc())
-                throw new InvalidOperationException("DAD already owns a duty.");
+            if (VerminionQuestHandoffBlocker() is { } dutyBlocker)
+                throw new InvalidOperationException(dutyBlocker);
             VerminionService.AcquireMinion(minionId);
         }
         catch (Exception ex)
