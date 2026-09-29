@@ -1,5 +1,155 @@
 # Verminion bot development checkpoint
 
+LOCAL TRIAL STOPPED / PROVIDER SETTINGS RESTORED (421, 06:46 EDT):
+Final421 verification: 39/39 existing Verminion tests passed; diff check clean.
+Duty85 first fight defeated Enkidu at06:36. ADS then exhausted useful live
+objects and held Heading Scout1, unable to progress between arenas. At
+06:41:53.958 Questionable's native five-minute no-movement check stopped its
+duty wait; DAD requested /ads leave, and ADS verified exit06:42:04.091.
+VMX reported incomplete acquisition06:41:55.689 and cleaned its reservation.
+No trial completion, minion reward, Verminion match, win or clear was credited.
+This run included one native target diagnostic, so it is not an unattended
+trial pass. No ADS, DAD, FrenRider or BotologyUpdates source/rule changes made.
+
+Restoration verified from saved provider config: WigglyQuest blacklist502 is
+back (12 entries), Stop.Enabled=false, empty stop/priorities, duty85 override
+absent. FrenRider disabled, eight-man ADS=false, maturity3. DAD remains installed
+with network off. Character is safely outside duty, Her Last Vow at trial step;
+current job WHM72 after the provider's earlier switch. VMX remains paused.
+Saved new week0/0, mask2047 (11/24), spending0gil/10,000MGP/0certificates, and
+no pending match/duty/purchase/quest handoff. Stage1 fresh replay and12-24 pending.
+
+Remaining acquisition blocker: ADS needs the transition route between Big Keep
+arenas. Its existing BossFight/object/waypoint rule format is available, but no
+territory396 rule exists in the inspected BotologyUpdates shards. Before adding
+persistent encounter rules, resolve the current AGENTS.md include/lean/skip gate:
+include a small ADS data-only route using existing architecture; lean is native
+manual transition during the trial; skip leaves Gentleman and Stage12 blocked.
+Do not repeat this acquisition unchanged or install AutoDuty. No new action is
+armed on reload. After three consecutive goal turns with the same unanswered
+route decision, the goal was marked blocked. Campaign acceptance is incomplete.
+
+LOCAL DUTY85 UNSYNCED / TARGET DIAGNOSTIC INTENT:
+DAD joined Battle in the Big Keep unsynced=true at06:29:10.720 EDT; FrenRider
+ADS handoff accepted06:29:24.676. Trial combat active on WHM72. At06:31 Gilgamesh
+was72.6%, then healed back to88.6% by06:32 with Enkidu alive. No clear or reward.
+Test one native /target Enkidu command to determine whether existing ADS/rotation
+keeps the required add target. This is manual diagnostic input; any later clear
+cannot be described as a fully unattended trial attempt. No vendor action involved.
+
+421 LOADED / ACTIVE ACQUISITION RELOAD VERIFIED:
+vmx.bat passed zero errors/two existing warnings. Exact421 startup06:26:35.863
+EDT; the bounded06:24-06:26 native window has only the original06:24:19.582
+submission. Saved handoff remains minion21/quest502, attemptedtrue, not cancelled
+or ownership-released. Native quest continues while VMX observes after reload.
+The new preparation guard passed the existing39 Verminion tests in build420;
+421 only clears its instance reference in Reset. git diff --check passes.
+
+421 RESET / RELOAD VERIFICATION INTENT:
+Clear the instance-only prepared acquisition reference on existing Reset, including
+character changes and FULL STOP. Current quest502 is already submitted/owned, so
+this reset cannot authorize another submission. Build421 via vmx.bat during its
+provider-owned travel, then verify that reload observes the same handoff without
+another StartQuest. Release version unchanged; do not interrupt Questionable.
+
+420 NATIVE HANDOFF VERIFIED / QUEST502 RUNNING:
+Blacklist preflight rejected at 06:23:32.463 EDT with no dispatch. After the
+single UI blacklist removal, preparation began06:24:16.441 and exact quest502
+started06:24:19.582 acceptedTrue. Native UI shows Her Last Vow and VMX-owned
+0/1 acquisition; saved DispatchAttempted=true/CancellationRequested=false/
+OwnershipReleased=false. VMX stays paused, campaign mask2047/counters0/0.
+Questionable owns travel and duty85; observe that transition without redispatch.
+Restore blacklist502, Stop.Enabled=false, duty85 override absent, and FR eight-man
+ADS false/maturity3 after acquisition. Current job WHM72 (provider changed it
+in the earlier rejected-route investigation); trial effectiveness remains unknown.
+
+420 BLACKLIST REJECTION VERIFIED / ACQUISITION RETRY INTENT:
+Native VMX reports Her Last Vow blacklisted and blocks before submission. Removed
+only quest502 through Questionable's Blacklist UI (12 entries ->11; saved502false).
+Other entries are preserved. Restore502 afterward. No owned handoff remains.
+Retry the ordinary acquisition once; expected current quest502 before StartQuest.
+
+420 BUILT / LOADED / BLACKLIST TEST INTENT:
+Build passed zero errors/two existing NU1601 warnings; 39/39 Verminion tests
+passed. Exact420 native startup is 06:22:47.394 EDT. No pending acquisition;
+Verminion remains paused after reload. Click Acquire once with quest502 still
+blacklisted to verify preflight rejection before any provider mutation/dispatch.
+
+420 BUILD / RELOAD INTENT:
+419 built successfully (zero errors/two existing warnings); no acquisition was
+invoked. Review caught that an unsubmitted saved preparation must not dispatch
+after reload. Bind deferred submission to the exact preparation object held only
+by this service instance; reloaded preparations clean up and require a new action.
+Build420/version unchanged and verify blacklist rejection before removing quest502.
+
+419 BUILD / RELOAD INTENT:
+Current WigglyQuest config blacklists quest502. Its installed 7.5.27 IPC starts
+immediately after SetNextQuest, while accepted-quest priorities resolve on the
+provider update. Add native blacklist preflight and use the existing saved
+DispatchAttempted flag to wait for matching current-quest/priority/stop readback
+before one dispatch. A mismatched selection cleans up without starting anything.
+No provider source, new runner, configuration field, or release version change.
+Build via vmx.bat, run existing Verminion tests, verify419 startup and the native
+blacklist rejection first. Then remove only quest502 from the provider blacklist
+through its UI for this approved acquisition; restore its original blacklist
+entry and the other recorded provider settings after the test.
+
+418 ACQUISITION ACCEPTED BUT PROVIDER SELECTED ANOTHER QUEST:
+Native handoff accepted quest502 at 06:16:41.139 EDT, but WigglyQuest's
+IPCQuestSelection chose already-accepted quest1083 and switched SCH70 to WHM72.
+VMX correctly reported outside-owned-route work and did not claim the quest.
+Stopped the unintended test run via /wqst stop; saved acquisition is now null,
+VMX remains paused, priorities/stop conditions are empty and counters unchanged.
+No reward or trial claimed. Investigate native accepted-quest selection before
+another dispatch. WQ stop/duty85 and FR eight-player settings still need the
+recorded restoration after the acquisition attempt is resolved.
+
+418 QUEST DISPATCH INTENT (06:16 EDT):
+Clear all challenges stopped before Stage 12 admission for missing Gentleman.
+Saved week is now 2026-09-29T09:00Z, 0 matches/0 wins, mask 2047 retained.
+WigglyQuest.json (not the stale Questionable.json) confirms Stop.Enabled=true,
+empty conditions/priorities, duty85 override UnsyncSolo, and the DAD bridge's
+duty gate enabled. Native Verminion menus were closed. The ordinary acquisition
+button is enabled with no DAD blocker. Click it once now for remaining quest502;
+expect provider-owned travel and duty85, VMX paused, no automatic campaign restart.
+
+418 VERIFIED / LOCAL CAMPAIGN AND QUEST HANDOFF INTENT:
+vmx.bat succeeded with zero errors and two existing NU1601 warnings; 39/39
+Verminion tests passed. Exact native 418 startup: 06:09:36.377 EDT. DAD's
+local bridge is installed; its network coordinator remains off. FrenRider's
+eight-player ADS handoff is now enabled with maturity 0 (original false/3);
+restore those two settings after acquisition. FrenRider itself remains off.
+At 06:14 the saved weekly counters still show the old week and 10/10, while
+the UI shows 0/0. Permanent mask 2047 and spending 0 gil/10,000 MGP/0
+certificates are retained; all pending operations are null/zero. Verify weekly
+save on the next run transition. Next: invoke Clear all challenges once to
+restore campaign intent and its Stage 12 roster gate, then verify the native
+WigglyQuest stop/unsynced duty 85 controls before the ordinary acquisition.
+
+418 BUILD / LOCAL RELOAD INTENT:
+DAD0.7.1.1 installed through native Dalamud UI. Native duty IPC registered
+06:02:25.261EDT and bridge patched WigglyQuest7.5.27 at06:02:29.552. No quest
+dispatched. WQStop.Enabled is nowtrue(originalfalse), duty85 override1/UnsyncSolo
+(originalabsent); whitelist remains empty/defaultmode0. Restore these after the
+acquisition. FR settings still untouched/disabled. Network DAD stays off.
+Source inspection found417's readiness check incorrectly used dad.IsReady, which
+requires network transport. Replace that check with the existing dad.Duty.IsStopped
+IPC for both UI and dispatch; unavailable/busy still block. No DAD code change or
+network coordinator setup. Marker418/versionunchanged. Build via vmx.bat; verify
+exact startup and ordinary acquisition availability before any quest dispatch.
+Native UI also shows the new weekly reset0matches/0wins with11permanentclears;
+verify saved reset/accounting as part of the next setup transition.
+
+LOCAL DAD APPROVED / ACCESS RESTORED (2026-09-29):
+User chose Include for adding our released DAD to the local C: client. The
+intervening access blocker is resolved: Z: checkpoint is readable and local
+PID3228 has a window again. This approval supersedes the pending dependency
+choice below; do not ask again. Use the ordinary Dalamud plugin installer for
+DAD, verify readiness and the Questionable bridge, then configure the existing
+provider controls for Her Last Vow/unsynced duty85. Preserve all saved facts.
+No R3/R7 actions, AutoDuty, game restart, new runner or release-version change.
+Record each actual dispatch/receipt before continuing campaign Stage12.
+
 LOCAL PASS IDLE AT DEPENDENCY DECISION (417):
 Stage2 Victory credited20:15:38.190 EDT; native UI subsequently shows Complete:
 Weekly victory target reached,10/10wins/0remaining. No further match admitted.

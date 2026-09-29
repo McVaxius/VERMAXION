@@ -84,10 +84,9 @@ internal sealed class VerminionWindow : Window
             if (!loggedIn || VerminionGameInteraction.OwnsMinion(minion.Id) != false) continue;
             ImGui.TextWrapped($"Acquire {minion.Name}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting.");
             ImGui.TextWrapped("Hildibrand includes three eight-player trials. For a solo run with this stack, configure those duties as unsynced in Questionable and enable FrenRider's eight-player ADS handoff. Check that ADS permits each trial at your chosen maturity threshold. Verminion uses these provider settings; it does not change them or guarantee a trial clear.");
-            var dadReady = plugin.DadIPCClient.IsReady();
-            if (!dadReady)
-                ImGui.TextWrapped("Enable DAD before starting Questionable minion acquisition; its duty handoff is unavailable.");
-            ImGui.BeginDisabled(!dadReady || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
+            var dutyBlocker = plugin.VerminionQuestHandoffBlocker();
+            if (dutyBlocker != null) ImGui.TextWrapped(dutyBlocker);
+            ImGui.BeginDisabled(dutyBlocker != null || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
             if (ImGui.Button($"Acquire {minion.Name} with Questionable")) plugin.AcquireVerminionMinion(minion.Id);
             ImGui.EndDisabled();
             ImGui.TextWrapped("Verminion stays paused while Questionable runs. Reload observes the handoff without starting it again. FULL STOP cancels the owned acquisition. After the reward, Resume registers the minion and continues the selected Verminion goal.");

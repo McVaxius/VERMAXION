@@ -12,6 +12,7 @@ public sealed partial class VerminionService
     private DateTime nextAcquisitionObservation;
     private bool acquisitionStopSent;
     private ulong acquisitionObservedOwner;
+    private VerminionQuestAcquisition? preparedAcquisition;
     public bool HasQuestAcquisition => configManager.GetActiveConfig().VerminionProgress.QuestAcquisition != null;
 
     // Called only from the idle manual handoff. Questionable owns all quest
@@ -54,6 +55,9 @@ public sealed partial class VerminionService
             var remaining = route.Where(id => !QuestManager.IsQuestComplete(id)).ToArray();
             if (remaining.Length == 0 || QuestManager.IsQuestComplete(route[^1]))
                 throw new InvalidOperationException("The reward quest is already complete. Register its minion item, then Resume Verminion.");
+            var blacklisted = QuestCall<List<string>>(provider, "GetBlacklistedQuests");
+            if (remaining.FirstOrDefault(id => blacklisted.Contains(id.ToString())) is var blockedQuest && blockedQuest != 0)
+                throw new InvalidOperationException($"{AcquisitionQuestName(blockedQuest)} is blacklisted in Questionable. Remove that quest from its blacklist before starting acquisition.");
             var first = remaining[0];
             if (!Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Quest>().TryGetRow((uint)first + 65536, out var quest) ||
                 VerminionGameInteraction.ReadUnsyncedJobLevel() is not { } level || level < quest.ClassJobLevel[0])
@@ -79,15 +83,12 @@ public sealed partial class VerminionService
                 !QuestCall<List<string>>(provider, "GetStopQuestList").Contains(route[^1].ToString()) ||
                 !QuestCall<bool>(provider, "GetStopConditionsEnabled"))
                 throw new InvalidOperationException("Questionable priority/stop readback disagreed; no quest submitted.");
-            progress.QuestAcquisition = progress.QuestAcquisition with { DispatchAttempted = true };
-            SaveAcquisition();
             acquisitionStopSent = false;
+            preparedAcquisition = progress.QuestAcquisition;
             nextAcquisitionObservation = DateTime.UtcNow.AddSeconds(3);
-            var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{provider}.StartQuest").InvokeFunc(first.ToString());
-            reason = accepted
-                ? $"Questionable is acquiring the required minion; native stop after {AcquisitionQuestName(route[^1])}. Verminion is paused."
-                : "Questionable rejected acquisition; no automatic retry. Reconciling owned settings.";
-            log.Information($"[Verminion] Native minion acquisition submitted; minion={minionId}; first={first}; reward={route[^1]}; accepted={accepted}");
+            // The provider resolves newly inserted priorities on its own update.
+            // Starting an accepted quest in this same frame can run its old selection.
+            reason = $"Waiting for Questionable to select {AcquisitionQuestName(first)} before starting acquisition. Verminion is paused.";
         }
         catch (Exception ex)
         {
@@ -182,6 +183,32 @@ public sealed partial class VerminionService
                 return;
             }
 
+            string? dispatchBlocker = null;
+            if (!handoff.DispatchAttempted && !handoff.CancellationRequested)
+            {
+                var first = handoff.Quests[0].ToString();
+                if (!ReferenceEquals(preparedAcquisition, handoff))
+                    dispatchBlocker = "Minion acquisition preparation was interrupted. No quest started; use Acquire to start a new handoff.";
+                else if (current != first ||
+                    !QuestCall<List<string>>(handoff.Provider, "GetPriorityQuests").SequenceEqual(handoff.Quests.Select(id => id.ToString())) ||
+                    !QuestCall<bool>(handoff.Provider, "GetStopConditionsEnabled") ||
+                    !QuestCall<List<string>>(handoff.Provider, "GetStopQuestList").Contains(handoff.RewardQuest.ToString()) ||
+                    QuestCall<List<string>>(handoff.Provider, "GetBlacklistedQuests").Any(id => handoff.Quests.Any(quest => quest.ToString() == id)))
+                    dispatchBlocker = "Questionable did not select the requested acquisition quest with its priority and reward stop intact. No quest started; review its selection and settings before trying again.";
+                else
+                {
+                    preparedAcquisition = null;
+                    progress.QuestAcquisition = handoff with { DispatchAttempted = true };
+                    SaveAcquisition();
+                    var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{handoff.Provider}.StartQuest").InvokeFunc(first);
+                    reason = accepted
+                        ? $"Questionable is acquiring the required minion; native stop after {AcquisitionQuestName(handoff.RewardQuest)}. Verminion is paused."
+                        : "Questionable rejected acquisition; no automatic retry. Reconciling owned settings.";
+                    log.Information($"[Verminion] Native minion acquisition submitted; minion={handoff.MinionId}; first={first}; reward={handoff.RewardQuest}; accepted={accepted}");
+                    return;
+                }
+            }
+
             // Never resume battle work just because Q stopped. Native reward
             // completion proves the quest only; registration is checked on Resume.
             foreach (var id in handoff.Quests)
@@ -199,15 +226,16 @@ public sealed partial class VerminionService
                 QuestCall<List<string>>(handoff.Provider, "GetStopQuestList").Contains(rewardKey))
                 throw new InvalidOperationException("Questionable cleanup readback disagreed; the handoff remains reserved.");
             config.VerminionPaused = true;
+            preparedAcquisition = null;
             progress.QuestAcquisition = null;
             if (!configManager.TrySaveAccount(configManager.CurrentAccountId))
             {
                 progress.QuestAcquisition = handoff;
                 throw new InvalidOperationException("Acquisition cleanup could not be saved.");
             }
-            reason = handoff.CancellationRequested ? "Minion acquisition cancelled. Verminion remains paused." :
+            reason = dispatchBlocker ?? (handoff.CancellationRequested ? "Minion acquisition cancelled. Verminion remains paused." :
                 rewardComplete ? "Minion reward quest completion verified. Resume Verminion to register the reward and continue." :
-                "Questionable stopped before the reward quest completed. Acquisition is unresolved; use Acquire to continue after reviewing its progress.";
+                "Questionable stopped before the reward quest completed. Acquisition is unresolved; use Acquire to continue after reviewing its progress.");
             log.Information($"[Verminion] {reason}");
         }
         catch (Exception ex)
