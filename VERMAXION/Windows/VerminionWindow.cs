@@ -12,6 +12,7 @@ internal sealed class VerminionWindow : Window
 {
     private readonly Plugin plugin;
     private int previewStage;
+    private bool showPlannedMinions;
 
     public VerminionWindow(Plugin plugin) : base("Lord of Verminion##VermaxionVerminion")
     {
@@ -55,6 +56,27 @@ internal sealed class VerminionWindow : Window
     {
         var service = plugin.VerminionService;
         var progress = config.VerminionProgress;
+        ImGui.BeginDisabled(!loggedIn);
+        if (ImGui.Button("Check planned minions")) showPlannedMinions = true;
+        ImGui.EndDisabled();
+        if (showPlannedMinions)
+        {
+            var planned = Enumerable.Range(1, 24).SelectMany(VerminionRoster.Required)
+                .DistinctBy(minion => minion.Id)
+                .Select(minion => (Minion: minion, Owned: loggedIn ? VerminionGameInteraction.OwnsMinion(minion.Id) : null)).ToArray();
+            var registered = planned.Count(minion => minion.Owned == true);
+            ImGui.TextWrapped(planned.Any(minion => minion.Owned == null)
+                ? "Ownership is unavailable; log in and wait for character data."
+                : $"Current character: {registered}/{planned.Length} planned minions registered for challenges 1-24 and weekly victories.");
+            ImGui.TextWrapped("This check reads ownership only. You can get missing minions yourself; use their inventory items to register them, then check again.");
+            foreach (var (minion, owned) in planned)
+            {
+                ImGui.BulletText($"{minion.Name}: {(owned == true ? "registered" : owned == false ? "missing / not registered" : "ownership unavailable")}");
+                if (owned != true) ImGui.TextWrapped("Get it: " + minion.Acquisition);
+            }
+            if (registered == planned.Length) ImGui.TextWrapped("All planned minions are registered.");
+            ImGui.Separator();
+        }
         if (ImGui.CollapsingHeader("Weekly goal and purchase limits"))
         {
             ImGui.BeginDisabled(!loggedIn || service.IsActive || service.HasQuestAcquisition);
@@ -166,7 +188,7 @@ internal sealed class VerminionWindow : Window
             stage == 6 ? "Airship attackers and Zu defenders: one fresh live clear verified, including Imp phases and the next-stage transition." :
             stage == 7 ? "Zu baseline: one fresh live clear in three attempts. Both losses counted only toward participation. Repeated-win reliability remains unverified." :
             stage == 12 ? "Gentleman baseline: one fresh live clear in three attempts with named-boss targeting, wider camera framing and rear pursuit. Repeated-win reliability remains unverified." :
-            stage == 15 ? "Gentleman baseline: one fresh live clear in two attempts. The subsequent prompt-replacement change has no live result yet; repeated-win reliability remains unverified." :
+            stage == 15 ? "Gentleman baseline: an earlier clear is verified. Revised final-phase pursuit awaits live verification; repeated-win reliability remains unverified." :
             stage == 16 ? "Mammet attackers with Zu defenders: one fresh live clear on the first mixed-roster attempt, including Nasty Peck and the next-stage transition. Repeated-win reliability remains unverified." :
             stage == 19 ? "Airship baseline: one live clear verified, including Cargo's ATK buff. Repeated-win reliability remains unverified." :
             stage == 20 ? "Mammet attackers with Wayward Hatchling defenders: one fresh live clear verified, including the mixed opening, defender summons and special. Repeated-win reliability remains unverified." :
