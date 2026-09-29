@@ -51,17 +51,17 @@ internal static class VerminionRoster
     }
 
     public static readonly VerminionMinion Mammet = new(2, "Mammet #001", 10,
-        "2,400 gil from the Minion Trader in Minion Square or city minion vendors; register the item before battle.");
+        "Minion Trader, Minion Square: 2,400 gil.");
     public static readonly VerminionMinion Hatchling = new(3, "Wayward Hatchling", 15,
-        "2,400 gil from the Minion Trader in Minion Square or city minion vendors; register the item before battle.");
+        "Minion Trader, Minion Square: 2,400 gil.");
     public static readonly VerminionMinion Airship = new(52, "Wind-up Airship", 25,
-        "Reward from your starting city's level 15 Envoy main scenario quest; register the item.");
+        "Reward from your starting city's level 15 Envoy main scenario quest.");
     public static readonly VerminionMinion Nero = new(174, "Wind-up Nero tol Scaeva", 20,
         "30,000 MGP from the Minion Trader in Minion Square; permanent vendor stock with no additional unlock.");
     public static readonly VerminionMinion Zu = new(83, "Zu Hatchling", 10,
-        "10,000 MGP from the Minion Trader in Minion Square; permanent vendor stock with no FATE or additional unlock. ADS handles purchase within the character's MGP cap.");
+        "Minion Trader, Minion Square: 10,000 MGP, permanent stock.");
     public static readonly VerminionMinion Gentleman = new(21, "Wind-up Gentleman", 30,
-        "Reward from the level 50 ARR Hildibrand quest Her Last Vow. Acquire through the Questionable handoff below, then Resume to register the reward before Stages 12, 15, 23 and 24. The minion cannot be bought for gil or MGP.");
+        "Reward from Her Last Vow, the final level 50 ARR Hildibrand quest.");
 
     public static VerminionMinion Attacker(int stage) => stage == 7 ? Zu :
         stage is 12 or 15 or 23 or 24 ? Gentleman : VerminionBattleStrategy.IsStoneStage(stage) ? Mammet : Airship;
@@ -98,7 +98,7 @@ internal static class VerminionRoster
         6 => "Airships switch to the Imps that maintain invulnerability, then return to the boss. Four Zu Hatchlings defend the center stone. This permanent-vendor composition has one observed live clear.",
         9 => "Fast Airships carry bombs from the lever, place and arm them by the invulnerable slime, then attack the vulnerable final phase.",
         12 => "Follow the linked Gentleman-only guide: send Wind-up Gentlemen to Demon Brick as they spawn, pursue from behind and ignore other minions. Use surviving gates for replacements. Keep the withdrawing special disabled. This composition cleared on its third attempt after two defeats; repeated-win reliability is not established.",
-        15 => "Use Wind-up Gentlemen, following the linked Gentleman guide. Assemble eight attackers, follow Odin and replace losses; recover the army before the final phase. At 25% HP, use Power of Deduction only with at least eight living attackers because it withdraws its four-minion action party. This roster cleared on its second attempt; the later prompt-replacement change still needs live verification.",
+        15 => "Use Wind-up Gentlemen, following the linked Gentleman guide. Assemble eight attackers, follow Odin into melee and replace losses; recover the army before the final phase. At 25% HP, use Power of Deduction only with at least eight living attackers because it withdraws its four-minion action party. Revised pursuit still needs live verification.",
         19 => "Up to nine Airships defend the center stone and intercept Enkidu. Do not chase Gilgamesh away; retreat to heal during his ATK/DEF/SPD buff and return afterward. Use Cargo's area ATK buff on the group.",
         23 => "Wind-up Gentlemen rush Twintania as they spawn. Keep replacements queued and ignore resistant nodes. Save Power of Deduction for the final 20% while eight attackers survive: it buffs nearby allies but withdraws its four-minion action party. This published composition cleared on its first attempt on the current test character; repeated-win reliability is not established. The tested Airship, Nero and Zu substitutions failed.",
         24 => "Follow the guide's Wind-up Gentleman composition: dodge plain red circles, send one healthy Gentleman into each pillar circle, focus one Clockwork Twintania when both adds appear, then return to Bahamut. Reinforce losses and keep the withdrawing special disabled. This composition has one observed live clear; repeated-win reliability remains unverified.",
@@ -377,6 +377,23 @@ internal sealed class VerminionBossStrategy(int stage = 4)
                 System.Numerics.Vector3.DistanceSquared(unit.Position, other.Position) < 25))
             .ThenBy(unit => System.Numerics.Vector3.DistanceSquared(unit.Position, target))
             .Select(unit => unit.Id).FirstOrDefault();
+    }
+
+    public ulong ChooseOdinRecoveryUnit((ulong Id, Vector3 Position)[] units, Vector3 gate)
+    {
+        // Let the main party retreat first, then collect units its selection missed.
+        if (stage != 15 || !units.Any(unit => unit.Id != 0 && Vector3.DistanceSquared(unit.Position, gate) < 36)) return 0;
+        return units.Where(unit => unit.Id != 0 && Vector3.DistanceSquared(unit.Position, gate) >= 36)
+            .OrderByDescending(unit => Vector3.DistanceSquared(unit.Position, gate))
+            .Select(unit => unit.Id).FirstOrDefault();
+    }
+
+    public static bool OdinArmyInMelee(IEnumerable<Vector3> units, Vector3 boss)
+    {
+        var positions = units.ToArray();
+        // One selected attacker in range does not establish the army's arrival.
+        return positions.Length > 0 && positions.Count(position => Vector3.DistanceSquared(position, boss) < 4) >=
+            (positions.Length + 1) / 2;
     }
 
     public Action Decide(bool gateSelected, int readyUnits, int deployedUnits,

@@ -302,10 +302,12 @@ public sealed partial class VerminionService : IDisposable
         }
         if (VerminionGameInteraction.IsAdmissionPrompt)
         { SetState(VerminionState.WaitingForTutorial, "Resuming tutorial admission"); return; }
-        if (VerminionGameInteraction.IsChallengeMenu)
-        { SetState(VerminionState.SelectingTutorial, "Resuming challenge selection"); return; }
         if (VerminionGameInteraction.IsSetupMenu)
-        { SetState(VerminionState.InspectingControls, "Resuming the verified Verminion setup menu"); return; }
+        {
+            registeringItem = 0;
+            SetState(VerminionState.RegisteringMinions, "Leaving Verminion setup before inspecting inventory minions");
+            return;
+        }
         if (condition[ConditionFlag.PlayingLordOfVerminion])
         {
             SetState(VerminionState.InDuty, $"Resuming {BattleLabel}");
@@ -478,6 +480,14 @@ public sealed partial class VerminionService : IDisposable
                     if (elapsed > 300) { Fail("Minion registration timed out."); return; }
                     if (DateTime.UtcNow < nextInteractionUtc) return;
                     nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
+                    if (VerminionGameInteraction.IsAdmissionPrompt)
+                    { Fail("Verminion admission appeared before roster setup; no minion item used."); return; }
+                    if (VerminionGameInteraction.IsSetupMenu)
+                    {
+                        if (!GameHelpers.TrySelectStringExact(VerminionGameInteraction.IsChallengeMenu ? "Return" : "Cancel", out _))
+                            Fail("Could not leave Verminion setup before registering inventory minions.");
+                        return;
+                    }
                     if (!GameHelpers.IsPlayerAvailable()) return;
                     if (registeringItem != 0)
                     {
@@ -888,7 +898,6 @@ public sealed partial class VerminionService : IDisposable
                     UpdateTutorialProof();
                     return;
                 case VerminionState.LeavingResult:
-                    if (elapsed > 30) { Fail("Result closure timed out; no weekly completion recorded."); return; }
                     if (Plugin.ClientState.TerritoryType == 388 && !condition[ConditionFlag.BetweenAreas] &&
                         !condition[ConditionFlag.BetweenAreas51])
                     {
@@ -898,6 +907,7 @@ public sealed partial class VerminionService : IDisposable
                         InspectChallengeProgress();
                         return;
                     }
+                    if (elapsed > 60) { Fail("Result closure timed out; no weekly completion recorded."); return; }
                     if (!resultExitRequested && elapsed >= 1)
                         resultExitRequested = VerminionGameInteraction.TryLeaveBattleResult();
                     return;
@@ -2064,8 +2074,10 @@ public sealed partial class VerminionService : IDisposable
                     tutorialDestination = VerminionBossStrategy.DemonBrickDestination(enemy.Position, enemy.Rotation, anchor?.Position);
                 }
                 else tutorialDestination = enemy.Position;
-                if (challengeStage == 15 && Plugin.ObjectTable.Any(unit => unit.GameObjectId == groupSelectionAnchor &&
-                    Vector3.DistanceSquared(unit.Position, tutorialDestination) < 4))
+                if (challengeStage == 15 && VerminionBossStrategy.OdinArmyInMelee(
+                    Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+                        .Where(unit => unit.CurrentHp > 0 && unit.Name.TextValue == tutorialGroupName &&
+                            VerminionGameInteraction.IsFriendlyMinion(unit)).Select(unit => unit.Position), tutorialDestination))
                 {
                     // Selecting the other party exposes its special. Do not
                     // interrupt an attack already in range just to select it.
@@ -2895,6 +2907,21 @@ public sealed partial class VerminionService : IDisposable
         }
         var selected = groupSelectionVerified
             ? units.Concat(defenders).FirstOrDefault(obj => obj.GameObjectId == groupSelectionAnchor) : null;
+        if (odinRegrouping && (now - odinRegroupUtc).TotalSeconds >= 20 && (now - bossOrderUtc).TotalSeconds >= 5)
+        {
+            var recoveryId = bossStrategy.ChooseOdinRecoveryUnit(units.Select(unit => (unit.GameObjectId, unit.Position)).ToArray(), gate.Position);
+            var recoveryUnit = units.FirstOrDefault(unit => unit.GameObjectId == recoveryId);
+            if (recoveryUnit != null)
+            {
+                if (TrySelectGroup(gate.Position, bossStrategy.CurrentMinionName, 1, recoveryUnit.Position,
+                    singleUnit: recoveryUnit.GameObjectId))
+                {
+                    bossOrderUtc = now;
+                    log.Information("[VerminionControl] Stage 15 returning an isolated attacker to the healing gate");
+                }
+                return;
+            }
+        }
         var selectedDefender = HasBossDefenders && selected?.Name.TextValue == bossStrategy.CurrentDefenderName;
         if (challengeStage == 12 && !bossContactCaptured && selected != null &&
             Vector3.DistanceSquared(selected.Position, boss.Position) < 36)
@@ -2905,20 +2932,15 @@ public sealed partial class VerminionService : IDisposable
             var captured = VerminionGameInteraction.CaptureTutorialImage();
             log.Information($"[VerminionControl] Stage 12 contact; selected={tutorialGroupName}; verified={groupSelectionVerified}; actionReady={VerminionGameInteraction.IsPaletteActionReady(82)}; image={captured}");
         }
-        // Odin destroys every stone after his final cast. Concentrate the
-        // Gentleman army so its special supports the final attack.
+        // Odin destroys every stone after his final cast. Keep pursuing until
+        // the army arrives; selecting a party here can postpone its movement.
         if (challengeStage == 15 && !odinRegrouping && !bossBurstStarted && capacity > 60 &&
             boss.CurrentHp <= boss.MaxHp / 3 && units.Length >= 4)
         {
             VerminionGameInteraction.CaptureBattle("Stage 15 final damage phase");
-            var anchor = units.OrderByDescending(candidate => units.Count(unit =>
-                    Vector3.DistanceSquared(unit.Position, candidate.Position) < 25))
-                .ThenBy(unit => Vector3.DistanceSquared(unit.Position, boss.Position)).First();
             bossSpecialProbes.Clear();
-            TrySelectGroup(anchor.Position, bossStrategy.CurrentMinionName, 1, anchor.Position, selectionOnly: true);
             bossBurstStarted = true;
             log.Information($"[VerminionControl] Stage 15 final burst; targetHp={boss.CurrentHp}/{boss.MaxHp}; attackers={units.Length}");
-            return;
         }
         var savingOdinBuff = challengeStage == 15 && odinRegrouped && boss.CurrentHp > boss.MaxHp / 3;
         if (!odinRegrouping && !savingOdinBuff && !(challengeStage == 19 && bossEnraged) &&
@@ -2985,12 +3007,12 @@ public sealed partial class VerminionService : IDisposable
             MathF.Cos(boss.Rotation - bossOrderRotation) < 0.7f;
         var moved = bossOrderTarget != (combatTarget ?? 0) || bossOrderPosition == null ||
             turned ||
-            Vector3.DistanceSquared(destination, bossOrderPosition.Value) >= (challengeStage is 12 or 23 or 24 ? 1 : 16) ||
+            Vector3.DistanceSquared(destination, bossOrderPosition.Value) >= (challengeStage is 12 or 15 or 23 or 24 ? 1 : 16) ||
             // Reconcile actual arrival, including units stranded by a prior
             // command. Most of the deployed army should be near its target.
             orderSeconds >= 15 && deployed.Count(unit => Vector3.DistanceSquared(unit.Position, destination) <
-                (challengeStage == 19 ? 4 : challengeStage is 12 or 23 or 24 ? 2.25f : 36)) <
-                (challengeStage is 12 or 19 or 23 or 24 ? (deployed.Length + 1) / 2 : deployed.Length / 2);
+                (challengeStage is 15 or 19 ? 4 : challengeStage is 12 or 23 or 24 ? 2.25f : 36)) <
+                (challengeStage is 12 or 15 or 19 or 23 or 24 ? (deployed.Length + 1) / 2 : deployed.Length / 2);
         // Let a party already in melee finish its attacks. Repeated ground
         // orders and switching between nearby adds interrupt that engagement.
         if ((bossStrategy.DefendsStone || challengeStage is 12 or 24) && !turned && combatTarget == bossOrderTarget && deployed.Length > 0 &&
@@ -3005,8 +3027,8 @@ public sealed partial class VerminionService : IDisposable
         if (challengeStage == 19 && bossEnraged && deployed.Length > 0 && orderSeconds >= 3 && moved)
             action = VerminionBossStrategy.Action.FollowBoss;
         if (challengeStage == 15 && !odinRegrouping && boss.CurrentHp <= boss.MaxHp / 3 &&
-            action == VerminionBossStrategy.Action.FollowBoss && deployed.Count(unit =>
-                Vector3.DistanceSquared(unit.Position, boss.Position) < 25) >= (deployed.Length + 1) / 2)
+            action == VerminionBossStrategy.Action.FollowBoss &&
+            VerminionBossStrategy.OdinArmyInMelee(deployed.Select(unit => unit.Position), boss.Position))
             action = VerminionBossStrategy.Action.Wait;
         if (now >= nextBossSpecialUtc && bossStrategy.ShouldUseSpecial(boss.CurrentHp, boss.MaxHp, units.Length) &&
             (challengeStage == 15 && !odinRegrouping && boss.CurrentHp <= boss.MaxHp / 3 ||
@@ -3201,7 +3223,10 @@ public sealed partial class VerminionService : IDisposable
     {
         var projected = VerminionGameInteraction.ProjectBattlefield(world, out point);
         if (projected && VerminionGameInteraction.IsBattlefieldPointVisible(point)) return true;
-        if (cameraAdjustments == 0 && (IsStoneStage || challengeStage is 9 or 12 or 15 or 19 or 23 or 24) &&
+        // A minimap click can miss during panel layout and clear the selection.
+        // Once a unit is selected, frame its order with camera keys instead.
+        if (!pendingTutorialMove && pendingSameTypeSelection == null && cameraAdjustments == 0 &&
+            (IsStoneStage || challengeStage is 9 or 12 or 15 or 19 or 23 or 24) &&
             VerminionGameInteraction.TryFocusMiniMap(world, out var mapClick))
         {
             pendingBattlefieldClick = mapClick;

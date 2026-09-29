@@ -1,5 +1,218 @@
 # Verminion bot development checkpoint
 
+HARD USER RULE / STRATEGIES FROZEN FOR PRODUCTION TESTING:
+No further strategy change without asking and receiving explicit user permission.
+This includes roster/composition, openings, targeting, movement decisions,
+recovery tactics and ability policy, including changes described as control fixes
+when they alter battle decisions. Current425 is the unchanged testing baseline;
+do not revert, tune, rebuild or change the retry limit on this instruction.
+The current objective is to measure whether a few attempts suffice for clears
+and assess production readiness. Observe results and attempts, preserve positive
+credit and stop safeguards, and report failures before proposing any strategy fix.
+Native saved state remains paused14/24,Stage15 attempts3,pending0. Testing awaits
+the user's ordinary Resume; external client input/config mutation remains revoked.
+
+USER STEERING / RETRY WITHOUT FURTHER STRATEGY EDITS:
+User explicitly resumed the development goal and challenged strategy changes
+after losses. Keep425 unchanged for the next native retries; a failed attempt
+does not itself justify a source edit. Existing /vmx v Resume resets the paused
+stage's attempt budget and allows another bounded three-attempt run, preserving
+earned clears and result accounting. Do not raise the limit or mutate live state.
+Historical330 Gentleman Stage15 lost its first attempt with Odin389/17000HP,
+then cleared15:12:57.322 on its second attempt without deploying the prepared333
+change. Earlier132's Stage15 clear used24 Succubus, a different composition.
+Current local failures were one recovery timeout and two confirmed defeats on
+422/424, with nearby/stranded attackers suggesting an execution issue. This is
+not proof that the guide roster or strategy needs replacement; different client
+and later control code are established differences, their causal role is not.
+Fresh saved state remains paused14/24,Stage15 attempts3,pending0. External input
+remains revoked. User-controlled native Resume is needed; /goal resume does not
+invoke the game action. No further build, roster or special change this turn.
+
+425 BUILT / LOADED / PAUSED GUARD VERIFIED:
+vmx.bat succeeded42.86seconds, zero errors/two existing NU1601 warnings.
+41/41 VerminionLifecycleTests passed; git diff --check passed. Exact425 native
+startup2026-09-29 17:05:12.019EDT, version0.5.0.3 unchanged, expected development
+output Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll. At17:05:18.279
+the selected verminion_queue hook consumed its load and observed paused state:
+duty0/resultUnknown/pending0/matches7/wins3, no admission or credit. Saved
+mask16383 (14/24), Stage15 attempts3, pending match/duty0 and pause=true agree.
+The source now reads majority melee arrival, follows smaller Odin movements,
+does not abandon group movement merely because its anchor is near, and avoids
+an extra selection at the final-phase transition. Guide-directed special use
+is unchanged. The regression covers one near anchor with seven stranded units,
+majority arrival, boundary and empty army. This does not prove a native clear.
+/vmx v now has Check planned minions, deriving all five unique requirements
+from stages1-24 and reading ownership for the active character. Missing entries
+show short manual sources; the button starts no quest, purchase or match and
+adds no saved setting. Its visual check remains pending. User wants this roster
+preflight available for the next character test, ideally without further code
+changes after this character finishes Stage24. Acceptance is not complete.
+Next: normal user-controlled /vmx v -> Resume after reviewing the concrete fix,
+then bounded stage/result snapshots. Do not clear pause, reset attempts or send
+game input externally. No further build during a native attempt. Local Stage1
+fresh replay and stages15-24 remain pending; first-time unlock/tournaments too.
+
+424 STAGE15 LIMIT STOP / 425 FIX AND ROSTER CHECK INTENT:
+Stage15 attempt2 reached a fully healed army at16:46:44.089EDT, but ended in
+verified Defeat16:48:07.876. Attempt3 also ended in Defeat16:53:01.950; return
+was verified and the three-attempt limit stopped the campaign16:53:19.599.
+Saved character state: paused, mask16383 (14/24),7weekly matches/3wins,
+Stage15 attempts3, pending match/duty0. No fourth admission or false clear.
+The isolated recovery branch itself remains unverified despite the healed army.
+Fresh final-phase snapshots show Gentlemen several metres behind Odin; the
+five-metre hold condition can suppress pursuit before the army reaches melee.
+Review the linked guides, correct arrival/pursuit without bypassing the saved
+pause or attempt limit, and add a focused regression. Retain guide-directed
+special use unless new evidence supports a change; button submission alone
+does not establish its effect. User requested a /vmx v button checking the
+whole planned roster, with short manual acquisition sources for missing minions.
+Use the current stage requirements, no new saved settings or acquisition route.
+Build425 through vmx.bat, version0.5.0.3 unchanged. Native debug may reload,
+but must respect the character's pause. Further battle testing needs normal
+user-controlled Resume. No external client input, focus or live config edits.
+Local Stage1 replay and stages15-24 remain pending; earlier R7 clears do not
+prove this pass. Continue toward Stage24 once the user resumes after this fix.
+
+424 BUILT / LOADED / FRESH STAGE15 ATTEMPT2:
+vmx.bat succeeded37.67seconds, zero errors/two existing NU1601 warnings.40/40
+Verminion tests passed, including the new isolated-recovery regression. Exact424
+startup16:43:44.858EDT, version0.5.0.3. Existing debug hook dispatched once at
+16:43:52.407 from outside the abandoned battle; no stale result was credited.
+Fresh Stage15 CPU queue is match17/duty566, battlefield observed16:44:13.010.
+Saved16:44:53 snapshot: unpaused campaign, mask16383 (14/24),5matches/3wins,
+Stage15 attempt2/pending17/566. No external client input or live config mutation.
+Do not build/reload during this attempt. Verify individual recovery, final phase,
+positive result and Stage16 transition from the next bounded milestone. Native
+Stage15 recovery fix and stages15-24 clears remain pending on this local pass.
+
+424 ODIN RECOVERY FIX / BUILD INTENT:
+423 Stage13 Victory16:28:18.490 and Stage14 Victory16:31:30.119, both first
+attempts. Local mask16383 (14/24),5matches/3wins. Stage15 admission match16/duty566
+was observed16:32:10.613, but the recovery phase failed16:35:46.319 after90seconds.
+The admission was abandoned; no Stage15 result, match, win or clear credited.
+Saved state is unpaused campaign, Stage15 attempt1, pending0. Native battle may
+still be active or on its result screen; it is no longer owned for control/credit.
+At16:35:13.403 seven Gentlemen are400/400HP near GateB (z21-23); one is188/400HP
+at(5.9,-7), and repeated group returns choose the seven already healed units.
+Add a Stage15 decision to select the separated attacker individually once the
+main party has returned. Reuse the existing verified single-unit command and
+five-second order cadence after20seconds of retreat; keep the90-second bound.
+Add one focused regression test. Build424 through vmx.bat, version unchanged.
+Expect40 Verminion tests. User-selected debug reload may observe/close the
+abandoned battle without credit, then stop; do not invent another admission for
+it. A fresh next attempt is allowed only after native exit is verified. No client
+input, focus changes or config edits by the agent; retain the user's debug choice.
+
+423 STAGE12 VICTORY / STAGE13 ACTIVE:
+Fresh local Stage12 Victory credited at16:25:17.562EDT on the first423 attempt,
+third total attempt after422's two defeats. Native key framing and pursuit ran
+with foreground=False. Result closure positively verified16:25:23.860; automatic
+Stage13 admission match14/duty564 and battlefield observed16:25:44.235.
+Saved state16:28:15: unpaused campaign, mask4095 (12/24),3matches/1win,
+Stage13 attempt1 pending14/564. No external input, focus/config changes or new
+purchases/quest work. The framing fix has an observed clear; the60-second exit
+bound handled this six-second exit, but a fresh >30-second exit remains pending.
+No build/reload during Stage13. Next bounded milestone checks stages13-14 and
+the Gentleman Stage15 transition. Stage1 replay and13-24 clears remain pending.
+
+423 BUILT / LOADED / ONE NATIVE DEBUG DISPATCH:
+vmx.bat succeeded in51.97seconds, zero errors/two existing NU1601 warnings.
+All39 Verminion tests passed; git diff --check passed. Exact423 startup is
+2026-09-29 16:21:04.303EDT, version0.5.0.3. Existing debug hook consumed cleanup
+at16:21:17.079 and dispatched once16:21:17.467, followed by inventory/progress
+inspection and Stage12 admission selection16:21:27.826. No agent-sent client
+input, focus change or live config mutation. Source and DLL use423.
+Saved pre-queue snapshot is unpaused campaign,2matches/0wins, mask2047,
+attempts2/pending0. Next evidence must confirm the new admission and its result.
+Do not rebuild during the attempt. Neither the framing fix nor60-second exit
+bound has a fresh native success yet. Three failed stage attempts still stop.
+16:24:54EDT regression milestone: new admission match13/duty563, Stage12 attempt3,
+counts2/0 and mask2047. Camera MOVE_LEFT framing followed by ground pursuit is
+observed with foreground=False and the same nonzero Gentleman selection readback.
+Boss HP1496/12000 at16:24:52.248. This proves background key framing executes;
+the clear, final pursuit arrival and result-exit transition remain unverified.
+
+423 FRAMING AND RESULT EXIT FIX / BUILD INTENT:
+422's Stage12 attempts1 and2 ended in positively observed Defeat at16:07:54.996
+and16:13:24.465EDT. Saved counts2matches/0wins, mask2047, attempts2, pending0.
+The second result exit timed out16:13:54.592, but FrenRider positively observed
+the return to territory388 at16:14:10.506 (about45seconds after Quit). The service
+is terminal Failed, not an active battle. Saved campaign remains unpaused.
+First defeat's final state has eight healthy Gentlemen stranded away from Demon
+Brick at2900/12000HP. A16:07:05 camera click reports no native minimap collision;
+subsequent pursuit uses the cached selected group while damage remains stopped.
+Skip minimap framing after unit selection; use existing camera keys for pending
+same-type selection and movement. Allow60seconds for result exit, prioritizing
+positive return evidence before timeout. No retry loop or configuration added.
+Build423 via vmx.bat; release version stays0.5.0.3. Run existing39 Verminion tests.
+Root debug selection is user-saved verminion_queue bound to this character; its
+existing native hook may Resume after reload. Do not send external client input
+or alter the saved pause/debug settings. Expect Stage12 attempt3 if ready in
+Minion Square; a third failure must retain the normal campaign stop. Verify the
+exact423 startup and one native debug dispatch before evaluating the attempt.
+
+USER STARTED NORMAL CAMPAIGN / DEBUG SELECTION SAVED:
+After the Codex update, user selected Verminion in /vmx debug and sent the normal
+run command. Root VERMAXION.json confirms DebugTaskId=verminion_queue bound to
+the current character; the selection is pending the next plugin reload. The
+user's run already started on422 at16:02:32.602EDT: inventory inspection, normal
+Gold Saucer/Minion Square travel and progress reads, then Stage12 selection at
+16:03:21.907. Saved campaign is unpaused, mask2047,0matches/0wins and no pending
+match/duty/purchase/acquisition in this pre-admission snapshot. Local PID3228
+is responding. External client control remains revoked. Do not rebuild during
+this active run or redispatch it. Next bounded evidence should determine Stage12
+admission/outcome and the automatic next-stage transition; no success assumed.
+16:06:46EDT read-only milestone: Stage12 attempt1 is active, saved match11/duty563.
+Eight Wind-up Gentlemen are deployed (240/240 capacity); Demon Brick was3888/12000
+HP at16:06:38.457. Pursuit and isolated-unit rejoin orders are observed. This
+proves the required registered roster is available in battle; no minion purchase
+or quest rerun occurred. Counters remain0/0, mask2047. Outcome still pending.
+
+422 NORMAL RESUME FIX / BUILT, LOADED AND TESTED:
+vmx.bat completed with zero errors and two existing NU1601 warnings; release
+version remains0.5.0.3. Exact native422 startup is2026-09-29 15:53:52.053EDT,
+marker verminion-control-20260929-422. Output DLL remains
+Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll. All39 existing Verminion
+tests passed using Debug --no-build --no-restore; git diff --check passed.
+Read-only saved state confirms paused campaign, mask2047 (11/24), Stage12 next,
+week2026-09-29T09:00Z,0matches/0wins and no pending match/duty. No run dispatched.
+Run/Resume from an existing Verminion menu now enters inventory registration,
+closing only known Return/Cancel menus first. Unexpected admission during
+registration fails without item use. Queue/battle reconciliation is preserved.
+Git remains unstaged against baseline79ca290: VerminionService.cs, Plugin.cs,
+CHANGELOG.md and this checkpoint. No external client input, foreground change,
+provider settings or runtime dispatch occurred after control was revoked.
+Next action is user-controlled /vmx v -> Resume. Verify inventory registration,
+Gentleman ownership and Stage12 admission from a subsequent bounded read-only
+evidence snapshot. Native verification of this fix, stages12-24 and the fresh
+Stage1 replay remain pending; do not claim overall acceptance or auto-resume.
+
+CLIENT CONTROL REVOKED / GENTLEMAN AVAILABLE (USER STEERING):
+User explicitly says stop taking control of the client; normal users must run
+Verminion through its own UI. Do not send input, change focus, open/click windows,
+alter provider settings, or trigger live actions from external helpers. This
+supersedes the earlier client-control authorization and turn-in intent below.
+User reports Her Last Vow complete and Wind-up Gentleman available. Future ADS
+rules remain user-owned. No quest/duty rerun or additional provider setup needed.
+Source inspection confirms /vmx v -> Resume uses the saved campaign intent,
+registers unregistered inventory minions, travels, checks/prepares the roster,
+and selects the first unfinished challenge. Last verified clear mask2047 means
+Stage12 next. User must initiate the ordinary action; use authorized read-only
+evidence afterward. Gentleman ownership/registration and Stage12 admission have
+not been freshly verified by the agent. Only this checkpoint changed this turn.
+
+USER COMPLETED DUTY85 / QUEST TURN-IN RESUME INTENT (2026-09-29):
+User completed Big Keep and will author future ADS duty rules. The prior route
+choice is resolved; do not create ADS rules or run this trial again. Fresh native
+chat shows duty completion7:24, Enkidu obtained/registered, and Her Last Vow
+objective fulfilled. Questionable is idle; the reward turn-in remains. Current
+local client is still PID3228, now1366x728, SAM80. Saved VMX mask2047/0matches/
+0wins, paused, all pending operations absent. Git is clean at79ca290 with421.
+Temporarily enable Q Stop and remove blacklist502 through native settings, then
+use the permanent VMX Gentleman acquisition action once for the final turn-in.
+Restore those two settings afterward. No duty85 override or FR/ADS changes needed.
+
 LOCAL TRIAL STOPPED / PROVIDER SETTINGS RESTORED (421, 06:46 EDT):
 Final421 verification: 39/39 existing Verminion tests passed; diff check clean.
 Duty85 first fight defeated Enkidu at06:36. ADS then exhausted useful live

@@ -381,6 +381,22 @@ public sealed class VerminionLifecycleTests
     }
 
     [Fact]
+    public void OdinRecoveryReturnsTheSeparatedAttackerAfterTheMainPartyReachesItsGate()
+    {
+        var strategy = new VerminionBossStrategy(15);
+        var gate = new System.Numerics.Vector3(0, 0, 24);
+        var units = Enumerable.Range(1, 8)
+            .Select(id => ((ulong)id, gate + new System.Numerics.Vector3(id * 0.1f, 0, -2))).ToArray();
+        Assert.Equal(0ul, strategy.ChooseOdinRecoveryUnit(units, gate));
+        units[7] = (8, new System.Numerics.Vector3(6, 0, -7));
+        Assert.Equal(8ul, strategy.ChooseOdinRecoveryUnit(units, gate));
+        Assert.Equal(0ul, new VerminionBossStrategy(19).ChooseOdinRecoveryUnit(units, gate));
+        Assert.Equal(0ul, strategy.ChooseOdinRecoveryUnit(units[7..], gate)); // Main party has not arrived.
+        units[7] = (8, gate + new System.Numerics.Vector3(1, 0, -1));
+        Assert.Equal(0ul, strategy.ChooseOdinRecoveryUnit(units, gate));
+    }
+
+    [Fact]
     public void BossDeploymentBoundsQueueAndKeepsSurvivorsFollowingAtCapacity()
     {
         Assert.True(VerminionBossStrategy.IsInvulnerabilityAdd(6, "Infant Imp"));
@@ -483,6 +499,20 @@ public sealed class VerminionLifecycleTests
         Assert.False(VerminionRoster.NeedsBattleRoster(2, false, VerminionMode.CpuRewards, 3));
         Assert.True(VerminionRoster.NeedsBattleRoster(2, false, VerminionMode.WinTarget, 3));
         Assert.True(VerminionRoster.NeedsBattleRoster(19, true, VerminionMode.Participation, 262143));
+    }
+
+    [Fact]
+    public void OdinPursuitDoesNotStopWhenOnlyTheSelectedAttackerHasReachedMelee()
+    {
+        var boss = System.Numerics.Vector3.Zero;
+        var units = Enumerable.Range(0, 8).Select(_ => new System.Numerics.Vector3(3.5f, 0, 0)).ToArray();
+        units[0] = new(1.5f, 0, 0); // Selected unit is near, seven others are stranded.
+        Assert.False(VerminionBossStrategy.OdinArmyInMelee(units, boss));
+        for (var index = 1; index < 4; index++) units[index] = new(1.5f, 0, 0);
+        Assert.True(VerminionBossStrategy.OdinArmyInMelee(units, boss));
+        units[3] = new(2, 0, 0); // The boundary does not establish arrival.
+        Assert.False(VerminionBossStrategy.OdinArmyInMelee(units, boss));
+        Assert.False(VerminionBossStrategy.OdinArmyInMelee([], boss));
     }
 
     [Theory]
