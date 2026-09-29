@@ -1,5 +1,2584 @@
 # Verminion bot development checkpoint
 
+LOCAL PASS IDLE AT DEPENDENCY DECISION (417):
+Stage2 Victory credited20:15:38.190 EDT; native UI subsequently shows Complete:
+Weekly victory target reached,10/10wins/0remaining. No further match admitted.
+Saved facts:10matches/10wins,mask2047(stages1-11),pendingmatch/duty0,purchase and
+both acquisition recordsnull. Stages2-11 have fresh first-attempt wins; Stage1
+was already cleared and still needs a fresh replay. Stages12-24 remain pending.
+Weekly settings restored through UI to Participation/target5; caps and spending
+unchanged(0gil/10,000MGP/0certificates). CampaignRequested is nowfalse after the
+weekly test; use Clear all challenges for the next campaign run. No selected
+debug reload action. WigglyQuestStop.Enabledfalse/conditions/prioritiesempty;
+FrenRider settings untouched and disabled. DAD absence blocks the existing
+Gentleman acquisition before any quest dispatch. Pending choice: add/enable our
+released DAD on this local client or provide Gentleman through existing/manual
+questing; do not bypass the handoff or install a provider before that choice.
+417build passed0errors/2NU1601warnings;39/39Verminiontests passed; exact startup
+20:10:34.337 and missing-DAD native UI verified. No build/test process remains.
+
+417 STAGE 2 EXACT-TARGET TEST DISPATCHED:
+All39 existing Verminion tests passed. Native saved modeWinX/target10 verified
+before Run weekly goal; nine prior wins retained. Service reported9/10 and one
+remaining, then saved match10/duty553 and entered Stage2 at20:13:09.629 EDT.
+Do not count a result until native evidence. Restore target5/modeParticipation
+after the exact stop; retain all earned clear/match/purchase facts.
+
+417 BUILT / LOADED / PREREQUISITE UI VERIFIED:
+vmx.bat passed0errors/two existingNU1601warnings; exact417 native startup verified
+20:10:34.337 EDT. Native/vmxv now shows missing DAD beside a disabled Gentleman
+acquisition action. WigglyQuest Stop.Enabled restoredfalse; Conditions and priorities
+verified empty; no quest dispatched. Next independent check: temporary WinX target10
+from nine saved wins, replay Stage2 once through Run weekly goal, verify exact stop.
+Original weekly settings modeParticipation/target5; restore after the check. No
+new minion purchase, provider installation or challenge-fact reset is authorized.
+
+417 BUILD / LOCAL RELOAD INTENT; QUEST NOT DISPATCHED:
+Stage11 Victory20:05:06.058; Stage12 stopped20:05:21.165 for missing Gentleman,
+mask2047/nine matches/nine wins, no pending match or purchase/acquisition. Enabled
+WigglyQuest's existing Stop setting through UI (originalfalse; emptyConditions).
+The ordinary Acquire button then refused before quest dispatch because the local
+client lacks DAD: dad.Duty.IsStopped was unregistered. No priority or stop quest
+was inserted; no saved quest acquisition exists. Correct the UI/action to show
+the DAD prerequisite and check existing readiness before the duty IPC. Marker417,
+release version unchanged. Build via vmx.bat; verify fresh startup and disabled
+action. Restore only WigglyQuest Stop.Enabled=false before awaiting a dependency
+decision. Do not install DAD or bypass its ownership gate without a resolved choice.
+
+LOCAL STAGE 11 VICTORY / GENTLEMAN ACQUISITION PREPARATION:
+Native20:05UI shows11/24 clears, nine matches/nine wins, Stage12 next. Stages3-11
+passed first attempt. Wait for the missing-Gentleman gate to stop the service before
+quest work. Intent: enable existing WigglyQuest stop conditions (originalfalse,
+emptyConditions), then use VMX's ordinary Acquire Wind-up Gentleman action. Only
+Her Last Vow502 is expected unfinished; observe the provider-owned route. For
+duty85 use existing unsynced entry and ADS/FrenRider, not AutoDuty or a new runner.
+No DAD installation is authorized/needed speculatively. Restore any specific test
+provider settings after acquisition; no provider settings have changed yet.
+
+LOCAL STAGE 10 CLEARED / STAGE 11 ACTIVE (416):
+Stage10 Victory credited20:01:53.356 EDT; eight matches/eight wins. Stage11
+admitted20:02:16.519, match9/duty562. Stages3-10 all passed first attempt locally.
+Next expected roster gate is Stage12/Gentleman. Keep that gate intact; then use
+existing Questionable acquisition after configuring its native stop control.
+
+LOCAL STAGE 9 CLEARED / STAGE 10 ACTIVE (416):
+Stage9 Victory credited19:59:00.539 EDT; seven matches/seven wins. Native evidence
+includes lever approach, carrier action and bomb detonation readback, then the
+vulnerable Slime Puddle phase. Stage10 admission verified19:59:23.794, match8/duty561.
+Stages3-9 all passed first attempt locally; no manual battle input or source change.
+
+LOCAL STAGE 8 CLEARED / STAGE 9 ACTIVE (416):
+Stage8 Victory credited at19:53:41.319 EDT; six matches/six wins. Stage9 admission
+verified19:54:10.595, match7/duty560. Stages3-8 all passed first attempt locally.
+Read-only quest preflight: installed WigglyQuest7.5.27 has empty priorities and
+stop conditions disabled; no duty85 override or auto-unsync. FrenRider is disabled
+with eight-player ADS handoff disabled. Her Last Vow sequence2 leads to duty85,
+Battle in the Big Keep. Configure existing provider controls when the campaign
+stops for Gentleman; do not install DAD speculatively or reimplement quest steps.
+No provider configuration changed yet. Normal background battle remains active.
+
+LOCAL STAGE 7 CLEARED / STAGE 8 ACTIVE (416):
+Native UI at19:51shows7/24 cleared, five weekly matches/five wins and Stage8
+admitted on attempt1. Stage7 passed its first attempt with Zu Hatchlings; no
+manual battle intervention. Purchase total remains10,000MGP and zero gil/certificates.
+
+LOCAL STAGE 6 CLEARED (416):
+Saved progress now mask63, four matches/four wins; Stage6 took one attempt.
+No pending purchase/acquisition; spending remains0gil/10,000MGP/0certificates.
+The campaign continues automatically to Stage7. Fresh local verified clears are
+3-6; stages1-2 were already earned and still require separate replay evidence.
+
+416 HANDOFF VERIFIED / LOCAL STAGE 6 ADMISSION:
+Native sequence: challenge Return19:39:50.414, parent Cancel19:39:51.387, ADS
+acceptance19:39:52.453. ADS completed exactly one Zu Hatchling at19:39:58.817;
+VMX verified10,000MGP/zero gil/zero certificates once at19:39:59.615 and minion
+registration at19:40:07.656. Stage6 selected19:40:18.827; admission pending in
+that snapshot. This verifies416's corrected menu handoff. No duplicate request.
+Allow the existing campaign to run; normal battlefield control needs no focus.
+
+416 BUILT / LOADED; HANDOFF REPRODUCTION INTENT:
+vmx.bat succeeded with zero errors and two existing NU1601 warnings; all 908
+existing tests passed. Exact416 native startup is verified at 19:35:05.390 EDT.
+Fresh local PID3228 capture and bounded logs reconcile the prior failed acquisition;
+no new ADS request or battle dispatched. Reopen the targeted Verminion table's
+challenge list, then invoke Clear all challenges once to exercise the fixed
+Return/Cancel transition before ADS dispatch. Expected purchase: one Zu Hatchling,
+10,000 MGP, through ADS only. Continue stages6-24 after the verified receipt.
+Focus/control is authorized by the user's latest explicit resume.
+
+416 BUILD / LOCAL RELOAD INTENT:
+ADS accepted a Zu request at 19:30:41.585, then stopped before interaction/spend
+because the Verminion parent menu appeared during navigation. VMX only cancelled
+that parent at 19:30:42.693. Failure reconciled with no purchase reservation or
+acquisition left. Saved counts remain three matches/three wins, clear mask31.
+Fix: leave the challenge list in the existing acquisition state's throttled menu
+branch, then require the native event/selection/dialogue to close before any new
+ADS dispatch. Do not close foreign UI or add vendor controls to VMX. Marker416;
+release version unchanged. Build with vmx.bat and run existing tests. Local dev
+auto-reload is allowed; no debug task selected, so no automatic new run expected.
+After exact416startup, resume once from the challenge menu to verify the fix.
+
+CONTROL RETURNED / LOCAL ADS AND CAPS SETUP INTENT (2026-09-28):
+User explicitly returned control and requested resume. The previous focus blocker
+is resolved. Fresh read-only configuration still has stages 1-5, three matches and
+three wins, no pending match/purchase/acquisition, and zero MGP cap. Continue the
+local C: pass: load existing guarded ADS build and set the recorded test caps using
+UI, then resume Stage 6. Do not operate R7/R3 or reset any earned state.
+
+ADS LOCAL LOAD VERIFIED / STAGE 6 RESUME INTENT:
+Fresh ADS startup at 19:29:28.061 EDT confirms Z:\ADS\ADS\bin\x64\Debug\ADS.dll,
+guarded-vendor-20260928-33; installed entry disabled and development entry enabled.
+VMX caps were verified in saved local configuration: 223,588 gil / 40,000 MGP /
+four certificates / 50,000 gil reserve. No purchase submitted yet. Next invoke
+Clear all challenges once; expected ADS Zu acquisition for 10,000 MGP before
+Stage 6 admission. Do not duplicate any saved purchase request.
+
+Local C: client PID 3228 remains the sole target. Installed VMX 0.5.0.2 was disabled;
+Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll was added and loaded through
+Dalamud UI. Exact 415 startup verified at 19:01:43.235 EDT. /vmx v renders status,
+progress and run/stop controls above scrolling details. No debug reload task selected.
+No source or build change this turn. Do not operate R7/R3.
+
+Clear all challenges dispatched once at 19:02:37 EDT. Prerequisite quests 434, 435
+and 1431 are complete. Native challenge menu proved stages 1-2 already cleared;
+those facts were preserved. Stage 3 victory: 19:06:09.669; Stage 4 also verified
+and credited; Stage 5 victory: 19:12:01.934. All three passed their first attempts.
+Saved local clear mask 31 (stages 1-5), three matches and three wins. Stage 6 was
+not admitted: at 19:12:17.042 it stopped for missing Zu Hatchling and the zero MGP
+cap. No pending battle or purchase. Battle control works despite the black 3D scene.
+
+Next UI work after returned focus: load the existing guarded-purchase ADS x64 build
+through its development-plugin UI, preserving one loaded ADS instance; set the
+carried-forward test caps (223,588 gil, 40,000 MGP, four certificates, 50,000 gil
+reserve) through VMX settings. Clear all challenges then continues Stage 6; ADS
+acquires Zu for 10,000 MGP. Local caps are now verified saved: 223,588 gil / 40,000 MGP / four certificates /
+50,000 gil reserve. The installed ADS entry is disabled; the x64 development path
+was added through Dalamud UI and enabling has been requested. Every vendor
+action remains in ADS. Its source is clean; the prepared build is
+Z:\ADS\ADS\bin\x64\Debug\ADS.dll (3,281,920 bytes).
+
+Local roster has Mammet and Airship; Zu, Wayward Hatchling and Wind-up Gentleman
+are missing. Her Last Vow (502) is already accepted at sequence 2; later acquisition
+must use the existing Questionable handoff. No speculative DAD installation.
+Fresh stage 1-2 replays are still needed without erasing earned clears; the normal
+campaign intentionally skips them. No replay feature has been implemented.
+The goal remains incomplete. Wait for the user's focus-return signal for UI work.
+
+LOCAL ADS DEPENDENCY PREFLIGHT (no focus/control):
+Installed enabled ADS0.9.4.2 DLL exposes ordinary GetCapabilitiesJson and
+GetShopPurchaseStatusJson strings, but neither aligned UTF16 nor UTF8 metadata/
+string reads contain StartGuardedShopPurchase,CancelShopPurchase or the guarded/
+certificate capability keys. This supports an older API, but a loaded capability
+response remains authoritative. Do not attempt purchases before that check.
+Current Z:\ADS source already registers the guarded endpoint and advertises
+guardedShopPurchases=1/achievementCertificatePurchases=1; no new vendor code needed.
+Any required update should reuse that existing ADS build through the local client,
+not move vendor work to VMX. No ADS/source/client file changed for this inspection.
+Still no focus-return message; no foreground/input/screenshot attempt this turn.
+
+415 BUILT; LOCAL LOADING AWAITS RETURNED FOCUS:
+vmx.bat succeeded0errors/two existingNU1601warnings;diff-checkclean. This changed
+only the window layout and debug marker/path; existing908passing behavioral tests
+were not needlessly rerun. Human/native layout check remains pending. Local client
+still runs installed0.5.0.2; no dev path or debug selection has been written.
+No active build/testsession. No focus attempts since the user's instruction.
+Read-only inspection confirms ADS,FrenRider,Lifestream,vnavmesh,WigglyQuest and
+YesAlready installed. DAD is not in this client's installedPlugins list; do not
+install anything speculatively. Minion ownership, native completed stages and
+whether quest acquisition is necessary await the loaded415 observation.
+Next remains disable installed VMX, add/load415fromZbin through local Dalamud UI,
+inspect /vmx v, then use Clear all challenges on this character. Wait for the
+user's focus-return message for those UI steps; no requirement for ongoing focus
+once the already-tested background battle controls are running.
+
+415 LOCAL UX BUILD INTENT (focus still withheld):
+Source review found DrawSettings' long text ahead of all run/stop actions. Move
+status and controls above a native scrolling details child, put weekly mode/caps
+under an expandable heading, and separate the stage-follow button from the slider
+row. Default height650instead720. No behavior/accounting/battle change; no new
+config setting/file/dependency. Build415 via vmx.bat; existing908tests cover the
+unchanged behavior. Native layout verification waits for returned focus/local
+development-plugin loading. Expected debug path now names the intended local
+Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll. Do NOT copy to R7.
+The optional API15docs path from the routing reference was unresolved by the
+path resolver; it is not needed for this native ImGui change or supported UI load.
+
+LOCAL C CLIENT CAMPAIGN REPLAY SELECTED (2026-09-28):
+User explicitly selected another character on this PC/C: for challenges1-24 and
+authorized direct local client control. This supersedes R7 as current test target;
+do not operate/copy to R7. Goal is active again. Current gamePID3228, executable
+C:\ff14\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxiv_dx11.exe.
+Loaded Dalamud modules positively resolve client root to
+C:\Users\david\AppData\Roaming\XIVLauncher (Hooks15.0.3.5). One current character
+in its active VMX account; identifiers kept out of this checkpoint.
+Installed VMX0.5.0.2 is enabled, with no VMX dev load path, no Verminion progress/
+purchase fields yet and no selected debug task. Tested source/build414is0.5.0.3.
+Opened /xlsettings and /xlplugins via local UI after restoring the minimized game.
+No DLL/config changes, purchases, movement or campaign start yet. Old VMX must
+be disabled before adding/loading the tested development DLL to avoid /vmx conflict.
+Latest user steering: they are busy on this PC and will give focus back later.
+STOP foreground activation, SendKeys, mouse movement and foreground screenshots
+until they do. Continue only background/read-only preparation meanwhile. Last UI
+shows Plugin Installer over Dalamud Experimental settings; no field edits made.
+Ephemeral UI helpers in functions store are not files; do not invoke while focus
+is withheld. One bounded screenshot artifact is in local temp/vmx-local-ui.png.
+Next: load tested VMX through existing Dalamud UI when focus returns, verify its
+marker and native character/minion/challenge state, inspect /vmx v human UX and
+use Clear all challenges. Preserve existing earned state and separate this new
+replay evidence from R7's observed24clears. Tournament matches remain out of scope.
+
+BLOCKED AUDIT 3 (after414,2026-09-28 21:13:33UTC):
+Previous goal turn was no progress (audit2). This continuation found no further justified
+independent change: current source still deliberately stops before tournament
+Join and retains unknown allowance/reward state. Fresh saved R7mode0/unpaused,
+pendingmatch/rewardnull,all24;414artifact unchanged. Last native tournament821
+observation21:04:27.7710699Z says matchesbegin11:00October3,hiddencountersnull.
+No active build/test/session exists; this is not a verified process wait. No log
+watch, reload, configuration edit, new UI attempt or match performed this turn.
+Open-period menus/registration/allowance and actual prize offer/receipt remain
+unavailable. First-time setup needs a suitable locked character; broader native
+battle/lifecycle acceptance is outside the currently selected tournament-UI pass.
+No hypothetical combat/UI behavior added to substitute for missing evidence.
+Revalidated clock, source414/Join-disabled and saved mode0/unpaused/pendingnull;
+the last native notice and observation timestamp are unchanged. No fresh live
+registration or prize evidence exists; no process is being awaited.
+Classify this turn as no progress at the same runtime-evidence/scope blocker, third
+consecutive occurrence since414delivery. The blocked threshold is satisfied;
+mark the goal blocked, not complete. Resume requires an open registration/prize
+opportunity or a newly selected feasible verification scope. No automatic match,
+world change, acquisition, alternate-client action or repeated idle reload follows.
+Build414/908passingtests and all earlier unverified acceptance gaps remain intact.
+
+2026-09-28 17:12 EDT 414 DELIVERY VERIFIED:
+-Exact414startup17:10:47.276;home/currentWorld93,bothDC5 at17:10:50.907;
+already-met participationComplete17:10:50.937;dispatch17:10:50.938. No admission.
+-Fresh mode0/unpaused/campaignfalse;sequence90/pending0;86matches/33wins/all24;
+caps223588gil/40000MGP/4certificates,reserve50000;spent2400gil/10000MGP/4certificates;
+pending reward/purchase/minion/questnull. No configuration edit for this delivery.
+-414build passed0errors/two existingNU1601warnings;908/908tests passed;diff-check
+clean. Registration title binding is delivered; its period transition is regression
+covered, not live verified. No active tool/test/probe/admission remains.
+-Previous turn was progress; this turn also made concrete source/test/deployment
+progress, so it is not a no-progress blocked turn. Overall goal remains incomplete.
+Current runtime scope stays tournament UI without matches. Open registration,
+allowance, prize offer/acceptance, period transitions and full579combat/Join await
+appropriate conditions. First-time setup and earlier lifecycle gaps remain open.
+Do not treat another idle reload or closed-period replay as proof of those cases.
+
+414 BUILT / DLL-ONLY COPY INTENT:
+vmx.bat passed0errors/two existingNU1601warnings;908/908fulltests passed. Source
+review/diff-checkclean; no old boolean registration/allowance call remains.
+Copy414 under existing mode0/unpaused/sequence90/pending0/86matches/33wins/all24/
+spending/empty reward-and-acquisition guards. No config change or live match.
+Expected native evidence is loaded414 and ordinary already-met participation
+completion only. Period rollover and open entry still require suitable runtime.
+
+414 PERIOD-IDENTITY SOURCE / BUILD INTENT (2026-09-28):
+Previous goal turn made verified progress (413reward flow,907tests,native routing).
+Current source review found registration was only a boolean. After a tournament
+period change it could incorrectly accept a new title's allowance as registered
+or exhausted, bypassing the Recordkeeper/reward opportunity. Store the title only
+in this run after a matching434or435response; require exact title equality before
+entry preparation or15/15handling. On a changed fresh title, clear the old request/
+confirmation and inspect the Recordkeeper again. No saved observation authorizes
+registration. A434response naming another period stops for a fresh inspection.
+Focused regression covers mismatched response/periods, identical counters, hidden
+allowance and absent registration after reload. Existing caller tests use titles.
+Build414 via vmx.bat then full tests sequentially. Guarded DLL-only mode0deployment
+will verify loading/unchanged completed participation only; do not rerun closed
+UI as proof of this unavailable transition. No Join/match or mode change planned.
+All prior acceptance gaps remain; release version unchanged0.5.0.3.
+
+2026-09-28 17:08 EDT 413 DELIVERY VERIFIED:
+-Exact413startup17:05:11.311;home/currentWorld93,bothDC5 at17:05:14.864;
+participationComplete17:05:14.905;selecteddispatch17:05:14.906. Clean idle exit,
+no new admission. Source and deployed marker413; version remains0.5.0.3.
+-Fresh saved mode0/unpaused/campaignfalse;sequence90/pending0;86matches/33wins/
+all24mask16777215. Caps223588gil/40000MGP/4certificates,reserve50000;spent2400gil/
+10000MGP/4certificates. Pending reward/last reward/purchase/minion/questnull.
+Tournament821 snapshot savedUTC21:04:27.7710699Z with hidden countersnull.
+-412/413builds passed0errors/two existingNU1601warnings.907/907fulltests passed
+on identical product code;413 changed the attempt marker only. Final diff-check
+clean. Bounded412native closed-period UI pass17:04:31.973 verifies preserved menu
+routing, not registration or a prize. No active tool session/probe/admission.
+-Delivered prize flow, safe persisted intent/acknowledgement/exact MGP receipt,
+pending-operation exclusion and shared UI status. Model/text tests cover evidence
+failures, serialization, cancellation-state retention, resets, isolation, caps
+and exact-once credit. Native FULL STOP/reload at prize acceptance is NOT proved.
+-Current UI pass cannot advance live entry/claims: no open tournament or claimable
+prize. Next native step needs an actual registration/allowance/prize opportunity;
+no further closed-period replay can prove those branches. Tournament Join remains
+disabled as requested for this UI-only pass. Full579combat/Join and earlier setup/
+lifecycle gaps remain incomplete. No user action/permission request is pending.
+Goal active/incomplete; this turn made implementation and runtime progress, so it
+does not count as a repeated no-progress blocked turn. Preserve Cactpot work.
+
+412 NATIVE CLOSED-PERIOD PASS /413 RESTORE-COPY INTENT:
+Exact412startup17:04:15.127;dispatch17:04:18.734;home/currentWorld93,bothDC5.
+Fresh native821notice17:04:27.780;Upcoming/Nothing closure17:04:30.939; terminal
+Complete17:04:31.973 confirms ordinary routing with the new reward code present.
+No reward, registration, queue or match was exercised. Hidden counters remained
+unknown.413same-product marker build passed0errors/two existingwarnings.
+Guarded mode2->0 copy413 now; require exact413startup and already-met goal.
+907passing tests cover the delivered reward model/text; no new live prize proof.
+
+412 BUILT / CLOSED-PERIOD COPY INTENT:
+vmx.bat passed with0errors/two existingNU1601warnings;907/907fulltests passed;
+diff-checkclean. Fresh saved mode0/unpaused,sequence90/pending0,86matches/33wins/
+all24;caps223588gil/40000MGP/4certificates,reserve50000;spent2400gil/10000MGP/
+4certificates;pending reward/purchase/minion/questnull. Guarded mode0->2 copy412
+will exercise current closed-period UI with Join disabled. This cannot prove a
+reward claim; no prize currently available. Restore mode0 only after terminal
+evidence, with marker413 built from the same product code. All earned facts stay.
+
+412 REWARD-FLOW SOURCE / BUILD INTENT (2026-09-28):
+-411 remains the verified loaded DLL; no active admission. Fresh bounded log
+snapshot still ends with its 16:43:49.122 already-met participation completion.
+-Implement owned440 rankings/observed Close,441/442 exact total,444 prize prompt,
+and445 acknowledgement. Keep reward820 identity separate from current821 notice.
+Save immutable per-character acceptance intent before Yes; no resubmission after
+interruption. Save acknowledgement before exact currency reconciliation/receipt.
+Unknown balances, failed saves and timeouts retain unresolved intent. Explicit451
+rejection can clear only an unacknowledged intent with unchanged currency.
+-Pending claims block competing admissions/purchases. FULL STOP retains intent;
+cleanup only declines an owned exact prize prompt or closes the owned ranking.
+New focused lifecycle/text tests cover both serializers, stop/reset/clone and
+character isolation, missing or inconsistent evidence, caps, duplicate completion
+and unchanged weekly/campaign/spending facts. These tests are not live UI proof.
+-Build412 with vmx.bat, then run full tests sequentially. Planned guarded mode0->2
+deployment exercises ordinary closed-period routing only, with no Join or match.
+Restore mode0 with a distinct compiled marker after terminal412 evidence. Updated
+deployment guards reject any pending tournament reward. No reward is currently
+available; open-period UI and actual claims remain unverified. Version0.5.0.3.
+
+2026-09-28 16:46 EDT 411 CLEAN DELIVERY VERIFIED:
+-Exact411startup16:43:45.469,home/currentWorld93 and bothDC5 at16:43:49.100;
+selecteddispatch16:43:49.123 and participationComplete16:43:49.122. No new admission.
+-Fresh saved mode0/unpaused/campaignfalse;sequence90/pending0;86matches/33wins/
+all24mask16777215;caps223588gil/40000MGP/4certificates,reserve50000;spent2400gil/
+10000MGP/4certificates;purchase/minion/quest requestsnull. Snapshot821withhidden
+counters remains saved atUTC20:40:56.2715332Z. All facts/spending unchanged.
+-Delivered409native-duty identity and checked admission saves.904/904fulltests
+passed on identical product code.409/410/411vmx.bat builds passed with0errors/two
+existingwarnings;diff-checkclean. Temporary rankings probes are removed. Native
+queue/Commence/save-failure replay remains pending; idle startup does not prove it.
+-410 newly verified a neutral LovmRanking screen (511values/15nodes) and Close
+node14/ButtonClick0. This can support the pending reward UI implementation even
+though the info panel has no personal results. No reward was offered/claimed.
+-Next meaningful independent work: implement owned Recordkeeper reward dialogue
+and the observed rankings closure, exact prize confirmation, persisted claim
+intent, and positive acknowledgement/currency reconciliation. Keep its prior
+tournament identity separate from the current information panel title. Reuse
+the captured439-445/451 game text; no guessed callbacks or new live match.
+-Full579combat/Join, open-period UI and reward verification, and earlier setup/
+lifecycle gaps remain open. User's no-tournament-match instruction is unchanged.
+No active tool session/test/probe remains. Goal is active/incomplete; this turn
+made source and native research progress, not a no-progress blocked turn.
+
+410 NATIVE RANKINGS VERIFIED /411 RESTORE-COPY INTENT:
+410 exactstartup16:40:43.617,dispatch16:40:47.176. Native LovmRanking opened after
+the separate207agent Show.16:41:00.314 capture:511AtkValues/15nodes; observed close
+buttonnode14,registeredButtonClickparam0,labelClose; headings Rank/Name/Points.
+Terminal probe cleanup16:41:00.315. This disproves a broad assumption that all
+rankings UI was unavailable;407 only proved no personal results in the info panel.
+No registration, reward offer/acceptance, or battle was exercised. The411 clean
+build passed0errors/two existingwarnings. Restore only mode2->0 and copy411 under
+earned guards. Next independent source work can use this observed Close control
+for the owned440 rankings->441/442 offer->444 exact confirmation->445 thank-you
+reward flow, with persisted claim intent and positive receipt evidence; that flow
+is NOT implemented or verified yet. Do not mistake the neutral ranking screen
+for a claimable reward, or current821 info title for an older tournament's reward.
+
+411 CLEAN BUILD INTENT:410 was copied under the reviewed mode2/earned guards.
+Remove every temporary rankings-probe field/state/helper/branch now and build411
+while410 performs its one-shot inspection. Final product code equals tested409.
+Do not restore mode or copy411 until410's terminal evidence is reconciled.
+
+410 BUILT / COPY INTENT:vmx.bat passed0errors/two existingwarnings;diff-checkclean.
+Guarded mode0->2 and copy410; one bounded native rankings Show/read/close only.
+The904passing tests cover retained409product logic; this diagnostic's native
+outcome remains pending. Keep all earned counts/caps/spending/receipts unchanged.
+
+410 TEMPORARY NATIVE RANKINGS PROBE / BUILD INTENT:
+409 final exactstartup16:37:20.984 and selecteddispatch/participationComplete
+16:37:24.611/.610 verified. Earlier409load was still pending before that reload;
+no match or credit. Installed AgentId enum declares LovmRanking207 separately from
+the information panel's results heading. Probe this existing native agent Show
+after a fresh owned info read, only in Minion Square/Home World with no preexisting
+LovmRanking. Wait4seconds, capture that addon once and close only the owned window.
+No registration, prize confirmation, queue or battle. It may expose ranking/close
+controls independently of personal rewards; an opened agent alone proves nothing.
+Build410, guarded mode0->2 copy; remove probe for411 and restore mode0 only after
+terminal410 evidence. No new dependencies/tools/files or permanent debug option.
+
+409 BUILT / COPY INTENT:vmx.bat passed0errors/two existingNU1601warnings;
+904/904 full tests passed;diff-checkclean. DLL-only copy to the approved R7 watched
+path under mode0/unpaused/sequence90/pending0/86matches/33wins/all24/spending/empty
+request guards. No configuration write or new match. Expect exact409 startup and
+normal already-met participation completion. Generalized live queue/Commence and
+failure-to-save behavior remain unverified natively; do not claim those from idle
+startup or model tests. New579 entry and battle controls remain disabled.
+
+409 SOURCE/BUILD INTENT (independent admission groundwork; no new match):
+Prior408 turn made source/runtime progress. Replace stage-derived queue identity
+with the native CPU duty ID in coordinator/interaction; retain it across reload
+and owned cancellation. Installed ClientStructs enum is None/Pending/Queued/Ready/
+Accepted/InContent; ignore stale popped entries while Pending/Queued, reject mixed
+entries and unrelated live pops. Commence now requires a matching saved admission
+and successful TrySaveAccount for a newly observed queue. Apply the same checked
+save to direct observed admission. Tutorial/challenge selection retains stage IDs.
+Existing non-challenge admissions receive bounded result observation, not tutorial
+or boss controls. New tournament Join remains disabled; this does not implement or
+claim tournament combat, new admissions or runtime queue verification. One focused
+regression covers queue shapes, player-mode rejection,579reload/cancellation,
+exactly-once weekly credit and no campaign/tournament-counter fabrication.
+Build409 via vmx.bat, full tests, then guarded mode0 DLL-only copy and verify idle
+already-met completion. Do not manufacture a queue or reset earned results.
+
+2026-09-28 16:28 EDT 408 CLEAN DELIVERY VERIFIED:
+-Exact408startup16:27:11.718;native home/currentWorld93 and bothDC5 agree at
+16:27:15.274;selected dispatch and already-met participationComplete16:27:15.313.
+-Fresh saved mode0/unpaused/campaignfalse,sequence90/pending0,86matches/33wins,
+all24mask16777215;caps223588gil/40000MGP/4certificates,reserve50000;spending2400gil/
+10000MGP/4certificates;purchase/minion/quest requestsnull. Snapshot821/October3,
+hidden countersnull, observationUTC20:26:14.5440773Z survives clean reload.
+-Delivered additional explicit-entries-closed and fresh15/15 allowance handling,
+both leading only to remaining participation.903/903tests passed on identical
+405/406productcode;408 removed407temporaryprobe and changed marker only. All
+vmx.bat builds passed;diff-checkclean. No probe symbols remain. Version0.5.0.3.
+-Closed-period ordinary flow has fresh405/407 evidence. New470/15-of-15 branches
+have regression coverage, not native verification.407 positively observed no
+result information/buttons on this character, so reward UI cannot be inspected
+through this panel now. No tournament Join, claim, battle or further spend occurred.
+-No active process/test/admission or temporary setting. User's no-tournament-match
+instruction remains binding. Full goal still incomplete: open-period entry and
+reward UI need suitable runtime conditions; full579 battle coordination, claims,
+and earlier first-time setup/lifecycle acceptance remain open. This turn made
+implementation and native research progress; it is not a no-progress blocked turn.
+
+407 NATIVE RESULTS-PANEL BLOCKER /408 RESTORE-COPY INTENT:
+407 exactstartup16:26:01.925,dispatch16:26:05.443.16:26:14.554 native panel13values/
+21nodes:node13 is TEXT Tournament Results, node16 TEXT There are no results to
+display. Only Edit Hotbar node21 was an exposed button. Exact Results-button
+lookup dispatched nothing; no LovmRanking opened. Ordinary closed-period completion
+16:26:18.717. This is direct evidence that this character cannot expose the result/
+reward UI through this panel now; a field named TournamentResults was not proof
+of a button. Existing recorded reward dialogue rows remain source evidence only.
+408 build passed0errors/two existingwarnings; temporary probe entirely removed.
+Restore mode2->0 and copy408 under existing earned-state guards. Require408 startup,
+normal already-met participation completion and preserved progress/snapshot.
+
+408 CLEAN BUILD INTENT:407 copied under guarded mode2. Remove all temporary
+results-probe fields/state/capture/close code for clean408 while407 runs its bounded
+check. Product logic is identical to tested405/406. Do not copy or restore mode
+until407terminal evidence is known. If a Results button was available, use captured
+controls for subsequent implementation; otherwise retain the actual blocker.
+
+407 BUILT / PROBE COPY INTENT:vmx.bat passed0errors/two existingwarnings;
+diff-checkclean. Existing903tests cover retained product logic; this temporary
+native UI probe has compile/readback verification only. Guarded mode0->2 and
+copy407 now. No further runtime action until its bounded terminal capture.
+
+407 TEMPORARY RESULTS-UI PROBE / BUILD INTENT:
+406 exactstartup16:23:13.138,participationComplete16:23:16.679 and selecteddispatch
+16:23:16.680 verify normal restored mode0. No match or acquisition occurred.
+Probe only the owned Gold Saucer Verminion information panel: bounded node/value
+capture and one click on an enabled registered button with exact Tournament Results
+label. If absent, continue normal closed-period check. If present, wait3seconds,
+capture LovmRanking/panel once, close only the probe-owned ranking/info and stop.
+No registration/claim/queue/match. This determines whether reward-UI research can
+progress before an open tournament or prior participation. Build407, then guarded
+mode0->2 copy. Remove all temporary probe code for408 and restore mode0 after its
+terminal evidence; keep version and all earned/accounting state unchanged.
+
+405 NATIVE CLOSED-PERIOD VERIFIED /406 RESTORE-COPY INTENT:405startup16:22:07.957,
+dispatch16:22:11.492;native821notice16:22:20.553;Upcoming/Nothing16:22:23.670;
+actual closure/Complete16:22:24.703. Saved mode2/unpaused,sequence90/pending0,
+86matches/33wins/all24;dated snapshot refreshedUTC20:22:20.5380108Z, hidden
+countersnull. No admission/result/purchase.406 marker-only build passed. Restore
+only mode2->0 and copy406 with unchanged earned facts/caps/spending/requests;
+require406 exact startup and normal already-met participation completion.
+
+406 MARKER-ONLY BUILD INTENT:guarded405 copy dispatched. Build406 with identical
+product code while405 owns the bounded closed-period UI check; no settings/copy
+until terminal405 evidence. Expected no admission/credit/purchase; then restore
+mode2->0 under earned-state guards and copy406. No tournament Join enabled.
+
+405 BUILT / COPY INTENT:vmx.bat passed0errors/two existingNU1601 warnings;
+903/903 full tests passed;diff-checkclean. Copy405 with only guarded mode0->2
+change, retainingsequence90/pending0/86matches/33wins/all24,spending and empty
+requests. Replay the refactored owned Upcoming -> Nothing -> actual menu closure
+path, then stop at already-met participation with no match. Exact470 dialogue
+and visible15/15 branches remain unavailable natively and have regression evidence
+only. After terminal405, restore mode0 with clean406 marker and verify reload.
+
+405 SOURCE/BUILD INTENT (active continuation; no tournament match):prior turn was
+progress (404 persisted-display implementation and native reload verification).
+Bounded12MB prior-log read recovered installed GoldSaucerTalk421-470 at15:49:34:
+434/435 explicitly next427, so retain existing successful-registration menu flow;
+do not add a speculative direct-close fallback.470 explicitly ends(next0) with
+entriesclosed; distinguish it from prerequisite/unknown rejection and advance only
+that recognized owned dialogue. A freshly registered ongoing tournament with15
+visible matches likewise proceeds to remaining weekly participation, without
+claiming reward completion. Reuse transient eligibility and owned-menu closure;
+future runs still inspect opportunities. Extend existing focused regression.
+Rows439-445 establish reward-expiry, ranking, amount, exact Accept your prize?,
+and thanks dialogue, but the native ranking interaction/claim evidence is absent;
+do not invent those controls or claim an implemented reward collector.
+Build405/tests; then guarded mode0->2 closed-period replay, restore mode0 in406.
+No tournament Join or additional purchases. Whole goal remains incomplete.
+
+2026-09-28 16:16 EDT 404 FINAL DELIVERY VERIFIED:
+-403 exact startup16:12:04.408;native notice and closed-period completion verified
+ below.404 exact startup16:13:06.702;normal participation completion16:13:10.177
+ and dispatch16:13:10.178. Home/currentWorld93 and bothDC5 still agree.
+-Snapshot survives actual404 reload and subsequent account saves:821title,
+ Matches begin at11:00a.m.10/3/2026, all three hidden countersnull, observation
+ UTC20:12:16.981583Z unchanged. New fields are display history only. The shared
+ Verminion/settings UI shows the date and notice; rendered UI was not captured.
+-Mode0/unpaused/campaignfalse;sequence90/pending0/86matches/33wins/all24;caps
+ 223588gil/40000MGP/4certificates,reserve50000;spent2400gil/10000MGP/4certificates;
+ all acquisition/purchase/quest requestsnull. No match, reward or purchase in403/404.
+-902/902 full tests passed on403productcode;404 is marker-only. Both vmx.bat builds
+ passed0errors/two existingNU1601warnings;diff-checkclean. Version remains0.5.0.3.
+ No active tool session or temporary test setting. ADS and unrelated work unchanged.
+-Entry UI work remains bounded by closed registration. Open-period confirmation,
+ registered response, visible allowance and sole checked Master Tournament selection
+ need native evidence. Join is deliberately disabled; no tournament battle is
+ authorized by this UI-only pass. Reward collection/full CPU tournament coordination
+ and earlier setup/lifecycle acceptance gaps remain open. Whole goal is incomplete;
+ no user pause or new blocking decision was requested. Stay on Home World.
+
+403 NATIVE SNAPSHOT VERIFIED /404 RESTORE-COPY INTENT:
+403 consumed/dispatched16:12:07.838/.904;home/currentWorld93 and bothDC5 verified.
+Native821notice16:12:17.021;closed menu16:12:20.117;actual menu closure and Complete
+16:12:21.148. Saved LastTournamentInfo contains exact821title/October3notice,
+nullable hidden counters and UTC20:12:16.981583Z. Sequence90/pending0/86matches/
+33wins/full24mask unchanged; no battle, reward or purchase.404 marker-only build
+passed0errors/two existingwarnings. Restore only mode2->0 and copy404 under earned
+state guards; then verify startup/normal already-met completion and saved snapshot
+survival.902tests passed on identical403productcode; no tournament Join enabled.
+
+404 MARKER-ONLY BUILD INTENT:403 DLL was copied under the reviewed mode0->2
+and earned-state guards. Prepare404 using identical product code and tests while
+the bounded UI check runs. Do not copy404 or restore mode before terminal403 is
+observed. Next read should reconcile403 startup, notice/menu completion and saved
+snapshot; no live log monitoring or tournament battle. Then guarded restore/copy.
+
+403 BUILT / COPY INTENT:vmx.bat passed with0errors/two existingNU1601 warnings;
+902/902 full tests passed;diff-checkclean. Fresh saved R7 facts remain mode0,
+unpaused,campaignfalse,sequence90/pending0,86matches/33wins/all24;caps223588gil/
+40000MGP/4certificates,reserve50000;spent2400gil/10000MGP/4certificates;requestsnull.
+Temporarily set only mode0->2 with semantic/concurrent-write guards and copy403.
+Expect native821 notice -> owned Upcoming/Nothing -> completed weekly goal, with
+dated last observation saved and no match admission. Restore only mode2->0 in404
+after terminal403 evidence; verify the snapshot survives that reload. No Join.
+
+403 SOURCE/BUILD INTENT:continue the authorized entry-UI work without a tournament
+match. Persist only the last validated display and UTC observation time in existing
+per-character progress. Show that dated history in the shared settings UI; correct
+the obsolete entirely-unavailable mode description. Saved observations are never
+fed to registration, entry, result accounting or scheduler completion. Fresh native
+info and owned registration response remain mandatory. One focused regression
+covers both serializers, weekly-reset independence, clone/character isolation and
+hidden counters replacing the previous period. Build403 with vmx.bat, then tests.
+After passing, temporarily select CPU rewards under unchanged earned-state guards
+for the closed-period no-match check, then restore Participation in clean404.
+
+402 FINAL RECONCILIATION:startup16:03:57.065 and dispatch16:04:00.588 verified;
+normal already-met participation immediately completed. Native home/currentWorld93
+and bothDC5 agree. Saved mode0/unpaused/campaignfalse,sequence90/pending0,
+86matches/33wins/all24;spending2400gil/10000MGP/4certificates; no purchase, acquisition
+or quest request.901/901 tests passed on identical401 product code;402 marker-only
+build passed. No active match or handoff. Open-period entry and tournament battles
+remain unverified; user narrowed this pass to entry UI and no tournament match.
+
+401 NATIVE CLOSED-PERIOD COMPLETION VERIFIED /402 COPY INTENT:
+401 startup16:02:06.627;821notice16:02:19.233; exact Nothing16:02:22.373;
+actual menu-closure gate passed16:02:23.404, then Complete with weekly participation
+already met. No match/queue/result/purchase. This proves the completed-week branch;
+partial-week continuation/accounting has the focused regression, not a fresh battle.
+402 marker-only vmx.bat passed. Restore only mode2->0 and copy under existing
+sequence90/pending0/86matches/33wins/all24/spending guards; require402 startup and
+normal already-met participation completion before final delivery claim.
+
+402 MARKER-ONLY BUILD INTENT:401's bounded closed-period replay may continue.
+Build402 with identical product code/tests; do not copy or edit mode until401
+terminates. Restore only mode2->0 under full earned-state guards, copy402, and
+verify already-met participation completion.401/402 do not enable tournament Join.
+
+401 BUILT / NO-MATCH REPLAY INTENT:vmx.bat passed0errors/two existingNU1601
+warnings;901/901fullsuitepassed;diff-checkclean. Runtime remains completed400.
+Guarded mode0->2 and copy401 only if sequence90/pending0/86matches/33wins/all24,
+caps/spending/receipts and manual pause are unchanged. Expected owned Upcoming
+menu -> Nothing -> observed menu closure -> Complete with weekly goal already met.
+No new admission is needed or intended. Preserve all earned facts; restore mode0
+with marker402 after observed terminal401 result. Registration and Join stay closed.
+
+401 SOURCE/BUILD INTENT (autonomous continuation; no tournament battle):
+Source review found closed registration failed before fulfilling CPU mode's
+remaining participation requirement. Reuse the ordinary Stage2 loss path after
+positive owned Upcoming menu evidence and verified menu closure. A transient
+closed-period observation may complete this run, but is never saved or supplied
+to scheduler eligibility; later runs still inspect tournament/reward opportunities.
+Cancelled/unknown/reloaded admissions keep existing result accounting. Also apply
+NeedsBattleRoster before BeginTravel purchases: the prior unconditional Required
+lookup could request an unnecessary Mammet despite the later admission exemption.
+Reuse the existing policy and add one focused partial-week/cancellation/reload/
+weekly-reset test. Extend actual menu-closure waiting to the registration refresh,
+and log positive registration once per run. Build401, tests, then temporary mode2
+replay only under sequence90/86matches/33wins/all24 guards: already-met participation
+must finish without ANY match. Restore mode0 in clean402 delivery afterward.
+
+2026-09-28 15:55 EDT 400 FINAL DELIVERY VERIFIED:
+- Exact400 startup15:54:13.827; selected dispatch15:54:17.364 immediately completed
+  already-met weekly participation. Native home/currentWorld93 and bothDC5 agree.
+- Saved Participation0, unpaused, campaignfalse, sequence90, pending0,86matches,
+  33wins, full24mask16777215. Caps223588gil/40000MGP/4certificates, reserve50000;
+  spending2400gil/10000MGP/4certificates; acquisition/quest/purchase all null.
+- Product registration/entry-preparation code is built and delivered.900/900full
+  tests passed on identical399logic;400 is marker-only, vmx.bat passed, diff clean.
+  Temporary world-return, sheet-dump and finder-bypass code is removed.
+- Verified native Home World return, Master Tournament CFC579 display/highlight,
+  and ordinary closed-registration menu/Nothing/status handling. Checkbox was
+  unavailable and checked selection remained0 during the closed-period probe.
+  No tournament registration, Join, queue, battle, result or additional spend.
+- Next native tournament821 begins11:00a.m.10/3/2026. Open-period confirmation,
+  registered Talk readback, visible allowance, checked sole selection, actual Join
+  and subsequent NPC battles/rewards remain unverified. Entry preparation deliberately
+  stops before Join under this user's UI-only instruction. Do not claim full goal
+  completion or restore an automatic battle test without a later authorized step.
+- User's conditional Home World permission is resolved and exercised. No user
+  decision is pending from that question. Stay on Home World after this UI pass.
+  First-time setup and earlier remaining lifecycle/campaign-readback gaps stay open.
+- No active tool session, VMX match/acquisition or temporary test remains. Existing
+  Cactpot/Jumbo work is preserved; I434 remains review-only with its prior conclusion.
+
+399 ORDINARY CLOSED-PERIOD VERIFIED /400 RESTORE-COPY INTENT:
+399 startup15:52:52.509; sameHome/current93 verified15:52:56.041. Native821notice
+15:53:05.127, owned NPC menu and exact Nothing selection15:53:08.291, followed by
+explicit registration-closed status with next start11:00a.m.10/3/2026. No guessed
+registration, allowance, Join, match or result.400 marker-only vmx.bat passed;
+399productcode retains900/900fullsuite verification. Guarded mode2->0 restoration
+and watched DLL copy now; verify400load and already-met participation completion.
+User's UI-only pass does not authorize a tournament battle. Final delivery remains
+an entry-preparation implementation with open-period/check-box/Join verification
+pending; full goal completion is not claimed. No temporary travel/probe remains.
+
+400 MARKER-ONLY BUILD INTENT:prepare clean final delivery while399owns its
+bounded closed-period check. Product logic/tests unchanged from399's900/900pass.
+Do not copy or restore mode until399terminal NPC exit is observed. Then guard
+mode2->0 as the only semantic config change and copy400; require exact startup,
+already-met participation completion, sequence90/pending0/all24 and unchanged
+earned/spending/receipt facts. Stay on Home World; no further travel or match.
+
+399 BUILT / ORDINARY CLOSED-PERIOD REPLAY INTENT:vmx.bat passed,900/900fulltests
+passed,diff-checkclean. No temporary travel/sheet/finder override remains in source.
+398 is terminal with no selected entry, admission or credit. Copy399 under mode2,
+sequence90/pending0/all24/earned guards. Expect fresh821notice, owned NPC422 menu,
+exact Nothing exit and explicit closed-period status. No registration/Join/match.
+After that verify400 marker-only delivery with guarded mode2->0 restoration.
+
+398 NATIVE TERMINAL /399 FINAL BUILD INTENT:
+398 loaded15:49:21.978. Installed rows428/434/435/469/470 match the implemented
+confirmation and response text.15:49:36.494 native list selected Master Tournament
+row10; the standard checkbox child5 was unavailable15:49:37.499, and15:49:38.510
+readback remained highlightedRegular579/selectedCount0. No Join, queue, credit or
+registration. Do not call this a verified checked entry; only display/list selection
+is verified while registration is closed.399 removes the probe, retains safe refusal
+without sole-selection proof, and must now be rebuilt after that wording correction.
+Then full tests and guarded mode2 copy for native ordinary closed-period handling.
+
+399 CLEAN SOURCE/BUILD INTENT WHILE398 UI PROBE RUNS:remove the temporary
+game-sheet dump and debug finder bypass entirely. Ordinary CPU rewards now follows
+the owned Recordkeeper menu/registration policy; closed menu reports the native
+notice and selects Nothing. Keep the permanent strict Master Tournament selection
+and cleanup path, with Join still disabled. Show remaining displayed allowance and
+explain UI-only readiness in the window. Build399 now; do not copy before398's
+terminal selection/cleanup outcome. Then replay399's real closed-period path,
+restore mode0 and deliver a clean marker. Registration during an open tournament
+and actual joining remain explicitly unverified.
+
+398 BUILT / COPY INTENT:31/31 lifecycle tests passed, including the new entry
+policy regression. Concurrent build/test compilation collided on the shared test
+assembly; both terminated, then sequential vmx.bat passed0errors/two existing
+warnings. Diff-check clean. Guarded-copy398 with mode2 and all sequence90/earned
+facts unchanged. Native test selects/checks only Master Tournament, captures the
+readback and clears only its own sole selection; never presses Join. Then remove
+the temporary sheet/finder override and verify the ordinary closed-period path.
+
+397 FINDER VERIFIED /398 IMPLEMENTATION AND PROBE INTENT:
+397 loaded15:38:14.485, observed CFC579 Regular at15:38:30.100, selectedContent0;
+native list distinguishes Player Tournament198 from Master Tournament579. Join is
+node74/param8; it was never pressed. Installed GoldSaucerTalk422/427/434/435 and
+469 supply registration semantics; next398 captures rows421-470 once to verify
+the full rule/confirmation/rejection text against the installed game data.
+Implement exact owned menus, confirmation and dialogue checks, positive registration
+readback, fresh allowance, only-579 finder selection and cleanup. No Join implementation
+or battle dispatch in this pass. Add one focused regression for unsafe prompts,
+closed/exhausted/unknown allowance and mixed/player duty selections.398 still uses
+the temporary selected debug finder probe;399 must remove it and verify production
+closed-period behavior. Build398/tests before copy; all earned state preserved.
+
+397 BUILT/COPY INTENT:vmx.bat passed0errors/two existingwarnings;diff-checkclean.
+Copy with mode2/sequence90/pending0/all24/earned/spending guards and no config
+write.396 is terminal.397 only reads data and opens/closes CFC579; no Join path.
+
+396 HOME WORLD/NPC VERIFIED /397 ENTRY-UI PROBE INTENT:
+396 startup15:33:39.408; native15:33:42.998 shows home/currentWorld93 and bothDC5.
+Ordinary travel reached Minion Square.15:34:08.042 info now821st tournament,
+matches begin11:00a.m.10/3/2026, counters hidden. Owned NPC1011594 menu15:34:16.669:
+Ask about the upcoming tournament. / Ask about Lord of Verminion tournaments. /
+Nothing. No registration or reward offered, no queue.397 opens exact typed CFC579
+Master Tournament through the existing native agent, inspects and closes only its
+own selected finder. Never press Join. Include one bounded game-sheet text/menu
+capture to obtain registration labels without guessing unavailable UI. Build/test
+before copy, retain mode2 temporarily and all earned/spending/config facts.
+
+396 COPY INTENT:395 Lifestream TaskWaitUntilInWorld and final TaskNotify completed
+15:32:47.808/.822; territory132 and selected character registration15:32:53.273.
+396 clean build passed; temporary world-travel code removed. Guarded mode0->2
+change and watched DLL copy may now use the ordinary CPU-mode setup/travel path.
+Native Home World equality must still be read by396. Existing inspection never
+selects registration or a match; capture the first Recordkeeper menu for next work.
+
+395 TRAVEL ACCEPTED / 396 CLEAN BUILD INTENT:395 loaded15:31:44.471, single
+ChangeWorldById accepted15:31:47.942. Lifestream reports GuestToHome and selected
+Return to Home World15:31:59.599. No VMX task or battle dispatched. Source396
+removes the temporary travel branch entirely; build while Lifestream owns travel,
+but do not copy until native login/travel completion is evidenced. Then guarded
+mode0->2 and copy396 to run existing info/Recordkeeper inspection only. Registration
+and final entry will be implemented from its observed menus; no queue is permitted.
+
+395 BUILT / COPY INTENT: vmx.bat passed with zero errors and the two existing
+NU1601 warnings; diff-check clean. Temporary one-shot travel branch uses the
+installed ChangeWorldById(uint)->bool contract and rechecks runtime ownership.
+Copy only the watched R7 VMX DLL under unchanged earned/config guards. Require
+exact395 startup and native travel acceptance before interpreting any world move.
+No tournament registration, queue or battle in395; participation config stays0.
+
+USER DECISION / 395 HOME WORLD UI-TEST INTENT:
+The user authorizes returning R7 home if tournaments require it, and narrows this
+pass to registration/entry UI with no tournament battle. The official World Visit
+guide explicitly disallows Lord of Verminion tournament entry while visiting:
+https://na.finalfantasyxiv.com/lodestone/playguide/contentsguide/worldvisit/
+All 24 clears and existing battle routines remain; harder tournament wins are not
+claimed. Use installed Lifestream 2.5.5.2's native ChangeWorldById IPC for one
+guarded return to the observed Home World, with no focus/input automation. The
+temporary selected-reload branch must require unpaused Participation, sequence90,
+pending0, all24, no acquisitions and idle providers, and dispatch no Verminion run.
+Build395 through vmx.bat; copy only after fresh unchanged-state guards. Remove the
+temporary travel branch before the next delivery. Then inspect Recordkeeper/menu
+UI and stop before any tournament queue or battle. No new vendor operation or cap.
+The prior travel decision is resolved; goal-tool status may still read blocked
+because only the user/framework can resume it. Authorized UI work continues now.
+
+2026-09-28 07:40 EDT 394 DELIVERY RECONCILED:
+- Fresh bounded R7 evidence confirms 394 startup at 07:33:41.898 and the one
+  selected dispatch at 07:33:45.373, completing already-met weekly participation.
+- Saved mode is Participation (0), unpaused, campaign false, sequence 90,
+  pending 0, 86 weekly matches, 33 wins and all-24 mask 16777215. Spending remains
+  2,400 gil, 10,000 MGP and 4 certificates; purchase, acquisition and quest are null.
+- No client/config/source change or new admission in this reconciliation.
+  Reviewed tournament read/cleanup paths and existing lifecycle evidence; no new
+  proven defect warrants another build or replay of already-passing tests.
+- The existing Home World travel question is unanswered. Leave R7 on OCE; actual
+  registration/menu research, NPC matches and reward verification need that answer.
+  Three consecutive turns now end at this blocker after the prior independent
+  reader delivery. Current source still requires Home World access for the next
+  Recordkeeper inspection; the separate first-time setup check needs a locked
+  character. No independent progress remained. Goal status is now blocked, with
+  completion unclaimed; resume after the user's travel decision or changed access.
+  Do not repeat the question or treat an automatic continuation as travel approval.
+- First-time setup and remaining runtime checks stay pending. Existing 2026-09-26
+  entries already document queue/battle FULL STOP, paused reload and rejection of
+  the later cancelled result; do not erase that evidence or infer fresh R7 replay.
+- Mini Cactpot I434 remains review-only: the supplied log and VMX's hardcoded
+  /li home support a VMX housing assumption, not a proven user configuration error.
+
+07:33 393 REPLAY VERIFIED /394 RESTORE-COPY INTENT:393loaded07:32:48.222,
+dispatch07:32:51.718, ready-panel info07:32:55.760 followed by HomeWorld gate.
+Parent-loading guard accepts ready native data; hidden counters remainunknown.
+No registration/admission/credit.394marker-only vmx.bat passed;50focusedtests
+cover identical393code including stale populated text during loading. Restore
+mode2->0 only and copy394 under full earned-state guards, then verify startup
+and already-met participation completion. Travel question is still unanswered.
+
+394 MARKER-ONLY BUILD INTENT:build final delivery while393owns its bounded UI
+read; do not copy until393terminal HomeWorld gate or timeout is observed. Battle,
+reader and tests unchanged from393(50passed);392priorfullsuite899passed.394copy
+must restore only mode2->0 under current sequence90/pending0/all24/earned guards.
+No new tournament registration, world travel or battle is intended.
+
+393 BUILT / REPLAY INTENT:vmx.bat passed,50/50focusedtests passed,diff-checkclean.
+Guard mode0->2 only and copy393 for the same visitor information-only run. Verify
+the loading guard admits the ready native panel, still reports hidden counters
+unknown and stops before registration. Then restore mode0 with delivery394.
+All24clears/sequence90/86matches/33wins/spending retained; no travel authorized.
+
+07:30 392 DELIVERY VERIFIED /393 FRESHNESS GUARD INTENT:392loaded07:29:16.313,
+weeklyComplete07:29:19.761 after guarded semantic mode2->0 restoration.899/899
+fullsuitepassed; no earned/spending facts changed. Prior293evidence included a
+parent GoldSaucerInfo "Receiving data..." notice; checking only child title/notice
+could accept old populated text while the parent still loads.393 checks bounded
+visible text in both panels and rejects cached facts during that notice. Extend
+existing regression; build/test before copy. No world travel, NPC registration
+or active battle. Travel choice remains pending;391visitor info remains verified.
+
+07:27 391 NATIVE INFORMATION VERIFIED /392 DELIVERY INTENT:
+391startup07:26:45.690,dispatch07:26:49.105, native Verminion tab7/param5 clicked
+07:26:51.128.07:26:53.147 read820thtournament notice ending10:45a.m.9/28/2026;
+hidden counters stayedunknown, then HomeWorld gate failed as expected. NoNPC
+registration/travel/admission/credit:seq90/pending0/86matches/33wins/all24mask.
+Mode2 is temporary test setting and must be restored0.392 only updates marker,
+UI status wording and registration-block message; reader unchanged. Build392,
+fullsuite, then guarded semantic mode2->0 restoration and copy. Require392load
+and already-met participation completion with counters unchanged. Travel answer
+stillpending; no permission inferred from automatic goal continuation.
+
+391 BUILT / UI-ONLY REPLAY INTENT:final vmx.bat passed after correcting the SDK
+enum name;50/50focusedtests passed,diff-checkclean. Bound R7 fresh config is mode0,
+unpaused,campaignfalse,pending0,sequence90,86matches,33wins,all24mask16777215.
+For this authorized CPU-mode test, temporarily change only VerminionMode0->2,
+compare full JSON semantics and guarded-copy391. Expected visitor flow opens the
+information panel, reads notice/visible counters, closes its own window, then
+fails the existing Home World gate without NPC interaction/travel/admission.
+Restore mode0 after the observation and deliver a fresh marker; do not change
+any earned facts, caps, receipts, pauses or travel preferences. Travel answer
+remains pending.391native result still unverified at this intent boundary.
+
+391 SOURCE/BUILD INTENT (travel answer still pending): independent lifecycle
+review found no new proven accounting defect. SDK LovmRanking is an empty7228-byte
+declaration; no typed registration/allowance contract. Revisited existing293native
+proof for GSInfoMinionBattle (13values, title10/notice11, counters5/7/9 and hidden
+components). CPU rewards now reads this panel before the Home World gate, using
+the verified GoldSaucerInfo Verminion button7; hidden counters remain unknown.
+No registration or credit inferred. Reuse owned-window cleanup on stop, and keep
+registration/world travel blocked. Add focused display-policy regression. Build
+391/tests before any authorized R7 UI-only replay; mode0 remains unchanged so far.
+390remains loaded; all24clear/sequence90/86matches/33wins/spending unchanged.
+
+2026-09-28 07:15 EDT VERIFIED DELIVERY / NEXT DECISION:
+-390FINAL loaded07:15:01.469, dispatched07:15:04.972 and Idle->Complete weekly
+participation at that same timestamp. No new admission or credit: sequence90,
+pending0,86matches,33wins,mask16777215,CampaignRequested=false,unpaused,mode0.
+-All24campaign stages now have observed clears. Final90/389victory07:08:48.527;
+native match length7:51; campaignComplete07:08:57.243. Keep Gentleman-only roster.
+-390ordinary-stage24 gate removed; battle code remains389.898/898fullsuitepassed,
+vmx.bat passed; final DLL at R:\parasite\vmx\VERMAXION.dll. ADS33 unchanged.
+-Spending/caps/receipts retained:2400gil,10000MGP,4certificates; caps223588/40000/4,
+gilreserve50000; no acquisition/quest/receipt pending. No config edit this context.
+-Tournament implementation/live registration, NPC allowance and rewards remain
+open. Fresh native07:08:48.514 confirms homeWorld93/current87, homeDc5/current9.
+Need user's travel choice because this test character was deliberately sent to
+OCE. Do not return worlds on assumed authority; request permission for R7 alone.
+-Other acceptance gaps: first-time setup on a suitable locked character; remaining
+FULL STOP/reload boundaries during setup/queue/battle; Stage15 post-prompt replay
+and Stage23 special-effect readback. Earlier ten consecutive Stage2 victories and
+exact victory stopping remain verified. No remaining gap is a false completion.
+-Cactpot I434 remains reviewed only, no edits: VMX unconditionally requests /li
+home after Mini; supplied log shows missing private house. Narrow fix remains
+finish locally after owned-menu cleanup/readiness, pending user's selected scope.
+Goal remains active; next interaction is the R7 tournament travel decision.
+
+07:17 390 FINAL BUILT / COPY INTENT:final vmx.bat zeroerrors/twoexistingNU1601
+warnings,898/898fullsuitepassed,diff-checkclean. No Zu experiment symbols remain.
+Fresh completed-config shows CampaignRequested=false, participation mode0/target5,
+unpaused, pending0/sequence90/86matches/33wins/mask16777215; spending2400gil,
+10000MGP,4certificates unchanged, acquisition/receipt/quest null. Copy390 under
+these guards. Expected selected reload finishes already-met participation without
+queue/admission/credit.07:08:48.514native homeWorld93/current87 and homeDc5/current9
+confirm tournament Home World blocker remains. No world travel authorized here.
+
+07:14 390 FINAL BUILD INTENT:result nodeLovmResult/23 explicitly7:51 at
+07:08:48.513, contradicting earlier inferred six-minute game limit. Final390
+retains389Gentleman combat code and replaces only obsolete admission/UI claims:
+ordinary stage24 enabled, special development defeat stop removed in favor of
+normal three-attempt campaign policy. Zu experiment fully removed before this
+build. Rebuild390 via vmx.bat, run suite, verify no residual experiment and then
+guarded copy with completed mask/pending0/sequence90. Expected reload must finish
+already-cleared campaign without another admission or credit. No config edits.
+
+07:11 ALL24 VERIFIED /390 EXPERIMENT REMOVED:389 match90 explicitVictory
+07:08:48.527; credit86matches/33wins; final Complete07:08:57.243 confirms mask
+16777215/pending0/sequence90/attempt3/unpaused. This is the Gentleman-only389
+composition, not the undeployed390Zu experiment. Removed only that experiment's
+source changes; retain389tower reassignment and its898/898fullsuite result.
+390must be rebuilt before any copy. Next inspect exact match length (the prior
+six-minute-limit interpretation is contradicted by this result), update UI and
+admission verification claims, then proceed with remaining lifecycle/tournament
+acceptance within R7 scope. No earned facts, spending or limits reset.
+
+07:08 390 SOURCE/BUILD INTENT:389fullsuite898/898passed.90had tower arrivals
+07:02:38,03:16,03:55,05:11,06:16 but boss HP stalled11719 across03:07-04:00;
+individual attacker orders lose too much movement time. Prepare vendor adaptation:
+two already-owned Zu (450HP/speed3/cost10 each per ffxiverminion.com/minion-83)
+handle towers; seven Gentlemen attack. Separate minion types avoid pulling the
+occupant with attacker group/dodge clicks. Reuse defender reserve/summon accounting,
+require both roster entries, rally Zu centrally only between warnings, dodge an
+exposed Zu individually. No purchase or spending changes. Build/test390, then
+require90explicit result/closure and check automatic attempt3 pause versus manual
+FULL STOP before any guarded development reset/copy. No native390evidence yet.
+
+07:01 389 LOADED /90 ACTIVE:exact startup07:00:08.140,
+dispatch07:00:11.566, match90queued07:00:24.958, InDuty07:00:32.023.49focused
+tests passed before copy. Preserve90through explicit result; attempt3, earned
+facts unchanged on admission. No source changes beyond389tower reassignment.
+
+07:00 389 BUILT / COPY INTENT:vmx.bat passed0errors/two existingNU1601warnings;
+49/49focusedtests passed and diff-check clean.89 explicitDefeat06:58:02.742,
+closure06:58:06.289;85matches/32wins/23clears, pending0/sequence89/attempt2/unpaused.
+Copy389 only under these guards, with no config change. Require exact389loaded
+marker before evaluating expected90 (third campaign attempt). Keep its result
+and automatic pause if failed; no blind reset or extra admission.
+
+06:58 389 SOURCE/BUILD INTENT WHILE89 ACTIVE:388 loaded06:52:14.453,
+dispatch06:52:17.835, match89queued06:52:30.764. Native pending dodge preservation
+observed06:56:48.721. Tower06:56:13 selected210HP unit; circle pulled it away and
+06:56:20 readback had172HP outside tower. Later orders retained this ineligible
+candidate while healthy replacements stood at gate;06:56:33 tower expired and
+06:56:35 readback showed those replacements400->42HP.389 reselects a healthy
+candidate after interrupted movement, retaining living occupants inside or still
+travelling on a verified order. Add recorded-position regression and build/test.
+Do not copy until89 explicit result/closure. Preserve all config/accounting.
+
+06:52 388 FINAL BUILT/COPIED: final build passed and48/48 focused tests passed.
+Retain pending dodge identity across successive unrelated transitions until its
+short command finishes; unsafe destinations and no-circle state still cancel.
+Guarded copy verified sequence88/pending0/unpaused/attempt1 and empty acquisition/
+receipt/quest; saved config unchanged. Next require exact388 startup, then observe
+new89 admission and result. All facts remain84matches/32wins/23clears/spent4.
+
+06:50 388 REBUILD INTENT /88 DEFEAT:387 explicitDefeat06:47:04.702,
+closure06:47:08.558; native4:52/Bahamut5713HP.84matches/32wins/clears8388607/
+sequence88/pending0/attempt1/unpaused/spent4. Safe pending tower preservation
+observed46:36/46:48. Extend already-built-but-undeployed388 to preserve a pending
+circle escape when unrelated warning changes leave its destination safe; new
+danger still interrupts it. This prevents the same all-warning cancellation from
+starving dodges. Rebuild388 and rerun48focused tests before guarded copy for89.
+No existing admission, result or budget rewritten; all24 clear still unverified.
+
+06:46 SOURCE/BUILD388 READY, DEPLOYED387/88 ACTIVE:388 build via vmx.bat passed
+with existing warnings,48/48 focused tests passed and diff check clean. Do not
+copy during88. Latest06:46:06 native Bahamut6623/20000, one visibleTwintania642/2280;
+army replacing casualties.387 tower arrivals43:52,44:21,44:57; no captured safe-
+pending-order preservation event yet. Full clear and388 native overlap handling
+remain pending. Match88 entered06:41:46 with roughly26s preparation before the
+six-minute game timer; inspect terminal result/closure before guarded388 copy.
+
+06:43 388 SOURCE/BUILD INTENT, DO NOT COPY DURING88:387loaded06:41:22.197,
+dispatch06:41:25.587,88queued06:41:38.539/InDuty06:41:46.227.48focusedtests passed387.
+Automatic stage limit reset was guarded against sequence87/pausedtrue/attempt3/
+pending0 and semantically changed only pause and attempt batch; no manual stop
+observed after the verified automatic failure. Current88 is attempt1.
+Offline review of87's63 dodge orders found one06:37:39.878 destination inside
+another simultaneously visible circle.388 excludes all current circles, recomputes
+cached unsafe endpoints and stops if no sampled point is safe. Extend existing
+regression. Build/test388 locally; deployed387 must finish88 before any copy.
+
+06:40 387 INTENT /87 DEFEAT:386InDuty06:33:28.900, individual attacks during
+towers verified from06:35:29, with protected-unit identity distinct and arrivals.
+Defeat06:38:07.859/native4:13 length; closure/review06:38:11.634 automatically
+paused at attempt3.83matches/32wins/no24clear. Repeated circles cancelled the same
+pending safe gate-to-tower order06:37:50,51,57,38:00; tower expired38:02 before
+arrival.387 preserves an existing tower's pending command only if its whole
+segment avoids all circles. Add origin/path/destination/expiry cases to existing
+regression. Build/tests before copy; inspect bound automatic pause and absence of
+later manual FULL STOP, then reset only that pause/attempt batch after this fix.
+Do not change earned matches/wins/clears or spending. Final clear remains pending.
+
+06:34 386 LOADED /87 QUEUED: exact386startup06:33:05.122,
+dispatch06:33:08.476, CPU queue match87/stage24 at06:33:21.636. Final build
+passed and48/48 focused tests passed, including actual-overlap eligibility.
+No settings changed on copy: attempt2 before admission; this is attempt3.
+Keep87 through its own result before any reload, automatic-pause review or retry.
+ADS33 remains loaded, certificate acquisitions verified, cap4/spent4 unchanged.
+
+06:31 386 INTENT /86 DEFEAT:385 recorded explicitDefeat06:24:33.152 and closure
+06:24:36.867. Native LovmResult node23="Match Length: 6:00". It is the game's
+six-minute limit, not the longer development observer limit.82matches/32wins/
+clears8388607/pending0/sequence86/attempt2/unpaused; certificates4 remain credited.
+Five tower arrivals and bounded alternate-individual selection worked, but whole
+army movement stayed held throughout towers. Last Bahamut6077HP; one add remained
+visible (disappearance alone is not a verified kill).
+Both published guides re-read; retain Gentleman roster.386 sends other individual
+attackers during tower-only periods, excludes the protected occupant from native
+hit validation, reuses bounded candidates and spaces per-unit orders10s. Circle
+priority unchanged. Add focused scheduling regression; build/test then guarded
+copy386 for one fresh match, retaining attempt2 and all earned facts.
+
+06:23 385 CONTROL PROOF: match86 continues. At06:20:09-11 three rejected tower
+candidates were followed by verified healthy individual06:20:12.036 and movement
+06:20:13.843, without aborting the match. Tower arrivals06:21:00.508,
+06:21:30.972 and06:22:38.008 observed (last400/400HP). At06:22:50 Bahamut10900/20000;
+chosen Twintania954/2280, other1344/2280. Keep the admission until explicit result;
+do not reload or reset attempts. A full clear is still unverified.
+
+06:19 385 ACTIVE: ADS33startup06:16:20.132;385startup06:17:28.286 and dispatch
+06:17:31.676 verified. Match86 queued06:17:57.942, Stage24InDuty06:18:07.519.
+No reload while this admission is active. First circle response observed; tower
+candidate correction and result remain pending. Entire VMX suite896/896passed
+on385; ADS166/166passed32 before diagnostic-only cleanup33. Both builds passed
+with existing warnings and diff checks clean. Certificate cap4/spent4 retained.
+
+06:17 CERTIFICATE ACQUISITIONS VERIFIED /385 INTENT:384loaded06:14:59.585,
+dispatch06:15:02.956. Cursor exact purchase06:15:09.164, once-only2certificate
+receipt06:15:10.011, registration06:15:19.072, standaloneComplete06:15:19.089.
+Odin and Cursor consumed4 total of cap4; no item purchase gil/MGP.47 VMX tests
+passed384. Remove temporary ADS category diagnostics/build33; update VMX UI385
+to actual claims. Initial checked recent-items filter remains untested. Build385,
+then guarded unpause of automatic standalone completion only; retain stage24,
+attempt1, sequence85, earned clears, budgets, receipts. Copy385 and require exact
+startup before evaluating Stage24 selection correction. No new acquisition request.
+
+06:14 ODIN VERIFIED /384 INTENT: ADS32loaded06:12:01.723;383loaded06:12:45.965,
+dispatch06:12:49.299. Exact live Odin7561 cost2/callback12 verified06:12:55.866;
+owned confirmation06:12:55.954, acquired1/currency delta verified06:12:56.323,
+VMX credited certificates2 once06:12:56.396. Registration06:13:06.481 and ordinary
+standalone Complete06:13:06.490. Saved state paused=true/cap4/spent2/pending-null/
+acquisition-null/sequence85. This is automatic completion pause, not user FULL STOP.
+Build384 with bounded tower candidate correction. Save standalone Cursor6212/51
+request and unpause only for that request; compare full JSON excluding those two
+intended fields before write/copy. Do not start battle until verified completion.
+ADS32focused166passed. No fresh campaign/tournament/unlock evidence.
+
+06:12 ADS32/VMX383 INTENT: ADS31 loaded06:10:14.438,382loaded06:10:41.498/
+dispatched06:10:44.856. Native06:10:51.366 proves Others event receiver IS addon,
+ButtonClick25/param3/target=node. Next tick exposes30Others rows despite radio
+selected=false: Odin7561/price2/callback12, Cursor6212/price2/callback8. Thus31
+verifies category transition; waiting for cosmetic radio state is incorrect.
+Keep exact row/currency/price validation and use visible rows after one dispatch.
+Build32/383 then confirm prior timeout/empty saved request before another request.
+31 ADS166tests passed;382 build passed. No purchase or registration verified yet.
+
+06:10 ADS31/VMX382 INTENT: exact381startup06:02:58.970 and dispatch06:03:02.303;
+ADS30 sent Others click06:03:08.089 without crashing, but radio never selected.
+Timed out06:03:27.907/VMXfailed06:03:28.658. No purchase callback, spend or receipt;
+54 certificates claimed previously.47 VMX tests passed on381;166 ADS tests on30.
+Fresh bound state remains unpaused/pending0/sequence85/cap4/spent0/no acquisition.
+Add bounded receiver identity and next-tick visible item/price/callback readback;
+dispatch is not proof of selection. Build31/382, verify ADS startup, save one
+guarded ordinary Odin request and copy completed382. No purchase guard relaxed.
+
+06:02 381 COPY INTENT: user explicitly closed Returner's Bounty and said continue.
+Fresh bound state unchanged: unpaused/pending0/sequence85/cap4/spent0/no acquisition,
+receipt or quest.381 build completed06:01 and remains ready; ADS30 was loaded after
+restart. Save one fresh ordinary Odin request and copy381; require exact381startup
+before evaluating this attempt. Native category/receipt/registration remain pending.
+
+06:01 ATTEMPT RECONCILIATION: build381 passed0errors/two existing warnings, but
+copy was issued before build completion was observed and copied the older380 DLL.
+Do not claim381 loaded. The new saved request dispatched06:01:05.170 and ADS again
+stopped06:01:05.236 on unexpected confirmation before vendor interaction; VMX failed
+06:01:06.183. No purchase callback/receipt/spend or category test. Do not issue
+another attempt until the unrelated Returner's Bounty confirmation is resolved.
+Keep built381 for the next deliberate copy; no duplicate re-dispatch or false credit.
+
+381 INTENT: user reports R7 loaded and supplies crash-20260928055003.tspack under
+R:\XIVLauncher7. Read ZIP in memory: its crash.log confirms the same prior
+AddonShopExchangeCurrency.ReceiveEvent+0x571 -> ADS node-click/category stack;
+not a new crash or live proof of30. Latest state pending0/sequence85/unpaused,
+certificate cap4/spent0/no acquisition or receipt. Build marker381 via vmx.bat,
+then one guarded standalone Odin request; existing ADS start/UI guards must still
+reject an unrelated prompt. I434 followup reviewed: installed Lifestream's Home
+route explicitly uses private-house aetheryte lookup; VMX hardcodes /li home and
+has no Mini destination setting. User misconfiguration is not established. VMX's
+unnecessary mandatory housing dependency is fixable; Cactpot remains review-only.
+
+2026-09-28 380 ATTEMPT / RETURNER PROMPT BLOCKER: exact380startup05:54:42.270 and
+dispatch05:54:45.640 observed. ADS accepted Odin05:54:46.853 then failed05:54:46.897
+before vendor interaction with unexpected-confirmation; VMX terminal05:54:47.913.
+Bounded YesAlready evidence identifies the unrelated Returner's Bounty deferral
+confirmation (next opportunity at next login). ADS did not accept it. No purchase
+callback/receipt/spend. ADS30 category correction still has no native validation.
+User must resolve the reward choice in R7 before another deliberate guarded test.
+I434 review recommendation: replace MiniReturningHome/MiniWaitingForHome with
+local owned-menu cleanup and settled completion, including already-3-ticket entry;
+update settings hint and a focused completion/cleanup regression. Preserve Saucy
+ticket flow, Jumbo, scheduler and AutoRetainer; no new config. Source671/672 and
+supplied11:46:03.055/.123 log prove /li home -> missing private house. Source684
+then fails after12seconds; supplied log stops earlier, so that consequence is a
+source finding, not an observed terminal result. No Cactpot edit or DevHub mutation.
+
+2026-09-28 R7 RESUMED / 380 COPY INTENT: user restarted R7 and resumed the goal.
+ADS30 startup05:51:25.250 is verified. Deployed VMX379 loaded05:51:21.425, reconciled
+the saved dispatched Odin request05:52:19.104, and failed without resubmission.
+Fresh bound state: unpaused/pending0/sequence85, certificate cap4/spent0, no purchase,
+minion acquisition or quest handoff. Save one fresh ordinary standalone Odin request
+with full-config comparison, then copy already-built380. Verify receiver-routing
+correction through native category transition and exact receipt; do not infer credit
+from dispatch. Review-only devhub187/I434 is complete: logs prove Mini Cactpot's
+hardcoded /li home requests an unavailable private house; recommend local settled
+completion after owned menu cleanup. No I434 source or DevHub records changed.
+
+380 BUILD COMPLETE: vmx.bat passed0errors/two existingNU1601warnings; UI text and
+compiled marker only since379. Not copied; deployed379 remains. ADS30 build passed
+0errors/two existingobsolete warnings;166focused tests passed. Client crash is the
+live blocker; no additional dispatch, receipt, certificate spend or campaign credit.
+
+ADS30 BUILT / R7 RESTART REQUIRED: source/build30 correct registered-event routing;
+166/166 focused ADS tests pass, including native callback dispatch with a non-null
+data block, copied registration, correct listener and invalid-event rejection.
+Both diff checks pass. ADS30 is built at the existing watched output, NOT confirmed
+loaded after the crash. Heap event/listener memory was absent from the minidump:
+the wrong-receiver explanation is supported by unsafe helper routing and handler
+behavior, but actual radio listener identity still needs live observation. Do not
+claim the game-side correction verified. Update VMX380's UI to state claims/travel
+verified and purchase/registration pending, then build via vmx.bat without copying.
+Latest deployed VMX remains379; preserve dispatched Odin request and all caps.
+Next: user restarts R7, verify startup/idle state and reconcile saved request before
+any new deliberate acquisition. No automatic restart or background log monitoring.
+
+CRASH / ADS30 CORRECTION INTENT: ADS29 loaded21:12:13.873;165 focused tests passed
+after fixing Plugin.GameGui reference (initial build failed; earlier test ran28).
+VMX379 loaded21:12:45.129/dispatched21:12:49.171. R7 crashed21:12:56 while invoking
+TryClickAddonNodeButton from EnsureAchievementCategory. Crashhandler stack confirms
+this call; dump shows access violation reading0x10 (r15=0) inside shop ReceiveEvent,
+with ButtonClick25/param3/null event data passed by ADS. No category acknowledgement,
+purchase callback, reservation or receipt. Bound21:13:48 state remains unpaused,
+pendingMatch0/sequence85/certSpent0; saved Odin request DispatchAttempted=true.
+DO NOT clear or redispatch it. Claim54 remains; no purchase or registration verified.
+Fix the shared node-click helper to dispatch a copied event to its registered
+listener with non-null event data, rather than assuming the addon owns the event.
+Add one native-receiver regression, build ADS30 and run focused tests. No client
+restart is authorized. Native verification needs user restart; preserve the saved
+dispatched request so reload reconciles it without another purchase or battle.
+
+ADS29/VMX379 INTENT: ADS28 loaded21:08:45.579, VMX378 loaded21:09:15.402/
+dispatched21:09:19.444. Snapshot21:09:26.150 shows radios8Weapons/9Armor(selected)/
+10Accessories/11Others, registered ButtonClick params0..3. Node12 is the recent
+items checkbox. No purchase callback; failure/cleanup follows. Replace wrong
+dropdown assumption/temporary node dump with observed Others event, native radio
+state and recent-filter clearance; support verified minion itemAction853 only.
+Keep exact live/global row/currency validator. Build29/379, focused tests, verify
+ADS marker then guarded standalone Odin request/copy. No certificate spend yet.
+
+ADS28/VMX378 INTENT: ADS27 loaded21:06:22.025, VMX377 loaded21:07:03.495/
+dispatched21:07:07.551;165ADS tests passed. Snapshot21:07:14 shows itemTreeList20
+but its repeated renderer children consumed the bound before other root controls.
+Failed before purchase callback/acquired0. Inspect all root controls/one component
+level excluding item tree20, plus at most60 addon strings; same safe rejection.
+Build28/378 then verify ADS startup and guarded bound request before VMX copy.
+
+ADS27/VMX377 DIAGNOSTIC INTENT: the21:00:46.492 attempt's
+category probe found only node3's job filter; no category or purchase callback.
+ADS closed shop and parent menu by21:00:47.509. Fresh bound state21:04:54 is
+unpaused/pending0/sequence85, no acquisition or receipt, cap4/spent0/stage24.
+Capture at most160 shop nodes with two component levels, labels and registered
+events, then fail safely. Do not guess category callback or purchase row.
+Build ADS27 watched output and VMX377 via vmx.bat; verify ADS startup before one
+fresh guarded Odin request and VMX copy. Claim54 stands; purchase unverified.
+
+376 COPY INTENT: corrected native method spelling to GetAsAtkComponentDropdownList
+and wait for AgentShop readiness/empty labels before category inspection. ADS26
+build passed0errors/two existingwarnings; exactstartup20:59:37.935;165/165 focused
+ADS tests passed including combined row proof. VMX376 built, marker-only since
+370's47tests. Diff-checks pass. Save fresh ordinary Odin request/copy376 conditional
+on the same bound idle guards/full-config comparison. Native category selection
+and purchase remain unverified; no certificate spend has occurred.
+
+ADS26/VMX376 INTENT:375 snapshot20:53:42.373 proves visible count3 describes
+only the first reward category: IDs7545/9460/27923, exact prices1/1/2, callbacks
+0/1/2 matching the global Agent receive array. Odin is absent from visible arrays.
+Select the requested item's localized ItemUICategory using a unique live dropdown
+label and its declared native SelectItem; wait for target row before validation.
+For owned Jonathas1769813 only, validate visible rows against their global receive
+callback indexes, displayed certificate identity and exact price. The native
+combined shop name is blank; verified owned exchange/menu replaces that name
+check only for this guarded currency kind. Existing shops retain name checks.
+One regression covers filtered/global mapping and mismatched IDs/prices/counts.
+Build26/376 and test; runtime category transition and purchase still unverified.
+
+375 COPY INTENT: both builds pass0errors/existing warnings;ADS25 exactstartup
+20:52:49.306 observed;diff-check passes. Save fresh standalone Odin request only
+with bound idle/no-receipt guards and complete semantic comparison, then copy375.
+Capture combined row data; unchanged validator prevents spending on unknown layout.
+
+ADS25/VMX375 DIAGNOSTIC INTENT:374 native20:50:22.002 shows3325AtkValues,
+blankAgentShopName,33Agent receive rows, total33atvalue3 but3atvalue4. Currency
+icon65059 uniquely identifies21172; displayed balance54at86. Odin isAgent row12,
+not its sheet row8. Existing validator therefore correctly rejected this combined
+shop before callback; cleanup complete20:50:23.026. Extend the same bounded
+snapshot to existing item/price/callback arrays and target offsets across3400
+values maximum, leaving purchase validation unchanged. Build25/375, then one
+fresh guarded request after matchingstartup/idle checks. No spend or receipt.
+
+374 COPY INTENT: ADS24 build passed after correcting a local diagnostic variable
+name; exact24startup20:49:41.854 observed. VMX374 built with existing warnings.
+Save one fresh standalone Odin request/copy374 only with the bound idle guards
+and full semantic comparison. This attempt gathers the rejected currency-window
+layout and must not buy unless all existing validators pass. Cap4/spent0; claimed54.
+
+ADS24/VMX374 DIAGNOSTIC INTENT:373 dispatched20:47:21.955. ADS23 opened the
+currency shop20:47:28.491; native readiness arrived, but existing row-layout
+validator rejected it20:47:28.656. No purchase callback or receipt. Both shop and
+parent menus closed by20:47:29.671. Add one bounded mismatch snapshot of value
+counts/header, currency identity, shop name and receive rows to establish the
+actual layout before changing validation. Build ADS24 and marker-only VMX374;
+do not infer transaction success or change cap4/spent0. Prior tests164ADS/47VMX.
+
+373 BUILT / ADS23 WATCHER RECOVERY: both builds pass0errors/existing warnings;
+164/164 ADS tests pass including currency-kind/confirmation checks. ADS23 reload
+20:45:43.110 failed on the observed transient ADS.json build lock. Trigger settled
+DLL once, verify exact23startup, then fresh guarded Odin request with unchanged
+cap4/spent0 and no pending match/purchase/acquisition. VMX373 marker only since
+370's47tests; no battle behavior changes. No certificate spent yet.
+
+ADS23/VMX373 INTENT:372 dispatched20:43:19.191. ADS22 selected localized exchange
+entry0 at20:43:27.419; native ShopExchangeCurrency opened, but certificate offers
+still expected ShopExchangeItem. Timed out20:43:42.723 with acquired0/no receipt;
+ADS closed currency shop and parent menu20:43:43.724. Add a certificate-specific
+currency-exchange kind using the existing native currency validator, callbacks
+and preview-confirmation token. No callback values guessed. Build/test ADS23 and
+marker-only VMX373; preserve cap4/spent0 and verify idle before fresh request.
+
+372 COPY INTENT: ADS22 exact startup20:42:43.182 confirmed after one settled
+watcher trigger. Save a fresh ordinary standalone Odin acquisition only with
+bound unpaused/pending0/sequence85/no receipt or handoff/cap4, semantic-compare
+the complete config, then copy built372. Claim balance54 is not purchase credit.
+Observe unique localized menu selection, live shop validation and exact2certificate
+receipt; preserve this operation through its terminal result and ADS cleanup.
+
+372 BUILD READY / ADS22 RELOAD CHECK: both builds pass0errors/existing warnings,
+diff-checks pass. ADS reload20:41:47.937 failed; read its exception and, only if
+the known transient ADS.json build lock, trigger the settled DLL watcher once.
+No VMX copy or fresh request before exact ADS22 startup. Native claim0->54 is
+verified; purchase/registration remain unverified. Existing164ADS/47VMX tests
+cover unchanged policy code;22changes only native menu recognition.
+
+ADS22/VMX372 INTENT:371 dispatched20:39:10.075; native city transfer27 accepted
+20:39:18.783, arrived133 at20:39:25.321, approached/interacted with Jonathas
+20:40:11.956. Certificate balance rose0->54 at20:40:13.500: first claim verified.
+Purchase failed20:40:20.919 on the outer ENpcData menu step, acquired0/no receipt;
+ADS sent owned SelectString cancel. Jonathas directly enters CustomTalk, so
+recognize that outer step only when its unique localized exchange entry is
+actually visible; then select that entry for the SpecialShop link. No guessed
+callback index. Build ADS22 and marker-only VMX372; no new purchase until loaded
+ADS22 and saved empty receipt/handoff are verified. Cap4/spent0 remain.
+
+371 COPY INTENT: ADS21 startup20:37:39.114 verified;164/164 focused ADS tests
+passed including city transfer/no-arrival/cancellation/character change. Both
+ADS21 and VMX371 builds pass0errors with existing warnings;diff-checks pass.
+VMX371 changes only its marker since370's47/47 tests. Save one fresh standalone
+Odin acquisition with cap4 unchanged, conditional on pausedfalse/pending0/seq85/
+no receipt or handoff; semantic-compare everything else before copy371. Observe
+city transfer and actual vendor dialogue. No battle or certificate spend inferred.
+
+ADS21/VMX371 INTENT:370 loaded and dispatched its saved Odin request; ADS20
+resolved the exact2certificate offer but failed20:33:05.048 with no-route before
+travel/callback/spending. Receipt/handoff empty; cap4/spent0/pendingMatch0 remain.
+Old Gridania133 lacks a main aetheryte, while Gridania2 is in132. Extend ADS's
+existing route with main2 -> Lancers'Guild27 -> actual133 arrival, then ordinary
+NPC navigation. Transfer IDs verified against Aetheryte sheet. Add cancellation,
+character-change and no-arrival regression cases. Build ADS21 (watched) and
+VMX371 marker via vmx.bat; test before saving one fresh Odin request/copy.
+
+370 NATIVE ACQUISITION INTENT: ADS20 exact startup20:31:52.781 confirmed after
+settled-output watcher trigger. VMX370 built/tested47/47. Fresh bound state still
+unpaused/pending0/sequence85 with no purchase/handoff. Set only this character's
+certificate cap to4 and save a standalone, not-yet-dispatched Odin request using
+the ordinary acquisition model, then copy370 to R:\parasite\vmx\VERMAXION.dll.
+Full semantic comparison must preserve all other config/progress. This reload
+reconciles/dispatches the saved acquisition, not another Stage24 admission. Owned
+Odin or its item prevents a purchase. Completion pauses Verminion after registering;
+no stage composition is changed. Require exact370startup and actual ADS evidence.
+
+ADS20 RELOAD RECOVERY / VMX370 BUILT: ADS watched build attempted reload20:25:06
+but its manifest was still locked by the build. No ADS20 startup was observed.
+Build is finished; trigger the existing watcher once on the settled DLL, then
+require exact ADS20 startup. VMX370 vmx.bat build passed0errors/two existing
+NU1601 warnings;47/47 focused Verminion/dependency/Lifestream/UI-close tests pass.
+No vendor dispatch, VMX copy, certificate cap change or spend yet.
+
+VMX370 BUILD INTENT: certificate cap/receipt accounting and separate Odin/Cursor
+acquisition actions added. Claims/travel/menus/purchases stay in ADS; the existing
+saved acquisition identity now distinguishes standalone registration and completion.
+Default cap0; no runtime settings changed. UI excludes shared-form Minion of Light
+until form selection is proven. ADS20 build passed0errors/two existing obsolete
+warnings;160focused shop/catalog/IPC tests passed. Build VMX370 via vmx.bat and
+run focused accounting/lifecycle tests before choosing a native acquisition test.
+Do not copy370 yet: a reload would otherwise restart the selected Stage24 test.
+
+ADS20 BUILD INTENT: add opt-in Jonathas visit to the existing guarded runner,
+managed certificate balances, localized unique exchange-menu selection, owned
+Talk advancement/cleanup, and separately reported positive claim deltas. Actual
+post-dialogue funds and saved caller authorization still gate purchases. No
+vendor dispatch selected yet; R7 VMX369 is failed/idle after UNKNOWN85. Build
+the established watched x64 ADS output and run focused shop tests. VMX certificate
+cap/accounting and an explicit shortlist acquisition action are the next source
+batch. Native claim/menu/receipt behavior remains unverified.
+
+ACHIEVEMENT ACQUISITION APPROVED: user selected "Include ADS claims and purchases"
+after the cost/maintenance interview. Extend ADS's existing guarded purchase flow
+and VMX's character-owned purchase accounting with a separate certificate cap.
+All travel, NPC dialogue, claims, purchases and cleanup remain ADS-owned. Defaults
+stay zero; no blanket purchase of the reviewed catalogue or unverified roster swap.
+369 match85 failed19:11:08.471 when an overlapping tower click selected a low-HP
+Gentleman. No observed result: UNKNOWN/uncredited. Native duty exit observed by
+ADS19:12:50.495; bound pending0/sequence85/attempt1/mask8388607,81matches/32wins,
+unpaused. No VMX reload until a deliberate next attempt is recorded. ADS source
+build is watched by R7 at Z:\ADS\ADS\bin\x64\Debug\ADS.dll; its existing route
+and version0.9.4.2 remain in scope. Current loaded/source VMX369, ADS19.
+
+369 FRESH ATTEMPT: exact startup19:05:56.005/dispatch19:05:59.971; entered24
+19:06:19.723. Native readiness was already outside84, so369started match85;
+84remains UNKNOWN/uncredited (no observed outcome/closure). Bound pausedfalse/
+pending85/sequence85/attempt1 verified; Bahamut14722HP at19:07:54.479. Keep this
+admission intact through outcome.369is both current source and deployed DLL;
+no build pending.46/46relevant tests passed. Result-preserving cleanup's native
+replay remains pending because369did not find the old result still open.
+All12achievement-vendor items are reviewed; shortlist in previews. No ADS edits
+or certificate actions in this continuation. Vendor/claim implementation remains
+ADS-only, and no FATE minion is required by the current roster.
+
+369 BUILT / RESET-COPY INTENT: final vmx.bat0errors/two existingNU1601warnings;
+46/46relevant tests and diff-check pass. Fresh bound config pausedtrue/pending0/
+sequence84/attempt3/81matches/32wins agrees with automatic19:00:16.473failure;
+no later manual FULL STOP in bounded log. Reset only automatic pause and attempt
+count with full JSON semantic comparison and exact pre-write text check, then
+copy369. It must preserve any visible result through cleanup and credit nothing
+without a matching admission. Reconcile exact369startup and resulting state
+before another reload. All caps, spending and character binding remain intact.
+
+368 FAILED SELECTION /369 FIX INTENT: match84failed19:00:16.473, no result
+credited, automatic third-attempt pause. Intended tower unit40007106but native
+click hit40007109; both were400HP Gentlemen in19:00:12.291snapshot. Existing
+exact-single guard rejected a valid overlapping friendly unit.369uses existing
+nonexact-single selection for towers only, verifies actual selected unit alive
+and>=halfHP, then tracks that actual ID for movement/arrival. Other mechanics
+retain exact identity. No new retries or selection transport. Initial369guidance
+build passed before this addition; rebuild and run relevant tests. Review
+automatic pause against fresh config/log, reset only its pause/attempt count,
+then copy369: pending0 means passive observation of any ongoing battle/result,
+never a replacement admission inside it. New admission only from ordinary native
+readiness after it ends. UNKNOWN84 must remain uncredited. No ADS/currency edits.
+
+368 LOADED /369 PREVIEW INTENT: exact368startup18:55:57.941, dispatch18:56:01.874;
+fresh24opening observed. Preserve its third admission through result closure.
+369aligns stale UI/admission text with implemented circle/tower responses and
+the540s development window; correct Stage20preview's obsolete fresh-start gap
+using335's recorded first mixed-opening clear. No tactic changes in369yet.
+Build via vmx.bat before any copy; marker-only/guidance changes need no repeated
+unit tests after368's46/46. No claim of Stage24completion or certificate support.
+
+368 BUILT / COPY INTENT: final vmx.bat0errors/two existingNU1601warnings;
+46/46relevant tests and diff-check pass.367match83control cutoff18:53:46.869,
+explicit Defeat18:55:14.266 credited81matches/32wins; closure18:55:17.758.
+Bound pausedfalse/pending0/sequence83/attempt2 verified. Copy368for third reviewed
+attempt, preserving configuration. Verify exact loaded marker and near-target
+dodges/tower arrivals across the extended bounded control window. No reset of
+attempt limits, accounting, roster caps or acquisition settings.
+
+368 ADDITIONAL TACTIC INTENT: first368build0errors/two existingNU1601warnings;
+46/46Verminion/task-dependency/Lifestream/UI-close tests passed.367 now verifies
+stable circle destinations and a single tower movement: second tower order
+18:53:20.176, verified movement18:53:22.024, arrival18:53:25.499at286HP, warning
+cleared18:53:40.239. No repeated selection while travelling. Boss damage is slow:
+escape sides chosen from tiny army-center offsets spread the fight across the
+board. Choose the same six-yalm escape ring's point nearest the attack target;
+do not change inferred radius. Extend development control360->540s within the
+existing600s result timeout, since367reached adds near its control cutoff.
+Add target-direction geometry assertion. Rebuild368and run focused checks.
+Preserve367admission until result/closure; no config, certificate or ADS changes.
+
+368 INTENT WHILE367RUNS:367startup18:47:22.761/dispatch18:47:26.655; fresh
+Stage24opening observed. Preserve this admission through its own result.
+Fix observed366startup evidence loss: ForceStop's generic UI cleanup can preserve
+LovmResult only for the selected Verminion debug reload; suppress its fallback
+ESC in that case so Verminion reads/closes the result. Explicit FULL STOP keeps
+normal cleanup and pausing. No accounting rules changed. Build368and relevant
+tests; do not copy over367's unresolved fight. Native reload-result replay pending.
+
+366 RECOVERY CLOSED UNKNOWN /367 COPY INTENT: startup cleanup closed an already
+visible LovmResult at18:44:20.825 before Verminion sampled its outcome. At
+18:44:25.910 native duty identity was0 and recovery failed as ended without
+observed result. Thus82is closed with UNKNOWN outcome and no credit, not a
+verified defeat. No repeat admission occurred.367vmx.bat passes0errors/two
+existingNU1601warnings;diff-check passes. Copy367with bound pausedfalse/pending0/
+sequence82/attempt1; no settings edit. New attempt tests stable escape points and
+one verified movement order per tower. Preserve startup cleanup's result-evidence
+gap as a remaining lifecycle issue, particularly for reloads on a result screen.
+
+365 FIRST TOWER PROTECTION VERIFIED /367 REPLAY INTENT: compare full native
+party snapshots18:41:20.625 and18:41:29.267 around18:41:26.663tower disappearance.
+Occupant4005169E:400->42HP. Other7units retained identical HP except one248->190
+(58), so none took the358tower hit. This verifies one occupied tower resolution,
+not the whole stage.366 remains in passive orphan-result recovery.367 changes
+only compiled reload marker for the corrected circle/single-tower replay after
+that recovery finishes. Build367; do not copy before explicit uncredited result
+closure and matching pausedfalse/pending0/sequence82/attempt1.43relevant tests
+passed on identical366battle code; do not repeat them for marker-only input.
+
+366 LOADED FOR RECOVERY: exact startup18:44:17.036; dispatch18:44:20.904;
+resumed24passively with pending0. No additional combat admission. First365tower
+occupant was400HP at18:41:20.625 and42HP at18:41:29.267 after tower clearance;
+the other minions' protection still needs a paired full-party comparison.
+365first circle left the first four attackers at400HP in18:38:59.520 readback,
+but a newly spawned replacement took358damage. Later circles lost units while
+the escape point reversed.366's stable destination/travel fixes await fresh run.
+
+366 BUILT / PASSIVE RECOVERY COPY: final vmx.bat zero errors/two existing
+NU1601warnings;43/43relevant tests and diff-check pass. Copy only when bound
+config remains pausedfalse/pending0/sequence82/attempt1. This reload reconciles
+the abandoned live battle; it must neither send combat orders nor credit its
+result. No settings changes. Next exact366 startup and uncredited result closure.
+
+365 TOWER ARRIVAL /366 RECOVERY INTENT: first tower at(5.980,9.220) appeared
+18:41:06.724. Individual4005169E arrived18:41:14.759 at(5.655,9.508),HP400/400;
+warning cleared18:41:26.663. Second tower appeared18:41:41.757 at(8.470,-6.620).
+The chosen unit was travelling toward it, but repeated re-selection failed at
+18:41:57.771 and abandoned82without result. Bound pausedfalse/pending0/seq82/
+attempt1/80matches/32wins verified. Add to366: once single selection and its
+movement click are verified, let that order finish rather than selecting again;
+reassign on death or an interrupting circle. First366build passed before this
+addition, so rebuild and rerun43tests. Copy366 ONLY for existing passive orphan
+result reconciliation; no new admission or credit. Preserve earned counters.
+After positive uncredited result closure, a new marker is required for replay.
+
+365 LOADED /366 INTENT: exact365 startup18:37:46.172; dispatch18:37:50.040;
+entered24at18:38:09.968. Native circle at18:39:54.557(-1.220,-3.690) caused
+successive escape destinations(-5.463,-7.933), then(4.780,-3.690), then back;
+observed selection+movement clicks completed, but this reversal is unsafe.
+366 retains one destination per native circle and prioritizes an exposed anchor
+instead of a nearby denser group outside it. Update Stage24 preview to implemented
+but unverified responses. Build/test366; preserve365's ongoing admission through
+positive result/closure before copy. No victory or tower protection claim yet.
+
+365 BUILT / RESET-DEPLOY INTENT: vmx.bat zero errors/two existing NU1601
+warnings;43/43Verminion/task-dependency/Lifestream tests and diff-check pass.
+Regression setup now observes the native unit baseline before requesting a
+replacement, matching the production lifecycle. Fresh config still shows the
+automatic pause/pending0/sequence81/attempt3 and matching spending caps; bounded
+log window has explicit defeat+closure+attempt-limit failure and no later
+manual FULL STOP. Reset only that automatic pause and stage attempt count,
+validate full JSON equivalence except those fields and recheck raw text before
+write, then copy365 to R:\parasite\vmx\VERMAXION.dll. Next verify exact loaded
+marker, dispatch, native dodge/tower orders and actual position readbacks.
+
+365 INTENT: reconciled364match81 explicit Defeat18:31:03.169, credited80matches/
+32wins; closure18:31:06.776 and automatic third-attempt pause18:31:06.785.
+Bound account+debug-character pending0/sequence81/attempt3/mask8388607 verified.
+364paired red-circle image18:27:18.420 matches slot11gtae at(-0.020,0,11.070),
+active18:27:15.958..18:27:23.000; tower identity already visually confirmed363.
+Complete the interrupted source edit: cancel stale pending orders on native omen
+transitions, dodge exposed groups with conservative clearance, single-select one
+healthy Gentleman for towers and verify arrival. Hold ordinary movement while
+warnings exist; allow bounded summons. Remove image preparation delays/unused
+request state. Ground reads continue beyond the64-sample logging cap. Geometry
+regression includes arena edges and replacement-capacity accounting. Build365
+via vmx.bat and focused tests before deployment. Reviewed automatic failure can
+be reset for this changed tactic only after checking no later manual stop;
+preserve every other character/config/progress/spending field. Runtime response
+and clear remain unverified; ordinary Stage24 admission stays guarded.
+Achievement review: all12Jonathas items considered; Odin/Cursor/WHM Light guide
+alternatives displayed. No FATE requirement. ADS certificate claims/purchases
+still open; no certificate spend/config change occurred.
+
+364 BUILT / DEPLOY INTENT: vmx.bat zero errors/two existing NU1601warnings and
+diff-check pass; preceding363relevant suite42/42.363match80 Defeat18:25:10.191,
+credited79matches/32wins; closure18:25:14.140. Native slot14 path
+vfx/omen/eff/m0117_trap_01s.avfx appeared18:22:59.986 at(5.66,0,2.60),
+scale(3,7.2,3),cleared18:23:20.150. Existingimage18:23:07shows a tower to the
+right of center stone, consistent with that position during the sole active
+ground effect. Later towers20seconds each at(8.75,9.10),(12.23,-3.63),(-11.90,-9.41).
+Short gtae omen remains7seconds/~17s cadence; its paired image still needed.
+Copy364 only pausedfalse/pending0/sequence80/attempt2; no configuration edits.
+
+363 NATIVE GROUND READ VERIFIED /364 INTENT: startup18:20:34.546, dispatch
+18:20:38.414. First empty collection18:21:03.534;slot11path
+vfx/omen/eff/m0117_gtae_01s.avfx at(-0.62,0,11.19),scale(3,7.2,3)
+18:21:29.950,removed18:21:36.951;nextsamepath(-9.62,0,3.02)18:21:47.014.
+Thus native classes, ownership, resource/path, coordinates and lifecycle resolve.
+Image18:21:32.374 was subsequently overwritten by unrelated selection retry
+at18:21:57; no visual identity claim from that artifact.364 suppresses only
+Stage24 selection-retry images, preserving paired ground snapshots at existing
+path. Build364; preserve363match80 through closure. No tactic change yet.
+
+363 BUILT / DEPLOY INTENT: final vmx.bat zero errors/two existing NU1601warnings;
+42/42 Verminion/task-dependency/Lifestream tests and diff-check pass.362match79
+Defeat18:19:43.155 credited78matches/32wins; closure18:19:46.981. Bound
+pausedfalse/pending0/sequence79/attempt1 verified. Copy363 without settings edits.
+Next verify director ground paths/coordinates against its bounded images; no
+warning or tower tactic is inferred yet. All24-stage completion remains open.
+
+363 REVIEW: first build zero errors/two existing NU1601 warnings. Before copy,
+also log the first empty ground collection and dispose the scoped process/module
+lookup's process handle. Rebuild363 and diff-check;362match79 still unresolved
+at18:17:27, focused add2124HP. No runtime or configuration changes yet.
+
+362 LOADED /363 INTENT: exact362 startup18:14:28.413, dispatch18:14:32.283,
+entered24at18:14:52.635; code captured18:14:57.700. NativeE7CA10 takes an
+effect ID and x/z, calls8588E0, stores VfxData in director+718[index*8],
+registers its listener atdirector+620 and removes/clears it on ID0.390630
+reads VfxData+1B8 then writes matrix atinstance+20..50 (translation+50).
+363 reads slots11..29 of the proven30-slot array on framework thread, checks
+published VfxData table215ED80 and VfxResourceInstance215ED70, listener ownership,
+finite arena coordinates, then declared resource/path fields. At most64changed
+samples,4distinct-path images in existing360s probe; no retained pointers or new
+hook. No hazard semantics yet. Replace604image trigger with these ground effects.
+Build363; preserve362match79 through explicit result/closure before copying.
+
+362 BUILT / RESET-DEPLOY INTENT: vmx.bat zero errors/two existing NU1601 warnings;
+diff-check passed.361match78 explicit Defeat18:12:51.730 credited77matches/32wins;
+closed18:12:55.624 with automatic third-attempt stop. Bound pausedtrue/pending0/
+sequence78/attempt3 verified18:13:56; no later manual stop in bounded evidence.
+Reviewed these failures; next diagnostic follows actual native effect calls.
+Reset only this automatic pause and attempt count, compare full JSON semantics
+and exact pre-write text identity, then copy362. Preserve all progress/spending.
+
+361 LOADED /362 INTENT: startup18:07:54.325, dispatch18:07:58.235, entered24
+18:08:18.265;24576code bytes captured18:08:23.314.30VfxData entries include
+facility/tutorial markers, so do not assume tower ownership. NativeE77FD0 creates
+by ID through858CF0, applies a matrix through390630, registers a director listener.
+362 replaces the large capture with4096remaining director code bytes atE7BBD0,
+1024at the observed858CF0call target,128at390630; gated to observed setupRva
+E75BD0/content800A and image bounds. Never invoke these unknown methods.
+Build362; preserve361match78(third attempt) through closure before deployment.
+Match77 add HP was564in last snapshot then absent while other add remained;
+only target transition is directly verified, not an exact zero-HP death sample.
+
+361 BUILT / DEPLOY INTENT: vmx.bat zero errors/two existing NU1601 warnings;
+diff-check passed.360match77 Defeat18:07:10.561 credited76matches/32wins,
+closure18:07:14.504. Its target switched from the focused add back to Bahamut
+before defeat (boss9990HP); add-target transition now observed. Copy361 only
+with pending0/sequence77/attempt2/pausedfalse; no configuration changes.
+Next inspect expanded code in memory, retaining ordinary Stage24 admission block.
+
+360 LOADED /361 INTENT: exact360 startup18:02:11.084, dispatch18:02:14.950,
+entered24at18:02:34.724. Corrected guard captured4096code bytes18:02:39.763.
+In-memory capstone inspection shows30VfxData pointers at director+6C0, ticked
+by virtual294(E762F0) through390870;390B80 is published VfxData.SetVfxDataListenner.
+This is separate from the inspected scene list. No object-memory casts added.
+The first window ended during update routineE76820.361 widens this same once-only
+executable-code window to24576bytes to include its nearby update/effect routines.
+Build via vmx.bat; preserve360admission through result closure before deployment.
+
+360 BUILT / DEPLOY INTENT: vmx.bat completed with zero errors and the two
+existing NU1601 warnings; diff-check passed.359 match76 explicitly Defeat at
+18:00:17.712, credited75matches/32wins; closed18:00:21.683 with review stop.
+Bound pending0/sequence76/attempt1/stage24 and pausedfalse verified18:01.
+Copy360 without configuration changes. Next verify exact startup and capture
+the bounded native director code through the corrected content-type guard.
+Achievement alternatives remain reviewed/displayed; ADS certificate handling
+is still unimplemented. No certificate claim or purchase is authorized by caps.
+
+359 LOADED /360 INTENT: startup17:55:54.771, dispatch17:55:58.663, entered24
+17:56:18.700. Native director is now event800A0003 but same verified tableRva
+21D7330/slot2E75BD0. Low EventId entry changes across battles;359's full-ID guard
+therefore correctly produced no code read, but was too specific.360 checks the
+stable800Acontent-type half instead. No other behavior changes. Build360 and
+diff-check; previous359relevant suite42/42. Preserve359match76 through closure.
+No warning semantics established; active log57.3MB at17:58, below100MiB cap.
+
+359 BUILT / RESET-DEPLOY INTENT: vmx.bat0errors/two existing NU1601warnings;
+42/42relevant tests and diff-check pass.358match75 Defeat17:53:45.869 credited
+74matches/32wins; closure17:53:49.865/automatic third-attempt stop17:53:49.874.
+Observed regroup orders during reinforcement stream17:51:27.954/17:52:48.522;
+actual group recovery remains unverified. Timeline states observed3/6/13 only;
+0static/910actor/0director callbacks. Bound pausedtrue/pending0/sequence75/
+attempt3/stage24 confirmed17:55:16; no later manual stop. Reviewed this failure;
+359 changes the state-discovery probe using verified native class/code addresses.
+Reset only automatic pause/attempt count with full JSON equivalence/raw identity
+check, then copy359. All earned progress, caps and character binding stay intact.
+
+358 LOADED /359 INTENT: startup17:49:17.927, dispatch17:49:21.682. Native
+director17:49:46.651 event800A0001/content7/tableRva21D7330 exactly matches
+ClientStructs main ida/data.yml VerminionDirector. Class overrides cluster at
+E75BD0..E762F0; slot2=E75BD0.357/358 only read declared vtable addresses, no
+unknown function calls.359 records one4096-byte executable-code window at
+that live slot2, bounded to this process's main executable, once per probe via
+existing log. Use existing installed Python capstone for in-memory inspection;
+no new tool/file, signature, hash, dependency or character-memory dump. This
+locates the native battle-state owner after casts/scene/director updates failed.
+Also reset observing flag on probe initialization failure. Build359; preserve
+358match75 to result closure. Timeline's initial native state0/0/0,slot0=3.
+
+358 BUILT / DEPLOY INTENT: vmx.bat0errors/two existing NU1601warnings;42/42
+Verminion/task-dependency/Lifestream tests and diff-check passed. Verified bound
+pausedfalse/pending0/sequence74/attempt2/stage24 at17:48:56. Copy358 without
+configuration changes. Verify its exact marker, independent regroup cadence,
+actual unit arrival and new timeline/director data.357 never deployed.
+
+358 INTENT:357 built0errors/two existing NU1601warnings, not copied.356match74
+Defeat17:46:11.775 credited73matches/32wins; closure/review stop17:46:15.359.
+Probe ended0static/771actor/0director samples. Source review found regrouping
+shares bossWaveUtc with frequent reinforcements; waves can indefinitely postpone
+its15s threshold.358 gives24 its own transient regroup timestamp, leaves12's
+timing intact and reuses the existing policy at6rather than10yalms separation.
+354 observed units stopped around(6,2) while boss/attacking party were(15,4),
+so the old threshold also missed them. Focused policy regression extended.
+Retain357's bounded native timeline/director identity reads. Build358 through
+vmx.bat and deploy only at bound closed74/pending0/pausedfalse/attempt2 boundary.
+
+356 LOADED /357 INTENT: exact356 startup17:41:59.283, dispatch17:42:03.074,
+entered24at17:42:23.090. Director hook initialized17:42:28.159 but no update
+samples through17:43:57(first attack cycle); do not infer warnings from it.
+Broader Verminion/task-dependency tests39/39passed.357 records up to64changed
+native Bahamut timeline states using declared Timeline fields, and once reads
+up to16Director identities plus their declared300-entry vtables, only addresses
+within this process's executable image. No unknown method calls, signature or
+raw instance-memory dump. These reads investigate missing mechanics, not tactics.
+Build357;356match74 remains owned until explicit result/closure. No config edits.
+
+356 BUILT / DEPLOY INTENT: vmx.bat0errors/two existing NU1601warnings;28/28
+focused tests and diff-check passed.355 match73 Defeat17:40:37.324 credited
+72matches/32wins; closure/review stop17:40:41.232. Bound pausedfalse/pending0/
+sequence73/attempt1/stage24 verified17:41:38. Copy356 without config edits.
+Next: exact356 marker and native director-update delivery/categories.355's
+one regroup command has not yet proven its isolated group's actual arrival.
+
+355 COVERAGE /356 INTENT: exact355 startup17:35:56.038, dispatch17:35:59.808,
+entered24~17:36:19. Scene walk includes all observed draw roots(2initial,10with
+army),439-447objects,382BgObject,24VfxObject,0Decal; complete within512bound.
+First604image's model paths are permanent arena assets; no warning identified.
+Stage24 isolated-group order observed17:38:18.119; actual rejoin still unverified.
+Inspect compiled ECommons3.2.0.17 DirectorUpdate (existing nine-argument full
+callback, unlike older local source). VMX has no prior initialization.356 reuses
+that hook for at most64framework-thread event/category/six-argument samples in
+the existing360s probe, disposes only its owned registration on cleanup. No new
+signature, dependency, external tool or gameplay inference. Build356; preserve
+355match73 through result closure before deploying. Achievement purchases pending.
+
+355 BUILT / RESET-DEPLOY INTENT: corrected a local-name compile collision, then
+vmx.bat0errors/two existing NU1601warnings;28/28focused tests and diff-check pass.
+354 match72 explicit Defeat17:33:49.121 credited71matches/32wins; closure17:33:53.080
+and automatic third-attempt stop17:33:53.088. Boss9990HP; no Stage24 clear.
+Verified bound pausedtrue/pending0/sequence72/attempt3/stage24 and no later manual
+stop. Reviewed failure; new355 tests scene coverage and isolated-group pursuit.
+Reset only this automatic pause and stage attempt count, preserving all other
+JSON semantics with exact pre-write identity check; copy355 afterward. Do not
+override manual FULL STOP or change spending, earned facts or character binding.
+
+354 LOADED /355 INTENT: exact354 startup17:29:20.695, dispatch17:29:24.440,
+entered24at17:29:44.389. First single selection001recipient17:30:08.156;
+second click added nearby partner17:30:08.426. Later second click added two
+recipients17:30:39.282. Group extension works; separated units can be left behind.
+636 repeats about5s apart with ordinary38HP losses; do not interpret every636
+as a large attack. First60417:30:49.609, clear image17:30:51.901 shows red circle
+with overhead orb near the right stone. Header/target-info hiding now verified.
+An attacker had already disappeared before first604; its meaning remains
+unproven and no reversed phase rule is justified. Scene still446objects/24VFX.
+355 adds declared object-table draw roots to the same512object/64effect scene
+probe, type/coverage counts, and model paths only at the two image snapshots.
+Reuse Stage12's existing isolated-group pursuit on24 with one regression update.
+Build355; preserve354's match72 through explicit result/closure before copy.
+
+354 BUILT / DEPLOY INTENT: vmx.bat0errors/two existing NU1601 warnings;
+diff-check and27/27focused lifecycle/Lifestream tests passed.353 match71 explicit
+Defeat17:25:54.492 credited70matches/32wins; closure/review stop17:25:58.133.
+Bound pausedfalse/pending0/sequence71/attempt2/stage24 verified17:29. Deploy354
+without settings changes. Next: exact marker, repeated boss-effect HP timing,
+selection001 recipients and first604 image. Clears remain1-23.
+
+354 INTENT: remove353's unproven636->604 gate-retreat state, preserving Stage19.
+353 stopped attacking after its second636 and never received an inferred ending
+604; boss stayed18089HP. Controls released17:24:03.519 at360s, admission71 still
+pending. Capture at most16repeated636/604 event HP/position samples and32selection
+001recipients within the existing actor hook. No gameplay meaning inferred.
+Move the single effect image to first604 and include underscore-prefixed Lovm
+panels in temporary hiding, with existing restore. Two-add image remains.
+Re-read both published Stage24 guides: Gentleman-only is explicitly supported;
+circles require avoidance, pillars require one healthy occupant. Build354 through
+vmx.bat; deployment waits for71 result closure. No new hook/signature/dependency,
+artifact, purchase or config change. Selection completeness still unresolved.
+
+353 CONTRADICTORY DAMAGE EVIDENCE: loaded17:17:39.680, dispatched17:17:43.359,
+entered Stage24 at17:18:03.459. Pending71 remains unresolved at17:22:53;
+69matches/32wins, clears1-23, attempt2, pausedfalse. Preserve admission to closure.
+At17:18:53.512 two attackers had400HP; first636 at17:18:58.645 was followed
+34ms later by42HP on both. At17:19:18.688 the next636 coincided with362->4HP
+on another unit. This contradicts calling636 an advance warning;604 meaning
+remains unknown. Do not reverse meanings without evidence. First retreat moved
+one attacker toward GateB while two remained near(-14.4,5); verified anchor
+selection is not proof the intended group moved. Reassess phase response and
+group selection before the next attempt. No source/runtime change yet.
+
+353 BUILT / DEPLOY INTENT: vmx.bat0errors/two existing NU1601 warnings;
+diff-check and27/27 focused tests passed.352 match70 Defeat17:14:44.666 credited
+69matches/32wins; closure17:14:48.565, review stop17:14:48.566. It returned to
+Bahamut (9080HP at17:14:38) with eight units; no campaign completion. Deploy353
+at bound pausedfalse/pending0/sequence70/attempt1; no settings/attempt reset.
+Verify actual636->604 retreat, gate arrival, survivor HP and resumed pursuit.
+
+353 INTENT /352 VISUAL EVIDENCE: exact352 startup17:10:22.891, dispatch
+17:10:26.604, entered17:10:46.564.63617:11:46.311; paired image/native snapshot
+17:11:58.714-729 shows red ground marking beside Bahamut;60417:12:01.461.
+Only extra visible Lovm addon was LovmTypeInfo (hidden/restored); header is still
+present, but this warning is visible. Screenshot-to-world fit from native stone/
+gate projections agrees within0.001pixel; the rough marking bounds do not prove
+a precise center/radius. Test a conservative gate retreat during636->604, reusing
+Stage19 phase interruption/retreat and holding new attack waves until604 arrives.
+Read every validated boss event before bounded-path logging deduplication. No
+timer-based resumption if604 is absent; existing observation/result timeouts apply.
+This is an experimental tactic, not verified dodge/tower handling; ordinary24
+stays blocked. Build353;352 pending70 must resolve before deployment.
+
+352 BUILT / DEPLOY INTENT: vmx.bat0errors/two existing NU1601 warnings;
+diff-check passed.351 match69 Defeat17:08:45.186 credited68matches/32wins;
+closure17:08:49.066 followed by automatic third-attempt stop17:08:49.082.
+Static creation0/actor860callbacks,13paths. Review changed352 capture (real
+visible addon enumeration plus later timing), reset only this automatic pause/
+attempt count after confirming no later manual stop, and copy352. Preserve all
+earned facts/caps/receipts and JSON semantics. Do not classify636 as a warning
+without the image. Minion of Light item6987 has ItemAction.Data[0]=67; WHM row69
+is separate, so registration/form-selection behavior still requires native proof.
+
+352 INTENT /351 IMAGE: exact351 startup17:03:58.602, dispatch17:04:02.335,
+Stage24 entered17:04:22.651. Effect63617:05:17.936, image17:05:20.281,604
+17:05:32.996. Image rendered but the boss remained under HUD; LovmStatus did not
+hide the actual header. Enumerate up to256loaded addons and temporarily hide
+visible Lovm panels during the existing capture, excluding result/ready/confirm;
+log actual names and restore through existing cleanup. Defer the single636
+image request until10seconds after the event, then existing2second preparation,
+to inspect closer to the observed15second damage event. Controls continue while
+the delayed request waits. No movement inferred.351 still owns pending69;
+build352 and await explicit result/closure before any copy or automatic-limit reset.
+
+351 BUILT /350 RESOLVED: vmx.bat0errors/two existing NU1601 warnings and
+diff-check passed.350 match68 Defeat17:03:02.410 credited67matches/32wins;
+closure17:03:06.000 and review stop. Faster pursuit delivered1.6second orders;
+selected add fell to18HP17:02:45.353 then disappeared, and Bahamut targeting
+resumed17:02:47.221 at9717HP. No zero-HP sample, so direct kill evidence remains
+limited. Static creation also delivered0callbacks;946actor callbacks/12paths.
+Deploy351 at pausedfalse/pending0/sequence68/attempt2 boundary for the first636
+image; no reset or spending. Current owned healer is Wind-up Ananta (cost20,
+speed2,200HP/250poppet healing); Amalj'aa58 also owned. These are not adopted
+strategies. Achievement Minion of Light remains the guide's faster healer option.
+
+351 INTENT:350's first boss effect636 at16:59:16.117 preceded604 and party
+losses16:59:31.309; this is correlation, not warning identity. Request one image
+on first636 through its existing actor callback, deferred to the battle service
+(no capture/reentrant UI mutation in the hook). Use the existing image artifact,
+hide/restore LovmStatus for this capture, and pair image with a native snapshot.
+Retain the separate single add-phase capture. No filename-driven gameplay.
+Build351 while350 owns its current admission; deployment waits for closure.
+
+350 LOADED: startup16:58:06.853, dispatch16:58:10.600, Stage24 entered
+16:58:30.753 after copy at pausedfalse/pending0/sequence67/attempt1 boundary.
+No configuration changed. Current admission remains unresolved; preserve it.
+The official LoVM guide confirms right-click specifies a ground destination,
+supporting the observed need to refresh moving-target pursuit rather than
+assuming an enemy-lock command. Static-creation and add-kill evidence pending.
+
+350 BUILT: vmx.bat0errors/two existing NU1601 warnings; diff-check and27/27
+focused lifecycle/Lifestream tests passed. Copy intent is the reviewed348 result
+boundary below, without settings changes. Require exact350 startup before using
+new pursuit or static creation evidence; no Stage24 clear has occurred.
+
+350 INTENT /348 RESOLVED:348 match67 Defeat16:54:28.555 credited66matches/
+32wins; closure16:54:32.116 followed by deliberate observation-review stop.
+Delayed background two-add image16:52:40.589 is readable; no warning identity
+established. All sampled scenes still24VFX/0decals. Add HP1110 remained unchanged
+16:53:45-16:54:23; snapshots show army trailing x4-12 while add moves x12-17.
+Commands land at the enemy's ground position but repeating full selection every
+five seconds loses pursuit. Reuse Stage12's existing1.5second pursuit decision,
+verified-group reuse and0.25second readback on24, preserving parties in melee.
+Retain349's creation-event probe and UI correction (349 built0errors/two NU1601
+warnings and diff-check passed, never copied). Build350, deploy only at bound
+pending0/pausedfalse/sequence67/attempt1 closed state; no attempt reset planned.
+
+349 INTENT:348 remains in its admitted observation. Previous completed probes
+delivered zero StaticVfxRun callbacks; replace that subscription with the existing
+StaticVfxCreate event, retaining the same window/64path/owner/thread bounds and
+cleanup. Report path/source only; constructor transforms cannot prove placement.
+No extra hook, dependency, retained native pointer or movement assumption. Correct
+Stage23's stale prerequisite text to its observed clear (special effect still
+unverified). Build349; do not copy while348's result is unresolved.
+
+348 LIVE: automatic third-attempt reset/copy succeeded with all other JSON
+semantics unchanged. Exact startup16:49:24.198, dispatch16:49:27.991, entered
+Stage24 at16:49:47.700. Native camera read6 initially, then10.5 at16:49:59.787
+after six background wheel events. Opening scene439objects/24effects/0decals;
+no truncation. Current match67 unresolved; await delayed two-add image/result.
+
+348 BUILT / DEPLOY INTENT: vmx.bat0errors/two existing NU1601 warnings and
+diff-check passed.347 was not copied. Reset only the reviewed automatic attempt
+pause/counter after verifying346's closure and no later user stop; preserve all
+other JSON semantics and confirm raw account text is unchanged before writing.
+Copy348 to R:\parasite\vmx\VERMAXION.dll, require exact348 startup and inspect
+camera distance/declared decals/delayed image. No certificate or vendor action.
+
+348 INTENT /346 RESOLVED:346 match66 explicit Defeat16:47:11.101, credited
+65matches/32wins; closure16:47:14.913, automatic third-attempt stop16:47:14.920.
+347 built0errors/two existing NU1601 warnings; diff-check passed, not deployed.
+Native source confirms scene Decal has texture/transform/visibility fields; the
+current scan excluded this ground-marking type. Include decals in the existing
+512object/64effect snapshot bound, no extra hook or sink. Retain347's camera
+and delayed background image. Build348, then review/reset only the automatic
+attempt limit at the verified closed boundary for this changed diagnostic.
+Do not override manual FULL STOP or change earned facts/caps/receipts.
+
+347 INTENT:346's PrintWindow image16:45:02.455 rendered the game at624x441
+without focus, but panels and narrow camera framing obscure the battlefield.
+The two-add snapshot fired immediately without hiding panels. Reuse existing
+boss camera zoom (six native wheel events with distance readback) for Stage24;
+prepare/hide panels and wait two seconds before its single image, restoring
+panels afterward. No mechanic IDs, new artifact, signature or movement rule.
+Build347 with vmx.bat; preserve346's pending Stage24 result. A further attempt
+requires review of its expected automatic third-attempt stop, never FULL STOP.
+
+346 LOADED: vmx.bat succeeded0errors/two existing NU1601 warnings; diff-check
+and27/27 focused lifecycle/Lifestream tests passed.344 match65 explicitly Defeat
+16:35:53.028, credited64matches/32wins; normal result closure16:35:56.555 and
+observation-review stop. Both adds remained alive (798/2280 and2124/2280);
+Bahamut10900/20000HP. Hooks released:0static/850actor callbacks,13paths.
+Verified bound pausedfalse/pending0/stage24/attempt2/sequence65 before copying346;
+no config edits, attempt resets, vendor action or new tactics. The pre-copy
+checkpoint insertion failed on line endings; this entry reconciles that gap.
+Exact346 debug dispatch16:41:55.915, entered Stage24 at16:42:16.441; current
+result unresolved. Actor callbacks arrive on framework thread. Preserve current
+admission through closure; inspect one-shot background two-add image when ready.
+Observed clears remain1-23; achievement alternatives remain researched options.
+
+346 INTENT:345 built0errors/two existing NU1601 warnings and diff-check passed,
+uncopied.344 reached the two-add phase16:34:39.966; initial Twintania HP2280 each,
+and existing targeting ordered one add from16:34:45.694. At16:35:12 boss10900HP,
+adds2202/2124HP; one-add kill/return not yet verified. Actor paths636/604 attach
+to Bahamut, but their mechanic meanings are unverified. Add one two-add phase
+image via existing verminion-control.bmp. In background use PrintWindow CLIENTONLY
+|RENDERFULLCONTENT on this process's window; never activate it or capture another
+window's pixels. Rendering may be blank and must be inspected before any claim.
+This uses the existing capture/artifact path, with no new tool or output file.
+Build346; preserve344 match65 until explicit result/closure. No new tactics yet.
+
+344 ACTOR CALLBACK PROOF /345 INTENT: exact344 startup16:31:16.963, dispatch
+16:31:20.638; match65 admitted16:31:33.454, entered16:31:40.822. Both existing
+ECommons hooks initialized16:31:45.855-857. First actor callback16:32:01.436
+frameworkThread=True. First paths comp_popf,chr_pop1t,lovm/eff/012,lovm/eff/016
+targeted minion Base472 at observed gate positions. Returned actor-VFX pointer
+interpreted as ECommons.VfxStruct had NaN scale/invalid transform; do NOT use
+that layout for actor effects.345 removes those raw transform reads and reports
+only resolved object-table caster/target IDs and positions. Static scene VfxObject
+layout remains verified for arena effects. Build345; keep344's match65 running
+through its six-minute observation/result. Warning identities still unknown.
+
+342 MATCH64 RESOLVED /344 COPIED: explicit Defeat16:29:15.601 credited
+63matches/32wins; closure16:29:19.265 followed by observation-review stop. No
+runningEffect rows observed during342's120second probe despite hook initialization.
+Verified pausedfalse/pending0/stage24/attempt1/sequence64 and latest automatic
+result-closure stop, then copied344 without config changes. Next: verify344's
+exact marker, callback delivery/thread, and later-phase evidence within360s.
+
+344 BUILT: vmx.bat0errors/two existing NU1601 warnings;27/27 focused tests and
+diff-check passed.344 remains uncopied. Its six-minute window and actor/static
+event readbacks are unverified;342 still owns match64.343 was built but never
+deployed. Preserve64 through its result and normal closure before344.
+
+344 INTENT:343 built0errors/two existing NU1601 warnings, uncopied. All120second
+control probes stopped above half Bahamut health and never reached a verified
+add/tower phase. Increase ONLY this debug observation's control window to360s
+(still within the existing600s result timeout), using one constant for service
+and effect observer and updating the existing UI. This avoids concluding warning
+reads are unavailable solely from early-phase sampling. Retain343's static/actor
+delivery diagnostics and all ordinary-admission gates/accounting rules. Build344;
+342 still owns unresolved match64, so no deployment until its explicit closure.
+
+343 INTENT:342 exact startup16:24:10.074, dispatch16:24:13.755, match64
+admitted16:24:26.622/entered16:24:34.153. Static VFX hook initialized16:24:39.188,
+but no runningEffect rows through16:25:57. Distinguish absent native callbacks
+from thread filtering; add bounded first-callback/thread/count evidence, and
+include ECommons' existing ActorVfxCreateEvent for attached effects. Keep native
+reads on the recorded framework thread,64path/120second bounds and unsubscribe/
+disable both owned hooks on every StopOwnedMovement path. No custom signature,
+dependency, sidecar or gameplay tactic. Build343; preserve342 match64 until
+its explicit result/closure. No additional attempt reset planned for this copy.
+
+341 THIRD-PROBE RESULT /342 COPIED: explicit Defeat16:23:29.200 credited
+62matches/32wins; closure16:23:32.702; automatic third-attempt stop16:23:32.718.
+Reviewed this diagnostic failure and selected342's changed event-based read.
+At16:24 verified bound pausedtrue/pending0/stage24/attempt3/sequence63/mask8388607
+and the latest operation was that explicit result-closure automatic stop. Cleared
+ONLY VerminionPaused and CampaignStageAttempts, with JSON semantic equality for
+all other data and raw-file identity checked before writing, then copied342.
+No manual FULL STOP overridden, earned facts/caps/receipts unchanged. Await exact
+342 startup and effect events.340/341 scene snapshots exposed only24permanent
+bg arena effects; no AreaObject or cast warning identities established.
+
+342 BUILT: vmx.bat0errors/two existing NU1601 warnings;27/27 focused tests and
+diff-check passed.342 remains uncopied pending341 match63. The existing event
+probe uses only framework-thread native reads and64distinct paths; runtime
+delivery and warning identity are still unverified. No additional vendor work.
+
+342 INTENT:341 exact startup16:14:19.568/dispatch16:14:23.206; Stage24 match63
+admitted16:14:36.098, entered16:14:43.212. AreaObject/cast diagnostics still
+empty; scene traversal succeeded439-445objects/24effects/unboundedFalse, but
+only permanent bg arena effects appeared through16:16:18.379. Sampling may miss
+short-lived warnings, or their effects may not share World.ChildObject.
+Use the already referenced ECommons StaticVfxRunEvent, backed by declared SDK
+VfxObject.Update, to read first occurrence of at most64effect paths during the
+existing120second window. Framework-thread/duty/owner checks; no effect writes,
+new dependency, custom signature or new log sink. Unsubscribe and disable this
+plugin's unused run hook at StopOwnedMovement. Build342; DO NOT deploy during
+unresolved341 match63. A subsequent diagnostic attempt requires review of the
+automatic third-attempt stop; never clear manual FULL STOP.
+
+339 RESULT CLEANUP VERIFIED: match62 explicit Defeat16:12:25.804 credited once
+as participation61matches/32wins, result closure16:12:29.349 and deliberate
+observation-review stop16:12:29.350. Saved pausedfalse/pending0/stage24/attempt2;
+no victory or Stage24 clear. The120second release preserved this result admission
+until resolution. Deploy built341 at this resolved stop for the third bounded
+probe, now with AreaObject/native-state/scene-effect diagnostics. No attempt reset
+or cap mutation; third failure retains the existing automatic limit.
+
+341 BUILT: vmx.bat succeeded0errors/two existing NU1601 warnings; diff-check
+passed. No tactics changed after339's27/27 focused tests.341 remains uncopied.
+339 verified control release at16:05:34.845 while retaining pending62; last
+known boss14540/20000HP. Result still pending as of16:10; live log is advancing,
+so silence alone is not a result. Preserve the admission until outcome/timeout.
+
+341 DIAGNOSTIC INTENT:340 built0errors/two existing NU1601 warnings and remains
+uncopied. Add scene VFX paths/positions/scales to the same Stage24 snapshots,
+using declared ClientStructs World/Object/VfxObject/resource members, bounded to
+512objects/64effects and local cycle detection. Ground warnings need not be
+ObjectTable entries or battle casts. No hook, signature, dependency, new log
+sink, scene mutation or mechanic-ID assumption. Build341; await339 match62's
+explicit outcome/closure before deployment. At16:07:20 pending62/attempt2,
+pausedfalse and60matches/32wins; controls released16:05:34.845.
+
+340 DIAGNOSTIC INTENT: the first120second Stage24 probe captured no casts or
+new tower EventObj entries. Existing snapshots excluded AreaObject and object
+state. Include AreaObject on Stage24 and native GameObject.EventState/instanceID
+in the existing bounded field snapshot. No inferred mechanic IDs or control
+changes. Build340; keep339's current second Stage24 probe uninterrupted through
+its explicit result. Do not deploy merely to collect a mid-battle sample.
+
+339 LIVE RECONCILIATION: exact339 dispatch16:03:14.692. Startup snapshot was
+already territory388/playingfalse/currentDuty0, not the orphaned native battle.
+Consequently normal debug dispatch started a SECOND Stage24 probe (entered
+16:03:34.810). This was not the intended passive recovery; do not describe it as
+that proof. Old match61 remains unresolved/uncredited; counters stayed60/32 and
+mask8388607.339 now retains the second probe's admission for explicit-result
+closure, then stops on defeat. Preserve the current battle. No config mutation.
+
+339 COPIED FOR RECOVERY: vmx.bat0errors/two existing NU1601 warnings;27/27
+focused tests and diff-check passed. Verified latest operation is335's automatic
+Stage24 cutoff, saved pausedfalse/pending0/stage24/attempt1/sequence61, then copied
+339 to the authorized DLL path. No config mutation, new admission or credit.
+Verify exact339 startup and passive result closure before another attempt.
+Stage23 special dispatched15:57:25.221 at3168/18000HP; one-second readback still
+showed8Gentlemen and no ATK/DEF buff, so dispatch is not verified ability effect.
+
+339 RECOVERY INTENT:335's Stage24 observation ended16:00:06.911 and abandoned
+match61 without a result. The native battle is unresolved.338 built0errors/
+two existing NU1601 warnings;27/27 focused tests passed; it remains uncopied.
+Correct the existing resume path: an in-progress battle with no matching saved
+admission receives no commands or fabricated admission. Observe only its explicit
+result, close it, then fail uncredited without a new dispatch. This is recovery
+of335's orphaned observation, not a new strategy attempt. After build/tests and
+fresh pausedfalse/pending0/automatic-cutoff evidence, reload339 for that recovery;
+never clear a manual FULL STOP. Keep all earned counters and purchase state.
+
+338 INTENT: update Stage20/23 guidance to their observed fresh clears. Retain
+337's Stage24 passive-result cleanup correction. Build with vmx.bat; do not
+replace335 during the unresolved Stage24 match61 merely to deploy this candidate.
+No vendor changes, certificate claims or spending. Versions unchanged.
+
+335 STAGE23 PASSED: first-attempt Victory15:57:42.862, credited60matches/32wins;
+result closure15:57:46.711. Fresh clears1-23. The guarded337 copy missed its
+two-second safe window and did not mutate the runtime. Stage24 match61 is now
+admitted; preserve it.335 still has the old120second observation cutoff;337's
+passive-result fix remains uncopied. Stage24 outcome/mechanics unresolved.
+
+335 STAGES21/22 PASSED: first-attempt Victories15:51:48.244 and15:54:44.426,
+credited58matches/30wins then59matches/31wins. Result closures15:51:51.830
+and15:54:48.129. Fresh clears1-22. Stage23 match60 admitted15:55:01.183;
+at15:56:25.229 eight Gentlemen deployed, Twintania14400/18000HP. Preserve
+this unresolved battle.337 remains built/tested and uncopied; its Stage24
+passive-result cleanup fix is not loaded. No achievement claim or purchase.
+
+335 STAGE20 PASSED: first fresh mixed-opening Victory15:48:52.236; credited
+57matches/29wins; result closure15:48:55.887. Four Wayward defenders and their
+special observed from the new admission, addressing the earlier mid-battle-load
+verification gap. Stage21 match58 admitted15:49:08.932. Fresh clears1-20.
+One guarded copy check found21 already admitted and correctly retained335.
+337 remains built/tested27/27 and uncopied. Copy only if fresh closure evidence,
+saved pending0 and unchanged run binding agree; otherwise keep the current fight.
+
+ACHIEVEMENT MENU RESEARCH: XIVAPI's game text sheet
+custom/001/CmnDefAchievementReward_00107 contains "Exchange achievement
+certificate." (row5), plus introductory certificate-award dialogue (rows10-13).
+This establishes localized text candidates, not the actual claim trigger/menu
+state. ADS's shop runner currently advances selection menus, not these Talk
+pages. Do not infer callbacks or successful token claims from sheet text.
+337 focused tests passed27/27. No ADS edits or runtime vendor action this context.
+
+335 STAGE19 PASSED: first-attempt Victory15:45:15.573, credited56matches/28wins;
+result closure15:45:19.238. Stage20 match57 admitted15:45:32.097. Fresh clears1-19.
+Airship bunker retained center1050HP while killing Gilgamesh, after the observed
+buff retreat and return.337 build passed0errors/two existing NU1601 warnings;
+focused tests running.337 remains uncopied because20 is already admitted.
+
+337 INTENT: code review found Stage24's120second diagnostic cutoff abandoned
+its pending admission while leaving the native fight unresolved, preventing a
+clean next reload. After120seconds release owned controls but retain admission
+for passive explicit-result observation within the existing600second timeout.
+A verified defeat closes the result and stops for mechanics review, without
+automatically repeating this development observation. FULL STOP/unknown result
+still abandon without success. No new persistent setting or retry mechanism.
+Build/test337; deploy only at a reconciled safe boundary.335 still owns Stage19
+match56; at15:43:59.731 boss3056/16000HP/center1050HP. Do not reload this battle.
+
+335 STAGE18 PASSED: explicit first-attempt Victory15:37:02.270, credited
+55matches/27wins. Stage19 match56 admitted15:37:18.683. Fresh clears1-18.
+Keep335 through the Airship bunker test;336 is built but not deployed.
+
+335 STAGE17 PASSED: explicit Victory15:34:04.901 on first attempt, credited
+54matches/26wins. Stage18 match55 admitted15:34:21.648. Fresh clears1-17.
+336 guidance build passed0errors/two existing NU1601 warnings and is not copied.
+335 continues uninterrupted; next new control evidence is18/19 results, then
+the Gentleman23 and bounded Bahamut24 observation. No additional vendor action.
+
+336 INTENT: guidance-only update to record335's first-attempt Stage16 clear.
+Same battle behavior. Build336 but keep335's Stage17 match54 uninterrupted;
+do not deploy a cosmetic evidence update over an unresolved battle.
+
+335 STAGE16 PASSED: first mixed-roster attempt produced explicit Victory
+15:31:09.182, credited53matches/25wins. Mammet Arcana attackers with4Zu defenders
+cleared; the preceding Zu-only run lost3times. Stage17 match54 admitted
+15:31:25.560. Fresh clears1-16. Keep335 running. Update guidance to this fresh
+result in the next source batch; one clear does not establish repeatability.
+
+335 STAGE16 OPENING: match53 verified6Mammets at GateB15:28:33.832, four Zu
+defender requests15:28:40-43 and interception15:28:56.269. Nasty Peck dispatched
+15:29:15.644. Enemy center stone reached0HP in15:29:55.792 snapshot while our
+center remained4935HP; final outcome still pending. Do not reload this battle.
+Achievement review cross-checked Companion stats through XIVAPI. Actual Jonathas
+shop1769813 encodes certificate Item21172 literally withCostType0/UseCurrencyType4;
+ADS therefore selects its Item balance path, not its virtual18 mapping. Installed
+ClientStructs documents21172 inCurrencyManager.ItemBucket. Need a native balance
+comparison before changing that path; no automatic claim/menu callbacks inferred.
+
+335 LOADED:27/27 focused Verminion/Lifestream tests passed. Cleared only the
+resolved automatic pause and Stage16 attempt count, verified JSON semantic
+identity otherwise, then copied335. Exact startup15:27:53.795 and dispatch
+15:27:57.580. Stage16 match53 admitted15:28:05.466, entered15:28:12.608.
+Observe this mixed composition before further changes. No achievement purchase.
+
+335 BUILT: vmx.bat passed0errors/two existing NU1601 warnings. Focused tests
+running.330 match52 lost15:25:49.906, left result15:25:53.484 and automatically
+stopped after3attempts15:26:03.604. Saved pausedtrue/pending0, matches52/wins24,
+mask32767/stage16/attempts3. No later manual FULL STOP in the bounded snapshot.
+After tests pass, fresh335 test may clear only this automatic pause/attempts;
+preserve earned facts, spending, receipts and settings. Require exact335 marker.
+
+335 INTENT:334 build passed0errors/two existing NU1601 warnings;26/26 focused
+tests passed, not deployed. Stage16's Zu-only first two attempts lost, with
+third match52 still pending at the last observation. Guide16 explicitly calls
+for Arcana-strength attackers (Kidragora or any Mammet), plus optional Odin
+support. Zu counters critters but lacks Arcana strength. Reuse existing mixed
+roster behavior:6Mammets/lane,4Zu defenders,40capacity reserve, the same guarded
+summons/interception/specials used on6/20. Both minions already acquired; no
+vendor work or new configuration. One focused regression covers requirements
+and attack/defense capacity. Build/test335; resolve52 before any deployment.
+
+334 INTENT: add the reviewed achievement-vendor guide alternatives to existing
+stage previews, with Odin/Cursor ownership and explicit ADS claim/purchase gaps.
+Update Stage15 guidance to its one clear in two attempts, distinguishing333's
+undeployed replacement change. No new configuration, roster requirement or
+purchase. Build334 through vmx.bat; leave330's unresolved Stage16 match52
+(third attempt, admitted15:21:40.369) uninterrupted. Match51 lost15:21:23.892.
+
+ACHIEVEMENT VENDOR REVIEW (2026-09-27): user explicitly requires considering
+Jonathas minions and readily claimable certificates. All NPC interaction,
+certificate claims, shop travel, buying and cleanup belong exclusively in ADS.
+Review https://ffxiv.consolegameswiki.com/wiki/Jonathas and ffxiverminion minion
+pages36/49/51/54/68/69/70/72/73/74/76/77/84/85/167/288. All12 listed minion items
+cost2certificates; Minion of Light and Wind-up Leader have multiple forms.
+Guide-backed shortlist: Odin76 (Monster,cost30,speed4) supports16/22 and appears
+in19; Cursor51 (Gadget,cost15) has50%DEF down15s and the23 alternate uses4Cursor+
+6Gentlemen; WHM Minion of Light69 (Poppet,cost10,speed3) heals100HP/150for poppets
+and is an explicitly harder healer alternative for24. Do not infer Verminion
+form control from overworld random/Grand Company summon behavior.
+Other reviewed roles: Beady Eye36 cheap230potency AoE special; Warrior of Light77
+230potency AoE special/highDEF; Nanamo84 AoE autos/low-HP selfbuff; Gilgamesh85
+AoE autos/300potency withdrawing special; Firion167 highHP/ATK,lowDEF; Goblin49
+enemy AP drain; Black Chocobo Chick54 delayed trap; Komainu288 trap disarm;
+leaders72/73/74 provide summon-speed/cleanse/slow utility. These are candidates,
+not verified substitutions or new required purchases. Prefer registered/inventory
+minions, buy only a selected requirement and never infer certificate balance.
+ADS source already maps virtual currency18toItem21172, discovers CustomTalk
+shop links and has guarded purchase receipts. No certificate-claim implementation
+found. Jonathas NPC1008145/CustomTalk721003 references shops1769813/1769845/
+1769846/1770948; actual menu path, claim action, balance and receipt need runtime
+verification. No achievement vendor action/spend occurred. No new cap/config.
+
+330 STAGE15 PASSED: explicit Victory15:12:57.322 on match49, its second attempt;
+credited49matches/24wins/mask32767. Fresh clears1-15. Stage16 match50 lost
+15:17:10.422; match51 admitted15:17:27.200, second attempt and unresolved.
+333 build passed and26/26 focused Verminion/Lifestream tests passed.333 remains
+undeployed; its Stage15 replacement correction is not part of the observed clear.
+Preserve330's current bounded run and pending result before any reload.
+
+333 INTENT: 330 Stage15 match48 lost15:08:37.500 with Odin389/17000HP. Healing
+regroup completed15:07:15.636 and special dispatched at4203HP15:08:15.964, but
+the final-phase snapshot shows a replacement still at the gate. Stage15 omitted
+the existing prompt-replacement path (otherwise four units or60seconds). Include
+15 alongside12/23/24 in that path and preserve the main army's pursuit timestamp
+when replacements depart. Keep initial eight-unit assembly/final movement guards.
+Extend the existing reinforcement regression with15, and reuse special-effect
+readback for15/23 (dispatch alone is not buff/withdrawal evidence). Build/test333;
+330 retains match49, second attempt, entered15:09:01.363. No config or copy now.
+
+330 STAGE14 PASSED: first-attempt Victory15:03:52.863, credited47matches/23wins.
+Stage15 match48 admitted15:04:09.666, entered15:04:16.878. Fresh clears1-14.
+Keep330 uninterrupted for the previously unverified Gentleman/Odin substitution.
+
+330 STAGE13 PASSED: first-attempt Victory15:00:55.687, credited46matches/22wins.
+Stage14 match47 admitted15:01:12.379, entered15:01:19.888. Fresh clears1-13.
+332 build passed zero errors/two existing NU1601 warnings and remains undeployed;
+only guidance/diagnostic changes beyond the working330 battle behavior. Continue.
+
+330 STAGE12 PASSED /332 BUILD INTENT: positive Victory14:58:00.555, credited once
+as45matches/21wins/mask4095. Final330 tactics cleared on their third attempt after
+two defeats, not a repeatability pass. Stage13 match46 admitted14:58:17.104,
+entered14:58:24.661. Keep330 running uninterrupted.331's radius/facing diagnostic
+was built but never copied.332 retains that small diagnostic addition and updates
+Stage11/12 guidance to the observed clears. Build only; do not replace the working
+campaign merely for guidance/diagnostic changes. No runtime config mutation.
+
+331 DIAGNOSTIC INTENT: 330 match43 lost14:49:34.684 at boss664/12000HP, all eight
+Gentlemen alive, roughly2.2-4.2yalms behind the boss at the final snapshot. The
+current fixed two-yalm melee suppression may not match this boss's actual size.
+Add native HitboxRadius and Rotation to the existing bounded minion snapshot
+line; do not infer a new attack threshold yet. Build331 (same330 tactics), then
+deploy only after a reconciled safe boundary.330's second match44 was already
+starting; preserve its result and bounded attempts. No added sink or file.
+
+330 LOADED: exact330 dispatch14:45:36.141; match43 admitted14:45:43.908. Eight
+Gentlemen deployed by14:46:57.298; boss11480/12000HP. Named boss target and camera
+distance10.5 retained. Rear-geometry correction needs an actual result; keep the
+bounded run uninterrupted. No new purchase, configuration or source candidate.
+
+330 DEPLOY INTENT: 329 match42 lost14:44:04.434; automatic three-attempt stop
+14:44:18.122. Saved pausedtrue/pending0, stage12/attempts3, matches42/wins20,
+mask2047. No later manual FULL STOP observed.329 verified named-boss opening and
+camera10.5, but no clear (match40 got to508HP; match42 last read2328HP). Deploy
+the built/tested330 rear-geometry correction after clearing only this automatic
+pause and stage attempt count. Preserve all other settings and earned facts.
+
+330 BUILT: vmx.bat passed zero errors/two existing NU1601 warnings;25/25 focused
+tests pass, including stable rear arrival across four orientations. 329 match40
+lost14:35:40.199; match41 admitted14:35:56.670, entered14:36:03.908. Prefer the
+next positively resolved post-match gap for330, if fresh saved pending0 and
+out-of-duty transition agree before another admission. Preserve attempt count
+and all other config in that case; otherwise wait for the automatic stop. No
+reload of unresolved41 and no polling loop. Expected result milestone ~14:39:55.
+
+330 INTENT: 329 is live in Stage12 match40. Opening wave targets Demon Brick;
+native camera distance10.5 observed14:32:15.044. Boss6436/12000HP14:34:12.656.
+Source review found contradictory rear geometry: target is -0.8 along facing,
+but any anchor closer than -1 was sent on a 2-by-2 detour. A correctly positioned
+unit therefore left melee again. Detour only from the front half-plane; retain
+the rear target. Add one focused four-orientation/both-sides/stable-arrival test.
+Build/test330 only; preserve329's pending result and its bounded run. Do not
+deploy into an unresolved battle or claim either strategy has cleared yet.
+
+329 DEPLOY INTENT: 328 match39 lost14:30:40.890; automatic three-attempt stop
+14:30:54.570. Saved pausedtrue/pending0, stage12/attempts3, matches39/wins20,
+mask2047. No later manual FULL STOP observed. Final329 rebuild passed zero
+errors/two existing NU1601 warnings; 24/24 focused tests passed before its
+camera-log filter correction. Clear only automatic pause and stage attempt count,
+then copy329. Verify named boss opening, camera distance/selection and explicit
+outcome. Preserve all earned facts, budgets, receipts and other settings.
+
+329 VALIDATION: vmx.bat passed zero errors/two existing NU1601 warnings and
+24/24 focused tests passed. Extend the existing camera snapshot's duty filter to
+563 as well as570 so Stage12 zoom has native distance readback, then rebuild329.
+328 still owns its second attempt (match38, entered14:22:38.372); no deployment
+or saved progress edits while that bounded run remains active.
+
+329 INTENT: 328 match37 first wave targeted Wind-up Dullahan14:18:52.696, while
+Demon Brick still exposed390HP versus the add's445HP. The guide explicitly
+ignores adds. Select the named Demon Brick on Stage12, waiting if absent instead
+of attacking an add. A native image14:20:01 also shows the boss filling most of
+the small viewport; reuse Stage19's bounded/idempotent camera zoom for Stage12
+through the same existing native input. Retain328's verified press/release and
+selection checks. Build/test329 only;328 keeps its bounded attempts until their
+terminal result. No new roster, purchases, configuration or control mechanism.
+
+328 LOADED: exact328 marker consumed/dispatched14:18:16.230/.463. New Stage12
+match37 positively queued14:18:24.215 and entered14:18:31.614. Native preparation
+summons now observed250ms apart. Pursuit cadence/contact and final result still
+need observation; keep this bounded run uninterrupted. Automatic reload cleanup
+logged FULL STOP before its normal owned dispatch; this is not a manual stop.
+
+328 DEPLOY INTENT: 327 match36 lost14:17:02.127; explicit automatic three-attempt
+stop14:17:15.779. Saved pausedtrue/pending0, stage12/attempts3, matches36/wins20,
+mask2047. No later manual FULL STOP observed. Rebuilt328 passed zero errors/two
+existing NU1601 warnings; the cadence/strategy tests passed24/24 before the
+diagnostic-only correction. Clear only automatic pause and this stage attempt
+count, then copy the rebuilt artifact to R:\parasite\vmx\VERMAXION.dll. Preserve
+all earned facts, caps, spending, receipts and other settings. Verify328 startup,
+new admission, actual pursuit cadence and explicit outcome before more changes.
+
+328 REBUILD INTENT: first vmx.bat build passed with zero errors/two existing
+NU1601 warnings; 24/24 focused tests passed. Before deployment, also consume the
+one-time Stage 12 contact observation when an unfocused screenshot is unavailable,
+preventing the shortened cadence from repeating this diagnostic. No battle
+decision change. Rebuild the same not-yet-deployed marker. 327 remains live;
+match35 lost and match36 (third attempt) was admitted14:13:11.345. Saved counters
+35matches/20wins, mask2047, pending36. Reconcile its terminal result before copy.
+
+328 INTENT:327 loaded14:04:43.974 and match34 entered normally. Isolated-group
+return dispatched14:06:24.634; position readback14:07:40 confirms all8Gentlemen
+near boss. But movement decisions remain about5-6seconds apart and units trail
+3-5yalms; match34 lost14:08:44.813, matches34/wins20. Match35 already admitted.
+Stage12-only timing correction:250ms decision/post-move checks,1.5second moving
+target refresh, retaining native frame completion/press release and queue guards.
+Build/test328 only.327 keeps its existing bounded attempts until terminal state;
+then a fresh run can verify actual cadence, contact and result. No new machinery,
+minion, purchase or configuration field.
+
+327 DEPLOY INTENT:326 match33 Defeat14:03:29.283; automatic three-attempt stop
+14:03:43.463. Saved pausedtrue/pending0, stage12/attempts3, matches33/wins20,
+mask2047. No later manual FULL STOP observed. Fresh test of the source-tested
+isolated-unit correction: clear only automatic pause and stage attempt count,
+then copy327. Preserve all earned facts/caps/spending/receipts. Require exact
+startup, fresh admission, observed isolated-group rejoin and explicit result.
+
+327 BUILT, NOT DEPLOYED: vmx.bat passed0errors/two existing NU1601 warnings;
+24/24 focused Verminion/Lifestream tests pass, including isolated-group return
+and no intervention while the whole army is travelling.326 remains live.
+Keep its pending result/attempt accounting intact before a fresh327 run.
+
+327 INTENT:326 match31 lost13:55:02 with boss1808/12000HP and8Gentlemen alive;
+one remained far behind. Match32 snapshot13:57:53.429 shows4Gentlemen at boss
+(16,0,7) and4 isolated near(-2,0,-8),(-1,0,-9),(3,0,-2),(2,0,-4). A dispatched
+wave does not prove all units arrived. Add Stage12-only isolated-group return
+through existing verified selection/movement, at most once per15second wave
+interval and only with an observed group near the boss. No new minion, purchase,
+UI control or persistent setting. Add focused separation/transit regression;
+build/test327 but retain326 until its current bounded attempts end.
+
+326 LOADED: exact startup13:51:00.408; observed owned Gentleman21 and its
+palette slot, normal character-bound dispatch13:51:04.313. Fresh Stage12 match31
+positively queued13:51:12.051. Config edit was checked to change only pausedtrue
+tofalse and Stage12 attempt count3to0. Totals30/20, mask2047, spending2400gil/
+10000MGP and caps223588gil/40000MGP all preserved. Observe this fresh strategy.
+
+326 DEPLOY INTENT:323 Stage12 match30 lost13:48:48.914; automatic three-attempt
+stop13:49:02.681. Saved pausedtrue, pending0, stage12/attempts3, clears2047,
+matches30/wins20. No subsequent manual FULL STOP observed. The reviewed and
+tested Gentleman pursuit now gets one fresh bounded development run: clear only
+this automatic paused flag and CampaignStageAttempts, preserve every earned
+fact, receipt, budget and setting, then copy326 to R:\parasite\vmx\VERMAXION.dll.
+Require exact326 startup, palette/owned-minion admission and actual Stage12 result.
+
+326 BUILT: vmx.bat passed0errors/two existing NU1601 warnings. Stage12 now uses
+Gentleman boss pursuit instead of interception; preserves rear movement and the
+three-second contact refresh, promptly deploys single replacements and never
+withdraws an action party.23/23 focused Verminion/Lifestream tests pass, including
+Stage12 cost/capacity, movement and special guards.326 is not deployed.323 still
+owns Stage12 match29 (second attempt); latest boss health11750/12000 at13:42:49.
+Wait for the existing bounded run's terminal state before any copy/config edit.
+
+326 INTENT:323 Stage12 match28 lost13:38:45.665 with Demon Brick11238/12000HP,
+matches28/wins20. Match29 is already running under the existing bounded retry.
+Use the published Gentleman-only Stage12 strategy: rush/follow boss from behind,
+ignore adds, send replacements promptly; disable withdrawing special. Sources:
+https://na.finalfantasyxiv.com/lodestone/character/28572768/blog/4629440/ and
+https://ffxiverminion.com/stage12-breakout. The current character owns Gentleman.
+Reuse existing pursuit/queue/control behavior; no purchases, quest dispatch or
+config changes. Build/test326 only, keep323 live until a reconciled stop before
+fresh testing.326 supersedes325 and includes its guidance corrections.
+
+323 STAGES10/11 PASSED: positive credited victories13:29:12.366 and13:32:08.420,
+both first attempts. Matches27/wins20. Stage12 match28 positively queued
+13:32:24.754, entered13:32:32.131. Fresh campaign clears1-11; keep323 running.
+Earlier devhub181.md now contains DDuck I419 mini stock controls; current clean
+DDuck source/changelog already implement clickable Phoenix/grip icons/counts and
+editable targets. Read-only reconciliation only; no DDuck edits/build/client use.
+
+323 STAGE9 PASSED: positive Victory13:26:16.676, credited once; matches25/wins18.
+Fresh clears1-9 now observed. Bomb pickup/status, placement, detonation and final
+slime attacks completed in the uninterrupted run. Continue10 onward.325 source
+has only guidance/comment changes beyond the tested323 behavior and is not live.
+
+325 SOURCE NOTE: after its successful build, stage guidance's generic wording
+now distinguishes character clears from repeat-win reliability, and one stale
+Stage9 comment says "attacker" instead of the old minion name. Rebuild before
+eventual deployment.323 still runs unchanged. Stage8's exact positive result was
+13:22:01.594; Stage9 has observed carrier pickup, placement and trap detonation.
+
+325 BUILT /323 CONTINUES:325 build passed0errors/two existing NU1601 warnings;
+22/22 focused tests pass after removing the untested mixed-roster experiment.
+Do not copy for guidance-only changes during the ongoing323 campaign.
+Stage8 advanced to9 with matches24/wins17; Stage9 match25 positively queued
+13:22:18.106 and entered13:22:25.327. Bomb lever movement observed13:22:46.581.
+No additional vendor request or configuration mutation.
+
+325 SOURCE /324 SUPERSEDED: retain the roster that actually cleared Stage7,
+documenting its one win/two losses. Remove only324's not-deployed mixed-roster
+experiment and its new test, avoiding an untested replacement in the deliverable.
+323 stays live and continues the campaign. Rebuild325 before any later copy;
+the currently built324 DLL must not be deployed. No progress or config mutation.
+
+323 STAGE7 PASSED WITH LOSSES: match23 Victory13:19:04.101, credited once;
+matches23/wins16/clear mask127, pending0 at13:19:07. Earlier two Stage7 attempts
+were defeats. The Zu-only roster has one live clear in three attempts, not a
+reliability pass. Keep323 running into8.324 is built but NOT COPIED; its mixed
+Mammet/Zu Stage7 remains untested. Do not reset any earned challenge or counters
+to force a replay. Resolve the untested source change before a later deployment.
+
+324 BUILT: vmx.bat passed0errors/two existing NU1601 warnings; focused tests23/23.
+323 remains live. Stage7 match22 also lost13:14:36.841 (matches22/wins15);
+match23, the third allowed attempt, entered13:15:00.602. Wait for a reconciled
+terminal result and the automatic three-attempt stop before copy324. If that
+specific limit is reached, the corrected development attempt may clear only its
+paused flag and Stage7 attempt count; preserve receipts, caps, earned counters,
+clear mask and all other settings. A manual FULL STOP must remain respected.
+
+324 BUILD ONLY:23/23 focused Verminion/Lifestream tests passed, including mixed
+Stage7 ownership and simultaneous attacker/defender capacity reservations. Build
+through vmx.bat without copying; that script only builds local outputs. Keep323
+live until its existing bounded attempts reconcile.324 also includes Stage6's
+verified strategy guidance. No release version, purchase cap or spending changes.
+
+324 SOURCE INTENT:323 Stage7 match21 lost13:10:21.301, correctly credited only
+participation (matches21/wins15). It destroyed side stones but left center B
+at1725HP near the end. Existing bounded campaign retry already queued match22.
+Prepare mixed Stage7: six Mammets per lane plus four Zu defenders using the
+existing Stage20 defense/capacity path. Both minions already owned. Keep16's
+unobserved composition unchanged. Run test-only compilation while323 continues;
+do not build/copy VMX until its current admissions reconcile and run stops.
+
+323 STAGE6 PASSED: positive Victory13:06:14.706, credited once; matches20,
+wins15. Airship attackers and Zu defenders cleared the Imp phases. Automatic
+transition positively queued Stage7 match21 at13:06:31.553; battlefield13:06:38.768.
+Keep323 uninterrupted. Stage7/16 Zu compositions and Stage15 Gentleman remain
+unverified; update public guidance as each observed result becomes available.
+
+323 OBSERVED: exact startup13:00:37.753 on R7. Lifestream readiness returned
+aetheryte63 at13:00:41.660; arrived Minion Square and read progress13:00:44.681.
+Stage6 positively queued as match20 at13:00:58.608, battlefield13:01:06.056.
+Zu already registered; no vendor request or repeat purchase. Keep this campaign
+attempt uninterrupted and inspect its result before another deployment.
+Saved account selection uses VERMAXION.json LastAccountId plus DebugTaskCharacterKey;
+other account files may contain the same character key and are not the active record.
+
+323 DEPLOY: build passed, saved character unchanged/unpaused with no pending
+admission or purchase/acquisition. Copy323 after Verminion/Lifestream tests pass.
+Require its startup marker and Lifestream readiness/arrival evidence; do not
+repeat vendor work. ADS19 remains loaded.
+
+323 INTENT:322 loaded12:52:14.388. Navmesh accepted the four-waypoint approach
+from(-46.55,1.60,29.09) to(-62.99,2.88,51.90), but our distance gate timed out
+12:53:18.199. No battle admitted. Use Lifestream.GetActiveAetheryte as its own
+readiness signal before its local teleport API; retain the60second approach
+bound and capture one15second position snapshot if readiness stays absent.
+Build/test323 via vmx.bat, then copy after saved idle/unpaused state confirmation.
+
+322 DEPLOY: build passed with only the two existing NU1601 warnings; saved R7
+remains unpaused, clears31, wins14/matches19, MgpSpent10000, no pending match or
+purchase/acquisition. Copy322 after the focused Verminion checks pass. Verify
+the new shard approach, actual Minion Square arrival and Stage6 result.
+
+322 INTENT:321 loaded12:46:45.283, registered Zu item7565 with positive unlock
+readback12:46:56.070. No repeat purchase. Lifestream accepted local aethernet89
+but immediately reported Destination could not be found(3), because the vendor
+counter is outside shard range; VMX travel timed out12:48:26.085. Its documented
+AethernetTeleportById requires a nearby shard. Add a bounded native navigation
+approach to a loaded Gold Saucer aetheryte before this existing IPC. This is
+Verminion-table travel after ADS finishes its vendor task. Build322 via vmx.bat,
+test, copy only with unchanged unpaused/no-pending saved state. ADS19 stays live.
+
+321 DEPLOY: ADS19 build passed and loaded12:45:49.703.160/160 focused ADS
+tests pass, including post-result cleanup dispatch and the previously failing
+inn regressions. Temporary recovery and startup probe are absent from19.
+Copy built321 now to register the already purchased Zu and resume campaign6.
+Saved spending10000MGP and all progress remain unchanged; no new purchase needed.
+
+ADS19 BUILD INTENT: remove18's completed one-off recovery entirely. The ordinary
+ownership-bound cleanup remains.18 tests159/160 passed; remaining failure was
+the temporary recovery reading an incompletely mocked plugin config path in an
+inn test. Removing the recovery eliminates that dependency. Build/test19 before
+copy321; no new purchase or configuration change.
+
+18 RECOVERY OBSERVED: ADS18 loaded12:44:03.404, matched the exact verified
+exchange and sent close=true cancel12:44:03.468. No new purchase. Saved state
+still unpaused, clears31, wins14/matches19, MgpSpent10000, no pending match or
+receipt/acquisition. Both builds passed. After focused tests pass, copy321 to
+resume registration from the owned inventory item; require unlock readback and
+Stage6 admission. Remove the temporary ADS recovery code after this boundary.
+
+ADS18/VMX321 INTENT:17 loaded12:41:23.897. Its bounded snapshot proves the
+same NPC1011039 is targeted, shop=true/menu=false; the exchange itself remained
+open. FireCallbackInt(-1) did not close it. Use the existing helper's explicit
+close=true cancel.18 includes a one-time DEBUG recovery, restricted to R7 config
+path, this NPC, exact known shop name, one unregistered Zu item and observed
+post-purchase1,653,997MGP. It only closes the positively verified exchange, never
+buys. Remove after recovery.17 tests158/160 passed; the temporary diagnostic
+caused two null-service test failures and is replaced by guarded recovery.
+Build/test18 and321; copy321 only after18 cleanup and receipt-free saved state.
+
+ADS17 BUILD INTENT:16 compiled but reload12:38:51 failed on a transient build
+lock of ADS.json; no16 startup. VMX320 registration timed out12:38:26 with the
+Zu receipt already reconciled.17 routes cleanup ticks through the existing
+runtime interface, sends each addon cancel once, and adds the late-parent-menu
+lifecycle regression. Build/test17 and verify load/read-only UI snapshot. No
+VMX copy or purchase dispatch while current UI ownership is being resolved.
+
+ADS16 INTENT:320 loaded12:33:16.557. ADS15 validated native MGP row9, confirmed
+and purchased exactly one Zu12:33:25.874. VMX reconciled item7565/10000MGP once
+12:33:26.290. Saved MgpSpent10000, pending receipt/acquisition empty. Registration
+has not dispatched yet. Single purchases currently close shop once, dropping
+cleanup before a parent menu can return. ADS16 continues its existing cleanup
+within ten seconds and same-character/target ownership. Include one bounded
+DEBUG read-only UI snapshot to resolve the current registration blocker. Build
+ADS only; do not reload VMX or repeat the already completed purchase.
+
+320 DEPLOY: both builds passed. ADS15 loaded12:32:03.453;159/159 focused ADS
+tests pass, including MGP routing/token coverage and existing tomestone checks.
+Saved character is unpaused with no pending match/purchase/acquisition/quest,
+clears31, wins14/matches19,0MGP spent. Copy320 now for native exchange validation;
+no configuration edits. Require positive purchase/registration evidence.
+
+ADS15/VMX320 INTENT:319 loaded12:27:53.709; ADS14 read MGP correctly, reached
+NPC1011039 and opened ShopExchangeCurrency12:28:18. Old catalog classified the
+UI as SpecialShopItem, so the runner timed out12:28:38 before purchase callback;
+acquired0, VMX failed12:28:39.125. Add explicit MGP shop kind using the existing
+currency adapter and exact preview/cost confirmation, preserving old kind values.
+Extend the existing MGP regression to cover adapter classification and token
+identity/cost/single-use. Build15 and320; test and require ADS15 load plus idle
+saved state before copying320. No progress, budget or setting changes.
+
+319 DEPLOY: both builds passed; ADS14 loaded12:25:48.750.159/159 targeted
+ADS tests pass after correcting the native balance read. Saved state remains
+unpaused with no pending match/purchase/acquisition/quest and0MGP spent.
+Copy319 for the corrected Zu request, then observe receipt/registration before
+judging Stage6. Source-only VMX marker change from tested318; no config edits.
+
+ADS14/VMX319 INTENT (2026-09-27 12:26 EDT):318 loaded12:24:05, but ADS refused
+Zu12:24:10 before travel/submission: Mgp identity now correct, balance source
+incorrect. VMX's native inventory read shows1,663,997MGP; ADS CurrencyManager
+returns insufficient currency. Read MGP through InventoryManager item29, matching
+the observed native source. Build ADS14 and VMX319, run relevant tests, require
+ADS14 load and no saved pending receipt/admission before copying319. Preserve
+all caps, earned progress and settings.318 acquired0; no purchase submitted.
+
+318 DEPLOY INTENT (2026-09-27 12:24 EDT): both builds passed; ADS13 positively
+loaded12:20:48.676.159/159 focused shop/catalog/reliability/IPC/repair tests pass,
+including the literal MGP regression. Saved bound R7 state12:23 confirms no
+pending match/purchase/acquisition/quest, unpaused, clears31, wins14/matches19,
+spending2400gil/0MGP and unchanged caps/reserve. Copy tested318 to the authorized
+R:\parasite\vmx\VERMAXION.dll now. Verify exact load, ADS Zu receipt and minion
+registration, then ordinary campaign Stage6. No configuration mutation.
+
+ADS13/VMX318 INTENT:317 loaded12:18:02, requested Zu through ADS12:18:08.
+Catalog found permanent vendors but represented10000MGP as Item:29. Exact Mgp:29
+guard correctly refused before travel/submission; acquired0/receipt0, failed
+12:18:08.713. Correct ADS's literal CostType0/Item29 normalization to Mgp while
+preserving ordinary item tokens. Add catalog regression for both identities.
+Build13 and318, test, require13 startup and saved idle receipt-free state, then
+copy318 for the corrected acquisition. No budget/progress changes or FATE work.
+
+317 FINAL BUILD: ADS12 loaded12:15:28 and both builds passed. Full VMX suite
+888/888 passed with the new roster,30-point Odin summon accounting and25%/20%
+Gentleman special thresholds. Final317 source corrects Fishing's old conditional
+ADS help text and the README dependency explanation. Rebuild through vmx.bat,
+then copy317 after the unchanged idle character/receipt check. No config edits
+are needed. Zu acquisition is already allowed within the40,000MGP cap.
+
+ADS12/VMX317 INTENT (2026-09-27 12:15 EDT): User rejects a volatile FATE-based
+Baby Bat requirement and asks for alternatives. No FATE was run.315's vendor
+wait failed12:07:13 with targetAvailable=false/acquired0; saved progress remains
+unpaused, mode0/target5/campaigntrue, wins14/matches19/clears31/pending0 and
+no purchase/acquisition/quest. Budgets223588gil/40000MGP, reserve50000,
+spending2400gil/0MGP unchanged.316 ADS dependency changes built,98tests pass,
+but were not deployed while acquisition was active.317 includes them.
+Replace Baby Bat with Zu Hatchling on6/7/16: permanent10,000MGP stock, Monster,
+cost10, AoE autoattack, +60 party ATK special. For15 use the linked Gentleman
+guide; eight30-cost units, withdrawing special only at25%HP with8survivors.
+This character already owns Gentleman. Preserve old Bat offer only for receipt
+reconciliation; no selected stage requests it. All changed strategies remain
+native-unverified. Sources: https://ffxiv.consolegameswiki.com/wiki/Zu_Hatchling,
+https://ffxiverminion.com/minion-83 and the Gentleman-only Lodestone guide in UI.
+Remove ADS's temporary Nonoroon startup probe. Build ADS12 and VMX317, test,
+then copy317 only after matched ADS12 load and saved idle/no-receipt check.
+Resume ordinary campaign Stage6 and allow ADS's capped Zu acquisition.
+
+316 BUILD ONLY / EXPLICIT FOLLOWUP: User requires ADS for FC Buff Refill and
+Fishing. Add ADS to their existing dependency displays (Fishing unconditionally),
+FC eligibility/manual start and Fishing BeginRun/Start guards. Vendor Stock's
+display now names its ADS provider too. Build316 through Z:\vmx.bat; do NOT copy
+over active315 acquisition.315 resumed the saved campaign and ADS accepted
+Baby Bat12:02:13, teleported12:02:20; no purchase result yet. Require terminal
+acquisition and saved reconciliation before a later VMX reload.
+
+TEN-WIN ACCEPTANCE PASSED /315 DEPLOY INTENT (2026-09-27 12:01 EDT): live313
+completed Stage2 sequences10-19 without a reload or loss. Positive credited
+victories:11:33:45,11:36:42,11:39:38,11:42:35,11:46:03,11:49:01,11:51:57,
+11:54:54,11:57:51,12:00:47. Complete("Weekly victory target reached")12:00:56.
+Snapshot12:01:17: wins14/matches19/sequence19/pending0, clear mask31, unpaused,
+no purchase/handoff, spending2400gil/0MGP. Exact stopping and ten consecutive
+Stage2 Mammet victories are verified on R7. No campaign clear beyond5 inferred.
+Restore ONLY mode0,target5,CampaignRequested=true; preserve all earned facts,
+attempts, budgets and reserve. Copy tested315 to R:\parasite\vmx\VERMAXION.dll.
+ADS11 remains loaded. Campaign resumes6; more than an hour elapsed since the
+previous terminal vendor absence. ADS must obtain fresh live NPC availability
+at the approach before any purchase and retain its five-minute bound; this is
+one resumed acquisition, not recurring reload/retry. Verify315 load and receipt.
+
+315 FINAL BUILD INTENT: first315 build passed and74 focused VMX tests pass.
+The source review also guards FC activation/cleanup against ADS's still-open
+vendor dialogs. Rebuild315 before eventual deployment. ADS character-change
+cleanup regression passes (3/3 IPC compatibility tests, x64 test project).
+The first test-only compile used stale AnyCPU references and failed; selecting
+Platform=x64 resolves the current ADS reference without rebuilding/reloading it.
+Live313 saved state11:55:13: wins12/matches17, sequence18 pending, no purchase,
+caps/spending unchanged. Keep the ten-win run uninterrupted through wins14.
+
+VMX315 BUILD ONLY: ADS11 loaded11:51:35; build passed0errors/2existing warnings,
+156/156 focused tests pass. Build315 through Z:\vmx.bat, keep313 live until the
+ten-win scenario ends.315 includes fishing vendor delegation, generic cleanup
+deferral, accurate initial farming stage and selling help. No test config change
+or VMX copy at this build boundary. Native FC/selling verification remains open.
+
+ADS11 BUILD INTENT: Continue the explicitly resumed goal. Live VMX313 remains
+uninterrupted for the ten-win test. Sequences10-15 have verified victories,
+latest11:49:01 (weekly wins10); sequence16 queued11:49:17. No VMX copy until
+the target14 is terminal. ADS11 tightens selling cleanup: reset only after
+observed/current busy on the same character; close dialogs only with the tracked
+vendor's visible shop. AutoRetainer reset is global, not correlated; document
+that limitation. VMX source fixes initial farming-stage text and selling help.
+Build ADS11 and run focused tests; these paths remain native-unverified.
+
+ADS10/VMX314 BUILD INTENT:313 loaded11:30:34 and selected WinTarget14 with
+baseline4. Stage2 match10 won11:33:45 (wins5), match11 won11:36:42 (wins6).
+Match12 admitted11:36:59, in duty11:37:06. Do not reload VMX during this ten-win
+test. Build314 only; keep313 running until terminal. Original scenario must be
+restored afterward as recorded below. ADS09 loaded11:29:59; no vendor dispatch.
+Source now delegates fishing food/repair approach and NPC selling to ADS's
+existing utility runner and AR's existing sell-list command. Correlated sale
+status/cancel, idle admission and busy-to-idle completion; no new sell config.
+Generic VMX cleanup leaves ADS vendor dialogs alone. Build/test, inspect all
+vendor callsites again. These FC/fishing paths are not selected for native tests.
+
+313/ADS09 INTENT: ADS08 loaded11:24:44, no target in its bounded nearby list.
+141 focused ADS tests and74 VMX Verminion/FC/fishing-stock tests pass. Both builds
+passed; small followups make vendor-presence diagnostics explicit and reject FC
+action receipts on item requests. FC buying migration is source/test verified,
+not native verified. Fishing still owns vendor approach/selling, and engine
+cleanup still names shop addons; the full hard vendor boundary is not complete.
+Use the approved independent Stage2 ten-win acceptance run while Baby Bat is
+unavailable. Current bound R7 character: weekly wins4/matches9,5/24 clears,
+no pending admission/purchase/handoff, unpaused. Set only its mode WinTarget,
+target14 and CampaignRequested=false before copying313. Original mode0,target5,
+CampaignRequested=true must be restored after this test. Do not reset actual
+results, clear mask, campaign attempts, receipts, caps or reserve. Require ten
+consecutive positive wins and exact stop at14; never label partial wins a pass.
+Build with Z:\vmx.bat, require loaded313. ADS09 build only observes availability
+at startup; it does not buy or operate FC/fishing.
+
+ADS08 BUILD INTENT:07 loaded11:13:41 after the settled-output watcher trigger.
+Its read-only snapshot still found FATE enemies and no Nonoroon. No VMX retry.
+Implement FC actions through ADS's existing shop runner, separate action/item
+inventory, exact native ECommons exchange rows and credit deltas. VMX now only
+requests quantity, observes its owned result and activates from reconciled stock.
+Build ADS08, run shop regression and build VMX through Z:\vmx.bat. FC/stock live
+execution is not selected; Verminion remains the sole runtime scenario. Do not
+copy a VMX build merely to repeat the still-blocked Baby Bat request.
+
 ADS07 RELOAD RECOVERY: x64 build passed,0errors/2existing warnings. R7 attempted
 reload11:11:36 but its manifest was momentarily locked by the build; ADS unloaded
 and the reload failed. The finished manifest is readable. Retrigger the existing

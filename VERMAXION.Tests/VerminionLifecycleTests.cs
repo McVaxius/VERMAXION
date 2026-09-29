@@ -9,6 +9,174 @@ namespace VERMAXION.Tests;
 public sealed class VerminionLifecycleTests
 {
     [Fact]
+    public void TournamentPrizeTextSeparatesRewardIdentityTotalAndEntryConfirmation()
+    {
+        const string title = "The 820th Lord of Verminion Tournament";
+        const string rankings = title + " has come to a close! Let's have a look at the final rankings, shall we?";
+        const string placed = "Congratulations, TEST! You've finished 3rd on the board! Along with an added bonus of 10,000 points, your total winnings come to 25,500 MGP!";
+        const string participation = "...Ah, I'm afraid you didn't quite earn a winning rank this time around. You are, however, eligible to receive a participation gift of 3,000 MGP.";
+        Assert.True(VerminionTournamentRewardRules.TryReadTitle(rankings, out var actual));
+        Assert.Equal(title, actual);
+        Assert.Equal(VerminionTournamentDialogue.PrizeRankings, VerminionTournamentEntryRules.Dialogue(rankings));
+        Assert.False(VerminionTournamentRewardRules.TryReadTitle(title, out _));
+        Assert.False(VerminionTournamentRewardRules.IsTournamentTitle("The 820th Triple Triad Tournament"));
+        Assert.False(VerminionTournamentRewardRules.IsTournamentTitle(title + "\n"));
+        Assert.True(VerminionTournamentRewardRules.TryReadOffer(placed, out var prize));
+        Assert.Equal(25500u, prize); // Total winnings, not the placement bonus.
+        Assert.True(VerminionTournamentRewardRules.TryReadOffer(participation, out prize));
+        Assert.Equal(3000u, prize);
+        Assert.Equal(VerminionTournamentDialogue.PrizeOffer, VerminionTournamentEntryRules.Dialogue(participation));
+        foreach (var invalid in new[] { "0", "-1", "3,00", "10,000,000", "4294967296", "unknown", "3.000" })
+        {
+            Assert.False(VerminionTournamentRewardRules.TryReadOffer(participation.Replace("3,000", invalid), out _));
+            Assert.Equal(VerminionTournamentDialogue.Unknown, VerminionTournamentEntryRules.Dialogue(participation.Replace("3,000", invalid)));
+        }
+        Assert.False(VerminionTournamentRewardRules.TryReadOffer("You received 3,000 MGP.", out _));
+        Assert.False(VerminionTournamentEntryRules.CanConfirm(VerminionTournamentRewardRules.Confirmation, true, false));
+        Assert.Equal("Accept your prize?", VerminionTournamentRewardRules.Confirmation);
+        Assert.Equal(VerminionTournamentDialogue.PrizeThanks, VerminionTournamentEntryRules.Dialogue(
+            "Thank you for entering, TEST, and I hope to see you return for our next Lord of Verminion tournament!"));
+        Assert.Equal(VerminionTournamentDialogue.PrizeNone, VerminionTournamentEntryRules.Dialogue(
+            "Unfortunately, you didn't qualify for any prizes. But that just gives you a goal to aim for, right, TEST?"));
+        Assert.Equal(VerminionTournamentDialogue.PrizeExpired, VerminionTournamentEntryRules.Dialogue(
+            "Oh dear... The reward period for the tournament in question seems to have expired. Please remember to collect any prizes before the beginning of the next scheduled tournament!"));
+        Assert.Equal(VerminionTournamentDialogue.PrizeRejected, VerminionTournamentEntryRules.Dialogue(
+            "You cannot accept your prize at this time. The gaming gods decree that it is time you took a break."));
+    }
+
+    [Fact]
+    public void TournamentPrizeIntentSurvivesReloadStopAndResetWithoutInventingRewardOrMatchCredit()
+    {
+        const string title = "The 820th Lord of Verminion Tournament";
+        var week = new DateTime(2026, 9, 22, 9, 0, 0, DateTimeKind.Utc);
+        var requested = week.AddDays(6);
+        var character = new CharacterConfig { VerminionMode = VerminionMode.CpuRewards };
+        var progress = character.VerminionProgress;
+        progress.ObserveParticipation(week, 5);
+        progress.WeeklyWins = 2;
+        progress.RecordChallengeClear(2);
+        progress.GilSpent = 2400;
+        progress.MgpSpent = 10000;
+        progress.CertificatesSpent = 4;
+        progress.LastTournamentInfo = new("The 821st Lord of Verminion Tournament", "Matches begin at tomorrow", null, null, null);
+        Assert.True(progress.BeginTournamentReward(title, 3000, 50000, requested));
+        character.VerminionPaused = true; // FULL STOP preserves the unresolved intent.
+        progress.AbandonMatch();
+        character.ResetVerminionState();
+        foreach (var restored in new[]
+        {
+            JsonConvert.DeserializeObject<CharacterConfig>(JsonConvert.SerializeObject(character))!,
+            System.Text.Json.JsonSerializer.Deserialize<CharacterConfig>(System.Text.Json.JsonSerializer.Serialize(character))!,
+        })
+        {
+            var saved = restored.VerminionProgress;
+            Assert.True(restored.VerminionPaused);
+            Assert.Equal(progress.PendingTournamentReward, saved.PendingTournamentReward);
+            Assert.False(saved.ConfirmTournamentReward(53000, requested.AddMinutes(1))); // Balance alone is insufficient.
+            Assert.False(saved.BeginTournamentReward(title, 3000, 53000, requested));
+            Assert.Equal(0, saved.BeginMatch(579));
+            Assert.False(saved.ReservePurchase(7561, 76, 0, 0, 50000, 50000, 0, false, 2400, 10000,
+                certificates: 2, certificatesBefore: 6, certificateCap: 6));
+            Assert.False(saved.AcknowledgeTournamentReward(progress.LastTournamentInfo.Title));
+            Assert.Null(saved.LastTournamentReward);
+            Assert.True(saved.AcknowledgeTournamentReward(title));
+            saved = JsonConvert.DeserializeObject<VerminionProgress>(JsonConvert.SerializeObject(saved))!;
+            Assert.False(saved.ConfirmTournamentReward(50000, requested.AddMinutes(1))); // Acknowledgement alone is insufficient.
+            Assert.False(saved.ConfirmTournamentReward(53001, requested.AddMinutes(1)));
+            Assert.False(saved.ConfirmTournamentReward(53000, requested.AddSeconds(-1)));
+            Assert.False(saved.RejectTournamentReward(50000)); // An acknowledged claim cannot be cleared as rejected.
+            Assert.True(saved.ConfirmTournamentReward(53000, requested.AddMinutes(1)));
+            Assert.Null(saved.PendingTournamentReward);
+            Assert.Equal(title, saved.LastTournamentReward!.Title);
+            Assert.Equal(requested.AddMinutes(1), saved.LastTournamentReward.ConfirmedUtc);
+            Assert.False(saved.ConfirmTournamentReward(53000, requested.AddMinutes(2)));
+            Assert.False(saved.BeginTournamentReward(title, 3000, 53000, requested.AddMinutes(2)));
+            Assert.Equal(5, saved.WeeklyMatches);
+            Assert.Equal(2, saved.WeeklyWins);
+            Assert.Equal(2u, saved.ClearedChallengeMask);
+            Assert.Equal(2400ul, saved.GilSpent);
+            Assert.Equal(10000ul, saved.MgpSpent);
+            Assert.Equal(4ul, saved.CertificatesSpent);
+            Assert.Equal(0, saved.MatchSequence);
+            Assert.Equal(progress.LastTournamentInfo, saved.LastTournamentInfo); // The next period's display is separate.
+            Assert.False(saved.WeeklyGoalReached(VerminionMode.CpuRewards, 5, week));
+            saved.ObserveWeek(week.AddDays(7));
+            Assert.NotNull(saved.LastTournamentReward);
+            Assert.False(saved.BeginTournamentReward(title, 3000, 53000, week.AddDays(7)));
+        }
+        var clone = character.Clone();
+        Assert.True(clone.VerminionProgress.AcknowledgeTournamentReward(title));
+        Assert.False(progress.PendingTournamentReward!.Acknowledged);
+        progress.ObserveWeek(week.AddDays(7));
+        Assert.NotNull(progress.PendingTournamentReward);
+        var other = new CharacterConfig();
+        other.CopyVerminionSettingsFrom(character);
+        Assert.Null(other.VerminionProgress.PendingTournamentReward);
+        Assert.Null(other.VerminionProgress.LastTournamentReward);
+    }
+
+    [Fact]
+    public void TournamentPrizeRequiresCapacityAndExplicitUnchangedBalanceRejection()
+    {
+        const string title = "The 820th Lord of Verminion Tournament";
+        var now = new DateTime(2026, 9, 28, 20, 0, 0, DateTimeKind.Utc);
+        var progress = new VerminionProgress();
+        Assert.False(progress.BeginTournamentReward(title, 1, 0, default));
+        Assert.False(progress.BeginTournamentReward("unidentified", 1, 0, now));
+        Assert.False(progress.BeginTournamentReward(title, 0, 0, now));
+        Assert.False(progress.BeginTournamentReward(title, 3000, 9_997_000, now));
+        Assert.False(progress.BeginTournamentReward(title, uint.MaxValue, uint.MaxValue, now));
+        Assert.True(progress.BeginTournamentReward(title, 3000, 9_996_999, now));
+        Assert.False(progress.RejectTournamentReward(9_999_999));
+        Assert.NotNull(progress.PendingTournamentReward);
+        Assert.True(progress.RejectTournamentReward(9_996_999));
+        Assert.Null(progress.LastTournamentReward);
+        Assert.False(progress.RejectTournamentReward(9_996_999));
+        Assert.True(progress.BeginTournamentReward(title, 3000, 9_996_999, now));
+        Assert.True(progress.AcknowledgeTournamentReward(title));
+        Assert.True(progress.ConfirmTournamentReward(9_999_999, now.AddSeconds(1)));
+        var busy = new VerminionProgress();
+        Assert.NotEqual(0, busy.BeginMatch(579));
+        Assert.False(busy.BeginTournamentReward(title, 3000, 50000, now));
+        busy.AbandonMatch();
+        Assert.True(busy.ReservePurchase(7561, 76, 0, 0, 50000, 50000, 0, false, 0, 0,
+            certificates: 2, certificatesBefore: 6, certificateCap: 2));
+        Assert.False(busy.BeginTournamentReward(title, 3000, 50000, now));
+        Assert.False(new VerminionProgress { MinionAcquisition = new("test", 7561, 76) }
+            .BeginTournamentReward(title, 3000, 50000, now));
+        Assert.False(new VerminionProgress { QuestAcquisition = new(123, 21, "WigglyQuest", [204]) }
+            .BeginTournamentReward(title, 3000, 50000, now));
+    }
+
+    [Fact]
+    public void CertificateCapAndReceiptSurviveReloadWithoutSpendingOtherBudgets()
+    {
+        var character = new CharacterConfig { VerminionCertificatePurchaseCap = 2 };
+        var progress = character.VerminionProgress;
+        Assert.False(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 0, false, 0, 0,
+            certificates: 2, certificatesBefore: 6)); // Zero cap.
+        Assert.False(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 1, false, 0, 0,
+            certificates: 2, certificatesBefore: 6, certificateCap: 2)); // Already in inventory.
+        Assert.True(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 0, false, 0, 0,
+            certificates: 2, certificatesBefore: 6, certificateCap: 2));
+        var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<CharacterConfig>(Newtonsoft.Json.JsonConvert.SerializeObject(character))!;
+        Assert.Equal(2u, restored.VerminionCertificatePurchaseCap);
+        var receipt = restored.VerminionProgress;
+        Assert.False(receipt.ConfirmPurchase(50000, 100000, 0, false, 4)); // Currency alone.
+        Assert.False(receipt.ConfirmPurchase(50000, 100000, 1, false, 6)); // Item alone.
+        Assert.False(receipt.ConfirmPurchase(50000, 100000, 1, false, 3)); // Unexplained spending.
+        Assert.True(receipt.ConfirmPurchase(50000, 100000, 1, false, 4));
+        Assert.False(receipt.ConfirmPurchase(50000, 100000, 1, false, 4));
+        receipt.ObserveWeek(new DateTime(2026, 10, 6, 9, 0, 0, DateTimeKind.Utc));
+        Assert.Equal(2ul, receipt.CertificatesSpent);
+        Assert.Equal(0ul, receipt.GilSpent);
+        Assert.Equal(0ul, receipt.MgpSpent);
+        Assert.False(receipt.CanSpend(0, 0, 0, 0, 2, 2));
+        Assert.True(new VerminionProgress().CanSpend(0, 0, 0, 0, 2, 2)); // Separate character.
+        Assert.NotNull(progress.PendingPurchase); // Deserialization did not mutate the source.
+    }
+
+    [Fact]
     public void TutorialCompletionNeedsFreshAdmittedVictoryAndDoesNotCreditWeeklyResults()
     {
         var character = new CharacterConfig();
@@ -135,6 +303,8 @@ public sealed class VerminionLifecycleTests
     }
 
     [Theory]
+    [InlineData(12)]
+    [InlineData(15)]
     [InlineData(23)]
     [InlineData(24)]
     public void FinalBossReinforcementsDoNotWaitForAnImpossibleFullWave(int stage)
@@ -144,6 +314,8 @@ public sealed class VerminionLifecycleTests
         Assert.Equal((ushort)21, strategy.CurrentMinion);
         Assert.Equal(30, strategy.MinionCost);
         Assert.Equal(8, strategy.ArmySize);
+        Assert.False(strategy.DefendsStone);
+        if (stage is 12 or 24) Assert.False(strategy.ShouldUseSpecial(1, 18000, 8));
         Assert.Equal(VerminionBossStrategy.Action.SendWave, strategy.Decide(true, 1, 7, 240, 240, 2, 2, false));
         // A moving boss must not starve the production queue. Refill two slots
         // before spending another several seconds selecting and moving units.
@@ -160,13 +332,62 @@ public sealed class VerminionLifecycleTests
     }
 
     [Fact]
+    public void DemonBrickRearDestinationStaysStableAndOnlyFrontApproachesDetour()
+    {
+        var boss = new System.Numerics.Vector3(16, 0, 7);
+        foreach (var rotation in new[] { 0f, MathF.PI / 2, MathF.PI, -MathF.PI / 2 })
+        {
+            var facing = new System.Numerics.Vector3(MathF.Sin(rotation), 0, MathF.Cos(rotation));
+            var side = new System.Numerics.Vector3(facing.Z, 0, -facing.X);
+            var rear = boss - facing * 0.8f;
+            Assert.Equal(rear, VerminionBossStrategy.DemonBrickDestination(boss, rotation, null));
+            Assert.Equal(rear, VerminionBossStrategy.DemonBrickDestination(boss, rotation, rear));
+            Assert.Equal(rear, VerminionBossStrategy.DemonBrickDestination(boss, rotation, boss - facing * 0.2f));
+            foreach (var sign in new[] { -1, 1 })
+            {
+                var approach = boss + facing * 3 + side * sign * 2;
+                var detour = boss + side * sign * 2 - facing * 2;
+                Assert.Equal(detour, VerminionBossStrategy.DemonBrickDestination(boss, rotation, approach));
+                Assert.Equal(rear, VerminionBossStrategy.DemonBrickDestination(boss, rotation, detour));
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(12)]
+    [InlineData(24)]
+    public void BossPursuitRejoinsSeparatedUnitsWithoutInterruptingAnArmyInTransit(int stage)
+    {
+        var strategy = new VerminionBossStrategy(stage);
+        var target = new System.Numerics.Vector3(16, 0, 7);
+        (ulong Id, System.Numerics.Vector3 Position)[] units =
+        [
+            (1, new(15, 0, 5)), (2, new(16, 0, 4)),
+            (3, new(-2, 0, -8)), (4, new(-1, 0, -9)),
+        ];
+        Assert.Contains(strategy.ChooseStraggler(units, target), new ulong[] { 3, 4 });
+        Assert.Equal(0ul, strategy.ChooseStraggler(units, new(40, 0, 40)));
+        Assert.Equal(0ul, strategy.ChooseStraggler(units[..2], target));
+        Assert.Equal(0ul, strategy.ChooseStraggler([], target));
+        Assert.Equal(0ul, new VerminionBossStrategy(19).ChooseStraggler(units, target));
+        Assert.Equal(0ul, new VerminionBossStrategy(23).ChooseStraggler(units, target));
+        units[2] = (3, new(7, 0, 7));
+        units[3] = (4, new(8, 0, 7));
+        if (stage == 24) Assert.Contains(strategy.ChooseStraggler(units, target), new ulong[] { 3, 4 });
+        else Assert.Equal(0ul, strategy.ChooseStraggler(units, target));
+        units[2] = (3, new(16, 0, 6));
+        units[3] = (4, new(17, 0, 6));
+        Assert.Equal(0ul, strategy.ChooseStraggler(units, target));
+    }
+
+    [Fact]
     public void BossDeploymentBoundsQueueAndKeepsSurvivorsFollowingAtCapacity()
     {
         Assert.True(VerminionBossStrategy.IsInvulnerabilityAdd(6, "Infant Imp"));
         Assert.True(VerminionBossStrategy.IsInvulnerabilityAdd(6, "Imp"));
         Assert.False(VerminionBossStrategy.IsInvulnerabilityAdd(6, "Smallshell"));
         Assert.False(VerminionBossStrategy.IsInvulnerabilityAdd(4, "Imp"));
-        foreach (var stage in new[] { 4, 6, 9, 12, 19 })
+        foreach (var stage in new[] { 4, 6, 9, 19 })
         {
             var strategy = new VerminionBossStrategy(stage);
             strategy.ObserveUnits([100]); // Reload baseline cannot confirm a request.
@@ -221,20 +442,24 @@ public sealed class VerminionLifecycleTests
 
         var odin = new VerminionBossStrategy(15);
         odin.ObserveUnits([]);
-        for (var wave = 0; wave < 4; ++wave)
+        for (var request = 0; request < 6; ++request)
         {
-            for (var request = 0; request < 6; ++request)
-            {
-                Assert.Equal(VerminionBossStrategy.Action.Summon,
-                    odin.Decide(true, wave * 6, 0, wave * 60, 240, 90, 90, true, assemble: true));
-                odin.Dispatched(VerminionBossStrategy.Action.Summon);
-            }
-            Assert.Equal(VerminionBossStrategy.Action.Wait,
-                odin.Decide(true, wave * 6, 0, wave * 60, 240, 90, 90, true, assemble: true));
-            Assert.Equal(6, odin.ObserveUnits(Enumerable.Range(wave * 6 + 1, 6).Select(id => (ulong)id)));
+            Assert.Equal(VerminionBossStrategy.Action.Summon,
+                odin.Decide(true, 0, 0, 0, 240, 90, 90, true, assemble: true));
+            odin.Dispatched(VerminionBossStrategy.Action.Summon);
         }
-        Assert.Equal(VerminionBossStrategy.Action.SendWave, odin.Decide(true, 24, 0, 240, 240, 90, 90, true));
-        Assert.Equal(VerminionBossStrategy.Action.Summon, odin.Decide(true, 0, 23, 230, 240, 0, 0, false));
+        Assert.Equal(VerminionBossStrategy.Action.Wait, odin.Decide(true, 0, 0, 0, 240, 90, 90, true, assemble: true));
+        Assert.Equal(6, odin.ObserveUnits(Enumerable.Range(1, 6).Select(id => (ulong)id)));
+        for (var request = 0; request < 2; ++request)
+        {
+            Assert.Equal(VerminionBossStrategy.Action.Summon,
+                odin.Decide(true, 6, 0, 180, 240, 90, 90, true, assemble: true));
+            odin.Dispatched(VerminionBossStrategy.Action.Summon);
+        }
+        Assert.Equal(VerminionBossStrategy.Action.Wait, odin.Decide(true, 6, 0, 180, 240, 90, 90, true, assemble: true));
+        Assert.Equal(2, odin.ObserveUnits(Enumerable.Range(1, 8).Select(id => (ulong)id)));
+        Assert.Equal(VerminionBossStrategy.Action.SendWave, odin.Decide(true, 8, 0, 240, 240, 90, 90, true));
+        Assert.Equal(VerminionBossStrategy.Action.Summon, odin.Decide(true, 0, 7, 210, 240, 0, 0, false));
     }
 
     [Fact]
@@ -245,30 +470,33 @@ public sealed class VerminionLifecycleTests
         {
             var roster = VerminionRoster.Required(stage);
             Assert.NotEmpty(roster);
-            Assert.All(roster, minion => Assert.Contains(minion.Id, new ushort[] { 2, 3, 21, 26, 52 }));
+            Assert.All(roster, minion => Assert.Contains(minion.Id, new ushort[] { 2, 3, 21, 52, 83 }));
             Assert.Null(VerminionRoster.Missing(stage, _ => true));
             Assert.Contains("ownership is unavailable", VerminionRoster.Missing(stage, _ => null));
             Assert.Contains(roster[0].Name, VerminionRoster.Missing(stage, _ => false));
             Assert.Contains(roster[0].Acquisition, VerminionRoster.Missing(stage, _ => false));
         }
-        Assert.Contains("Baby Bat", VerminionRoster.Missing(6, id => id == 52));
+        Assert.Contains("Zu Hatchling", VerminionRoster.Missing(6, id => id == 52));
         Assert.Null(VerminionRoster.Missing(19, id => id == 52));
         Assert.True(VerminionRoster.NeedsBattleRoster(2, false, VerminionMode.Participation, 1));
         Assert.False(VerminionRoster.NeedsBattleRoster(2, false, VerminionMode.Participation, 3));
+        Assert.False(VerminionRoster.NeedsBattleRoster(2, false, VerminionMode.CpuRewards, 3));
         Assert.True(VerminionRoster.NeedsBattleRoster(2, false, VerminionMode.WinTarget, 3));
         Assert.True(VerminionRoster.NeedsBattleRoster(19, true, VerminionMode.Participation, 262143));
     }
 
-    [Fact]
-    public void TwintaniaGuideRosterBlocksMissingQuestMinionAndPreservesTheLastAttackParty()
+    [Theory]
+    [InlineData(15, 4500u)]
+    [InlineData(23, 3600u)]
+    public void GentlemanGuideRosterBlocksMissingQuestMinionAndPreservesTheLastAttackParty(int stage, uint finalPhaseHp)
     {
         var ownedVendors = new ushort[] { 2, 3, 52, 83, 174 };
-        Assert.Contains("Her Last Vow", VerminionRoster.Missing(23, id => ownedVendors.Contains(id)));
-        Assert.Null(VerminionRoster.Missing(23, id => id == 21));
-        var strategy = new VerminionBossStrategy(23);
-        Assert.False(strategy.ShouldUseSpecial(3601, 18000, 8));
-        Assert.True(strategy.ShouldUseSpecial(3600, 18000, 8));
-        Assert.False(strategy.ShouldUseSpecial(3600, 18000, 7));
+        Assert.Contains("Her Last Vow", VerminionRoster.Missing(stage, id => ownedVendors.Contains(id)));
+        Assert.Null(VerminionRoster.Missing(stage, id => id == 21));
+        var strategy = new VerminionBossStrategy(stage);
+        Assert.False(strategy.ShouldUseSpecial(finalPhaseHp + 1, 18000, 8));
+        Assert.True(strategy.ShouldUseSpecial(finalPhaseHp, 18000, 8));
+        Assert.False(strategy.ShouldUseSpecial(finalPhaseHp, 18000, 7));
         Assert.False(strategy.ShouldUseSpecial(100, 18000, 4));
         Assert.False(strategy.ShouldUseSpecial(0, 0, 8));
         Assert.True(new VerminionBossStrategy(19).ShouldUseSpecial(6000, 18000, 4));
@@ -302,6 +530,97 @@ public sealed class VerminionLifecycleTests
     }
 
     [Fact]
+    public void FinalCoilEscapesCirclesWithinArenaAndHoldsMovementDuringWarnings()
+    {
+        foreach (var x in new[] { -23f, -20f, 0f, 20f, 23f })
+        foreach (var z in new[] { -23f, -20f, 0f, 20f, 23f })
+        foreach (var radius in new[] { 0.1f, 3f, 10f })
+        {
+            var circle = new VerminionGroundOmen(11, false, new(x, 0, z), radius);
+            var candidate = VerminionBossStrategy.FinalCoilDodgeDestination(circle, circle.Position);
+            Assert.True(candidate.HasValue);
+            var point = candidate.Value;
+            Assert.InRange(point.X, -23, 23);
+            Assert.InRange(point.Z, -23, 23);
+            Assert.True(System.Numerics.Vector3.Distance(point, circle.Position) >= radius + 2.99f);
+        }
+        var strategy = new VerminionBossStrategy(24);
+        strategy.ObserveUnits([1, 2, 3, 4, 5, 6, 7, 8]);
+        // A warning centered on the army must not choose a direction from tiny
+        // formation offsets and kite the boss away. Keep the safe point near it.
+        var center = new VerminionGroundOmen(11, false, System.Numerics.Vector3.Zero, 3);
+        var towardsBoss = VerminionBossStrategy.FinalCoilDodgeDestination(center, new(0, 0, -10))!.Value;
+        Assert.InRange(towardsBoss.X, -0.001f, 0.001f);
+        Assert.InRange(towardsBoss.Z, -6.001f, -5.999f);
+        var overlapping = center with { Slot = 12, Position = new(0, 0, -6) };
+        var alternative = VerminionBossStrategy.FinalCoilDodgeDestination(center, new(0, 0, -10), [center, overlapping]);
+        Assert.True(alternative.HasValue);
+        Assert.True(System.Numerics.Vector3.Distance(alternative.Value, overlapping.Position) > overlapping.Radius + 1);
+        Assert.True(VerminionBossStrategy.CanContinueFinalCoilDodgeOrder([center], towardsBoss));
+        Assert.False(VerminionBossStrategy.CanContinueFinalCoilDodgeOrder([center, overlapping], towardsBoss));
+        Assert.False(VerminionBossStrategy.CanContinueFinalCoilDodgeOrder([], towardsBoss));
+        Assert.Null(VerminionBossStrategy.FinalCoilDodgeDestination(center, new(0, 0, -10),
+            [center with { Radius = 10 }])); // No sampled endpoint is safe.
+        var tower = new VerminionGroundOmen(14, true, new(10, 0, 0), 3);
+        var remoteCircle = new VerminionGroundOmen(11, false, new(5, 0, 8), 3);
+        Assert.True(VerminionBossStrategy.CanContinueFinalCoilDodgeOrder([center, tower], towardsBoss));
+        Assert.True(VerminionBossStrategy.CanContinueFinalCoilTowerOrder([tower, remoteCircle],
+            System.Numerics.Vector3.Zero, tower.Position));
+        Assert.False(VerminionBossStrategy.CanContinueFinalCoilTowerOrder([remoteCircle],
+            System.Numerics.Vector3.Zero, tower.Position)); // Expired tower.
+        foreach (var x in new[] { 0f, 5f, 10f })
+            Assert.False(VerminionBossStrategy.CanContinueFinalCoilTowerOrder(
+                [tower, remoteCircle with { Position = new(x, 0, 0) }],
+                System.Numerics.Vector3.Zero, tower.Position)); // Unsafe origin, route or destination.
+        Assert.Equal(VerminionBossStrategy.Action.Wait,
+            strategy.Decide(true, 4, 4, 240, 240, 60, 60, true, assemble: true));
+        Assert.Equal(VerminionBossStrategy.Action.Summon,
+            strategy.Decide(true, 4, 3, 210, 240, 60, 60, true, assemble: true));
+        strategy.Dispatched(VerminionBossStrategy.Action.Summon);
+        Assert.Equal(VerminionBossStrategy.Action.Wait,
+            strategy.Decide(true, 4, 3, 210, 240, 60, 60, true, assemble: true));
+    }
+
+    [Fact]
+    public void FinalCoilReplacesWoundedTowerCandidateAfterInterruptedMovement()
+    {
+        var tower = new System.Numerics.Vector3(-8.22f, 0, 0.65f);
+        (ulong Id, System.Numerics.Vector3 Position, uint Hp, uint MaxHp)[] units =
+            [(1, new(-4.94f, 0, 2.05f), 172, 400), (2, new(-0.61f, 0, 17.61f), 400, 400),
+             (3, new(0, 0, 30), 400, 400), (4, tower, 0, 400)];
+        Assert.Equal(2ul, VerminionBossStrategy.ChooseFinalCoilTowerOccupant(units, tower, 1, false));
+        Assert.Equal(1ul, VerminionBossStrategy.ChooseFinalCoilTowerOccupant(units, tower, 1, true));
+        units[0] = (1, tower, 42, 400);
+        Assert.Equal(1ul, VerminionBossStrategy.ChooseFinalCoilTowerOccupant(units, tower, 1, false));
+        units[0] = (1, new(-4.94f, 0, 2.05f), 210, 400);
+        Assert.Equal(1ul, VerminionBossStrategy.ChooseFinalCoilTowerOccupant(units, tower, 1, false));
+        Assert.Equal(0ul, VerminionBossStrategy.ChooseFinalCoilTowerOccupant(
+            [(1, new(0, 0, 0), 172, 400), (4, tower, 0, 400)], tower, 1, false));
+    }
+
+    [Fact]
+    public void FinalCoilAttacksDuringTowersWithoutMovingOccupantOrRepeatingTravellingOrders()
+    {
+        var strategy = new VerminionBossStrategy(24);
+        var now = new DateTime(2026, 9, 28, 11, 0, 0, DateTimeKind.Utc);
+        (ulong, System.Numerics.Vector3)[] units =
+            [(1, new(2, 0, 0)), (2, new(3, 0, 0)), (3, new(1, 0, 0)), (4, new(12, 0, 0))];
+        var target = System.Numerics.Vector3.Zero;
+        Assert.Equal(0ul, strategy.ChooseFinalCoilAttacker(units, target, 0, now));
+        Assert.Equal(2ul, strategy.ChooseFinalCoilAttacker(units, target, 1, now));
+        strategy.FinalCoilAttackerDispatched(2, now);
+        // Native hit readback can select a different overlapping unit. Apply
+        // the same protection and in-flight guard to that actual individual.
+        Assert.False(strategy.CanOrderFinalCoilAttacker(1, new(2, 0, 0), target, 1, now));
+        Assert.False(strategy.CanOrderFinalCoilAttacker(2, new(3, 0, 0), target, 1, now.AddSeconds(1)));
+        Assert.Equal(4ul, strategy.ChooseFinalCoilAttacker(units, target, 1, now.AddSeconds(1)));
+        strategy.FinalCoilAttackerDispatched(4, now.AddSeconds(1));
+        Assert.Equal(0ul, strategy.ChooseFinalCoilAttacker(units, target, 1, now.AddSeconds(9)));
+        Assert.Equal(2ul, strategy.ChooseFinalCoilAttacker(units, target, 1, now.AddSeconds(10)));
+        Assert.Equal(0ul, new VerminionBossStrategy(23).ChooseFinalCoilAttacker(units, target, 1, now));
+    }
+
+    [Fact]
     public void FinalCoilFocusesOneAddWithoutTreatingMissingObjectsAsDefeats()
     {
         var strategy = new VerminionBossStrategy(24);
@@ -320,6 +639,33 @@ public sealed class VerminionLifecycleTests
         Assert.Equal(99ul, new VerminionBossStrategy(24).ChooseFinalCoilTarget(99, [(1, "Clockwork Twintania", 100)]));
         Assert.Equal(99ul, new VerminionBossStrategy(23).ChooseFinalCoilTarget(99, [(1, "Clockwork Twintania", 100), (2, "Clockwork Twintania", 100)]));
         Assert.Equal(0ul, new VerminionBossStrategy(24).ChooseFinalCoilTarget(0, [(1, "Clockwork Twintania", 100), (2, "Clockwork Twintania", 100)]));
+    }
+
+    [Fact]
+    public void StageSixteenReservesCritterDefenseWhileMammetsAttackStones()
+    {
+        var strategy = new VerminionBattleStrategy(16);
+        var defense = new VerminionBossStrategy(16);
+        Assert.Equal(new ushort[] { 2, 83 }, VerminionRoster.Required(16).Select(minion => minion.Id));
+        Assert.Contains("Zu Hatchling", VerminionRoster.Missing(16, id => id == 2));
+        Assert.Equal((ushort)2, strategy.CurrentMinion);
+        Assert.Equal(6, strategy.GroupSize);
+        Assert.Equal(200, defense.AttackCapacity(240, 0));
+        defense.Defenders.ObserveUnits([]);
+        for (var i = 0; i < 4; ++i)
+        {
+            Assert.True(defense.CanRequestDefender(0, 180, 240));
+            defense.Defenders.Requested();
+        }
+        Assert.False(defense.CanRequestDefender(0, 180, 240));
+        Assert.Equal(4, defense.Defenders.ObserveUnits([1, 2, 3, 4]));
+        Assert.Equal(240, defense.AttackCapacity(240, 4));
+        // With one guard and one attacker lost from a full army, an attacker
+        // request must not spend the ten points reserved for the missing guard.
+        strategy.Reinforcements.ObserveUnits([]);
+        strategy.Reinforcements.Requested();
+        Assert.False(strategy.Reinforcements.CanRequest(220, defense.AttackCapacity(240, 3), strategy.MinionCost));
+        Assert.True(defense.CanRequestDefender(3, 220 + strategy.Reinforcements.Pending * strategy.MinionCost, 240));
     }
 
     [Fact]
@@ -498,6 +844,236 @@ public sealed class VerminionLifecycleTests
         Assert.True(progress.WinningRunLimitReached);
         progress.EnsureRun(VerminionMode.Participation, 2);
         Assert.False(progress.WinningRunLimitReached);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnavailableTournamentEntryFinishesOnlyRemainingParticipationAndDoesNotSuppressFutureInspection(bool exhausted)
+    {
+        var week = new DateTime(2026, 9, 22, 9, 0, 0, DateTimeKind.Utc);
+        var unavailableThisRun = exhausted
+            ? VerminionTournamentEntryRules.AllowanceExhausted("Tournament",
+                VerminionTournamentInfo.FromDisplay("Tournament", "Matches available until tomorrow", true, 15, 8, 800))
+            : VerminionTournamentEntryRules.Menu("What will you do?",
+                ["Ask about the upcoming tournament.", "Ask about Lord of Verminion tournaments.", "Nothing."]) == VerminionTournamentMenu.Upcoming;
+        Assert.True(unavailableThisRun);
+        var progress = new VerminionProgress();
+        progress.ObserveParticipation(week, 4); // Includes manual matches.
+        progress.WeeklyWins = 2;
+        progress.RecordChallengeClear(2);
+        progress.EnsureRun(VerminionMode.CpuRewards, 5);
+        Assert.False(progress.WeeklyGoalReached(VerminionMode.CpuRewards, 5, week, tournamentEntryUnavailableThisRun: unavailableThisRun));
+        var cancelled = progress.BeginMatch(553);
+        progress.AbandonMatch();
+        Assert.False(progress.RecordResult(cancelled, VerminionBattleOutcome.Defeat, week));
+        Assert.Equal(1, progress.Remaining(VerminionMode.CpuRewards, 5));
+        var match = progress.BeginMatch(553);
+        progress = JsonConvert.DeserializeObject<VerminionProgress>(JsonConvert.SerializeObject(progress))!;
+        Assert.False(progress.RecordResult(match, VerminionBattleOutcome.Unknown, week));
+        Assert.True(progress.RecordResult(match, VerminionBattleOutcome.Defeat, week));
+        Assert.False(progress.RecordResult(match, VerminionBattleOutcome.Defeat, week));
+        Assert.Equal(5, progress.WeeklyMatches);
+        Assert.Equal(2, progress.WeeklyWins);
+        Assert.True(progress.WeeklyGoalReached(VerminionMode.CpuRewards, 5, week, tournamentEntryUnavailableThisRun: unavailableThisRun));
+        // Scheduling and a later run still inspect independent tournament/reward availability.
+        Assert.False(progress.WeeklyGoalReached(VerminionMode.CpuRewards, 5, week));
+        Assert.False(progress.WeeklyGoalReached(VerminionMode.CpuRewards, 5, week.AddDays(7), tournamentEntryUnavailableThisRun: unavailableThisRun));
+        Assert.Equal(0, new VerminionProgress().WeeklyMatches);
+    }
+
+    [Fact]
+    public void TournamentEntryRejectsUnownedPromptsClosedPeriodsAndNonCpuSelections()
+    {
+        var upcoming = new[] { "Ask about the upcoming tournament.", "Ask about Lord of Verminion tournaments.", "Nothing." };
+        var current = new[] { "Enter the current tournament.", "Ask about the current tournament.", "Ask about Lord of Verminion tournaments.", "Nothing." };
+        Assert.Equal(VerminionTournamentMenu.Upcoming, VerminionTournamentEntryRules.Menu("What will you do?", upcoming));
+        Assert.Equal(VerminionTournamentMenu.Current, VerminionTournamentEntryRules.Menu("What will you do?", current));
+        Assert.Equal(VerminionTournamentMenu.Unknown, VerminionTournamentEntryRules.Menu("Another event", current));
+        Assert.Equal(VerminionTournamentMenu.Unknown, VerminionTournamentEntryRules.Menu("What will you do?", ["Enter the current tournament.", "Purchase", "Nothing."]));
+        Assert.False(VerminionTournamentEntryRules.CanConfirm("Enter the current tournament?", false, false));
+        Assert.False(VerminionTournamentEntryRules.CanConfirm("Enter the current tournament?", true, true));
+        Assert.False(VerminionTournamentEntryRules.CanConfirm("Accept your prize?", true, false));
+        Assert.False(VerminionTournamentEntryRules.CanConfirm("You will be granted another opportunity to accept the Returner's Bounty upon your next login. Proceed?", true, false));
+        Assert.True(VerminionTournamentEntryRules.CanConfirm("Enter the current tournament?", true, false));
+        Assert.Equal(VerminionTournamentDialogue.Registered, VerminionTournamentEntryRules.Dialogue(
+            "There we are, TEST! You are now officially registered for the 821st Lord of Verminion Tournament. Best of luck!"));
+        Assert.Equal(VerminionTournamentDialogue.Registered, VerminionTournamentEntryRules.Dialogue("...Oh. You seem to have registered for this tournament already."));
+        Assert.Equal(VerminionTournamentDialogue.Unknown, VerminionTournamentEntryRules.Dialogue("You have registered for a match. Please remain within Chocobo Square until the match begins."));
+        Assert.Equal(VerminionTournamentDialogue.EntriesClosed, VerminionTournamentEntryRules.Dialogue("I'm terribly sorry, sir, but we are no longer accepting entries for this tournament. Not to worry, though! There'll be another competition starting soon!"));
+        Assert.Equal(VerminionTournamentDialogue.Unknown, VerminionTournamentEntryRules.Dialogue("I'm terribly sorry, sir, but we are no longer accepting entries for this tournament. Not to worry, though!"));
+        Assert.Equal(VerminionTournamentDialogue.Rejected, VerminionTournamentEntryRules.Dialogue("My apologies, sir, but I cannot register your entry at this time."));
+        Assert.Equal(VerminionTournamentDialogue.Rejected, VerminionTournamentEntryRules.Dialogue("I'm afraid you don't meet the prerequisite..."));
+        var open = VerminionTournamentInfo.FromDisplay("Tournament", "Matches available until tomorrow", true, 14, 8, 800)!;
+        Assert.False(VerminionTournamentEntryRules.CanPrepare(null, open));
+        Assert.True(VerminionTournamentEntryRules.CanPrepare("Tournament", open));
+        Assert.False(VerminionTournamentEntryRules.CanPrepare("Tournament", open with { Matches = 15 }));
+        Assert.False(VerminionTournamentEntryRules.CanPrepare("Tournament", open with { Matches = null }));
+        Assert.False(VerminionTournamentEntryRules.CanPrepare("Tournament", open with { Notice = "Matches begin at tomorrow" }));
+        Assert.True(VerminionTournamentEntryRules.AllowanceExhausted("Tournament", open with { Matches = 15 }));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted(null, open with { Matches = 15 }));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted("Tournament", open));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted("Tournament", null));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted("Tournament", open with { Matches = null }));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted("Tournament", open with { Matches = 15, Notice = "Matches begin at tomorrow" }));
+        Assert.False(VerminionTournamentEntryRules.OnlyCpuSelection(579, []));
+        Assert.False(VerminionTournamentEntryRules.OnlyCpuSelection(579, [198])); // Player tournament.
+        Assert.False(VerminionTournamentEntryRules.OnlyCpuSelection(579, [579, 553]));
+        Assert.False(VerminionTournamentEntryRules.OnlyCpuSelection(553, [579]));
+        Assert.True(VerminionTournamentEntryRules.OnlyCpuSelection(579, [579]));
+    }
+
+    [Fact]
+    public void TournamentRegistrationCannotAuthorizeAnotherPeriodsEntryOrAllowanceExhaustion()
+    {
+        const string previousTitle = "The 820th Lord of Verminion Tournament";
+        const string currentTitle = "The 821st Lord of Verminion Tournament";
+        const string registered = "There we are, TEST! You are now officially registered for the 820th Lord of Verminion Tournament. Best of luck!";
+        const string alreadyRegistered = "...Oh. You seem to have registered for this tournament already.";
+        var previous = new VerminionTournamentInfo(previousTitle, "Matches available until tomorrow", 14, 8, 800);
+        Assert.True(VerminionTournamentEntryRules.ConfirmsRegistration(registered, previousTitle));
+        Assert.False(VerminionTournamentEntryRules.ConfirmsRegistration(registered, currentTitle));
+        Assert.False(VerminionTournamentEntryRules.ConfirmsRegistration(registered, null));
+        Assert.False(VerminionTournamentEntryRules.ConfirmsRegistration(registered, "Tournament"));
+        Assert.False(VerminionTournamentEntryRules.ConfirmsRegistration(
+            "You are now officially registered for the 820th Lord of Verminion Tournament.", previousTitle));
+        Assert.True(VerminionTournamentEntryRules.CanPrepare(previousTitle, previous));
+        Assert.True(VerminionTournamentEntryRules.AllowanceExhausted(previousTitle, previous with { Matches = 15 }));
+
+        // A fresh display can change periods while the owned dialogue closes.
+        // Even identical counters cannot transfer registration to the next title.
+        var current = previous with { Title = currentTitle };
+        Assert.False(VerminionTournamentEntryRules.CanPrepare(previousTitle, current));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted(previousTitle, current with { Matches = 15 }));
+        Assert.False(VerminionTournamentEntryRules.CanPrepare(previousTitle,
+            previous with { Notice = "Matches begin at tomorrow" }));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted(previousTitle,
+            previous with { Notice = "Matches begin at tomorrow", Matches = 15 }));
+
+        // The already-registered response is usable only with a known fresh title;
+        // its subsequent refresh must still refer to that same period.
+        Assert.False(VerminionTournamentEntryRules.ConfirmsRegistration(alreadyRegistered, null));
+        Assert.False(VerminionTournamentEntryRules.ConfirmsRegistration(alreadyRegistered, ""));
+        Assert.True(VerminionTournamentEntryRules.ConfirmsRegistration(alreadyRegistered, currentTitle));
+        Assert.True(VerminionTournamentEntryRules.CanPrepare(currentTitle, current));
+        Assert.False(VerminionTournamentEntryRules.CanPrepare(currentTitle, current with { Matches = null }));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted(currentTitle, current with { Matches = null }));
+        Assert.False(VerminionTournamentEntryRules.CanPrepare(null, current)); // A reload requires a new observation.
+        Assert.False(VerminionTournamentEntryRules.CanPrepare("", current));
+        Assert.False(VerminionTournamentEntryRules.AllowanceExhausted("", current with { Matches = 15 }));
+    }
+
+    [Fact]
+    public void CpuQueueOwnershipAndTournamentResultsKeepDutyIdentityAcrossReloadAndCancellation()
+    {
+        foreach (var duty in new uint[] { 552, 553, 575, 576, 577, 578, 579 })
+        {
+            Assert.True(VerminionDutyRules.OnlyExpectedQueue(duty, [0, duty, 0], 0));
+            Assert.True(VerminionDutyRules.OnlyExpectedQueue(duty, [], duty));
+            Assert.True(VerminionDutyRules.OnlyExpectedQueue(duty, [duty], duty));
+            Assert.False(VerminionDutyRules.OnlyExpectedQueue(duty, [duty, 198], 0));
+            Assert.False(VerminionDutyRules.OnlyExpectedQueue(duty, [duty], 198));
+            Assert.False(VerminionDutyRules.OnlyExpectedQueue(duty, [uint.MaxValue], duty));
+            Assert.False(VerminionDutyRules.OnlyExpectedQueue(duty, [duty], uint.MaxValue));
+            Assert.False(VerminionDutyRules.OnlyExpectedQueue(duty, [0, 0], 0));
+        }
+        Assert.False(VerminionDutyRules.OnlyExpectedQueue(198, [198], 198)); // Player tournament.
+        Assert.False(VerminionDutyRules.OnlyExpectedQueue(0, [], 0));
+        Assert.False(VerminionDutyRules.OnlyExpectedQueue(579, [553], 0));
+        Assert.Equal(1, VerminionDutyRules.ChallengeStage(552));
+        Assert.Equal(24, VerminionDutyRules.ChallengeStage(575));
+        Assert.Equal(0, VerminionDutyRules.ChallengeStage(579));
+        Assert.Equal(0, VerminionDutyRules.ChallengeStage(198));
+
+        var week = new DateTime(2026, 9, 22, 9, 0, 0, DateTimeKind.Utc);
+        var progress = new VerminionProgress { CampaignRequested = true, CampaignStage = 24, CampaignStageAttempts = 2 };
+        progress.ObserveParticipation(week, 4);
+        progress.RecordChallengeClear(2);
+        var cancelled = progress.BeginMatch(579);
+        Assert.Equal(0, progress.BeginMatch(553)); // Never replace an owned tournament admission.
+        progress.AbandonMatch();
+        Assert.False(progress.RecordResult(cancelled, VerminionBattleOutcome.Victory, week));
+        var admitted = progress.BeginMatch(579);
+        progress = JsonConvert.DeserializeObject<VerminionProgress>(JsonConvert.SerializeObject(progress))!;
+        Assert.Equal(579u, progress.PendingDuty);
+        Assert.Equal(admitted, progress.PendingMatch);
+        Assert.Equal(2, progress.CampaignStageAttempts); // A tournament is not Stage 28.
+        Assert.False(progress.RecordResult(admitted, VerminionBattleOutcome.Unknown, week));
+        Assert.False(progress.RecordTutorialCompletion(admitted, VerminionBattleOutcome.Victory));
+        Assert.True(progress.RecordResult(admitted, VerminionBattleOutcome.Victory, week));
+        Assert.False(progress.RecordResult(admitted, VerminionBattleOutcome.Victory, week));
+        Assert.Equal(5, progress.WeeklyMatches);
+        Assert.Equal(1, progress.WeeklyWins);
+        Assert.Equal(2u, progress.ClearedChallengeMask);
+        Assert.Null(progress.LastTournamentInfo); // A result cannot invent native tournament counters.
+        Assert.Equal(0, new VerminionProgress().WeeklyMatches);
+    }
+
+    [Fact]
+    public void SavedTournamentDisplaySurvivesReloadWithoutAuthorizingEntryOrCreditingProgress()
+    {
+        var week = new DateTime(2026, 9, 22, 9, 0, 0, DateTimeKind.Utc);
+        var observed = week.AddDays(6);
+        var character = new CharacterConfig { VerminionMode = VerminionMode.CpuRewards };
+        var progress = character.VerminionProgress;
+        progress.ObserveParticipation(week, 5);
+        progress.WeeklyWins = 2;
+        progress.RecordChallengeClear(2);
+        progress.LastTournamentInfo = VerminionTournamentInfo.FromDisplay("Previous tournament",
+            "Matches available until tomorrow", true, 14, 8, 800);
+        progress.TournamentObservedUtc = observed;
+        foreach (var restored in new[]
+        {
+            JsonConvert.DeserializeObject<CharacterConfig>(JsonConvert.SerializeObject(character))!,
+            System.Text.Json.JsonSerializer.Deserialize<CharacterConfig>(System.Text.Json.JsonSerializer.Serialize(character))!,
+        })
+        {
+            var saved = restored.VerminionProgress;
+            Assert.Equal(progress.LastTournamentInfo, saved.LastTournamentInfo);
+            Assert.Equal(observed, saved.TournamentObservedUtc);
+            Assert.Equal(5, saved.WeeklyMatches);
+            Assert.Equal(2, saved.WeeklyWins);
+            Assert.Equal(2u, saved.ClearedChallengeMask);
+            Assert.Equal(0, saved.PendingMatch);
+            Assert.False(saved.WeeklyGoalReached(VerminionMode.CpuRewards, 5, week));
+            Assert.False(VerminionTournamentEntryRules.CanPrepare(null, saved.LastTournamentInfo));
+            saved.ObserveWeek(week.AddDays(7));
+            Assert.Equal(progress.LastTournamentInfo, saved.LastTournamentInfo); // Tournament periods are independent.
+            Assert.Equal(observed, saved.TournamentObservedUtc);
+            Assert.Equal(0, saved.WeeklyMatches);
+            Assert.Equal(0, saved.WeeklyWins);
+        }
+        var copy = progress.Clone();
+        copy.LastTournamentInfo = VerminionTournamentInfo.FromDisplay("Next tournament",
+            "Matches begin at tomorrow", false, 14, 8, 800);
+        copy.TournamentObservedUtc = observed.AddHours(1);
+        Assert.Null(copy.LastTournamentInfo!.Matches); // Do not carry the previous period's allowance forward.
+        Assert.Null(copy.LastTournamentInfo.Wins);
+        Assert.Null(copy.LastTournamentInfo.Points);
+        Assert.Equal(14, progress.LastTournamentInfo!.Matches);
+        Assert.Equal(observed, progress.TournamentObservedUtc);
+        Assert.Null(new CharacterConfig().VerminionProgress.LastTournamentInfo);
+        Assert.Equal(default, new CharacterConfig().VerminionProgress.TournamentObservedUtc);
+    }
+
+    [Fact]
+    public void TournamentDisplayDoesNotTurnHiddenCountersIntoAnAllowanceOrBattleCredit()
+    {
+        var hidden = VerminionTournamentInfo.FromDisplay("The 820th Lord of Verminion Tournament",
+            "Matches available until 10:45 a.m. 9/28/2026", false, 0, 0, 0)!;
+        Assert.Null(hidden.Matches);
+        Assert.Null(hidden.Wins);
+        Assert.Null(hidden.Points);
+        Assert.Null(VerminionTournamentInfo.FromDisplay("Receiving data...", "Waiting", true, 0, 0, 0));
+        Assert.Null(VerminionTournamentInfo.FromDisplay("Prior tournament", "Old notice", true, 15, 10, 500, receivingData: true));
+        Assert.Null(VerminionTournamentInfo.FromDisplay("Tournament", "Notice", true, 16, 0, 0));
+        Assert.Null(VerminionTournamentInfo.FromDisplay("Tournament", "Notice", true, 5, 6, 100));
+        Assert.Null(VerminionTournamentInfo.FromDisplay("Tournament", "Notice", true, 5, 2, -1));
+        var shown = VerminionTournamentInfo.FromDisplay("Tournament", "Notice", true, 5, 2, 100)!;
+        Assert.Equal(5, shown.Matches);
+        Assert.Equal(2, shown.Wins);
+        Assert.Equal(100, shown.Points);
+        Assert.Null(VerminionTournamentInfo.FromDisplay("Tournament", "Notice", false, 99, 99, 99)!.Matches);
     }
 
     [Fact]

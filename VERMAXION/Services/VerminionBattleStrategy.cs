@@ -1,13 +1,17 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace VERMAXION.Services;
 
 internal sealed record VerminionMinion(ushort Id, string Name, int Cost, string Acquisition);
-internal sealed record VerminionVendorMinion(ushort MinionId, uint ItemId, string Name, uint Gil, uint Mgp = 0)
+internal readonly record struct VerminionGroundOmen(int Slot, bool Tower, Vector3 Position, float Radius);
+internal sealed record VerminionVendorMinion(ushort MinionId, uint ItemId, string Name, uint Gil, uint Mgp = 0, uint Certificates = 0)
 {
-    public uint Price => Mgp > 0 ? Mgp : Gil;
-    public string Currency => Mgp > 0 ? "MGP" : "gil";
+    public uint Price => Certificates > 0 ? Certificates : Mgp > 0 ? Mgp : Gil;
+    public string Currency => Certificates > 0 ? "Achievement Certificates" : Mgp > 0 ? "MGP" : "gil";
+    public string CurrencyKind => Certificates > 0 ? "CurrencyManager" : Mgp > 0 ? "Mgp" : "Gil";
+    public uint CurrencyItemId => Certificates > 0 ? 21172u : Mgp > 0 ? 29u : 1u;
 }
 
 /// <summary>Accessible baseline choices. Guide adaptations still require live verification.</summary>
@@ -18,9 +22,12 @@ internal static class VerminionRoster
     public static ushort[] AcquisitionQuests(ushort minion) => minion == 21 ? GentlemanQuests : [];
     public static readonly VerminionVendorMinion MammetOffer = new(2, 6004, "Mammet #001", 2400);
     public static readonly VerminionVendorMinion HatchlingOffer = new(3, 6005, "Wayward Hatchling", 2400);
+    // Retained only to reconcile any receipt saved before the baseline roster changed.
     public static readonly VerminionVendorMinion BatOffer = new(26, 6187, "Baby Bat", 2400);
     public static readonly VerminionVendorMinion NeroOffer = new(174, 14096, "Wind-up Nero tol Scaeva", 0, 30000);
     public static readonly VerminionVendorMinion ZuOffer = new(83, 7565, "Zu Hatchling", 0, 10000);
+    public static readonly VerminionVendorMinion[] AchievementOffers =
+    [new(76, 7561, "Wind-up Odin", 0, 0, 2), new(51, 6212, "Wind-up Cursor", 0, 0, 2)];
     private static readonly VerminionVendorMinion[] EntryOffers =
     [
         MammetOffer,
@@ -32,7 +39,7 @@ internal static class VerminionRoster
         VendorOffer(minionId) is { } offer && offer.ItemId == itemId ? offer : null;
 
     public static VerminionVendorMinion? VendorOffer(ushort minionId) =>
-        EntryOffers.Append(BatOffer).Append(NeroOffer).Append(ZuOffer).FirstOrDefault(offer => offer.MinionId == minionId);
+        EntryOffers.Append(BatOffer).Append(NeroOffer).Append(ZuOffer).Concat(AchievementOffers).FirstOrDefault(offer => offer.MinionId == minionId);
 
     // Prefer already registered minions, then buy only the distinct minions
     // needed for entry. Mammet also supplies the ordinary-stage battle roster.
@@ -49,20 +56,18 @@ internal static class VerminionRoster
         "2,400 gil from the Minion Trader in Minion Square or city minion vendors; register the item before battle.");
     public static readonly VerminionMinion Airship = new(52, "Wind-up Airship", 25,
         "Reward from your starting city's level 15 Envoy main scenario quest; register the item.");
-    public static readonly VerminionMinion Bat = new(26, "Baby Bat", 10,
-        "2,400 gil from Junkmonger Nonoroon at Poor Maid's Mill, Upper La Noscea (11.8, 24.7). He temporarily disappears during nearby FATEs. ADS owns vendor discovery, travel and purchase; unavailable routes stop before admission.");
     public static readonly VerminionMinion Nero = new(174, "Wind-up Nero tol Scaeva", 20,
         "30,000 MGP from the Minion Trader in Minion Square; permanent vendor stock with no additional unlock.");
     public static readonly VerminionMinion Zu = new(83, "Zu Hatchling", 10,
-        "10,000 MGP from the Minion Trader in Minion Square; permanent vendor stock with no additional unlock.");
+        "10,000 MGP from the Minion Trader in Minion Square; permanent vendor stock with no FATE or additional unlock. ADS handles purchase within the character's MGP cap.");
     public static readonly VerminionMinion Gentleman = new(21, "Wind-up Gentleman", 30,
-        "Reward from the level 50 ARR Hildibrand quest Her Last Vow. Acquire through the Questionable handoff below, then Resume to register the reward before Stages 23 and 24. The minion cannot be bought for gil or MGP.");
+        "Reward from the level 50 ARR Hildibrand quest Her Last Vow. Acquire through the Questionable handoff below, then Resume to register the reward before Stages 12, 15, 23 and 24. The minion cannot be bought for gil or MGP.");
 
-    public static VerminionMinion Attacker(int stage) => stage is 7 or 15 or 16 ? Bat :
-        stage is 23 or 24 ? Gentleman : VerminionBattleStrategy.IsStoneStage(stage) ? Mammet : Airship;
-    public static bool HasDefenders(int stage) => stage is 6 or 20;
+    public static VerminionMinion Attacker(int stage) => stage == 7 ? Zu :
+        stage is 12 or 15 or 23 or 24 ? Gentleman : VerminionBattleStrategy.IsStoneStage(stage) ? Mammet : Airship;
+    public static bool HasDefenders(int stage) => stage is 6 or 16 or 20;
     public static VerminionMinion[] Required(int stage) => stage is < 2 or > 24 ? [] :
-        HasDefenders(stage) ? [Attacker(stage), stage == 20 ? Hatchling : Bat] : [Attacker(stage)];
+        HasDefenders(stage) ? [Attacker(stage), stage == 20 ? Hatchling : Zu] : [Attacker(stage)];
 
     // Participation needs a fighting roster only while unlocking Stage 2.
     public static bool NeedsBattleRoster(int stage, bool campaign, Models.VerminionMode mode, uint clears) =>
@@ -84,19 +89,29 @@ internal static class VerminionRoster
         1 => "Follow the tutorial prompts. Three registered minions are required to enter; the tutorial supplies its combat minions.",
         2 or 3 or 5 or 8 or 10 or 13 or 14 or 17 or 18 or 21 =>
             "Mammet groups attack the center, then side stones. Replace losses; the guide explicitly allows Mammets as stone attackers.",
-        20 => "Six Mammets per lane attack stones. Four Wayward Hatchlings counter poppets at the center stone, then defend a surviving stone. The guide suggests defensive support; this vendor adaptation is under live testing. Reserve 60 capacity for the defenders and use Choco Shuffle near enemies.",
-        7 or 16 => "Baby Bats counter critters and use area damage over time. Split across stones and reinforce. This substitutes a common vendor minion for the previous collection-specific attacker.",
-        11 => "Mammet groups split across stones. The guide recommends extra combat support here; the vendor-only composition still needs a fresh clear.",
+        20 => "Six Mammets per lane attack stones. Four Wayward Hatchlings counter poppets at the center stone, then defend a surviving stone. Reserve 60 capacity for the defenders and use Choco Shuffle near enemies. This vendor adaptation cleared on its first fresh mixed-opening attempt, including defender summons and their special; repeated-win reliability is not established.",
+        7 => "Zu Hatchlings counter critters with area auto-attacks and Nasty Peck's attack boost. Split across stones and reinforce. This permanent-vendor composition cleared on its third attempt after two defeats; repeated-win reliability is not established.",
+        16 => "Follow the guide's Mammet stone-attack option: six Mammets per lane exploit their Arcana strength. Reserve 40 capacity for four Zu Hatchlings to counter critters near a surviving friendly stone, using Nasty Peck's attack boost. This permanent-vendor composition cleared on its first attempt after three Zu-only defeats. Repeated-win reliability is not established; no FATE minion is required.",
+        11 => "Mammet groups split across stones. The guide recommends extra combat support here; this vendor-only composition has one fresh live clear.",
         22 => "Split Mammet groups across stones, redirect survivors and replace losses. The guide suggests Wind-up Odin support; the Mammet-only baseline has one observed clear.",
         4 => "Airships follow the boss between stones; group four to use Cargo's area ATK buff. Replace casualties and avoid wasting orders while attacking.",
-        6 => "Airships switch to the Imps that maintain invulnerability, then return to the boss. Four Baby Bats defend the center stone.",
+        6 => "Airships switch to the Imps that maintain invulnerability, then return to the boss. Four Zu Hatchlings defend the center stone. This permanent-vendor composition has one observed live clear.",
         9 => "Fast Airships carry bombs from the lever, place and arm them by the invulnerable slime, then attack the vulnerable final phase.",
-        12 => "Airships defend one stone and approach the boss from behind. Use surviving gates for replacements when gates are destroyed.",
-        15 => "Assemble 24 Baby Bats before engaging Odin; recover before the final phase and use their damage-over-time special during the final burn. This vendor substitution is unverified.",
+        12 => "Follow the linked Gentleman-only guide: send Wind-up Gentlemen to Demon Brick as they spawn, pursue from behind and ignore other minions. Use surviving gates for replacements. Keep the withdrawing special disabled. This composition cleared on its third attempt after two defeats; repeated-win reliability is not established.",
+        15 => "Use Wind-up Gentlemen, following the linked Gentleman guide. Assemble eight attackers, follow Odin and replace losses; recover the army before the final phase. At 25% HP, use Power of Deduction only with at least eight living attackers because it withdraws its four-minion action party. This roster cleared on its second attempt; the later prompt-replacement change still needs live verification.",
         19 => "Up to nine Airships defend the center stone and intercept Enkidu. Do not chase Gilgamesh away; retreat to heal during his ATK/DEF/SPD buff and return afterward. Use Cargo's area ATK buff on the group.",
-        23 => "Wind-up Gentlemen rush Twintania as they spawn. Keep replacements queued and ignore resistant nodes. Save Power of Deduction for the final 20% while eight attackers survive: it buffs nearby allies but withdraws its four-minion action party. This published composition still needs a live clear by this bot; the tested Airship, Nero and Zu substitutions failed.",
-        24 => "The guide uses Wind-up Gentlemen: send replacements to Bahamut as they spawn, move the army out of plain red circles, and send one healthy minion into each red pillar circle. Focus one Clockwork Twintania when both adds appear, then return to Bahamut. Preserve units instead of using their party-withdrawing special. Add targeting is implemented but unverified; tower assignment and circle avoidance are still missing, so ordinary admission remains blocked.",
+        23 => "Wind-up Gentlemen rush Twintania as they spawn. Keep replacements queued and ignore resistant nodes. Save Power of Deduction for the final 20% while eight attackers survive: it buffs nearby allies but withdraws its four-minion action party. This published composition cleared on its first attempt on the current test character; repeated-win reliability is not established. The tested Airship, Nero and Zu substitutions failed.",
+        24 => "Follow the guide's Wind-up Gentleman composition: dodge plain red circles, send one healthy Gentleman into each pillar circle, focus one Clockwork Twintania when both adds appear, then return to Bahamut. Reinforce losses and keep the withdrawing special disabled. This composition has one observed live clear; repeated-win reliability remains unverified.",
         _ => "No challenge selected.",
+    };
+
+    public static string? AchievementSupport(int stage) => stage switch
+    {
+        16 or 22 => "The linked guide recommends two Wind-up Odin to support stone attackers. Odin is a Monster with speed 4, 500 HP, 75 ATK and summon cost 30; its special deals 90 potency area damage. This support composition has not been tested by the bot.",
+        19 => "The linked guide's first strategy includes four Wind-up Odin alongside healers and defenders. Odin costs 30 capacity and has speed 4. The bot currently uses its separately tested Airship defense strategy.",
+        23 => "The linked alternate guide uses four Wind-up Cursor and six Wind-up Gentlemen. Cursor is a Gadget, costs 15 capacity and reduces nearby enemies' DEF by 50% for 15 seconds. This mixed composition has not been tested by the bot.",
+        24 => "The linked guide allows White Mage Minions of Light instead of Louisoix, but describes this as harder. They cost 10 capacity, have speed 3 and heal nearby allies for 100 HP (150 for poppets). The shared Minion of Light item costs two certificates; selection of its White Mage form still needs verification.",
+        _ => null,
     };
 
     public static string GuideUrl(int stage) => "https://ffxiverminion.com/" + (stage switch
@@ -119,8 +134,8 @@ internal sealed class VerminionBattleStrategy(int stage = 2)
         10 or 11 or 13 or 14 or 16 or 17 or 18 or 20 or 21 or 22;
     public const ushort Minion = 2; // Mammet #001: ordinary city vendor, Arcana strength.
     public const string MinionName = "Mammet #001";
-    public const ushort CritterCounter = 26; // Baby Bat: ordinary vendor, monster, speed 4.
-    public const string CritterCounterName = "Baby Bat";
+    public const ushort CritterCounter = 83; // Zu Hatchling: permanent MGP vendor, monster, speed 3.
+    public const string CritterCounterName = "Zu Hatchling";
     public enum Action { Wait, SelectGate, Summon, AttackObjective }
     private int lane;
     private int summons;
@@ -190,15 +205,15 @@ internal sealed class VerminionBossStrategy(int stage = 4)
 {
     public const ushort Minion = 52; // Wind-up Airship: level 15 main scenario reward.
     public const string MinionName = "Wind-up Airship";
-    public const ushort DefenderMinion = 26;
-    public const string DefenderName = "Baby Bat";
+    public const ushort DefenderMinion = 83;
+    public const string DefenderName = "Zu Hatchling";
     public const int DefenderCost = 10;
     public const int DefenderCount = 4;
     public ushort CurrentDefenderMinion => stage == 20 ? VerminionRoster.Hatchling.Id : DefenderMinion;
     public string CurrentDefenderName => stage == 20 ? VerminionRoster.Hatchling.Name : DefenderName;
     public int CurrentDefenderCost => stage == 20 ? VerminionRoster.Hatchling.Cost : DefenderCost;
     public int CurrentDefenderCount => VerminionRoster.HasDefenders(stage) ? DefenderCount : 0;
-    public bool DefendsStone => stage is 12 or 19;
+    public bool DefendsStone => stage == 19;
     public ushort CurrentMinion => VerminionRoster.Attacker(stage).Id;
     public string CurrentMinionName => VerminionRoster.Attacker(stage).Name;
     public int MinionCost => VerminionRoster.Attacker(stage).Cost;
@@ -206,10 +221,11 @@ internal sealed class VerminionBossStrategy(int stage = 4)
     public int ArmySize => 240 / MinionCost;
     // Gentleman withdraws the four casters. Never trade the last attack party
     // for a buff with no surviving army, or spend it before the final burn.
-    // The final stage needs living units for towers; its guide does not call
-    // for sacrificing an action party. Keep that special disabled there.
-    public bool ShouldUseSpecial(uint bossHp, uint bossMaxHp, int livingUnits) => stage != 24 &&
-        (stage != 23 || bossMaxHp > 0 && bossHp > 0 && (ulong)bossHp * 5 <= bossMaxHp && livingUnits >= 8);
+    // Demon Brick needs sustained pursuit, and Bahamut needs units for towers;
+    // neither guide calls for sacrificing an action party.
+    public bool ShouldUseSpecial(uint bossHp, uint bossMaxHp, int livingUnits) => stage is not (12 or 24) &&
+        (stage is not (15 or 23) || bossMaxHp > 0 && bossHp > 0 &&
+            (ulong)bossHp * (stage == 15 ? 4u : 5u) <= bossMaxHp && livingUnits >= 8);
     public VerminionSummonTracker Defenders { get; } = new();
     public int AttackCapacity(int capacity, int defenders) => capacity <= 60 ? capacity :
         System.Math.Max(0, capacity - System.Math.Max(0, CurrentDefenderCount - defenders) * CurrentDefenderCost);
@@ -221,8 +237,83 @@ internal sealed class VerminionBossStrategy(int stage = 4)
          name.Equals("Imp", System.StringComparison.OrdinalIgnoreCase));
     public static bool IsFinalCoilBoss(string name) =>
         name.Equals("Wind-up Bahamut", System.StringComparison.OrdinalIgnoreCase);
+
+    public static Vector3? FinalCoilDodgeDestination(VerminionGroundOmen circle, Vector3 attackTarget,
+        IReadOnlyList<VerminionGroundOmen>? circles = null)
+    {
+        // Native scale and the paired image locate the circle, but its exact
+        // damage boundary is unmeasured. Add clearance for the selected party,
+        // staying near its attack target rather than kiting it across the board.
+        var distance = circle.Radius + 3;
+        return Enumerable.Range(0, 16).Select(index =>
+                circle.Position + new Vector3(System.MathF.Sin(index * System.MathF.PI / 8), 0,
+                    System.MathF.Cos(index * System.MathF.PI / 8)) * distance)
+            .Where(point => System.MathF.Abs(point.X) <= 23 && System.MathF.Abs(point.Z) <= 23)
+            .Where(point => circles == null || circles.All(other => other.Tower ||
+                Vector3.DistanceSquared(point, other.Position) > (other.Radius + 1) * (other.Radius + 1)))
+            // Accepted omens have radius <= 10 and centers inside this board;
+            // at least one sampled direction remains on the board. Overlapping
+            // warnings may exclude it; never use a default unsafe destination.
+            .OrderBy(point => Vector3.DistanceSquared(point, attackTarget))
+            .Select(point => (Vector3?)point).FirstOrDefault();
+    }
+
+    public static bool CanContinueFinalCoilTowerOrder(IReadOnlyList<VerminionGroundOmen> omens,
+        Vector3 origin, Vector3 destination)
+    {
+        if (!omens.Any(omen => omen.Tower && Vector3.DistanceSquared(omen.Position, destination) <= 1)) return false;
+        var route = destination - origin;
+        foreach (var circle in omens.Where(omen => !omen.Tower))
+        {
+            var along = route.LengthSquared() == 0 ? 0 :
+                System.Math.Clamp(Vector3.Dot(circle.Position - origin, route) / route.LengthSquared(), 0, 1);
+            if (Vector3.DistanceSquared(origin + along * route, circle.Position) <=
+                (circle.Radius + 1) * (circle.Radius + 1)) return false;
+        }
+        return true;
+    }
+
+    public static bool CanContinueFinalCoilDodgeOrder(IReadOnlyList<VerminionGroundOmen> omens, Vector3 destination)
+        => omens.Any(omen => !omen.Tower) && omens.Where(omen => !omen.Tower).All(circle =>
+            Vector3.DistanceSquared(destination, circle.Position) > (circle.Radius + 1) * (circle.Radius + 1));
+
+    public static ulong ChooseFinalCoilTowerOccupant(
+        IEnumerable<(ulong Id, Vector3 Position, uint Hp, uint MaxHp)> units,
+        Vector3 tower, ulong assigned, bool orderSent)
+    {
+        var living = units.Where(unit => unit.Id != 0 && unit.Hp > 0 && unit.MaxHp > 0).ToArray();
+        var current = living.FirstOrDefault(unit => unit.Id == assigned);
+        // Keep an occupant already absorbing the tower, or still travelling on
+        // its verified order. Once a dodge interrupts that order, a wounded unit
+        // outside the tower must not prevent selecting a healthy replacement.
+        if (current.Id != 0 && (orderSent || current.Hp >= current.MaxHp / 2 ||
+                Vector3.DistanceSquared(current.Position, tower) <= 1)) return current.Id;
+        return living.Where(unit => unit.Hp >= unit.MaxHp / 2)
+            .OrderBy(unit => Vector3.DistanceSquared(unit.Position, tower))
+            .ThenByDescending(unit => unit.Hp).Select(unit => unit.Id).FirstOrDefault();
+    }
+
     private ulong finalCoilAddTarget;
     private bool finalCoilAddDefeated;
+    private readonly Dictionary<ulong, System.DateTime> finalCoilAttackOrders = new();
+
+    public bool CanOrderFinalCoilAttacker(ulong unit, Vector3 position, Vector3 target,
+        ulong towerOccupant, System.DateTime now) => stage == 24 && towerOccupant != 0 &&
+        unit != 0 && unit != towerOccupant && Vector3.DistanceSquared(position, target) >= 4 &&
+        (!finalCoilAttackOrders.TryGetValue(unit, out var sent) || (now - sent).TotalSeconds >= 10);
+
+    public ulong ChooseFinalCoilAttacker(IEnumerable<(ulong Id, Vector3 Position)> units,
+        Vector3 target, ulong towerOccupant, System.DateTime now)
+    {
+        return units.Where(unit => CanOrderFinalCoilAttacker(unit.Id, unit.Position, target, towerOccupant, now))
+            .OrderBy(unit => Vector3.DistanceSquared(unit.Position, target))
+            .Select(unit => unit.Id).FirstOrDefault();
+    }
+
+    public void FinalCoilAttackerDispatched(ulong unit, System.DateTime now)
+    {
+        if (stage == 24 && unit != 0) finalCoilAttackOrders[unit] = now;
+    }
 
     public ulong ChooseFinalCoilTarget(ulong bossId, IEnumerable<(ulong Id, string Name, uint Hp)> enemies)
     {
@@ -252,21 +343,57 @@ internal sealed class VerminionBossStrategy(int stage = 4)
     public bool WaitingForWave => PendingSummons > 0;
     public int ObserveUnits(System.Collections.Generic.IEnumerable<ulong> units) => summons.ObserveUnits(units);
 
+    public static Vector3 DemonBrickDestination(Vector3 boss, float rotation, Vector3? anchor)
+    {
+        var facing = new Vector3(System.MathF.Sin(rotation), 0, System.MathF.Cos(rotation));
+        if (anchor is { } position && Vector3.Dot(position - boss, facing) > 0)
+        {
+            var side = new Vector3(facing.Z, 0, -facing.X);
+            var sign = Vector3.Dot(position - boss, side) < 0 ? -1 : 1;
+            return boss + side * sign * 2 - facing * 2;
+        }
+        // This rear destination must remain safe on the next decision. A -1
+        // threshold would send a unit at the desired -0.8 point on a new detour.
+        return boss - facing * 0.8f;
+    }
+
+    public ulong ChooseStraggler((ulong Id, System.Numerics.Vector3 Position)[] units, System.Numerics.Vector3 target)
+    {
+        if (stage is not (12 or 24)) return 0;
+        // A dispatched group order does not prove every minion was selected.
+        // Rejoin an observed attacking group without redirecting an army that
+        // is still travelling together toward a moving boss.
+        var engaged = units.Where(unit => unit.Id != 0 &&
+                System.Numerics.Vector3.DistanceSquared(unit.Position, target) < 36)
+            .OrderByDescending(unit => units.Count(other =>
+                System.Numerics.Vector3.DistanceSquared(unit.Position, other.Position) < 25))
+            .FirstOrDefault();
+        if (engaged.Id == 0) return 0;
+        var separationSquared = stage == 24 ? 36 : 100;
+        return units.Where(unit => unit.Id != 0 &&
+                System.Numerics.Vector3.DistanceSquared(unit.Position, engaged.Position) >= separationSquared &&
+                System.Numerics.Vector3.DistanceSquared(unit.Position, target) >= separationSquared)
+            .OrderByDescending(unit => units.Count(other =>
+                System.Numerics.Vector3.DistanceSquared(unit.Position, other.Position) < 25))
+            .ThenBy(unit => System.Numerics.Vector3.DistanceSquared(unit.Position, target))
+            .Select(unit => unit.Id).FirstOrDefault();
+    }
+
     public Action Decide(bool gateSelected, int readyUnits, int deployedUnits,
         int usedCapacity, int capacity, double waveSeconds, double orderSeconds, bool bossMoved, bool gateAvailable = true, bool assemble = false)
     {
         // Selection and camera work can take several seconds. Keep two requests
-        // in flight before starting another final-boss movement sequence, instead
+        // in flight before starting another boss-rush movement sequence, instead
         // of starving production whenever the boss takes another step.
-        if (stage is 23 or 24 && gateAvailable && PendingSummons < 2 && summons.CanRequest(usedCapacity, capacity, MinionCost))
+        if (stage is 12 or 15 or 23 or 24 && gateAvailable && PendingSummons < 2 && summons.CanRequest(usedCapacity, capacity, MinionCost))
             return gateSelected ? Action.Summon : Action.SelectGate;
         if (!assemble && (readyUnits >= WaveSize || readyUnits > 0 && waveSeconds >= 60)) return Action.SendWave;
-        // Both final stages need their replacements in combat promptly. Do not
+        // These boss rushes need their replacements in combat promptly. Do not
         // leave the last minion idle at capacity or wait for four survivors.
-        if (stage is 23 or 24 && !assemble && readyUnits > 0 &&
+        if (stage is 12 or 15 or 23 or 24 && !assemble && readyUnits > 0 &&
             (waveSeconds >= 15 || PendingSummons == 0 && usedCapacity + MinionCost > capacity))
             return Action.SendWave;
-        if (stage is 23 or 24 && !assemble && deployedUnits > 0 && orderSeconds >= 5 && bossMoved)
+        if (stage is 12 or 15 or 23 or 24 && !assemble && deployedUnits > 0 && orderSeconds >= 5 && bossMoved)
             return Action.FollowBoss;
         if (!assemble && deployedUnits >= 4 && orderSeconds >= 10 && bossMoved) return Action.FollowBoss;
         // Reserve capacity for requests whose units have not appeared yet.

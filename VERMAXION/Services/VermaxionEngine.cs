@@ -486,6 +486,8 @@ public class VermaxionEngine
     private TaskEligibility EvaluateFcBuff(CharacterConfig config)
         => !config.EnableFCBuffRefill
             ? TaskEligibility.Disabled("FC Buff Refill is disabled for this character.")
+            : !Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "ADS")
+                ? TaskEligibility.Blocked("ADS is required for FC Buff Refill. Install and enable ADS.")
             : ShouldRunFCBuff(config)
                 ? TaskEligibility.Runnable()
                 : TaskEligibility.NotDue($"FC Buff Refill is not due for its {config.FCBuffFrequency} cadence.");
@@ -937,7 +939,7 @@ public class VermaxionEngine
         CancelForSettling("Stopped");
     }
 
-    public void ForceStop()
+    public void ForceStop(bool preserveVerminionResult = false)
     {
         StopTargetProgression();
         CancelNagYourMomSeriesRankTest();
@@ -947,7 +949,7 @@ public class VermaxionEngine
         lootGoblinMapGatherService.Cancel();
         CancelTaskServices();
         vNavmeshIPC.Stop();
-        TryCloseOwnedUiBestEffort();
+        TryCloseOwnedUiBestEffort(preserveVerminionResult: preserveVerminionResult);
         retainerListingRefillService.Reset();
         if (arService.IsProcessing)
             arService.FinishPostProcess(force: true);
@@ -2635,8 +2637,11 @@ public class VermaxionEngine
         }
     }
 
-    private void TryCloseOwnedUiBestEffort(UiCloseFallbackMode fallbackMode = UiCloseFallbackMode.Always)
+    private void TryCloseOwnedUiBestEffort(UiCloseFallbackMode fallbackMode = UiCloseFallbackMode.Always,
+        bool preserveVerminionResult = false)
     {
+        // Vendor menus and their cleanup belong to ADS, including shared confirmation dialogs.
+        if (AdsOwnsVendorUi()) return;
         if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker() != null)
             return;
         if (retainerUiOwned)
@@ -2647,11 +2652,14 @@ public class VermaxionEngine
             return;
         }
         var knownAddonWasVisible = TaskOwnedAddonNames.Any(IsAddonVisible);
+        var keepVerminionResult = preserveVerminionResult && IsAddonVisible("LovmResult");
 
         foreach (var addonName in TaskOwnedAddonNames)
-            TryCloseAddonByCallback(addonName);
+            if (!keepVerminionResult || addonName != "LovmResult") TryCloseAddonByCallback(addonName);
 
-        if (UiCloseFallbackPolicy.ShouldPressFallbackEscape(fallbackMode, knownAddonWasVisible))
+        // The selected reload task must read its result before closing it.
+        // Explicit FULL STOP retains the normal cleanup behavior.
+        if (!keepVerminionResult && UiCloseFallbackPolicy.ShouldPressFallbackEscape(fallbackMode, knownAddonWasVisible))
             ResetInteractionState();
     }
 

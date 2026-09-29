@@ -70,6 +70,20 @@ public sealed class LifestreamIPC
         }
     }
 
+    public bool TryReadActiveAetheryte(out uint aetheryteId)
+    {
+        try
+        {
+            aetheryteId = Plugin.PluginInterface.GetIpcSubscriber<uint>("Lifestream.GetActiveAetheryte").InvokeFunc();
+            return true;
+        }
+        catch
+        {
+            aetheryteId = 0;
+            return false;
+        }
+    }
+
     public bool AethernetTeleportById(uint aethernetId)
     {
         try

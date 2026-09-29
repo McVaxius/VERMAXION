@@ -82,7 +82,7 @@ public sealed class VendorStockService
             }
 
             var status = ReadStatus();
-            if ((string?)status["operationId"] != operationId || (uint?)status["itemId"] != purchasingItem ||
+            if ((bool?)status["companyAction"] == true || (string?)status["operationId"] != operationId || (uint?)status["itemId"] != purchasingItem ||
                 (int?)status["requestedQuantity"] != purchasingQuantity)
             { Fail("ADS no longer reports the owned stock purchase; no request repeated."); return; }
             if ((bool?)status["running"] == true)

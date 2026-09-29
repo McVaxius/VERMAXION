@@ -22,10 +22,6 @@ public class FCBuffService : IDisposable
 {
     private readonly ICommandManager commandManager;
     private readonly IPluginLog log;
-    private readonly IClientState clientState;
-    private readonly ICondition condition;
-    private readonly IObjectTable objects;
-    private readonly ITargetManager targetManager;
     private readonly ConfigManager configManager;
     private readonly YesAlreadyIPC yesAlready;
     private readonly Plugin plugin;
@@ -48,8 +44,6 @@ public class FCBuffService : IDisposable
     private int buyMax = 15;
     private DateTime lastWindowCloseAttemptAt = DateTime.MinValue;
     private DateTime lastWindowCloseLogAt = DateTime.MinValue;
-    private DateTime windowCloseTargetStartedAt = DateTime.MinValue;
-    private string? windowCloseTargetName = null;
     private bool failAfterClosingWindows = false;
     private ulong currentFreeCompanyId;
     private bool reconciliationRequired;
@@ -63,10 +57,6 @@ public class FCBuffService : IDisposable
     private string? purchaseOperationId;
     private DateTime nextPurchaseObservation;
 
-    // FC points threshold from FUTA_GC.lua
-    private const int MinFCPoints = 500000;
-    // Gil requirement from FUTA_GC.lua
-    private const int MinGil = 16000;
 
     public enum FCBuffState
     {
@@ -79,20 +69,6 @@ public class FCBuffService : IDisposable
         CheckingBuffInventory,
         CheckingIfRefillNeeded,
         AcquiringThroughAds,
-        NavigatingToGC,
-        WaitingForAftArrival,
-        WaitingForGridaniaArrival,
-        WaitingForDahArrival,
-        NavigatingToQuartermaster,
-        WaitingForQuartermasterArrival,
-        TargetingQuartermaster,
-        InteractingQuartermaster,
-        WaitingForSelectString1,
-        WaitingForExchange,
-        PurchasingBuff,
-        WaitingForPurchaseConfirm,
-        ConfirmingPurchase,
-        PurchaseLoop,
         ClosingWindows,
         ActivatingBuff,
         WaitingForActivationMenu,
@@ -112,10 +88,6 @@ public class FCBuffService : IDisposable
     {
         this.commandManager = commandManager;
         this.log = log;
-        this.clientState = clientState;
-        this.condition = condition;
-        this.objects = objects;
-        this.targetManager = targetManager;
         this.configManager = configManager;
         this.yesAlready = yesAlready;
         this.plugin = plugin;
@@ -124,6 +96,17 @@ public class FCBuffService : IDisposable
     public unsafe void Start(int maxAttempts = 2)
     {
         if (IsActive) return;
+
+        if (!Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "ADS"))
+        {
+            log.Warning("[FCBuff] ADS is required for FC Buff Refill. Install and enable ADS before starting this task.");
+            SetState(FCBuffState.Failed);
+            return;
+        }
+
+        CancelOwnedPurchase();
+        purchaseOperationId = null;
+        nextPurchaseObservation = DateTime.MinValue;
 
         CompletedViaRankOneToSevenShortcut = false;
         var freeCompanyRank = GetCurrentFreeCompanyRank();
@@ -143,17 +126,17 @@ public class FCBuffService : IDisposable
             return;
         }
         inactiveActionCapacity = capacity.Value;
-        
+
         // Force load config from file to get latest values
         configManager.LoadAllAccounts();
         log.Information("[FCBuff] Forced config load - getting latest values from file");
-        
+
         // Get config AFTER loading to ensure we have the latest values
         var config = configManager.GetActiveConfig();
         log.Information($"[FCBuff] Config Debug: CurrentAccountId='{configManager.CurrentAccountId}', SelectedCharacterKey='{configManager.SelectedCharacterKey}'");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinPoints={config.FCBuffMinPoints:N0}, FCBuffPurchaseAttempts={config.FCBuffPurchaseAttempts}");
         log.Information($"[FCBuff] Task Start Config: FCBuffMinGil={config.FCBuffMinGil:N0}, AllowFCBuffActivation={config.AllowFCBuffActivation}, MaintainFCBuffStockTarget={config.MaintainFCBuffStockTarget}");
-        
+
         purchaseAttempts = FCBuffRecoveryPolicy.ClampPurchaseAttempts(config.FCBuffPurchaseAttempts);
         failAfterClosingWindows = false;
         ResetWindowCloseTracking();
@@ -199,7 +182,7 @@ public class FCBuffService : IDisposable
     public unsafe void TestFreeCompanyGC()
     {
         log.Information("[VERMAXION] Testing Free Company Grand Company detection");
-        
+
         try
         {
             // Using the pattern from Jaksuhn's SND and XA docs
@@ -208,9 +191,9 @@ public class FCBuffService : IDisposable
             {
                 var fcGrandCompany = infoProxyFreeCompany->GrandCompany;
                 var gcString = fcGrandCompany.ToString();
-                
+
                 log.Information($"[FCBuff] Free Company Grand Company: {gcString}");
-                
+
                 // GC names mapping from Jaksuhn's SND
                 var gcNames = new Dictionary<string, int>
                 {
@@ -218,7 +201,7 @@ public class FCBuffService : IDisposable
                     { "TwinAdder", 2 },
                     { "ImmortalFlames", 3 }
                 };
-                
+
                 int gcChoice = 1; // Default to Maelstrom
                 foreach (var gc in gcNames)
                 {
@@ -228,9 +211,9 @@ public class FCBuffService : IDisposable
                         break;
                     }
                 }
-                
+
                 log.Information($"[FCBuff] GC Choice: {gcChoice} ({gcString})");
-                
+
                 // Also log player's current Grand Company for reference
                 var playerState = PlayerState.Instance();
                 log.Information($"[FCBuff] Player Grand Company: {playerState->GrandCompany}");
@@ -302,7 +285,7 @@ public class FCBuffService : IDisposable
                             // Wait 1 second for window data to populate
                             return;
                         }
-                        
+
                         log.Information("[FCBuff] Switching to Actions tab");
                         log.Information("[FCBuff] [Callback] Firing FreeCompany with args (true, 0, 4)");
                         GameHelpers.FireAddonCallback("FreeCompany", true, 0, 4);
@@ -354,7 +337,7 @@ public class FCBuffService : IDisposable
                     var fcPointsNode = GameHelpers.GetFCPointsNode();
                     var fcPoints = fcPointsNode ?? 0;
                     log.Information($"[FCBuff] Current FC points: {fcPoints:N0}");
-                    
+
                     // Check if we have enough FC points
                     var config = configManager.GetActiveConfig();
                     var minFCPoints = config.FCBuffMinPoints;
@@ -364,7 +347,7 @@ public class FCBuffService : IDisposable
                         SetState(FCBuffState.Complete);
                         return;
                     }
-                    
+
                     SetState(FCBuffState.CheckingBuffInventory);
                 }
                 else
@@ -380,7 +363,7 @@ public class FCBuffService : IDisposable
             case FCBuffState.CheckingBuffInventory:
                 if (elapsed < 1) return;
                 log.Information("[FCBuff] Checking FC buff inventory for Seal Sweetener II");
-                
+
                 try
                 {
                     // Use the FCBuffInventoryService to count buffs
@@ -401,7 +384,7 @@ public class FCBuffService : IDisposable
                     plugin.Configuration.Save();
                     reconciliationRequired = false;
                     log.Information($"[FCBuff] Reconciled Seal Sweetener II count: {sealSweetenerCount}");
-                    
+
                     var alreadyActive = IsSealSweetenerTwoActive();
                     var willActivate = allowActivation && !alreadyActive;
                     buyMax = FcBuffStockPolicy.RequiredPurchaseQuantity(
@@ -553,7 +536,7 @@ public class FCBuffService : IDisposable
                     break;
                 }
 
-                if (GameHelpers.IsAddonVisible("SelectYesno"))
+                if (!GameHelpers.AdsOwnsVendorUi() && GameHelpers.IsAddonVisible("SelectYesno"))
                 {
                     var localizedActionName = GetLocalizedSealSweetenerTwoName();
                     if (!string.IsNullOrWhiteSpace(localizedActionName))
@@ -710,6 +693,16 @@ public class FCBuffService : IDisposable
         if (elapsed < 0.25)
             return;
 
+        if (GameHelpers.AdsOwnsVendorUi())
+        {
+            if (elapsed > WindowCloseTimeout.TotalSeconds)
+            {
+                log.Warning("[FCBuff] ADS vendor cleanup is still pending; leaving its dialogs untouched.");
+                SetState(FCBuffState.Failed);
+            }
+            return;
+        }
+
         var visibleAddons = GetVisibleFcCleanupAddons();
         if (visibleAddons.Count == 0)
         {
@@ -749,7 +742,6 @@ public class FCBuffService : IDisposable
         if (closeTarget == null)
             return;
 
-        TrackWindowCloseTarget(closeTarget, now);
 
         if (closeTarget == "SelectYesno")
         {
@@ -763,6 +755,7 @@ public class FCBuffService : IDisposable
 
     private unsafe bool TryClickSelectYesnoNo(string reason)
     {
+        if (GameHelpers.AdsOwnsVendorUi()) return false;
         try
         {
             nint addonPtr = Plugin.GameGui.GetAddonByName("SelectYesno", 1);
@@ -808,15 +801,6 @@ public class FCBuffService : IDisposable
 
 
         return FcCallbackCloseAddonNames.FirstOrDefault(GameHelpers.IsAddonVisible);
-    }
-
-    private void TrackWindowCloseTarget(string closeTarget, DateTime now)
-    {
-        if (string.Equals(windowCloseTargetName, closeTarget, StringComparison.Ordinal))
-            return;
-
-        windowCloseTargetName = closeTarget;
-        windowCloseTargetStartedAt = now;
     }
 
     private void LogWindowCloseStatusThrottled(IReadOnlyCollection<string> visibleAddons, DateTime now)
@@ -1016,11 +1000,11 @@ public class FCBuffService : IDisposable
         if (newState == FCBuffState.Idle || newState == FCBuffState.Complete || newState == FCBuffState.Failed)
         {
             ReleaseOwnedYesAlreadyPause($"state {newState}");
-    
+
             ResetWindowCloseTracking();
             failAfterClosingWindows = false;
         }
-        
+
     }
 
     private bool TryAcquireManualYesAlreadyPause()
@@ -1052,8 +1036,6 @@ public class FCBuffService : IDisposable
     {
         lastWindowCloseAttemptAt = DateTime.MinValue;
         lastWindowCloseLogAt = DateTime.MinValue;
-        windowCloseTargetStartedAt = DateTime.MinValue;
-        windowCloseTargetName = null;
     }
 
 }
