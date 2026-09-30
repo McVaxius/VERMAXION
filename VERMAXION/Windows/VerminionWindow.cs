@@ -36,12 +36,19 @@ internal sealed class VerminionWindow : Window
         ImGui.TextWrapped($"Campaign: {Math.Min(progress.NextUnclearedChallenge - 1, 24)}/24 sequential stages cleared. Attempts on next uncleared stage: {stageAttempts}/3. Consecutive losses: {progress.ConsecutiveLosses}.");
 
         ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
+        ImGui.TextWrapped("Permanent campaign: completes unfinished challenges in order. Cleared stages stay complete across weekly resets.");
+        if (ImGui.Button("Complete or continue 24 CPU challenges")) plugin.RunDashboardAction(service.RunChallenges);
+        ImGui.Separator();
+        ImGui.TextWrapped(config.VerminionMode switch
+        {
+            VerminionMode.Participation => "Weekly participation: waits for CPU defeats until five weekly matches are recorded.",
+            VerminionMode.WinTarget => $"Stage 2 win farming: fights until {Math.Clamp(config.VerminionVictoryTarget, 1, 1000)} victories are recorded this week.",
+            VerminionMode.CpuRewards => "Tournament checks / prizes: checks registration and prizes. Closed entry falls back to intentional CPU losses for weekly participation.",
+            _ => "Choose a weekly mode in the settings below.",
+        });
         if (ImGui.Button("Run weekly goal")) plugin.RunDashboardAction(service.RunTask);
-        ImGui.SameLine();
-        if (ImGui.Button("Clear all challenges")) plugin.RunDashboardAction(service.RunChallenges);
         if (config.VerminionPaused)
         {
-            ImGui.SameLine();
             if (ImGui.Button("Resume")) plugin.RunDashboardAction(service.ResumeTask);
         }
         ImGui.EndDisabled();
@@ -113,19 +120,20 @@ internal sealed class VerminionWindow : Window
             ImGui.EndDisabled();
             ImGui.TextWrapped("Verminion stays paused while Questionable runs. Reload observes the handoff without starting it again. FULL STOP cancels the owned acquisition. After the reward, Resume registers the minion and continues the selected Verminion goal.");
         }
-        ImGui.TextWrapped("Preview does not select a stage to run. Clear all challenges always starts with the first unfinished stage.");
+        ImGui.TextWrapped("Preview does not select a stage to run. Complete or continue 24 CPU challenges starts with the first unfinished stage.");
     }
 
     internal static bool DrawSettings(CharacterConfig config)
     {
         var changed = false;
         var mode = (int)config.VerminionMode;
-        if (ImGui.Combo("Weekly mode##Verminion", ref mode, "Participation - 5 matches\0Win X\0CPU rewards\0"))
+        if (ImGui.Combo("Weekly mode##Verminion", ref mode, "Weekly participation - 5 matches\0Stage 2 win farming\0Tournament checks / prizes\0"))
         { config.VerminionMode = (VerminionMode)mode; changed = true; }
+        ImGui.TextWrapped("Open Verminion for the separate permanent campaign action: Complete or continue 24 CPU challenges.");
         ImGui.TextWrapped(config.VerminionMode switch
         {
             VerminionMode.Participation => "Finish the remaining weekly participation matches through intentional CPU losses. Five matches award 27,000 base MGP; existing participation is counted.",
-            VerminionMode.WinTarget => "Win on Stage 2 until the weekly victory target is reached. Losses count only toward participation. Stops after three consecutive losses or the attempt limit.",
+            VerminionMode.WinTarget => "Repeat Stage 2 to reach the chosen weekly victory total. Win farming is optional; the weekly participation reward only needs five completed matches. Losses count toward participation. Stops after three consecutive losses or the attempt limit.",
             _ => "Check tournament notices, registration and claimable prizes on your Home World. Entry currently stops before Join. When registration is closed or all 15 matches are used, finish remaining weekly participation through CPU losses. Registration and prize handling await live verification; automatic tournament battles remain under development.",
         });
         if (config.VerminionProgress.LastTournamentInfo is { } tournament)

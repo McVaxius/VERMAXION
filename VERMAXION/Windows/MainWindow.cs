@@ -545,9 +545,9 @@ public class MainWindow : Window, IDisposable
             () => { if (config.VerminionPaused) plugin.VerminionService.ResumeTask(); else plugin.VerminionService.RunTask(); }, "WIP",
             buttonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
             buttonTooltip: "Runs the selected weekly CPU goal; Resume continues the paused goal. Current strategy, progress and blockers appear here.",
-            secondaryButtonLabel: "Clear all challenges##Verminion", secondaryOnClick: () => plugin.VerminionService.RunChallenges(),
+            secondaryButtonLabel: "Complete or\ncontinue 24 CPU\nchallenges##Verminion", secondaryOnClick: () => plugin.VerminionService.RunChallenges(),
             secondaryButtonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
-            secondaryButtonTooltip: "Clears unfinished challenges in order. Later-stage strategies are still in development; stops before an unsupported stage.");
+            secondaryButtonTooltip: "Permanent campaign: completes unfinished challenges in order. Cleared stages stay complete across weekly resets; the normal stage attempt limit applies.");
         AddTaskRow("Jumbo Cactpot", config.EnableJumboCactpot,
             GetJumboCactpotStatus(config),
             "run##Jumbo", () => plugin.CactpotService.RunJumboCactpot(), "OK");
@@ -983,9 +983,9 @@ public class MainWindow : Window, IDisposable
             ImGui.TextWrapped(row.Status);
         }
 
-        if (showDiagnosticActions && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
+        if ((showDiagnosticActions || row.Id == AutomationCatalog.VerminionQueue) && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
         {
-            ImGui.SameLine();
+            if (row.Id != AutomationCatalog.VerminionQueue) ImGui.SameLine();
             ImGui.BeginDisabled(row.SecondaryButtonDisabled);
             if (ImGui.SmallButton(row.SecondaryButtonLabel))
                 plugin.RunDashboardAction(row.SecondaryOnClick);

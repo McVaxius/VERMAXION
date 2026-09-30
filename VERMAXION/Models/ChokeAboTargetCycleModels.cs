@@ -48,7 +48,8 @@ public sealed record ChokeAboTargetCycleStatus(
     bool CanResumeOwnedInteraction = false,
     uint InheritedAbilityId = 0,
     uint LearnedAbilityId = 0,
-    uint ColourId = 0);
+    uint ColourId = 0,
+    bool RacerDataAvailable = false);
 
 public readonly record struct ChokeAboTargetCycleCallResult(
     bool Succeeded,
@@ -212,6 +213,27 @@ public static class ChokeAboTargetCycleProtocol
                 if (root.TryGetProperty("canResumeOwnedInteraction", out _) &&
                     !TryReadBoolean(root, "canResumeOwnedInteraction", out canResumeOwnedInteraction, out error)) return false;
             }
+            uint inheritedId = 0, learnedId = 0, colourId = 0;
+            if (root.TryGetProperty("inheritedAbilityId", out var inheritedAbility) &&
+                    (inheritedAbility.ValueKind != JsonValueKind.Number || !inheritedAbility.TryGetUInt32(out inheritedId) || inheritedId > byte.MaxValue) ||
+                root.TryGetProperty("learnedAbilityId", out var learnedAbility) &&
+                    (learnedAbility.ValueKind != JsonValueKind.Number || !learnedAbility.TryGetUInt32(out learnedId) || learnedId > byte.MaxValue) ||
+                root.TryGetProperty("colourId", out var colour) &&
+                    (colour.ValueKind != JsonValueKind.Number || !colour.TryGetUInt32(out colourId) || colourId > byte.MaxValue))
+            {
+                error = "Choke-abo returned invalid racer ability or colour data.";
+                return false;
+            }
+            var racerDataAvailable = false;
+            if (root.TryGetProperty("racerDataAvailable", out var availability))
+            {
+                if (availability.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                {
+                    error = "Choke-abo returned invalid racer-data availability.";
+                    return false;
+                }
+                racerDataAvailable = availability.GetBoolean();
+            }
             status = new ChokeAboTargetCycleStatus(
                 version,
                 contentId,
@@ -221,9 +243,7 @@ public static class ChokeAboTargetCycleProtocol
                 gameActionInProgress,
                 reason,
                 nextCoveringEligibilityUtc, pedigree, racingRank, complete, canResumeOwnedInteraction,
-                root.TryGetProperty("inheritedAbilityId", out var inheritedAbility) && inheritedAbility.TryGetUInt32(out var inheritedId) ? inheritedId : 0,
-                root.TryGetProperty("learnedAbilityId", out var learnedAbility) && learnedAbility.TryGetUInt32(out var learnedId) ? learnedId : 0,
-                root.TryGetProperty("colourId", out var colour) && colour.TryGetUInt32(out var colourId) ? colourId : 0);
+                inheritedId, learnedId, colourId, racerDataAvailable);
             error = string.Empty;
             return true;
         }

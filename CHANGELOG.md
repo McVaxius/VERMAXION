@@ -1,5 +1,11 @@
 # VERMAXION Changelog
 
+## Unreleased - chocobo goals and progression UI (runtime acceptance pending)
+
+- Add separately saved pedigree-9 offspring goals: a desired inherited ability with quantity, and a colour seeker accepting multiple colours with a total quantity. Use Lumina names, ability icons and named colour swatches; preserve these settings in character copies.
+- Keep production start unavailable until native offspring ability and colour inspection is verified. The request path rejects production goals instead of silently treating them as ordinary pedigree progression. Production matching, quantity accounting and breeding execution remain unfinished.
+- Show registered pedigree and racing rank separately, native inherited/learned abilities and colour, remaining three-hour allowance, local reset and covering readiness, and the next action. Keep Pause/Resume/Stop accessible, and show daily race-count settings only in daily racing mode.
+
 ## Unreleased - Jumbo Cactpot purchase fixes
 
 - Route overdue ticket purchases to the broker when no payouts remain, including during the payout window, so partial purchases can resume instead of being marked not due.
@@ -9,6 +15,7 @@
 
 ## Unreleased - Verminion CPU bot (in progress)
 
+- Separate the permanent campaign action from weekly goals with a Complete or continue 24 CPU challenges button and an explanation that cleared stages persist across weekly resets. Keep the campaign button visible in dashboard Favorites and on its own line. Rename Win X to Stage 2 win farming and CPU rewards to Tournament checks / prizes, and show the selected weekly behavior above its Run button, including intentional losses. Explain that win farming is optional for the weekly participation reward. Battle strategies, saved mode values and goal accounting are unchanged.
 - Refresh the Stage 15 and 24 previews with the verified local campaign replay, including Stage 24's third-attempt victory and its preceding uncredited input timeout and defeat. Keep the repeated-win limitation explicit; no battle behavior changes.
 - Observe Stage 24 ground-warning creation and removal commands independently of rendered VFX lifetime. Keep validated warning geometry through empty visual snapshots, discard it on native removal or replacement, and hold commands while a new warning is unreadable. Dispose the scoped observer on cleanup. Preserve existing roster, battle decisions and attempt limits. Added one focused lifecycle regression; native circles retained for about seven seconds, towers for twenty seconds, tower arrivals and cleanup verified. The local Stage 24 replay cleared on attempt three in 8:10, credited its victory once, confirmed all 24 clears and stopped automatically. The first attempt's existing input-settlement timeout remains unresolved and uncredited; the second was a verified defeat.
 - Recover a reserved minion purchase on an explicit native Run/Resume when ADS has reset to an empty idle state and minion ownership, inventory and balances prove unchanged. Retain the exact quote and reservation, recheck caps and the gil reserve, and permit one guarded ADS request. Changed or unknown evidence still stops; recovered completed purchases continue to registration without adding a second receipt. Add one focused regression. Native recovery verified one 2,400-gil hatchling purchase, registration and continuation to Stage 20.
