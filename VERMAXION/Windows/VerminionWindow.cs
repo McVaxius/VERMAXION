@@ -188,7 +188,7 @@ internal sealed class VerminionWindow : Window
             stage == 6 ? "Airship attackers and Zu defenders: one fresh live clear verified, including Imp phases and the next-stage transition." :
             stage == 7 ? "Zu baseline: one fresh live clear in three attempts. Both losses counted only toward participation. Repeated-win reliability remains unverified." :
             stage == 12 ? "Gentleman baseline: one fresh live clear in three attempts with named-boss targeting, wider camera framing and rear pursuit. Repeated-win reliability remains unverified." :
-            stage == 15 ? "Gentleman baseline: an earlier clear is verified. Revised final-phase pursuit awaits live verification; repeated-win reliability remains unverified." :
+            stage == 15 ? "Gentleman baseline: the fresh local replay cleared with the revised recovery and final-phase pursuit. Repeated-win reliability remains unverified." :
             stage == 16 ? "Mammet attackers with Zu defenders: one fresh live clear on the first mixed-roster attempt, including Nasty Peck and the next-stage transition. Repeated-win reliability remains unverified." :
             stage == 19 ? "Airship baseline: one live clear verified, including Cargo's ATK buff. Repeated-win reliability remains unverified." :
             stage == 20 ? "Mammet attackers with Wayward Hatchling defenders: one fresh live clear verified, including the mixed opening, defender summons and special. Repeated-win reliability remains unverified." :
@@ -213,7 +213,7 @@ internal sealed class VerminionWindow : Window
             }
         }
         if (stage == 23) ImGui.TextWrapped("Campaign prerequisite: register Wind-up Gentleman, rewarded by Her Last Vow (level 50 ARR Hildibrand). Both published guides recommend it for Twintania. Airship, Nero and Zu attempts failed, so the bot no longer buys a substitute for this stage. This guide roster has one observed clear on its first attempt; repeated-win reliability and the special's actual effect remain unverified.");
-        if (stage == 24) ImGui.TextWrapped("Wind-up Gentleman baseline: one live clear verified in 7:51, including circle responses, individual tower orders and replacement summons. All 24 challenges have observed clears on the test character. Repeated-win reliability remains unverified. Stage 24 uses a nine-minute control window and waits for an explicit result; the normal three-attempt campaign limit applies.");
+        if (stage == 24) ImGui.TextWrapped("Wind-up Gentleman baseline: an earlier clear took 7:51; the latest local replay cleared on attempt three in 8:10 with unchanged tactics. Native warning removal, circle responses, tower arrivals and replacement summons are verified. One attempt stopped on an input timeout without credit; another was a verified defeat. The latest test character has 24/24 clears confirmed. Repeated-win reliability remains unverified. Stage 24 uses a nine-minute control window and waits for an explicit result; the normal three-attempt campaign limit applies.");
         if (showOwnership && VerminionRoster.Missing(stage, VerminionGameInteraction.OwnsMinion) is { } missing)
             ImGui.TextWrapped(missing);
         ImGui.TextWrapped("Entry also requires three registered minions, Gold Saucer access and the preceding challenge clears. Setup checks these in game.");

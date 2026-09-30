@@ -81,6 +81,11 @@ public class CharacterConfig
     public bool SkipChocoboRacingAtRank50 { get; set; } = true;
     public ChocoboAutomationMode ChocoboAutomationMode { get; set; } = ChocoboAutomationMode.AlwaysRace;
     public int ChocoboTargetPedigree { get; set; } = 9;
+    public ChocoboBreedingGoal ChocoboBreedingGoal { get; set; } = ChocoboBreedingGoal.ReachPedigree;
+    public uint ChocoboDesiredInheritedAbilityId { get; set; }
+    public int ChocoboDesiredAbilityOffspringCount { get; set; } = 1;
+    public List<uint> ChocoboAcceptableColourIds { get; set; } = new();
+    public int ChocoboDesiredColourOffspringCount { get; set; } = 1;
     public int ChocoboRetirementRank { get; set; } = 40;
     public int ChocoboPreferredFeedGrade { get; set; } = 3;
     public ChocoboBreedingMode ChocoboBreedingMode { get; set; } = ChocoboBreedingMode.NpcPermits;
@@ -395,6 +400,11 @@ public class CharacterConfig
             SkipChocoboRacingAtRank50 = SkipChocoboRacingAtRank50,
             ChocoboAutomationMode = ChocoboAutomationMode,
             ChocoboTargetPedigree = ChocoboTargetPedigree,
+            ChocoboBreedingGoal = ChocoboBreedingGoal,
+            ChocoboDesiredInheritedAbilityId = ChocoboDesiredInheritedAbilityId,
+            ChocoboDesiredAbilityOffspringCount = ChocoboDesiredAbilityOffspringCount,
+            ChocoboAcceptableColourIds = new List<uint>(ChocoboAcceptableColourIds),
+            ChocoboDesiredColourOffspringCount = ChocoboDesiredColourOffspringCount,
             ChocoboRetirementRank = ChocoboRetirementRank,
             ChocoboPreferredFeedGrade = ChocoboPreferredFeedGrade,
             ChocoboBreedingMode = ChocoboBreedingMode,

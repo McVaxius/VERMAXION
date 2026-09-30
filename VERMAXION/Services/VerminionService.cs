@@ -147,6 +147,7 @@ public sealed partial class VerminionService : IDisposable
     private int victoryTarget;
     private bool campaign;
     private uint registeringItem;
+    private bool savedPurchaseRecoveryRequested;
     private DateTime registrationSentUtc;
     private string reason = "Idle";
 
@@ -417,11 +418,14 @@ public sealed partial class VerminionService : IDisposable
         config.VerminionProgress.CampaignRequested = clearChallenges;
         config.VerminionPaused = false;
         configManager.SaveCurrentAccount();
+        savedPurchaseRecoveryRequested = config.VerminionProgress.MinionAcquisition is { DispatchAttempted: true } &&
+            config.VerminionProgress.PendingPurchase != null;
         Start();
     }
 
     public void Reset()
     {
+        savedPurchaseRecoveryRequested = false;
         preparedAcquisition = null;
         StopOwnedMovement();
         if (owner != 0 && (Plugin.PlayerState.ContentId != owner || configManager.GetActiveConfig().VerminionPaused))
@@ -792,6 +796,15 @@ public sealed partial class VerminionService : IDisposable
                             }
                             var newCast = false;
                             VerminionGameInteraction.ObserveFinalStageTimeline();
+                            if (!VerminionGameInteraction.FinalStageGroundStateKnown)
+                            {
+                                // An unreadable native warning is not a confirmed
+                                // clear. Preserve decisions until observation resolves.
+                                ReleaseKey();
+                                VerminionGameInteraction.ReleaseBattlefieldInput(restoreRendering: false);
+                                reason = "Stage 24 warning state unreadable; holding commands and awaiting verified warning data or removal";
+                                return;
+                            }
                             ObserveFinalStageOmenTransition();
                             foreach (var unit in Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>())
                                 if (unit.IsCasting && unit.CastActionId != 0 && observedFinalStageCasts.Count < 8)
@@ -1666,9 +1679,25 @@ public sealed partial class VerminionService : IDisposable
             if (!VerminionGameInteraction.TryReadMinionInventory(offer.ItemId, out var gil, out var mgp, out var items))
             { Fail("Minion inventory and balances are unavailable."); return; }
             if (VerminionGameInteraction.OwnsMinion(offer.MinionId) == true || items > 0)
-            { SetState(VerminionState.RegisteringMinions, "Registering the available minion"); return; }
-            if (!progress.CanSpend(offer.Gil, offer.Mgp, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
-                    offer.Certificates, config.VerminionCertificatePurchaseCap) ||
+            {
+                if (progress.PendingPurchase != null)
+                {
+                    if (!ReconcileMinionPurchase())
+                    { Fail("Minion availability changed without the reserved currency receipt; no purchase repeated."); return; }
+                    progress.MinionAcquisition = null;
+                    configManager.SaveCurrentAccount();
+                }
+                SetState(VerminionState.RegisteringMinions, "Registering the available minion");
+                return;
+            }
+            var withinBudget = progress.PendingPurchase == null
+                ? progress.CanSpend(offer.Gil, offer.Mgp, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
+                    offer.Certificates, config.VerminionCertificatePurchaseCap)
+                : VerminionGameInteraction.TryReadAchievementCertificates(out var certificates) &&
+                    progress.CanResumeReservedPurchase(gil, mgp, items, VerminionGameInteraction.OwnsMinion(offer.MinionId),
+                        certificates, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
+                        config.VerminionCertificatePurchaseCap, config.VerminionGilReserve);
+            if (!withinBudget ||
                 gil < offer.Gil || mgp < offer.Mgp ||
                 !VerminionProgress.PreservesGilReserve(gil, offer.Gil, config.VerminionGilReserve))
             { Fail("The minion purchase would exceed the remaining cap, balance or gil reserve."); return; }
@@ -1679,7 +1708,7 @@ public sealed partial class VerminionService : IDisposable
             { Fail("ADS needs its achievement-certificate acquisition support before this minion can be requested."); return; }
             acquisition = acquisition == null ? new(Guid.NewGuid().ToString("N"), offer.ItemId, offer.MinionId, true) :
                 acquisition with { DispatchAttempted = true };
-            progress.MinionAcquisition = acquisition; // Save before dispatch; reload never repeats this request.
+            progress.MinionAcquisition = acquisition; // Save before dispatch; recovery retains the exact reserved quote.
             if (!configManager.TrySaveAccount(ownerAccount))
             { Fail("Could not save the ADS acquisition identity; no purchase started."); return; }
             var saved = configManager.GetActiveConfig();
@@ -1706,9 +1735,37 @@ public sealed partial class VerminionService : IDisposable
         var status = ReadAdsPurchaseStatus();
         if ((string?)status["operationId"] != acquisition.OperationId)
         {
-            // A lost ADS run cannot be resubmitted. A saved callback receipt stays unresolved
-            // unless actual inventory and currency evidence prove that it completed.
-            if (progress.PendingPurchase == null || ReconcileMinionPurchase())
+            if (progress.PendingPurchase != null && ReconcileMinionPurchase())
+            {
+                progress.MinionAcquisition = null;
+                configManager.SaveCurrentAccount();
+                registeringItem = 0;
+                SetState(VerminionState.RegisteringMinions, "Registering the minion from the reconciled purchase");
+                return;
+            }
+            var recoveryRequested = savedPurchaseRecoveryRequested;
+            savedPurchaseRecoveryRequested = false; // One recovery per explicit native Run/Resume.
+            if (recoveryRequested && string.IsNullOrEmpty((string?)status["operationId"]) &&
+                (string?)status["phase"] == "idle" && (bool?)status["running"] == false && (bool?)status["done"] == false &&
+                (uint?)status["itemId"] == 0 &&
+                VerminionGameInteraction.TryReadMinionInventory(offer.ItemId, out var gil, out var mgp, out var items) &&
+                VerminionGameInteraction.TryReadAchievementCertificates(out var certificates) &&
+                progress.CanResumeReservedPurchase(gil, mgp, items, VerminionGameInteraction.OwnsMinion(offer.MinionId),
+                    certificates, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
+                    config.VerminionCertificatePurchaseCap, config.VerminionGilReserve))
+            {
+                progress.MinionAcquisition = acquisition with { DispatchAttempted = false };
+                if (!configManager.TrySaveAccount(ownerAccount))
+                {
+                    progress.MinionAcquisition = acquisition;
+                    Fail("Could not save the reserved purchase recovery; no ADS request sent.");
+                    return;
+                }
+                log.Information($"[Verminion] Saved purchase recovery authorized once: item={offer.ItemId}; unchanged gil={gil}; mgp={mgp}; items={items}; reservation retained, awaiting ADS quote and UI checks");
+                reason = "Resuming the unchanged reserved purchase through ADS";
+                return;
+            }
+            if (progress.PendingPurchase == null)
             { progress.MinionAcquisition = null; configManager.SaveCurrentAccount(); }
             Fail("ADS no longer reports this acquisition. No purchase resubmitted; any unresolved receipt is retained.");
             return;
@@ -3271,6 +3328,7 @@ public sealed partial class VerminionService : IDisposable
 
     private void Fail(string message)
     {
+        savedPurchaseRecoveryRequested = false;
         AbandonPendingMatch();
         StopOwnedMovement();
         if (campaign && owner != 0 && owner == Plugin.PlayerState.ContentId)

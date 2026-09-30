@@ -6,6 +6,31 @@ namespace VERMAXION.Services;
 
 internal sealed record VerminionMinion(ushort Id, string Name, int Cost, string Acquisition);
 internal readonly record struct VerminionGroundOmen(int Slot, bool Tower, Vector3 Position, float Radius);
+// Battle-local observations follow native warning commands, not render-object lifetime.
+internal sealed class VerminionGroundWarnings
+{
+    private readonly Dictionary<int, VerminionGroundOmen?> active = new();
+    public bool HasUnreadableWarning => active.Values.Any(omen => omen == null);
+    public IReadOnlyList<VerminionGroundOmen> Omens => active.OrderBy(entry => entry.Key)
+        .Where(entry => entry.Value != null).Select(entry => entry.Value!.Value).ToArray();
+
+    public void Command(int slot, bool created)
+    {
+        if (slot is < 11 or >= 30) return;
+        if (created) active[slot] = null; // A replacement must never reuse old geometry.
+        else active.Remove(slot);
+    }
+
+    public void ObserveSnapshot(IReadOnlyList<VerminionGroundOmen> omens, bool seedExisting = false)
+    {
+        foreach (var omen in omens)
+            if (omen.Slot is >= 11 and < 30 && (seedExisting || active.ContainsKey(omen.Slot)))
+                active[omen.Slot] = omen;
+        // Empty or incomplete visual snapshots cannot prove native removal.
+    }
+
+    public void Clear() => active.Clear();
+}
 internal sealed record VerminionVendorMinion(ushort MinionId, uint ItemId, string Name, uint Gil, uint Mgp = 0, uint Certificates = 0)
 {
     public uint Price => Certificates > 0 ? Certificates : Mgp > 0 ? Mgp : Gil;

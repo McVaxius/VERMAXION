@@ -1,5 +1,564 @@
 # Verminion bot development checkpoint
 
+PENDING TARGET REVALIDATED / BLOCKED AUDIT THRESHOLD REACHED:
+The next-character question was sent once after marker433 reconciliation;
+no character/readiness answer has arrived. This continuation revalidated local
+PID3228 as live and the single saved character as24/24(mask16777215),
+21matches/13wins,pending0/duty0,campaignRequested=false,nextUncleared25.
+Previous goal turn was no progress: it confirmed unchanged completion and
+asked for the missing target. The same target/evidence blocker is present at
+three consecutive boundaries:433 checkpoint, that turn, this continuation.
+No active Verminion attempt is awaiting completion and no independent approved
+implementation/build work remains at this boundary. Mark the broader goal
+blocked, not complete; resume once the next C: character and readiness are
+supplied. Keep first-time setup/tutorial, human window verification, remaining
+live lifecycle boundaries and tournament conditions explicitly unverified.
+No new build, match, client control, external config change or spending.
+
+433 UX REFRESH LOADED / COMPLETED-GOAL RELOAD VERIFIED / NEXT TARGET NEEDED:
+Z:\vmx.bat succeeded45.40seconds, zero errors/two existing NU1601 warnings.
+Exact433 native startup21:05:58.627EDT2026-09-29; one debug dispatch
+21:06:05.166. Existing weekly participation goal completed immediately,
+releasing YesAlready, with no new admission or credit. Read-only save still
+full24mask16777215,21matches/13wins,pending0/duty0,Stage24 attempts3,
+spending2400gil/10000MGP. Final diff check passed. Two preview-string updates
+are compiled and loaded; window visual verification is still pending.
+Input failure investigation found no log entries from any source20:30:58
+through20:31:07. Last queued click20:30:57.919 and failure20:31:08.092 bound
+the completion gap; this does not establish why the client/input stalled.
+Leave the existing timeout/control behavior unchanged without stronger evidence
+and the required scoped approval. No more campaign runs or builds needed now.
+Previous turn made progress: corrected stale UX evidence, built/reloaded433,
+verified completed-goal suppression and clarified the unresolved input evidence.
+Remaining runtime acceptance needs first-time setup/tutorial character,
+human window check and open tournament conditions; Join remains disabled under
+the user's current tournament UI-only scope. Await a named next character on
+the authorized C: client and its logged-in readiness; do not switch characters,
+control focus/input, alter external configs or revisit R3/R7 on stale goal text.
+This is the first pending-target blocker audit turn; keep the broader goal
+active, not complete or blocked yet. Ask once, wait for the actual answer.
+
+ACCEPTANCE AUDIT / UX EVIDENCE REFRESH433 BUILD INTENT:
+Read-only diagnosis of attempt1:queued double-click20:30:57.919EDT; no recorded
+native completion before failure20:31:08.092. Whole-log timestamp counts also
+show no entries20:30:58 through20:31:07. This establishes a logging/input
+completion gap, not its cause; no timeout, input, rendering or strategy edits.
+Existing accounting regressions cover cancellation/unknown result rejection,
+partial participation, weekly reset, character cloning and winning limits.
+Historical224 farming matches118-127 have ten consecutive Mammet Stage2 wins
+and exact27->37victory stopping; the later local pass reused existing progress
+and stopped10/10. These are separate from this local Stage24 clear.
+Current UI still says Stage15 revised final-phase pursuit awaits verification,
+although425 replay positively cleared with that code. Correct that text and
+update Stage24's existing preview with this latest third-attempt8:10 clear,
+the uncredited input failure/defeat and remaining repeated-win limitation.
+Change only those two UI strings and marker432->433. Preserve all unrelated
+source changes; no new machinery, files, dependencies or release version.
+Before build read-only current save:mode0(Participation),target5,matches21,
+wins13,campaignRequested=false,paused=false,full24mask,pending0. Native campaign
+Complete is confirmed and no subsequent manual-service start is in the bounded
+log. Existing debug weekly Resume must finish without admission/credit.
+Build with Z:\vmx.bat and verify exact433 startup/normal completed-goal stop.
+Remaining runtime gates need suitable first-time character, human window
+verification and available tournament conditions. Tournament Join is still
+intentionally disabled per the user's UI-only testing scope; full original
+CPU tournament execution is not delivered or accepted. Do not claim overall
+goal completion. Next input needed: target character/readiness for fresh setup.
+
+STAGE24 WON ATTEMPT3 / CURRENT CHARACTER24OF24 / CAMPAIGN STOP VERIFIED:
+Native You Win20:49:52.900EDT2026-09-29,matchlength8:10; verified Victory
+credited once20:49:52.948 to21matches/13wins. Native completedStages25 and
+saved full24-stage mask16777215,pending0/duty0 confirm campaign completion.
+Observer released79ground commands; result closure20:49:58.521 verified.
+Service InspectingProgress->Complete20:50:03.633:All24 challenges are verified
+complete; YesAlready ownership released. No fourth admission or further
+reload. Gentleman roster/targeting/ability/reinforcement decisions stayed at
+425; only the approved warning observation/cancellation repair changed.
+Reviewed run:attempt1 input-settlement failure,unresolved/uncredited;
+attempt2 verified Defeat;attempt3 verified Victory. Warning lifecycle/tower
+arrivals/cleanup and no false credit have fresh runtime evidence. The existing
+input-settlement failure remains unresolved; one successful3-attempt run does
+not prove repeated reliability or eliminate that limitation.
+Final watched marker432,version0.5.0.3; all912VMX tests passed for the warning
+build before subsequent unrelated source edits. Final git diff --check passed.
+Save21matches/13wins,GilSpent2400/MgpSpent10000. No external client input or
+config mutation. Preserve unrelated CharacterConfig/ChokeAbo changes.
+Check planned minions is implemented and compiled; visual verification remains
+pending. Next human character test can use /vmx v to check planned minions and
+their manual acquisition sources before starting. Fresh localStage1 replay,
+first-time unlock execution and live tournament acceptance remain pending;
+broader goal is incomplete and must not be marked complete from this milestone.
+
+FINAL ATTEMPT3 REVALIDATED LIVE / BAHAMUT1709HP:
+After automatic continuation, local PID3228 remains live. Read-only snapshot
+20:49:29EDT2026-09-29 confirms pending35/duty575,Stage24 attempts3/unpaused,
+23/24clears,20matches/12wins. Latest native order20:49:23.814:Bahamut1709/20000,
+SendWave,ready4/deployed3,capacity210/240. More tower arrivals verified at
+20:47:55.533,20:48:31.357,20:49:12.728. No Victory/Defeat yet; preserve owned
+admission and bounded controls. New unrelated worktree changes appeared in
+CharacterConfig.cs and ChokeAboTargetCycleModels.cs; preserve them. No build
+or runtime control changes. Previous goal turn made progress: warning fix,
+912tests, native observer/tower proof and bounded retry/result evidence.
+
+ATTEMPT2 VERIFIED DEFEAT / FINAL NATIVE ATTEMPT3 ACTIVE:
+Native You Lose20:40:52.628EDT2026-09-29,matchlength6:15; verified Defeat
+credited participation once20:40:52.701 to20matches/12wins. Observer released
+with50native ground commands20:40:52.718; result closure20:40:57.798 verified.
+Existing automatic sequence admitted match35/duty57520:41:10.596, battlefield
+20:41:16.972. Saved attempts3/unpaused,clears23/24(mask8388607),pending35/575.
+No edits/reloads/budget reset or strategy/roster changes. Observer/tower fixes
+are live verified; Stage24 victory remains unverified. Let final attempt run;
+a third unsuccessful attempt must preserve the existing paused limit stop.
+
+432 RECOVERY VERIFIED / STAGE24 ATTEMPT2 ACTIVE:
+Marker-only build succeeded30.54seconds, zero errors/two NU1601 warnings.
+Exact432 native startup20:33:43.107EDT2026-09-29, one debug dispatch
+20:33:51.949. Native return to inventory/progress/setup was positively
+observed; no unmatched result credit manufactured. Attempt2 admitted
+match34/duty57520:34:04.904; battlefield20:34:11.212. Saved20:34:50:
+unpaused,attempts2,pending34/duty575,23/24clears(mask8388607),19matches/12wins.
+Existing stage budget retained, no reset or strategy/control changes. Let
+attempt2 finish; if needed only one admission remains in this reviewed run.
+
+ATTEMPT1 INPUT FAILURE /432 NATIVE RECONCILIATION BUILD INTENT:
+Native failure20:31:08.092EDT2026-09-29:Background battlefield input did not
+settle; no result recorded. Observer released with62ground commands and
+cleared its battle-local state. Last Bahamut4348/20000; no Victory/Defeat.
+Saved state20:32read:unpaused,Stage24 attempts1,pending0/duty0,
+23/24clears(mask8388607),19matches/12wins unchanged. The abandoned native
+match33 may remain in battle/result; do not adopt it or manufacture credit.
+Marker-only431->432 and Z:\vmx.bat invoke the existing debug Resume path.
+It must passively observe an unmatched battle/result for cleanup without
+control/credit, or prepare the next remaining attempt only after positive
+return. Do not reset the budget or change control/strategy/roster. This is
+the established unresolved-attempt recovery used earlier in the frozen pass.
+Native warning lifetime/tower-arrival fix already has positive evidence;
+the input-settlement failure is an existing independent terminal path.
+
+431 NATIVE TOWER LIFECYCLE AND ARRIVALS VERIFIED / ATTEMPT1 ACTIVE:
+Tower slot14/effect65 created20:26:38.484EDT; visual array empty20:26:38.581;
+native effect0 removal20:26:58.590 (20.1seconds). No premature clear transition.
+Second tower retained a safe pending order across circle removal20:27:13.798;
+verified individual movement20:27:15.170 and26.123. Later tower arrival observed
+20:27:51.838,healthy400/400; other attackers received individual combat orders
+while protecting that occupant, native removal20:28:08.554. Another healthy
+tower arrival20:28:30.866, removal20:28:43.726. This verifies full tower
+warning retention, native removal, movement and arrival under current rendering
+settings. Existing battle decisions unchanged. Bahamut7078/20000; one remaining
+visible Twintania1266/2280 at20:28:40.710, normal orders continue. No result
+or Stage24 clear yet. Continue admitted33/duty575 without reload/source changes.
+
+431 NATIVE CIRCLE LIFECYCLE VERIFIED / ATTEMPT1 CONTINUES:
+First captured circle20:25:21.352EDT:slot11,effect64,validated path/geometry,
+known=true/active1. Visual array empty20:25:21.439, but circle escape retained
+through20:25:23.445. Actual native effect0 removal20:25:28.299, clear transition
+20:25:28.333; about6.95seconds, consistent with historical7second lifetime.
+Two later circle create/remove cycles also observed with correct retention.
+This verifies native callback ABI, scoped director ownership and warning
+retention/removal for circles under the current rendering settings. It does
+not prove DPS causation, tower arrivals or Stage24 victory. Last readback
+20:26:02.506:8Gentlemen,capacity240/240,Bahamut18635/20000. No edits/builds,
+input/config changes or result credit. Continue native attempt1 to tower/result.
+
+431 NATIVE RESUME ACCEPTED / STAGE24 RETEST ATTEMPT1 ACTIVE:
+User clicked Resume. Native preparation20:24:36.058EDT, Stage24 selection
+20:24:41.189 and battlefield transition20:24:50.3452026-09-29 observed.
+Read-only saved state20:24:57:unpaused,attempts1,pending33/duty575,
+23/24clears(mask8388607),19matches/12wins,spending2400gil/10000MGP.
+No new result credited. Native ground-command hook/callbacks and corrected
+warning lifetime are not yet in this early snapshot. Let the existing native
+attempt and retries run; do not build/reload during its owned admission or
+change strategy/roster. Next bounded milestone checks first ground creation,
+removal and preserved tower-order execution.
+
+431 RELOAD VERIFIED / WAITING FOR ONE NATIVE RESUME ACTION:
+Z:\vmx.bat succeeded23.48seconds, zero errors/two existing NU1601 warnings.
+All912/912 VMX tests passed; final git diff --check passed. Exact431 native
+startup observed2026-09-29 20:21:06.655EDT, version0.5.0.3 unchanged.
+Debug selection verminion_queue consumed into paused observation20:21:12.248:
+duty0,resultUnknown,pending0,19matches/12wins,no admission or result credit.
+Read-only saved state confirms paused=true,Stage24 attempts3,clears23/24
+(mask8388607),pending0/duty0,GilSpent2400/MgpSpent10000. Reload preserved the
+stage-limit pause. Runtime nativeGroundCommand callbacks/removal duration and
+the corrected Stage24 replay remain unverified; do not claim a clear or repair
+verification from compilation/unit tests. No external input/config mutation.
+Next: user clicks Resume in /vmx v once; normal native Resume resets the
+reviewed stage budget and starts up to three attempts. Observe native warning
+creation/clear, retained tower orders/arrivals, explicit results and terminal
+stop through bounded milestone snapshots. Keep425 battle decisions/roster
+unchanged. No further code/build/reload needed to resume this paused task.
+
+STAGE24 WARNING FIX APPROVED /431 BUILD INTENT:
+User said yes and /goal resume to repairing warning observation/cancellation
+and retesting with the existing Gentleman roster and normal three-attempt limit.
+Implement a Stage24-scoped native E7CA10 observer using the disassembled
+director/slot/effectId/x/z/scale ABI. Always forward Original. Only process
+the validated current director, framework thread, owned active task and existing
+540second window. Capture validated paths/geometry after creation; retain them
+through empty render snapshots until native removal or replacement. Seed visible
+existing warnings once on attachment; unknown creations hold commands, not a
+confirmed clear. Cleanup disposes the observer and clears battle-local state.
+No roster/targeting/reinforcement/ability changes; release0.5.0.3 unchanged.
+One focused regression added; all912/912 existing VMX tests passed with the
+attachment case included (6seconds); git diff --check passed. First build failed
+because API15 Hook<T> has no static FromAddress; use the plugin's existing
+GameInterop.HookFromAddress API instead. Old DLL remained untouched. Rebuild
+through Z:\vmx.bat next. Expected compiled marker
+verminion-control-20260929-431, build via Z:\vmx.bat, watched artifact
+Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll. Local C: client PID3228,
+root C:\Users\david\AppData\Roaming\XIVLauncher. No C: DLL copy needed.
+DPS legacy foreground no-render is configured; causation remains unproven.
+Current saved paused=true/23clears/Stage24 attempts3/pending0. The paused
+reload guard remains intact. A native explicit Resume must reset the reviewed
+stage budget; there is no approved external input/config path or verified
+native command transport to perform that action from the agent. Finish build
+and reload verification before asking for that single native action if needed.
+No external client input/config mutation, DPS changes, vendor work, new scripts,
+reports, dependencies or signatures; goal remains incomplete.
+
+STAGE24 THIRD DEFEAT / CAMPAIGN LIMIT PAUSED; PURCHASE FIX DELIVERED:
+Native You Lose2026-09-29 19:54:16.208EDT; verified Defeat credited
+participation once19:54:16.254 to19matches/12wins. Result closure verified
+19:54:21.168. Existing stage-limit guard stopped19:54:35.682 before a
+fourth admission. Saved paused=true,stage24 attempts3,pending0/duty0,
+23/24 clears(mask8388607),GilSpent2400/MgpSpent10000,purchase/acquisition
+both null. Do not reload to bypass the pause or reset the attempt budget.
+Local frozen425 pass:Stage20 cleared attempt3;21,22,23 cleared attempt1;
+24 defeated all3. No battle-decision/control/roster changes were made.
+ADS invariant confirmation and VMX explicit reserved-purchase recovery are
+implemented, built and positively verified through one native purchase and
+registration. Recorded checks:173/173 ADS shop tests and42/42 Verminion
+lifecycle tests passed; full911-test suite was not run (prior425 suite910 passed).
+Current VMX430/ADS34 markers and release versions are unchanged. Git diff
+--check passed for VMX; source changes remain uncommitted. No external client
+input or config mutation was used. Check planned minions is implemented in
+425; visual verification remains pending. Fresh localStage1 replay,first-time
+unlock and live tournament acceptance remain pending; overall goal incomplete.
+Next required decision: permission to repair Stage24 warning observation/
+cancellation before another native retest with the existing Gentleman roster.
+Reader-loss cause is not yet proven; the short-lived warning and cancelled
+tower orders are observed. User froze battlefield/control changes, so leave
+the bot paused while this decision is pending. Existing persisted goal status
+is blocked with its obsolete R3 objective; do not claim overall completion or
+create a duplicate goal.
+
+STAGE24 READ-ONLY FAILURE DIAGNOSIS / STRATEGY STILL FROZEN:
+Attempt2 directorGround snapshots show each tower present then an empty
+effect list about0.14-0.19seconds later (19:46:58.697/.838,
+19:47:33.660/.808,19:48:08.664/.809,19:48:43.811/44.005).
+The corresponding ground-warning transition clears the pending tower
+selection/movement in ObserveFinalStageOmenTransition before it can complete;
+no successful tower-arrival evidence was found in this bounded attempt window.
+This is an observed cancellation path, not proof of why the native reader
+loses the warning. No reader/control/strategy correction has been authorized
+or implemented. Let attempt3 finish, then respect the existing stop if it fails.
+
+STAGE24 ATTEMPT2 DEFEAT / FINAL NATIVE ATTEMPT3 QUEUED:
+Verified Defeat2026-09-29 19:48:55.417EDT credited participation only:
+18matches/12wins,clears23/24 retained. Bahamut11537/20000 and both
+Twintania adds still alive at result; all friendly stones gone. Native
+retry admitted match32/duty575 at19:49:16.838,stage24 attempts3/unpaused.
+No budget reset, strategy/control change, reload or build. Battlefield entry
+is not yet in this snapshot. Let the final admission settle; a third failure
+must retain the existing paused stop rather than trigger further work.
+
+STAGE24 ATTEMPT1 DEFEAT / NATIVE ATTEMPT2 ACTIVE:
+Verified Defeat2026-09-29 19:44:23.095EDT credited participation only:
+17matches/12wins,23/24 clears retained. Exit to progress19:44:27.365;
+normal sequence admitted match31/duty575 at19:44:40.323,battlefield
+19:44:48.172. Saved attempts2/unpaused; no strategy/control/source edits,
+reload or budget reset. This verifies a normal frozen-strategy retry after
+explicit defeat. Let attempt2 run; preserve the three-attempt stop if needed.
+
+STAGE23 WON FIRST ATTEMPT / STAGE24 FIRST ATTEMPT ACTIVE:
+Native You Win2026-09-29 19:39:22.272EDT; verified Victory credited once
+19:39:22.307 to16matches/12wins. Result closure19:39:26.864. Stage24
+admission match30/duty575 saved19:39:40.229,battlefield19:39:48.043;
+attempts1/unpaused,clears23/24(mask8388607). Bounded19:41:23 readback shows
+Bahamut15814/20000HP and friendly stones5000/4880/4460. No strategy,
+roster,control,build/reload or budget change since425. Final stage retains
+its540second control window and600second explicit-result timeout. Do not
+interrupt the owned admission; await phases/result and native terminal stop.
+
+STAGE23 FIRST ATTEMPT ADMITTED:
+Match29/duty574 saved2026-09-29 19:36:33.622EDT; battlefield19:36:41.321.
+Bounded19:37:38 readback shows Clockwork Twintania16848/18000HP and friendly
+stones4855/4400/5000. Saved22/24,15matches/11wins,pending29/574,attempts1,
+unpaused. Native frozen Gentleman strategy is active; no result yet. Preserve
+the owned admission and wait for its result/Stage24 transition without builds.
+
+STAGE22 WON FIRST ATTEMPT / STAGE23 TRANSITION:
+Native verified Victory2026-09-29 19:36:15.882EDT credited once15matches/11wins.
+Exit reached progress inspection19:36:20.478; clears22/24(mask4194303),pending0,
+unpaused. Stage23 preparation19:36:25.596 and menu selection19:36:28.690
+observed; its admission is not yet in this snapshot. No source/control edits,
+build/reload or retry-budget reset. Let native Stage23 and24 run and verify
+their admissions/results. All spending/reservation evidence remains intact.
+
+STAGE21 WON FIRST ATTEMPT / STAGE22 ACTIVE:
+Native verified Victory2026-09-29 19:33:16.955EDT credited once14matches/10wins.
+Exit reached progress inspection19:33:21.983. Stage22 admission match28/duty573
+saved19:33:35.572, battlefield19:33:43.654,attempts1/unpaused. Permanent clears
+21/24(mask2097151). Strategy/control code still unchanged; no reload or
+counter reset. Next observe Stage22-24 through the existing native sequence.
+
+STAGE20 WON ON FROZEN-STRATEGY ATTEMPT3 / STAGE21 ACTIVE:
+Native You Win at2026-09-29 19:30:16.626EDT, match length3:37. Victory
+credited once19:30:16.663:13weekly matches/9wins. Result closure verified
+19:30:21.102; permanent clears20/24(mask1048575). Stage21 admission
+match27/duty572 saved19:30:34.026, battlefield19:30:42.326,attempts1/unpaused.
+The first two Stage20 failures remain unresolved/uncredited; the third
+existing attempt cleared without a strategy, control or budget change.
+No further build/reload is needed while native campaign transitions run.
+Spending2400gil/10000MGP and cleared purchase/acquisition stay verified.
+Next: observe Stage21-24 results and transitions; preserve each stage limit.
+
+430 LOADED / STAGE20 FINAL ATTEMPT ACTIVE:
+Marker-only Z:\vmx.bat succeeded23.28seconds, zero errors/two existing NU1601
+warnings. Native430 startup2026-09-29 19:25:44.713EDT; one debug dispatch
+19:25:51.436. Stage20 admission match26/duty571 verified19:26:04.676,
+battlefield19:26:12.655. Bounded19:29 snapshot shows live background selection,
+camera and movement commands, pending26/571,stage20 attempts3,unpaused.
+Saved19/24(mask524287),12matches/8wins; purchase/acquisition cleared and
+spending2400gil/10000MGP retained. No new result or clear is observed yet.
+Strategies remain the425 baseline. Let the owned admission settle without
+reload/build; if it fails, preserve the existing three-attempt paused stop.
+
+STAGE20 ATTEMPT2 UNRESOLVED / FINAL NATIVE RETRY430 BUILD INTENT:
+Second frozen-strategy admission match25/duty571 at19:20:18.134EDT, battlefield
+19:20:24.931. It stopped19:22:52.688: opening battle group unavailable; no result
+recorded. Saved19/24,12matches/8wins,pending0,attempts2,unpaused. Neither failed
+attempt proves Victory/Defeat; no match/win/clear credit manufactured.
+Change compiled marker429->430 only, build through Z:\vmx.bat. Existing native
+Resume may observe/close an unmatched result, stopping without credit, or
+prepare the final allowed admission after positively observing return. Never
+rebuild during an owned active admission, change strategy or reset the budget.
+If attempts3 fails, respect its existing paused stop and report the evidence.
+
+429 LOADED / EXISTING NATIVE RETRY PREPARING STAGE20:
+Marker-only Z:\vmx.bat succeeded30.57seconds, zero errors/two NU1601 warnings.
+Native429 startup19:19:54.467EDT; one debug dispatch19:20:05.159. Start observed
+the character outside the old battle and used normal inventory/progress setup;
+no unmatched result credit or manufactured admission. Stage20 selection
+19:20:13.402 follows, with12matches/8wins and19/24 still recorded. Verify the
+new queue and its attempt count before judging this retry. Strategy remains
+the425 baseline; no selection/reinforcement change, no reset/budget bypass.
+
+STAGE20 ATTEMPT1 UNRESOLVED / NATIVE CLEANUP429 BUILD INTENT:
+First frozen-strategy attempt stopped19:17:16.973EDT: no selectable unit remains
+in the battle group. No result was observed/credited; matches12/wins8,mask524287,
+attempts1,pending0,unpaused. The native battle/result may remain open.
+Use marker-only429 build via Z:\vmx.bat to invoke the existing debug Resume.
+Its unmatched-admission path observes the abandoned battle without control or
+credit, closes an observed result, and stops. Verify positive return before any
+fresh admission. Do not edit selection, replacement tactics, roster or other
+battle strategy; do not reset/bypass the existing three-attempt budget.
+Purchase recovery is already verified, with pending purchase/acquisition cleared
+and spending2400gil/10000MGP. No additional vendor request is needed.
+
+428 NATIVE RECOVERY AND GIL PURCHASE VERIFIED / STAGE20 ATTEMPT1 ACTIVE:
+42/42 VerminionLifecycleTests passed (3seconds). Z:\vmx.bat succeeded30.36
+seconds, zero errors/two existing NU1601 warnings. Exact428 startup2026-09-29
+19:14:46.626EDT; one native debug dispatch19:14:53.968, version0.5.0.3 unchanged.
+Recovery19:14:54.028 verified unchanged299769gil/1068556MGP/items0 and retained
+the original reservation. ADS accepted one original-ID guarded request19:14:59.120.
+Native owned Yes for item6005/2400gil succeeded19:15:02.410; exact one-item
+purchase completed19:15:02.687. VMX positively verified/credited the purchase
+once19:15:03.378 and registration19:15:11.627. Both pending receipt/acquisition
+are cleared; cumulative spending2400gil/10000MGP. This verifies the ADS34 numeric
+fix and VMX428 recovery through the ordinary providers, without external input.
+Stage20 native admission match24/duty571 verified19:15:25.659; battlefield
+19:15:34.472. Saved snapshot: unpaused19/24,12matches/8wins,Stage20 attempts1,
+pending24/571. All battle strategies remain the425 baseline. No reload/build
+during this fight; let normal stage retries and transitions run. Next bounded
+milestone checks Stage20 result/exit and Stage21 admission. Campaign20-24 and
+fresh local Stage1 replay remain unverified; first-time unlock/tournament checks
+also remain pending. Native FULL STOP during this recovery is not a new verified
+case, although the existing lifecycle regression suite passes.
+
+USER INCLUDED NATIVE RESERVED-PURCHASE RECOVERY /428 BUILD INTENT:
+After the cost/benefit choice and reload proof, user explicitly said 'so do it'
+to resolving the saved ADS purchase through the native route. Implement the
+narrow recovery in existing coordination/progress, with one focused regression.
+An explicit native Run/Resume may recover once only when ADS reports empty
+idle state, minion identity/ownership/inventory and currency before-state agree,
+and current caps/reserve still authorize it. Reservation and original operation
+ID remain; ADS owns all vendor travel/UI/submission and validates the quote
+again. Unknown, changed, active or unrelated provider state stays unsuccessful.
+No spending or match/clear credit until positive receipt/result evidence.
+Build428 through Z:\vmx.bat, unchanged0.5.0.3; run existing Verminion tests.
+Native selected debug hook should reconcile then send one guarded ADS request.
+No strategy, roster, battlefield control, retry limit or external input change.
+Before build local19/24,pending match0,unpaused; item6005/2400gil receipt and
+dispatched acquisition retained. ADS34 culture-invariant matcher already loaded.
+
+C: CLIENT DLL AUTHORIZATION / DIRECT DEVELOPMENT OUTPUT VERIFIED:
+User confirmed this local C: client permits DLL replacements and related
+build/reload work. Its enabled VERMAXION development entry points directly to
+Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll, with AutomaticReloading
+and StartOnBoot true. PID3228 responding. Building updates the exact watched
+DLL; no separate C: copy is needed for this configured route.427 startup and
+native dispatch are already verified. This does not approve strategy changes
+or expand external keyboard/mouse control. Purchase recovery choice remains
+pending; current handoff preserves the unresolved reservation.
+
+427 MARKER-ONLY BUILD / RELOAD AND NATIVE DISPATCH VERIFIED:
+Z:\vmx.bat succeeded26.83seconds, zero errors/two existing NU1601 warnings.
+Exact427 native startup2026-09-29 18:52:50.965EDT, version0.5.0.3 unchanged.
+Saved debug action consumed18:52:58.975 and dispatched18:52:59.229 once.
+Normal saved-acquisition reconciliation stopped18:52:59.240 with the same
+lost ADS operation status; no purchase was resubmitted and receipt remains
+unresolved. Requested rebuild/reload is complete; purchase recovery was not
+implemented or implicitly approved. All battle strategies remain unchanged.
+
+USER-REQUESTED MARKER-ONLY RELOAD427 / BUILD INTENT:
+User explicitly requested a pointless textual edit and recompile to force reload.
+Change only the compiled Plugin.DebugAttemptMarker426->427 and run Z:\vmx.bat.
+Keep version0.5.0.3, all strategies and attempt limits unchanged. Saved native
+verminion_queue selection remains the continuation route. This request does not
+select or implement the proposed purchase recovery; existing safeguards remain.
+Verify exact427 native startup and this load's debug outcome after the build.
+
+426 NATIVE DEBUG DISPATCH VERIFIED / LOST ADS STATUS STILL BLOCKS PURCHASE:
+Z:\vmx.bat succeeded49.96seconds, zero errors/two existing NU1601 warnings.
+All41 existing VerminionLifecycleTests passed, zero failed/skipped (3seconds).
+Native startup426 at2026-09-29 18:47:16.145EDT, version0.5.0.3 unchanged.
+Debug cleanup consumed18:47:24.167 and dispatched normal ResumeTask once
+18:47:24.545. Native current funds299769gil/1068556MGP match the reserved
+before-state. Reconciliation then stopped18:47:24.579: ADS no longer reports
+this acquisition.19/24,pending match0,unpaused,receipt/acquisition retained,
+gilSpent0/MgpSpent10000; no new purchase or battle was admitted.
+This proves the selected Lazyparasite route works. No external input, focus,
+debug/provider configuration edit or strategy change was used. Only the VMX
+compiled marker and existing changelog/checkpoint changed.
+The user is choosing whether to include a narrow recovery branch for the lost
+purchase handoff. It must verify negative purchase evidence, keep reservation
+and spending guards, and permit one fresh native guarded ADS attempt only;
+unknown/inconsistent state must still stop. No implementation of this new
+recovery behavior yet. Existing house-rule gate requires the actual choice.
+
+USER CLARIFICATION / NATIVE DEBUG CONTINUATION426 BUILD INTENT:
+User explicitly confirmed the enabled Verminion debug selection is the native
+route for the agent to continue this run. Earlier instructions to purchase and
+click Resume manually were an incorrect restriction on that authorized route;
+Resume is hidden while unpaused. Reuse saved verminion_queue selection bound
+to this local character; do not change debug settings or send external input.
+Only Plugin.DebugAttemptMarker changes425->426; all battle strategy code,
+rosters, targeting, movement, abilities and retry limits remain unchanged.
+Build using Z:\vmx.bat, version0.5.0.3 unchanged. Expected426 startup should
+dispatch the existing ResumeTask once after ordinary cleanup. Native Start
+will observe current funds/ownership and reconcile the saved acquisition.
+Before build:19/24,pending match0,unpaused,campaign requested; saved item6005
+purchase reserves2400gil, old acquisition dispatched. Do not clear receipt or
+resubmit from confidence. Inspect the native outcome before any dependent edit
+or additional reload. ADS invariant fix34 is already positively loaded.
+
+ADS INVARIANT CONFIRMATION FIX BUILT / 173 SHOP TESTS PASS / NATIVE RELOAD:
+Debug x64 ADS0.9.4.3 built through dotnet test ADS.Tests/ADS.Tests.csproj
+--configuration Debug -p:Platform=x64 --no-restore --filter
+FullyQualifiedName~Shop. All173 shop tests passed, zero failed/skipped, duration
+11seconds, including the four-culture regression for the exact hatchling prompt.
+Only two existing ExplorerSnapshotExportService obsolete-distance warnings.
+Native local-client log positively confirms guarded-vendor-20260929-34 startup
+2026-09-29 18:36:09.622EDT from Z:\ADS\ADS\bin\x64\Debug\ADS.dll, version
+unchanged. No agent reload command, external input or focus change was sent.
+VMX425 DLL remains17:05:06 and its source strategies were not touched.
+Fresh pre-build and post-reload saved state:19/24,12matches/8wins,pending match0,unpaused;
+item6005 receipt still reserves2400gil, gilSpent0/MgpSpent10000, acquisition
+pending. Reload does not restore the expired ADS confirmation token or prove a
+purchase. The user must complete that saved Wayward Hatchling purchase through
+normal client actions, then use /vmx v Resume; verify actual item/currency
+reconciliation before any new acquisition or Stage20 admission. Do not mutate
+the saved receipt, dispatch externally, rebuild VMX or change battle decisions.
+Stage20-24 and the fresh local Stage1 replay remain pending. Native acceptance
+of a fresh prompt with the corrected matcher is not yet verified.
+
+ADS GIL CONFIRMATION FIX / BUILD INTENT, VMX425 FROZEN:
+Source access is restored after the sandbox restriction; user resumed and
+explicitly requested culture-invariant numeric matching for comma/period formats.
+ADS started clean at1d15c75, version0.9.4.3. ShopConfirmationToken now compares
+whole numeric tokens to invariant integer formats, supporting comma, period,
+NBSP and narrow NBSP groups without stripping malformed separators. Both gil
+and currency-preview paths use the same matcher; ownership, item, quantity,
+expiry and single-consumption checks remain. One focused regression covers
+the exact Wayward Hatchling prompt under invariant/en-US/de-DE/fr-FR cultures,
+wrong prices/quantities/items, mixed grouping, expiry and reuse.
+Expected ADS startup marker guarded-vendor-20260929-34. Next build/test the
+existing Debug x64 projects and shop regressions; no release version change.
+Only ADS development output may update. Do not rebuild VMX425 or change its
+roster, openings, targeting, movement, recovery, ability policy or retry limits.
+Local client PID3228 responding. The protected2400gil acquisition is unresolved;
+the earlier no-Yes failure is not a verified purchase or permission to redispatch.
+After offline verification, resolve receipt through normal user/provider actions
+before continuing Stage20-24. No external input/focus/provider-config mutation.
+
+425 FROZEN CAMPAIGN PASS / STAGES15-19 CLEAR, STAGE20 VENDOR BLOCKED:
+Stage15 match19 recovered all eight Gentlemen17:17:21.913EDT, reached final phase
+17:17:50.064, and produced explicit Victory17:18:16.343, credited once8matches/
+4wins/mask32767 (15/24). It cleared the first attempt after the user's Resume;
+the earlier local recovery timeout and two defeats remain part of this pass.
+Special was submitted17:17:58.175; do not infer its effect from that alone.
+Exit positively verified17:18:20.840. Normal Stage16 match20/duty567 queue
+17:18:33.645 and battlefield17:18:42.719 are observed; saved attempts1/pending20.
+Stage16 match20 produced verified Victory17:21:40.323 on its first attempt,
+credited9matches/5wins/mask65535 (16/24). Return verified17:21:45.043; normal
+Stage17 match21/duty568 entered17:22:04.119 and produced verified Victory
+17:24:37.155 on its first attempt, credited10matches/6wins/mask131071 (17/24).
+Return verified17:24:41.970; Stage18 admission selection17:24:52.154 followed.
+Stage18 match22/duty569 entered17:25:01.838 and produced verified Victory
+17:27:32.346 on its first attempt, credited11matches/7wins/mask262143 (18/24).
+Return verified17:27:37.276. Stage19 match23/duty570 queue17:27:49.992 and
+battlefield17:27:56.116 observed. Saved17:28 snapshot: unpausedStage19 attempts1,
+pending23. Stage19 produced verified Victory17:35:54.853 on its first attempt,
+credited12matches/8wins/mask524287 (19/24). Return verified17:35:59.458.
+Stage20 requested one capped Wayward Hatchling through ADS17:36:09.605;
+accepted17:36:14.553. ADS validated item6005/GilShop262574/row2/price2400, but
+rejected the owned prompt 'Purchase 1 wayward hatchling for 2,400 gil?'17:36:20.636.
+No Yes was dispatched; ADS terminal failure ui-mismatch reports acquired0/1.
+VMX correctly stopped17:36:20.735 and preserved its unresolved2400gil receipt
+and dispatched acquisition. Saved state: unpaused19/24,pending match0, gilSpent0,
+MgpSpent10000. Native shop/dialog may remain; do not externally operate it or
+repeat the purchase. PID3228 responding. VMX source/build425 unchanged.
+ADS source is clean and its development DLL atZ:\ADS\ADS\bin\x64\Debug\ADS.dll
+is enabled on this same local client. Source diagnosis: ContainsExactDisplayNumber
+uses an ungrouped long.ToString, so it cannot match the game's grouped price.
+Under the existing hard rule to fix all vendor operations in ADS, prepare a
+small ADS numeric-format correction and one focused regression, using existing
+shop token/quantity/cost safeguards. This is outside battle decisions; no roster,
+tactics, movement, special, VMX strategy or retry-limit edit is authorized.
+No live config mutation, resubmission, vendor input or new acquisition machinery.
+No external input, focus change, strategy edit, rebuild or attempt-limit bypass.
+Fresh Stage1 replay and20-24 remain pending. After the concrete ADS fix and
+verification, resolve the existing protected receipt through normal user/provider
+actions before another campaign admission; do not clear it from confidence alone.
+
+425 USER RESUME / STAGE15 RETRY1 ACTIVE:
+Fresh native Resume17:14:21.569EDT left the existing setup menu through inventory
+inspection. Queue ownership17:14:36.444 is match19/duty566; battlefield observed
+17:14:43.938 and opening17:14:48.944. Saved state is unpaused mask16383 (14/24),
+Stage15 attempts1/pending19/566. Local PID3228 responding. Source marker remains
+425 and no reload followed its verified startup. This is a user-started retry,
+not an agent dispatch or attempt-limit bypass. No build, strategy or live config
+edit. The previous full-suite verification remains910/910 passing.
+Leave this attempt uninterrupted. Next bounded evidence milestone around
+17:18EDT checks recovery/final phase and result; no log tail or rapid polling.
+Count only explicit result evidence and let normal retries/transitions proceed.
+No strategy change without explicit user permission. Goal is active, not blocked.
+
+425 EXISTING REGRESSION SUITE / NATIVE RETRY STILL PENDING:
+Automatic goal continuation revalidated the current checkpoint/source and local
+client. PID3228 is responding; saved state remains paused14/24,Stage15 attempts3,
+matches7/wins3/pending0. Native425 paused-guard record shows no new admission.
+Ran the existing full test assembly once with Debug --no-build --no-restore:
+910/910 passed, zero failed/skipped, reported duration6seconds. This includes
+the41 Verminion cases for accounting, reset, isolation, purchases, unknown results
+and pause/reload behavior. No code, strategy, build, client setting or game input
+changed. This advances offline regression verification, not battlefield evidence.
+Next runtime action is the user's ordinary /vmx v Resume on425. Leave the goal
+active while this first post-freeze continuation awaits that action; no polling
+loop, rearmed debug hook or attempt-limit bypass. Stage15-24 and fresh Stage1
+replay remain unverified locally; first-time unlock and live tournaments pending.
+
 HARD USER RULE / STRATEGIES FROZEN FOR PRODUCTION TESTING:
 No further strategy change without asking and receiving explicit user permission.
 This includes roster/composition, openings, targeting, movement decisions,

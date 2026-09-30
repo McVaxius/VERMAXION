@@ -7,6 +7,7 @@ namespace VERMAXION.Models;
 
 public enum ChocoboBreedingMode { OwnedParents, NpcPermits }
 public enum ChocoboFeedPolicy { FallBack, Skip, Stop }
+public enum ChocoboBreedingGoal { ReachPedigree, AbilityOffspring, ColourOffspring }
 
 public enum ChocoboAutomationMode
 {
@@ -44,7 +45,10 @@ public sealed record ChokeAboTargetCycleStatus(
     int Pedigree = 0,
     int RacingRank = 0,
     bool ProgressionComplete = false,
-    bool CanResumeOwnedInteraction = false);
+    bool CanResumeOwnedInteraction = false,
+    uint InheritedAbilityId = 0,
+    uint LearnedAbilityId = 0,
+    uint ColourId = 0);
 
 public readonly record struct ChokeAboTargetCycleCallResult(
     bool Succeeded,
@@ -65,6 +69,11 @@ public static class ChokeAboTargetCycleProtocol
     public static bool TryCreateEnsureRequestJson(ulong contentId, CharacterConfig config, out string json, out string error)
     {
         json = string.Empty;
+        if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
+        {
+            error = "Offspring production is unavailable until offspring ability and colour can be verified. Pedigree progression remains available.";
+            return false;
+        }
         if (!TryValidateIdentity(contentId, out error) ||
             !TryValidateSettings(config.ChocoboTargetPedigree, config.ChocoboRetirementRank, config.ChocoboPreferredFeedGrade, out error)) return false;
         if (!Enum.IsDefined(config.ChocoboBreedingMode) || !Enum.IsDefined(config.ChocoboFeedPolicy))
@@ -211,7 +220,10 @@ public static class ChokeAboTargetCycleProtocol
                 targetReady,
                 gameActionInProgress,
                 reason,
-                nextCoveringEligibilityUtc, pedigree, racingRank, complete, canResumeOwnedInteraction);
+                nextCoveringEligibilityUtc, pedigree, racingRank, complete, canResumeOwnedInteraction,
+                root.TryGetProperty("inheritedAbilityId", out var inheritedAbility) && inheritedAbility.TryGetUInt32(out var inheritedId) ? inheritedId : 0,
+                root.TryGetProperty("learnedAbilityId", out var learnedAbility) && learnedAbility.TryGetUInt32(out var learnedId) ? learnedId : 0,
+                root.TryGetProperty("colourId", out var colour) && colour.TryGetUInt32(out var colourId) ? colourId : 0);
             error = string.Empty;
             return true;
         }

@@ -45,6 +45,10 @@ public class ConfigWindow : Window, IDisposable
     private ChokeAboTargetCycleCallResult? chokeAboTargetStatus;
     private ulong chokeAboTargetStatusContentId;
     private DateTime chokeAboTargetStatusNextRefreshUtc = DateTime.MinValue;
+    private readonly List<ChocoboRaceAbility> chocoboAbilityOptions = new();
+    private readonly List<Stain> chocoboColourOptions = new();
+    private bool chocoboGoalOptionsLoaded;
+    private string chocoboColourSearch = string.Empty;
 
     private enum ConfigTab
     {
@@ -104,6 +108,7 @@ public class ConfigWindow : Window, IDisposable
         : base("Vermaxion Configuration##Config", ImGuiWindowFlags.None)
     {
         this.plugin = plugin;
+        Plugin.Log.Information("[ChocoboUX] Build marker chocobo-ux-20260930-01; ability printer and colour seeker settings.");
         SizeConstraints = new WindowSizeConstraints
         {
             MinimumSize = new Vector2(700, 500),
@@ -1829,7 +1834,8 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
             }
-            DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
+            if (cc.ChocoboAutomationMode == ChocoboAutomationMode.AlwaysRace)
+                DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
             if (chocobo)
             {
                 ImGui.Indent();
@@ -1868,7 +1874,9 @@ public class ConfigWindow : Window, IDisposable
 
                 if (cc.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
                 {
+                    DrawChocoboGoalSettings(cc, string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal), ref changed);
                     var targetPedigree = cc.ChocoboTargetPedigree;
+                    ImGui.BeginDisabled(cc.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree);
                     ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
                     if (ImGui.InputInt("Target pedigree", ref targetPedigree))
                     {
@@ -1877,12 +1885,16 @@ public class ConfigWindow : Window, IDisposable
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "ChocoboTargetPedigree", "Chocobo target pedigree",
                         (source, target) => target.ChocoboTargetPedigree = source.ChocoboTargetPedigree);
+                    ImGui.EndDisabled();
 
                     ImGui.TextDisabled("Intermediate chocobos retire at racing rank 40; retain the target pedigree to racing rank 50.");
 
                     var breedingMode = (int)cc.ChocoboBreedingMode;
                     if (ImGui.Combo("Breeding mode", ref breedingMode, "Owned parents\0NPC covering permits\0"))
                     { cc.ChocoboBreedingMode = (ChocoboBreedingMode)breedingMode; changed = true; }
+                    ImGui.TextWrapped(cc.ChocoboBreedingMode == ChocoboBreedingMode.OwnedParents
+                        ? "Use retained parents. Missing counterparts stop this mode; covering permits are purchased only in permit mode."
+                        : "Use a retained parent and a matching-pedigree permit for the opposite sex. MGP purchases respect the reserve.");
                     var feedPolicy = (int)cc.ChocoboFeedPolicy;
                     if (ImGui.Combo("When feeding cannot proceed", ref feedPolicy, "Fall back\0Skip\0Stop\0"))
                     { cc.ChocoboFeedPolicy = (ChocoboFeedPolicy)feedPolicy; changed = true; }
@@ -1919,6 +1931,8 @@ public class ConfigWindow : Window, IDisposable
                         ImGui.TextDisabled("Choke-abo status is shown only for the live current character.");
                 }
 
+                if (cc.ChocoboAutomationMode == ChocoboAutomationMode.AlwaysRace)
+                {
                 var races = cc.ChocoboRacesPerDay;
                 ImGui.Text($"{UIConstants.ConfigLabels.RacesPerDay}:");
                 ImGui.SameLine();
@@ -1947,6 +1961,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextDisabled("(?)");
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip("Checks rank before each race. Uses RaceChocoboManager when loaded, then opens /goldsaucer and reads GoldSaucerInfo node 21 as fallback. Rank 50 stops the daily racing task before another queue.");
+                }
 
                 ImGui.Unindent();
             }
@@ -3075,10 +3090,16 @@ public class ConfigWindow : Window, IDisposable
         var contentId = Plugin.PlayerState.ContentId;
         var now = DateTime.UtcNow;
         var config = plugin.ConfigManager.GetActiveConfig();
-        ImGui.Text($"Daily racing allowance: {TimeSpan.FromSeconds(ChocoboDailyAllowance.Remaining(config, now)):hh\\:mm\\:ss} remaining");
+        var allowance = ChocoboDailyAllowance.Remaining(config, now);
+        ImGui.Separator();
+        ImGui.Text($"Daily racing allowance: {TimeSpan.FromSeconds(allowance):hh\\:mm\\:ss} of 03:00:00 remaining");
+        ImGui.ProgressBar((float)(allowance / ChocoboDailyAllowance.LimitSeconds), new Vector2(-1, 0), "Queue and racing time only");
+        ImGui.TextDisabled($"Resets {ChocoboDailyAllowance.ResetAt(now).AddDays(1).ToLocalTime():ddd, MMM d HH:mm} local (09:00 UTC). Covering waits do not consume racing time.");
         ImGui.Text(config.ChocoboProgressionPaused ? "Progression paused" : "Progression enabled");
+        ImGui.BeginDisabled(config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree);
         if (ImGui.Button("Resume##ChocoboProgression"))
             plugin.RunDashboardAction(() => plugin.ChocoboRaceService.ResumeProgression());
+        ImGui.EndDisabled();
         ImGui.SameLine();
         if (ImGui.Button("Pause##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
         ImGui.SameLine();
@@ -3092,7 +3113,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (!chokeAboTargetStatus.HasValue)
         {
-            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Choke-abo V3: status unavailable");
+            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Breeding status unavailable. Enable Choke-abo to continue.");
             return;
         }
 
@@ -3101,21 +3122,159 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.TextColored(
                 new Vector4(1f, 0.55f, 0.2f, 1f),
-                $"Choke-abo V3: {result.Error}");
+                $"Breeding status unavailable: {result.Error}");
             return;
         }
 
         var status = result.Status;
-        ImGui.Text($"Pedigree: G{status.Pedigree} | Racing rank: {status.RacingRank}/50");
-        ImGui.Text($"Choke-abo: {status.Phase}");
-        ImGui.TextDisabled(
-            $"Block racing: {(status.ShouldBlockRacing ? "yes" : "no")} · " +
-            $"target ready: {(status.TargetReady ? "yes" : "no")} · " +
-            $"game action: {(status.GameActionInProgress ? "yes" : "no")}");
-        ImGui.TextWrapped(status.Reason);
+        ImGui.TextUnformatted(status.RacingRank > 0 ? $"Registered pedigree: G{status.Pedigree}    Racing rank: {status.RacingRank}/50" : "No registered racing chocobo.");
+        if (status.RacingRank > 0)
+        {
+            DrawChocoboAbility("Inherited ability", status.InheritedAbilityId);
+            DrawChocoboAbility("Learned ability", status.LearnedAbilityId);
+            if (Plugin.DataManager.GetExcelSheet<Stain>().TryGetRow(status.ColourId, out var colour))
+            {
+                DrawChocoboColour(colour, "CurrentRacer");
+                ImGui.SameLine();
+                ImGui.TextUnformatted($"Colour: {colour.Name.ExtractText()}");
+            }
+        }
+        ImGui.TextWrapped($"Next action: {status.Reason}");
+        if (status.ProgressionComplete)
+            ImGui.TextColored(new Vector4(0.4f, 1f, 0.6f, 1f), "Pedigree and racing-rank goal reached. Racer retained.");
         if (status.NextCoveringEligibilityUtc.HasValue)
-            ImGui.TextDisabled($"Next covering eligibility: {status.NextCoveringEligibilityUtc.Value:u}");
+        {
+            var ready = status.NextCoveringEligibilityUtc.Value;
+            var remaining = ready - DateTimeOffset.UtcNow;
+            ImGui.TextWrapped(remaining > TimeSpan.Zero
+                ? $"Collection ready in {remaining:hh\\:mm\\:ss} - {ready.ToLocalTime():ddd, MMM d HH:mm} local"
+                : "Covering is ready for collection.");
+        }
     }
+
+    private void DrawChocoboGoalSettings(CharacterConfig config, bool isCurrentCharacter, ref bool changed)
+    {
+        var goal = (int)config.ChocoboBreedingGoal;
+        ImGui.SetNextItemWidth(280);
+        if (ImGui.Combo("Breeding goal", ref goal, "Reach pedigree and racing rank 50\0Offspring printer - inherited ability\0Colour seeker\0"))
+        {
+            if (isCurrentCharacter)
+                plugin.ChocoboRaceService.PauseProgression();
+            config.ChocoboBreedingGoal = (ChocoboBreedingGoal)goal;
+            config.ChocoboProgressionPaused = true;
+            if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
+                config.ChocoboTargetPedigree = 9;
+            changed = true;
+        }
+        if (config.ChocoboBreedingGoal == ChocoboBreedingGoal.ReachPedigree)
+            return;
+
+        if (!chocoboGoalOptionsLoaded)
+        {
+            chocoboAbilityOptions.AddRange(Plugin.DataManager.GetExcelSheet<ChocoboRaceAbility>()
+                .Where(ability => ability.RowId > 0 && !string.IsNullOrWhiteSpace(ability.Name.ExtractText()))
+                .OrderBy(ability => ability.Name.ExtractText()));
+            chocoboColourOptions.AddRange(Plugin.DataManager.GetExcelSheet<Stain>()
+                .Where(colour => colour.RowId > 0 && colour.RowId <= byte.MaxValue && !colour.IsMetallic && !string.IsNullOrWhiteSpace(colour.Name.ExtractText()))
+                .OrderBy(colour => colour.Shade).ThenBy(colour => colour.SubOrder));
+            chocoboGoalOptionsLoaded = true;
+        }
+        ImGui.TextWrapped("Produce pedigree-9 offspring. Only confirmed matches count toward the requested quantity; a matching parent must be available.");
+        if (config.ChocoboBreedingGoal == ChocoboBreedingGoal.AbilityOffspring)
+        {
+            var selectedAbility = chocoboAbilityOptions.FirstOrDefault(ability => ability.RowId == config.ChocoboDesiredInheritedAbilityId);
+            var preview = config.ChocoboDesiredInheritedAbilityId == 0 ? "Choose an inherited ability" : selectedAbility.Name.ExtractText();
+            ImGui.SetNextItemWidth(280);
+            if (ImGui.BeginCombo("Desired inherited ability", preview))
+            {
+                foreach (var ability in chocoboAbilityOptions)
+                {
+                    ImGui.PushID((int)ability.RowId);
+                    DrawChocoboGameIcon(ability.Icon);
+                    ImGui.SameLine();
+                    if (ImGui.Selectable(ability.Name.ExtractText(), ability.RowId == config.ChocoboDesiredInheritedAbilityId))
+                    {
+                        config.ChocoboDesiredInheritedAbilityId = ability.RowId;
+                        changed = true;
+                    }
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip(ability.Description.ExtractText());
+                    ImGui.PopID();
+                }
+                ImGui.EndCombo();
+            }
+            var quantity = config.ChocoboDesiredAbilityOffspringCount;
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.InputInt("Matching offspring to produce##Ability", ref quantity))
+            {
+                config.ChocoboDesiredAbilityOffspringCount = Math.Max(1, quantity);
+                changed = true;
+            }
+            ImGui.TextDisabled("The inherited ability is the breeding target. A learned ability alone does not count.");
+        }
+        else
+        {
+            var quantity = config.ChocoboDesiredColourOffspringCount;
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.InputInt("Matching offspring to produce##Colour", ref quantity))
+            {
+                config.ChocoboDesiredColourOffspringCount = Math.Max(1, quantity);
+                changed = true;
+            }
+            ImGui.TextWrapped("Accept any selected colour. The quantity is a total across the selected colours.");
+            ImGui.SetNextItemWidth(280);
+            ImGui.InputTextWithHint("##ChocoboColourSearch", "Find a colour", ref chocoboColourSearch, 80);
+            if (ImGui.BeginChild("AcceptableChocoboColours", new Vector2(0, 190), ImGuiChildFlags.Borders))
+            {
+                foreach (var colour in chocoboColourOptions)
+                {
+                    var name = colour.Name.ExtractText();
+                    if (!name.Contains(chocoboColourSearch, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    ImGui.PushID((int)colour.RowId);
+                    var selected = config.ChocoboAcceptableColourIds.Contains(colour.RowId);
+                    if (ImGui.Checkbox("##Accept", ref selected))
+                    {
+                        if (selected) config.ChocoboAcceptableColourIds.Add(colour.RowId);
+                        else config.ChocoboAcceptableColourIds.Remove(colour.RowId);
+                        changed = true;
+                    }
+                    ImGui.SameLine();
+                    DrawChocoboColour(colour, "Choice");
+                    ImGui.SameLine();
+                    ImGui.TextUnformatted(name);
+                    ImGui.PopID();
+                }
+            }
+            ImGui.EndChild();
+            ImGui.Text($"Acceptable colours selected: {config.ChocoboAcceptableColourIds.Count}");
+        }
+        ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Batch start is unavailable until offspring ability and colour inspection is verified.");
+        ImGui.TextWrapped("These goals are saved separately. Existing pedigree progression remains available; Pause and Stop preserve a pending covering.");
+    }
+
+    private static void DrawChocoboAbility(string label, uint abilityId)
+    {
+        if (abilityId != 0 && Plugin.DataManager.GetExcelSheet<ChocoboRaceAbility>().TryGetRow(abilityId, out var ability))
+        {
+            DrawChocoboGameIcon(ability.Icon);
+            ImGui.SameLine();
+            ImGui.TextUnformatted($"{label}: {ability.Name.ExtractText()}");
+        }
+        else
+            ImGui.TextDisabled($"{label}: none");
+    }
+
+    private static void DrawChocoboGameIcon(uint iconId)
+    {
+        var texture = Plugin.TextureProvider.GetFromGameIcon(iconId).GetWrapOrDefault();
+        if (texture != null)
+            ImGui.Image(texture.Handle, new Vector2(24, 24));
+    }
+
+    private static void DrawChocoboColour(Stain colour, string id)
+        => ImGui.ColorButton($"##ChocoboColour{id}", new Vector4(((colour.Color >> 16) & 255) / 255f, ((colour.Color >> 8) & 255) / 255f, (colour.Color & 255) / 255f, 1),
+            ImGuiColorEditFlags.NoTooltip, new Vector2(22, 22));
 
     private T RunConfigMutationWithTargetPause<T>(Func<T> mutation, string reason)
     {
