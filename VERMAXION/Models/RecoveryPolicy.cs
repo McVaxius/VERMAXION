@@ -35,8 +35,12 @@ public sealed class GroundNavigationRecoveryTracker
         Vector3 requestedDestination,
         bool fly,
         Vector3? playerPosition,
-        DateTime now)
+        DateTime now,
+        bool horizontalProgressOnly = false)
     {
+        // Delivery jumps must not count as progress along a blocked ground route.
+        if (horizontalProgressOnly && playerPosition is { } groundPosition)
+            playerPosition = new Vector3(groundPosition.X, 0, groundPosition.Z);
         if (fly)
         {
             Reset();

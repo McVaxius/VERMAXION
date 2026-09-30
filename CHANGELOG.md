@@ -1,5 +1,19 @@
 # VERMAXION Changelog
 
+## Unreleased - custom deliveries and narrow fixes (runtime verification pending)
+
+- Learn from and improve on the general idea of VSatisfy's custom-delivery feature from awgil/ffxiv_satisfy revision 1ab3f9f with the required compatible support source under DeliverySupport. Add a disabled-by-default weekly character task, task ordering, overview, manual action and `/vmx debug` selection. Retain Artisan crafting and purchases, Questionable gathering and the original feature settings.
+- Allow multiple delivery types and jobs. Select the closest verified NPC progress below 150, capped at that goal, or accept only bonus routes. Respect native character/NPC allowances, rank eligibility and craft/mining/botany/fishing preferences. Correct NPC indexing and achievement sampling; unknown progress stays visible and data refreshes with windows closed.
+- Add AutoHook preset/bait fishing for custom deliveries, checking rod and casting prerequisites, counting qualifying collectibles and stopping before turn-in. Restore task-owned AutoHook state and expose prerequisite or cleanup failures.
+- Default custom-delivery fishing bait to Versatile Lure (29717) and normalize saved or entered 0 to 29717. Preserve other bait selections and surface the exact missing bait.
+- Resolve custom-delivery NPC/vendor destinations near their actual height, avoiding an Idyllshire floor projection about 13 units below Adkiragh. Reuse the existing 12-second ground-navigation recovery tracker, measuring horizontal progress so jumps cannot hide a stall. Stop the old route before requesting a fresh native path, following the FrenRider/ADS/LootGoblin pattern. Own the cancellation-capable vnavmesh query so a cancelled task cannot later start movement. Log requested/resolved destinations, distance, path completion, recovery and arrival; live retesting remains pending.
+- Confirm custom-delivery overflow warnings containing `Unable to receive the following items:` during owned turn-ins, allowing delivery credit when scrip storage is full without depending on the item list or final question. Verify each turn-in through the native allowance change.
+- Reuse the Cactpot approach/interaction flow for delivery vendors and turn-in NPCs: navigate to the known position before requiring visibility, resolve the live NPC by base/instance ID, wait for spawning, close to its valid interaction range and retry until the owned UI actually opens. Handle a vendor selector that appears after the interaction frame and progress NPC dialogue. Add interaction diagnostics; the Firmament vendor stall awaits live retesting.
+- Keep production within planned turn-ins: verified progress 147/150 permits three items, further limited by character/NPC/rank allowances and eligible inventory. Correct Wiggly gathering's total-at-target-quality request when existing lower-quality collectibles already qualify, and log planned and missing quantities plus the Artisan request.
+- Use Wiggly Questionable (`WigglyQuest`) for custom-delivery gathering and dependency status. Its current build has no VSatisfy gathering/stop IPC, so use its native gathering registry/controller with request ownership checks and cancellation; VERMAXION retains delivery selection and turn-ins. Native gathering verification remains pending.
+- I443: read AutoHook's current `AutoHook.Presets.Config.Configuration.C` while preserving the existing AutoOceanFish accessor and save behavior. I452's related report remains pending current-version runtime verification.
+- I435: cancel interrupted VERMAXION-owned AutoRetainer postprocessing on disconnect and release its ownership through existing cleanup. Preserve the existing Ocean Fishing relog path.
+
 ## Unreleased - chocobo goals and progression UI (runtime acceptance pending)
 
 - Add separately saved pedigree-9 offspring goals: a desired inherited ability with quantity, and a colour seeker accepting multiple colours with a total quantity. Use Lumina names, ability icons and named colour swatches; preserve these settings in character copies.
@@ -609,7 +623,7 @@ The PR contributor checked existing deployment logs after the build, without sta
 ### Verification
 
 - The focused `UiUxPolicyTests` class passes 18/18 tests, including fresh and legacy automatic-width defaults. The complete Debug x64 suite passes 538/538 tests.
-- The Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning. Manual checklist verification remains David-operated and pending.
+- The Debug x64 solution build succeeds with zero errors and only the existing `PInvoke.User32` NU1601 dependency-resolution warning. Manual checklist verification remains the user-operated and pending.
 
 ## 2026-08-20 - Favorites and independent Refill Listings pacing
 

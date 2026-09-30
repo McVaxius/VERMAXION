@@ -1,0 +1,88 @@
+// Imported from awgil/ffxiv_satisfy revision 1ab3f9f; adapted for VERMAXION.
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using Lumina.Excel.Sheets;
+
+namespace VERMAXION.CustomDeliveries;
+
+public unsafe static class Calculations
+{
+    // see Client::Game::SatisfactionSupplyManager.setCurrentNpc
+    public static int CalculateBonusGuarantee()
+    {
+        var framework = Framework.Instance();
+        var proxy = framework->IsNetworkModuleInitialized ? framework->NetworkModuleProxy : null;
+        var module = proxy != null ? proxy->NetworkModule : null;
+        if (module == null)
+            return -1;
+        var timestamp = checked((int)Framework.GetServerTime());
+        timestamp += SatisfactionSupplyManager.Instance()->TimeAdjustmentForBonusGuarantee;
+        return CalculateBonusGuarantee(timestamp);
+    }
+
+    // see getBonusGuaranteeIndex
+    public static int CalculateBonusGuarantee(int timestamp)
+    {
+        var secondsSinceStart = timestamp - 1657008000;
+        var weeksSinceStart = secondsSinceStart / 604800;
+        return weeksSinceStart % Service.LuminaSheet<SatisfactionBonusGuarantee>()!.Count;
+    }
+
+    public static uint[] CalculateRequestedItems(int npcIndex)
+    {
+        var inst = SatisfactionSupplyManager.Instance();
+        var rank = inst->SatisfactionRanks[npcIndex];
+        var supplyIndex = Service.LuminaRow<SatisfactionNpc>((uint)npcIndex + 1)!.Value.SatisfactionNpcParams[rank].SupplyIndex;
+        return CalculateRequestedItems((uint)supplyIndex, inst->SupplySeed);
+    }
+
+    // see Client::Game::SatisfactionSupplyManager.onSatisfactionSupplyRead
+    public static uint[] CalculateRequestedItems(uint supplyIndex, uint seed)
+    {
+        var subrows = Service.LuminaSubrows<SatisfactionSupply>(supplyIndex)!.Value;
+
+        var h1 = (0x03CEA65Cu * supplyIndex) ^ (0x1A0DD20Eu * seed);
+        var h2 = (0xDF585D5Du * supplyIndex) ^ (0x3057656Eu * seed);
+        var h3 = (0xED69E442u * supplyIndex) ^ (0x2202EA5Au * seed);
+        var h4 = (0xAEFC3901u * supplyIndex) ^ (0xE70723F6u * seed);
+        uint[] res = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF];
+        var h5 = h1;
+        for (int iSlot = 1; iSlot < 4; ++iSlot)
+        {
+            var sumProbabilities = 0;
+            for (int iSub = 0; iSub < subrows.Count; ++iSub)
+            {
+                var row = subrows[iSub];
+                if (row.Slot == iSlot)
+                    sumProbabilities += row.ProbabilityPercent;
+            }
+
+            var hTemp = h5 ^ (h5 << 11);
+            h1 = h3;
+            h3 = h4;
+            h5 = h2;
+            h4 ^= hTemp ^ ((hTemp ^ (h4 >> 11)) >> 8);
+            h2 = h1;
+
+            if (sumProbabilities <= 0)
+                continue;
+            var roll = h4 % (uint)sumProbabilities;
+            for (int iSub = 0; iSub < subrows.Count; ++iSub)
+            {
+                var row = subrows[iSub];
+                if (row.Slot != iSlot)
+                    continue;
+                if (roll < row.ProbabilityPercent)
+                {
+                    res[iSlot - 1] = (uint)iSub;
+                    break;
+                }
+                roll -= row.ProbabilityPercent;
+            }
+        }
+        return res;
+    }
+}

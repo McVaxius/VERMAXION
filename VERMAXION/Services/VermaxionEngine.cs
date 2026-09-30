@@ -6,6 +6,7 @@ using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
 using VERMAXION.Models;
+using VERMAXION.CustomDeliveries;
 using static VERMAXION.Services.GameHelpers;
 using Quest = Lumina.Excel.Sheets.Quest;
 
@@ -111,6 +112,8 @@ public class VermaxionEngine
         "RetainerTaskResult",
         "ContextMenu",
         "RecommendEquip",
+        "SatisfactionSupply",
+        "SatisfactionSupplyResult",
     ];
 
     private static readonly Dictionary<string, EngineState> TaskStateById = new()
@@ -131,6 +134,7 @@ public class VermaxionEngine
         [PostProcessTaskOrder.MiniCactpot] = EngineState.RunningMiniCactpot,
         [PostProcessTaskOrder.JumboCactpot] = EngineState.RunningJumboCactpot,
         [PostProcessTaskOrder.FashionReport] = EngineState.RunningFashionReport,
+        [PostProcessTaskOrder.CustomDeliveries] = EngineState.RunningCustomDeliveries,
         [PostProcessTaskOrder.ChocoboRacing] = EngineState.RunningChocoboRacing,
         [PostProcessTaskOrder.LootGoblinMapGather] = EngineState.RunningLootGoblinMapGather,
         [PostProcessTaskOrder.NagYourMom] = EngineState.RunningNagYourMom,
@@ -151,6 +155,7 @@ public class VermaxionEngine
     private readonly ChocoboRaceService chocoboRaceService;
     private readonly ChokeAboIpcClient chokeAboIpcClient;
     private readonly FashionReportService fashionReportService;
+    private readonly CustomDeliveriesService customDeliveriesService;
     private readonly VendorStockService vendorStockService;
     private readonly FishingService fishingService;
     private readonly RegisterRegistrablesService registerRegistrablesService;
@@ -261,6 +266,7 @@ public class VermaxionEngine
         RunningMiniCactpot,
         RunningJumboCactpot,
         RunningFashionReport,
+        RunningCustomDeliveries,
         RunningChocoboRacing,
         RunningLootGoblinMapGather,
         RunningNagYourMom,
@@ -316,6 +322,7 @@ public class VermaxionEngine
         ChocoboRaceService chocoboRaceService,
         ChokeAboIpcClient chokeAboIpcClient,
         FashionReportService fashionReportService,
+        CustomDeliveriesService customDeliveriesService,
         VendorStockService vendorStockService,
         FishingService fishingService,
         RegisterRegistrablesService registerRegistrablesService,
@@ -352,6 +359,7 @@ public class VermaxionEngine
         this.chocoboRaceService = chocoboRaceService;
         this.chokeAboIpcClient = chokeAboIpcClient;
         this.fashionReportService = fashionReportService;
+        this.customDeliveriesService = customDeliveriesService;
         this.vendorStockService = vendorStockService;
         this.fishingService = fishingService;
         this.registerRegistrablesService = registerRegistrablesService;
@@ -449,6 +457,9 @@ public class VermaxionEngine
                 () => cactpotService.StatusText),
             Bind(PostProcessTaskOrder.FashionReport, EvaluateFashionReport, fashionReportService.Update,
                 fashionReportService.Reset, () => fashionReportService.State.ToString()),
+            Bind(PostProcessTaskOrder.CustomDeliveries, EvaluateCustomDeliveries, () => { },
+                customDeliveriesService.Reset, () => customDeliveriesService.StatusText,
+                customDeliveriesService.Cancel),
             Bind(PostProcessTaskOrder.ChocoboRacing, EvaluateChocoboRacing, chocoboRaceService.Update,
                 chocoboRaceService.Reset, () => chocoboRaceService.StatusText),
             Bind(PostProcessTaskOrder.LootGoblinMapGather, EvaluateLootGoblin, lootGoblinMapGatherService.Update,
@@ -663,6 +674,22 @@ public class VermaxionEngine
         return quests.TryGetRow(questId, out var quest) && Plugin.UnlockState.IsQuestCompleted(quest);
     }
 
+    private TaskEligibility EvaluateCustomDeliveries(CharacterConfig config)
+        => EvaluateCustomDeliveries(config, ignoreSchedulingFlag: false);
+
+    private TaskEligibility EvaluateCustomDeliveries(CharacterConfig config, bool ignoreSchedulingFlag)
+    {
+        if (!ignoreSchedulingFlag && !config.EnableCustomDeliveries)
+            return TaskEligibility.Disabled("Custom Deliveries is disabled for this character.");
+        if (!customDeliveriesService.RemainingAllowances.HasValue)
+            return TaskEligibility.Blocked("Custom-delivery allowances are unknown until current-character data is available.");
+        if (customDeliveriesService.RemainingAllowances == 0)
+            return TaskEligibility.NotDue("The character has used all weekly custom-delivery allowances.");
+        return customDeliveriesService.GetStartBlockedReason(config.CustomDeliveriesSettings) is { } reason
+            ? TaskEligibility.Blocked(reason)
+            : TaskEligibility.Runnable();
+    }
+
     private TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
     {
         var eligibility = config.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree
@@ -849,6 +876,11 @@ public class VermaxionEngine
             automatedRun: false, "manual Refill Listings",
             AutomationRunScope.SingleTask(PostProcessTaskOrder.RefillListings));
 
+    public bool ManualStartCustomDeliveries()
+        => TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false,
+            automatedRun: false, "manual Custom Deliveries",
+            AutomationRunScope.SingleTask(PostProcessTaskOrder.CustomDeliveries));
+
     public void RecordSkippedOpportunity(string summary)
     {
         if (!IsRunning)
@@ -896,7 +928,7 @@ public class VermaxionEngine
         }
 
         ResetRunTracking();
-        retainerSuppressionRequired = runScope.SingleTaskId == PostProcessTaskOrder.RefillListings;
+        retainerSuppressionRequired = runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries;
         suppressionReleasedForHandoff = false;
         retainerCleanupPending = false;
         activePhaseFilter = phaseFilter;
@@ -1607,6 +1639,55 @@ public class VermaxionEngine
                 {
                     AdvanceToNextTask(EngineState.RunningFashionReport);
                 }
+                break;
+
+            case EngineState.RunningCustomDeliveries:
+                activeConfig = GetLiveActiveConfig();
+                if (!activeConfig.EnableCustomDeliveries &&
+                    !(activeRunScope.BypassSelectedScheduling && activeRunScope.SingleTaskId == PostProcessTaskOrder.CustomDeliveries))
+                {
+                    customDeliveriesService.Cancel();
+                    if (customDeliveriesService.IsActive) break;
+                    AdvanceToNextTask(EngineState.RunningCustomDeliveries);
+                    break;
+                }
+                if (!currentTaskOwnedWorkStarted)
+                {
+                    var eligibility = GetActiveRunEligibility(PostProcessTaskOrder.CustomDeliveries, activeConfig);
+                    if (!eligibility.IsRunnable)
+                    {
+                        log.Information($"[Engine] Custom Deliveries skipped: {eligibility.Reason}");
+                        AdvanceToNextTask(EngineState.RunningCustomDeliveries);
+                        break;
+                    }
+                    ResetInteractionState();
+                    MarkCurrentTaskWorkStarted();
+                    customDeliveriesService.Start(activeConfig.CustomDeliveriesSettings);
+                    return;
+                }
+
+                StatusText = customDeliveriesService.StatusText;
+                if (!customDeliveriesService.IsComplete && !customDeliveriesService.IsFailed)
+                    break;
+                if (customDeliveriesService.IsActive)
+                    break; // Retain task ownership while native fishing cleanup is pending.
+                if (customDeliveriesService.IsComplete && customDeliveriesService.CompletedTurnins > 0)
+                {
+                    var completedAt = DateTime.UtcNow;
+                    PersistCurrentCharacterConfig(config =>
+                    {
+                        config.CustomDeliveriesLastCompleted = completedAt;
+                        config.CustomDeliveriesNextReset = ResetDetectionService.GetNextWeeklyReset(completedAt);
+                    }, "Custom Deliveries verified turn-ins completed");
+                    log.Information($"[Engine] Custom Deliveries completed with {customDeliveriesService.CompletedTurnins} observed turn-ins.");
+                }
+                else if (customDeliveriesService.IsFailed)
+                {
+                    runHadFailure = true;
+                    log.Warning($"[Engine] Custom Deliveries failed: {customDeliveriesService.StatusText}");
+                }
+                customDeliveriesService.Reset();
+                AdvanceToNextTask(EngineState.RunningCustomDeliveries);
                 break;
 
             case EngineState.RunningChocoboRacing:
@@ -2527,6 +2608,8 @@ public class VermaxionEngine
             return $"Cactpot service active ({cactpotService.StatusText})";
         if (fashionReportService.IsActive)
             return $"Fashion Report service active ({fashionReportService.State})";
+        if (customDeliveriesService.IsActive)
+            return $"Custom Deliveries service active ({customDeliveriesService.StatusText})";
         if (chocoboRaceService.IsActive)
             return $"Chocobo Racing service active ({chocoboRaceService.StatusText})";
         if (gearUpdaterService.IsActive)
@@ -2800,9 +2883,9 @@ public class VermaxionEngine
                 continue;
             }
 
-            if (nextState == EngineState.RunningRetainerListingRefill)
+            if (nextState is EngineState.RunningRetainerListingRefill or EngineState.RunningCustomDeliveries)
                 retainerSuppressionRequired = true;
-            else
+            if (nextState != EngineState.RunningRetainerListingRefill)
                 retainerUiOwned = false;
             SetState(nextState);
             return;
@@ -2824,6 +2907,10 @@ public class VermaxionEngine
 
     private TaskEligibility GetActiveRunEligibility(string taskId, CharacterConfig config)
     {
+        if (activeRunScope.BypassSelectedScheduling &&
+            activeRunScope.SingleTaskId == PostProcessTaskOrder.CustomDeliveries &&
+            taskId == PostProcessTaskOrder.CustomDeliveries)
+            return EvaluateCustomDeliveries(config, ignoreSchedulingFlag: true);
         if (activeRunScope.BypassSelectedScheduling &&
             activeRunScope.SingleTaskId == PostProcessTaskOrder.RefillListings &&
             taskId == PostProcessTaskOrder.RefillListings)
@@ -2978,6 +3065,7 @@ public class VermaxionEngine
             EngineState.RunningMiniCactpot => "Mini Cactpot",
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",
             EngineState.RunningFashionReport => "Fashion Report",
+            EngineState.RunningCustomDeliveries => "Custom Deliveries",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
             EngineState.RunningLootGoblinMapGather => "LootGoblin Map Gather",
             EngineState.RunningNagYourMom => "nag your mom",

@@ -11,6 +11,7 @@ using Dalamud.Bindings.ImGui;
 using ECommons.Reflection;
 using VERMAXION.Models;
 using VERMAXION.Services;
+using VERMAXION.CustomDeliveries;
 
 namespace VERMAXION.Windows;
 
@@ -32,6 +33,8 @@ public class MainWindow : Window, IDisposable
         "LootGoblin",
         "mom",
         "dad",
+        "Artisan",
+        "WigglyQuest",
     ];
 
     private static readonly string[] RetainerBellSessionAddonNames =
@@ -54,6 +57,7 @@ public class MainWindow : Window, IDisposable
     ];
 
     private readonly Plugin plugin;
+    private ulong customDeliveryAutoShowContentId;
     private readonly RetainerEquippingArProbeCache retainerEquippingReadinessCache =
         new(TimeSpan.FromSeconds(5));
 
@@ -71,6 +75,25 @@ public class MainWindow : Window, IDisposable
     }
 
     public void Dispose() { }
+
+    internal void UpdateCustomDeliveryVisibility()
+    {
+        if (!Plugin.PlayerState.IsLoaded)
+        {
+            customDeliveryAutoShowContentId = 0;
+            return;
+        }
+        var contentId = Plugin.PlayerState.ContentId;
+        if (contentId == 0 || customDeliveryAutoShowContentId == contentId)
+            return;
+        var config = plugin.ConfigManager.GetActiveConfig();
+        if (config.EnableCustomDeliveries && config.CustomDeliveriesSettings.AutoShowIfIncomplete &&
+            plugin.CustomDeliveriesService.HasPendingWork(config.CustomDeliveriesSettings))
+        {
+            customDeliveryAutoShowContentId = contentId;
+            IsOpen = true;
+        }
+    }
 
     public override void Draw()
     {
@@ -176,6 +199,7 @@ public class MainWindow : Window, IDisposable
         var highlightFullStop = engine.OwnsLiveWork ||
                                 plugin.LootGoblinMapGatherManualRunCoordinator.IsActive ||
                                 plugin.FishingService.IsActive ||
+                                plugin.CustomDeliveriesService.IsActive ||
                                 plugin.FishingRelogCoordinator.IsActive ||
                                 plugin.GearUpdaterService.IsActive ||
                                 plugin.HighestCombatJobService.IsActive ||
@@ -372,6 +396,10 @@ public class MainWindow : Window, IDisposable
         if (favoritesOnly && taskRows.All(row => row.Feature == null || !IsFavorite(row.Feature.Id)))
             ImGui.TextWrapped("No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here.");
 
+        if ((!favoritesOnly || IsFavorite(AutomationCatalog.CustomDeliveries)) &&
+            ImGui.CollapsingHeader("Custom Deliveries: NPC ranks, bonuses and progress"))
+            DrawCustomDeliveryNpcOverview(plugin, config.CustomDeliveriesSettings);
+
         }
 
         if (ImGui.BeginChild("MainBody", new Vector2(0, 0), false))
@@ -554,6 +582,22 @@ public class MainWindow : Window, IDisposable
         AddTaskRow("Fashion Report", config.EnableFashionReport,
             GetFashionReportStatus(config),
             "run##Fashion", () => plugin.FashionReportService.Start(), "OK");
+        var deliveries = plugin.CustomDeliveriesService;
+        var deliveryBlocker = deliveries.GetStartBlockedReason(config.CustomDeliveriesSettings);
+        var deliveryBusy = IsEquipmentAutomationBusy() || plugin.FishingService.IsActive || plugin.FishingRelogCoordinator.IsActive;
+        var deliveryStatus = deliveries.IsActive || deliveries.IsFailed
+            ? deliveries.StatusText
+            : deliveries.RemainingAllowances == 0
+                ? "Complete: weekly allowances used"
+                : $"Weekly: {deliveries.RemainingAllowances?.ToString() ?? "unknown"} allowances left";
+        AddTaskRow("Custom Deliveries", config.EnableCustomDeliveries, deliveryStatus,
+            "run##CustomDeliveries", () => engine.ManualStartCustomDeliveries(), "OK",
+            statusTooltip: deliveryStatus + "\nNPC rank, crafting/gathering/fishing bonuses and verified progress are shown below the task table.",
+            buttonDisabled: deliveryBusy || deliveryBlocker != null || !deliveries.HasPendingWork(config.CustomDeliveriesSettings),
+            buttonTooltip: deliveryBusy ? "An engine, equipment or fishing task is active."
+                : deliveryBlocker != null ? deliveryBlocker
+                : !deliveries.HasPendingWork(config.CustomDeliveriesSettings) ? "The selected policy has no remaining delivery route."
+                : "Runs current-character custom deliveries with normal engine ownership and cancellation; spent allowances remain authoritative.");
 
         // --- Daily Tasks ---
         AddTaskRow("Mini Cactpot", config.EnableMiniCactpot,
@@ -837,6 +881,14 @@ public class MainWindow : Window, IDisposable
                     : ["Lifestream", "vnavmesh"];
             case "Allied Society":
                 return ["QSTCompanion"];
+            case "Custom Deliveries":
+            {
+                var dependencies = new List<string> { "Lifestream", "vnavmesh" };
+                if (config.CustomDeliveriesSettings.AllowedTypes.HasFlag(DeliveryTypes.Crafting)) dependencies.Add("Artisan");
+                if ((config.CustomDeliveriesSettings.AllowedTypes & (DeliveryTypes.Mining | DeliveryTypes.Botany)) != 0) dependencies.Add("WigglyQuest");
+                if (config.CustomDeliveriesSettings.AllowedTypes.HasFlag(DeliveryTypes.Fishing)) dependencies.Add("AutoHook");
+                return dependencies;
+            }
             case "LootGoblin Map Gather":
                 return ["LootGoblin"];
             case "nag your mom":
@@ -1142,6 +1194,8 @@ public class MainWindow : Window, IDisposable
         {
             AutomationCatalog.VerminionQueue => VerminionService.WeeklyGoalReached(config)
                 ? ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow) : DateTime.MinValue,
+            AutomationCatalog.CustomDeliveries => plugin.CustomDeliveriesService.RemainingAllowances == 0
+                ? ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow) : DateTime.MinValue,
             AutomationCatalog.MiniCactpot => config.MiniCactpotNextReset,
             AutomationCatalog.ChocoboRacing => config.ChocoboRacingNextReset,
             AutomationCatalog.LootGoblinMapGather => config.LootGoblinMapGatherNextReset,
@@ -1322,6 +1376,7 @@ public class MainWindow : Window, IDisposable
             AutomationCatalog.VerminionQueue or
             AutomationCatalog.JumboCactpot or
             AutomationCatalog.FashionReport or
+            AutomationCatalog.CustomDeliveries or
             AutomationCatalog.RegisterRegistrables => ConfigurationSection.Weekly,
             AutomationCatalog.MiniCactpot or
             AutomationCatalog.ChocoboRacing or
@@ -1505,8 +1560,68 @@ public class MainWindow : Window, IDisposable
         };
     }
 
+    internal static void DrawCustomDeliveryNpcOverview(Plugin plugin, CustomDeliveriesSettings settings)
+    {
+        var service = plugin.CustomDeliveriesService;
+        ImGui.TextWrapped($"Character allowances: {service.RemainingAllowances?.ToString() ?? "unknown"} remaining this week.");
+        if (service.Npcs.Count == 0 || !service.RemainingAllowances.HasValue)
+        {
+            ImGui.TextDisabled("NPC ranks, allowances and achievement progress are unknown until current-character data is available.");
+            return;
+        }
+        if (!ImGui.BeginTable("CustomDeliveryNpcOverview", 6,
+                ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
+            return;
+        ImGui.TableSetupColumn("NPC");
+        ImGui.TableSetupColumn("Rank / left");
+        ImGui.TableSetupColumn("Progress");
+        ImGui.TableSetupColumn("Craft");
+        ImGui.TableSetupColumn("Gather");
+        ImGui.TableSetupColumn("Fish");
+        ImGui.TableHeadersRow();
+        foreach (var npc in service.Npcs)
+        {
+            string RouteLabel(DeliveryTypes type, int bonusIndex)
+            {
+                var label = type switch
+                {
+                    DeliveryTypes.Crafting => "CRAFTER",
+                    DeliveryTypes.Mining => "MIN",
+                    DeliveryTypes.Botany => "BTN",
+                    _ => "FSH",
+                };
+                var bonus = npc.IsBonusEffective[bonusIndex] ? " +bonus" : string.Empty;
+                if (!settings.AllowedTypes.HasFlag(type))
+                    return $"{label}{bonus}: disabled";
+                var jobs = service.GetEligibleJobs(npc, type, settings);
+                if (jobs.Count == 0)
+                    return $"{label}{bonus}: ineligible";
+                return $"{label}{bonus}: {string.Join(", ", jobs.Select(jobId => Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ClassJob>().GetRow(jobId).Abbreviation.ExtractText()))}";
+            }
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+            ImGui.TextWrapped(npc.Name);
+            ImGui.TableSetColumnIndex(1);
+            ImGui.TextWrapped(npc.Unlocked ? $"{npc.Rank} / {Math.Max(0, npc.MaxDeliveries - npc.UsedDeliveries)}" : "Locked");
+            ImGui.TableSetColumnIndex(2);
+            ImGui.TextWrapped(npc.AchievementCur.HasValue ? $"{npc.AchievementCur.Value} / 150" : "Unknown / 150");
+            ImGui.TableSetColumnIndex(3);
+            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Crafting, 0));
+            ImGui.TableSetColumnIndex(4);
+            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Mining, 1));
+            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Botany, 1));
+            ImGui.TableSetColumnIndex(5);
+            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Fishing, 2));
+        }
+        ImGui.EndTable();
+        ImGui.TextDisabled("Ineligible: delivery type or job not selected, no matching gathering nodes or gearset, locked, or below rank/recipe requirements. Achievement progress is never guessed.");
+        if (settings.ShowDebugUI)
+            ImGui.TextWrapped($"Delivery status: {service.StatusText}; observed turn-ins: {service.CompletedTurnins}");
+    }
+
     private bool IsEquipmentAutomationBusy()
         => plugin.Engine.IsRunning ||
+           plugin.CustomDeliveriesService.IsActive ||
            plugin.GearUpdaterService.IsActive ||
            plugin.HighestCombatJobService.IsActive ||
            plugin.CurrentJobEquipmentService.IsActive ||

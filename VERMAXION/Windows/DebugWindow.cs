@@ -23,6 +23,9 @@ internal sealed class DebugWindow : Window
 
     public override void Draw()
     {
+        ImGui.TextWrapped($"Loaded build: {plugin.DebugBuildMarker}");
+        ImGui.TextWrapped($"Loaded DLL: {typeof(Plugin).Assembly.Location}");
+        ImGui.Separator();
         ImGui.TextWrapped("Select one task for the next plugin reload. After character registration, FULL STOP runs, then the task's manual action is attempted once.");
         ImGui.TextWrapped("Uncheck to cancel. FULL STOP cancels a pending attempt for this reload while keeping the saved selection.");
         ImGui.Separator();

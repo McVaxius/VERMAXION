@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using VERMAXION.CustomDeliveries;
 
 namespace VERMAXION.Models;
 
@@ -30,6 +31,8 @@ public class CharacterConfig
     public bool EnableHighestCombatJob { get; set; } = false;
     public bool EnableCurrentJobEquipment { get; set; } = false;
     public bool EnableFashionReport { get; set; } = false;
+    public bool EnableCustomDeliveries { get; set; } = false;
+    public CustomDeliveriesSettings CustomDeliveriesSettings { get; set; } = new();
     public bool EnableRegisterRegistrables { get; set; } = false;
     public bool RegisterUnregisteredItemsFromInventory { get; set; } = true;
     public bool EnableVendorStock { get; set; } = false;
@@ -168,6 +171,8 @@ public class CharacterConfig
     public DateTime JumboCactpotPayoutAvailableAt { get; set; } = DateTime.MinValue;
     public DateTime FashionReportLastCompleted { get; set; } = DateTime.MinValue;
     public DateTime FashionReportNextReset { get; set; } = DateTime.MinValue;
+    public DateTime CustomDeliveriesLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime CustomDeliveriesNextReset { get; set; } = DateTime.MinValue;
     
     // Daily Tasks (9:00 UTC)
     public DateTime MiniCactpotLastCompleted { get; set; } = DateTime.MinValue;
@@ -238,6 +243,18 @@ public class CharacterConfig
         FashionReportCompletedThisWeek = false;
         FashionReportLastCompleted = DateTime.MinValue;
         FashionReportNextReset = DateTime.MinValue;
+    }
+
+    public void CopyCustomDeliveriesSettingsFrom(CharacterConfig source)
+    {
+        EnableCustomDeliveries = source.EnableCustomDeliveries;
+        CustomDeliveriesSettings = source.CustomDeliveriesSettings.Clone();
+    }
+
+    public void ResetCustomDeliveriesState()
+    {
+        CustomDeliveriesLastCompleted = DateTime.MinValue;
+        CustomDeliveriesNextReset = DateTime.MinValue;
     }
 
     public void ResetMiniCactpotState()
@@ -315,6 +332,7 @@ public class CharacterConfig
         ResetVerminionState();
         ResetJumboCactpotState();
         ResetFashionReportState();
+        ResetCustomDeliveriesState();
     }
 
     public void ResetDailySectionState()
@@ -363,6 +381,8 @@ public class CharacterConfig
             EnableHighestCombatJob = EnableHighestCombatJob,
             EnableCurrentJobEquipment = EnableCurrentJobEquipment,
             EnableFashionReport = EnableFashionReport,
+            EnableCustomDeliveries = EnableCustomDeliveries,
+            CustomDeliveriesSettings = CustomDeliveriesSettings.Clone(),
             EnableRegisterRegistrables = EnableRegisterRegistrables,
             RegisterUnregisteredItemsFromInventory = RegisterUnregisteredItemsFromInventory,
             EnableVendorStock = EnableVendorStock,
@@ -483,6 +503,8 @@ public class CharacterConfig
             JumboCactpotPayoutAvailableAt = JumboCactpotPayoutAvailableAt,
             FashionReportLastCompleted = FashionReportLastCompleted,
             FashionReportNextReset = FashionReportNextReset,
+            CustomDeliveriesLastCompleted = CustomDeliveriesLastCompleted,
+            CustomDeliveriesNextReset = CustomDeliveriesNextReset,
             MiniCactpotLastCompleted = MiniCactpotLastCompleted,
             MiniCactpotNextReset = MiniCactpotNextReset,
             ChocoboRacingLastCompleted = ChocoboRacingLastCompleted,

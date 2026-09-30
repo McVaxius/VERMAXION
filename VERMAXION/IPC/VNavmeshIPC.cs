@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
@@ -19,6 +22,9 @@ public class VNavmeshIPC : IDisposable
     private readonly IPluginLog log;
     private readonly ICommandManager commandManager;
     private readonly ICallGateSubscriber<Vector3, bool, float, Vector3?> pointOnFloorSubscriber;
+    private readonly ICallGateSubscriber<Vector3, float, float, Vector3?> nearestReachableSubscriber;
+    private readonly ICallGateSubscriber<Vector3, Vector3, bool, CancellationToken, Task<List<Vector3>>> deliveryPathfindSubscriber;
+    private readonly ICallGateSubscriber<List<Vector3>, bool, object> movePathSubscriber;
     private readonly ICallGateSubscriber<bool> pathIsRunningSubscriber;
     private readonly ICallGateSubscriber<bool> navIsReadySubscriber;
     private readonly ICallGateSubscriber<bool> pathfindInProgressSubscriber;
@@ -36,6 +42,12 @@ public class VNavmeshIPC : IDisposable
         this.commandManager = commandManager;
         pointOnFloorSubscriber = Plugin.PluginInterface
             .GetIpcSubscriber<Vector3, bool, float, Vector3?>(PointOnFloorIpc);
+        nearestReachableSubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<Vector3, float, float, Vector3?>("vnavmesh.Query.Mesh.NearestPointReachable");
+        deliveryPathfindSubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<Vector3, Vector3, bool, CancellationToken, Task<List<Vector3>>>("vnavmesh.Nav.PathfindCancelable");
+        movePathSubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<List<Vector3>, bool, object>("vnavmesh.Path.MoveTo");
         pathIsRunningSubscriber = Plugin.PluginInterface
             .GetIpcSubscriber<bool>(PathIsRunningIpc);
         navIsReadySubscriber = Plugin.PluginInterface
@@ -99,6 +111,50 @@ public class VNavmeshIPC : IDisposable
             return false;
         }
     }
+
+    public bool TryFindReachablePointNear(Vector3 probe, float tolerance, out Vector3 point)
+    {
+        point = default;
+        if (!float.IsFinite(probe.X) || !float.IsFinite(probe.Y) || !float.IsFinite(probe.Z)
+            || !float.IsFinite(tolerance) || tolerance <= 0)
+            return false;
+        try
+        {
+            // PointOnFloor scans thousands of units down and can select the floor
+            // below an NPC whose raw Y is slightly below the walkable surface.
+            var resolved = nearestReachableSubscriber.InvokeFunc(probe, tolerance, 2);
+            if (resolved is not { } candidate || !float.IsFinite(candidate.X)
+                || !float.IsFinite(candidate.Y) || !float.IsFinite(candidate.Z)
+                || Vector3.Distance(candidate, probe) > tolerance)
+                return false;
+            point = candidate;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[VNavmeshIPC] Nearby reachable-point query failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    public GroundNavigationRecoveryAction EvaluateDeliveryMovement(Vector3 destination)
+        => groundRecovery.Evaluate(destination, false,
+            GameHelpers.IsPlayerAvailable() ? Plugin.ObjectTable.LocalPlayer?.Position : null,
+            DateTime.UtcNow, horizontalProgressOnly: true);
+
+    public Task<List<Vector3>> FindDeliveryPath(Vector3 destination, CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var from = Plugin.ObjectTable.LocalPlayer?.Position
+            ?? throw new InvalidOperationException("Custom-delivery player position is unavailable");
+        log.Information($"[CustomDeliveries][Movement] Pathfinding submitted: from={from}; target={destination}");
+        // SimpleMove and /vnav stop cannot cancel an in-flight query in 1.2.3.14.
+        // Own the cancellable query and follow its result only while the task lives.
+        return deliveryPathfindSubscriber.InvokeFunc(from, destination, false, cancellation);
+    }
+
+    public void FollowDeliveryPath(List<Vector3> path)
+        => movePathSubscriber.InvokeAction(path, false);
 
     public bool TryFindReachablePointOnFloor(
         Vector3 probe,

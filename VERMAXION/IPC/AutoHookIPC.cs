@@ -111,12 +111,12 @@ public sealed class AutoHookIPC
             }
 
             const BindingFlags staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
-            var serviceType = autoHookPlugin.GetType().Assembly.GetType("AutoHook.Service");
-            var configuration = serviceType?.GetProperty("Configuration", staticFlags)?.GetValue(null) ??
-                                serviceType?.GetField("Configuration", staticFlags)?.GetValue(null);
+            var configurationType = autoHookPlugin.GetType().Assembly.GetType("AutoHook.Presets.Config.Configuration");
+            var configuration = configurationType?.GetProperty("C", staticFlags)?.GetValue(null) ??
+                                configurationType?.GetField("C", staticFlags)?.GetValue(null);
             if (configuration == null)
             {
-                status = "AutoHook Service.Configuration is not available.";
+                status = "AutoHook Presets.Config.Configuration.C is not available.";
                 return false;
             }
 
