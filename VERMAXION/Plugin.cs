@@ -17,6 +17,7 @@ using ECommons.ExcelServices.TerritoryEnumeration;
 using VERMAXION.IPC;
 using VERMAXION.Services;
 using VERMAXION.Models;
+using VERMAXION.CustomDeliveries;
 using VERMAXION.Windows;
 
 namespace VERMAXION;
@@ -44,7 +45,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260929-435";
+    private const string DebugAttemptMarker = "custom-deliveries-20260930-07";
     private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
@@ -57,6 +58,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public CactpotService CactpotService { get; init; }
     public ChocoboRaceService ChocoboRaceService { get; init; }
     public FashionReportService FashionReportService { get; init; }
+    public CustomDeliveriesService CustomDeliveriesService { get; init; }
+    private DeliveryFishing DeliveryFishing { get; init; }
     public RegisterRegistrablesService RegisterRegistrablesService { get; init; }
     public VendorStockService VendorStockService { get; init; }
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
@@ -117,6 +120,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private DateTime debugDispatchReadyDeadline;
     private ulong debugDispatchContentId;
     internal string DebugTaskStatus { get; private set; } = "No task selected.";
+    internal string DebugBuildMarker => DebugAttemptMarker;
     private string characterRegistrationFailureReason = string.Empty;
     private DateTime characterRegistrationWorldReadySince = DateTime.MinValue;
     private bool pendingBeforeArLogin;
@@ -300,12 +304,20 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             message => Log.Warning(message));
         FishingService = new FishingService(Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC, AutoRetainerIPC, FishingRunLifecycle, ScheduledOfflineHoldCoordinator, FisherGearsetRuntime, DutyState);
         FishingStartupCoordinator = new FishingStartupCoordinator(this);
+        DeliveryFishing = new DeliveryFishing(this);
+        CustomDeliveriesService = new CustomDeliveriesService(this)
+        {
+            FishingHandler = DeliveryFishing.RunAsync,
+            FishingCleanup = DeliveryFishing.Cancel,
+            FishingCleanupPending = () => DeliveryFishing.IsCleanupPending,
+            FishingCleanupStatus = () => DeliveryFishing.StatusText,
+        };
 
         // Engine - orchestrates all tasks
         Engine = new VermaxionEngine(
             Log, Configuration, ConfigManager, ResetDetectionService,
             FCBuffService, FCBuffInventoryService, VerminionService,
-            CactpotService, ChocoboRaceService, ChokeAboIpcClient, FashionReportService,
+            CactpotService, ChocoboRaceService, ChokeAboIpcClient, FashionReportService, CustomDeliveriesService,
             VendorStockService, FishingService,
             RegisterRegistrablesService, GearUpdaterService, HighestCombatJobService,
             CurrentJobEquipmentService, SeasonalGearService, AlliedSocietyService, AfterArParkService,
@@ -315,6 +327,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
             : VerminionService.HasQuestAcquisition ? "Questionable minion acquisition blocks new VERMAXION work."
+            : DeliveryFishing.IsCleanupPending ? CustomDeliveriesService.StatusText
             : null;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
         DadHandoffIpcProvider = new DadHandoffIpcProvider(
@@ -384,6 +397,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
         Framework.Update -= OnFrameworkUpdate;
+        CustomDeliveriesService.Dispose();
+        DeliveryFishing.Dispose();
         VerminionService.Dispose();
         ClientState.Login -= OnLoginEvent;
         ConfigManager.OnCharacterChanged -= OnCharacterChanged;
@@ -559,6 +574,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             return (true, CactpotService.State.ToString(), CactpotService.StatusText);
         if (FashionReportService.IsActive)
             return (true, FashionReportService.State.ToString(), $"Fashion Report: {FashionReportService.State}");
+        if (CustomDeliveriesService.IsActive)
+            return (true, "CustomDeliveries", CustomDeliveriesService.StatusText);
         if (ChocoboRaceService.IsActive)
             return (true, ChocoboRaceService.State.ToString(), ChocoboRaceService.StatusText);
         if (CurrentJobEquipmentService.IsActive)
@@ -2312,12 +2329,34 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             retainerCollectOnlyObservedArProcessing = false;
             wasLoggedIn = false;
             beforeArStartedThisLogin = false;
-            Log.Information("[AR] Preserving VMX ownership across logout transition.");
+            if (ARPostProcessService.IsProcessing || ARPostProcessService.IsRequested)
+            {
+                const string reason = "Client disconnected during VERMAXION-owned postprocess";
+                Log.Warning($"[AR] {reason}; cancelling interrupted work and releasing ownership.");
+                pendingFishingPostprocessHandoff = false;
+                FishingStartupCoordinator.CancelPendingRun();
+                FishingRelogCoordinator.Reset();
+                ClearFishingRelogContinuationReadiness();
+                FishingService.Reset();
+                // Release without arming next-login work before the existing force-stop cleanup.
+                ARPostProcessService.FinishPostProcess(force: true, mode: ARPostProcessFinishMode.ReleaseOnly);
+                Engine.ForceStop();
+                releaseOnlyPostprocessFinishPending = false;
+                releaseOnlyPostprocessFinishReason = string.Empty;
+                beforeArArmedByPostprocess = false;
+                ClearBeforeArArmedTracking();
+                SetBeforeArGate(BeforeArGateState.Idle, reason);
+            }
             ClearPendingBeforeArLogin("framework logout transition");
             ClearCharacterRegistrationForLogout();
         }
 
         ProcessPendingCharacterRegistration();
+        // Custom-delivery data and task progress must refresh with all windows closed.
+        DeliveryFishing.Update();
+        CustomDeliveriesService.Update();
+        if (characterRegistrationCompletedThisLogin)
+            MainWindow.UpdateCustomDeliveryVisibility();
         ProcessPendingDebugTask();
         ProcessChocoboContinuation();
 
@@ -2595,6 +2634,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         CactpotService.Reset();
         ChocoboRaceService.Reset();
         FashionReportService.Reset();
+        CustomDeliveriesService.Reset();
         VendorStockService.Reset();
         FishingService.Reset();
         FishingRelogCoordinator.Reset();
@@ -2718,6 +2758,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
            !Condition[ConditionFlag.BetweenAreas] &&
            !Condition[ConditionFlag.BetweenAreas51] &&
            !Engine.IsRunning &&
+           !CustomDeliveriesService.IsActive &&
            !DadHandoffBlocksNewWork && !VerminionService.HasQuestAcquisition;
 
     bool IFishingStartupRuntime.IsFishingActive => FishingService.IsActive;

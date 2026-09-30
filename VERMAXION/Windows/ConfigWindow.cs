@@ -9,6 +9,7 @@ using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using VERMAXION.Models;
 using VERMAXION.Services;
+using VERMAXION.CustomDeliveries;
 
 namespace VERMAXION.Windows;
 
@@ -1725,6 +1726,29 @@ public class ConfigWindow : Window, IDisposable
             }
             DrawFashionTaskHint(cc.FashionReportLastCompleted, cc.FashionReportNextReset);
 
+            var deliveries = cc.EnableCustomDeliveries;
+            if (ImGui.Checkbox("Custom Deliveries", ref deliveries))
+            {
+                cc.EnableCustomDeliveries = deliveries;
+                changed = true;
+            }
+            DrawDefaultOverrideButton(isDefault, configManager, "CustomDeliveries", "Custom Deliveries",
+                (source, target) => target.CopyCustomDeliveriesSettingsFrom(source));
+            if (DrawResetButton("CustomDeliveriesState", cc.ResetCustomDeliveriesState))
+                changed = true;
+            ImGui.Indent();
+            changed |= DrawCustomDeliveriesSettings(cc.CustomDeliveriesSettings);
+            ImGui.TextWrapped("Weekly character and NPC allowances come from the game. Reset clears saved completion times; it does not restore spent allowances.");
+            if (!isDefault && charKey == configManager.CurrentCharacterKey && Plugin.PlayerState.IsLoaded)
+            {
+                if (ImGui.SmallButton("Fetch achievement progress now##CustomDeliveries"))
+                    plugin.CustomDeliveriesService.RequestAchievements();
+                MainWindow.DrawCustomDeliveryNpcOverview(plugin, cc.CustomDeliveriesSettings);
+            }
+            else
+                ImGui.TextDisabled("NPC ranks, job eligibility and achievement progress are shown for the loaded character.");
+            ImGui.Unindent();
+
             var register = cc.EnableRegisterRegistrables;
             if (ImGui.Checkbox("Register Registrables", ref register))
             {
@@ -2679,6 +2703,111 @@ public class ConfigWindow : Window, IDisposable
             configManager.SaveCurrentAccount();
     }
 
+    private static bool DrawCustomDeliveriesSettings(CustomDeliveriesSettings settings)
+    {
+        var changed = false;
+        string PolicyLabel(DeliveryNpcPolicy policy) => policy == DeliveryNpcPolicy.BonusesOnly ? "Bonuses only" : "Closest to 150";
+        if (ImGui.BeginCombo("NPC policy##CustomDeliveries", PolicyLabel(settings.NpcPolicy)))
+        {
+            foreach (var policy in Enum.GetValues<DeliveryNpcPolicy>())
+                if (ImGui.Selectable(PolicyLabel(policy), settings.NpcPolicy == policy))
+                {
+                    settings.NpcPolicy = policy;
+                    changed = true;
+                }
+            ImGui.EndCombo();
+        }
+        ImGui.TextWrapped(settings.NpcPolicy == DeliveryNpcPolicy.ClosestTo150
+            ? "Uses verified achievement progress below 150, preferring the closest NPC and stopping at 150. Unknown progress stays excluded."
+            : "Uses only delivery types that offer a bonus. Non-bonus routes are excluded.");
+
+        ImGui.Text("Allowed delivery types");
+        foreach (var type in new[] { DeliveryTypes.Crafting, DeliveryTypes.Mining, DeliveryTypes.Botany, DeliveryTypes.Fishing })
+        {
+            var allowed = settings.AllowedTypes.HasFlag(type);
+            if (ImGui.Checkbox($"{type}##DeliveryType", ref allowed))
+            {
+                settings.AllowedTypes = allowed ? settings.AllowedTypes | type : settings.AllowedTypes & ~type;
+                changed = true;
+            }
+            if (type != DeliveryTypes.Fishing) ImGui.SameLine();
+        }
+        ImGui.TextDisabled("Equal routes prefer crafting, mining, botany, then fishing.");
+
+        ImGui.Text("Eligible crafting jobs");
+        for (uint jobId = 8; jobId <= 15; jobId++)
+        {
+            var job = Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId);
+            var selected = settings.EligibleCraftJobs.Contains(jobId);
+            if (ImGui.Checkbox($"{job.Abbreviation.ExtractText()}##DeliveryJob{jobId}", ref selected))
+            {
+                if (selected) settings.EligibleCraftJobs.Add(jobId); else settings.EligibleCraftJobs.Remove(jobId);
+                changed = true;
+            }
+            if (jobId != 11 && jobId != 15) ImGui.SameLine();
+        }
+        if (ImGui.BeginCombo("Crafting job selection##CustomDeliveries", settings.CraftJobType.ToString()))
+        {
+            foreach (var choice in Enum.GetValues<DeliveryJobChoice>())
+                if (ImGui.Selectable(choice.ToString(), settings.CraftJobType == choice))
+                {
+                    settings.CraftJobType = choice;
+                    changed = true;
+                }
+            ImGui.EndCombo();
+        }
+        if (settings.CraftJobType == DeliveryJobChoice.Specific &&
+            ImGui.BeginCombo("Preferred crafting job##CustomDeliveries", Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(settings.SelectedCraftJob).Abbreviation.ExtractText()))
+        {
+            for (uint jobId = 8; jobId <= 15; jobId++)
+            {
+                var job = Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId);
+                if (ImGui.Selectable(job.Name.ExtractText(), settings.SelectedCraftJob == jobId))
+                {
+                    settings.SelectedCraftJob = jobId;
+                    changed = true;
+                }
+            }
+            ImGui.EndCombo();
+        }
+
+        ImGui.Text("Eligible gathering jobs");
+        foreach (uint jobId in new uint[] { 16, 17 })
+        {
+            var selected = settings.EligibleGatherJobs.Contains(jobId);
+            if (ImGui.Checkbox($"{Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId).Name.ExtractText()}##DeliveryJob{jobId}", ref selected))
+            {
+                if (selected) settings.EligibleGatherJobs.Add(jobId); else settings.EligibleGatherJobs.Remove(jobId);
+                changed = true;
+            }
+            if (jobId == 16) ImGui.SameLine();
+        }
+        if (ImGui.BeginCombo("Preferred gathering job##CustomDeliveries", Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(settings.SelectedGatherJob).Name.ExtractText()))
+        {
+            foreach (uint jobId in new uint[] { 16, 17 })
+                if (ImGui.Selectable(Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId).Name.ExtractText(), settings.SelectedGatherJob == jobId))
+                {
+                    settings.SelectedGatherJob = jobId;
+                    changed = true;
+                }
+            ImGui.EndCombo();
+        }
+
+        var baitId = (int)Math.Min(settings.FishingBaitId, int.MaxValue);
+        ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
+        if (ImGui.InputInt("Fishing bait item ID##CustomDeliveries", ref baitId))
+        {
+            settings.FishingBaitId = (uint)Math.Max(0, baitId);
+            changed = true;
+        }
+        changed |= ImGui.InputText("AutoHook preset##CustomDeliveries", ref settings.FishingPresetName, 128);
+        ImGui.TextWrapped("Default bait: Versatile Lure (29717). Entering 0 resets to 29717. A blank preset creates an AutoHook preset for the requested collectible; a named preset uses your existing setup. Fishing requires an eligible fisher gearset, bait and a valid fishing position.");
+        changed |= ImGui.Checkbox("Fetch achievement progress automatically##CustomDeliveries", ref settings.AutoFetchAchievements);
+        changed |= ImGui.Checkbox("Show overview when deliveries are incomplete##CustomDeliveries", ref settings.AutoShowIfIncomplete);
+        changed |= ImGui.Checkbox("Show delivery debug details##CustomDeliveries", ref settings.ShowDebugUI);
+        return changed;
+    }
+
     private void DrawDadSelectionSelector(CharacterConfig cc, ref bool changed)
     {
         var catalog = plugin.DadIPCClient.GetSelectionCatalog();
@@ -3501,6 +3630,7 @@ public class ConfigWindow : Window, IDisposable
 
     private bool IsEquipmentAutomationBusy()
         => plugin.Engine.IsRunning ||
+           plugin.CustomDeliveriesService.IsActive ||
            plugin.GearUpdaterService.IsActive ||
            plugin.HighestCombatJobService.IsActive ||
            plugin.CurrentJobEquipmentService.IsActive ||

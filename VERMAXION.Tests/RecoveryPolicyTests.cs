@@ -118,6 +118,21 @@ public sealed class RecoveryPolicyTests : IDisposable
     }
 
     [Fact]
+    public void GroundNavigationDeliveryJumpsDoNotResetTheStallWindow()
+    {
+        var tracker = new GroundNavigationRecoveryTracker();
+        var now = new DateTime(2026, 9, 30, 12, 0, 0, DateTimeKind.Utc);
+        var destination = new Vector3(10, 206, 10);
+        var start = new Vector3(0, 206, 0);
+        Assert.Equal(GroundNavigationRecoveryAction.Dispatch, tracker.Evaluate(destination, false, start, now, true));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, start + new Vector3(0, 2, 0), now.AddSeconds(6), true));
+        Assert.Equal(GroundNavigationRecoveryAction.Recover, tracker.Evaluate(destination, false, start, now.AddSeconds(12), true));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, start + new Vector3(0.5f, 0, 0), now.AddSeconds(20), true));
+        Assert.Equal(GroundNavigationRecoveryAction.Suppress, tracker.Evaluate(destination, false, start + new Vector3(0.5f, 2, 0), now.AddSeconds(31), true));
+        Assert.Equal(GroundNavigationRecoveryAction.Recover, tracker.Evaluate(destination, false, start + new Vector3(0.5f, 0, 0), now.AddSeconds(32), true));
+    }
+
+    [Fact]
     public void WatchdogTimesOutOnlyWhenUnpausedWithoutProgress()
     {
         var now = DateTime.UtcNow;

@@ -63,6 +63,8 @@
     <Compile Include="..\VERMAXION\Models\SetupWizardModels.cs" Link="SetupWizardModels.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterSortPolicy.cs" Link="CharacterSortPolicy.cs" />
     <Compile Include="..\VERMAXION\Models\CharacterConfig.cs" Link="CharacterConfig.cs" />
+    <Compile Include="..\VERMAXION\CustomDeliveries\CustomDeliveriesSettings.cs" Link="CustomDeliveriesSettings.cs" />
+    <Compile Include="..\VERMAXION\CustomDeliveries\DeliveryPlanning.cs" Link="DeliveryPlanning.cs" />
     <Compile Include="..\VERMAXION\Models\ChokeAboTargetCycleModels.cs" Link="ChokeAboTargetCycleModels.cs" />
     <Compile Include="..\VERMAXION\Models\DadRunRequest.cs" Link="DadRunRequest.cs" />
     <Compile Include="..\VERMAXION\Models\DadRunStatus.cs" Link="DadRunStatus.cs" />

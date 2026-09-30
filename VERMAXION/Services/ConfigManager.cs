@@ -507,6 +507,7 @@ public class ConfigManager
         target.EnableHighestCombatJob = source.EnableHighestCombatJob;
         target.EnableCurrentJobEquipment = source.EnableCurrentJobEquipment;
         target.EnableFashionReport = source.EnableFashionReport;
+        target.CopyCustomDeliveriesSettingsFrom(source);
         target.EnableRegisterRegistrables = source.EnableRegisterRegistrables;
         target.RegisterUnregisteredItemsFromInventory = source.RegisterUnregisteredItemsFromInventory;
         target.EnableVendorStock = source.EnableVendorStock;

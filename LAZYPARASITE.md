@@ -416,7 +416,7 @@ GameInterop.HookFromAddress API instead. Old DLL remained untouched. Rebuild
 through Z:\vmx.bat next. Expected compiled marker
 verminion-control-20260929-431, build via Z:\vmx.bat, watched artifact
 Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll. Local C: client PID3228,
-root C:\Users\david\AppData\Roaming\XIVLauncher. No C: DLL copy needed.
+root %USERPROFILE%\AppData\Roaming\XIVLauncher. No C: DLL copy needed.
 DPS legacy foreground no-render is configured; causation remains unproven.
 Current saved paused=true/23clears/Stage24 attempts3/pending0. The paused
 reload guard remains intact. A native explicit Resume must reset the reviewed
@@ -1341,7 +1341,7 @@ authorized direct local client control. This supersedes R7 as current test targe
 do not operate/copy to R7. Goal is active again. Current gamePID3228, executable
 C:\ff14\SquareEnix\FINAL FANTASY XIV - A Realm Reborn\game\ffxiv_dx11.exe.
 Loaded Dalamud modules positively resolve client root to
-C:\Users\david\AppData\Roaming\XIVLauncher (Hooks15.0.3.5). One current character
+%USERPROFILE%\AppData\Roaming\XIVLauncher (Hooks15.0.3.5). One current character
 in its active VMX account; identifiers kept out of this checkpoint.
 Installed VMX0.5.0.2 is enabled, with no VMX dev load path, no Verminion progress/
 purchase fields yet and no selected debug task. Tested source/build414is0.5.0.3.
@@ -4259,7 +4259,7 @@ permanent Questionable required-minion action remains. Build Z:\vmx.bat passed
 with zero errors/two existing NU1601 warnings, same0.5.0.3;829/829 tests passed,
 diff checks pass. No active runtime test, build or tool session remains.
 This turn adds live queue/battle FULL STOP, paused reload, and late cancelled
-result rejection evidence. Goal remains active/incomplete. David asked whether
+result rejection evidence. Goal remains active/incomplete. the user asked whether
 trials used BossMod/unsynced; answered with observed FR AI-on/unrestricted-entry
 evidence and absent installed Dragon's Neck module. That question is not approval
 for cast-aware ADS expansion; the existing include/lean/skip choice stays pending.
@@ -5098,7 +5098,7 @@ completed19:11:09.294 and166 started19:11:09.346. Fresh saved state confirms
 166/pausefalse/pending0/Stage23-attempts3/weekly109-37. Copy the cleanup254 only
 with this updated ordinary-overworld guard; this is not a trial dispatch.
 
-Resume235: David installed Dad0.7.1.0 and FrenRider1.3.1.9. Fresh bounded
+Resume235: the user installed Dad0.7.1.0 and FrenRider1.3.1.9. Fresh bounded
 evidence confirms Dad duty IPC registered17:37:07.249 and its existing bridge
 patched WigglyQuest7.5.26 at17:37:07.675. FrenRider loaded17:37:14.670 and
 reports readable ADS ownership17:37:14.810. The installation decision is
@@ -5139,8 +5139,8 @@ at sequence1 by17:49:22.695. Seven of21 Hildibrand quests have positive clears.
 Next live milestone is sequence6/CFC76 (Big Bridge), using the existing solo
 unsynced Dad queue and FR->ADS handoff; no trial result or rule change claimed.
 
-Standing constraint reaffirmed by David: AutoDuty is forbidden on every client.
-David explicitly selected the existing AIDS/ADS, DAD and FrenRider stack for
+Standing constraint reaffirmed by the user: AutoDuty is forbidden on every client.
+the user explicitly selected the existing AIDS/ADS, DAD and FrenRider stack for
 the required Hildibrand trials. Inspect its existing execution/handoff first;
 at most add necessary ADS rules in Z:\botologyupdates. Do not build a special
 trial runner or new integration layer. Repositories: Z:\ads, Z:\dad\dad,
@@ -5150,7 +5150,7 @@ Its earlier installation question is resolved/rejected. Hildibrand acquisition
 remains authorized using already installed capabilities; verify any trial control
 before dispatch. This is separate from Verminion, which does not use AutoDuty.
 
-Hildibrand authorization (2026-09-26): David answered "Allow Hildibrand
+Hildibrand authorization (2026-09-26): the user answered "Allow Hildibrand
 acquisition work" to the pending scope question. ARR Hildibrand quests and its
 required trials are now authorized for this same test character, to obtain
 Wind-up Gentleman. This supersedes earlier pending-decision/no-quest-chain
@@ -5273,7 +5273,7 @@ fresh filesystem/config read still finds ADS installed, no Dad/FrenRider install
 directories or dev load entries, and only VMX configured as a dev plugin.
 Selected character remains paused at quest1207 with Stage23 attempts3,
 pending0 and109/37 weekly facts. Independent focused accounting verification
-is complete. Await David's existing installation choice; do not ask it again,
+is complete. Await the user's existing installation choice; do not ask it again,
 install plugins, clear the pause or substitute an external duty provider.
 Goal is blocked, not complete; campaign remains22/24 and tournament acceptance
 remains pending. Resume the existing plan once the decision/setup changes.
@@ -5382,7 +5382,7 @@ or reload performed.119 WON14:24:46.410 (101/29),120 WON14:27:42.176 (102/30):
 three consecutive current-Mammet Stage2 victories.121 entered14:28:05.391.
 226 all824 tests passed.121 WON14:30:37.925 (103/31),122 WON14:33:33.477
 (104/32): five consecutive Stage2 victories.123 entered14:33:57.485.
-Asked David whether to extend this test character's scope to ARR Hildibrand
+Asked the user whether to extend this test character's scope to ARR Hildibrand
 quests/trials for Wind-up Gentleman or wait for him to provide it. This decision
 is pending: do not begin that quest chain or infer approval from elapsed time.
 Independent farming and tournament-control research remain authorized.
@@ -5501,7 +5501,7 @@ Setup blocked13:57:15.905 before purchase/admission for missing Zu and exhausted
 Fresh config: sequence116/pending0/98matches/27wins/mask4194303/attempts2/run2/
 losses1/unpaused/spent4800+30000/reservationnull; funds268788gil/602432MGP.
 Intent: compile221 marker, then guard those facts and raise only MGP cap30000 to
-40000 for one Zu purchase under David's existing authorization. Preserve attempt2,
+40000 for one Zu purchase under the user's existing authorization. Preserve attempt2,
 all results, spending, gil cap223588 and reserve50000. Push221 and require its
 fresh marker, exact10000MGP receipt and registration before the third admission.
 221 build/diff checks passed; guarded cap-only update and DLL push completed.
@@ -5563,7 +5563,7 @@ requiring live MGP icon/balance, item and exact price. Confirmation stays narrow
 until observed. Preserve reservation and receipt safeguards for both currencies.
 Intent: build212 and test, then guarded development Resume from111/pending0,
 94/27/mask4194303/attempts3/spent4800/0/pausedtrue. Raise only MGP cap0->30000
-under David's existing authorization; preserve223588gil cap and50000reserve.
+under the user's existing authorization; preserve223588gil cap and50000reserve.
 No invented receipt, ownership or battle credit. Require fresh212 and native
 purchase evidence; unknown confirmations remain blocked without resubmission.
 212 build and all823 tests PASS; diff check passes. Fresh saved state confirms
@@ -5747,7 +5747,7 @@ match, and the three-attempt limit is preserved. This is within the authorized
 single-client research loop, not a new debug setting, script, or logger. Compile
 the candidate now; deploy only after Stage23 settles or another explicit reason.
 
-Latest authorization: David approved using this character's gil as needed while
+Latest authorization: the user approved using this character's gil as needed while
 leaving 50,000 gil, and MGP as needed. This resolves the pending Mammet budget
 question; do not ask again. Add the gil reserve to the existing purchase settings
 and enforce it at each spending boundary. Expected build 197, same 0.5.0.3.
@@ -5867,7 +5867,7 @@ Result closure advanced to Stage 20 at 22:10:04.867. At 22:10:09.896 the roster
 gate stopped before admission: Mammet #001 is not registered and the cumulative
 gil cap remains zero. Saved pending match is 0, sequence 100, no purchase or
 spending, campaign true, pause false. Do not raise the purchase cap without
-David choosing a budget. The Stage 20 guide explicitly supports Mammets; no
+the user choosing a budget. The Stage 20 guide explicitly supports Mammets; no
 rare-minion substitution or unverified result is needed to bypass this gate.
 
 Intent before build/push 196: now safely between matches, correct the expected
@@ -5895,13 +5895,13 @@ the corrected A:\ff14\parasite\vmx expected path. The existing hook resumed
 explicit 2,400-gil cap requirement. Fresh config remains sequence 100, pending
 0, 83/24, clear mask 524287, zero caps/spending and no purchase reservation.
 Copy-triggered automatic reload is now proven on the new route. No live settings
-were changed. The next campaign step needs Mammet #001; ask David whether to
+were changed. The next campaign step needs Mammet #001; ask the user whether to
 allow a cumulative 2,400-gil cap for its one purchase/registration. Do not infer
 that permission from the existing zero-cap purchase implementation. Other missing
 runtime acceptance remains open; full goal is active and incomplete. No running
 tool/build processes remain at this checkpoint.
 
-New deployment route selected by David: create `R:\parasite\vmx` and push the
+New deployment route selected by the user: create `R:\parasite\vmx` and push the
 current plugin there. The user will enable this dev-plugin location. Intent:
 copy built marker 195 / version 0.5.0.3, its manifest/deps file, existing runtime
 dependency DLLs and output images. Do not change Dalamud's configured paths or
@@ -5917,9 +5917,9 @@ selected route. No new build is required just to copy the existing verified DLL.
 Copy completed: created the requested folder and images subfolder; copied and
 verified all 10 runtime files by direct byte comparison (no hashes). DLL and
 manifest both report 0.5.0.3. Target: `R:\parasite\vmx\VERMAXION.dll`, marker 195.
-Await David enabling that location before runtime verification. No client settings
+Await the user enabling that location before runtime verification. No client settings
 or source code were changed by this deployment; no plugin was enabled by the agent.
-New route ENABLED by David and verified: client-native path is
+New route ENABLED by the user and verified: client-native path is
 `A:\ff14\parasite\vmx\VERMAXION.dll` (agent view `R:\parasite\vmx\VERMAXION.dll`).
 195 loaded 22:01:04, consumed/dispatched once 22:01:07, verified Stage 19 queue
 match 100 at 22:01:22, entered battlefield 22:01:34. AutomaticReloading is true
@@ -5938,7 +5938,7 @@ owned match 100 while investigating this bounded phase observation.
 
 ## Resumed after reboot — 2026-09-25
 
-Current resumed run: David manually reloaded and explicitly resumed the goal.
+Current resumed run: the user manually reloaded and explicitly resumed the goal.
 Fresh evidence confirms 194 loaded 21:47:59 and respected the saved pause at
 21:48:02. The unavailable-load blocker is resolved; do not carry its audit forward.
 Fresh selected configuration: debug verminion_queue, pause true, mode WinTarget,
@@ -5980,7 +5980,7 @@ native control/strategy verification can continue. Full objective is incomplete.
 
 Prior resumed audit: BLOCKED after three consecutive resumed turns with the
 same unavailable reload evidence. After the prior blocked status, the controller
-became active again and David confirmed being in-world. The first resumed turn
+became active again and the user confirmed being in-world. The first resumed turn
 requested the specific plugin reload; the second and third metadata checks found
 the main log unchanged (4,976,890 bytes, 21:39:31) and the 194 DLL unchanged
 (2,033,664 bytes, 21:41:34). Last verified startup remains 187. No new log scans,
@@ -6006,7 +6006,7 @@ established guarded development Resume. Do not repeat rebuild/log loops or claim
 the overall objective complete. No additional source or artifact work is pending
 for this setup change; live acceptance and remaining feature work are unfinished.
 
-Previous runtime intent: David explicitly confirmed in-world after reconnect at
+Previous runtime intent: the user explicitly confirmed in-world after reconnect at
 approximately 21:40. Prior 193 build occurred while reconnecting; latest bounded
 log still shows 187, but is fresh through 21:39:31. Trigger one marker-only 194
 build through vmx.bat now that world loading has finished. Keep the runtime pause;
@@ -6024,7 +6024,7 @@ incomplete. Source setup work is progress; native reload/purchase/campaign and
 tournament acceptance remain pending. No active build or research process left.
 
 Previous continuation: previous turn made progress by building the requested 192.
-David has now reported a disconnect and reconnection/loading into world. This is
+the user has now reported a disconnect and reconnection/loading into world. This is
 new external-state evidence; do not treat stale pre-reconnect logs as a current
 reload failure. Gameplay remains paused until a fresh startup is verified.
 
@@ -6057,7 +6057,7 @@ unverified; no development Resume or new match has been dispatched. Need a fresh
 193 load, through the watched route or one manual dev-plugin reload, before Stage
 19 can resume. No repeated log-watching loop or alternate control route added.
 
-Previous resumed attempt: David requested a small executable edit and rebuilding
+Previous resumed attempt: the user requested a small executable edit and rebuilding
 through `Z:\vmx.bat`. Expected startup marker: `verminion-control-20260925-192`.
 Intent: run that exact existing script, which builds the solution Debug/x64 to
 `Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll`, then take one bounded
@@ -6178,7 +6178,7 @@ Verify 190 load, admission, Airship movement/retreat, Cargo effect and actual re
 No window focus, OS cursor or global input changes. Goal work was resumed by the
 user; the goal-control tool still reports paused (no assistant resume operation).
 
-David explicitly resumed work after reboot. Fresh bounded evidence confirms saved
+the user explicitly resumed work after reboot. Fresh bounded evidence confirms saved
 paused-99 state survived: totals 82/23, mask 262143, pending 0, attempts 3/3,
 losses 3, caps/spending zero. Fresh client log: 187 loaded 18:53:39, then respected
 the saved pause at 18:55:13. No runtime/config mutation or Resume yet. Git was
@@ -6216,10 +6216,10 @@ then review before watched deployment; do not reset runtime attempts yet.
 
 ## Goal additions and prior requested pause — 2026-09-25
 
-David explicitly requested recording these requirements in the goal and pausing
+the user explicitly requested recording these requirements in the goal and pausing
 it for now. They extend the approved plan; the full original acceptance criteria
 remain outstanding. Do not resume implementation, builds, deployment or gameplay
-until David resumes the goal.
+until the user resumes the goal.
 
 - Consult relevant Verminion guides before continuing strategy implementation or
   runtime attempts. Use the official guide for rules and unlocks and stage guides
@@ -6263,7 +6263,7 @@ until David resumes the goal.
   working behavior and make only necessary changes. The packet's unrelated
   Ocean Fishing W40 metadata is context only and does not change this goal.
 
-These standalone/interface and I412 additions were recorded at David's explicit
+These standalone/interface and I412 additions were recorded at the user's explicit
 request while the goal remained paused. No DevHub records or runtime state were
 changed; `Z:\devhub179.md` is the supplied reference, not a separate checkpoint.
 
@@ -7162,7 +7162,7 @@ paused/pending0/sequence59/stage16attempts3/53matches/20wins state, preserving
 all result facts and zero purchasecaps/spending. Use the existing native readback
 checks to stop on failed selection. Expected20260925-136, version0.5.0.3.
 
-USER STEERING: David is actively using the target PC. Background controls are
+USER STEERING: the user is actively using the target PC. Background controls are
 now required; do not focus its game window or move/inject the global cursor.
 135 immediate containment intent: disable new OS battlefield mouse presses and
 focus/cursor mutation while retaining release cleanup for already-owned input.
