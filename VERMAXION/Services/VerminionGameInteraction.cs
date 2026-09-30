@@ -1429,6 +1429,13 @@ internal static unsafe class VerminionGameInteraction
     private static int finalStageTimelineSamples;
     private static string finalStageGroundState = string.Empty;
     private static int finalStageGroundSamples;
+    [System.Runtime.InteropServices.UnmanagedFunctionPointer(System.Runtime.InteropServices.CallingConvention.Winapi)]
+    private delegate void SetGroundEffect(nint director, int slotIndex, uint effectId, float x, float z, float scale);
+    private static Hook<SetGroundEffect>? finalStageGroundHook;
+    private static readonly VerminionGroundWarnings finalStageGroundWarnings = new();
+    private static int finalStageGroundCommandSamples;
+    private static bool finalStageGroundObservationFailed;
+    public static bool FinalStageGroundStateKnown { get; private set; }
     public static IReadOnlyList<VerminionGroundOmen> FinalStageOmens { get; private set; } = [];
 
     public static void BeginFinalStageEffectObservation()
@@ -1442,11 +1449,22 @@ internal static unsafe class VerminionGameInteraction
         finalStageTimelineSamples = 0;
         finalStageGroundState = string.Empty;
         finalStageGroundSamples = 0;
+        finalStageGroundCommandSamples = 0;
+        finalStageGroundObservationFailed = false;
+        finalStageGroundWarnings.Clear();
+        FinalStageGroundStateKnown = false;
         FinalStageOmens = [];
         finalStageEffectThread = Environment.CurrentManagedThreadId;
         finalStageEffectDeadline = DateTime.UtcNow.AddSeconds(FinalStageObservationSeconds);
         try
         {
+            if (!TryGetFinalStageDirector(out _, out var image, out var imageSize) || imageSize <= 0xE7CB00)
+                throw new InvalidOperationException("The validated Stage 24 director is unavailable.");
+            // The current build's captured E7CA10 routine receives director,
+            // slot, effect ID, x, z and scale. ID zero is the native removal command.
+            finalStageGroundHook = Plugin.GameInterop.HookFromAddress<SetGroundEffect>(image + 0xE7CA10, ObserveFinalStageGroundCommand);
+            observingFinalStageEffects = true;
+            finalStageGroundHook.Enable();
             ECommons.Hooks.StaticVfx.StaticVfxCreateEvent += ObserveFinalStageEffect;
             ECommons.Hooks.StaticVfx.EnableCreate();
             ECommons.Hooks.ActorVfx.ActorVfxCreateEvent += ObserveFinalStageActorEffect;
@@ -1455,36 +1473,86 @@ internal static unsafe class VerminionGameInteraction
             // walk. Observe the existing native director-update channel too.
             ECommons.Hooks.DirectorUpdate.Init(ObserveFinalStageDirectorUpdate);
             ownsFinalStageDirectorProbe = true;
-            observingFinalStageEffects = true;
+            ObserveFinalStageGroundEffects(seedExisting: true);
             CaptureFinalStageDirector();
-            Plugin.Log.Information($"[VerminionControl] Stage 24 static/actor effect observation subscribed; bounded to {FinalStageObservationSeconds} seconds and 64 distinct paths; awaiting native callback evidence");
+            Plugin.Log.Information($"[VerminionControl] Stage 24 native ground-command and static/actor observation subscribed; bounded to {FinalStageObservationSeconds} seconds and 64 distinct paths; awaiting native callback evidence");
         }
         catch (Exception ex)
         {
-            observingFinalStageEffects = false;
-            ECommons.Hooks.StaticVfx.StaticVfxCreateEvent -= ObserveFinalStageEffect;
-            ECommons.Hooks.ActorVfx.ActorVfxCreateEvent -= ObserveFinalStageActorEffect;
-            ECommons.Hooks.StaticVfx.DisableCreate();
-            ECommons.Hooks.ActorVfx.DisableCreate();
-            if (ownsFinalStageDirectorProbe) ECommons.Hooks.DirectorUpdate.Dispose();
-            ownsFinalStageDirectorProbe = false;
+            EndFinalStageEffectObservation();
             Plugin.Log.Warning(ex, "[VerminionControl] Stage 24 effect-update observation unavailable");
         }
     }
 
     public static void EndFinalStageEffectObservation()
     {
-        if (!observingFinalStageEffects) return;
+        var wasObserving = observingFinalStageEffects;
         observingFinalStageEffects = false;
+        FinalStageGroundStateKnown = false;
+        finalStageGroundWarnings.Clear();
+        finalStageGroundObservationFailed = false;
         FinalStageOmens = [];
+        finalStageGroundHook?.Dispose();
+        finalStageGroundHook = null;
+        if (!wasObserving && !ownsFinalStageDirectorProbe) return;
         ECommons.Hooks.StaticVfx.StaticVfxCreateEvent -= ObserveFinalStageEffect;
         ECommons.Hooks.ActorVfx.ActorVfxCreateEvent -= ObserveFinalStageActorEffect;
         ECommons.Hooks.StaticVfx.DisableCreate();
         ECommons.Hooks.ActorVfx.DisableCreate();
         if (ownsFinalStageDirectorProbe) ECommons.Hooks.DirectorUpdate.Dispose();
         ownsFinalStageDirectorProbe = false;
-        Plugin.Log.Information($"[VerminionControl] Stage 24 effect observation released; staticCallbacks={finalStageStaticCallbacks}; actorCallbacks={finalStageActorCallbacks}; directorSamples={finalStageDirectorSamples}; paths={finalStageEffectPaths.Count}");
+        Plugin.Log.Information($"[VerminionControl] Stage 24 effect observation released; groundCommands={finalStageGroundCommandSamples}; staticCallbacks={finalStageStaticCallbacks}; actorCallbacks={finalStageActorCallbacks}; directorSamples={finalStageDirectorSamples}; paths={finalStageEffectPaths.Count}");
         finalStageEffectPaths.Clear();
+    }
+
+    private static bool TryGetFinalStageDirector(out nint directorAddress, out nint image, out int imageSize)
+    {
+        directorAddress = image = 0;
+        imageSize = 0;
+        var framework = FFXIVClientStructs.FFXIV.Client.Game.Event.EventFramework.Instance();
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        var module = process.MainModule;
+        if (framework == null || module == null) return false;
+        image = module.BaseAddress;
+        imageSize = module.ModuleMemorySize;
+        if (imageSize <= 0x21D7330 + 3 * sizeof(nint)) return false;
+        var directors = framework->DirectorModule.DirectorList;
+        if (directors.LongCount is < 0 or > 16) return false;
+        foreach (var item in directors)
+        {
+            var director = item.Value;
+            if (director == null || director->Info.EventId.Id >> 16 != 0x800A ||
+                *(nint*)director != image + 0x21D7330 || ((nint*)*(nint*)director)[2] != image + 0xE75BD0) continue;
+            directorAddress = (nint)director;
+            return true;
+        }
+        return false;
+    }
+
+    private static void ObserveFinalStageGroundCommand(nint director, int slotIndex, uint effectId, float x, float z, float scale)
+    {
+        // Observation must never replace or suppress the client's command.
+        finalStageGroundHook!.Original(director, slotIndex, effectId, x, z, scale);
+        try
+        {
+            if (!observingFinalStageEffects || DateTime.UtcNow >= finalStageEffectDeadline ||
+                Environment.CurrentManagedThreadId != finalStageEffectThread || slotIndex is < 0 or >= 19 ||
+                CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
+            if (!TryGetFinalStageDirector(out var current, out _, out _) || current != director) return;
+            var slot = slotIndex + 11;
+            finalStageGroundWarnings.Command(slot, created: effectId != 0);
+            // Read after Original has placed the effect. Retain only validated
+            // path/geometry, never the effect object's pointer or a guessed TTL.
+            ObserveFinalStageGroundEffects();
+            if (finalStageGroundCommandSamples++ < 64)
+                Plugin.Log.Information($"[VerminionControl] nativeGroundCommand sample={finalStageGroundCommandSamples}; slot={slot}; effect={effectId}; position={x},{z}; scale={scale}; known={FinalStageGroundStateKnown}; active={FinalStageOmens.Count}");
+        }
+        catch (Exception ex)
+        {
+            finalStageGroundObservationFailed = true;
+            FinalStageGroundStateKnown = false;
+            Plugin.Log.Warning(ex, "[VerminionControl] Native ground warning could not be observed; state remains unknown");
+        }
     }
 
     private static void ObserveFinalStageEffect(nint address, string path, string source)
@@ -1527,65 +1595,55 @@ internal static unsafe class VerminionGameInteraction
         Plugin.Log.Information($"[VerminionControl] bossTimeline sample={finalStageTimelineSamples}; state={state}; hp={boss.CurrentHp}; position={boss.Position}");
     }
 
-    private static void ObserveFinalStageGroundEffects()
+    private static void ObserveFinalStageGroundEffects(bool seedExisting = false)
     {
-        FinalStageOmens = [];
+        FinalStageGroundStateKnown = false;
         if (Environment.CurrentManagedThreadId != finalStageEffectThread ||
-            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
-        var framework = FFXIVClientStructs.FFXIV.Client.Game.Event.EventFramework.Instance();
-        using var process = System.Diagnostics.Process.GetCurrentProcess();
-        var module = process.MainModule;
-        if (framework == null || module == null) return;
-        var start = module.BaseAddress;
-        var directors = framework->DirectorModule.DirectorList;
-        if (directors.LongCount is < 0 or > 16) return;
-        foreach (var item in directors)
+            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true ||
+            finalStageGroundHook?.IsEnabled != true || finalStageGroundObservationFailed ||
+            !TryGetFinalStageDirector(out var director, out var start, out _)) return;
+        var rows = new List<string>();
+        var omens = new List<VerminionGroundOmen>();
+        // The captured E7CA10 routine stores ground VfxData at +718 (slot
+        // 11 of the 30-slot array). E77FD0 and E762F0 establish its extent
+        // and ownership. Read on the native update thread, retaining no pointers.
+        for (var slot = 11; slot < 30; ++slot)
         {
-            var director = item.Value;
-            if (director == null || director->Info.EventId.Id >> 16 != 0x800A ||
-                *(nint*)director != start + 0x21D7330) continue;
-            var rows = new List<string>();
-            var omens = new List<VerminionGroundOmen>();
-            // The captured E7CA10 routine stores ground VfxData at +718 (slot
-            // 11 of the 30-slot array). E77FD0 and E762F0 establish its extent
-            // and ownership. Read on the native update thread, retaining no pointers.
-            for (var slot = 11; slot < 30; ++slot)
-            {
-                var data = *(byte**)((byte*)director + 0x6C0 + slot * sizeof(nint));
-                if (data == null) continue;
-                var dataTable = *(nint*)data - start;
-                if (dataTable != 0x215ED80)
-                { rows.Add($"slot={slot}/dataTable={dataTable:X}/unverified"); continue; }
-                var effect = (FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxData*)data;
-                if ((nint)effect->DataListenner != (nint)director + 0x620) continue;
-                // Native 390630 takes VfxData+1B8 and writes the four matrix
-                // rows at +20..50. Validate the published resource-instance
-                // table before following its declared resource/path fields.
-                var instance = *(byte**)(data + 0x1B8);
-                if (instance == null) continue;
-                var instanceTable = *(nint*)instance - start;
-                if (instanceTable != 0x215ED70)
-                { rows.Add($"slot={slot}/instanceTable={instanceTable:X}/unverified"); continue; }
-                var resource = ((FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxResourceInstance*)instance)->VfxResourceObject;
-                var handle = resource == null ? null : resource->ApricotResourceHandle;
-                var path = handle == null ? "unavailable" : handle->FileName.ToString();
-                var position = *(System.Numerics.Vector3*)(instance + 0x50);
-                var scale = new System.Numerics.Vector3(*(float*)(instance + 0x20), *(float*)(instance + 0x34), *(float*)(instance + 0x48));
-                if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(position.Z) ||
-                    Math.Abs(position.X) > 100 || Math.Abs(position.Y) > 100 || Math.Abs(position.Z) > 100) continue;
-                rows.Add($"slot={slot}/path={path}/position={position}/scale={scale}");
-                if (path is "vfx/omen/eff/m0117_gtae_01s.avfx" or "vfx/omen/eff/m0117_trap_01s.avfx" &&
-                    float.IsFinite(scale.X) && scale.X is > 0 and <= 10 &&
-                    Math.Abs(position.X) <= 23 && Math.Abs(position.Z) <= 23)
-                    omens.Add(new(slot, path.EndsWith("_trap_01s.avfx", StringComparison.Ordinal), position, scale.X));
-            }
-            FinalStageOmens = omens;
-            var state = string.Join(';', rows);
-            if (finalStageGroundSamples >= 64 || state == finalStageGroundState && finalStageGroundSamples > 0) return;
-            finalStageGroundState = state;
-            Plugin.Log.Information($"[VerminionControl] directorGround sample={++finalStageGroundSamples}; effects={state}");
-            return;
+            var data = *(byte**)((byte*)director + 0x6C0 + slot * sizeof(nint));
+            if (data == null) continue;
+            var dataTable = *(nint*)data - start;
+            if (dataTable != 0x215ED80)
+            { rows.Add($"slot={slot}/dataTable={dataTable:X}/unverified"); continue; }
+            var effect = (FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxData*)data;
+            if ((nint)effect->DataListenner != director + 0x620) continue;
+            // Native 390630 takes VfxData+1B8 and writes the four matrix
+            // rows at +20..50. Validate the published resource-instance
+            // table before following its declared resource/path fields.
+            var instance = *(byte**)(data + 0x1B8);
+            if (instance == null) continue;
+            var instanceTable = *(nint*)instance - start;
+            if (instanceTable != 0x215ED70)
+            { rows.Add($"slot={slot}/instanceTable={instanceTable:X}/unverified"); continue; }
+            var resource = ((FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxResourceInstance*)instance)->VfxResourceObject;
+            var handle = resource == null ? null : resource->ApricotResourceHandle;
+            var path = handle == null ? "unavailable" : handle->FileName.ToString();
+            var position = *(System.Numerics.Vector3*)(instance + 0x50);
+            var scale = new System.Numerics.Vector3(*(float*)(instance + 0x20), *(float*)(instance + 0x34), *(float*)(instance + 0x48));
+            if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(position.Z) ||
+                Math.Abs(position.X) > 100 || Math.Abs(position.Y) > 100 || Math.Abs(position.Z) > 100) continue;
+            rows.Add($"slot={slot}/path={path}/position={position}/scale={scale}");
+            if (path is "vfx/omen/eff/m0117_gtae_01s.avfx" or "vfx/omen/eff/m0117_trap_01s.avfx" &&
+                float.IsFinite(scale.X) && scale.X is > 0 and <= 10 &&
+                Math.Abs(position.X) <= 23 && Math.Abs(position.Z) <= 23)
+                omens.Add(new(slot, path.EndsWith("_trap_01s.avfx", StringComparison.Ordinal), position, scale.X));
         }
+        finalStageGroundWarnings.ObserveSnapshot(omens, seedExisting);
+        FinalStageOmens = finalStageGroundWarnings.Omens;
+        FinalStageGroundStateKnown = !finalStageGroundWarnings.HasUnreadableWarning;
+        var state = string.Join(';', rows);
+        if (finalStageGroundSamples >= 64 || state == finalStageGroundState && finalStageGroundSamples > 0) return;
+        finalStageGroundState = state;
+        Plugin.Log.Information($"[VerminionControl] directorGround sample={++finalStageGroundSamples}; effects={state}");
     }
 
     private static void CaptureFinalStageDirector()

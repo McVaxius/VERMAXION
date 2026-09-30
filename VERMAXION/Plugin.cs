@@ -37,13 +37,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ITargetManager TargetManager { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static IUnlockState UnlockState { get; private set; } = null!;
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
     [PluginService] internal static INotificationManager NotificationManager { get; private set; } = null!;
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "verminion-control-20260929-425";
+    private const string DebugAttemptMarker = "verminion-control-20260929-433";
     private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 
@@ -1244,6 +1245,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
             case "config":
                 ConfigWindow.Toggle();
+                break;
+
+            case "chocobo resume":
+                RunDashboardAction(() => ChocoboRaceService.ResumeProgression());
+                break;
+
+            case "chocobo pause":
+            case "chocobo stop":
+                ChocoboRaceService.PauseProgression();
                 break;
 
             case "v":

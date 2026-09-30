@@ -612,6 +612,48 @@ public sealed class VerminionLifecycleTests
     }
 
     [Fact]
+    public void GroundWarningsFollowNativeRemovalInsteadOfVisualLifetime()
+    {
+        var warnings = new VerminionGroundWarnings();
+        var tower = new VerminionGroundOmen(14, true, new(10, 0, 0), 3);
+        warnings.Command(14, created: true);
+        Assert.True(warnings.HasUnreadableWarning);
+        warnings.ObserveSnapshot([tower]);
+        Assert.False(warnings.HasUnreadableWarning);
+        warnings.ObserveSnapshot([]);
+        Assert.Equal(tower, Assert.Single(warnings.Omens));
+        Assert.True(VerminionBossStrategy.CanContinueFinalCoilTowerOrder(warnings.Omens,
+            System.Numerics.Vector3.Zero, tower.Position));
+
+        warnings.Command(14, created: false);
+        Assert.Empty(warnings.Omens);
+        warnings.ObserveSnapshot([tower]); // A removed slot cannot be resurrected by a stale snapshot.
+        Assert.Empty(warnings.Omens);
+        warnings.Command(14, created: true);
+        warnings.ObserveSnapshot([tower]);
+        warnings.Command(14, created: true);
+        warnings.ObserveSnapshot([]);
+        Assert.Empty(warnings.Omens);
+        Assert.True(warnings.HasUnreadableWarning);
+        warnings.ObserveSnapshot([tower with { Position = new(-10, 0, 0) }]);
+        Assert.Equal(new System.Numerics.Vector3(-10, 0, 0), Assert.Single(warnings.Omens).Position);
+        warnings.Command(11, created: true); // An unreadable new warning remains unknown.
+        warnings.ObserveSnapshot([]);
+        Assert.True(warnings.HasUnreadableWarning);
+        warnings.Command(10, created: true);
+        warnings.Command(30, created: true);
+        Assert.Single(warnings.Omens);
+        warnings.Clear();
+        Assert.Empty(warnings.Omens);
+        Assert.False(warnings.HasUnreadableWarning);
+        warnings.ObserveSnapshot([tower], seedExisting: true); // Attach during an existing warning.
+        warnings.ObserveSnapshot([]);
+        Assert.Equal(tower, Assert.Single(warnings.Omens));
+        warnings.Command(14, created: false);
+        Assert.Empty(warnings.Omens);
+    }
+
+    [Fact]
     public void FinalCoilReplacesWoundedTowerCandidateAfterInterruptedMovement()
     {
         var tower = new System.Numerics.Vector3(-8.22f, 0, 0.65f);
@@ -1227,6 +1269,37 @@ public sealed class VerminionLifecycleTests
         Assert.False(progress.ReservePurchase(6003, 1, 2400, 0, 50000, 0, 0, false, character.VerminionGilPurchaseCap, 0, character.VerminionGilReserve));
         Assert.Equal(0, progress.WeeklyMatches);
         Assert.Equal(0, progress.WeeklyWins);
+    }
+
+    [Fact]
+    public void ReservedPurchaseRecoveryNeedsUnchangedEvidenceAndRetainsItsBudgetReservation()
+    {
+        var progress = new VerminionProgress();
+        Assert.True(progress.ReservePurchase(6005, 3, 2400, 0, 10000, 20000, 0, false, 2400, 0, 5000));
+        progress.MinionAcquisition = new("reserved-recovery", 6005, 3, true);
+        progress = System.Text.Json.JsonSerializer.Deserialize<VerminionProgress>(System.Text.Json.JsonSerializer.Serialize(progress))!;
+        var reservation = progress.PendingPurchase;
+        Assert.True(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 5000));
+        Assert.False(progress.CanSpend(2400, 0, 4800, 0));
+        Assert.False(progress.CanResumeReservedPurchase(7600, 20000, 0, false, 6, 2400, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20001, 0, false, 6, 2400, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 1, false, 6, 2400, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, true, 6, 2400, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, null, 6, 2400, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2399, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 7601));
+        Assert.Equal(reservation, progress.PendingPurchase);
+        Assert.Equal(0ul, progress.GilSpent);
+        Assert.Equal(0, progress.WeeklyMatches);
+        progress.MinionAcquisition = progress.MinionAcquisition! with { ItemId = 6004 };
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 5000));
+        progress.MinionAcquisition = new("reserved-recovery", 6005, 3, false);
+        Assert.True(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 5000));
+        progress.MinionAcquisition = progress.MinionAcquisition with { DispatchAttempted = true };
+        Assert.True(progress.ConfirmPurchase(7600, 20000, 1, false));
+        Assert.Equal(2400ul, progress.GilSpent);
+        Assert.False(progress.CanResumeReservedPurchase(7600, 20000, 1, false, 6, 4800, 0, 0, 5000));
+        Assert.False(progress.ConfirmPurchase(7600, 20000, 1, false));
     }
 
     [Fact]

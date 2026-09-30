@@ -438,6 +438,24 @@ public sealed class VerminionProgress
         return true;
     }
 
+    public bool CanResumeReservedPurchase(uint gilNow, uint mgpNow, uint itemsNow, bool? nowOwned,
+        uint certificatesNow, uint gilCap, uint mgpCap, uint certificateCap, uint gilReserve)
+    {
+        var pending = PendingPurchase;
+        return pending != null && MinionAcquisition is { } acquisition &&
+            acquisition.ItemId == pending.ItemId && acquisition.MinionId == pending.MinionId &&
+            PendingTournamentReward == null && PendingMatch == 0 && nowOwned == false &&
+            pending.ItemsBefore == 0 && itemsNow == 0 &&
+            gilNow == pending.GilBefore && mgpNow == pending.MgpBefore &&
+            (pending.Certificates == 0 || certificatesNow == pending.CertificatesBefore) &&
+            (pending.Gil > 0 ? 1 : 0) + (pending.Mgp > 0 ? 1 : 0) + (pending.Certificates > 0 ? 1 : 0) == 1 &&
+            pending.Gil <= gilNow && pending.Mgp <= mgpNow && pending.Certificates <= certificatesNow &&
+            GilSpent <= gilCap && pending.Gil <= gilCap - GilSpent &&
+            MgpSpent <= mgpCap && pending.Mgp <= mgpCap - MgpSpent &&
+            (pending.Certificates == 0 || CertificatesSpent <= certificateCap && pending.Certificates <= certificateCap - CertificatesSpent) &&
+            PreservesGilReserve(gilNow, pending.Gil, gilReserve);
+    }
+
     public bool ConfirmPurchase(uint gilNow, uint mgpNow, uint itemsNow, bool nowOwned, uint certificatesNow = 0)
     {
         var pending = PendingPurchase;
