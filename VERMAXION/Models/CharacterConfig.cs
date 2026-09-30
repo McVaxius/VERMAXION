@@ -11,7 +11,8 @@ public class CharacterConfig
     public bool EnableVerminionQueue { get; set; } = false;
     public bool VerminionPaused { get; set; }
     public VerminionMode VerminionMode { get; set; } = VerminionMode.Participation;
-    public int VerminionVictoryTarget { get; set; } = 5;
+    public int VerminionMission { get; set; } = 2;
+    public int VerminionRepeatCount { get; set; } = 5;
     public uint VerminionGilPurchaseCap { get; set; }
     public uint VerminionMgpPurchaseCap { get; set; }
     public uint VerminionCertificatePurchaseCap { get; set; }
@@ -89,6 +90,7 @@ public class CharacterConfig
     public int ChocoboRetirementRank { get; set; } = 40;
     public int ChocoboPreferredFeedGrade { get; set; } = 3;
     public ChocoboBreedingMode ChocoboBreedingMode { get; set; } = ChocoboBreedingMode.NpcPermits;
+    public bool ChocoboProduceCounterpart { get; set; }
     public ChocoboFeedPolicy ChocoboFeedPolicy { get; set; } = ChocoboFeedPolicy.Skip;
     public uint ChocoboGilReserve { get; set; } = 100000;
     public uint ChocoboMgpReserve { get; set; } = 50000;
@@ -207,7 +209,8 @@ public class CharacterConfig
     {
         EnableVerminionQueue = source.EnableVerminionQueue;
         VerminionMode = source.VerminionMode;
-        VerminionVictoryTarget = source.VerminionVictoryTarget;
+        VerminionMission = source.VerminionMission;
+        VerminionRepeatCount = source.VerminionRepeatCount;
         VerminionGilPurchaseCap = source.VerminionGilPurchaseCap;
         VerminionMgpPurchaseCap = source.VerminionMgpPurchaseCap;
         VerminionCertificatePurchaseCap = source.VerminionCertificatePurchaseCap;
@@ -341,7 +344,8 @@ public class CharacterConfig
             EnableVerminionQueue = EnableVerminionQueue,
             VerminionPaused = VerminionPaused,
             VerminionMode = VerminionMode,
-            VerminionVictoryTarget = VerminionVictoryTarget,
+            VerminionMission = VerminionMission,
+            VerminionRepeatCount = VerminionRepeatCount,
             VerminionGilPurchaseCap = VerminionGilPurchaseCap,
             VerminionMgpPurchaseCap = VerminionMgpPurchaseCap,
             VerminionCertificatePurchaseCap = VerminionCertificatePurchaseCap,
@@ -408,6 +412,7 @@ public class CharacterConfig
             ChocoboRetirementRank = ChocoboRetirementRank,
             ChocoboPreferredFeedGrade = ChocoboPreferredFeedGrade,
             ChocoboBreedingMode = ChocoboBreedingMode,
+            ChocoboProduceCounterpart = ChocoboProduceCounterpart,
             ChocoboFeedPolicy = ChocoboFeedPolicy,
             ChocoboGilReserve = ChocoboGilReserve,
             ChocoboMgpReserve = ChocoboMgpReserve,

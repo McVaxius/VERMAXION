@@ -1,5 +1,67 @@
 # Verminion bot development checkpoint
 
+SELECTED MISSION CORRECTION IMPLEMENTED / FTP1 STAGE 12 RETRY ACTIVE:
+The machinery interview is complete. The user's clarification chooses a saved
+mission number (default 2, recommended) and separate repeat count. Do not ask
+for that choice again. Source now uses MissionRepeat at existing mode value 1,
+VerminionMission=2 and VerminionRepeatCount=5. The old weekly victory target is
+ignored. Native Run starts a fresh matching-clear count; Resume/reload retain
+it. Admission attribution excludes campaign and unrelated duties. Tutorial
+replays count only a positively observed victory, never an inferred exit or
+preexisting unlock. Weekly reset does not erase a manual replay's progress.
+RunIsCampaign retains completed campaign intent for Resume while normal weekly
+scheduling remains independent; reload cannot launch another mode instead.
+legacy weekly targets cannot be resumed as new mission runs. FULL STOP guards,
+purchase caps, current tactics and rosters are preserved. Only the enum reference
+changed in VerminionBattleStrategy.cs; no battle decision or roster changed.
+The isolated model test project passes 47 Verminion lifecycle cases and all
+916 cases. Final plugin build passed in 19.85 seconds with zero errors and one
+existing NU1601 warning. Its output is VERMAXION.Tests\bin\Debug\
+VerminionPluginVerification\VERMAXION.dll. The watched DLL still has its
+22:09:09 build timestamp; no native build/reload was requested during this
+active campaign. Expected next marker: verminion-control-20260929-435;
+release version remains 0.5.0.3.
+The new mission UI and actual replay/stop behavior remain unverified in game.
+FTP1's existing marker434 cleared stages 3-11 with positively credited native
+victories (stages 1-2 were preexisting unlocks). Stage 12 then lost at 22:44:20,
+22:48:29 and 22:52:47 EDT on 2026-09-29, stopped at the three-attempt limit at
+22:53:01, and a later native Resume at 22:54:46 restarted the unchanged strategy.
+Save at 22:57:48: campaign true, unpaused, mask2047, Stage12 attempts1,
+pending17/duty563,16 weekly matches/9 wins. Later save at 23:08:09 has Stage12
+attempts1, pending20/duty563,19 weekly matches/9 wins and remains unpaused.
+This is another unchanged-strategy retry batch, not a verified Stage12 clear.
+The unchanged strategy subsequently cleared Stage12: read-only save at 23:12:27
+has mask4095, Stage13 attempts1, pending21/duty564,20 weekly matches/10 wins.
+This verifies a later clear, not a reliable three-attempt Stage12 outcome.
+No full FTP1 campaign certification.
+Source review and git diff --check passed. Next: deploy through Z:\vmx.bat only after a
+terminal or explicit stop boundary. Keep concurrent chocobo work intact.
+
+434 UI LOADED / FTP1 STAGES3-5 WON / STAGE6 ACTIVE:
+Z:\vmx.bat succeeded in51.33 seconds with zero errors/two existing NU1601
+warnings. Native marker434 startup22:09:12.875 EDT on2026-09-29 and one debug
+dispatch22:09:16.163 verified. The saved campaign resumed through its normal
+path; no pause bypass or battle-code change was introduced. Updated button
+labels/explanations are compiled and loaded; human visual review is pending.
+Stage3 Victory credited at22:11:59.552 to5 matches/1 win. Stage4 Victory
+credited at22:15:14.790 to6 matches/2 wins. Stage5 Victory credited at
+22:18:03.566 to7 matches/3 wins. Each advanced to the next stage normally.
+Read-only save at22:21:54 has mask31/nextUncleared6,CampaignRequested=true,
+paused=false,Stage6 attempts1,pending match8/duty557,7 matches/3 wins,
+zero gil/MGP spending. Existing stages1-2 were unlocked before this test;
+those are not fresh observed victories. Stage6 has no verified result yet.
+The campaign continued after weekly participation reached five matches,
+providing fresh separation evidence for the permanent and weekly goals.
+No further builds/reloads during the admitted campaign. Keep strategies and
+roster fixed and retain normal three-attempt stage stops. All24 certification
+and remaining broader acceptance are still incomplete.
+The requested selectable mission with repetition count remains unimplemented.
+Its standing machinery interview is the next decision: include after this
+unchanged-strategy test, use existing Stage2 farming/manual replays, or skip.
+Do not add saved fields or change repeat accounting before the actual choice.
+The old campaign-choice blocker has been resolved by the native campaign start;
+do not report the running campaign as blocked by that old missing selection.
+
 434 UI CLARITY BUILD INTENT / FTP1 CAMPAIGN NOW SELECTED:
 The user requests a clearly separate Complete or continue 24 CPU challenges
 button and clearer labels for the weekly controls. Updated VerminionWindow

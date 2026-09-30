@@ -614,7 +614,7 @@ public class VermaxionEngine
             : config.VerminionPaused
             ? TaskEligibility.Blocked("Verminion is paused; use Resume.")
             : VerminionService.WeeklyGoalReached(config)
-                ? TaskEligibility.NotDue("The selected Verminion weekly goal is complete.")
+                ? TaskEligibility.NotDue("The selected Verminion goal is complete.")
                 : TaskEligibility.Runnable();
 
     private static TaskEligibility EvaluateMiniCactpot(CharacterConfig config)

@@ -49,6 +49,7 @@ public class ConfigWindow : Window, IDisposable
     private readonly List<Stain> chocoboColourOptions = new();
     private bool chocoboGoalOptionsLoaded;
     private string chocoboColourSearch = string.Empty;
+    private string chocoboAbilitySearch = string.Empty;
 
     private enum ConfigTab
     {
@@ -108,7 +109,7 @@ public class ConfigWindow : Window, IDisposable
         : base("Vermaxion Configuration##Config", ImGuiWindowFlags.None)
     {
         this.plugin = plugin;
-        Plugin.Log.Information("[ChocoboUX] Build marker chocobo-ux-20260930-01; ability printer and colour seeker settings.");
+        Plugin.Log.Information("[ChocoboUX] Build marker chocobo-ux-20260930-02; separate offspring quantities and explicit permit counterpart objective.");
         SizeConstraints = new WindowSizeConstraints
         {
             MinimumSize = new Vector2(700, 500),
@@ -1895,6 +1896,21 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.TextWrapped(cc.ChocoboBreedingMode == ChocoboBreedingMode.OwnedParents
                         ? "Use retained parents. Missing counterparts stop this mode; covering permits are purchased only in permit mode."
                         : "Use a retained parent and a matching-pedigree permit for the opposite sex. MGP purchases respect the reserve.");
+                    if (cc.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && cc.ChocoboBreedingGoal == ChocoboBreedingGoal.ReachPedigree)
+                    {
+                        var objective = cc.ChocoboProduceCounterpart ? 1 : 0;
+                        if (ImGui.Combo("Permit objective", ref objective, "Advance pedigree\0Produce a missing counterpart\0"))
+                        {
+                            if (string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
+                                plugin.ChocoboRaceService.PauseProgression();
+                            cc.ChocoboProduceCounterpart = objective == 1;
+                            cc.ChocoboProgressionPaused = true;
+                            changed = true;
+                        }
+                        ImGui.TextWrapped(cc.ChocoboProduceCounterpart
+                            ? "Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply."
+                            : "Use the highest useful retained parent to advance by one pedigree.");
+                    }
                     var feedPolicy = (int)cc.ChocoboFeedPolicy;
                     if (ImGui.Combo("When feeding cannot proceed", ref feedPolicy, "Fall back\0Skip\0Stop\0"))
                     { cc.ChocoboFeedPolicy = (ChocoboFeedPolicy)feedPolicy; changed = true; }
@@ -3171,11 +3187,16 @@ public class ConfigWindow : Window, IDisposable
         }
         if (config.ChocoboBreedingGoal == ChocoboBreedingGoal.ReachPedigree)
             return;
+        if (!Enum.IsDefined(config.ChocoboBreedingGoal))
+        {
+            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Choose a valid breeding goal before continuing.");
+            return;
+        }
 
         if (!chocoboGoalOptionsLoaded)
         {
             chocoboAbilityOptions.AddRange(Plugin.DataManager.GetExcelSheet<ChocoboRaceAbility>()
-                .Where(ability => ability.RowId > 0 && !string.IsNullOrWhiteSpace(ability.Name.ExtractText()))
+                .Where(ability => ability.RowId > 0 && ability.RowId <= byte.MaxValue && !string.IsNullOrWhiteSpace(ability.Name.ExtractText()))
                 .OrderBy(ability => ability.Name.ExtractText()));
             chocoboColourOptions.AddRange(Plugin.DataManager.GetExcelSheet<Stain>()
                 .Where(colour => colour.RowId > 0 && colour.RowId <= byte.MaxValue && !colour.IsMetallic && !string.IsNullOrWhiteSpace(colour.Name.ExtractText()))
@@ -3190,8 +3211,12 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SetNextItemWidth(280);
             if (ImGui.BeginCombo("Desired inherited ability", preview))
             {
+                ImGui.SetNextItemWidth(280);
+                ImGui.InputTextWithHint("##ChocoboAbilitySearch", "Find an inherited ability", ref chocoboAbilitySearch, 80);
                 foreach (var ability in chocoboAbilityOptions)
                 {
+                    if (!ability.Name.ExtractText().Contains(chocoboAbilitySearch, StringComparison.OrdinalIgnoreCase))
+                        continue;
                     ImGui.PushID((int)ability.RowId);
                     DrawChocoboGameIcon(ability.Icon);
                     ImGui.SameLine();
@@ -3214,6 +3239,10 @@ public class ConfigWindow : Window, IDisposable
                 changed = true;
             }
             ImGui.TextDisabled("The inherited ability is the breeding target. A learned ability alone does not count.");
+            if (config.ChocoboDesiredInheritedAbilityId != 0)
+                ImGui.TextWrapped($"Printer target: {config.ChocoboDesiredAbilityOffspringCount:N0} pedigree-9 offspring with {preview} as their inherited ability.");
+            else
+                ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Choose the inherited ability to print.");
         }
         else
         {
@@ -3251,6 +3280,21 @@ public class ConfigWindow : Window, IDisposable
             }
             ImGui.EndChild();
             ImGui.Text($"Acceptable colours selected: {config.ChocoboAcceptableColourIds.Count}");
+            var selectedNames = config.ChocoboAcceptableColourIds.Select(id =>
+                chocoboColourOptions.Where(colour => colour.RowId == id).Select(colour => colour.Name.ExtractText())
+                    .FirstOrDefault() ?? $"Unavailable colour ({id})");
+            ImGui.TextWrapped($"Colour target: {config.ChocoboDesiredColourOffspringCount:N0} pedigree-9 offspring in any of the selected colours.");
+            if (config.ChocoboAcceptableColourIds.Count > 0)
+            {
+                ImGui.TextWrapped(string.Join(", ", selectedNames));
+                if (ImGui.SmallButton("Clear acceptable colours"))
+                {
+                    config.ChocoboAcceptableColourIds.Clear();
+                    changed = true;
+                }
+            }
+            else
+                ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Select at least one acceptable colour.");
         }
         ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Batch start is unavailable until offspring ability and colour inspection is verified.");
         ImGui.TextWrapped("These goals are saved separately. Existing pedigree progression remains available; Pause and Stop preserve a pending covering.");

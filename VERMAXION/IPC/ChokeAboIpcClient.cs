@@ -18,6 +18,8 @@ public sealed class ChokeAboIpcClient
     private readonly ICallGateSubscriber<string, string> pauseTargetCycleSubscriber;
     private readonly ICallGateSubscriber<string, string> resumeTargetCycleSubscriber;
     private readonly ICallGateSubscriber<string, string> suspendTargetCycleSubscriber;
+    private readonly ICallGateSubscriber<string, string> ensureCounterpartCycleSubscriber;
+    private readonly ICallGateSubscriber<string, string> resumeCounterpartCycleSubscriber;
     public bool IsV3Available => ensureTargetCycleSubscriber.HasFunction && resumeTargetCycleSubscriber.HasFunction;
 
     public ChokeAboIpcClient(IDalamudPluginInterface pluginInterface)
@@ -28,6 +30,8 @@ public sealed class ChokeAboIpcClient
         pauseTargetCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>(PauseTargetCycleChannel);
         resumeTargetCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.ResumeTargetCycle.V3");
         suspendTargetCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.SuspendTargetCycle.V3");
+        ensureCounterpartCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.EnsureCounterpartCycle.V3");
+        resumeCounterpartCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.ResumeCounterpartCycle.V3");
     }
 
     public bool ShouldBlockRacing()
@@ -53,6 +57,9 @@ public sealed class ChokeAboIpcClient
             return ChokeAboTargetCycleCallResult.Failure(error);
         }
 
+        if (config.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && config.ChocoboProduceCounterpart)
+            return InvokeV3(resume ? resumeCounterpartCycleSubscriber : ensureCounterpartCycleSubscriber, request, contentId,
+                resume ? "ResumeCounterpartCycle" : "EnsureCounterpartCycle");
         return InvokeV3(resume ? resumeTargetCycleSubscriber : ensureTargetCycleSubscriber, request, contentId,
             resume ? "ResumeTargetCycle" : "EnsureTargetCycle");
     }

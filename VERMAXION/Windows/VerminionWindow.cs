@@ -35,24 +35,23 @@ internal sealed class VerminionWindow : Window
         var stageAttempts = progress.CampaignStage == progress.NextUnclearedChallenge ? progress.CampaignStageAttempts : 0;
         ImGui.TextWrapped($"Campaign: {Math.Min(progress.NextUnclearedChallenge - 1, 24)}/24 sequential stages cleared. Attempts on next uncleared stage: {stageAttempts}/3. Consecutive losses: {progress.ConsecutiveLosses}.");
 
+        if (ImGui.Button("FULL STOP")) plugin.FullStop();
         ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
+        if (config.VerminionPaused || progress.RunMode != null)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button(progress.CampaignRequested || progress.RunIsCampaign ? "Resume CPU campaign" : "Resume")) plugin.RunDashboardAction(service.ResumeTask);
+        }
+        ImGui.Separator();
         ImGui.TextWrapped("Permanent campaign: completes unfinished challenges in order. Cleared stages stay complete across weekly resets.");
         if (ImGui.Button("Complete or continue 24 CPU challenges")) plugin.RunDashboardAction(service.RunChallenges);
         ImGui.Separator();
-        ImGui.TextWrapped(config.VerminionMode switch
-        {
-            VerminionMode.Participation => "Weekly participation: waits for CPU defeats until five weekly matches are recorded.",
-            VerminionMode.WinTarget => $"Stage 2 win farming: fights until {Math.Clamp(config.VerminionVictoryTarget, 1, 1000)} victories are recorded this week.",
-            VerminionMode.CpuRewards => "Tournament checks / prizes: checks registration and prizes. Closed entry falls back to intentional CPU losses for weekly participation.",
-            _ => "Choose a weekly mode in the settings below.",
-        });
-        if (ImGui.Button("Run weekly goal")) plugin.RunDashboardAction(service.RunTask);
-        if (config.VerminionPaused)
-        {
-            if (ImGui.Button("Resume")) plugin.RunDashboardAction(service.ResumeTask);
-        }
+        if (DrawGoalSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
+        var runLabel = config.VerminionMode == VerminionMode.MissionRepeat
+            ? $"Run mission {Math.Clamp(config.VerminionMission, 1, 24)} ({Math.Clamp(config.VerminionRepeatCount, 1, 1000)} clears)"
+            : config.VerminionMode == VerminionMode.CpuRewards ? "Check tournament / prizes" : "Run weekly participation";
+        if (ImGui.Button(runLabel)) plugin.RunDashboardAction(service.RunTask);
         ImGui.EndDisabled();
-        if (ImGui.Button("FULL STOP")) plugin.FullStop();
         ImGui.Separator();
         if (ImGui.BeginChild("VerminionDetails", new Vector2(0, 0), false))
             DrawDetails(config, loggedIn);
@@ -74,7 +73,7 @@ internal sealed class VerminionWindow : Window
             var registered = planned.Count(minion => minion.Owned == true);
             ImGui.TextWrapped(planned.Any(minion => minion.Owned == null)
                 ? "Ownership is unavailable; log in and wait for character data."
-                : $"Current character: {registered}/{planned.Length} planned minions registered for challenges 1-24 and weekly victories.");
+                : $"Current character: {registered}/{planned.Length} planned minions registered for challenges 1-24 and mission replays.");
             ImGui.TextWrapped("This check reads ownership only. You can get missing minions yourself; use their inventory items to register them, then check again.");
             foreach (var (minion, owned) in planned)
             {
@@ -84,10 +83,10 @@ internal sealed class VerminionWindow : Window
             if (registered == planned.Length) ImGui.TextWrapped("All planned minions are registered.");
             ImGui.Separator();
         }
-        if (ImGui.CollapsingHeader("Weekly goal and purchase limits"))
+        if (ImGui.CollapsingHeader("Purchase limits and tournament information"))
         {
             ImGui.BeginDisabled(!loggedIn || service.IsActive || service.HasQuestAcquisition);
-            if (DrawSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
+            if (DrawSettings(config, includeGoalSettings: false)) plugin.ConfigManager.SaveCurrentAccount();
             ImGui.EndDisabled();
         }
         ImGui.TextWrapped("Setup registers inventory minions first. If fewer than three are registered, it can buy only the missing entry minions from the Minion Trader: Mammet #001, Wayward Hatchling and Cherry Bomb, each 2,400 gil. The whole entry plan must fit your remaining cap and leave the minimum gil balance. Stages 12, 15, 23 and 24 require Wind-up Gentleman from Her Last Vow. Select its acquisition action below to hand the ARR Hildibrand chain to Questionable. The full first-entry sequence, other vendor routes and CPU tournaments remain unverified or unavailable.");
@@ -99,7 +98,7 @@ internal sealed class VerminionWindow : Window
         if (ImGui.SmallButton("Follow next stage")) { previewStage = 0; stage = Math.Min(next, 24); }
         DrawPlan(config, stage, loggedIn);
         ImGui.TextWrapped("Achievement minions: acquire guide support separately before selecting a tested composition. ADS visits Jonathas, claims available certificates and buys only the requested missing item. Minion of Light is excluded until its White Mage form can be selected reliably.");
-        ImGui.TextWrapped("CPU rewards checks the Recordkeeper on your Home World, handles the known registration and prize prompts, and reads the game's visible tournament allowance. Claims need the owned prize acknowledgement and exact MGP receipt; interrupted acceptance is never resubmitted. When registration is closed or all 15 matches are used, it finishes any remaining weekly participation through ordinary CPU losses. Entry preparation stops before Join in Master Tournament. Open-period registration and reward collection need live verification; automatic tournament battles remain under development. Hidden counters remain unknown.");
+        ImGui.TextWrapped("Tournament checks / prizes checks the Recordkeeper on your Home World, handles the known registration and prize prompts, and reads the game's visible tournament allowance. Claims need the owned prize acknowledgement and exact MGP receipt; interrupted acceptance is never resubmitted. When registration is closed or all 15 matches are used, it finishes any remaining weekly participation through ordinary CPU losses. Entry preparation stops before Join in Master Tournament. Open-period registration and reward collection need live verification; automatic tournament battles remain under development. Hidden counters remain unknown.");
         foreach (var offer in VerminionRoster.AchievementOffers)
         {
             var owned = loggedIn ? VerminionGameInteraction.OwnsMinion(offer.MinionId) : null;
@@ -123,29 +122,45 @@ internal sealed class VerminionWindow : Window
         ImGui.TextWrapped("Preview does not select a stage to run. Complete or continue 24 CPU challenges starts with the first unfinished stage.");
     }
 
-    internal static bool DrawSettings(CharacterConfig config)
+    private static bool DrawGoalSettings(CharacterConfig config)
     {
         var changed = false;
         var mode = (int)config.VerminionMode;
-        if (ImGui.Combo("Weekly mode##Verminion", ref mode, "Weekly participation - 5 matches\0Stage 2 win farming\0Tournament checks / prizes\0"))
+        if (ImGui.Combo("Activity##Verminion", ref mode, "Weekly participation - 5 matches\0Win selected mission - repeat clears\0Tournament checks / prizes\0"))
         { config.VerminionMode = (VerminionMode)mode; changed = true; }
-        ImGui.TextWrapped("Open Verminion for the separate permanent campaign action: Complete or continue 24 CPU challenges.");
         ImGui.TextWrapped(config.VerminionMode switch
         {
             VerminionMode.Participation => "Finish the remaining weekly participation matches through intentional CPU losses. Five matches award 27,000 base MGP; existing participation is counted.",
-            VerminionMode.WinTarget => "Repeat Stage 2 to reach the chosen weekly victory total. Win farming is optional; the weekly participation reward only needs five completed matches. Losses count toward participation. Stops after three consecutive losses or the attempt limit.",
+            VerminionMode.MissionRepeat => "Repeat one CPU mission for farming or testing. Run starts a fresh clear count; Resume keeps it. Count successful clears only; defeats retry, stopping after three consecutive losses or the attempt limit.",
             _ => "Check tournament notices, registration and claimable prizes on your Home World. Entry currently stops before Join. When registration is closed or all 15 matches are used, finish remaining weekly participation through CPU losses. Registration and prize handling await live verification; automatic tournament battles remain under development.",
         });
+        if (config.VerminionMode == VerminionMode.MissionRepeat)
+        {
+            var mission = config.VerminionMission;
+            if (ImGui.InputInt("Mission number (1-24)##Verminion", ref mission))
+            { config.VerminionMission = Math.Clamp(mission, 1, 24); changed = true; }
+            ImGui.TextDisabled("Default: 2 (recommended / optimal for farming).");
+            var count = config.VerminionRepeatCount;
+            if (ImGui.InputInt("Number of clears##Verminion", ref count))
+            { config.VerminionRepeatCount = Math.Clamp(count, 1, 1000); changed = true; }
+            ImGui.TextWrapped("Earlier wins and permanent clears do not count. Locked missions require preceding campaign clears. Mission 1 is the tutorial and earns no weekly participation.");
+        }
+        return changed;
+    }
+
+    internal static bool DrawSettings(CharacterConfig config, bool includeGoalSettings = true)
+    {
+        var changed = includeGoalSettings && DrawGoalSettings(config);
         if (config.VerminionProgress.LastTournamentInfo is { } tournament)
         {
             ImGui.TextWrapped(config.VerminionProgress.TournamentObservedUtc == default
                 ? "Last tournament observation (time unavailable):"
                 : $"Tournament last checked: {config.VerminionProgress.TournamentObservedUtc:u}");
             ImGui.TextWrapped(tournament.Summary);
-            ImGui.TextWrapped("Saved observation for this character; CPU rewards reads it again before acting. Weekly completion does not establish tournament completion or a reward claim.");
+            ImGui.TextWrapped("Saved observation for this character; Tournament checks / prizes reads it again before acting. Weekly completion does not establish tournament completion or a reward claim.");
         }
         else if (config.VerminionMode == VerminionMode.CpuRewards)
-            ImGui.TextWrapped("No tournament observation saved for this character. Run weekly goal to check the current notice and registration.");
+            ImGui.TextWrapped("No tournament observation saved for this character. Check tournament / prizes to read the current notice and registration.");
         if (config.VerminionProgress.PendingTournamentReward is { } reward)
             ImGui.TextWrapped($"Unresolved prize: {reward.Title}, {reward.Mgp:N0} MGP. " +
                 (reward.Acknowledged ? "Acknowledgement saved; waiting for the exact MGP receipt. " : "Acceptance outcome is unverified. ") +
@@ -154,12 +169,6 @@ internal sealed class VerminionWindow : Window
             ImGui.TextWrapped($"Last verified prize: {claimed.Title}, {claimed.Mgp:N0} MGP at {claimedAt:u}.");
         if (config.VerminionMode == VerminionMode.CpuRewards && VerminionService.TournamentWorldRequirement() is { } worldRequirement)
             ImGui.TextWrapped(worldRequirement);
-        if (config.VerminionMode == VerminionMode.WinTarget)
-        {
-            var target = config.VerminionVictoryTarget;
-            if (ImGui.InputInt("Weekly victories##Verminion", ref target))
-            { config.VerminionVictoryTarget = Math.Clamp(target, 1, 1000); changed = true; }
-        }
         var gil = (int)Math.Min(config.VerminionGilPurchaseCap, int.MaxValue);
         var mgp = (int)Math.Min(config.VerminionMgpPurchaseCap, int.MaxValue);
         var certificates = (int)Math.Min(config.VerminionCertificatePurchaseCap, int.MaxValue);
