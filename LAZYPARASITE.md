@@ -1,5 +1,153 @@
 # Verminion bot development checkpoint
 
+434 UI CLARITY BUILD INTENT / FTP1 CAMPAIGN NOW SELECTED:
+The user requests a clearly separate Complete or continue 24 CPU challenges
+button and clearer labels for the weekly controls. Updated VerminionWindow
+and MainWindow labels/layout; explain permanent campaign progress and selected
+weekly behavior above the Run buttons. Expose the campaign button in Favorites
+on its own line. Win X is now Stage 2 win farming; CPU rewards is now
+Tournament checks / prizes. Existing enum/config values and all run/stop
+callbacks remain unchanged. Added the canonical changelog entry and marker434.
+No battle strategy, roster, accounting, purchase cap or retry changes.
+The requested choose-a-mission/repeat-count feature is still unimplemented;
+its additional saved settings/accounting require the standing machinery choice.
+Do not silently equate this label correction with delivery of that option.
+Read-only FTP1 save now has CampaignRequested=true, paused=false, mode1,
+pending0/duty0,3 matches/0 wins,mask3,spending0. Native FULL STOP at21:56:37.286
+was followed by an explicit native run at21:56:37.964. That start observed
+the previously abandoned Stage2 battle without adopting its admission; its
+Defeat at21:57:26.080 had credited=False. Result closure21:57:29.822 was
+verified, then the service reached Failed with no matching saved admission.
+This is a terminal closed result; no owned pending match remains. The user
+has selected the campaign after stopping, so the prior missing-choice blocker
+is resolved. Build with Z:\vmx.bat; existing debug Resume may continue that
+saved campaign only through the ordinary pause, readiness and roster checks.
+Expect native marker434/version0.5.0.3. Preserve concurrent chocobo/UI edits.
+Diff check passed. Label-only changes need the build/reload and human visual
+check; do not add implementation-mirroring UI tests or claim visual proof.
+
+FTP1 WEEKLY START CLARIFIED / MANUAL COLLECTION STILL PENDING:
+The user clarifies that Run weekly goal was clicked manually; the idle CPU
+matches were the deliberately selected Participation behavior, not a wrong
+DLL or unexpected choice. Preserve the earlier native reload/dispatch evidence
+without interpreting the manual weekly choice as a campaign-start bug.
+The user is manually acquiring/registering Zu hatchling and Wayward Hatchling.
+No agent client action, source edit, configuration change or reload is needed
+while that collection is pending.
+
+FTP1 MANUAL MINION COLLECTION / USER-CONTROLLED FULL STOP:
+The user will use FULL STOP and acquire minions manually. That action is
+announced, not yet verified in native evidence. Do not build/reload, resume,
+start purchases/quests or send client input while manual collection is pending.
+The existing /vmx v Check planned minions button provides roster ownership and
+manual acquisition sources. Wait for the actual return/start/resume instruction.
+Read-only build identity verification found version0.5.0.3, marker433, native
+loader startup21:36:34.622 EDT after Z:\vmx.bat updated the output DLL.
+FTP1's configured enabled development entry is
+D:\temp\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll on its host; this
+is the client-side workspace route, while the local build output is under Z:.
+Native watcher reload and one debug dispatch were observed. The hardcoded
+expected-path log is not used as proof of the physical assembly location;
+the assembly reports unknown because the loader uses an in-memory load.
+No new source/config change or client operation. Broader goal remains blocked
+and incomplete; manual collection does not establish campaign completion.
+
+FTP1 CAMPAIGN START STILL MISSING / BLOCKED AUDIT PASSED:
+Read-only snapshot at21:43:35 EDT on2026-09-29 still has Participation,
+CampaignRequested=false, paused=false, campaign stage/attempts0/0,
+mask3/nextUncleared3,1 weekly match/0 wins and pending match2/duty553.
+The requested campaign-start action has remained absent at three consecutive
+revalidated boundaries:21:39,21:41 and21:43. The previous turn made progress
+on explicit Participation defeat/cleanup evidence, but did not select or
+advance the requested FTP1 campaign. No authorized source edit or native
+agent control path can select it; no independent required build work remains.
+Mark the broader goal blocked pending the existing native campaign-start
+action, not complete. This changes agent goal status only: do not stop,
+reload or claim a terminal result for the existing participation admission.
+No code edits, additional log polling, client input or external config changes.
+Do not repeat the already supplied /vmx v FULL STOP / Clear all challenges
+instruction. Resume from fresh FTP1 evidence after the actual action/reply.
+
+FTP1 FIRST PARTICIPATION RESULT VERIFIED / SECOND MATCH ADMITTED:
+Native You Lose was observed at 21:41:21.741 EDT on 2026-09-29 with match
+length3:36. Verified Defeat credited once at21:41:21.753:1 weekly match,
+0 wins. Native result closure was verified at21:41:25.557. The existing
+Participation run then admitted match2/duty553 at21:41:38.313 and observed
+the Stage2 battlefield at21:41:44.986. This provides fresh FTP1 travel,
+admission, explicit defeat accounting and result cleanup evidence; it does
+not prove a campaign victory. The saved campaign choice remains false and
+mask3 is existing unlock progress. No source edits, reloads or spending.
+Previous goal turn was no progress toward campaign selection. This turn adds
+positive native result/cleanup evidence, so the full goal remains active.
+Do not interrupt/reload or infer results from the saved pending match alone.
+The existing native campaign-start action remains pending; do not re-prompt.
+
+FTP1 CURRENT ATTEMPT REVALIDATED / CAMPAIGN CHOICE UNCHANGED:
+Read-only snapshot at 21:39:55 EDT on 2026-09-29 still has Participation,
+CampaignRequested=false, paused=false, pending match1/duty553, zero credited
+matches/wins and zero spending. Saved clear mask3/nextUncleared3 reflects the
+previously observed menu unlock; neither Stage1 nor Stage2 has a fresh victory
+in this FTP1 test. No later terminal native result appears in the bounded
+attempt window; do not infer completion or restart the owned admission.
+The previous goal turn made progress by completing Z:\vmx.bat and verifying
+the fresh native reload/dispatch. No new build, source edit or client action
+was taken in this continuation. The campaign-start action remains pending;
+the existing participation run must remain under its normal lifecycle.
+Do not re-prompt or change the saved goal/config externally.
+
+FTP1 BUILD PASSED / FRESH433 RELOAD / PARTICIPATION MATCH ACTIVE:
+Z:\vmx.bat succeeded in 27.37 seconds with zero errors and two existing
+NU1601 warnings. The current worktree needed no additional source repair.
+Preserved the concurrent chocobo model/UI edits; git diff --check passed.
+Output DLL updated at 21:36:33; FTP1 native marker433 startup was recorded
+at 21:36:34.622 EDT on 2026-09-29, version0.5.0.3 unchanged. One debug
+dispatch at 21:36:39.050 followed native travel to Gold Saucer/Minion Square.
+The service resumed the saved Participation goal, not a campaign request.
+Existing menu availability proved sequential unlock through Stage3; this
+does not constitute a fresh Stage1 or Stage2 observed victory. Match1/duty553
+was positively admitted at 21:37:09.893 and Stage2 battlefield observed at
+21:37:19.474. No new result/clear is claimed from admission or this build.
+Do not reload again while the owned match is active. Campaign selection still
+requires the existing native /vmx v action. While Participation is active,
+the user can use FULL STOP followed by Clear all challenges to select/start
+the requested campaign. External input/config edits remain revoked; no agent
+control of that button is available. Preserve pause and uncredited cancellation
+behavior. No strategy/roster changes, additional source edits or cap changes.
+Personal names are excluded from new task records; prior new-entry prose
+was corrected. FTP1 campaign testing and certification are still pending.
+
+FTP1 BUILD FAILURE REPAIR AUTHORIZED / BUILD INTENT:
+The user reports Z:\vmx.bat failing and asks to fix that first. Limit source
+changes to the actual compiler/build failure; keep Verminion strategies, roster,
+release version and marker433 unchanged. Preserve concurrent chocobo/UI work.
+The latest FTP1 read-only save has no pending match/duty/acquisition and no
+campaign request; no native campaign admission has occurred. Reproduce the
+failure using the existing batch command before selecting a repair.
+Keep personal names out of new task records; corrected the prior entry below.
+
+FTP1 TEST SELECTED / NO CODE EDITS / CAMPAIGN START ACTION NEEDED:
+The user selected one more complete character test on Free to Play 1, with
+updates through Z:\vmx.bat and no code edits. Current routing resolves FTP1
+to Y:\; do not return to C:, R3 or R7. Read-only global configuration confirms
+Enabled=true, DebugTaskId=verminion_queue and a character-bound selection.
+Native marker433 logged Pending: next plugin reload at 21:29:14.181 EDT on
+2026-09-29. The matching current account character has Participation mode,
+paused=false, zero campaign clears/matches/wins, pending match/duty 0/0,
+CampaignRequested=false and zero gil/MGP/certificate purchase caps.
+This debug action calls ResumeTask, which resumes CampaignRequested; rebuilding
+now would start the participation goal rather than request challenges 1-24.
+No build or client action dispatched. No source/config edits or spending.
+Existing /vmx v -> Clear all challenges is the native campaign start and saves
+the campaign choice for later reloads. No verified native agent command
+transport exists for this button; external input/config edits stay revoked.
+Request that single existing UI action, then observe the native campaign and
+its normal three-attempt stage limits through bounded milestone snapshots.
+Missing roster or purchase requirements must be reported from actual game
+evidence; do not silently raise this character's zero caps or alter strategies.
+The previous target blocker is resolved; this is the first campaign-start
+blocker boundary of the resumed FTP1 test. Broader goal remains active.
+Preserve unrelated worktree changes, including the new ConfigWindow.cs edits.
+
 PENDING TARGET REVALIDATED / BLOCKED AUDIT THRESHOLD REACHED:
 The next-character question was sent once after marker433 reconciliation;
 no character/readiness answer has arrived. This continuation revalidated local

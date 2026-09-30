@@ -3127,8 +3127,9 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var status = result.Status;
-        ImGui.TextUnformatted(status.RacingRank > 0 ? $"Registered pedigree: G{status.Pedigree}    Racing rank: {status.RacingRank}/50" : "No registered racing chocobo.");
-        if (status.RacingRank > 0)
+        ImGui.TextUnformatted(status.RacingRank > 0 ? $"Registered pedigree: G{status.Pedigree}    Racing rank: {status.RacingRank}/50"
+            : status.RacerDataAvailable ? "No registered racing chocobo." : "Registered racer data is unavailable.");
+        if (status.RacingRank > 0 && status.RacerDataAvailable)
         {
             DrawChocoboAbility("Inherited ability", status.InheritedAbilityId);
             DrawChocoboAbility("Learned ability", status.LearnedAbilityId);
@@ -3139,6 +3140,8 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextUnformatted($"Colour: {colour.Name.ExtractText()}");
             }
         }
+        else if (status.RacingRank > 0)
+            ImGui.TextDisabled("Racer ability and colour data are unavailable.");
         ImGui.TextWrapped($"Next action: {status.Reason}");
         if (status.ProgressionComplete)
             ImGui.TextColored(new Vector4(0.4f, 1f, 0.6f, 1f), "Pedigree and racing-rank goal reached. Racer retained.");
@@ -3182,8 +3185,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextWrapped("Produce pedigree-9 offspring. Only confirmed matches count toward the requested quantity; a matching parent must be available.");
         if (config.ChocoboBreedingGoal == ChocoboBreedingGoal.AbilityOffspring)
         {
-            var selectedAbility = chocoboAbilityOptions.FirstOrDefault(ability => ability.RowId == config.ChocoboDesiredInheritedAbilityId);
-            var preview = config.ChocoboDesiredInheritedAbilityId == 0 ? "Choose an inherited ability" : selectedAbility.Name.ExtractText();
+            var preview = chocoboAbilityOptions.Where(ability => ability.RowId == config.ChocoboDesiredInheritedAbilityId)
+                .Select(ability => ability.Name.ExtractText()).FirstOrDefault() ?? "Choose an inherited ability";
             ImGui.SetNextItemWidth(280);
             if (ImGui.BeginCombo("Desired inherited ability", preview))
             {
@@ -3224,7 +3227,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped("Accept any selected colour. The quantity is a total across the selected colours.");
             ImGui.SetNextItemWidth(280);
             ImGui.InputTextWithHint("##ChocoboColourSearch", "Find a colour", ref chocoboColourSearch, 80);
-            if (ImGui.BeginChild("AcceptableChocoboColours", new Vector2(0, 190), ImGuiChildFlags.Borders))
+            if (ImGui.BeginChild("AcceptableChocoboColours", new Vector2(0, 190), true))
             {
                 foreach (var colour in chocoboColourOptions)
                 {
