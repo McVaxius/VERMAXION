@@ -45,7 +45,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "custom-deliveries-20260930-07";
+    private const string DebugAttemptMarker = "custom-deliveries-20260930-08";
     private DateTime nextChocoboContinuationUtc;
     private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
 

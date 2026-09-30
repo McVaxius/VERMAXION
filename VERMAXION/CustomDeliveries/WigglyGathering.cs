@@ -142,7 +142,7 @@ internal sealed class WigglyGathering
             throw new InvalidOperationException("Wiggly Questionable reloaded during the gathering request");
     }
 
-    private static object ResolvePlugin()
+    internal static object ResolvePlugin()
     {
         if (!DalamudReflector.TryGetDalamudPlugin(PluginInternalName, out object plugin, out AssemblyLoadContext? _, true, true)
             || plugin == null) throw new InvalidOperationException("Wiggly Questionable (WigglyQuest) is not loaded");

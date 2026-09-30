@@ -9,6 +9,29 @@ namespace VERMAXION.Tests;
 public sealed class CustomDeliveriesConfigurationTests
 {
     [Fact]
+    public void RankQuestBoundaryStopsProductionUntilQuestCompletion()
+    {
+        // The final rank needs 1,080 satisfaction, at 180 per high-quality item.
+        // Four delivered items leave two to produce even with six allowances.
+        var beforeQuest = DeliveryPlanning.RankTurnins(6, 720, 1080, 180, false);
+        Assert.Equal(2, beforeQuest);
+        Assert.Equal(2, DeliveryPlanning.Count(DeliveryNpcPolicy.ClosestTo150, 12, beforeQuest, 18));
+        Assert.Equal(1, DeliveryPlanning.MissingItems(beforeQuest, 1));
+        Assert.Equal(1, DeliveryPlanning.RankTurnins(1, 720, 1080, 180, false));
+        Assert.Equal(1, DeliveryPlanning.RankTurnins(6, 1000, 1080, 180, false));
+        Assert.Equal(0, DeliveryPlanning.RankTurnins(6, 1080, 1080, 180, true));
+        Assert.Equal(0, DeliveryPlanning.RankTurnins(6, 0, 0, 180, true));
+        Assert.Equal(0, DeliveryPlanning.RankTurnins(6, 1080, 1080, 180, false));
+        Assert.Equal(0, DeliveryPlanning.RankTurnins(6, 720, 1080, 0, false));
+        Assert.Equal(6, DeliveryPlanning.RankTurnins(6, 0, 0, 0, false));
+        Assert.Equal(0, DeliveryPlanning.RankTurnins(0, 0, 0, 180, false));
+        Assert.Equal(4, DeliveryPlanning.AvailableQuestRank(4, 720, 1080));
+        Assert.Equal(5, DeliveryPlanning.AvailableQuestRank(4, 1080, 1080));
+        Assert.Equal(5, DeliveryPlanning.AvailableQuestRank(5, 0, 0));
+        Assert.Equal(0, DeliveryPlanning.AvailableQuestRank(0, 0, 0));
+    }
+
+    [Fact]
     public void PlansOnlyRemainingTurninsAndMissingCollectibles()
     {
         var planned = DeliveryPlanning.Count(DeliveryNpcPolicy.ClosestTo150, 12, 6, 147);
