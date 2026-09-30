@@ -305,10 +305,14 @@ public class ChocoboRaceService : IDisposable
     public void ResumeProgression()
     {
         if (IsActive) return;
+        var config = configManager.GetActiveConfig();
+        if (config.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree)
+        { Defer("Select Target Pedigree in Chocobo settings before resuming progression."); return; }
+        if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
+        { Defer("Offspring production is not available in this build; the saved goal remains paused."); return; }
         if (progressionStartBlock() is { } reason) { Defer(reason); return; }
         if ((IsQueued() || condition[ConditionFlag.BoundByDuty]) && !CanReconcileRacingActivity())
         { Defer("Wait for the current duty or queue to settle before manually resuming breeding."); return; }
-        var config = configManager.GetActiveConfig();
         config.ChocoboProgressionPaused = false;
         configManager.SaveCurrentAccount();
         Start(resume: true);

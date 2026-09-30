@@ -7,9 +7,9 @@ namespace VERMAXION.Models;
 
 public enum VerminionMode
 {
-    Participation,
-    WinTarget,
-    CpuRewards,
+    Participation = 0,
+    MissionRepeat = 1,
+    CpuRewards = 2,
 }
 
 public enum VerminionBattleOutcome
@@ -216,9 +216,12 @@ public sealed class VerminionProgress
     public uint PendingDuty { get; set; }
     public DateTime PendingWeekStartUtc { get; set; }
     public int PendingMatchesBeforeAdmission { get; set; }
+    public bool PendingMissionRepeat { get; set; }
     public VerminionMode? RunMode { get; set; }
     public DateTime RunWeekStartUtc { get; set; }
-    public int RunVictoryTarget { get; set; }
+    public int RunMission { get; set; }
+    public int RunRepeatCount { get; set; }
+    public int RunWins { get; set; }
     public int RunAttempts { get; set; }
     public int RunAttemptLimit { get; set; }
     public int ConsecutiveLosses { get; set; }
@@ -228,6 +231,7 @@ public sealed class VerminionProgress
     public VerminionQuestAcquisition? QuestAcquisition { get; set; }
     public int SelectedChallengeStage { get; set; }
     public bool CampaignRequested { get; set; }
+    public bool RunIsCampaign { get; set; }
     public int CampaignStage { get; set; }
     public int CampaignStageAttempts { get; set; }
 
@@ -280,19 +284,30 @@ public sealed class VerminionProgress
         return true;
     }
 
-    public void EnsureRun(VerminionMode mode, int victoryTarget, bool restart = false)
+    public void EnsureRun(VerminionMode mode, int repeatCount, bool restart = false, int mission = 2)
     {
-        victoryTarget = Math.Clamp(victoryTarget, 1, 1000);
-        if (!restart && RunMode == mode && RunVictoryTarget == victoryTarget && RunWeekStartUtc == WeekStartUtc) return;
+        repeatCount = Math.Clamp(repeatCount, 1, 1000);
+        mission = Math.Clamp(mission, 1, 24);
+        if (!restart && RunMode == mode && RunRepeatCount == repeatCount && RunMission == mission &&
+            (mode == VerminionMode.MissionRepeat || RunWeekStartUtc == WeekStartUtc)) return;
         RunMode = mode;
-        RunVictoryTarget = victoryTarget;
+        RunRepeatCount = repeatCount;
+        RunMission = mission;
+        RunWins = 0;
         RunWeekStartUtc = WeekStartUtc;
+        // A changed goal cannot adopt an admission saved for an earlier goal.
+        PendingMissionRepeat = false;
+        RestartAttemptBudget();
+    }
+
+    public void RestartAttemptBudget()
+    {
         RunAttempts = PendingMatch != 0 ? 1 : 0;
-        RunAttemptLimit = mode == VerminionMode.WinTarget ? 3 * Remaining(mode, victoryTarget) : 0;
+        RunAttemptLimit = RunMode == VerminionMode.MissionRepeat ? 3 * Math.Max(0, RunRepeatCount - RunWins) : 0;
         ConsecutiveLosses = 0;
     }
 
-    public bool WinningRunLimitReached => RunMode == VerminionMode.WinTarget &&
+    public bool WinningRunLimitReached => RunMode == VerminionMode.MissionRepeat &&
         (ConsecutiveLosses >= 3 || RunAttemptLimit > 0 && RunAttempts >= RunAttemptLimit);
 
     public VerminionProgress Clone()
@@ -326,6 +341,8 @@ public sealed class VerminionProgress
         PendingDuty = duty;
         PendingWeekStartUtc = WeekStartUtc;
         PendingMatchesBeforeAdmission = WeeklyMatches;
+        PendingMissionRepeat = !CampaignRequested && RunMode == VerminionMode.MissionRepeat &&
+            duty == 551 + RunMission && RunWins < RunRepeatCount;
         PendingMatch = checked(++MatchSequence);
         ++RunAttempts;
         if (CampaignRequested && duty <= 575)
@@ -343,6 +360,7 @@ public sealed class VerminionProgress
         PendingDuty = 0;
         PendingWeekStartUtc = default;
         PendingMatchesBeforeAdmission = 0;
+        PendingMissionRepeat = false;
     }
 
     public bool RecordTutorialCompletion(long match, VerminionBattleOutcome outcome)
@@ -350,6 +368,8 @@ public sealed class VerminionProgress
         if (match == 0 || match != PendingMatch || PendingDuty != 552 || outcome != VerminionBattleOutcome.Victory)
             return false;
         RecordChallengeClear(1);
+        RecordMissionWin();
+        ConsecutiveLosses = 0;
         AbandonMatch();
         return true;
     }
@@ -366,6 +386,7 @@ public sealed class VerminionProgress
         if (outcome == VerminionBattleOutcome.Victory)
         {
             ++WeeklyWins;
+            RecordMissionWin();
             ConsecutiveLosses = 0;
             if (PendingDuty <= 575) RecordChallengeClear((int)PendingDuty - 551);
         }
@@ -394,24 +415,32 @@ public sealed class VerminionProgress
         return changed;
     }
 
-    public int Remaining(VerminionMode mode, int victoryTarget) => mode == VerminionMode.WinTarget
-        ? Math.Max(0, Math.Clamp(victoryTarget, 1, 1000) - WeeklyWins)
+    private void RecordMissionWin()
+    {
+        if (PendingMissionRepeat && !CampaignRequested && RunMode == VerminionMode.MissionRepeat &&
+            PendingDuty == 551 + RunMission && RunWins < RunRepeatCount) ++RunWins;
+    }
+
+    public int Remaining(VerminionMode mode, int repeatCount, int mission = 2) => mode == VerminionMode.MissionRepeat
+        ? Math.Max(0, Math.Clamp(repeatCount, 1, 1000) -
+            (RunMode == mode && RunMission == Math.Clamp(mission, 1, 24) && RunRepeatCount == Math.Clamp(repeatCount, 1, 1000) ? RunWins : 0))
         : Math.Max(0, 5 - WeeklyMatches);
 
     // Tournament opportunities and reward claims are independent of weekly matches.
-    public bool WeeklyGoalReached(VerminionMode mode, int victoryTarget, DateTime weekStartUtc, bool tournamentEntryUnavailableThisRun = false) =>
-        !CampaignRequested && WeekStartUtc == weekStartUtc &&
-        (mode != VerminionMode.CpuRewards || tournamentEntryUnavailableThisRun) && Remaining(mode, victoryTarget) == 0;
+    public bool WeeklyGoalReached(VerminionMode mode, int repeatCount, DateTime weekStartUtc, bool tournamentEntryUnavailableThisRun = false, int mission = 2) =>
+        !CampaignRequested && (mode == VerminionMode.MissionRepeat || WeekStartUtc == weekStartUtc) &&
+        (mode != VerminionMode.CpuRewards || tournamentEntryUnavailableThisRun) && Remaining(mode, repeatCount, mission) == 0;
 
-    public string Summary(VerminionMode mode, int victoryTarget, DateTime weekStartUtc)
+    public string Summary(VerminionMode mode, int repeatCount, DateTime weekStartUtc, int mission = 2)
     {
         var matches = WeekStartUtc == weekStartUtc ? WeeklyMatches : 0;
         var wins = WeekStartUtc == weekStartUtc ? WeeklyWins : 0;
-        if (CampaignRequested)
-            return $"Challenge {Math.Min(NextUnclearedChallenge, 24)}/24; {matches} weekly matches, {wins} wins";
+        if (CampaignRequested || RunIsCampaign && NextUnclearedChallenge == 25)
+            return NextUnclearedChallenge == 25 ? $"All 24 challenges cleared; {matches} weekly matches, {wins} wins"
+                : $"Challenge {NextUnclearedChallenge}/24; {matches} weekly matches, {wins} wins";
         return mode switch
         {
-            VerminionMode.WinTarget => $"{matches} matches, {wins}/{Math.Clamp(victoryTarget, 1, 1000)} wins; {Math.Max(0, Math.Clamp(victoryTarget, 1, 1000) - wins)} wins remaining",
+            VerminionMode.MissionRepeat => $"Mission {Math.Clamp(mission, 1, 24)}: {Math.Clamp(repeatCount, 1, 1000) - Remaining(mode, repeatCount, mission)}/{Math.Clamp(repeatCount, 1, 1000)} clears this run; {Remaining(mode, repeatCount, mission)} remaining; {matches} weekly matches, {wins} weekly wins",
             VerminionMode.CpuRewards => $"{matches} matches, {wins} wins; CPU tournament opportunities pending",
             _ => $"{Math.Min(5, matches)}/5 participation, {wins} wins; {Math.Max(0, 5 - matches)} matches remaining",
         };

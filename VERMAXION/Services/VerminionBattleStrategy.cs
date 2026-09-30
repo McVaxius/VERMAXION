@@ -96,7 +96,7 @@ internal static class VerminionRoster
 
     // Participation needs a fighting roster only while unlocking Stage 2.
     public static bool NeedsBattleRoster(int stage, bool campaign, Models.VerminionMode mode, uint clears) =>
-        stage > 1 && (campaign || mode == Models.VerminionMode.WinTarget || (clears & 2) == 0);
+        stage > 1 && (campaign || mode == Models.VerminionMode.MissionRepeat || (clears & 2) == 0);
 
     public static string? Missing(int stage, System.Func<ushort, bool?> owns)
     {

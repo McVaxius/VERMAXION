@@ -85,6 +85,7 @@ public static class ChokeAboTargetCycleProtocol
         json = JsonSerializer.Serialize(new { version = 3, contentId, targetPedigree = config.ChocoboTargetPedigree,
             retirementRank = 40, preferredFeedGrade = config.ChocoboPreferredFeedGrade,
             breedingMode = (int)config.ChocoboBreedingMode, feedPolicy = (int)config.ChocoboFeedPolicy,
+            produceCounterpart = config.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && config.ChocoboProduceCounterpart,
             gilReserve = config.ChocoboGilReserve, mgpReserve = config.ChocoboMgpReserve,
             raceAdmissionAllowed = ChocoboDailyAllowance.Remaining(config, DateTime.UtcNow) > 0 && !config.ChocoboProgressionPaused });
         return true;
@@ -458,6 +459,9 @@ public static class ChocoboTargetCyclePolicy
 
     public static void CopySettings(CharacterConfig source, CharacterConfig target)
     {
+        if (target.ChocoboBreedingGoal != source.ChocoboBreedingGoal ||
+            target.ChocoboProduceCounterpart != source.ChocoboProduceCounterpart)
+            target.ChocoboProgressionPaused = true;
         target.ChocoboRacesPerDay = source.ChocoboRacesPerDay;
         target.SkipChocoboRacingAtRank50 = source.SkipChocoboRacingAtRank50;
         target.ChocoboAutomationMode = source.ChocoboAutomationMode;
@@ -465,6 +469,12 @@ public static class ChocoboTargetCyclePolicy
         target.ChocoboRetirementRank = source.ChocoboRetirementRank;
         target.ChocoboPreferredFeedGrade = source.ChocoboPreferredFeedGrade;
         target.ChocoboBreedingMode = source.ChocoboBreedingMode;
+        target.ChocoboProduceCounterpart = source.ChocoboProduceCounterpart;
+        target.ChocoboBreedingGoal = source.ChocoboBreedingGoal;
+        target.ChocoboDesiredInheritedAbilityId = source.ChocoboDesiredInheritedAbilityId;
+        target.ChocoboDesiredAbilityOffspringCount = source.ChocoboDesiredAbilityOffspringCount;
+        target.ChocoboAcceptableColourIds = new List<uint>(source.ChocoboAcceptableColourIds);
+        target.ChocoboDesiredColourOffspringCount = source.ChocoboDesiredColourOffspringCount;
         target.ChocoboFeedPolicy = source.ChocoboFeedPolicy;
         target.ChocoboGilReserve = source.ChocoboGilReserve;
         target.ChocoboMgpReserve = source.ChocoboMgpReserve;
