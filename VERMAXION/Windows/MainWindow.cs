@@ -1603,6 +1603,10 @@ public class MainWindow : Window, IDisposable
             ImGui.TextWrapped(npc.Name);
             ImGui.TableSetColumnIndex(1);
             ImGui.TextWrapped(npc.Unlocked ? $"{npc.Rank} / {Math.Max(0, npc.MaxDeliveries - npc.UsedDeliveries)}" : "Locked");
+            if (npc.Unlocked && npc.PendingRankQuestId != 0)
+                ImGui.TextWrapped($"Quest: {npc.PendingRankQuestName}");
+            else if (npc.Unlocked && npc.SatisfactionMax > 0)
+                ImGui.TextDisabled($"Satisfaction: {npc.SatisfactionCur}/{npc.SatisfactionMax}");
             ImGui.TableSetColumnIndex(2);
             ImGui.TextWrapped(npc.AchievementCur.HasValue ? $"{npc.AchievementCur.Value} / 150" : "Unknown / 150");
             ImGui.TableSetColumnIndex(3);

@@ -31,6 +31,11 @@ not delivery evidence. Source started clean at 8a459d5, version 0.6.0.0.
   turn-in NPCs: known waypoint first, then live-object resolution, spawn waiting,
   interaction range/close approach, menu/dialogue progression and verified UI
   opening. Do not fail immediately because an NPC is not yet visible.
+- The user confirmed the Firmament fix worked and requested rank-quest handling:
+  cap production at the next quest/rank boundary, run only the pending required
+  quest through Wiggly Questionable and resume with refreshed requests/allowances.
+  Reuse the native single-quest API and current task cleanup; add no saved quest
+  tracker, priority-list changes, settings or provider fallback.
 - NPC policies: closest verified progress below 150 with deliveries capped at
   150, or bonuses only. Respect character/NPC allowances. Unknown achievement
   progress stays unknown; data refresh must work with windows closed.
@@ -77,8 +82,11 @@ not delivery evidence. Source started clean at 8a459d5, version 0.6.0.0.
   and exact production near 150, including existing lower-quality eligible items.
   Marker-06 scrip-cap confirmation and six Adkiragh turn-ins are verified below;
   the near-150 partial quantity and lower-quality gathering cases remain pending.
-- [ ] Custom deliveries: verify the Firmament vendor approach, delayed menu and
-  turn-in NPC spawn/range behavior after the marker-07 interaction fix.
+- [x] Custom deliveries: native marker-07 Firmament route completed; the user
+  confirms it worked and six Ehll Tou allowances plus successful cleanup are
+  verified. Missing-spawn and out-of-range branches remain separate unverified cases.
+- [ ] Custom deliveries: verify satisfaction-boundary production, required rank
+  quest dispatch/completion/resume and quest cancellation through Wiggly Questionable.
 - [x] Custom deliveries: normalize missing/default/saved/entered bait 0 to
   Versatile Lure (29717), preserving other custom values; marker-04 compiled
   and updated focused persistence regression passed. Fresh marker-04 startup and
@@ -398,8 +406,78 @@ not delivery evidence. Source started clean at 8a459d5, version 0.6.0.0.
   watched DLL remains at 03:10:11.863 UTC. Built, copied and loaded are verified;
   no fresh marker-07 route dispatch or Firmament vendor result is claimed.
 
-Next: the user clicks Run for Custom Deliveries from the new position. Inspect
-one bounded snapshot for Anna's owned shop opening, purchases, exact crafting,
-Ehll Tou allowance changes and cleanup. Keep unverified cases unfinished.
+- Marker-07 native retest verified six Ehll Tou deliveries at 10:06:50-10:07:03.980
+  local (-04:00), followed by successful engine completion and Idle at
+  10:07:10.616. The user confirms the route worked. The 12 weekly character
+  allowances were used across the Adkiragh and Ehll Tou batches. Separate
+  fishing, gathering, obstructed recovery and cancellation cases remain pending.
+- Additional bounded marker-07 evidence verifies Anna's delayed menu dispatch at
+  10:05:29.701 and owned shop opening at 10:05:30.330 local, purchases/closure,
+  then an Artisan request for exactly six at 10:05:31.311. This confirms the
+  delayed vendor selector path, actual crafting dispatch and the later native
+  delivery completion, without relying on the user's report alone.
+- Rank-quest research: the current Lumina SatisfactionNpc layout exposes
+  RankParams[].Quest and SatisfactionNpcParams[].SatisfactionRequired. XIVAPI v2
+  (https://v2.xivapi.com/api/sheet/SatisfactionNpc) confirms four rank-5 quest
+  entries: Ehll Tou 3890 (An Ode to Unity), Anden 4716 (Every Anden of the Rainbow),
+  Margrat 4816 (The Pride of Labyrinthos), Nitowikwe 5240 (The Weight of a Train).
+  The generic guide (https://ffxiv.consolegameswiki.com/wiki/Custom_Deliveries)
+  establishes the normal high-quality rank counts 3, 9, 15 and 21 cumulative.
+  Runtime uses native satisfaction/reward/quest-completion data rather than
+  hard-coding achievement totals or this NPC list. Local Wiggly quest paths
+  include all four quests; its installed 7.5.27 single-quest IPC is verified.
+- Marker-08 implementation caps each batch at the native satisfaction boundary,
+  produces nothing while a rank quest is pending, dispatches that quest only
+  through WigglyQuest.StartSingleQuest and resumes after native completion and
+  cleanup. A gate reached by the last batch is handled even if weekly allowances
+  are exhausted. Existing policies/jobs and later delivery allowance caps remain.
+  Pending quest and satisfaction state are displayed in the existing overview.
+- Marker-08 initial unwatched Debug x64 compilation passed in 32.31 seconds,
+  zero errors and the existing NU1601 warning. Focused boundary checks and final
+  ownership review are in progress before copying into the isolated test output.
+- All four focused CustomDeliveriesConfigurationTests passed, including the new
+  rank-boundary regression: two items remaining, existing inventory, allowance
+  limits, a full satisfaction bar, pending-quest production zero and final-rank
+  production after quest completion. These are planning/configuration checks;
+  they do not establish native quest execution. Diff whitespace and affected-file
+  personal-name checks passed. Ownership review added a character check before
+  cancelling or continuing the single quest; recompilation verifies that change.
+- Installed Wiggly's single-quest controller suppresses NextQuest transitions
+  and stops when its selected quest finishes. No priority insertion or persistent
+  Wiggly setting is needed for this handoff. Missing/locked routes, stop conditions,
+  provider replacement and interrupted execution surface failures instead of
+  allowing further production. Fresh native acceptance/stop evidence is pending.
+- Final marker-08 ownership correction compiled successfully in 19.61 seconds,
+  zero errors and the existing NU1601 warning. Artifact: 2,416,640 bytes at
+  2026-09-30 14:27:03.280 UTC in CustomDeliveryCompilation. Reviewed the focused
+  diff against current workspace commit 7dac549 (the prior bundle was committed
+  externally during this turn); no Git mutation was performed by this work.
+- Replacement intent: verify marker-08 in the compiled binary, check the latest
+  Account 1 engine transition is Idle and DebugTaskId remains null, then copy
+  only the existing isolated test DLL. The shared watched output remains untouched.
+  Native rank-quest testing needs a character/NPC with a pending gate or fewer
+  than six items to that gate; the just-completed character's weekly allowances
+  are exhausted. Do not dispatch a new scenario or change another client.
+
+- Copied the final marker-08 DLL only to CustomDeliveryPluginVerification after
+  the latest Account 1 transition was SignalingARDone -> Idle at 10:28:31.518
+  local and DebugTaskId was null. Copied marker-08 is verified; marker-07 is
+  absent. Shared watched DLL retains 03:10:11.863 UTC. No agent-controlled client
+  action, client-file mutation, version bump or publication occurred.
+
+- Bounded reload evidence confirms marker-08 at 10:28:43.007 local (-04:00),
+  version 0.6.0.0, with loading finished at 10:28:44.156. It was then unloaded
+  at 10:28:54.602-55.703. The latest observed startup at 10:29:02.670 identifies
+  version 0.5.0.3 and marker verminion-control-20260929-435. Thus marker-08 loaded
+  once, but the current observed entry is older and cannot verify the new gate
+  behavior. Retain both native development paths as the user chose; use the
+  isolated entry with marker-08 for the next eligible test. Do not recopy the
+  shared DLL or edit native development settings. Final whitespace/name checks
+  passed; no native marker-08 quest dispatch/completion/cancellation is claimed.
+
+Next: the user loads the isolated development entry with marker-08 before an
+eligible rank-quest case. Native quest dispatch/completion, automatic delivery
+resumption and FULL STOP remain unfinished. Other bundle verification and later
+stages retain their existing order and acceptance requirements.
 Actual delivery completion, fishing and remaining cancellation cases stay pending.
 Later stages require first-stage acceptance and fishing discussion.

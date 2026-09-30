@@ -230,7 +230,7 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
                 if (job == 0) continue;
                 var count = DeliveryPlanning.Count(settings.NpcPolicy, RemainingAllowances.Value,
                     npc.RemainingTurnins(slot), npc.AchievementCur);
-                if (count > 0) routes.Add(new(npc, type, job, slot, npc.TurnInItems[slot], count,
+                if (count > 0 || npc.PendingRankQuestId != 0) routes.Add(new(npc, type, job, slot, npc.TurnInItems[slot], count,
                     npc.MinCollectibility[slot], npc.TargetCollectibility[slot]));
             }
         }
@@ -273,6 +273,7 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
         }
         if (route.Npc.CraftData is not { TurnInInstanceId: > 0 }) return "Custom delivery NPC position is unavailable";
         if (!HasGearset(route.Job)) return $"No saved gearset is available for job {route.Job}";
+        if (route.Npc.PendingRankQuestId != 0) return AutoDeliveryQuest.GetBlockedReason();
         if (route.Type == DeliveryTypes.Crafting && Game.NumItemsInInventory(route.ItemId, (short)route.MinCollectibility) < route.Count)
         {
             if (!Service.PluginInterface.GetIpcSubscriber<ushort, int, object>("Artisan.CraftItem").HasAction
@@ -318,10 +319,17 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
         StartNextRoute();
     }
 
-    private void StartNextRoute()
+    private void StartNextRoute(DeliveryRoute? completedRoute = null)
     {
         if (!TryRefreshData()) return;
         if (!active || runSettings == null) return;
+        // Finish a gate reached by our last batch even when that batch used the
+        // final weekly allowance. New delivery work still obeys all allowances.
+        if (completedRoute?.Npc.PendingRankQuestId is > 0)
+        {
+            StartRankQuest(completedRoute.Npc, completedRoute.Job);
+            return;
+        }
         var route = SelectRoute(runSettings);
         if (route == null)
         {
@@ -335,6 +343,11 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
         }
         var blocked = GetStartBlockedReason(runSettings);
         if (blocked != null) { Fail(blocked); return; }
+        if (route.Npc.PendingRankQuestId != 0)
+        {
+            StartRankQuest(route.Npc, route.Job);
+            return;
+        }
         AutoTask task = route.Type switch
         {
             DeliveryTypes.Crafting => new AutoCraft(route),
@@ -345,7 +358,7 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
         status = $"Selected {route.Npc.Name}: {route.Type}, job {route.Job}, {route.Count} deliveries";
         Service.Log.Information($"[CustomDeliveries] {status}");
         var inventory = Game.NumItemsInInventory(route.ItemId, (short)route.MinCollectibility);
-        Service.Log.Information($"[CustomDeliveries] Plan: npc={route.Npc.Name}; progress={route.Npc.AchievementCur?.ToString() ?? "unknown"}/150; characterAllowances={RemainingAllowances}; npcAllowancesAtRank={route.Npc.RemainingTurnins(route.Slot)}; item={route.ItemId}; planned={route.Count}; eligibleInventory={inventory}; toProduce={DeliveryPlanning.MissingItems(route.Count, inventory)}");
+        Service.Log.Information($"[CustomDeliveries] Plan: npc={route.Npc.Name}; progress={route.Npc.AchievementCur?.ToString() ?? "unknown"}/150; rank={route.Npc.Rank}; satisfaction={route.Npc.SatisfactionCur}/{route.Npc.SatisfactionMax}; characterAllowances={RemainingAllowances}; npcAllowancesAtRank={route.Npc.RemainingTurnins(route.Slot)}; item={route.ItemId}; planned={route.Count}; eligibleInventory={inventory}; toProduce={DeliveryPlanning.MissingItems(route.Count, inventory)}");
         automation.Start(task, finished =>
         {
             if (!active) return;
@@ -357,6 +370,26 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
                 Fail(finished.Failure ?? $"Only {Math.Max(0, delivered)} of {route.Count} deliveries were verified");
                 return;
             }
+            StartNextRoute(route);
+        });
+    }
+
+    private void StartRankQuest(NPCInfo npc, uint job)
+    {
+        var questId = npc.PendingRankQuestId;
+        var blocked = AutoDeliveryQuest.GetBlockedReason();
+        if (blocked != null) { Fail(blocked); return; }
+        status = $"Completing {npc.PendingRankQuestName} for {npc.Name} before further deliveries";
+        Service.Log.Information($"[CustomDeliveries][Quest] {status}; rank={npc.Rank}; satisfaction={npc.SatisfactionCur}/{npc.SatisfactionMax}; weeklyAllowances={RemainingAllowances}");
+        automation.Start(new AutoDeliveryQuest(npc, questId, job), finished =>
+        {
+            if (!active) return;
+            if (!finished.CompletedSuccessfully || !QuestManager.IsQuestComplete(questId))
+            {
+                Fail(finished.Failure ?? "Rank quest completion was not verified");
+                return;
+            }
+            Service.Log.Information($"[CustomDeliveries][Quest] Resuming delivery selection after verified quest {questId}");
             StartNextRoute();
         });
     }

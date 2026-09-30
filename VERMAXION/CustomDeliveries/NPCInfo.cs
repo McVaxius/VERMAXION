@@ -16,6 +16,7 @@ public record class NPCInfo
     public string Name;
     public int MaxDeliveries;
     public readonly int[] SupplyIndices;
+    public readonly ushort[] RankQuests;
     public bool Unlocked;
     public int Rank;
     public int SatisfactionCur;
@@ -47,6 +48,7 @@ public record class NPCInfo
         Name = Row.Npc.Value.Singular.ToString();
         MaxDeliveries = Row.DeliveriesPerWeek;
         SupplyIndices = [.. Row.SatisfactionNpcParams.Select(p => p.SupplyIndex)];
+        RankQuests = [.. Row.RankParams.Select(p => (ushort)(p.Quest.RowId & 0xFFFF))];
         TerritoryId = Row.Level.Value.Territory.RowId;
         AchievementId = VERMAXION.DeliverySupport.SatisfactionNpcSupport.GetAchievementId(Row);
         CraftData = new((uint)SupplyIndices[1], TurninId, TerritoryId);
@@ -58,19 +60,27 @@ public record class NPCInfo
         : null;
     public bool IsUnlocked => Service.LuminaRow<SatisfactionNpc>(RowId) is { QuestRequired.RowId: var questId }
         && questId != 0 && QuestManager.IsQuestComplete(questId);
+    public ushort PendingRankQuestId
+    {
+        get
+        {
+            var availableRank = DeliveryPlanning.AvailableQuestRank(Rank, SatisfactionCur, SatisfactionMax);
+            for (var rank = 1; rank <= availableRank && rank < RankQuests.Length; ++rank)
+                if (RankQuests[rank] != 0 && !QuestManager.IsQuestComplete(RankQuests[rank]))
+                    return RankQuests[rank];
+            return 0;
+        }
+    }
+    public string PendingRankQuestName => PendingRankQuestId is > 0 and var id
+        ? Service.LuminaRow<Quest>((uint)id + 65536)?.Name.ToString() ?? $"Quest {id}" : string.Empty;
 
     public int RemainingTurnins(int requestIndex)
     {
         var res = Math.Max(0, MaxDeliveries - UsedDeliveries);
         if (requestIndex is < 0 or > 2 || TurnInItems[requestIndex] == 0)
             return 0;
-        if (SatisfactionMax > SatisfactionCur)
-        {
-            var reward = Service.LuminaRow<SatisfactionSupplyReward>(Rewards[requestIndex])?.SatisfactionHigh ?? 0;
-            if (reward > 0)
-                res = Math.Min(res, (int)Math.Ceiling((SatisfactionMax - SatisfactionCur) / (float)reward));
-        }
-        return res;
+        var reward = Service.LuminaRow<SatisfactionSupplyReward>(Rewards[requestIndex])?.SatisfactionHigh ?? 0;
+        return DeliveryPlanning.RankTurnins(res, SatisfactionCur, SatisfactionMax, reward, PendingRankQuestId != 0);
     }
 
     internal void ClearAchievement()
