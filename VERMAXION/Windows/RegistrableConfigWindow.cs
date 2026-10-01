@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-using Dalamud.Interface;
-using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Plugin.Services;
@@ -16,7 +14,7 @@ using Lumina.Excel.Sheets;
 namespace VERMAXION.Windows;
 
 /// <summary>
-/// Configuration window for managing registrable items with FrenRider-style dropdown
+/// Scoped personal registrable editor with searchable items and confirmed list replacements.
 /// </summary>
 public class RegistrableConfigWindow : Window
 {
@@ -25,10 +23,9 @@ public class RegistrableConfigWindow : Window
     private readonly RegistrableConfigManager configManager;
     private readonly ConfigManager characterConfigManager;
     private readonly IDataManager dataManager;
+    private readonly Configuration configuration;
     private string itemIdSearch = string.Empty;
     private string itemNameSearch = string.Empty;
-    private bool isTypingInIdBox = false;
-    private bool isTypingInNameBox = false;
     private List<RegistrableItem> allGameItems = new List<RegistrableItem>();
     private string personalListSearch = string.Empty;
     private RegistrableImportPreview? pendingImportPreview;
@@ -38,14 +35,18 @@ public class RegistrableConfigWindow : Window
     private string replacementConfirmationMessage = string.Empty;
     private IReadOnlyList<uint> pendingReplacementIds = [];
     private string pendingReplacementScopeKey = string.Empty;
+    private string pendingReplacementAccountId = string.Empty;
+    private string importPreviewAccountId = string.Empty;
+    private string importPreviewScopeKey = string.Empty;
 
-    public RegistrableConfigWindow(IPluginLog log, RegistrableConfigManager configManager, ConfigManager characterConfigManager, IDataManager dataManager)
-        : base("Register Registrables Configuration", ImGuiWindowFlags.None)
+    public RegistrableConfigWindow(IPluginLog log, RegistrableConfigManager configManager, ConfigManager characterConfigManager, IDataManager dataManager, Configuration configuration)
+        : base("Register Registrables Configuration", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         this.log = log;
         this.configManager = configManager;
         this.characterConfigManager = characterConfigManager;
         this.dataManager = dataManager;
+        this.configuration = configuration;
         SizeConstraints = new WindowSizeConstraints
         {
             MinimumSize = new Vector2(520, 480),
@@ -157,22 +158,58 @@ public class RegistrableConfigWindow : Window
         }
     }
 
+    public override void PreDraw() => UIConstants.PushStyle(configuration.CompactUi);
+
+    public override void PostDraw() => UIConstants.PopStyle();
+
     public override void Draw()
     {
         DrawHeader();
+        if (pendingImportPreview != null &&
+            (!string.Equals(importPreviewAccountId, characterConfigManager.CurrentAccountId, StringComparison.Ordinal) ||
+             !string.Equals(importPreviewScopeKey, characterConfigManager.SelectedCharacterKey, StringComparison.Ordinal)))
+        {
+            pendingImportPreview = null;
+            importPreviewStatus = "The editing scope changed. Import again to preview the intended personal list.";
+        }
         ImGui.Separator();
-        DrawAddItemDropdown();
-        ImGui.Separator();
-        DrawPersonalItems();
-        ImGui.Separator();
-        DrawImportExport();
+        if (ImGui.BeginTabBar("##RegistrableTabs"))
+        {
+            if (ImGui.BeginTabItem("Personal list"))
+            {
+                ImGui.BeginChild("##PersonalListTab", Vector2.Zero, false);
+                DrawPersonalItems();
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Add items"))
+            {
+                ImGui.BeginChild("##AddItemsTab", Vector2.Zero, false);
+                DrawAddItems();
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Import/export"))
+            {
+                ImGui.BeginChild("##ImportExportTab", Vector2.Zero, false);
+                DrawImportExport();
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+        // Open and draw the modal from the stable window ID scope.
         DrawReplacementConfirmation();
     }
 
     private void DrawHeader()
     {
-        ImGui.Text($"Total items available: {allGameItems.Count:N0}");
-        ImGui.Text($"Items in personal list: {characterConfigManager.GetSelectedConfig()?.PersonalRegistrableItems.Count ?? 0}");
+        UIConstants.Heading("Personal registrables", configuration.CompactUi);
+        var account = characterConfigManager.GetCurrentAccount();
+        var accountLabel = account == null ? "No account selected" :
+            string.IsNullOrWhiteSpace(account.AccountAlias) ? account.AccountId : account.AccountAlias;
+        ImGui.TextWrapped($"Editing account: {accountLabel} | Scope: {GetSelectedScopeLabel()}");
+        ImGui.TextWrapped($"{allGameItems.Count:N0} available items | {GetSelectedEditingConfig()?.PersonalRegistrableItems.Count ?? 0} personal items");
 
         if (ImGui.Button("Reload Items"))
         {
@@ -180,170 +217,90 @@ public class RegistrableConfigWindow : Window
         }
     }
 
-    private void DrawAddItemDropdown()
+    private CharacterConfig? GetSelectedEditingConfig()
     {
-        ImGui.Text("Add Item:");
-        var activeConfig = characterConfigManager.GetSelectedConfig();
+        var account = characterConfigManager.GetCurrentAccount();
+        if (account == null)
+            return null;
+        var key = characterConfigManager.SelectedCharacterKey;
+        return string.IsNullOrEmpty(key) ? account.DefaultConfig :
+            account.Characters.TryGetValue(key, out var selected) ? selected : null;
+    }
+
+    private void DrawAddItems()
+    {
+        UIConstants.Heading("Find an item", configuration.CompactUi);
+        var activeConfig = GetSelectedEditingConfig();
         if (activeConfig == null)
         {
-            ImGui.TextDisabled("Select an account and configuration scope before editing personal items.");
+            ImGui.TextWrapped("Select an account and configuration scope before editing personal items.");
             return;
         }
-        
-        var displayText = $"Search from {allGameItems.Count:N0} items";
-        
-        ImGui.SetNextItemWidth(400);
-        if (ImGui.BeginCombo("##ItemSelect", displayText))
+
+        ImGui.SetNextItemWidth(-1f);
+        var idInput = itemIdSearch;
+        if (ImGui.InputTextWithHint("##ItemID", "Search item ID", ref idInput, 20))
         {
-            // Search fields at top of dropdown
-            ImGui.Text("Search:");
-            
-            // Item ID search (numbers only)
-            ImGui.SetNextItemWidth(150);
-            var idInput = itemIdSearch;
-            if (ImGui.InputText("Item ID##ID", ref idInput, 20))
+            itemIdSearch = Regex.Replace(idInput, @"[^0-9]", "");
+            itemNameSearch = string.Empty;
+        }
+        ImGui.SetNextItemWidth(-1f);
+        var nameInput = itemNameSearch;
+        if (ImGui.InputTextWithHint("##ItemName", "Search item name", ref nameInput, 100))
+        {
+            itemNameSearch = nameInput;
+            itemIdSearch = string.Empty;
+        }
+        ImGui.Separator();
+
+        var personalItems = activeConfig.PersonalRegistrableItems;
+        var resultsShown = 0;
+        foreach (var item in allGameItems)
+        {
+            var matches = !string.IsNullOrWhiteSpace(itemIdSearch)
+                ? item.ItemId.ToString().Contains(itemIdSearch, StringComparison.Ordinal)
+                : !string.IsNullOrWhiteSpace(itemNameSearch) &&
+                  item.ItemName.Contains(itemNameSearch, StringComparison.OrdinalIgnoreCase);
+            if (!matches)
+                continue;
+
+            resultsShown++;
+            var isAdded = personalItems.Contains(item.ItemId);
+            ImGui.PushID($"Item_{item.ItemId}");
+            if (ImGui.Button(isAdded ? "Remove" : "Add"))
             {
-                var numericOnly = Regex.Replace(idInput, @"[^0-9]", "");
-                if (numericOnly != idInput)
+                if (isAdded)
                 {
-                    itemIdSearch = numericOnly;
-                    itemNameSearch = string.Empty;
-                    isTypingInIdBox = true;
-                    isTypingInNameBox = false;
-                }
-            }
-            
-            if (ImGui.IsItemActive() && !isTypingInIdBox)
-            {
-                itemNameSearch = string.Empty;
-                isTypingInIdBox = true;
-                isTypingInNameBox = false;
-            }
-            
-            ImGui.SameLine();
-            
-            // Item Name search (text)
-            ImGui.SetNextItemWidth(200);
-            var nameInput = itemNameSearch;
-            if (ImGui.InputText("Item Name##Name", ref nameInput, 100))
-            {
-                itemNameSearch = nameInput;
-                itemIdSearch = string.Empty;
-                isTypingInNameBox = true;
-                isTypingInIdBox = false;
-            }
-            
-            if (ImGui.IsItemActive() && !isTypingInNameBox)
-            {
-                itemIdSearch = string.Empty;
-                isTypingInNameBox = true;
-                isTypingInIdBox = false;
-            }
-            
-            ImGui.Separator();
-            
-            // Show more search results (no scrolling, just bigger visual area)
-            var maxResultsToShow = 20; // Show up to 20 results instead of 10
-            
-            var personalItems = activeConfig.PersonalRegistrableItems;
-            var resultsShown = 0;
-            
-            for (var i = 0; i < allGameItems.Count && resultsShown < maxResultsToShow; i++)
-            {
-                var item = allGameItems[i];
-                var displayItemName = $"{item.ItemId} - {item.ItemName}";
-                
-                // Filter based on search
-                bool showItem = true;
-                if (!string.IsNullOrWhiteSpace(itemIdSearch))
-                {
-                    if (uint.TryParse(itemIdSearch, out uint searchId))
-                    {
-                        showItem = item.ItemId.ToString().Contains(searchId.ToString());
-                    }
-                    else
-                    {
-                        showItem = false;
-                    }
-                }
-                else if (!string.IsNullOrWhiteSpace(itemNameSearch))
-                {
-                    showItem = item.ItemName.ToLowerInvariant().Contains(itemNameSearch.ToLowerInvariant());
-                }
-                else if (!string.IsNullOrWhiteSpace(itemIdSearch) || !string.IsNullOrWhiteSpace(itemNameSearch))
-                {
-                    showItem = false;
+                    personalItems.Remove(item.ItemId);
+                    log.Information($"[RegistrableConfig] Removed {item.ItemName} from personal list");
                 }
                 else
                 {
-                    // If both boxes are empty, don't show anything (too many items)
-                    showItem = false;
+                    activeConfig.PersonalRegistrableItems = RegistrableEditorPolicy
+                        .AddIfMissing(personalItems, item.ItemId)
+                        .ToList();
+                    personalItems = activeConfig.PersonalRegistrableItems;
+                    log.Information($"[RegistrableConfig] Added {item.ItemName} to personal list");
                 }
-                
-                if (!showItem) continue;
-                
-                resultsShown++;
-                var isAdded = personalItems.Contains(item.ItemId);
-                
-                ImGui.PushID($"Item_{i}");
-                
-                // Add/Remove button
-                var buttonText = isAdded ? "[-]" : "[+]";
-                if (ImGui.Button(buttonText, new Vector2(30, 0)))
-                {
-                    if (isAdded)
-                    {
-                        // Remove from personal list
-                        personalItems.Remove(item.ItemId);
-                        log.Information($"[RegistrableConfig] Removed {item.ItemName} from personal list");
-                    }
-                    else
-                    {
-                        activeConfig.PersonalRegistrableItems = RegistrableEditorPolicy
-                            .AddIfMissing(personalItems, item.ItemId)
-                            .ToList();
-                        personalItems = activeConfig.PersonalRegistrableItems;
-                        log.Information($"[RegistrableConfig] Added {item.ItemName} to personal list");
-                    }
-                    characterConfigManager.SaveCurrentAccount();
-                }
-                
-                ImGui.SameLine();
-                
-                // Item name
-                if (ImGui.Selectable(displayItemName, false))
-                {
-                    if (!isAdded)
-                    {
-                        activeConfig.PersonalRegistrableItems = RegistrableEditorPolicy
-                            .AddIfMissing(personalItems, item.ItemId)
-                            .ToList();
-                        personalItems = activeConfig.PersonalRegistrableItems;
-                        characterConfigManager.SaveCurrentAccount();
-                        log.Information($"[RegistrableConfig] Added {item.ItemName} to personal list");
-                    }
-                }
-                
-                if (isAdded)
-                {
-                    ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(0, 1, 0, 1), "(added)");
-                }
-                
-                ImGui.PopID();
+                characterConfigManager.SaveCurrentAccount();
             }
-            
-            ImGui.EndCombo();
+            ImGui.SameLine();
+            ImGui.TextWrapped($"{item.ItemId} - {item.ItemName}{(isAdded ? " (added)" : string.Empty)}");
+            ImGui.PopID();
         }
+
+        if (resultsShown == 0)
+            ImGui.TextWrapped(string.IsNullOrWhiteSpace(itemIdSearch) && string.IsNullOrWhiteSpace(itemNameSearch)
+                ? "Enter an item ID or name to search." : "No items match this search.");
     }
 
     private void DrawPersonalItems()
     {
-        ImGui.Text("Character's Personal Items:");
+        UIConstants.Heading("Personal list", configuration.CompactUi);
         ImGui.SetNextItemWidth(-1f);
         ImGui.InputTextWithHint("##PersonalListSearch", "Search configured item ID or name", ref personalListSearch, 100);
         
-        var activeConfig = characterConfigManager.GetSelectedConfig();
+        var activeConfig = GetSelectedEditingConfig();
         if (activeConfig != null && activeConfig.PersonalRegistrableItems.Count > 0)
         {
             var names = allGameItems.ToDictionary(item => item.ItemId, item => item.ItemName);
@@ -353,14 +310,11 @@ public class RegistrableConfigWindow : Window
                 names);
             ImGui.Text($"Showing {personalItems.Count} of {activeConfig.PersonalRegistrableItems.Count}");
             
-            // Scrollable table area with fixed height
-            ImGui.BeginChild("##PersonalItemsScroll", new Vector2(0, 300), false);
-            
             if (ImGui.BeginTable("PersonalItems", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
             {
-                ImGui.TableSetupColumn("Item ID", ImGuiTableColumnFlags.WidthFixed, 80);
+                ImGui.TableSetupColumn("Item ID", ImGuiTableColumnFlags.WidthFixed, 80 * UIConstants.Scale);
                 ImGui.TableSetupColumn("Item Name", ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableSetupColumn("Remove", ImGuiTableColumnFlags.WidthFixed, 60);
+                ImGui.TableSetupColumn("Remove", ImGuiTableColumnFlags.WidthFixed, 100 * UIConstants.Scale);
                 ImGui.TableHeadersRow();
 
                 foreach (var itemId in personalItems)
@@ -375,7 +329,7 @@ public class RegistrableConfigWindow : Window
                     ImGui.TableSetColumnIndex(1);
                     var gameItem = allGameItems.FirstOrDefault(x => x.ItemId == itemId);
                     var itemName = gameItem?.ItemName ?? $"Unknown ({itemId})";
-                    ImGui.Text(itemName);
+                    ImGui.TextWrapped(itemName);
                     
                     // Remove button
                     ImGui.TableSetColumnIndex(2);
@@ -393,21 +347,21 @@ public class RegistrableConfigWindow : Window
             if (personalItems.Count == 0)
                 ImGui.TextDisabled("No configured personal items match this search.");
             
-            ImGui.EndChild();
         }
         else
         {
-            ImGui.Text("No personal items configured for this character.");
+            ImGui.TextWrapped(activeConfig == null ? "Select an available account and configuration scope before editing." :
+                "No personal items configured for this scope. Use Add items or Import/export.");
         }
     }
 
     private void DrawImportExport()
     {
-        ImGui.Text("Import/Export Personal List");
-        var activeConfig = characterConfigManager.GetSelectedConfig();
+        UIConstants.Heading("Import/export personal list", configuration.CompactUi);
+        var activeConfig = GetSelectedEditingConfig();
         if (activeConfig == null)
         {
-            ImGui.TextDisabled("Select an account and configuration scope before importing, exporting, or replacing personal items.");
+            ImGui.TextWrapped("Select an account and configuration scope before importing, exporting, or replacing personal items.");
             return;
         }
 
@@ -426,8 +380,7 @@ public class RegistrableConfigWindow : Window
             }
         }
 
-        ImGui.SameLine();
-        ImGui.Text("(Exports your personal list)");
+        ImGui.TextWrapped("Copies your personal list to the clipboard.");
         
         // Import personal list
         if (ImGui.Button("Import Personal List"))
@@ -445,12 +398,13 @@ public class RegistrableConfigWindow : Window
                     clipboardText,
                     knownIds,
                     activeConfig.PersonalRegistrableItems);
+                importPreviewAccountId = characterConfigManager.CurrentAccountId;
+                importPreviewScopeKey = characterConfigManager.SelectedCharacterKey;
                 importPreviewStatus = pendingImportPreview.IsValid
                     ? string.Empty
                     : pendingImportPreview.Error;
             }
         }
-        ImGui.SameLine();
         ImGui.TextWrapped("Parses clipboard JSON and previews the replacement before any change.");
 
         if (!string.IsNullOrWhiteSpace(importPreviewStatus))
@@ -458,16 +412,16 @@ public class RegistrableConfigWindow : Window
 
         if (pendingImportPreview is { IsValid: true } preview)
         {
-            ImGui.Text("Import preview");
+            UIConstants.Heading("Import preview", configuration.CompactUi);
             if (ImGui.BeginTable(
                     "ImportPreviewCounts",
-                    6,
+                    2,
                     ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchSame))
             {
-                foreach (var heading in new[] { "Accepted", "Duplicate", "Unknown", "Invalid", "Added", "Removed" })
-                    ImGui.TableSetupColumn(heading);
+                ImGui.TableSetupColumn("Result");
+                ImGui.TableSetupColumn("Count");
                 ImGui.TableHeadersRow();
-                ImGui.TableNextRow();
+                var labels = new[] { "Accepted", "Duplicate", "Unknown", "Invalid", "Added", "Removed" };
                 var values = new[]
                 {
                     preview.AcceptedCount,
@@ -479,7 +433,10 @@ public class RegistrableConfigWindow : Window
                 };
                 for (var index = 0; index < values.Length; index++)
                 {
-                    ImGui.TableSetColumnIndex(index);
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.Text(labels[index]);
+                    ImGui.TableSetColumnIndex(1);
                     ImGui.Text(values[index].ToString());
                 }
                 ImGui.EndTable();
@@ -492,7 +449,6 @@ public class RegistrableConfigWindow : Window
                     $"Replace {GetSelectedScopeLabel()}'s personal list with {preview.AcceptedCount} accepted IDs? {preview.AddedCount} will be added and {preview.RemovedCount} removed; duplicate, unknown, and invalid entries remain excluded.",
                     preview.AcceptedIds);
             }
-            ImGui.SameLine();
             if (ImGui.Button("Cancel import preview"))
                 pendingImportPreview = null;
         }
@@ -508,8 +464,7 @@ public class RegistrableConfigWindow : Window
                 []);
         }
 
-        ImGui.SameLine();
-        ImGui.Text("(Removes all personal items)");
+        ImGui.TextWrapped("Removes all personal items after confirmation.");
         
         // Default list button
         if (ImGui.Button("Load Default List..."))
@@ -520,8 +475,7 @@ public class RegistrableConfigWindow : Window
                 DefaultItems);
         }
 
-        ImGui.SameLine();
-        ImGui.Text("(Loads recommended default items)");
+        ImGui.TextWrapped("Loads recommended default items after confirmation.");
     }
 
     private void RequestReplacementConfirmation(
@@ -533,12 +487,13 @@ public class RegistrableConfigWindow : Window
         replacementConfirmationMessage = message;
         pendingReplacementIds = replacementIds.ToList();
         pendingReplacementScopeKey = characterConfigManager.SelectedCharacterKey ?? string.Empty;
+        pendingReplacementAccountId = characterConfigManager.CurrentAccountId;
         replacementConfirmationRequested = true;
     }
 
     private string GetSelectedScopeLabel()
         => string.IsNullOrWhiteSpace(characterConfigManager.SelectedCharacterKey)
-            ? "the current Account default"
+            ? "Account default"
             : characterConfigManager.SelectedCharacterKey;
 
     private void DrawReplacementConfirmation()
@@ -550,6 +505,7 @@ public class RegistrableConfigWindow : Window
         }
 
         var open = true;
+        ImGui.SetNextWindowSize(new Vector2(480 * UIConstants.Scale, 0), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(
                 "Confirm personal-list replacement",
                 ref open,
@@ -558,14 +514,15 @@ public class RegistrableConfigWindow : Window
             return;
         }
 
-        ImGui.Text(replacementConfirmationTitle);
+        ImGui.TextWrapped(replacementConfirmationTitle);
         ImGui.Separator();
         ImGui.TextWrapped(replacementConfirmationMessage);
         if (ImGui.Button("Confirm replacement"))
         {
-            var activeConfig = characterConfigManager.GetSelectedConfig();
+            var activeConfig = GetSelectedEditingConfig();
             var currentScopeKey = characterConfigManager.SelectedCharacterKey ?? string.Empty;
             if (activeConfig == null ||
+                !string.Equals(characterConfigManager.CurrentAccountId, pendingReplacementAccountId, StringComparison.Ordinal) ||
                 !string.Equals(currentScopeKey, pendingReplacementScopeKey, StringComparison.Ordinal))
             {
                 replacementConfirmationMessage = "The selected configuration scope changed or is no longer available. Cancel and review the intended scope before trying again.";
@@ -586,7 +543,7 @@ public class RegistrableConfigWindow : Window
                 ImGui.CloseCurrentPopup();
             }
         }
-        ImGui.SameLine();
+        UIConstants.SameLineIfFits("Cancel");
         if (ImGui.Button("Cancel"))
         {
             pendingReplacementIds = [];

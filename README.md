@@ -41,7 +41,7 @@ The persisted, enabled-by-default global `Enabled` master switch is controlled b
 - **Chocobo Racing** — Native observable daily race loop with Always Race and optional Choke-abo Target Pedigree modes
 - **Ocean Fishing** — Ordered per-account character fallback, ordered ADS fishing-stock preparation, verified queue/voyage lifecycle, and optional post-voyage discard/sell cleanup
 
-- **Character-select stall recovery** - An enabled-by-default recovery that arms whenever `CharaSelect` remains visible and the global master is on. After five minutes, it makes one guarded attempt to load entry 0. The Main Window shows a live `m:ss` countdown and keeps the same guarded `Load first character now` test control available manually.
+- **Character-select stall recovery** - An enabled-by-default recovery that arms whenever `CharaSelect` remains visible and the global master is on. After five minutes, it makes one guarded attempt to load entry 0. The dashboard's Advanced diagnostics shows a live `m:ss` countdown and keeps the same guarded `Load first character now` test control available manually.
 - **Register Registrables** - Personal-list registration or opt-in automatic discovery of locked direct registrables in the four main inventory bags
 
 ## Automation ownership and ordering
@@ -54,7 +54,7 @@ Stage 1 intentionally leaves Choke-abo's retirement, covering, fledgling-selecto
 
 - **Ordered engine tasks:** Run through the configured task order. Retainer Equipping runs Before AR by default and is fully registered alongside Gear Updater, Highest Combat Job, Current Job Equipment, Seasonal Gear, Minion Roulette, and the existing tasks.
 - **Misc Commands hook:** Runs once at the beginning of an applicable After-AR or manual engine run, including when it is the only work. It never arms a Before-AR pass by itself.
-- **Fishing coordinator:** Ocean Fishing retains its preemptive startup window and account/relog coordinator. The fixed top of the Main Window includes a disabled-by-default `Actively check for Ocean Fishing windows without AR pre/post process` checkbox that can invoke that same coordinator. It is intentionally not reorderable through the engine task list.
+- **Fishing coordinator:** Ocean Fishing retains its preemptive startup window and account/relog coordinator. Configuration → Global → Fishing includes the disabled-by-default `Watch Ocean Fishing windows` checkbox that can invoke that same coordinator without AR pre/post processing. It is intentionally not reorderable through the engine task list.
 - **Manual utility:** Retainer Bell remains an explicit manual utility rather than a character enable flag.
 - **Configuration-only WIP:** Adventurer Activity (Evercold) is labelled as configuration-only and is not advertised as runtime dispatch.
 
@@ -93,6 +93,10 @@ Four replayable setup wizards cover Default & Sync, FC Buff, Fishing, and Retain
 
 Each AutoRetainer/manual run records a structured plan for every catalog entry: runnable, disabled, not due, blocked, or unsupported, with a concrete reason.
 
+Enabled Mini Cactpot and Chocobo Stables also start when the logged-in character is idle and their reset or training cooldown is due, with both global and character automation enabled. These runs retain normal eligibility, AutoRetainer suppression, and cleanup, and wait for fishing, other owned work, travel, duties, queues, and interaction menus. These idle starts wait at least five minutes between Mini attempts and one hour between stable attempts per character; existing AutoRetainer and manual triggers remain available.
+
+Config > Marketboard contains per-profile onion buying controls. Enable the purchase and set positive unit-price and total-gil limits (including tax) to buy one Thavnairian Onion through Emptor API 5 on the current world, only when your own rank 10-19 stabled chocobo is capped and inventory has none. Onion use remains manual. With buying disabled, the existing unfinished free-onion quest acquisition remains available.
+
 ## Requirements
 
 - **AutoRetainer** (required for post-process hook)
@@ -105,9 +109,17 @@ Ocean Fishing does not require Questionable. It does not manage AutoHook presets
 
 The task dashboard distinguishes `Ready`, `Missing`, and `Needs setup`. Mini Cactpot, Jumbo Cactpot, and Fashion Report accept either enabled TextAdvance or XA Slave's enabled Skip Dialogue setting; required Saucy readiness also verifies that its Mini Cactpot configuration is accessible. Mini Cactpot uses Lifestream's `/li saucer` route and vnavmesh rather than Teleporter. Fishing reports whether AutoHook `AutoOceanFish` matches the selected provider. FC Buff Refill and Fishing require ADS and block startup when it is not loaded. Fishing also blocks run acquisition if the required AutoHook synchronization cannot be completed.
 
-Character-select recovery never opens, navigates, or backs out of character select. Its automatic timer arms only while `CharaSelect` is visible and resets as soon as it is hidden. Both the automatic and manual paths require only that visible addon, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. The Main Window shows the global state, live `m:ss` countdown, and any blocking reason.
+Character-select recovery never opens, navigates, or backs out of character select. Its automatic timer arms only while `CharaSelect` is visible and resets as soon as it is hidden. Both the automatic and manual paths require only that visible addon, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. The dashboard's Advanced diagnostics shows the global state, live `m:ss` countdown, and any blocking reason.
 
 ## Commands
+
+The dashboard keeps account/character scope, engine status, FULL STOP and run controls above the scrolling task area. **Overview** shows due and blocked tasks; **All Tasks** includes scheduled work and manual utilities; **Favorites** shows starred tasks. Search filters the selected view by task or required plugin. Advanced controls are collapsed.
+
+Configuration has **Characters**, **Global**, **Task Order** and **About** tabs. In Characters, choose an account and character or Account default, then search/select a task to edit its settings. The scope banner stays visible. Dashboard task Settings and `/vmx chocobo settings` open the exact task while retaining the selected editing scope. Wizards and fishing-stock synchronization show the account they affect.
+
+The readable dark teal layout is the default. Enable **Global → Display & DTR → Compact UI** for tighter spacing across all six windows. This global preference is saved and defaults to off; search, task selection, tabs and scrolling remain session state. Compact mode retains the same controls.
+
+Fish collection separates **Targets**, **Characters**, **Supplies** and **Alerts**, with status, assignment, start/stop and acknowledgement above them. Select a target to see readiness and use its pin/override controls. Verminion separates **Run**, **Minions & guide**, **Purchase limits** and **Tournament**, keeping status, progress, FULL STOP, Resume and unresolved purchase warnings visible. Permanent campaign completion remains separate from mission and weekly goals. The personal registrable editor separates **Personal list**, **Add items** and **Import/export**, preserving previews and replacement confirmation. Debug keeps reload status and a searchable task list.
 
 | Command | Description |
 |---------|-------------|
@@ -117,6 +129,7 @@ Character-select recovery never opens, navigates, or backs out of character sele
 | `/vmx run` | Manual trigger |
 | `/vmx cancel` | Cancel current run |
 | `/vmx config` | Open config window |
+| `/vmx chocobo settings` | Open Chocobo Racing settings in the selected editing scope |
 | `/vmx debug` | Select one manual task to attempt after the next plugin reload |
 
 In `/vmx debug`, checking a task saves it for the next reload without starting it immediately. After character registration, VERMAXION runs FULL STOP cleanup, checks the task's current manual availability, and invokes its normal dashboard action once. The window can stay closed. Configuration-only stubs cannot be selected, and an unavailable task reports its reason without a debug retry. The task keeps its existing prerequisites and scheduling; `Dispatched` means its manual action was invoked, not that it completed.

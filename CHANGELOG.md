@@ -1,5 +1,19 @@
 # VERMAXION Changelog
 
+## Unreleased - full UI redesign (operator visual acceptance pending)
+
+- Apply a shared readable dark teal layout to dashboard, configuration, fish collection, Verminion, registrable editor and debug. Add a saved global Compact UI setting under Global → Display & DTR, disabled by default, without adding dependencies or changing version 0.8.0.1.
+- Keep runtime controls and scope above scrolling content; add searchable dashboard Overview/All Tasks/Favorites, selected-task configuration and dedicated tabs in the collection, Verminion and registrable windows. Keep campaign and weekly/mission goals separate, with unresolved purchase warnings visible.
+- Open exact task settings from dashboard actions and `/vmx chocobo settings` while retaining the selected account/profile. Show the affected account beside wizards and fishing-stock synchronization. Preserve automation prerequisites, progress, spending limits and debug reload selection; reject registrable replacement if account/profile scope changes.
+- Offline verification: 168 focused checks and all 939 tests pass. The isolated Debug x64 build succeeds with the existing PInvoke.User32 dependency warning. Native default/compact visual acceptance at minimum sizes and enlarged scales remains operator-controlled.
+
+## Unreleased - narrow automation fixes
+
+- Keep Ocean Fishing paused while the boat waits for players to load, without exhausting the 90-second route-transition timeout. Pause the three-minute duty-entry timer during the client's own loading screen. Preserve placement, casting and recovery once loading ends for both Ocean Fishing providers.
+- Correct the shared daily-reset clock to 15:00 UTC so Mini Cactpot ticket clearing and its next-run timestamp follow the game's reset. Preserve the weekly reset at 09:00 UTC.
+- Start enabled, due Mini Cactpot and stable feeding automatically for the logged-in character when automation is idle. Retain normal scheduling checks, task ordering, AutoRetainer suppression and cleanup; suppress immediate repeat attempts after failures or untrainable stable visits.
+- Add per-character Marketboard controls for an opt-in, current-world purchase of one Thavnairian Onion through Emptor API 5, with positive unit-price and tax-inclusive spending limits. Buy only for the capped personal rank 10-19 stabled chocobo when onion stock is zero; keep onion use manual and retain the free-quest path when buying is disabled.
+
 ## Unreleased - Big and fabled fish collection (live acceptance pending)
 
 - Add an opt-in collection window for 335 big fish and 13 Ocean fabled fish, with per-character native log progress, saved Fisher observations, pinning, readiness explanations, recommendation overrides, supplies, price limits and optional native audio alerts. Preserve version 0.8.0.0.

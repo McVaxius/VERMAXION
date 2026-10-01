@@ -37,6 +37,7 @@ public class Configuration : IPluginConfiguration
     // --- Global UI Settings ---
     public bool Enabled { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
+    public bool CompactUi { get; set; } = false;
     public bool AutoWidthMainTaskColumns { get; set; } = true;
     public bool DtrBarEnabled { get; set; } = true;
     public int DtrBarMode { get; set; } = 0; // 0=text-only, 1=icon+text, 2=icon-only

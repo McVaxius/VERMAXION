@@ -1797,6 +1797,13 @@ public sealed class FishingService
             return;
         }
 
+        if (Plugin.Condition[ConditionFlag.BetweenAreas] || Plugin.Condition[ConditionFlag.BetweenAreas51])
+        {
+            stateEnteredAt = DateTime.UtcNow;
+            statusDetail = "Loading Ocean Fishing duty";
+            return;
+        }
+
         if (GameHelpers.IsAddonVisible("ContentsFinderConfirm") &&
             DateTime.UtcNow - lastInteractionAttemptAt >= TimeSpan.FromSeconds(2))
         {
@@ -2594,6 +2601,11 @@ public sealed class FishingService
             if (zoneTransitionStartedAt == DateTime.MinValue)
                 zoneTransitionStartedAt = now;
 
+            // The boat can legitimately wait longer than the transition timeout for another player to load.
+            if (TryGetOceanFishingStatus(out var oceanStatus) &&
+                oceanStatus == InstanceContentOceanFishing.OceanFishingStatus.WaitingForPlayers)
+                zoneTransitionStartedAt = now;
+
             if (now - zoneTransitionStartedAt >= ZoneTransitionTimeout)
             {
                 Fail("Ocean Fishing zone transition remained stalled for 90 seconds.", FishingAttemptFailureKind.Stop);
@@ -2835,6 +2847,11 @@ public sealed class FishingService
                 log.Information(
                     "[Fishing][Session] Route transition detected; start retries are paused and the stored destination will not change");
             }
+
+            // Count stalled transitions only after the game's player-loading wait has ended.
+            if (TryGetOceanFishingStatus(out var oceanStatus) &&
+                oceanStatus == InstanceContentOceanFishing.OceanFishingStatus.WaitingForPlayers)
+                zoneTransitionStartedAt = now;
 
             if (now - zoneTransitionStartedAt >= ZoneTransitionTimeout)
             {

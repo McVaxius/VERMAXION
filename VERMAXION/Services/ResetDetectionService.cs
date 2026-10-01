@@ -7,7 +7,7 @@ namespace VERMAXION.Services;
 public class ResetDetectionService
 {
     private const int WeeklyResetHourUtc = 9;
-    private const int DailyResetHourUtc = 9;
+    private const int DailyResetHourUtc = 15;
     private const int FashionReportStartHourUtc = 9;
     private const DayOfWeek FashionReportDay = DayOfWeek.Friday;
     private readonly IPluginLog log;
@@ -184,7 +184,7 @@ public class ResetDetectionService
     }
 
     /// <summary>
-    /// Get the next daily reset time (9:00 AM UTC).
+    /// Get the next daily reset time (3:00 PM UTC).
     /// </summary>
     public static DateTime GetNextDailyReset(DateTime now)
     {
