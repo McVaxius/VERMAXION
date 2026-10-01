@@ -542,6 +542,11 @@ namespace Dalamud.Plugin.Services
         public void Information(string text, params object[] args) { }
         public void Warning(string text, params object[] args) { }
         public void Debug(string text) { }
+        public void Error(string text) { }
+    }
+    public sealed class ICommandManager
+    {
+        public bool ProcessCommand(string command) => true;
     }
 }
 
@@ -552,9 +557,14 @@ namespace Dalamud.Plugin.Ipc
     public sealed class ICallGateSubscriber<T1, T>(Func<object?[], object?> invoke)
     { public T InvokeFunc(T1 arg1) => (T)invoke([arg1])!; }
     public sealed class ICallGateSubscriber<T1, T2, T>(Func<object?[], object?> invoke)
-    { public T InvokeFunc(T1 arg1, T2 arg2) => (T)invoke([arg1, arg2])!; }
+    {
+        public T InvokeFunc(T1 arg1, T2 arg2) => (T)invoke([arg1, arg2])!;
+        public void InvokeAction(T1 arg1, T2 arg2) => invoke([arg1, arg2]);
+    }
     public sealed class ICallGateSubscriber<T1, T2, T3, T>(Func<object?[], object?> invoke)
     { public T InvokeFunc(T1 arg1, T2 arg2, T3 arg3) => (T)invoke([arg1, arg2, arg3])!; }
+    public sealed class ICallGateSubscriber<T1, T2, T3, T4, T>(Func<object?[], object?> invoke)
+    { public T InvokeFunc(T1 arg1, T2 arg2, T3 arg3, T4 arg4) => (T)invoke([arg1, arg2, arg3, arg4])!; }
 }
 
 namespace Dalamud.Plugin

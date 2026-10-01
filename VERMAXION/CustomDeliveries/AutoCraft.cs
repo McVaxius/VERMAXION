@@ -13,7 +13,8 @@ namespace VERMAXION.CustomDeliveries;
 public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
 {
     private readonly ICallGateSubscriber<ushort, int, object> _artisanCraft = Service.PluginInterface.GetIpcSubscriber<ushort, int, object>("Artisan.CraftItem");
-    private readonly ICallGateSubscriber<bool> _artisanInProgress = Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetEnduranceStatus");
+    private readonly ICallGateSubscriber<bool> _artisanBusy = Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.IsBusy");
+    private readonly ICallGateSubscriber<bool> _artisanStopRequested = Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetStopRequest");
     private readonly ICallGateSubscriber<bool, object> _artisanSetEndurance = Service.PluginInterface.GetIpcSubscriber<bool, object>("Artisan.SetEnduranceStatus");
 
     protected override async Task Execute()
@@ -47,9 +48,11 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
                 await BuyFromShop(npc.CraftData, ingredient.id, missingIngredients);
             }
             Status = $"Crafting {remainingCrafts}x {ItemName(turnInItemId)}";
-            await CraftItem(turnInItemId, remainingCrafts, remainingTurnins);
+            await CraftItem(turnInItemId, remainingCrafts);
         }
 
+        ErrorIf(Game.NumItemsInInventory(turnInItemId, (short)Route.MinCollectibility) < remainingTurnins,
+            $"The planned qualifying collectibles are missing for {ItemName(turnInItemId)}");
         Status = $"Turning in {remainingTurnins}x {ItemName(turnInItemId)}";
         if (Service.ClientState.TerritoryType == npc.TerritoryId)
             await MoveTo(npc.CraftData.TurnInLocation, MovementConfig.InteractRange, allowTeleportIfFaster: false, allowAethernet: false);
@@ -82,22 +85,25 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
         await NextFrame();
     }
 
-    private async Task CraftItem(uint itemId, int count, int finalCount)
+    private async Task CraftItem(uint itemId, int count)
     {
         using var scope = BeginScope("Craft");
         if (CraftTurnin.GetRecipe(itemId, Route.Job) is { RowId: var rowId } && rowId != 0)
         {
-            ErrorIf(ArtisanInProgress(), "Artisan is already running another crafting request");
+            ErrorIf(ArtisanIsBusy(), "Artisan is already running another crafting request");
+            ErrorIf(_artisanStopRequested.InvokeFunc(), "Artisan has an active stop request");
             using var stopOwnedCrafting = new OnDispose(() => _artisanSetEndurance.InvokeAction(false));
             ArtisanCraft((ushort)rowId, count);
-            await WaitWhile(() => !ArtisanInProgress(), "WaitStart");
-            await WaitWhile(ArtisanInProgress, "WaitProgress");
-            await WaitWhile(() => !Service.Conditions[ConditionFlag.PreparingToCraft], "WaitFinish");
-            ErrorIf(Game.NumItemsInInventory(itemId, (short)Route.MinCollectibility) < finalCount, $"Artisan did not produce enough qualifying collectibles for {ItemName(itemId)}");
+            await WaitWhile(() => !ArtisanIsBusy(), "WaitStart");
+            await WaitWhile(ArtisanIsBusy, "WaitProgress");
+            await WaitWhile(() => Service.Conditions[ConditionFlag.Crafting]
+                && !Service.Conditions[ConditionFlag.PreparingToCraft], "WaitFinish");
             await NextFrame();
 
-            Game.ExitCrafting();
-            await WaitWhile(() => Service.Conditions[ConditionFlag.Crafting], "WaitCraftClose");
+            if (Service.Conditions[ConditionFlag.Crafting] || Service.Conditions[ConditionFlag.PreparingToCraft])
+                Game.ExitCrafting();
+            await WaitWhile(() => Service.Conditions[ConditionFlag.Crafting]
+                || Service.Conditions[ConditionFlag.PreparingToCraft], "WaitCraftClose");
         }
         else
             Error($"Failed to find recipe for {itemId}");
@@ -108,6 +114,6 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
         Service.Log.Information($"[CustomDeliveries][Crafting] Artisan request: recipe={recipe}; toProduce={count}; plannedTurnins={Route.Count}");
         _artisanCraft.InvokeAction(recipe, count);
     }
-    private bool ArtisanInProgress() => _artisanInProgress.InvokeFunc();
+    private bool ArtisanIsBusy() => _artisanBusy.InvokeFunc();
 
 }

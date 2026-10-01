@@ -10,6 +10,8 @@ namespace VERMAXION.CustomDeliveries;
 public sealed class AutoFish(DeliveryRoute route, Func<DeliveryRoute, CancellationToken, Task> fish,
     Action? fishingCleanup) : AutoCommon(route)
 {
+    internal bool IsFishing { get; private set; }
+
     protected override async Task Execute()
     {
         var npc = Route.Npc;
@@ -27,7 +29,9 @@ public sealed class AutoFish(DeliveryRoute route, Func<DeliveryRoute, Cancellati
             if (!CanFishHere())
                 await MoveTo(npc.FishData.Center, MovementConfig.Everything.WithTolerance(10));
             Status = $"Fishing {ItemName(Route.ItemId)} with AutoHook";
-            await fish(Route, CancelToken);
+            IsFishing = true;
+            try { await fish(Route, CancelToken); }
+            finally { IsFishing = false; }
         }
         ErrorIf(Game.NumItemsInInventory(Route.ItemId, (short)Route.MinCollectibility) < Route.Count,
             "Fishing finished without the required qualifying collectible count");
