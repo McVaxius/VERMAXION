@@ -31,6 +31,7 @@ internal sealed class OceanFishingPositioningModeConverter : Newtonsoft.Json.Jso
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
+    public FishCollectionSettings FishCollection { get; set; } = new();
     public int Version { get; set; } = 1;
 
     // --- Global UI Settings ---

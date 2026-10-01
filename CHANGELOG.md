@@ -1,5 +1,12 @@
 # VERMAXION Changelog
 
+## Unreleased - Big and fabled fish collection (live acceptance pending)
+
+- Add an opt-in collection window for 335 big fish and 13 Ocean fabled fish, with per-character native log progress, saved Fisher observations, pinning, readiness explanations, recommendation overrides, supplies, price limits and optional native audio alerts. Preserve version 0.8.0.0.
+- Bundle attributed numeric conditions, bait and predator chains, folklore, successful casting records for all 301 overworld locations, and 55 Ocean strategies. Correct Ealad Skaan's fractional midnight window, Namitaro's predator weather distinction, Akupara's sunset condition and Ocean time mappings. Forecast the native 144-row route cycle with its observed 88-slot phase, including newer Ruby routes.
+- Commit one selected character to each opportunity; inspect unavailable observations before target selection or buying, coalesce equipped-item changes, normalize exact NQ/HQ food effects and verify effective readiness before casting. Prepare at minus 60 minutes with a minus 45-minute positioning goal. Use AutoHook's solver and exact temporary preset identities, owned ADS currency requests and current-world Emptor orders with tax-inclusive budgets. Preserve casts in flight and retain ownership through purchase, navigation, rod and preset cleanup.
+- Offline verification: 359 focused collection, fishing, AutoHook, lifecycle and account checks pass. Current published FishParameter data resolves all 348 targets and matches all 13 bundled Ocean IDs. Debug x64 builds preserve 0.8.0.0; fishing-specific client selection remains required before staging or live acceptance.
+
 ## Unreleased - G9 offspring production (live acceptance pending)
 
 - Wire the ability printer and separate colour seeker to dedicated Choke-abo V3 workflow operations. Save independent requested quantities, show verified matching progress, and retain resume/stop behavior and spending limits. Require the new endpoints before starting production; older Choke-abo builds cannot silently treat it as pedigree progression.

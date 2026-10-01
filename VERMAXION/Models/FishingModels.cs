@@ -17,6 +17,7 @@ public enum FishingRunMode
 {
     Scheduled = 0,
     Test = 1,
+    Collection = 2,
 }
 
 public enum FishingStartupTrigger
@@ -140,9 +141,9 @@ public sealed class FishingRunContext
     public FishingRunMode Mode { get; init; }
     public FishingStartupTrigger StartupTrigger { get; init; }
     public OceanFishingProvider Provider { get; init; }
-    public string TargetCharacterKey { get; init; } = string.Empty;
-    public DateTimeOffset RegistrationStartUtc { get; init; }
-    public DateTimeOffset RegistrationDeadlineUtc { get; init; }
+    public string TargetCharacterKey { get; set; } = string.Empty;
+    public DateTimeOffset RegistrationStartUtc { get; set; }
+    public DateTimeOffset RegistrationDeadlineUtc { get; set; }
     public bool QueueRegistrationConfirmed { get; set; }
     public bool TerminalFailureBeforeQueueConfirmation { get; set; }
     public bool? InitialAutoRetainerMultiModeEnabled { get; set; }

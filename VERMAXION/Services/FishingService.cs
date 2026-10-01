@@ -212,6 +212,8 @@ public sealed class FishingService
     public bool IsActive => state != FishingState.Idle && state != FishingState.Complete && state != FishingState.Failed;
     public bool IsComplete => state == FishingState.Complete;
     public bool IsFailed => state == FishingState.Failed;
+    internal Func<bool>? CollectionCastGate { get; set; }
+    internal OceanFishingRoutePreference? CollectionRoute { get; set; }
     public bool QueueRegistrationObserved => queueRegistrationObserved;
     public FishingAttemptFailureKind FailureKind => failureKind;
     public bool FailureReported => failureReported;
@@ -595,7 +597,7 @@ public sealed class FishingService
             return;
         }
 
-        if (!inventoryRecoveryActive)
+        if (!inventoryRecoveryActive && activeRunMode != FishingRunMode.Collection)
             TryEatFishingFood();
         switch (state)
         {
@@ -621,7 +623,9 @@ public sealed class FishingService
                 break;
 
             case FishingState.CheckingPreparation:
-                TickCheckDockPreparation();
+                if (activeRunMode == FishingRunMode.Collection)
+                    SetState(FishingState.NavigatingToRegistrar);
+                else TickCheckDockPreparation();
                 break;
 
             case FishingState.NavigatingToPreparationDock:
@@ -786,6 +790,12 @@ public sealed class FishingService
 
     private bool EnsureFisherJob()
     {
+        if (activeRunMode == FishingRunMode.Collection)
+        {
+            if (Plugin.PlayerState.ClassJob.RowId == 18) return true;
+            Fail("Committed collection Fisher gear changed before Ocean registration.");
+            return false;
+        }
         if (fisherFallbackStarted)
         {
             fisherFallbackService.Update();
@@ -1856,7 +1866,7 @@ public sealed class FishingService
         var distance = (float)DistanceTo(position);
         var atDestination = distance <= BoatFishingPositionTolerance;
         var nowUtc = new DateTimeOffset(now, TimeSpan.Zero);
-        var timersPaused = AreFishingRecoveryTimersPaused();
+        var timersPaused = AreFishingRecoveryTimersPaused() || CollectionCastGate?.Invoke() == false;
         var placement = EvaluateInitialPlacementReadiness(
             now,
             destination,
@@ -2047,7 +2057,7 @@ public sealed class FishingService
 
     private bool TrySelectOceanFishingRoute(IReadOnlyList<string> expectedEntries, out bool callbackAttempted)
     {
-        var configuredPreference = configManager.GetActiveConfig().OceanFishingRouteOverride ??
+        var configuredPreference = CollectionRoute ?? configManager.GetActiveConfig().OceanFishingRouteOverride ??
                                    configuration.OceanFishingRoutePreference;
         var preference = OceanFishingRoutePolicy.Normalize(configuredPreference);
         var requestedIndex = OceanFishingRoutePolicy.GetDialogEntryIndex(preference);
@@ -2484,7 +2494,7 @@ public sealed class FishingService
             : float.PositiveInfinity;
         var atDestination = destination.HasValue && distance <= BoatFishingPositionTolerance;
         var nowUtc = new DateTimeOffset(now, TimeSpan.Zero);
-        var timersPaused = AreFishingRecoveryTimersPaused();
+        var timersPaused = AreFishingRecoveryTimersPaused() || CollectionCastGate?.Invoke() == false;
         var placement = voyageState.MovementLocked
             ? new OceanFishingPlacementEvaluation(
                 Ready: true,
@@ -2795,7 +2805,7 @@ public sealed class FishingService
 
     private bool BeginFishingSession(string reason)
     {
-        if (!runLifecycle.EnsureAutoHookEnabled(out var hookError))
+        if (CollectionCastGate?.Invoke() != false && !runLifecycle.EnsureAutoHookEnabled(out var hookError))
         {
             Fail($"Could not enable AutoHook: {hookError}", FishingAttemptFailureKind.Stop);
             return false;
@@ -2803,7 +2813,7 @@ public sealed class FishingService
 
         voyageState.BeginSession();
         lastCastGate = string.Empty;
-        if (voyageState.TryApplySessionBait())
+        if (voyageState.TryApplySessionBait() && activeRunMode != FishingRunMode.Collection)
             CommandHelper.SendCommand("/bait Versatile Lure");
 
         log.Information(
@@ -2864,7 +2874,7 @@ public sealed class FishingService
         var fishing = Plugin.Condition[FishingCondition];
         var evaluation = voyageState.EvaluateFishingStart(
             new DateTimeOffset(now, TimeSpan.Zero),
-            enabled: true,
+            enabled: CollectionCastGate?.Invoke() != false,
             inFishingContext: IsOceanFishingDutyActive(),
             zoneTransitionActive: IsVoyageRouteTransitionActive(),
             playerAvailable: GameHelpers.IsPlayerAvailable(),
@@ -2897,6 +2907,11 @@ public sealed class FishingService
             return false;
         }
 
+        if (activeRunMode == FishingRunMode.Collection && !runLifecycle.EnsureAutoHookEnabled(out var collectionHookError))
+        {
+            Fail($"Could not enable collection AutoHook: {collectionHookError}", FishingAttemptFailureKind.Stop);
+            return true;
+        }
         CommandHelper.SendCommand(FishingCastPolicy.CastCommand);
         CommandHelper.SendCommand(FishingCastPolicy.DirectCastFallbackCommand);
         lastCastGate = string.Empty;
@@ -3908,8 +3923,13 @@ public sealed class FishingService
                 currentlyBusy: transitioning))
         {
             log.Information($"[Fishing] Return settled; territory={Plugin.ClientState.TerritoryType}, changed={territoryChanged}, transitionObserved={returnTransitionObserved}");
-            runLifecycle.Cleanup("Ocean Fishing completed");
-            SetState(FishingState.CleaningUpLifecycle);
+            if (activeRunMode == FishingRunMode.Collection)
+                SetState(FishingState.Complete);
+            else
+            {
+                runLifecycle.Cleanup("Ocean Fishing completed");
+                SetState(FishingState.CleaningUpLifecycle);
+            }
             return;
         }
 
@@ -4056,7 +4076,7 @@ public sealed class FishingService
         else if (!IsOceanFishingDutyActive())
             vnavmesh.Stop();
         SetState(FishingState.Failed);
-        runLifecycle.Cleanup(message);
+        if (activeRunMode != FishingRunMode.Collection) runLifecycle.Cleanup(message);
     }
 
     private void SetState(FishingState newState)
