@@ -23,6 +23,7 @@ public class VNavmeshIPC : IDisposable
     private readonly ICommandManager commandManager;
     private readonly ICallGateSubscriber<Vector3, bool, float, Vector3?> pointOnFloorSubscriber;
     private readonly ICallGateSubscriber<Vector3, float, float, Vector3?> nearestReachableSubscriber;
+    private readonly ICallGateSubscriber<Vector3, float, float, Vector3?> nearestPointSubscriber;
     private readonly ICallGateSubscriber<Vector3, Vector3, bool, CancellationToken, Task<List<Vector3>>> deliveryPathfindSubscriber;
     private readonly ICallGateSubscriber<List<Vector3>, bool, object> movePathSubscriber;
     private readonly ICallGateSubscriber<bool> pathIsRunningSubscriber;
@@ -44,6 +45,8 @@ public class VNavmeshIPC : IDisposable
             .GetIpcSubscriber<Vector3, bool, float, Vector3?>(PointOnFloorIpc);
         nearestReachableSubscriber = Plugin.PluginInterface
             .GetIpcSubscriber<Vector3, float, float, Vector3?>("vnavmesh.Query.Mesh.NearestPointReachable");
+        nearestPointSubscriber = Plugin.PluginInterface
+            .GetIpcSubscriber<Vector3, float, float, Vector3?>("vnavmesh.Query.Mesh.NearestPoint");
         deliveryPathfindSubscriber = Plugin.PluginInterface
             .GetIpcSubscriber<Vector3, Vector3, bool, CancellationToken, Task<List<Vector3>>>("vnavmesh.Nav.PathfindCancelable");
         movePathSubscriber = Plugin.PluginInterface
@@ -141,6 +144,32 @@ public class VNavmeshIPC : IDisposable
         => groundRecovery.Evaluate(destination, false,
             GameHelpers.IsPlayerAvailable() ? Plugin.ObjectTable.LocalPlayer?.Position : null,
             DateTime.UtcNow, horizontalProgressOnly: true);
+
+    public bool TryFindDeliveryPointNear(Vector3 probe, float tolerance, out Vector3 point)
+    {
+        point = default;
+        if (!float.IsFinite(probe.X) || !float.IsFinite(probe.Y) || !float.IsFinite(probe.Z)
+            || !float.IsFinite(tolerance) || tolerance <= 0)
+            return false;
+        try
+        {
+            // Tamamizu's walkable mesh is excluded by the global reachability filter.
+            // Keep the narrow height search so an upstairs NPC cannot resolve downstairs.
+            var resolved = nearestPointSubscriber.InvokeFunc(probe, tolerance, 2);
+            if (resolved is not { } candidate || !float.IsFinite(candidate.X)
+                || !float.IsFinite(candidate.Y) || !float.IsFinite(candidate.Z)
+                || MathF.Abs(candidate.Y - probe.Y) > 2
+                || Vector3.Distance(candidate, probe) > tolerance)
+                return false;
+            point = candidate;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[VNavmeshIPC] Nearby delivery-point query failed: {ex.Message}");
+            return false;
+        }
+    }
 
     public Task<List<Vector3>> FindDeliveryPath(Vector3 destination, CancellationToken cancellation)
     {

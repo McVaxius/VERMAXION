@@ -39,14 +39,17 @@ public abstract class TaskBase : AutoTask
         CancelToken.ThrowIfCancellationRequested();
         await WaitUntil(GameHelpers.IsPlayerAvailable, "Waiting for player");
         await Dismount();
+        if (!config.MapCenter && Service.Objects.LocalPlayer is { } player
+            && Vector3.Distance(player.Position, position) <= config.Tolerance)
+            return;
         var navigation = Service.Navigation;
         await WaitUntil(() => navigation.TryGetNavReady(out var ready) && ready, "Waiting for navigation");
         var found = config.MapCenter
             ? navigation.TryFindReachablePointOnFloor(position, 10, out var target)
-            : navigation.TryFindReachablePointNear(position, config.Tolerance, out target);
-        ErrorIf(!found, $"No reachable position at the destination's height near {position}");
+            : navigation.TryFindDeliveryPointNear(position, config.Tolerance, out target);
+        ErrorIf(!found, $"No navigation position at the destination's height near {position}");
         var arrival = config.MapCenter ? target : position;
-        if (Service.Objects.LocalPlayer is { } player && Vector3.Distance(player.Position, arrival) <= config.Tolerance)
+        if (Service.Objects.LocalPlayer is { } projectedPlayer && Vector3.Distance(projectedPlayer.Position, arrival) <= config.Tolerance)
             return;
         var territory = Service.ClientState.TerritoryType;
         using var stop = new OnDispose(() => navigation.Stop());

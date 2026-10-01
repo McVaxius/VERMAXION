@@ -415,7 +415,8 @@ public class VermaxionEngine
             Action reset,
             Func<string> status,
             Action? cancel = null,
-            Action? cleanup = null)
+            Action? cleanup = null,
+            Func<string>? watchdogProgress = null)
             => new(
                 id,
                 TaskStateById[id],
@@ -425,7 +426,7 @@ public class VermaxionEngine
                 cancel ?? reset,
                 cleanup ?? reset,
                 status,
-                status);
+                watchdogProgress ?? status);
 
         var bindings = new[]
         {
@@ -465,7 +466,7 @@ public class VermaxionEngine
                 fashionReportService.Reset, () => fashionReportService.State.ToString()),
             Bind(PostProcessTaskOrder.CustomDeliveries, EvaluateCustomDeliveries, () => { },
                 customDeliveriesService.Reset, () => customDeliveriesService.StatusText,
-                customDeliveriesService.Cancel),
+                customDeliveriesService.Cancel, watchdogProgress: () => customDeliveriesService.WatchdogProgress),
             Bind(PostProcessTaskOrder.ChocoboStables, EvaluateChocoboStables, () => { },
                 chocoboStablesService.Reset, () => chocoboStablesService.StatusText, chocoboStablesService.Cancel),
             Bind(PostProcessTaskOrder.ChocoboRacing, EvaluateChocoboRacing, chocoboRaceService.Update,
@@ -2476,6 +2477,8 @@ public class VermaxionEngine
 
     private string? GetTaskWatchdogPauseReason()
     {
+        if (state == EngineState.RunningCustomDeliveries && customDeliveriesService.IsFishing)
+            return "owned fishing handler enforces its ten-minute qualifying-fish deadline";
         if (state == EngineState.RunningChocoboStables && chocoboStablesService.IsAcquiringOnion)
             return "Wiggly Quest owns the onion sidequest chain";
         if (state == EngineState.RunningNagYourMom && nagYourMomRequestIssued

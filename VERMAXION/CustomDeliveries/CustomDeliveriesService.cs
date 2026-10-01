@@ -41,6 +41,9 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
     public bool IsComplete { get; private set; }
     public bool IsFailed { get; private set; }
     public int CompletedTurnins => verifiedDeliveries;
+    public bool IsFishing => automation.CurrentTask is AutoFish { IsFishing: true };
+    public string WatchdogProgress => Service.ClientState.IsLoggedIn && automation.CurrentTask is AutoCommon task
+        ? $"{task.WatchdogProgress}|remaining={RemainingAllowances}|verified={verifiedDeliveries}" : StatusText;
     public string StatusText => FishingCleanupPending?.Invoke() == true ? FishingCleanupStatus?.Invoke() ?? "Fishing cleanup pending"
         : automation.CurrentTask?.Status is { Length: > 0 } taskStatus ? taskStatus : status;
     public Func<DeliveryRoute, CancellationToken, Task>? FishingHandler { get; set; }
@@ -278,10 +281,13 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
         {
             if (!Service.PluginInterface.GetIpcSubscriber<ushort, int, object>("Artisan.CraftItem").HasAction
                 || !Service.PluginInterface.GetIpcSubscriber<bool, object>("Artisan.SetEnduranceStatus").HasAction
-                || !Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetEnduranceStatus").HasFunction)
+                || !Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.IsBusy").HasFunction
+                || !Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetStopRequest").HasFunction)
                 return "Artisan crafting integration is unavailable";
-            if (Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetEnduranceStatus").InvokeFunc())
+            if (Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.IsBusy").InvokeFunc())
                 return "Artisan is already running another crafting request";
+            if (Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetStopRequest").InvokeFunc())
+                return "Artisan has an active stop request";
             if (route.Npc.CraftData.VendorInstanceId == 0 || route.Npc.CraftData.VendorShopId == 0)
                 return "Custom delivery ingredient vendor data is unavailable";
         }

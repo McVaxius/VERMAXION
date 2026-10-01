@@ -13,6 +13,17 @@ public abstract class AutoCommon(DeliveryRoute route) : TaskBase
 {
     protected DeliveryRoute Route => route;
 
+    internal unsafe string WatchdogProgress
+    {
+        get
+        {
+            var manager = SatisfactionSupplyManager.Instance();
+            int? used = manager != null && route.Npc.Index >= 0 && route.Npc.Index < manager->UsedAllowances.Length
+                ? manager->UsedAllowances[route.Npc.Index] : null;
+            return $"{Status}|qualifying={Game.NumItemsInInventory(route.ItemId, (short)route.MinCollectibility)}|npcUsed={used}";
+        }
+    }
+
     protected async Task TurnIn()
     {
         using var scope = BeginScope("TurnIn");
