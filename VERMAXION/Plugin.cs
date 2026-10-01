@@ -45,9 +45,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "custom-deliveries-20260930-08";
+    private const string DebugAttemptMarker = "stables-client7-20260930-30";
     private DateTime nextChocoboContinuationUtc;
-    private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION\bin\x64\Debug\VERMAXION.dll";
+    private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION.Tests\bin\Debug\StablesClient7Verification\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
     public ConfigManager ConfigManager { get; init; }
@@ -59,6 +59,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public ChocoboRaceService ChocoboRaceService { get; init; }
     public FashionReportService FashionReportService { get; init; }
     public CustomDeliveriesService CustomDeliveriesService { get; init; }
+    public ChocoboStablesService ChocoboStablesService { get; init; }
     private DeliveryFishing DeliveryFishing { get; init; }
     public RegisterRegistrablesService RegisterRegistrablesService { get; init; }
     public VendorStockService VendorStockService { get; init; }
@@ -121,6 +122,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private ulong debugDispatchContentId;
     internal string DebugTaskStatus { get; private set; } = "No task selected.";
     internal string DebugBuildMarker => DebugAttemptMarker;
+    internal bool IsCharacterRegistered => characterRegistrationCompletedThisLogin;
     private string characterRegistrationFailureReason = string.Empty;
     private DateTime characterRegistrationWorldReadySince = DateTime.MinValue;
     private bool pendingBeforeArLogin;
@@ -314,10 +316,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         };
 
         // Engine - orchestrates all tasks
+        ChocoboStablesService = new ChocoboStablesService(this);
         Engine = new VermaxionEngine(
             Log, Configuration, ConfigManager, ResetDetectionService,
             FCBuffService, FCBuffInventoryService, VerminionService,
-            CactpotService, ChocoboRaceService, ChokeAboIpcClient, FashionReportService, CustomDeliveriesService,
+            CactpotService, ChocoboRaceService, ChokeAboIpcClient, FashionReportService, CustomDeliveriesService, ChocoboStablesService,
             VendorStockService, FishingService,
             RegisterRegistrablesService, GearUpdaterService, HighestCombatJobService,
             CurrentJobEquipmentService, SeasonalGearService, AlliedSocietyService, AfterArParkService,
@@ -328,6 +331,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
             : VerminionService.HasQuestAcquisition ? "Questionable minion acquisition blocks new VERMAXION work."
             : DeliveryFishing.IsCleanupPending ? CustomDeliveriesService.StatusText
+            : ChocoboStablesService.IsCleanupPending ? "Stable menu cleanup is still settling."
             : null;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
         DadHandoffIpcProvider = new DadHandoffIpcProvider(
@@ -398,6 +402,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         ChatGui.ChatMessage -= OnChatMessage;
         Framework.Update -= OnFrameworkUpdate;
         CustomDeliveriesService.Dispose();
+        ChocoboStablesService.Cancel();
         DeliveryFishing.Dispose();
         VerminionService.Dispose();
         ClientState.Login -= OnLoginEvent;
@@ -576,6 +581,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             return (true, FashionReportService.State.ToString(), $"Fashion Report: {FashionReportService.State}");
         if (CustomDeliveriesService.IsActive)
             return (true, "CustomDeliveries", CustomDeliveriesService.StatusText);
+        if (ChocoboStablesService.IsActive)
+            return (true, "ChocoboStables", ChocoboStablesService.StatusText);
         if (ChocoboRaceService.IsActive)
             return (true, ChocoboRaceService.State.ToString(), ChocoboRaceService.StatusText);
         if (CurrentJobEquipmentService.IsActive)
@@ -714,8 +721,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 SetDebugTaskStatus("Cancelled: the character changed during cleanup.");
                 return;
             }
-            var ready = GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _) ||
-                pendingDebugDispatchTaskId == AutomationCatalog.VerminionQueue && CanObserveVerminionForReload();
+            var ready = !ChocoboStablesService.IsCleanupPending && (GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _) ||
+                pendingDebugDispatchTaskId == AutomationCatalog.VerminionQueue && CanObserveVerminionForReload());
             if (!ready && DateTime.UtcNow < debugDispatchReadyDeadline) return;
             var dispatchId = pendingDebugDispatchTaskId;
             pendingDebugDispatchTaskId = null;
@@ -766,6 +773,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             if (taskId == AutomationCatalog.ChocoboRacing)
                 CommandManager.ProcessCommand("/chokeabo inspect");
             FullStop(preparingDebugTask: true);
+            if (taskId == AutomationCatalog.ChocoboStables)
+                ChocoboStablesService.CleanupReloadMenu(ConfigManager.GetActiveConfig().ChocoboStablesSettings);
             pendingDebugDispatchTaskId = taskId;
             debugDispatchContentId = PlayerState.ContentId;
             debugDispatchReadyDeadline = DateTime.UtcNow.AddSeconds(30);
@@ -2355,6 +2364,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         // Custom-delivery data and task progress must refresh with all windows closed.
         DeliveryFishing.Update();
         CustomDeliveriesService.Update();
+        ChocoboStablesService.Update();
         if (characterRegistrationCompletedThisLogin)
             MainWindow.UpdateCustomDeliveryVisibility();
         ProcessPendingDebugTask();
@@ -2635,6 +2645,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         ChocoboRaceService.Reset();
         FashionReportService.Reset();
         CustomDeliveriesService.Reset();
+        ChocoboStablesService.Reset();
         VendorStockService.Reset();
         FishingService.Reset();
         FishingRelogCoordinator.Reset();

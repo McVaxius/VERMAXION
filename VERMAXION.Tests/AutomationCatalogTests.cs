@@ -9,6 +9,47 @@ namespace VERMAXION.Tests;
 public sealed class AutomationCatalogTests
 {
     [Fact]
+    public void OnionAcquisitionNeedsAnOwnCappedBirdAndStopsAtAnAvailableReward()
+    {
+        var bird = new StableBird(0, -1, "Fixture bird", "Fixture owner", 10, true, "In 59m");
+        Assert.True(ChocoboOnionQuests.ShouldAcquire(bird, StableTarget.OwnChocobo, 0));
+        Assert.False(ChocoboOnionQuests.ShouldAcquire(bird, StableTarget.SpecificOther, 0));
+        Assert.False(ChocoboOnionQuests.ShouldAcquire(bird with { Row = 0 }, StableTarget.OwnChocobo, 0));
+        Assert.False(ChocoboOnionQuests.ShouldAcquire(bird with { Rank = 9 }, StableTarget.OwnChocobo, 0));
+        Assert.False(ChocoboOnionQuests.ShouldAcquire(bird with { Rank = 20 }, StableTarget.OwnChocobo, 0));
+        Assert.False(ChocoboOnionQuests.ShouldAcquire(bird with { Capped = false }, StableTarget.OwnChocobo, 0));
+        Assert.False(ChocoboOnionQuests.ShouldAcquire(bird, StableTarget.OwnChocobo, 1));
+        Assert.False(ChocoboOnionQuests.ShouldAcquire(bird, StableTarget.OwnChocobo, -1));
+        Assert.Equal((ushort)1729, ChocoboOnionQuests.SelectNext(_ => false, _ => true));
+        Assert.Equal((ushort)1926, ChocoboOnionQuests.SelectNext(id => id == 1729, _ => true));
+        Assert.Equal((ushort)1775, ChocoboOnionQuests.SelectNext(id => id == 1729, id => id == 1775));
+        Assert.Equal((ushort)1923, ChocoboOnionQuests.SelectNext(id => id == 1729, id => id is 1775 or 1923));
+        Assert.Equal((ushort)0, ChocoboOnionQuests.SelectNext(id => id is 1729 or 1926, _ => true));
+        Assert.Equal((ushort)0, ChocoboOnionQuests.SelectNext(_ => false, _ => false));
+        Assert.Equal((ushort)0, ChocoboOnionQuests.SelectNext(id => id == 1729, id => id == 1653));
+    }
+    [Fact]
+    public void StableCharacterChoicesRoundTripAndCloneIndependently()
+    {
+        var character = new CharacterConfig();
+        Assert.False(character.EnableChocoboStables);
+        character.EnableChocoboStables = true;
+        character.ChocoboStablesSettings.Destination = StableDestination.SharedEstate3;
+        character.ChocoboStablesSettings.Target = StableTarget.SpecificOther;
+        character.ChocoboStablesSettings.OtherChocobo = "Fixture bird";
+        character.ChocoboStablesSettings.OtherOwner = "Fixture owner";
+        var restored = System.Text.Json.JsonSerializer.Deserialize<CharacterConfig>(System.Text.Json.JsonSerializer.Serialize(character))!;
+        var copy = restored.Clone();
+        copy.ChocoboStablesSettings.Destination = StableDestination.Apartment;
+        copy.ChocoboStablesSettings.OtherOwner = "Different fixture owner";
+        Assert.Equal(StableDestination.SharedEstate3, restored.ChocoboStablesSettings.Destination);
+        Assert.Equal(StableTarget.SpecificOther, restored.ChocoboStablesSettings.Target);
+        Assert.Equal("Fixture bird", restored.ChocoboStablesSettings.OtherChocobo);
+        Assert.Equal("Fixture owner", restored.ChocoboStablesSettings.OtherOwner);
+        Assert.Contains(AutomationCatalog.ChocoboStables, PostProcessTaskOrder.DefaultOrder);
+    }
+
+    [Fact]
     public void EveryEnablePropertyHasExactlyOneCatalogOwner()
     {
         var enableProperties = typeof(CharacterConfig)
@@ -23,7 +64,7 @@ public sealed class AutomationCatalogTests
             .OrderBy(name => name)
             .ToList();
 
-        Assert.Equal(28, enableProperties.Count);
+        Assert.Equal(29, enableProperties.Count);
         Assert.Equal(enableProperties, catalogFlags);
         Assert.All(AutomationCatalog.Features, feature => Assert.True(Enum.IsDefined(feature.Owner)));
     }
@@ -34,7 +75,7 @@ public sealed class AutomationCatalogTests
         var engineIds = AutomationCatalog.EngineTasks.Select(feature => feature.Id).ToList();
         var validation = AutomationCatalog.ValidateRuntimeRegistry(engineIds, PostProcessTaskOrder.DefaultOrder);
 
-        Assert.Equal(21, engineIds.Count);
+        Assert.Equal(22, engineIds.Count);
         Assert.True(validation.IsValid, validation.Message);
     }
 

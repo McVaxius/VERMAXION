@@ -135,6 +135,7 @@ public class VermaxionEngine
         [PostProcessTaskOrder.JumboCactpot] = EngineState.RunningJumboCactpot,
         [PostProcessTaskOrder.FashionReport] = EngineState.RunningFashionReport,
         [PostProcessTaskOrder.CustomDeliveries] = EngineState.RunningCustomDeliveries,
+        [PostProcessTaskOrder.ChocoboStables] = EngineState.RunningChocoboStables,
         [PostProcessTaskOrder.ChocoboRacing] = EngineState.RunningChocoboRacing,
         [PostProcessTaskOrder.LootGoblinMapGather] = EngineState.RunningLootGoblinMapGather,
         [PostProcessTaskOrder.NagYourMom] = EngineState.RunningNagYourMom,
@@ -156,6 +157,8 @@ public class VermaxionEngine
     private readonly ChokeAboIpcClient chokeAboIpcClient;
     private readonly FashionReportService fashionReportService;
     private readonly CustomDeliveriesService customDeliveriesService;
+    private readonly ChocoboStablesService chocoboStablesService;
+    private bool stablesScanRequested;
     private readonly VendorStockService vendorStockService;
     private readonly FishingService fishingService;
     private readonly RegisterRegistrablesService registerRegistrablesService;
@@ -267,6 +270,7 @@ public class VermaxionEngine
         RunningJumboCactpot,
         RunningFashionReport,
         RunningCustomDeliveries,
+        RunningChocoboStables,
         RunningChocoboRacing,
         RunningLootGoblinMapGather,
         RunningNagYourMom,
@@ -323,6 +327,7 @@ public class VermaxionEngine
         ChokeAboIpcClient chokeAboIpcClient,
         FashionReportService fashionReportService,
         CustomDeliveriesService customDeliveriesService,
+        ChocoboStablesService chocoboStablesService,
         VendorStockService vendorStockService,
         FishingService fishingService,
         RegisterRegistrablesService registerRegistrablesService,
@@ -360,6 +365,7 @@ public class VermaxionEngine
         this.chokeAboIpcClient = chokeAboIpcClient;
         this.fashionReportService = fashionReportService;
         this.customDeliveriesService = customDeliveriesService;
+        this.chocoboStablesService = chocoboStablesService;
         this.vendorStockService = vendorStockService;
         this.fishingService = fishingService;
         this.registerRegistrablesService = registerRegistrablesService;
@@ -460,6 +466,8 @@ public class VermaxionEngine
             Bind(PostProcessTaskOrder.CustomDeliveries, EvaluateCustomDeliveries, () => { },
                 customDeliveriesService.Reset, () => customDeliveriesService.StatusText,
                 customDeliveriesService.Cancel),
+            Bind(PostProcessTaskOrder.ChocoboStables, EvaluateChocoboStables, () => { },
+                chocoboStablesService.Reset, () => chocoboStablesService.StatusText, chocoboStablesService.Cancel),
             Bind(PostProcessTaskOrder.ChocoboRacing, EvaluateChocoboRacing, chocoboRaceService.Update,
                 chocoboRaceService.Reset, () => chocoboRaceService.StatusText),
             Bind(PostProcessTaskOrder.LootGoblinMapGather, EvaluateLootGoblin, lootGoblinMapGatherService.Update,
@@ -690,6 +698,18 @@ public class VermaxionEngine
             : TaskEligibility.Runnable();
     }
 
+    private TaskEligibility EvaluateChocoboStables(CharacterConfig config)
+        => EvaluateChocoboStables(config, false);
+
+    private TaskEligibility EvaluateChocoboStables(CharacterConfig config, bool manual)
+    {
+        if (!manual && !config.EnableChocoboStables) return TaskEligibility.Disabled("Chocobo Stables is disabled for this character.");
+        if (!manual && config.ChocoboStablesNextTrainingUtc > DateTime.UtcNow)
+            return TaskEligibility.NotDue($"Selected chocobo's training cooldown runs until {config.ChocoboStablesNextTrainingUtc:u}.");
+        return chocoboStablesService.GetStartBlockedReason(config.ChocoboStablesSettings, manual && stablesScanRequested) is { } reason
+            ? TaskEligibility.Blocked(reason) : TaskEligibility.Runnable();
+    }
+
     private TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
     {
         var eligibility = config.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree
@@ -887,6 +907,16 @@ public class VermaxionEngine
             RecordRunCompletion(RunOutcome.Skipped, summary);
     }
 
+    public bool ManualStartChocoboStables(bool scanOnly = false)
+    {
+        if (IsRunning) return false;
+        stablesScanRequested = scanOnly;
+        var accepted = TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false,
+            automatedRun: false, "manual Chocobo Stables", AutomationRunScope.SingleTask(PostProcessTaskOrder.ChocoboStables));
+        if (!accepted) stablesScanRequested = false;
+        return accepted;
+    }
+
     private bool TryBeginRun(
         RunTaskPhaseFilter phaseFilter,
         bool requireEnabled,
@@ -928,7 +958,7 @@ public class VermaxionEngine
         }
 
         ResetRunTracking();
-        retainerSuppressionRequired = runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries;
+        retainerSuppressionRequired = runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables;
         suppressionReleasedForHandoff = false;
         retainerCleanupPending = false;
         activePhaseFilter = phaseFilter;
@@ -1690,6 +1720,42 @@ public class VermaxionEngine
                 AdvanceToNextTask(EngineState.RunningCustomDeliveries);
                 break;
 
+            case EngineState.RunningChocoboStables:
+                activeConfig = GetLiveActiveConfig();
+                if (!activeConfig.EnableChocoboStables && !activeRunScope.BypassSelectedScheduling)
+                {
+                    chocoboStablesService.Cancel();
+                    stablesScanRequested = false;
+                    AdvanceToNextTask(EngineState.RunningChocoboStables);
+                    break;
+                }
+                if (!currentTaskOwnedWorkStarted)
+                {
+                    var eligibility = GetActiveRunEligibility(PostProcessTaskOrder.ChocoboStables, activeConfig);
+                    if (!eligibility.IsRunnable) { stablesScanRequested = false; AdvanceToNextTask(EngineState.RunningChocoboStables); break; }
+                    ResetInteractionState();
+                    MarkCurrentTaskWorkStarted();
+                    var onlyScan = activeRunScope.SingleTaskId == PostProcessTaskOrder.ChocoboStables && stablesScanRequested;
+                    stablesScanRequested = false;
+                    chocoboStablesService.Start(activeConfig.ChocoboStablesSettings, onlyScan);
+                    return;
+                }
+                StatusText = chocoboStablesService.StatusText;
+                if (chocoboStablesService.IsActive) break;
+                if (chocoboStablesService.IsComplete && chocoboStablesService.Trained)
+                    PersistCurrentCharacterConfig(config =>
+                    {
+                        config.ChocoboStablesLastCompleted = DateTime.UtcNow;
+                        config.ChocoboStablesNextTrainingUtc = chocoboStablesService.NextTrainingUtc;
+                    }, "Chocobo stable training verified");
+                else if (chocoboStablesService.IsFailed)
+                {
+                    runHadFailure = true;
+                    log.Warning($"[Engine] Chocobo Stables failed: {chocoboStablesService.StatusText}");
+                }
+                AdvanceToNextTask(EngineState.RunningChocoboStables);
+                break;
+
             case EngineState.RunningChocoboRacing:
                 activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableChocoboRacing &&
@@ -2410,6 +2476,8 @@ public class VermaxionEngine
 
     private string? GetTaskWatchdogPauseReason()
     {
+        if (state == EngineState.RunningChocoboStables && chocoboStablesService.IsAcquiringOnion)
+            return "Wiggly Quest owns the onion sidequest chain";
         if (state == EngineState.RunningNagYourMom && nagYourMomRequestIssued
             && (nagYourMomWindowExpired || DateTime.UtcNow >= nagYourMomQueueDeadlineUtc))
             return "mom window closed; awaiting confirmed withdrawal or match exit";
@@ -2610,6 +2678,8 @@ public class VermaxionEngine
             return $"Fashion Report service active ({fashionReportService.State})";
         if (customDeliveriesService.IsActive)
             return $"Custom Deliveries service active ({customDeliveriesService.StatusText})";
+        if (chocoboStablesService.IsActive)
+            return $"Chocobo Stables service active ({chocoboStablesService.StatusText})";
         if (chocoboRaceService.IsActive)
             return $"Chocobo Racing service active ({chocoboRaceService.StatusText})";
         if (gearUpdaterService.IsActive)
@@ -2883,7 +2953,7 @@ public class VermaxionEngine
                 continue;
             }
 
-            if (nextState is EngineState.RunningRetainerListingRefill or EngineState.RunningCustomDeliveries)
+            if (nextState is EngineState.RunningRetainerListingRefill or EngineState.RunningCustomDeliveries or EngineState.RunningChocoboStables)
                 retainerSuppressionRequired = true;
             if (nextState != EngineState.RunningRetainerListingRefill)
                 retainerUiOwned = false;
@@ -2907,6 +2977,8 @@ public class VermaxionEngine
 
     private TaskEligibility GetActiveRunEligibility(string taskId, CharacterConfig config)
     {
+        if (activeRunScope.BypassSelectedScheduling && activeRunScope.SingleTaskId == PostProcessTaskOrder.ChocoboStables && taskId == PostProcessTaskOrder.ChocoboStables)
+            return EvaluateChocoboStables(config, true);
         if (activeRunScope.BypassSelectedScheduling &&
             activeRunScope.SingleTaskId == PostProcessTaskOrder.CustomDeliveries &&
             taskId == PostProcessTaskOrder.CustomDeliveries)
@@ -3066,6 +3138,7 @@ public class VermaxionEngine
             EngineState.RunningJumboCactpot => "Jumbo Cactpot",
             EngineState.RunningFashionReport => "Fashion Report",
             EngineState.RunningCustomDeliveries => "Custom Deliveries",
+            EngineState.RunningChocoboStables => "Chocobo Stables",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
             EngineState.RunningLootGoblinMapGather => "LootGoblin Map Gather",
             EngineState.RunningNagYourMom => "nag your mom",

@@ -20,7 +20,11 @@ public sealed class ChokeAboIpcClient
     private readonly ICallGateSubscriber<string, string> suspendTargetCycleSubscriber;
     private readonly ICallGateSubscriber<string, string> ensureCounterpartCycleSubscriber;
     private readonly ICallGateSubscriber<string, string> resumeCounterpartCycleSubscriber;
+    private readonly ICallGateSubscriber<string, string> ensureWorkflowSubscriber;
+    private readonly ICallGateSubscriber<string, string> resumeWorkflowSubscriber;
+    private readonly ICallGateSubscriber<string, string> startWorkflowSubscriber;
     public bool IsV3Available => ensureTargetCycleSubscriber.HasFunction && resumeTargetCycleSubscriber.HasFunction;
+    public bool IsWorkflowAvailable => ensureWorkflowSubscriber.HasFunction && resumeWorkflowSubscriber.HasFunction && startWorkflowSubscriber.HasFunction;
 
     public ChokeAboIpcClient(IDalamudPluginInterface pluginInterface)
     {
@@ -32,6 +36,9 @@ public sealed class ChokeAboIpcClient
         suspendTargetCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.SuspendTargetCycle.V3");
         ensureCounterpartCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.EnsureCounterpartCycle.V3");
         resumeCounterpartCycleSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.ResumeCounterpartCycle.V3");
+        ensureWorkflowSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.EnsureWorkflow.V3");
+        resumeWorkflowSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.ResumeWorkflow.V3");
+        startWorkflowSubscriber = pluginInterface.GetIpcSubscriber<string, string>("ChokeAbo.Breeding.StartWorkflow.V3");
     }
 
     public bool ShouldBlockRacing()
@@ -46,7 +53,7 @@ public sealed class ChokeAboIpcClient
         }
     }
 
-    public ChokeAboTargetCycleCallResult EnsureTargetCycle(ulong contentId, CharacterConfig config, bool resume = false)
+    public ChokeAboTargetCycleCallResult EnsureTargetCycle(ulong contentId, CharacterConfig config, bool resume = false, bool startNewBatch = false)
     {
         if (!ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(
                 contentId,
@@ -57,6 +64,9 @@ public sealed class ChokeAboIpcClient
             return ChokeAboTargetCycleCallResult.Failure(error);
         }
 
+        if (startNewBatch || config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree || IsWorkflowAvailable)
+            return InvokeV3(startNewBatch ? startWorkflowSubscriber : resume ? resumeWorkflowSubscriber : ensureWorkflowSubscriber,
+                request, contentId, startNewBatch ? "StartWorkflow" : resume ? "ResumeWorkflow" : "EnsureWorkflow");
         if (config.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && config.ChocoboProduceCounterpart)
             return InvokeV3(resume ? resumeCounterpartCycleSubscriber : ensureCounterpartCycleSubscriber, request, contentId,
                 resume ? "ResumeCounterpartCycle" : "EnsureCounterpartCycle");

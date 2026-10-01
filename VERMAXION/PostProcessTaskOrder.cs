@@ -29,6 +29,7 @@ public static class PostProcessTaskOrder
     public const string JumboCactpot = AutomationCatalog.JumboCactpot;
     public const string FashionReport = AutomationCatalog.FashionReport;
     public const string CustomDeliveries = AutomationCatalog.CustomDeliveries;
+    public const string ChocoboStables = AutomationCatalog.ChocoboStables;
     public const string ChocoboRacing = AutomationCatalog.ChocoboRacing;
     public const string LootGoblinMapGather = AutomationCatalog.LootGoblinMapGather;
     public const string NagYourMom = AutomationCatalog.NagYourMom;
@@ -55,6 +56,7 @@ public static class PostProcessTaskOrder
         MinionRoulette,
         RetainerEquipping,
         CustomDeliveries,
+        ChocoboStables,
     ];
 
     public static readonly IReadOnlyList<string> DefaultOrder =
@@ -75,6 +77,7 @@ public static class PostProcessTaskOrder
         JumboCactpot,
         FashionReport,
         CustomDeliveries,
+        ChocoboStables,
         ChocoboRacing,
         LootGoblinMapGather,
         NagYourMom,
