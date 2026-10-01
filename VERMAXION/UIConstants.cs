@@ -1,7 +1,71 @@
+using System.Numerics;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
+
 namespace VERMAXION;
 
 public static class UIConstants
 {
+    public static float Scale => ImGuiHelpers.GlobalScale;
+    // Applied before Begin, so window padding and child/table density agree across every surface.
+    public static void PushStyle(bool compact)
+    {
+        var scale = ImGuiHelpers.GlobalScale;
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(compact ? 8 : 16, compact ? 6 : 12) * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(compact ? 6 : 10, compact ? 2 : 5) * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(compact ? 6 : 10, compact ? 3 : 8) * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemInnerSpacing, new Vector2(compact ? 4 : 8, compact ? 3 : 6) * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, new Vector2(compact ? 5 : 10, compact ? 3 : 7) * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 6f * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 4f * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.TabRounding, 4f * scale);
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.055f, 0.095f, 0.115f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.065f, 0.115f, 0.135f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.PopupBg, new Vector4(0.075f, 0.135f, 0.155f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.9f, 0.95f, 0.96f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TextDisabled, new Vector4(0.57f, 0.7f, 0.73f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.19f, 0.32f, 0.35f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.095f, 0.19f, 0.215f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, new Vector4(0.13f, 0.29f, 0.32f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.FrameBgActive, new Vector4(0.15f, 0.35f, 0.38f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.095f, 0.29f, 0.31f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.13f, 0.4f, 0.42f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.16f, 0.47f, 0.49f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.09f, 0.25f, 0.28f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.13f, 0.36f, 0.39f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.16f, 0.43f, 0.46f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Tab, new Vector4(0.075f, 0.18f, 0.205f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TabHovered, new Vector4(0.13f, 0.36f, 0.39f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TabActive, new Vector4(0.1f, 0.29f, 0.32f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.CheckMark, new Vector4(0.36f, 0.83f, 0.76f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TableHeaderBg, new Vector4(0.085f, 0.21f, 0.24f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TableRowBgAlt, new Vector4(0.14f, 0.3f, 0.32f, 0.16f));
+    }
+
+    public static void PopStyle()
+    {
+        ImGui.PopStyleColor(21);
+        ImGui.PopStyleVar(9);
+    }
+
+    public static void Heading(string text, bool compact = false)
+    {
+        if (!compact) ImGui.Spacing();
+        ImGui.PushTextWrapPos(0f);
+        ImGui.TextColored(new Vector4(0.4f, 0.85f, 0.79f, 1f), text);
+        ImGui.PopTextWrapPos();
+        ImGui.Separator();
+    }
+
+    public static void SameLineIfFits(string nextLabel)
+    {
+        var width = ImGui.CalcTextSize(nextLabel).X + ImGui.GetStyle().FramePadding.X * 2;
+        var remaining = ImGui.GetCursorScreenPos().X + ImGui.GetContentRegionAvail().X - ImGui.GetItemRectMax().X;
+        if (remaining >= width + ImGui.GetStyle().ItemSpacing.X)
+            ImGui.SameLine();
+    }
+
     public static class ConfigLabels
     {
         // Global Settings

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -22,7 +23,7 @@ public sealed unsafe class ChocoboStablesService
     public const uint FeedItemId = 8165; // Krakka Root; training, not colour feeding or onions.
     public const uint BroomItemId = 8168;
     private const int PersonalBirdRow = -1;
-    private enum Step { Idle, Travel, Approach, Menu, CleanPrompt, CleanResult, Scan, SelectBird, Inventory, Reward, TrainingResult, OnionQuest }
+    private enum Step { Idle, Travel, Approach, Menu, CleanPrompt, CleanResult, Scan, SelectBird, Inventory, Reward, TrainingResult, OnionQuest, OnionPurchase }
     private static readonly InventoryType[] Bags = [InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4];
     private static readonly string[] InventoryAddons = ["Inventory", "InventoryLarge", "InventoryExpansion", "InventoryGrid", "InventoryGrid3E"];
     private readonly Plugin plugin;
@@ -44,6 +45,10 @@ public sealed unsafe class ChocoboStablesService
     private object? onionQuestProvider;
     private bool onionQuestDispatched, onionQuestAcknowledged, onionQuestStopRequested, onionQuestStopWarningLogged, onionQuestPriorityInserted;
     private DateTime onionQuestAcknowledgementDeadline;
+    private string onionOrderId = string.Empty, onionRequestId = string.Empty;
+    private bool onionOrderCancelRequested;
+    private DateTime onionOrderStartedUtc;
+    private long onionGilBefore;
     public bool IsActive => step != Step.Idle || cleanupPending;
     public bool IsCleanupPending => cleanupPending;
     public bool IsComplete { get; private set; }
@@ -70,7 +75,7 @@ public sealed unsafe class ChocoboStablesService
             return manager->GetInventoryItemCount(ChocoboOnionQuests.ItemId);
         }
     }
-    public bool IsAcquiringOnion => step == Step.OnionQuest;
+    public bool IsAcquiringOnion => step is Step.OnionQuest or Step.OnionPurchase;
     public IReadOnlyList<StableBird> GetRoster(StableDestination choice) => scannedCharacter == Plugin.PlayerState.ContentId && scannedDestination == choice ? birds : [];
 
     public ChocoboStablesService(Plugin plugin) => this.plugin = plugin;
@@ -186,12 +191,16 @@ public sealed unsafe class ChocoboStablesService
         if (!Plugin.ClientState.IsLoggedIn || Plugin.PlayerState.ContentId != character)
         { Fail("Stable visit interrupted by logout or character change."); return; }
         if (!NativeStateReady) return;
-        if (step == Step.OnionQuest)
+        if (step is Step.OnionQuest or Step.OnionPurchase)
         {
             if (DateTime.UtcNow < nextAction) return;
             nextAction = DateTime.UtcNow.AddMilliseconds(650);
-            try { UpdateOnionQuest(); }
-            catch (Exception ex) { Plugin.Log.Error(ex, "[Stables] Onion quest handoff failed"); Fail("Onion quest handoff failed; see the plugin log."); }
+            try
+            {
+                if (step == Step.OnionPurchase) UpdateOnionPurchase();
+                else UpdateOnionQuest();
+            }
+            catch (Exception ex) { Plugin.Log.Error(ex, "[Stables] Onion acquisition failed"); Fail("Onion acquisition failed; see the plugin log."); }
             return;
         }
         if (Plugin.Condition[ConditionFlag.InCombat] || Plugin.Condition[ConditionFlag.BoundByDuty])
@@ -491,6 +500,12 @@ public sealed unsafe class ChocoboStablesService
         {
             if (settings.Target == StableTarget.OwnChocobo && selected.Rank is >= 10 and < 20 && OnionStock < 0)
             { Fail("Onion inventory data is unavailable; no quest dispatched."); return; }
+            if (ChocoboOnionQuests.ShouldAcquire(selected, settings.Target, OnionStock) && settings.BuyOnionFromMarketboard)
+            {
+                Cleanup();
+                Transition(Step.OnionPurchase, "Closing stable menus before purchasing one Thavnairian Onion");
+                return;
+            }
             if (ChocoboOnionQuests.ShouldAcquire(selected, settings.Target, OnionStock)
                 && !ChocoboOnionQuests.RewardsComplete(QuestManager.IsQuestComplete))
             {
@@ -661,6 +676,84 @@ public sealed unsafe class ChocoboStablesService
     {
         var talk = Own("Talk");
         if (talk != null) Callback.Fire(talk, true, 0);
+    }
+
+    private void UpdateOnionPurchase()
+    {
+        if (Plugin.Condition[ConditionFlag.InCombat] || Plugin.Condition[ConditionFlag.BoundByDuty] || Plugin.Condition[ConditionFlag.BoundByDuty56])
+        { Fail("Onion purchase interrupted by combat or a duty."); return; }
+        if (onionOrderId.Length == 0)
+        {
+            if (OnionStock < 0) { Fail("Onion inventory data is unavailable; no order dispatched."); return; }
+            if (OnionStock > 0) { Complete("Thavnairian Onion available; use one manually to raise the personal chocobo's rank cap"); return; }
+            if (Plugin.Condition[ConditionFlag.OnFreeTrial]) { Fail("Marketboard purchasing is unavailable on a Free Trial."); return; }
+            if (settings.OnionMaxUnitPrice <= 0 || settings.OnionGilBudget <= 0)
+            { Fail("Set positive onion unit-price and total-gil limits in Marketboard settings."); return; }
+            if (!GameHelpers.IsPlayerAvailable()) return;
+            if (Plugin.PluginInterface.GetIpcSubscriber<int>("Emptor.ApiVersion").InvokeFunc() != 5)
+            { Fail("Onion purchasing requires Emptor API 5."); return; }
+            if (Plugin.PluginInterface.GetIpcSubscriber<bool>("Emptor.IsBusy").InvokeFunc())
+            { Fail("Emptor already owns another task; no onion order dispatched."); return; }
+            var inventory = InventoryManager.Instance();
+            if (inventory == null) { Fail("Gil balance is unavailable; no order dispatched."); return; }
+            onionGilBefore = inventory->GetGil();
+            onionRequestId = $"VMX-stables-{Guid.NewGuid():N}";
+            var request = FishCollectionPolicy.MarketRequestJson(onionRequestId,
+                Plugin.ObjectTable.LocalPlayer!.CurrentWorld.Value.Name.ToString(),
+                new CollectionSupply(ChocoboOnionQuests.ItemId, "Thavnairian Onion", false, 1, true, settings.OnionMaxUnitPrice),
+                1, settings.OnionGilBudget, onionGilBefore);
+            using var response = JsonDocument.Parse(Plugin.PluginInterface.GetIpcSubscriber<string, string>("Emptor.SubmitOrder").InvokeFunc(request));
+            var root = response.RootElement;
+            if (!root.TryGetProperty("orderId", out var order) || string.IsNullOrWhiteSpace(order.GetString()) ||
+                !root.TryGetProperty("clientRequestId", out var correlation) || correlation.GetString() != onionRequestId)
+            { Fail("Emptor did not accept the owned onion order."); return; }
+            onionOrderId = order.GetString()!;
+            onionOrderCancelRequested = false;
+            onionOrderStartedUtc = DateTime.UtcNow;
+            StatusText = "Purchasing one Thavnairian Onion on the current world";
+            return;
+        }
+
+        using var result = JsonDocument.Parse(Plugin.PluginInterface.GetIpcSubscriber<string, string>("Emptor.GetOrder").InvokeFunc(onionOrderId));
+        var status = result.RootElement;
+        if (status.GetProperty("orderId").GetString() != onionOrderId || status.GetProperty("clientRequestId").GetString() != onionRequestId)
+            throw new InvalidOperationException("Onion order ownership could not be verified.");
+        if (!status.TryGetProperty("finishedUtc", out var finished) || finished.ValueKind == JsonValueKind.Null)
+        {
+            if (DateTime.UtcNow - onionOrderStartedUtc >= TimeSpan.FromMinutes(5))
+                Fail("Onion purchase timed out; awaiting owned cancellation.");
+            return;
+        }
+        var manager = InventoryManager.Instance();
+        if (manager == null || OnionStock < 0) return;
+        var reportedSpent = status.GetProperty("totalGilSpent").GetInt64();
+        var spent = Math.Max(reportedSpent, onionGilBefore - manager->GetGil());
+        onionOrderId = onionRequestId = string.Empty;
+        if (reportedSpent < 0 || spent > settings.OnionGilBudget)
+        { Fail("Onion order exceeded its total-gil limit."); return; }
+        if (OnionStock != 1) { Fail("Onion order finished without an exact one-item inventory receipt."); return; }
+        Complete($"Thavnairian Onion purchase verified ({spent} gil); use one manually to raise the personal chocobo's rank cap");
+    }
+
+    private bool StopOwnedOnionPurchase()
+    {
+        if (onionOrderId.Length == 0) return true;
+        try
+        {
+            using var result = JsonDocument.Parse(Plugin.PluginInterface.GetIpcSubscriber<string, string>("Emptor.GetOrder").InvokeFunc(onionOrderId));
+            var status = result.RootElement;
+            if (status.GetProperty("orderId").GetString() != onionOrderId || status.GetProperty("clientRequestId").GetString() != onionRequestId)
+                return false;
+            if (status.TryGetProperty("finishedUtc", out var finished) && finished.ValueKind != JsonValueKind.Null)
+            {
+                onionOrderId = onionRequestId = string.Empty;
+                return true;
+            }
+            if (!onionOrderCancelRequested)
+                onionOrderCancelRequested = Plugin.PluginInterface.GetIpcSubscriber<string, bool>("Emptor.CancelOrder").InvokeFunc(onionOrderId);
+        }
+        catch { /* Retain ownership until the exact order can be observed terminal. */ }
+        return false;
     }
 
     private void UpdateOnionQuest()
@@ -842,9 +935,10 @@ public sealed unsafe class ChocoboStablesService
     private void Cleanup()
     {
         var questStopped = StopOwnedOnionQuest();
+        var purchaseStopped = StopOwnedOnionPurchase();
         StopMovement();
         step = Step.Idle;
-        cleanupPending = !questStopped || ownedUi.Count > 0;
+        cleanupPending = !questStopped || !purchaseStopped || ownedUi.Count > 0;
         if (cleanupPending)
         {
             cleanupQuietSince = DateTime.MinValue;
@@ -861,7 +955,7 @@ public sealed unsafe class ChocoboStablesService
         var now = DateTime.UtcNow;
         if (now < nextAction) return;
         nextAction = now.AddMilliseconds(650);
-        if (!StopOwnedOnionQuest()) return;
+        if (!StopOwnedOnionQuest() || !StopOwnedOnionPurchase()) return;
         if (Plugin.ClientState.IsLoggedIn && Plugin.PlayerState.ContentId == character)
         {
             if (!NativeStateReady) return;

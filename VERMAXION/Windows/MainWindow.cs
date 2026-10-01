@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Interface.Windowing;
+using Dalamud.Interface.Utility;
 using Dalamud.Bindings.ImGui;
 using ECommons.Reflection;
 using VERMAXION.Models;
@@ -57,6 +58,7 @@ public class MainWindow : Window, IDisposable
     ];
 
     private readonly Plugin plugin;
+    private string taskSearch = string.Empty;
     private ulong customDeliveryAutoShowContentId;
     private readonly RetainerEquippingArProbeCache retainerEquippingReadinessCache =
         new(TimeSpan.FromSeconds(5));
@@ -75,6 +77,9 @@ public class MainWindow : Window, IDisposable
     }
 
     public void Dispose() { }
+
+    public override void PreDraw() => UIConstants.PushStyle(plugin.Configuration.CompactUi);
+    public override void PostDraw() => UIConstants.PopStyle();
 
     internal void UpdateCustomDeliveryVisibility()
     {
@@ -104,10 +109,10 @@ public class MainWindow : Window, IDisposable
 
         // Version header
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0.0";
-        ImGui.Text($"Vermaxion v{version}");
-        
+        ImGui.TextColored(new Vector4(0.4f, 0.85f, 0.79f, 1f), $"Vermaxion v{version}");
+
         // Ko-fi donation button in upper right
-        ImGui.SameLine(ImGui.GetWindowWidth() - 120);
+        UIConstants.SameLineIfFits("\u2661 Ko-fi \u2661");
         if (ImGui.SmallButton("\u2661 Ko-fi \u2661"))
         {
             System.Diagnostics.Process.Start(new ProcessStartInfo
@@ -120,30 +125,13 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.SetTooltip("Support development on Ko-fi");
         }
-        
         ImGui.Separator();
-
-        if (ImGui.Button("Big and fabled fish collection")) plugin.FishCollectionWindow.IsOpen = true;
-
-        var oceanFishingWindowWatch = plugin.Configuration.OceanFishingWindowWatchEnabled;
-        if (ImGui.Checkbox("Actively check for Ocean Fishing windows without AR pre/post process", ref oceanFishingWindowWatch))
-        {
-            plugin.Configuration.OceanFishingWindowWatchEnabled = oceanFishingWindowWatch;
-            plugin.Configuration.Save();
-        }
-        ImGui.SameLine();
-        ImGui.TextDisabled("(?)");
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("This will relog per your configured fishing settings and process Vermaxion Ocean Fishing as normal.");
 
         if (plugin.Configuration.KrangleEnabled && !string.IsNullOrEmpty(charKey))
             displayName = KrangleService.KrangleName(charKey);
 
-        ImGui.Text($"Character: {displayName}");
         var account = plugin.ConfigManager.GetCurrentAccount();
-        ImGui.SameLine();
-        ImGui.TextDisabled($"Account: {(string.IsNullOrWhiteSpace(account?.AccountAlias) ? "Not selected" : account.AccountAlias)}");
-        ImGui.SameLine();
+        ImGui.TextWrapped($"{(string.IsNullOrWhiteSpace(account?.AccountAlias) ? "No account selected" : account.AccountAlias)} / {displayName}");
         var enabled = plugin.Configuration.Enabled;
         if (ImGui.Checkbox("Enabled", ref enabled))
         {
@@ -152,17 +140,6 @@ public class MainWindow : Window, IDisposable
             plugin.Configuration.Enabled = enabled;
             plugin.Configuration.Save();
         }
-
-        ImGui.SameLine();
-        var krangleEnabled = plugin.Configuration.KrangleEnabled;
-        if (ImGui.Checkbox("Krangle", ref krangleEnabled))
-        {
-            plugin.Configuration.KrangleEnabled = krangleEnabled;
-            if (!krangleEnabled) KrangleService.ClearCache();
-            plugin.Configuration.Save();
-        }
-
-        ImGui.Separator();
 
         // Engine Status
         var stateColor = engine.State switch
@@ -177,7 +154,11 @@ public class MainWindow : Window, IDisposable
         var readinessText = $"Engine readiness: {(engine.RegistryReady ? "Ready" : "Not ready")} · {engine.StatusText} (State: {engine.State})";
         if (pendingTasks > 0)
             readinessText += $" · {pendingTasks} pending";
+        if (ImGui.BeginChild("RuntimeStatus", new Vector2(0, ImGui.GetTextLineHeightWithSpacing() * 2.5f), false))
+        {
+        ImGui.PushTextWrapPos(0f);
         ImGui.TextColored(stateColor, readinessText);
+        ImGui.PopTextWrapPos();
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(readinessText);
         if (!engine.RegistryReady)
@@ -191,14 +172,21 @@ public class MainWindow : Window, IDisposable
         }
         if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
         {
+            ImGui.PushTextWrapPos(0f);
             ImGui.TextColored(new Vector4(1f, 0.65f, 0f, 1f), $"Handoff blocker: {engine.ActiveHandoffBlocker}");
+            ImGui.PopTextWrapPos();
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(engine.ActiveHandoffBlocker);
         }
+        }
+        ImGui.EndChild();
 
         // Control buttons row
         // FULL STOP button - red only when plugin is in operation
         var highlightFullStop = engine.OwnsLiveWork ||
+                                plugin.VerminionService.IsActive ||
+                                plugin.VerminionService.HasQuestAcquisition ||
+                                plugin.FishCollection.IsActive ||
                                 plugin.LootGoblinMapGatherManualRunCoordinator.IsActive ||
                                 plugin.FishingService.IsActive ||
                                 plugin.CustomDeliveriesService.IsActive ||
@@ -227,28 +215,42 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.PopStyleColor(3);
         }
-        ImGui.SameLine();
-        
+        UIConstants.SameLineIfFits("Run All");
+
         ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
         if (ImGui.Button("Run All"))
             plugin.RunDashboardAction(() => engine.ManualStart());
         ImGui.EndDisabled();
         if (engine.IsRunning)
         {
-            ImGui.SameLine();
+            UIConstants.SameLineIfFits("Cancel");
             if (ImGui.Button("Cancel"))
                 engine.Cancel();
         }
-        ImGui.SameLine();
-        if (ImGui.Button("Config"))
+        UIConstants.SameLineIfFits("Settings");
+        if (ImGui.Button("Settings"))
             plugin.ToggleConfigUi();
-        ImGui.SameLine();
+        UIConstants.SameLineIfFits("Verminion");
         if (ImGui.Button("Verminion"))
             plugin.VerminionWindow.IsOpen = true;
+        UIConstants.SameLineIfFits("Fish collection");
+        if (ImGui.Button("Fish collection"))
+            plugin.FishCollectionWindow.IsOpen = true;
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Open big and fabled fish collection.");
 
-        void DrawTaskSurface(bool favoritesOnly)
+        void DrawTaskSurface(bool favoritesOnly, bool attentionOnly = false)
         {
             var taskRows = GetDashboardTaskRows();
+            var search = taskSearch.Trim();
+            var visibleRows = taskRows.Where(row =>
+                    (!favoritesOnly || row.Feature != null && IsFavorite(row.Feature.Id)) &&
+                    (!attentionOnly || row.Feature != null && row.Section is AutomationDashboardSection.DueNow or AutomationDashboardSection.Blocked) &&
+                    (search.Length == 0 ||
+                     row.Task.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                     row.Feature?.Label.Contains(search, StringComparison.OrdinalIgnoreCase) == true ||
+                     row.Dependencies.Any(name => name.Contains(search, StringComparison.OrdinalIgnoreCase))))
+                .ToList();
             var loadedPluginInternalNames = GetLoadedTaskDependencyNames();
 
         // Task table with run buttons
@@ -259,25 +261,31 @@ public class MainWindow : Window, IDisposable
         taskTableFlags |= autoWidthTaskColumns
             ? ImGuiTableFlags.NoSavedSettings
             : ImGuiTableFlags.Resizable;
-        var taskTableId = autoWidthTaskColumns ? "TasksTableAutoWidth" : "TasksTable";
-        if (ImGui.BeginTable(taskTableId, 6, taskTableFlags))
+        var stacked = ImGui.GetContentRegionAvail().X < 900f * ImGuiHelpers.GlobalScale;
+        var taskTableId = stacked ? "TaskCards" : autoWidthTaskColumns ? "TasksTableAutoWidth" : "TasksTable";
+        if (ImGui.BeginTable(taskTableId, stacked ? 2 : 6, stacked
+                ? ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp
+                : taskTableFlags))
         {
             ImGui.TableSetupColumn("★", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 28f);
             ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch, 1.8f);
+            if (!stacked)
+            {
             ImGui.TableSetupColumn("When", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 94f);
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 98f);
             ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 142f);
             ImGui.TableSetupColumn("Dependencies", ImGuiTableColumnFlags.WidthFixed, autoWidthTaskColumns ? 0f : 112f);
             DrawTaskTableHeaders();
+            }
 
-            DrawDashboardRows(taskRows, favoritesOnly, loadedPluginInternalNames);
+            DrawDashboardRows(visibleRows, favoritesOnly, loadedPluginInternalNames, stacked);
 
             ImGui.EndTable();
         }
 
         ImGui.Spacing();
 
-        if (!favoritesOnly && ImGui.CollapsingHeader("Advanced test controls"))
+        if (!favoritesOnly && !attentionOnly && ImGui.CollapsingHeader("Advanced test controls"))
         {
             // Test Functions
             ImGui.BeginDisabled(plugin.DadHandoffBlocksNewWork);
@@ -290,7 +298,7 @@ public class MainWindow : Window, IDisposable
             ImGui.BeginDisabled(fishingTestDisabled);
             if (ImGui.SmallButton("Ocean Fishing account test"))
                 plugin.RunDashboardAction(plugin.RunFishingStartupTest);
-            ImGui.SameLine();
+            UIConstants.SameLineIfFits("Current Fisher gearset test");
             if (ImGui.SmallButton("Current Fisher gearset test"))
                 plugin.RunDashboardAction(plugin.RunFishingGearsetTest);
             ImGui.EndDisabled();
@@ -298,7 +306,7 @@ public class MainWindow : Window, IDisposable
             var canGoToMainMenu = plugin.CanStartMainMenuTest(
                 waitForOceanFishing: false,
                 out var goToMainMenuBlockedReason);
-            ImGui.SameLine();
+            UIConstants.SameLineIfFits("Go to main menu");
             ImGui.BeginDisabled(!canGoToMainMenu);
             if (ImGui.SmallButton("Go to main menu"))
                 plugin.GoToMainMenu();
@@ -309,14 +317,14 @@ public class MainWindow : Window, IDisposable
             var canWaitForOceanFishing = plugin.CanStartMainMenuTest(
                 waitForOceanFishing: true,
                 out var waitForOceanFishingBlockedReason);
-            ImGui.SameLine();
+            UIConstants.SameLineIfFits("Go to main menu and wait for Ocean Fishing");
             ImGui.BeginDisabled(!canWaitForOceanFishing);
             if (ImGui.SmallButton("Go to main menu and wait for Ocean Fishing"))
                 plugin.GoToMainMenuAndWaitForOceanFishing();
             ImGui.EndDisabled();
             if (!canWaitForOceanFishing && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 ImGui.SetTooltip(waitForOceanFishingBlockedReason);
-            
+
             if (ImGui.SmallButton("Check FC Buff Inventory"))
             {
                 // Force config save before test
@@ -324,8 +332,8 @@ public class MainWindow : Window, IDisposable
                 Plugin.Log.Information("[UI] Forced config save before FC Buff Inventory test");
                 plugin.RunDashboardAction(plugin.FCBuffInventoryService.Start);
             }
-            
-            ImGui.SameLine();
+
+            UIConstants.SameLineIfFits("FC GC Test");
             if (ImGui.SmallButton("FC GC Test"))
             {
                 // Force config save before test
@@ -333,8 +341,8 @@ public class MainWindow : Window, IDisposable
                 Plugin.Log.Information("[UI] Forced config save before FC GC test");
                 plugin.FCBuffService.TestFreeCompanyGC();
             }
-            
-            ImGui.SameLine();
+
+            UIConstants.SameLineIfFits("Test FC Points");
             if (ImGui.SmallButton("Test FC Points"))
             {
                 Plugin.Log.Information("[FC POINTS] Testing FC points reading from UI...");
@@ -348,8 +356,8 @@ public class MainWindow : Window, IDisposable
                     Plugin.Log.Information("[FC POINTS] FAILED: Could not read FC points from UI node #17");
                 }
             }
-            
-            ImGui.SameLine();
+
+            UIConstants.SameLineIfFits("Force Config Load");
             if (ImGui.SmallButton("Force Config Load"))
             {
                 plugin.ConfigManager.LoadAllAccounts();
@@ -358,7 +366,7 @@ public class MainWindow : Window, IDisposable
                 Plugin.Log.Information($"[UI] Forced config load: FCBuffMinPoints={activeConfig.FCBuffMinPoints}, FCBuffPurchaseAttempts={activeConfig.FCBuffPurchaseAttempts}");
             }
 
-            ImGui.SameLine();
+            UIConstants.SameLineIfFits("Test Chocobo Rank");
             if (ImGui.SmallButton("Test Chocobo Rank"))
             {
                 Plugin.Log.Information("[UI] Testing racing chocobo rank from GoldSaucerInfo node 21");
@@ -367,25 +375,25 @@ public class MainWindow : Window, IDisposable
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Opens /goldsaucer and reads GoldSaucerInfo node 21, the fallback used when RaceChocoboManager is not loaded.");
             ImGui.TextDisabled($"Chocobo rank test: {plugin.ChocoboRaceService.GoldSaucerRankTestStatus}");
-            
+
             // BUTTON PRESSES
             ImGui.Spacing();
             ImGui.Text("Button Presses");
             ImGui.Separator();
-            
+
             if (ImGui.SmallButton("[ESC]"))
             {
                 Plugin.Log.Information("[UI] Testing ESC key press");
                 GameHelpers.CloseCurrentAddon();
             }
-            
+
             ImGui.SameLine();
             if (ImGui.SmallButton("[NUMPAD+]"))
             {
                 Plugin.Log.Information("[UI] Testing NUMPAD+ key press");
                 GameHelpers.SendNumpadPlus();
             }
-            
+
             ImGui.SameLine();
             if (ImGui.SmallButton("[END]"))
             {
@@ -395,36 +403,65 @@ public class MainWindow : Window, IDisposable
             ImGui.EndDisabled();
         }
 
-        if (favoritesOnly && taskRows.All(row => row.Feature == null || !IsFavorite(row.Feature.Id)))
-            ImGui.TextWrapped("No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here.");
+        if (visibleRows.Count == 0)
+            ImGui.TextWrapped(search.Length > 0
+                ? "No tasks match this search in the selected view. Clear the search or open All Tasks."
+                : favoritesOnly
+                    ? "No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here."
+                    : attentionOnly
+                        ? "No tasks need attention. Open All Tasks to see scheduled, disabled and completed tasks."
+                        : "No tasks are available.");
 
-        if ((!favoritesOnly || IsFavorite(AutomationCatalog.CustomDeliveries)) &&
+        if (!attentionOnly && visibleRows.Any(row => row.Id == AutomationCatalog.CustomDeliveries) &&
             ImGui.CollapsingHeader("Custom Deliveries: NPC ranks, bonuses and progress"))
             DrawCustomDeliveryNpcOverview(plugin, config.CustomDeliveriesSettings);
 
+        DrawAdvancedDiagnostics();
+
         }
 
-        if (ImGui.BeginChild("MainBody", new Vector2(0, 0), false))
-        {
-            if (ImGui.BeginTabBar("MainTaskTabs"))
-            {
-                if (ImGui.BeginTabItem("All Tasks"))
-                {
-                    DrawTaskSurface(false);
-                    ImGui.EndTabItem();
-                }
-                if (ImGui.BeginTabItem("Favorites"))
-                {
-                    DrawTaskSurface(true);
-                    ImGui.EndTabItem();
-                }
-                ImGui.EndTabBar();
-            }
+        ImGui.Separator();
+        ImGui.SetNextItemWidth(-1f);
+        ImGui.InputTextWithHint("##TaskSearch", "Find a task or required plugin...", ref taskSearch, 100);
+        if (taskSearch.Length > 0 && ImGui.SmallButton("Clear search"))
+            taskSearch = string.Empty;
 
+        if (ImGui.BeginTabBar("MainTaskTabs"))
+        {
+            DrawTaskTab("Overview", false, true);
+            DrawTaskTab("All Tasks", false, false);
+            DrawTaskTab("Favorites", true, false);
+            ImGui.EndTabBar();
+        }
+
+        void DrawTaskTab(string label, bool favoritesOnly, bool attentionOnly)
+        {
+            if (ImGui.BeginTabItem(label))
+            {
+                if (ImGui.BeginChild("TaskBody##" + label, new Vector2(0, 0), false))
+                {
+                    if (attentionOnly)
+                        ImGui.TextWrapped("Due now and blocked tasks. Browse All Tasks for scheduled tasks and manual utilities.");
+                    DrawTaskSurface(favoritesOnly, attentionOnly);
+                }
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+        }
+
+        void DrawAdvancedDiagnostics()
+        {
             ImGui.Spacing();
 
             if (ImGui.CollapsingHeader("Advanced diagnostics"))
             {
+                var krangleEnabled = plugin.Configuration.KrangleEnabled;
+                if (ImGui.Checkbox("Krangle names", ref krangleEnabled))
+                {
+                    plugin.Configuration.KrangleEnabled = krangleEnabled;
+                    if (!krangleEnabled) KrangleService.ClearCache();
+                    plugin.Configuration.Save();
+                }
                 var lastRunTime = engine.LastRunCompletedAtUtc?.ToLocalTime().ToString("g") ?? "never";
                 ImGui.TextWrapped($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
                 ImGui.TextWrapped($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
@@ -465,7 +502,6 @@ public class MainWindow : Window, IDisposable
                 ImGui.TextWrapped($"dad IPC: {(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")} | nag your dad: {engine.NagYourDadStatusText}");
             }
         }
-        ImGui.EndChild();
     }
 
     // Shared manual actions and live availability; safe to build without drawing either window.
@@ -951,13 +987,14 @@ public class MainWindow : Window, IDisposable
     private void DrawDashboardRows(
         IReadOnlyList<TaskRowDescriptor> rows,
         bool favoritesOnly,
-        IReadOnlySet<string> loadedPluginInternalNames)
+        IReadOnlySet<string> loadedPluginInternalNames,
+        bool stacked)
     {
         var catalogRows = rows.Where(row => row.Feature != null).ToList();
         if (favoritesOnly)
         {
             foreach (var row in catalogRows.Where(row => IsFavorite(row.Feature!.Id)))
-                DrawDashboardRow(row, showDiagnosticActions: false, loadedPluginInternalNames: loadedPluginInternalNames);
+                DrawDashboardRow(row, showDiagnosticActions: false, loadedPluginInternalNames: loadedPluginInternalNames, stacked: stacked);
             return;
         }
 
@@ -973,7 +1010,7 @@ public class MainWindow : Window, IDisposable
                 GetSectionColor(section),
                 $"{AutomationDashboardPolicy.GetStateLabel(section)} ({sectionRows.Count})");
             foreach (var row in sectionRows)
-                DrawDashboardRow(row, showDiagnosticActions: true, loadedPluginInternalNames: loadedPluginInternalNames);
+                DrawDashboardRow(row, showDiagnosticActions: true, loadedPluginInternalNames: loadedPluginInternalNames, stacked: stacked);
         }
 
         var manualRows = rows.Where(row => row.Feature == null).ToList();
@@ -983,14 +1020,15 @@ public class MainWindow : Window, IDisposable
             ImGui.TableSetColumnIndex(1);
             ImGui.TextColored(new Vector4(0.45f, 0.75f, 1f, 1f), $"Manual utilities ({manualRows.Count})");
             foreach (var row in manualRows)
-                DrawDashboardRow(row, showDiagnosticActions: true, loadedPluginInternalNames: loadedPluginInternalNames);
+                DrawDashboardRow(row, showDiagnosticActions: true, loadedPluginInternalNames: loadedPluginInternalNames, stacked: stacked);
         }
     }
 
     private void DrawDashboardRow(
         TaskRowDescriptor row,
         bool showDiagnosticActions,
-        IReadOnlySet<string> loadedPluginInternalNames)
+        IReadOnlySet<string> loadedPluginInternalNames,
+        bool stacked)
     {
         var isFavorite = row.Feature != null && IsFavorite(row.Feature.Id);
         var dependencySummary = BuildTaskDependencySummary(row, loadedPluginInternalNames);
@@ -1010,20 +1048,24 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.TableSetColumnIndex(1);
+        ImGui.PushTextWrapPos(0f);
         if (dependencySummary.State == TaskDependencyState.Ready)
             ImGui.TextUnformatted(row.Task);
         else
             ImGui.TextColored(new Vector4(1f, 0.75f, 0.15f, 1f), row.Task);
+        ImGui.PopTextWrapPos();
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip($"{BuildTaskTooltip(row)}\nDependencies: {dependencySummary.Tooltip}");
 
-        ImGui.TableSetColumnIndex(2);
+        if (!stacked) ImGui.TableSetColumnIndex(2);
+        ImGui.PushTextWrapPos(0f);
         ImGui.TextColored(GetSectionColor(row.Section), FormatWhen(row));
+        ImGui.PopTextWrapPos();
 
-        ImGui.TableSetColumnIndex(3);
+        if (!stacked) ImGui.TableSetColumnIndex(3);
         ImGui.TextUnformatted(FormatType(row));
 
-        ImGui.TableSetColumnIndex(4);
+        if (!stacked) ImGui.TableSetColumnIndex(4);
         ImGui.BeginDisabled(row.ButtonDisabled);
         if (ImGui.SmallButton(row.ButtonLabel))
             plugin.RunDashboardAction(row.OnClick);
@@ -1033,16 +1075,11 @@ public class MainWindow : Window, IDisposable
 
         if (row.SettingsSection.HasValue)
         {
-            ImGui.SameLine();
-            var characterKnown = !string.IsNullOrWhiteSpace(plugin.ConfigManager.CurrentCharacterKey);
-            ImGui.BeginDisabled(!characterKnown);
+            UIConstants.SameLineIfFits("Settings");
             if (ImGui.SmallButton($"Settings##Task_{row.Feature?.Id}"))
-                plugin.ConfigWindow.OpenAutomationSettings(row.SettingsSection.Value);
-            ImGui.EndDisabled();
+                plugin.ConfigWindow.OpenAutomationSettings(row.SettingsSection.Value, row.Feature?.Id);
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip(characterKnown
-                    ? "Open settings for the current or last loaded character in this session."
-                    : "Load a character first to open its task settings.");
+                ImGui.SetTooltip("Open this task's settings in the selected editing scope.");
         }
 
         if (row.Id == AutomationCatalog.RegisterRegistrables)
@@ -1052,7 +1089,7 @@ public class MainWindow : Window, IDisposable
 
         if ((showDiagnosticActions || row.Id == AutomationCatalog.VerminionQueue) && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
         {
-            if (row.Id != AutomationCatalog.VerminionQueue) ImGui.SameLine();
+            if (row.Id != AutomationCatalog.VerminionQueue) UIConstants.SameLineIfFits(row.SecondaryButtonLabel);
             ImGui.BeginDisabled(row.SecondaryButtonDisabled);
             if (ImGui.SmallButton(row.SecondaryButtonLabel))
                 plugin.RunDashboardAction(row.SecondaryOnClick);
@@ -1062,7 +1099,7 @@ public class MainWindow : Window, IDisposable
         }
         if (showDiagnosticActions && !string.IsNullOrWhiteSpace(row.TertiaryButtonLabel) && row.TertiaryOnClick != null)
         {
-            ImGui.SameLine();
+            UIConstants.SameLineIfFits(row.TertiaryButtonLabel);
             ImGui.BeginDisabled(row.TertiaryButtonDisabled);
             if (ImGui.SmallButton(row.TertiaryButtonLabel))
                 plugin.RunDashboardAction(row.TertiaryOnClick);
@@ -1071,7 +1108,8 @@ public class MainWindow : Window, IDisposable
                 ImGui.SetTooltip(row.TertiaryButtonTooltip);
         }
 
-        ImGui.TableSetColumnIndex(5);
+        if (!stacked) ImGui.TableSetColumnIndex(5);
+        if (stacked) ImGui.TextWrapped(row.Status);
         DrawTaskDependencies(dependencySummary);
     }
 

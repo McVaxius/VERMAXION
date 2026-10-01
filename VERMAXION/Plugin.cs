@@ -144,6 +144,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private DateTime fishingRelogLastDiagnosticAt = DateTime.MinValue;
     private bool retainerCollectOnlyObservedArProcessing;
     private bool dashboardRunYesAlreadyPauseOwned;
+    private DateTime nextAutomaticDueCheckUtc;
+    private readonly Dictionary<(ulong Character, string Task), DateTime> automaticTaskNextAttemptUtc = new();
     private int loggedDadBeforeArYield;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
@@ -352,7 +354,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         MainWindow = new MainWindow(this);
         DebugWindow = new DebugWindow(this);
         VerminionWindow = new VerminionWindow(this);
-        RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager);
+        RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager, Configuration);
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(FishCollectionWindow);
@@ -1295,7 +1297,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 break;
 
             case "chocobo settings":
-                ConfigWindow.OpenAutomationSettings(ConfigurationSection.Daily);
+                ConfigWindow.OpenAutomationSettings(ConfigurationSection.Daily, AutomationCatalog.ChocoboRacing);
                 break;
 
             case "chocobo pause":
@@ -2430,6 +2432,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         UpdateBeforeArGateAfterEngine();
         ProcessBeforeArReleasePending();
         ProcessRetainerCollectOnlyRecovery();
+        ProcessAutomaticDueTasks();
 
         // Update DTR bar
         UpdateDtrBar();
@@ -2763,6 +2766,48 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
         reason = string.Empty;
         return true;
+    }
+
+    private void ProcessAutomaticDueTasks()
+    {
+        var now = DateTime.UtcNow;
+        if (now < nextAutomaticDueCheckUtc) return;
+        nextAutomaticDueCheckUtc = now.AddSeconds(5);
+        if (!Configuration.Enabled || !IsCharacterRegistered || !PlayerState.IsLoaded ||
+            OfflineLogoutBlocksOrdinaryAutomation || !GameHelpers.IsPlayerAvailable() ||
+            DadHandoffBlocksNewWork || VerminionService.HasQuestAcquisition ||
+            Engine.OwnsLiveWork || IsFishingRunActive || FishingStartupCoordinator.HasRecoveryPending ||
+            pendingBeforeArLogin || pendingFishingPostprocessHandoff ||
+            ARPostProcessService.IsRequested || ARPostProcessService.IsProcessing ||
+            releaseOnlyPostprocessFinishPending || DeliveryFishing.IsCleanupPending ||
+            BeforeArGate is BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady
+                or BeforeArGateState.Running or BeforeArGateState.ReleasePending ||
+            GetActiveManualService().Active || ChocoboStablesService.IsActive ||
+            LifestreamIPC.IsBusy() ||
+            Condition[ConditionFlag.BoundByDuty] || Condition[ConditionFlag.BoundByDuty56] ||
+            Condition[ConditionFlag.InDutyQueue] || Condition[ConditionFlag.WaitingForDuty] ||
+            Condition[ConditionFlag.WaitingForDutyFinder]) return;
+        if (!VNavmeshIPC.TryGetPathIsRunning(out var pathRunning) || pathRunning ||
+            !VNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) || pathfinding) return;
+        foreach (var addon in new[] { "Talk", "SelectString", "SelectIconString", "SelectYesno", "Shop", "RetainerList", "HousingChocoboList" })
+            if (GameHelpers.IsAddonVisible(addon)) return;
+        var config = ConfigManager.GetActiveConfig();
+        if (!config.Enabled) return;
+        var busy = AutoRetainerIPC.ReadBusyState();
+        var suppression = AutoRetainerIPC.GetSuppressionSnapshot();
+        if (!busy.Success || busy.Busy || !suppression.RemoteKnown || suppression.RemoteSuppressed) return;
+
+        foreach (var task in Configuration.PostProcessTaskOrder)
+        {
+            if (task is not (PostProcessTaskOrder.MiniCactpot or PostProcessTaskOrder.ChocoboStables)) continue;
+            var key = (PlayerState.ContentId, task);
+            if (automaticTaskNextAttemptUtc.TryGetValue(key, out var nextAttempt) && now < nextAttempt) continue;
+            if (!Engine.StartScheduledTask(task)) continue;
+            // A failed Mini run must not loop immediately; an untrainable stable needs at most an hourly revisit.
+            automaticTaskNextAttemptUtc[key] = task == PostProcessTaskOrder.MiniCactpot
+                ? now.AddMinutes(5) : now.AddHours(1);
+            return;
+        }
     }
 
     private void ProcessChocoboContinuation()

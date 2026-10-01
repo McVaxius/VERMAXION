@@ -8,128 +8,214 @@ using VERMAXION.Models;
 
 namespace VERMAXION.Windows;
 
-internal sealed class FishCollectionWindow(Plugin plugin) : Window("Big and fabled fish collection##VMX", ImGuiWindowFlags.None)
+internal sealed class FishCollectionWindow : Window
 {
+    private readonly Plugin plugin;
     private string search = "", foodSearch = "", characterKey = "";
     private bool missingOnly = true, eligibleOnly;
+    private uint selectedFishId;
+
+    public FishCollectionWindow(Plugin plugin) : base("Big and fabled fish collection##VMX", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+    {
+        this.plugin = plugin;
+        Size = new Vector2(760, 680);
+        SizeCondition = ImGuiCond.FirstUseEver;
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new(560, 480), MaximumSize = new(float.MaxValue, float.MaxValue) };
+    }
+
+    public override void PreDraw() => UIConstants.PushStyle(plugin.Configuration.CompactUi);
+    public override void PostDraw() => UIConstants.PopStyle();
+
     public override void Draw()
     {
         var service = plugin.FishCollection;
         var settings = plugin.Configuration.FishCollection;
         var account = plugin.ConfigManager.GetCurrentAccount();
         if (account == null) { ImGui.TextWrapped("Select and register the current account first."); return; }
-        ImGui.TextWrapped(service.Status);
+        UIConstants.Heading("Fish collection", plugin.Configuration.CompactUi);
+        ImGui.TextWrapped("Account: " + (string.IsNullOrWhiteSpace(account.AccountAlias) ? account.AccountId : account.AccountAlias));
         if (!service.IsActive)
         { if (ImGui.Button("Start collection")) service.Start(); }
         else
         { if (ImGui.Button("Stop collection")) service.Stop(); }
-        ImGui.SameLine(); if (ImGui.Button("Acknowledge alert")) service.Acknowledge();
-        ImGui.TextWrapped("Preparation starts 60 real minutes before the opportunity; arrival goal is 45 minutes before. One character stays committed through preparation and fishing.");
-        if (service.Assignment is { } assignment)
-            ImGui.TextWrapped($"Committed: {assignment.CharacterKey} — {assignment.Opportunity.Fish.Name}; window {assignment.Opportunity.StartUtc.ToLocalTime():g} to {assignment.Opportunity.EndUtc.ToLocalTime():g}");
-        if (service.LastOutcome.Length > 0) ImGui.TextWrapped("Last outcome: " + service.LastOutcome);
-        var changed = false;
-        if (ImGui.CollapsingHeader("Characters and readiness", ImGuiTreeNodeFlags.DefaultOpen))
+        UIConstants.SameLineIfFits("Acknowledge alert");
+        if (ImGui.Button("Acknowledge alert")) service.Acknowledge();
+        if (ImGui.BeginChild("FishCollectionStatus", new Vector2(0, ImGui.GetTextLineHeightWithSpacing() * 3.5f), false))
         {
-            foreach (var pair in account.Characters)
-            {
-                var selected = pair.Value.FishCollectionSelected;
-                if (ImGui.Checkbox(pair.Key + "##select", ref selected))
-                { pair.Value.FishCollectionSelected = selected; plugin.ConfigManager.SaveCurrentAccount(); service.SettingsChanged(); }
-                ImGui.SameLine();
-                if (ImGui.SmallButton("View##" + pair.Key)) characterKey = pair.Key;
-                if (service.InspectionFailures.TryGetValue(pair.Key, out var failure)) ImGui.TextWrapped("Inspection: " + failure);
-            }
-            if (!account.Characters.ContainsKey(characterKey)) characterKey = plugin.ConfigManager.CurrentCharacterKey;
-            if (account.Characters.TryGetValue(characterKey, out var character))
-            {
-                ImGui.Text("Viewing " + characterKey);
-                var observation = character.FisherObservation;
-                ImGui.TextWrapped(observation == null ? "Fisher stats: inspection required" :
-                    $"Level {observation.Level}, Gathering {observation.Gathering}, Perception {observation.Perception}, maximum GP {observation.MaximumGp}, gearset {observation.GearsetId + 1}. Observed {observation.ObservedAtUtc.ToLocalTime():g}; baseline {(observation.BaselineCertain ? "known" : "uncertain")}.");
-                var knowledge = service.Observation.Knowledge.GetValueOrDefault(characterKey);
-                ImGui.Text(knowledge == null ? "Fishing log/unlocks: session inspection required" :
-                    $"Progress: {service.Catalog.Targets.Count(f => !f.Ocean && knowledge.CaughtItems.Contains(f.ItemId))}/335 big, " +
-                    $"{service.Catalog.Targets.Count(f => f.Ocean && knowledge.CaughtItems.Contains(f.ItemId))}/13 fabled");
-                if (characterKey == plugin.ConfigManager.CurrentCharacterKey && Plugin.PlayerState.ClassJob.RowId == 18 && plugin.IsCharacterRegistered &&
-                    ImGui.Button("Inspect equipped Fisher")) service.Observation.Request();
-            }
-            var policy = (int)settings.BuffPolicy;
-            if (ImGui.Combo("Stats policy", ref policy, "Gear alone\0Planned buffs\0")) { settings.BuffPolicy = (FisherBuffPolicy)policy; changed = true; }
+            if (service.Assignment is { } assignment)
+                ImGui.TextWrapped($"Committed: {assignment.CharacterKey} — {assignment.Opportunity.Fish.Name}; window {assignment.Opportunity.StartUtc.ToLocalTime():g} to {assignment.Opportunity.EndUtc.ToLocalTime():g}");
+            else ImGui.TextDisabled("No character committed to an opportunity.");
+            ImGui.TextWrapped(service.Status);
         }
-        if (ImGui.CollapsingHeader("Supplies and prices"))
-        {
-            ImGui.Text($"This preparation: {service.Supplies.GilSpent:N0}/{settings.PreparationGilLimit:N0} gil");
-            foreach (var supply in service.Supplies.Supplies)
-                ImGui.TextWrapped($"{supply.Name}: target {supply.Target}; {(supply.Mandatory ? "mandatory" : "optional")}");
-            foreach (var failure in service.Supplies.PartialFailures) ImGui.TextWrapped(failure);
-            var bait = settings.BaitUnitPriceLimit; var cordial = settings.CordialUnitPriceLimit;
-            var lure = settings.LureUnitPriceLimit; var total = settings.PreparationGilLimit;
-            changed |= ImGui.InputInt("Consumable bait gil/unit", ref bait);
-            changed |= ImGui.InputInt("Cordial gil/unit", ref cordial);
-            changed |= ImGui.InputInt("Reusable lure gil/unit", ref lure);
-            changed |= ImGui.InputInt("Preparation gil limit (including tax)", ref total);
-            settings.BaitUnitPriceLimit = Math.Max(0, bait); settings.CordialUnitPriceLimit = Math.Max(0, cordial);
-            settings.LureUnitPriceLimit = Math.Max(0, lure); settings.PreparationGilLimit = Math.Max(0, total);
-            ImGui.TextWrapped("Meals use separate NQ/HQ limits. Blank qualities have no market price authorization. Seeded HQ limits are the sampled North American 75th percentiles; your changes are preserved.");
-            ImGui.InputText("Find meal", ref foodSearch, 100);
-            if (foodSearch.Length > 1)
-                foreach (var meal in service.Observation.Meals.Where(m => m.Name.Contains(foodSearch, StringComparison.OrdinalIgnoreCase)).Take(24))
-                {
-                    var price = settings.FoodPriceLimits.GetValueOrDefault(meal.PriceKey);
-                    if (ImGui.InputInt(meal.Name + (meal.Hq ? " HQ" : " NQ") + "##" + meal.PriceKey, ref price))
-                    { settings.FoodPriceLimits[meal.PriceKey] = Math.Max(0, price); changed = true; }
-                }
-        }
-        if (ImGui.CollapsingHeader("Audio alerts"))
-        {
-            var audio = settings.AudioEnabled;
-            changed |= ImGui.Checkbox("Native audio enabled", ref audio); settings.AudioEnabled = audio;
-            var effect = (int)settings.SoundEffect; var advance = settings.AlertAdvanceMinutes; var repeat = settings.AlertRepeatMinutes;
-            changed |= ImGui.SliderInt("Built-in effect", ref effect, 1, 16);
-            changed |= ImGui.InputInt("Advance (minutes)", ref advance);
-            changed |= ImGui.InputInt("Repeat (minutes)", ref repeat);
-            settings.SoundEffect = (uint)effect; settings.AlertAdvanceMinutes = Math.Clamp(advance, 0, 60);
-            settings.AlertRepeatMinutes = Math.Clamp(repeat, 1, 60);
-        }
+        ImGui.EndChild();
+        if (!account.Characters.ContainsKey(characterKey)) characterKey = plugin.ConfigManager.CurrentCharacterKey;
         ImGui.Separator();
+        var changed = false;
+        if (ImGui.BeginTabBar("FishCollectionTabs", ImGuiTabBarFlags.FittingPolicyScroll))
+        {
+            if (ImGui.BeginTabItem("Targets"))
+            {
+                if (ImGui.BeginChild("FishTargetsBody", Vector2.Zero, false)) changed |= DrawTargets(account);
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Characters"))
+            {
+                if (ImGui.BeginChild("FishCharactersBody", Vector2.Zero, false))
+                {
+                    UIConstants.Heading("Characters and readiness", plugin.Configuration.CompactUi);
+                    foreach (var pair in account.Characters)
+                    {
+                        var selected = pair.Value.FishCollectionSelected;
+                        if (ImGui.Checkbox(pair.Key + "##select", ref selected))
+                        { pair.Value.FishCollectionSelected = selected; plugin.ConfigManager.SaveCurrentAccount(); service.SettingsChanged(); }
+                        UIConstants.SameLineIfFits("View");
+                        if (ImGui.SmallButton("View##" + pair.Key)) characterKey = pair.Key;
+                        if (service.InspectionFailures.TryGetValue(pair.Key, out var failure)) ImGui.TextWrapped("Inspection: " + failure);
+                    }
+                    if (!account.Characters.ContainsKey(characterKey)) characterKey = plugin.ConfigManager.CurrentCharacterKey;
+                    if (account.Characters.TryGetValue(characterKey, out var character))
+                    {
+                        ImGui.TextWrapped("Viewing " + characterKey);
+                        var observation = character.FisherObservation;
+                        ImGui.TextWrapped(observation == null ? "Fisher stats: inspection required" :
+                            $"Level {observation.Level}, Gathering {observation.Gathering}, Perception {observation.Perception}, maximum GP {observation.MaximumGp}, gearset {observation.GearsetId + 1}. Observed {observation.ObservedAtUtc.ToLocalTime():g}; baseline {(observation.BaselineCertain ? "known" : "uncertain")}.");
+                        var knowledge = service.Observation.Knowledge.GetValueOrDefault(characterKey);
+                        ImGui.TextWrapped(knowledge == null ? "Fishing log/unlocks: session inspection required" :
+                            $"Progress: {service.Catalog.Targets.Count(f => !f.Ocean && knowledge.CaughtItems.Contains(f.ItemId))}/335 big, " +
+                            $"{service.Catalog.Targets.Count(f => f.Ocean && knowledge.CaughtItems.Contains(f.ItemId))}/13 fabled");
+                        if (characterKey == plugin.ConfigManager.CurrentCharacterKey && Plugin.PlayerState.ClassJob.RowId == 18 && plugin.IsCharacterRegistered &&
+                            ImGui.Button("Inspect equipped Fisher")) service.Observation.Request();
+                    }
+                    var policy = (int)settings.BuffPolicy;
+                    if (ImGui.Combo("Stats policy", ref policy, "Gear alone\0Planned buffs\0")) { settings.BuffPolicy = (FisherBuffPolicy)policy; changed = true; }
+                }
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Supplies"))
+            {
+                if (ImGui.BeginChild("FishSuppliesBody", Vector2.Zero, false))
+                {
+                    UIConstants.Heading("Supplies and prices", plugin.Configuration.CompactUi);
+                    ImGui.Text($"This preparation: {service.Supplies.GilSpent:N0}/{settings.PreparationGilLimit:N0} gil");
+                    foreach (var supply in service.Supplies.Supplies)
+                        ImGui.TextWrapped($"{supply.Name}: target {supply.Target}; {(supply.Mandatory ? "mandatory" : "optional")}");
+                    foreach (var failure in service.Supplies.PartialFailures) ImGui.TextWrapped(failure);
+                    var bait = settings.BaitUnitPriceLimit; var cordial = settings.CordialUnitPriceLimit;
+                    var lure = settings.LureUnitPriceLimit; var total = settings.PreparationGilLimit;
+                    ImGui.TextWrapped("Consumable bait gil/unit"); ImGui.SetNextItemWidth(-1);
+                    changed |= ImGui.InputInt("##BaitUnitPrice", ref bait);
+                    ImGui.TextWrapped("Cordial gil/unit"); ImGui.SetNextItemWidth(-1);
+                    changed |= ImGui.InputInt("##CordialUnitPrice", ref cordial);
+                    ImGui.TextWrapped("Reusable lure gil/unit"); ImGui.SetNextItemWidth(-1);
+                    changed |= ImGui.InputInt("##LureUnitPrice", ref lure);
+                    ImGui.TextWrapped("Preparation gil limit (including tax)"); ImGui.SetNextItemWidth(-1);
+                    changed |= ImGui.InputInt("##PreparationGilLimit", ref total);
+                    settings.BaitUnitPriceLimit = Math.Max(0, bait); settings.CordialUnitPriceLimit = Math.Max(0, cordial);
+                    settings.LureUnitPriceLimit = Math.Max(0, lure); settings.PreparationGilLimit = Math.Max(0, total);
+                    ImGui.TextWrapped("Meals use separate NQ/HQ limits. Blank qualities have no market price authorization. Seeded HQ limits are the sampled North American 75th percentiles; your changes are preserved.");
+                    ImGui.InputText("Find meal", ref foodSearch, 100);
+                    if (foodSearch.Length > 1)
+                        foreach (var meal in service.Observation.Meals.Where(m => m.Name.Contains(foodSearch, StringComparison.OrdinalIgnoreCase)).Take(24))
+                        {
+                            var price = settings.FoodPriceLimits.GetValueOrDefault(meal.PriceKey);
+                            ImGui.TextWrapped(meal.Name + (meal.Hq ? " HQ" : " NQ")); ImGui.SetNextItemWidth(-1);
+                            if (ImGui.InputInt("##" + meal.PriceKey, ref price))
+                            { settings.FoodPriceLimits[meal.PriceKey] = Math.Max(0, price); changed = true; }
+                        }
+                }
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Alerts"))
+            {
+                if (ImGui.BeginChild("FishAlertsBody", Vector2.Zero, false))
+                {
+                    UIConstants.Heading("Alerts and last outcome", plugin.Configuration.CompactUi);
+                    if (service.LastOutcome.Length > 0) ImGui.TextWrapped("Last outcome: " + service.LastOutcome);
+                    ImGui.TextWrapped("Acknowledge alert remains available above these tabs.");
+                    var audio = settings.AudioEnabled;
+                    changed |= ImGui.Checkbox("Native audio enabled", ref audio); settings.AudioEnabled = audio;
+                    var effect = (int)settings.SoundEffect; var advance = settings.AlertAdvanceMinutes; var repeat = settings.AlertRepeatMinutes;
+                    changed |= ImGui.SliderInt("Built-in effect", ref effect, 1, 16);
+                    changed |= ImGui.InputInt("Advance (minutes)", ref advance);
+                    changed |= ImGui.InputInt("Repeat (minutes)", ref repeat);
+                    settings.SoundEffect = (uint)effect; settings.AlertAdvanceMinutes = Math.Clamp(advance, 0, 60);
+                    settings.AlertRepeatMinutes = Math.Clamp(repeat, 1, 60);
+                }
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+        if (changed) { plugin.Configuration.Save(); service.SettingsChanged(); }
+    }
+
+    private bool DrawTargets(AccountConfig account)
+    {
+        var service = plugin.FishCollection;
+        var settings = plugin.Configuration.FishCollection;
+        var changed = false;
+        UIConstants.Heading("Collection targets", plugin.Configuration.CompactUi);
+        ImGui.TextWrapped("Preparation starts 60 real minutes before the opportunity; arrival goal is 45 minutes before. One character stays committed through preparation and fishing.");
+        ImGui.TextWrapped("Readiness for: " + (characterKey.Length == 0 ? "no character selected; choose one in Characters" : characterKey));
         var big = settings.IncludeBigFish; var fabled = settings.IncludeFabledFish;
-        changed |= ImGui.Checkbox("Big fish", ref big); ImGui.SameLine(); changed |= ImGui.Checkbox("Fabled fish", ref fabled);
+        changed |= ImGui.Checkbox("Big fish", ref big); UIConstants.SameLineIfFits("Fabled fish"); changed |= ImGui.Checkbox("Fabled fish", ref fabled);
         settings.IncludeBigFish = big; settings.IncludeFabledFish = fabled;
         ImGui.InputText("Find target", ref search, 100);
-        ImGui.Checkbox("Missing only", ref missingOnly); ImGui.SameLine(); ImGui.Checkbox("Eligible only", ref eligibleOnly);
+        ImGui.Checkbox("Missing only", ref missingOnly); UIConstants.SameLineIfFits("Eligible only"); ImGui.Checkbox("Eligible only", ref eligibleOnly);
         if (settings.PinnedItemId != 0)
         {
-            ImGui.Text("Pinned: " + service.Catalog.Targets.FirstOrDefault(f => f.ItemId == settings.PinnedItemId)?.Name);
-            ImGui.SameLine(); if (ImGui.SmallButton("Clear pin")) { settings.PinnedItemId = 0; changed = true; }
+            ImGui.TextWrapped("Pinned: " + service.Catalog.Targets.FirstOrDefault(f => f.ItemId == settings.PinnedItemId)?.Name);
+            UIConstants.SameLineIfFits("Clear pin"); if (ImGui.SmallButton("Clear pin")) { settings.PinnedItemId = 0; changed = true; }
         }
         account.Characters.TryGetValue(characterKey, out var viewed);
         var known = service.Observation.Knowledge.GetValueOrDefault(characterKey);
-        if (ImGui.BeginTable("fish", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY, new Vector2(0, 300)))
+        var targets = service.Catalog.Targets.Where(f => (f.Ocean ? fabled : big) && f.Name.Contains(search, StringComparison.OrdinalIgnoreCase) &&
+            (!missingOnly || known?.CaughtItems.Contains(f.ItemId) != true) &&
+            (!eligibleOnly || FishCollectionPolicy.Eligible(f, viewed?.FisherObservation, known, settings, service.Observation.Meals))).ToArray();
+        ImGui.TextDisabled($"{targets.Length} targets match");
+        if (targets.Length == 0) ImGui.TextWrapped("No targets match these filters. Change the search or readiness filters to show more fish.");
+        if (ImGui.BeginTable("fish", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY, new Vector2(0, ImGui.GetTextLineHeightWithSpacing() * (plugin.Configuration.CompactUi ? 7 : 9))))
         {
-            ImGui.TableSetupColumn("Target"); ImGui.TableSetupColumn("Readiness"); ImGui.TableSetupColumn("Next window"); ImGui.TableSetupColumn("Target controls"); ImGui.TableHeadersRow();
-            foreach (var fish in service.Catalog.Targets.Where(f => (f.Ocean ? fabled : big) && f.Name.Contains(search, StringComparison.OrdinalIgnoreCase) &&
-                (!missingOnly || known?.CaughtItems.Contains(f.ItemId) != true) &&
-                (!eligibleOnly || FishCollectionPolicy.Eligible(f, viewed?.FisherObservation, known, settings, service.Observation.Meals))))
+            ImGui.TableSetupColumn("Target"); ImGui.TableSetupColumn("Next window"); ImGui.TableHeadersRow();
+            foreach (var fish in targets)
             {
-                ImGui.PushID((int)fish.ItemId); ImGui.TableNextRow(); ImGui.TableNextColumn(); ImGui.Text(fish.Name);
-                ImGui.TableNextColumn(); ImGui.TextWrapped(FishCollectionPolicy.Readiness(fish, viewed?.FisherObservation, known, settings, service.Observation.Meals));
+                ImGui.PushID((int)fish.ItemId); ImGui.TableNextRow(); ImGui.TableNextColumn();
+                var nameHeight = ImGui.CalcTextSize(fish.Name, false, ImGui.GetContentRegionAvail().X).Y;
+                var namePosition = ImGui.GetCursorPos();
+                if (ImGui.Selectable("##SelectFish", selectedFishId == fish.ItemId, ImGuiSelectableFlags.None, new Vector2(0, nameHeight))) selectedFishId = fish.ItemId;
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(fish.Name);
+                ImGui.SetCursorPos(namePosition);
+                ImGui.TextWrapped(fish.Name);
                 ImGui.TableNextColumn();
                 var opportunity = service.Opportunities.FirstOrDefault(o => o.Fish.ItemId == fish.ItemId);
                 ImGui.TextWrapped(fish.AlwaysAvailable ? "Always available" : opportunity?.StartUtc.ToLocalTime().ToString("g") ?? "Forecast on Start");
-                ImGui.TableNextColumn(); if (ImGui.SmallButton("Pin")) { settings.PinnedItemId = fish.ItemId; changed = true; }
-                if (fish.RecommendedGathering > 0)
-                {
-                    var allow = settings.RecommendationOverrides.Contains(fish.ItemId);
-                    if (ImGui.Checkbox($"Override {fish.RecommendedGathering} recommendation", ref allow))
-                    { if (allow) settings.RecommendationOverrides.Add(fish.ItemId); else settings.RecommendationOverrides.Remove(fish.ItemId); changed = true; }
-                }
                 ImGui.PopID();
             }
             ImGui.EndTable();
         }
-        if (changed) { plugin.Configuration.Save(); service.SettingsChanged(); }
+        if (service.Catalog.Targets.FirstOrDefault(f => f.ItemId == selectedFishId) is { } selected)
+        {
+            ImGui.Separator();
+            UIConstants.Heading(selected.Name, plugin.Configuration.CompactUi);
+            if (!targets.Any(f => f.ItemId == selectedFishId)) ImGui.TextDisabled("Selected target is outside the current filters.");
+            ImGui.TextWrapped(FishCollectionPolicy.Readiness(selected, viewed?.FisherObservation, known, settings, service.Observation.Meals));
+            ImGui.TextWrapped($"{(selected.Ocean ? "Fabled ocean fish" : "Big fish")}; minimum Gathering {selected.MinimumGathering}; recommended {selected.RecommendedGathering}.");
+            var opportunity = service.Opportunities.FirstOrDefault(o => o.Fish.ItemId == selected.ItemId);
+            ImGui.TextWrapped(selected.AlwaysAvailable ? "Always available" : opportunity == null ? "Forecast on Start" : $"Next window: {opportunity.StartUtc.ToLocalTime():g} to {opportunity.EndUtc.ToLocalTime():g}");
+            if (ImGui.Button("Pin selected fish")) { settings.PinnedItemId = selected.ItemId; changed = true; }
+            if (selected.RecommendedGathering > 0)
+            {
+                var allow = settings.RecommendationOverrides.Contains(selected.ItemId);
+                if (ImGui.Checkbox($"Override {selected.RecommendedGathering} recommendation", ref allow))
+                { if (allow) settings.RecommendationOverrides.Add(selected.ItemId); else settings.RecommendationOverrides.Remove(selected.ItemId); changed = true; }
+            }
+        }
+        else ImGui.TextWrapped("Select a fish to see readiness and pin or override its recommendation.");
         if (ImGui.CollapsingHeader("Catalog sources"))
             foreach (var source in service.Catalog.Sources) ImGui.TextWrapped(source.Key + ": " + source.Value);
+        return changed;
     }
 }

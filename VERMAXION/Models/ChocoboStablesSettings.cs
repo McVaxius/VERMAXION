@@ -13,6 +13,9 @@ public sealed class ChocoboStablesSettings
     public string OtherOwner { get; set; } = string.Empty;
     public string OtherChocobo { get; set; } = string.Empty;
     public bool CleanStable { get; set; } = true;
+    public bool BuyOnionFromMarketboard { get; set; }
+    public int OnionMaxUnitPrice { get; set; }
+    public int OnionGilBudget { get; set; }
     public ChocoboStablesSettings Clone() => (ChocoboStablesSettings)MemberwiseClone();
 }
 

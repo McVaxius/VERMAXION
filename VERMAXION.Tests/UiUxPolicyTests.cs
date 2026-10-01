@@ -9,6 +9,25 @@ namespace VERMAXION.Tests;
 public sealed class UiUxPolicyTests
 {
     [Fact]
+    public void CompactUiDefaultsOffAndRoundTripsWithoutChangingOtherPreferences()
+    {
+        const string legacy = "{\"Enabled\":false,\"DtrBarEnabled\":false,\"FavoriteAutomationIds\":[\"minion-roulette\"]}";
+        Assert.False(new Configuration().CompactUi);
+        Assert.False(JsonSerializer.Deserialize<Configuration>(legacy)!.CompactUi);
+        var configuration = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(legacy)!;
+        Assert.False(configuration.CompactUi);
+
+        configuration.CompactUi = true;
+        var reloaded = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(configuration))!;
+
+        Assert.True(reloaded.CompactUi);
+        Assert.False(reloaded.Enabled);
+        Assert.False(reloaded.DtrBarEnabled);
+        Assert.Equal(configuration.FavoriteAutomationIds, reloaded.FavoriteAutomationIds);
+    }
+
+    [Fact]
     public void FreshConfigurationDefaultsAutomaticTaskColumnSizingOn()
     {
         Assert.True(new Configuration().AutoWidthMainTaskColumns);

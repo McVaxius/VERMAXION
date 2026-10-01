@@ -794,6 +794,17 @@ public class VermaxionEngine
         return TryBeginRun(RunTaskPhaseFilter.BeforeAR, requireEnabled: true, requireWorldReady: true, automatedRun: true, "before-AR");
     }
 
+    internal bool StartScheduledTask(string taskId)
+    {
+        if (!configuration.Enabled ||
+            taskId is not (PostProcessTaskOrder.MiniCactpot or PostProcessTaskOrder.ChocoboStables) ||
+            !GetTaskEligibility(taskId).IsRunnable)
+            return false;
+
+        return TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: true, requireWorldReady: true,
+            automatedRun: true, $"scheduled {taskId}", new AutomationRunScope(taskId, false, false));
+    }
+
     private bool TryGetBeforeArWorldReady(out string reason)
     {
         var localPlayer = Plugin.ObjectTable.LocalPlayer;
@@ -959,7 +970,8 @@ public class VermaxionEngine
         }
 
         ResetRunTracking();
-        retainerSuppressionRequired = runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables;
+        retainerSuppressionRequired = automatedRun && runScope.SingleTaskId != null ||
+            runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables;
         suppressionReleasedForHandoff = false;
         retainerCleanupPending = false;
         activePhaseFilter = phaseFilter;
@@ -2480,7 +2492,7 @@ public class VermaxionEngine
         if (state == EngineState.RunningCustomDeliveries && customDeliveriesService.IsFishing)
             return "owned fishing handler enforces its ten-minute qualifying-fish deadline";
         if (state == EngineState.RunningChocoboStables && chocoboStablesService.IsAcquiringOnion)
-            return "Wiggly Quest owns the onion sidequest chain";
+            return "Owned onion acquisition is still active";
         if (state == EngineState.RunningNagYourMom && nagYourMomRequestIssued
             && (nagYourMomWindowExpired || DateTime.UtcNow >= nagYourMomQueueDeadlineUtc))
             return "mom window closed; awaiting confirmed withdrawal or match exit";
