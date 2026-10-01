@@ -49,6 +49,7 @@ public class ChocoboRaceService : IDisposable
     private uint returnHomeOriginTerritory;
     private string rankGateCheckReason = string.Empty;
     private bool targetCycleEnabledForBatch;
+    private bool startNewProductionBatch;
     private bool targetReadyForBatch;
     private DateTime nextTargetStatusPollAt = DateTime.MinValue;
     private string targetCycleStatusReason = string.Empty;
@@ -130,13 +131,14 @@ public class ChocoboRaceService : IDisposable
         this.configManager = configManager;
         this.chokeAboIpcClient = chokeAboIpcClient;
         this.progressionStartBlock = progressionStartBlock;
-        log.Information("[ChocoboRace] Build marker chocobo-reload-recovery-20260925-1.");
+        log.Information("[ChocoboRace] Build marker chocobo-workflow-20260930-02.");
     }
 
-    public bool Start(bool resume = false)
+    public bool Start(bool resume = false, bool startNewBatch = false)
     {
         if (IsActive) return false;
         resumeTargetCycle = resume;
+        startNewProductionBatch = startNewBatch;
         waitingForChokeAbo = false;
         NextContinuationUtc = DateTime.MinValue;
         // Get configured number of races from active character config
@@ -302,20 +304,22 @@ public class ChocoboRaceService : IDisposable
         StopOwnedUnlockQuest();
     }
 
-    public void ResumeProgression()
+    public void ResumeProgression(bool startNewBatch = false)
     {
         if (IsActive) return;
         var config = configManager.GetActiveConfig();
         if (config.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree)
         { Defer("Select Target Pedigree in Chocobo settings before resuming progression."); return; }
-        if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
-        { Defer("Offspring production is not available in this build; the saved goal remains paused."); return; }
+        if (!Enum.IsDefined(config.ChocoboBreedingGoal))
+        { Defer("Choose a valid chocobo breeding goal before resuming."); return; }
+        if ((startNewBatch || config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree) && !chokeAboIpcClient.IsWorkflowAvailable)
+        { Defer("Offspring production requires the current Choke-abo V3 workflow endpoints."); return; }
         if (progressionStartBlock() is { } reason) { Defer(reason); return; }
         if ((IsQueued() || condition[ConditionFlag.BoundByDuty]) && !CanReconcileRacingActivity())
         { Defer("Wait for the current duty or queue to settle before manually resuming breeding."); return; }
         config.ChocoboProgressionPaused = false;
         configManager.SaveCurrentAccount();
-        Start(resume: true);
+        Start(resume: true, startNewBatch: startNewBatch);
     }
 
     public void PauseProgression()
@@ -1198,8 +1202,9 @@ public class ChocoboRaceService : IDisposable
 
     private ChokeAboTargetCycleCallResult RequestTargetCycle(CharacterConfig config)
     {
-        var result = chokeAboIpcClient.EnsureTargetCycle(Plugin.PlayerState.ContentId, config, resume: resumeTargetCycle);
-        if (result.Succeeded) resumeTargetCycle = false;
+        var result = chokeAboIpcClient.EnsureTargetCycle(Plugin.PlayerState.ContentId, config, resume: resumeTargetCycle,
+            startNewBatch: startNewProductionBatch);
+        if (result.Succeeded) { resumeTargetCycle = false; startNewProductionBatch = false; }
         return result;
     }
 
@@ -1236,7 +1241,7 @@ public class ChocoboRaceService : IDisposable
                 return true;
 
             case ChocoboTargetHandoffAction.Complete:
-                if (result.Status?.ProgressionComplete == true)
+                if (result.Status?.ProgressionComplete == true || result.Status?.ProductionComplete == true)
                 {
                     configManager.GetActiveConfig().ChocoboProgressionPaused = true;
                     configManager.SaveCurrentAccount();

@@ -1420,6 +1420,8 @@ public static class GameHelpers
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc => 4.0f,  // NPCs like summoning bells, vendors
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc => 3.0f,  // Battle NPCs (enemies, retainers)
             Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj => 2.0f,   // Event objects (chests, aetherytes)
+            Dalamud.Game.ClientState.Objects.Enums.ObjectKind.HousingEventObject =>
+                4.0f + obj.HitboxRadius + (Plugin.ObjectTable.LocalPlayer?.HitboxRadius ?? 0),
             _ => 2.0f // Default distance for unknown types
         };
     }

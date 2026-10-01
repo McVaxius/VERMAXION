@@ -1749,6 +1749,8 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextDisabled("NPC ranks, job eligibility and achievement progress are shown for the loaded character.");
             ImGui.Unindent();
 
+            changed |= DrawChocoboStablesSettings(cc, !isDefault && charKey == configManager.CurrentCharacterKey);
+
             var register = cc.EnableRegisterRegistrables;
             if (ImGui.Checkbox("Register Registrables", ref register))
             {
@@ -2703,6 +2705,83 @@ public class ConfigWindow : Window, IDisposable
             configManager.SaveCurrentAccount();
     }
 
+    private bool DrawChocoboStablesSettings(Models.CharacterConfig cc, bool currentCharacter)
+    {
+        var changed = false;
+        var enabled = cc.EnableChocoboStables;
+        if (ImGui.Checkbox("Chocobo Stables", ref enabled)) { cc.EnableChocoboStables = enabled; changed = true; }
+        ImGui.Indent();
+        var settings = cc.ChocoboStablesSettings;
+        static string DestinationLabel(Models.StableDestination value) => value switch
+        {
+            Models.StableDestination.SharedEstate1 => "Shared Estate 1",
+            Models.StableDestination.SharedEstate2 => "Shared Estate 2",
+            Models.StableDestination.SharedEstate3 => "Shared Estate 3",
+            Models.StableDestination.PersonalEstate => "Personal Estate",
+            Models.StableDestination.Apartment => "Apartment",
+            _ => "FC Estate",
+        };
+        if (ImGui.BeginCombo("Stable destination", DestinationLabel(settings.Destination)))
+        {
+            foreach (var value in Enum.GetValues<Models.StableDestination>())
+                if (ImGui.Selectable(DestinationLabel(value), value == settings.Destination))
+                {
+                    settings.Destination = value; settings.OtherOwner = settings.OtherChocobo = string.Empty;
+                    cc.ChocoboStablesNextTrainingUtc = DateTime.MinValue; changed = true;
+                }
+            ImGui.EndCombo();
+        }
+        if (currentCharacter)
+        {
+            var fc = ChocoboStablesService.HasFreeCompany();
+            ImGui.TextDisabled(fc == true ? "FC membership: member" : fc == false ? "FC membership: no FC" : "FC membership: unavailable");
+        }
+        if (ImGui.BeginCombo("Chocobo to train", settings.Target == Models.StableTarget.OwnChocobo ? "Own chocobo" : "Specific other chocobo"))
+        {
+            foreach (var target in Enum.GetValues<Models.StableTarget>())
+                if (ImGui.Selectable(target == Models.StableTarget.OwnChocobo ? "Own chocobo" : "Specific other chocobo", settings.Target == target))
+                { settings.Target = target; cc.ChocoboStablesNextTrainingUtc = DateTime.MinValue; changed = true; }
+            ImGui.EndCombo();
+        }
+        var clean = settings.CleanStable;
+        if (ImGui.Checkbox("Clean stable when needed", ref clean)) { settings.CleanStable = clean; changed = true; }
+        if (currentCharacter)
+        {
+            var service = plugin.ChocoboStablesService;
+            var blocker = service.GetStartBlockedReason(settings, true);
+            ImGui.BeginDisabled(IsEquipmentAutomationBusy() || plugin.Engine.IsRunning || blocker != null);
+            if (ImGui.SmallButton("Scan selected stable##StableRoster")) plugin.Engine.ManualStartChocoboStables(true);
+            ImGui.EndDisabled();
+            if (blocker != null) ImGui.TextWrapped(blocker);
+            var roster = service.GetRoster(settings.Destination);
+            if (settings.Target == Models.StableTarget.SpecificOther)
+            {
+                var preview = string.IsNullOrEmpty(settings.OtherChocobo) ? "Scan first, then select a chocobo" : $"{settings.OtherChocobo} ({settings.OtherOwner})";
+                if (ImGui.BeginCombo("Scanned other chocobo", preview))
+                {
+                    var index = 0;
+                    foreach (var bird in roster.Where(b => b.Owner != Plugin.ObjectTable.LocalPlayer?.Name.TextValue))
+                    {
+                        if (ImGui.Selectable($"{bird.Name} ({bird.Owner}) - {bird.Progression}; {bird.Training}##StableBird{index++}", bird.Matches(settings.OtherOwner, settings.OtherChocobo)))
+                        {
+                            settings.OtherOwner = bird.Owner; settings.OtherChocobo = bird.Name;
+                            cc.ChocoboStablesNextTrainingUtc = DateTime.MinValue; changed = true;
+                        }
+                    }
+                    ImGui.EndCombo();
+                }
+            }
+            ImGui.TextWrapped(service.StatusText);
+            ImGui.TextDisabled($"Cleanliness: {service.Cleanliness}; Krakka Root: {service.FeedStock}; Brooms: {service.BroomStock}; Onions: {service.OnionStock}");
+            foreach (var bird in roster)
+                ImGui.TextWrapped($"{bird.Name} ({bird.Owner}): {bird.Progression}; training {bird.Training}");
+        }
+        else ImGui.TextDisabled("Load this character to scan its selected estate and select another chocobo.");
+        ImGui.TextWrapped("Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, Wiggly Quest can complete an unfinished free-onion quest and its sidequest prerequisites. Stops after one onion is available; using the onion remains manual. Requires the appropriate job, level, MSQ progress and Wiggly quest routes.");
+        ImGui.Unindent();
+        return changed;
+    }
+
     private static bool DrawCustomDeliveriesSettings(CustomDeliveriesSettings settings)
     {
         var changed = false;
@@ -3241,7 +3320,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.ProgressBar((float)(allowance / ChocoboDailyAllowance.LimitSeconds), new Vector2(-1, 0), "Queue and racing time only");
         ImGui.TextDisabled($"Resets {ChocoboDailyAllowance.ResetAt(now).AddDays(1).ToLocalTime():ddd, MMM d HH:mm} local (09:00 UTC). Covering waits do not consume racing time.");
         ImGui.Text(config.ChocoboProgressionPaused ? "Progression paused" : "Progression enabled");
-        ImGui.BeginDisabled(config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree);
+        ImGui.BeginDisabled(config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree && !plugin.ChokeAboIpcClient.IsWorkflowAvailable);
         if (ImGui.Button("Resume##ChocoboProgression"))
             plugin.RunDashboardAction(() => plugin.ChocoboRaceService.ResumeProgression());
         ImGui.EndDisabled();
@@ -3249,6 +3328,15 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.Button("Pause##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
         ImGui.SameLine();
         if (ImGui.Button("Stop##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
+        if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
+        {
+            ImGui.TextWrapped("Matching offspring stay unregistered. A matching G9 racer retires at rank 40 to become breeding stock.");
+            ImGui.BeginDisabled(!plugin.ChokeAboIpcClient.IsWorkflowAvailable ||
+                !chokeAboTargetStatus.HasValue || chokeAboTargetStatus.Value.Status?.ProductionComplete != true);
+            if (ImGui.Button("Start new batch##ChocoboProduction"))
+                plugin.RunDashboardAction(() => plugin.ChocoboRaceService.ResumeProgression(startNewBatch: true));
+            ImGui.EndDisabled();
+        }
         if (contentId != chokeAboTargetStatusContentId || now >= chokeAboTargetStatusNextRefreshUtc)
         {
             chokeAboTargetStatusContentId = contentId;
@@ -3272,6 +3360,16 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var status = result.Status;
+        if (status.OffspringGoal != ChocoboBreedingGoal.ReachPedigree)
+        {
+            ImGui.TextUnformatted(status.OffspringGoal == ChocoboBreedingGoal.AbilityOffspring ? "Offspring printer" : "Colour seeker");
+            ImGui.Text($"Matching G9 offspring: {status.MatchingOffspringProduced:N0} / {status.MatchingOffspringRequested:N0}");
+            ImGui.ProgressBar(status.MatchingOffspringRequested > 0
+                ? Math.Clamp((float)status.MatchingOffspringProduced / status.MatchingOffspringRequested, 0, 1) : 0,
+                new Vector2(-1, 0), "Matching offspring retained unregistered");
+            if (status.ProductionComplete)
+                ImGui.TextColored(new Vector4(0.4f, 1f, 0.6f, 1f), "Offspring quantity reached. Use Start new batch to repeat this goal.");
+        }
         ImGui.TextUnformatted(status.RacingRank > 0 ? $"Registered pedigree: G{status.Pedigree}    Racing rank: {status.RacingRank}/50"
             : status.RacerDataAvailable ? "No registered racing chocobo." : "Registered racer data is unavailable.");
         if (status.RacingRank > 0 && status.RacerDataAvailable)
@@ -3311,7 +3409,10 @@ public class ConfigWindow : Window, IDisposable
             config.ChocoboBreedingGoal = (ChocoboBreedingGoal)goal;
             config.ChocoboProgressionPaused = true;
             if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
+            {
                 config.ChocoboTargetPedigree = 9;
+                config.ChocoboProduceCounterpart = false;
+            }
             changed = true;
         }
         if (config.ChocoboBreedingGoal == ChocoboBreedingGoal.ReachPedigree)
@@ -3425,7 +3526,9 @@ public class ConfigWindow : Window, IDisposable
             else
                 ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Select at least one acceptable colour.");
         }
-        ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Batch start is unavailable until offspring ability and colour inspection is verified.");
+        if (!plugin.ChokeAboIpcClient.IsWorkflowAvailable)
+            ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Enable the current Choke-abo build to start or resume offspring production.");
+        ImGui.TextWrapped("Each covering takes 24 hours. Matching offspring are retained unregistered; owned mode never buys a covering permit.");
         ImGui.TextWrapped("These goals are saved separately. Existing pedigree progression remains available; Pause and Stop preserve a pending covering.");
     }
 

@@ -10,6 +10,55 @@ public sealed class ChokeAboTargetCycleTests
     private const ulong ContentId = 1234567890123456789UL;
 
     [Fact]
+    public void OffspringWorkflowsCarryIndependentQuantitiesAndRequireTypedCompletion()
+    {
+        var config = CharacterConfig.CreateNew();
+        config.ChocoboTargetPedigree = 9;
+        config.ChocoboBreedingGoal = ChocoboBreedingGoal.AbilityOffspring;
+        config.ChocoboDesiredInheritedAbilityId = 28;
+        config.ChocoboDesiredAbilityOffspringCount = 3;
+        config.ChocoboAcceptableColourIds.AddRange(new uint[] { 74, 36 });
+        config.ChocoboDesiredColourOffspringCount = 5;
+        config.ChocoboProduceCounterpart = true;
+        Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, config, out var json, out var error), error);
+        using (var document = JsonDocument.Parse(json))
+        {
+            Assert.Equal(1, document.RootElement.GetProperty("offspringGoal").GetInt32());
+            Assert.Equal(3, document.RootElement.GetProperty("requestedOffspring").GetInt32());
+            Assert.Equal(28U, document.RootElement.GetProperty("desiredInheritedAbilityId").GetUInt32());
+            Assert.False(document.RootElement.GetProperty("produceCounterpart").GetBoolean());
+            Assert.Equal(100000U, document.RootElement.GetProperty("gilReserve").GetUInt32());
+        }
+        config.ChocoboBreedingGoal = ChocoboBreedingGoal.ColourOffspring;
+        Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, config, out json, out error), error);
+        using (var document = JsonDocument.Parse(json))
+        {
+            Assert.Equal(2, document.RootElement.GetProperty("offspringGoal").GetInt32());
+            Assert.Equal(5, document.RootElement.GetProperty("requestedOffspring").GetInt32());
+            Assert.Equal(36U, document.RootElement.GetProperty("acceptableColourIds")[0].GetUInt32());
+        }
+        string Status(int produced, bool completed, bool busy = false) => JsonSerializer.Serialize(new
+        {
+            version = 3, contentId = ContentId, phase = "TargetReady", shouldBlockRacing = true,
+            targetReady = false, gameActionInProgress = busy, reason = "Retained matching offspring",
+            nextCoveringEligibilityUtc = (string?)null, pedigree = 0, racingRank = 0, progressionComplete = false,
+            offspringGoal = 1, matchingOffspringProduced = produced, matchingOffspringRequested = 3,
+            offspringCollected = 4L, productionComplete = completed,
+        });
+        Assert.True(ChokeAboTargetCycleProtocol.TryParseStatus(Status(3, true), ContentId, out var status, out error, 3), error);
+        Assert.True(status!.ProductionComplete);
+        Assert.False(status.ProgressionComplete);
+        var decision = ChocoboTargetCyclePolicy.DecideHandoff(ChokeAboTargetCycleCallResult.Success(status), 0, 5);
+        Assert.Equal(ChocoboTargetHandoffAction.Complete, decision.Action);
+        Assert.False(decision.TargetReady);
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(Status(2, true), ContentId, out _, out _, 3));
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(Status(3, true, true), ContentId, out _, out _, 3));
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(Status(-1, false), ContentId, out _, out _, 3));
+        config.ChocoboAcceptableColourIds.Clear();
+        Assert.False(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, config, out _, out _));
+    }
+
+    [Fact]
     public void OwnedInteractionReadinessRequiresTypedV3EvidenceForTheActiveCharacter()
     {
         var json = JsonSerializer.Serialize(new

@@ -33,6 +33,10 @@ public class CharacterConfig
     public bool EnableFashionReport { get; set; } = false;
     public bool EnableCustomDeliveries { get; set; } = false;
     public CustomDeliveriesSettings CustomDeliveriesSettings { get; set; } = new();
+    public bool EnableChocoboStables { get; set; }
+    public ChocoboStablesSettings ChocoboStablesSettings { get; set; } = new();
+    public DateTime ChocoboStablesLastCompleted { get; set; } = DateTime.MinValue;
+    public DateTime ChocoboStablesNextTrainingUtc { get; set; } = DateTime.MinValue;
     public bool EnableRegisterRegistrables { get; set; } = false;
     public bool RegisterUnregisteredItemsFromInventory { get; set; } = true;
     public bool EnableVendorStock { get; set; } = false;
@@ -505,6 +509,10 @@ public class CharacterConfig
             FashionReportNextReset = FashionReportNextReset,
             CustomDeliveriesLastCompleted = CustomDeliveriesLastCompleted,
             CustomDeliveriesNextReset = CustomDeliveriesNextReset,
+            EnableChocoboStables = EnableChocoboStables,
+            ChocoboStablesSettings = ChocoboStablesSettings.Clone(),
+            ChocoboStablesLastCompleted = ChocoboStablesLastCompleted,
+            ChocoboStablesNextTrainingUtc = ChocoboStablesNextTrainingUtc,
             MiniCactpotLastCompleted = MiniCactpotLastCompleted,
             MiniCactpotNextReset = MiniCactpotNextReset,
             ChocoboRacingLastCompleted = ChocoboRacingLastCompleted,

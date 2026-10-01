@@ -508,6 +508,8 @@ public class ConfigManager
         target.EnableCurrentJobEquipment = source.EnableCurrentJobEquipment;
         target.EnableFashionReport = source.EnableFashionReport;
         target.CopyCustomDeliveriesSettingsFrom(source);
+        target.EnableChocoboStables = source.EnableChocoboStables;
+        target.ChocoboStablesSettings = source.ChocoboStablesSettings.Clone();
         target.EnableRegisterRegistrables = source.EnableRegisterRegistrables;
         target.RegisterUnregisteredItemsFromInventory = source.RegisterUnregisteredItemsFromInventory;
         target.EnableVendorStock = source.EnableVendorStock;

@@ -599,6 +599,17 @@ public class MainWindow : Window, IDisposable
                 : !deliveries.HasPendingWork(config.CustomDeliveriesSettings) ? "The selected policy has no remaining delivery route."
                 : "Runs current-character custom deliveries with normal engine ownership and cancellation; spent allowances remain authoritative.");
 
+        var stables = plugin.ChocoboStablesService;
+        var stableBlocker = stables.GetStartBlockedReason(config.ChocoboStablesSettings);
+        AddTaskRow("Chocobo Stables", config.EnableChocoboStables, stables.StatusText,
+            "run##Stables", () => engine.ManualStartChocoboStables(), "OK",
+            statusTooltip: $"{stables.StatusText}\nCleanliness: {stables.Cleanliness}\nKrakka Root: {stables.FeedStock}; Magicked Stable Broom: {stables.BroomStock}; Thavnairian Onion: {stables.OnionStock}",
+            buttonDisabled: deliveryBusy || stableBlocker != null,
+            buttonTooltip: deliveryBusy ? "Another task is active." : stableBlocker ?? "Visit the selected stable, clean if needed and train the selected bird once.",
+            secondaryButtonLabel: "scan##Stables", secondaryOnClick: () => engine.ManualStartChocoboStables(true),
+            secondaryButtonDisabled: deliveryBusy || stables.GetStartBlockedReason(config.ChocoboStablesSettings, true) != null,
+            secondaryButtonTooltip: "Visit and scan the selected stable without using feed or brooms.");
+
         // --- Daily Tasks ---
         AddTaskRow("Mini Cactpot", config.EnableMiniCactpot,
             GetDailyTaskStatus(config.MiniCactpotLastCompleted, config.MiniCactpotNextReset, "Done today", "Daily"),
@@ -875,6 +886,8 @@ public class MainWindow : Window, IDisposable
             case "Jumbo Cactpot":
             case "Fashion Report":
                 return ["Lifestream", "vnavmesh"];
+            case "Chocobo Stables":
+                return ["vnavmesh"];
             case "Mini Cactpot":
                 return config.RequireSaucyForMiniCactpot
                     ? ["Lifestream", "vnavmesh", "Saucy"]
@@ -1198,6 +1211,7 @@ public class MainWindow : Window, IDisposable
                 ? ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow) : DateTime.MinValue,
             AutomationCatalog.MiniCactpot => config.MiniCactpotNextReset,
             AutomationCatalog.ChocoboRacing => config.ChocoboRacingNextReset,
+            AutomationCatalog.ChocoboStables => config.ChocoboStablesNextTrainingUtc,
             AutomationCatalog.LootGoblinMapGather => config.LootGoblinMapGatherNextReset,
             AutomationCatalog.AlliedSociety => config.AlliedSocietyNextReset,
             AutomationCatalog.FashionReport => ResetDetectionService.TaskIsCompleted(
@@ -1385,6 +1399,7 @@ public class MainWindow : Window, IDisposable
             AutomationCatalog.RefillListings or
             AutomationCatalog.NagYourMom or
             AutomationCatalog.NagYourDad => ConfigurationSection.VariableTime,
+            AutomationCatalog.ChocoboStables => ConfigurationSection.Weekly,
             AutomationCatalog.EvercoldAdventurerActivity => ConfigurationSection.Wip,
             _ => null,
         };

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 
 namespace VERMAXION.Models;
@@ -49,7 +50,12 @@ public sealed record ChokeAboTargetCycleStatus(
     uint InheritedAbilityId = 0,
     uint LearnedAbilityId = 0,
     uint ColourId = 0,
-    bool RacerDataAvailable = false);
+    bool RacerDataAvailable = false,
+    ChocoboBreedingGoal OffspringGoal = ChocoboBreedingGoal.ReachPedigree,
+    int MatchingOffspringProduced = 0,
+    int MatchingOffspringRequested = 0,
+    long OffspringCollected = 0,
+    bool ProductionComplete = false);
 
 public readonly record struct ChokeAboTargetCycleCallResult(
     bool Succeeded,
@@ -70,9 +76,9 @@ public static class ChokeAboTargetCycleProtocol
     public static bool TryCreateEnsureRequestJson(ulong contentId, CharacterConfig config, out string json, out string error)
     {
         json = string.Empty;
-        if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
+        if (!Enum.IsDefined(config.ChocoboBreedingGoal))
         {
-            error = "Offspring production is unavailable until offspring ability and colour can be verified. Pedigree progression remains available.";
+            error = "Choose a valid chocobo breeding goal.";
             return false;
         }
         if (!TryValidateIdentity(contentId, out error) ||
@@ -82,11 +88,23 @@ public static class ChokeAboTargetCycleProtocol
             error = "Invalid breeding mode or feeding policy.";
             return false;
         }
+        var production = config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree;
+        var requested = config.ChocoboBreedingGoal == ChocoboBreedingGoal.AbilityOffspring
+            ? config.ChocoboDesiredAbilityOffspringCount : config.ChocoboDesiredColourOffspringCount;
+        if (production && (config.ChocoboTargetPedigree != 9 || requested < 1 ||
+            config.ChocoboBreedingGoal == ChocoboBreedingGoal.AbilityOffspring && config.ChocoboDesiredInheritedAbilityId is 0 or > byte.MaxValue ||
+            config.ChocoboBreedingGoal == ChocoboBreedingGoal.ColourOffspring && (config.ChocoboAcceptableColourIds == null ||
+                config.ChocoboAcceptableColourIds.Count == 0 || config.ChocoboAcceptableColourIds.Any(id => id is 0 or > byte.MaxValue))))
+        { error = "Production requires G9, a positive quantity, and a selected inherited ability or acceptable colours."; return false; }
         json = JsonSerializer.Serialize(new { version = 3, contentId, targetPedigree = config.ChocoboTargetPedigree,
             retirementRank = 40, preferredFeedGrade = config.ChocoboPreferredFeedGrade,
             breedingMode = (int)config.ChocoboBreedingMode, feedPolicy = (int)config.ChocoboFeedPolicy,
-            produceCounterpart = config.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && config.ChocoboProduceCounterpart,
+            produceCounterpart = !production && config.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && config.ChocoboProduceCounterpart,
             gilReserve = config.ChocoboGilReserve, mgpReserve = config.ChocoboMgpReserve,
+            offspringGoal = (int)config.ChocoboBreedingGoal,
+            requestedOffspring = production ? requested : 0,
+            desiredInheritedAbilityId = config.ChocoboDesiredInheritedAbilityId,
+            acceptableColourIds = (config.ChocoboAcceptableColourIds ?? new List<uint>()).Distinct().Order().ToArray(),
             raceAdmissionAllowed = ChocoboDailyAllowance.Remaining(config, DateTime.UtcNow) > 0 && !config.ChocoboProgressionPaused });
         return true;
     }
@@ -235,6 +253,27 @@ public static class ChokeAboTargetCycleProtocol
                 }
                 racerDataAvailable = availability.GetBoolean();
             }
+            var offspringGoal = ChocoboBreedingGoal.ReachPedigree;
+            var produced = 0;
+            var requested = 0;
+            long collected = 0;
+            var productionComplete = false;
+            if (root.TryGetProperty("offspringGoal", out var productionGoal))
+            {
+                if (productionGoal.ValueKind != JsonValueKind.Number || !productionGoal.TryGetInt32(out var goal) ||
+                    !Enum.IsDefined((ChocoboBreedingGoal)goal) ||
+                    !TryReadInt32(root, "matchingOffspringProduced", out produced, out error) || produced < 0 ||
+                    !TryReadInt32(root, "matchingOffspringRequested", out requested, out error) || requested < 0 ||
+                    !root.TryGetProperty("offspringCollected", out var attempts) || attempts.ValueKind != JsonValueKind.Number ||
+                    !attempts.TryGetInt64(out collected) || collected < 0 ||
+                    !TryReadBoolean(root, "productionComplete", out productionComplete, out error))
+                { error = "Choke-abo returned invalid production progress."; return false; }
+                offspringGoal = (ChocoboBreedingGoal)goal;
+                if (offspringGoal != ChocoboBreedingGoal.ReachPedigree && (requested < 1 || complete || targetReady) || productionComplete &&
+                    (offspringGoal == ChocoboBreedingGoal.ReachPedigree || phase != ChokeAboTargetCyclePhase.TargetReady ||
+                     produced < requested || gameActionInProgress || !shouldBlockRacing || complete))
+                { error = "Choke-abo returned inconsistent production completion."; return false; }
+            }
             status = new ChokeAboTargetCycleStatus(
                 version,
                 contentId,
@@ -244,7 +283,8 @@ public static class ChokeAboTargetCycleProtocol
                 gameActionInProgress,
                 reason,
                 nextCoveringEligibilityUtc, pedigree, racingRank, complete, canResumeOwnedInteraction,
-                inheritedId, learnedId, colourId, racerDataAvailable);
+                inheritedId, learnedId, colourId, racerDataAvailable,
+                offspringGoal, produced, requested, collected, productionComplete);
             error = string.Empty;
             return true;
         }
@@ -429,8 +469,8 @@ public static class ChocoboTargetCyclePolicy
             return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Defer, false, result.Error);
 
         var status = result.Status;
-        if (status.Version == 3 && status.ProgressionComplete)
-            return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Complete, true, status.Reason);
+        if (status.Version == 3 && (status.ProgressionComplete || status.ProductionComplete))
+            return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Complete, status.TargetReady, status.Reason);
         if (status.GameActionInProgress)
             return new ChocoboTargetHandoffDecision(ChocoboTargetHandoffAction.Wait, false, status.Reason);
         if (status.Version < 3 && completedRaces >= configuredRaces)

@@ -54,6 +54,23 @@ not delivery evidence. Source started clean at 8a459d5, version 0.6.0.0.
   of the older path. The shared watched source output remains untouched.
 - I433 must be defined after first-stage acceptance, covering feeding,
   cleaning/broom stock and progression decisions; notify before FTP1 testing.
+- I433 requested scope clarification: detect native FC membership, distinguish
+  unavailable membership data from confirmed no-FC, and offer a per-character
+  stable destination: Shared Estate 1, Shared Estate 2, Shared Estate 3, Personal
+  Estate, Apartment or FC Estate. Membership alone does not establish an FC
+  estate or usable stable; validate the selected destination and permissions.
+- I433 requested chocobo targeting: own chocobo or one specific other chocobo.
+  Scan the selected stable's current roster before offering another chocobo,
+  and revalidate the chosen target before feeding. The saved destination/target
+  configuration cost/benefit interview is accepted: include the per-character
+  destination and target choices. Keep roster scans in memory, scoped to the
+  current character and selected estate; revalidate identity before training.
+- I433 implementation is authorized; Lazyparasite testing targets FTP1 (Y:\),
+  read-only. Prepare a separate isolated Debug x64 DLL and provide its path;
+  the user configures/reloads/runs the client. Preserve Account 1 outputs.
+- I433 initial behavior: clean when needed and train the selected bird once
+  using inventory broom/feed. Surface missing supplies, cooldown and rank-cap
+  blockers. No automatic purchases, colour feeding or onion consumption.
 - No version bump, publication, source backups, extra reports or DevHub repair.
 
 ## Unfinished work
@@ -107,6 +124,12 @@ not delivery evidence. Source started clean at 8a459d5, version 0.6.0.0.
 - [ ] First-stage acceptance from the user.
 - [ ] I433: define and implement stables, notify before FTP1 live testing,
   verify feeding/cleaning/stock/progression and obtain acceptance.
+- [x] I433: saved per-character destination and own/scanned-other target
+  selection accepted. Inventory-only Krakka Root training, optional broom cleaning
+  and visible cooldown/rank-cap handling defined and implemented.
+- [x] I433: task integration, roster scan/revalidation, focused verification and
+  isolated Debug x64 DLL prepared. Native estate/roster/feeding/cleaning/stop
+  checks remain pending on FTP1.
 - [ ] I420: discuss agreed fishing outcome, research/build and verify.
 - [ ] I421: discuss agreed fishing outcome, research/build and verify.
 - [ ] I422: discuss agreed fishing outcome, research/build and verify.
@@ -479,5 +502,198 @@ Next: the user loads the isolated development entry with marker-08 before an
 eligible rank-quest case. Native quest dispatch/completion, automatic delivery
 resumption and FULL STOP remain unfinished. Other bundle verification and later
 stages retain their existing order and acceptance requirements.
+- Latest planning inspection: the workspace is clean at external commit f9203c1;
+  the existing project version is now 0.7.0.0. This work did not perform that
+  version bump. Existing FCBuffService reads InfoProxyFreeCompany.Id, and the
+  current Lifestream adapter/AfterArParkService already handle estate travel.
+  I433 implementation and FTP1 runtime operations have not started. The next
+  feature is stables, followed by fishing discussion including I451/I452; carry
+  outstanding first-stage native checks separately without marking them verified.
 Actual delivery completion, fishing and remaining cancellation cases stay pending.
 Later stages require first-stage acceptance and fishing discussion.
+
+## I433 stables handoff
+
+- The user authorized advancing to stables and selected FTP1 Lazyparasite testing.
+  Source version remains the externally selected 0.7.0.0. No client was operated
+  or modified. Account 1's isolated DLL and shared source DLL were not written.
+- Implemented ChocoboStablesService and ChocoboStablesSettings; integrated the
+  disabled-by-default character flag, settings copying, task catalog/order,
+  normal engine ownership, Run/Scan actions and existing /vmx debug selection.
+  Scan consumes no supplies; other-bird choices come only from that estate's
+  character-scoped in-memory scan. A complete scan and fresh row identity/ready/
+  cap check precede training. The local character's native FC tag establishes
+  membership only when player data is loaded and correlated; otherwise unknown.
+- Estate routes use native Telepo entries, including each shared-estate entry
+  in native list order. Selected estate grounds are checked before interaction.
+  Navigation reuses the existing ground movement/recovery adapter. The native
+  roster node/event contract comes from aancuta/ffxiv_chocobo_feeder revision
+  4bc13c41efeacdca888f94fc423357d42287659b; its current-client fit and rank-cap
+  colour contract remain subject to the first FTP1 scan.
+- Feeding uses one Krakka Root (8165); cleaning uses Magicked Stable Broom (8168).
+  Item IDs independently confirmed through XIVAPI Item rows. No purchases,
+  colour-fruit feeding, automatic stabling/fetching or onion use added. Missing
+  access/supplies, unknown cleanliness, cooldown and rank caps are surfaced.
+  Training requires exactly one feed decrease plus the selected row's native
+  cooldown; cleaning requires broom consumption and Good cleanliness before
+  training. Cleanup closes visit-owned UI and stops owned movement; it preserves
+  inventory windows already open before the visit. Native cancellation unverified.
+- Targeted AutomationCatalogTests: all 14 passed, including one new settings
+  persistence/clone-isolation regression. Final Debug x64 build passed in 21.06s,
+  zero errors and the existing NU1601 PInvoke.User32 warning. Fresh diff whitespace
+  check passed. New source/changelog/checkpoint personal-name check found none.
+- Ready DLL: Z:\VERMAXION\VERMAXION.Tests\bin\Debug\StablesPluginVerification\VERMAXION.dll.
+  Assembly version 0.7.0.0, 2,455,552 bytes, timestamp 2026-09-30T15:07:48.8086709Z.
+  Compiled marker stables-20260930-01 is present in the actual binary. Built is
+  verified; loaded, dispatched, feeding/cleaning completed and cancellation are
+  not yet verified. Shared/custom-delivery DLLs observed at 14:27:03 UTC; this
+  stables work did not replace either output.
+- Next: user adds the isolated DLL path on FTP1, confirms marker-01, configures
+  the accessible estate and runs Scan. Native scan, own/scanned-other selection,
+  actual training/cleaning and FULL STOP need bounded current-attempt evidence.
+  Keep existing development entries; add no client-file edits or remote control.
+
+- Marker-01 FTP1 native startup is verified at 16:20:07.401 and 16:20:56.743 local
+  (-04:00). Scan entered RunningChocoboStables/Approach at 16:27:03.506/551,
+  then timed out at 16:28:33.565 without locating the stable. The user was beside
+  it. The lookup wrongly limited named stables to EventObj; ClientStructs defines
+  HousingEventObject separately. Marker-02 accepts both supported stable kinds
+  and records one candidate-kind/distance/targetability summary per visit.
+- The user enabled Chocobo Stables in /vmx debug. Next: build marker-02 into an
+  unwatched StablesCompilation output, inspect diff and binary, then check a
+  bounded FTP1 snapshot for settled ownership before replacing only the existing
+  isolated StablesPluginVerification DLL. The saved debug selection arms the
+  next load; do not add a direct client dispatch or edit client configuration.
+- Replacement readiness snapshot: marker-01 failed scan settled through
+  SignalingARDone -> Idle at 16:28:35.682 local (-04:00); the selected debug task
+  is chocobo_stables, pending next reload at 16:28:37.436. No interrupted active
+  attempt needs redispatch. First marker-02 compilation passed; final compilation
+  also switches the diagnostic to the current BaseId property before replacement.
+- Final range review found the shared interaction helper used its generic two-
+  yalm centre-distance default for HousingEventObject. Add that kind's four-yalm
+  surface distance plus both hitboxes, matching the researched stables source;
+  approach and interaction now share this range. Recompile before replacement.
+- Final marker-02 Debug x64 compilation passed in 34.34 seconds, zero errors,
+  with only the existing NU1601 warning. Diff whitespace validation passed.
+  Rechecked FTP1's latest engine transition was Idle before replacing only
+  StablesPluginVerification\VERMAXION.dll. The copied artifact is 2,456,576
+  bytes at 2026-09-30 20:33:16 UTC, version 0.7.0.0; final compiled marker-02
+  was verified before copying. No client files, shared DLL or Account 1 output
+  were changed. The saved chocobo_stables debug selection remains armed for
+  the next native reload; fresh startup/dispatch/completion evidence is pending.
+- One bounded post-replacement FTP1 snapshot verifies marker-02 loaded at
+  16:33:40.098 local (-04:00), one consumed/debug dispatch at 16:33:43.914/967,
+  and RunningChocoboStables at 16:33:45.531. The lookup selected a targetable
+  HousingEventObject stable at distance 3.9; the menu opened at 16:33:45.612.
+  Thus stable discovery and native interaction are verified on this attempt.
+- The debug Run then stopped at 16:33:46.264 because cleaning was needed and
+  Magicked Stable Broom (8168) stock was zero. It settled back to Idle at
+  16:33:48.523. No broom or feed consumption, roster scan or completed training
+  is claimed. Add a broom for the enabled cleaning policy, or use the existing
+  supply-free Scan action for roster-only verification. Automated purchases
+  remain outside the selected initial behavior; no new attempt was dispatched.
+- Marker-02 manual Scan at 16:37:09–11 local (-04:00) reached HousingChocoboList
+  and reported one page/zero rows, then remained in SettlingTask because closing
+  the roster reopened SelectString. The old cleanup cleared its ownership before
+  the parent returned. No feeding occurred; the native attempt is fully identified
+  as a completed scan with unresolved menu cleanup, not an unknown delivery.
+- Marker-03 retains UI ownership through child-first closing, native parent-menu
+  cancellation and the existing two-second quiet settlement. New starts wait for
+  pending cleanup. Roster reading now uses native list item renderers and refuses
+  to treat unpopulated rows as an empty roster; one layout summary records counts
+  without bird/owner names. Selection uses native registered list events.
+- Replacement intent: compile/review marker-03 in StablesCompilation, then replace
+  only FTP1's existing isolated DLL. The old scan has no pending production/feed;
+  native reload/FULL STOP handles its unresolved parent menu before the saved
+  debug task makes one explicitly intended new attempt. No direct client control.
+- Marker-03 Debug x64 compilation passed in 39.57 seconds, zero errors and only
+  the existing NU1601 warning. Diff whitespace validation passed; reviewed all
+  native list-selection callers and the cleanup/start-blocker integration.
+  Replaced only StablesPluginVerification\VERMAXION.dll after the latest bounded
+  snapshot still identified the known scan's SelectString-only handoff wait.
+  No pending feed/production existed. Copied artifact: 2,457,600 bytes,
+  2026-09-30 20:42:40 UTC, version 0.7.0.0, marker-03 verified before copying.
+  Startup, native roster counts and cleanup settlement await post-copy evidence.
+- Marker-03 loaded on FTP1 at 16:43:32.415 local (-04:00), but its selected debug
+  task remained pending character registration. The old stable parent menu keeps
+  the character occupied, so registration cannot reach FULL STOP. No marker-03
+  dispatch, feeding or cleaning was observed; replacement will not repeat an
+  unknown side-effecting attempt.
+- Marker-04 narrows reload observation to the saved stables task's matching
+  character, selected estate and recognized stable UI. Registration may observe
+  that interaction; FULL STOP then cancels the recognized roster/parent through
+  existing stable cleanup, and dispatch waits for its quiet settlement. Normal
+  manual starts still require closed menus. No configuration or retry added.
+- Replacement intent: compile and inspect marker-04 in StablesCompilation, then
+  copy only the existing FTP1 StablesPluginVerification DLL. Expected new native
+  attempt is one normal stables debug Run after cleanup, with cleaning disabled
+  by the user. Verify actual roster counts, prerequisite/result and final Idle;
+  native training, cleaning and cancellation remain unfinished.
+- Marker-04 Debug x64 compilation passed in 23.35 seconds with zero errors and
+  only the existing NU1601 warning. Diff whitespace and new stables/checkpoint/
+  changelog personal-name checks passed. Verified marker-04 in the compiled DLL,
+  then replaced only StablesPluginVerification\VERMAXION.dll: 2,458,624 bytes,
+  timestamp 2026-09-30 20:49:36 UTC, version 0.7.0.0. Shared and Account 1 DLLs
+  were inspected and left untouched. Loaded/dispatch/roster/cleanup evidence
+  for marker-04 remains pending.
+- Bounded FTP1 snapshot at 16:50:12 local (-04:00) contains no marker-04 startup;
+  the log still ends with marker-03 pending registration. The marker-04 DLL is
+  copied, but native reload and dispatch are not verified. Next: user reloads
+  FTP1 once; the saved debug selection performs its ordinary Run after cleanup.
+  Do not copy/rearm another attempt without resolving this replacement.
+- Runtime testing stopped after the user reported two FTP1/load crashes and
+  disruption to all clients on that PC. The user cancelled further reload/world
+  checks. No further watched DLL replacements, client actions or test dispatches
+  are authorized by that cancelled test request; leave the current DLL disabled
+  until the crash is resolved and testing is explicitly resumed.
+- Read-only crash review: the first preserved session loaded marker-03 at
+  16:43:32, never dispatched its stables task and stopped logging at about
+  16:43:40. The crash handler at 16:43:42 reports failure to read exception
+  information (0x6d), without a usable fault stack. The next session ends at
+  16:53:26 during Dalamud/CharacterSync startup, before any VERMAXION load or
+  marker-04 startup. This does not establish the cause of either PC disruption.
+  No current-date native dump was found among FTP1's root crash artifacts.
+- Marker-04 remains compiled/copied only; withdraw the prior readiness claim
+  for live testing. Stables scan/menu cleanup, training and cancellation remain
+  unverified. Next: offline crash diagnosis from a usable current crash stack or
+  dump; do not infer a fix or request another reproduction from these logs.
+- User now explicitly authorizes fixing the crash and disabling VERMAXION on
+  FTP1 so the client can load. Containment intent: edit only FTP1's existing
+  native Dalamud config, disabling VERMAXION development-location loading,
+  startup/automatic reload and profile enablement. Preserve entries, unrelated
+  plugins and all other clients. Continue source/build work in isolated output;
+  no new live stables attempt is requested by this containment action.
+- FTP1 containment applied and read back: all four existing VERMAXION native
+  development settings have StartOnBoot/AutomaticReloading false, both native
+  development locations have IsEnabled false, and both profile entries have
+  IsEnabled false. Only those boolean fields changed in Y:\dalamudConfig.json;
+  all other parsed values and original formatting were preserved. No entries
+  were removed and no other client's config was changed.
+- Marker-05 source correction removes marker-04's early native registration
+  shortcut. Stables inventory, teleport, housing and UI reads now require loaded
+  character data outside area transitions; housing also requires current/outdoor
+  territory pointers. Cleanup queues owned menu closing for framework Update
+  instead of issuing native callbacks directly from Run/Stop/reset/disposal.
+  These remove unsafe lifecycle paths; available crash records do not prove
+  either was the reported fault. Compile/review only in StablesCompilation;
+  leave watched DLL and FTP1 native enablement unchanged pending crash evidence.
+- Final marker-05 review also ties stables native inventory, teleport, housing
+  and addon access to the existing completed world-ready registration gate;
+  loaded player data alone no longer opens those paths during plugin startup.
+  Recompile this final input before staging. Once compiled, the user's fix/
+  disable request authorizes replacing the isolated DLL while native loading
+  and automatic reload remain disabled; no new native test is armed by copying.
+- Final marker-05 Debug x64 build passed in 27.55 seconds, zero errors and the
+  existing NU1601 warning. Final whitespace check passed. Reviewed the current
+  SDK HousingManager contract, stable native-read callers and the only remaining
+  TickCleanup call (framework Update). No broad tests, version bump or backups.
+- Reverified FTP1 native disablement immediately before staging marker-05, then
+  replaced only StablesPluginVerification\VERMAXION.dll. Final artifact is
+  2,458,624 bytes, timestamp 2026-09-30T21:09:54.5341285Z, version 0.7.0.0;
+  compiled marker verified before copy. Shared and Account 1 output timestamps
+  remain unchanged. VERMAXION was left disabled; no reload/run was dispatched.
+- Containment and source correction are complete. Crash prevention is not live
+  verified, and the available native record does not establish the PC-wide crash
+  cause. Keep I433 acceptance and native scan/training/cleaning/cancellation open;
+  continue diagnosis from current fault evidence, then an explicitly resumed
+  FTP1 test. Do not equate compilation with a resolved crash.

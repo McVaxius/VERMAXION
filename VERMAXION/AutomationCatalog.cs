@@ -83,6 +83,7 @@ public static class AutomationCatalog
     public const string CurrentJobEquipment = "current_job_equipment";
     public const string FashionReport = "fashion_report";
     public const string CustomDeliveries = "custom_deliveries";
+    public const string ChocoboStables = "chocobo_stables";
     public const string RegisterRegistrables = "register_registrables";
     public const string VendorStock = "vendor_stock";
     public const string RefillListings = "refill_listings";
@@ -114,6 +115,7 @@ public static class AutomationCatalog
         Engine(CurrentJobEquipment, nameof(CharacterConfig.EnableCurrentJobEquipment), "Current Job Equipment", AutomationCadence.EveryRun),
         Engine(FashionReport, nameof(CharacterConfig.EnableFashionReport), "Fashion Report", AutomationCadence.Weekly),
         Engine(CustomDeliveries, nameof(CharacterConfig.EnableCustomDeliveries), "Custom Deliveries", AutomationCadence.Weekly),
+        Engine(ChocoboStables, nameof(CharacterConfig.EnableChocoboStables), "Chocobo Stables", AutomationCadence.Scheduled),
         Engine(RegisterRegistrables, nameof(CharacterConfig.EnableRegisterRegistrables), "Register Registrables", AutomationCadence.EveryRun),
         Engine(VendorStock, nameof(CharacterConfig.EnableVendorStock), "Vendor Stock", AutomationCadence.EveryRun),
         Engine(RefillListings, nameof(CharacterConfig.EnableRefillFromListings), "Refill Listings", AutomationCadence.Scheduled, PostProcessTaskPhase.BeforeAR),
