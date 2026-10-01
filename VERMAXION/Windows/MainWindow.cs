@@ -123,6 +123,8 @@ public class MainWindow : Window, IDisposable
         
         ImGui.Separator();
 
+        if (ImGui.Button("Big and fabled fish collection")) plugin.FishCollectionWindow.IsOpen = true;
+
         var oceanFishingWindowWatch = plugin.Configuration.OceanFishingWindowWatchEnabled;
         if (ImGui.Checkbox("Actively check for Ocean Fishing windows without AR pre/post process", ref oceanFishingWindowWatch))
         {

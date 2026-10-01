@@ -38,6 +38,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ITargetManager TargetManager { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] internal static IGameInventory GameInventory { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static IUnlockState UnlockState { get; private set; } = null!;
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
@@ -92,6 +93,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public LootGoblinMapGatherManualRunCoordinator LootGoblinMapGatherManualRunCoordinator { get; init; }
     public WorkshopBellService WorkshopBellService { get; init; }
     public FishingService FishingService { get; init; }
+    internal FishCollectionService FishCollection { get; private set; } = null!;
+    internal FishCollectionWindow FishCollectionWindow { get; private set; } = null!;
     public FishingRelogCoordinator FishingRelogCoordinator { get; init; }
     public CharacterSelectStallRecoveryService CharacterSelectStallRecovery { get; init; }
     public FishingStartupCoordinator FishingStartupCoordinator { get; init; }
@@ -155,7 +158,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private bool IsScheduledOfflineHoldActive => Configuration.ScheduledOfflineHold != null;
     private bool OfflineLogoutBlocksOrdinaryAutomation
         => IsScheduledOfflineHoldActive || ScheduledOfflineHoldCoordinator?.BlocksOrdinaryAutomation == true;
-    public bool IsFishingRunActive => FishingRunLifecycle.IsActive ||
+    public bool IsFishingRunActive => FishCollection?.IsActive == true || FishingRunLifecycle.IsActive ||
                                       FishingService.IsActive ||
                                       FishingRelogCoordinator.IsActive ||
                                       FishingStartupCoordinator.HasPendingRelogContinuation;
@@ -163,6 +166,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         get
         {
+            if (FishCollection?.IsActive == true) return FishCollection.Status;
             var prefix = FishingRunLifecycle.StatusPrefix;
             if (FishingRelogCoordinator.IsActive)
                 return prefix + FishingRelogCoordinator.StatusText;
@@ -306,6 +310,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             message => Log.Warning(message));
         FishingService = new FishingService(Log, Configuration, ConfigManager, XADatabaseIPCClient, VendorStockService, AdsIpcClient, VNavmeshIPC, LifestreamIPC, AutoRetainerIPC, FishingRunLifecycle, ScheduledOfflineHoldCoordinator, FisherGearsetRuntime, DutyState);
         FishingStartupCoordinator = new FishingStartupCoordinator(this);
+        FishCollection = new FishCollectionService(this);
+        FishCollectionWindow = new FishCollectionWindow(this);
         DeliveryFishing = new DeliveryFishing(this);
         CustomDeliveriesService = new CustomDeliveriesService(this)
         {
@@ -349,6 +355,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager);
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(FishCollectionWindow);
         WindowSystem.AddWindow(DebugWindow);
         WindowSystem.AddWindow(VerminionWindow);
         WindowSystem.AddWindow(RegistrableConfigWindow);
@@ -401,6 +408,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         AutomationStatusIpcProvider.Dispose();
         ChatGui.ChatMessage -= OnChatMessage;
         Framework.Update -= OnFrameworkUpdate;
+        FishCollection.Dispose();
         CustomDeliveriesService.Dispose();
         ChocoboStablesService.Cancel();
         DeliveryFishing.Dispose();
@@ -439,7 +447,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private AutomationStatus BuildAutomationStatus()
     {
-        var fishingCleanup = FishingRunLifecycle.IsCleanupPending ||
+        var fishingCleanup = FishCollection.IsCleanupPending || FishingRunLifecycle.IsCleanupPending ||
                              FishingService.State is FishingService.FishingState.HandlingResult
                                  or FishingService.FishingState.WaitingForCleanupReady
                                  or FishingService.FishingState.NavigatingToCleanupVendor
@@ -854,6 +862,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private bool ProcessPendingFishingPostprocessHandoff()
     {
+        if (FishCollection.IsActive)
+        {
+            if (pendingFishingPostprocessHandoff)
+            { pendingFishingPostprocessHandoff = false; FinishReleaseOnlyPostprocess("Fish collection owns this run"); }
+            return true;
+        }
         if (!pendingFishingPostprocessHandoff)
             return false;
 
@@ -1034,6 +1048,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         FishingStartupTrigger trigger,
         int? preWindowOffsetMinutes = null)
     {
+        if (FishCollection.IsActive)
+            return new FishingStartupResult(trigger, FishingRunMode.Collection, FishingStartupAction.Waiting, false,
+                null, FishingSelectionResult.None("Fish collection owns this run"), "Fish collection owns this run");
         var result = FishingStartupCoordinator.Poll(
             DateTimeOffset.UtcNow,
             trigger,
@@ -1189,7 +1206,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             ChocoboRaceService.Reset();
             FashionReportService.Reset();
             VendorStockService.Reset();
-            var preserveFishingRun = FishingRelogCoordinator.IsActive || FishingStartupCoordinator.HasPendingRelogContinuation;
+            var preserveFishingRun = FishCollection.IsActive || FishingRelogCoordinator.IsActive || FishingStartupCoordinator.HasPendingRelogContinuation;
             FishingService.Reset(releaseRun: !preserveFishingRun);
             if (FishingRelogCoordinator.IsActive)
                 FishingRelogCoordinator.NotifyCharacterChanged(newCharacterKey);
@@ -1588,6 +1605,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessPendingBeforeArLogin()
     {
+        if (FishCollection.IsActive)
+        { if (pendingBeforeArLogin) SkipBeforeArForLogin("Fish collection owns selected-character inspection or an opportunity"); return; }
         if (VerminionService.HasQuestAcquisition)
         { if (pendingBeforeArLogin) SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
         if (!pendingBeforeArLogin)
@@ -2361,6 +2380,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         ProcessPendingCharacterRegistration();
+        FishCollection.Update();
         // Custom-delivery data and task progress must refresh with all windows closed.
         DeliveryFishing.Update();
         CustomDeliveriesService.Update();
@@ -2577,6 +2597,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessFishingRecovery()
     {
+        if (FishCollection.IsActive) return;
         if (FishingService.IsFailed && !FishingService.FailureReported)
         {
             FishingService.MarkFailureReported();
@@ -2613,6 +2634,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
+        FishCollection.Stop("Full Stop");
         if (!preparingDebugTask && PlayerState.ContentId != 0 && !string.IsNullOrEmpty(ConfigManager.CurrentCharacterKey))
         {
             ConfigManager.GetActiveConfig().VerminionPaused = true;
@@ -2631,8 +2653,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         LootGoblinMapGatherManualRunCoordinator.Cancel();
         Log.Information("[FULL STOP] LootGoblin map gather cancel requested");
 
-        Engine.ForceStop(preserveVerminionResult: preparingDebugTask &&
-            Configuration.DebugTaskId == AutomationCatalog.VerminionQueue);
+        if (!FishCollection.IsActive)
+            Engine.ForceStop(preserveVerminionResult: preparingDebugTask &&
+                Configuration.DebugTaskId == AutomationCatalog.VerminionQueue);
         Log.Information("[FULL STOP] Engine force-stopped");
 
         MomIPCClient.CancelActiveRun();
@@ -2647,10 +2670,13 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         CustomDeliveriesService.Reset();
         ChocoboStablesService.Reset();
         VendorStockService.Reset();
-        FishingService.Reset();
-        FishingRelogCoordinator.Reset();
+        if (!FishCollection.IsActive)
+        {
+            FishingService.Reset();
+            FishingRelogCoordinator.Reset();
+        }
         CharacterSelectStallRecovery.Reset();
-        FishingRunLifecycle.ForceCleanup("Full Stop");
+        if (!FishCollection.IsActive) FishingRunLifecycle.ForceCleanup("Full Stop");
         RetainerListingRefillService.Reset();
         WorkshopBellService.Reset();
         RegisterRegistrablesService.Reset();
@@ -2665,11 +2691,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Log.Information("[FULL STOP] All services reset");
 
         // Stop VNavmesh navigation
-        VNavmeshIPC.Stop();
+        if (!FishCollection.IsActive) VNavmeshIPC.Stop();
         Log.Information("[FULL STOP] VNavmesh stopped");
 
         // Unpause YesAlready
-        YesAlreadyIPC.Unpause();
+        if (!FishCollection.IsActive) YesAlreadyIPC.Unpause();
         dashboardRunYesAlreadyPauseOwned = false;
         Log.Information("[FULL STOP] YesAlready unpaused");
 

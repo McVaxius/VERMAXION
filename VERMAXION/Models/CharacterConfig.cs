@@ -8,6 +8,8 @@ namespace VERMAXION.Models;
 [Serializable]
 public class CharacterConfig
 {
+    public bool FishCollectionSelected { get; set; }
+    public FisherObservation? FisherObservation { get; set; }
     // --- Feature Toggles ---
     public bool EnableVerminionQueue { get; set; } = false;
     public bool VerminionPaused { get; set; }
@@ -363,6 +365,8 @@ public class CharacterConfig
     {
         return new CharacterConfig
         {
+            FishCollectionSelected = FishCollectionSelected,
+            FisherObservation = FisherObservation,
             EnableVerminionQueue = EnableVerminionQueue,
             VerminionPaused = VerminionPaused,
             VerminionMode = VerminionMode,

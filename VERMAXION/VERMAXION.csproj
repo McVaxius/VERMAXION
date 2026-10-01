@@ -21,6 +21,8 @@
     <PackageReference Include="ECommons" Version="3.2.0.17" />
     <PackageReference Include="PInvoke.User32" Version="0.7.0" />
     <None Include="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Resources\fish-collection.json" />
+    <EmbeddedResource Include="Resources\ocean-collection-presets.json" />
   </ItemGroup>
 
   <Target Name="CopyPluginArtifacts" AfterTargets="Build">

@@ -33,6 +33,7 @@ public sealed class AdsShopPurchaseStatusSnapshot
     public bool? Succeeded { get; init; }
     public string Phase { get; init; } = string.Empty;
     public uint ItemId { get; init; }
+    public string OperationId { get; init; } = string.Empty;
     public string ItemName { get; init; } = string.Empty;
     public int RequestedQuantity { get; init; }
     public int AcquiredQuantity { get; init; }
@@ -56,6 +57,8 @@ public sealed class AdsIpcClient
     private readonly ICallGateSubscriber<bool, bool> setShopKeepOpenSubscriber;
     private readonly ICallGateSubscriber<string> getShopPurchaseStatusJsonSubscriber;
     private readonly ICallGateSubscriber<bool> cancelUtilitySubscriber;
+    private readonly ICallGateSubscriber<string, bool> startCurrencyShopPurchaseSubscriber;
+    private readonly ICallGateSubscriber<string, bool> cancelShopPurchaseSubscriber;
     private DateTime lastRefreshUtc = DateTime.MinValue;
     private DateTime lastShopRefreshUtc = DateTime.MinValue;
 
@@ -75,6 +78,8 @@ public sealed class AdsIpcClient
         getShopPurchaseStatusJsonSubscriber =
             pluginInterface.GetIpcSubscriber<string>("ADS.GetShopPurchaseStatusJson");
         cancelUtilitySubscriber = pluginInterface.GetIpcSubscriber<bool>("ADS.CancelUtility");
+        startCurrencyShopPurchaseSubscriber = pluginInterface.GetIpcSubscriber<string, bool>("ADS.StartCurrencyShopPurchase");
+        cancelShopPurchaseSubscriber = pluginInterface.GetIpcSubscriber<string, bool>("ADS.CancelShopPurchase");
     }
 
     public bool StartShopPurchase(uint itemId, int quantity, out string failure)
@@ -109,6 +114,26 @@ public sealed class AdsIpcClient
             log.Warning($"[ADS] Failed to start shop purchase item={itemId}, quantity={quantity}: {ex.Message}");
             return false;
         }
+    }
+
+    public bool StartCurrencyShopPurchase(string operationId, uint itemId, int quantity,
+        string currencyKind, uint currencyItemId, long maximumCurrencySpend, out string failure)
+    {
+        failure = string.Empty;
+        try
+        {
+            if (startCurrencyShopPurchaseSubscriber.InvokeFunc(JsonSerializer.Serialize(new
+                { operationId, itemId, quantity, currencyKind, currencyItemId, maximumCurrencySpend })))
+            { lastShopRefreshUtc = DateTime.MinValue; CurrentShopPurchase = AdsShopPurchaseStatusSnapshot.Empty; return true; }
+            failure = RefreshShopPurchase(true).LastStartError;
+        }
+        catch (Exception ex) { failure = ex.Message; }
+        return false;
+    }
+    public bool CancelShopPurchase(string operationId)
+    {
+        try { return cancelShopPurchaseSubscriber.InvokeFunc(operationId); }
+        catch (Exception ex) { log.Warning($"[ADS] Owned purchase cancellation failed: {ex.Message}"); return false; }
     }
 
     /// <summary>Asks ADS to hold a successful purchase's shop open for the next one (or to stop holding it).
@@ -161,6 +186,7 @@ public sealed class AdsIpcClient
                 Succeeded = GetNullableBool(root, "succeeded"),
                 Phase = GetString(root, "phase"),
                 ItemId = (uint)Math.Max(0, GetInt(root, "itemId")),
+                OperationId = GetString(root, "operationId"),
                 ItemName = GetString(root, "itemName"),
                 RequestedQuantity = GetInt(root, "requestedQuantity"),
                 AcquiredQuantity = GetInt(root, "acquiredQuantity"),
