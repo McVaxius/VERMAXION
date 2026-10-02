@@ -187,7 +187,10 @@ internal sealed class FishCollectionWindow : Window
         if (targets.Length == 0) ImGui.TextWrapped("No targets match these filters. Change the search or readiness filters to show more fish.");
         if (ImGui.BeginTable("fish", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY, new Vector2(0, ImGui.GetTextLineHeightWithSpacing() * 9)))
         {
-            ImGui.TableSetupColumn("Target"); ImGui.TableSetupColumn("Readiness"); ImGui.TableSetupColumn("Next window"); ImGui.TableSetupScrollFreeze(0, 1); ImGui.TableHeadersRow();
+            ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthStretch, 1f);
+            ImGui.TableSetupColumn("Readiness", ImGuiTableColumnFlags.WidthFixed, 120f * UIConstants.Scale);
+            ImGui.TableSetupColumn("Next window", ImGuiTableColumnFlags.WidthFixed, 130f * UIConstants.Scale);
+            ImGui.TableSetupScrollFreeze(0, 1); ImGui.TableHeadersRow();
             foreach (var fish in targets)
             {
                 ImGui.PushID((int)fish.ItemId); ImGui.TableNextRow(); ImGui.TableNextColumn();
@@ -231,7 +234,7 @@ internal sealed class FishCollectionWindow : Window
             }
         }
         else ImGui.TextWrapped("Select a fish to see readiness and pin or override its recommendation.");
-        if (ImGui.CollapsingHeader("Catalog sources"))
+        if (UIConstants.CollapsingHeading("Catalog sources"))
             foreach (var source in service.Catalog.Sources) ImGui.TextWrapped(source.Key + ": " + source.Value);
         return changed;
     }

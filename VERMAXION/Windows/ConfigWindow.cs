@@ -139,7 +139,7 @@ public class ConfigWindow : Window, IDisposable
         Plugin.Log.Information("[ChocoboUX] Build marker chocobo-ux-20260930-02; separate offspring quantities and explicit permit counterpart objective.");
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(520, 500),
+            MinimumSize = new Vector2(520, 620),
             MaximumSize = new Vector2(1200, 900),
         };
     }
@@ -263,7 +263,7 @@ public class ConfigWindow : Window, IDisposable
             .Select(feature => (feature, eligibility: plugin.Engine.GetTaskEligibility(feature.Id)))
             .Where(item => item.eligibility.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
             .ToList();
-        if (blockers.Count > 0 && ImGui.CollapsingHeader("Current prerequisite blockers"))
+        if (blockers.Count > 0 && UIConstants.CollapsingHeading("Current prerequisite blockers"))
         {
             foreach (var item in blockers)
                 ImGui.BulletText($"{item.feature.Label}: {item.eligibility.Reason}");
@@ -376,7 +376,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         if (ImGui.BeginChild("GlobalSettingsBody", new Vector2(0, 0), false, ImGuiWindowFlags.HorizontalScrollbar))
         {
-            if (ImGui.CollapsingHeader("Display & DTR", ImGuiTreeNodeFlags.DefaultOpen))
+            if (UIConstants.CollapsingHeading("Display & DTR", ImGuiTreeNodeFlags.DefaultOpen))
             {
             var compactUi = config.CompactUi;
             if (UIConstants.Checkbox("Compact UI", ref compactUi))
@@ -467,7 +467,7 @@ public class ConfigWindow : Window, IDisposable
             }
             }
 
-            if (ImGui.CollapsingHeader("Automation & Recovery"))
+            if (UIConstants.CollapsingHeading("Automation & Recovery"))
             {
 
             var autoRestoreRetainerChecking = config.AutoRestoreRetainerCheckingAfterWork;
@@ -531,7 +531,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped("Wizards stage changes and edit only the current account's Default Config after Apply. Existing characters remain unchanged until an explicit row sync or Apply Default to ALL.");
             }
 
-            if (ImGui.CollapsingHeader("Fishing"))
+            if (UIConstants.CollapsingHeading("Fishing"))
             {
 
             var oceanFishingWindowWatch = config.OceanFishingWindowWatchEnabled;
@@ -1810,7 +1810,7 @@ public class ConfigWindow : Window, IDisposable
                 changed |= VerminionWindow.DrawSettings(cc);
                 if (UIConstants.Button("Open Verminion##Settings")) plugin.VerminionWindow.IsOpen = true;
                 ImGui.TextWrapped("The standalone window runs on the current character. These settings belong to the selected configuration above.");
-                if (ImGui.CollapsingHeader("Next strategy and required minions##VerminionSettings"))
+                if (UIConstants.CollapsingHeading("Next strategy and required minions##VerminionSettings"))
                     VerminionWindow.DrawPlan(cc, VerminionService.PlannedStage(cc, cc.VerminionProgress.CampaignRequested),
                         !isDefault && charKey == configManager.CurrentCharacterKey && Plugin.PlayerState.IsLoaded);
                 ImGui.Unindent();
@@ -2889,7 +2889,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Spacing();
         ImGui.Separator();
 
-        if (ImGui.CollapsingHeader("Profile actions & saved task state"))
+        if (UIConstants.CollapsingHeading("Profile actions & saved task state"))
         {
             // Reset buttons
             if (UIConstants.Button("Reset Weekly Section"))
@@ -4479,8 +4479,8 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableSetupColumn("Field", ImGuiTableColumnFlags.WidthStretch, 1.4f);
-            ImGui.TableSetupColumn("Current", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("Staged", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Current", ImGuiTableColumnFlags.WidthStretch, 1f);
+            ImGui.TableSetupColumn("Staged", ImGuiTableColumnFlags.WidthStretch, 1f);
             ImGui.TableHeadersRow();
             foreach (var change in impact)
             {
