@@ -150,8 +150,11 @@ public static class UIConstants
     internal static void EndPanel()
     {
         ImGui.EndTable();
+        // A group's bounds follow content width; the table fills the available width.
+        var panelMin = ImGui.GetItemRectMin();
+        var panelMax = ImGui.GetItemRectMax();
         ImGui.EndGroup();
-        ImGui.GetWindowDrawList().AddRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(),
+        ImGui.GetWindowDrawList().AddRect(panelMin, panelMax,
             ImGui.GetColorU32(Border), 6f * Scale, ImDrawFlags.None, Scale);
     }
 

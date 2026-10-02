@@ -156,6 +156,16 @@ public class MainWindow : Window, IDisposable
                 plugin.Configuration.Enabled = enabled;
                 plugin.Configuration.Save();
             }
+            UIConstants.SameLineIfFits(UIConstants.ConfigLabels.KrangleNames);
+            var krangleEnabled = plugin.Configuration.KrangleEnabled;
+            if (UIConstants.Checkbox(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
+            {
+                plugin.Configuration.KrangleEnabled = krangleEnabled;
+                if (!krangleEnabled) KrangleService.ClearCache();
+                plugin.Configuration.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
         }
         void DrawControls()
         {
@@ -399,13 +409,6 @@ public class MainWindow : Window, IDisposable
 
             if (UIConstants.CollapsingHeading("Advanced diagnostics"))
             {
-                var krangleEnabled = plugin.Configuration.KrangleEnabled;
-                if (UIConstants.Checkbox("Krangle names", ref krangleEnabled))
-                {
-                    plugin.Configuration.KrangleEnabled = krangleEnabled;
-                    if (!krangleEnabled) KrangleService.ClearCache();
-                    plugin.Configuration.Save();
-                }
                 var lastRunTime = engine.LastRunCompletedAtUtc?.ToLocalTime().ToString("g") ?? "never";
                 ImGui.TextWrapped($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
                 ImGui.TextWrapped($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
