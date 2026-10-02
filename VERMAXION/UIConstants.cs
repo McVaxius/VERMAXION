@@ -155,10 +155,31 @@ public static class UIConstants
             ImGui.GetColorU32(Border), 6f * Scale, ImDrawFlags.None, Scale);
     }
 
-    internal static bool CollapsingHeading(string title)
+    internal static bool CollapsingHeading(string title, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
     {
+        ImGui.PushStyleColor(ImGuiCol.Header, Raised);
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Hover);
+        ImGui.PushStyleColor(ImGuiCol.HeaderActive, Pressed);
+        bool open;
         using (SectionFont?.Push())
-            return ImGui.CollapsingHeader(title, ImGuiTreeNodeFlags.DefaultOpen);
+        {
+            var width = System.Math.Max(1f, ImGui.GetContentRegionAvail().X - ImGui.GetTreeNodeToLabelSpacing() - ImGui.GetStyle().FramePadding.X);
+            var text = title.Split("##", System.StringSplitOptions.None)[0];
+            var size = ImGui.CalcTextSize(text, false, width);
+            if (ImGui.CalcTextSize(text).X <= width)
+                open = ImGui.CollapsingHeader(title, flags);
+            else
+            {
+                var padding = ImGui.GetStyle().FramePadding;
+                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(padding.X, padding.Y + (size.Y - ImGui.GetFontSize()) / 2));
+                open = ImGui.CollapsingHeader("##Wrapped_" + title, flags);
+                ImGui.PopStyleVar();
+                var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetTreeNodeToLabelSpacing(), padding.Y);
+                ImGui.GetWindowDrawList().AddText(ImGui.GetFont(), ImGui.GetFontSize(), position, ImGui.GetColorU32(ImGuiCol.Text), text, width);
+            }
+        }
+        ImGui.PopStyleColor(3);
+        return open;
     }
 
     internal static float ButtonWidth(string label)
@@ -214,6 +235,7 @@ public static class UIConstants
             ImGui.EndChild();
         }
         else WrappedText(color, text);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(text);
     }
 
     internal static void SetNextItemWidth(float width)

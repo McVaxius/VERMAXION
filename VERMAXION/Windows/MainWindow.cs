@@ -58,6 +58,7 @@ public class MainWindow : Window, IDisposable
 
     private readonly Plugin plugin;
     private string taskSearch = string.Empty;
+    private string taskView = "Overview";
     private ulong customDeliveryAutoShowContentId;
     private readonly RetainerEquippingArProbeCache retainerEquippingReadinessCache =
         new(TimeSpan.FromSeconds(5));
@@ -106,7 +107,7 @@ public class MainWindow : Window, IDisposable
         var charKey = plugin.ConfigManager.CurrentCharacterKey;
         var displayName = string.IsNullOrEmpty(charKey) ? "(Default)" : charKey;
 
-        UIConstants.ApplicationHeading("Task dashboard");
+        UIConstants.ApplicationHeading(taskView);
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.8.0.1";
         UIConstants.WrappedText(UIConstants.Metadata, $"v{version}");
 
@@ -149,13 +150,12 @@ public class MainWindow : Window, IDisposable
             ImGui.TextWrapped($"Current: {displayName}");
             var enabled = plugin.Configuration.Enabled;
             if (UIConstants.Checkbox("Enabled", ref enabled))
-        {
+            {
                 if (!enabled)
                     plugin.PauseCurrentTargetCycleBestEffort("VERMAXION global automation disabled");
                 plugin.Configuration.Enabled = enabled;
                 plugin.Configuration.Save();
-        }
-
+            }
         }
         void DrawControls()
         {
@@ -163,12 +163,12 @@ public class MainWindow : Window, IDisposable
                 engine.RegistryReady ? "Ready" : "Blocked");
             // Engine Status
             var stateColor = engine.State switch
-        {
+            {
                 VermaxionEngine.EngineState.Idle => UIConstants.Metadata,
                 VermaxionEngine.EngineState.Complete => UIConstants.Text,
                 VermaxionEngine.EngineState.Error => UIConstants.Amber,
                 _ => UIConstants.Blue,
-        };
+            };
 
             var pendingTasks = engine.GetPendingTaskCount();
             var readinessText = engine.StatusText;
@@ -179,35 +179,14 @@ public class MainWindow : Window, IDisposable
             if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
                 readinessText += $"\nBlocked handoff: {engine.ActiveHandoffBlocker}";
 
-            var statusLimit = ImGui.GetTextLineHeightWithSpacing() * 3;
-            var statusHeight = ImGui.CalcTextSize(readinessText, false, ImGui.GetContentRegionAvail().X).Y;
-            if (statusHeight > statusLimit)
-        {
-                if (ImGui.BeginChild("RuntimeDiagnostics", new Vector2(0, statusLimit), false))
-                    DrawRuntimeStatus();
-                ImGui.EndChild();
-        }
-            else
-                DrawRuntimeStatus();
+            UIConstants.Status("RuntimeDiagnostics", readinessText,
+                !engine.RegistryReady || !string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker) ? UIConstants.Amber : stateColor);
             if (!engine.RegistryReady && UIConstants.Button("Open Task Order"))
                 plugin.ConfigWindow.OpenTaskOrder();
 
-            void DrawRuntimeStatus()
-        {
-                ImGui.PushTextWrapPos(0f);
-                ImGui.TextColored(!engine.RegistryReady || !string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker)
-                    ? UIConstants.Amber : stateColor, readinessText);
-                ImGui.PopTextWrapPos();
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(readinessText);
-        }
-
             // Control buttons row
             // FULL STOP stays above task scrolling, with an explicit border in every state.
-            if (UIConstants.FullStopButton())
-        {
-                plugin.FullStop();
-        }
+            if (UIConstants.FullStopButton()) plugin.FullStop();
             UIConstants.SameLineIfFits("Run All");
 
             ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
@@ -215,11 +194,11 @@ public class MainWindow : Window, IDisposable
                 plugin.RunDashboardAction(() => engine.ManualStart());
             ImGui.EndDisabled();
             if (engine.IsRunning)
-        {
+            {
                 UIConstants.SameLineIfFits("Cancel");
                 if (UIConstants.Button("Cancel"))
                     engine.Cancel();
-        }
+            }
             UIConstants.SameLineIfFits("Settings");
             if (UIConstants.Button("Settings"))
                 plugin.ToggleConfigUi();
@@ -251,7 +230,7 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
 
-        if (!favoritesOnly && !attentionOnly && ImGui.CollapsingHeader("Advanced test controls"))
+        if (!favoritesOnly && !attentionOnly && UIConstants.CollapsingHeading("Advanced test controls"))
         {
             // Test Functions
             ImGui.BeginDisabled(plugin.DadHandoffBlocksNewWork);
@@ -379,7 +358,7 @@ public class MainWindow : Window, IDisposable
                         : "No tasks are available.");
 
         if (!attentionOnly && visibleRows.Any(row => row.Id == AutomationCatalog.CustomDeliveries) &&
-            ImGui.CollapsingHeader("Custom Deliveries: NPC ranks, bonuses and progress"))
+            UIConstants.CollapsingHeading("Custom Deliveries: NPC ranks, bonuses and progress"))
             DrawCustomDeliveryNpcOverview(plugin, config.CustomDeliveriesSettings);
 
         DrawAdvancedDiagnostics();
@@ -399,6 +378,7 @@ public class MainWindow : Window, IDisposable
         {
             if (ImGui.BeginTabItem(label))
             {
+                taskView = label;
                 UIConstants.SetNextItemWidth(-1f);
                 ImGui.InputTextWithHint("##TaskSearch", "Find a task or required plugin...", ref taskSearch, 100);
                 if (taskSearch.Length > 0 && UIConstants.Button("Clear search")) taskSearch = string.Empty;
@@ -417,7 +397,7 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.Spacing();
 
-            if (ImGui.CollapsingHeader("Advanced diagnostics"))
+            if (UIConstants.CollapsingHeading("Advanced diagnostics"))
             {
                 var krangleEnabled = plugin.Configuration.KrangleEnabled;
                 if (UIConstants.Checkbox("Krangle names", ref krangleEnabled))
@@ -937,7 +917,7 @@ public class MainWindow : Window, IDisposable
             if (UIConstants.BeginPanel("TaskPanel"))
             {
                 if (favoritesOnly) UIConstants.Heading($"Favorites ({groupRows.Count})", true);
-                if (favoritesOnly || UIConstants.CollapsingHeading($"{label} ({groupRows.Count})"))
+                if (favoritesOnly || UIConstants.CollapsingHeading($"{label} ({groupRows.Count})###TaskGroup", ImGuiTreeNodeFlags.DefaultOpen))
                 {
                     var automatic = plugin.Configuration.AutoWidthMainTaskColumns;
                     var flags = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp |

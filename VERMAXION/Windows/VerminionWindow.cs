@@ -19,7 +19,7 @@ internal sealed class VerminionWindow : Window
         this.plugin = plugin;
         Size = new Vector2(760, 680);
         SizeCondition = ImGuiCond.FirstUseEver;
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new(520, 480), MaximumSize = new(float.MaxValue, float.MaxValue) };
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new(520, 620), MaximumSize = new(float.MaxValue, float.MaxValue) };
     }
 
     public override void PreDraw() => UIConstants.PushStyle(plugin.Configuration.CompactUi);
@@ -36,7 +36,9 @@ internal sealed class VerminionWindow : Window
 
         var cleared = Enumerable.Range(0, 24).Count(stage => (progress.ClearedChallengeMask & (1u << stage)) != 0);
         ImGui.TextWrapped($"Permanent CPU campaign: {cleared}/24 cleared");
-        ImGui.ProgressBar(cleared / 24f, new Vector2(-1, 20f * UIConstants.Scale), $"{cleared}/24");
+        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, UIConstants.Blue);
+        ImGui.ProgressBar(cleared / 24f, new Vector2(-1, 20f * UIConstants.Scale), string.Empty);
+        ImGui.PopStyleColor();
         if (UIConstants.FullStopButton()) plugin.FullStop();
         ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
         if (config.VerminionPaused || progress.RunMode != null)
@@ -118,12 +120,12 @@ internal sealed class VerminionWindow : Window
         }
         if (UIConstants.BeginPanel("MissionWeekly", "Mission replay / weekly goals"))
         {
-        if (DrawGoalSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
-        var runLabel = config.VerminionMode == VerminionMode.MissionRepeat
-            ? $"Run mission {Math.Clamp(config.VerminionMission, 1, 24)} ({Math.Clamp(config.VerminionRepeatCount, 1, 1000)} clears)"
-            : config.VerminionMode == VerminionMode.CpuRewards ? "Check tournament / prizes" : "Run weekly participation";
-        if (UIConstants.Button(runLabel)) plugin.RunDashboardAction(service.RunTask);
-        UIConstants.EndPanel();
+            if (DrawGoalSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
+            var runLabel = config.VerminionMode == VerminionMode.MissionRepeat
+                ? $"Run mission {Math.Clamp(config.VerminionMission, 1, 24)} ({Math.Clamp(config.VerminionRepeatCount, 1, 1000)} clears)"
+                : config.VerminionMode == VerminionMode.CpuRewards ? "Check tournament / prizes" : "Run weekly participation";
+            if (UIConstants.Button(runLabel)) plugin.RunDashboardAction(service.RunTask);
+            UIConstants.EndPanel();
         }
         ImGui.EndDisabled();
     }
