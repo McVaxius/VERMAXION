@@ -139,7 +139,7 @@ public class ConfigWindow : Window, IDisposable
         Plugin.Log.Information("[ChocoboUX] Build marker chocobo-ux-20260930-02; separate offspring quantities and explicit permit counterpart objective.");
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(700, 500),
+            MinimumSize = new Vector2(520, 500),
             MaximumSize = new Vector2(1200, 900),
         };
     }
@@ -159,10 +159,8 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        DrawAccountSelector(plugin.ConfigManager);
-        DrawConfigurationScopeBanner(plugin.ConfigManager);
-        ImGui.Separator();
-        if (ImGui.BeginTabBar("ConfigTabs"))
+        UIConstants.ApplicationHeading("Settings");
+        if (ImGui.BeginTabBar("ConfigTabs", ImGuiTabBarFlags.FittingPolicyScroll))
         {
             var settingsFlags = requestedTab == ConfigTab.Settings
                 ? ImGuiTabItemFlags.SetSelected
@@ -171,11 +169,19 @@ public class ConfigWindow : Window, IDisposable
             {
                 if (requestedTab == ConfigTab.Settings)
                     requestedTab = null;
+                DrawAccountSelector(plugin.ConfigManager);
+                DrawCharacterScopePicker(plugin.ConfigManager);
+                if (UIConstants.BeginPanel("EditingScope"))
+                {
+                    DrawConfigurationScopeBanner(plugin.ConfigManager);
+                    UIConstants.EndPanel();
+                }
                 DrawSettingsTab();
                 ImGui.EndTabItem();
             }
             if (ImGui.BeginTabItem("Global"))
             {
+                DrawAccountSelector(plugin.ConfigManager);
                 DrawGlobalSettingsTab();
                 ImGui.EndTabItem();
             }
@@ -193,6 +199,7 @@ public class ConfigWindow : Window, IDisposable
             }
             if (ImGui.BeginTabItem("Marketboard"))
             {
+                DrawAccountSelector(plugin.ConfigManager);
                 DrawMarketboardSettings();
                 ImGui.EndTabItem();
             }
@@ -218,7 +225,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (!plugin.Engine.RegistryReady)
         {
-            ImGui.TextColored(new Vector4(1f, 0.2f, 0.2f, 1f), "CONFIGURED BUT NOT DISPATCHABLE");
+            ImGui.TextColored(UIConstants.Amber, "CONFIGURED BUT NOT DISPATCHABLE");
             ImGui.TextWrapped(plugin.Engine.RegistryDiagnostic);
             ImGui.Separator();
         }
@@ -227,7 +234,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextWrapped("Before AR runs while AutoRetainer is suppressed after login. After AR runs in the normal post-process slot. Up and Down stay within a lane; moving between lanes is always explicit.");
         ImGui.Spacing();
 
-        if (ImGui.Button("Reset to default"))
+        if (UIConstants.Button("Reset to default"))
         {
             RequestConfirmation(
                 "Reset task order?",
@@ -295,7 +302,7 @@ public class ConfigWindow : Window, IDisposable
 
             ImGui.TableSetColumnIndex(0);
             ImGui.BeginDisabled(laneIndex == 0);
-            if (ImGui.SmallButton("Up"))
+            if (UIConstants.Button("Up"))
             {
                 config.PostProcessTaskOrder = PostProcessTaskOrder.MoveWithinLane(
                     config.PostProcessTaskOrder,
@@ -307,7 +314,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndDisabled();
             ImGui.SameLine();
             ImGui.BeginDisabled(laneIndex == lane.Count - 1);
-            if (ImGui.SmallButton("Dn"))
+            if (UIConstants.Button("Dn"))
             {
                 config.PostProcessTaskOrder = PostProcessTaskOrder.MoveWithinLane(
                     config.PostProcessTaskOrder,
@@ -332,7 +339,7 @@ public class ConfigWindow : Window, IDisposable
             var destination = phase == PostProcessTaskPhase.BeforeAR
                 ? PostProcessTaskPhase.AfterAR
                 : PostProcessTaskPhase.BeforeAR;
-            if (ImGui.SmallButton($"Move to {(destination == PostProcessTaskPhase.BeforeAR ? "Before" : "After")}"))
+            if (UIConstants.Button($"Move to {(destination == PostProcessTaskPhase.BeforeAR ? "Before" : "After")}"))
             {
                 config.PostProcessTaskPlacement = PostProcessTaskOrder.ChangePhase(
                     config.PostProcessTaskPlacement,
@@ -372,7 +379,7 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.CollapsingHeader("Display & DTR", ImGuiTreeNodeFlags.DefaultOpen))
             {
             var compactUi = config.CompactUi;
-            if (ImGui.Checkbox("Compact UI", ref compactUi))
+            if (UIConstants.Checkbox("Compact UI", ref compactUi))
             {
                 config.CompactUi = compactUi;
                 config.Save();
@@ -380,7 +387,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped("Use tighter spacing and heading gaps across all windows. All controls remain available.");
             ImGui.Spacing();
             var autoWidthMainTaskColumns = config.AutoWidthMainTaskColumns;
-            if (ImGui.Checkbox(
+            if (UIConstants.Checkbox(
                     UIConstants.ConfigLabels.AutoWidthMainTaskColumns,
                     ref autoWidthMainTaskColumns))
             {
@@ -390,7 +397,7 @@ public class ConfigWindow : Window, IDisposable
             DrawHelpMarker(UIConstants.Tooltips.AutoWidthMainTaskColumns);
 
             var krangleEnabled = config.KrangleEnabled;
-            if (ImGui.Checkbox(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
+            if (UIConstants.Checkbox(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
             {
                 config.KrangleEnabled = krangleEnabled;
                 if (!krangleEnabled) KrangleService.ClearCache();
@@ -402,7 +409,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
 
             var dtrEnabled = config.DtrBarEnabled;
-            if (ImGui.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
+            if (UIConstants.Checkbox(UIConstants.ConfigLabels.DtrBarEntry, ref dtrEnabled))
             {
                 config.DtrBarEnabled = dtrEnabled;
                 config.Save();
@@ -416,8 +423,8 @@ public class ConfigWindow : Window, IDisposable
 
             var dtrMode = config.DtrBarMode;
             var dtrModes = new[] { "Text Only", "Icon+Text", "Icon Only" };
-            ImGui.SetNextItemWidth(150);
-            if (ImGui.Combo("DTR Mode", ref dtrMode, dtrModes, dtrModes.Length))
+            UIConstants.SetNextItemWidth(150f * UIConstants.Scale);
+            if (UIConstants.Combo("DTR Mode", ref dtrMode, dtrModes, dtrModes.Length))
             {
                 config.DtrBarMode = dtrMode;
                 config.Save();
@@ -433,8 +440,8 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Customize the glyphs used for enabled/disabled icon modes.");
-            ImGui.SameLine();
-            if (ImGui.Button("Open Lodestone Glyphs"))
+            UIConstants.SameLineIfFits("Open Lodestone Glyphs");
+            if (UIConstants.Button("Open Lodestone Glyphs"))
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
@@ -464,7 +471,7 @@ public class ConfigWindow : Window, IDisposable
             {
 
             var autoRestoreRetainerChecking = config.AutoRestoreRetainerCheckingAfterWork;
-            if (ImGui.Checkbox(
+            if (UIConstants.Checkbox(
                     UIConstants.ConfigLabels.AutoRestoreRetainerCheckingAfterWork,
                     ref autoRestoreRetainerChecking))
             {
@@ -477,7 +484,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.Unindent();
 
             var enableCharacterSelectStallRecovery = config.EnableCharacterSelectStallRecovery;
-            if (ImGui.Checkbox(
+            if (UIConstants.Checkbox(
                     UIConstants.ConfigLabels.EnableCharacterSelectStallRecovery,
                     ref enableCharacterSelectStallRecovery))
             {
@@ -487,8 +494,8 @@ public class ConfigWindow : Window, IDisposable
             DrawHelpMarker(UIConstants.Tooltips.EnableCharacterSelectStallRecovery);
 
             var listingActionDelay = Math.Clamp(config.RefillListingsActionDelayMs, 0, 2000);
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-            if (ImGui.InputInt("Listing action delay (ms)", ref listingActionDelay, 50, 250))
+            UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+            if (UIConstants.InputInt("Listing action delay (ms)", ref listingActionDelay, 50, 250))
             {
                 config.RefillListingsActionDelayMs = Math.Clamp(listingActionDelay, 0, 2000);
                 config.Save();
@@ -496,8 +503,8 @@ public class ConfigWindow : Window, IDisposable
             DrawHelpMarker("Delay after ordinary Refill Listings actions. Range: 0–2000 ms. Default: 250 ms. Setting 0 performs the next action without an added delay. Timeouts, navigation, close retries, and UI-settlement waits are unchanged.");
 
             var listingInterItemDelay = Math.Clamp(config.RefillListingsInterItemDelayMs, 0, 2000);
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-            if (ImGui.InputInt("Listing inter-item delay (ms)", ref listingInterItemDelay, 50, 250))
+            UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+            if (UIConstants.InputInt("Listing inter-item delay (ms)", ref listingInterItemDelay, 50, 250))
             {
                 config.RefillListingsInterItemDelayMs = Math.Clamp(listingInterItemDelay, 0, 2000);
                 config.Save();
@@ -509,16 +516,16 @@ public class ConfigWindow : Window, IDisposable
             ImGui.Separator();
             ImGui.Text($"Replayable setup wizards - {GetAccountDisplayName(plugin.ConfigManager, plugin.ConfigManager.CurrentAccountId)}");
             ImGui.BeginDisabled(plugin.ConfigManager.GetCurrentAccount() == null);
-            if (ImGui.SmallButton("Default & Sync"))
+            if (UIConstants.Button("Default & Sync"))
                 OpenWizard(SetupWizardKind.DefaultAndSync);
-            ImGui.SameLine();
-            if (ImGui.SmallButton("FC Buff"))
+            UIConstants.SameLineIfFits("FC Buff");
+            if (UIConstants.Button("FC Buff"))
                 OpenWizard(SetupWizardKind.FcBuff);
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Fishing##Wizard"))
+            UIConstants.SameLineIfFits("Fishing##Wizard");
+            if (UIConstants.Button("Fishing##Wizard"))
                 OpenWizard(SetupWizardKind.Fishing);
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Retainer Equipping"))
+            UIConstants.SameLineIfFits("Retainer Equipping");
+            if (UIConstants.Button("Retainer Equipping"))
                 OpenWizard(SetupWizardKind.RetainerEquipping);
             ImGui.EndDisabled();
             ImGui.TextWrapped("Wizards stage changes and edit only the current account's Default Config after Apply. Existing characters remain unchanged until an explicit row sync or Apply Default to ALL.");
@@ -528,7 +535,7 @@ public class ConfigWindow : Window, IDisposable
             {
 
             var oceanFishingWindowWatch = config.OceanFishingWindowWatchEnabled;
-            if (ImGui.Checkbox("Watch Ocean Fishing windows", ref oceanFishingWindowWatch))
+            if (UIConstants.Checkbox("Watch Ocean Fishing windows", ref oceanFishingWindowWatch))
             {
                 config.OceanFishingWindowWatchEnabled = oceanFishingWindowWatch;
                 config.Save();
@@ -536,7 +543,7 @@ public class ConfigWindow : Window, IDisposable
             DrawHelpMarker("Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings.");
 
             var fishingMode = config.FishingExecutionMode;
-            if (ImGui.BeginCombo("Fishing mode", FormatFishingExecutionMode(fishingMode)))
+            if (UIConstants.BeginCombo("Fishing mode", FormatFishingExecutionMode(fishingMode)))
             {
                 foreach (var mode in Enum.GetValues<FishingExecutionMode>())
                 {
@@ -556,7 +563,7 @@ public class ConfigWindow : Window, IDisposable
 
             var provider = config.OceanFishingProvider;
             ImGui.BeginDisabled(plugin.IsFishingRunActive);
-            if (ImGui.BeginCombo("Ocean Fishing provider", FormatOceanFishingProvider(provider)))
+            if (UIConstants.BeginCombo("Ocean Fishing provider", FormatOceanFishingProvider(provider)))
             {
                 foreach (var candidate in Enum.GetValues<OceanFishingProvider>())
                 {
@@ -606,13 +613,13 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.TextColored(
                     oceanFishingProviderSyncSucceeded == true
-                        ? new Vector4(0.25f, 1f, 0.35f, 1f)
-                        : new Vector4(1f, 0.75f, 0.15f, 1f),
+                        ? UIConstants.Metadata
+                        : UIConstants.Amber,
                     oceanFishingProviderSyncStatus);
             }
 
             var routePreference = OceanFishingRoutePolicy.Normalize(config.OceanFishingRoutePreference);
-            if (ImGui.BeginCombo("Ocean Fishing route preference", routePreference.ToString()))
+            if (UIConstants.BeginCombo("Ocean Fishing route preference", routePreference.ToString()))
             {
                 foreach (var preference in Enum.GetValues<OceanFishingRoutePreference>()
                              .Where(candidate => candidate != OceanFishingRoutePreference.Thavnair))
@@ -632,8 +639,8 @@ public class ConfigWindow : Window, IDisposable
             DrawHelpMarker("Preferred Ocean Fishing route family for characters that do not have an explicit override.");
 
             var maxFisherLevel = config.FishingMaxFisherLevel;
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-            if (ImGui.InputInt("Max Fisher level", ref maxFisherLevel))
+            UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+            if (UIConstants.InputInt("Max Fisher level", ref maxFisherLevel))
             {
                 config.FishingMaxFisherLevel = Math.Clamp(maxFisherLevel, 1, 100);
                 config.Save();
@@ -641,8 +648,8 @@ public class ConfigWindow : Window, IDisposable
             DrawHelpMarker("Characters with Fisher at or above this level are skipped unless their active fishing window override applies.");
 
             var oceanFishingOffset = config.OceanFishingPreWindowOffsetMinutes;
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-            if (ImGui.InputInt("Ocean Fishing pre-window offset", ref oceanFishingOffset))
+            UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+            if (UIConstants.InputInt("Ocean Fishing pre-window offset", ref oceanFishingOffset))
             {
                 config.OceanFishingPreWindowOffsetMinutes = Math.Clamp(
                     oceanFishingOffset,
@@ -653,7 +660,7 @@ public class ConfigWindow : Window, IDisposable
             DrawHelpMarker("Minutes relative to Ocean Fishing registration start. VERMAXION starts from this offset through the full 15-minute registration period; the closing boundary is excluded.");
 
             var logoutBetweenVoyages = config.LogoutBetweenScheduledOceanFishingVoyages;
-            if (ImGui.Checkbox(
+            if (UIConstants.Checkbox(
                     "Log out between scheduled Ocean Fishing voyages",
                     ref logoutBetweenVoyages))
             {
@@ -672,7 +679,7 @@ public class ConfigWindow : Window, IDisposable
                     $"registration {hold.NextRegistrationStartUtc:u}–{hold.NextRegistrationEndUtc:u}");
             }
 
-            if (ImGui.SmallButton("Reset Fishing startup gate"))
+            if (UIConstants.Button("Reset Fishing startup gate"))
                 plugin.ResetFishingStartupGate();
             DrawHelpMarker("Clears the current Ocean Fishing startup-window attempt guard so an explicit Fishing run can retry.");
 
@@ -695,64 +702,62 @@ public class ConfigWindow : Window, IDisposable
             UIConstants.ConfigLabels.VariableTimeTasks,
             UIConstants.ConfigLabels.WipTasks,
         };
-        var leftWidth = Math.Clamp(config.LeftPanelWidth * UIConstants.Scale, 180f * UIConstants.Scale,
-            Math.Max(180f * UIConstants.Scale, ImGui.GetContentRegionAvail().X * 0.35f));
-        if (ImGui.BeginChild("SettingsNavigation", new Vector2(leftWidth, 0), true))
+        var matches = AutomationCatalog.Features.Where(feature => IsTaskNavigationEntry(feature) &&
+            (string.IsNullOrWhiteSpace(taskSearch) || feature.Label.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase) ||
+             feature.Id.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase))).ToList();
+        var wide = ImGui.GetContentRegionAvail().X >= 760f * UIConstants.Scale;
+        if (wide)
         {
-            var characterHeight = Math.Max(100f * UIConstants.Scale, ImGui.GetContentRegionAvail().Y * 0.42f);
-            if (ImGui.BeginChild("CharacterNavigation", new Vector2(0, characterHeight), false))
-                DrawCharacterList(configManager);
-            ImGui.EndChild();
-            ImGui.Separator();
-            UIConstants.Heading("Task settings", config.CompactUi);
-            ImGui.SetNextItemWidth(-1f);
-            ImGui.InputTextWithHint("##TaskSearch", "Search tasks...", ref taskSearch, 128);
-            var sectionIndex = (int)selectedConfigurationSection;
-            ImGui.SetNextItemWidth(-1f);
-            if (ImGui.Combo("##TaskGroup", ref sectionIndex, sectionLabels, sectionLabels.Length))
+            var leftWidth = Math.Clamp(config.LeftPanelWidth * UIConstants.Scale, 200f * UIConstants.Scale,
+                ImGui.GetContentRegionAvail().X * 0.3f);
+            if (ImGui.BeginChild("SettingsNavigation", new Vector2(leftWidth, 0), true))
             {
-                selectedConfigurationSection = (ConfigurationSection)sectionIndex;
-                selectedAutomationId = AutomationCatalog.Features.First(feature =>
-                    IsTaskNavigationEntry(feature) && GetSettingsSection(feature.Id) == selectedConfigurationSection).Id;
-                scrollConfigurationToTop = true;
-            }
-            if (ImGui.BeginChild("TaskNavigation", new Vector2(0, 0), false))
-            {
-                var matches = AutomationCatalog.Features.Where(feature => IsTaskNavigationEntry(feature) &&
-                    (string.IsNullOrWhiteSpace(taskSearch)
-                        ? GetSettingsSection(feature.Id) == selectedConfigurationSection
-                        : feature.Label.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                          feature.Id.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase))).ToList();
-                foreach (var feature in matches)
+                UIConstants.SetNextItemWidth(-1f);
+                ImGui.InputTextWithHint("##TaskSearch", "Find settings...", ref taskSearch, 128);
+                foreach (var section in Enum.GetValues<ConfigurationSection>())
                 {
-                    var rowPosition = ImGui.GetCursorPos();
-                    var rowWidth = Math.Max(1f, ImGui.GetContentRegionAvail().X);
-                    var rowHeight = ImGui.CalcTextSize(feature.Label, false, rowWidth).Y;
-                    if (ImGui.Selectable($"##{feature.Id}", selectedAutomationId == feature.Id,
-                            ImGuiSelectableFlags.None, new Vector2(rowWidth, rowHeight)))
+                    UIConstants.Heading(sectionLabels[(int)section], config.CompactUi);
+                    foreach (var feature in matches.Where(feature => GetSettingsSection(feature.Id) == section))
                     {
-                        selectedAutomationId = feature.Id;
-                        selectedConfigurationSection = GetSettingsSection(feature.Id);
-                        scrollConfigurationToTop = true;
+                        if (UIConstants.WrappedSelectable(feature.Label + "##" + feature.Id, selectedAutomationId == feature.Id))
+                            SelectTask(feature);
                     }
-                    var nextRowPosition = ImGui.GetCursorPos();
-                    ImGui.SetCursorPos(rowPosition);
-                    ImGui.TextWrapped(feature.Label);
-                    ImGui.SetCursorPos(nextRowPosition);
                 }
-                if (matches.Count == 0)
-                    ImGui.TextWrapped("No tasks match this search.");
+                if (matches.Count == 0) ImGui.TextWrapped("No tasks match this search.");
             }
             ImGui.EndChild();
+            ImGui.SameLine();
         }
-        ImGui.EndChild();
-        ImGui.SameLine();
+        else
+        {
+            UIConstants.SetNextItemWidth(-1f);
+            if (UIConstants.BeginCombo("##TaskPicker", AutomationCatalog.Get(selectedAutomationId).Label))
+            {
+                UIConstants.SetNextItemWidth(-1f);
+                ImGui.InputTextWithHint("##TaskSearch", "Find settings...", ref taskSearch, 128);
+                foreach (var section in Enum.GetValues<ConfigurationSection>())
+                {
+                    UIConstants.Heading(sectionLabels[(int)section], true);
+                    foreach (var feature in matches.Where(feature => GetSettingsSection(feature.Id) == section))
+                        if (UIConstants.WrappedSelectable(feature.Label + "##" + feature.Id, selectedAutomationId == feature.Id))
+                            SelectTask(feature);
+                }
+                if (matches.Count == 0) ImGui.TextWrapped("No tasks match this search.");
+                ImGui.EndCombo();
+            }
+        }
+        void SelectTask(AutomationFeatureDefinition feature)
+        {
+            selectedAutomationId = feature.Id;
+            selectedConfigurationSection = GetSettingsSection(feature.Id);
+            scrollConfigurationToTop = true;
+        }
         if (ImGui.BeginChild("SelectedTaskPanel", new Vector2(0, 0), true))
         {
             UIConstants.Heading(AutomationCatalog.Get(selectedAutomationId).Label, config.CompactUi);
-            ImGui.TextWrapped("Settings for the account and profile shown above.");
+            ImGui.TextWrapped(string.IsNullOrEmpty(configManager.SelectedCharacterKey) ? "Account default settings" : "Character-specific settings");
             ImGui.Separator();
-            if (ImGui.BeginChild($"TaskSettings_{selectedAutomationId}", new Vector2(0, 0), false, ImGuiWindowFlags.HorizontalScrollbar))
+            if (ImGui.BeginChild($"TaskSettings_{selectedAutomationId}", new Vector2(0, 0), false))
             {
                 if (scrollConfigurationToTop)
                 {
@@ -852,8 +857,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Text(UIConstants.ConfigLabels.Account);
         ImGui.SameLine();
 
-        ImGui.SetNextItemWidth(Math.Min(320f * UIConstants.Scale, Math.Max(100f, ImGui.GetContentRegionAvail().X - 100f * UIConstants.Scale)));
-        if (ImGui.BeginCombo("##AccountCombo", GetAccountDisplayName(configManager, currentId)))
+        UIConstants.SetNextItemWidth(Math.Min(320f * UIConstants.Scale, Math.Max(100f, ImGui.GetContentRegionAvail().X - 100f * UIConstants.Scale)));
+        if (UIConstants.BeginCombo("##AccountCombo", GetAccountDisplayName(configManager, currentId)))
         {
             foreach (var kvp in accounts)
             {
@@ -875,8 +880,8 @@ public class ConfigWindow : Window, IDisposable
         var account = configManager.GetCurrentAccount();
         if (account != null)
         {
-            ImGui.SameLine();
-            if (ImGui.Button("Rename##EditAccount"))
+            UIConstants.SameLineIfFits("Rename");
+            if (UIConstants.Button("Rename##EditAccount"))
             {
                 editAccountAlias = account.AccountAlias;
                 ImGui.OpenPopup("EditAccountPopup");
@@ -885,8 +890,8 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.BeginPopup("EditAccountPopup"))
             {
                 ImGui.Text(UIConstants.ConfigLabels.AccountAlias);
-                ImGui.InputText("##EditAlias", ref editAccountAlias, 64);
-                if (ImGui.Button(UIConstants.ConfigLabels.Save) && !string.IsNullOrWhiteSpace(editAccountAlias))
+                UIConstants.InputText("##EditAlias", ref editAccountAlias, 64);
+                if (UIConstants.Button(UIConstants.ConfigLabels.Save) && !string.IsNullOrWhiteSpace(editAccountAlias))
                 {
                     configManager.UpdateAccountAlias(editAccountAlias);
                     ImGui.CloseCurrentPopup();
@@ -907,10 +912,8 @@ public class ConfigWindow : Window, IDisposable
                 ? "Unnamed account"
                 : account.AccountAlias;
         var editingLabel = isDefault ? "Account default" : "Character";
-        ImGui.Text($"Editing: {editingLabel}");
-        ImGui.SameLine();
-        ImGui.TextDisabled($"Account: {accountLabel}");
-        ImGui.TextWrapped($"Selected: {(isDefault ? "Default Config" : charKey)} · Runtime character: {(string.IsNullOrWhiteSpace(configManager.CurrentCharacterKey) ? "Not logged in" : configManager.CurrentCharacterKey)}");
+        ImGui.TextWrapped($"Editing: {editingLabel} ? Account: {accountLabel}");
+        ImGui.TextWrapped($"Selected: {(isDefault ? "Default Config" : charKey)} · Current: {(string.IsNullOrWhiteSpace(configManager.CurrentCharacterKey) ? "Not logged in" : configManager.CurrentCharacterKey)}");
 
         if (account == null)
             return;
@@ -936,15 +939,30 @@ public class ConfigWindow : Window, IDisposable
         return text.Split('\u0001')[1] ?? text;
     }
 
+    private void DrawCharacterScopePicker(ConfigManager configManager)
+    {
+        UIConstants.SetNextItemWidth(-1f);
+        var key = configManager.SelectedCharacterKey;
+        var label = string.IsNullOrEmpty(key) ? "Account default" :
+            plugin.Configuration.KrangleEnabled ? KrangleService.KrangleName(key) : key;
+        if (key == configManager.CurrentCharacterKey && key.Length > 0) label += " (Current)";
+        if (UIConstants.BeginCombo("##CharacterScope", label))
+        {
+            DrawCharacterList(configManager);
+            ImGui.EndCombo();
+        }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(label);
+    }
+
     private void DrawCharacterList(ConfigManager configManager)
     {
         UIConstants.Heading(UIConstants.ConfigLabels.Characters, plugin.Configuration.CompactUi);
         DrawCharacterSortSelector();
-        ImGui.SetNextItemWidth(-1f);
+        UIConstants.SetNextItemWidth(-1f);
         ImGui.InputTextWithHint("##CharacterSearch", "Search characters...", ref characterSearch, 128);
 
-        ImGui.SetNextItemWidth(-1f);
-        if (ImGui.BeginCombo("##CharacterFilter", characterFilter?.Label ?? "All characters"))
+        UIConstants.SetNextItemWidth(-1f);
+        if (UIConstants.BeginCombo("##CharacterFilter", characterFilter?.Label ?? "All characters"))
         {
             if (ImGui.Selectable("All characters", characterFilter == null))
                 characterFilter = null;
@@ -995,16 +1013,12 @@ public class ConfigWindow : Window, IDisposable
 
             var isSelected = configManager.SelectedCharacterKey == charKey;
             var isCurrentCharacter = string.Equals(charKey, currentChar, StringComparison.Ordinal);
-            if (isCurrentCharacter)
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 1f, 0.4f, 1));
 
-            if (ImGui.Selectable(displayName, isSelected))
+            if (UIConstants.WrappedSelectable(isCurrentCharacter ? $"{displayName} (Current)" : displayName, isSelected))
             {
                 configManager.SelectedCharacterKey = charKey;
             }
 
-            if (isCurrentCharacter)
-                ImGui.PopStyleColor();
 
             // Right-click context menu
             if (ImGui.BeginPopupContextItem($"CharContext_{charKey}"))
@@ -1037,8 +1051,8 @@ public class ConfigWindow : Window, IDisposable
     private void DrawCharacterSortSelector()
     {
         var sortMode = plugin.Configuration.CharacterListSortMode;
-        ImGui.SetNextItemWidth(120f);
-        if (ImGui.BeginCombo("##CharacterSortMode", FormatCharacterListSortMode(sortMode)))
+        UIConstants.SetNextItemWidth(Math.Min(180f * UIConstants.Scale, ImGui.GetContentRegionAvail().X));
+        if (UIConstants.BeginCombo("##CharacterSortMode", FormatCharacterListSortMode(sortMode)))
         {
             foreach (var mode in Enum.GetValues<CharacterListSortMode>())
             {
@@ -1068,7 +1082,7 @@ public class ConfigWindow : Window, IDisposable
         if (isDefault)
         {
             ImGui.TextDisabled(UIConstants.ConfigLabels.NewCharactersInheritThese);
-            if (ImGui.SmallButton("Apply Default to ALL"))
+            if (UIConstants.Button("Apply Default to ALL"))
             {
                 var applied = RunConfigMutationWithTargetPause(
                     configManager.ApplyDefaultToAllCharacters,
@@ -1086,7 +1100,7 @@ public class ConfigWindow : Window, IDisposable
 
         // Master enable
         var enabled = cc.Enabled;
-        if (ImGui.Checkbox($"{UIConstants.ConfigLabels.Enabled}##CharEnabled", ref enabled))
+        if (UIConstants.Checkbox($"{UIConstants.ConfigLabels.Enabled}##CharEnabled", ref enabled))
         {
             if (!enabled &&
                 string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal) &&
@@ -1108,15 +1122,15 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.MiscCommands)
             {
                 var miscCmd = cc.EnableMiscCmd;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.MiscCmd, ref miscCmd))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.MiscCmd, ref miscCmd))
                 {
                     cc.EnableMiscCmd = miscCmd;
                     changed = true;
                 }
                 DrawDefaultOverrideButton(isDefault, configManager, "MiscCmd", UIConstants.ConfigLabels.MiscCmd,
                     (source, target) => target.EnableMiscCmd = source.EnableMiscCmd);
-                ImGui.SameLine();
-                if (ImGui.SmallButton("Send now##MiscCmdConfig"))
+                UIConstants.SameLineIfFits("Send now##MiscCmdConfig");
+                if (UIConstants.Button("Send now##MiscCmdConfig"))
                 {
                     plugin.Engine.SendRunShutdownCommandBundle();
                 }
@@ -1131,7 +1145,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.FCBuffRefill)
             {
                 var fcBuff = cc.EnableFCBuffRefill;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.FCBuffRefill, ref fcBuff))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.FCBuffRefill, ref fcBuff))
                 {
                     cc.EnableFCBuffRefill = fcBuff;
                     changed = true;
@@ -1142,7 +1156,7 @@ public class ConfigWindow : Window, IDisposable
                 {
                     ImGui.Indent();
                     var allowActivation = cc.AllowFCBuffActivation;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.AllowFCBuffActivation, ref allowActivation))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.AllowFCBuffActivation, ref allowActivation))
                     {
                         cc.AllowFCBuffActivation = allowActivation;
                         changed = true;
@@ -1152,7 +1166,7 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.TextWrapped("Purchasing and live stock reconciliation remain enabled when activation is off.");
 
                     var maintainStockTarget = cc.MaintainFCBuffStockTarget;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.MaintainFCBuffStockTarget, ref maintainStockTarget))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.MaintainFCBuffStockTarget, ref maintainStockTarget))
                     {
                         cc.MaintainFCBuffStockTarget = maintainStockTarget;
                         changed = true;
@@ -1209,8 +1223,8 @@ public class ConfigWindow : Window, IDisposable
 
                     // FC Points threshold
                     var minPoints = cc.FCBuffMinPoints;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt(UIConstants.ConfigLabels.MinFCPoints, ref minPoints))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt(UIConstants.ConfigLabels.MinFCPoints, ref minPoints))
                     {
                         cc.FCBuffMinPoints = Math.Max(0, minPoints);
                         changed = true;
@@ -1222,8 +1236,8 @@ public class ConfigWindow : Window, IDisposable
 
                     // Gil threshold
                     var minGil = cc.FCBuffMinGil;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt(UIConstants.ConfigLabels.MinGil, ref minGil))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt(UIConstants.ConfigLabels.MinGil, ref minGil))
                     {
                         cc.FCBuffMinGil = Math.Max(0, minGil);
                         changed = true;
@@ -1240,7 +1254,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.MinionRoulette)
             {
                 var minionRoulette = cc.EnableMinionRoulette;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.MinionRoulette, ref minionRoulette))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.MinionRoulette, ref minionRoulette))
                 {
                     cc.EnableMinionRoulette = minionRoulette;
                     changed = true;
@@ -1266,7 +1280,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.SeasonalGear)
             {
                 var seasonalGear = cc.EnableSeasonalGearRoulette;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.SeasonalGearRoulette, ref seasonalGear))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.SeasonalGearRoulette, ref seasonalGear))
                 {
                     cc.EnableSeasonalGearRoulette = seasonalGear;
                     changed = true;
@@ -1282,7 +1296,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.GearUpdater)
             {
                 var gearUpdater = cc.EnableGearUpdater;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.GearUpdater, ref gearUpdater))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.GearUpdater, ref gearUpdater))
                 {
                     cc.EnableGearUpdater = gearUpdater;
                     changed = true;
@@ -1297,7 +1311,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.Indent();
                 var equipmentAutomationBusy = IsEquipmentAutomationBusy();
                 ImGui.BeginDisabled(equipmentAutomationBusy);
-                if (ImGui.SmallButton("Bootstrap missing gearsets"))
+                if (UIConstants.Button("Bootstrap missing gearsets"))
                     plugin.RunDashboardAction(plugin.GearUpdaterService.StartBootstrap);
                 ImGui.EndDisabled();
                 if (ImGui.IsItemHovered())
@@ -1306,8 +1320,8 @@ public class ConfigWindow : Window, IDisposable
                         ? "An engine or equipment task is active."
                         : "Persist the current job as an exact restoration anchor, then create exact gearsets for missing unlocked classes/jobs when a compatible main hand is already owned.");
                 }
-                ImGui.SameLine();
-                if (ImGui.SmallButton("Copy Stylist repository URL"))
+                UIConstants.SameLineIfFits("Copy Stylist repository URL");
+                if (UIConstants.Button("Copy Stylist repository URL"))
                 {
                     ImGui.SetClipboardText(StylistRepositoryUrl);
                     Plugin.ChatGui.Print("[Vermaxion] Stylist repository URL copied.");
@@ -1319,7 +1333,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.HighestCombatJob)
             {
                 var highestCombatJob = cc.EnableHighestCombatJob;
-                if (ImGui.Checkbox("Highest Combat Job Selector", ref highestCombatJob))
+                if (UIConstants.Checkbox("Highest Combat Job Selector", ref highestCombatJob))
                 {
                     cc.EnableHighestCombatJob = highestCombatJob;
                     changed = true;
@@ -1335,7 +1349,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.CurrentJobEquipment)
             {
                 var currentJobEquipment = cc.EnableCurrentJobEquipment;
-                if (ImGui.Checkbox("Current Job Equipment Updater", ref currentJobEquipment))
+                if (UIConstants.Checkbox("Current Job Equipment Updater", ref currentJobEquipment))
                 {
                     cc.EnableCurrentJobEquipment = currentJobEquipment;
                     changed = true;
@@ -1351,7 +1365,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.AfterArPark)
             {
                 var afterArPark = cc.EnableAfterArPark;
-                if (ImGui.Checkbox("After-AR Park", ref afterArPark))
+                if (UIConstants.Checkbox("After-AR Park", ref afterArPark))
                 {
                     cc.EnableAfterArPark = afterArPark;
                     changed = true;
@@ -1363,7 +1377,7 @@ public class ConfigWindow : Window, IDisposable
                 {
                     ImGui.Indent();
                     var destination = cc.AfterArParkDestination;
-                    if (ImGui.BeginCombo("Parking destination", FormatAfterArParkDestination(destination)))
+                    if (UIConstants.BeginCombo("Parking destination", FormatAfterArParkDestination(destination)))
                     {
                         foreach (var option in Enum.GetValues<AfterArParkDestination>())
                         {
@@ -1384,7 +1398,7 @@ public class ConfigWindow : Window, IDisposable
                     if (cc.AfterArParkDestination == AfterArParkDestination.Custom)
                     {
                         var customCommand = cc.AfterArParkCustomCommand;
-                        if (ImGui.InputText("Custom /li command", ref customCommand, 128))
+                        if (UIConstants.InputText("Custom /li command", ref customCommand, 128))
                         {
                             cc.AfterArParkCustomCommand = customCommand;
                             changed = true;
@@ -1399,7 +1413,7 @@ public class ConfigWindow : Window, IDisposable
                             out var parkCommand,
                             out var parkError))
                     {
-                        ImGui.TextColored(new Vector4(1f, 0.25f, 0.25f, 1f), parkError);
+                        ImGui.TextColored(UIConstants.Amber, parkError);
                     }
                     else
                     {
@@ -1412,7 +1426,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.VendorStock)
             {
                 var vendorStock = cc.EnableVendorStock;
-                if (ImGui.Checkbox("Vendor Stock", ref vendorStock))
+                if (UIConstants.Checkbox("Vendor Stock", ref vendorStock))
                 {
                     cc.EnableVendorStock = vendorStock;
                     changed = true;
@@ -1428,8 +1442,8 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.Indent();
 
                     var gysahlTarget = cc.VendorStockGysahlGreensTarget;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt("Gysahl Greens target", ref gysahlTarget))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt("Gysahl Greens target", ref gysahlTarget))
                     {
                         cc.VendorStockGysahlGreensTarget = Math.Max(0, gysahlTarget);
                         changed = true;
@@ -1439,8 +1453,8 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.VendorStockGysahlGreensTarget = source.VendorStockGysahlGreensTarget);
 
                     var darkMatterTarget = cc.VendorStockGrade8DarkMatterTarget;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt("Grade 8 Dark Matter target", ref darkMatterTarget))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt("Grade 8 Dark Matter target", ref darkMatterTarget))
                     {
                         cc.VendorStockGrade8DarkMatterTarget = Math.Max(0, darkMatterTarget);
                         changed = true;
@@ -1457,7 +1471,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.Fishing)
             {
                 var fishing = cc.EnableFishing;
-                if (ImGui.Checkbox("Fishing", ref fishing))
+                if (UIConstants.Checkbox("Fishing", ref fishing))
                 {
                     cc.EnableFishing = fishing;
                     changed = true;
@@ -1475,7 +1489,7 @@ public class ConfigWindow : Window, IDisposable
                         var routeOverrideLabel = routeOverride.HasValue
                             ? OceanFishingRoutePolicy.Normalize(routeOverride.Value).ToString()
                             : "Use global";
-                        if (ImGui.BeginCombo("Ocean Fishing route override", routeOverrideLabel))
+                        if (UIConstants.BeginCombo("Ocean Fishing route override", routeOverrideLabel))
                         {
                             var useGlobal = routeOverride == null;
                             if (ImGui.Selectable("Use global", useGlobal))
@@ -1507,7 +1521,7 @@ public class ConfigWindow : Window, IDisposable
                     }
 
                     var alwaysFish = cc.AlwaysFishOnThisCharacterIfWindowOpen;
-                    if (ImGui.Checkbox("Always fish on this character if window open", ref alwaysFish))
+                    if (UIConstants.Checkbox("Always fish on this character if window open", ref alwaysFish))
                     {
                         cc.AlwaysFishOnThisCharacterIfWindowOpen = alwaysFish;
                         changed = true;
@@ -1523,8 +1537,8 @@ public class ConfigWindow : Window, IDisposable
                             !string.Equals(pair.Key, charKey, StringComparison.OrdinalIgnoreCase)) ?? 0;
                         if (duplicateAlwaysCount > 0)
                         {
-                            ImGui.SameLine();
-                            if (ImGui.SmallButton("Disable on other characters"))
+                            UIConstants.SameLineIfFits("Disable on other characters");
+                            if (UIConstants.Button("Disable on other characters"))
                             {
                                 var cleared = configManager.DisableAlwaysFishOnOtherCharacters(charKey);
                                 Plugin.ChatGui.Print($"[Vermaxion] Disabled always-fish on {cleared} other character(s).");
@@ -1550,17 +1564,17 @@ public class ConfigWindow : Window, IDisposable
 
                         ImGui.PushID($"CharacterFishingStock_{row.ItemId}");
                         var enabledStock = stock.Enabled;
-                        if (ImGui.Checkbox("##Enabled", ref enabledStock))
+                        if (UIConstants.Checkbox("##Enabled", ref enabledStock))
                         {
                             stock.Enabled = enabledStock;
                             changed = true;
                         }
                         ImGui.SameLine();
                         ImGui.Text(GetItemName(row.ItemId));
-                        ImGui.SameLine(260f);
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                        ImGui.Spacing();
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
                         var stockTarget = stock.Target;
-                        if (ImGui.InputInt("##Target", ref stockTarget))
+                        if (UIConstants.InputInt("##Target", ref stockTarget))
                         {
                             stock.Target = Math.Max(0, stockTarget);
                             changed = true;
@@ -1568,9 +1582,9 @@ public class ConfigWindow : Window, IDisposable
                         ImGui.SameLine();
                         ImGui.TextUnformatted("min");
                         ImGui.SameLine();
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
                         var stockMin = stock.Min;
-                        if (ImGui.InputInt("##Min", ref stockMin))
+                        if (UIConstants.InputInt("##Min", ref stockMin))
                         {
                             stock.Min = Math.Max(0, stockMin);
                             changed = true;
@@ -1594,7 +1608,7 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("Enabled rows are processed in catalog order. ADS is asked for the exact missing quantity. Optional bait failures are reported; fishing only blocks when Versatile Lure reaches zero.");
 
                     var returnDestination = cc.FishingReturnDestination;
-                    if (ImGui.BeginCombo("Return destination", FormatFishingReturnDestination(returnDestination)))
+                    if (UIConstants.BeginCombo("Return destination", FormatFishingReturnDestination(returnDestination)))
                     {
                         foreach (var destination in Enum.GetValues<FishingReturnDestination>())
                         {
@@ -1617,7 +1631,7 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("Where this character should go after the fishing duty or window ends. An eligible scheduled logout overrides this return.");
 
                     var returnCommand = cc.FishingReturnCommand;
-                    if (ImGui.InputText("Return slash command", ref returnCommand, 128))
+                    if (UIConstants.InputText("Return slash command", ref returnCommand, 128))
                     {
                         cc.FishingReturnCommand = returnCommand;
                         changed = true;
@@ -1627,7 +1641,7 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("Slash command sent for the selected return destination. Custom destinations require an explicit command.");
 
                     var repairMode = cc.FishingRepairMode;
-                    if (ImGui.BeginCombo("Fishing repair mode", FormatFishingRepairMode(repairMode)))
+                    if (UIConstants.BeginCombo("Fishing repair mode", FormatFishingRepairMode(repairMode)))
                     {
                         foreach (var mode in Enum.GetValues<FishingRepairMode>())
                         {
@@ -1648,8 +1662,8 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("ADS repair mode for this character before fishing starts. Disabled skips gear repair.");
 
                     var repairThreshold = cc.FishingRepairThresholdPercent;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt("Fishing repair threshold %", ref repairThreshold))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt("Fishing repair threshold %", ref repairThreshold))
                     {
                         cc.FishingRepairThresholdPercent = Math.Clamp(repairThreshold, 0, 100);
                         changed = true;
@@ -1659,7 +1673,7 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("Repairs when this character's lowest equipped gear condition is at or below this percent.");
 
                     var discardAfterVoyage = cc.FishingDiscardAfterVoyage;
-                    if (ImGui.Checkbox("Discard configured fish after voyage", ref discardAfterVoyage))
+                    if (UIConstants.Checkbox("Discard configured fish after voyage", ref discardAfterVoyage))
                     {
                         cc.FishingDiscardAfterVoyage = discardAfterVoyage;
                         changed = true;
@@ -1669,7 +1683,7 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard.");
 
                     var sellAfterVoyage = cc.FishingSellAfterVoyage;
-                    if (ImGui.Checkbox("Sell configured fish after voyage", ref sellAfterVoyage))
+                    if (UIConstants.Checkbox("Sell configured fish after voyage", ref sellAfterVoyage))
                     {
                         cc.FishingSellAfterVoyage = sellAfterVoyage;
                         changed = true;
@@ -1679,7 +1693,7 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return.");
 
                     var eatAnyFood = cc.FishingEatAnyFood;
-                    if (ImGui.Checkbox("Eat any food in bags (pre-fishing lobby)", ref eatAnyFood))
+                    if (UIConstants.Checkbox("Eat any food in bags (pre-fishing lobby)", ref eatAnyFood))
                     {
                         cc.FishingEatAnyFood = eatAnyFood;
                         changed = true;
@@ -1689,8 +1703,8 @@ public class ConfigWindow : Window, IDisposable
                     DrawHelpMarker("Eats food in the pre-fishing lobby so Well-Fed covers the voyage (no fishing time lost; only eats while stationary, so it never fights rail placement). ON = scan the bags and eat whatever food is there, preferring GP food. Set a specific item id below to override the scan. Both off = no food.");
 
                     var fishingFoodItemId = (int)cc.FishingFoodItemId;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt("Specific food item id (0 = auto)", ref fishingFoodItemId))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt("Specific food item id (0 = auto)", ref fishingFoodItemId))
                     {
                         cc.FishingFoodItemId = (uint)Math.Max(0, fishingFoodItemId);
                         changed = true;
@@ -1707,7 +1721,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.RetainerEquipping)
             {
                 var retainerEquipping = cc.EnableRetainerEquipping;
-                if (ImGui.Checkbox("Retainer Equipping", ref retainerEquipping))
+                if (UIConstants.Checkbox("Retainer Equipping", ref retainerEquipping))
                 {
                     cc.EnableRetainerEquipping = retainerEquipping;
                     changed = true;
@@ -1719,7 +1733,7 @@ public class ConfigWindow : Window, IDisposable
                 {
                     ImGui.Indent();
                     var sourceMode = cc.RetainerGearSourceMode;
-                    if (ImGui.BeginCombo("Gear source", FormatRetainerGearSourceMode(sourceMode)))
+                    if (UIConstants.BeginCombo("Gear source", FormatRetainerGearSourceMode(sourceMode)))
                     {
                         foreach (var mode in Enum.GetValues<RetainerGearSourceMode>())
                         {
@@ -1738,7 +1752,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.RetainerGearSourceMode = source.RetainerGearSourceMode);
 
                     var nonUniqueOnly = cc.RetainerGearNonUniqueOnly;
-                    if (ImGui.Checkbox("Use non-unique items only", ref nonUniqueOnly))
+                    if (UIConstants.Checkbox("Use non-unique items only", ref nonUniqueOnly))
                     {
                         cc.RetainerGearNonUniqueOnly = nonUniqueOnly;
                         changed = true;
@@ -1747,8 +1761,8 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.RetainerGearNonUniqueOnly = source.RetainerGearNonUniqueOnly);
 
                     var combatTarget = cc.RetainerCombatItemLevelTarget;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt("Combat item-level target", ref combatTarget))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt("Combat item-level target", ref combatTarget))
                     {
                         cc.RetainerCombatItemLevelTarget = Math.Max(0, combatTarget);
                         changed = true;
@@ -1757,8 +1771,8 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.RetainerCombatItemLevelTarget = source.RetainerCombatItemLevelTarget);
 
                     var perceptionTarget = cc.RetainerGatheringPerceptionTarget;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                    if (ImGui.InputInt("Gathering Perception target", ref perceptionTarget))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                    if (UIConstants.InputInt("Gathering Perception target", ref perceptionTarget))
                     {
                         cc.RetainerGatheringPerceptionTarget = Math.Max(0, perceptionTarget);
                         changed = true;
@@ -1777,7 +1791,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.VerminionQueue)
             {
                 var verminion = cc.EnableVerminionQueue;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.VerminionQueue, ref verminion))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.VerminionQueue, ref verminion))
                 {
                     cc.EnableVerminionQueue = verminion;
                     changed = true;
@@ -1789,12 +1803,12 @@ public class ConfigWindow : Window, IDisposable
                 if (VerminionService.WeeklyGoalReached(cc))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+                    ImGui.TextColored(UIConstants.Metadata, "Complete");
                 }
                 ImGui.TextDisabled(VerminionService.ProgressSummary(cc));
                 ImGui.Indent();
                 changed |= VerminionWindow.DrawSettings(cc);
-                if (ImGui.Button("Open Verminion##Settings")) plugin.VerminionWindow.IsOpen = true;
+                if (UIConstants.Button("Open Verminion##Settings")) plugin.VerminionWindow.IsOpen = true;
                 ImGui.TextWrapped("The standalone window runs on the current character. These settings belong to the selected configuration above.");
                 if (ImGui.CollapsingHeader("Next strategy and required minions##VerminionSettings"))
                     VerminionWindow.DrawPlan(cc, VerminionService.PlannedStage(cc, cc.VerminionProgress.CampaignRequested),
@@ -1805,7 +1819,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.JumboCactpot)
             {
                 var jumbo = cc.EnableJumboCactpot;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.JumboCactpot, ref jumbo))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.JumboCactpot, ref jumbo))
                 {
                     cc.EnableJumboCactpot = jumbo;
                     changed = true;
@@ -1817,12 +1831,12 @@ public class ConfigWindow : Window, IDisposable
                 if (ResetDetectionService.IsJumboPurchasePendingPayout(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1), "[Ticket Purchased]");
+                    ImGui.TextColored(UIConstants.Metadata, "[Ticket Purchased]");
                 }
                 else if (ResetDetectionService.TaskIsCompleted(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+                    ImGui.TextColored(UIConstants.Metadata, "Complete");
                 }
                 DrawJumboTaskHint(cc.JumboCactpotLastCompleted, cc.JumboCactpotNextReset);
                 if (cc.EnableJumboCactpot)
@@ -1830,7 +1844,7 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.Indent();
 
                     var numberMode = cc.JumboCactpotNumberMode;
-                    if (ImGui.BeginCombo("Jumbo number mode", FormatJumboNumberMode(numberMode)))
+                    if (UIConstants.BeginCombo("Jumbo number mode", FormatJumboNumberMode(numberMode)))
                     {
                         foreach (var mode in Enum.GetValues<JumboCactpotNumberMode>())
                         {
@@ -1853,8 +1867,8 @@ public class ConfigWindow : Window, IDisposable
                     if (cc.JumboCactpotNumberMode == JumboCactpotNumberMode.Fixed)
                     {
                         var fixedNumber = cc.JumboCactpotFixedNumber;
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                        if (ImGui.InputInt("Fixed 4-digit number", ref fixedNumber))
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                        if (UIConstants.InputInt("Fixed 4-digit number", ref fixedNumber))
                         {
                             cc.JumboCactpotFixedNumber = Math.Clamp(fixedNumber, 0, 9999);
                             changed = true;
@@ -1876,7 +1890,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.FashionReport)
             {
                 var fashion = cc.EnableFashionReport;
-                if (ImGui.Checkbox("Fashion Report", ref fashion))
+                if (UIConstants.Checkbox("Fashion Report", ref fashion))
                 {
                     cc.EnableFashionReport = fashion;
                     changed = true;
@@ -1888,12 +1902,12 @@ public class ConfigWindow : Window, IDisposable
                 if (ResetDetectionService.TaskIsCompleted(cc.FashionReportLastCompleted, cc.FashionReportNextReset))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+                    ImGui.TextColored(UIConstants.Metadata, "Complete");
                 }
                 else
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(0.2f, 1.0f, 0.2f, 1.0f), "[OK]");
+                    ImGui.TextColored(UIConstants.Metadata, "Ready");
                 }
                 DrawFashionTaskHint(cc.FashionReportLastCompleted, cc.FashionReportNextReset);
             }
@@ -1901,7 +1915,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.CustomDeliveries)
             {
                 var deliveries = cc.EnableCustomDeliveries;
-                if (ImGui.Checkbox("Custom Deliveries", ref deliveries))
+                if (UIConstants.Checkbox("Custom Deliveries", ref deliveries))
                 {
                     cc.EnableCustomDeliveries = deliveries;
                     changed = true;
@@ -1915,7 +1929,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.TextWrapped("Weekly character and NPC allowances come from the game. Reset clears saved completion times; it does not restore spent allowances.");
                 if (!isDefault && charKey == configManager.CurrentCharacterKey && Plugin.PlayerState.IsLoaded)
                 {
-                    if (ImGui.SmallButton("Fetch achievement progress now##CustomDeliveries"))
+                    if (UIConstants.Button("Fetch achievement progress now##CustomDeliveries"))
                         plugin.CustomDeliveriesService.RequestAchievements();
                     MainWindow.DrawCustomDeliveryNpcOverview(plugin, cc.CustomDeliveriesSettings);
                 }
@@ -1932,7 +1946,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.RegisterRegistrables)
             {
                 var register = cc.EnableRegisterRegistrables;
-                if (ImGui.Checkbox("Register Registrables", ref register))
+                if (UIConstants.Checkbox("Register Registrables", ref register))
                 {
                     cc.EnableRegisterRegistrables = register;
                     changed = true;
@@ -1967,8 +1981,8 @@ public class ConfigWindow : Window, IDisposable
                     cc.RegisterUnregisteredItemsFromInventory = false;
                     changed = true;
                 }
-                ImGui.SameLine();
-                if (ImGui.Button("Configure list##RegistrableConfig"))
+                UIConstants.SameLineIfFits("Configure list##RegistrableConfig");
+                if (UIConstants.Button("Configure list##RegistrableConfig"))
                 {
                     plugin.RegistrableConfigWindow.IsOpen = true;
                 }
@@ -1982,7 +1996,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.MiniCactpot)
             {
                 var mini = cc.EnableMiniCactpot;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.MiniCactpot, ref mini))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.MiniCactpot, ref mini))
                 {
                     cc.EnableMiniCactpot = mini;
                     changed = true;
@@ -1998,7 +2012,7 @@ public class ConfigWindow : Window, IDisposable
                 if (ResetDetectionService.TaskIsCompleted(cc.MiniCactpotLastCompleted, cc.MiniCactpotNextReset))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+                    ImGui.TextColored(UIConstants.Metadata, "Complete");
                 }
                 DrawDailyTaskHint(cc.MiniCactpotLastCompleted, cc.MiniCactpotNextReset, "Runs once per daily reset. Returns with /li home before the next task.");
 
@@ -2008,7 +2022,7 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.Indent();
 
                     var requireSaucy = cc.RequireSaucyForMiniCactpot;
-                    if (ImGui.Checkbox("Require Saucy", ref requireSaucy))
+                    if (UIConstants.Checkbox("Require Saucy", ref requireSaucy))
                     {
                         cc.RequireSaucyForMiniCactpot = requireSaucy;
                         changed = true;
@@ -2028,7 +2042,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.ChocoboRacing)
             {
                 var chocobo = cc.EnableChocoboRacing;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.ChocoboRacing, ref chocobo))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.ChocoboRacing, ref chocobo))
                 {
                     if (!chocobo &&
                         string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal) &&
@@ -2046,7 +2060,7 @@ public class ConfigWindow : Window, IDisposable
                 if (ResetDetectionService.TaskIsCompleted(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+                    ImGui.TextColored(UIConstants.Metadata, "Complete");
                 }
                 if (cc.ChocoboAutomationMode == ChocoboAutomationMode.AlwaysRace)
                     DrawDailyTaskHint(cc.ChocoboRacingLastCompleted, cc.ChocoboRacingNextReset, "Runs once per daily reset.");
@@ -2058,7 +2072,7 @@ public class ConfigWindow : Window, IDisposable
                     var modePreview = Enum.IsDefined(chocoboMode)
                         ? chocoboMode == ChocoboAutomationMode.AlwaysRace ? "Always Race" : "Target Pedigree"
                         : $"Invalid ({(int)chocoboMode})";
-                    if (ImGui.BeginCombo("Automation mode", modePreview))
+                    if (UIConstants.BeginCombo("Automation mode", modePreview))
                     {
                         foreach (var mode in Enum.GetValues<ChocoboAutomationMode>())
                         {
@@ -2091,8 +2105,8 @@ public class ConfigWindow : Window, IDisposable
                         DrawChocoboGoalSettings(cc, string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal), ref changed);
                         var targetPedigree = cc.ChocoboTargetPedigree;
                         ImGui.BeginDisabled(cc.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree);
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                        if (ImGui.InputInt("Target pedigree", ref targetPedigree))
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                        if (UIConstants.InputInt("Target pedigree", ref targetPedigree))
                         {
                             cc.ChocoboTargetPedigree = Math.Clamp(targetPedigree, 2, 9);
                             changed = true;
@@ -2104,7 +2118,7 @@ public class ConfigWindow : Window, IDisposable
                         ImGui.TextDisabled("Intermediate chocobos retire at racing rank 40; retain the target pedigree to racing rank 50.");
 
                         var breedingMode = (int)cc.ChocoboBreedingMode;
-                        if (ImGui.Combo("Breeding mode", ref breedingMode, "Owned parents\0NPC covering permits\0"))
+                        if (UIConstants.Combo("Breeding mode", ref breedingMode, "Owned parents\0NPC covering permits\0"))
                         { cc.ChocoboBreedingMode = (ChocoboBreedingMode)breedingMode; changed = true; }
                         ImGui.TextWrapped(cc.ChocoboBreedingMode == ChocoboBreedingMode.OwnedParents
                             ? "Use retained parents. Missing counterparts stop this mode; covering permits are purchased only in permit mode."
@@ -2112,7 +2126,7 @@ public class ConfigWindow : Window, IDisposable
                         if (cc.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && cc.ChocoboBreedingGoal == ChocoboBreedingGoal.ReachPedigree)
                         {
                             var objective = cc.ChocoboProduceCounterpart ? 1 : 0;
-                            if (ImGui.Combo("Permit objective", ref objective, "Advance pedigree\0Produce a missing counterpart\0"))
+                            if (UIConstants.Combo("Permit objective", ref objective, "Advance pedigree\0Produce a missing counterpart\0"))
                             {
                                 if (string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
                                     plugin.ChocoboRaceService.PauseProgression();
@@ -2125,19 +2139,19 @@ public class ConfigWindow : Window, IDisposable
                                 : "Use the highest useful retained parent to advance by one pedigree.");
                         }
                         var feedPolicy = (int)cc.ChocoboFeedPolicy;
-                        if (ImGui.Combo("When feeding cannot proceed", ref feedPolicy, "Fall back\0Skip\0Stop\0"))
+                        if (UIConstants.Combo("When feeding cannot proceed", ref feedPolicy, "Fall back\0Skip\0Stop\0"))
                         { cc.ChocoboFeedPolicy = (ChocoboFeedPolicy)feedPolicy; changed = true; }
                         var gilReserve = (int)Math.Min(int.MaxValue, cc.ChocoboGilReserve);
-                        if (ImGui.InputInt("Gil reserve", ref gilReserve))
+                        if (UIConstants.InputInt("Gil reserve", ref gilReserve))
                         { cc.ChocoboGilReserve = (uint)Math.Max(0, gilReserve); changed = true; }
                         var mgpReserve = (int)Math.Min(int.MaxValue, cc.ChocoboMgpReserve);
-                        if (ImGui.InputInt("MGP reserve", ref mgpReserve))
+                        if (UIConstants.InputInt("MGP reserve", ref mgpReserve))
                         { cc.ChocoboMgpReserve = (uint)Math.Max(0, mgpReserve); changed = true; }
                         ImGui.TextDisabled("Use stocked feed first. Fall back tries Grade 1 within reserves, then skips. Stop requires Resume.");
 
                         var preferredFeedGrade = cc.ChocoboPreferredFeedGrade;
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-                        if (ImGui.InputInt("Preferred feed grade", ref preferredFeedGrade))
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+                        if (UIConstants.InputInt("Preferred feed grade", ref preferredFeedGrade))
                         {
                             cc.ChocoboPreferredFeedGrade = Math.Clamp(preferredFeedGrade, 1, 3);
                             changed = true;
@@ -2151,7 +2165,7 @@ public class ConfigWindow : Window, IDisposable
                                 cc.ChocoboPreferredFeedGrade,
                                 out var targetSettingsError))
                         {
-                            ImGui.TextColored(new Vector4(1f, 0.35f, 0.25f, 1f), targetSettingsError);
+                            ImGui.TextColored(UIConstants.Amber, targetSettingsError);
                         }
 
                         if (string.Equals(charKey, configManager.CurrentCharacterKey, StringComparison.Ordinal))
@@ -2165,8 +2179,8 @@ public class ConfigWindow : Window, IDisposable
                     var races = cc.ChocoboRacesPerDay;
                     ImGui.Text($"{UIConstants.ConfigLabels.RacesPerDay}:");
                     ImGui.SameLine();
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
-                    if (ImGui.InputInt("##ChocoboRacesPerDay", ref races, 1, 5))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
+                    if (UIConstants.InputInt("##ChocoboRacesPerDay", ref races, 1, 5))
                     {
                         // Clamp between 1 and 69420
                         races = Math.Clamp(races, 1, 69420);
@@ -2179,7 +2193,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.ChocoboRacesPerDay = source.ChocoboRacesPerDay);
 
                     var skipChocoboAtRank50 = cc.SkipChocoboRacingAtRank50;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.SkipChocoboRacingIfLevel50, ref skipChocoboAtRank50))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.SkipChocoboRacingIfLevel50, ref skipChocoboAtRank50))
                     {
                         cc.SkipChocoboRacingAtRank50 = skipChocoboAtRank50;
                         changed = true;
@@ -2199,7 +2213,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.AlliedSociety)
             {
                 var alliedSociety = cc.EnableAlliedSociety;
-                if (ImGui.Checkbox("Allied Society", ref alliedSociety))
+                if (UIConstants.Checkbox("Allied Society", ref alliedSociety))
                 {
                     cc.EnableAlliedSociety = alliedSociety;
                     changed = true;
@@ -2211,7 +2225,7 @@ public class ConfigWindow : Window, IDisposable
                 if (ResetDetectionService.TaskIsCompleted(cc.AlliedSocietyLastCompleted, cc.AlliedSocietyNextReset))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+                    ImGui.TextColored(UIConstants.Metadata, "Complete");
                 }
                 DrawDailyTaskHint(cc.AlliedSocietyLastCompleted, cc.AlliedSocietyNextReset,
                     "Runs Questionable Companion's Allied Society rotation for this current character only.");
@@ -2240,7 +2254,7 @@ public class ConfigWindow : Window, IDisposable
                         var preview = selectedGearset == null
                             ? $"Invalid gearset {cc.AlliedSocietyGearsetId}"
                             : FormatGearset(selectedGearset);
-                        if (ImGui.BeginCombo("Saved gearset", preview))
+                        if (UIConstants.BeginCombo("Saved gearset", preview))
                         {
                             foreach (var gearset in gearsets.OrderBy(gearset => gearset.GearsetId))
                             {
@@ -2260,7 +2274,7 @@ public class ConfigWindow : Window, IDisposable
                         DrawDefaultOverrideButton(isDefault, configManager, "AlliedSocietyGearsetId", "Allied Society saved gearset",
                             (source, target) => target.AlliedSocietyGearsetId = source.AlliedSocietyGearsetId);
                         if (selectedGearset == null)
-                            ImGui.TextColored(new Vector4(1f, 0.25f, 0.25f, 1f), "A valid saved gearset must be selected before this task can start.");
+                            ImGui.TextColored(UIConstants.Amber, "A valid saved gearset must be selected before this task can start.");
                     }
 
                     ImGui.TextDisabled("Questionable Companion must be loaded with its AlliedSocietyRotationService public contract available.");
@@ -2271,7 +2285,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.LootGoblinMapGather)
             {
                 var lootGoblinMapGather = cc.EnableLootGoblinMapGather;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.LootGoblinMapGather, ref lootGoblinMapGather))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.LootGoblinMapGather, ref lootGoblinMapGather))
                 {
                     cc.EnableLootGoblinMapGather = lootGoblinMapGather;
                     changed = true;
@@ -2283,7 +2297,7 @@ public class ConfigWindow : Window, IDisposable
                 if (ResetDetectionService.TaskIsCompleted(cc.LootGoblinMapGatherLastCompleted, cc.LootGoblinMapGatherNextReset))
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Already Completed]");
+                    ImGui.TextColored(UIConstants.Metadata, "Complete");
                 }
                 DrawDailyTaskHint(cc.LootGoblinMapGatherLastCompleted, cc.LootGoblinMapGatherNextReset, "Runs once per daily reset through LootGoblin IPC.");
                 if (cc.EnableLootGoblinMapGather)
@@ -2295,7 +2309,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.LootGoblinMapGatherItemId = source.LootGoblinMapGatherItemId);
 
                     var runAfterGather = cc.LootGoblinMapGatherRunAfterGather;
-                    if (ImGui.Checkbox("Run map after gather", ref runAfterGather))
+                    if (UIConstants.Checkbox("Run map after gather", ref runAfterGather))
                     {
                         cc.LootGoblinMapGatherRunAfterGather = runAfterGather;
                         changed = true;
@@ -2304,7 +2318,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.LootGoblinMapGatherRunAfterGather = source.LootGoblinMapGatherRunAfterGather);
 
                     if (cc.LootGoblinMapGatherRunAfterGather && !IsSelectedLootGoblinMapSafe(cc))
-                        ImGui.TextColored(new Vector4(1f, 0.25f, 0.25f, 1f), "Warning: run-after is safest only for solo outdoor maps without dungeons.");
+                        ImGui.TextColored(UIConstants.Amber, "Warning: run-after is safest only for solo outdoor maps without dungeons.");
 
                     ImGui.Unindent();
                 }
@@ -2317,7 +2331,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.RefillListings)
             {
                 var refillListings = cc.EnableRefillFromListings;
-                if (ImGui.Checkbox("Refill from listings", ref refillListings))
+                if (UIConstants.Checkbox("Refill from listings", ref refillListings))
                 {
                     cc.EnableRefillFromListings = refillListings;
                     changed = true;
@@ -2333,7 +2347,7 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.Indent();
 
                     var withdrawGil = cc.RefillFromListingsWithdrawGil;
-                    if (ImGui.Checkbox("Enable AutoRetainer gil withdrawal for this character's retainers", ref withdrawGil))
+                    if (UIConstants.Checkbox("Enable AutoRetainer gil withdrawal for this character's retainers", ref withdrawGil))
                     {
                         cc.RefillFromListingsWithdrawGil = withdrawGil;
                         changed = true;
@@ -2423,8 +2437,8 @@ public class ConfigWindow : Window, IDisposable
                         changed = true;
                     }
 
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                    if (ImGui.InputInt("Minimum free inventory slots##RefillListingsMinFreeInventorySlots", ref minFreeInventorySlots, 1, 5))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (UIConstants.InputInt("Minimum free inventory slots##RefillListingsMinFreeInventorySlots", ref minFreeInventorySlots, 1, 5))
                     {
                         cc.RefillFromListingsMinFreeInventorySlots = Math.Clamp(minFreeInventorySlots, 10, 100);
                         changed = true;
@@ -2443,7 +2457,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.ReturnBeforeNag)
             {
                 var returnBeforeNag = cc.EnableReturnBeforeNag;
-                if (ImGui.Checkbox("Return before nag your mom / dad", ref returnBeforeNag))
+                if (UIConstants.Checkbox("Return before nag your mom / dad", ref returnBeforeNag))
                 {
                     cc.EnableReturnBeforeNag = returnBeforeNag;
                     changed = true;
@@ -2454,7 +2468,7 @@ public class ConfigWindow : Window, IDisposable
                 {
                     ImGui.Indent();
                     var returnCommand = cc.ReturnBeforeNagCommand ?? string.Empty;
-                    if (ImGui.InputText("Return command##BeforeNag", ref returnCommand, 256))
+                    if (UIConstants.InputText("Return command##BeforeNag", ref returnCommand, 256))
                     {
                         cc.ReturnBeforeNagCommand = returnCommand;
                         changed = true;
@@ -2471,7 +2485,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.NagYourMom)
             {
                 var nagYourMom = cc.EnableNagYourMom;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMom, ref nagYourMom))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourMom, ref nagYourMom))
                 {
                     cc.EnableNagYourMom = nagYourMom;
                     changed = true;
@@ -2489,7 +2503,7 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.Indent();
 
                     var momCasualCc = cc.EnableNagYourMomCasualCc;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomCasualCc, ref momCasualCc))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourMomCasualCc, ref momCasualCc))
                     {
                         cc.EnableNagYourMomCasualCc = momCasualCc;
                         changed = true;
@@ -2500,8 +2514,8 @@ public class ConfigWindow : Window, IDisposable
                     {
                         ImGui.Indent();
                         var momRunsPerDay = cc.NagYourMomRunsPerDay;
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                        if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                        if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
                         {
                             cc.NagYourMomRunsPerDay = Math.Max(0, momRunsPerDay);
                             changed = true;
@@ -2514,8 +2528,8 @@ public class ConfigWindow : Window, IDisposable
                     }
 
                     var momFrontline = cc.EnableNagYourMomFrontline;
-                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.2f, 0.2f, 1f));
-                    var frontlineChanged = ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomFrontline, ref momFrontline);
+                    ImGui.PushStyleColor(ImGuiCol.Text, UIConstants.Amber);
+                    var frontlineChanged = UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourMomFrontline, ref momFrontline);
                     ImGui.PopStyleColor();
                     if (frontlineChanged)
                     {
@@ -2539,8 +2553,8 @@ public class ConfigWindow : Window, IDisposable
                     {
                         ImGui.Indent();
                         var frontlineRuns = cc.NagYourMomFrontlineRunsPerDay;
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                        if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomFrontlineRunsPerDay, ref frontlineRuns))
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                        if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourMomFrontlineRunsPerDay, ref frontlineRuns))
                         {
                             cc.NagYourMomFrontlineRunsPerDay = Math.Max(0, frontlineRuns);
                             changed = true;
@@ -2553,8 +2567,8 @@ public class ConfigWindow : Window, IDisposable
                     }
 
                     var momRivalWings = cc.EnableNagYourMomRivalWings;
-                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.2f, 0.2f, 1f));
-                    var rivalWingsChanged = ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomRivalWings, ref momRivalWings);
+                    ImGui.PushStyleColor(ImGuiCol.Text, UIConstants.Amber);
+                    var rivalWingsChanged = UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourMomRivalWings, ref momRivalWings);
                     ImGui.PopStyleColor();
                     if (rivalWingsChanged)
                     {
@@ -2578,8 +2592,8 @@ public class ConfigWindow : Window, IDisposable
                     {
                         ImGui.Indent();
                         var rivalWingsRuns = cc.NagYourMomRivalWingsRunsPerDay;
-                        ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                        if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourMomRivalWingsRunsPerDay, ref rivalWingsRuns))
+                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                        if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourMomRivalWingsRunsPerDay, ref rivalWingsRuns))
                         {
                             cc.NagYourMomRivalWingsRunsPerDay = Math.Max(0, rivalWingsRuns);
                             changed = true;
@@ -2600,7 +2614,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.NagYourMomJob = NormalizeJobAbbreviation(source.NagYourMomJob));
 
                     var localStart = cc.NagYourMomWindowStartLocal;
-                    if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowStartLocal, ref localStart, 16))
+                    if (UIConstants.InputText(UIConstants.ConfigLabels.NagYourMomWindowStartLocal, ref localStart, 16))
                     {
                         cc.NagYourMomWindowStartLocal = localStart.Trim();
                         changed = true;
@@ -2609,7 +2623,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.NagYourMomWindowStartLocal = source.NagYourMomWindowStartLocal);
 
                     var localEnd = cc.NagYourMomWindowEndLocal;
-                    if (ImGui.InputText(UIConstants.ConfigLabels.NagYourMomWindowEndLocal, ref localEnd, 16))
+                    if (UIConstants.InputText(UIConstants.ConfigLabels.NagYourMomWindowEndLocal, ref localEnd, 16))
                     {
                         cc.NagYourMomWindowEndLocal = localEnd.Trim();
                         changed = true;
@@ -2618,7 +2632,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.NagYourMomWindowEndLocal = source.NagYourMomWindowEndLocal);
 
                     var stopAt25 = cc.NagYourMomStopAtSeriesRank25;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourMomStopAtSeriesRank25, ref stopAt25))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourMomStopAtSeriesRank25, ref stopAt25))
                     {
                         cc.NagYourMomStopAtSeriesRank25 = stopAt25;
                         changed = true;
@@ -2635,7 +2649,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.NagYourDad)
             {
                 var nagYourDad = cc.EnableNagYourDad;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDad, ref nagYourDad))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourDad, ref nagYourDad))
                 {
                     cc.EnableNagYourDad = nagYourDad;
                     changed = true;
@@ -2670,8 +2684,8 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Dungeon count tells dad how many times to run the selected Duty Finder duty.");
                     var dadDungeonCount = cc.NagYourDadDungeonCount;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                    if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadDungeonCount, ref dadDungeonCount))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourDadDungeonCount, ref dadDungeonCount))
                     {
                         cc.NagYourDadDungeonCount = Math.Max(0, dadDungeonCount);
                         changed = true;
@@ -2682,7 +2696,7 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Dungeon frequency controls when dad should queue the selected duty from AR-triggered VERMAXION runs.");
                     var dadDungeonFrequencyIndex = DadRunRequestOptions.GetFrequencyIndex(cc.NagYourDadDungeonFrequency);
-                    if (ImGui.Combo(UIConstants.ConfigLabels.NagYourDadDungeonFrequency, ref dadDungeonFrequencyIndex, DadRunRequestOptions.DungeonFrequencies, DadRunRequestOptions.DungeonFrequencies.Length))
+                    if (UIConstants.Combo(UIConstants.ConfigLabels.NagYourDadDungeonFrequency, ref dadDungeonFrequencyIndex, DadRunRequestOptions.DungeonFrequencies, DadRunRequestOptions.DungeonFrequencies.Length))
                     {
                         cc.NagYourDadDungeonFrequency = DadRunRequestOptions.DungeonFrequencies[dadDungeonFrequencyIndex];
                         changed = true;
@@ -2713,7 +2727,7 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("LAN Party queue mode tells dad to use DadLanPartyModule with the selected LAN Party-style preset for premade duty routing.");
                     var dadQueueViaLanParty = cc.NagYourDadQueueViaLanParty;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadQueueViaLanParty, ref dadQueueViaLanParty))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourDadQueueViaLanParty, ref dadQueueViaLanParty))
                     {
                         cc.NagYourDadQueueViaLanParty = dadQueueViaLanParty;
                         changed = true;
@@ -2732,7 +2746,7 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Unsynced is a dad hint for duties that cannot use Trust or Duty Support.");
                     var dadDungeonUnsynced = cc.NagYourDadDungeonUnsynced;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDungeonUnsynced, ref dadDungeonUnsynced))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourDadDungeonUnsynced, ref dadDungeonUnsynced))
                     {
                         cc.NagYourDadDungeonUnsynced = dadDungeonUnsynced;
                         changed = true;
@@ -2742,7 +2756,7 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset.");
                     var dadDailyMsq = cc.NagYourDadDailyMsq;
-                    if (ImGui.Checkbox(UIConstants.ConfigLabels.NagYourDadDailyMsq, ref dadDailyMsq))
+                    if (UIConstants.Checkbox(UIConstants.ConfigLabels.NagYourDadDailyMsq, ref dadDailyMsq))
                     {
                         cc.NagYourDadDailyMsq = dadDailyMsq;
                         changed = true;
@@ -2768,8 +2782,8 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Commendation attempts tells dad how many commendation-focused runs to attempt.");
                     var dadCommendationAttempts = cc.NagYourDadCommendationAttempts;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                    if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadCommendationAttempts, ref dadCommendationAttempts))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourDadCommendationAttempts, ref dadCommendationAttempts))
                     {
                         cc.NagYourDadCommendationAttempts = Math.Max(0, dadCommendationAttempts);
                         changed = true;
@@ -2780,8 +2794,8 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Astrope attempts tells dad how many Astrope commendation attempts to schedule inside the local time window.");
                     var dadAstropeAttempts = cc.NagYourDadAstropeAttempts;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
-                    if (ImGui.InputInt(UIConstants.ConfigLabels.NagYourDadAstropeAttempts, ref dadAstropeAttempts))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+                    if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourDadAstropeAttempts, ref dadAstropeAttempts))
                     {
                         cc.NagYourDadAstropeAttempts = Math.Max(0, dadAstropeAttempts);
                         changed = true;
@@ -2792,7 +2806,7 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Astrope local start is the first local machine time dad may run Astrope attempts.");
                     var dadWindowStart = cc.NagYourDadWindowStartLocal;
-                    if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowStartLocal, ref dadWindowStart, 16))
+                    if (UIConstants.InputText(UIConstants.ConfigLabels.NagYourDadWindowStartLocal, ref dadWindowStart, 16))
                     {
                         cc.NagYourDadWindowStartLocal = dadWindowStart.Trim();
                         changed = true;
@@ -2802,7 +2816,7 @@ public class ConfigWindow : Window, IDisposable
 
                     ImGui.TextWrapped("Astrope local end is the last local machine time dad may run Astrope attempts.");
                     var dadWindowEnd = cc.NagYourDadWindowEndLocal;
-                    if (ImGui.InputText(UIConstants.ConfigLabels.NagYourDadWindowEndLocal, ref dadWindowEnd, 16))
+                    if (UIConstants.InputText(UIConstants.ConfigLabels.NagYourDadWindowEndLocal, ref dadWindowEnd, 16))
                     {
                         cc.NagYourDadWindowEndLocal = dadWindowEnd.Trim();
                         changed = true;
@@ -2823,7 +2837,7 @@ public class ConfigWindow : Window, IDisposable
             if (selectedAutomationId == AutomationCatalog.EvercoldAdventurerActivity)
             {
                 var evercoldActivity = cc.EnableEvercoldAdventurerActivity;
-                if (ImGui.Checkbox("Adventurer Activity (Evercold) [WIP]", ref evercoldActivity))
+                if (UIConstants.Checkbox("Adventurer Activity (Evercold) [WIP]", ref evercoldActivity))
                 {
                     cc.EnableEvercoldAdventurerActivity = evercoldActivity;
                     changed = true;
@@ -2835,8 +2849,8 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.Indent();
 
                     var currentPoints = cc.EvercoldAdventurerActivityCurrentPoints;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
-                    if (ImGui.InputInt("Current points", ref currentPoints))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
+                    if (UIConstants.InputInt("Current points", ref currentPoints))
                     {
                         cc.EvercoldAdventurerActivityCurrentPoints = Math.Max(0, currentPoints);
                         if (cc.EvercoldAdventurerActivityTargetPoints > 0)
@@ -2845,8 +2859,8 @@ public class ConfigWindow : Window, IDisposable
                     }
 
                     var targetPoints = cc.EvercoldAdventurerActivityTargetPoints;
-                    ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
-                    if (ImGui.InputInt("Point cap", ref targetPoints))
+                    UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
+                    if (UIConstants.InputInt("Point cap", ref targetPoints))
                     {
                         cc.EvercoldAdventurerActivityTargetPoints = Math.Max(0, targetPoints);
                         if (cc.EvercoldAdventurerActivityTargetPoints > 0)
@@ -2857,7 +2871,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.EvercoldAdventurerActivityTargetPoints = source.EvercoldAdventurerActivityTargetPoints);
 
                     var evercoldDone = cc.EvercoldAdventurerActivityCompleted;
-                    if (ImGui.Checkbox("Done##EvercoldActivityDone", ref evercoldDone))
+                    if (UIConstants.Checkbox("Done##EvercoldActivityDone", ref evercoldDone))
                     {
                         cc.EvercoldAdventurerActivityCompleted = evercoldDone;
                         changed = true;
@@ -2878,16 +2892,16 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.CollapsingHeader("Profile actions & saved task state"))
         {
             // Reset buttons
-            if (ImGui.Button("Reset Weekly Section"))
+            if (UIConstants.Button("Reset Weekly Section"))
             {
                 RequestTaskStateReset("weekly task state", charKey, cc.ResetWeeklySectionState);
             }
-            ImGui.SameLine();
-            if (ImGui.Button("Reset Daily Section"))
+            UIConstants.SameLineIfFits("Reset Daily Section");
+            if (UIConstants.Button("Reset Daily Section"))
             {
                 RequestTaskStateReset("daily task state", charKey, cc.ResetDailySectionState);
             }
-            if (ImGui.Button("Reset All Character Task State"))
+            if (UIConstants.Button("Reset All Character Task State"))
             {
                 RequestTaskStateReset("all saved task state", charKey, cc.ResetAllTaskState);
             }
@@ -2897,12 +2911,10 @@ public class ConfigWindow : Window, IDisposable
             // Apply Default to All button (only visible when editing default config)
             if (isDefault)
             {
-                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.5f, 0.8f, 1));
-                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.6f, 0.9f, 1));
                 var account = configManager.GetCurrentAccount();
                 var differing = account?.Characters.Values.Count(character =>
                     !SettingsMatchDefault(account.DefaultConfig, character)) ?? 0;
-                if (ImGui.Button($"Apply Default Settings to ALL Characters ({differing})", new Vector2(-1, 30)))
+                if (UIConstants.Button($"Apply Default Settings to ALL Characters ({differing})", new Vector2(-1, 30)))
                 {
                     var count = RunConfigMutationWithTargetPause(
                         configManager.ApplyDefaultToAllCharacters,
@@ -2910,7 +2922,6 @@ public class ConfigWindow : Window, IDisposable
                     Plugin.Log.Information($"[Config] Applied default settings to {count} characters");
                     Plugin.ChatGui.Print($"[Vermaxion] Default settings applied to {count} characters.");
                 }
-                ImGui.PopStyleColor(2);
                 ImGui.TextDisabled("Copies all toggles and values from Default to every character. Preserves completion flags.");
             }
         }
@@ -2929,13 +2940,13 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         var enabled = settings.BuyOnionFromMarketboard;
         var changed = false;
-        if (ImGui.Checkbox("Buy a Thavnairian Onion when needed (Emptor)", ref enabled))
+        if (UIConstants.Checkbox("Buy a Thavnairian Onion when needed (Emptor)", ref enabled))
         { settings.BuyOnionFromMarketboard = enabled; changed = true; }
         var unitLimit = settings.OnionMaxUnitPrice;
-        if (ImGui.InputInt("Maximum onion unit price (gil)", ref unitLimit))
+        if (UIConstants.InputInt("Maximum onion unit price (gil)", ref unitLimit))
         { settings.OnionMaxUnitPrice = Math.Max(0, unitLimit); changed = true; }
         var budget = settings.OnionGilBudget;
-        if (ImGui.InputInt("Total gil limit per onion purchase (including tax)", ref budget))
+        if (UIConstants.InputInt("Total gil limit per onion purchase (including tax)", ref budget))
         { settings.OnionGilBudget = Math.Max(0, budget); changed = true; }
         ImGui.TextWrapped("Buys one onion on the current world only when your own rank 10-19 stabled chocobo is capped and no onion is in inventory. Both limits must be positive. Requires Emptor API 5; using the onion remains manual. When buying is disabled, the existing free quest-reward acquisition remains available.");
         if (changed) manager.SaveCurrentAccount();
@@ -2945,7 +2956,7 @@ public class ConfigWindow : Window, IDisposable
     {
         var changed = false;
         var enabled = cc.EnableChocoboStables;
-        if (ImGui.Checkbox("Chocobo Stables", ref enabled)) { cc.EnableChocoboStables = enabled; changed = true; }
+        if (UIConstants.Checkbox("Chocobo Stables", ref enabled)) { cc.EnableChocoboStables = enabled; changed = true; }
         ImGui.Indent();
         var settings = cc.ChocoboStablesSettings;
         static string DestinationLabel(Models.StableDestination value) => value switch
@@ -2957,7 +2968,7 @@ public class ConfigWindow : Window, IDisposable
             Models.StableDestination.Apartment => "Apartment",
             _ => "FC Estate",
         };
-        if (ImGui.BeginCombo("Stable destination", DestinationLabel(settings.Destination)))
+        if (UIConstants.BeginCombo("Stable destination", DestinationLabel(settings.Destination)))
         {
             foreach (var value in Enum.GetValues<Models.StableDestination>())
                 if (ImGui.Selectable(DestinationLabel(value), value == settings.Destination))
@@ -2972,7 +2983,7 @@ public class ConfigWindow : Window, IDisposable
             var fc = ChocoboStablesService.HasFreeCompany();
             ImGui.TextDisabled(fc == true ? "FC membership: member" : fc == false ? "FC membership: no FC" : "FC membership: unavailable");
         }
-        if (ImGui.BeginCombo("Chocobo to train", settings.Target == Models.StableTarget.OwnChocobo ? "Own chocobo" : "Specific other chocobo"))
+        if (UIConstants.BeginCombo("Chocobo to train", settings.Target == Models.StableTarget.OwnChocobo ? "Own chocobo" : "Specific other chocobo"))
         {
             foreach (var target in Enum.GetValues<Models.StableTarget>())
                 if (ImGui.Selectable(target == Models.StableTarget.OwnChocobo ? "Own chocobo" : "Specific other chocobo", settings.Target == target))
@@ -2980,20 +2991,20 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndCombo();
         }
         var clean = settings.CleanStable;
-        if (ImGui.Checkbox("Clean stable when needed", ref clean)) { settings.CleanStable = clean; changed = true; }
+        if (UIConstants.Checkbox("Clean stable when needed", ref clean)) { settings.CleanStable = clean; changed = true; }
         if (currentCharacter)
         {
             var service = plugin.ChocoboStablesService;
             var blocker = service.GetStartBlockedReason(settings, true);
             ImGui.BeginDisabled(IsEquipmentAutomationBusy() || plugin.Engine.IsRunning || blocker != null);
-            if (ImGui.SmallButton("Scan selected stable##StableRoster")) plugin.Engine.ManualStartChocoboStables(true);
+            if (UIConstants.Button("Scan selected stable##StableRoster")) plugin.Engine.ManualStartChocoboStables(true);
             ImGui.EndDisabled();
             if (blocker != null) ImGui.TextWrapped(blocker);
             var roster = service.GetRoster(settings.Destination);
             if (settings.Target == Models.StableTarget.SpecificOther)
             {
                 var preview = string.IsNullOrEmpty(settings.OtherChocobo) ? "Scan first, then select a chocobo" : $"{settings.OtherChocobo} ({settings.OtherOwner})";
-                if (ImGui.BeginCombo("Scanned other chocobo", preview))
+                if (UIConstants.BeginCombo("Scanned other chocobo", preview))
                 {
                     var index = 0;
                     foreach (var bird in roster.Where(b => b.Owner != Plugin.ObjectTable.LocalPlayer?.Name.TextValue))
@@ -3022,7 +3033,7 @@ public class ConfigWindow : Window, IDisposable
     {
         var changed = false;
         string PolicyLabel(DeliveryNpcPolicy policy) => policy == DeliveryNpcPolicy.BonusesOnly ? "Bonuses only" : "Closest to 150";
-        if (ImGui.BeginCombo("NPC policy##CustomDeliveries", PolicyLabel(settings.NpcPolicy)))
+        if (UIConstants.BeginCombo("NPC policy##CustomDeliveries", PolicyLabel(settings.NpcPolicy)))
         {
             foreach (var policy in Enum.GetValues<DeliveryNpcPolicy>())
                 if (ImGui.Selectable(PolicyLabel(policy), settings.NpcPolicy == policy))
@@ -3040,7 +3051,7 @@ public class ConfigWindow : Window, IDisposable
         foreach (var type in new[] { DeliveryTypes.Crafting, DeliveryTypes.Mining, DeliveryTypes.Botany, DeliveryTypes.Fishing })
         {
             var allowed = settings.AllowedTypes.HasFlag(type);
-            if (ImGui.Checkbox($"{type}##DeliveryType", ref allowed))
+            if (UIConstants.Checkbox($"{type}##DeliveryType", ref allowed))
             {
                 settings.AllowedTypes = allowed ? settings.AllowedTypes | type : settings.AllowedTypes & ~type;
                 changed = true;
@@ -3054,14 +3065,14 @@ public class ConfigWindow : Window, IDisposable
         {
             var job = Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId);
             var selected = settings.EligibleCraftJobs.Contains(jobId);
-            if (ImGui.Checkbox($"{job.Abbreviation.ExtractText()}##DeliveryJob{jobId}", ref selected))
+            if (UIConstants.Checkbox($"{job.Abbreviation.ExtractText()}##DeliveryJob{jobId}", ref selected))
             {
                 if (selected) settings.EligibleCraftJobs.Add(jobId); else settings.EligibleCraftJobs.Remove(jobId);
                 changed = true;
             }
             if (jobId != 11 && jobId != 15) ImGui.SameLine();
         }
-        if (ImGui.BeginCombo("Crafting job selection##CustomDeliveries", settings.CraftJobType.ToString()))
+        if (UIConstants.BeginCombo("Crafting job selection##CustomDeliveries", settings.CraftJobType.ToString()))
         {
             foreach (var choice in Enum.GetValues<DeliveryJobChoice>())
                 if (ImGui.Selectable(choice.ToString(), settings.CraftJobType == choice))
@@ -3072,7 +3083,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndCombo();
         }
         if (settings.CraftJobType == DeliveryJobChoice.Specific &&
-            ImGui.BeginCombo("Preferred crafting job##CustomDeliveries", Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(settings.SelectedCraftJob).Abbreviation.ExtractText()))
+            UIConstants.BeginCombo("Preferred crafting job##CustomDeliveries", Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(settings.SelectedCraftJob).Abbreviation.ExtractText()))
         {
             for (uint jobId = 8; jobId <= 15; jobId++)
             {
@@ -3090,14 +3101,14 @@ public class ConfigWindow : Window, IDisposable
         foreach (uint jobId in new uint[] { 16, 17 })
         {
             var selected = settings.EligibleGatherJobs.Contains(jobId);
-            if (ImGui.Checkbox($"{Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId).Name.ExtractText()}##DeliveryJob{jobId}", ref selected))
+            if (UIConstants.Checkbox($"{Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId).Name.ExtractText()}##DeliveryJob{jobId}", ref selected))
             {
                 if (selected) settings.EligibleGatherJobs.Add(jobId); else settings.EligibleGatherJobs.Remove(jobId);
                 changed = true;
             }
             if (jobId == 16) ImGui.SameLine();
         }
-        if (ImGui.BeginCombo("Preferred gathering job##CustomDeliveries", Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(settings.SelectedGatherJob).Name.ExtractText()))
+        if (UIConstants.BeginCombo("Preferred gathering job##CustomDeliveries", Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(settings.SelectedGatherJob).Name.ExtractText()))
         {
             foreach (uint jobId in new uint[] { 16, 17 })
                 if (ImGui.Selectable(Plugin.DataManager.GetExcelSheet<ClassJob>().GetRow(jobId).Name.ExtractText(), settings.SelectedGatherJob == jobId))
@@ -3109,17 +3120,17 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var baitId = (int)Math.Min(settings.FishingBaitId, int.MaxValue);
-        ImGui.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
-        if (ImGui.InputInt("Fishing bait item ID##CustomDeliveries", ref baitId))
+        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 2f);
+        if (UIConstants.InputInt("Fishing bait item ID##CustomDeliveries", ref baitId))
         {
             settings.FishingBaitId = (uint)Math.Max(0, baitId);
             changed = true;
         }
-        changed |= ImGui.InputText("AutoHook preset##CustomDeliveries", ref settings.FishingPresetName, 128);
+        changed |= UIConstants.InputText("AutoHook preset##CustomDeliveries", ref settings.FishingPresetName, 128);
         ImGui.TextWrapped("Default bait: Versatile Lure (29717). Entering 0 resets to 29717. A blank preset creates an AutoHook preset for the requested collectible; a named preset uses your existing setup. Fishing requires an eligible fisher gearset, bait and a valid fishing position.");
-        changed |= ImGui.Checkbox("Fetch achievement progress automatically##CustomDeliveries", ref settings.AutoFetchAchievements);
-        changed |= ImGui.Checkbox("Show overview when deliveries are incomplete##CustomDeliveries", ref settings.AutoShowIfIncomplete);
-        changed |= ImGui.Checkbox("Show delivery debug details##CustomDeliveries", ref settings.ShowDebugUI);
+        changed |= UIConstants.Checkbox("Fetch achievement progress automatically##CustomDeliveries", ref settings.AutoFetchAchievements);
+        changed |= UIConstants.Checkbox("Show overview when deliveries are incomplete##CustomDeliveries", ref settings.AutoShowIfIncomplete);
+        changed |= UIConstants.Checkbox("Show delivery debug details##CustomDeliveries", ref settings.ShowDebugUI);
         return changed;
     }
 
@@ -3139,8 +3150,8 @@ public class ConfigWindow : Window, IDisposable
             ? cc.NagYourDadSelectionKind == DadSelectionKind.None ? fallback : $"{cc.NagYourDadSelectionKind}: {fallback}"
             : $"{selected.Kind}: {selected.DisplayName}";
 
-        ImGui.SetNextItemWidth(460f);
-        if (ImGui.BeginCombo("DAD Preset or Schedule", preview))
+        UIConstants.SetNextItemWidth(460f * UIConstants.Scale);
+        if (UIConstants.BeginCombo("DAD Preset or Schedule", preview))
         {
             if (ImGui.Selectable("None", cc.NagYourDadSelectionKind == DadSelectionKind.None))
             {
@@ -3198,13 +3209,13 @@ public class ConfigWindow : Window, IDisposable
         var selected = dadDutyOptions.FirstOrDefault(option => option.Id == cc.NagYourDadDungeonContentFinderConditionId);
         var selectedLabel = selected?.DisplayName ?? "Select Duty Finder duty";
 
-        ImGui.SetNextItemWidth(420f);
-        if (!ImGui.BeginCombo(UIConstants.ConfigLabels.NagYourDadDungeonName, selectedLabel))
+        UIConstants.SetNextItemWidth(420f * UIConstants.Scale);
+        if (!UIConstants.BeginCombo(UIConstants.ConfigLabels.NagYourDadDungeonName, selectedLabel))
             return;
 
         ImGui.Text("Search:");
-        ImGui.SetNextItemWidth(390f);
-        ImGui.InputText("##DadDutySearch", ref dadDungeonSearch, 80);
+        UIConstants.SetNextItemWidth(390f * UIConstants.Scale);
+        UIConstants.InputText("##DadDutySearch", ref dadDungeonSearch, 80);
         ImGui.Separator();
 
         if (dadDutyOptions.Count == 0)
@@ -3250,7 +3261,7 @@ public class ConfigWindow : Window, IDisposable
     {
         var presets = GetDadLanPartyPresetOptions(cc.NagYourDadLanPartyPreset);
         var presetIndex = DadRunRequestOptions.GetLanPartyPresetIndex(cc.NagYourDadLanPartyPreset, presets);
-        if (ImGui.Combo(UIConstants.ConfigLabels.NagYourDadLanPartyPreset, ref presetIndex, presets, presets.Length))
+        if (UIConstants.Combo(UIConstants.ConfigLabels.NagYourDadLanPartyPreset, ref presetIndex, presets, presets.Length))
         {
             cc.NagYourDadLanPartyPreset = presets[presetIndex];
             changed = true;
@@ -3339,14 +3350,14 @@ public class ConfigWindow : Window, IDisposable
         var changed = false;
 
         var tempIcon = icon;
-        ImGui.SetNextItemWidth(80);
-        if (ImGui.InputText($"##{label}Icon", ref tempIcon, 10))
+        UIConstants.SetNextItemWidth(80f * UIConstants.Scale);
+        if (UIConstants.InputText($"##{label}Icon", ref tempIcon, 10))
         {
             icon = tempIcon;
             changed = true;
         }
-        ImGui.SameLine();
-        if (ImGui.Button($"Reset##{label}Reset"))
+        UIConstants.SameLineIfFits($"Reset##{label}Reset");
+        if (UIConstants.Button($"Reset##{label}Reset"))
         {
             icon = defaultIcon;
             changed = true;
@@ -3361,8 +3372,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Text("Code:");
         ImGui.SameLine();
         var iconCode = GetUnicodeCode(icon);
-        ImGui.SetNextItemWidth(60);
-        if (ImGui.InputText($"##{label}Code", ref iconCode, 10))
+        UIConstants.SetNextItemWidth(60f * UIConstants.Scale);
+        if (UIConstants.InputText($"##{label}Code", ref iconCode, 10))
         {
             // Convert code back to Unicode character
             if (iconCode.StartsWith("\\u") && iconCode.Length >= 6)
@@ -3393,7 +3404,7 @@ public class ConfigWindow : Window, IDisposable
 
     private static void DrawHelpMarker(string tooltip)
     {
-        ImGui.SameLine();
+        UIConstants.SameLineIfFits("(?)");
         ImGui.TextDisabled("(?)");
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(tooltip);
@@ -3412,7 +3423,7 @@ public class ConfigWindow : Window, IDisposable
     {
         if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
         {
-            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+            ImGui.TextWrapped($"Completed until {FormatUtc(nextReset)}");
         }
         else
         {
@@ -3429,8 +3440,8 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.Text("Map:");
         ImGui.SameLine();
-        ImGui.SetNextItemWidth(320f);
-        if (ImGui.BeginCombo("##LootGoblinMapGatherItemId", preview))
+        UIConstants.SetNextItemWidth(320f * UIConstants.Scale);
+        if (UIConstants.BeginCombo("##LootGoblinMapGatherItemId", preview))
         {
             foreach (var map in maps)
             {
@@ -3467,7 +3478,7 @@ public class ConfigWindow : Window, IDisposable
     {
         if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
         {
-            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+            ImGui.TextWrapped($"Completed until {FormatUtc(nextReset)}");
         }
         else
         {
@@ -3552,19 +3563,19 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextDisabled($"Resets {ChocoboDailyAllowance.ResetAt(now).AddDays(1).ToLocalTime():ddd, MMM d HH:mm} local (09:00 UTC). Covering waits do not consume racing time.");
         ImGui.Text(config.ChocoboProgressionPaused ? "Progression paused" : "Progression enabled");
         ImGui.BeginDisabled(config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree && !plugin.ChokeAboIpcClient.IsWorkflowAvailable);
-        if (ImGui.Button("Resume##ChocoboProgression"))
+        if (UIConstants.Button("Resume##ChocoboProgression"))
             plugin.RunDashboardAction(() => plugin.ChocoboRaceService.ResumeProgression());
         ImGui.EndDisabled();
-        ImGui.SameLine();
-        if (ImGui.Button("Pause##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
-        ImGui.SameLine();
-        if (ImGui.Button("Stop##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
+        UIConstants.SameLineIfFits("Pause##ChocoboProgression");
+        if (UIConstants.Button("Pause##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
+        UIConstants.SameLineIfFits("Stop##ChocoboProgression");
+        if (UIConstants.Button("Stop##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
         if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
         {
             ImGui.TextWrapped("Matching offspring stay unregistered. A matching G9 racer retires at rank 40 to become breeding stock.");
             ImGui.BeginDisabled(!plugin.ChokeAboIpcClient.IsWorkflowAvailable ||
                 !chokeAboTargetStatus.HasValue || chokeAboTargetStatus.Value.Status?.ProductionComplete != true);
-            if (ImGui.Button("Start new batch##ChocoboProduction"))
+            if (UIConstants.Button("Start new batch##ChocoboProduction"))
                 plugin.RunDashboardAction(() => plugin.ChocoboRaceService.ResumeProgression(startNewBatch: true));
             ImGui.EndDisabled();
         }
@@ -3577,7 +3588,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (!chokeAboTargetStatus.HasValue)
         {
-            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Breeding status unavailable. Enable Choke-abo to continue.");
+            ImGui.TextColored(UIConstants.Amber, "Breeding status unavailable. Enable Choke-abo to continue.");
             return;
         }
 
@@ -3585,7 +3596,7 @@ public class ConfigWindow : Window, IDisposable
         if (!result.Succeeded || result.Status == null)
         {
             ImGui.TextColored(
-                new Vector4(1f, 0.55f, 0.2f, 1f),
+                UIConstants.Amber,
                 $"Breeding status unavailable: {result.Error}");
             return;
         }
@@ -3599,7 +3610,7 @@ public class ConfigWindow : Window, IDisposable
                 ? Math.Clamp((float)status.MatchingOffspringProduced / status.MatchingOffspringRequested, 0, 1) : 0,
                 new Vector2(-1, 0), "Matching offspring retained unregistered");
             if (status.ProductionComplete)
-                ImGui.TextColored(new Vector4(0.4f, 1f, 0.6f, 1f), "Offspring quantity reached. Use Start new batch to repeat this goal.");
+                ImGui.TextColored(UIConstants.Text, "Complete: offspring quantity reached. Use Start new batch to repeat this goal.");
         }
         ImGui.TextUnformatted(status.RacingRank > 0 ? $"Registered pedigree: G{status.Pedigree}    Racing rank: {status.RacingRank}/50"
             : status.RacerDataAvailable ? "No registered racing chocobo." : "Registered racer data is unavailable.");
@@ -3618,7 +3629,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextDisabled("Racer ability and colour data are unavailable.");
         ImGui.TextWrapped($"Next action: {status.Reason}");
         if (status.ProgressionComplete)
-            ImGui.TextColored(new Vector4(0.4f, 1f, 0.6f, 1f), "Pedigree and racing-rank goal reached. Racer retained.");
+            ImGui.TextColored(UIConstants.Text, "Complete: pedigree and racing-rank goal reached. Racer retained.");
         if (status.NextCoveringEligibilityUtc.HasValue)
         {
             var ready = status.NextCoveringEligibilityUtc.Value;
@@ -3632,8 +3643,8 @@ public class ConfigWindow : Window, IDisposable
     private void DrawChocoboGoalSettings(CharacterConfig config, bool isCurrentCharacter, ref bool changed)
     {
         var goal = (int)config.ChocoboBreedingGoal;
-        ImGui.SetNextItemWidth(280);
-        if (ImGui.Combo("Breeding goal", ref goal, "Reach pedigree and racing rank 50\0Offspring printer - inherited ability\0Colour seeker\0"))
+        UIConstants.SetNextItemWidth(280f * UIConstants.Scale);
+        if (UIConstants.Combo("Breeding goal", ref goal, "Reach pedigree and racing rank 50\0Offspring printer - inherited ability\0Colour seeker\0"))
         {
             if (isCurrentCharacter)
                 plugin.ChocoboRaceService.PauseProgression();
@@ -3650,7 +3661,7 @@ public class ConfigWindow : Window, IDisposable
             return;
         if (!Enum.IsDefined(config.ChocoboBreedingGoal))
         {
-            ImGui.TextColored(new Vector4(1f, 0.55f, 0.2f, 1f), "Choose a valid breeding goal before continuing.");
+            ImGui.TextColored(UIConstants.Amber, "Choose a valid breeding goal before continuing.");
             return;
         }
 
@@ -3669,10 +3680,10 @@ public class ConfigWindow : Window, IDisposable
         {
             var preview = chocoboAbilityOptions.Where(ability => ability.RowId == config.ChocoboDesiredInheritedAbilityId)
                 .Select(ability => ability.Name.ExtractText()).FirstOrDefault() ?? "Choose an inherited ability";
-            ImGui.SetNextItemWidth(280);
-            if (ImGui.BeginCombo("Desired inherited ability", preview))
+            UIConstants.SetNextItemWidth(280f * UIConstants.Scale);
+            if (UIConstants.BeginCombo("Desired inherited ability", preview))
             {
-                ImGui.SetNextItemWidth(280);
+                UIConstants.SetNextItemWidth(280f * UIConstants.Scale);
                 ImGui.InputTextWithHint("##ChocoboAbilitySearch", "Find an inherited ability", ref chocoboAbilitySearch, 80);
                 foreach (var ability in chocoboAbilityOptions)
                 {
@@ -3693,8 +3704,8 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.EndCombo();
             }
             var quantity = config.ChocoboDesiredAbilityOffspringCount;
-            ImGui.SetNextItemWidth(120);
-            if (ImGui.InputInt("Matching offspring to produce##Ability", ref quantity))
+            UIConstants.SetNextItemWidth(120f * UIConstants.Scale);
+            if (UIConstants.InputInt("Matching offspring to produce##Ability", ref quantity))
             {
                 config.ChocoboDesiredAbilityOffspringCount = Math.Max(1, quantity);
                 changed = true;
@@ -3703,19 +3714,19 @@ public class ConfigWindow : Window, IDisposable
             if (config.ChocoboDesiredInheritedAbilityId != 0)
                 ImGui.TextWrapped($"Printer target: {config.ChocoboDesiredAbilityOffspringCount:N0} pedigree-9 offspring with {preview} as their inherited ability.");
             else
-                ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Choose the inherited ability to print.");
+                ImGui.TextColored(UIConstants.Amber, "Choose the inherited ability to print.");
         }
         else
         {
             var quantity = config.ChocoboDesiredColourOffspringCount;
-            ImGui.SetNextItemWidth(120);
-            if (ImGui.InputInt("Matching offspring to produce##Colour", ref quantity))
+            UIConstants.SetNextItemWidth(120f * UIConstants.Scale);
+            if (UIConstants.InputInt("Matching offspring to produce##Colour", ref quantity))
             {
                 config.ChocoboDesiredColourOffspringCount = Math.Max(1, quantity);
                 changed = true;
             }
             ImGui.TextWrapped("Accept any selected colour. The quantity is a total across the selected colours.");
-            ImGui.SetNextItemWidth(280);
+            UIConstants.SetNextItemWidth(280f * UIConstants.Scale);
             ImGui.InputTextWithHint("##ChocoboColourSearch", "Find a colour", ref chocoboColourSearch, 80);
             if (ImGui.BeginChild("AcceptableChocoboColours", new Vector2(0, 190), true))
             {
@@ -3726,7 +3737,7 @@ public class ConfigWindow : Window, IDisposable
                         continue;
                     ImGui.PushID((int)colour.RowId);
                     var selected = config.ChocoboAcceptableColourIds.Contains(colour.RowId);
-                    if (ImGui.Checkbox("##Accept", ref selected))
+                    if (UIConstants.Checkbox("##Accept", ref selected))
                     {
                         if (selected) config.ChocoboAcceptableColourIds.Add(colour.RowId);
                         else config.ChocoboAcceptableColourIds.Remove(colour.RowId);
@@ -3748,17 +3759,17 @@ public class ConfigWindow : Window, IDisposable
             if (config.ChocoboAcceptableColourIds.Count > 0)
             {
                 ImGui.TextWrapped(string.Join(", ", selectedNames));
-                if (ImGui.SmallButton("Clear acceptable colours"))
+                if (UIConstants.Button("Clear acceptable colours"))
                 {
                     config.ChocoboAcceptableColourIds.Clear();
                     changed = true;
                 }
             }
             else
-                ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Select at least one acceptable colour.");
+                ImGui.TextColored(UIConstants.Amber, "Select at least one acceptable colour.");
         }
         if (!plugin.ChokeAboIpcClient.IsWorkflowAvailable)
-            ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "Enable the current Choke-abo build to start or resume offspring production.");
+            ImGui.TextColored(UIConstants.Amber, "Enable the current Choke-abo build to start or resume offspring production.");
         ImGui.TextWrapped("Each covering takes 24 hours. Matching offspring are retained unregistered; owned mode never buys a covering permit.");
         ImGui.TextWrapped("These goals are saved separately. Existing pedigree progression remains available; Pause and Stop preserve a pending covering.");
     }
@@ -3815,7 +3826,7 @@ public class ConfigWindow : Window, IDisposable
     private bool DrawResetButton(string id, System.Action reset)
     {
         ImGui.SameLine();
-        if (!ImGui.SmallButton($"Reset##{id}"))
+        if (!UIConstants.Button($"Reset##{id}"))
             return false;
 
         var scope = string.IsNullOrWhiteSpace(plugin.ConfigManager.SelectedCharacterKey)
@@ -3860,12 +3871,10 @@ public class ConfigWindow : Window, IDisposable
         {
             var selected = configManager.GetSelectedConfig();
             var matches = SettingMatchesDefault(account.DefaultConfig, selected, copy);
-            ImGui.SameLine();
-            ImGui.TextDisabled(matches ? "Matches account default" : "Differs from account default");
+            ImGui.TextWrapped(matches ? "Uses account default" : "Character override");
             if (!matches)
             {
-                ImGui.SameLine();
-                if (ImGui.SmallButton($"Use default##{id}"))
+                if (UIConstants.Button($"Use default##{id}"))
                 {
                     void ApplyDefault() => RunConfigMutationWithTargetPause(
                         () =>
@@ -3886,11 +3895,9 @@ public class ConfigWindow : Window, IDisposable
 
         var differing = account.Characters.Values.Count(character =>
             !SettingMatchesDefault(account.DefaultConfig, character, copy));
-        ImGui.SameLine();
-        ImGui.TextDisabled($"{differing} characters differ");
-        ImGui.SameLine();
+        ImGui.TextWrapped($"{differing} characters differ");
         ImGui.BeginDisabled(differing == 0);
-        if (ImGui.SmallButton($"Apply to all##{id}"))
+        if (UIConstants.Button($"Apply to all##{id}"))
         {
             var count = RunConfigMutationWithTargetPause(
                 () => configManager.ApplyDefaultSettingToAllCharacters(label, copy),
@@ -3926,7 +3933,7 @@ public class ConfigWindow : Window, IDisposable
             preview = includeCurrentJobOption ? "Current job" : "Select job";
 
         var changed = false;
-        if (!ImGui.BeginCombo(label, preview))
+        if (!UIConstants.BeginCombo(label, preview))
             return false;
 
         if (includeCurrentJobOption)
@@ -3994,7 +4001,7 @@ public class ConfigWindow : Window, IDisposable
     {
         if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
         {
-            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+            ImGui.TextWrapped($"Completed until {FormatUtc(nextReset)}");
             return;
         }
 
@@ -4020,7 +4027,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (ResetDetectionService.TaskIsCompleted(lastCompleted, nextReset))
         {
-            ImGui.TextDisabled($"Completed until {FormatUtc(nextReset)}");
+            ImGui.TextWrapped($"Completed until {FormatUtc(nextReset)}");
             return;
         }
 
@@ -4114,13 +4121,13 @@ public class ConfigWindow : Window, IDisposable
             var row = configuration.FishingStockCatalog[index];
             ImGui.PushID($"FishingCatalog_{row.ItemId}");
 
-            if (ImGui.SmallButton("-"))
+            if (UIConstants.Button("-"))
             {
                 fishingCatalogRemoveItemId = row.ItemId;
                 ImGui.OpenPopup("Remove fishing-stock item?");
             }
-            ImGui.SameLine();
-            if (ImGui.SmallButton("+"))
+            UIConstants.SameLineIfFits("+");
+            if (UIConstants.Button("+"))
             {
                 pendingFishingCatalogRow = true;
                 fishingCatalogSearch = string.Empty;
@@ -4130,15 +4137,15 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped(GetItemName(row.ItemId));
 
             var target = row.DefaultTarget;
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-            if (ImGui.InputInt("Default target", ref target))
+            UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+            if (UIConstants.InputInt("Default target", ref target))
             {
                 row.DefaultTarget = Math.Max(0, target);
                 changed = true;
             }
             var defaultMin = row.DefaultMin;
-            ImGui.SetNextItemWidth(GetCompactNumericInputWidth());
-            if (ImGui.InputInt("Default reorder point", ref defaultMin))
+            UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
+            if (UIConstants.InputInt("Default reorder point", ref defaultMin))
             {
                 row.DefaultMin = Math.Max(0, defaultMin);
                 changed = true;
@@ -4146,7 +4153,7 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Default reorder point (0 = buy whenever below target).");
             var enabled = row.DefaultEnabled;
-            if (ImGui.Checkbox("Enabled by default", ref enabled))
+            if (UIConstants.Checkbox("Enabled by default", ref enabled))
             {
                 row.DefaultEnabled = enabled;
                 changed = true;
@@ -4158,7 +4165,7 @@ public class ConfigWindow : Window, IDisposable
                     .Concat(currentAccount.Characters.Values)
                     .Count(record => !FishingStockRowMatches(record, row));
             ImGui.BeginDisabled(currentAccount == null);
-            if (ImGui.SmallButton($"Sync row ({differingRecords})"))
+            if (UIConstants.Button($"Sync row ({differingRecords})"))
             {
                 var count = configManager.SyncFishingStockRowToCurrentAccount(row);
                 Plugin.ChatGui.Print($"[Vermaxion] {GetItemName(row.ItemId)} defaults synchronized to {count} current-account records.");
@@ -4172,14 +4179,14 @@ public class ConfigWindow : Window, IDisposable
             {
                 ImGui.TextWrapped($"Remove {GetItemName(fishingCatalogRemoveItemId)} from the global catalog?");
                 ImGui.TextWrapped("This also purges its account-default and character values. Re-adding it starts clean.");
-                if (ImGui.Button("Remove"))
+                if (UIConstants.Button("Remove"))
                 {
                     configManager.RemoveFishingStockCatalogEntry(configuration, fishingCatalogRemoveItemId);
                     fishingCatalogRemoveItemId = 0;
                     ImGui.CloseCurrentPopup();
                 }
-                ImGui.SameLine();
-                if (ImGui.Button("Cancel"))
+                UIConstants.SameLineIfFits("Cancel");
+                if (UIConstants.Button("Cancel"))
                 {
                     fishingCatalogRemoveItemId = 0;
                     ImGui.CloseCurrentPopup();
@@ -4194,16 +4201,16 @@ public class ConfigWindow : Window, IDisposable
         {
             ImGui.PushID("PendingFishingCatalogRow");
             ImGui.BeginDisabled();
-            ImGui.SmallButton("-");
+            UIConstants.Button("-");
             ImGui.EndDisabled();
-            ImGui.SameLine();
-            if (ImGui.SmallButton("+"))
+            UIConstants.SameLineIfFits("+");
+            if (UIConstants.Button("+"))
             {
                 fishingCatalogSearch = string.Empty;
                 focusFishingCatalogSearch = true;
             }
             ImGui.SameLine();
-            ImGui.SetNextItemWidth(Math.Max(80f, ImGui.GetContentRegionAvail().X));
+            UIConstants.SetNextItemWidth(Math.Max(80f, ImGui.GetContentRegionAvail().X));
             if (focusFishingCatalogSearch)
             {
                 ImGui.SetKeyboardFocusHere();
@@ -4243,14 +4250,14 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.EndChild();
             }
 
-            if (ImGui.SmallButton("Cancel blank row"))
+            if (UIConstants.Button("Cancel blank row"))
             {
                 pendingFishingCatalogRow = false;
                 fishingCatalogSearch = string.Empty;
             }
             ImGui.PopID();
         }
-        else if (ImGui.SmallButton("+ Add fishing-stock item"))
+        else if (UIConstants.Button("+ Add fishing-stock item"))
         {
             pendingFishingCatalogRow = true;
             fishingCatalogSearch = string.Empty;
@@ -4264,7 +4271,7 @@ public class ConfigWindow : Window, IDisposable
                 .Concat(account.Characters.Values)
                 .Count(record => configuration.FishingStockCatalog.Any(row => !FishingStockRowMatches(record, row)));
         ImGui.BeginDisabled(account == null);
-        if (ImGui.SmallButton($"Sync ALL catalog defaults ({allDifferingRecords})"))
+        if (UIConstants.Button($"Sync ALL catalog defaults ({allDifferingRecords})"))
         {
             var count = configManager.SyncAllFishingStockRowsToCurrentAccount(configuration.FishingStockCatalog);
             Plugin.ChatGui.Print($"[Vermaxion] All fishing-stock defaults synchronized to {count} current-account records.");
@@ -4327,7 +4334,7 @@ public class ConfigWindow : Window, IDisposable
             case SetupWizardKind.DefaultAndSync:
             {
                 var enabled = wizardDraft.Enabled;
-                if (ImGui.Checkbox("Enable inherited character automation", ref enabled))
+                if (UIConstants.Checkbox("Enable inherited character automation", ref enabled))
                     wizardDraft.Enabled = enabled;
                 ImGui.TextWrapped("New characters inherit Default Config. Existing characters remain unchanged until you use a row-level sync or Apply Default to ALL in the Default Config view.");
                 break;
@@ -4335,16 +4342,16 @@ public class ConfigWindow : Window, IDisposable
             case SetupWizardKind.FcBuff:
             {
                 var enabled = wizardDraft.EnableFCBuffRefill;
-                if (ImGui.Checkbox("Enable FC Buff", ref enabled))
+                if (UIConstants.Checkbox("Enable FC Buff", ref enabled))
                     wizardDraft.EnableFCBuffRefill = enabled;
                 var allowActivation = wizardDraft.AllowFCBuffActivation;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.AllowFCBuffActivation, ref allowActivation))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.AllowFCBuffActivation, ref allowActivation))
                     wizardDraft.AllowFCBuffActivation = allowActivation;
                 var maintainStockTarget = wizardDraft.MaintainFCBuffStockTarget;
-                if (ImGui.Checkbox(UIConstants.ConfigLabels.MaintainFCBuffStockTarget, ref maintainStockTarget))
+                if (UIConstants.Checkbox(UIConstants.ConfigLabels.MaintainFCBuffStockTarget, ref maintainStockTarget))
                     wizardDraft.MaintainFCBuffStockTarget = maintainStockTarget;
                 var frequency = wizardDraft.FCBuffFrequency;
-                if (ImGui.BeginCombo("Frequency", frequency.ToString()))
+                if (UIConstants.BeginCombo("Frequency", frequency.ToString()))
                 {
                     foreach (var option in Enum.GetValues<FCBuffFrequency>())
                     {
@@ -4356,21 +4363,21 @@ public class ConfigWindow : Window, IDisposable
                     }
                     ImGui.EndCombo();
                 }
-                if (ImGui.Button("Reset saved cadence state on Apply"))
+                if (UIConstants.Button("Reset saved cadence state on Apply"))
                     wizardFcBuffCadenceResetRequested = true;
                 if (wizardFcBuffCadenceResetRequested)
                     ImGui.TextDisabled("Cadence completion state will be reset to due when this wizard is applied.");
                 var quantity = wizardDraft.FCBuffPurchaseAttempts;
-                if (ImGui.InputInt(UIConstants.ConfigLabels.MaxPurchaseAttempts, ref quantity))
+                if (UIConstants.InputInt(UIConstants.ConfigLabels.MaxPurchaseAttempts, ref quantity))
                     wizardDraft.FCBuffPurchaseAttempts = Math.Clamp(
                         quantity,
                         1,
                         FCBuffRecoveryPolicy.MaxPurchaseAttempts);
                 var points = wizardDraft.FCBuffMinPoints;
-                if (ImGui.InputInt("Minimum FC points", ref points))
+                if (UIConstants.InputInt("Minimum FC points", ref points))
                     wizardDraft.FCBuffMinPoints = Math.Max(0, points);
                 var gil = wizardDraft.FCBuffMinGil;
-                if (ImGui.InputInt("Minimum gil", ref gil))
+                if (UIConstants.InputInt("Minimum gil", ref gil))
                     wizardDraft.FCBuffMinGil = Math.Max(0, gil);
                 ImGui.TextWrapped("Requires Free Company action access. Target mode buys only the live shortfall and replaces an action this run activates; without it, positive stock still suppresses purchasing. Stock is decremented only after confirmed VERMAXION activation.");
                 break;
@@ -4378,7 +4385,7 @@ public class ConfigWindow : Window, IDisposable
             case SetupWizardKind.Fishing:
             {
                 var enabled = wizardDraft.EnableFishing;
-                if (ImGui.Checkbox("Enable Fishing", ref enabled))
+                if (UIConstants.Checkbox("Enable Fishing", ref enabled))
                     wizardDraft.EnableFishing = enabled;
                 foreach (var row in plugin.Configuration.FishingStockCatalog)
                 {
@@ -4394,17 +4401,17 @@ public class ConfigWindow : Window, IDisposable
                     }
                     ImGui.PushID($"WizardFishing_{row.ItemId}");
                     var stockEnabled = stock.Enabled;
-                    if (ImGui.Checkbox(GetItemName(row.ItemId), ref stockEnabled))
+                    if (UIConstants.Checkbox(GetItemName(row.ItemId), ref stockEnabled))
                         stock.Enabled = stockEnabled;
-                    ImGui.SameLine(300f);
+                    ImGui.Spacing();
                     var target = stock.Target;
-                    ImGui.SetNextItemWidth(72f);
-                    if (ImGui.InputInt("target", ref target))
+                    UIConstants.SetNextItemWidth(72f * UIConstants.Scale);
+                    if (UIConstants.InputInt("target", ref target))
                         stock.Target = Math.Max(0, target);
                     ImGui.SameLine();
                     var wizardMin = stock.Min;
-                    ImGui.SetNextItemWidth(72f);
-                    if (ImGui.InputInt("min", ref wizardMin))
+                    UIConstants.SetNextItemWidth(72f * UIConstants.Scale);
+                    if (UIConstants.InputInt("min", ref wizardMin))
                         stock.Min = Math.Max(0, wizardMin);
                     ImGui.PopID();
                 }
@@ -4414,10 +4421,10 @@ public class ConfigWindow : Window, IDisposable
             case SetupWizardKind.RetainerEquipping:
             {
                 var enabled = wizardDraft.EnableRetainerEquipping;
-                if (ImGui.Checkbox("Enable Retainer Equipping", ref enabled))
+                if (UIConstants.Checkbox("Enable Retainer Equipping", ref enabled))
                     wizardDraft.EnableRetainerEquipping = enabled;
                 var sourceMode = wizardDraft.RetainerGearSourceMode;
-                if (ImGui.BeginCombo("Gear source", FormatRetainerGearSourceMode(sourceMode)))
+                if (UIConstants.BeginCombo("Gear source", FormatRetainerGearSourceMode(sourceMode)))
                 {
                     foreach (var mode in Enum.GetValues<RetainerGearSourceMode>())
                     {
@@ -4430,13 +4437,13 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.EndCombo();
                 }
                 var nonUnique = wizardDraft.RetainerGearNonUniqueOnly;
-                if (ImGui.Checkbox("Use non-unique items only", ref nonUnique))
+                if (UIConstants.Checkbox("Use non-unique items only", ref nonUnique))
                     wizardDraft.RetainerGearNonUniqueOnly = nonUnique;
                 var combatTarget = wizardDraft.RetainerCombatItemLevelTarget;
-                if (ImGui.InputInt("Combat item-level target", ref combatTarget))
+                if (UIConstants.InputInt("Combat item-level target", ref combatTarget))
                     wizardDraft.RetainerCombatItemLevelTarget = Math.Max(0, combatTarget);
                 var perceptionTarget = wizardDraft.RetainerGatheringPerceptionTarget;
-                if (ImGui.InputInt("Gathering Perception target", ref perceptionTarget))
+                if (UIConstants.InputInt("Gathering Perception target", ref perceptionTarget))
                     wizardDraft.RetainerGatheringPerceptionTarget = Math.Max(0, perceptionTarget);
                 ImGui.TextWrapped("Only AutoRetainer-enabled retainers are touched. Player-equipped items are excluded. Venture reassignment suppression is temporary and restored to its prior state.");
                 break;
@@ -4490,7 +4497,7 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.Separator();
         ImGui.BeginDisabled(impact.Count == 0);
-        if (ImGui.Button("Apply to account default"))
+        if (UIConstants.Button("Apply to account default"))
         {
             if (ApplyWizard(applyToAllCharacters: false))
             {
@@ -4498,8 +4505,8 @@ public class ConfigWindow : Window, IDisposable
                 CloseWizard();
             }
         }
-        ImGui.SameLine();
-        if (ImGui.Button("Apply default to all characters"))
+        UIConstants.SameLineIfFits("Apply default to all characters");
+        if (UIConstants.Button("Apply default to all characters"))
         {
             if (ApplyWizard(applyToAllCharacters: true))
             {
@@ -4508,8 +4515,8 @@ public class ConfigWindow : Window, IDisposable
             }
         }
         ImGui.EndDisabled();
-        ImGui.SameLine();
-        if (ImGui.Button("Cancel"))
+        UIConstants.SameLineIfFits("Cancel");
+        if (UIConstants.Button("Cancel"))
         {
             ImGui.CloseCurrentPopup();
             CloseWizard();
@@ -4657,7 +4664,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextWrapped(warning);
         }
         ImGui.Spacing();
-        if (ImGui.Button(warning.Length > 0 ? "Yes" : "Confirm"))
+        if (UIConstants.Button(warning.Length > 0 ? "Yes" : "Confirm"))
         {
             var action = confirmedAction;
             ClearConfirmation();
@@ -4665,7 +4672,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.CloseCurrentPopup();
         }
         ImGui.SameLine();
-        if (ImGui.Button(warning.Length > 0 ? "No" : "Cancel"))
+        if (UIConstants.Button(warning.Length > 0 ? "No" : "Cancel"))
         {
             ClearConfirmation();
             ImGui.CloseCurrentPopup();

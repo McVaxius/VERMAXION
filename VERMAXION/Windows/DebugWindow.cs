@@ -30,18 +30,15 @@ internal sealed class DebugWindow : Window
     public override void Draw()
     {
         UIConstants.Heading("Reload task selection", plugin.Configuration.CompactUi);
-        if (ImGui.Button("FULL STOP"))
+        if (UIConstants.FullStopButton())
             plugin.FullStop();
         ImGui.TextWrapped($"Saved task: {plugin.Configuration.DebugTaskId ?? "none"}");
-        var statusHeight = ImGui.GetTextLineHeightWithSpacing() * 3 + ImGui.GetStyle().WindowPadding.Y * 2;
-        ImGui.BeginChild("##DebugStatus", new Vector2(0, statusHeight), true);
-        ImGui.TextWrapped(plugin.DebugTaskStatus);
-        ImGui.EndChild();
-        ImGui.SetNextItemWidth(-1f);
+        UIConstants.Status("DebugStatus", plugin.DebugTaskStatus, UIConstants.Metadata);
+        UIConstants.SetNextItemWidth(-1f);
         ImGui.InputTextWithHint("##DebugTaskSearch", "Search task name or identifier", ref taskSearch, 100);
         ImGui.Separator();
 
-        ImGui.BeginChild("##DebugBody", Vector2.Zero, false);
+        ImGui.BeginChild("##DebugBody", Vector2.Zero, true);
         if (ImGui.CollapsingHeader("How reload selection works"))
         {
             ImGui.TextWrapped("Select one task for the next plugin reload. After character registration, FULL STOP runs, then the task's manual action is attempted once.");
@@ -57,7 +54,7 @@ internal sealed class DebugWindow : Window
             rows.All(row => row.Id != plugin.Configuration.DebugTaskId))
         {
             ImGui.TextWrapped("The saved task is no longer available.");
-            if (ImGui.SmallButton("Clear selection"))
+            if (UIConstants.Button("Clear selection"))
                 plugin.SetDebugTaskSelection(null);
         }
 
@@ -72,7 +69,7 @@ internal sealed class DebugWindow : Window
             var selected = plugin.Configuration.DebugTaskId == row.Id;
             // A stale selected stub may still be unchecked, but cannot be armed.
             ImGui.BeginDisabled(row.IsConfigurationOnly && !selected);
-            if (ImGui.Checkbox($"##Debug_{row.Id}", ref selected))
+            if (UIConstants.Checkbox($"##Debug_{row.Id}", ref selected))
                 plugin.SetDebugTaskSelection(selected ? row.Id : null);
             ImGui.SameLine();
             ImGui.TextWrapped(row.Task);
