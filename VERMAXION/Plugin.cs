@@ -11,6 +11,8 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
+using Dalamud.Interface.GameFonts;
+using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Plugin.Services;
 using ECommons;
 using ECommons.ExcelServices.TerritoryEnumeration;
@@ -48,6 +50,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     private const string DebugAttemptMarker = "stables-client7-20260930-30";
     private DateTime nextChocoboContinuationUtc;
+    private readonly IFontHandle applicationFont;
+    private readonly IFontHandle sectionFont;
     private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION.Tests\bin\Debug\StablesClient7Verification\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
@@ -350,6 +354,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             YieldUnstartedBeforeArGateToDad);
 
         // Windows
+        applicationFont = PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, 28) { Bold = true });
+        sectionFont = PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, 20) { Bold = true });
+        UIConstants.ApplicationFont = applicationFont;
+        UIConstants.SectionFont = sectionFont;
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
         DebugWindow = new DebugWindow(this);
@@ -425,6 +433,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         WindowSystem.RemoveAllWindows();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
+        UIConstants.ApplicationFont = null;
+        UIConstants.SectionFont = null;
+        applicationFont.Dispose();
+        sectionFont.Dispose();
 
         ARPostProcessService.Dispose();
         FCBuffService.Dispose();

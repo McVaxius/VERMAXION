@@ -19,7 +19,7 @@ internal sealed class VerminionWindow : Window
         this.plugin = plugin;
         Size = new Vector2(760, 680);
         SizeCondition = ImGuiCond.FirstUseEver;
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new(560, 480), MaximumSize = new(float.MaxValue, float.MaxValue) };
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new(520, 480), MaximumSize = new(float.MaxValue, float.MaxValue) };
     }
 
     public override void PreDraw() => UIConstants.PushStyle(plugin.Configuration.CompactUi);
@@ -34,32 +34,34 @@ internal sealed class VerminionWindow : Window
         ImGui.TextWrapped("Current character: " + (loggedIn ? plugin.ConfigManager.CurrentCharacterKey : "unavailable"));
         var progress = config.VerminionProgress;
 
-        if (ImGui.Button("FULL STOP")) plugin.FullStop();
+        var cleared = Enumerable.Range(0, 24).Count(stage => (progress.ClearedChallengeMask & (1u << stage)) != 0);
+        ImGui.TextWrapped($"Permanent CPU campaign: {cleared}/24 cleared");
+        ImGui.ProgressBar(cleared / 24f, new Vector2(-1, 20f * UIConstants.Scale), $"{cleared}/24");
+        if (UIConstants.FullStopButton()) plugin.FullStop();
         ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
         if (config.VerminionPaused || progress.RunMode != null)
         {
             UIConstants.SameLineIfFits(progress.CampaignRequested || progress.RunIsCampaign ? "Resume CPU campaign" : "Resume");
-            if (ImGui.Button(progress.CampaignRequested || progress.RunIsCampaign ? "Resume CPU campaign" : "Resume")) plugin.RunDashboardAction(service.ResumeTask);
+            if (UIConstants.Button(progress.CampaignRequested || progress.RunIsCampaign ? "Resume CPU campaign" : "Resume")) plugin.RunDashboardAction(service.ResumeTask);
         }
         ImGui.EndDisabled();
-        if (progress.PendingPurchase != null) ImGui.TextWrapped("Unresolved purchase: further purchases are blocked.");
-        if (progress.PendingTournamentReward != null) ImGui.TextWrapped("Unresolved prize: acceptance is preserved and guarded.");
-        if (ImGui.BeginChild("VerminionStatus", new Vector2(0, ImGui.GetTextLineHeightWithSpacing() * 6), false))
-        {
-            if (!loggedIn) ImGui.TextWrapped("Log in and wait for character registration to configure or run Verminion.");
-            if (config.VerminionPaused) ImGui.TextWrapped("Paused. Explicit Resume is required, including after a reload.");
-            ImGui.TextWrapped(service.StatusText);
-            var stageAttempts = progress.CampaignStage == progress.NextUnclearedChallenge ? progress.CampaignStageAttempts : 0;
-            ImGui.TextWrapped($"Campaign: {Math.Min(progress.NextUnclearedChallenge - 1, 24)}/24 cleared | Next stage attempts: {stageAttempts}/3 | Losses: {progress.ConsecutiveLosses}");
-            ImGui.TextWrapped($"Weekly participation: {progress.WeeklyMatches}/5 matches; {progress.WeeklyWins} wins.");
-            if (progress.RunMode == VerminionMode.MissionRepeat && !progress.RunIsCampaign)
-                ImGui.TextWrapped($"Mission {progress.RunMission}: {progress.RunWins}/{progress.RunRepeatCount} clears; attempts {progress.RunAttempts}/{progress.RunAttemptLimit}.");
-            DrawPurchaseWarnings(config);
-            if (progress.PendingTournamentReward is { } reward)
-                ImGui.TextWrapped($"Unresolved prize: {reward.Title}, {reward.Mgp:N0} MGP. " +
-                    (reward.Acknowledged ? "Acknowledgement saved; waiting for the exact MGP receipt." : "Acceptance outcome is unverified; it will not be submitted again."));
-        }
-        ImGui.EndChild();
+        var stageAttempts = progress.CampaignStage == progress.NextUnclearedChallenge ? progress.CampaignStageAttempts : 0;
+        var status = service.StatusText;
+        if (!loggedIn) status += "\nLog in and wait for character registration to configure or run Verminion.";
+        if (config.VerminionPaused) status += "\nPaused. Explicit Resume is required, including after a reload.";
+        status += $"\nNext stage attempts: {stageAttempts}/3 · Losses: {progress.ConsecutiveLosses} · Weekly: {progress.WeeklyMatches}/5 matches; {progress.WeeklyWins} wins.";
+        if (progress.RunMode == VerminionMode.MissionRepeat && !progress.RunIsCampaign)
+            status += $"\nMission {progress.RunMission}: {progress.RunWins}/{progress.RunRepeatCount} clears; attempts {progress.RunAttempts}/{progress.RunAttemptLimit}.";
+        UIConstants.Status("VerminionStatus", status, UIConstants.Metadata);
+        var warnings = new System.Collections.Generic.List<string>();
+        if (progress.PendingPurchase is { } purchase)
+            warnings.Add($"Unresolved purchase: {purchase.Gil:N0} gil / {purchase.Mgp:N0} MGP / {purchase.Certificates:N0} certificates reserved. Further purchases are blocked until acquisition and currency evidence agree. Reload, FULL STOP and weekly reset keep this reservation.");
+        if (progress.MinionAcquisition is { } acquisition)
+            warnings.Add($"ADS minion acquisition: item {acquisition.ItemId}. FULL STOP cancels only this request; reload reconciles it without submitting it again.");
+        if (progress.PendingTournamentReward is { } reward)
+            warnings.Add($"Unresolved prize: {reward.Title}, {reward.Mgp:N0} MGP. " +
+                (reward.Acknowledged ? "Acknowledgement saved; waiting for the exact MGP receipt." : "Acceptance outcome is unverified; it will not be submitted again."));
+        if (warnings.Count > 0) UIConstants.Status("VerminionWarnings", string.Join("\n", warnings), UIConstants.Amber);
         ImGui.Separator();
         if (ImGui.BeginTabBar("VerminionTabs", ImGuiTabBarFlags.FittingPolicyScroll))
         {
@@ -108,16 +110,21 @@ internal sealed class VerminionWindow : Window
         var service = plugin.VerminionService;
         ImGui.TextWrapped("Run Verminion on the current character independently of Run All. Opening this window does not start a match.");
         ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
-        UIConstants.Heading("Permanent campaign", plugin.Configuration.CompactUi);
-        ImGui.TextWrapped("Complete unfinished challenges in order. Cleared stages stay complete across weekly resets.");
-        if (ImGui.Button("Complete or continue 24 CPU challenges")) plugin.RunDashboardAction(service.RunChallenges);
-        ImGui.Separator();
-        UIConstants.Heading("Mission and weekly goals", plugin.Configuration.CompactUi);
+        if (UIConstants.BeginPanel("PermanentCampaign", "Permanent CPU campaign"))
+        {
+            ImGui.TextWrapped("Complete unfinished challenges in order. Cleared stages stay complete across weekly resets.");
+            if (UIConstants.Button("Complete or continue 24 CPU challenges")) plugin.RunDashboardAction(service.RunChallenges);
+            UIConstants.EndPanel();
+        }
+        if (UIConstants.BeginPanel("MissionWeekly", "Mission replay / weekly goals"))
+        {
         if (DrawGoalSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
         var runLabel = config.VerminionMode == VerminionMode.MissionRepeat
             ? $"Run mission {Math.Clamp(config.VerminionMission, 1, 24)} ({Math.Clamp(config.VerminionRepeatCount, 1, 1000)} clears)"
             : config.VerminionMode == VerminionMode.CpuRewards ? "Check tournament / prizes" : "Run weekly participation";
-        if (ImGui.Button(runLabel)) plugin.RunDashboardAction(service.RunTask);
+        if (UIConstants.Button(runLabel)) plugin.RunDashboardAction(service.RunTask);
+        UIConstants.EndPanel();
+        }
         ImGui.EndDisabled();
     }
 
@@ -126,7 +133,7 @@ internal sealed class VerminionWindow : Window
         var service = plugin.VerminionService;
         var progress = config.VerminionProgress;
         ImGui.BeginDisabled(!loggedIn);
-        if (ImGui.Button("Check planned minions")) showPlannedMinions = true;
+        if (UIConstants.Button("Check planned minions")) showPlannedMinions = true;
         ImGui.EndDisabled();
         if (showPlannedMinions)
         {
@@ -152,7 +159,7 @@ internal sealed class VerminionWindow : Window
         var next = VerminionService.PlannedStage(config, progress.CampaignRequested);
         var stage = previewStage == 0 ? Math.Min(next, 24) : previewStage;
         if (ImGui.SliderInt("Preview challenge", ref stage, 1, 24)) previewStage = stage;
-        if (ImGui.SmallButton("Follow next stage")) { previewStage = 0; stage = Math.Min(next, 24); }
+        if (UIConstants.Button("Follow next stage")) { previewStage = 0; stage = Math.Min(next, 24); }
         DrawPlan(config, stage, loggedIn);
         ImGui.TextWrapped("Achievement minions: acquire guide support separately before selecting a tested composition. ADS visits Jonathas, claims available certificates and buys only the requested missing item. Minion of Light is excluded until its White Mage form can be selected reliably.");
         foreach (var offer in VerminionRoster.AchievementOffers)
@@ -160,7 +167,7 @@ internal sealed class VerminionWindow : Window
             var owned = loggedIn ? VerminionGameInteraction.OwnsMinion(offer.MinionId) : null;
             ImGui.TextWrapped($"{offer.Name}: {(owned == true ? "registered" : owned == false ? "not registered" : "ownership unknown")}; two certificates.");
             ImGui.BeginDisabled(!loggedIn || owned != false || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
-            if (ImGui.Button($"Acquire {offer.Name} through ADS")) plugin.AcquireVerminionMinion(offer.MinionId);
+            if (UIConstants.Button($"Acquire {offer.Name} through ADS")) plugin.AcquireVerminionMinion(offer.MinionId);
             ImGui.EndDisabled();
         }
         foreach (var minion in VerminionRoster.Required(stage).Where(minion => VerminionRoster.AcquisitionQuests(minion.Id).Length > 0))
@@ -171,7 +178,7 @@ internal sealed class VerminionWindow : Window
             var dutyBlocker = plugin.VerminionQuestHandoffBlocker();
             if (dutyBlocker != null) ImGui.TextWrapped(dutyBlocker);
             ImGui.BeginDisabled(dutyBlocker != null || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
-            if (ImGui.Button($"Acquire {minion.Name} with Questionable")) plugin.AcquireVerminionMinion(minion.Id);
+            if (UIConstants.Button($"Acquire {minion.Name} with Questionable")) plugin.AcquireVerminionMinion(minion.Id);
             ImGui.EndDisabled();
             ImGui.TextWrapped("Verminion stays paused while Questionable runs. Reload observes the handoff without starting it again. FULL STOP cancels the owned acquisition. After the reward, Resume registers the minion and continues the selected Verminion goal.");
         }
@@ -182,7 +189,7 @@ internal sealed class VerminionWindow : Window
     {
         var changed = false;
         var mode = (int)config.VerminionMode;
-        if (ImGui.Combo("Activity##Verminion", ref mode, "Weekly participation - 5 matches\0Win selected mission - repeat clears\0Tournament checks / prizes\0"))
+        if (UIConstants.Combo("Activity##Verminion", ref mode, "Weekly participation - 5 matches\0Win selected mission - repeat clears\0Tournament checks / prizes\0"))
         { config.VerminionMode = (VerminionMode)mode; changed = true; }
         ImGui.TextWrapped(config.VerminionMode switch
         {
@@ -193,13 +200,13 @@ internal sealed class VerminionWindow : Window
         if (config.VerminionMode == VerminionMode.MissionRepeat)
         {
             var mission = config.VerminionMission;
-            ImGui.TextWrapped("Mission number (1-24)"); ImGui.SetNextItemWidth(-1);
-            if (ImGui.InputInt("##VerminionMission", ref mission))
+            ImGui.TextWrapped("Mission number (1-24)"); UIConstants.SetNextItemWidth(-1);
+            if (UIConstants.InputInt("##VerminionMission", ref mission))
             { config.VerminionMission = Math.Clamp(mission, 1, 24); changed = true; }
             ImGui.TextDisabled("Default: 2 (recommended / optimal for farming).");
             var count = config.VerminionRepeatCount;
-            ImGui.TextWrapped("Number of clears"); ImGui.SetNextItemWidth(-1);
-            if (ImGui.InputInt("##VerminionClearCount", ref count))
+            ImGui.TextWrapped("Number of clears"); UIConstants.SetNextItemWidth(-1);
+            if (UIConstants.InputInt("##VerminionClearCount", ref count))
             { config.VerminionRepeatCount = Math.Clamp(count, 1, 1000); changed = true; }
             ImGui.TextWrapped("Earlier wins and permanent clears do not count. Locked missions require preceding campaign clears. Mission 1 is the tutorial and earns no weekly participation.");
         }
@@ -236,18 +243,18 @@ internal sealed class VerminionWindow : Window
         var mgp = (int)Math.Min(config.VerminionMgpPurchaseCap, int.MaxValue);
         var certificates = (int)Math.Min(config.VerminionCertificatePurchaseCap, int.MaxValue);
         var reserve = (int)Math.Min(config.VerminionGilReserve, int.MaxValue);
-        ImGui.TextWrapped("Cumulative gil purchase cap"); ImGui.SetNextItemWidth(-1);
-        if (ImGui.InputInt("##VerminionGilCap", ref gil))
+        ImGui.TextWrapped("Cumulative gil purchase cap"); UIConstants.SetNextItemWidth(-1);
+        if (UIConstants.InputInt("##VerminionGilCap", ref gil))
         { config.VerminionGilPurchaseCap = (uint)Math.Max(0, gil); changed = true; }
-        ImGui.TextWrapped("Cumulative MGP purchase cap"); ImGui.SetNextItemWidth(-1);
-        if (ImGui.InputInt("##VerminionMgpCap", ref mgp))
+        ImGui.TextWrapped("Cumulative MGP purchase cap"); UIConstants.SetNextItemWidth(-1);
+        if (UIConstants.InputInt("##VerminionMgpCap", ref mgp))
         { config.VerminionMgpPurchaseCap = (uint)Math.Max(0, mgp); changed = true; }
-        ImGui.TextWrapped("Cumulative certificate purchase cap"); ImGui.SetNextItemWidth(-1);
-        if (ImGui.InputInt("##VerminionCertificateCap", ref certificates))
+        ImGui.TextWrapped("Cumulative certificate purchase cap"); UIConstants.SetNextItemWidth(-1);
+        if (UIConstants.InputInt("##VerminionCertificateCap", ref certificates))
         { config.VerminionCertificatePurchaseCap = (uint)Math.Max(0, certificates); changed = true; }
         ImGui.TextWrapped($"Achievement Certificates spent: {config.VerminionProgress.CertificatesSpent:N0}/{config.VerminionCertificatePurchaseCap:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate.");
-        ImGui.TextWrapped("Minimum gil balance"); ImGui.SetNextItemWidth(-1);
-        if (ImGui.InputInt("##VerminionGilReserve", ref reserve))
+        ImGui.TextWrapped("Minimum gil balance"); UIConstants.SetNextItemWidth(-1);
+        if (UIConstants.InputInt("##VerminionGilReserve", ref reserve))
         { config.VerminionGilReserve = (uint)Math.Max(0, reserve); changed = true; }
         ImGui.TextWrapped("ADS handles every vendor purchase, including travel and menus. Its guarded purchase API is required. Each gil purchase must leave the minimum balance; the saved cap and current funds are checked before ADS submits or confirms it.");
         ImGui.TextWrapped($"Spent on this character: {config.VerminionProgress.GilSpent:N0}/{config.VerminionGilPurchaseCap:N0} gil; {config.VerminionProgress.MgpSpent:N0}/{config.VerminionMgpPurchaseCap:N0} MGP. Caps are cumulative and do not reset weekly. Zero prevents purchases. Entry minions cost 2,400 gil each; the campaign's Zu Hatchling costs 10,000 MGP from permanent Gold Saucer stock. Already owned or unregistered inventory minions are used before buying.");

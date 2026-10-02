@@ -211,7 +211,7 @@ public class RegistrableConfigWindow : Window
         ImGui.TextWrapped($"Editing account: {accountLabel} | Scope: {GetSelectedScopeLabel()}");
         ImGui.TextWrapped($"{allGameItems.Count:N0} available items | {GetSelectedEditingConfig()?.PersonalRegistrableItems.Count ?? 0} personal items");
 
-        if (ImGui.Button("Reload Items"))
+        if (UIConstants.Button("Reload Items"))
         {
             LoadGameItems();
         }
@@ -237,14 +237,14 @@ public class RegistrableConfigWindow : Window
             return;
         }
 
-        ImGui.SetNextItemWidth(-1f);
+        UIConstants.SetNextItemWidth(-1f);
         var idInput = itemIdSearch;
         if (ImGui.InputTextWithHint("##ItemID", "Search item ID", ref idInput, 20))
         {
             itemIdSearch = Regex.Replace(idInput, @"[^0-9]", "");
             itemNameSearch = string.Empty;
         }
-        ImGui.SetNextItemWidth(-1f);
+        UIConstants.SetNextItemWidth(-1f);
         var nameInput = itemNameSearch;
         if (ImGui.InputTextWithHint("##ItemName", "Search item name", ref nameInput, 100))
         {
@@ -267,7 +267,7 @@ public class RegistrableConfigWindow : Window
             resultsShown++;
             var isAdded = personalItems.Contains(item.ItemId);
             ImGui.PushID($"Item_{item.ItemId}");
-            if (ImGui.Button(isAdded ? "Remove" : "Add"))
+            if (UIConstants.Button(isAdded ? "Remove" : "Add"))
             {
                 if (isAdded)
                 {
@@ -297,7 +297,7 @@ public class RegistrableConfigWindow : Window
     private void DrawPersonalItems()
     {
         UIConstants.Heading("Personal list", configuration.CompactUi);
-        ImGui.SetNextItemWidth(-1f);
+        UIConstants.SetNextItemWidth(-1f);
         ImGui.InputTextWithHint("##PersonalListSearch", "Search configured item ID or name", ref personalListSearch, 100);
         
         var activeConfig = GetSelectedEditingConfig();
@@ -310,11 +310,14 @@ public class RegistrableConfigWindow : Window
                 names);
             ImGui.Text($"Showing {personalItems.Count} of {activeConfig.PersonalRegistrableItems.Count}");
             
-            if (ImGui.BeginTable("PersonalItems", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+            var listHeight = Math.Max(120f * UIConstants.Scale, ImGui.GetContentRegionAvail().Y - 180f * UIConstants.Scale);
+            if (ImGui.BeginTable("PersonalItems", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY,
+                    new Vector2(0, listHeight)))
             {
-                ImGui.TableSetupColumn("Item ID", ImGuiTableColumnFlags.WidthFixed, 80 * UIConstants.Scale);
-                ImGui.TableSetupColumn("Item Name", ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableSetupColumn("Remove", ImGuiTableColumnFlags.WidthFixed, 100 * UIConstants.Scale);
+                ImGui.TableSetupColumn("Item", ImGuiTableColumnFlags.WidthStretch, 1f);
+                ImGui.TableSetupColumn("ID", ImGuiTableColumnFlags.WidthFixed, 80 * UIConstants.Scale);
+                ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, Math.Max(100 * UIConstants.Scale, UIConstants.ButtonWidth("Remove")));
+                ImGui.TableSetupScrollFreeze(0, 1);
                 ImGui.TableHeadersRow();
 
                 foreach (var itemId in personalItems)
@@ -322,18 +325,18 @@ public class RegistrableConfigWindow : Window
                     ImGui.TableNextRow();
                     
                     // Item ID
-                    ImGui.TableSetColumnIndex(0);
+                    ImGui.TableSetColumnIndex(1);
                     ImGui.Text(itemId.ToString());
                     
                     // Item Name - look up from game data
-                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TableSetColumnIndex(0);
                     var gameItem = allGameItems.FirstOrDefault(x => x.ItemId == itemId);
                     var itemName = gameItem?.ItemName ?? $"Unknown ({itemId})";
                     ImGui.TextWrapped(itemName);
                     
                     // Remove button
                     ImGui.TableSetColumnIndex(2);
-                    if (ImGui.Button($"Remove##Personal{itemId}"))
+                    if (UIConstants.Button($"Remove##Personal{itemId}"))
                     {
                         activeConfig.PersonalRegistrableItems.Remove(itemId);
                         characterConfigManager.SaveCurrentAccount();
@@ -353,6 +356,7 @@ public class RegistrableConfigWindow : Window
             ImGui.TextWrapped(activeConfig == null ? "Select an available account and configuration scope before editing." :
                 "No personal items configured for this scope. Use Add items or Import/export.");
         }
+        if (activeConfig != null) DrawBulkActions(activeConfig);
     }
 
     private void DrawImportExport()
@@ -366,7 +370,7 @@ public class RegistrableConfigWindow : Window
         }
 
         // Export personal list
-        if (ImGui.Button("Export Personal List"))
+        if (UIConstants.Button("Export Personal List"))
         {
             if (activeConfig.PersonalRegistrableItems.Count > 0)
             {
@@ -383,7 +387,7 @@ public class RegistrableConfigWindow : Window
         ImGui.TextWrapped("Copies your personal list to the clipboard.");
         
         // Import personal list
-        if (ImGui.Button("Import Personal List"))
+        if (UIConstants.Button("Import Personal List"))
         {
             var clipboardText = ImGui.GetClipboardText();
             if (allGameItems.Count == 0)
@@ -442,21 +446,23 @@ public class RegistrableConfigWindow : Window
                 ImGui.EndTable();
             }
 
-            if (ImGui.Button("Apply imported replacement..."))
+            if (UIConstants.Button("Apply imported replacement..."))
             {
                 RequestReplacementConfirmation(
                     "Replace personal list with import?",
                     $"Replace {GetSelectedScopeLabel()}'s personal list with {preview.AcceptedCount} accepted IDs? {preview.AddedCount} will be added and {preview.RemovedCount} removed; duplicate, unknown, and invalid entries remain excluded.",
                     preview.AcceptedIds);
             }
-            if (ImGui.Button("Cancel import preview"))
+            if (UIConstants.Button("Cancel import preview"))
                 pendingImportPreview = null;
         }
         
-        ImGui.Separator();
-        
-        // Clear All button
-        if (ImGui.Button("Clear All Personal Items..."))
+    }
+
+    private void DrawBulkActions(CharacterConfig activeConfig)
+    {
+        if (!UIConstants.BeginPanel("BulkActions", "Bulk actions")) return;
+        if (UIConstants.Button("Clear personal list..."))
         {
             RequestReplacementConfirmation(
                 "Clear all personal items?",
@@ -467,7 +473,7 @@ public class RegistrableConfigWindow : Window
         ImGui.TextWrapped("Removes all personal items after confirmation.");
         
         // Default list button
-        if (ImGui.Button("Load Default List..."))
+        if (UIConstants.Button("Load default list..."))
         {
             RequestReplacementConfirmation(
                 "Replace with the default list?",
@@ -476,6 +482,7 @@ public class RegistrableConfigWindow : Window
         }
 
         ImGui.TextWrapped("Loads recommended default items after confirmation.");
+        UIConstants.EndPanel();
     }
 
     private void RequestReplacementConfirmation(
@@ -517,7 +524,7 @@ public class RegistrableConfigWindow : Window
         ImGui.TextWrapped(replacementConfirmationTitle);
         ImGui.Separator();
         ImGui.TextWrapped(replacementConfirmationMessage);
-        if (ImGui.Button("Confirm replacement"))
+        if (UIConstants.Button("Confirm replacement"))
         {
             var activeConfig = GetSelectedEditingConfig();
             var currentScopeKey = characterConfigManager.SelectedCharacterKey ?? string.Empty;
@@ -544,7 +551,7 @@ public class RegistrableConfigWindow : Window
             }
         }
         UIConstants.SameLineIfFits("Cancel");
-        if (ImGui.Button("Cancel"))
+        if (UIConstants.Button("Cancel"))
         {
             pendingReplacementIds = [];
             pendingReplacementScopeKey = string.Empty;
