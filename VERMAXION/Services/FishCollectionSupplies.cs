@@ -115,7 +115,7 @@ internal sealed unsafe class FishCollectionSupplies(Plugin plugin)
         if (current!.Hq == true) return;
         try
         {
-            var query = JsonSerializer.Serialize(new { version = 1, query = current.ItemId.ToString(), limit = 100 });
+            var query = JsonSerializer.Serialize(new { version = 1, itemId = current.ItemId, limit = 100 });
             using var result = JsonDocument.Parse(Plugin.PluginInterface.GetIpcSubscriber<string, string>("ADS.SearchShopCatalogJson").InvokeFunc(query));
             foreach (var row in result.RootElement.GetProperty("rows").EnumerateArray())
             {

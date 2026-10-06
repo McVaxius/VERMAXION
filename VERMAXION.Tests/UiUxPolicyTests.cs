@@ -9,6 +9,26 @@ namespace VERMAXION.Tests;
 public sealed class UiUxPolicyTests
 {
     [Fact]
+    public void AppearanceSaveReloadPreservesCustomTaskOrderWithoutAppendingDefaults()
+    {
+        var configuration = new Configuration
+        {
+            UiLanguage = "tr",
+            CompactUi = true,
+            Enabled = false,
+            LeftPanelWidth = 319f,
+            PostProcessTaskOrder = PostProcessTaskOrder.DefaultOrder.Reverse().ToList(),
+        };
+        var saved = Newtonsoft.Json.JsonConvert.SerializeObject(configuration);
+        var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(saved)!;
+
+        Assert.Equal(configuration.PostProcessTaskOrder, restored.PostProcessTaskOrder);
+        Assert.Equal(saved, Newtonsoft.Json.JsonConvert.SerializeObject(restored));
+        Assert.Equal(PostProcessTaskOrder.DefaultOrder,
+            Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>("{}")!.PostProcessTaskOrder);
+    }
+
+    [Fact]
     public void CompactUiDefaultsOffAndRoundTripsWithoutChangingOtherPreferences()
     {
         const string legacy = "{\"Enabled\":false,\"DtrBarEnabled\":false,\"FavoriteAutomationIds\":[\"minion-roulette\"]}";

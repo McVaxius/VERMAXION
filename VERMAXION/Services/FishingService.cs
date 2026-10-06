@@ -213,6 +213,17 @@ public sealed class FishingService
     public bool IsComplete => state == FishingState.Complete;
     public bool IsFailed => state == FishingState.Failed;
     internal Func<bool>? CollectionCastGate { get; set; }
+    private bool collectionStopping;
+    private bool collectionSaleCancellationSent;
+    internal bool HasPendingCollectionCleanup => collectionStopping && (npcSaleOperationId != null || cleanupCommandSent);
+
+    internal void StopCollectionNavigation()
+    {
+        if (activeRunMode != FishingRunMode.Collection) return;
+        collectionStopping = true;
+        if (limsaTravelOwned || aethernetTeleportOwned || returnCommandSent) lifestream.TryAbort();
+        if (startupNavigationOwned || currentRailDestination.HasValue) vnavmesh.Stop();
+    }
     internal OceanFishingRoutePreference? CollectionRoute { get; set; }
     public bool QueueRegistrationObserved => queueRegistrationObserved;
     public FishingAttemptFailureKind FailureKind => failureKind;
@@ -395,6 +406,8 @@ public sealed class FishingService
 
     public void Reset(bool releaseRun = true)
     {
+        collectionStopping = false;
+        collectionSaleCancellationSent = false;
         CancelOwnedNpcSale();
         vendorStockService.Reset();
         if (OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider) &&
@@ -578,10 +591,26 @@ public sealed class FishingService
 
     public void Update()
     {
+        if (activeRunMode == FishingRunMode.Collection && collectionStopping && !SettleStoppedCollectionCleanup())
+            return;
         if (state is FishingState.Idle or FishingState.Complete or FishingState.Failed)
             return;
 
         var elapsed = DateTime.UtcNow - stateEnteredAt;
+        if (activeRunMode == FishingRunMode.Collection && collectionStopping &&
+            state is not (FishingState.HandlingResult or FishingState.Returning))
+        {
+            if (IsOceanFishingResultAddonAvailable()) SetState(FishingState.HandlingResult);
+            else if (IsOceanFishingDutyActive() || Plugin.Condition[ConditionFlag.InDutyQueue] ||
+                     Plugin.Condition[ConditionFlag.WaitingForDutyFinder] ||
+                     !GameHelpers.IsPlayerAvailable() || Plugin.Condition[ConditionFlag.BetweenAreas] ||
+                     Plugin.Condition[ConditionFlag.BetweenAreas51] || !lifestream.TryReadBusy(out var busy) || busy ||
+                     !vnavmesh.TryGetPathIsRunning(out var moving) || moving ||
+                     !vnavmesh.TryGetPathfindInProgress(out var pending) || pending)
+                statusDetail = "Collection stopped; waiting for its external voyage or navigation to settle";
+            else SetState(FishingState.Complete);
+            return;
+        }
         if (inventoryRecoveryActive &&
             (dutyCompletionObserved || IsOceanFishingResultAddonAvailable()))
         {
@@ -3726,6 +3755,47 @@ public sealed class FishingService
         npcSaleOperationId = null;
     }
 
+    private bool SettleStoppedCollectionCleanup()
+    {
+        if (npcSaleOperationId != null)
+        {
+            statusDetail = "Collection stopped; waiting for the owned ADS sale cancellation to settle";
+            if (DateTime.UtcNow < nextNpcSaleObservation) return false;
+            nextNpcSaleObservation = DateTime.UtcNow.AddSeconds(1);
+            try
+            {
+                if (!collectionSaleCancellationSent)
+                {
+                    collectionSaleCancellationSent = true;
+                    Plugin.PluginInterface.GetIpcSubscriber<string, bool>("ADS.CancelNpcSale").InvokeFunc(npcSaleOperationId);
+                }
+                var status = JObject.Parse(Plugin.PluginInterface.GetIpcSubscriber<string>("ADS.GetNpcSaleStatusJson").InvokeFunc());
+                if ((string?)status["operationId"] != npcSaleOperationId ||
+                    (bool?)status["running"] != false || (bool?)status["done"] != true) return false;
+                npcSaleOperationId = null;
+            }
+            catch (Exception ex)
+            {
+                statusDetail += ": " + ex.GetBaseException().Message;
+                return false;
+            }
+        }
+        if (cleanupCommandSent)
+        {
+            var busy = autoRetainer.ReadBusyState();
+            statusDetail = "Collection stopped; waiting for the already-sent inventory cleanup to settle";
+            if (!busy.Success || busy.Busy)
+            {
+                cleanupBusyObserved |= busy.Success && busy.Busy;
+                return false;
+            }
+            if (!cleanupBusyObserved && !FishingInventoryCleanupPolicy.TreatAsNothingToProcess(false, DateTime.UtcNow - stateEnteredAt))
+                return false;
+            cleanupCommandSent = false;
+        }
+        return true;
+    }
+
     private void TickAdsNpcSale(TimeSpan elapsed)
     {
         if (DateTime.UtcNow < nextNpcSaleObservation) return;
@@ -3898,7 +3968,7 @@ public sealed class FishingService
         }
 
         var operationSettings = GetActiveOperationSettings();
-        var command = FishingOperationPolicy.ResolveReturnCommand(operationSettings);
+        var command = collectionStopping ? "" : FishingOperationPolicy.ResolveReturnCommand(operationSettings);
         if (!string.IsNullOrWhiteSpace(command))
         {
             log.Information($"[Fishing] Fishing context ended; returning with {command}");
@@ -3933,6 +4003,11 @@ public sealed class FishingService
         }
 
         var territoryChanged = Plugin.ClientState.TerritoryType != returnStartedTerritory;
+        if (collectionStopping && !transitioning)
+        {
+            SetState(FishingState.Complete);
+            return;
+        }
         if (FishingReturnPolicy.IsVerified(
                 commandRequired: returnCommandSent,
                 activityObserved: returnTransitionObserved,
@@ -3951,7 +4026,7 @@ public sealed class FishingService
         }
 
         var returnElapsed = DateTime.UtcNow - returnStartedAt;
-        if (FishingReturnPolicy.ShouldRetry(returnCommandsSent, returnElapsed, transitioning))
+        if (!collectionStopping && FishingReturnPolicy.ShouldRetry(returnCommandsSent, returnElapsed, transitioning))
         {
             var command = ResolveReturnCommand();
             log.Warning($"[Fishing] Return command produced no observable activity after 30 seconds; retrying once: {command}");

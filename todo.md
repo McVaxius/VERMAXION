@@ -1,5 +1,1229 @@
 # VERMAXION custom deliveries, stables and fishing bundle
 
+## Paused Lazyparasite continuation - held-bait fishing
+
+Updated 2026-10-05. User clarification: continue waiting for and triggering the
+next fishing opportunity; the completed protection UI did not end autonomous
+fishing. Carry forward the explicit create/run-goal request and client7-only
+source/build/reload authority. Keep one target at a time and conserve gil/bait.
+
+- Goal paused 2026-10-06 10:28 UTC after the requested next test. Crystal Perch
+  remains Untested: two normal casts ended in native insufficient inventory
+  space, with no target credit. Cleanup-only marker44 is loaded at 06:27:02.360
+  EDT; existing Full Stop halts operations at 06:27:05.791. Its snapshot at
+  06:27:05.838 verifies phase Idle, no owned travel/navigation, nativeFishing
+  false, rod None and original bait 29717. No new collection attempt or cast
+  starts after the cleanup reload. Fresh 10:28:04 UTC comparisons restore the
+  exact five original AutoHook presets, selection, six flags and cast settings;
+  protected AR plans are unchanged. Native caught=7; coverage stays 7/341.
+  Marker44 Debug x64 passes with zero errors; marker43's 285 focused checks
+  pass. All 25 copied files match the payload; no build/test/copy is pending.
+  Stop agent work until explicit resume. Keep source-bound Cleanup mode and
+  do not select another fish. No inventory sale/discard was attempted.
+- On explicit resume: reconcile the current native state and inventory space
+  before restoring Caught mode or rearming Crystal Perch. The diagnosed gap is
+  that collection ignores the game's full-inventory error and retains phase
+  Fish while AutoHook stops; this run was stopped through authorized reload,
+  not by a general inventory recovery fix. Preserve accepted catch evidence.
+- Goal resumed 2026-10-06 10:02 UTC. Latest steering: pause the goal after the
+  next test. Complete Crystal Perch catch/cleanup using normal windows and
+  casting, or settle a conclusive held-resource blocker; then mark the goal
+  paused and stop agent work without selecting another fish.
+- Glimmerscale acceptance: marker42 loads at 05:52:54.497 EDT, removes the exact
+  interrupted marker41 preset through native AutoHook cleanup, and dispatches
+  once at 05:52:58.834. Sourced facing/CanFish verify before the weather window;
+  the third cast lands Glimmerscale at 05:54:25.014, measuring 13.5 ilms.
+  Automatic target-caught Stop settles at 05:54:28.726. Native caught=7.
+  Five original presets, selected preset, six flags and cast settings restore;
+  AR plans match the accepted baseline exactly. HookPresets.UniqueId differs
+  from the terminated session but exactly matches the fresh session's saved
+  pre-marker42 container; it is not a selected-preset change. Glimmerscale is
+  Tested; coverage is 7 Tested / 341 Untested.
+- Marker43 build intent: Crystal Perch 7682, Woad Whisper Canyon (territory 134),
+  direct held Butterworm 2594, minimum Gathering 332, no mooch/predator/folklore,
+  mandatory Precision Hookset 4179. The read-only XA inventory at 09:26:30 UTC
+  lists 99 Butterworm; native preparation must verify current stock. Next
+  qualifying weather window is 10:16:40-10:40:00 UTC. Remove only the now-verified
+  temporary Debug cleanup; retain the territory guard and normal scheduling.
+  Compile marker fish-collection-client7-20261006-43-crystal-perch in the existing
+  unwatched output, run focused checks, refresh the complete 25-file payload,
+  reconcile owned native work and overwrite through R:. No new machinery.
+- Marker43 overwrite intent at 10:12 UTC: Debug x64 passes in 63.90 seconds,
+  zero errors and the existing NU1601 warning; all 285 focused collection,
+  fishing-policy, stock, AR protection, gearset and startup checks pass.
+  The complete 25-file payload is refreshed and verified with current adapter
+  and preserved ADS entries. Fresh native snapshot at 10:12:23 UTC retains
+  marker42's settled target Stop, no later collection activity, and exact
+  restored AutoHook state. Copy changed dependencies first and VMX DLL last;
+  reconcile native marker43 load/dispatch/readiness before judging the test.
+- Marker43 copy completed at 10:12:49.712339 UTC, exit zero. All 25 deployed
+  files match the prepared payload; current UI dependencies and VMX DLL changed.
+  Native load/dispatch, held-stock verification and arrival remain pending.
+  Do not rebuild/copy again while this one known attempt is being reconciled.
+- Marker43 native reconciliation through 10:13:53 UTC: one dispatch at
+  06:12:55.093 EDT selects only Crystal Perch and arms native target-caught Stop.
+  Level 71 / Gathering 942 / Perception 768 / GP 665, native unlocked-action
+  strategy and held Butterworm pass preparation. Supplies completes without
+  bait/cordial restocking and Summerford Farms travel is observed at 06:13:10.
+  Position remains active; zero casts before the 10:16:40 UTC window are expected.
+  Arrival/facing, target credit and exact restoration remain unverified.
+  Keep this one native attempt active; pause the goal after its settled test.
+- Marker43 arrival accepted at 06:15:08.496 EDT: exact native load at
+  06:12:51.602 matches version 1.0.0.1, isolated A: path and marker43. Sourced
+  position, held facing and CanFish pass; AwaitWindow is active for the
+  10:16:40-10:40:00 UTC weather window. Snapshot at 10:15:38 UTC retains one
+  dispatch, zero casts and no target credit. Do not reload this positioned run.
+  Next milestone: ordinary casting after the window opens, then native credit
+  and exact settled restoration before the requested goal pause.
+- Marker43 casting-start milestone at 10:17:16 UTC: AutoHook starts once with
+  Butterworm at 06:16:40.515 EDT and enters Fish. Native casts at 06:16:42.347
+  and 06:17:00.508 demonstrate continued casting; the first catches ordinary
+  dusk goby. No Crystal Perch landing, cleanup or Stop yet. Keep casting in
+  this weather window through 10:40 UTC; next coarse progress check around
+  10:22 UTC, or the target/cleanup milestone. Pause after settled acceptance.
+- Crystal Perch resource-blocked test: after its second catch at 06:17:18.002
+  EDT, the native game reports insufficient inventory space at 06:17:18.744.
+  AutoHook stops recording at 06:17:20.201; a 10:20:29 UTC snapshot confirms
+  only two casts and no target credit. Collection still owns its preset and
+  phase Fish, so cleanup must be reconciled before the requested pause.
+  No inventory sale/discard is authorized or attempted; Crystal Perch stays
+  Untested and accepted coverage remains 7/341.
+- Marker44 cleanup intent: keep Crystal Perch selected and use source-bound
+  Cleanup mode in the existing isolated Debug reload action. Existing Full Stop
+  and native readiness settlement run first; the action logs its idle/rod/bait
+  snapshot and returns without starting another opportunity. Compile marker
+  fish-collection-client7-20261006-44-crystal-perch-cleanup in the unwatched
+  output, refresh/verify the same complete payload and overwrite through R:.
+  Compare original preset/flags/casts/AR baseline and native bait 29717, then
+  pause the goal. Restore Caught mode only on a later explicit resume.
+- Marker44 overwrite intent at 10:26 UTC: Debug x64 passes in 17.78 seconds,
+  zero errors and the existing NU1601 warning. Control-flow review confirms
+  Cleanup returns before pin saving, collection Start and automatic Stop arming;
+  normal Debug and public/manual behavior remain unchanged outside this mode.
+  The complete 25-file payload is refreshed/verified with ADS entries preserved.
+  Use the same R: overwrite to unload/restore marker43, then verify marker44's
+  existing Full Stop settlement and explicit cleanup-only native snapshot.
+- Goal paused 2026-10-06 09:59 UTC at the user's request to reserve overnight
+  quota. Stop agent work until explicit resume. As with the earlier quota pause,
+  leave the accepted client run scheduled; no client Stop or new reload is sent.
+  The already-started marker42 copy completed at 09:52:53.355966 UTC, exit zero;
+  all 25 deployed files match the prepared payload. Native marker42 load,
+  dispatch and targeted old-preset cleanup have not yet been reconciled.
+  No build, test, package or copy session remains pending.
+- Goal resumed 2026-10-06 09:19 UTC. The old client7 process terminated at
+  20:33:07 EDT October 5 before that window opened, with no usable fault stack.
+  A fresh client7 session starts at about 09:25 UTC while recovery is being
+  inspected. The saved-state cleanup assertion aborts before any write because
+  the new native attempt has registered another owned preset. Leave its live
+  configuration untouched and reconcile native ownership before another copy.
+  Five original presets/cast settings and all six saved flags are intact; the
+  old marker41-owned preset remains from the terminated process.
+- First target: Bloody Brewer (7696), Crayfish Ball (2588), Lower Black Tea Brook
+  in territory 132. Always available, minimum Gathering 290, no mooch/predators.
+  Existing level-71 Fisher has observed Gathering 942, Perception 768 and GP 665;
+  initial inventory snapshot held 69 Crayfish Balls; marker30 exhausted them.
+  Native preparation must
+  confirm readiness and stock before travel. Optional cordial purchases stay
+  skipped and the chosen strategy uses current gear and held target bait.
+- End state: verified native target catch/credit and exact settled AutoHook/
+  lifecycle/navigation cleanup. Then mark that fish Tested in this catalog/TODO
+  and proceed to another compatible held-bait target. Do not mark Tested from
+  builds, preparation, travel or ordinary fish catches. Keep an eligible target
+  scheduled through failed opportunities and future windows until success.
+- Preserve source versions 1.0.0.1 / 0.9.7.0, public IPC, user-managed gearsets,
+  enabled AR protection, unrelated dirty UI/localization changes and unstaged
+  work. Reuse this sole checkpoint, bounded shared-read snapshots and the same
+  complete payload/R: overwrite; add no watcher, logger, setting or retry engine.
+- Reconciled state: marker36 caught Carp Diem on cast 13 and settled exact
+  cleanup/restoration. Native caught=6. Dream Goby remains resource-blocked by
+  zero Crayfish Ball. Continue one compatible held-bait target at a time.
+- Prior loaded marker: fish-collection-client7-20261005-41-glimmerscale-facing,
+  Glimmerscale 7714 / held Butterworm 2594. The new native session dispatches
+  once and makes eight casts before its 05:30 EDT opportunity end. Rod cleanup,
+  current-preset restoration and configured return complete; normal scheduling
+  selects another Glimmerscale opportunity at 05:30:41 and reaches Position
+  at 05:30:50.465. Native caught=6; Glimmerscale remains Untested.
+  Marker42's territory guard and one-time isolated Debug cleanup are built.
+  Debug x64 passes in 55.69 seconds, zero errors; all 237 focused checks pass.
+  The complete 25-file payload is verified. Latest native snapshot at
+  09:50:54 UTC retains AwaitWindow with native casts still eight; AutoHook is
+  disabled and the current owned preset has future casts gated off. No
+  navigation/travel/cast was pending at that snapshot. The authorised R:
+  overwrite subsequently completed; current native progress remains unknown.
+- Accepted catch coverage: Great Gudgeon, Bloody Brewer, Dark Knight, Judgeray,
+  Dawn Maiden, Carp Diem and Glimmerscale are Tested from native catch and exact cleanup; 341 targets
+  remain Untested.
+  The overall held-bait goal is paused after its resource-blocked next test.
+- Next: wait for explicit resume; reconcile fresh state and inventory space
+  before another fishing build, copy or dispatch. Crystal Perch is not accepted.
+
+Attempt state: marker27 dispatched once at 15:30:10 EDT; it built as Debug x64 in 46.97 seconds
+with zero errors and the existing NU1601 warning. The complete 24-file payload
+matches fresh VERMAXION inputs by direct bytes; the executable marker is verified.
+Fresh AutoHook baseline has the five original preset IDs, both selection GUIDs,
+six flags and saved cast settings. Great Gudgeon remains the only Tested fish;
+Bloody Brewer remains Untested until acceptance.
+Overwrite intent: after the reconciled stopped collection and settled stables
+work, write changed dependencies first and VERMAXION.dll last through R:.
+Verify marker27's startup and sole 7696 dispatch before accepting runtime evidence.
+
+Marker27 reconciliation at 15:37 EDT: the R: overwrite completed at 19:30:05 UTC,
+all 24 deployed files match its payload, and the native marker loaded at 15:30:06.969.
+Its sole Bloody Brewer dispatch observed level 71 / Gathering 942 / Perception
+768 / maximum GP 665, prepared the unlocked-action strategy and used held bait
+without a supply purchase. Travel failed at 15:30:17 with "Sequence contains no
+matching element" before any movement or cast. Cleanup restored AutoHook at
+15:30:19 and normal scheduling returned to selection; this hour's failed
+opportunity is excluded. The five original preset IDs, both selections, six
+flags and original cast settings match the pre-attempt baseline exactly.
+Bloody Brewer remains Untested and the fishing goal remains active.
+
+Correction intent: resolve the territory's distinct primary teleport destinations
+before comparing native positions, avoiding unused city-shard position lookups.
+Keep the native catch Stop, same target and held supplies. Next executable marker
+is fish-collection-client7-20261005-28-primary-travel. Build and refresh the
+existing payload in the unwatched output; inspect native owned state before
+overwriting dependencies first and VERMAXION.dll last. Verify the new native
+startup, sole dispatch, arrival and continuous casts before accepting the fix.
+The isolated single-target preparation now rejects zero held strategy bait with
+the item name/ID instead of falling through to ordinary restocking. This preserves
+the agreed existing-bait/gil constraint if a later window exhausts the stock.
+
+Marker28 overwrite intent at 15:41 EDT: Debug x64 build passed in 40.70 seconds
+with zero errors and the existing NU1601 warning; 238 focused collection,
+fishing-policy, AutoHook, AR protection and navigation checks passed. The complete
+24-file payload is refreshed and verified against its native inputs by direct
+bytes, preserving ADS entries and source versions. A bounded pre-copy window
+through 15:40:49 confirms marker27's single dispatch, completed attempt cleanup
+and no subsequent target, travel, return or casting. Original AutoHook baseline
+is unchanged. Write changed dependencies first and VERMAXION.dll last; reconcile
+the reload before any further dispatch or copy. Bloody Brewer acceptance remains
+pending and no user action is required.
+
+Marker28 runtime at 15:42:34 EDT: overwrite completed and all 24 files match at
+19:41:42 UTC; exact native marker loaded at 15:41:43.034 with version 1.0.0.1.
+One dispatch at 15:41:46.712 selected only Bloody Brewer, retained target-caught
+Stop, prepared the level-71 unlocked-action strategy and used held supplies.
+Lifestream accepted New Gridania at 15:41:53.968; native territory arrival and
+owned movement were observed at 15:42:04.144. The sourced casting position and
+facing were verified at 15:42:27.696, AutoHook enabled and entered Fish at
+15:42:28.257, and the native first cast occurred at 15:42:30.021. This verifies
+the route correction, not the target catch. Keep this run active; no new build,
+copy or dispatch is pending. Next bounded milestone is sustained casting/catch;
+Bloody Brewer remains Untested until native credit plus settled exact restoration.
+
+Sustained-casting milestone at 15:45:52 EDT: the bounded current attempt window
+contains 11 native casts from 15:42:30 through 15:45:36, with ordinary gudgeon/
+pipira catches and two lost-bait outcomes. No target catch, cleanup or Stop has
+occurred. AR saved lists and supplementary flags still have zero catalog-target
+overlaps; opt-in remains enabled and priority is 7696. Continue this run without
+another reload. Next coarse milestone is around 15:50 or the normal window end.
+
+Later milestone at 15:51:05 EDT: 27 native casts are visible through 15:50:44,
+with another ordinary pipira catch at 15:51:04. No Bloody Brewer landing, cleanup
+or automatic Stop is present. The same marker28 attempt remains active and
+unchanged. Continue normal casting; next coarse snapshot around 15:56. Stored XA
+inventory is dated 09:29 UTC, so it is only a prospective later-bait list, not a
+fresh remaining-stock measurement. Native preparation must validate held stock.
+
+Milestone at 15:56:27 EDT: 45 native casts through 15:56:17, with ordinary
+pipira catches/lost bait and no Bloody Brewer landing or Stop. Keep marker28
+active through this forecast window. Its normal hour window ends at 16:00 EDT;
+next bounded milestone will verify cleanup and same-target scheduling/continuous
+casting into the next opportunity if the catch has not occurred.
+
+Bloody Brewer acceptance at 16:03 EDT: a bounded window records its native
+landing at 15:58:26.524, measuring 15.3 ilms, on cast 50. Native target credit
+requested Caught Stop at 15:58:26.548 while the rod was pulling in. Cleanup
+stowed the rod, restored AutoHook and reached Idle with explicit collection,
+lifecycle, navigation and travel settlement at 15:58:30.134. Later native
+observations at 15:58:46/54 report caught=2 with the same level-71 gear/stats.
+Exact post-catch comparison matches all five original preset IDs, both selected
+GUIDs, six flags and cast settings; the AR plans match the accepted post-protection
+baseline exactly, with zero target overlaps in all discard/sale lists and flags.
+Bloody Brewer (7696) is now curated Tested; coverage is 2 Tested / 346 Untested.
+Continue the goal. No uncertain fishing dispatch, cast or collection cleanup is
+pending; check unrelated native scheduled work before the next overwrite.
+
+Next selected target: Dream Goby (7692), Upper Soot Creek (spot 75), territory
+141, Crayfish Ball (2588), minimum Gathering 290, 17:00-03:00 Eorzea, no weather,
+mooch or predators. Current gear qualifies; native held stock/actions must still
+pass preparation. The next window is 20:19:35-20:48:45 UTC on 2026-10-05. Reuse
+the same bait rather than buying more or changing targets during this attempt.
+Territory 141 is Central Thanalan; Black Brush Station is the correct native
+destination. Marker29's unused city-shard conditional was based on a mistaken
+territory assumption and is removed for marker30. Preserve the verified distinct
+primary-position route fix, one owned request, Stop abort and native arrival.
+Marker29 build/copy intent: minor executable target/marker change plus accepted
+Bloody Brewer coverage. Build Debug x64 and
+run focused checks in the existing unwatched output, refresh the 24-file payload,
+inspect current native work and original AutoHook baseline, then overwrite through
+R:. Do not infer dispatch from a copied DLL; reconcile exact native markers first.
+
+Marker29 overwrite intent at 16:12 EDT: final Debug x64 build passed in 20.10
+seconds with zero errors and the existing NU1601 warning, following the 73.74-
+second route/coverage build. All 238 focused checks pass with the two accepted
+Tested fish. The 24-file payload is refreshed and verified by direct bytes,
+preserving ADS. A bounded native pre-copy window through 16:11:21 confirms the
+caught-target Stop settled at 15:58:30 and the subsequent stables cleanup settled
+at 15:58:55; no newer fishing, travel or return activity intervened. The exact
+accepted AutoHook baseline is retained for this attempt. Overwrite changed
+dependencies first and VERMAXION.dll last, then verify marker29's load and sole
+Dream Goby dispatch. Do not buy replacement bait or mark Dream Goby Tested yet.
+
+Marker29 reconciliation at 16:26 EDT: overwrite completed at 20:12:17 UTC;
+native load at 16:12:19 and exactly one dispatch at 16:12:22.925 are verified.
+Held-stock/action preparation passed. Black Brush Station was accepted at
+16:12:30 and native arrival at 16:12:38. Sourced facing was applied at 16:12:59;
+casting failed at 16:13:01 without a cast. Cleanup restored AutoHook and the
+configured return settled before selection resumed at 16:13:32. Exact comparison
+matches five original preset IDs, both selections, six flags and cast settings.
+This opportunity is excluded by normal attempted-opportunity scheduling; the
+overall run remains selecting/waiting. Dream Goby remains Untested. No unknown
+dispatch or build/copy session is pending.
+
+Marker30 diagnostic attempt intent: keep Dream Goby and held Crayfish Ball;
+retain casting-position tolerance and facing until fresh evidence establishes
+the cause. Add actual position, distance, rotation, mounting and native Cast
+status to the existing one-time failure message. Build in the unwatched output,
+refresh the existing complete payload, check settled native work and overwrite
+through R:. Verify exact marker and one dispatch, then diagnose from the bounded
+arrival snapshot. Do not invent a retry or change targets after this failure.
+
+Marker30 overwrite intent at 16:26 EDT: Debug x64 build passed in 57.49 seconds,
+zero errors and the existing NU1601 warning. All 238 focused checks pass and the
+scoped whitespace check passes. The 24-file payload is refreshed and verified by
+direct bytes, preserving ADS. A bounded snapshot through 16:26 confirms no casts
+or new collection travel after marker29's settled cleanup/return. Original
+AutoHook state is exact. Overwrite changed dependencies first and VERMAXION.dll
+last through R:, then verify marker30's native load/dispatch/position evidence.
+Marker30 overwrite completed at 20:27:16 UTC; the copy session exited successfully
+and all 24 deployed files match the payload. Only VERMAXION.dll changed. No
+further build/copy is pending. Await the bounded native arrival milestone before
+another action; current dispatch state is not yet reconciled after the copy.
+
+Marker30 arrival milestone at 16:28:43 EDT: exact marker loaded at 16:27:17.403,
+and one Dream Goby dispatch occurred at 16:27:21.063. Same equipped level-71
+stats/actions and held supplies passed. Lifestream accepted Black Brush Station
+at 16:27:28; native arrival at 16:27:36 and facing at 16:27:58.546 are verified.
+Native casting readiness passed at 16:27:59; first cast at 16:28:02, followed by
+two more casts through 16:28:34. Ordinary dusk goby/lost bait are observed; no
+Dream Goby landing or Stop. No tolerance/facing change was made, so the earlier
+position failure's cause remains unresolved rather than claimed fixed. Keep this
+attempt casting through the 20:48:45 UTC window and normal future windows; next
+coarse milestone around 16:33 EDT. No build/copy/unknown dispatch is pending.
+
+Sustained Dream Goby milestone at 16:33:30 EDT: 17 native casts through 16:33:09,
+with ordinary bone crayfish/brass loach/dusk goby catches and lost bait. No target
+landing, cleanup or Stop occurred; keep marker30 casting without a reload. The
+active AutoRetainer DefaultConfig plans still match the accepted baseline exactly,
+with zero overlaps for all 348 targets across both sell lists, discard and their
+supplementary flags. Next coarse milestone around 16:38 EDT or resource/window
+failure. Do not mark Dream Goby Tested from ordinary catches.
+
+Resource milestone at 16:38:32 EDT: marker30 made 19 native casts; the last lost-
+bait outcome at 16:34:11.108 exhausted mandatory Crayfish Ball. Existing native
+stock validation ended the attempt at 16:34:11.253, then stowed/restored AutoHook
+and completed the configured return before selection resumed at 16:34:44.368.
+No Dream Goby landing or native target credit occurred. Fresh exact comparison
+matches all five original preset IDs, both selections, six flags and cast settings.
+Dream Goby remains Untested. Crayfish-dependent targets are currently resource-
+blocked; inspect other held bait and select one compatible target, preserving the
+no-purchase constraint and current gear. No build/copy/unknown dispatch is pending.
+
+Marker31 target/build intent at 16:44 EDT: select Dark Knight (7689), The Unholy
+Heir (spot 77), Central Thanalan (141), minimum Gathering 335, direct Crow Fly
+(2614), no mooch/predators/time limit, sourced weather 4/3/11. The selected
+character's read-only XA inventory dated 09:29:10 UTC shows two reusable Crow
+Flies; this is prospective stock only. Native preparation must confirm held
+stock, current actions and readiness before travel, with no bait/cordial purchase.
+The sourced forecast calculation gives 21:03:20-21:26:40 UTC, then 21:50:00-
+22:13:20 UTC. Keep one target scheduled through future weather windows until
+native catch plus exact cleanup. Build the minor executable target/marker change
+in the existing unwatched output, refresh the complete payload and overwrite
+through R: after a bounded settled-state snapshot. Preserve coverage 2/346.
+
+Marker31 overwrite intent at 16:47 EDT: minor target/marker Debug x64 build
+passed in 78.63 seconds, zero errors and the existing NU1601 warning; scoped
+whitespace validation passes. Marker30's 238 focused checks remain the applicable
+behavioral evidence; no production behavior changed in this marker-only build.
+The 24-file payload is refreshed and verified by direct bytes, preserving ADS.
+A bounded pre-copy snapshot through 16:45:54 confirms the attempt cleanup/return
+settled at 16:34:44. Normal scheduling also rechecked Dream Goby at 16:40:48:
+named zero-held-bait failure settled at 16:40:50 without travel or return. No
+new cast or navigation is in flight. Exact original AutoHook restoration passes.
+Overwrite changed dependencies first and VERMAXION.dll last through R:, then
+verify marker31's native load, sole dispatch and readiness/arrival. No claim of
+fresh Crow Fly count or target catch is made before native preparation/evidence.
+Marker31 copy session exited successfully at 20:47:42 UTC: all 24 deployed files
+match the payload; AethertekUI.dll and VERMAXION.dll changed. Native load/dispatch/arrival reconciliation
+is pending. No new build or second copy/dispatch is authorized by this checkpoint
+alone; inspect the fresh marker31 evidence before another action.
+
+Marker31 arrival acceptance at 16:50:01 EDT: native load at 16:47:43.753 matches
+the exact marker and version 1.0.0.1; one dispatch at 16:47:47.430 selected only
+Dark Knight and armed native target-caught Stop. Level 71 / Gathering 942 /
+Perception 768 / GP 665, current unlocked-action strategy and held Crow Fly
+passed preparation without purchases. Black Brush Station was accepted at
+16:47:54.563, arrival at 16:48:02.475, facing at 16:48:54.440 and verified native
+casting readiness at 16:48:54.942. The character is in AwaitWindow at the sourced
+The Unholy Heir position; zero casts before the 21:03:20 UTC weather start is
+expected. Keep this run active, take coarse waiting milestones and verify casting
+after window opening. No new build, copy, second dispatch or user action is needed.
+
+Waiting milestone at 16:56:32 EDT: marker31 still has one dispatch and zero
+native casts, target landings, cleanup or Stop. The latest collection phase is
+AwaitWindow; the main log continues writing. Preserve the existing positioned
+attempt without another reload. Next milestone is window opening and native
+casting after 21:03:20 UTC; the held-bait fishing goal remains active.
+
+Marker31 casting-start milestone at 17:04:29 EDT: AutoHook enabled at
+17:03:20.143, collection entered Fish at 17:03:20.382 and the first native cast
+occurred at 17:03:22.948. Three casts through 17:04:12.909 and ordinary dark bass/
+maiden carp catches are verified. Waiting past the old 15-minute test deadline
+did not stop the target-caught run. No Dark Knight landing, cleanup or Stop has
+occurred. Keep the same attempt casting; next coarse milestone around 17:09 EDT.
+
+Sustained Dark Knight milestone at 17:09:20 EDT: 14 native casts through
+17:09:08.120, with ordinary dark bass/maiden carp catches. No target landing,
+cleanup or Stop is present. Keep marker31's same held-Crow-Fly attempt active
+through the 21:26:40 UTC window end; next coarse milestone around 17:14 EDT.
+
+Dark Knight acceptance at 17:15:59 EDT: native landing at 17:09:34.642 measures
+40.7 ilms on cast 14. Native target credit requests Caught Stop at 17:09:34.675
+with rod PullingPoleIn. Rod stow/restoration and explicit collection, lifecycle,
+navigation and travel settlement reach Idle at 17:09:38.622. Fresh observations
+at 17:09:54/17:10:01 report caught=3 with unchanged level-71 gear/stats. Exact
+comparison restores five original AutoHook preset IDs, both selections, six
+flags and cast settings; protected AR plans match the accepted baseline exactly.
+Dark Knight (7689) is curated Tested; coverage is 3 Tested / 345 Untested. No
+unknown dispatch or collection cleanup is pending. Continue the active goal.
+
+Marker32 build/target intent at 17:17 EDT: select Judgeray (7695), Fallgourd Float
+(spot 19), North Shroud (154), direct Wildfowl Fly (2623), Gathering 335,
+17:00-21:00 Eorzea, no weather, mooch or predators. The earlier selected-character
+inventory shows two reusable Wildfowl Flies, so native held-stock/action/readiness
+checks must validate them before travel; no bait or cordial purchases. Its next
+window is 21:29:35-21:41:15 UTC, then 22:39:35-22:51:15 UTC. Keep this one target
+through ordinary failures and future windows until native catch plus exact
+cleanup, or resource incompatibility. Build Debug x64 in the existing unwatched
+output, run focused checks for updated coverage, refresh the complete payload,
+reconcile native work and overwrite through R:. Verify exact startup and one
+dispatch before accepting arrival or casts. Preserve versions and public IPC.
+
+Marker32 overwrite intent at 17:21 EDT: final Debug x64 build passed in 54.05
+seconds, zero errors and the existing NU1601 warning. All 238 focused checks
+pass with three curated Tested targets; scoped whitespace validation passes.
+The complete 24-file payload is refreshed and verified by direct bytes,
+preserving ADS. A bounded native pre-copy snapshot through 17:20:31 confirms
+the target-caught Stop settled at 17:09:38.622 and subsequent scheduled stables
+work settled through SignalingARDone -> Idle at 17:10:04.867. No newer collection
+travel/return/cast is present. Exact original AutoHook restoration and protected
+AR plans pass. Overwrite dependencies first and VERMAXION.dll last through R:;
+reconcile exact marker32 startup, coverage 3/345 and one Judgeray dispatch before
+accepting native readiness, arrival or casting. No purchases are requested.
+Marker32 overwrite completed at 21:21:15 UTC; the copy exited successfully.
+AethertekUI.dll and VERMAXION.dll changed, and all 24 deployed files match the
+payload. Native load/dispatch/arrival evidence is pending; no second copy,
+new build or unknown command session is pending.
+
+Marker32 arrival acceptance at 17:22:18 EDT: exact native marker loaded at
+17:21:17.570 with version 1.0.0.1 and coverage 3/345; one Judgeray dispatch at
+17:21:21.375 armed native target-caught Stop. Same native level-71 stats/actions
+and held Wildfowl Fly passed preparation without purchases. Lifestream accepted
+Fallgourd Float at 17:21:28.629, arrival at 17:21:38.621, facing at 17:21:45.232
+and verified casting readiness at 17:21:45.795. The character is in AwaitWindow;
+zero casts before the 21:29:35 UTC time start is expected. Keep the same positioned
+attempt and goal active. Next milestone is native casting after that start; no
+new build, copy, second dispatch or user action is needed.
+
+Marker32 failure reconciliation at 17:34 EDT: native readiness observation passed
+at 17:29:35.187; AutoHook enabled at 17:29:35.196 and again at 17:29:35.429.
+The sole /ahstart at 17:29:35.459 was processed but AutoHook explicitly rejected
+it: "You can't cast right now." No native cast occurred. The 30-second startup
+guard ended the attempt at 17:30:05.454, restored AutoHook and returned normally;
+selection resumed at 17:30:34.304. Exact five preset IDs, both selections, six
+flags and cast settings match the accepted baseline. Judgeray remains Untested.
+Inspect the actual AutoHook readiness/cache path and current failure evidence
+before a scoped correction and explicitly justified same-target marker33 attempt;
+do not treat command dispatch as native acceptance or invent a retry loop.
+
+Marker33 implementation/build intent: the shipped AutoHook 6.0.2.4 handler calls
+FishingSessionManager -> RodFishingModule.StartFishing, which rejects a nonzero
+cached Cast status or Player.BlockCasting before changing bait. Its WorldState
+Player.ActionStatus uses ((ulong)(byte)ActionType << 32) | id; its enabled framework
+update refreshes that cache. Read those same fields before the single /ahstart.
+Enable once, defer while AutoHook's own IsCastAvailable gate (including cached
+cooldown) catches up, and reject native Cast
+unavailability or a pre-existing block with named existing diagnostics. Include
+native CanFish, mount, bait, position/rotation and both action statuses in the
+existing failure/outcome path, with no extra sink, watcher or retry. Preserve a
+pre-existing block rather than clearing it. Same Judgeray/held Wildfowl Fly and
+ordinary future windows; next known window is 22:39:35-22:51:15 UTC. Build/check
+in the unwatched output, reconcile marker32's settled state and exact baseline,
+then refresh/copy the existing complete payload. Verify marker33's actual gate
+values, load/one dispatch and eventual native casting before claiming a fix.
+
+Marker33 review at 17:53 EDT: fresh marker32 evidence reconciles a second ordinary
+opportunity, prepared automatically at 17:41:39 and positioned at 17:41:57 for
+the 22:39:35 UTC window. It is in AwaitWindow with zero casts, AutoHook disabled
+and one selected owned preset. Its five original presets, six flags and original
+cast settings still match the accepted baseline. Travel/navigation have settled;
+unload can synchronously restore this rod-down owned state before the next load.
+Review uses AutoHook's actual IsCastAvailable method rather than duplicating its
+status-only gate; the shipped method also checks cooldown and treats a missing
+status entry as zero. Log the accepted gate once at start through existing logs.
+Build marker33 in the unwatched output and run the existing focused checks; then
+take a fresh pre-copy snapshot and reconcile any state change before overwrite.
+
+Marker33 overwrite intent at 17:56 EDT: Debug x64 build passed in 46.00 seconds,
+zero errors and the existing NU1601 warning. All 238 focused checks passed;
+scoped whitespace validation with native CRLF handling passed. The refreshed
+24-file payload matches its build inputs by direct bytes and preserves ADS.
+Fresh evidence through 17:55:58 retains marker32's rod-down AwaitWindow, zero
+casts and settled arrival; the single owned preset is disabled. Exact comparisons
+retain all original preset cast settings and six flags, and protected AR plans
+match the accepted baseline. This justified same-target correction can unload
+the stationary owned preset through existing synchronous restoration. Overwrite
+changed dependencies first and VERMAXION.dll last through R:, then verify exact
+marker33 startup, one dispatch and removal of marker32's preset. Preserve the
+original accepted baseline for eventual exact post-catch restoration. Do not
+claim native casting before the 22:39:35 UTC window.
+
+Marker33 overwrite completed at 21:56:51 UTC; copy exited successfully and all
+24 deployed files match the payload by direct bytes. AethertekUI.dll and
+VERMAXION.dll changed. Exact native load/dispatch/arrival reconciliation is
+pending; no further build or copy is in flight. The goal remains active through
+Judgeray's future windows and the next compatible held-bait targets.
+
+Marker33 arrival reconciliation at 17:57 EDT: exact native marker loaded at
+17:56:53.130, version 1.0.0.1; one dispatch at 17:56:56.862 armed target-caught
+Stop. Native level 71 / Gathering 942 / Perception 768 / GP 665 and held Wildfowl
+Fly passed without purchases. Pre-existing blockCasting=False. The already
+positioned character needed no teleport or navigation; sourced facing refreshed
+and arrival passed at 17:57:04.881. It remains AwaitWindow with zero native casts
+before the time window. Marker32's owned preset was removed; only marker33's
+single disabled preset remains, and all five original preset cast settings/six
+flags are unchanged. Coverage remains 3 Tested / 345 Untested. No build, copy or
+second dispatch is pending. Keep this run and overall goal active; take bounded
+coarse waiting milestones and verify startup after 22:39:35 UTC.
+
+Waiting milestones at 18:07, 18:17 and 18:27 EDT: bounded marker33 evidence retains one dispatch,
+zero native casts and no target landing or cleanup. Latest collection phase is
+AwaitWindow; the main log continues writing. Preserve the prepared attempt and
+active overall goal until the 22:39:35 UTC start. No build, copy, alternate target
+or user action is needed.
+
+Marker33 casting-start milestone at 18:40 EDT: AutoHook enabled once at
+18:39:35.262. At 18:39:35.541 its own cached availability=True, cached/native
+Cast status=0, blockCasting=False, native CanFish=True and Mounted=False.
+The single start request selected Wildfowl Fly and entered Fish; native casts
+occurred at 18:39:37.395 and 18:39:55.998. This verifies accepted casting from
+the corrected startup path; it does not uniquely prove marker32's earlier cause.
+No target landing or Stop has occurred. Preserve this run through the window and
+ordinary future opportunities; Judgeray remains Untested. Next coarse casting
+milestone is around 18:45 EDT, then the 18:51:15 window end if needed.
+
+Judgeray acceptance at 18:46 EDT: marker33 lands the native target at
+18:44:15.523, measuring 38.8 ilms, on cast 11. Native credit requests Caught Stop
+at 18:44:15.552 with rod=PullingPoleIn. Original Versatile Lure (29717) restoration
+is requested at 18:44:19.441; receipt and rod/lifecycle/navigation/travel settlement
+complete at 18:44:19.722. Fresh observations report caught=4 with the same gear.
+Exact comparison matches all five original preset IDs, both selections, six
+flags and original cast settings. Protected AR plans match the accepted baseline.
+The separate scheduled stables visit closes owned menus and settles at 18:44:45.
+Judgeray (7695) is now Tested; coverage is 4 Tested / 344 Untested. Keep the
+overall goal active rather than ending after this catch.
+
+Marker34 target/build intent: select Dawn Maiden (7944), direct held Wildfowl
+Fly (2623), Dragonhead Latrines in Coerthas Central Highlands (155), minimum
+Gathering 349, 05:00-07:00 Eorzea and weather 1/2, no mooch/predators. Current
+gear/actions qualify; native stock/readiness must pass before travel without
+purchases. Its next forecast is 23:14:35-23:20:25 UTC, earlier than Daniffen's
+Mark's next 01:20 UTC opportunity while reusing the same bait. Build the minor
+compiled target/marker and accepted coverage change in the unwatched output,
+run focused checks, refresh the complete payload, take a settled-state snapshot
+and overwrite dependencies first/VERMAXION.dll last through R:. Verify exact
+native startup, one dispatch and arrival before accepting the scenario.
+
+Marker34 overwrite intent at 18:50 EDT: Debug x64 build passed in 61.82 seconds,
+zero errors and the existing NU1601 warning; all 238 focused checks and scoped
+CRLF-aware whitespace validation passed. The existing 24-file payload is refreshed
+and verified by direct bytes, preserving ADS. A fresh bounded pre-copy window
+through 18:50:21 confirms marker33's caught-target Stop and later stables cleanup
+settled, with no newer collection cast, target, travel or return. Exact original
+AutoHook baseline and protected AR plans still match. Overwrite changed
+dependencies first and VERMAXION.dll last through R:, then verify marker34's
+native load, one Dawn Maiden dispatch, held stock and arrival. No purchase or
+user reload is required; Dawn Maiden remains Untested pending acceptance.
+
+Marker34 copy exited successfully at 22:50:54 UTC; all 24 deployed files match
+the payload. AethertekUI.dll and VERMAXION.dll changed. Reconcile exact native
+load/dispatch/arrival at the next bounded milestone before another action. No
+build, copy or manual command is pending; the overall fishing goal remains active.
+
+Marker34 arrival milestone at 18:53 EDT: exact native marker loaded at
+18:50:55.503, version 1.0.0.1; one dispatch at 18:50:59.295
+selected Dawn Maiden and armed target-caught Stop. Same level 71 / Gathering 942 /
+Perception 768 / GP 665 and held Wildfowl Fly passed without purchases; native
+blockCasting=False. Territory arrival and owned movement occurred at 18:51:15;
+sourced facing at 18:51:44 and casting readiness at 18:51:45 are verified. The
+character is in AwaitWindow at Dragonhead Latrines, with zero casts before the
+23:14:35 UTC start. Coverage is 4 Tested / 344 Untested. Keep this prepared run
+and overall goal active; next coarse waiting milestone around 19:03 EDT, then
+native readiness/casting immediately after the window opens. No user action,
+build, copy or second dispatch is pending.
+
+Waiting milestone at 19:02:55 EDT: bounded marker34 evidence retains one
+dispatch, zero native casts and no target landing/cleanup. Latest phase is
+AwaitWindow at the verified position, and the main log remains active. Keep
+Dawn Maiden prepared until 23:14:35 UTC, then verify the actual startup gates
+and native casting. The overall goal remains active; no reload is pending.
+
+Marker34 casting-start milestone at 19:15 EDT: AutoHook enabled once at
+19:14:35.182. At 19:14:35.440 cached availability=True, cached/native Cast
+status=0, blockCasting=False, native CanFish=True and Mounted=False. Its single
+start selected Wildfowl Fly; native casts at 19:14:37.336 and 19:15:01.591 plus
+one ordinary crimson trout catch are verified. No Dawn Maiden landing or Stop
+has occurred. Keep this run active through the time/weather window and future
+opportunities; Dawn Maiden remains Untested. Next bounded milestone is around
+19:18 EDT, then normal cleanup/scheduling after 19:20:25 if the target is not caught.
+
+Dawn Maiden acceptance at 19:19 EDT: marker34 lands the target at 19:18:24.356,
+measuring 43.6 ilms, on native cast 9. Native credit requests Caught Stop at
+19:18:24.382, with rod=PullingPoleIn. Original Versatile Lure restoration is
+requested at 19:18:27.998 and settled with rod/lifecycle/navigation/travel at
+19:18:28.276. Fresh observations report caught=5 with the same level-71 stats.
+Exact AutoHook comparison matches five original preset IDs, both selections,
+six flags and cast settings; protected AR plans are unchanged. The later stables
+visit closes owned menus and settles at 19:18:50.753. Dawn Maiden (7944) is now
+Tested; coverage is 5 Tested / 343 Untested. Keep the overall fishing goal active.
+
+Marker35 target/build intent: select Carp Diem (7701), direct held Crow Fly
+(2614), Upper Black Tea Brook (spot 100), Old Gridania (133), minimum Gathering
+290, 09:00-14:00 Eorzea, weather 4/3, no mooch/predators and Precision Hookset
+(4179). Current gear qualifies; native stock and mandatory action validation
+must pass before travel without purchases. The next forecast is 23:26:15-
+23:40:50 UTC. Build the minor target/marker and accepted coverage change in
+the existing unwatched output, run focused checks, refresh the complete payload,
+verify settled native work/exact baseline and overwrite through R:. Keep one
+target scheduled through future windows until native catch and exact cleanup.
+
+Marker35 packaging reconciliation at 19:22 EDT: concurrent shared UI work added
+the existing AethertekUI.Dalamud project reference, window-motion usages and its
+native artifact-copy row. Preserve those changes. The old 24-file payload must
+include its newly required AethertekUI.Dalamud.dll before VMX reload; refresh the
+same package to 25 files and verify the dependency listed in VERMAXION.deps.json.
+This is the current project's build dependency, not new fishing machinery or a
+UI implementation change by this goal. ADS entries remain preserved. Debug x64
+build passed in 103.24 seconds with zero errors and the existing NU1601 warning;
+all 238 focused checks and scoped CRLF-aware whitespace validation passed.
+
+Marker35 overwrite intent at 19:24 EDT: the 25-file payload is refreshed and
+verified by direct bytes, including the current adapter and preserving ADS.
+Fresh native evidence retains Dawn Maiden's settled catch/cleanup and the later
+stables settlement; no newer collection casting, target, travel or return has
+started. Exact original AutoHook baseline and protected AR plans still match.
+Copy dependencies, including the one newly required adapter DLL, first and
+VERMAXION.dll last through the established R: folder. Verify the native marker,
+one Carp Diem dispatch, held Crow Fly, action requirements and arrival before
+the 23:26:15 UTC window. No additional target or purchase is selected.
+
+Marker35 copy exited successfully; direct byte comparison confirms all 25 files
+match the current payload. Actual overwrite receipt: 2026-10-05T23:24:55.085172+00:00.
+The newly required adapter, VMX dependency metadata and VMX DLL changed;
+all remaining payload files matched. Reconcile exact native load/one dispatch and
+arrival at the next bounded milestone. No build or copy remains in flight.
+
+Marker35 startup/preparation milestone at 19:25:55 EDT: exact native marker
+loaded at 19:24:57.044, version 1.0.0.1, with coverage 5 Tested / 343 Untested.
+One dispatch at 19:25:00.777 armed target-caught Stop. Same native level-71
+stats and held Crow Fly passed strategy/supply preparation, with no purchases
+and blockCasting=False. Owned travel began at 19:25:07; movement/territory
+transition was observed at 19:25:15. Arrival/positioning is not yet verified.
+Retain ownership and continue the normal attempt into the 23:26:15 UTC window;
+no second dispatch, reload or cast request is pending from the agent.
+
+Marker35 reconciliation at 19:30 EDT: travel sent New Gridania (132), while
+Upper Black Tea Brook is in Old Gridania (133). The primary-only route never
+requested a city shard. Travel timed out at 19:28:07 with zero casts; exact
+AutoHook restoration and the configured inn return settled before normal
+selection resumed at 19:28:27. Saved AR cleanup plans are unchanged.
+Carp Diem remains Untested. Marker36 intent: keep target 7701 and held Crow Fly;
+resolve an unlocked native shard in the target territory by name and let the
+existing Lifestream command own the whole primary/shard sequence. Do not look
+up unused shard positions, add retries or alter Stop semantics. Build Debug x64
+in the existing unwatched output, run focused checks, refresh the complete
+25-file payload and verify settled native work before the R: overwrite.
+
+Marker36 overwrite intent at 19:34 EDT: final Debug x64 build passed in
+84.77 seconds with zero errors and the existing NU1601 warning. All 238
+focused checks and scoped CRLF-aware whitespace validation pass. The complete
+25-file payload is refreshed and verified by direct bytes, preserving the
+current adapter, ADS and source versions. Fresh native evidence through
+19:34:16 retains settled marker35 cleanup/return, normal selection and zero
+casts with no newer owned travel. Exact original AutoHook baseline is retained;
+saved protected AR plans match marker34. Copy changed dependencies first and
+VERMAXION.dll last through R:, then verify marker36 load, sole Carp Diem
+dispatch, native Old Gridania arrival and casting. No user reload is needed.
+
+Marker36 copy exited successfully; all 25 deployed files match the current
+payload by direct bytes. Reconcile its native startup and single dispatch
+before further action. No build or payload-copy session remains in flight.
+
+Marker36 startup milestone at 19:35:42 EDT: actual R: overwrite receipt is
+2026-10-05T23:35:19.764229+00:00; all 25 deployed files match. Native load at
+19:35:20.215 reports exact marker and version 1.0.0.1. One dispatch at
+19:35:23.947 arms target-caught Stop. Same level-71 gear/actions and held Crow
+Fly pass preparation without purchases. The native route at 19:35:31 resolves
+primary 2 / territory 132 to target territory 133 through Leatherworkers' Guild
+& Shaded Bower; owned movement is observed at 19:35:38. Arrival/casting are not
+yet verified. Keep this attempt active without another reload or dispatch.
+
+Marker36 arrival/casting milestone at 19:36:55 EDT: native target-territory
+arrival enters Position at 19:35:45.846, sourced facing is applied at
+19:36:04.663 and CanFish passes at 19:36:05.227. AutoHook readiness at
+19:36:05.757 has zero cached/native Cast statuses, cached availability True,
+block False and CanFish True. The single start selects Crow Fly; native casts
+occur at 19:36:07, 19:36:28 and 19:36:49, with ordinary moat carp/gudgeon.
+This verifies the city-route correction, not Carp Diem acceptance. Keep normal
+casting; inspect the catch/cleanup milestone around 19:41 or a coarse progress
+snapshot near 19:39. No new build, copy or dispatch is pending.
+
+Carp Diem acceptance at 19:42 EDT: marker36's final cast at 19:40:48.899
+remains owned after the opportunity ends at 19:40:50. Native credit requests
+Caught Stop at 19:41:34.890 during rod pull-in; the native landing at
+19:41:34.906 measures 14.5 ilms, on cast 13. Original Versatile Lure receipt,
+rod, lifecycle, navigation and travel settle at 19:41:38.940. Fresh observations
+report caught=6 with unchanged level-71 stats. Exact comparison matches all
+five original AutoHook presets, both selections, six flags and cast settings;
+protected AR plans are unchanged. The later stables cleanup settles at
+19:42:05.559. Carp Diem is now Tested; coverage is 6 Tested / 342 Untested.
+The route correction is live-verified and the overall fishing goal remains active.
+
+Marker37 target/build intent: select Glimmerscale (7714), direct Butterworm
+(2594), Nophica's Wells (spot 72), Western Thanalan (140), Gathering 290,
+all Eorzea hours in weather 1/2, no mooch, predators or folklore, mandatory
+Precision Hookset (4179). The read-only current-character XA export dated
+09:29:10 UTC holds 99 Butterworms; this is prospective stock only. Native
+preparation must verify stock/actions/gear without purchases. The current
+window ends 23:46:40 UTC; the next qualifying merged interval is 00:33:20-
+03:40:00 UTC on October 6. Keep this one target through normal windows until
+native catch and exact cleanup. Build the minor executable target/marker and
+accepted coverage changes in the existing unwatched output, run the affected
+coverage check, refresh the complete 25-file payload, confirm settled native
+work and exact baseline, then overwrite through R:. No new fishing machinery.
+
+Marker37 overwrite intent at 19:46 EDT: final Debug x64 build passed in
+69.70 seconds with zero errors and the existing NU1601 warning. The updated
+catalog coverage check passes; marker36's 238 focused checks remain applicable
+to the unchanged fishing behavior. Scoped whitespace validation passes. The
+complete 25-file payload is refreshed and verified by direct bytes, preserving
+ADS/current UI dependencies. Fresh bounded evidence retains Carp Diem's
+settled catch Stop and later stables settlement, with zero newer casts/travel;
+the exact original AutoHook baseline is retained. Wait for the 23:46:40 UTC
+weather close, then copy changed dependencies first and VERMAXION.dll last
+through R:. This avoids a short trip at the end of the old weather window.
+Verify one Glimmerscale dispatch, native held Butterworm/readiness, arrival
+and waiting for the 00:33:20 UTC window. Keep the overall goal active.
+
+Marker37 copy exited successfully; all 25 deployed files match the current
+payload by direct bytes. No build or copy session remains in flight. Reconcile
+its exact native startup and sole dispatch before further actions.
+
+Marker37 startup/preparation milestone at 19:47:34 EDT: actual R: overwrite
+receipt is 2026-10-05T23:46:58.926085+00:00; all 25 files match, including the
+fresh shared UI/adapter artifacts. Native exact marker loads at 19:47:00.960
+with version 1.0.0.1 and coverage 6 Tested / 342 Untested. Its sole dispatch at
+19:47:05.816 arms target-caught Stop. Native level-71 gear/actions and held
+Butterworm pass preparation without purchases, block=False. Horizon (17),
+territory 140, is requested at 19:47:13; target-territory arrival and movement
+enter Position at 19:47:20.823. Zero casts are expected before 00:33:20 UTC.
+Sourced facing/CanFish and waiting-state acceptance remain pending. No build,
+copy or second dispatch is pending; retain this owned navigation.
+
+Marker37 navigation diagnostic milestone at 19:49:48 EDT: vnavmesh accepts
+the sourced point (141.41, 59.05, 20.26) from native position
+(63.72565, 45, -231.3885) at 19:47:21, computes a 12-waypoint path in 0.041
+seconds and starts movement. Arrival/facing and casting are still unverified.
+Existing navigation owns the attempt until its five-minute position timeout.
+Marker38 build intent: retain Glimmerscale/held Butterworm and add actual
+position, source, distance, mounting and ownership to the existing one-time
+timeout message. No new retry, recovery tracker or logging machinery is added.
+Build locally in unwatched output. Do not overwrite or rearm until marker37's
+native navigation/cleanup/return and the original baseline are reconciled.
+
+Marker37 failure reconciliation at 19:53 EDT: the existing five-minute
+casting-position timeout fires at 19:52:20.913, with zero casts/target credit.
+Cleanup restores AutoHook exactly and the configured return settles before
+Inspect/Select resumes at 19:52:51.726. Fresh saved AR plans are unchanged.
+Glimmerscale remains Untested; the goal remains active. Marker38's diagnostic
+Debug x64 build passes in 34.77 seconds with zero errors and the existing
+NU1601 warning; scoped whitespace validation passes. Runtime behavior and
+coverage have not changed, so marker36's 238 checks and marker37's affected
+coverage check remain applicable. Refresh the complete 25-file payload and
+verify it before writing dependencies first and VERMAXION.dll last through R:.
+This is a named diagnostic reattempt after settled failure, not a blind rearm.
+Verify the exact native marker/one dispatch, then the position-timeout details
+or successful arrival. Preserve native scheduling and the same held bait.
+
+Marker38 overwrite intent at 19:55 EDT: complete 25-file payload is refreshed
+and verified by direct bytes, preserving current UI dependencies, ADS and
+versions. Marker37's native cleanup/return and exact original AutoHook/AR
+baselines are reconciled. Copy changed dependencies first and VMX DLL last
+through R:, then verify marker38 load and sole same-target dispatch. No
+recovery/retry behavior is added; this run obtains the missing native position
+evidence through the existing bounded timeout message.
+
+Marker38 copy exited successfully; all 25 deployed files match the diagnostic
+payload by direct bytes. No build or copy session remains in flight. Native
+startup/sole dispatch reconciliation is the next action.
+
+Marker38 startup milestone at 19:56:32 EDT: actual copy receipt is
+2026-10-05T23:55:42.161413+00:00; all 25 files match and only VMX DLL changed.
+Native exact marker loads at 19:55:44.193, version 1.0.0.1; one dispatch at
+19:55:47.954 retains target-caught Stop. Native held Butterworm and same
+level-71 gear/actions pass without purchases. Horizon travel/arrival are
+verified and Position starts at 19:56:03.568. No cast is expected before the
+00:33:20 UTC window. Retain owned movement; next diagnostic milestone is
+verified arrival or the existing five-minute timeout near 20:01 EDT. No build,
+copy or second dispatch is pending.
+
+Marker38 position diagnosis at 20:01 EDT: timeout at 20:01:03.683 captures
+actual (142.28586, 57.69905, 19.097654), source
+(141.4129, 59.050144, 20.262005), distance 1.986, mounted=False and owned
+navigation=True. The route reaches the bank; the 0.75-yalm arrival gate prevents
+stopping/facing/native fishability validation there. Zero casts/credit occur.
+Cleanup and configured return settle before Inspect resumes at 20:01:35.134.
+Marker39 correction intent: allow arrival within two yalms, stop owned movement,
+retain sourced facing and native CanFish/AutoHook readiness requirements.
+Use the same Glimmerscale/held Butterworm target and normal window scheduling;
+add no retry/recovery/configuration machinery. Build Debug x64 in the existing
+unwatched output and refresh/verify the complete 25-file package. Reconcile
+exact AutoHook/AR baselines before the R: overwrite, then verify the exact
+native marker, one dispatch and fishable waiting position before 00:33:20 UTC.
+Glimmerscale remains Untested pending native catch and exact cleanup.
+
+Marker39 overwrite intent at 20:06 EDT: Debug x64 build passes in 62.69
+seconds with zero errors and the existing NU1601 warning. Scoped whitespace
+validation passes, and the reviewed branch still stops navigation, waits for
+settlement, sets sourced facing and requires native CanFish before AwaitWindow.
+The complete 25-file payload is refreshed and verified by direct bytes.
+Fresh native evidence through 20:05:31 retains marker38's settled cleanup/
+configured return and no newer casts/travel; exact AutoHook and unchanged AR
+baselines pass. Copy dependencies first and VMX DLL last through R:, then
+verify the exact marker, sole same-target dispatch and fishable bank arrival.
+Native validation remains required; the earlier 238 checks do not prove this
+new arrival tolerance works in game. Keep Glimmerscale scheduled for 00:33:20 UTC.
+
+Marker39 copy exited successfully; all 25 deployed files match the current
+payload by direct bytes. No build/copy session remains in flight. Reconcile
+native startup, one dispatch and the two-yalm/native-fishability arrival.
+
+Marker39 reconciliation at 20:15 EDT: exact marker loaded at 20:06:56.597
+and dispatched once at 20:07:00.453. Positioning times out at 20:12:16.188
+without casts or target credit. Actual (142.28087, 57.13326, 18.524284), source
+(141.4129, 59.050144, 20.262005), three-dimensional distance 2.729, horizontal
+distance 1.942, vertical difference 1.917; mounted=False, navigationOwned=True.
+Cleanup stows/restores and the configured inn return completes before collection
+resumes Inspect at 20:12:47.633. Fresh saved AutoHook comparison matches all
+five original presets, both selections, six flags and saved cast settings;
+protected AR plans match marker38 exactly. Glimmerscale remains Untested.
+
+Marker40 correction/build intent: keep the two-yalm horizontal ground-arrival
+range and a separate two-yalm vertical limit. Source coordinates are above the
+observed bank surface, so including height in the same two-yalm radius keeps
+owned navigation moving after reaching horizontal range. Stop/wait for native
+navigation settlement, apply sourced facing and require native CanFish before
+AwaitWindow; the corrected geometry alone does not prove fishable arrival.
+Keep Glimmerscale, held Butterworm, normal scheduling and target-caught Stop.
+Use fish-collection-client7-20261005-40-glimmerscale-ground, unchanged versions
+and the same 25-file payload. Build in unwatched output; reconcile settled
+native ownership before dependencies-first/VMX-last overwrite. No retries,
+watchers, new settings or separate checkpoint are added.
+
+Marker40 overwrite intent at 20:22 EDT: Debug x64 build passes in 101.19
+seconds with zero errors and the existing NU1601 warning; 237 focused collection,
+fishing-policy, AutoHook, AR protection and VNavmesh checks pass. Scoped
+CRLF-aware whitespace validation passes. Assembly/manifest remain 1.0.0.1.
+The complete 25-file package is refreshed and directly verified, preserving ADS
+and the required adapter. Native snapshot at 00:21:58 UTC retains marker39's
+completed cleanup/configured return with no subsequent travel or casting;
+exact AutoHook restoration and unchanged protected AR plans are reconciled.
+Write changed dependencies first and VERMAXION.dll last through R:; verify the
+exact marker and one Glimmerscale dispatch, native held-bait preparation and
+fishable arrival. The geometry correction remains unverified in game.
+The withdrawn wrong-window UI TODO addition is removed; no UI source or DevHub
+changes were made for those messages. Continue the original fishing goal.
+
+Marker40 startup/preparation milestone at 20:23 EDT: actual R: overwrite
+receipt is 2026-10-06T00:22:34.364242+00:00 and all 25 files match. Native
+exact marker loads at 20:22:36.073, version 1.0.0.1, then dispatches once at
+20:22:39.832 with target-caught Stop. Current level-71 native gear/actions and
+held Butterworm pass without purchases; block=False. Horizon travel and
+territory arrival pass; owned Position starts 20:22:55.179. Zero casts are
+expected before the 00:33:20 UTC window. Keep this run until verified arrival
+or its existing five-minute timeout. No build, copy or new dispatch is pending.
+
+Marker40 arrival/failure reconciliation at 20:24 EDT: sourced facing is
+requested at 20:23:50.870 after ground arrival/stop. At 20:23:53.084 native
+CanFish remains false, Cast status 1128, actual (142.28494, 57.13321, 18.478664),
+horizontal distance 1.985 and height difference 1.917. Observed rotation -0.4566
+differs from the sourced -1.1934; the one-shot rotation is not retained through
+native readiness refresh. Zero casts/credit. Cleanup/restoration and configured
+inn return complete before Inspect at 20:24:24.814; both exact AutoHook state and
+protected AR plans match the original baseline. Glimmerscale remains Untested.
+
+Marker41 correction/build intent: reuse the existing native rotation helper to
+hold the same sourced facing during Position and verify its observed angle
+before accepting native CanFish. Keep the current half-second refresh and
+two-second readiness deadline; add no angle sweep, alternate position, retry
+engine or saved setting. Use fish-collection-client7-20261005-41-glimmerscale-facing
+with the same target, held bait, two-dimensional ground-arrival/height bounds,
+ordinary window scheduling and target-caught Stop. Build in unwatched output,
+refresh the complete 25-file payload, then reconcile ownership before the
+existing authorised R: overwrite. Runtime fishability/catch remain unverified.
+
+Marker41 overwrite intent at 20:29 EDT: Debug x64 build passes in 24.78
+seconds with zero errors and the existing NU1601 warning. Scoped whitespace
+validation passes. Existing strategy/AutoHook/AR/VNavmesh checks remain at 237
+passed; they do not prove the new native facing behavior. The complete 25-file
+payload is refreshed and verified by direct bytes, preserving ADS and versions.
+The bounded native snapshot at 00:28:45 UTC retains marker40's settled return
+and selection with no subsequent casts/travel. Exact original AutoHook state
+and unchanged protected AR plans are reconciled. Write changed dependencies
+first and VMX DLL last through R:, then verify marker41's exact load, one
+Glimmerscale dispatch, readiness/held Butterworm, sourced facing and CanFish.
+
+Marker41 arrival acceptance at 20:31 EDT: R: copy receipt is
+2026-10-06T00:29:51.931502+00:00; only VMX DLL changes and all 25 deployed files
+match the payload. Exact native marker loads at 20:29:54.035, version 1.0.0.1,
+then dispatches once at 20:29:57.769. Native current gear/actions and held
+Butterworm pass without purchases. Territory arrival enters Position at
+20:30:13.354; sourced facing is applied at 20:31:12.202 and its observed angle
+plus native CanFish verify at 20:31:12.741. AwaitWindow is active for the
+00:33:20 UTC weather window. This verifies ground arrival and held facing,
+not the target catch. Keep this owned run active without another build/reload.
+Next bounded milestone is native continuous casting after the window opens.
+
+User-requested goal pause at 00:33 UTC October 6: reserve overnight quota
+for another task and stop agent work. Fresh pause snapshot at 00:33:14.9617905
+UTC retains marker41's one dispatch, sourced-facing/native CanFish acceptance,
+AwaitWindow and zero casts/target credit. Native readiness observation at
+20:33:03 EDT still reports level 71 / Gathering 942 / Perception 768 / GP 665,
+caught=6. The already accepted client run stays scheduled for its 00:33:20 UTC
+window with target-caught Stop. No client Stop/reload was sent for the agent pause.
+No build/package/copy process is pending. Latest build is marker41 Debug x64,
+zero errors; 237 focused checks passed on marker40's unchanged policy inputs.
+Coverage remains 6 Tested / 342 Untested. On explicit resume, reconcile fresh
+native progress and exact cleanup/restoration before changing the target or
+rearming a reload. Do not infer a catch or failure from overnight elapsed time.
+
+Resume reconciliation at 09:19 UTC October 6: the agent goal is active again.
+The current main log is unchanged at 13,151,648 bytes and ends at 20:33:06 EDT
+October 5. Crash handler at 20:33:07 reports exception-information read failure
+0x6d and target termination; only the older September 27 dump exists. This does
+not establish the cause of termination. Zero marker41 casts/catch/cleanup are
+verified. Native territory changed from the fishing territory 140 to inn 418 at
+20:33:00 while collection remained AwaitWindow. Fresh AR plans match exactly.
+All five original AutoHook presets/cast settings and all six flags match the
+pre-marker41 baseline; only temporary preset 1def9849-8ab3-496d-b961-5b16b4fbfb85
+and its selection remain. Restore only that identified VMX-owned preset/selection;
+retain every unrelated configuration value and verify the original baseline.
+Marker42 build intent: reject a territory change during AwaitWindow/Fish through
+existing EndAttempt cleanup and normal scheduling; do not claim this fixes the
+unidentified termination. Keep Glimmerscale/held Butterworm, versions and IPC.
+Prepare a complete current payload before requesting the missing live-state
+change. Do not restart/close the game or add recovery machinery.
+
+Fresh-session reconciliation at 09:31 UTC October 6: client7 has restarted.
+Its new current log/AutoHook save are fresh. The one-off offline cleanup asserts
+against the known preset set and aborts before any write when it discovers a
+second current owned preset. No live configuration was changed by that command.
+The fresh marker41 session dispatches once and makes eight native Nophica's
+Wells casts through 05:29:47 EDT; ordinary copperfish/brass-loach catches occur
+with no target landing. Opportunity-end cleanup starts at 05:30:00, rod/current
+preset cleanup and configured return complete before Inspect at 05:30:37.506.
+Normal scheduling selects the same Glimmerscale at 05:30:41.134, registers owned
+preset 8eace57b-038f-4373-b56e-eca2df94fe89, and enters Position at 05:30:50.465.
+Native caught remains 6. This is scheduling/casting evidence, not target credit.
+
+Marker42 revised build intent: keep this current native run active. Implement
+the evidenced territory guard and use the existing isolated client7 Debug
+startup action to select original preset 1f340c42-7ab7-4857-8154-e5acde0e19d7 and
+remove only the recorded old marker41 preset 1def9849-8ab3-496d-b961-5b16b4fbfb85
+through AutoHook Select/RemovePreset/Save after existing full cleanup. Verify
+both objects before mutation; do not scan/remove presets by name or introduce
+saved recovery data, a general recovery path, retry, watcher or new IPC.
+Build/package in unwatched output. Wait for current rod/navigation/travel to
+settle before the authorised R: overwrite. Remove this one-time Debug cleanup
+from the next source marker after it is verified. Glimmerscale remains Untested.
+
+Marker42 overwrite intent at 09:51 UTC October 6: final Debug x64 build
+passes in 55.69 seconds with zero errors and the existing NU1601 warning. All
+237 focused collection, fishing-policy, AutoHook, AR and VNavmesh checks pass.
+Two existing window-cache compilation errors required one key-type correction
+from Window to IWindow; preserve concurrent unrelated UI/source work and its
+existing whitespace. The complete 25-file payload is refreshed and directly
+verified, retaining ADS, the required adapter and unchanged versions.
+Native snapshot at 09:50:54 UTC confirms marker41's successful sourced arrival
+and AwaitWindow, no casts after its earlier eight-cast opportunity cleanup, and
+no current navigation/travel. Fresh AutoHook flags remain all false; the current
+owned preset selection/casting gate is intact. This positioned waiting state
+allows the existing unload/full-cleanup/reload path without interrupting a cast.
+Write dependencies first and VMX DLL last through R:. Verify exact marker42
+startup, recorded old-preset native cleanup, one dispatch, held-bait readiness
+and arrival. Live territory-change rejection and exact restored baseline remain
+unverified; do not infer them from compilation. Keep Glimmerscale Untested.
+
+## Completed follow-up - AutoRetainer fish protection and test coverage
+
+Updated 2026-10-05. The user chose `include`: a saved opt-in cleanup checkbox
+and Tested/Untested status in the existing fish catalog/UI, with this TODO as
+the evidence owner. The maintenance cost is AutoRetainer compatibility and
+updating catalog flags after verified catches and completed cleanup.
+
+- Scope: remove every bundled big/fabled target from AutoRetainer's discard,
+  unconditional sell and Quick Venture sell lists in every cleanup plan; clear
+  matching supplementary discard/sale flags where present. Preserve unrelated
+  entries and save through AutoRetainer's native in-memory configuration path.
+- Apply on enabling the option, registered login/reload and collection start;
+  expose a manual reapply action and a visible result. No watcher or new retry,
+  database, report, backup, version bump, public IPC or gearset workflow change.
+- Test coverage is curated implementation evidence, separate from native Caught
+  character progress. Great Gudgeon (7688) is Tested; the other 347 targets are
+  Untested until catch and cleanup evidence is accepted.
+- Reuse the isolated Debug x64 build, complete payload and authorized client7
+  R: DLL overwrite. Final marker: fish-collection-client7-20261005-26-ar-protection-saved.
+  Preserve the saved single-target Great Gudgeon verification; its existing
+  native credit must stop the reload before purchases, travel or another cast.
+- Next recommendation: Bloody Brewer (7696), Lower Black Tea Brook, Crayfish
+  Ball (2588). Latest read-only XA snapshot at 2026-10-05 09:29:10 UTC has 69
+  held bait; equipped Fisher is level 71, observed Gathering 942/Perception 768/
+  maximum GP 665. No new fish attempt or catch goal is started by this follow-up.
+- Baseline: one AR default cleanup plan; 347 of 348 catalog targets on the
+  unconditional sell list, including Bloody Brewer; none on discard or Quick
+  Venture sell. Great Gudgeon remains held. Worktree has unrelated dirty UI/
+  localization changes; preserve them and leave this work unstaged.
+
+- [x] Implement saved cleanup, native persistence, visible result and reapply.
+- [x] Add curated Tested/Untested metadata, count, filter and list column.
+- [x] Verify focused regressions and Debug x64 build at unchanged 1.0.0.1.
+- [x] Prepare the existing complete payload and verify authorized native reload.
+- [x] Verify AR lists saved clean and the existing caught-target Stop settled.
+
+Marker25 overwrite intent: the corrected Debug x64 build passed in 19.15 seconds
+with zero errors and the existing NU1601 warning. The complete 24-file package
+matches all fresh VERMAXION inputs by direct byte comparison and preserves ADS
+0.9.7.0. Bounded native evidence confirms the old caught-target run is stopped
+and the last stables cleanup settled at 06:13:10 EDT; later observation remains
+caught=1. Native plan/preferences/AutoHook baselines are in session memory.
+Write only changed payload files through the established R: destination,
+dependencies first and VERMAXION.dll last. Verify exact marker25 before accepting
+cleanup, native saving and caught-target Stop; no new fish is selected.
+
+Current state: implemented, built, deployed and native-verified on client7.
+Final marker26 is loaded with the saved opt-in; every target list/flag overlap
+is zero, unrelated plan data and AutoHook state are preserved, and Stop settled.
+No user action or reload is required. Changes remain unstaged, other dirty UI/
+localization work is preserved and no new fish goal or attempt is pending.
+All 241 focused collection,
+fishing-policy, AutoHook, AR reflection and cleanup checks pass in the normal
+test output layout. The first x64 test invocation misplaced an existing source
+inspection test; rerunning without the extra test Platform property passed all
+checks. Fourteen existing localization catalogs validate all 12 new strings and
+placeholders. Debug x64 builds pass with zero errors and the existing NU1601
+warning. Review corrected native persistence to use AR's own ECommons Save,
+with exact config binding verified before mutation; the offline-data method can
+skip saving for blacklisted characters. Subsequent deployment evidence follows.
+Marker25 evidence: R: DLL overwrite at 10:19:41 UTC triggered native startup at
+06:19:43 EDT. One ordinary dispatch enabled the approved option, removed 347
+Unconditional Sell entries and saved the AR default plan. Exact read-only JSON
+comparison verifies all five target-list/flag overlaps are zero and every other
+plan field plus fish preference is preserved. AutoHook's five preset IDs, both
+selected GUIDs, six saved flags and cast settings match the pre-copy baseline.
+Native coverage logs tested=1/untested=347. Existing Great Gudgeon credit triggered
+Caught Stop at 06:19:47; collection/lifecycle/navigation/travel settled at
+06:19:47.745 before supplies, travel or casting. The separate scheduled stables
+visit settled at 06:19:58. No new fish was selected or bait purchased.
+Final-build intent: remove marker25's temporary option-enable setup, retain the
+ordinary saved preference and change the compiled marker to marker26. Build in
+the same unwatched directory, refresh the existing 24-file payload and overwrite
+only changed files after settlement. Verify marker26 loads the saved opt-in and
+cleans at registration/start, then reaches the same caught-target Stop. No new
+catch goal is active; final marker26 acceptance is recorded below.
+
+Marker26 overwrite intent: final Debug x64 build passed in 23.75 seconds with
+zero errors and the existing NU1601 warning. The same complete 24-file payload
+contains the exact marker26 DLL and matches fresh inputs by direct bytes. All
+24 deployed marker25 files separately matched their prior payload; native
+cleanup and subsequent stables work are settled. Overwrite only changed files
+through R:, VERMAXION.dll last; then verify the exact final startup, saved opt-in,
+zero list overlaps, unchanged unrelated data/AutoHook state and settled Stop.
+
+Final acceptance: only VERMAXION.dll changed in the final overwrite, verified
+at 10:26:18 UTC; every deployed file matches the complete 24-file payload by
+direct bytes. Native marker26 loaded at 06:26:18.959 EDT at version 1.0.0.1.
+Without the temporary option-enable setup, its saved checkbox cleans at both
+registration and collection start, reporting zero remaining entries. Coverage
+again logs tested=1/untested=347. One collection dispatch observes existing
+Great Gudgeon credit, requests Caught Stop at 06:26:22.641 and settles collection,
+lifecycle, navigation and travel at 06:26:22.922 before supplies, travel or casting.
+The separate scheduled stables work settles at 06:26:33.559. Fresh shared-read
+JSON comparisons verify the saved opt-in and all other fish preferences, every
+AR plan field, and the five AutoHook preset IDs, both selected GUIDs, six flags
+and cast settings exactly match the accepted post-cleanup/baseline states.
+Build, focused checks, fourteen-language string validation, complete payload,
+native saving, reload persistence, coverage and settled Stop are all verified.
+UI layout was source/build checked; no screenshot-based visual acceptance is
+claimed. Next recommendation remains Bloody Brewer with the 69 held Crayfish
+Balls and current gear; no new catch goal was created or started.
+
+## Completed Lazyparasite checkpoint - Great Gudgeon catch
+
+Updated 2026-10-04 21:14 EDT. This existing TODO owns the completed fishing goal;
+the older bundle history below remains separate and unchanged.
+
+- Scope: full autonomous mode, client7 only, Great Gudgeon (7688), Crayfish Ball
+  (2588). Use the normal collection readiness, windows, casting and cleanup.
+  Keep casting throughout the eligible window and keep trying future eligible
+  windows until the native fishing log confirms the target. This fish has no
+  time/weather restriction or mooch chain; the casting position is verified.
+- Authorization: source edits, isolated Debug x64 builds, the existing complete
+  payload and DLL overwrite through R:\xivlauncher7\FishCollectionClient7Verification.
+  Its client-native VMX path is A:\ff14\xivlauncher7\FishCollectionClient7Verification\VERMAXION\VERMAXION.dll.
+  Minor compiled marker changes trigger the enabled native reload. No manual
+  client operation is required by the reload workflow.
+- Preserve VERMAXION 1.0.0.1, ADS 0.9.7.0, public IPC and user-managed gearset
+  confirmation. Use held target bait before restocking, skip optional cordial
+  purchases for this run, and never select another fish. Add no watcher,
+  independent logger, saved setting, retry engine, report or source backup.
+- Completion requires an actual Great Gudgeon catch, native fishing-log credit,
+  settled cleanup and exact owned AutoHook restoration. A cast, Princess Trout
+  catch, build, successful reload or completed Stop test is not completion.
+
+- [x] Create the explicit catch goal and select exactly Great Gudgeon.
+- [x] Replace the early Fish/15-minute test Stop with a native target-caught Stop.
+- [x] Restrict this run to the target and held bait; build/check/package it.
+- [x] Verify marker22 loaded and one ordinary single-target collection dispatch.
+- [x] Fix the observed casting-startup guard and verify marker23's resumed run.
+- [x] Verify repeated casting with Crayfish Ball and continue until target credit.
+- [x] Verify native target catch and final cleanup/restoration on marker23.
+- [x] Deploy the prepared marker24 after settlement, verify its loaded credit/Stop,
+  reconcile restoration again, and finish the goal.
+
+Final state: Great Gudgeon caught and native credit confirmed; collection stopped,
+cleanup settled and exact AutoHook restoration passed. Marker24-bait-receipt is
+deployed and loaded at 1.0.0.1; ADS remains 0.9.7.0. The final reload observes
+the existing credit and stops before preparation, travel or another cast. All
+goal acceptance items above are complete. Changes remain unstaged in the existing
+dirty worktree; unrelated UI/localization changes are preserved. No user action
+is required. The delayed-bait receipt branch is built but was not needed in the
+successful catch run; do not claim a separate live exercise of that branch.
+
+Attempt history: marker22 loaded at 20:39:57 and dispatched once at 20:40:04.
+It selected only item 7688, used held Crayfish Ball without purchasing supplies,
+verified arrival/facing and started AutoHook at 20:41:08. Native casts at
+20:41:11 and 20:41:30 caught Princess Trout at 20:41:27 and Chub at 20:41:47.
+Neither catch satisfies the target. At 20:41:48 the startup guard incorrectly
+treated the normal post-catch pause as an unobserved start; cleanup disabled
+further casts, but no cleanup completion is logged. The bounded snapshot through
+20:45 and owned AutoHook configuration confirm no later cast and disabled owned
+CastLine/EnableAll; the exact temporary preset is still owned. Reload recovery
+is justified after these settled native catches and quiesced future casts.
+Source/build intent: marker23-casting-startup-guard latches the first native cast
+and allows usable Quit after native fishing clears, preserving casts in flight.
+Keep one target and Stop only on native target credit. The existing unload
+restoration must remove only marker22's exact temporary preset before a fresh
+dispatch; reconcile that restoration and the new native marker before results.
+Marker22 Debug x64 build passed in 33.22 seconds with zero errors and the
+existing NU1601 warning; all 223 focused collection/fishing-policy checks pass.
+The existing complete 24-file payload includes the fresh compiled marker and
+matches its inputs by direct byte comparison. The pre-run AutoHook snapshot
+has five exact preset IDs, one pre-existing collection-looking preset, and
+disabled enabled/autostart/ocean/collectable flags; retain it for restoration
+comparison. The pre-copy bounded native window contains no new collection
+dispatch or unsettled stables run. Overwrite intent: update changed dependencies
+first and VMX DLL last through the existing R: path, then verify the exact fresh
+marker and one ordinary single-target collection dispatch before judging results.
+Native evidence: R:\xivlauncher7\dalamud.log; use bounded milestone snapshots
+with read/write/delete sharing. Next: build/check/package marker23, reconcile
+the stalled cleanup and exact preset restoration through the authorized DLL
+overwrite, then verify native load/dispatch and continued casting to target credit.
+Marker23 Debug x64 build passed in 21.15 seconds with zero errors and the existing
+NU1601 warning; all 223 focused collection/fishing-policy checks pass. The existing
+24-file package contains the fresh DLL/dependencies and matches the build by
+direct byte comparison. Overwrite intent: dependencies first, VMX DLL last, and
+native timestamp refresh through the existing R: path. Marker22's two catches are
+settled, future owned casts are disabled and cleanup is stalled; use unload's
+exact owned-preset restoration and verify it before accepting the resumed run.
+The marker23 overwrite completed at about 20:51:10 with all 24 deployed files
+matching the package. Only VERMAXION.dll changed. The subsequent timestamp
+refresh encountered an active DLL file lock; inspect the watcher reload already
+triggered by the actual write before considering any further overwrite.
+Native marker23 loaded at 20:51:22 and dispatched once at 20:51:25. Marker22's
+exact temporary preset was removed; all five original preset IDs and the
+pre-existing collection-looking preset remain, plus marker23's exact owned ID
+90dbdf4d-c0d0-4ae5-834a-f091d9e03683. The old unload reported original bait
+restoration unverified, so full restoration is not yet accepted. Marker23
+prepared only held Crayfish Ball, stayed at the verified spot, enabled AutoHook
+and cast at 20:51:34 before the redundant ahstart response. Its native cast is
+the runtime outcome; continuous casting, target credit and final cleanup remain
+pending. Next milestone snapshot: after several normal casts, then target/cleanup.
+The 20:54:00 milestone snapshot confirms eight native casts from 20:51:34 to
+20:54:00, with repeated ordinary catches and immediate continuation past the
+old 30-second guard. Great Gudgeon has not landed in that window; leave the
+active run untouched. The unload's immediate original-bait verification is a
+confirmed cleanup defect: request the native change once, then verify its receipt
+on a later collection update. Prepare this correction without copying over the
+active fishing run; use it only after the run settles or a justified recovery.
+Source/build intent: marker24-bait-receipt requests ChangeBait once and waits
+for the later native receipt before releasing ordinary cleanup ownership.
+Unload restores exact owned presets and saved flags even if it cannot observe
+the native bait receipt in its one update, and reports that limit. Marker23
+remains the running build; do not copy marker24 during active casting.
+Marker24's final Debug x64 build passed in 22.33 seconds with zero errors and
+the existing NU1601 warning; all 229 collection/fishing-policy/AutoHook checks
+pass. Disable AutoHook once when the rod is first down so pending native bait
+receipt does not repeat enabled-state logging every collection update. The
+complete 24-file package matches the fresh inputs by direct byte comparison;
+marker24 remains prepared and has not been copied to client7.
+The 20:57 milestone shows marker23 still continuously casting after sixteen
+native casts; catches remain ordinary fish. Its owned Crayfish Ball strategy
+includes item 7688 and the target's legendary bite hook, with no mandatory bait
+switch, mooch or unavailable optional action. Next: let the active run continue
+and inspect the target/cleanup milestone at a coarse interval.
+At 21:00 the first always-available forecast window ended after 23 casts.
+Marker23 preserved the cast already in flight, stowed the rod at 21:00:11 and
+completed attempt cleanup at 21:00:14. Normal scheduling selected Great Gudgeon
+again at 21:00:15 and prepared a new exact owned preset
+2505773e-9b54-4266-8fd4-85ead8bd90e1 with Crayfish Ball; no other target was
+selected. The target remains uncaught. This verifies future-window continuation
+and rod stow after the ordinary window, separately from final target cleanup.
+Success milestone: Great Gudgeon landed at 21:09:46.712 EDT, measuring 14.3 ilms.
+The complete bounded marker23 interval confirms 50 casts and 50 native landings
+across two windows. Native target credit triggered Caught Stop at 21:09:46.724,
+rod stow followed at 21:09:47, and lifecycle/collection/navigation/travel settlement
+was explicitly confirmed at 21:09:50.577. Exact post-catch comparison restores
+all five original preset IDs, both selected GUIDs and all six saved AutoHook/DTR
+flags; every temporary preset is removed and the pre-existing collection-looking
+preset remains. Marker23 catch acceptance is complete. Final overwrite intent:
+deploy the prepared marker24 only after this settled state, then verify its load,
+existing target credit and automatic Stop without another cast or bait purchase.
+Marker24 overwrite completed at 21:12:09 through the existing R: path; all 24
+deployed files match the complete payload. Native startup at 21:12:12 confirms
+the exact marker and version. One dispatch at 21:12:16 immediately reads native
+Caught credit with rod=None, requests Stop and settles at 21:12:16.807 before
+any supplies, travel or cast. Fresh Fisher observations report caught=1. Exact
+post-reload AutoHook comparison again matches all five original preset IDs,
+both selected GUIDs and all six flags. The separate configured stables task
+resumed after fishing settlement and reached its own task settlement at
+21:12:26; it is not a collection return or another fishing opportunity.
+Implementation, Debug x64 build, 229 focused checks, payload copy, native target
+catch, window continuation, final reload and exact restoration are verified.
+Goal complete; retain the existing saved Lazyparasite selection and normal
+manual Stop behavior. No further reload or collection dispatch is pending.
+
 Updated 2026-09-30. Sole checkpoint for this bundle; unrelated work remains in
 the existing LAZYPARASITE.md, apart from requested personal-name redaction.
 DevHub statuses are unchanged and are

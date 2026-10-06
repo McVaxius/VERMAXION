@@ -18,12 +18,28 @@ public class ConfigManager
     private readonly HashSet<string> unreadableAccountIds = new(StringComparer.OrdinalIgnoreCase);
 
     public string CurrentAccountId { get; set; } = "";
+    // Viewing another account in Settings must never change the runtime's active account.
+    private string editingAccountId = "";
+    public string SelectedAccountId
+    {
+        get => accounts.ContainsKey(editingAccountId) ? editingAccountId : CurrentAccountId;
+        set { if (editingAccountId != value) SelectedCharacterKey = ""; editingAccountId = value; }
+    }
+    public AccountConfig? GetSelectedAccount() => accounts.TryGetValue(SelectedAccountId, out var account) ? account : null;
+    public CharacterConfig GetSelectedConfigForKey(string key)
+    {
+        var account = GetSelectedAccount();
+        return account != null && !string.IsNullOrEmpty(key) && account.Characters.TryGetValue(key, out var profile)
+            ? profile : account?.DefaultConfig ?? CharacterConfig.CreateNew();
+    }
+    public void SaveSelectedAccount() { if (!string.IsNullOrEmpty(SelectedAccountId)) SaveAccount(SelectedAccountId); }
     public string CurrentCharacterKey { get; private set; } = "";
 
     private string selectedCharacterKey = "";
     public string SelectedCharacterKey
     {
-        get => selectedCharacterKey;
+        get => string.IsNullOrEmpty(selectedCharacterKey) || GetSelectedAccount()?.Characters.ContainsKey(selectedCharacterKey) == true
+            ? selectedCharacterKey : "";
         set => selectedCharacterKey = value;
     }
 
@@ -55,7 +71,7 @@ public class ConfigManager
 
     public CharacterConfig GetSelectedConfig()
     {
-        return GetConfigForKey(SelectedCharacterKey);
+        return GetSelectedConfigForKey(SelectedCharacterKey);
     }
 
     public CharacterConfig GetConfigForKey(string charKey)
@@ -136,7 +152,7 @@ public class ConfigManager
             }
 
             SetCurrentCharacterKey(charKey);
-            if (string.IsNullOrEmpty(SelectedCharacterKey))
+            if (SelectedAccountId == CurrentAccountId && string.IsNullOrEmpty(SelectedCharacterKey))
                 SelectedCharacterKey = charKey;
             return;
         }
@@ -177,7 +193,7 @@ public class ConfigManager
         accountForChar.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
         EnsureCharacterCreatedAtUtc(accountForChar, charKey, DateTime.UtcNow);
         SetCurrentCharacterKey(charKey);
-        if (string.IsNullOrEmpty(SelectedCharacterKey))
+        if (SelectedAccountId == CurrentAccountId && string.IsNullOrEmpty(SelectedCharacterKey))
             SelectedCharacterKey = charKey;
         SaveAccount(CurrentAccountId);
         log.Information($"Added character {charKey} to account {CurrentAccountId}");
@@ -259,7 +275,7 @@ public class ConfigManager
 
     public void ResetCharacterToDefault(string charKey)
     {
-        var account = GetCurrentAccount();
+        var account = GetSelectedAccount();
         if (account == null) return;
 
         if (string.IsNullOrEmpty(charKey))
@@ -279,12 +295,12 @@ public class ConfigManager
             account.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
         }
 
-        SaveCurrentAccount();
+        SaveSelectedAccount();
     }
 
     public bool DeleteCharacter(string charKey)
     {
-        var account = GetCurrentAccount();
+        var account = GetSelectedAccount();
         if (account == null || string.IsNullOrEmpty(charKey)) return false;
         if (!account.Characters.ContainsKey(charKey)) return false;
 
@@ -292,17 +308,17 @@ public class ConfigManager
         account.CharacterCreatedAtUtc.Remove(charKey);
         if (SelectedCharacterKey == charKey)
             SelectedCharacterKey = "";
-        if (CurrentCharacterKey == charKey)
+        if (SelectedAccountId == CurrentAccountId && CurrentCharacterKey == charKey)
             SetCurrentCharacterKey("");
 
-        SaveCurrentAccount();
+        SaveSelectedAccount();
         log.Information($"Deleted character config: {charKey}");
         return true;
     }
 
     public int ApplyDefaultToAllCharacters()
     {
-        var account = GetCurrentAccount();
+        var account = GetSelectedAccount();
         if (account == null) return 0;
 
         var defaultConfig = account.DefaultConfig;
@@ -315,14 +331,14 @@ public class ConfigManager
             count++;
         }
 
-        SaveCurrentAccount();
+        SaveSelectedAccount();
         log.Information($"[ConfigManager] Applied default settings to {count} characters");
         return count;
     }
 
     public int ApplyDefaultSettingToAllCharacters(string label, Action<CharacterConfig, CharacterConfig> copy)
     {
-        var account = GetCurrentAccount();
+        var account = GetSelectedAccount();
         if (account == null) return 0;
 
         var defaultConfig = account.DefaultConfig;
@@ -334,7 +350,7 @@ public class ConfigManager
             count++;
         }
 
-        SaveCurrentAccount();
+        SaveSelectedAccount();
         log.Information($"[ConfigManager] Applied default setting '{label}' to {count} characters");
         return count;
     }
@@ -462,23 +478,33 @@ public class ConfigManager
     }
 
     public int SyncFishingStockRowToCurrentAccount(FishingStockCatalogEntry row)
+        => SyncFishingStockRowToAccount(CurrentAccountId, row);
+
+    public int SyncFishingStockRowToSelectedAccount(FishingStockCatalogEntry row)
+        => SyncFishingStockRowToAccount(SelectedAccountId, row);
+
+    private int SyncFishingStockRowToAccount(string accountId, FishingStockCatalogEntry row)
     {
-        var account = GetCurrentAccount();
-        if (account == null)
+        if (!accounts.TryGetValue(accountId, out var account))
             return 0;
 
         FishingStockCatalogPolicy.SyncRow(account.DefaultConfig.FishingStockItems, row);
         foreach (var character in account.Characters.Values)
             FishingStockCatalogPolicy.SyncRow(character.FishingStockItems, row);
-        SaveCurrentAccount();
+        SaveAccount(accountId);
         return account.Characters.Count + 1;
     }
 
     public int SyncAllFishingStockRowsToCurrentAccount(
         IEnumerable<FishingStockCatalogEntry> catalog)
+        => SyncAllFishingStockRowsToAccount(CurrentAccountId, catalog);
+
+    public int SyncAllFishingStockRowsToSelectedAccount(IEnumerable<FishingStockCatalogEntry> catalog)
+        => SyncAllFishingStockRowsToAccount(SelectedAccountId, catalog);
+
+    private int SyncAllFishingStockRowsToAccount(string accountId, IEnumerable<FishingStockCatalogEntry> catalog)
     {
-        var account = GetCurrentAccount();
-        if (account == null)
+        if (!accounts.TryGetValue(accountId, out var account))
             return 0;
 
         foreach (var row in catalog)
@@ -487,7 +513,7 @@ public class ConfigManager
             foreach (var character in account.Characters.Values)
                 FishingStockCatalogPolicy.SyncRow(character.FishingStockItems, row);
         }
-        SaveCurrentAccount();
+        SaveAccount(accountId);
         return account.Characters.Count + 1;
     }
 
@@ -614,22 +640,22 @@ public class ConfigManager
 
     public IEnumerable<string> GetSortedCharacterKeys(CharacterListSortMode sortMode)
     {
-        var account = GetCurrentAccount();
+        var account = GetSelectedAccount();
         if (account == null) return Enumerable.Empty<string>();
         return CharacterSortPolicy.Sort(account.Characters.Keys, sortMode, account.CharacterCreatedAtUtc);
     }
 
     public void UpdateAccountAlias(string alias)
     {
-        var account = GetCurrentAccount();
+        var account = GetSelectedAccount();
         if (account == null) return;
         account.AccountAlias = alias;
-        SaveCurrentAccount();
+        SaveSelectedAccount();
     }
 
     public int DisableAlwaysFishOnOtherCharacters(string selectedCharacterKey)
     {
-        var account = GetCurrentAccount();
+        var account = GetSelectedAccount();
         if (account == null || string.IsNullOrWhiteSpace(selectedCharacterKey))
             return 0;
 
@@ -647,7 +673,7 @@ public class ConfigManager
         }
 
         if (count > 0)
-            SaveCurrentAccount();
+            SaveSelectedAccount();
 
         return count;
     }

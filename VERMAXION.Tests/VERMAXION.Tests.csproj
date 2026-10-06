@@ -91,6 +91,7 @@
     <Compile Include="..\VERMAXION\Services\SaucyConfigurationAccessor.cs" Link="SaucyConfigurationAccessor.cs" />
     <Compile Include="..\VERMAXION\Services\AutoHookConfigurationAccessor.cs" Link="AutoHookConfigurationAccessor.cs" />
     <Compile Include="..\VERMAXION\IPC\AutoRetainerSelectionReflection.cs" Link="AutoRetainerSelectionReflection.cs" />
+    <Compile Include="..\VERMAXION\IPC\AutoRetainerFishProtectionReflection.cs" Link="AutoRetainerFishProtectionReflection.cs" />
     <Compile Include="..\VERMAXION\PostProcessTaskOrder.cs" Link="PostProcessTaskOrder.cs" />
     <Compile Include="..\VERMAXION\AutomationCatalog.cs" Link="AutomationCatalog.cs" />
   </ItemGroup>

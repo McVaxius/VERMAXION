@@ -49,6 +49,21 @@ public sealed class LifestreamIPC
         }
     }
 
+    public bool TryAbort()
+    {
+        try
+        {
+            Plugin.PluginInterface.GetIpcSubscriber<object>("Lifestream.Abort").InvokeAction();
+            log.Information("[Lifestream] Owned travel abort requested");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"[Lifestream] Owned travel abort unavailable: {ex.Message}; retaining ownership until travel settles");
+            return false;
+        }
+    }
+
     public bool ExecuteCommand(string command)
     {
         var normalized = command.Trim();

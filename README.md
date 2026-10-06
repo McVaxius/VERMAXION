@@ -1,5 +1,13 @@
 # VERMAXION
 
+The main window uses the approved regular and compact presentation, with a `C` compact switch, shared relative colour themes and a fourteen-language selector. `UiLanguage` and `UiAccentRgb` are saved through the existing configuration; the existing `CompactUi` preference is reused. The other five windows keep their established layouts and share the selected appearance.
+
+Managed Segoe UI fonts borrow Windows' text and symbol faces and Dalamud's selected-locale Noto CJK coverage. No Windows font files are distributed. Readiness and required-glyph checks remain explicit, including the DTR tooltip's black-circle symbol.
+
+Settings → Characters shows accounts and saved characters in a dedicated left pane. Select `(Default Config)` or a character there, then choose the task in the separate Settings picker above its editor. Narrow windows use a labeled character picker. The editing account stays separate from the active automation account, so browsing profiles keeps runtime work and runtime saves on the logged-in scope.
+
+Fourteen embedded translation resources cover authored window labels, tooltips, Settings explanations and displayed status messages, including collection inspection, supplies, readiness and cleanup. English, German, French, Spanish, Italian, Russian, Japanese, Korean and Simplified Chinese remain available; Vietnamese, Brazilian Portuguese, Indonesian, Polish and Turkish append to the existing choices. Names, external data, command tokens and logs retain their original text; numbers and dates use the selected UI culture. Native UI IDs remain stable. Hindi is not offered because correct Devanagari shaping has not been established. Build and resource validation do not establish host font readiness or game visual acceptance, which remain pending.
+
 VERMAXION exposes its existing v1 automation status IPC plus an additive v2 DAD handoff reservation. A live DAD
 operation renews a 15-second lease every five seconds. VERMAXION finishes current owned work, blocks new work,
 turns AutoRetainer Multi Mode off, waits for AutoRetainer idle, releases its suppression, and publishes the local

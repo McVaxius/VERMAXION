@@ -25,6 +25,7 @@ public sealed class FishCollectionSettings
     public int AlertRepeatMinutes { get; set; } = 5;
     public bool IncludeBigFish { get; set; } = true;
     public bool IncludeFabledFish { get; set; } = true;
+    public bool RemoveFishFromAutoRetainerLists { get; set; }
 }
 
 public sealed record FisherObservation(int Level, int Gathering, int Perception, int MaximumGp,
@@ -35,6 +36,8 @@ public sealed class CollectionFish
     public uint ItemId { get; set; }
     public string Name { get; set; } = "";
     public bool Target { get; set; }
+    // Curated catch and cleanup verification; independent of character fishing-log credit.
+    public bool Tested { get; set; }
     public bool Ocean { get; set; }
     public uint FishParameterId { get; set; }
     public uint[] Routes { get; set; } = [];
@@ -83,6 +86,17 @@ public sealed record FishAssignment(string CharacterKey, FishOpportunity Opportu
 
 public static class FishCollectionPolicy
 {
+    public static bool ShouldReturn(bool running, bool moved) => running && moved;
+
+    public static IReadOnlyDictionary<string, uint> SolverSkillActions { get; } = new Dictionary<string, uint>
+    {
+        ["SurfaceSlap"] = 4595, ["IdenticalCast"] = 4596, ["DoubleHook"] = 269,
+        ["TripleHook"] = 27523, ["MoochII"] = 268, ["PatienceII"] = 4106,
+        ["PatienceI"] = 4102, ["PrizeCatch"] = 26806, ["MakeshiftBait"] = 26805,
+        ["ThaliaksFavor"] = 26804, ["SparefulHand"] = 37045, ["AmbitiousLure"] = 37594,
+        ["ModestLure"] = 37595, ["BigGameFishing"] = 37046, ["FishEyes"] = 4105,
+        ["CollectorsGlove"] = 4101,
+    };
     public static int OceanCycleIndex(DateTimeOffset registration)
         => (int)((registration.ToUnixTimeSeconds() / 7200 + 88) % 144);
     public static bool Eligible(CollectionFish fish, FisherObservation? observation,
