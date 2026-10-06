@@ -1,6 +1,160 @@
 # VERMAXION custom deliveries, stables and fishing bundle
 
-## Paused Lazyparasite continuation - held-bait fishing
+## Fishing closeout and resume checkpoint - paused
+
+Updated 2026-10-06. The fishing goal remains paused at the user's request.
+This section is the current checkpoint for resuming in this thread or a new
+thread. Earlier entries below are historical evidence and attempt notes.
+Last live verification: 2026-10-06 10:28 UTC; this documentation closeout did
+not run another client test, build or reload.
+
+### Scope and account paths
+
+Continue one big/fabled fish at a time with held bait and the equipped Fisher
+gear. Keep normal casting and future eligible windows until native target
+credit and exact cleanup/restoration pass, then mark Tested and select another
+compatible untested fish. The overall collection goal is unfinished.
+
+| Purpose | Path |
+| --- | --- |
+| Authorized account/test root | `R:\xivlauncher7\` |
+| Native path for that same account | `A:\ff14\xivlauncher7\` |
+| Existing live evidence | `R:\xivlauncher7\dalamud.log` |
+| Watched DLL overwrite destination | `R:\xivlauncher7\FishCollectionClient7Verification\VERMAXION\VERMAXION.dll` |
+| DLL path seen by the client | `A:\ff14\xivlauncher7\FishCollectionClient7Verification\VERMAXION\VERMAXION.dll` |
+| Unwatched Debug x64 output | `Z:\VERMAXION\VERMAXION.Tests\bin\Debug\FishCollectionClient7Compilation\` |
+| Complete existing payload | `Z:\VERMAXION\VERMAXION.Tests\bin\Debug\FishCollectionClient7Compilation\FishCollectionDebug-20261003.zip` |
+| AutoHook settings | `R:\xivlauncher7\pluginConfigs\AutoHook.json` |
+| AutoRetainer plans | `R:\xivlauncher7\pluginConfigs\AutoRetainer\DefaultConfig.json` |
+| Source and sole task checkpoint | `Z:\VERMAXION\` and this `todo.md` |
+
+Use account paths for runtime identity; omit player names, character keys,
+Content IDs and account IDs from authored notes. Preserve VERMAXION **1.0.0.1**,
+ADS **0.9.7.0**, public IPC and user-managed gearsets. Preserve unrelated dirty
+UI/localization work. UI redesign and DevHub work are outside this fishing goal.
+The authorized reload method is a minor compiled marker change, isolated build,
+complete payload preparation and R: overwrite, dependencies first and VMX last.
+Carry that authorization forward only after an explicit resume. Use bounded
+existing-log snapshots; add no watchers, reports, backups or new machinery.
+
+### Accomplished
+
+- [x] Keep normal collection scheduling after an individual opportunity fails;
+  select another eligible opportunity and continue later windows.
+- [x] Track actual attempt movement. Skip configured returns after preparation
+  failures without travel; retain normal cleanup/return after owned movement.
+- [x] Stop prevents new collection targets and returns, cancels supported owned
+  travel/navigation, and retains ownership until external work and cleanup settle.
+  Native Stop during return, positioning and an in-flight cast is verified.
+- [x] Build strategies from native action unlocks and validate mandatory actions
+  before supplies/travel. Level-71 runs respect quest-locked Mooch II and
+  unavailable Identical Cast; incompatible requirements remain named blockers.
+- [x] Fix casting-startup observation so normal post-catch pauses do not stop a
+  started run. Verify repeated casting, window continuation and target-caught Stop.
+- [x] Resolve primary/city travel destinations and verify sourced ground arrival,
+  held facing and native CanFish before casting.
+- [x] Remove all catalog big/fabled fish from AR discard and both sell lists,
+  including relevant stack flags, through the saved opt-in cleanup. Native saving,
+  reload persistence and preservation of unrelated plan data are verified.
+- [x] Maintain curated Tested/Untested catalog status independently of native
+  fishing-log credit. Mark acceptance only after catch and exact restoration.
+- [x] Add the territory-change guard for AwaitWindow/Fish; source/build verification
+  passes. The forced live guard case remains open below.
+- [x] Clean up the exact interrupted marker41 preset through native AutoHook
+  controls, verify restoration, and remove the one-time Debug cleanup afterward.
+
+**Accepted coverage: 7 Tested / 341 Untested** out of 348 target fish.
+Every Tested entry has recorded native target credit and settled restoration.
+
+| Tested fish | Item ID | Bait used |
+| --- | --- | --- |
+| Great Gudgeon | 7688 | Crayfish Ball (2588) |
+| Bloody Brewer | 7696 | Crayfish Ball (2588) |
+| Dark Knight | 7689 | Crow Fly (2614) |
+| Judgeray | 7695 | Wildfowl Fly (2623) |
+| Dawn Maiden | 7944 | Wildfowl Fly (2623) |
+| Carp Diem | 7701 | Crow Fly (2614) |
+| Glimmerscale | 7714 | Butterworm (2594) |
+
+Glimmerscale's latest accepted catch is marker42: native landing at
+05:54:25.014 EDT on cast 3, 13.5 ilms; automatic Stop settles at 05:54:28.726.
+The restarted session's preset-container ID already differed before marker42;
+comparison against that session restores the original selected preset, five
+original presets, six flags and cast settings. Protected AR plans are unchanged.
+
+### Last test and stopped state
+
+- **Crystal Perch (7682) remains Untested.** Marker43 passes current-gear and held
+  Butterworm preparation, Summerford Farms travel, Woad Whisper Canyon arrival,
+  facing and CanFish. It starts normal casting at 06:16:40 EDT and makes two casts.
+  Ordinary dusk goby/dwarf catfish catches occur; no Crystal Perch credit is recorded.
+- At 06:17:18.744 EDT the game reports insufficient inventory space. AutoHook
+  stops, while collection retains phase Fish and its temporary preset. This is
+  a diagnosed collection-handling gap, not a successful target test.
+- Cleanup-only marker44 loads at 06:27:02.360 EDT. Existing Full Stop halts
+  operations at 06:27:05.791. Its 06:27:05.838 snapshot verifies Idle, no owned
+  travel/navigation, nativeFishing=False, nativeRod=None and original bait 29717.
+  No new collection attempt or cast starts. The generic dashboard callback's
+  Dispatched line follows an explicit cleanup-only Skipped line; it is not a
+  new fishing run.
+- At 10:28:04 UTC, the exact original five AutoHook presets, selected preset,
+  all six saved flags and cast settings match the accepted baseline. Protected
+  AR plans also match. Native caught=7; gear remains level 71 / Gathering 942 /
+  Perception 768 / maximum GP 665 / gearset 1 at the last observation.
+- Last loaded marker: `fish-collection-client7-20261006-44-crystal-perch-cleanup`.
+  Source still selects Crystal Perch and `DebugCollectionStopMilestone = "Cleanup"`.
+  Keep this mode while paused. There is no pending build, test, package or copy.
+  No inventory sale/discard was attempted.
+
+### Build and verification results
+
+- Marker43 Debug x64: 63.90 seconds, zero errors; **285 focused checks passed**
+  covering collection, fishing policy, stock, AR protection, gearsets and startup.
+- Final cleanup marker44 Debug x64: 17.78 seconds, zero errors. Its cleanup-only
+  behavior and native bait/restoration were verified separately in the live logs.
+- Only the existing NU1601 dependency warning remains. The complete 25-file payload
+  preserves ADS entries and required adapter/dependencies. The final R: copy at
+  10:26:58.892179 UTC matches all 25 prepared files and reloads the exact marker44.
+- At closeout, fishing source, tests, README and changelog have no pending Git
+  changes. Latest commit touching the fishing implementation: `ebe3a86`.
+  This TODO update remains uncommitted; earlier unstaged-work entries are history.
+
+### What remains
+
+- [ ] Fix collection's full-inventory readiness/error handling through existing
+  cleanup paths so it cannot remain in Fish after AutoHook stops. Automatic item
+  sales/discards are not selected; resolve actual inventory space before another test.
+- [ ] Resume Crystal Perch with fresh native stock/gear/readiness evidence and
+  available inventory space. Keep the same fish through ordinary failures and
+  future eligible windows until catch plus exact cleanup/restoration pass.
+- [ ] Retest Dream Goby (7692) only when held Crayfish Ball is available. Its
+  previous run exhausted that bait and obtained no target credit.
+- [ ] Exercise the new territory-change guard during AwaitWindow/Fish and verify
+  normal failure cleanup/scheduling. The old marker41 termination has no usable
+  fault stack; the guard is not a proven explanation or fix for that termination.
+- [ ] Continue other compatible held-bait/current-gear targets after acceptance.
+  Remaining catalog coverage is 328 overworld targets and 13 fabled ocean targets;
+  availability and gear/action eligibility must be checked per target.
+
+### Resume in this thread or a new thread
+
+1. Explicitly resume the paused fishing goal from `Z:\VERMAXION\todo.md`.
+   Read this current checkpoint, inspect Git/source drift and reconcile fresh
+   R: evidence before any build, copy or dispatch. Do not infer current client
+   state, stock or a catch from elapsed time or old inventory exports.
+2. Resolve the full-inventory handling gap and actual space. Capture a fresh
+   clean AutoHook/AR baseline before the next attempt using existing shared-read
+   snapshots; do not depend on tool-memory keys from this thread.
+3. Restore source-bound `Caught` mode for the selected Crystal Perch test,
+   change the compiled marker, build Debug x64 in the unwatched output, run
+   appropriate focused checks, prepare the complete payload and use the same
+   authorized R: overwrite. Do not bump release versions to trigger reload.
+4. Verify the exact fresh native startup marker and one ordinary dispatch before
+   evaluating readiness, supplies, arrival and casting. Keep normal windows and
+   casting until target credit, then compare exact settled restoration and mark
+   Tested. Continue the original one-fish-at-a-time held-bait goal from there.
+
+## Fishing verification history
 
 Updated 2026-10-05. User clarification: continue waiting for and triggering the
 next fishing opportunity; the completed protection UI did not end autonomous
