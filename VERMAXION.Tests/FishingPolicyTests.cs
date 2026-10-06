@@ -147,9 +147,9 @@ public sealed class FishingPolicyTests
         var controls = ui[ui.IndexOf("ImGui.BeginDisabled(plugin.IsFishingRunActive ||", StringComparison.Ordinal)..];
         controls = controls[..controls.IndexOf("ImGui.EndDisabled();", StringComparison.Ordinal)];
         Assert.Contains("!OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(provider)", controls);
-        Assert.Contains("ImGui.RadioButton(\"Fixed locations\"", controls);
-        Assert.Contains("ImGui.RadioButton(\"Continuous rail\"", controls);
-        Assert.Contains("ImGui.RadioButton(\"Spacing mode\"", controls);
+        Assert.Contains("UiGui.RadioButton(\"Fixed locations\"", controls);
+        Assert.Contains("UiGui.RadioButton(\"Continuous rail\"", controls);
+        Assert.Contains("UiGui.RadioButton(\"Spacing mode\"", controls);
     }
 
     [Fact]

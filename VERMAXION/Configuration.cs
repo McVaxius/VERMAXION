@@ -33,11 +33,23 @@ public class Configuration : IPluginConfiguration
 {
     public FishCollectionSettings FishCollection { get; set; } = new();
     public int Version { get; set; } = 1;
+    public string UiLanguage { get; set; } = "en";
+    public uint UiAccentRgb { get; set; } = 0x00C6DF;
 
     // --- Global UI Settings ---
     public bool Enabled { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool CompactUi { get; set; } = false;
+    public bool UiCompactVisibleOnMainWindow { get; set; } = true;
+    public bool UiLanguageVisibleOnMainWindow { get; set; } = true;
+    public bool UiTransparencyEnabled { get; set; } = true;
+    private int uiWindowOpacityPercent = 100;
+    public int UiWindowOpacityPercent { get => uiWindowOpacityPercent; set => uiWindowOpacityPercent = Math.Clamp(value, 10, 100); }
+    public bool UiAutoFade { get; set; } = true;
+    private int uiFadedOpacityPercent = 50;
+    public int UiFadedOpacityPercent { get => uiFadedOpacityPercent; set => uiFadedOpacityPercent = Math.Clamp(value, 10, 100); }
+    private int uiUnfocusedDelaySeconds = 10;
+    public int UiUnfocusedDelaySeconds { get => uiUnfocusedDelaySeconds; set => uiUnfocusedDelaySeconds = Math.Max(0, value); }
     public bool AutoWidthMainTaskColumns { get; set; } = true;
     public bool DtrBarEnabled { get; set; } = true;
     public int DtrBarMode { get; set; } = 0; // 0=text-only, 1=icon+text, 2=icon-only
@@ -55,6 +67,7 @@ public class Configuration : IPluginConfiguration
     public int RefillListingsInterItemDelayMs { get; set; } = 250;
     public float LeftPanelWidth { get; set; } = 240f;
     public CharacterListSortMode CharacterListSortMode { get; set; } = CharacterListSortMode.Name;
+    [Newtonsoft.Json.JsonProperty(ObjectCreationHandling = Newtonsoft.Json.ObjectCreationHandling.Replace)]
     public List<string> PostProcessTaskOrder { get; set; } = VERMAXION.PostProcessTaskOrder.DefaultOrder.ToList();
     public Dictionary<string, PostProcessTaskPhase> PostProcessTaskPlacement { get; set; } = VERMAXION.PostProcessTaskOrder.CreateDefaultPlacement();
 

@@ -1,3 +1,7 @@
+using AethertekUI;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility;
+using System.Numerics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +30,8 @@ namespace VERMAXION;
 
 public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledOfflineHoldRuntime
 {
+    private readonly System.Collections.Generic.Dictionary<Dalamud.Interface.Windowing.IWindow, AethertekUI.MaterialWindowOpacity> windowOpacities = new();
+    private readonly AethertekUI.MaterialWindowOpacity fontStatusOpacity = new();
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;
@@ -48,11 +54,30 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "stables-client7-20260930-30";
+    private const string DebugAttemptMarker = "fish-collection-client7-20261006-44-crystal-perch-cleanup";
+#if DEBUG
+    // Source-selected bounds for this isolated client7 reload test; no saved setting.
+    private const string DebugCollectionStopMilestone = "Cleanup";
+    private const uint DebugCollectionTargetItemId = 7682;
+    private static readonly TimeSpan DebugCollectionRunLimit = TimeSpan.FromMinutes(15);
+    private DateTime debugCollectionStopDeadline;
+    private bool debugCollectionStopArmed, debugCollectionStopPending;
+#endif
     private DateTime nextChocoboContinuationUtc;
-    private readonly IFontHandle applicationFont;
-    private readonly IFontHandle sectionFont;
-    private const string ExpectedDebugPluginPath = @"Z:\VERMAXION\VERMAXION.Tests\bin\Debug\StablesClient7Verification\VERMAXION.dll";
+    private VermaxionFonts uiFonts = null!;
+    private UiText uiText = null!;
+    private AethertekUI.Dalamud.MaterialTextHost? shapedText;
+    private MaterialTheme uiTheme = null!;
+    private readonly MaterialWindowFold fontStatusFold = new();
+    private readonly MaterialWindowDecorations fontStatusDecorations = new();
+    private MaterialOptions<string> languageOptions = null!;
+    private string appliedLanguage = "";
+    private uint appliedAccent;
+    private Vector3 accentDraft;
+    private int checkedFontGeneration = -1;
+    private bool fontIssueLogged;
+
+    private const string ExpectedDebugPluginPath = @"A:\ff14\xivlauncher7\FishCollectionClient7Verification\VERMAXION\VERMAXION.dll";
 
     public Configuration Configuration { get; init; }
     public ConfigManager ConfigManager { get; init; }
@@ -354,10 +379,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             YieldUnstartedBeforeArGateToDad);
 
         // Windows
-        applicationFont = PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, 28) { Bold = true });
-        sectionFont = PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, 20) { Bold = true });
-        UIConstants.ApplicationFont = applicationFont;
-        UIConstants.SectionFont = sectionFont;
+        ApplyAppearance();
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
         DebugWindow = new DebugWindow(this);
@@ -386,7 +408,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         });
 
         // Events
-        PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
+        PluginInterface.UiBuilder.Draw += DrawUi;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
@@ -401,11 +423,108 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Log.Information("===Vermaxion loaded!===");
     }
 
+    private void DrawUi()
+    {
+        ApplyAppearance();
+        if(!WindowSystem.Windows.Any(window => window.IsOpen)) return;
+        using var text = uiText.Enter();
+        shapedText ??= new(TextureProvider);
+        using var shaped = shapedText.Push();
+        if(!uiFonts.Ready)
+        {
+            if(!fontIssueLogged && uiFonts.LoadException is { } error) { Log.Error(error,"[VERMAXION] Required UI fonts failed to load.");fontIssueLogged=true; }
+            // Do not silently present temporary host fonts as the finished UI.
+            DrawFontStatus(uiFonts.LoadException is null);
+            return;
+        }
+        if(checkedFontGeneration!=uiFonts.Generation)
+        {
+            try
+            {
+                var generation=uiFonts.Generation;
+                foreach (var size in VermaxionPresentation.FontSizes)
+                    shapedText.Renderer.CheckGlyphs(uiText.RequiredText, size * ImGuiHelpers.GlobalScale);
+                uiFonts.CheckGlyphs(uiText.RequiredText);
+                checkedFontGeneration=generation;
+            }
+            catch(Exception ex) { if(!fontIssueLogged) { Log.Error(ex,"[VERMAXION] Required UI glyph coverage failed.");fontIssueLogged=true; } DrawFontStatus(false);return; }
+        }
+        using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale, MaterialStyleMode.ColorsOnly);
+        using var body = uiFonts.Push(UiFontRole.Body);
+        WindowSystem.Draw();
+        foreach (var window in WindowSystem.Windows)
+        {
+            if (!windowOpacities.TryGetValue(window, out var opacity))
+                windowOpacities.Add(window, opacity = new());
+            ApplyWindowOpacity(opacity, window.WindowName);
+        }
+    }
+
+    private void DrawFontStatus(bool loading)
+    {
+        using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale, MaterialStyleMode.ColorsOnly);
+        using var chrome = MaterialWindowChrome.Push();
+        Dalamud.Bindings.ImGui.ImGui.SetNextWindowSize(new System.Numerics.Vector2(460f*ImGuiHelpers.GlobalScale,0f));
+        fontStatusFold.PreDraw("VERMAXION##FontStatus", null, null, false, fontStatusDecorations.Prepare);
+        var visible = Dalamud.Bindings.ImGui.ImGui.Begin("VERMAXION##FontStatus",Dalamud.Bindings.ImGui.ImGuiWindowFlags.AlwaysAutoResize);
+        try
+        {
+            if (visible)
+            {
+                fontStatusDecorations.Paint();
+                MaterialText.TextWrapped(UiText.T(loading?"Loading UI fonts...":"UI fonts failed to load. See the plugin log."));
+            }
+        }
+        finally
+        {
+            Dalamud.Bindings.ImGui.ImGui.End();
+            fontStatusDecorations.Paint();
+            fontStatusFold.PostDraw();
+            ApplyWindowOpacity(fontStatusOpacity, "VERMAXION##FontStatus");
+        }
+    }
+
+    private void ApplyAppearance()
+    {
+        var language=UiText.Languages.Any(l=>l.Code==Configuration.UiLanguage)?Configuration.UiLanguage:"en";
+        if(language!=appliedLanguage)
+        {
+            uiFonts?.Dispose();
+            uiText?.Dispose();
+            uiText=new(language,role=>uiFonts!.Push(role));
+            uiFonts=new(PluginInterface.UiBuilder.FontAtlas,uiText.GlyphRanges(),language);
+            languageOptions=new(UiText.Languages.Select(l=>new MaterialOption<string>(l.Code,l.Code,l.Name)).ToArray());
+            appliedLanguage=language;
+            checkedFontGeneration=-1;
+            fontIssueLogged=false;
+        }
+        if(uiTheme is null || (Configuration.UiAccentRgb & 0xFFFFFF)!=appliedAccent)
+        {
+            appliedAccent=Configuration.UiAccentRgb & 0xFFFFFF;
+            uiTheme=VermaxionPresentation.Theme(appliedAccent);
+            var color=VermaxionPresentation.Rgb(appliedAccent);
+            accentDraft=new(color.X,color.Y,color.Z);
+        }
+    }
+
+    public void DrawAppearanceSelector()
+    {
+        var language=appliedLanguage;
+        using var controls=MaterialControls.Push(VermaxionPresentation.Controls(28,18));
+        var changed=MaterialAppearanceSelector.Draw("appearance",ref accentDraft,ref language,languageOptions,
+            new(UiText.T("Color"),UiText.T("Language"),UiText.T("Teal"),UiText.T("Blue"),UiText.T("Pink"),UiText.T("Custom RGB")), languageWidth: 140);
+        if(changed.AccentChanged) Configuration.UiAccentRgb=((uint)Math.Clamp((int)MathF.Round(accentDraft.X*255),0,255)<<16)
+            |((uint)Math.Clamp((int)MathF.Round(accentDraft.Y*255),0,255)<<8)|(uint)Math.Clamp((int)MathF.Round(accentDraft.Z*255),0,255);
+        if(changed.LanguageChanged) Configuration.UiLanguage=language;
+        if(changed.AccentChanged || changed.LanguageChanged) Configuration.Save();
+    }
+
+
     private static void LogPluginAssemblyDetails()
     {
         var assembly = Assembly.GetExecutingAssembly();
         var version = assembly.GetName().Version?.ToString() ?? "unknown";
-        var path = string.IsNullOrWhiteSpace(assembly.Location) ? "unknown" : assembly.Location;
+        var path = PluginInterface.AssemblyLocation.FullName;
         Log.Information($"[Plugin] VERMAXION assembly loaded from '{path}', version '{version}', expected debug path '{ExpectedDebugPluginPath}', attempt marker '{DebugAttemptMarker}'");
     }
 
@@ -426,17 +545,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         ClientState.Login -= OnLoginEvent;
         ConfigManager.OnCharacterChanged -= OnCharacterChanged;
 
-        PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
+        PluginInterface.UiBuilder.Draw -= DrawUi;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
 
         WindowSystem.RemoveAllWindows();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
-        UIConstants.ApplicationFont = null;
-        UIConstants.SectionFont = null;
-        applicationFont.Dispose();
-        sectionFont.Dispose();
+        uiFonts.Dispose();
+        uiText.Dispose();
+        shapedText?.Dispose();
 
         ARPostProcessService.Dispose();
         FCBuffService.Dispose();
@@ -735,6 +853,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessPendingDebugTask()
     {
+#if DEBUG
+        ProcessCollectionDebugStop();
+#endif
         if (pendingDebugDispatchTaskId != null)
         {
             if (PlayerState.ContentId != debugDispatchContentId)
@@ -745,6 +866,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             }
             var ready = !ChocoboStablesService.IsCleanupPending && (GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _) ||
                 pendingDebugDispatchTaskId == AutomationCatalog.VerminionQueue && CanObserveVerminionForReload());
+            if (pendingDebugDispatchTaskId == "Run##FishCollection")
+            {
+                ready &= CanStartMainMenuTest(false, out _);
+                ready &= !FishCollection.IsActive && !FishingRunLifecycle.IsActive &&
+                    VNavmeshIPC.TryGetPathIsRunning(out var running) && !running &&
+                    VNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) && !pathfinding &&
+                    LifestreamIPC.TryReadBusy(out var busy) && !busy;
+            }
             if (!ready && DateTime.UtcNow < debugDispatchReadyDeadline) return;
             var dispatchId = pendingDebugDispatchTaskId;
             pendingDebugDispatchTaskId = null;
@@ -762,6 +891,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             {
                 pendingDebugTaskId = null;
                 SetDebugTaskStatus("Blocked: character registration failed; see the [Config] log.");
+            }
+            else if (pendingDebugTaskId == "Run##FishCollection")
+            {
+                var waiting = $"Pending: character registration; loggedIn={ClientState.IsLoggedIn}; localPlayer={ObjectTable.LocalPlayer != null}; casting={ObjectTable.LocalPlayer?.IsCasting == true}; combat={Condition[ConditionFlag.InCombat]}; questEvent={Condition[ConditionFlag.OccupiedInQuestEvent]}; cutscene={Condition[ConditionFlag.OccupiedInCutSceneEvent]}; betweenAreas={Condition[ConditionFlag.BetweenAreas] || Condition[ConditionFlag.BetweenAreas51]}; dialogs={string.Join(",", new[] { "Talk", "SelectString", "SelectIconString", "SelectYesno", "Shop" }.Where(GameHelpers.IsAddonVisible))}";
+                if (DebugTaskStatus != waiting) SetDebugTaskStatus(waiting);
             }
             return;
         }
@@ -827,15 +961,72 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             }
 
             Action selectedAction = taskId == AutomationCatalog.VerminionQueue ? VerminionService.ResumeTask : row.OnClick;
-            SetDebugTaskStatus(RunDashboardAction(selectedAction)
+#if DEBUG
+            if (taskId == "Run##FishCollection" &&
+                string.Equals(PluginInterface.AssemblyLocation.FullName, ExpectedDebugPluginPath, StringComparison.OrdinalIgnoreCase))
+                selectedAction = () =>
+                {
+                    if (string.Equals(DebugCollectionStopMilestone, "Cleanup", StringComparison.Ordinal))
+                    {
+                        SetDebugTaskStatus($"Skipped: cleanup-only reload for the requested pause; {FishCollection.DebugStopState}.");
+                        return;
+                    }
+                    Configuration.FishCollection.PinnedItemId = DebugCollectionTargetItemId;
+                    Configuration.Save();
+                    FishCollection.Start(DebugCollectionTargetItemId);
+                };
+#endif
+            var dispatched = RunDashboardAction(selectedAction);
+            SetDebugTaskStatus(dispatched
                 ? $"Dispatched: {row.Task}. Check its existing task status for progress."
                 : $"Blocked: {row.Task}. VERMAXION could not pause YesAlready.");
+#if DEBUG
+            if (dispatched && taskId == "Run##FishCollection" && FishCollection.IsActive &&
+                string.Equals(PluginInterface.AssemblyLocation.FullName, ExpectedDebugPluginPath, StringComparison.OrdinalIgnoreCase))
+            {
+                debugCollectionStopArmed = true;
+                debugCollectionStopDeadline = DateTime.UtcNow + DebugCollectionRunLimit;
+                SetDebugTaskStatus(DebugCollectionStopMilestone == "Caught"
+                    ? $"Automatic Stop armed: native target caught; item={DebugCollectionTargetItemId}; ordinary casting continues until credit."
+                    : $"Automatic Stop armed: {DebugCollectionStopMilestone}; bound={DebugCollectionRunLimit.TotalMinutes:g} minutes.");
+            }
+#endif
         }
         catch (Exception ex)
         {
             SetDebugTaskStatus($"Blocked: reload attempt failed. {ex.Message}");
         }
     }
+
+#if DEBUG
+    private void ProcessCollectionDebugStop()
+    {
+        if (debugCollectionStopPending)
+        {
+            if (FishCollection.IsActive || FishingRunLifecycle.IsActive || FishingService.HasPendingCollectionCleanup ||
+                !GameHelpers.IsPlayerAvailable() || Condition[ConditionFlag.BetweenAreas] || Condition[ConditionFlag.BetweenAreas51] ||
+                !VNavmeshIPC.TryGetPathIsRunning(out var running) || running ||
+                !VNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) || pathfinding ||
+                !LifestreamIPC.TryReadBusy(out var busy) || busy) return;
+            debugCollectionStopPending = false;
+            SetDebugTaskStatus("Automatic Stop settled: collection, lifecycle, navigation and travel released; ready for DLL overwrite.");
+            return;
+        }
+        if (!debugCollectionStopArmed) return;
+        if (!FishCollection.IsActive || !FishCollection.Running)
+        {
+            debugCollectionStopArmed = false;
+            debugCollectionStopPending = true;
+            return;
+        }
+        var milestone = FishCollection.DebugStopReady(DebugCollectionStopMilestone);
+        if (!milestone && (DebugCollectionStopMilestone == "Caught" || DateTime.UtcNow < debugCollectionStopDeadline)) return;
+        debugCollectionStopArmed = false;
+        SetDebugTaskStatus($"Automatic Stop requested: {(milestone ? DebugCollectionStopMilestone : "run limit")}; {FishCollection.DebugStopState}.");
+        try { FullStop(); }
+        finally { debugCollectionStopPending = true; }
+    }
+#endif
 
     private void ReleaseDashboardRunYesAlreadyPauseIfIdle()
     {
@@ -1401,6 +1592,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             characterRegistrationCompletedThisLogin = true;
             characterRegistrationWorldReadySince = DateTime.MinValue;
             Log.Information($"[Config] Character registration completed: accountId={ConfigManager.CurrentAccountId}, characterKey='{ConfigManager.CurrentCharacterKey}'");
+            if (Configuration.FishCollection.RemoveFishFromAutoRetainerLists)
+                FishCollection.ProtectAutoRetainerFish();
             var activeConfig = ConfigManager.GetActiveConfig();
             if (activeConfig.VerminionProgress.QuestAcquisition?.Owner == contentId)
                 SkipBeforeArForLogin("Questionable owns the saved minion acquisition; released the unstarted login gate");
@@ -2525,6 +2718,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public void UpdateDtrBar()
     {
         if (dtrEntry == null) return;
+        using var textScope = uiText.Enter();
+        // DTR uses the game renderer; authored Hindi requires the ImGui shaping path.
+        string DtrText(string value) => uiText.Language == "hi" ? value : UiText.T(value);
+        string DtrFormat(string format, params object?[] values) => uiText.Language == "hi"
+            ? string.Format(System.Globalization.CultureInfo.InvariantCulture, format, values) : UiText.F(format, values);
 
         dtrEntry.Shown = Configuration.DtrBarEnabled;
         if (!Configuration.DtrBarEnabled) return;
@@ -2536,7 +2734,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var iconEnabled = string.IsNullOrEmpty(Configuration.DtrIconEnabled) ? "\uE03C" : Configuration.DtrIconEnabled;
         var iconDisabled = string.IsNullOrEmpty(Configuration.DtrIconDisabled) ? "\uE03D" : Configuration.DtrIconDisabled;
         var glyph = isEnabled ? iconEnabled : iconDisabled;
-        var operationalStatus = GetDtrOperationalStatus();
+        var operationalStatus = GetDtrOperationalStatus() is { } status ? DtrText(status) : null;
 
         string statusText;
         string tooltipText;
@@ -2546,33 +2744,33 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             case 1: // icon+text
                 statusText = $"{glyph} VMX";
                 tooltipText = operationalStatus != null
-                    ? $"Vermaxion: {operationalStatus}"
+                    ? DtrFormat("Vermaxion: {0}", operationalStatus)
                     : isEnabled
-                        ? "Vermaxion ready - waiting for AR postprocess"
-                        : "Vermaxion disabled";
+                        ? DtrText("Vermaxion ready - waiting for AR postprocess")
+                        : DtrText("Vermaxion disabled");
                 break;
             case 2: // icon-only
                 statusText = glyph;
                 tooltipText = operationalStatus != null
-                    ? $"Vermaxion: {operationalStatus}"
+                    ? DtrFormat("Vermaxion: {0}", operationalStatus)
                     : isEnabled
-                        ? "Vermaxion ready"
-                        : "Vermaxion disabled";
+                        ? DtrText("Vermaxion ready")
+                        : DtrText("Vermaxion disabled");
                 break;
             default: // text-only
                 if (operationalStatus != null)
                 {
-                    statusText = $"VMX: {operationalStatus}";
+                    statusText = DtrFormat("VMX: {0}", operationalStatus);
                 }
                 else
                 {
-                    statusText = isEnabled ? "VMX: Ready" : "VMX: Off";
+                    statusText = DtrText(isEnabled ? "VMX: Ready" : "VMX: Off");
                 }
                 tooltipText = operationalStatus != null
-                    ? $"Vermaxion: {operationalStatus}"
+                    ? DtrFormat("Vermaxion: {0}", operationalStatus)
                     : isEnabled
-                        ? "Vermaxion ready - waiting for AR postprocess"
-                        : "Vermaxion disabled";
+                        ? DtrText("Vermaxion ready - waiting for AR postprocess")
+                        : DtrText("Vermaxion disabled");
                 break;
         }
 
@@ -2640,6 +2838,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// </summary>
     public void FullStop(bool preparingDebugTask = false)
     {
+#if DEBUG
+        debugCollectionStopArmed = false;
+#endif
         VerminionService.CancelQuestAcquisition();
         pendingDebugDispatchTaskId = null;
         if (pendingDebugTaskId != null)
@@ -2671,7 +2872,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (!FishCollection.IsActive)
             Engine.ForceStop(preserveVerminionResult: preparingDebugTask &&
                 Configuration.DebugTaskId == AutomationCatalog.VerminionQueue);
-        Log.Information("[FULL STOP] Engine force-stopped");
+        Log.Information(FishCollection.IsActive ? "[FULL STOP] Engine cleanup retained by collection" : "[FULL STOP] Engine force-stopped");
 
         MomIPCClient.CancelActiveRun();
         Log.Information("[FULL STOP] mom IPC cancel requested");
@@ -2703,28 +2904,32 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         CurrentJobEquipmentService.Reset();
         AlliedSocietyService.Reset();
         AfterArParkService.Reset();
-        Log.Information("[FULL STOP] All services reset");
+        Log.Information(FishCollection.IsActive ? "[FULL STOP] Other services reset; collection cleanup retained" : "[FULL STOP] All services reset");
 
         // Stop VNavmesh navigation
         if (!FishCollection.IsActive) VNavmeshIPC.Stop();
-        Log.Information("[FULL STOP] VNavmesh stopped");
+        Log.Information(FishCollection.IsActive ? "[FULL STOP] Owned VNavmesh cancellation requested by collection" : "[FULL STOP] VNavmesh stopped");
 
         // Unpause YesAlready
         if (!FishCollection.IsActive) YesAlreadyIPC.Unpause();
         dashboardRunYesAlreadyPauseOwned = false;
-        Log.Information("[FULL STOP] YesAlready unpaused");
+        Log.Information(FishCollection.IsActive ? "[FULL STOP] YesAlready lease retained through collection cleanup" : "[FULL STOP] YesAlready unpaused");
 
-        AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
+        if (!FishCollection.IsActive) AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         releaseOnlyPostprocessFinishPending = false;
         releaseOnlyPostprocessFinishReason = string.Empty;
         beforeArArmedByPostprocess = false;
         ClearBeforeArArmedTracking();
         pendingBeforeArLogin = false;
         SetBeforeArGate(BeforeArGateState.Idle, "Full Stop");
-        Log.Information("[FULL STOP] AutoRetainer suppression released if owned");
+        Log.Information(FishCollection.IsActive ? "[FULL STOP] AutoRetainer suppression retained through collection cleanup" : "[FULL STOP] AutoRetainer suppression released if owned");
 
-        Log.Information("[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
-        ChatGui.Print(VerminionService.HasQuestAcquisition
+        Log.Information(FishCollection.IsActive
+            ? "[FULL STOP] Collection stopped; retaining ownership until external work and cleanup settle"
+            : "[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
+        ChatGui.Print(FishCollection.IsActive
+            ? "[Vermaxion] FULL STOP - Collection stopped; owned external work and cleanup remain pending."
+            : VerminionService.HasQuestAcquisition
             ? "[Vermaxion] FULL STOP - Vermaxion halted. Questionable acquisition cancellation or cleanup remains pending."
             : "[Vermaxion] FULL STOP - All operations halted.");
     }
@@ -3001,5 +3206,72 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             return FishingLiveFisherLevelSnapshot.Unavailable(
                 "Native PlayerState Fisher-level read failed.");
         }
+    }
+
+    internal void ApplyWindowOpacity(AethertekUI.MaterialWindowOpacity opacity, string windowName)
+    {
+        var config = Configuration;
+        opacity.Apply(windowName, config.UiWindowOpacityPercent / 100f, config.UiTransparencyEnabled,
+            config.UiAutoFade, config.UiFadedOpacityPercent / 100f, config.UiUnfocusedDelaySeconds);
+    }
+
+    internal void DrawTransparencyToggle()
+    {
+        var enabled = Configuration.UiTransparencyEnabled;
+        if (UiGui.Checkbox("Transparency" + "###window-transparency-main", ref enabled))
+        { Configuration.UiTransparencyEnabled = enabled; Configuration.Save(); }
+    }
+
+    internal void DrawWindowSettings()
+    {
+        var config = Configuration;
+        var changed = false;
+        var compact = config.CompactUi;
+        if (UiGui.Checkbox("Compact mode" + "###window-compact-settings", ref compact))
+        { config.CompactUi = compact; changed = true; }
+        var compactVisible = config.UiCompactVisibleOnMainWindow;
+        if (UiGui.Checkbox("Compact visible on main window" + "###window-compact-visible", ref compactVisible))
+        { config.UiCompactVisibleOnMainWindow = compactVisible; changed = true; }
+        var languageVisible = config.UiLanguageVisibleOnMainWindow;
+        if (UiGui.Checkbox("Language visible on main window" + "###window-language-visible", ref languageVisible))
+        { config.UiLanguageVisibleOnMainWindow = languageVisible; changed = true; }
+        var enabled = config.UiTransparencyEnabled;
+        if (UiGui.Checkbox("Transparency" + "###window-transparency", ref enabled))
+        { config.UiTransparencyEnabled = enabled; changed = true; }
+        ImGui.BeginDisabled(!config.UiTransparencyEnabled);
+        try
+        {
+        ImGui.SetNextItemWidth(96 * AethertekUI.MaterialTheme.Metrics.Scale);
+        var normal = config.UiWindowOpacityPercent;
+        if (UiGui.AppearanceInputInt("Opacity (%)" + "###window-opacity", ref normal))
+        { config.UiWindowOpacityPercent = normal; changed = true; }
+        var autoFade = config.UiAutoFade;
+        if (UiGui.Checkbox("Auto-fade when unfocused" + "###window-auto-fade", ref autoFade))
+        { config.UiAutoFade = autoFade; changed = true; }
+        ImGui.BeginDisabled(!config.UiAutoFade);
+        try
+        {
+        ImGui.SetNextItemWidth(96 * AethertekUI.MaterialTheme.Metrics.Scale);
+        var faded = config.UiFadedOpacityPercent;
+        if (UiGui.AppearanceInputInt("Unfocused opacity (%)" + "###window-faded-opacity", ref faded))
+        { config.UiFadedOpacityPercent = faded; changed = true; }
+        ImGui.SetNextItemWidth(96 * AethertekUI.MaterialTheme.Metrics.Scale);
+        var delay = config.UiUnfocusedDelaySeconds;
+        if (UiGui.AppearanceInputInt("Unfocused delay (seconds)" + "###window-unfocused-delay", ref delay))
+        { config.UiUnfocusedDelaySeconds = delay; changed = true; }
+        }
+        finally { ImGui.EndDisabled(); }
+        }
+        finally { ImGui.EndDisabled(); }
+        if (changed) Configuration.Save();
+    }
+
+    internal void DrawLanguageSelector()
+    {
+        var language = appliedLanguage;
+        using var controls = MaterialControls.Push(VermaxionPresentation.Controls(28,18));
+        if (!MaterialAppearanceSelector.DrawLanguage("appearance", ref language, languageOptions, 140)) return;
+        Configuration.UiLanguage = language;
+        Configuration.Save();
     }
 }

@@ -294,6 +294,31 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         return false;
     }
 
+    internal AutoRetainerFishProtectionResult RemoveCollectionFishFromInventoryLists(IReadOnlySet<uint> fishIds)
+    {
+        try
+        {
+            if (!TryGetLoadedAutoRetainer(out var plugin, out var error) ||
+                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+                return new(false, Error: error);
+            const BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+            // Use AR's own ECommons copy, bound to this exact config. OfflineDataManager can skip
+            // saving for blacklisted characters and would also refresh unrelated character data.
+            var nativeConfig = AssemblyLoadContext.GetLoadContext(plugin.GetType().Assembly)?.Assemblies
+                .FirstOrDefault(assembly => assembly.GetName().Name == "ECommons")?
+                .GetType("ECommons.Configuration.EzConfig");
+            var save = nativeConfig?.GetMethod("Save", flags, null, Type.EmptyTypes, null);
+            if (save == null || !ReferenceEquals(nativeConfig?.GetProperty("Config", flags)?.GetValue(null), config))
+                return new(false, Error: "AutoRetainer's native save method was not available.");
+            return AutoRetainerFishProtectionReflection.Remove(config, fishIds,
+                () => save.Invoke(null, null));
+        }
+        catch (Exception ex)
+        {
+            return new(false, Error: ex.GetBaseException().Message);
+        }
+    }
+
     private static object? ReadDictionaryValue(object owner, string memberName, object key)
     {
         var dictionary = ReadMember(owner, memberName) as IDictionary;

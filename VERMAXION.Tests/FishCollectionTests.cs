@@ -10,6 +10,22 @@ namespace VERMAXION.Tests;
 
 public sealed class FishCollectionTests
 {
+    [Theory]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, false)]
+    public void PreparationAndStopReturnOnlyAfterMovementWhileCollectionContinues(bool running, bool moved, bool returns)
+    {
+        Assert.Equal(returns, FishCollectionPolicy.ShouldReturn(running, moved));
+        var now = DateTimeOffset.UtcNow;
+        var failed = new FishAssignment("current", new(new() { ItemId = 7688 }, now, now.AddHours(1), TimeSpan.FromDays(10)));
+        var next = new FishAssignment("current", new(new() { ItemId = 2 }, now, now.AddHours(1), TimeSpan.FromDays(1)));
+        var candidates = new[] { failed, next };
+        Assert.Same(failed, FishCollectionPolicy.Choose(candidates, 7688, "current", now));
+        Assert.Same(next, FishCollectionPolicy.Choose(candidates.Where(a => a.Opportunity.Key != failed.Opportunity.Key), 7688, "current", now));
+    }
+
     [Fact]
     public void AllOverworldTargetsForecastUsingTheirBundledWeatherAndPredatorMappings()
     {
@@ -26,6 +42,7 @@ public sealed class FishCollectionTests
         var catalog = FishCollectionCatalog.Load();
         Assert.Equal(335, catalog.Targets.Count(f => !f.Ocean));
         Assert.Equal(13, catalog.Targets.Count(f => f.Ocean));
+        Assert.Equal(new uint[] { 7688, 7689, 7695, 7696, 7701, 7714, 7944 }, catalog.Targets.Where(f => f.Tested).Select(f => f.ItemId));
         Assert.Equal(301, catalog.Targets.Where(f => !f.Ocean).Select(f => f.SpotId).Distinct().Count());
         Assert.Equal(catalog.Fish.Length, catalog.Fish.Select(f => f.ItemId).Distinct().Count());
         Assert.All(catalog.Targets.Where(f => !f.Ocean), fish =>

@@ -1,4 +1,5 @@
 using System;
+using AethertekUI;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace VERMAXION.Windows;
 
 public class MainWindow : Window, IDisposable
 {
+    private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private static readonly string[] TaskDependencyInternalNames =
     [
         "XADatabase",
@@ -57,6 +59,7 @@ public class MainWindow : Window, IDisposable
     ];
 
     private readonly Plugin plugin;
+    private static readonly string CurrentVersion=typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
     private string taskSearch = string.Empty;
     private string taskView = "Overview";
     private ulong customDeliveryAutoShowContentId;
@@ -66,7 +69,7 @@ public class MainWindow : Window, IDisposable
     public MainWindow(Plugin plugin)
         : base(
             "Vermaxion##Main",
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+            ImGuiWindowFlags.None)
     {
         this.plugin = plugin;
         SizeConstraints = new WindowSizeConstraints
@@ -78,8 +81,16 @@ public class MainWindow : Window, IDisposable
 
     public void Dispose() { }
 
-    public override void PreDraw() => UIConstants.PushStyle(plugin.Configuration.CompactUi);
-    public override void PostDraw() => UIConstants.PopStyle();
+    public override void PreDraw()
+    {
+        UIConstants.PushStyle(plugin.Configuration.CompactUi);
+        motion.Prepare(this, reducedMotion: false, roundedCorners: true);
+    }
+    public override void PostDraw()
+    {
+        motion.Restore(this);
+        UIConstants.PopStyle();
+    }
 
     internal void UpdateCustomDeliveryVisibility()
     {
@@ -102,18 +113,56 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
+        motion.DrawChrome();
+        UiGui.Title("Vermaxion", UiText.T("Vermaxion")+" "+CurrentVersion);
         var config = plugin.ConfigManager.GetActiveConfig();
         var engine = plugin.Engine;
         var charKey = plugin.ConfigManager.CurrentCharacterKey;
-        var displayName = string.IsNullOrEmpty(charKey) ? "(Default)" : charKey;
+        var displayName = string.IsNullOrEmpty(charKey) ? UiText.T("(Default)") : charKey;
 
-        UIConstants.ApplicationHeading(taskView);
-        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.8.0.1";
-        UIConstants.WrappedText(UIConstants.Metadata, $"v{version}");
+        var compact = plugin.Configuration.CompactUi;
+        var scale = UIConstants.Scale;
+        var headerStart = ImGui.GetCursorScreenPos();
+        var markSize = (compact ? new Vector2(58, 49) : new Vector2(46, 39)) * scale;
+        VermaxionPresentation.Logo(headerStart + new Vector2(2, 2) * scale, markSize);
+        using (UiText.Font(compact ? UiFontRole.CompactTitle : UiFontRole.Title))
+        {
+            var callerScale = ImGuiP.GetCurrentWindow().FontWindowScale;
+            try
+            {
+                ImGui.SetWindowFontScale(callerScale * (compact ? 1.56f : .86f));
+                var titleOffset = 0f;
+                unsafe
+                {
+                    var font = ImGui.GetFont(); var fontScale = ImGui.GetFontSize() / font.FontSize;
+                    var top = float.MaxValue; var bottom = float.MinValue;
+                    foreach (var character in "VERMAXION")
+                    {
+                        var glyph = ImGui.FindGlyphNoFallback(font, character);
+                        if (glyph.Handle == null) continue;
+                        top = MathF.Min(top, glyph.Handle->Y0 * fontScale); bottom = MathF.Max(bottom, glyph.Handle->Y1 * fontScale);
+                    }
+                    if (top <= bottom) titleOffset = (markSize.Y + 4 * scale - (bottom - top)) * .5f - top;
+                }
+                ImGui.SetCursorScreenPos(headerStart + new Vector2(markSize.X + (compact ? 14 : 18) * scale, titleOffset));
+                UiGui.TextUnformatted("VERMAXION");
+            }
+            finally { ImGui.SetWindowFontScale(callerScale); }
+        }
+        if (plugin.Configuration.UiCompactVisibleOnMainWindow)
+        {
+            UIConstants.SameLineIfFits("C");
+            if (UiGui.Checkbox("C", ref compact))
+            { plugin.Configuration.CompactUi = compact; plugin.Configuration.Save(); }
+            if (ImGui.IsItemHovered()) UiGui.SetTooltip("Compact mode");
+        }
+        if (plugin.Configuration.UiLanguageVisibleOnMainWindow)
+        { UIConstants.SameLineIfFits("Language", 180 * scale); plugin.DrawLanguageSelector(); }
+        UIConstants.SameLineIfFits("Transparency"); plugin.DrawTransparencyToggle();
 
         // Ko-fi donation button in upper right
         UIConstants.SameLineIfFits("\u2661 Ko-fi \u2661");
-        if (ImGui.SmallButton("\u2661 Ko-fi \u2661"))
+        if (UiGui.SmallButton("\u2661 Ko-fi \u2661"))
         {
             System.Diagnostics.Process.Start(new ProcessStartInfo
             {
@@ -123,7 +172,7 @@ public class MainWindow : Window, IDisposable
         }
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Support development on Ko-fi");
+            UiGui.SetTooltip("Support development on Ko-fi");
         }
         ImGui.Separator();
 
@@ -131,76 +180,127 @@ public class MainWindow : Window, IDisposable
             displayName = KrangleService.KrangleName(charKey);
 
         var account = plugin.ConfigManager.GetCurrentAccount();
-        var wideHeader = ImGui.GetContentRegionAvail().X >= 760f * UIConstants.Scale;
-        if (wideHeader && ImGui.BeginTable("DashboardHeader", 2, ImGuiTableFlags.NoSavedSettings))
+        var wideHeader = ImGui.GetContentRegionAvail().X >= 740 * scale;
+        var lineHeight = ImGui.GetTextLineHeight();
+        var lineGap = ImGui.GetStyle().ItemSpacing.Y;
+        var rowPadding = ImGui.GetStyle().CellPadding.Y * 2;
+        var runtimeHeight = MathF.Ceiling(lineHeight * 3 + lineGap * 2 + rowPadding) + scale;
+        var switchHeight = MathF.Ceiling(lineHeight + lineGap + 26 * scale + rowPadding) + scale;
+        var statusHeight = wideHeader ? Math.Max((compact ? 64 : VermaxionPresentation.MainStatus) * scale, Math.Max(runtimeHeight, switchHeight)) : 0;
+        var statusStart = ImGui.GetCursorScreenPos();
+        var statusWidth = ImGui.GetContentRegionAvail().X;
+        var statusDraw = ImGui.GetWindowDrawList();
+        var headerId = ImGui.GetID("DashboardHeader");
+        var scopeBottom = statusStart.Y;
+        var headerFlags = ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchSame | ImGuiTableFlags.BordersInnerV;
+        statusDraw.ChannelsSplit(2);
+        statusDraw.ChannelsSetCurrent(1);
+        try
         {
-            ImGui.TableSetupColumn("Scope", ImGuiTableColumnFlags.WidthStretch, 1f);
-            ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthFixed, 380f * UIConstants.Scale);
-            ImGui.TableNextRow(); ImGui.TableNextColumn();
-            DrawScope();
-            ImGui.TableNextColumn();
-            DrawControls();
-            ImGui.EndTable();
-        }
-        else { DrawScope(); DrawControls(); }
-
-        void DrawScope()
-        {
-            ImGui.TextWrapped($"Account: {(string.IsNullOrWhiteSpace(account?.AccountAlias) ? "No account selected" : account.AccountAlias)}");
-            ImGui.TextWrapped($"Current: {displayName}");
-            var enabled = plugin.Configuration.Enabled;
-            if (UIConstants.Checkbox("Enabled", ref enabled))
+            if (ImGui.BeginTable("DashboardHeader", wideHeader ? 5 : 2, headerFlags))
             {
-                if (!enabled)
-                    plugin.PauseCurrentTargetCycleBestEffort("VERMAXION global automation disabled");
-                plugin.Configuration.Enabled = enabled;
-                plugin.Configuration.Save();
+                headerId = ImGui.GetID("");
+                ImGui.TableNextRow();
+                DrawHeaderScope();
+                if (wideHeader) DrawHeaderControls();
+                var table = ImGuiP.GetCurrentTable();
+                ImGuiP.TableEndRow(table);
+                scopeBottom = table.RowPosY2;
+                statusHeight = Math.Max(statusHeight, MathF.Ceiling(scopeBottom - statusStart.Y));
+                ImGui.EndTable();
             }
-            UIConstants.SameLineIfFits(UIConstants.ConfigLabels.KrangleNames);
+            if (!wideHeader && ImGui.BeginTable("DashboardHeaderControls", 3, headerFlags))
+            {
+                ImGuiP.PushOverrideID(headerId);
+                try
+                {
+                    ImGui.TableNextRow();
+                    DrawHeaderControls();
+                }
+                finally { ImGui.PopID(); }
+                var table = ImGuiP.GetCurrentTable();
+                ImGuiP.TableEndRow(table);
+                statusHeight = Math.Max(statusHeight, MathF.Ceiling(table.RowPosY2 - statusStart.Y));
+                ImGui.EndTable();
+            }
+            statusDraw.ChannelsSetCurrent(0);
+            VermaxionPresentation.Surface(statusStart, statusStart + new Vector2(statusWidth, statusHeight));
+            if (!wideHeader)
+                statusDraw.AddLine(new Vector2(statusStart.X + 8 * scale, scopeBottom + lineGap * .5f),
+                    new Vector2(statusStart.X + statusWidth - 8 * scale, scopeBottom + lineGap * .5f), ImGui.GetColorU32(UIConstants.Border));
+        }
+        finally
+        {
+            statusDraw.ChannelsSetCurrent(1);
+            statusDraw.ChannelsMerge();
+        }
+        ImGui.SetCursorScreenPos(new Vector2(statusStart.X, Math.Max(ImGui.GetCursorScreenPos().Y, statusStart.Y + statusHeight)));
+        ImGui.Dummy(new Vector2(0, (compact ? 8 : 12) * scale));
+        DrawControls();
+        var watchFishingWindows=plugin.Configuration.OceanFishingWindowWatchEnabled;
+        if(UIConstants.Checkbox("Watch Ocean Fishing windows",ref watchFishingWindows))
+        {
+            plugin.Configuration.OceanFishingWindowWatchEnabled=watchFishingWindows;
+            plugin.Configuration.Save();
+        }
+        if(ImGui.IsItemHovered()) UiGui.SetTooltip("Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings.");
+
+        void DrawHeaderScope()
+        {
+            ImGui.TableNextColumn(); UiGui.TextDisabled("Account");
+            MaterialText.Text(string.IsNullOrWhiteSpace(account?.AccountAlias) ? UiText.T("No account selected") : account.AccountAlias);
+            ImGui.TableNextColumn(); UiGui.TextDisabled("Current Character"); MaterialText.Text(displayName);
+        }
+
+        void DrawHeaderControls()
+        {
+            ImGui.TableNextColumn(); UiGui.TextDisabled("Enabled");
+            var enabled = plugin.Configuration.Enabled;
+            if (UiGui.NativeSwitch("Enabled", ref enabled))
+            {
+                if (!enabled) plugin.PauseCurrentTargetCycleBestEffort("VERMAXION global automation disabled");
+                plugin.Configuration.Enabled = enabled; plugin.Configuration.Save();
+            }
+            ImGui.TableNextColumn(); UiGui.TextDisabled("Krangle names");
             var krangleEnabled = plugin.Configuration.KrangleEnabled;
-            if (UIConstants.Checkbox(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
+            if (UiGui.NativeSwitch(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
             {
                 plugin.Configuration.KrangleEnabled = krangleEnabled;
                 if (!krangleEnabled) KrangleService.ClearCache();
                 plugin.Configuration.Save();
             }
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
+            if (ImGui.IsItemHovered()) UiGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
+            ImGui.TableNextColumn(); UiGui.TextDisabled("Runtime");
+            UiGui.TextColored(engine.RegistryReady ? UIConstants.Mint : UIConstants.Amber,
+                engine.RegistryReady ? UiText.F("Ready / {0}", UiText.T(engine.State.ToString())) : "Blocked");
+            UiGui.TextDisabled(UiText.F("{0} pending", engine.GetPendingTaskCount()));
+            if (ImGui.IsItemHovered()) UiGui.SetTooltip(string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker)));
         }
+
         void DrawControls()
         {
-            UIConstants.WrappedText(engine.RegistryReady ? UIConstants.Mint : UIConstants.Amber,
-                engine.RegistryReady ? "Ready" : "Blocked");
-            // Engine Status
-            var stateColor = engine.State switch
-            {
-                VermaxionEngine.EngineState.Idle => UIConstants.Metadata,
-                VermaxionEngine.EngineState.Complete => UIConstants.Text,
-                VermaxionEngine.EngineState.Error => UIConstants.Amber,
-                _ => UIConstants.Blue,
-            };
-
-            var pendingTasks = engine.GetPendingTaskCount();
-            var readinessText = engine.StatusText;
-            if (pendingTasks > 0)
-                readinessText += $" · {pendingTasks} pending";
-            if (!engine.RegistryReady)
-                readinessText += $"\nConfigured but not dispatchable: {engine.RegistryDiagnostic}";
-            if (!string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker))
-                readinessText += $"\nBlocked handoff: {engine.ActiveHandoffBlocker}";
-
-            UIConstants.Status("RuntimeDiagnostics", readinessText,
-                !engine.RegistryReady || !string.IsNullOrWhiteSpace(engine.ActiveHandoffBlocker) ? UIConstants.Amber : stateColor);
+            using var actionFont = UiText.Font(UiFontRole.Action);
             if (!engine.RegistryReady && UIConstants.Button("Open Task Order"))
                 plugin.ConfigWindow.OpenTaskOrder();
 
             // Control buttons row
             // FULL STOP stays above task scrolling, with an explicit border in every state.
-            if (UIConstants.FullStopButton()) plugin.FullStop();
-            UIConstants.SameLineIfFits("Run All");
+            var actionHeight = (compact ? 40 : VermaxionPresentation.MainAction) * scale;
+            var available = ImGui.GetContentRegionAvail().X;
+            var gap = ImGui.GetStyle().ItemSpacing.X;
+            var previousWidth = Math.Max(140 * scale, MathF.Floor((available - 4 * gap) / 5));
+            var labels = new[] { "FULL STOP", "Run All", "Settings", "Verminion", "Fish collection" };
+            var minimums = labels.Select(label => Math.Max(140 * scale, UIConstants.ButtonWidth(label) + 28 * scale)).ToArray();
+            var wideActions = minimums.Sum() + 4 * gap <= available;
+            var extra = wideActions ? (available - minimums.Sum() - 4 * gap) / 5 : 0;
+            var primaryExtra = wideActions ? extra : Math.Max(0, (available - minimums[0] - minimums[1] - gap) / 2);
+            var navigationExtra = wideActions ? extra : Math.Max(0, (available - minimums.Skip(2).Sum() - 2 * gap) / 3);
+            var widths = minimums.Select((minimum, index) => MathF.Floor(minimum + (index < 2 ? primaryExtra : navigationExtra))).ToArray();
+            if (UIConstants.FullStopButton(new Vector2(widths[0], actionHeight), previousWidth)) plugin.FullStop();
+            UIConstants.SameLineIfFits("Run All", widths[1]);
 
             ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
-            if (UIConstants.Button("Run All"))
+            if (UIConstants.Button("Run All", new Vector2(widths[1], actionHeight), true, previousWidth))
                 plugin.RunDashboardAction(() => engine.ManualStart());
             ImGui.EndDisabled();
             if (engine.IsRunning)
@@ -209,16 +309,17 @@ public class MainWindow : Window, IDisposable
                 if (UIConstants.Button("Cancel"))
                     engine.Cancel();
             }
-            UIConstants.SameLineIfFits("Settings");
-            if (UIConstants.Button("Settings"))
+            if (wideActions) UIConstants.SameLineIfFits("Settings", widths[2]);
+            if (UIConstants.Button("Settings", new Vector2(widths[2], actionHeight), true, previousWidth))
                 plugin.ToggleConfigUi();
-            if (UIConstants.Button("Verminion"))
+            UIConstants.SameLineIfFits("Verminion", widths[3]);
+            if (UIConstants.Button("Verminion", new Vector2(widths[3], actionHeight), true, previousWidth))
                 plugin.VerminionWindow.IsOpen = true;
-            UIConstants.SameLineIfFits("Fish collection");
-            if (UIConstants.Button("Fish collection"))
+            UIConstants.SameLineIfFits("Fish collection", widths[4]);
+            if (UIConstants.Button("Fish collection", new Vector2(widths[4], actionHeight), true, previousWidth))
                 plugin.FishCollectionWindow.IsOpen = true;
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Open big and fabled fish collection.");
+                UiGui.SetTooltip("Open big and fabled fish collection.");
         }
 
         void DrawTaskSurface(bool favoritesOnly, bool attentionOnly = false)
@@ -229,6 +330,7 @@ public class MainWindow : Window, IDisposable
                     (!favoritesOnly || row.Feature != null && IsFavorite(row.Feature.Id)) &&
                     (!attentionOnly || row.Feature != null && row.Section is AutomationDashboardSection.DueNow or AutomationDashboardSection.Blocked) &&
                     (search.Length == 0 ||
+                     UiText.T(row.Task).Contains(search, StringComparison.OrdinalIgnoreCase) ||
                      row.Task.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                      row.Feature?.Label.Contains(search, StringComparison.OrdinalIgnoreCase) == true ||
                      row.Dependencies.Any(name => name.Contains(search, StringComparison.OrdinalIgnoreCase))))
@@ -244,7 +346,7 @@ public class MainWindow : Window, IDisposable
         {
             // Test Functions
             ImGui.BeginDisabled(plugin.DadHandoffBlocksNewWork);
-            ImGui.Text("Test Functions");
+            UiGui.Text("Test Functions");
             ImGui.Separator();
 
             var fishingTestDisabled = engine.IsRunning ||
@@ -267,7 +369,7 @@ public class MainWindow : Window, IDisposable
                 plugin.GoToMainMenu();
             ImGui.EndDisabled();
             if (!canGoToMainMenu && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip(goToMainMenuBlockedReason);
+                UiGui.SetTooltip(goToMainMenuBlockedReason);
 
             var canWaitForOceanFishing = plugin.CanStartMainMenuTest(
                 waitForOceanFishing: true,
@@ -278,7 +380,7 @@ public class MainWindow : Window, IDisposable
                 plugin.GoToMainMenuAndWaitForOceanFishing();
             ImGui.EndDisabled();
             if (!canWaitForOceanFishing && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip(waitForOceanFishingBlockedReason);
+                UiGui.SetTooltip(waitForOceanFishingBlockedReason);
 
             if (UIConstants.Button("Check FC Buff Inventory"))
             {
@@ -328,12 +430,12 @@ public class MainWindow : Window, IDisposable
                 plugin.ChocoboRaceService.RequestGoldSaucerRankTest();
             }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Opens /goldsaucer and reads GoldSaucerInfo node 21, the fallback used when RaceChocoboManager is not loaded.");
-            ImGui.TextDisabled($"Chocobo rank test: {plugin.ChocoboRaceService.GoldSaucerRankTestStatus}");
+                UiGui.SetTooltip("Opens /goldsaucer and reads GoldSaucerInfo node 21, the fallback used when RaceChocoboManager is not loaded.");
+            UiGui.TextDisabled(UiText.F($"Chocobo rank test: {plugin.ChocoboRaceService.GoldSaucerRankTestStatus}"));
 
             // BUTTON PRESSES
             ImGui.Spacing();
-            ImGui.Text("Button Presses");
+            UiGui.Text("Button Presses");
             ImGui.Separator();
 
             if (UIConstants.Button("[ESC]"))
@@ -359,7 +461,7 @@ public class MainWindow : Window, IDisposable
         }
 
         if (visibleRows.Count == 0)
-            ImGui.TextWrapped(search.Length > 0
+            UiGui.TextWrapped(search.Length > 0
                 ? "No tasks match this search in the selected view. Clear the search or open All Tasks."
                 : favoritesOnly
                     ? "No favorite tasks yet. Open All Tasks and select the star beside any automation to add it here."
@@ -376,7 +478,10 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.Separator();
-        if (ImGui.BeginTabBar("MainTaskTabs"))
+        bool tabsOpen;
+        using (MaterialText.PushLineHeight(new[] { "Overview", "All Tasks", "Favorites" }.Select(UiText.T).ToArray()))
+            tabsOpen = ImGui.BeginTabBar("MainTaskTabs", ImGuiTabBarFlags.FittingPolicyScroll);
+        if (tabsOpen)
         {
             DrawTaskTab("Overview", false, true);
             DrawTaskTab("All Tasks", false, false);
@@ -386,16 +491,17 @@ public class MainWindow : Window, IDisposable
 
         void DrawTaskTab(string label, bool favoritesOnly, bool attentionOnly)
         {
-            if (ImGui.BeginTabItem(label))
+            if (UiGui.BeginTabItem(label))
             {
                 taskView = label;
                 UIConstants.SetNextItemWidth(-1f);
-                ImGui.InputTextWithHint("##TaskSearch", "Find a task or required plugin...", ref taskSearch, 100);
+                UiGui.SearchInputTextWithHint("##TaskSearch", "Find a task or required plugin...", ref taskSearch, 100);
                 if (taskSearch.Length > 0 && UIConstants.Button("Clear search")) taskSearch = string.Empty;
-                if (ImGui.BeginChild("TaskBody##" + label, new Vector2(0, 0), false))
+                var taskHeight = Math.Max(ImGui.GetTextLineHeightWithSpacing() * 6, ImGui.GetContentRegionAvail().Y);
+                if (ImGui.BeginChild("TaskBody##" + label, new Vector2(0, taskHeight), false))
                 {
                     if (attentionOnly)
-                        ImGui.TextWrapped("Due now and blocked tasks. Browse All Tasks for scheduled tasks and manual utilities.");
+                        UiGui.TextWrapped("Due now and blocked tasks. Browse All Tasks for scheduled tasks and manual utilities.");
                     DrawTaskSurface(favoritesOnly, attentionOnly);
                 }
                 ImGui.EndChild();
@@ -409,27 +515,27 @@ public class MainWindow : Window, IDisposable
 
             if (UIConstants.CollapsingHeading("Advanced diagnostics"))
             {
-                var lastRunTime = engine.LastRunCompletedAtUtc?.ToLocalTime().ToString("g") ?? "never";
-                ImGui.TextWrapped($"Last run: {engine.LastRunOutcome} at {lastRunTime} - {engine.LastRunSummary}");
-                ImGui.TextWrapped($"Before-AR gate: {plugin.BeforeArGate} - {plugin.BeforeArStatusText}");
-                ImGui.TextWrapped($"AR suppression: {plugin.AutoRetainerIPC.LastSnapshot}");
+                var lastRunTime = engine.LastRunCompletedAtUtc?.ToLocalTime().ToString("g", UiText.Current.Culture) ?? UiText.T("Never");
+                UiGui.TextWrapped(UiText.F("Last run: {0} at {1} - {2}", UiText.T(engine.LastRunOutcome.ToString()), lastRunTime, UiText.T(engine.LastRunSummary)));
+                UiGui.TextWrapped(UiText.F("Before-AR gate: {0} - {1}", UiText.T(plugin.BeforeArGate.ToString()), UiText.T(plugin.BeforeArStatusText)));
+                UiGui.TextWrapped(UiText.F($"AR suppression: {plugin.AutoRetainerIPC.LastSnapshot}"));
 
                 var characterSelectRecovery = plugin.CharacterSelectStallRecovery;
                 var characterSelectEligibility = characterSelectRecovery.GetEligibility(
                     plugin.Configuration.EnableCharacterSelectStallRecovery);
-                ImGui.TextWrapped(
-                    $"Character-select recovery: {(plugin.Configuration.EnableCharacterSelectStallRecovery ? "On" : "Off")} - {characterSelectRecovery.StatusText}");
+                UiGui.TextWrapped(
+                    UiText.F($"Character-select recovery: {UiText.T(plugin.Configuration.EnableCharacterSelectStallRecovery ? "On" : "Off")} - {UiText.T(characterSelectRecovery.StatusText)}"));
                 var characterSelectBlockedReason = characterSelectEligibility.CanAttempt
                     ? characterSelectRecovery.LastBlockedReason
                     : characterSelectEligibility.Reason;
                 if (!string.IsNullOrWhiteSpace(characterSelectBlockedReason))
-                    ImGui.TextWrapped($"Character-select recovery blocker: {characterSelectBlockedReason}");
+                    UiGui.TextWrapped(UiText.F("Character-select recovery blocker: {0}", UiText.T(characterSelectBlockedReason)));
                 ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt);
                 if (UIConstants.Button("Load first character now"))
                     plugin.QueueCharacterSelectRecoveryAttempt();
                 ImGui.EndDisabled();
                 if (!characterSelectEligibility.CanAttempt && ImGui.IsItemHovered())
-                    ImGui.SetTooltip(characterSelectEligibility.Reason);
+                    UiGui.SetTooltip(characterSelectEligibility.Reason);
 
                 var now = DateTime.UtcNow;
                 var nextDaily = ResetDetectionService.GetLastDailyReset(now).AddDays(1);
@@ -440,13 +546,13 @@ public class MainWindow : Window, IDisposable
                 var untilFriday = nextFriday - now;
                 var nextJumboPayout = ResetDetectionService.GetNextJumboCactpotPayoutAvailability(now);
                 var untilJumboPayout = nextJumboPayout - now;
-                ImGui.TextWrapped($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m | Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m | Fashion: {untilFriday.Days}d {untilFriday.Hours}h {untilFriday.Minutes}m | Jumbo payout: {untilJumboPayout.Days}d {untilJumboPayout.Hours}h {untilJumboPayout.Minutes}m");
+                UiGui.TextWrapped(UiText.F($"Daily: {untilDaily.Hours}h {untilDaily.Minutes}m | Weekly: {untilWeekly.Days}d {untilWeekly.Hours}h {untilWeekly.Minutes}m | Fashion: {untilFriday.Days}d {untilFriday.Hours}h {untilFriday.Minutes}m | Jumbo payout: {untilJumboPayout.Days}d {untilJumboPayout.Hours}h {untilJumboPayout.Minutes}m"));
 
-                var arStatus = plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting";
+                var arStatus = UiText.T(plugin.ARPostProcessService.IsProcessing ? "Processing" : "Waiting");
                 var momIpcStatus = plugin.MomIPCClient.GetReadiness();
-                ImGui.TextWrapped($"AR PostProcess: {arStatus} | {now.DayOfWeek}");
-                ImGui.TextWrapped($"mom IPC: {momIpcStatus.Summary} | nag your mom: {engine.NagYourMomStatusText}");
-                ImGui.TextWrapped($"dad IPC: {(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")} | nag your dad: {engine.NagYourDadStatusText}");
+                UiGui.TextWrapped(UiText.F($"AR PostProcess: {arStatus} | {now.ToString("dddd", UiText.Current.Culture)}"));
+                UiGui.TextWrapped(UiText.F($"mom IPC: {UiText.T(momIpcStatus.Summary)} | nag your mom: {UiText.T(engine.NagYourMomStatusText)}"));
+                UiGui.TextWrapped(UiText.F($"dad IPC: {UiText.T(plugin.DadIPCClient.IsReady() ? "Ready" : "Unavailable")} | nag your dad: {UiText.T(engine.NagYourDadStatusText)}"));
             }
         }
     }
@@ -674,6 +780,11 @@ public class MainWindow : Window, IDisposable
             }, "WIP");
 
         // --- Utility Tasks ---
+        var collectionBlocker = plugin.FishCollection.GetStartBlockedReason();
+        AddTaskRow("Fish collection", true, plugin.FishCollection.Status,
+            "Run##FishCollection", () => plugin.FishCollection.Start(), "OK",
+            buttonDisabled: collectionBlocker != null,
+            buttonTooltip: collectionBlocker);
         AddTaskRow("Highest Combat Job", config.EnableHighestCombatJob, AutomationCatalog.Get(AutomationCatalog.HighestCombatJob).CadenceLabel,
             "Run##Highest", () => plugin.HighestCombatJobService.RunTask(), "OK");
         AddTaskRow("Current Job Equipment", config.EnableCurrentJobEquipment, AutomationCatalog.Get(AutomationCatalog.CurrentJobEquipment).CadenceLabel,
@@ -904,34 +1015,66 @@ public class MainWindow : Window, IDisposable
         IReadOnlySet<string> loadedPluginInternalNames,
         string view)
     {
-        if (favoritesOnly)
-            DrawGroup("Favorites", "Favorites", rows);
-        else
+        var scale = UIConstants.Scale;
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(ImGui.GetStyle().FramePadding.X, scale));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(ImGui.GetStyle().ItemSpacing.X, (UIConstants.Compact ? 2 : 4) * scale));
+        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, new Vector2(ImGui.GetStyle().CellPadding.X, (UIConstants.Compact ? 2 : 3) * scale));
+        try
         {
-            foreach (var section in Enum.GetValues<AutomationDashboardSection>())
-                DrawGroup(section.ToString(), AutomationDashboardPolicy.GetStateLabel(section),
-                    rows.Where(row => row.Feature != null && row.Section == section).ToList());
-            DrawGroup("Manual", "Manual utilities", rows.Where(row => row.Feature == null).ToList());
+            if (plugin.Configuration.AutoWidthMainTaskColumns && ImGui.BeginTable("TaskHeadings", 3,
+                ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingStretchProp))
+            {
+                ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch, 1f);
+                ImGui.TableSetupColumn("State & dependencies", ImGuiTableColumnFlags.WidthStretch, 1f);
+                ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, 180f * scale);
+                ImGui.TableNextRow(ImGuiTableRowFlags.Headers);
+                for (var column = 0; column < 3; column++)
+                    if (ImGui.TableSetColumnIndex(column))
+                        UIConstants.WrappedText(UIConstants.Text, ImGui.TableGetColumnName(column));
+                ImGui.EndTable();
+            }
+            if (favoritesOnly)
+                DrawGroup("Favorites", "Favorites", rows);
+            else
+            {
+                if (view == "Overview" || !plugin.Configuration.AutoWidthMainTaskColumns)
+                {
+                    foreach (var section in Enum.GetValues<AutomationDashboardSection>())
+                        DrawGroup(section.ToString(), AutomationDashboardPolicy.GetStateLabel(section),
+                            rows.Where(row => row.Feature != null && row.Section == section).ToList());
+                    DrawGroup("Manual", "Manual utilities", rows.Where(row => row.Feature == null).ToList());
+                }
+                else
+                {
+                    DrawGroup("Daily", "Daily", rows.Where(row => row.Feature?.Cadence == AutomationCadence.Daily).ToList());
+                    DrawGroup("Weekly", "Weekly", rows.Where(row => row.Feature?.Cadence == AutomationCadence.Weekly || row.Id == AutomationCatalog.ChocoboStables).ToList());
+                    DrawGroup("Utilities", "Utilities", rows.Where(row => row.Feature?.Cadence != AutomationCadence.Daily && row.Feature?.Cadence != AutomationCadence.Weekly && row.Id != AutomationCatalog.ChocoboStables).ToList());
+                }
+            }
         }
+        finally { ImGui.PopStyleVar(3); }
         void DrawGroup(string id, string label, IReadOnlyList<TaskRowDescriptor> groupRows)
         {
             if (groupRows.Count == 0 && !favoritesOnly) return;
             ImGui.PushID(view + id);
             if (UIConstants.BeginPanel("TaskPanel"))
             {
-                if (favoritesOnly) UIConstants.Heading($"Favorites ({groupRows.Count})", true);
-                if (favoritesOnly || UIConstants.CollapsingHeading($"{label} ({groupRows.Count})###TaskGroup", ImGuiTreeNodeFlags.DefaultOpen))
+                if (favoritesOnly) UIConstants.Heading(UiText.F($"Favorites ({groupRows.Count})"), true);
+                if (favoritesOnly || UIConstants.CollapsingHeading($"{label} ({groupRows.Count})###TaskGroup", ImGuiTreeNodeFlags.DefaultOpen,
+                    UiText.F("{0} ({1})", UiText.T(label), groupRows.Count)))
                 {
                     var automatic = plugin.Configuration.AutoWidthMainTaskColumns;
                     var flags = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp |
                         (automatic ? ImGuiTableFlags.NoSavedSettings : ImGuiTableFlags.Resizable);
                     if (ImGui.BeginTable(automatic ? "TaskRowsAutoV3" : "TaskRowsManualV3", 3, flags))
                     {
-                        var favoriteWidth = Math.Max(ImGui.CalcTextSize("Favorite").X, UIConstants.ButtonWidth("★"));
-                        ImGui.TableSetupColumn("Favorite", ImGuiTableColumnFlags.WidthFixed, favoriteWidth);
+                        var favoriteWidth = Math.Max(MaterialText.Measure(UiText.T("Favorite")).X,
+                            MathF.Ceiling(ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.X +
+                                Math.Max(UIConstants.ButtonWidth("★"), UIConstants.ButtonWidth("☆"))) + UIConstants.Scale);
+                        ImGui.TableSetupColumn("Favorite", automatic ? ImGuiTableColumnFlags.WidthStretch : ImGuiTableColumnFlags.WidthFixed, automatic ? 1f : favoriteWidth);
                         ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch, 1f);
                         ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, 180f * UIConstants.Scale);
-                        ImGui.TableHeadersRow();
+                        if (!automatic) UiGui.TableHeadersRow();
                         foreach (var row in groupRows) DrawDashboardRow(row, !favoritesOnly, loadedPluginInternalNames);
                         ImGui.EndTable();
                     }
@@ -947,13 +1090,33 @@ public class MainWindow : Window, IDisposable
         bool showDiagnosticActions,
         IReadOnlySet<string> loadedPluginInternalNames)
     {
+        var collection = row.Task == "Fish collection" ||
+            row.Feature?.Id == AutomationCatalog.Fishing && plugin.FishCollection.IsActive;
+        string StatusText(string text) => collection
+            ? UiText.Collection(text, plugin.FishCollection.Supplies.Supplies.Select(supply => supply.Name), plugin.FishCollection.LastOutcome)
+            : row.Feature?.Id == AutomationCatalog.VerminionQueue
+                ? UiText.Verminion(text, VerminionService.ProgressSummary(plugin.ConfigManager.GetActiveConfig()))
+                : UiText.T(text);
         var isFavorite = row.Feature != null && IsFavorite(row.Feature.Id);
         var dependencySummary = BuildTaskDependencySummary(row, loadedPluginInternalNames);
-        ImGui.TableNextRow();
+        var controlHeight = (UIConstants.Compact ? 24 : 28) * UIConstants.Scale;
+        var automatic = plugin.Configuration.AutoWidthMainTaskColumns;
+        ImGui.TableNextRow(ImGuiTableRowFlags.None, (plugin.Configuration.CompactUi ? 34 : VermaxionPresentation.MainRow) * UIConstants.Scale);
         ImGui.TableSetColumnIndex(0);
         if (row.Feature != null)
         {
-            if (UIConstants.Button($"{(isFavorite ? "★" : "☆")}##Favorite_{row.Feature.Id}"))
+            var enabled = row.Enabled;
+            ImGui.BeginDisabled(plugin.ConfigManager.GetCurrentAccount() == null);
+            if (ImGui.Checkbox("##TaskEnabled_" + row.Id, ref enabled))
+            {
+                typeof(CharacterConfig).GetProperty(row.Feature.FlagProperty)?.SetValue(plugin.ConfigManager.GetActiveConfig(), enabled);
+                if (!enabled && row.Id == AutomationCatalog.ChocoboRacing)
+                    plugin.PauseCurrentTargetCycleBestEffort("Dashboard disabled Chocobo Racing");
+                plugin.ConfigManager.SaveCurrentAccount();
+            }
+            ImGui.EndDisabled();
+            UIConstants.SameLineIfFits(isFavorite ? "★" : "☆");
+            if (UIConstants.Button($"{(isFavorite ? "★" : "☆")}##Favorite_{row.Feature.Id}", new Vector2(0, controlHeight)))
             {
                 plugin.Configuration.FavoriteAutomationIds = AutomationCatalog.ToggleFavorite(
                     plugin.Configuration.FavoriteAutomationIds,
@@ -961,35 +1124,53 @@ public class MainWindow : Window, IDisposable
                 plugin.Configuration.Save();
             }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(isFavorite ? "Remove from Favorites" : "Add to Favorites");
+                UiGui.SetTooltip(isFavorite ? "Remove from Favorites" : "Add to Favorites");
         }
 
-        ImGui.TableSetColumnIndex(1);
+        if (automatic && row.Feature != null)
+            UIConstants.SameLineIfFits(row.Task, MaterialText.Measure(UiText.T(row.Task)).X);
+        if (!automatic) ImGui.TableSetColumnIndex(1);
+        var split = !automatic && ImGui.BeginTable("TaskDetails_" + row.Id, 2, ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchSame | ImGuiTableFlags.BordersInnerV);
+        if (split) { ImGui.TableNextRow(); ImGui.TableSetColumnIndex(0); }
         ImGui.PushTextWrapPos(0f);
-        ImGui.TextUnformatted(row.Task);
+        UiGui.TextUnformatted(row.Task);
         ImGui.PopTextWrapPos();
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"{BuildTaskTooltip(row)}\nDependencies: {dependencySummary.Tooltip}");
+            MaterialText.SetTooltip(UiText.F($"{BuildTaskTooltip(row, StatusText)}\nDependencies: {UiText.T(dependencySummary.Tooltip)}"));
 
+        if (automatic || split) ImGui.TableSetColumnIndex(1);
         var timing = row.Feature == null ? "On demand" : FormatWhen(row);
-        var cadence = row.Feature?.CadenceLabel ?? "Manual utility";
-        var owner = row.Feature?.OwnershipLabel ?? "Manual";
         var readiness = dependencySummary.Checks.Count == 0 ? "No dependencies required" : dependencySummary.Label;
-        UIConstants.WrappedText(GetSectionColor(row.Section), timing);
-        UIConstants.WrappedText(UIConstants.Metadata, $"{cadence} · {owner} · {readiness}");
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(dependencySummary.Tooltip);
-        var blocker = row.Section == AutomationDashboardSection.Blocked ? row.Eligibility.Reason : string.Empty;
-        if (!string.IsNullOrWhiteSpace(blocker)) UIConstants.WrappedText(UIConstants.Amber, blocker);
-        if (!string.IsNullOrWhiteSpace(row.Status) &&
-            !string.Equals(row.Status, timing, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(row.Status, blocker, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(row.Status, cadence, StringComparison.OrdinalIgnoreCase) &&
-            !IsGenericStatus(row.Status))
+        var status = string.IsNullOrWhiteSpace(row.Status) || row.Status == row.Feature?.CadenceLabel ? UiText.T(timing) : StatusText(row.Status);
+        var when = UiText.T(timing);
+        var stateText = status == when ? status : status + " · " + when;
+        stateText += " · " + UiText.T(readiness);
+        var wip = row.Maturity == "WIP";
+        var wipLabel = UiText.T("WIP");
+        var wipWidth = MathF.Ceiling(MaterialText.Measure(wipLabel).X + 12 * UIConstants.Scale);
+        var statusSplit = wip && ImGui.GetContentRegionAvail().X >= wipWidth + MaterialText.Measure("0000000000").X +
+            ImGui.GetStyle().CellPadding.X * 4 + ImGui.GetStyle().ItemSpacing.X &&
+            ImGui.BeginTable("TaskStatus_" + row.Id, 2, ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchProp);
+        if (statusSplit)
         {
-            UIConstants.WrappedText(row.Section == AutomationDashboardSection.Complete ? UIConstants.Text : UIConstants.Metadata, row.Status);
-            if (!string.IsNullOrWhiteSpace(row.StatusTooltip) && ImGui.IsItemHovered())
-                ImGui.SetTooltip(row.StatusTooltip);
+            ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthStretch, 1f);
+            ImGui.TableSetupColumn("Maturity", ImGuiTableColumnFlags.WidthFixed, wipWidth);
+            ImGui.TableNextRow(); ImGui.TableNextColumn();
         }
+        ImGui.BeginGroup();
+        UIConstants.WrappedText(GetSectionColor(row.Section), stateText, translate: false);
+        ImGui.EndGroup();
+        if (ImGui.IsItemHovered())
+            MaterialText.SetTooltip(UiText.F($"{BuildTaskTooltip(row, StatusText)}\nDependencies: {UiText.T(dependencySummary.Tooltip)}"));
+        if (wip)
+        {
+            if (statusSplit) ImGui.TableNextColumn();
+            else UIConstants.SameLineIfFits("WIP", wipWidth);
+            MaterialStatus.Badge(wipLabel, new MaterialControlAppearance(UIConstants.Amber, new Vector4(0, 0, 0, 1), Vector4.Zero),
+                new Vector2(wipWidth / UIConstants.Scale, controlHeight / UIConstants.Scale));
+            if (statusSplit) ImGui.EndTable();
+        }
+        if (split) ImGui.EndTable();
         ImGui.TableSetColumnIndex(2);
         var available = ImGui.GetContentRegionAvail().X;
         var gap = ImGui.GetStyle().ItemSpacing.X;
@@ -998,38 +1179,38 @@ public class MainWindow : Window, IDisposable
         var runWidth = row.SettingsSection.HasValue
             ? Math.Max(1f, available - gap) * runMeasure / (runMeasure + settingsMeasure) : available;
         ImGui.BeginDisabled(row.ButtonDisabled);
-        if (UIConstants.Button(row.ButtonLabel, new Vector2(runWidth, 0)))
+        if (UIConstants.Button(row.ButtonLabel, new Vector2(runWidth, controlHeight)))
             plugin.RunDashboardAction(row.OnClick);
         ImGui.EndDisabled();
         if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip(row.ButtonTooltip);
+            MaterialText.SetTooltip(StatusText(row.ButtonTooltip));
 
         if (row.SettingsSection.HasValue)
         {
             ImGui.SameLine();
-            if (UIConstants.Button($"Settings##Task_{row.Feature?.Id}", new Vector2(Math.Max(1f, available - gap - runWidth), 0)))
+            if (UIConstants.Button($"Settings##Task_{row.Feature?.Id}", new Vector2(Math.Max(1f, available - gap - runWidth), controlHeight)))
                 plugin.ConfigWindow.OpenAutomationSettings(row.SettingsSection.Value, row.Feature?.Id);
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip("Open this task's settings in the selected editing scope.");
+                UiGui.SetTooltip("Open this task's settings in the selected editing scope.");
         }
 
         if ((showDiagnosticActions || row.Id == AutomationCatalog.VerminionQueue) && !string.IsNullOrWhiteSpace(row.SecondaryButtonLabel) && row.SecondaryOnClick != null)
         {
             ImGui.BeginDisabled(row.SecondaryButtonDisabled);
-            if (UIConstants.Button(row.SecondaryButtonLabel, new Vector2(ImGui.GetContentRegionAvail().X, 0)))
+            if (UIConstants.Button(row.SecondaryButtonLabel, new Vector2(ImGui.GetContentRegionAvail().X, controlHeight)))
                 plugin.RunDashboardAction(row.SecondaryOnClick);
             ImGui.EndDisabled();
             if (!string.IsNullOrWhiteSpace(row.SecondaryButtonTooltip) && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip(row.SecondaryButtonTooltip);
+                UiGui.SetTooltip(row.SecondaryButtonTooltip);
         }
         if (showDiagnosticActions && !string.IsNullOrWhiteSpace(row.TertiaryButtonLabel) && row.TertiaryOnClick != null)
         {
             ImGui.BeginDisabled(row.TertiaryButtonDisabled);
-            if (UIConstants.Button(row.TertiaryButtonLabel, new Vector2(ImGui.GetContentRegionAvail().X, 0)))
+            if (UIConstants.Button(row.TertiaryButtonLabel, new Vector2(ImGui.GetContentRegionAvail().X, controlHeight)))
                 plugin.RunDashboardAction(row.TertiaryOnClick);
             ImGui.EndDisabled();
             if (!string.IsNullOrWhiteSpace(row.TertiaryButtonTooltip) && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                ImGui.SetTooltip(row.TertiaryButtonTooltip);
+                UiGui.SetTooltip(row.TertiaryButtonTooltip);
         }
     }
 
@@ -1217,16 +1398,13 @@ public class MainWindow : Window, IDisposable
         if (row.Section == AutomationDashboardSection.Complete)
             return "Complete";
         if (row.NextEligibleAtUtc.HasValue)
-            return row.NextEligibleAtUtc.Value.ToLocalTime().ToString("MMM dd HH:mm");
+            return row.NextEligibleAtUtc.Value.ToLocalTime().ToString("MMM dd HH:mm", UiText.Current.Culture);
         return "Blocked";
     }
 
-    private static bool IsGenericStatus(string status)
-        => status is "Ready" or "Ready on AR" or "Ready for manual run" or "Available" or "Pending" or "Not due" or "Disabled" or "Idle"
-            || status.StartsWith("Ready (", StringComparison.OrdinalIgnoreCase);
-
-    private static string BuildTaskTooltip(TaskRowDescriptor row)
+    private static string BuildTaskTooltip(TaskRowDescriptor row, Func<string, string>? statusText = null)
     {
+        statusText ??= UiText.T;
         var owner = row.Feature?.OwnershipLabel ?? "Manual utility";
         var cadence = row.Feature?.CadenceLabel ?? "Manual / on demand";
         var maturity = row.Feature?.Maturity == AutomationMaturity.Wip
@@ -1239,28 +1417,29 @@ public class MainWindow : Window, IDisposable
             ? row.ButtonTooltip ?? row.Eligibility.Reason
             : "None";
         var nextLocal = row.NextEligibleAtUtc.HasValue
-            ? row.NextEligibleAtUtc.Value.ToLocalTime().ToString("MMM dd yyyy HH:mm zzz")
+            ? row.NextEligibleAtUtc.Value.ToLocalTime().ToString("MMM dd yyyy HH:mm zzz", UiText.Current.Culture)
             : row.Section == AutomationDashboardSection.DueNow ? "Now" : "Not scheduled";
         var nextUtc = row.NextEligibleAtUtc.HasValue
             ? row.NextEligibleAtUtc.Value.ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'")
             : row.Section == AutomationDashboardSection.DueNow ? "Now" : "Not scheduled";
         var statusDetail = !string.IsNullOrWhiteSpace(row.StatusTooltip) &&
                            !string.Equals(row.StatusTooltip, row.Status, StringComparison.Ordinal)
-            ? $"\nStatus detail: {row.StatusTooltip}"
+            ? "\n" + UiText.F("Status detail: {0}", statusText(row.StatusTooltip))
             : string.Empty;
 
-        return $"{row.Task}\n" +
-               $"Enabled: {(row.Enabled ? "On" : "Off")}\n" +
-               $"Dashboard state: {AutomationDashboardPolicy.GetStateLabel(row.Section)}\n" +
-               $"Status: {row.Status}{statusDetail}\n" +
-               $"Eligibility detail: {row.Eligibility.Reason}\n" +
-               $"Blocker: {blocker}\n" +
-               $"Owner: {owner}\n" +
-               $"Cadence: {cadence}\n" +
-               $"Maturity: {maturity}\n" +
-               $"Next eligible (local): {nextLocal}\n" +
-               $"Next eligible (UTC): {nextUtc}\n" +
-               $"Disabled action reason: {disabledActionReason}";
+        return string.Join("\n",
+            UiText.T(row.Task),
+            UiText.F("Enabled: {0}", UiText.T(row.Enabled ? "On" : "Off")),
+            UiText.F("Dashboard state: {0}", UiText.T(AutomationDashboardPolicy.GetStateLabel(row.Section))),
+            UiText.F("Status: {0}{1}", statusText(row.Status), statusDetail),
+            UiText.F("Eligibility detail: {0}", statusText(row.Eligibility.Reason)),
+            UiText.F("Blocker: {0}", statusText(blocker)),
+            UiText.F("Owner: {0}", UiText.T(owner)),
+            UiText.F("Cadence: {0}", UiText.T(cadence)),
+            UiText.F("Maturity: {0}", UiText.T(maturity)),
+            UiText.F("Next eligible (local): {0}", UiText.T(nextLocal)),
+            UiText.F("Next eligible (UTC): {0}", UiText.T(nextUtc)),
+            UiText.F("Disabled action reason: {0}", statusText(disabledActionReason)));
     }
 
     private static Vector4 GetSectionColor(AutomationDashboardSection section)
@@ -1494,10 +1673,10 @@ public class MainWindow : Window, IDisposable
     internal static void DrawCustomDeliveryNpcOverview(Plugin plugin, CustomDeliveriesSettings settings)
     {
         var service = plugin.CustomDeliveriesService;
-        ImGui.TextWrapped($"Character allowances: {service.RemainingAllowances?.ToString() ?? "unknown"} remaining this week.");
+        UiGui.TextWrapped(UiText.F($"Character allowances: {service.RemainingAllowances?.ToString(UiText.Current.Culture) ?? UiText.T("unknown")} remaining this week."));
         if (service.Npcs.Count == 0 || !service.RemainingAllowances.HasValue)
         {
-            ImGui.TextDisabled("NPC ranks, allowances and achievement progress are unknown until current-character data is available.");
+            UiGui.TextDisabled("NPC ranks, allowances and achievement progress are unknown until current-character data is available.");
             return;
         }
         if (!ImGui.BeginTable("CustomDeliveryNpcOverview", 6,
@@ -1509,7 +1688,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TableSetupColumn("Craft");
         ImGui.TableSetupColumn("Gather");
         ImGui.TableSetupColumn("Fish");
-        ImGui.TableHeadersRow();
+        UiGui.TableHeadersRow();
         foreach (var npc in service.Npcs)
         {
             string RouteLabel(DeliveryTypes type, int bonusIndex)
@@ -1531,27 +1710,27 @@ public class MainWindow : Window, IDisposable
             }
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
-            ImGui.TextWrapped(npc.Name);
+            UiGui.TextWrapped(npc.Name);
             ImGui.TableSetColumnIndex(1);
-            ImGui.TextWrapped(npc.Unlocked ? $"{npc.Rank} / {Math.Max(0, npc.MaxDeliveries - npc.UsedDeliveries)}" : "Locked");
+            UiGui.TextWrapped(npc.Unlocked ? UiText.F($"{npc.Rank} / {Math.Max(0, npc.MaxDeliveries - npc.UsedDeliveries)}") : "Locked");
             if (npc.Unlocked && npc.PendingRankQuestId != 0)
-                ImGui.TextWrapped($"Quest: {npc.PendingRankQuestName}");
+                UiGui.TextWrapped(UiText.F($"Quest: {npc.PendingRankQuestName}"));
             else if (npc.Unlocked && npc.SatisfactionMax > 0)
-                ImGui.TextDisabled($"Satisfaction: {npc.SatisfactionCur}/{npc.SatisfactionMax}");
+                UiGui.TextDisabled(UiText.F($"Satisfaction: {npc.SatisfactionCur}/{npc.SatisfactionMax}"));
             ImGui.TableSetColumnIndex(2);
-            ImGui.TextWrapped(npc.AchievementCur.HasValue ? $"{npc.AchievementCur.Value} / 150" : "Unknown / 150");
+            UiGui.TextWrapped(npc.AchievementCur.HasValue ? UiText.F($"{npc.AchievementCur.Value} / 150") : "Unknown / 150");
             ImGui.TableSetColumnIndex(3);
-            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Crafting, 0));
+            UiGui.TextWrapped(RouteLabel(DeliveryTypes.Crafting, 0));
             ImGui.TableSetColumnIndex(4);
-            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Mining, 1));
-            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Botany, 1));
+            UiGui.TextWrapped(RouteLabel(DeliveryTypes.Mining, 1));
+            UiGui.TextWrapped(RouteLabel(DeliveryTypes.Botany, 1));
             ImGui.TableSetColumnIndex(5);
-            ImGui.TextWrapped(RouteLabel(DeliveryTypes.Fishing, 2));
+            UiGui.TextWrapped(RouteLabel(DeliveryTypes.Fishing, 2));
         }
         ImGui.EndTable();
-        ImGui.TextDisabled("Ineligible: delivery type or job not selected, no matching gathering nodes or gearset, locked, or below rank/recipe requirements. Achievement progress is never guessed.");
+        UiGui.TextDisabled("Ineligible: delivery type or job not selected, no matching gathering nodes or gearset, locked, or below rank/recipe requirements. Achievement progress is never guessed.");
         if (settings.ShowDebugUI)
-            ImGui.TextWrapped($"Delivery status: {service.StatusText}; observed turn-ins: {service.CompletedTurnins}");
+            UiGui.TextWrapped(UiText.F($"Delivery status: {UiText.T(service.StatusText)}; observed turn-ins: {service.CompletedTurnins}"));
     }
 
     private bool IsEquipmentAutomationBusy()

@@ -1,3 +1,4 @@
+using AethertekUI;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
@@ -8,33 +9,33 @@ namespace VERMAXION;
 public static class UIConstants
 {
     public static float Scale => ImGuiHelpers.GlobalScale;
-    public static readonly Vector4 Text = new(243 / 255f, 245 / 255f, 247 / 255f, 1f); // #F3F5F7
-    public static readonly Vector4 Metadata = new(184 / 255f, 196 / 255f, 204 / 255f, 1f); // #B8C4CC
-    public static readonly Vector4 Blue = new(125 / 255f, 231 / 255f, 240 / 255f, 1f); // #7DE7F0
+    public static Vector4 Text => MaterialTheme.Current.Colors.OnSurface; // #F3F5F7
+    public static Vector4 Metadata => MaterialTheme.Current.Colors.OnSurfaceVariant; // #B8C4CC
+    public static Vector4 Blue => MaterialTheme.Current.Colors.Primary; // #7DE7F0
     public static readonly Vector4 Amber = new(255 / 255f, 211 / 255f, 138 / 255f, 1f); // #FFD38A
     internal static readonly Vector4 Mint = new(135 / 255f, 230 / 255f, 199 / 255f, 1f);
-    internal static readonly Vector4 Window = new(21 / 255f, 28 / 255f, 34 / 255f, 1f);
-    internal static readonly Vector4 Panel = new(27 / 255f, 37 / 255f, 45 / 255f, 1f);
-    internal static readonly Vector4 Raised = new(37 / 255f, 51 / 255f, 61 / 255f, 1f);
-    internal static readonly Vector4 Border = new(77 / 255f, 99 / 255f, 114 / 255f, 1f);
-    internal static readonly Vector4 ButtonColor = new(43 / 255f, 57 / 255f, 69 / 255f, 1f);
-    internal static readonly Vector4 Hover = new(53 / 255f, 70 / 255f, 83 / 255f, 1f);
-    internal static readonly Vector4 Pressed = new(62 / 255f, 83 / 255f, 97 / 255f, 1f);
-    internal static readonly Vector4 Selected = new(13 / 255f, 78 / 255f, 90 / 255f, 1f);
-    internal static readonly Vector4 SelectedHover = new(18 / 255f, 98 / 255f, 113 / 255f, 1f);
-    internal static readonly Vector4 SelectedPressed = new(22 / 255f, 113 / 255f, 130 / 255f, 1f);
-    internal static IFontHandle? ApplicationFont;
-    internal static IFontHandle? SectionFont;
+    internal static Vector4 Window => MaterialTheme.Current.Colors.Background;
+    internal static Vector4 Panel => MaterialTheme.Current.Colors.Surface;
+    internal static Vector4 Raised => MaterialTheme.Current.Colors.SurfaceContainerHigh;
+    internal static Vector4 Border => MaterialTheme.Current.Colors.OutlineVariant;
+    internal static Vector4 ButtonColor => MaterialTheme.Current.Colors.SurfaceContainerHigh;
+    internal static Vector4 Hover => MaterialTheme.Current.Colors.SurfaceContainerHighest;
+    internal static Vector4 Pressed => MaterialTheme.Current.Colors.PrimaryContainer;
+    internal static Vector4 Selected => MaterialTheme.Current.Colors.PrimaryContainer;
+    internal static Vector4 SelectedHover => MaterialTheme.Current.Colors.PrimaryContainer;
+    internal static Vector4 SelectedPressed => MaterialTheme.Current.Colors.Primary;
+    internal static bool Compact;
     // Applied before Begin, so window padding and child/table density agree across every surface.
     public static void PushStyle(bool compact)
     {
+        Compact = compact;
         var scale = ImGuiHelpers.GlobalScale;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(compact ? 8 : 16, compact ? 6 : 12) * scale);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2((compact ? 6 : 10) * scale, System.Math.Max(0, (36f * scale - ImGui.GetFontSize()) / 2f)));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2((compact ? 6 : 10) * scale, System.Math.Max(0, ((compact ? 30f : 36f) * scale - ImGui.GetFontSize()) / 2f)));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(compact ? 6 : 10, compact ? 3 : 8) * scale);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemInnerSpacing, new Vector2(compact ? 4 : 8, compact ? 3 : 6) * scale);
         ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, new Vector2(compact ? 5 : 10, compact ? 3 : 7) * scale);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 6f * scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, MaterialTheme.Metrics.OuterRadius);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6f * scale);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f * scale);
         ImGui.PushStyleVar(ImGuiStyleVar.TabRounding, 4f * scale);
@@ -62,7 +63,7 @@ public static class UIConstants
         ImGui.PushStyleColor(ImGuiCol.TabActive, Selected);
         ImGui.PushStyleColor(ImGuiCol.CheckMark, Blue);
         ImGui.PushStyleColor(ImGuiCol.TableHeaderBg, Raised);
-        ImGui.PushStyleColor(ImGuiCol.TableRowBgAlt, new Vector4(37 / 255f, 51 / 255f, 61 / 255f, 0.35f));
+        ImGui.PushStyleColor(ImGuiCol.TableRowBgAlt, MaterialColor.Alpha(Raised, .35f));
         ImGui.PushStyleColor(ImGuiCol.TableRowBg, Vector4.Zero);
         ImGui.PushStyleColor(ImGuiCol.TitleBg, Window);
         ImGui.PushStyleColor(ImGuiCol.TitleBgActive, Panel);
@@ -102,16 +103,14 @@ public static class UIConstants
     public static void Heading(string text, bool compact = false)
     {
         if (!compact) ImGui.Spacing();
-        ImGui.PushTextWrapPos(0f);
-        using (SectionFont?.Push())
-            ImGui.TextColored(Text, text);
-        ImGui.PopTextWrapPos();
+        using (UiText.Font(UiFontRole.PluginName))
+            WrappedText(Text, text);
         ImGui.Separator();
     }
 
-    public static void SameLineIfFits(string nextLabel)
+    public static void SameLineIfFits(string nextLabel, float measuredWidth = 0)
     {
-        var width = ImGui.CalcTextSize(nextLabel, true).X + ImGui.GetStyle().FramePadding.X * 2;
+        var width = measuredWidth > 0 ? measuredWidth : MaterialText.Measure(UiText.T(nextLabel.Split("##", 2)[0]), false).X + ImGui.GetStyle().FramePadding.X * 2;
         var remaining = ImGui.GetCursorScreenPos().X + ImGui.GetContentRegionAvail().X - ImGui.GetItemRectMax().X;
         if (remaining >= width + ImGui.GetStyle().ItemSpacing.X)
             ImGui.SameLine();
@@ -119,16 +118,36 @@ public static class UIConstants
 
     internal static void ApplicationHeading(string subtitle)
     {
-        using (ApplicationFont?.Push())
-            ImGui.TextUnformatted("VERMAXION");
+        using (UiText.Font(Compact ? UiFontRole.CompactTitle : UiFontRole.Title))
+            MaterialText.Text("VERMAXION");
         WrappedText(Metadata, subtitle);
     }
 
-    internal static void WrappedText(Vector4 color, string text)
+    internal static void WrappedText(Vector4 color, string text, bool translate = true)
     {
-        ImGui.PushTextWrapPos(0);
-        ImGui.TextColored(color, text);
-        ImGui.PopTextWrapPos();
+        var display = translate ? UiText.T(text) : text;
+        var insets = WrappedTextInsets(display);
+        var x = ImGui.GetCursorPosX();
+        var width = ImGui.GetContentRegionAvail().X;
+        ImGui.SetCursorPosX(x + insets.Left);
+        ImGui.PushTextWrapPos(x + System.MathF.Max(1, width - insets.Right));
+        try { MaterialText.TextColored(color, display); }
+        finally { ImGui.PopTextWrapPos(); ImGui.SetCursorPosX(x); }
+    }
+
+    private static unsafe (float Left, float Right) WrappedTextInsets(string text)
+    {
+        var font = ImGui.GetFont();
+        var scale = ImGui.GetFontSize() / font.FontSize;
+        var left = 0f; var right = 0f;
+        foreach (var character in MaterialText.NativeGlyphText(text))
+        {
+            var glyph = ImGui.FindGlyphNoFallback(font, character);
+            if (glyph.Handle == null) continue;
+            left = System.MathF.Max(left, -glyph.Handle->X0 * scale);
+            right = System.MathF.Max(right, (glyph.Handle->X1 - glyph.Handle->AdvanceX) * scale);
+        }
+        return (System.MathF.Ceiling(left), System.MathF.Ceiling(right));
     }
 
     internal static bool BeginPanel(string id, string? title = null)
@@ -158,111 +177,156 @@ public static class UIConstants
             ImGui.GetColorU32(Border), 6f * Scale, ImDrawFlags.None, Scale);
     }
 
-    internal static bool CollapsingHeading(string title, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
+    internal static bool CollapsingHeading(string title, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None, string? display = null)
     {
-        ImGui.PushStyleColor(ImGuiCol.Header, Raised);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Hover);
-        ImGui.PushStyleColor(ImGuiCol.HeaderActive, Pressed);
+        using var headerStyle = new MaterialStyleScope();
+        headerStyle.Color(ImGuiCol.Header, Raised);
+        headerStyle.Color(ImGuiCol.HeaderHovered, Hover);
+        headerStyle.Color(ImGuiCol.HeaderActive, Pressed);
         bool open;
-        using (SectionFont?.Push())
+        using (UiText.Font(UiFontRole.PluginName))
         {
-            var width = System.Math.Max(1f, ImGui.GetContentRegionAvail().X - ImGui.GetTreeNodeToLabelSpacing() - ImGui.GetStyle().FramePadding.X);
-            var text = title.Split("##", System.StringSplitOptions.None)[0];
-            var size = ImGui.CalcTextSize(text, false, width);
-            if (ImGui.CalcTextSize(text).X <= width)
-                open = ImGui.CollapsingHeader(title, flags);
-            else
-            {
-                var padding = ImGui.GetStyle().FramePadding;
-                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(padding.X, padding.Y + (size.Y - ImGui.GetFontSize()) / 2));
-                open = ImGui.CollapsingHeader("##Wrapped_" + title, flags);
-                ImGui.PopStyleVar();
-                var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetTreeNodeToLabelSpacing(), padding.Y);
-                ImGui.GetWindowDrawList().AddText(ImGui.GetFont(), ImGui.GetFontSize(), position, ImGui.GetColorU32(ImGuiCol.Text), text, width);
-            }
+            var width = Math.Max(1, ImGui.GetContentRegionAvail().X - ImGui.GetTreeNodeToLabelSpacing() - ImGui.GetStyle().FramePadding.X);
+            var original = title.Split("##", 2)[0];var translated = display ?? UiText.T(original);
+            using var lineHeight = MaterialText.PushLineHeight(translated);
+            var size = MaterialText.Measure(translated);
+            var padding = ImGui.GetStyle().FramePadding;
+            ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, padding);
+            ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
+            // Keep the original English-derived helper identity at the original wrapping boundary.
+            open = ImGui.CollapsingHeader(ImGui.CalcTextSize(original).X <= width ? title : "##Wrapped_" + title, flags);
+            ImGui.PopStyleColor(); ImGui.PopStyleVar();
+            var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetTreeNodeToLabelSpacing(), padding.Y);
+            MaterialIcons.Draw(open ? MaterialIcon.ChevronDown : MaterialIcon.ArrowRight, ImGui.GetItemRectMin() + padding, ImGui.GetFontSize(), Text);
+            var drawing=ImGui.GetWindowDrawList();
+            drawing.PushClipRect(ImGui.GetItemRectMin(),ImGui.GetItemRectMax(),true);
+            try { MaterialText.AddText(drawing,position,ImGui.GetColorU32(ImGuiCol.Text),translated); }
+            finally { drawing.PopClipRect(); }
+            if(size.X>width && ImGui.IsItemHovered()) MaterialText.SetTooltip(translated);
         }
-        ImGui.PopStyleColor(3);
         return open;
     }
 
     internal static float ButtonWidth(string label)
-        => ImGui.CalcTextSize(label, true).X + ImGui.GetStyle().FramePadding.X * 2;
+        => MaterialText.Measure(UiText.T(label.Split("##", 2)[0])).X + ImGui.GetStyle().FramePadding.X * 2;
 
-    internal static bool WrappedSelectable(string label, bool selected)
+    internal static bool WrappedSelectable(string label, bool selected, bool current = false, string? display = null)
     {
-        var text = label.Split("##", System.StringSplitOptions.None)[0];
+        var text = display ?? UiText.T(label.Split("##", System.StringSplitOptions.None)[0]);
         var position = ImGui.GetCursorScreenPos();
-        var width = System.Math.Max(1f, ImGui.GetContentRegionAvail().X);
-        var height = System.Math.Max(36f * Scale, ImGui.CalcTextSize(text, false, width).Y + ImGui.GetStyle().ItemSpacing.Y);
+        var width = System.Math.Max(ImGui.GetContentRegionAvail().X,MaterialText.Measure(text).X+ImGui.GetStyle().FramePadding.X*2);
+        var textHeight = Math.Max(ImGui.GetTextLineHeight(), MaterialText.Measure(text).Y);
+        var height = System.Math.Max((Compact?30f:36f) * Scale, textHeight+ImGui.GetStyle().ItemSpacing.Y);
+        if(current)
+            ImGui.GetWindowDrawList().AddRectFilled(position,position+new Vector2(width,height),ImGui.GetColorU32(MaterialColor.Alpha(Selected,.5f)),4*Scale);
         var clicked = ImGui.Selectable("##Wrapped_" + label, selected, ImGuiSelectableFlags.None, new Vector2(width, height));
-        ImGui.GetWindowDrawList().AddText(ImGui.GetFont(), ImGui.GetFontSize(),
-            position + new Vector2(0, (height - ImGui.CalcTextSize(text, false, width).Y) / 2),
-            ImGui.GetColorU32(ImGuiCol.Text), text, width);
+        MaterialText.AddText(ImGui.GetWindowDrawList(),ImGui.GetFont(), ImGui.GetFontSize(),
+            position + new Vector2(ImGui.GetStyle().FramePadding.X, (height - textHeight) / 2),
+            ImGui.GetColorU32(ImGuiCol.Text), text);
+        if(current)
+            ImGui.GetWindowDrawList().AddLine(position+new Vector2(2*Scale,3*Scale),position+new Vector2(2*Scale,height-3*Scale),ImGui.GetColorU32(Blue),3*Scale);
         return clicked;
     }
 
-    // Native Button owns interaction; draw a wrapped label when the available width is narrow.
-    internal static bool Button(string label, Vector2 size = default)
-    {
-        var visibleLabel = label.Split("##", System.StringSplitOptions.None)[0];
-        var width = System.Math.Max(1f, System.Math.Min(size.X < 0 ? ImGui.GetContentRegionAvail().X : size.X > 0 ? size.X : ButtonWidth(label), ImGui.GetContentRegionAvail().X));
-        var textWidth = System.Math.Max(1f, width - ImGui.GetStyle().FramePadding.X * 2);
-        var textSize = ImGui.CalcTextSize(visibleLabel, false, textWidth);
-        var height = System.Math.Max(size.Y > 0 ? size.Y : 36f * Scale, textSize.Y + ImGui.GetStyle().FramePadding.Y * 2);
-        if (ImGui.CalcTextSize(visibleLabel).X <= textWidth)
-            return ImGui.Button(label, new Vector2(width, height));
-        var clicked = ImGui.Button("##Wrapped_" + label, new Vector2(width, height));
-        var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetStyle().FramePadding.X, (height - textSize.Y) / 2);
-        ImGui.GetWindowDrawList().AddText(ImGui.GetFont(), ImGui.GetFontSize(), position,
-            ImGui.GetColorU32(ImGuiCol.Text), visibleLabel, textWidth);
-        return clicked;
-    }
+    // Native Button owns interaction; measured single-line text can move the action to a fresh row.
+    internal static bool Button(string label, Vector2 size = default, bool action = false)
+        => ButtonWithCaption(label, UiText.T(label.Split("##", System.StringSplitOptions.None)[0]), size, action);
 
-    internal static bool FullStopButton()
-    {
-        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(185 / 255f, 35 / 255f, 45 / 255f, 1));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(195 / 255f, 43 / 255f, 54 / 255f, 1));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(167 / 255f, 30 / 255f, 40 / 255f, 1));
-        var clicked = Button("FULL STOP", new Vector2(180f * Scale, 44f * Scale));
-        ImGui.PopStyleColor(3);
-        return clicked;
-    }
+    internal static bool Button(string label, Vector2 size, bool action, float? previousWidth)
+        => ButtonWithCaption(label, UiText.T(label.Split("##", System.StringSplitOptions.None)[0]), size, action, previousWidth);
 
-    internal static void Status(string id, string text, Vector4 color)
+    internal static bool ButtonWithCaption(string label, string caption, Vector2 size = default, bool action = false)
+        => ButtonWithCaption(label, caption, size, action, null);
+
+    internal static bool ButtonWithCaption(string label, string caption, Vector2 size, bool action, float? previousWidth)
     {
-        var limit = ImGui.GetTextLineHeightWithSpacing() * 3;
-        if (ImGui.CalcTextSize(text, false, ImGui.GetContentRegionAvail().X).Y > limit)
+        var originalVisible = label.Split("##", System.StringSplitOptions.None)[0];
+        var visibleLabel = caption;
+        var legacyWidth = previousWidth.HasValue ? System.Math.Max(1f, previousWidth.Value) :
+            System.Math.Max(1f, System.Math.Min(size.X < 0 ? ImGui.GetContentRegionAvail().X : size.X > 0 ? size.X : ButtonWidth(label), ImGui.GetContentRegionAvail().X));
+        var iconWidth = action ? 28f * Scale : 0;
+        var oldWrapped = ImGui.CalcTextSize(originalVisible).X > Math.Max(1,legacyWidth-ImGui.GetStyle().FramePadding.X*2-iconWidth);
+        var textSize = MaterialText.Measure(visibleLabel);
+        var naturalWidth = textSize.X+ImGui.GetStyle().FramePadding.X*2+iconWidth;
+        var width = MaterialLayout.FitNextItemWidth(size.X,naturalWidth);
+        var height = System.Math.Max(size.Y > 0 ? size.Y : (Compact ? 30f : 36f) * Scale, textSize.Y + ImGui.GetStyle().FramePadding.Y * 2);
+        var emphasis = originalVisible is "Run" or "Run All" or "Resume" or "CPU campaign" or "Scan";
+        if (emphasis)
         {
-            if (ImGui.BeginChild(id, new Vector2(0, limit), false))
-                WrappedText(color, text);
-            ImGui.EndChild();
+            var colors = MaterialTheme.Current.Colors;
+            ImGui.PushStyleColor(ImGuiCol.Button, colors.PrimaryContainer);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, MaterialColor.Layer(colors.PrimaryContainer, colors.Primary, .16f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, MaterialColor.Layer(colors.PrimaryContainer, colors.Primary, .28f));
+            ImGui.PushStyleColor(ImGuiCol.Border, colors.Primary);
         }
-        else WrappedText(color, text);
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(text);
+        ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
+        var clicked = ImGui.Button(oldWrapped ? "##Wrapped_" + label : label, new Vector2(width, height));
+        ImGui.PopStyleColor();
+        if (emphasis) ImGui.PopStyleColor(4);
+        var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetStyle().FramePadding.X + iconWidth, (height - textSize.Y) / 2);
+        if (action) VermaxionPresentation.ActionIcon(originalVisible, ImGui.GetItemRectMin() + new Vector2(ImGui.GetStyle().FramePadding.X, (height - 20 * Scale) / 2), 20 * Scale);
+        MaterialText.AddText(ImGui.GetWindowDrawList(),ImGui.GetFont(), ImGui.GetFontSize(), position,
+            ImGui.GetColorU32(ImGuiCol.Text), visibleLabel);
+        return clicked;
+    }
+
+    internal static bool FullStopButton(Vector2 size = default)
+        => FullStopButton(size, null);
+
+    internal static bool FullStopButton(Vector2 size, float? previousWidth)
+    {
+        var red = VermaxionPresentation.Rgb(0xFF646C);
+        using var stopStyle = new MaterialStyleScope();
+        stopStyle.Color(ImGuiCol.Button, MaterialColor.Layer(Window, red, .12f));
+        stopStyle.Color(ImGuiCol.ButtonHovered, MaterialColor.Layer(Window, red, .24f));
+        stopStyle.Color(ImGuiCol.ButtonActive, MaterialColor.Layer(Window, red, .32f));
+        stopStyle.Color(ImGuiCol.Border, red);
+        stopStyle.Color(ImGuiCol.Text, red);
+        return Button("FULL STOP", size == default ? new Vector2(180f * Scale, 44f * Scale) : size, true, previousWidth);
+    }
+
+    internal static void Status(string id, string text, Vector4 color, bool translate = true)
+    {
+        var display = translate ? UiText.T(text) : text;
+        var insets = WrappedTextInsets(display);
+        var width = System.MathF.Max(1, ImGui.GetContentRegionAvail().X - insets.Left - insets.Right);
+        var limit = ImGui.GetTextLineHeightWithSpacing() * 3;
+        if (MaterialText.Measure(display, false, width).Y > limit)
+        {
+            var visible = ImGui.BeginChild(id, new Vector2(0, limit), false);
+            try { if (visible) WrappedText(color, display, translate: false); }
+            finally { ImGui.EndChild(); }
+        }
+        else WrappedText(color, display, translate: false);
+        if (ImGui.IsItemHovered()) MaterialText.SetTooltip(display);
     }
 
     internal static void SetNextItemWidth(float width)
-        => ImGui.SetNextItemWidth(width <= 0 ? width : System.Math.Max(1f, System.Math.Min(width, ImGui.GetContentRegionAvail().X)));
+        => ImGui.SetNextItemWidth(MaterialLayout.FitNextItemWidth(width,
+            Math.Max(80*Scale,MaterialText.Measure("00000").X+ImGui.GetStyle().FramePadding.X*2)));
 
     internal static bool Checkbox(string label, ref bool value)
     {
-        var text = label.Split("##", System.StringSplitOptions.None)[0];
-        if (ImGui.CalcTextSize(text).X + 36f * Scale + ImGui.GetStyle().ItemInnerSpacing.X <= ImGui.GetContentRegionAvail().X)
-            return ImGui.Checkbox(label, ref value);
+        var text = UiText.T(label.Split("##", System.StringSplitOptions.None)[0]);
+        if (ImGui.CalcTextSize(label.Split("##",2)[0]).X + 36f * Scale + ImGui.GetStyle().ItemInnerSpacing.X <= ImGui.GetContentRegionAvail().X)
+            return UiGui.Checkbox(label, ref value);
         ImGui.BeginGroup();
+        try
+        {
         var changed = ImGui.Checkbox("##Wrapped_" + label, ref value);
         ImGui.SameLine();
-        WrappedText(Text, text);
+        UiGui.TextUnformatted(text);
         if (ImGui.IsItemClicked()) { value = !value; changed = true; }
-        ImGui.EndGroup();
         return changed;
+        }
+        finally { ImGui.EndGroup(); }
     }
 
     private static string ControlLabel(string label)
     {
-        var text = label.Split("##", System.StringSplitOptions.None)[0];
+        var text = UiText.T(label.Split("##", System.StringSplitOptions.None)[0]);
         if (text.Length == 0) return label;
-        ImGui.TextWrapped(text);
+        MaterialText.Text(text);
         return "##Control_" + label;
     }
 
@@ -272,7 +336,7 @@ public static class UIConstants
         var id = ControlLabel(label);
         SetNextItemWidth(width);
         var roomForSteps = System.Math.Min(width, ImGui.GetContentRegionAvail().X) >=
-            ImGui.CalcTextSize("00000").X + ImGui.GetStyle().FramePadding.X * 2 + ImGui.GetFrameHeight() * 2 + ImGui.GetStyle().ItemInnerSpacing.X * 2;
+            MaterialText.Measure("00000").X + ImGui.GetStyle().FramePadding.X * 2 + ImGui.GetFrameHeight() * 2 + ImGui.GetStyle().ItemInnerSpacing.X * 2;
         return ImGui.InputInt(id, ref value, roomForSteps ? step : 0, roomForSteps ? fastStep : 0);
     }
 
@@ -289,8 +353,8 @@ public static class UIConstants
         var width = ImGui.CalcItemWidth();
         var id = ControlLabel(label);
         SetNextItemWidth(width);
-        var open = ImGui.BeginCombo(id, preview);
-        if (!open && ImGui.IsItemHovered()) ImGui.SetTooltip(preview);
+        var open = MaterialText.BeginCombo(id, UiText.T(preview));
+        if (!open && ImGui.IsItemHovered()) MaterialText.SetTooltip(UiText.T(preview));
         return open;
     }
 
@@ -299,7 +363,7 @@ public static class UIConstants
         var width = ImGui.CalcItemWidth();
         var id = ControlLabel(label);
         SetNextItemWidth(width);
-        return ImGui.Combo(id, ref index, items);
+        return UiGui.Combo(id, ref index, items.Split("\0").Where(item => item.Length > 0).ToArray(), items.Split("\0").Count(item => item.Length > 0));
     }
 
     internal static bool Combo(string label, ref int index, string[] items, int count)
@@ -307,7 +371,7 @@ public static class UIConstants
         var width = ImGui.CalcItemWidth();
         var id = ControlLabel(label);
         SetNextItemWidth(width);
-        return ImGui.Combo(id, ref index, items, count);
+        return UiGui.Combo(id, ref index, items, count);
     }
 
     internal static bool InputText(string label, ref string value, int maxLength)
@@ -315,7 +379,8 @@ public static class UIConstants
         var width = ImGui.CalcItemWidth();
         var id = ControlLabel(label);
         SetNextItemWidth(width);
-        return ImGui.InputText(id, ref value, maxLength);
+        using var height = MaterialText.PushLineHeight(value);
+        return MaterialShapedInput.SingleLine(id, "", ref value, maxLength);
     }
 
     public static class ConfigLabels
@@ -390,7 +455,7 @@ public static class UIConstants
     
     public static class Tooltips
     {
-        public const string AutoWidthMainTaskColumns = "Measure the Favorite column and reserve 180 scaled pixels for Actions; Task uses the remaining space, with timing, ownership, dependencies and progress beneath its name. Turn this off to drag the dividers; Dalamud saves the manual widths for each dashboard view.";
+        public const string AutoWidthMainTaskColumns = "Automatically give Task and State & dependencies equal space and reserve 180 scaled pixels for Actions. Turn this off to use the manual Favorite/Task layout and drag its dividers; Dalamud saves the manual widths for each dashboard view.";
         public const string KrangleNames = "Replace character names with exercise words for screenshots";
         public const string AutoRestoreRetainerCheckingAfterWork = "Restore and persist AutoRetainer checking for the current and immediately previous character whenever either is disabled. Turn this off before intentionally deselecting either character.";
         public const string EnableCharacterSelectStallRecovery = "After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button.";

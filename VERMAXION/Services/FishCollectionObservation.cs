@@ -143,6 +143,7 @@ internal sealed unsafe class FishCollectionObservation : IDisposable
         plugin.ConfigManager.GetCurrentCharacterConfig(key).FisherObservation = baseline;
         plugin.ConfigManager.SaveCurrentAccount();
         ObserveLog();
+        Plugin.Log.Information($"[FishCollection] Fisher observation: level={baseline.Level}; Gathering={baseline.Gathering}; Perception={baseline.Perception}; maximumGP={baseline.MaximumGp}; gearset={baseline.GearsetId}; baselineCertain={baseline.BaselineCertain}; effectiveGathering={effective.Gathering}; foodParam={foodStatus?.Param ?? 0}; foodSeconds={foodStatus?.RemainingTime ?? 0:F0}; caught={Knowledge[key].CaughtItems.Count}; unlocked={Knowledge[key].UnlockedItems.Count}; observed={baseline.ObservedAtUtc:O}");
         captureAfter = DateTimeOffset.MaxValue;
         return baseline;
     }
