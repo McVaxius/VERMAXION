@@ -10,21 +10,38 @@ on:
 env:
   PLUGIN_NAME: VERMAXION
   INTERNAL_NAME: VERMAXION
-  RELEASE_DIR: VERMAXION\bin\x64\Release\VERMAXION
+  RELEASE_DIR: VERMAXION\VERMAXION\bin\x64\Release\VERMAXION
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    defaults:
+      run:
+        working-directory: VERMAXION
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
         with:
+          path: VERMAXION
           submodules: recursive
+          persist-credentials: false
+
+      - name: Checkout AethertekUI
+        uses: actions/checkout@v4
+        with:
+          repository: McVaxius/aethertekUI
+          ref: 6c193cf06ac67f954c549cafc2033ac0efdd630a
+          path: aethertekUI
+          ssh-key: ${{ secrets.AETHERTEKUI_DEPLOY_KEY }}
+          persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.201"
 
       - name: Download Dalamud
         run: |
@@ -42,13 +59,16 @@ jobs:
 
       - name: Build
         run: |
-          dotnet restore -r win VERMAXION/VERMAXION.csproj
-          dotnet build VERMAXION/VERMAXION.csproj --configuration Release -p:Platform=x64
+          $dalamudLibPath = "$env:AppData/XIVLauncher/addon/Hooks/dev"
+          dotnet restore VERMAXION/VERMAXION.csproj -p:Configuration=Release -p:Platform=x64 -p:DalamudLibPath="$dalamudLibPath"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build VERMAXION/VERMAXION.csproj --configuration Release -p:Platform=x64 --no-restore -p:DalamudLibPath="$dalamudLibPath"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         env:
           DOTNET_CLI_TELEMETRY_OPTOUT: true
 
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PLUGIN_NAME }}-artifact
           path: |
@@ -63,21 +83,25 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Download Build Artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: ${{ env.PLUGIN_NAME }}-artifact
           path: artifact
 
-      - name: Get version from tag
+      - name: Determine Release Version
         id: get_version
+        shell: bash
+        env:
+          INTERNAL_NAME: ${{ env.INTERNAL_NAME }}
         run: |
-          if [ "${{ github.ref_type }}" == "tag" ]; then
-            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           else
-            echo "version=v1.0.0.1" >> $GITHUB_OUTPUT
+            version="$(python3 -c "import json, os; from pathlib import Path; manifest_path = Path('artifact') / f\"{os.environ['INTERNAL_NAME']}.json\"; manifest = json.loads(manifest_path.read_text(encoding='utf-8')); manifest = manifest[0] if isinstance(manifest, list) else manifest; print(f\"v{manifest['AssemblyVersion']}\")")"
+            echo "version=${version}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create Release
