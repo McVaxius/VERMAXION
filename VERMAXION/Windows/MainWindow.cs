@@ -7,6 +7,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.Loader;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 using ECommons.Reflection;
@@ -77,9 +78,58 @@ public class MainWindow : Window, IDisposable
             MinimumSize = new Vector2(520, 620),
             MaximumSize = new Vector2(1600, 1200),
         };
+        TitleBarButtons.Add(new()
+        {
+            Icon = FontAwesomeIcon.Cog, Priority = 0, IconOffset = new(2, 1),
+            Click = button => { if (button == ImGuiMouseButton.Left) plugin.ToggleConfigUi(); },
+            ShowTooltip = () => UiGui.SetTooltip("Settings"),
+        });
+        TitleBarButtons.Add(new()
+        {
+            Icon = FontAwesomeIcon.PowerOff, Priority = -10, IconOffset = new(2, 1),
+            Click = button => { if (button == ImGuiMouseButton.Left) SetEnabled(!plugin.Configuration.Enabled); },
+            ShowTooltip = () => MaterialText.SetTooltip(UiText.T("Enabled") + ": " + UiText.T(plugin.Configuration.Enabled ? "On" : "Off")),
+        });
+        TitleBarButtons.Add(new()
+        {
+            Icon = FontAwesomeIcon.Play, Priority = -20, IconOffset = new(2, 1),
+            Click = button => { if (button == ImGuiMouseButton.Left) RunAll(); },
+            ShowTooltip = () => MaterialText.SetTooltip(UiText.T("Run All") + "\n" + UiText.T(plugin.Engine.StatusText)
+                + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker)),
+        });
+        TitleBarButtons.Add(new()
+        {
+            Icon = FontAwesomeIcon.Stop, Priority = -30, IconOffset = new(2, 1),
+            Click = button => { if (button == ImGuiMouseButton.Left) CancelRun(); },
+            ShowTooltip = () => MaterialText.SetTooltip(UiText.T("Cancel") + "\n" + UiText.T(plugin.Engine.StatusText)),
+        });
+        TitleBarButtons.Add(new()
+        {
+            Icon = FontAwesomeIcon.Ban, Priority = -40, IconOffset = new(2, 1),
+            Click = button => { if (button == ImGuiMouseButton.Left) plugin.FullStop(); },
+            ShowTooltip = () => UiGui.SetTooltip("FULL STOP"),
+        });
     }
 
     public void Dispose() { }
+
+    internal void SetEnabled(bool enabled)
+    {
+        if (!enabled) plugin.PauseCurrentTargetCycleBestEffort("VERMAXION global automation disabled");
+        plugin.Configuration.Enabled = enabled;
+        plugin.Configuration.Save();
+    }
+
+    internal void RunAll()
+    {
+        if (!plugin.Engine.IsRunning && !plugin.DadHandoffBlocksNewWork)
+            plugin.RunDashboardAction(() => plugin.Engine.ManualStart());
+    }
+
+    internal void CancelRun()
+    {
+        if (plugin.Engine.IsRunning) plugin.Engine.Cancel();
+    }
 
     public override void PreDraw()
     {
@@ -114,7 +164,7 @@ public class MainWindow : Window, IDisposable
     public override void Draw()
     {
         motion.DrawChrome();
-        UiGui.Title("Vermaxion", UiText.T("Vermaxion")+" "+CurrentVersion);
+        UiGui.TitleWithButtons("Vermaxion", UiText.T("Vermaxion")+" "+CurrentVersion, this);
         var config = plugin.ConfigManager.GetActiveConfig();
         var engine = plugin.Engine;
         var charKey = plugin.ConfigManager.CurrentCharacterKey;
@@ -257,10 +307,7 @@ public class MainWindow : Window, IDisposable
             ImGui.TableNextColumn(); UiGui.TextDisabled("Enabled");
             var enabled = plugin.Configuration.Enabled;
             if (UiGui.NativeSwitch("Enabled", ref enabled))
-            {
-                if (!enabled) plugin.PauseCurrentTargetCycleBestEffort("VERMAXION global automation disabled");
-                plugin.Configuration.Enabled = enabled; plugin.Configuration.Save();
-            }
+                SetEnabled(enabled);
             ImGui.TableNextColumn(); UiGui.TextDisabled("Krangle names");
             var krangleEnabled = plugin.Configuration.KrangleEnabled;
             if (UiGui.NativeSwitch(UIConstants.ConfigLabels.KrangleNames, ref krangleEnabled))
@@ -301,13 +348,13 @@ public class MainWindow : Window, IDisposable
 
             ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
             if (UIConstants.Button("Run All", new Vector2(widths[1], actionHeight), true, previousWidth))
-                plugin.RunDashboardAction(() => engine.ManualStart());
+                RunAll();
             ImGui.EndDisabled();
             if (engine.IsRunning)
             {
                 UIConstants.SameLineIfFits("Cancel");
                 if (UIConstants.Button("Cancel"))
-                    engine.Cancel();
+                    CancelRun();
             }
             if (wideActions) UIConstants.SameLineIfFits("Settings", widths[2]);
             if (UIConstants.Button("Settings", new Vector2(widths[2], actionHeight), true, previousWidth))
@@ -457,6 +504,21 @@ public class MainWindow : Window, IDisposable
                 Plugin.Log.Information("[UI] Testing END key press");
                 GameHelpers.SendEnd();
             }
+
+            ImGui.Spacing();
+            var canTestJumboRoute = plugin.CanStartJumboRouteTest(out var jumboRouteBlockedReason);
+            ImGui.BeginDisabled(!canTestJumboRoute);
+            if (UIConstants.Button("Test Jumbo Broker Route"))
+                plugin.RunJumboRouteTest(cashier: false);
+            UIConstants.SameLineIfFits("Test Jumbo Cashier Route");
+            if (UIConstants.Button("Test Jumbo Cashier Route"))
+                plugin.RunJumboRouteTest(cashier: true);
+            ImGui.EndDisabled();
+            if (!canTestJumboRoute && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiGui.SetTooltip(jumboRouteBlockedReason);
+            UiGui.TextDisabled("Route tests stop at the NPC without buying tickets or claiming payouts.");
+            if (plugin.CactpotService.IsJumboRouteTest)
+                UiGui.TextWrapped(UiText.F($"Jumbo route test: {UiText.T(plugin.CactpotService.StatusText)}"));
             ImGui.EndDisabled();
         }
 

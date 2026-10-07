@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace VERMAXION.Models;
@@ -97,6 +98,37 @@ internal static class JumboCactpotRoutingPolicy
     }
 
     private static bool IsValidCount(int? count) => count is >= 0 and <= 3;
+}
+
+internal sealed class JumboCactpotApproachRoute
+{
+    internal static readonly Vector3 FirstClearingPoint = new(111.02f, 13.00f, -24.21f);
+    internal static readonly Vector3 SecondClearingPoint = new(118.04f, 13.00f, -22.65f);
+    private int nextClearingPoint = 2;
+
+    public bool IsClearingPlanter => nextClearingPoint < 2;
+    public int ClearingPointNumber => nextClearingPoint + 1;
+    public void BeginAfterAetheryteTravel() => nextClearingPoint = 0;
+    public void Reset() => nextClearingPoint = 2;
+
+    public Vector3 Destination(Vector3 npcPosition) => nextClearingPoint switch
+    {
+        0 => FirstClearingPoint,
+        1 => SecondClearingPoint,
+        _ => npcPosition,
+    };
+
+    public bool TryAdvance(Vector3 playerPosition, float arrivalDistance)
+    {
+        if (!IsClearingPlanter || !float.IsFinite(arrivalDistance) || arrivalDistance <= 0 ||
+            !float.IsFinite(playerPosition.X) || !float.IsFinite(playerPosition.Y) ||
+            !float.IsFinite(playerPosition.Z) ||
+            Vector3.Distance(playerPosition, Destination(default)) > arrivalDistance)
+            return false;
+
+        nextClearingPoint++;
+        return true;
+    }
 }
 
 internal static class JumboCactpotPayoutProgressPolicy

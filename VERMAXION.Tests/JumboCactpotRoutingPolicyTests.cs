@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using System.Text.Json;
 using VERMAXION.Models;
 using Xunit;
@@ -8,6 +9,42 @@ namespace VERMAXION.Tests;
 public sealed class JumboCactpotRoutingPolicyTests
 {
     private static readonly DateTime Now = new(2026, 7, 11, 18, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void AetheryteApproachRequiresBothClearingPointsBeforeEitherNpcAndDoesNotRepeatForHandoffs()
+    {
+        var route = new JumboCactpotApproachRoute();
+        var broker = new Vector3(121.13345f, 13.0013f, -11.01155f);
+        var cashier = new Vector3(124.05116f, 13.00253f, -19.59053f);
+        route.BeginAfterAetheryteTravel();
+
+        Assert.True(route.IsClearingPlanter);
+        Assert.Equal(JumboCactpotApproachRoute.FirstClearingPoint, route.Destination(broker));
+        Assert.Equal(JumboCactpotApproachRoute.FirstClearingPoint, route.Destination(cashier));
+        Assert.False(route.TryAdvance(new Vector3(112.02f, 13, -37.43f), 3));
+        Assert.False(route.TryAdvance(JumboCactpotApproachRoute.SecondClearingPoint, 3));
+        Assert.False(route.TryAdvance(broker, 3));
+        Assert.True(route.TryAdvance(JumboCactpotApproachRoute.FirstClearingPoint, 3));
+
+        Assert.True(route.IsClearingPlanter);
+        Assert.Equal(JumboCactpotApproachRoute.SecondClearingPoint, route.Destination(broker));
+        Assert.False(route.TryAdvance(JumboCactpotApproachRoute.FirstClearingPoint, 3));
+        Assert.False(route.TryAdvance(cashier, 3));
+        Assert.True(route.TryAdvance(JumboCactpotApproachRoute.SecondClearingPoint, 3));
+
+        Assert.False(route.IsClearingPlanter);
+        Assert.Equal(broker, route.Destination(broker));
+        Assert.Equal(cashier, route.Destination(cashier));
+        Assert.False(route.TryAdvance(broker, 3));
+
+        route.BeginAfterAetheryteTravel();
+        Assert.True(route.IsClearingPlanter);
+        Assert.False(route.TryAdvance(new Vector3(float.NaN, 13, -24.21f), 3));
+        Assert.False(route.TryAdvance(JumboCactpotApproachRoute.FirstClearingPoint, float.NaN));
+        route.Reset();
+        Assert.False(route.IsClearingPlanter);
+        Assert.Equal(cashier, route.Destination(cashier));
+    }
 
     [Fact]
     public void KnownTwoRedeemableTicketsRouteDirectlyToCashierForExactlyTwoClaims()

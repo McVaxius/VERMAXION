@@ -93,6 +93,8 @@ public class CactpotService : IDisposable
     private bool jumboCashierExhaustionConfirmed;
     private DateTime jumboCashierStableSince = DateTime.MinValue;
     private JumboCactpotRouteDecision jumboRouteDecision;
+    private readonly JumboCactpotApproachRoute jumboApproachRoute = new();
+    private bool jumboRouteTest;
 
     public enum CactpotState
     {
@@ -152,9 +154,10 @@ public class CactpotService : IDisposable
 
     public CactpotState State => state;
     public bool IsActive => state != CactpotState.Idle && state != CactpotState.Complete && state != CactpotState.Failed;
-    public bool IsComplete => state == CactpotState.Complete;
-    public bool IsFailed => state == CactpotState.Failed;
+    public bool IsComplete => !jumboRouteTest && state == CactpotState.Complete;
+    public bool IsFailed => !jumboRouteTest && state == CactpotState.Failed;
     public string StatusText => state.ToString();
+    public bool IsJumboRouteTest => jumboRouteTest;
     internal JumboCactpotCompletionKind JumboCompletionKind { get; private set; }
 
     public CactpotService(
@@ -177,6 +180,8 @@ public class CactpotService : IDisposable
 
     public void StartMiniCactpot()
     {
+        jumboRouteTest = false;
+        jumboApproachRoute.Reset();
         log.Information("[Cactpot] Starting Mini Cactpot sequence");
 
         var activeConfig = configManager.GetActiveConfig();
@@ -220,6 +225,8 @@ public class CactpotService : IDisposable
 
     public void StartJumboCactpot()
     {
+        jumboRouteTest = false;
+        jumboApproachRoute.Reset();
         currentTicket = 1;
         totalTickets = 3;
         jumboPurchaseProgress = null;
@@ -274,6 +281,8 @@ public class CactpotService : IDisposable
         if (!routeDecision.UsesCashier)
             throw new ArgumentException("Jumbo cashier start requires a cashier route.", nameof(routeDecision));
 
+        jumboRouteTest = false;
+        jumboApproachRoute.Reset();
         currentTicket = 1;
         totalTickets = routeDecision.ExpectedClaims ?? JumboMaxPayoutClaimCount;
         jumboPayoutClaimsVerified = 0;
@@ -295,6 +304,18 @@ public class CactpotService : IDisposable
             routeDecision.Route,
             routeDecision.ExpectedClaims?.ToString(CultureInfo.InvariantCulture) ?? "discovery");
         SetState(CactpotState.JumboCheckLifestreaming);
+    }
+
+    internal void StartJumboRouteTest(bool cashier)
+    {
+        if (cashier)
+            StartJumboCactpotCheck(new JumboCactpotRouteDecision(JumboCactpotRoute.DiscoveryCashier, null, false));
+        else
+            StartJumboCactpot();
+
+        jumboRouteTest = true;
+        log.Information("[Cactpot] Starting manual Jumbo {Destination} route test; NPC interaction is disabled",
+            cashier ? "Cashier" : "Broker");
     }
 
     public void RunMiniCactpot()
@@ -353,6 +374,8 @@ public class CactpotService : IDisposable
 
     public void Reset()
     {
+        jumboRouteTest = false;
+        jumboApproachRoute.Reset();
         FinishMiniCactpotRun("reset");
         failAfterJumboCleanup = false;
         staleJumboPayoutEvidenceObserved = false;
@@ -701,6 +724,7 @@ public class CactpotService : IDisposable
             case CactpotState.JumboWaitingForZone:
                 if (IsJumboTravelSettled())
                 {
+                    jumboApproachRoute.BeginAfterAetheryteTravel();
                     log.Information("[Cactpot] Jumbo broker aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboNavigatingToBroker);
                 }
@@ -713,11 +737,14 @@ public class CactpotService : IDisposable
 
             case CactpotState.JumboNavigatingToBroker:
                 log.Information("[Cactpot] Navigating to Jumbo Cactpot Broker");
-                IssueJumboNavigation(JumboBrokerPosition, "Jumbo Cactpot Broker");
+                IssueJumboNavigation(jumboApproachRoute.Destination(JumboBrokerPosition), "Jumbo Cactpot Broker");
                 SetState(CactpotState.JumboWaitingForArrival);
                 break;
 
             case CactpotState.JumboWaitingForArrival:
+                if (TickJumboClearingPoints(JumboBrokerPosition, "Jumbo Cactpot Broker", elapsed))
+                    break;
+
                 if (TryTransitionJumboWaypointToTargeting(
                         "Jumbo Cactpot Broker",
                         JumboBrokerPosition,
@@ -769,6 +796,12 @@ public class CactpotService : IDisposable
                         "Jumbo Cactpot Broker",
                         CactpotState.JumboClosingToBroker))
                 {
+                    break;
+                }
+
+                if (jumboRouteTest)
+                {
+                    FinishJumboRouteTestAtNpc("Jumbo Cactpot Broker", elapsed);
                     break;
                 }
 
@@ -944,6 +977,7 @@ public class CactpotService : IDisposable
             case CactpotState.JumboCheckWaitingForZone:
                 if (IsJumboTravelSettled())
                 {
+                    jumboApproachRoute.BeginAfterAetheryteTravel();
                     log.Information("[Cactpot] Jumbo cashier aetheryte travel settled, starting navigation");
                     SetState(CactpotState.JumboCheckNavigatingToCashier);
                 }
@@ -956,11 +990,14 @@ public class CactpotService : IDisposable
 
             case CactpotState.JumboCheckNavigatingToCashier:
                 log.Information("[Cactpot] Navigating to {CashierName}", JumboCashierNpcName);
-                IssueJumboNavigation(JumboCashierPosition, JumboCashierNpcName);
+                IssueJumboNavigation(jumboApproachRoute.Destination(JumboCashierPosition), JumboCashierNpcName);
                 SetState(CactpotState.JumboCheckWaitingForArrival);
                 break;
 
             case CactpotState.JumboCheckWaitingForArrival:
+                if (TickJumboClearingPoints(JumboCashierPosition, JumboCashierNpcName, elapsed))
+                    break;
+
                 if (TryTransitionJumboWaypointToTargeting(
                         JumboCashierNpcName,
                         JumboCashierPosition,
@@ -1012,6 +1049,12 @@ public class CactpotService : IDisposable
                         JumboCashierNpcName,
                         CactpotState.JumboCheckClosingToCashier))
                 {
+                    break;
+                }
+
+                if (jumboRouteTest)
+                {
+                    FinishJumboRouteTestAtNpc(JumboCashierNpcName, elapsed);
                     break;
                 }
 
@@ -2099,8 +2142,51 @@ public class CactpotService : IDisposable
     {
         lastJumboNavigationAttempt = DateTime.UtcNow;
         lastJumboNavigationStopAttempt = DateTime.MinValue;
-        if (vnavmesh.PathfindAndMoveTo(destination))
+        if (vnavmesh.PathfindAndMoveTo(destination, allowRecoveryJump: false))
             log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
+    }
+
+    private bool TickJumboClearingPoints(Vector3 npcPosition, string npcName, double elapsed)
+    {
+        if (!jumboApproachRoute.IsClearingPlanter)
+            return false;
+
+        var player = Plugin.ObjectTable.LocalPlayer;
+        if (clientState.TerritoryType == GoldSaucerTerritoryId && player != null &&
+            GameHelpers.IsPlayerAvailable() && jumboApproachRoute.TryAdvance(player.Position, JumboArrivalDistance))
+        {
+            StopJumboNavigation();
+            stateEnteredAt = DateTime.UtcNow;
+            IssueJumboNavigation(jumboApproachRoute.Destination(npcPosition), npcName);
+        }
+        else if (elapsed > JumboArrivalTimeout || clientState.TerritoryType != GoldSaucerTerritoryId)
+        {
+            log.Error("[Cactpot] Jumbo planter bypass failed at clearing point {Point}", jumboApproachRoute.ClearingPointNumber);
+            SetState(CactpotState.Failed);
+        }
+        else
+        {
+            RetryJumboNavigationIfNeeded(jumboApproachRoute.Destination(npcPosition), npcName);
+        }
+
+        // Intermediate arrival advances movement only, never targeting or interaction.
+        return true;
+    }
+
+    private void FinishJumboRouteTestAtNpc(string npcName, double elapsed)
+    {
+        if (TryGetJumboNpcInteractionData(npcName, out _, out var distance, out var maxDistance) && distance <= maxDistance)
+        {
+            StopJumboNavigation();
+            log.Information("[Cactpot] Jumbo route test reached {Destination} without interaction", npcName);
+            // The route-test flag keeps this display result out of scheduled transaction outcomes.
+            SetState(CactpotState.Complete);
+        }
+        else if (elapsed > 15)
+        {
+            log.Error("[Cactpot] Jumbo route test could not verify arrival at {Destination}", npcName);
+            SetState(CactpotState.Failed);
+        }
     }
 
     private bool RetryJumboNavigationIfNeeded(Vector3 destination, string destinationLabel)

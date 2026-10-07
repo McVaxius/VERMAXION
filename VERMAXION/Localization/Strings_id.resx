@@ -1964,4 +1964,9 @@ Dependensi: {1}</value></data>
   <data name="Auto-fade when unfocused" xml:space="preserve"><value>Redupkan otomatis saat tidak fokus</value></data>
   <data name="Unfocused opacity (%)" xml:space="preserve"><value>Opasitas saat tidak fokus (%)</value></data>
   <data name="Unfocused delay (seconds)" xml:space="preserve"><value>Jeda saat tidak fokus (detik)</value></data>
+  <data name="Test Jumbo Broker Route" xml:space="preserve"><value>Uji rute ke penjual Jumbo</value></data>
+  <data name="Test Jumbo Cashier Route" xml:space="preserve"><value>Uji rute ke kasir Jumbo</value></data>
+  <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>Uji rute berhenti di NPC tanpa membeli tiket atau mengambil hadiah.</value></data>
+  <data name="Jumbo route test: {0}" xml:space="preserve"><value>Uji rute Jumbo: {0}</value></data>
+  <data name="A character must be available outside a duty." xml:space="preserve"><value>Karakter harus tersedia di luar duty.</value></data>
 </root>

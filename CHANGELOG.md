@@ -1,5 +1,18 @@
 # VERMAXION Changelog
 
+## Unreleased - CJK atlas construction
+
+- Request a 4096 x 4096 managed atlas and merge one bundled Noto CJK face per font role for the selected language, including Simplified and Traditional Chinese aliases. Preserve existing font sizes, glyph ranges, Windows and symbol fonts, and font lifecycle.
+
+## Unreleased - Native titlebar shortcuts
+
+- Add Settings, the global Enabled toggle, Run All, Cancel and FULL STOP to Main's native titlebar while retaining every body control. Recheck the existing engine/DAD handoff admission for Run All and the active run for Cancel; retain global-disable cleanup and the manual Run All policy. Reserve native icon space in the version title without changing the window identity, motion, opacity or saved geometry. Local verification and game acceptance remain separate.
+
+## Unreleased - Jumbo Cactpot planter route
+
+- Route both initial Jumbo approaches through the two supplied clearing points in order. Retries retain their unfinished leg; broker/cashier handoffs remain on the NPC side. Preserve final stop, range and target-settle checks and all purchase/payout evidence.
+- Suppress deliberate recovery jumps only for Jumbo navigation, retaining stall reissues and other callers' existing behavior. Add Broker and Cashier route-test buttons at the bottom of Main's advanced test controls; they reuse production travel/settlement and stop in range without interacting or recording scheduled completion. Live clearance acceptance remains user-controlled.
+
 ## Unreleased - GitHub Actions dependency alignment
 
 - Pin the existing AethertekUI Actions checkout to published revision `6c193cf06ac67f954c549cafc2033ac0efdd630a`, which includes the Hindi text host and renderer. This fixes missing-text-API compilation after a consumer is published before its library; local workflow validation and hosted build results are separate.
