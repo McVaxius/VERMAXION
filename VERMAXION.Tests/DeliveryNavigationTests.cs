@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Reflection;
 using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
 using Xunit;
@@ -8,6 +9,38 @@ namespace VERMAXION.Tests
 {
     public sealed class DeliveryNavigationTests
     {
+        [Theory]
+        [InlineData(null, 1)]
+        [InlineData(true, 1)]
+        [InlineData(false, 0)]
+        public void JumboCanSuppressOnlyTheRecoveryJumpWhileRetainingStallReissue(bool? allowJump, int expectedJumps)
+        {
+            Plugin.ObjectTable.LocalPlayer = new TestPlayer { Position = Vector3.Zero };
+            VERMAXION.Services.GameHelpers.JumpCount = 0;
+            var commands = new ICommandManager();
+            try
+            {
+                using var navigation = new VNavmeshIPC(new IPluginLog(), commands);
+                var destination = new Vector3(111.02f, 13, -24.21f);
+                Assert.True(Dispatch());
+                var tracker = typeof(VNavmeshIPC).GetField("groundRecovery", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(navigation)!;
+                tracker.GetType().GetField("lastProgressAt", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(tracker, DateTime.UtcNow.AddSeconds(-13));
+                Assert.True(Dispatch());
+                Assert.Equal(expectedJumps, VERMAXION.Services.GameHelpers.JumpCount);
+                Assert.Equal(2, commands.Commands.Count);
+                Assert.All(commands.Commands, command => Assert.Equal("/vnav moveto 111.02 13.00 -24.21", command));
+
+                bool Dispatch() => allowJump is { } selected
+                    ? navigation.PathfindAndMoveTo(destination, allowRecoveryJump: selected)
+                    : navigation.PathfindAndMoveTo(destination);
+            }
+            finally
+            {
+                Plugin.ObjectTable.LocalPlayer = null;
+                VERMAXION.Services.GameHelpers.JumpCount = 0;
+            }
+        }
+
         [Fact]
         public void BelowSeaLevelDeliveryUsesNearestPointAndRejectsMissingInvalidOrWrongFloorResults()
         {
@@ -67,7 +100,8 @@ namespace VERMAXION.Services
     // The focused navigation test calls no game actions.
     public static class GameHelpers
     {
+        public static int JumpCount;
         public static bool IsPlayerAvailable() => Plugin.ObjectTable.LocalPlayer != null;
-        public static void SendJump() { }
+        public static void SendJump() => JumpCount++;
     }
 }

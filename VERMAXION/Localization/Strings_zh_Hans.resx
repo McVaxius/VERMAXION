@@ -4824,4 +4824,9 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Auto-fade when unfocused" xml:space="preserve"><value>失去焦点后自动淡化</value></data>
   <data name="Unfocused opacity (%)" xml:space="preserve"><value>未聚焦时的不透明度 (%)</value></data>
   <data name="Unfocused delay (seconds)" xml:space="preserve"><value>失去焦点后的等待时间 (秒)</value></data>
+  <data name="Test Jumbo Broker Route" xml:space="preserve"><value>测试仙人仙彩销售员路线</value></data>
+  <data name="Test Jumbo Cashier Route" xml:space="preserve"><value>测试仙人仙彩兑奖员路线</value></data>
+  <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>路线测试会在NPC附近停下，不购买彩票或领取奖金。</value></data>
+  <data name="Jumbo route test: {0}" xml:space="preserve"><value>仙人仙彩路线测试：{0}</value></data>
+  <data name="A character must be available outside a duty." xml:space="preserve"><value>角色必须在副本外且可操作。</value></data>
 </root>

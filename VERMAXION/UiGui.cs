@@ -155,6 +155,9 @@ internal static class UiGui
     }
 
     internal static void Title(string original,string translated)
+        => TitleWithButtons(original, translated, null);
+
+    internal static void TitleWithButtons(string original,string translated,Dalamud.Interface.Windowing.Window? owner)
     {
         var s=ImGui.GetStyle(); var size=ImGui.GetFontSize();var height=ImGui.GetFrameHeight();
         var flags=ImGuiP.GetCurrentWindow().Flags;
@@ -164,7 +167,15 @@ internal static class UiGui
         using var font=UiText.Font(UiFontRole.Body);
         var translatedWidth=ScaledTextSize(translated,size/ImGui.GetFontSize()).X;
         var dl=ImGui.GetWindowDrawList();
-        dl.PushClipRect(ImGui.GetWindowPos(),ImGui.GetWindowPos()+new Vector2(ImGui.GetWindowSize().X,height),false);
+        var reserved=size+s.FramePadding.X*2;
+        if((flags & ImGuiWindowFlags.NoCollapse)==0 && s.WindowMenuButtonPosition==ImGuiDir.Right) reserved+=size+s.ItemInnerSpacing.X;
+        if(owner is not null)
+        {
+            var buttons=owner.TitleBarButtons.Count(button=>!owner.IsClickthrough||button.AvailableClickthrough);
+            if(owner.AllowPinning||owner.AllowClickthrough||owner.AllowBackgroundBlur) buttons++;
+            reserved+=buttons*(size+s.ItemInnerSpacing.X);
+        }
+        dl.PushClipRect(ImGui.GetWindowPos(),ImGui.GetWindowPos()+new Vector2(Math.Max(0,ImGui.GetWindowSize().X-reserved),height),false);
         try
         {
         var bg=s.Colors[(int)(ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)?ImGuiCol.TitleBgActive:ImGuiCol.TitleBg)];

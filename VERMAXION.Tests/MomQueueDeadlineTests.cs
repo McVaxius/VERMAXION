@@ -546,7 +546,8 @@ namespace Dalamud.Plugin.Services
     }
     public sealed class ICommandManager
     {
-        public bool ProcessCommand(string command) => true;
+        public System.Collections.Generic.List<string> Commands { get; } = new();
+        public bool ProcessCommand(string command) { Commands.Add(command); return true; }
     }
 }
 

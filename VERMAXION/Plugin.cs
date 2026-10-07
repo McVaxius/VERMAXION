@@ -1209,6 +1209,41 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         return true;
     }
 
+    internal bool CanStartJumboRouteTest(out string reason)
+    {
+        if (!CanStartMainMenuTest(waitForOceanFishing: false, out reason))
+            return false;
+
+        if (!GameHelpers.IsPlayerAvailable() || Condition[ConditionFlag.BoundByDuty] ||
+            Condition[ConditionFlag.BoundByDuty56] || Condition[ConditionFlag.BoundByDuty95])
+        {
+            reason = "A character must be available outside a duty.";
+            return false;
+        }
+
+        if (!LifestreamIPC.TryReadBusy(out var travelBusy) || travelBusy ||
+            !VNavmeshIPC.TryGetPathIsRunning(out var navigationRunning) || navigationRunning ||
+            !VNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) || pathfinding)
+        {
+            reason = "Travel owns the character.";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    internal void RunJumboRouteTest(bool cashier)
+    {
+        if (!CanStartJumboRouteTest(out var reason))
+        {
+            ChatGui.Print($"[Vermaxion] {reason}");
+            return;
+        }
+
+        RunDashboardAction(() => CactpotService.StartJumboRouteTest(cashier));
+    }
+
     internal void GoToMainMenu()
     {
         if (!CanStartMainMenuTest(waitForOceanFishing: false, out var reason) ||

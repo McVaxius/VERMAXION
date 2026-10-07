@@ -1964,4 +1964,9 @@ Zależności: {1}</value></data>
   <data name="Auto-fade when unfocused" xml:space="preserve"><value>Automatycznie przygaszaj bez fokusu</value></data>
   <data name="Unfocused opacity (%)" xml:space="preserve"><value>Nieprzezroczystość bez fokusu (%)</value></data>
   <data name="Unfocused delay (seconds)" xml:space="preserve"><value>Opóźnienie bez fokusu (sekundy)</value></data>
+  <data name="Test Jumbo Broker Route" xml:space="preserve"><value>Testuj trasę do sprzedawcy Jumbo</value></data>
+  <data name="Test Jumbo Cashier Route" xml:space="preserve"><value>Testuj trasę do kasjera Jumbo</value></data>
+  <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>Testy trasy zatrzymują się przy NPC bez kupowania losów ani odbierania wygranych.</value></data>
+  <data name="Jumbo route test: {0}" xml:space="preserve"><value>Test trasy Jumbo: {0}</value></data>
+  <data name="A character must be available outside a duty." xml:space="preserve"><value>Postać musi być dostępna poza instancją.</value></data>
 </root>

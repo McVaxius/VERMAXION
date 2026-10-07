@@ -1964,4 +1964,9 @@ Bağımlılıklar: {1}</value></data>
   <data name="Auto-fade when unfocused" xml:space="preserve"><value>Odak yokken otomatik soldur</value></data>
   <data name="Unfocused opacity (%)" xml:space="preserve"><value>Odak yokken opaklık (%)</value></data>
   <data name="Unfocused delay (seconds)" xml:space="preserve"><value>Odak kaybı gecikmesi (saniye)</value></data>
+  <data name="Test Jumbo Broker Route" xml:space="preserve"><value>Jumbo satıcısı rotasını test et</value></data>
+  <data name="Test Jumbo Cashier Route" xml:space="preserve"><value>Jumbo veznedarı rotasını test et</value></data>
+  <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>Rota testleri bilet almadan veya ödül toplamadan NPC yanında durur.</value></data>
+  <data name="Jumbo route test: {0}" xml:space="preserve"><value>Jumbo rota testi: {0}</value></data>
+  <data name="A character must be available outside a duty." xml:space="preserve"><value>Karakter bir görevin dışında ve kullanılabilir olmalıdır.</value></data>
 </root>

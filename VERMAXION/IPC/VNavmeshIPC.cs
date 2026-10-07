@@ -60,7 +60,7 @@ public class VNavmeshIPC : IDisposable
         log.Information("[VNavmeshIPC] VNavmesh IPC initialized (command movement with path-status verification)");
     }
     
-    public bool PathfindAndMoveTo(Vector3 position, bool fly = false)
+    public bool PathfindAndMoveTo(Vector3 position, bool fly = false, bool allowRecoveryJump = true)
     {
         var action = GroundNavigationRecoveryAction.Suppress;
         try
@@ -74,8 +74,15 @@ public class VNavmeshIPC : IDisposable
 
             if (action == GroundNavigationRecoveryAction.Recover)
             {
-                log.Warning($"[VNavmeshIPC] Ground navigation stalled for {GroundNavigationRecoveryTracker.StallTimeout.TotalSeconds:F0}s; jumping once and reissuing {position}");
-                GameHelpers.SendJump();
+                if (allowRecoveryJump)
+                {
+                    log.Warning($"[VNavmeshIPC] Ground navigation stalled for {GroundNavigationRecoveryTracker.StallTimeout.TotalSeconds:F0}s; jumping once and reissuing {position}");
+                    GameHelpers.SendJump();
+                }
+                else
+                {
+                    log.Warning($"[VNavmeshIPC] Ground navigation stalled for {GroundNavigationRecoveryTracker.StallTimeout.TotalSeconds:F0}s; reissuing {position} without a recovery jump");
+                }
             }
 
             var x = position.X.ToString("F2", CultureInfo.InvariantCulture);

@@ -4824,4 +4824,9 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Auto-fade when unfocused" xml:space="preserve"><value>Atténuer automatiquement sans focus</value></data>
   <data name="Unfocused opacity (%)" xml:space="preserve"><value>Opacité sans focus (%)</value></data>
   <data name="Unfocused delay (seconds)" xml:space="preserve"><value>Délai sans focus (secondes)</value></data>
+  <data name="Test Jumbo Broker Route" xml:space="preserve"><value>Tester le trajet vers le courtier Jumbo</value></data>
+  <data name="Test Jumbo Cashier Route" xml:space="preserve"><value>Tester le trajet vers le caissier Jumbo</value></data>
+  <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>Les tests de trajet s’arrêtent au PNJ sans acheter de billets ni récupérer de gains.</value></data>
+  <data name="Jumbo route test: {0}" xml:space="preserve"><value>Test du trajet Jumbo : {0}</value></data>
+  <data name="A character must be available outside a duty." xml:space="preserve"><value>Un personnage doit être disponible hors d’un contenu.</value></data>
 </root>

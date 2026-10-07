@@ -1603,4 +1603,9 @@
   <data name="Auto-fade when unfocused" xml:space="preserve"><value>फ़ोकस हटने पर अपने आप हल्का करें</value></data>
   <data name="Unfocused opacity (%)" xml:space="preserve"><value>फ़ोकस हटने पर अपारदर्शिता (%)</value></data>
   <data name="Unfocused delay (seconds)" xml:space="preserve"><value>फ़ोकस हटने पर विलंब (सेकंड)</value></data>
+  <data name="Test Jumbo Broker Route" xml:space="preserve"><value>जंबो विक्रेता का मार्ग जाँचें</value></data>
+  <data name="Test Jumbo Cashier Route" xml:space="preserve"><value>जंबो कैशियर का मार्ग जाँचें</value></data>
+  <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>मार्ग परीक्षण NPC के पास रुकते हैं; टिकट नहीं खरीदे जाते और पुरस्कार नहीं लिए जाते।</value></data>
+  <data name="Jumbo route test: {0}" xml:space="preserve"><value>जंबो मार्ग परीक्षण: {0}</value></data>
+  <data name="A character must be available outside a duty." xml:space="preserve"><value>पात्र ड्यूटी के बाहर उपलब्ध होना चाहिए।</value></data>
 </root>
