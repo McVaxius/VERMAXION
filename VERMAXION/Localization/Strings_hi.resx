@@ -1608,4 +1608,5 @@
   <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>मार्ग परीक्षण NPC के पास रुकते हैं; टिकट नहीं खरीदे जाते और पुरस्कार नहीं लिए जाते।</value></data>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>जंबो मार्ग परीक्षण: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>पात्र ड्यूटी के बाहर उपलब्ध होना चाहिए।</value></data>
+  <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>गियरसेट {0} के लिए Stylist का कार्य समाप्त हुआ; उपकरण का परिणाम सत्यापित नहीं है.</value></data>
 </root>

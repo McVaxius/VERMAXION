@@ -4829,4 +4829,5 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>Routentests halten beim NPC an, ohne Lose zu kaufen oder Gewinne abzuholen.</value></data>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>Jumbo-Routentest: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>Ein Charakter muss außerhalb eines Inhalts verfügbar sein.</value></data>
+  <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist ist für Ausrüstungsset {0} fertig; das Ausrüstungsergebnis ist nicht bestätigt.</value></data>
 </root>

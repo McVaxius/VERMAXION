@@ -1105,7 +1105,7 @@ public sealed class CurrentJobEquipmentStateMachine
             case State.WaitingForStylist:
                 var stylistProgress = runtime.PollStylistGearsetUpdate(out var stylistProgressError);
                 if (stylistProgress == StylistGearsetUpdateProgress.Complete)
-                    SetState(State.Complete, $"Stylist completed for gearset {startingGearset.GearsetId}.");
+                    SetState(State.Complete, $"Stylist finished for gearset {startingGearset.GearsetId}; equipment result unverified.");
                 else if (stylistProgress == StylistGearsetUpdateProgress.Failed)
                     SetState(State.Failed, $"Stylist polling failed after dispatch; native fallback was not started: {stylistProgressError}");
                 else if (runtime.UtcNow - stateEnteredAt >= EquipmentAutomationPolicy.StylistTimeout)
