@@ -124,6 +124,13 @@ public sealed class EquipmentAutomationTests
         Assert.False(machine.IsActive);
         if (stylistProgress == StylistGearsetUpdateProgress.Failed)
             Assert.Contains("Stylist polling failed", machine.Status);
+        else if (stylistProgress == StylistGearsetUpdateProgress.Complete)
+        {
+            Assert.Contains("equipment result unverified", machine.Status);
+            Assert.DoesNotContain("Stylist completed", machine.Status);
+        }
+        else
+            Assert.Contains("bounded wait", machine.Status);
 
         for (var i = 0; i < 8; i++)
         {

@@ -1969,4 +1969,5 @@ Dependências: {1}</value></data>
   <data name="Route tests stop at the NPC without buying tickets or claiming payouts." xml:space="preserve"><value>Os testes de rota param no NPC sem comprar bilhetes nem receber prêmios.</value></data>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>Teste de rota Jumbo: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>Um personagem deve estar disponível fora de uma instância.</value></data>
+  <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist terminou para o conjunto de equipamentos {0}; o resultado não foi verificado.</value></data>
 </root>

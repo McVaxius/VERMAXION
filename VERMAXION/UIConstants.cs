@@ -246,10 +246,15 @@ public static class UIConstants
             System.Math.Max(1f, System.Math.Min(size.X < 0 ? ImGui.GetContentRegionAvail().X : size.X > 0 ? size.X : ButtonWidth(label), ImGui.GetContentRegionAvail().X));
         var iconWidth = action ? 28f * Scale : 0;
         var oldWrapped = ImGui.CalcTextSize(originalVisible).X > Math.Max(1,legacyWidth-ImGui.GetStyle().FramePadding.X*2-iconWidth);
+        using var controls = ImGui.GetStyle().FramePadding.Y == 0 || MaterialControls.Context == MaterialControlContext.Dense
+            ? default(MaterialControls.ControlScope) : MaterialControls.Push(MaterialControlContext.Toolbar);
+        var paddingY = ImGui.GetStyle().FramePadding.Y;
+        using var lineHeight = MaterialText.PushLineHeight(visibleLabel);
         var textSize = MaterialText.Measure(visibleLabel);
         var naturalWidth = textSize.X+ImGui.GetStyle().FramePadding.X*2+iconWidth;
         var width = MaterialLayout.FitNextItemWidth(size.X,naturalWidth);
-        var height = System.Math.Max(size.Y > 0 ? size.Y : (Compact ? 30f : 36f) * Scale, textSize.Y + ImGui.GetStyle().FramePadding.Y * 2);
+        var height = System.Math.Max(size.Y > 0 ? size.Y : MaterialControls.Metrics.Height,
+            System.Math.Max(textSize.Y, action ? 20 * Scale : 0) + paddingY * 2);
         var emphasis = originalVisible is "Run" or "Run All" or "Resume" or "CPU campaign" or "Scan";
         if (emphasis)
         {
@@ -282,7 +287,7 @@ public static class UIConstants
         stopStyle.Color(ImGuiCol.ButtonActive, MaterialColor.Layer(Window, red, .32f));
         stopStyle.Color(ImGuiCol.Border, red);
         stopStyle.Color(ImGuiCol.Text, red);
-        return Button("FULL STOP", size == default ? new Vector2(180f * Scale, 44f * Scale) : size, true, previousWidth);
+        return Button("FULL STOP", size == default ? new Vector2(180f * Scale, 0) : size, true, previousWidth);
     }
 
     internal static void Status(string id, string text, Vector4 color, bool translate = true)

@@ -332,7 +332,7 @@ public class MainWindow : Window, IDisposable
 
             // Control buttons row
             // FULL STOP stays above task scrolling, with an explicit border in every state.
-            var actionHeight = (compact ? 40 : VermaxionPresentation.MainAction) * scale;
+            var actionHeight = MaterialControlMetrics.Measure(MaterialTheme.Metrics, ImGui.GetTextLineHeight(), MaterialControlContext.Toolbar).Height;
             var available = ImGui.GetContentRegionAvail().X;
             var gap = ImGui.GetStyle().ItemSpacing.X;
             var previousWidth = Math.Max(140 * scale, MathF.Floor((available - 4 * gap) / 5));

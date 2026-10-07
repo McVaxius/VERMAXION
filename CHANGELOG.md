@@ -1,5 +1,15 @@
 # VERMAXION Changelog
 
+## Unreleased - Stylist completion status (I473)
+
+- Report Stylist becoming idle as finished with an unverified equipment result, rather than claiming success. Retain immediate idle completion, the 45-second busy timeout, polling errors, character/job/gearset guards, existing handoff safety and the rule against duplicate native equipment work after an accepted Stylist request.
+- Translate the new completion status through all fifteen existing catalogs. Focused equipment tests pass 18/18; the unchanged VMX launcher passes Debug/x64 with zero errors and the existing PInvoke.User32 dependency warning.
+
+## Unreleased - Button sizing (I491)
+
+- Use font-aware Toolbar sizing for ordinary buttons and reduce Main and default FULL STOP action heights to full text/icon content. Preserve fonts, existing native ID selection, actions, requested widths and small/dense controls.
+- Current Debug/x64 compilation passes. Final actual-product native checks pass 4482 assertions across 32 focused scenes and 80 pointer activations, with integer exit 0 in all 2 routes. Coverage uses English/Hindi captions, original exercised font roles, both densities, 100/150 percent scale and enlarged text; game/GPU acceptance remains separate.
+
 ## Unreleased - CJK atlas construction
 
 - Request a 4096 x 4096 managed atlas and merge one bundled Noto CJK face per font role for the selected language, including Simplified and Traditional Chinese aliases. Preserve existing font sizes, glyph ranges, Windows and symbol fonts, and font lifecycle.
