@@ -14,6 +14,38 @@ public sealed class AccountConfigPersistenceTests
     private static readonly DateTime CreatedAtUtc =
         new(2026, 7, 1, 12, 0, 0, DateTimeKind.Utc);
 
+    [Fact]
+    public void TimerDefaultsAndIndependentFieldMergesPreserveAccountEdits()
+    {
+        using var directory = new TemporaryDirectory();
+        var original = CreateAccount("character-a");
+        var legacy = JsonSerializer.SerializeToNode(original)!;
+        legacy.AsObject().Remove(nameof(AccountConfig.RetainerlessTimerEnabled));
+        legacy.AsObject().Remove(nameof(AccountConfig.RetainerlessTimerIntervalMinutes));
+        File.WriteAllText(Path.Combine(directory.Path, $"{AccountId}_Vermaxion.json"), legacy.ToJsonString());
+        var firstPersistence = new AccountConfigPersistence(directory.Path);
+        var secondPersistence = new AccountConfigPersistence(directory.Path);
+        var first = LoadSingle(firstPersistence);
+        var second = LoadSingle(secondPersistence);
+        Assert.False(first.RetainerlessTimerEnabled);
+        Assert.Equal(30, first.RetainerlessTimerIntervalMinutes);
+        first.RetainerlessTimerEnabled = true;
+        first.Characters["character-a"].JumboCactpotFixedNumber = 1234;
+        Assert.True(firstPersistence.Save(AccountId, first).Succeeded);
+        second.RetainerlessTimerIntervalMinutes = 45;
+        second.AccountAlias = "Timer fixture";
+        var merged = secondPersistence.Save(AccountId, second);
+        Assert.True(merged.Succeeded, merged.Error);
+        Assert.True(merged.Account!.RetainerlessTimerEnabled);
+        Assert.Equal(45, merged.Account.RetainerlessTimerIntervalMinutes);
+        Assert.Equal("Timer fixture", merged.Account.AccountAlias);
+        Assert.Equal(1234, merged.Account.Characters["character-a"].JumboCactpotFixedNumber);
+        var reloaded = LoadSingle(new AccountConfigPersistence(directory.Path));
+        Assert.True(reloaded.RetainerlessTimerEnabled);
+        Assert.Equal(45, reloaded.RetainerlessTimerIntervalMinutes);
+        Assert.Equal("Timer fixture", reloaded.AccountAlias);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]

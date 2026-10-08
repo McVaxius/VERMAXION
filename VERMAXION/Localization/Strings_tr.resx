@@ -1970,4 +1970,8 @@ Bağımlılıklar: {1}</value></data>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>Jumbo rota testi: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>Karakter bir görevin dışında ve kullanılabilir olmalıdır.</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist, {0} ekipman seti için işlemi bitirdi; ekipman sonucu doğrulanmadı.</value></data>
+  <data name="Run due tasks on a timer" xml:space="preserve"><value>Zamanı gelen görevleri zamanlayıcıyla çalıştır</value></data>
+  <data name="Timer interval (minutes)" xml:space="preserve"><value>Zamanlayıcı aralığı (dakika)</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Yalnızca çalışan hesap ve oturum açmış karakter için geçerlidir. Boştayken her iki aşamadaki etkin ve zamanı gelen görevleri çalıştırır. FULL STOP zamanlayıcıyı kapatır.</value></data>
+  <data name="Timer character session ended" xml:space="preserve"><value>Zamanlayıcı karakterinin oturumu sona erdi</value></data>
 </root>

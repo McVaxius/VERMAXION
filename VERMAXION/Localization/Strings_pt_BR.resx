@@ -1970,4 +1970,8 @@ Dependências: {1}</value></data>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>Teste de rota Jumbo: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>Um personagem deve estar disponível fora de uma instância.</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist terminou para o conjunto de equipamentos {0}; o resultado não foi verificado.</value></data>
+  <data name="Run due tasks on a timer" xml:space="preserve"><value>Executar tarefas vencidas com um temporizador</value></data>
+  <data name="Timer interval (minutes)" xml:space="preserve"><value>Intervalo do temporizador (minutos)</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Apenas para esta conta em execução e o personagem conectado. Executa tarefas habilitadas e vencidas de ambas as fases quando não há atividade. FULL STOP desativa o temporizador.</value></data>
+  <data name="Timer character session ended" xml:space="preserve"><value>A sessão do personagem do temporizador terminou</value></data>
 </root>

@@ -342,6 +342,11 @@ internal sealed class AccountConfigPersistence
         if (!string.Equals(local.AccountAlias, baseline.AccountAlias, StringComparison.Ordinal))
             merged.AccountAlias = local.AccountAlias;
 
+        if (local.RetainerlessTimerEnabled != baseline.RetainerlessTimerEnabled)
+            merged.RetainerlessTimerEnabled = local.RetainerlessTimerEnabled;
+        if (local.RetainerlessTimerIntervalMinutes != baseline.RetainerlessTimerIntervalMinutes)
+            merged.RetainerlessTimerIntervalMinutes = local.RetainerlessTimerIntervalMinutes;
+
         if (!AreEquivalent(local.DefaultConfig, baseline.DefaultConfig))
             merged.DefaultConfig = Clone(local.DefaultConfig);
 

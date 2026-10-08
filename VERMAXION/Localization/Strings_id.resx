@@ -1970,4 +1970,8 @@ Dependensi: {1}</value></data>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>Uji rute Jumbo: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>Karakter harus tersedia di luar duty.</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist selesai untuk set perlengkapan {0}; hasil perlengkapan belum diverifikasi.</value></data>
+  <data name="Run due tasks on a timer" xml:space="preserve"><value>Jalankan tugas yang jatuh tempo dengan timer</value></data>
+  <data name="Timer interval (minutes)" xml:space="preserve"><value>Interval timer (menit)</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Hanya untuk akun yang sedang berjalan dan karakter yang masuk. Saat tidak ada aktivitas, menjalankan tugas aktif yang jatuh tempo dari kedua tahap. FULL STOP menonaktifkan timer.</value></data>
+  <data name="Timer character session ended" xml:space="preserve"><value>Sesi karakter timer telah berakhir</value></data>
 </root>

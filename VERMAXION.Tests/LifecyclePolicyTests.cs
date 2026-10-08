@@ -8,6 +8,69 @@ namespace VERMAXION.Tests;
 public sealed class LifecyclePolicyTests
 {
     [Fact]
+    public void RetainerlessTimerKeepsOneExpiryAndMeasuresFromOwnedCompletion()
+    {
+        var account = new AccountConfig();
+        Assert.False(account.RetainerlessTimerEnabled);
+        Assert.Equal(30, account.RetainerlessTimerIntervalMinutes);
+        account.RetainerlessTimerIntervalMinutes = 0;
+        Assert.Equal(1, account.RetainerlessTimerIntervalMinutes);
+        var now = new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc);
+        DateTime? due = LifecyclePolicy.UpdateRetainerlessTimerDueUtc(
+            now, null, 30, false, true, false, false, null);
+        Assert.Null(due);
+        due = LifecyclePolicy.UpdateRetainerlessTimerDueUtc(now, due, 30, true, true, true, false, null);
+        Assert.Equal(now.AddMinutes(30), due);
+        Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(now, due, true, false, false, true, default));
+
+        // Repeated blocked opportunities retain one expiry, regardless of the number of intervals missed.
+        for (var interval = 1; interval <= 5; interval++)
+        {
+            var blockedNow = now.AddHours(interval);
+            due = LifecyclePolicy.UpdateRetainerlessTimerDueUtc(blockedNow, due, 30, true, true, false, false, null);
+            Assert.Equal(now.AddMinutes(30), due);
+            Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(blockedNow, due, false, false, false, true, default));
+        }
+        var start = now.AddHours(5);
+        Assert.True(LifecyclePolicy.CanStartRetainerlessTimer(start, due, true, false, false, true, default));
+        var clear = new SuppressionSnapshot(true, false, false);
+        Assert.True(LifecyclePolicy.CanStartRetainerlessTimer(start, due, true, true, true, false, clear));
+        Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(start, due, true, true, false, false, clear));
+        Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(start, due, true, true, true, true, clear));
+        Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(start, due, true, true, true, false, default));
+        Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(start, due, true, true, true, false, new(true, true, false)));
+        Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(start, due, true, true, true, false, new(true, false, true)));
+
+        // Both phase placements retain the ordinary enabled/due filter and configured ordering.
+        Assert.Equal(["before", "after"], LifecyclePolicy.BuildRunnableQueue(
+            ["before", "disabled", "after", "not-due"], _ => true, id => id is "before" or "after"));
+        due = LifecyclePolicy.UpdateRetainerlessTimerDueUtc(start, due, 30, true, true, false, true, null);
+        Assert.Null(due);
+        var completed = start.AddHours(2);
+        due = LifecyclePolicy.UpdateRetainerlessTimerDueUtc(completed.AddSeconds(5), due, 30, true, true, false, false, completed);
+        Assert.Equal(completed.AddMinutes(30), due);
+        Assert.False(LifecyclePolicy.CanStartRetainerlessTimer(completed.AddMinutes(29), due, true, false, true, false, clear));
+        Assert.True(LifecyclePolicy.CanStartRetainerlessTimer(completed.AddMinutes(30), due, true, false, true, false, clear));
+        Assert.Equal(start.AddMinutes(30), LifecyclePolicy.UpdateRetainerlessTimerDueUtc(
+            start, null, 30, true, true, false, false, start)); // Immediate/no-due completion.
+        var cancelled = completed.AddMinutes(10);
+        Assert.Equal(cancelled.AddMinutes(30), LifecyclePolicy.UpdateRetainerlessTimerDueUtc(
+            cancelled.AddSeconds(5), null, 30, true, true, false, false, cancelled));
+
+        // Logout/FULL STOP discard the expiry; login/reload/enable start a fresh full interval.
+        Assert.Null(LifecyclePolicy.UpdateRetainerlessTimerDueUtc(completed, due, 30, true, false, false, false, null));
+        Assert.Null(LifecyclePolicy.UpdateRetainerlessTimerDueUtc(completed, due, 30, false, true, false, false, null));
+        Assert.Equal(completed.AddMinutes(30), LifecyclePolicy.UpdateRetainerlessTimerDueUtc(completed, null, 30, true, true, false, false, null));
+        Assert.Equal(completed.AddMinutes(30), LifecyclePolicy.UpdateRetainerlessTimerDueUtc(completed, now, 30, true, true, true, false, null));
+        Assert.Equal(SuppressionLeaseAction.PreserveExternal,
+            SuppressionLeasePolicy.DecideRelease(false, SuppressionReadResult.Known(true)));
+        Assert.Equal(SuppressionLeaseAction.Release,
+            SuppressionLeasePolicy.DecideRelease(true, SuppressionReadResult.Known(true)));
+        Assert.Equal(SuppressionLeaseAction.WaitForRemote,
+            SuppressionLeasePolicy.DecideRelease(true, SuppressionReadResult.Unknown("unreadable")));
+    }
+
+    [Fact]
     public void RunnableQueuePreservesConfiguredOrderAndFiltersSkippedTasks()
     {
         var queue = LifecyclePolicy.BuildRunnableQueue(

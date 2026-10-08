@@ -4830,4 +4830,8 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>ジャンボ経路テスト: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>コンテンツ外でキャラクターが操作可能である必要があります。</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>装備セット {0} の Stylist 処理が終了しました。装備結果は未確認です。</value></data>
+  <data name="Run due tasks on a timer" xml:space="preserve"><value>実行時刻に達したタスクをタイマーで実行</value></data>
+  <data name="Timer interval (minutes)" xml:space="preserve"><value>タイマー間隔（分）</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>現在の実行用アカウントとログイン中のキャラクターのみが対象です。待機中に、両フェーズの有効なタスクのうち実行時刻に達したものを実行します。FULL STOPでタイマーを無効にします。</value></data>
+  <data name="Timer character session ended" xml:space="preserve"><value>タイマー対象キャラクターのセッションが終了しました</value></data>
 </root>

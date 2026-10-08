@@ -1970,4 +1970,8 @@ Zależności: {1}</value></data>
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>Test trasy Jumbo: {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>Postać musi być dostępna poza instancją.</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist zakończył pracę z zestawem wyposażenia {0}; wynik nie został zweryfikowany.</value></data>
+  <data name="Run due tasks on a timer" xml:space="preserve"><value>Uruchamiaj zadania w terminie za pomocą timera</value></data>
+  <data name="Timer interval (minutes)" xml:space="preserve"><value>Interwał timera (minuty)</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Tylko dla bieżącego konta i zalogowanej postaci. W stanie bezczynności uruchamia włączone zadania obu faz, których termin nadszedł. FULL STOP wyłącza timer.</value></data>
+  <data name="Timer character session ended" xml:space="preserve"><value>Sesja postaci timera zakończyła się</value></data>
 </root>

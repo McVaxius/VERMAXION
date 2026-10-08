@@ -57,6 +57,37 @@ internal static class LifecyclePolicy
 {
     public static bool CanStart(bool isRunning) => !isRunning;
 
+    public static DateTime? UpdateRetainerlessTimerDueUtc(
+        DateTime nowUtc,
+        DateTime? dueUtc,
+        int intervalMinutes,
+        bool enabled,
+        bool registeredSession,
+        bool restartInterval,
+        bool timerRunActive,
+        DateTime? completedAtUtc)
+    {
+        if (!enabled || !registeredSession || timerRunActive)
+            return null;
+        if (restartInterval)
+            return nowUtc.AddMinutes(Math.Max(1, intervalMinutes));
+        if (completedAtUtc is { } completed)
+            return completed.AddMinutes(Math.Max(1, intervalMinutes));
+        return dueUtc ?? nowUtc.AddMinutes(Math.Max(1, intervalMinutes));
+    }
+
+    public static bool CanStartRetainerlessTimer(
+        DateTime nowUtc,
+        DateTime? dueUtc,
+        bool admissionReady,
+        bool autoRetainerInstalled,
+        bool busyKnown,
+        bool busy,
+        SuppressionSnapshot suppression)
+        => dueUtc is { } due && nowUtc >= due && admissionReady &&
+           (!autoRetainerInstalled || busyKnown && !busy &&
+               suppression.RemoteKnown && !suppression.RemoteSuppressed && !suppression.OwnedByVermaxion);
+
     public static bool RequiresSettling(bool ownedWorkStarted) => ownedWorkStarted;
 
     public static bool RequiresFinalSettling(

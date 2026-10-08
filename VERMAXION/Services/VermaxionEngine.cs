@@ -15,12 +15,21 @@ namespace VERMAXION.Services;
 public class VermaxionEngine
 {
     private bool retainerSuppressionRequired;
+    private bool retainerlessTimerRun;
+    private ulong retainerlessTimerCharacterId;
+    private string retainerlessTimerAccountId = string.Empty;
+    internal bool IsRetainerlessTimerRun => IsRunning && retainerlessTimerRun;
+    internal DateTime? LastRetainerlessTimerRunCompletedAtUtc { get; private set; }
+    private bool TimerRunWithoutAutoRetainer => retainerlessTimerRun &&
+        !autoRetainerIPC.SuppressionOwnedByVermaxion &&
+        !Plugin.PluginInterface.InstalledPlugins.Any(plugin => plugin.InternalName == "AutoRetainer");
     private bool suppressionReleasedForHandoff;
     private bool retainerCleanupPending;
     private bool retainerUiOwned;
     private ulong retainerWorkCharacterId;
     private string retainerCleanupStatus = string.Empty;
     internal bool RequiresAutoRetainerSuppression => IsRunning && !suppressionReleasedForHandoff &&
+        !TimerRunWithoutAutoRetainer &&
         (activePhaseFilter == RunTaskPhaseFilter.BeforeAR || retainerSuppressionRequired);
 
     internal void NotifyRetainerOwnershipLost(string reason)
@@ -31,7 +40,7 @@ public class VermaxionEngine
     }
 
     private string? GetRetainerControlBlocker(bool waitingForRoute = false)
-        => RetainerControlPolicy.GetBlocker(autoRetainerIPC.GetSuppressionSnapshot(),
+        => TimerRunWithoutAutoRetainer ? null : RetainerControlPolicy.GetBlocker(autoRetainerIPC.GetSuppressionSnapshot(),
             autoRetainerIPC.ReadBusyState(), arService.IsProcessing, waitingForRoute);
 
     public Func<string?> StartBlocker { get; set; } = static () => null;
@@ -794,6 +803,12 @@ public class VermaxionEngine
         return TryBeginRun(RunTaskPhaseFilter.BeforeAR, requireEnabled: true, requireWorldReady: true, automatedRun: true, "before-AR");
     }
 
+    internal bool StartRetainerlessTimerRun()
+        => configuration.Enabled &&
+           configManager.GetCurrentAccount()?.Characters.ContainsKey(configManager.CurrentCharacterKey) == true &&
+           TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: true, requireWorldReady: true,
+               automatedRun: true, "retainerless timer", timerOwnedRun: true);
+
     internal bool StartScheduledTask(string taskId)
     {
         if (!configuration.Enabled ||
@@ -935,7 +950,8 @@ public class VermaxionEngine
         bool requireWorldReady,
         bool automatedRun,
         string source,
-        AutomationRunScope? runScope = null)
+        AutomationRunScope? runScope = null,
+        bool timerOwnedRun = false)
     {
         if (!RegistryValidation.IsValid)
         {
@@ -970,7 +986,10 @@ public class VermaxionEngine
         }
 
         ResetRunTracking();
-        retainerSuppressionRequired = automatedRun && runScope.SingleTaskId != null ||
+        retainerlessTimerRun = timerOwnedRun;
+        retainerlessTimerCharacterId = timerOwnedRun ? Plugin.PlayerState.ContentId : 0;
+        retainerlessTimerAccountId = timerOwnedRun ? configManager.CurrentAccountId : string.Empty;
+        retainerSuppressionRequired = timerOwnedRun || automatedRun && runScope.SingleTaskId != null ||
             runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables;
         suppressionReleasedForHandoff = false;
         retainerCleanupPending = false;
@@ -1074,6 +1093,10 @@ public class VermaxionEngine
 
         try
         {
+            if (retainerlessTimerRun && pendingRunOutcome != RunOutcome.Cancelled &&
+                (!clientState.IsLoggedIn || Plugin.PlayerState.ContentId != retainerlessTimerCharacterId ||
+                 configManager.CurrentAccountId != retainerlessTimerAccountId))
+                CancelForSettling("Timer character session ended");
             if (retainerUiOwned && Plugin.PlayerState.ContentId != retainerWorkCharacterId)
             {
                 retainerListingRefillService.CancelForCharacterChange();
@@ -3086,11 +3109,16 @@ public class VermaxionEngine
         LastRunOutcome = outcome;
         LastRunSummary = summary;
         LastRunCompletedAtUtc = DateTime.UtcNow;
+        if (retainerlessTimerRun)
+            LastRetainerlessTimerRunCompletedAtUtc = LastRunCompletedAtUtc;
     }
 
     private void ResetRunTracking()
     {
         retainerSuppressionRequired = false;
+        retainerlessTimerRun = false;
+        retainerlessTimerCharacterId = 0;
+        retainerlessTimerAccountId = string.Empty;
         suppressionReleasedForHandoff = false;
         retainerCleanupPending = false;
         retainerUiOwned = false;
