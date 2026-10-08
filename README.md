@@ -1,12 +1,18 @@
 # VERMAXION
 
-The main window uses the approved regular and compact presentation, with a `C` compact switch, shared relative colour themes and a fourteen-language selector. `UiLanguage` and `UiAccentRgb` are saved through the existing configuration; the existing `CompactUi` preference is reused. The other five windows keep their established layouts and share the selected appearance.
+The main window uses the approved regular and compact presentation, with a `C` compact switch, shared relative colour themes and a fifteen-language selector. `UiLanguage` and `UiAccentRgb` are saved through the existing configuration; the existing `CompactUi` preference is reused. The other five windows keep their established layouts and share the selected appearance.
+
+**Transparency** applies to the complete plugin window, including its titlebar and popups. Settings provides normal opacity, automatic focus fade, faded opacity and delay; defaults are 100%, fading to 50% after 10 seconds without focus and restoring on focus. Compact and language controls can be hidden independently on Main while remaining available in Settings.
+
+Main's titlebar opens Settings, toggles Enabled, runs all eligible tasks, cancels the current run or invokes FULL STOP through the existing actions and readiness checks. The packaged plugin icon appears in Main branding and its titlebar, including when collapsed.
 
 Managed Segoe UI fonts borrow Windows' text and symbol faces and Dalamud's selected-locale Noto CJK coverage. No Windows font files are distributed. Readiness and required-glyph checks remain explicit, including the DTR tooltip's black-circle symbol.
 
 Settings → Characters shows accounts and saved characters in a dedicated left pane. Select `(Default Config)` or a character there, then choose the task in the separate Settings picker above its editor. Narrow windows use a labeled character picker. The editing account stays separate from the active automation account, so browsing profiles keeps runtime work and runtime saves on the logged-in scope.
 
-Fourteen embedded translation resources cover authored window labels, tooltips, Settings explanations and displayed status messages, including collection inspection, supplies, readiness and cleanup. English, German, French, Spanish, Italian, Russian, Japanese, Korean and Simplified Chinese remain available; Vietnamese, Brazilian Portuguese, Indonesian, Polish and Turkish append to the existing choices. Names, external data, command tokens and logs retain their original text; numbers and dates use the selected UI culture. Native UI IDs remain stable. Hindi is not offered because correct Devanagari shaping has not been established. Build and resource validation do not establish host font readiness or game visual acceptance, which remain pending.
+Fifteen embedded translation catalogs cover authored window labels, tooltips, Settings explanations and displayed status messages, including collection inspection, supplies, readiness and cleanup. English, German, French, Spanish, Italian, Russian, Japanese, Korean, Simplified Chinese, Vietnamese, Brazilian Portuguese, Indonesian, Polish, Turkish and Hindi are available. Hindi uses the local text renderer for Devanagari shaping; game-owned DTR text remains English for that selection. Names, external data, command tokens and logs retain their original text; numbers and dates use the selected UI culture. Native UI IDs remain stable. Build and resource validation do not establish host font readiness or game visual acceptance.
+
+Hindi is enabled only when the local font check passes. Otherwise the selector shows disabled **Hindi (unavailable)** while other languages remain usable. A saved Hindi choice that fails its required-font check shows an English status and **Use English**; that button explicitly saves English. Font failures never change the saved language automatically.
 
 VERMAXION exposes its existing v1 automation status IPC plus an additive v2 DAD handoff reservation. A live DAD
 operation renews a 15-second lease every five seconds. VERMAXION finishes current owned work, blocks new work,
@@ -37,7 +43,9 @@ https://aethertek.io/x.json
 
 AutoRetainer post-process automation for weekly and daily tasks, configured per character.
 
-The persisted, enabled-by-default global `Enabled` master switch is controlled by the Main Window checkbox or `/vmx on|off`. Turning it off blocks new automatic pre/post-AR, Ocean Fishing, idle inn-parking, and character-select recovery work without force-stopping active work or disabling manual Run/Test controls. Each character's clearly labelled `Character automation enabled` setting remains a secondary gate.
+The persisted, enabled-by-default global `Enabled` master switch is controlled by the Main Window checkbox or `/vmx on|off`. Turning it off blocks new automatic pre/post-AR, timer, Ocean Fishing, idle inn-parking, and character-select recovery work without force-stopping active work or disabling manual Run/Test controls. Each character's clearly labelled `Character automation enabled` setting remains a secondary gate.
+
+Main's **Run due tasks on a timer** is saved for the current runtime account and defaults to off, with **Timer interval (minutes)** initially set to 30. It considers enabled, due ordered engine tasks from both Before-AR and After-AR phases for the logged-in, registered character, retaining the master/character gates and each task's normal schedule. Enable, login, reload and interval changes start a fresh interval; the next interval after an owned run starts from its completion. A blocked expiry waits for a safe idle opportunity and keeps one pending run. **FULL STOP** disables the saved timer. AutoRetainer may be absent; when installed, busy, unreadable or externally suppressed state blocks startup, and the existing owned suppression lease is conditionally released on completion or cancellation. Ocean Fishing retains its separate coordinator and window-watch setting.
 
 ## Features
 

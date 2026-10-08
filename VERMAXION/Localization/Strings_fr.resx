@@ -4830,4 +4830,8 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>Test du trajet Jumbo : {0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>Un personnage doit être disponible hors d’un contenu.</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist a terminé pour l’ensemble d’équipement {0} ; le résultat n’est pas vérifié.</value></data>
+  <data name="Run due tasks on a timer" xml:space="preserve"><value>Exécuter les tâches dues avec un minuteur</value></data>
+  <data name="Timer interval (minutes)" xml:space="preserve"><value>Intervalle du minuteur (minutes)</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Uniquement pour ce compte actif et le personnage connecté. Exécute les tâches activées et dues des deux phases lorsque tout est inactif. FULL STOP désactive le minuteur.</value></data>
+  <data name="Timer character session ended" xml:space="preserve"><value>La session du personnage du minuteur est terminée</value></data>
 </root>

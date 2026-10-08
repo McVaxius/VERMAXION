@@ -48,6 +48,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IGameInventory GameInventory { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
+
+    internal Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap OriginalIcon
+        => TextureProvider.GetFromFile(System.IO.Path.Combine(
+            PluginInterface.AssemblyLocation.DirectoryName ?? "", "icon.png")).GetWrapOrEmpty();
     [PluginService] internal static IUnlockState UnlockState { get; private set; } = null!;
     [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
     [PluginService] internal static INotificationManager NotificationManager { get; private set; } = null!;
@@ -75,6 +79,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private uint appliedAccent;
     private Vector3 accentDraft;
     private int checkedFontGeneration = -1;
+    private int checkedHindiGeneration = -1;
     private bool fontIssueLogged;
 
     private const string ExpectedDebugPluginPath = @"A:\ff14\xivlauncher7\FishCollectionClient7Verification\VERMAXION\VERMAXION.dll";
@@ -174,6 +179,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private bool retainerCollectOnlyObservedArProcessing;
     private bool dashboardRunYesAlreadyPauseOwned;
     private DateTime nextAutomaticDueCheckUtc;
+    private DateTime? retainerlessTimerDueUtc;
+    private bool retainerlessTimerWasEnabled;
+    private bool retainerlessTimerRunPendingCompletion;
+    private string retainerlessTimerAccountId = string.Empty;
+    private ulong retainerlessTimerCharacterId;
+    private int retainerlessTimerIntervalMinutes;
     private readonly Dictionary<(ulong Character, string Task), DateTime> automaticTaskNextAttemptUtc = new();
     private int loggedDadBeforeArYield;
     private const int BeforeArLoginTimeoutSeconds = 120;
@@ -437,6 +448,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             DrawFontStatus(uiFonts.LoadException is null);
             return;
         }
+        if (checkedHindiGeneration != uiFonts.Generation)
+        {
+            var generation = uiFonts.Generation;
+            var hindiAvailable = true;
+            foreach (var size in VermaxionPresentation.FontSizes)
+                hindiAvailable &= shapedText.Renderer.TryCheckGlyphs(["हिन्दी"], size * ImGuiHelpers.GlobalScale, out _);
+            languageOptions.Replace(UiText.Languages.Select(l => new MaterialOption<string>(l.Code, l.Code,
+                l.Code == "hi" && !hindiAvailable ? "Hindi (unavailable)" : l.Name, l.Code == "hi" && !hindiAvailable)).ToArray());
+            checkedHindiGeneration = generation;
+        }
         if(checkedFontGeneration!=uiFonts.Generation)
         {
             try
@@ -472,7 +493,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             if (visible)
             {
                 fontStatusDecorations.Paint();
-                MaterialText.TextWrapped(UiText.T(loading?"Loading UI fonts...":"UI fonts failed to load. See the plugin log."));
+                if (appliedLanguage == "hi")
+                {
+                    ImGui.TextWrapped(loading ? "Loading Hindi UI fonts..." : "Hindi UI fonts are unavailable. See the plugin log.");
+                    if (!loading && ImGui.Button("Use English")) { Configuration.UiLanguage = "en"; Configuration.Save(); }
+                }
+                else MaterialText.TextWrapped(UiText.T(loading?"Loading UI fonts...":"UI fonts failed to load. See the plugin log."));
             }
         }
         finally
@@ -496,6 +522,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             languageOptions=new(UiText.Languages.Select(l=>new MaterialOption<string>(l.Code,l.Code,l.Name)).ToArray());
             appliedLanguage=language;
             checkedFontGeneration=-1;
+            checkedHindiGeneration = -1;
             fontIssueLogged=false;
         }
         if(uiTheme is null || (Configuration.UiAccentRgb & 0xFFFFFF)!=appliedAccent)
@@ -2672,6 +2699,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         UpdateBeforeArGateAfterEngine();
         ProcessBeforeArReleasePending();
         ProcessRetainerCollectOnlyRecovery();
+        ProcessRetainerlessTimer();
         ProcessAutomaticDueTasks();
 
         // Update DTR bar
@@ -2873,6 +2901,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// </summary>
     public void FullStop(bool preparingDebugTask = false)
     {
+        var timerAccount = ConfigManager.GetCurrentAccount();
+        if (timerAccount?.RetainerlessTimerEnabled == true)
+        {
+            timerAccount.RetainerlessTimerEnabled = false;
+            ConfigManager.SaveCurrentAccount();
+        }
+        retainerlessTimerDueUtc = null;
+        retainerlessTimerRunPendingCompletion = false;
 #if DEBUG
         debugCollectionStopArmed = false;
 #endif
@@ -3020,11 +3056,58 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         return true;
     }
 
-    private void ProcessAutomaticDueTasks()
+    private void ProcessRetainerlessTimer()
     {
         var now = DateTime.UtcNow;
-        if (now < nextAutomaticDueCheckUtc) return;
-        nextAutomaticDueCheckUtc = now.AddSeconds(5);
+        var account = ConfigManager.GetCurrentAccount();
+        var enabled = account?.RetainerlessTimerEnabled == true;
+        var interval = account?.RetainerlessTimerIntervalMinutes ?? 30;
+        var accountId = ConfigManager.CurrentAccountId;
+        var characterId = ClientState.IsLoggedIn ? PlayerState.ContentId : 0;
+        var registeredSession = ClientState.IsLoggedIn && IsCharacterRegistered && PlayerState.IsLoaded &&
+            characterId != 0 && account?.Characters.ContainsKey(ConfigManager.CurrentCharacterKey) == true;
+        var sessionChanged = accountId != retainerlessTimerAccountId || characterId != retainerlessTimerCharacterId;
+        var restartInterval = enabled && !retainerlessTimerWasEnabled || sessionChanged ||
+            interval != retainerlessTimerIntervalMinutes;
+        if (sessionChanged)
+            retainerlessTimerRunPendingCompletion = false;
+        DateTime? completedAtUtc = null;
+        if (retainerlessTimerRunPendingCompletion && !Engine.IsRetainerlessTimerRun)
+        {
+            retainerlessTimerRunPendingCompletion = false;
+            completedAtUtc = Engine.LastRetainerlessTimerRunCompletedAtUtc;
+        }
+        retainerlessTimerDueUtc = LifecyclePolicy.UpdateRetainerlessTimerDueUtc(
+            now, retainerlessTimerDueUtc, interval, enabled, registeredSession,
+            restartInterval, retainerlessTimerRunPendingCompletion && Engine.IsRetainerlessTimerRun, completedAtUtc);
+        retainerlessTimerWasEnabled = enabled;
+        retainerlessTimerAccountId = accountId;
+        retainerlessTimerCharacterId = characterId;
+        retainerlessTimerIntervalMinutes = interval;
+
+        // Share the existing five-second admission cadence; retain a single expired deadline while blocked.
+        if (retainerlessTimerDueUtc is not { } due || now < due || now < nextAutomaticDueCheckUtc ||
+            !Engine.RegistryReady || !CanStartAutomaticDueWork() ||
+            Condition[ConditionFlag.BoundByDuty95] ||
+            Condition[ConditionFlag.Occupied] || Condition[ConditionFlag.Occupied33] ||
+            Condition[ConditionFlag.Occupied39] || Condition[ConditionFlag.WatchingCutscene])
+            return;
+
+        var arInstalled = PluginInterface.InstalledPlugins.Any(plugin => plugin.InternalName == "AutoRetainer");
+        var busy = arInstalled ? AutoRetainerIPC.ReadBusyState() : PluginBusyReadResult.Known(false);
+        var suppression = arInstalled ? AutoRetainerIPC.GetSuppressionSnapshot() : default;
+        if (!LifecyclePolicy.CanStartRetainerlessTimer(now, retainerlessTimerDueUtc,
+                admissionReady: true, arInstalled, busy.Success, busy.Busy, suppression))
+            return;
+        if (Engine.StartRetainerlessTimerRun())
+        {
+            retainerlessTimerRunPendingCompletion = true;
+            retainerlessTimerDueUtc = null;
+        }
+    }
+
+    private bool CanStartAutomaticDueWork()
+    {
         if (!Configuration.Enabled || !IsCharacterRegistered || !PlayerState.IsLoaded ||
             OfflineLogoutBlocksOrdinaryAutomation || !GameHelpers.IsPlayerAvailable() ||
             DadHandoffBlocksNewWork || VerminionService.HasQuestAcquisition ||
@@ -3038,13 +3121,20 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             LifestreamIPC.IsBusy() ||
             Condition[ConditionFlag.BoundByDuty] || Condition[ConditionFlag.BoundByDuty56] ||
             Condition[ConditionFlag.InDutyQueue] || Condition[ConditionFlag.WaitingForDuty] ||
-            Condition[ConditionFlag.WaitingForDutyFinder]) return;
+            Condition[ConditionFlag.WaitingForDutyFinder]) return false;
         if (!VNavmeshIPC.TryGetPathIsRunning(out var pathRunning) || pathRunning ||
-            !VNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) || pathfinding) return;
+            !VNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) || pathfinding) return false;
         foreach (var addon in new[] { "Talk", "SelectString", "SelectIconString", "SelectYesno", "Shop", "RetainerList", "HousingChocoboList" })
-            if (GameHelpers.IsAddonVisible(addon)) return;
-        var config = ConfigManager.GetActiveConfig();
-        if (!config.Enabled) return;
+            if (GameHelpers.IsAddonVisible(addon)) return false;
+        return ConfigManager.GetActiveConfig().Enabled;
+    }
+
+    private void ProcessAutomaticDueTasks()
+    {
+        var now = DateTime.UtcNow;
+        if (now < nextAutomaticDueCheckUtc) return;
+        nextAutomaticDueCheckUtc = now.AddSeconds(5);
+        if (!CanStartAutomaticDueWork()) return;
         var busy = AutoRetainerIPC.ReadBusyState();
         var suppression = AutoRetainerIPC.GetSuppressionSnapshot();
         if (!busy.Success || busy.Busy || !suppression.RemoteKnown || suppression.RemoteSuppressed) return;

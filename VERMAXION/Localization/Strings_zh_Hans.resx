@@ -4830,4 +4830,8 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Jumbo route test: {0}" xml:space="preserve"><value>仙人仙彩路线测试：{0}</value></data>
   <data name="A character must be available outside a duty." xml:space="preserve"><value>角色必须在副本外且可操作。</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist 已结束装备套装 {0} 的处理；装备结果尚未验证。</value></data>
+  <data name="Run due tasks on a timer" xml:space="preserve"><value>使用计时器运行到期任务</value></data>
+  <data name="Timer interval (minutes)" xml:space="preserve"><value>计时器间隔（分钟）</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>仅适用于当前运行账户和已登录角色。空闲时运行两个阶段中已启用且到期的任务。FULL STOP 会关闭计时器。</value></data>
+  <data name="Timer character session ended" xml:space="preserve"><value>计时器角色会话已结束</value></data>
 </root>

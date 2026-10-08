@@ -1,5 +1,17 @@
 # VERMAXION Changelog
 
+## 2026-10-07 - Packaged image branding and operator guidance (I500/I497/I499)
+
+- Use the existing packaged icon in Main branding and its titlebar with aspect-ratio fitting. Preserve native titlebar controls, saved geometry, motion and complete-window opacity.
+- Refresh concise README guidance for appearance, focus fade, titlebar shortcuts and the existing fifteen language choices.
+- Probe the optional Hindi menu caption once per existing font generation. Disable only that choice with an ASCII caption when unavailable; retain selected-catalog checks and show explicit ASCII Hindi failure status with a saved Use English action.
+
+## Unreleased - Optional retainerless timer (I495)
+
+- Add an account-level timer on Main, disabled by default with a configurable 30-minute interval. It uses automatic admission and normal task eligibility for the logged-in, registered character, considering ordered tasks in both phases without changing the Settings editor's selected account.
+- Start a fresh interval on enable, login, reload or interval changes, and measure subsequent intervals from timer-owned run completion. Blocked expiry retains one pending opportunity. FULL STOP disables the saved timer; existing manual actions and AutoRetainer phases are retained.
+- Allow AutoRetainer to be absent. Installed busy, unreadable or externally suppressed AutoRetainer blocks admission; timer-owned runs reuse the existing suppression lease and conditional release. Character-session changes cancel owned work through the existing settling path.
+
 ## Unreleased - Stylist completion status (I473)
 
 - Report Stylist becoming idle as finished with an unverified equipment result, rather than claiming success. Retain immediate idle completion, the 45-second busy timeout, polling errors, character/job/gearset guards, existing handoff safety and the rule against duplicate native equipment work after an accepted Stylist request.

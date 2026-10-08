@@ -139,6 +139,7 @@ public class MainWindow : Window, IDisposable
     public override void PostDraw()
     {
         motion.Restore(this);
+        UiGui.ImageTitle(this, UiText.T("Vermaxion") + " " + CurrentVersion, plugin.OriginalIcon);
         UIConstants.PopStyle();
     }
 
@@ -164,7 +165,6 @@ public class MainWindow : Window, IDisposable
     public override void Draw()
     {
         motion.DrawChrome();
-        UiGui.TitleWithButtons("Vermaxion", UiText.T("Vermaxion")+" "+CurrentVersion, this);
         var config = plugin.ConfigManager.GetActiveConfig();
         var engine = plugin.Engine;
         var charKey = plugin.ConfigManager.CurrentCharacterKey;
@@ -174,7 +174,9 @@ public class MainWindow : Window, IDisposable
         var scale = UIConstants.Scale;
         var headerStart = ImGui.GetCursorScreenPos();
         var markSize = (compact ? new Vector2(58, 49) : new Vector2(46, 39)) * scale;
-        VermaxionPresentation.Logo(headerStart + new Vector2(2, 2) * scale, markSize);
+        var icon = plugin.OriginalIcon;
+        var imageMin = headerStart + new Vector2(2, 2) * scale;
+        MaterialCanvas.DrawImage(ImGui.GetWindowDrawList(), icon.Handle, icon.Size, imageMin, imageMin + markSize);
         using (UiText.Font(compact ? UiFontRole.CompactTitle : UiFontRole.Title))
         {
             var callerScale = ImGuiP.GetCurrentWindow().FontWindowScale;
@@ -294,6 +296,24 @@ public class MainWindow : Window, IDisposable
             plugin.Configuration.Save();
         }
         if(ImGui.IsItemHovered()) UiGui.SetTooltip("Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings.");
+
+        ImGui.BeginDisabled(account == null);
+        var timerEnabled = account?.RetainerlessTimerEnabled ?? false;
+        if (UIConstants.Checkbox("Run due tasks on a timer", ref timerEnabled) && account != null)
+        {
+            account.RetainerlessTimerEnabled = timerEnabled;
+            plugin.ConfigManager.SaveCurrentAccount();
+        }
+        if (ImGui.IsItemHovered())
+            UiGui.SetTooltip("For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer.");
+        var timerInterval = account?.RetainerlessTimerIntervalMinutes ?? 30;
+        ImGui.SetNextItemWidth(120 * scale);
+        if (UIConstants.InputInt("Timer interval (minutes)", ref timerInterval, 1, 10) && account != null)
+        {
+            account.RetainerlessTimerIntervalMinutes = timerInterval;
+            plugin.ConfigManager.SaveCurrentAccount();
+        }
+        ImGui.EndDisabled();
 
         void DrawHeaderScope()
         {

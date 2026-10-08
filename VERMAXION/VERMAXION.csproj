@@ -7,9 +7,9 @@
     <PlatformTarget>x64</PlatformTarget>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>2.0.0.2</Version>
-    <FileVersion>2.0.0.2</FileVersion>
-    <AssemblyVersion>2.0.0.2</AssemblyVersion>
+    <Version>2.0.0.3</Version>
+    <FileVersion>2.0.0.3</FileVersion>
+    <AssemblyVersion>2.0.0.3</AssemblyVersion>
     <PackageProjectUrl>https://github.com/McVaxius/VERMAXION</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
@@ -56,6 +56,7 @@
     <Copy SourceFiles="@(PluginFiles)"
 
           DestinationFolder="$(PluginOutput)" />
+    <Copy SourceFiles="$(ProjectDir)images\icon.png" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
 
   </Target>
 

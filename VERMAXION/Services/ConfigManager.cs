@@ -759,6 +759,8 @@ public class ConfigManager
         target.AccountId = merged.AccountId;
         target.AccountAlias = merged.AccountAlias;
         target.RegistrableInventoryDefaultV04011Applied = merged.RegistrableInventoryDefaultV04011Applied;
+        target.RetainerlessTimerEnabled = merged.RetainerlessTimerEnabled;
+        target.RetainerlessTimerIntervalMinutes = merged.RetainerlessTimerIntervalMinutes;
 
         if (!AccountConfigPersistence.AreEquivalent(target.DefaultConfig, merged.DefaultConfig))
             target.DefaultConfig = merged.DefaultConfig;

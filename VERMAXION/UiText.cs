@@ -195,7 +195,7 @@ internal sealed class UiText : IDisposable
         result.Add(0); return result.ToArray();
     }
     internal IEnumerable<string> RequiredText => Values(Resources).Concat(Values(EnglishResources))
-        .Concat(Languages.Select(l=>l.Name)).Append("★☆♡⚫—–").Append(Culture.NumberFormat.NumberGroupSeparator);
+        .Concat(Languages.Where(l=>l.Code!="hi").Select(l=>l.Name)).Append("★☆♡⚫—–").Append(Culture.NumberFormat.NumberGroupSeparator);
     internal static IEnumerable<string> Values(ResourceSet set) => set.Cast<DictionaryEntry>().Select(e=>(string)e.Value!);
     public void Dispose()
     {
