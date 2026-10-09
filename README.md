@@ -2,7 +2,7 @@
 
 The main window uses the approved regular and compact presentation, with a `C` compact switch, shared relative colour themes and a fifteen-language selector. `UiLanguage` and `UiAccentRgb` are saved through the existing configuration; the existing `CompactUi` preference is reused. The other five windows keep their established layouts and share the selected appearance.
 
-**Transparency** applies to the complete plugin window, including its titlebar and popups. Settings provides normal opacity, automatic focus fade, faded opacity and delay; defaults are 100%, fading to 50% after 10 seconds without focus and restoring on focus. Compact and language controls can be hidden independently on Main while remaining available in Settings.
+**Transparency** applies to the complete plugin window, including its titlebar and popups. Settings → **Window appearance** provides colour, language, compact mode, normal opacity, automatic focus fade, faded opacity and delay; defaults are 100%, fading to 50% after 10 seconds without focus and restoring on focus. Compact and language controls can be hidden independently on Main while remaining available in Settings.
 
 Main's titlebar opens Settings, toggles Enabled, runs all eligible tasks, cancels the current run or invokes FULL STOP through the existing actions and readiness checks. The packaged plugin icon appears in Main branding and its titlebar, including when collapsed.
 

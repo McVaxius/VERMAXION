@@ -173,7 +173,7 @@ public class MainWindow : Window, IDisposable
         var compact = plugin.Configuration.CompactUi;
         var scale = UIConstants.Scale;
         var headerStart = ImGui.GetCursorScreenPos();
-        var markSize = (compact ? new Vector2(58, 49) : new Vector2(46, 39)) * scale;
+        var markSize = (compact ? new Vector2(36, 31) : new Vector2(46, 39)) * scale;
         var icon = plugin.OriginalIcon;
         var imageMin = headerStart + new Vector2(2, 2) * scale;
         MaterialCanvas.DrawImage(ImGui.GetWindowDrawList(), icon.Handle, icon.Size, imageMin, imageMin + markSize);
@@ -182,7 +182,7 @@ public class MainWindow : Window, IDisposable
             var callerScale = ImGuiP.GetCurrentWindow().FontWindowScale;
             try
             {
-                ImGui.SetWindowFontScale(callerScale * (compact ? 1.56f : .86f));
+                ImGui.SetWindowFontScale(callerScale * (compact ? 1f : .86f));
                 var titleOffset = 0f;
                 unsafe
                 {

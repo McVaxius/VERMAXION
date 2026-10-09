@@ -1,3 +1,11 @@
+2026-10-08 - Compact header density correction (I503)
+
+- Reduce the compact icon and title so they are smaller than the regular header. Retain every control and action; game visual acceptance remains separate from source/build checks.
+
+2026-10-08 - Dedicated Window appearance settings (I505)
+
+- Move colour, language, compact mode and transparency controls into their own settings tab or sidebar page. Retain the existing controls, native IDs, saved preferences and actions; keep normal settings visible without an appearance block above them. Versions and client configuration are unchanged. Local build checks and game visual acceptance are recorded separately in the selected task checkpoint.
+
 2026-10-08 - GitHub Actions shared-library repair
 
 - Build against published AethertekUI main so current shared APIs are available. Retain repository-specific read-only SSH deploy keys, which do not expire, and disabled credential persistence. Publish library APIs before consumer changes.
