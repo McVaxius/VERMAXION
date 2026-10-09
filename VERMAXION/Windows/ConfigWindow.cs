@@ -172,12 +172,9 @@ public class ConfigWindow : Window, IDisposable
         motion.DrawChrome();
         UiGui.Title("Vermaxion Configuration", UiText.T("Vermaxion Configuration"));
         UIConstants.ApplicationHeading("Settings");
-        UIConstants.Heading("Window appearance", plugin.Configuration.CompactUi);
-        plugin.DrawAppearanceSelector();
-        plugin.DrawWindowSettings();
-        ImGui.Separator();
+        var appearanceRoot = ImGui.GetID("");
         bool tabsOpen;
-        using (MaterialText.PushLineHeight(new[] { "Characters", "Global", "Task Order", "Marketboard", "About" }.Select(UiText.T).ToArray()))
+        using (MaterialText.PushLineHeight(new[] { "Characters", "Global", "Task Order", "Marketboard", "Window appearance", "About" }.Select(UiText.T).ToArray()))
             tabsOpen = ImGui.BeginTabBar("ConfigTabs", ImGuiTabBarFlags.FittingPolicyScroll);
         if (tabsOpen)
         {
@@ -214,6 +211,17 @@ public class ConfigWindow : Window, IDisposable
                 DrawAccountSelector(plugin.ConfigManager);
                 DrawMarketboardSettings();
                 ImGui.EndTabItem();
+            }
+            if (UiGui.BeginTabItem("Window appearance", ImGuiTabItemFlags.NoPushId))
+            {
+                ImGuiP.PushOverrideID(appearanceRoot);
+                try
+                {
+                    UIConstants.Heading("Window appearance", plugin.Configuration.CompactUi);
+                    plugin.DrawAppearanceSelector();
+                    plugin.DrawWindowSettings();
+                }
+                finally { ImGui.PopID(); ImGui.EndTabItem(); }
             }
             if (UiGui.BeginTabItem("About"))
             {
