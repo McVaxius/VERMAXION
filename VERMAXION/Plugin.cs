@@ -231,10 +231,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             storedConfiguration?.SetupWizardStateMigrated ?? false,
             storedConfiguration?.SetupWizardCompleted ?? false);
         Configuration = storedConfiguration ?? new Configuration();
+        var compactMigrated = Configuration.ApplyCompactDefaults();
         pendingDebugTaskId = string.IsNullOrWhiteSpace(Configuration.DebugTaskId) ? null : Configuration.DebugTaskId;
         if (pendingDebugTaskId != null)
             SetDebugTaskStatus("Pending: waiting for character registration.");
-        if (Configuration.SetupWizardCompleted != setupWizardDecision.Completed ||
+        if (compactMigrated || Configuration.SetupWizardCompleted != setupWizardDecision.Completed ||
             Configuration.SetupWizardStateMigrated != setupWizardDecision.Migrated)
         {
             Configuration.SetupWizardCompleted = setupWizardDecision.Completed;
@@ -3357,6 +3358,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var compactVisible = config.UiCompactVisibleOnMainWindow;
         if (UiGui.Checkbox("Compact visible on main window" + "###window-compact-visible", ref compactVisible))
         { config.UiCompactVisibleOnMainWindow = compactVisible; changed = true; }
+        var transparencyVisible = config.UiTransparencyVisibleOnMainWindow;
+        if (UiGui.Checkbox("Transparency visible on main window###UiTransparencyVisibleOnMainWindowSettings", ref transparencyVisible))
+        { config.UiTransparencyVisibleOnMainWindow = transparencyVisible; changed = true; }
         var languageVisible = config.UiLanguageVisibleOnMainWindow;
         if (UiGui.Checkbox("Language visible on main window" + "###window-language-visible", ref languageVisible))
         { config.UiLanguageVisibleOnMainWindow = languageVisible; changed = true; }

@@ -1,6 +1,6 @@
 # VERMAXION
 
-The main window uses the approved regular and compact presentation, with a `C` compact switch, shared relative colour themes and a fifteen-language selector. `UiLanguage` and `UiAccentRgb` are saved through the existing configuration; the existing `CompactUi` preference is reused. The other five windows keep their established layouts and share the selected appearance.
+The main window uses the approved regular and compact presentation, with an optional main `C` compact switch, shared relative colour themes and a fifteen-language selector. `UiLanguage` and `UiAccentRgb` are saved through the existing configuration; the existing `CompactUi` preference is reused. The other five windows keep their established layouts and share the selected appearance.
 
 **Transparency** applies to the complete plugin window, including its titlebar and popups. Settings → **Window appearance** provides colour, language, compact mode, normal opacity, automatic focus fade, faded opacity and delay; defaults are 100%, fading to 50% after 10 seconds without focus and restoring on focus. Compact and language controls can be hidden independently on Main while remaining available in Settings.
 
@@ -195,3 +195,5 @@ v0.0.0.1 — Initial scaffold. Core architecture complete, game interaction stub
 Use **Copy / ZIP Dalamud log** in Settings > About to create a local ZIP and open its folder. At 100 MiB or above, the first click warns that logging may have stopped and recent activity may be missing; click **Export capped log anyway** only if you still want that snapshot. Share the ZIP manually and remove exports when no longer needed. **Open Export Folder** reopens the completed export’s folder.
 
 When XA Slave is loaded, **Open XA Slave log tools** opens its **Utility > XA Mods** panel, which contains Dalamud Log Cleaner. The existing **Copy / ZIP Dalamud log** action remains separate. Opening the panel does not run cleanup or change XA Slave settings.
+
+Compact mode defaults on. The main Compact and Transparency controls start hidden; Appearance settings keeps density, transparency and independent main-control visibility choices. The one-time migration preserves opacity and unrelated preferences, and later loads retain your choices.

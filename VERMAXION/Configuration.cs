@@ -39,8 +39,22 @@ public class Configuration : IPluginConfiguration
     // --- Global UI Settings ---
     public bool Enabled { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
-    public bool CompactUi { get; set; } = false;
-    public bool UiCompactVisibleOnMainWindow { get; set; } = true;
+    public bool CompactUi { get; set; } = true;
+    public bool UiCompactVisibleOnMainWindow { get; set; }
+    public bool UiTransparencyVisibleOnMainWindow { get; set; }
+    public bool UiCompactDefaultsApplied { get; set; }
+    [Newtonsoft.Json.JsonExtensionData]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public System.Collections.Generic.Dictionary<string, Newtonsoft.Json.Linq.JToken>? AdditionalSettings { get; set; }
+
+    internal bool ApplyCompactDefaults()
+    {
+        if (UiCompactDefaultsApplied) return false;
+        CompactUi = true;
+        UiCompactVisibleOnMainWindow = UiTransparencyVisibleOnMainWindow = false;
+        UiCompactDefaultsApplied = true;
+        return true;
+    }
     public bool UiLanguageVisibleOnMainWindow { get; set; } = true;
     public bool UiTransparencyEnabled { get; set; } = true;
     private int uiWindowOpacityPercent = 100;
