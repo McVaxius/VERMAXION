@@ -1,5 +1,6 @@
 2026-10-09 - Tight compact list grids (I503/I509)
 
+
 - Use adjacent compact rows in personal registrables, import previews, fish targets and task-order lanes, retaining selection, movement, editing and explicit apply actions.
 
 2026-10-09 - Separate XA Slave log-tools shortcut (I512)
