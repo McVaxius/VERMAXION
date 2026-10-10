@@ -224,6 +224,7 @@ internal sealed class FishCollectionWindow : Window
             (!eligibleOnly || FishCollectionPolicy.Eligible(f, viewed?.FisherObservation, known, settings, service.Observation.Meals))).ToArray();
         UiGui.TextDisabled(UiText.F($"{targets.Length} targets match"));
         if (targets.Length == 0) UiGui.TextWrapped("No targets match these filters. Change the search or readiness filters to show more fish.");
+        using var tightRows = plugin.Configuration.CompactUi ? MaterialTable.PushTightRows() : default;
         if (ImGui.BeginTable("fish", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY, new Vector2(0, ImGui.GetTextLineHeightWithSpacing() * 9)))
         {
             ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthStretch, 1f);

@@ -16,6 +16,7 @@ namespace VERMAXION.Windows;
 
 public class ConfigWindow : Window, IDisposable
 {
+    private readonly AethertekUI.Dalamud.MaterialSupportLog supportLog = new();
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private const string StylistRepositoryUrl = "https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json";
     private readonly Plugin plugin;
@@ -302,6 +303,7 @@ public class ConfigWindow : Window, IDisposable
                          ImGuiTableFlags.Resizable |
                          ImGuiTableFlags.ScrollY |
                          ImGuiTableFlags.SizingStretchProp;
+        using var tightRows = config.CompactUi ? MaterialTable.PushTightRows() : default;
         if (!ImGui.BeginTable($"TaskOrder_{phase}", 4, tableFlags, new Vector2(0, 230f)))
             return;
 
@@ -825,6 +827,8 @@ public class ConfigWindow : Window, IDisposable
 
     private void DrawAboutTab()
     {
+        supportLog.Draw(Plugin.PluginInterface, key => UiText.T(key),
+            path => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = path, UseShellExecute = true }), ex => Plugin.Log.Error(ex, "Dalamud log export failed."), Plugin.CommandManager);
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0.0";
         UiGui.Text(UiText.F($"Vermaxion v{version}"));
         UiGui.TextDisabled("Automates weekly and daily tasks triggered by AutoRetainer post-processing.");
