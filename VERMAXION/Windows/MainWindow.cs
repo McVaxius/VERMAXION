@@ -210,7 +210,8 @@ public class MainWindow : Window, IDisposable
         }
         if (plugin.Configuration.UiLanguageVisibleOnMainWindow)
         { UIConstants.SameLineIfFits("Language", 180 * scale); plugin.DrawLanguageSelector(); }
-        UIConstants.SameLineIfFits("Transparency"); plugin.DrawTransparencyToggle();
+        if (plugin.Configuration.UiTransparencyVisibleOnMainWindow)
+        { UIConstants.SameLineIfFits("Transparency"); plugin.DrawTransparencyToggle(); }
 
         // Ko-fi donation button in upper right
         UIConstants.SameLineIfFits("\u2661 Ko-fi \u2661");

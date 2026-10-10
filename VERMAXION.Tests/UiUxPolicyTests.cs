@@ -29,22 +29,36 @@ public sealed class UiUxPolicyTests
     }
 
     [Fact]
-    public void CompactUiDefaultsOffAndRoundTripsWithoutChangingOtherPreferences()
+    public void CompactDefaultsMigrateOnceAndRetainLaterOverrides()
     {
-        const string legacy = "{\"Enabled\":false,\"DtrBarEnabled\":false,\"FavoriteAutomationIds\":[\"minion-roulette\"]}";
-        Assert.False(new Configuration().CompactUi);
-        Assert.False(JsonSerializer.Deserialize<Configuration>(legacy)!.CompactUi);
+        const string legacy = "{\"CompactUi\":false,\"UiCompactVisibleOnMainWindow\":true,\"UiTransparencyVisibleOnMainWindow\":true,\"UiTransparencyEnabled\":false,\"UiWindowOpacityPercent\":73,\"Enabled\":false,\"DtrBarEnabled\":false,\"FavoriteAutomationIds\":[\"minion-roulette\"],\"FutureAppearanceSetting\":{\"value\":[1,\"keep\"]}}";
+        Assert.True(new Configuration().CompactUi);
+        Assert.True(JsonSerializer.Deserialize<Configuration>("{}")!.CompactUi);
         var configuration = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(legacy)!;
-        Assert.False(configuration.CompactUi);
+        Assert.True(configuration.ApplyCompactDefaults());
+        Assert.True(configuration.CompactUi);
+        Assert.False(configuration.UiCompactVisibleOnMainWindow);
+        Assert.False(configuration.UiTransparencyVisibleOnMainWindow);
 
-        configuration.CompactUi = true;
-        var reloaded = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(
-            Newtonsoft.Json.JsonConvert.SerializeObject(configuration))!;
-
-        Assert.True(reloaded.CompactUi);
-        Assert.False(reloaded.Enabled);
-        Assert.False(reloaded.DtrBarEnabled);
-        Assert.Equal(configuration.FavoriteAutomationIds, reloaded.FavoriteAutomationIds);
+        configuration.CompactUi = false;
+        configuration.UiCompactVisibleOnMainWindow = true;
+        for (var reload = 0; reload < 2; reload++)
+        {
+            configuration = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(
+                Newtonsoft.Json.JsonConvert.SerializeObject(configuration))!;
+            Assert.False(configuration.ApplyCompactDefaults());
+            Assert.False(configuration.CompactUi);
+            Assert.True(configuration.UiCompactVisibleOnMainWindow);
+            Assert.False(configuration.UiTransparencyVisibleOnMainWindow);
+            Assert.False(configuration.UiTransparencyEnabled);
+            Assert.Equal(73, configuration.UiWindowOpacityPercent);
+            Assert.False(configuration.Enabled);
+            Assert.False(configuration.DtrBarEnabled);
+            Assert.Equal(new[] { "minion-roulette" }, configuration.FavoriteAutomationIds);
+            var actual = Newtonsoft.Json.Linq.JObject.Parse(Newtonsoft.Json.JsonConvert.SerializeObject(configuration));
+            Assert.True(Newtonsoft.Json.Linq.JToken.DeepEquals(
+                Newtonsoft.Json.Linq.JObject.Parse(legacy)["FutureAppearanceSetting"], actual["FutureAppearanceSetting"]));
+        }
     }
 
     [Fact]
