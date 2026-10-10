@@ -1,3 +1,15 @@
+2026-10-09 - Tight compact list grids (I503/I509)
+
+- Use adjacent compact rows in personal registrables, import previews, fish targets and task-order lanes, retaining selection, movement, editing and explicit apply actions.
+
+2026-10-09 - Separate XA Slave log-tools shortcut (I512)
+
+- Add Open XA Slave log tools beside the existing manual support exporter when XA Slave is loaded. The new action opens Utility > XA Mods only; preserve the Copy / ZIP button, its handler and cap warning. No automatic cleanup, provider loading or settings changes.
+
+2026-10-09 - Manual Dalamud support log export (I506)
+
+- Add Copy / ZIP Dalamud log and Open Export Folder to the existing settings/support interface. At 100 MiB or above, warn that logging may have stopped and recent activity may be missing; require another explicit click to export. Exports stay local and can be shared or removed manually. Preserve saved settings and release versions.
+
 2026-10-08 - Compact header density correction (I503)
 
 - Reduce the compact icon and title so they are smaller than the regular header. Retain every control and action; game visual acceptance remains separate from source/build checks.

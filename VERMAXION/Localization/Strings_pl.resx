@@ -1974,4 +1974,28 @@ Zależności: {1}</value></data>
   <data name="Timer interval (minutes)" xml:space="preserve"><value>Interwał timera (minuty)</value></data>
   <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Tylko dla bieżącego konta i zalogowanej postaci. W stanie bezczynności uruchamia włączone zadania obu faz, których termin nadszedł. FULL STOP wyłącza timer.</value></data>
   <data name="Timer character session ended" xml:space="preserve"><value>Sesja postaci timera zakończyła się</value></data>
+  <data name="Copy / ZIP Dalamud log" xml:space="preserve">
+    <value>Kopiuj / spakuj dziennik Dalamud</value>
+  </data>
+  <data name="Export capped log anyway" xml:space="preserve">
+    <value>Mimo to eksportuj pełny dziennik</value>
+  </data>
+  <data name="Exporting log..." xml:space="preserve">
+    <value>Eksportowanie dziennika...</value>
+  </data>
+  <data name="Log ZIP ready. Share it manually; remove old exports when you no longer need them." xml:space="preserve">
+    <value>ZIP dziennika gotowy. Udostępnij go ręcznie i usuń niepotrzebne stare eksporty.</value>
+  </data>
+  <data name="Log export failed." xml:space="preserve">
+    <value>Eksport dziennika nie powiódł się.</value>
+  </data>
+  <data name="Open Export Folder" xml:space="preserve">
+    <value>Otwórz folder eksportu</value>
+  </data>
+  <data name="This log has reached Dalamud's 100 MiB limit. Logging may have stopped, so recent activity may be missing and this log may not help troubleshoot your current issue." xml:space="preserve">
+    <value>Ten dziennik osiągnął limit 100 MiB Dalamud. Zapis mógł się zatrzymać; może brakować ostatniej aktywności, więc dziennik może nie pomóc w diagnozie obecnego problemu.</value>
+  </data>
+  <data name="Open XA Slave log tools" xml:space="preserve"><value>Otwórz narzędzia logów XA Slave</value></data>
+  <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>Otwiera panel Utility &gt; XA Mods w XA Slave, zawierający Dalamud Log Cleaner.</value></data>
+  <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>Nie udało się otworzyć narzędzi logów XA Slave.</value></data>
 </root>

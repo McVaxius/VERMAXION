@@ -326,6 +326,7 @@ public class RegistrableConfigWindow : Window
             UiGui.Text(UiText.F($"Showing {personalItems.Count} of {activeConfig.PersonalRegistrableItems.Count}"));
             
             var listHeight = Math.Max(120f * UIConstants.Scale, ImGui.GetContentRegionAvail().Y - 180f * UIConstants.Scale);
+            using var tightRows = configuration.CompactUi ? MaterialTable.PushTightRows() : default;
             if (ImGui.BeginTable("PersonalItems", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY,
                     new Vector2(0, listHeight)))
             {
@@ -432,6 +433,7 @@ public class RegistrableConfigWindow : Window
         if (pendingImportPreview is { IsValid: true } preview)
         {
             UIConstants.Heading("Import preview", configuration.CompactUi);
+            using var tightRows = configuration.CompactUi ? MaterialTable.PushTightRows() : default;
             if (ImGui.BeginTable(
                     "ImportPreviewCounts",
                     2,
