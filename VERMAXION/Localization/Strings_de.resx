@@ -4904,4 +4904,7 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
     <value>Restliche Bereinigung übersprungen: AutoRetainer-Status unlesbar ({0})</value>
   </data>
+  <data name="Show titlebar status" xml:space="preserve"><value>Titelzeilenstatus anzeigen</value></data>
+  <data name="Detailed titlebar status" xml:space="preserve"><value>Ausführlicher Titelzeilenstatus</value></data>
+  <data name="Pending tasks" xml:space="preserve"><value>Ausstehende Aufgaben</value></data>
 </root>

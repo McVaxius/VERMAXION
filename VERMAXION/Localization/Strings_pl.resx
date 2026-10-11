@@ -2048,4 +2048,7 @@ Zależności: {1}</value></data>
   <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
     <value>Pozostałe porządkowanie pominięte: stan AutoRetainer nieczytelny ({0})</value>
   </data>
+  <data name="Show titlebar status" xml:space="preserve"><value>Pokaż status na pasku tytułu</value></data>
+  <data name="Detailed titlebar status" xml:space="preserve"><value>Szczegółowy status na pasku tytułu</value></data>
+  <data name="Pending tasks" xml:space="preserve"><value>Oczekujące zadania</value></data>
 </root>

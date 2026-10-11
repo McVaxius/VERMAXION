@@ -161,6 +161,10 @@ internal static class UiGui
 
     internal static unsafe void ImageTitle(Dalamud.Interface.Windowing.Window owner, string visibleTitle,
         Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap icon)
+        => ImageTitleWithStatus(owner, visibleTitle, icon, null);
+
+    internal static unsafe void ImageTitleWithStatus(Dalamud.Interface.Windowing.Window owner, string visibleTitle,
+        Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap icon, MaterialTitlebarStatus? status)
     {
         var window = ImGuiP.FindWindowByName(owner.WindowName);
         if (window.Handle == null) return;
@@ -168,7 +172,10 @@ internal static class UiGui
         if (owner.AllowPinning || owner.AllowClickthrough || owner.AllowBackgroundBlur) count++;
         var extraRight = count * (ImGuiP.CalcFontSize(window) + ImGui.GetStyle().ItemInnerSpacing.X);
         using var font = UiText.Font(UiFontRole.Body);
-        MaterialWindowHeader.PaintTitle(window, visibleTitle, icon.Handle, icon.Size, extraRight, owner.ShowCloseButton);
+        if (status is { } runtime)
+            MaterialWindowHeader.PaintTitleWithStatus(window, visibleTitle, icon.Handle, icon.Size, runtime, extraRight, owner.ShowCloseButton);
+        else
+            MaterialWindowHeader.PaintTitle(window, visibleTitle, icon.Handle, icon.Size, extraRight, owner.ShowCloseButton);
     }
 
     internal static void TitleWithButtons(string original,string translated,Dalamud.Interface.Windowing.Window? owner)

@@ -2048,4 +2048,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
     <value>Kalan temizlik atlandı: AutoRetainer durumu okunamıyor ({0})</value>
   </data>
+  <data name="Show titlebar status" xml:space="preserve"><value>Başlık çubuğu durumunu göster</value></data>
+  <data name="Detailed titlebar status" xml:space="preserve"><value>Ayrıntılı başlık çubuğu durumu</value></data>
+  <data name="Pending tasks" xml:space="preserve"><value>Bekleyen görevler</value></data>
 </root>

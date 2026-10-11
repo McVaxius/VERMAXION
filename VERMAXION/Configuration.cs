@@ -56,6 +56,8 @@ public class Configuration : IPluginConfiguration
         return true;
     }
     public bool UiLanguageVisibleOnMainWindow { get; set; } = true;
+    public bool UiShowTitlebarStatus { get; set; } = true;
+    public bool UiDetailedTitlebarStatus { get; set; } = true;
     public bool UiTransparencyEnabled { get; set; } = true;
     private int uiWindowOpacityPercent = 100;
     public int UiWindowOpacityPercent { get => uiWindowOpacityPercent; set => uiWindowOpacityPercent = Math.Clamp(value, 10, 100); }

@@ -1,3 +1,8 @@
+2026-10-11 - Native titlebar runtime status (I536)
+
+- Show the current runtime state and task summary in native titlebars, including the pending-task count while the engine is active. Use packaged icons in Settings and existing auxiliary windows.
+- Add default-on Show titlebar status and Detailed titlebar status controls in Appearance. Detailed off retains the concise state and available task count; hover retains the full activity and runtime summary. Preserve task ownership and save routes. No release version change.
+
 2026-10-11 - Post-voyage cleanup handoff (I533)
 
 - Wait for FrenRider's configured post-duty ADS desynthesis and ADS utility settlement before selling, then discard. Reuse existing item rules and toggles; do not start a second desynth action or change protected items, categories or stack limits.

@@ -2048,4 +2048,7 @@ Dependências: {1}</value></data>
   <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
     <value>Limpeza restante ignorada: estado do AutoRetainer ilegível ({0})</value>
   </data>
+  <data name="Show titlebar status" xml:space="preserve"><value>Mostrar status na barra de título</value></data>
+  <data name="Detailed titlebar status" xml:space="preserve"><value>Status detalhado na barra de título</value></data>
+  <data name="Pending tasks" xml:space="preserve"><value>Tarefas pendentes</value></data>
 </root>

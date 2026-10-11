@@ -455,7 +455,29 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void DrawAppearanceTitleBarPopups()
     {
+        var status = TitlebarStatus();
+        foreach (var owner in appearanceTitleBars.Keys)
+        {
+            if (!owner.IsOpen) continue;
+            var title = owner is MainWindow ? UiText.T("Vermaxion") + " " + (typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0.0.0.0")
+                : UiText.T(owner.WindowName.Split("##", 2)[0]);
+            UiGui.ImageTitleWithStatus(owner, title, OriginalIcon, status);
+        }
         foreach (var actions in appearanceTitleBars.Values) actions.DrawPopups();
+    }
+
+    private MaterialTitlebarStatus? TitlebarStatus()
+    {
+        if (!Configuration.UiShowTitlebarStatus) return null;
+        var runtime = BuildAutomationStatus();
+        var state = UiText.T(runtime.State);
+        var progress = runtime.Activity == AutomationActivity.Engine.ToString() && Engine.IsRunning
+            ? UiText.T("Pending tasks") + ": " + Engine.GetPendingTaskCount() : string.Empty;
+        var concise = string.Join(" | ", new[] { state, progress }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var detail = UiText.T(runtime.Summary);
+        var tooltip = string.Join("\n", UiText.T(runtime.Activity), concise, detail);
+        return new(Configuration.UiDetailedTitlebarStatus && !string.IsNullOrWhiteSpace(detail)
+            ? concise + " | " + detail : concise, state, tooltip);
     }
 
     private void DrawTitleColour()
@@ -3390,6 +3412,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         var config = Configuration;
         var changed = false;
+        var showStatus = config.UiShowTitlebarStatus;
+        if (UiGui.Checkbox("Show titlebar status###UiShowTitlebarStatus", ref showStatus))
+        { config.UiShowTitlebarStatus = showStatus; changed = true; }
+        var detailedStatus = config.UiDetailedTitlebarStatus;
+        if (UiGui.Checkbox("Detailed titlebar status###UiDetailedTitlebarStatus", ref detailedStatus))
+        { config.UiDetailedTitlebarStatus = detailedStatus; changed = true; }
         var compact = config.CompactUi;
         if (UiGui.Checkbox("Compact mode" + "###window-compact-settings", ref compact))
         { config.CompactUi = compact; changed = true; }

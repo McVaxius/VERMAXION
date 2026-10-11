@@ -2048,4 +2048,7 @@ Phụ thuộc: {1}</value></data>
   <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
     <value>Bỏ qua phần dọn dẹp còn lại: không đọc được trạng thái AutoRetainer ({0})</value>
   </data>
+  <data name="Show titlebar status" xml:space="preserve"><value>Hiện trạng thái trên thanh tiêu đề</value></data>
+  <data name="Detailed titlebar status" xml:space="preserve"><value>Trạng thái chi tiết trên thanh tiêu đề</value></data>
+  <data name="Pending tasks" xml:space="preserve"><value>Tác vụ còn lại</value></data>
 </root>

@@ -1687,4 +1687,7 @@
   <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
     <value>शेष सफाई छोड़ी गई: AutoRetainer स्थिति अपठनीय ({0})</value>
   </data>
+  <data name="Show titlebar status" xml:space="preserve"><value>शीर्षक पट्टी की स्थिति दिखाएँ</value></data>
+  <data name="Detailed titlebar status" xml:space="preserve"><value>शीर्षक पट्टी की विस्तृत स्थिति</value></data>
+  <data name="Pending tasks" xml:space="preserve"><value>लंबित कार्य</value></data>
 </root>

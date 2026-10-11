@@ -139,7 +139,6 @@ public class MainWindow : Window, IDisposable
     public override void PostDraw()
     {
         motion.Restore(this);
-        UiGui.ImageTitle(this, UiText.T("Vermaxion") + " " + CurrentVersion, plugin.OriginalIcon);
         UIConstants.PopStyle();
     }
 
