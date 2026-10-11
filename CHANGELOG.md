@@ -1,7 +1,7 @@
 2026-10-11 - Post-voyage cleanup handoff (I533)
 
 - Wait for FrenRider's configured post-duty ADS desynthesis and ADS utility settlement before selling, then discard. Reuse existing item rules and toggles; do not start a second desynth action or change protected items, categories or stack limits.
-- Retain stage feedback on the fishing status, including no observed discard work and unverified sales. Skip discard after an uncertain sale or failed desynthesis; stop the run if cleanup ownership cannot settle. Keep owned sale cancellation and release versions unchanged.
+- Retain stage feedback on the fishing status, including no observed discard work and unverified sales. Skip discard after an uncertain sale or failed desynthesis; stop the run if cleanup ownership cannot settle. Do not start return travel or resume fishing after a sale failure or unreadable/busy cleanup timeout; cancel only the owned sale. Keep release versions unchanged.
 - Clarify AutoRetainer's NPC-selling prerequisite. Local checks do not establish live voyage or vendor success.
 
 2026-10-11 - Native titlebar appearance shortcuts (I532)

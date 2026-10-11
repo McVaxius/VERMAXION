@@ -102,7 +102,7 @@ Four replayable setup wizards cover Default & Sync, FC Buff, Fishing, and Retain
 
 ## How It Works
 
-Post-voyage cleanup waits for FrenRider's existing enabled post-duty desynthesis and ADS utility work, then sells before discarding. Update FrenRider alongside VERMAXION for this handoff. Desynthesis uses the current ADS source, preset, categories and protection; an equipment-only selection does not include fish. NPC selling requires AutoRetainer's NPC-selling option and eligible fish in its configured sell list. Discard also respects AutoRetainer protection and stack limits. VERMAXION does not change those rules or start another desynth action. Fishing status retains skipped/unverified-stage feedback; a failed desynth or uncertain sale skips later destructive stages. Stop cancels only owned actions.
+Post-voyage cleanup waits for FrenRider's existing enabled post-duty desynthesis and ADS utility work, then sells before discarding. Update FrenRider alongside VERMAXION for this handoff. Desynthesis uses the current ADS source, preset, categories and protection; an equipment-only selection does not include fish. NPC selling requires AutoRetainer's NPC-selling option and eligible fish in its configured sell list. Discard also respects AutoRetainer protection and stack limits. VERMAXION does not change those rules or start another desynth action. Fishing status retains skipped/unverified-stage feedback; a failed desynth or uncertain sale skips later destructive stages. A sale failure or unreadable/busy cleanup timeout stops the run without return travel or resumed fishing. Stop cancels only owned actions.
 
 1. AutoRetainer finishes retainers/subs on a character
 2. AR fires post-process event → Vermaxion picks it up

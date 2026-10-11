@@ -3721,6 +3721,9 @@ public sealed class FishingService
                 }
             }
 
+            // ADS is optional when neither the fishing provider nor configured cleanup uses it.
+            if (!Plugin.PluginInterface.InstalledPlugins.Any(p => p.IsLoaded && p.InternalName == "ADS"))
+                return false;
             var ads = adsIpcClient.Refresh(force: true);
             if (!ads.StatusReadable)
                 throw new InvalidOperationException("ADS cleanup ownership is unreadable.");
@@ -3771,17 +3774,7 @@ public sealed class FishingService
             if (elapsed < CleanupReadyTimeout)
                 return;
 
-            if (inventoryRecoveryActive)
-            {
-                log.Warning($"[Fishing][InventoryRecovery] AutoRetainer state unreadable; resuming placement: {busy.Error}");
-                ResumeAfterInventoryRecovery("AutoRetainer state stayed unreadable before selling");
-            }
-            else
-            {
-                log.Warning($"[Fishing][Cleanup] AutoRetainer state stayed unreadable; skipping remaining cleanup: {busy.Error}");
-                RecordCleanupFeedback($"Remaining cleanup skipped: AutoRetainer state unreadable ({busy.Error})");
-                ReturnAfterFishing();
-            }
+            Fail($"Remaining cleanup skipped: AutoRetainer state unreadable ({busy.Error})");
             return;
         }
 
@@ -3791,17 +3784,7 @@ public sealed class FishingService
             if (elapsed < CleanupReadyTimeout)
                 return;
 
-            if (inventoryRecoveryActive)
-            {
-                log.Warning("[Fishing][InventoryRecovery] AutoRetainer stayed busy; resuming placement");
-                ResumeAfterInventoryRecovery("AutoRetainer stayed busy before selling");
-            }
-            else
-            {
-                log.Warning("[Fishing][Cleanup] AutoRetainer stayed busy; skipping remaining cleanup");
-                RecordCleanupFeedback("Remaining cleanup skipped: AutoRetainer stayed busy");
-                ReturnAfterFishing();
-            }
+            Fail("Remaining cleanup skipped: AutoRetainer stayed busy");
             return;
         }
 
@@ -3896,11 +3879,9 @@ public sealed class FishingService
         catch (Exception ex)
         {
             log.Warning($"[Fishing][Cleanup] {ex.Message}");
-            RecordCleanupFeedback($"Sell failed or unverified: {ex.GetBaseException().Message}");
-            CancelOwnedNpcSale();
             // An uncertain sale must not be followed by destructive discard of overlapping items.
-            if (inventoryRecoveryActive) ResumeAfterInventoryRecovery("ADS NPC sale did not complete");
-            else ReturnAfterFishing();
+            // Fail cancels only our sale; it must not navigate while cancellation is unverified.
+            Fail($"Sell failed or unverified: {ex.GetBaseException().Message}");
         }
     }
 
@@ -3938,8 +3919,7 @@ public sealed class FishingService
                 return;
 
             log.Warning($"[Fishing][Cleanup] Could not observe AutoRetainer work for {command}: {busy.Error}");
-            RecordCleanupFeedback($"Discard unverified: {busy.Error}");
-            AdvanceInventoryCleanup();
+            Fail($"Discard unverified: {busy.Error}");
             return;
         }
 
@@ -3951,8 +3931,7 @@ public sealed class FishingService
                 return;
 
             log.Warning($"[Fishing][Cleanup] AutoRetainer work timed out for {command}");
-            RecordCleanupFeedback("Discard unverified: AutoRetainer work timed out");
-            AdvanceInventoryCleanup();
+            Fail("Discard unverified: AutoRetainer work timed out");
             return;
         }
 
