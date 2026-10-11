@@ -1,3 +1,7 @@
+2026-10-11 - Culture-independent ADS timestamps (I538)
+
+- Read ADS utility completion timestamps using the JSON timestamp contract so post-task cleanup retains the same UTC instant across system locales and calendars.
+
 2026-10-11 - Native titlebar runtime status (I536)
 
 - Show the current runtime state and task summary in native titlebars, including the pending-task count while the engine is active. Use packaged icons in Settings and existing auxiliary windows.

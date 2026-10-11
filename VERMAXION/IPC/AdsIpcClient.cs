@@ -349,7 +349,7 @@ public sealed class AdsIpcClient
         if (!root.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String)
             return null;
 
-        return DateTime.TryParse(property.GetString(), out var value)
+        return property.TryGetDateTime(out var value)
             ? value
             : null;
     }
