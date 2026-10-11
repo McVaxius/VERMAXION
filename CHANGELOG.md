@@ -1,3 +1,13 @@
+2026-10-11 - Post-voyage cleanup handoff (I533)
+
+- Wait for FrenRider's configured post-duty ADS desynthesis and ADS utility settlement before selling, then discard. Reuse existing item rules and toggles; do not start a second desynth action or change protected items, categories or stack limits.
+- Retain stage feedback on the fishing status, including no observed discard work and unverified sales. Skip discard after an uncertain sale or failed desynthesis; stop the run if cleanup ownership cannot settle. Keep owned sale cancellation and release versions unchanged.
+- Clarify AutoRetainer's NPC-selling prerequisite. Local checks do not establish live voyage or vendor success.
+
+2026-10-11 - Native titlebar appearance shortcuts (I532)
+
+- Add Language, Compact, Transparency and Colour to applicable native window titlebars through AethertekUI. Reuse current editors and save routes, retain main visibility preferences and grouped Settings, remove the moved body shortcuts and their unused spacing, and preserve existing action order, title clipping, motion, opacity and release versions.
+
 2026-10-10 - Compact defaults and main appearance controls (I521)
 
 - Apply Compact on once, with main Compact and Transparency controls hidden. Keep density, transparency and independent visibility choices in Appearance settings; preserve later choices, opacity, automation and unknown saved fields. Advance the release from 2.0.0.5 to 2.0.0.6.

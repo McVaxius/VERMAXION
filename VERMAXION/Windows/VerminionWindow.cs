@@ -38,7 +38,7 @@ internal sealed class VerminionWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
-        UiGui.Title("Lord of Verminion", UiText.T("Lord of Verminion"));
+        UiGui.TitleWithButtons("Lord of Verminion", UiText.T("Lord of Verminion"), this);
         var config = plugin.ConfigManager.GetActiveConfig();
         var service = plugin.VerminionService;
         var loggedIn = Plugin.PlayerState.IsLoaded && !string.IsNullOrEmpty(plugin.ConfigManager.CurrentCharacterKey);

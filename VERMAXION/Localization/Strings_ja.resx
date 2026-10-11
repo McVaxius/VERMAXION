@@ -3120,11 +3120,11 @@
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve">
     <value>AR前後処理なしでオーシャンフィッシング受付を確認し、設定した釣り条件で再ログインと釣りを行います。</value>
   </data>
-  <data name="After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return." xml:space="preserve">
-    <value>破棄処理後、AutoRetainerの売却リストを使ってADSに店への移動と売却を依頼します。清掃警告があっても設定先への帰還を続けます。</value>
+  <data name="After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard." xml:space="preserve">
+    <value>AutoRetainerでNPC売却を有効にしてください。売却を確認できない場合は破棄をスキップします。</value>
   </data>
-  <data name="After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard." xml:space="preserve">
-    <value>航海結果が確定したら、AutoRetainerの状態取得と待機を確認し、/ays discardを実行します。</value>
+  <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
+    <value>FrenRider/ADS：分解、売却、その後 /ays discard。AutoRetainerのリスト・保護・スタック制限に従います。</value>
   </data>
   <data name="Astrope attempts tells dad how many Astrope commendation attempts to schedule inside the local time window." xml:space="preserve">
     <value>現地時間枠内でdadが予定するアストロペのMIP試行回数を指定します。</value>
@@ -4859,4 +4859,49 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>Dalamud Log Cleanerを含むXA SlaveのUtility &gt; XA Modsパネルを開きます。</value></data>
   <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>XA Slaveのログツールを開けませんでした。</value></data>
   <data name="Transparency visible on main window" xml:space="preserve"><value>メインウィンドウに透明度を表示</value></data>
+  <data name="Waiting for FrenRider post-duty desynthesis: {0}" xml:space="preserve">
+    <value>コンテンツ後のFrenRider分解を待機中：{0}</value>
+  </data>
+  <data name="Waiting for ADS cleanup to settle: {0}" xml:space="preserve">
+    <value>ADSの整理完了を待機中：{0}</value>
+  </data>
+  <data name="Waiting for readable post-voyage cleanup state: {0}" xml:space="preserve">
+    <value>航海後の整理状態の読み取りを待機中：{0}</value>
+  </data>
+  <data name="Desynth: {0}" xml:space="preserve">
+    <value>分解：{0}</value>
+  </data>
+  <data name="Remaining cleanup skipped: {0}" xml:space="preserve">
+    <value>残りの整理をスキップ：{0}</value>
+  </data>
+  <data name="Sell: {0}" xml:space="preserve">
+    <value>売却：{0}</value>
+  </data>
+  <data name="Sell failed or unverified: {0}" xml:space="preserve">
+    <value>売却失敗または未確認：{0}</value>
+  </data>
+  <data name="Discard unverified: {0}" xml:space="preserve">
+    <value>破棄未確認：{0}</value>
+  </data>
+  <data name="Sell/discard skipped after desynthesis failed" xml:space="preserve">
+    <value>分解失敗後の売却・破棄をスキップ</value>
+  </data>
+  <data name="Discard: AutoRetainer work settled; item changes are unverified" xml:space="preserve">
+    <value>破棄：AutoRetainerの処理は終了。アイテムの変化は未確認</value>
+  </data>
+  <data name="Discard: no work observed; check the AutoRetainer list, protection and stack limits" xml:space="preserve">
+    <value>破棄：処理を確認できません。AutoRetainerのリスト・保護・スタック制限を確認してください</value>
+  </data>
+  <data name="Discard unverified: AutoRetainer work timed out" xml:space="preserve">
+    <value>破棄未確認：AutoRetainerの処理がタイムアウト</value>
+  </data>
+  <data name="Post-voyage cleanup stopped because external ownership could not be verified or settled." xml:space="preserve">
+    <value>航海後の整理を停止：外部の制御を確認できないか、処理が未完了です。</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer stayed busy" xml:space="preserve">
+    <value>残りの整理をスキップ：AutoRetainerが処理中のままです</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
+    <value>残りの整理をスキップ：AutoRetainerの状態を読み取れません（{0}）</value>
+  </data>
 </root>

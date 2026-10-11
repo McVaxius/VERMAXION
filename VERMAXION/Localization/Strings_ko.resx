@@ -3120,11 +3120,11 @@
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve">
     <value>AR 전/후처리 없이 바다낚시 시간대를 확인합니다. 설정된 낚시 설정으로 재접속하고 낚시합니다.</value>
   </data>
-  <data name="After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return." xml:space="preserve">
-    <value>버리기 정리 후 ADS가 AutoRetainer 판매 목록으로 상점 이동과 판매를 처리합니다. 정리 경고가 있어도 설정된 복귀를 막지 않습니다.</value>
+  <data name="After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard." xml:space="preserve">
+    <value>AutoRetainer에서 NPC 판매를 켜세요. 판매가 확인되지 않으면 버리기를 건너뜁니다.</value>
   </data>
-  <data name="After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard." xml:space="preserve">
-    <value>항해 결과가 안정되면 AutoRetainer 상태가 읽히고 유휴 상태가 될 때까지 기다린 후 /ays discard를 실행합니다.</value>
+  <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
+    <value>FrenRider/ADS: 분해, 판매, 이후 /ays discard. AutoRetainer 목록, 보호 및 중첩 제한을 따릅니다.</value>
   </data>
   <data name="Astrope attempts tells dad how many Astrope commendation attempts to schedule inside the local time window." xml:space="preserve">
     <value>dad가 현지 시간대에 예약할 아스트로페 추천 시도 횟수를 지정합니다.</value>
@@ -4859,4 +4859,49 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>Dalamud Log Cleaner가 있는 XA Slave의 Utility &gt; XA Mods 패널을 엽니다.</value></data>
   <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>XA Slave 로그 도구를 열지 못했습니다.</value></data>
   <data name="Transparency visible on main window" xml:space="preserve"><value>메인 창에 투명도 표시</value></data>
+  <data name="Waiting for FrenRider post-duty desynthesis: {0}" xml:space="preserve">
+    <value>콘텐츠 후 FrenRider 분해 대기 중: {0}</value>
+  </data>
+  <data name="Waiting for ADS cleanup to settle: {0}" xml:space="preserve">
+    <value>ADS 정리 완료 대기 중: {0}</value>
+  </data>
+  <data name="Waiting for readable post-voyage cleanup state: {0}" xml:space="preserve">
+    <value>항해 후 읽을 수 있는 정리 상태 대기 중: {0}</value>
+  </data>
+  <data name="Desynth: {0}" xml:space="preserve">
+    <value>분해: {0}</value>
+  </data>
+  <data name="Remaining cleanup skipped: {0}" xml:space="preserve">
+    <value>남은 정리 건너뜀: {0}</value>
+  </data>
+  <data name="Sell: {0}" xml:space="preserve">
+    <value>판매: {0}</value>
+  </data>
+  <data name="Sell failed or unverified: {0}" xml:space="preserve">
+    <value>판매 실패 또는 미확인: {0}</value>
+  </data>
+  <data name="Discard unverified: {0}" xml:space="preserve">
+    <value>버리기 미확인: {0}</value>
+  </data>
+  <data name="Sell/discard skipped after desynthesis failed" xml:space="preserve">
+    <value>분해 실패 후 판매/버리기를 건너뜁니다</value>
+  </data>
+  <data name="Discard: AutoRetainer work settled; item changes are unverified" xml:space="preserve">
+    <value>버리기: AutoRetainer 작업 종료; 아이템 변경은 미확인</value>
+  </data>
+  <data name="Discard: no work observed; check the AutoRetainer list, protection and stack limits" xml:space="preserve">
+    <value>버리기: 작업이 확인되지 않음; AutoRetainer 목록, 보호 및 중첩 제한을 확인하세요</value>
+  </data>
+  <data name="Discard unverified: AutoRetainer work timed out" xml:space="preserve">
+    <value>버리기 미확인: AutoRetainer 작업 시간 초과</value>
+  </data>
+  <data name="Post-voyage cleanup stopped because external ownership could not be verified or settled." xml:space="preserve">
+    <value>항해 후 정리 중단: 외부 제어를 확인할 수 없거나 작업이 끝나지 않았습니다.</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer stayed busy" xml:space="preserve">
+    <value>남은 정리 건너뜀: AutoRetainer가 계속 작업 중</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
+    <value>남은 정리 건너뜀: AutoRetainer 상태를 읽을 수 없음 ({0})</value>
+  </data>
 </root>

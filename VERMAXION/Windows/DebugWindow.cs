@@ -39,7 +39,7 @@ internal sealed class DebugWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
-        UiGui.Title("Vermaxion Debug", UiText.T("Vermaxion Debug"));
+        UiGui.TitleWithButtons("Vermaxion Debug", UiText.T("Vermaxion Debug"), this);
         UIConstants.Heading("Reload task selection", plugin.Configuration.CompactUi);
         if (UIConstants.FullStopButton())
             plugin.FullStop();

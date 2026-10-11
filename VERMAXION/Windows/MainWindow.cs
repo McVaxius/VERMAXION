@@ -201,18 +201,6 @@ public class MainWindow : Window, IDisposable
             }
             finally { ImGui.SetWindowFontScale(callerScale); }
         }
-        if (plugin.Configuration.UiCompactVisibleOnMainWindow)
-        {
-            UIConstants.SameLineIfFits("C");
-            if (UiGui.Checkbox("C", ref compact))
-            { plugin.Configuration.CompactUi = compact; plugin.Configuration.Save(); }
-            if (ImGui.IsItemHovered()) UiGui.SetTooltip("Compact mode");
-        }
-        if (plugin.Configuration.UiLanguageVisibleOnMainWindow)
-        { UIConstants.SameLineIfFits("Language", 180 * scale); plugin.DrawLanguageSelector(); }
-        if (plugin.Configuration.UiTransparencyVisibleOnMainWindow)
-        { UIConstants.SameLineIfFits("Transparency"); plugin.DrawTransparencyToggle(); }
-
         // Ko-fi donation button in upper right
         UIConstants.SameLineIfFits("\u2661 Ko-fi \u2661");
         if (UiGui.SmallButton("\u2661 Ko-fi \u2661"))
@@ -1658,7 +1646,7 @@ public class MainWindow : Window, IDisposable
     private static string GetFishingStatus(Models.CharacterConfig config, string serviceStatus)
     {
         if (!string.IsNullOrWhiteSpace(serviceStatus) && serviceStatus != "Idle")
-            return serviceStatus;
+            return UiText.Fishing(serviceStatus);
 
         if (!config.EnableFishing)
             return "Off";

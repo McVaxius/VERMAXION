@@ -175,7 +175,7 @@ public class RegistrableConfigWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
-        UiGui.Title("Register Registrables Configuration", UiText.T("Register Registrables Configuration"));
+        UiGui.TitleWithButtons("Register Registrables Configuration", UiText.T("Register Registrables Configuration"), this);
         DrawHeader();
         if (pendingImportPreview != null &&
             (!string.Equals(importPreviewAccountId, characterConfigManager.SelectedAccountId, StringComparison.Ordinal) ||

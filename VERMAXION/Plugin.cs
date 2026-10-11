@@ -58,7 +58,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "fish-collection-client7-20261006-44-crystal-perch-cleanup";
+    private const string DebugAttemptMarker = "vmx-I533-cleanup-20261011-01";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -435,6 +435,41 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Log.Information("===Vermaxion loaded!===");
     }
 
+    private readonly System.Collections.Generic.Dictionary<Dalamud.Interface.Windowing.Window, AethertekUI.Dalamud.MaterialAppearanceTitleBar> appearanceTitleBars = new();
+
+    private void PrepareAppearanceTitleBars()
+    {
+        foreach (var owner in WindowSystem.Windows.OfType<Dalamud.Interface.Windowing.Window>())
+        {
+            if ((owner.Flags & ImGuiWindowFlags.NoTitleBar) != 0 || appearanceTitleBars.ContainsKey(owner)) continue;
+            appearanceTitleBars.Add(owner, AethertekUI.Dalamud.MaterialAppearanceTitleBar.Register(owner,
+                () => new(UiText.T("Language"), UiText.T("Compact mode"), UiText.T("Transparency"), UiText.T("Color")),
+                DrawLanguageSelector,
+                () => { Configuration.CompactUi = !Configuration.CompactUi; Configuration.Save(); },
+                DrawWindowSettings, DrawTitleColour,
+                () => owner is MainWindow
+                    ? new(Configuration.UiLanguageVisibleOnMainWindow, Configuration.UiCompactVisibleOnMainWindow, Configuration.UiTransparencyVisibleOnMainWindow, true)
+                    : new(true, true, true, true)));
+        }
+    }
+
+    private void DrawAppearanceTitleBarPopups()
+    {
+        foreach (var actions in appearanceTitleBars.Values) actions.DrawPopups();
+    }
+
+    private void DrawTitleColour()
+    {
+        using var controls = MaterialControls.Push(VermaxionPresentation.Controls(28,18));
+        if (!MaterialAppearanceSelector.DrawPalette("titlebar-colour", ref accentDraft,
+            new(UiText.T("Color"), UiText.T("Language"), UiText.T("Teal"), UiText.T("Blue"), UiText.T("Pink"), UiText.T("Custom RGB")))) return;
+        Configuration.UiAccentRgb = ((uint)Math.Clamp((int)MathF.Round(accentDraft.X * 255), 0, 255) << 16)
+            | ((uint)Math.Clamp((int)MathF.Round(accentDraft.Y * 255), 0, 255) << 8)
+            | (uint)Math.Clamp((int)MathF.Round(accentDraft.Z * 255), 0, 255);
+        Configuration.Save();
+    }
+
+
     private void DrawUi()
     {
         ApplyAppearance();
@@ -473,7 +508,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
         using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale, MaterialStyleMode.ColorsOnly);
         using var body = uiFonts.Push(UiFontRole.Body);
+        PrepareAppearanceTitleBars();
+        foreach (var actions in appearanceTitleBars.Values) actions.RefreshVisibility();
         WindowSystem.Draw();
+        DrawAppearanceTitleBarPopups();
         foreach (var window in WindowSystem.Windows)
         {
             if (!windowOpacities.TryGetValue(window, out var opacity))

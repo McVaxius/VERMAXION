@@ -90,10 +90,14 @@
   <data name="After" xml:space="preserve"><value>बाद</value></data>
   <data name="After AR" xml:space="preserve"><value>AR के बाद</value></data>
   <data name="After a successful automatically scheduled voyage finishes result handling and optional cleanup, override Return after Fishing, restore external state, then log out and wake at the snapshotted Ocean Fishing startup gate. Disabling this checkbox prevents future holds but does not cancel a hold already underway; use Main Window FULL STOP to cancel it. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client." xml:space="preserve"><value>स्वतः निर्धारित सफल यात्रा के परिणाम और वैकल्पिक सफाई पूरे होने के बाद, मछली पकड़ने के बाद वापसी को ओवरराइड करें, बाहरी स्थिति बहाल करें, फिर लॉगआउट कर सहेजे गए Ocean Fishing शुरुआत समय पर जागें। यह चेकबॉक्स अक्षम करने से भविष्य की रोक रुकती है, पर पहले से जारी रोक रद्द नहीं होती; उसे रद्द करने के लिए Main Window का सब रोकें उपयोग करें। पात्र चयन पर गेम क्लाइंट और Dalamud खुले रहने चाहिए; VERMAXION बंद क्लाइंट को जगा नहीं सकता।</value></data>
-  <data name="After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return." xml:space="preserve"><value>discard सफाई के बाद, ADS से AutoRetainer की कॉन्फ़िगर की गई sell list के अनुसार विक्रेता तक यात्रा और बिक्री करने को कहता है। सफाई की चेतावनियाँ कॉन्फ़िगर की गई वापसी नहीं रोकतीं।</value></data>
+  <data name="After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard." xml:space="preserve">
+    <value>AutoRetainer में NPC बिक्री चालू करें। अपुष्ट बिक्री के बाद वस्तुएँ नहीं फेंकी जातीं।</value>
+  </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>VERMAXION fishing relog के दौरान पात्र चयन पर पाँच मिनट प्रतीक्षा के बाद, पहले लाइव पात्र को एक बार लोड करने का प्रयास करें। यही सुरक्षा जाँच स्थिति परीक्षण बटन को भी नियंत्रित करती है।</value></data>
   <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>इन्वेंटरी आइटम पंजीकरण के बाद, प्रवेश के लिए {0} आवश्यक हो सकता है (कुल {1:N0} gil)। खरीद के लिए सीमा और राशि दोनों पर्याप्त बचनी चाहिए।</value></data>
-  <data name="After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard." xml:space="preserve"><value>यात्रा परिणाम स्थिर होने के बाद, AutoRetainer के पढ़ने योग्य और निष्क्रिय होने की प्रतीक्षा करता है, फिर /ays discard चलाता है।</value></data>
+  <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
+    <value>FrenRider/ADS: विघटन, बिक्री, फिर /ays discard। AutoRetainer की सूची, सुरक्षा और स्टैक सीमा का पालन होता है।</value>
+  </data>
   <data name="After-AR Park" xml:space="preserve"><value>AR के बाद पार्क</value></data>
   <data name="After-AR Park is already active." xml:space="preserve"><value>AR के बाद पार्क पहले से सक्रिय है।</value></data>
   <data name="After-AR custom command" xml:space="preserve"><value>AR के बाद कस्टम कमांड</value></data>
@@ -1638,4 +1642,49 @@
   <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>XA Slave का Utility &gt; XA Mods पैनल खोलता है, जिसमें Dalamud Log Cleaner है।</value></data>
   <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>XA Slave के लॉग उपकरण नहीं खोले जा सके।</value></data>
   <data name="Transparency visible on main window" xml:space="preserve"><value>मुख्य विंडो में पारदर्शिता दिखाएँ</value></data>
+  <data name="Waiting for FrenRider post-duty desynthesis: {0}" xml:space="preserve">
+    <value>ड्यूटी के बाद FrenRider विघटन की प्रतीक्षा: {0}</value>
+  </data>
+  <data name="Waiting for ADS cleanup to settle: {0}" xml:space="preserve">
+    <value>ADS सफाई समाप्त होने की प्रतीक्षा: {0}</value>
+  </data>
+  <data name="Waiting for readable post-voyage cleanup state: {0}" xml:space="preserve">
+    <value>यात्रा के बाद पढ़ने योग्य सफाई स्थिति की प्रतीक्षा: {0}</value>
+  </data>
+  <data name="Desynth: {0}" xml:space="preserve">
+    <value>विघटन: {0}</value>
+  </data>
+  <data name="Remaining cleanup skipped: {0}" xml:space="preserve">
+    <value>शेष सफाई छोड़ी गई: {0}</value>
+  </data>
+  <data name="Sell: {0}" xml:space="preserve">
+    <value>बिक्री: {0}</value>
+  </data>
+  <data name="Sell failed or unverified: {0}" xml:space="preserve">
+    <value>बिक्री विफल या अपुष्ट: {0}</value>
+  </data>
+  <data name="Discard unverified: {0}" xml:space="preserve">
+    <value>फेंकना अपुष्ट: {0}</value>
+  </data>
+  <data name="Sell/discard skipped after desynthesis failed" xml:space="preserve">
+    <value>विघटन विफल होने पर बिक्री/फेंकना छोड़ा गया</value>
+  </data>
+  <data name="Discard: AutoRetainer work settled; item changes are unverified" xml:space="preserve">
+    <value>फेंकना: AutoRetainer का काम समाप्त; वस्तुओं में बदलाव अपुष्ट</value>
+  </data>
+  <data name="Discard: no work observed; check the AutoRetainer list, protection and stack limits" xml:space="preserve">
+    <value>फेंकना: कोई काम नहीं दिखा; AutoRetainer सूची, सुरक्षा और स्टैक सीमा जाँचें</value>
+  </data>
+  <data name="Discard unverified: AutoRetainer work timed out" xml:space="preserve">
+    <value>फेंकना अपुष्ट: AutoRetainer समय सीमा समाप्त</value>
+  </data>
+  <data name="Post-voyage cleanup stopped because external ownership could not be verified or settled." xml:space="preserve">
+    <value>यात्रा के बाद सफाई रुकी: बाहरी नियंत्रण की पुष्टि या समाप्ति नहीं हो सकी।</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer stayed busy" xml:space="preserve">
+    <value>शेष सफाई छोड़ी गई: AutoRetainer व्यस्त रहा</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
+    <value>शेष सफाई छोड़ी गई: AutoRetainer स्थिति अपठनीय ({0})</value>
+  </data>
 </root>

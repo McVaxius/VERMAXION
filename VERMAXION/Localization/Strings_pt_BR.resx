@@ -100,10 +100,14 @@ Detalhes do status: {0}</value></data>
   <data name="After" xml:space="preserve"><value>Depois</value></data>
   <data name="After AR" xml:space="preserve"><value>Após AR</value></data>
   <data name="After a successful automatically scheduled voyage finishes result handling and optional cleanup, override Return after Fishing, restore external state, then log out and wake at the snapshotted Ocean Fishing startup gate. Disabling this checkbox prevents future holds but does not cancel a hold already underway; use Main Window FULL STOP to cancel it. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client." xml:space="preserve"><value>Após uma viagem agendada automaticamente e bem-sucedida terminar o tratamento de resultados e a limpeza opcional, substitui Retornar após Pesca, restaura o estado externo, desconecta e desperta no ponto de início de Ocean Fishing registrado. Desmarcar esta caixa impede futuras esperas, mas não cancela uma já em andamento; use PARADA TOTAL na janela principal para cancelá-la. O jogo e Dalamud devem permanecer abertos na seleção de personagem; VERMAXION não pode despertar um cliente fechado.</value></data>
-  <data name="After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return." xml:space="preserve"><value>Após a limpeza por descarte, pede a ADS que cuide da viagem ao vendedor e das vendas com a lista configurada do AutoRetainer. Avisos de limpeza não impedem o retorno configurado.</value></data>
+  <data name="After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard." xml:space="preserve">
+    <value>Ative a venda a NPCs no AutoRetainer. Uma venda não verificada ignora o descarte.</value>
+  </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>Após cinco minutos na seleção de personagem durante uma reconexão de pesca do VERMAXION, tenta carregar o primeiro personagem atual uma vez. A mesma proteção também controla o botão de teste de status.</value></data>
   <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>Após registrar itens do inventário, a entrada pode precisar de {0} ({1:N0} gil no total). As compras exigem limite restante e fundos suficientes.</value></data>
-  <data name="After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard." xml:space="preserve"><value>Após os resultados da viagem se estabilizarem, aguarda AutoRetainer estar legível e ocioso e executa /ays discard.</value></data>
+  <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
+    <value>FrenRider/ADS: dessíntese, venda e depois /ays discard. Respeita listas, proteção e limites de pilhas do AutoRetainer.</value>
+  </data>
   <data name="After-AR Park" xml:space="preserve"><value>Estacionar após AR</value></data>
   <data name="After-AR Park is already active." xml:space="preserve"><value>Estacionar após AR já está ativo.</value></data>
   <data name="After-AR custom command" xml:space="preserve"><value>Comando personalizado após AR</value></data>
@@ -1999,4 +2003,49 @@ Dependências: {1}</value></data>
   <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>Abre o painel Utility &gt; XA Mods do XA Slave, que contém o Dalamud Log Cleaner.</value></data>
   <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>Não foi possível abrir as ferramentas de log do XA Slave.</value></data>
   <data name="Transparency visible on main window" xml:space="preserve"><value>Mostrar transparência na janela principal</value></data>
+  <data name="Waiting for FrenRider post-duty desynthesis: {0}" xml:space="preserve">
+    <value>Aguardando dessíntese do FrenRider após o conteúdo: {0}</value>
+  </data>
+  <data name="Waiting for ADS cleanup to settle: {0}" xml:space="preserve">
+    <value>Aguardando a limpeza do ADS terminar: {0}</value>
+  </data>
+  <data name="Waiting for readable post-voyage cleanup state: {0}" xml:space="preserve">
+    <value>Aguardando estado legível da limpeza após a viagem: {0}</value>
+  </data>
+  <data name="Desynth: {0}" xml:space="preserve">
+    <value>Dessíntese: {0}</value>
+  </data>
+  <data name="Remaining cleanup skipped: {0}" xml:space="preserve">
+    <value>Limpeza restante ignorada: {0}</value>
+  </data>
+  <data name="Sell: {0}" xml:space="preserve">
+    <value>Venda: {0}</value>
+  </data>
+  <data name="Sell failed or unverified: {0}" xml:space="preserve">
+    <value>Venda falhou ou não foi verificada: {0}</value>
+  </data>
+  <data name="Discard unverified: {0}" xml:space="preserve">
+    <value>Descarte não verificado: {0}</value>
+  </data>
+  <data name="Sell/discard skipped after desynthesis failed" xml:space="preserve">
+    <value>Venda/descarte ignorados após a falha da dessíntese</value>
+  </data>
+  <data name="Discard: AutoRetainer work settled; item changes are unverified" xml:space="preserve">
+    <value>Descarte: AutoRetainer terminou; alterações dos itens não verificadas</value>
+  </data>
+  <data name="Discard: no work observed; check the AutoRetainer list, protection and stack limits" xml:space="preserve">
+    <value>Descarte: nenhum trabalho observado; confira a lista, a proteção e os limites de pilhas do AutoRetainer</value>
+  </data>
+  <data name="Discard unverified: AutoRetainer work timed out" xml:space="preserve">
+    <value>Descarte não verificado: tempo do AutoRetainer esgotado</value>
+  </data>
+  <data name="Post-voyage cleanup stopped because external ownership could not be verified or settled." xml:space="preserve">
+    <value>Limpeza após a viagem interrompida: controle externo não verificado ou não concluído.</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer stayed busy" xml:space="preserve">
+    <value>Limpeza restante ignorada: AutoRetainer permaneceu ocupado</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
+    <value>Limpeza restante ignorada: estado do AutoRetainer ilegível ({0})</value>
+  </data>
 </root>

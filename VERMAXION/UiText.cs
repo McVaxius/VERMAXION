@@ -121,6 +121,9 @@ internal sealed class UiText : IDisposable
             ? F("Preparing Stage {0}; {1}", stage, summary) : preparingSummary ? reason : T(reason);
         return (completion ? T(complete) : string.Empty) + detail + " | " + summary;
     }
+    internal static string Fishing(string english)
+        => string.Join(" | ", english.Split(" | ", StringSplitOptions.None).Select(T));
+
     // Collection services retain their original English messages and logs. Resolve their
     // specific compositions here; punctuation-only patterns must never capture names.
     internal static string Collection(string english, IEnumerable<string>? supplyNames = null, string? lastOutcome = null)

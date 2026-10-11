@@ -100,10 +100,14 @@ Detail status: {0}</value></data>
   <data name="After" xml:space="preserve"><value>Setelahnya</value></data>
   <data name="After AR" xml:space="preserve"><value>Setelah AR</value></data>
   <data name="After a successful automatically scheduled voyage finishes result handling and optional cleanup, override Return after Fishing, restore external state, then log out and wake at the snapshotted Ocean Fishing startup gate. Disabling this checkbox prevents future holds but does not cancel a hold already underway; use Main Window FULL STOP to cancel it. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client." xml:space="preserve"><value>Setelah pelayaran otomatis terjadwal yang berhasil menyelesaikan penanganan hasil dan pembersihan opsional, timpa Kembali setelah Memancing, pulihkan keadaan eksternal, lalu keluar dan bangun pada gerbang awal Ocean Fishing yang direkam. Menonaktifkan kotak ini mencegah penahanan berikutnya tetapi tidak membatalkan yang sedang berlangsung; gunakan HENTI TOTAL di Jendela Utama untuk membatalkannya. Klien game dan Dalamud harus tetap terbuka pada pemilihan karakter; VERMAXION tidak dapat membangunkan klien yang ditutup.</value></data>
-  <data name="After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return." xml:space="preserve"><value>Setelah pembersihan pembuangan, minta ADS menangani perjalanan ke penjual dan penjualan dengan daftar jual AutoRetainer yang dikonfigurasi. Peringatan pembersihan tidak mencegah kepulangan yang dikonfigurasi.</value></data>
+  <data name="After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard." xml:space="preserve">
+    <value>Aktifkan penjualan NPC di AutoRetainer. Penjualan yang belum terverifikasi melewati pembuangan.</value>
+  </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>Setelah lima menit menunggu pada pemilihan karakter selama masuk ulang memancing VERMAXION, coba memuat karakter aktif pertama sekali. Pengaman yang sama juga mengontrol tombol uji status.</value></data>
   <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>Setelah mendaftarkan item inventaris, masuk mungkin memerlukan {0} (total {1:N0} gil). Pembelian memerlukan sisa batas dan dana yang cukup.</value></data>
-  <data name="After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard." xml:space="preserve"><value>Setelah hasil pelayaran stabil, tunggu AutoRetainer dapat dibaca dan diam, lalu jalankan /ays discard.</value></data>
+  <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
+    <value>FrenRider/ADS: desintesis, penjualan, lalu /ays discard. Mematuhi daftar, perlindungan dan batas tumpukan AutoRetainer.</value>
+  </data>
   <data name="After-AR Park" xml:space="preserve"><value>Parkir setelah AR</value></data>
   <data name="After-AR Park is already active." xml:space="preserve"><value>Parkir setelah AR sudah aktif.</value></data>
   <data name="After-AR custom command" xml:space="preserve"><value>Perintah khusus setelah AR</value></data>
@@ -1999,4 +2003,49 @@ Dependensi: {1}</value></data>
   <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>Membuka panel Utility &gt; XA Mods XA Slave yang berisi Dalamud Log Cleaner.</value></data>
   <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>Alat log XA Slave tidak dapat dibuka.</value></data>
   <data name="Transparency visible on main window" xml:space="preserve"><value>Tampilkan transparansi di jendela utama</value></data>
+  <data name="Waiting for FrenRider post-duty desynthesis: {0}" xml:space="preserve">
+    <value>Menunggu desintesis FrenRider setelah duty: {0}</value>
+  </data>
+  <data name="Waiting for ADS cleanup to settle: {0}" xml:space="preserve">
+    <value>Menunggu pembersihan ADS selesai: {0}</value>
+  </data>
+  <data name="Waiting for readable post-voyage cleanup state: {0}" xml:space="preserve">
+    <value>Menunggu status pembersihan setelah pelayaran yang dapat dibaca: {0}</value>
+  </data>
+  <data name="Desynth: {0}" xml:space="preserve">
+    <value>Desintesis: {0}</value>
+  </data>
+  <data name="Remaining cleanup skipped: {0}" xml:space="preserve">
+    <value>Sisa pembersihan dilewati: {0}</value>
+  </data>
+  <data name="Sell: {0}" xml:space="preserve">
+    <value>Penjualan: {0}</value>
+  </data>
+  <data name="Sell failed or unverified: {0}" xml:space="preserve">
+    <value>Penjualan gagal atau belum terverifikasi: {0}</value>
+  </data>
+  <data name="Discard unverified: {0}" xml:space="preserve">
+    <value>Pembuangan belum terverifikasi: {0}</value>
+  </data>
+  <data name="Sell/discard skipped after desynthesis failed" xml:space="preserve">
+    <value>Penjualan/pembuangan dilewati setelah desintesis gagal</value>
+  </data>
+  <data name="Discard: AutoRetainer work settled; item changes are unverified" xml:space="preserve">
+    <value>Pembuangan: pekerjaan AutoRetainer selesai; perubahan item belum terverifikasi</value>
+  </data>
+  <data name="Discard: no work observed; check the AutoRetainer list, protection and stack limits" xml:space="preserve">
+    <value>Pembuangan: tidak ada pekerjaan teramati; periksa daftar, perlindungan dan batas tumpukan AutoRetainer</value>
+  </data>
+  <data name="Discard unverified: AutoRetainer work timed out" xml:space="preserve">
+    <value>Pembuangan belum terverifikasi: waktu AutoRetainer habis</value>
+  </data>
+  <data name="Post-voyage cleanup stopped because external ownership could not be verified or settled." xml:space="preserve">
+    <value>Pembersihan setelah pelayaran dihentikan: kendali eksternal belum terverifikasi atau belum selesai.</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer stayed busy" xml:space="preserve">
+    <value>Sisa pembersihan dilewati: AutoRetainer tetap sibuk</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
+    <value>Sisa pembersihan dilewati: status AutoRetainer tidak terbaca ({0})</value>
+  </data>
 </root>

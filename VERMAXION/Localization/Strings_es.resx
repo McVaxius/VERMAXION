@@ -3120,11 +3120,11 @@ Dependencias: {1}</value>
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve">
     <value>Comprueba ventanas de pesca oceánica sin pre/posprocesamiento AR. Reconecta y pesca con tus ajustes.</value>
   </data>
-  <data name="After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return." xml:space="preserve">
-    <value>Tras descartar, ADS gestiona viaje al vendedor y ventas con la lista AutoRetainer. Los avisos de limpieza no impiden volver.</value>
+  <data name="After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard." xml:space="preserve">
+    <value>Activa la venta a PNJ en AutoRetainer. Una venta sin verificar omite el descarte.</value>
   </data>
-  <data name="After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard." xml:space="preserve">
-    <value>Tras finalizar resultados, espera AutoRetainer legible e inactivo y ejecuta /ays discard.</value>
+  <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
+    <value>FrenRider/ADS: desíntesis, venta y luego /ays discard. Respeta las listas, la protección y los límites de pilas de AutoRetainer.</value>
   </data>
   <data name="Astrope attempts tells dad how many Astrope commendation attempts to schedule inside the local time window." xml:space="preserve">
     <value>Los intentos Astrope indican cuántos intentos de recomendación planificará dad en la ventana local.</value>
@@ -4859,4 +4859,49 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>Abre el panel Utility &gt; XA Mods de XA Slave, que contiene Dalamud Log Cleaner.</value></data>
   <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>No se pudieron abrir las herramientas de registro de XA Slave.</value></data>
   <data name="Transparency visible on main window" xml:space="preserve"><value>Mostrar transparencia en la ventana principal</value></data>
+  <data name="Waiting for FrenRider post-duty desynthesis: {0}" xml:space="preserve">
+    <value>Esperando la desíntesis de FrenRider tras el deber: {0}</value>
+  </data>
+  <data name="Waiting for ADS cleanup to settle: {0}" xml:space="preserve">
+    <value>Esperando que termine la limpieza de ADS: {0}</value>
+  </data>
+  <data name="Waiting for readable post-voyage cleanup state: {0}" xml:space="preserve">
+    <value>Esperando un estado legible de limpieza tras la travesía: {0}</value>
+  </data>
+  <data name="Desynth: {0}" xml:space="preserve">
+    <value>Desíntesis: {0}</value>
+  </data>
+  <data name="Remaining cleanup skipped: {0}" xml:space="preserve">
+    <value>Limpieza restante omitida: {0}</value>
+  </data>
+  <data name="Sell: {0}" xml:space="preserve">
+    <value>Venta: {0}</value>
+  </data>
+  <data name="Sell failed or unverified: {0}" xml:space="preserve">
+    <value>Venta fallida o sin verificar: {0}</value>
+  </data>
+  <data name="Discard unverified: {0}" xml:space="preserve">
+    <value>Descarte sin verificar: {0}</value>
+  </data>
+  <data name="Sell/discard skipped after desynthesis failed" xml:space="preserve">
+    <value>Venta/descarte omitidos tras fallar la desíntesis</value>
+  </data>
+  <data name="Discard: AutoRetainer work settled; item changes are unverified" xml:space="preserve">
+    <value>Descarte: AutoRetainer terminó; cambios de objetos sin verificar</value>
+  </data>
+  <data name="Discard: no work observed; check the AutoRetainer list, protection and stack limits" xml:space="preserve">
+    <value>Descarte: no se observó trabajo; revisa la lista, protección y límites de pilas de AutoRetainer</value>
+  </data>
+  <data name="Discard unverified: AutoRetainer work timed out" xml:space="preserve">
+    <value>Descarte sin verificar: AutoRetainer agotó el tiempo</value>
+  </data>
+  <data name="Post-voyage cleanup stopped because external ownership could not be verified or settled." xml:space="preserve">
+    <value>Limpieza tras la travesía detenida: no se pudo verificar o finalizar el control externo.</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer stayed busy" xml:space="preserve">
+    <value>Limpieza restante omitida: AutoRetainer siguió ocupado</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
+    <value>Limpieza restante omitida: estado de AutoRetainer ilegible ({0})</value>
+  </data>
 </root>

@@ -841,8 +841,11 @@ public sealed class FishingPolicyTests
     public void InventoryCleanupAndReturnPoliciesAreOrderedAndObserved()
     {
         Assert.Equal(
-            [FishingCleanupCommand.Discard, FishingCleanupCommand.Sell],
+            [FishingCleanupCommand.Sell, FishingCleanupCommand.Discard],
             FishingInventoryCleanupPolicy.Build(true, true));
+        Assert.Equal([FishingCleanupCommand.Sell], FishingInventoryCleanupPolicy.Build(false, true));
+        Assert.Equal([FishingCleanupCommand.Discard], FishingInventoryCleanupPolicy.Build(true, false));
+        Assert.Empty(FishingInventoryCleanupPolicy.Build(false, false));
         Assert.True(FishingInventoryCleanupPolicy.TreatAsNothingToProcess(
             busyObserved: false,
             TimeSpan.FromSeconds(10)));
@@ -861,6 +864,36 @@ public sealed class FishingPolicyTests
         Assert.True(FishingReturnPolicy.ShouldSuppressCommand(resultAddonVisible: true));
         Assert.False(FishingReturnPolicy.ShouldSuppressCommand(resultAddonVisible: false));
     }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public void DesynthHandoffRetainsPendingFailureAndCurrentVoyageEvidence(bool pending, bool failed)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            schema = "frenrider.auto-desynth/v1", characterId = 1UL,
+            pending, failed, status = "Configured desynthesis outcome",
+            dutyCompletedAtUtc = "2026-10-11T13:00:00Z",
+        });
+        Assert.Equal(pending, FishingInventoryCleanupPolicy.ReadDesynthHandoff(json, 1,
+            out var status, out var completedAt, out var reportedFailure));
+        Assert.Equal(failed, reportedFailure);
+        Assert.Equal("Configured desynthesis outcome", status);
+        Assert.Equal(new DateTime(2026, 10, 11, 13, 0, 0, DateTimeKind.Utc), completedAt);
+    }
+
+    [Theory]
+    [InlineData("{}", 1UL)]
+    [InlineData("not json", 1UL)]
+    [InlineData("{\"schema\":\"frenrider.auto-desynth/v2\"}", 1UL)]
+    [InlineData("{\"schema\":\"frenrider.auto-desynth/v1\",\"characterId\":2}", 1UL)]
+    [InlineData("{\"schema\":\"frenrider.auto-desynth/v1\",\"characterId\":0}", 0UL)]
+    [InlineData("{\"schema\":\"frenrider.auto-desynth/v1\",\"characterId\":1,\"pending\":\"false\"}", 1UL)]
+    public void UnreadableOrForeignDesynthHandoffCannotReleaseCleanup(string json, ulong characterId)
+        => Assert.ThrowsAny<Exception>(() => FishingInventoryCleanupPolicy.ReadDesynthHandoff(
+            json, characterId, out _, out _, out _));
 
     [Theory]
     [InlineData("Say", "Player", true, true, false, OceanFishingProvider.VermaxionAutoHook)]

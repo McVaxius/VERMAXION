@@ -171,7 +171,7 @@ public class ConfigWindow : Window, IDisposable
     public override void Draw()
     {
         motion.DrawChrome();
-        UiGui.Title("Vermaxion Configuration", UiText.T("Vermaxion Configuration"));
+        UiGui.TitleWithButtons("Vermaxion Configuration", UiText.T("Vermaxion Configuration"), this);
         UIConstants.ApplicationHeading("Settings");
         var appearanceRoot = ImGui.GetID("");
         bool tabsOpen;
@@ -1761,7 +1761,7 @@ public class ConfigWindow : Window, IDisposable
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "FishingDiscardAfterVoyage", "Fishing discard cleanup",
                         (source, target) => target.FishingDiscardAfterVoyage = source.FishingDiscardAfterVoyage);
-                    DrawHelpMarker("After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard.");
+                    DrawHelpMarker("After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits.");
 
                     var sellAfterVoyage = cc.FishingSellAfterVoyage;
                     if (UIConstants.Checkbox("Sell configured fish after voyage", ref sellAfterVoyage))
@@ -1771,7 +1771,7 @@ public class ConfigWindow : Window, IDisposable
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "FishingSellAfterVoyage", "Fishing sell cleanup",
                         (source, target) => target.FishingSellAfterVoyage = source.FishingSellAfterVoyage);
-                    DrawHelpMarker("After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return.");
+                    DrawHelpMarker("After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard.");
 
                     var eatAnyFood = cc.FishingEatAnyFood;
                     if (UIConstants.Checkbox("Eat any food in bags (pre-fishing lobby)", ref eatAnyFood))

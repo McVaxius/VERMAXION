@@ -1843,11 +1843,28 @@ public static class FishingInventoryCleanupPolicy
     public static IReadOnlyList<FishingCleanupCommand> Build(bool discardEnabled, bool sellEnabled)
     {
         var result = new List<FishingCleanupCommand>(2);
-        if (discardEnabled)
-            result.Add(FishingCleanupCommand.Discard);
         if (sellEnabled)
             result.Add(FishingCleanupCommand.Sell);
+        if (discardEnabled)
+            result.Add(FishingCleanupCommand.Discard);
         return result;
+    }
+
+    public static bool ReadDesynthHandoff(string json, ulong characterId,
+        out string status, out DateTime? dutyCompletedAtUtc, out bool failed)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        if (root.GetProperty("schema").GetString() != "frenrider.auto-desynth/v1"
+            || characterId == 0 || root.GetProperty("characterId").GetUInt64() != characterId)
+            throw new InvalidOperationException("FrenRider desynthesis state does not match this character or contract.");
+        var pending = root.GetProperty("pending").GetBoolean();
+        failed = root.GetProperty("failed").GetBoolean();
+        status = root.GetProperty("status").GetString() ?? string.Empty;
+        dutyCompletedAtUtc = root.TryGetProperty("dutyCompletedAtUtc", out var completed)
+            && completed.ValueKind == JsonValueKind.String && completed.TryGetDateTime(out var utc)
+            ? utc : null;
+        return pending;
     }
 
     public static bool TreatAsNothingToProcess(bool busyObserved, TimeSpan elapsed)

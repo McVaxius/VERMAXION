@@ -115,6 +115,9 @@ public sealed class FishingService
     private int cleanupCommandIndex;
     private bool cleanupCommandSent;
     private bool cleanupBusyObserved;
+    private readonly List<string> cleanupFeedback = [];
+    private bool desynthFeedbackRecorded;
+    private bool cleanupHandoffSettled;
     private bool inventoryRecoveryActive;
     private Vector3? inventoryRecoveryReturnPosition;
     private float inventoryRecoveryReturnRotation;
@@ -233,7 +236,8 @@ public sealed class FishingService
             ? lastError
             : !string.IsNullOrWhiteSpace(statusDetail)
                 ? statusDetail
-                : state.ToString());
+                : state.ToString()) + (cleanupFeedback.Count == 0 ? string.Empty :
+            " | " + string.Join(" | ", cleanupFeedback));
 
     public FishingService(
         IPluginLog log,
@@ -341,6 +345,8 @@ public sealed class FishingService
         activeProvider = runLifecycle.Current.Provider;
         activePositioningMode = configuration.OceanFishingPositioningMode;
         lastError = string.Empty;
+        cleanupFeedback.Clear();
+        desynthFeedbackRecorded = false;
         sawFishingContext = IsFishingContextActive();
         statusDetail = string.Empty;
         repairStartedAt = DateTime.MinValue;
@@ -446,6 +452,8 @@ public sealed class FishingService
         aethernetIdleStartedAt = DateTime.MinValue;
         lastError = string.Empty;
         statusDetail = string.Empty;
+        cleanupFeedback.Clear();
+        desynthFeedbackRecorded = false;
         scheduledOfflineHoldPending = false;
         inventoryRecoveryActive = false;
         inventoryRecoveryReturnPosition = null;
@@ -3681,18 +3689,81 @@ public sealed class FishingService
         cleanupCommandSent = false;
         cleanupBusyObserved = false;
 
-        if (cleanupCommands.Count == 0)
-        {
-            ReturnAfterFishing();
-            return;
-        }
-
         log.Information($"[Fishing][Cleanup] Starting post-voyage cleanup: {string.Join(", ", cleanupCommands)}");
         SetState(FishingState.WaitingForCleanupReady);
     }
 
+    private bool WaitForPostVoyageDesynthesis(TimeSpan elapsed)
+    {
+        try
+        {
+            if (Plugin.PluginInterface.InstalledPlugins.Any(p => p.IsLoaded && p.InternalName == "FrenRider"))
+            {
+                var json = Plugin.PluginInterface.GetIpcSubscriber<string>("FrenRider.GetAutoDesynthStatusJson").InvokeFunc();
+                var pending = FishingInventoryCleanupPolicy.ReadDesynthHandoff(json, Plugin.PlayerState.ContentId,
+                    out var detail, out var dutyCompletedUtc, out var failed);
+                if (pending)
+                {
+                    statusDetail = $"Waiting for FrenRider post-duty desynthesis: {detail}";
+                    if (elapsed >= TimeSpan.FromMinutes(3))
+                        throw new InvalidOperationException("FrenRider desynthesis did not settle before the cleanup wait limit.");
+                    return true;
+                }
+                if (!desynthFeedbackRecorded && dutyCompletedUtc >= dutyStartedAt && !string.IsNullOrWhiteSpace(detail))
+                {
+                    RecordCleanupFeedback($"Desynth: {detail}");
+                    desynthFeedbackRecorded = true;
+                    if (failed)
+                    {
+                        cleanupCommands = Array.Empty<FishingCleanupCommand>();
+                        RecordCleanupFeedback("Sell/discard skipped after desynthesis failed");
+                    }
+                }
+            }
+
+            var ads = adsIpcClient.Refresh(force: true);
+            if (!ads.StatusReadable)
+                throw new InvalidOperationException("ADS cleanup ownership is unreadable.");
+            if (ads.UtilityRunning)
+            {
+                statusDetail = $"Waiting for ADS cleanup to settle: {ads.UtilityStatus}";
+                if (elapsed >= TimeSpan.FromMinutes(3))
+                    throw new InvalidOperationException("ADS cleanup did not settle before the wait limit.");
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            statusDetail = $"Waiting for readable post-voyage cleanup state: {ex.GetBaseException().Message}";
+            if (elapsed < TimeSpan.FromMinutes(3)) return true;
+            RecordCleanupFeedback($"Remaining cleanup skipped: {ex.GetBaseException().Message}");
+            Fail("Post-voyage cleanup stopped because external ownership could not be verified or settled.");
+            return true;
+        }
+    }
+
+    private void RecordCleanupFeedback(string message)
+    {
+        cleanupFeedback.Add(message);
+        log.Information($"[Fishing][Cleanup] {message}");
+    }
+
     private void TickWaitForCleanupReady(TimeSpan elapsed)
     {
+        // FrenRider owns its configured desynth action. Observe it; never start a duplicate.
+        if (!inventoryRecoveryActive && !cleanupHandoffSettled)
+        {
+            if (WaitForPostVoyageDesynthesis(elapsed)) return;
+            cleanupHandoffSettled = true;
+            stateEnteredAt = DateTime.UtcNow;
+            elapsed = TimeSpan.Zero;
+        }
+        if (cleanupCommandIndex >= cleanupCommands.Count)
+        {
+            ReturnAfterFishing();
+            return;
+        }
         var busy = autoRetainer.ReadBusyState();
         if (!busy.Success)
         {
@@ -3708,6 +3779,7 @@ public sealed class FishingService
             else
             {
                 log.Warning($"[Fishing][Cleanup] AutoRetainer state stayed unreadable; skipping remaining cleanup: {busy.Error}");
+                RecordCleanupFeedback($"Remaining cleanup skipped: AutoRetainer state unreadable ({busy.Error})");
                 ReturnAfterFishing();
             }
             return;
@@ -3727,14 +3799,9 @@ public sealed class FishingService
             else
             {
                 log.Warning("[Fishing][Cleanup] AutoRetainer stayed busy; skipping remaining cleanup");
+                RecordCleanupFeedback("Remaining cleanup skipped: AutoRetainer stayed busy");
                 ReturnAfterFishing();
             }
-            return;
-        }
-
-        if (cleanupCommandIndex >= cleanupCommands.Count)
-        {
-            ReturnAfterFishing();
             return;
         }
 
@@ -3823,14 +3890,17 @@ public sealed class FishingService
             if ((bool?)status["done"] != true || (bool?)status["succeeded"] != true)
                 throw new InvalidOperationException((string?)status["statusMessage"] ?? "ADS NPC selling has no verified completion.");
             npcSaleOperationId = null;
+            RecordCleanupFeedback($"Sell: {(string?)status["statusMessage"] ?? "ADS sale flow settled"}");
             AdvanceInventoryCleanup();
         }
         catch (Exception ex)
         {
             log.Warning($"[Fishing][Cleanup] {ex.Message}");
+            RecordCleanupFeedback($"Sell failed or unverified: {ex.GetBaseException().Message}");
             CancelOwnedNpcSale();
+            // An uncertain sale must not be followed by destructive discard of overlapping items.
             if (inventoryRecoveryActive) ResumeAfterInventoryRecovery("ADS NPC sale did not complete");
-            else AdvanceInventoryCleanup();
+            else ReturnAfterFishing();
         }
     }
 
@@ -3868,6 +3938,7 @@ public sealed class FishingService
                 return;
 
             log.Warning($"[Fishing][Cleanup] Could not observe AutoRetainer work for {command}: {busy.Error}");
+            RecordCleanupFeedback($"Discard unverified: {busy.Error}");
             AdvanceInventoryCleanup();
             return;
         }
@@ -3880,6 +3951,7 @@ public sealed class FishingService
                 return;
 
             log.Warning($"[Fishing][Cleanup] AutoRetainer work timed out for {command}");
+            RecordCleanupFeedback("Discard unverified: AutoRetainer work timed out");
             AdvanceInventoryCleanup();
             return;
         }
@@ -3887,10 +3959,10 @@ public sealed class FishingService
         if (cleanupBusyObserved ||
             FishingInventoryCleanupPolicy.TreatAsNothingToProcess(cleanupBusyObserved, elapsed))
         {
-            log.Information(
+            RecordCleanupFeedback(
                 cleanupBusyObserved
-                    ? $"[Fishing][Cleanup] Observed AutoRetainer complete {command}"
-                    : $"[Fishing][Cleanup] No busy transition for {command}; treating as nothing to process");
+                    ? "Discard: AutoRetainer work settled; item changes are unverified"
+                    : "Discard: no work observed; check the AutoRetainer list, protection and stack limits");
             AdvanceInventoryCleanup();
         }
     }
@@ -4177,6 +4249,9 @@ public sealed class FishingService
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
         statusDetail = string.Empty;
+
+        if (newState == FishingState.WaitingForCleanupReady)
+            cleanupHandoffSettled = false;
 
         if (newState is FishingState.NavigatingToPreparationDock or
             FishingState.NavigatingToRegistrar or

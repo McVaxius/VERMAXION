@@ -100,10 +100,14 @@ Chi tiết trạng thái: {0}</value></data>
   <data name="After" xml:space="preserve"><value>Sau đó</value></data>
   <data name="After AR" xml:space="preserve"><value>Sau AR</value></data>
   <data name="After a successful automatically scheduled voyage finishes result handling and optional cleanup, override Return after Fishing, restore external state, then log out and wake at the snapshotted Ocean Fishing startup gate. Disabling this checkbox prevents future holds but does not cancel a hold already underway; use Main Window FULL STOP to cancel it. The game client and Dalamud must remain open at character select; VERMAXION cannot wake a closed client." xml:space="preserve"><value>Sau khi chuyến đi được lên lịch tự động thành công hoàn tất xử lý kết quả và dọn dẹp tùy chọn, ghi đè Trở về sau câu cá, khôi phục trạng thái bên ngoài, rồi đăng xuất và đánh thức tại cổng khởi động Ocean Fishing đã chụp. Tắt hộp kiểm này ngăn các lần giữ sau nhưng không hủy lần đang diễn ra; dùng DỪNG HOÀN TOÀN ở cửa sổ chính để hủy. Game và Dalamud phải vẫn mở tại màn hình chọn nhân vật; VERMAXION không thể đánh thức game đã đóng.</value></data>
-  <data name="After discard cleanup, asks ADS to handle vendor travel and selling with AutoRetainer's configured sell list. Cleanup warnings do not prevent the configured return." xml:space="preserve"><value>Sau khi dọn dẹp bằng cách vứt bỏ, yêu cầu ADS xử lý di chuyển đến người bán và bán theo danh sách bán đã cấu hình của AutoRetainer. Cảnh báo dọn dẹp không ngăn việc trở về đã cấu hình.</value></data>
+  <data name="After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard." xml:space="preserve">
+    <value>Bật bán cho NPC trong AutoRetainer. Nếu chưa xác minh được việc bán, bỏ qua việc vứt đồ.</value>
+  </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>Sau năm phút chờ tại màn hình chọn nhân vật trong lần đăng nhập lại để câu cá của VERMAXION, thử tải nhân vật hiện hành đầu tiên một lần. Cùng điều kiện bảo vệ đó cũng kiểm soát nút kiểm thử trạng thái.</value></data>
   <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>Sau khi đăng ký vật phẩm trong túi, lượt tham gia có thể cần {0} (tổng {1:N0} gil). Giao dịch cần đủ giới hạn còn lại và tiền.</value></data>
-  <data name="After voyage results settle, waits for AutoRetainer to be readable and idle, then runs /ays discard." xml:space="preserve"><value>Sau khi kết quả chuyến đi ổn định, chờ AutoRetainer đọc được và nhàn rỗi, rồi chạy /ays discard.</value></data>
+  <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
+    <value>FrenRider/ADS: phân giải, bán, rồi /ays discard. Tuân theo danh sách, bảo vệ và giới hạn chồng của AutoRetainer.</value>
+  </data>
   <data name="After-AR Park" xml:space="preserve"><value>Đỗ sau AR</value></data>
   <data name="After-AR Park is already active." xml:space="preserve"><value>Đỗ sau AR đã hoạt động.</value></data>
   <data name="After-AR custom command" xml:space="preserve"><value>Lệnh tùy chỉnh sau AR</value></data>
@@ -1999,4 +2003,49 @@ Phụ thuộc: {1}</value></data>
   <data name="Opens XA Slave&apos;s Utility &gt; XA Mods panel, which contains Dalamud Log Cleaner." xml:space="preserve"><value>Mở bảng Utility &gt; XA Mods của XA Slave, chứa Dalamud Log Cleaner.</value></data>
   <data name="XA Slave log tools could not be opened." xml:space="preserve"><value>Không thể mở công cụ nhật ký XA Slave.</value></data>
   <data name="Transparency visible on main window" xml:space="preserve"><value>Hiện độ trong suốt trên cửa sổ chính</value></data>
+  <data name="Waiting for FrenRider post-duty desynthesis: {0}" xml:space="preserve">
+    <value>Đang chờ FrenRider phân giải sau nhiệm vụ: {0}</value>
+  </data>
+  <data name="Waiting for ADS cleanup to settle: {0}" xml:space="preserve">
+    <value>Đang chờ ADS dọn dẹp xong: {0}</value>
+  </data>
+  <data name="Waiting for readable post-voyage cleanup state: {0}" xml:space="preserve">
+    <value>Đang chờ trạng thái dọn dẹp sau chuyến đi có thể đọc được: {0}</value>
+  </data>
+  <data name="Desynth: {0}" xml:space="preserve">
+    <value>Phân giải: {0}</value>
+  </data>
+  <data name="Remaining cleanup skipped: {0}" xml:space="preserve">
+    <value>Bỏ qua phần dọn dẹp còn lại: {0}</value>
+  </data>
+  <data name="Sell: {0}" xml:space="preserve">
+    <value>Bán: {0}</value>
+  </data>
+  <data name="Sell failed or unverified: {0}" xml:space="preserve">
+    <value>Bán thất bại hoặc chưa xác minh: {0}</value>
+  </data>
+  <data name="Discard unverified: {0}" xml:space="preserve">
+    <value>Vứt đồ chưa xác minh: {0}</value>
+  </data>
+  <data name="Sell/discard skipped after desynthesis failed" xml:space="preserve">
+    <value>Bỏ qua bán/vứt đồ sau khi phân giải thất bại</value>
+  </data>
+  <data name="Discard: AutoRetainer work settled; item changes are unverified" xml:space="preserve">
+    <value>Vứt đồ: AutoRetainer đã kết thúc; thay đổi vật phẩm chưa xác minh</value>
+  </data>
+  <data name="Discard: no work observed; check the AutoRetainer list, protection and stack limits" xml:space="preserve">
+    <value>Vứt đồ: không thấy tác vụ; kiểm tra danh sách, bảo vệ và giới hạn chồng của AutoRetainer</value>
+  </data>
+  <data name="Discard unverified: AutoRetainer work timed out" xml:space="preserve">
+    <value>Vứt đồ chưa xác minh: AutoRetainer hết thời gian</value>
+  </data>
+  <data name="Post-voyage cleanup stopped because external ownership could not be verified or settled." xml:space="preserve">
+    <value>Dừng dọn dẹp sau chuyến đi: chưa xác minh được điều khiển bên ngoài hoặc tác vụ chưa kết thúc.</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer stayed busy" xml:space="preserve">
+    <value>Bỏ qua phần dọn dẹp còn lại: AutoRetainer vẫn bận</value>
+  </data>
+  <data name="Remaining cleanup skipped: AutoRetainer state unreadable ({0})" xml:space="preserve">
+    <value>Bỏ qua phần dọn dẹp còn lại: không đọc được trạng thái AutoRetainer ({0})</value>
+  </data>
 </root>
