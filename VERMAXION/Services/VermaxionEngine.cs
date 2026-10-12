@@ -809,17 +809,6 @@ public class VermaxionEngine
            TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: true, requireWorldReady: true,
                automatedRun: true, "retainerless timer", timerOwnedRun: true);
 
-    internal bool StartScheduledTask(string taskId)
-    {
-        if (!configuration.Enabled ||
-            taskId is not (PostProcessTaskOrder.MiniCactpot or PostProcessTaskOrder.ChocoboStables) ||
-            !GetTaskEligibility(taskId).IsRunnable)
-            return false;
-
-        return TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: true, requireWorldReady: true,
-            automatedRun: true, $"scheduled {taskId}", new AutomationRunScope(taskId, false, false));
-    }
-
     private bool TryGetBeforeArWorldReady(out string reason)
     {
         var localPlayer = Plugin.ObjectTable.LocalPlayer;

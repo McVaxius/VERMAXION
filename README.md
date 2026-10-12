@@ -111,7 +111,7 @@ Post-voyage cleanup waits for FrenRider's existing enabled post-duty desynthesis
 
 Each AutoRetainer/manual run records a structured plan for every catalog entry: runnable, disabled, not due, blocked, or unsupported, with a concrete reason.
 
-Enabled Mini Cactpot and Chocobo Stables also start when the logged-in character is idle and their reset or training cooldown is due, with both global and character automation enabled. These runs retain normal eligibility, AutoRetainer suppression, and cleanup, and wait for fishing, other owned work, travel, duties, queues, and interaction menus. These idle starts wait at least five minutes between Mini attempts and one hour between stable attempts per character; existing AutoRetainer and manual triggers remain available.
+Mini Cactpot and Chocobo Stables run through the configured AutoRetainer phases, the explicitly enabled account timer, or their manual actions. Being idle with an unfinished task does not start a run. FULL STOP disables global automation and the account timer, cancels pending reload actions, and cleans up owned work. Re-enable automation explicitly with the master switch or `/vmx on`; manual actions remain available. Reload-test preparation retains the existing master-switch choice.
 
 Config > Marketboard contains per-profile onion buying controls. Enable the purchase and set positive unit-price and total-gil limits (including tax) to buy one Thavnairian Onion through Emptor API 5 on the current world, only when your own rank 10-19 stabled chocobo is capped and inventory has none. Onion use remains manual. With buying disabled, the existing unfinished free-onion quest acquisition remains available.
 

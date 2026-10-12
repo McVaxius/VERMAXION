@@ -1,3 +1,8 @@
+2026-10-11 - Full Stop and unsolicited task starts
+
+- Remove independent idle Mini Cactpot and stable starts. These tasks now require the configured AutoRetainer phases, the enabled account timer, or an explicit manual action.
+- FULL STOP disables the existing global automation switch before cleanup so automatic work cannot restart after Stop, including after reload. Manual actions remain available; reload-test preparation preserves the master-switch choice. Keep the optional timer's five-second admission checks and current release version.
+
 2026-10-11 - Culture-independent ADS timestamps (I538)
 
 - Read ADS utility completion timestamps using the JSON timestamp contract so post-task cleanup retains the same UTC instant across system locales and calendars.

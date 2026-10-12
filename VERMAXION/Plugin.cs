@@ -58,7 +58,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "vmx-I533-cleanup-20261011-01";
+    private const string DebugAttemptMarker = "vmx-full-stop-20261011-01";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -178,14 +178,13 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private DateTime fishingRelogLastDiagnosticAt = DateTime.MinValue;
     private bool retainerCollectOnlyObservedArProcessing;
     private bool dashboardRunYesAlreadyPauseOwned;
-    private DateTime nextAutomaticDueCheckUtc;
+    private DateTime nextRetainerlessTimerCheckUtc;
     private DateTime? retainerlessTimerDueUtc;
     private bool retainerlessTimerWasEnabled;
     private bool retainerlessTimerRunPendingCompletion;
     private string retainerlessTimerAccountId = string.Empty;
     private ulong retainerlessTimerCharacterId;
     private int retainerlessTimerIntervalMinutes;
-    private readonly Dictionary<(ulong Character, string Task), DateTime> automaticTaskNextAttemptUtc = new();
     private int loggedDadBeforeArYield;
     private const int BeforeArLoginTimeoutSeconds = 120;
     private const double BeforeArWorldReadyStableSeconds = 2.0;
@@ -2761,7 +2760,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         ProcessBeforeArReleasePending();
         ProcessRetainerCollectOnlyRecovery();
         ProcessRetainerlessTimer();
-        ProcessAutomaticDueTasks();
 
         // Update DTR bar
         UpdateDtrBar();
@@ -2962,6 +2960,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// </summary>
     public void FullStop(bool preparingDebugTask = false)
     {
+        if (!preparingDebugTask && Configuration.Enabled)
+        {
+            Configuration.Enabled = false;
+            try { Configuration.Save(); }
+            catch (Exception ex) { Log.Error(ex, "[FULL STOP] Could not save disabled automation; continuing Stop cleanup."); }
+            Log.Information("[FULL STOP] Global automation disabled until explicitly enabled.");
+        }
+
         var timerAccount = ConfigManager.GetCurrentAccount();
         if (timerAccount?.RetainerlessTimerEnabled == true)
         {
@@ -3146,14 +3152,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         retainerlessTimerCharacterId = characterId;
         retainerlessTimerIntervalMinutes = interval;
 
-        // Share the existing five-second admission cadence; retain a single expired deadline while blocked.
-        if (retainerlessTimerDueUtc is not { } due || now < due || now < nextAutomaticDueCheckUtc ||
+        // Check admission every five seconds; retain a single expired deadline while blocked.
+        if (retainerlessTimerDueUtc is not { } due || now < due || now < nextRetainerlessTimerCheckUtc ||
             !Engine.RegistryReady || !CanStartAutomaticDueWork() ||
             Condition[ConditionFlag.BoundByDuty95] ||
             Condition[ConditionFlag.Occupied] || Condition[ConditionFlag.Occupied33] ||
             Condition[ConditionFlag.Occupied39] || Condition[ConditionFlag.WatchingCutscene])
             return;
 
+        nextRetainerlessTimerCheckUtc = now.AddSeconds(5);
         var arInstalled = PluginInterface.InstalledPlugins.Any(plugin => plugin.InternalName == "AutoRetainer");
         var busy = arInstalled ? AutoRetainerIPC.ReadBusyState() : PluginBusyReadResult.Known(false);
         var suppression = arInstalled ? AutoRetainerIPC.GetSuppressionSnapshot() : default;
@@ -3188,29 +3195,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         foreach (var addon in new[] { "Talk", "SelectString", "SelectIconString", "SelectYesno", "Shop", "RetainerList", "HousingChocoboList" })
             if (GameHelpers.IsAddonVisible(addon)) return false;
         return ConfigManager.GetActiveConfig().Enabled;
-    }
-
-    private void ProcessAutomaticDueTasks()
-    {
-        var now = DateTime.UtcNow;
-        if (now < nextAutomaticDueCheckUtc) return;
-        nextAutomaticDueCheckUtc = now.AddSeconds(5);
-        if (!CanStartAutomaticDueWork()) return;
-        var busy = AutoRetainerIPC.ReadBusyState();
-        var suppression = AutoRetainerIPC.GetSuppressionSnapshot();
-        if (!busy.Success || busy.Busy || !suppression.RemoteKnown || suppression.RemoteSuppressed) return;
-
-        foreach (var task in Configuration.PostProcessTaskOrder)
-        {
-            if (task is not (PostProcessTaskOrder.MiniCactpot or PostProcessTaskOrder.ChocoboStables)) continue;
-            var key = (PlayerState.ContentId, task);
-            if (automaticTaskNextAttemptUtc.TryGetValue(key, out var nextAttempt) && now < nextAttempt) continue;
-            if (!Engine.StartScheduledTask(task)) continue;
-            // A failed Mini run must not loop immediately; an untrainable stable needs at most an hourly revisit.
-            automaticTaskNextAttemptUtc[key] = task == PostProcessTaskOrder.MiniCactpot
-                ? now.AddMinutes(5) : now.AddHours(1);
-            return;
-        }
     }
 
     private void ProcessChocoboContinuation()
