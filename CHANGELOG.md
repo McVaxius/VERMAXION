@@ -1,3 +1,7 @@
+2026-10-13 - Current-game Stage 24 warning observation
+
+- Retarget the Stage 24 ground-effect hook, director and VFX identity checks, and named VFX diagnostic reads to verified game 2026.10.06 addresses. Preserve native-call forwarding, slot and listener checks, the observation deadline and command holds while warning state is unreadable. Keep the release version unchanged.
+
 2026-10-11 - Full Stop and unsolicited task starts
 
 - Remove independent idle Mini Cactpot and stable starts. These tasks now require the configured AutoRetainer phases, the enabled account timer, or an explicit manual action.

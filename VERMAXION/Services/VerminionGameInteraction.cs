@@ -1458,11 +1458,11 @@ internal static unsafe class VerminionGameInteraction
         finalStageEffectDeadline = DateTime.UtcNow.AddSeconds(FinalStageObservationSeconds);
         try
         {
-            if (!TryGetFinalStageDirector(out _, out var image, out var imageSize) || imageSize <= 0xE7CB00)
+            if (!TryGetFinalStageDirector(out _, out var image, out var imageSize) || imageSize <= 0xE7CA00)
                 throw new InvalidOperationException("The validated Stage 24 director is unavailable.");
-            // The current build's captured E7CA10 routine receives director,
+            // Game 2026.10.06's verified E7C910 routine receives director,
             // slot, effect ID, x, z and scale. ID zero is the native removal command.
-            finalStageGroundHook = Plugin.GameInterop.HookFromAddress<SetGroundEffect>(image + 0xE7CA10, ObserveFinalStageGroundCommand);
+            finalStageGroundHook = Plugin.GameInterop.HookFromAddress<SetGroundEffect>(image + 0xE7C910, ObserveFinalStageGroundCommand);
             observingFinalStageEffects = true;
             finalStageGroundHook.Enable();
             ECommons.Hooks.StaticVfx.StaticVfxCreateEvent += ObserveFinalStageEffect;
@@ -1515,14 +1515,14 @@ internal static unsafe class VerminionGameInteraction
         if (framework == null || module == null) return false;
         image = module.BaseAddress;
         imageSize = module.ModuleMemorySize;
-        if (imageSize <= 0x21D7330 + 3 * sizeof(nint)) return false;
+        if (imageSize <= 0x21D7B20 + 3 * sizeof(nint)) return false;
         var directors = framework->DirectorModule.DirectorList;
         if (directors.LongCount is < 0 or > 16) return false;
         foreach (var item in directors)
         {
             var director = item.Value;
             if (director == null || director->Info.EventId.Id >> 16 != 0x800A ||
-                *(nint*)director != image + 0x21D7330 || ((nint*)*(nint*)director)[2] != image + 0xE75BD0) continue;
+                *(nint*)director != image + 0x21D7B20 || ((nint*)*(nint*)director)[2] != image + 0xE75AD0) continue;
             directorAddress = (nint)director;
             return true;
         }
@@ -1604,25 +1604,25 @@ internal static unsafe class VerminionGameInteraction
             !TryGetFinalStageDirector(out var director, out var start, out _)) return;
         var rows = new List<string>();
         var omens = new List<VerminionGroundOmen>();
-        // The captured E7CA10 routine stores ground VfxData at +718 (slot
-        // 11 of the 30-slot array). E77FD0 and E762F0 establish its extent
+        // The verified E7C910 routine stores ground VfxData at +718 (slot
+        // 11 of the 30-slot array). E77ED0 and E762F0 establish its extent
         // and ownership. Read on the native update thread, retaining no pointers.
         for (var slot = 11; slot < 30; ++slot)
         {
             var data = *(byte**)((byte*)director + 0x6C0 + slot * sizeof(nint));
             if (data == null) continue;
             var dataTable = *(nint*)data - start;
-            if (dataTable != 0x215ED80)
+            if (dataTable != 0x215F7C0)
             { rows.Add($"slot={slot}/dataTable={dataTable:X}/unverified"); continue; }
             var effect = (FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxData*)data;
             if ((nint)effect->DataListenner != director + 0x620) continue;
-            // Native 390630 takes VfxData+1B8 and writes the four matrix
+            // Native 3905F0 takes VfxData+1B8 and writes the four matrix
             // rows at +20..50. Validate the published resource-instance
             // table before following its declared resource/path fields.
             var instance = *(byte**)(data + 0x1B8);
             if (instance == null) continue;
             var instanceTable = *(nint*)instance - start;
-            if (instanceTable != 0x215ED70)
+            if (instanceTable != 0x215F7B0)
             { rows.Add($"slot={slot}/instanceTable={instanceTable:X}/unverified"); continue; }
             var resource = ((FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxResourceInstance*)instance)->VfxResourceObject;
             var handle = resource == null ? null : resource->ApricotResourceHandle;
@@ -1676,14 +1676,14 @@ internal static unsafe class VerminionGameInteraction
             // window at its setup override to locate the battle-state owner.
             // This is executable code, not a dump of character/instance data.
             var setup = ((nint*)table)[2];
-            if (director->Info.EventId.Id >> 16 != 0x800A || setup - start != 0xE75BD0) continue;
+            if (director->Info.EventId.Id >> 16 != 0x800A || setup - start != 0xE75AD0) continue;
             // Follow only targets read from this exact native build's captured
             // call instructions. These are diagnostic reads, never invocations.
             foreach (var (label, rva, length) in new[]
             {
                 ("directorRemainder", 0xE7BBD0, 4096),
-                ("VfxCreateById", 0x858CF0, 1024),
-                ("VfxTransform", 0x390630, 128),
+                ("VfxCreateById", 0x8587B0, 1024),
+                ("VfxTransform", 0x3905F0, 128),
             })
             {
                 var address = start + rva;
