@@ -34,16 +34,19 @@ public abstract class TaskBase : AutoTask
     }
 
     protected async Task MoveTo(Vector3 position, MovementConfig config,
-        bool allowTeleportIfFaster = false, bool allowAethernet = false)
+        bool allowTeleportIfFaster = false, bool allowAethernet = false, Func<bool>? interactionInRange = null)
     {
         CancelToken.ThrowIfCancellationRequested();
-        await WaitUntil(GameHelpers.IsPlayerAvailable, "Waiting for player");
-        await Dismount();
+        var approachTimeout = interactionInRange != null ? TimeSpan.FromSeconds(30) : (TimeSpan?)null;
+        var progressAt = DateTime.UtcNow;
+        await WaitUntil(GameHelpers.IsPlayerAvailable, "Waiting for player", RemainingApproachTimeout());
+        await Dismount(RemainingApproachTimeout());
+        if (interactionInRange?.Invoke() == true) return;
         if (!config.MapCenter && Service.Objects.LocalPlayer is { } player
             && Vector3.Distance(player.Position, position) <= config.Tolerance)
             return;
         var navigation = Service.Navigation;
-        await WaitUntil(() => navigation.TryGetNavReady(out var ready) && ready, "Waiting for navigation");
+        await WaitUntil(() => navigation.TryGetNavReady(out var ready) && ready, "Waiting for navigation", RemainingApproachTimeout());
         var found = config.MapCenter
             ? navigation.TryFindReachablePointOnFloor(position, 10, out var target)
             : navigation.TryFindDeliveryPointNear(position, config.Tolerance, out target);
@@ -56,8 +59,11 @@ public abstract class TaskBase : AutoTask
         Service.Log.Information($"[CustomDeliveries][Movement] Destination: requested={position}; resolved={target}; arrival={arrival}; tolerance={config.Tolerance}");
         navigation.Stop();
         await WaitUntil(() => navigation.TryGetPathfindInProgress(out var pending) && !pending,
-            "Waiting for previous navigation query");
+            "Waiting for previous navigation query", RemainingApproachTimeout());
         navigation.Stop();
+        var closestHorizontalDistance = Service.Objects.LocalPlayer is { } initialPlayer
+            ? Vector2.Distance(new(initialPlayer.Position.X, initialPlayer.Position.Z), new(arrival.X, arrival.Z))
+            : float.PositiveInfinity;
         await Repath();
         var nextMovementCheck = DateTime.MinValue;
         var nextDiagnostic = DateTime.MinValue;
@@ -65,12 +71,30 @@ public abstract class TaskBase : AutoTask
         {
             CancelToken.ThrowIfCancellationRequested();
             ErrorIf(Service.ClientState.TerritoryType != territory, "Territory changed during custom-delivery movement");
+            // Interaction range, not an unreachable point behind a counter, owns arrival.
+            // Re-resolve on the existing movement cadence before recovery can run.
+            var now = DateTime.UtcNow;
+            if (now >= nextMovementCheck && interactionInRange?.Invoke() == true) break;
             if (Service.Objects.LocalPlayer is { } current && Vector3.Distance(current.Position, arrival) <= config.Tolerance)
             {
                 Service.Log.Information($"[CustomDeliveries][Movement] Arrived: current={current.Position}; requested={position}; distance={Vector3.Distance(current.Position, arrival):F2}");
                 break;
             }
-            var now = DateTime.UtcNow;
+            if (interactionInRange != null)
+            {
+                if (Service.Objects.LocalPlayer is { } movingPlayer)
+                {
+                    var remaining = Vector2.Distance(new(movingPlayer.Position.X, movingPlayer.Position.Z),
+                        new(arrival.X, arrival.Z));
+                    if (remaining < closestHorizontalDistance - 0.25f)
+                    {
+                        closestHorizontalDistance = remaining;
+                        progressAt = now;
+                    }
+                }
+                ErrorIf(now - progressAt > TimeSpan.FromSeconds(30),
+                    "No approach progress for 30 seconds while moving to an NPC");
+            }
             if (now >= nextMovementCheck)
             {
                 nextMovementCheck = now + TimeSpan.FromMilliseconds(500);
@@ -103,6 +127,9 @@ public abstract class TaskBase : AutoTask
         navigation.Stop();
         await NextFrame();
 
+        TimeSpan? RemainingApproachTimeout() => approachTimeout.HasValue
+            ? TimeSpan.FromSeconds(Math.Max(0, 30 - (DateTime.UtcNow - progressAt).TotalSeconds)) : null;
+
         async Task Repath()
         {
             CancelToken.ThrowIfCancellationRequested();
@@ -110,7 +137,12 @@ public abstract class TaskBase : AutoTask
             navigation.EvaluateDeliveryMovement(target);
             var path = navigation.FindDeliveryPath(target, CancelToken);
             Status = "Pathfinding to destination";
-            await WaitUntil(() => path.IsCompleted, "Waiting for delivery pathfinding");
+            await WaitUntil(() =>
+            {
+                ErrorIf(interactionInRange != null && DateTime.UtcNow - progressAt > TimeSpan.FromSeconds(30),
+                    "No approach progress for 30 seconds while pathfinding to an NPC");
+                return path.IsCompleted;
+            }, "Waiting for delivery pathfinding", RemainingApproachTimeout());
             CancelToken.ThrowIfCancellationRequested();
             ErrorIf(Service.ClientState.TerritoryType != territory, "Territory changed during custom-delivery pathfinding");
             var points = path.GetAwaiter().GetResult();
@@ -146,11 +178,11 @@ public abstract class TaskBase : AutoTask
         => UIState.Instance() != null && UIState.Instance()->IsAetheryteUnlocked(id)
             && Telepo.Instance() != null && Telepo.Instance()->Teleport(id, 0);
 
-    protected async Task Dismount()
+    protected async Task Dismount(TimeSpan? timeout = null)
     {
         if (!Service.Conditions[ConditionFlag.Mounted]) return;
         Plugin.CommandManager.ProcessCommand("/mount");
-        await WaitUntil(() => !Service.Conditions[ConditionFlag.Mounted], "Dismounting");
+        await WaitUntil(() => !Service.Conditions[ConditionFlag.Mounted], "Dismounting", timeout);
     }
 
     protected async Task EquipJob(uint job)
@@ -189,19 +221,14 @@ public abstract class TaskBase : AutoTask
             CancelToken.ThrowIfCancellationRequested();
             ErrorIf(Service.ClientState.TerritoryType != territory, $"Territory changed while opening {label}");
             var now = DateTime.UtcNow;
-            ErrorIf(now - started > TimeSpan.FromSeconds(90), $"Timed out opening {label}: {Status}");
+            ErrorIf(now - started > TimeSpan.FromSeconds(30), $"No interaction progress for 30 seconds opening {label}: {Status}");
             if (now < nextAction)
             {
                 await NextFrame();
                 continue;
             }
             nextAction = now.AddMilliseconds(500);
-            // Like Cactpot, reach the known waypoint before requiring a loaded NPC,
-            // then re-resolve the live object and its interaction range after stopping.
-            var obj = Service.Objects.Where(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc
-                && ((baseId != 0 && o.BaseId == baseId) || (instanceId != 0 && o.GameObjectId == instanceId)))
-                .OrderByDescending(o => o.GameObjectId == instanceId)
-                .ThenBy(o => Vector3.DistanceSquared(o.Position, waypoint)).FirstOrDefault();
+            var obj = FindNpc();
             var player = Service.Objects.LocalPlayer;
             var distance = obj != null && player != null ? Vector3.Distance(player.Position, obj.Position) : float.NaN;
             var maxDistance = obj != null ? GameHelpers.GetValidInteractionDistance(obj) : 0;
@@ -227,14 +254,20 @@ public abstract class TaskBase : AutoTask
             }
             else if (obj == null || !obj.IsTargetable)
             {
-                Status = $"Waiting for {label} to load at the destination";
-                if (player != null && GameHelpers.IsPlayerAvailable() && Vector3.Distance(player.Position, waypoint) > 1.5f)
-                    await MoveTo(waypoint, MovementConfig.InteractRange.WithTolerance(1.5f));
+                Status = $"Waiting for {label} to become available";
+                if (player != null && GameHelpers.IsPlayerAvailable() && !InInteractionRange()
+                    && Vector3.Distance(player.Position, waypoint) > 1.5f)
+                {
+                    await MoveTo(waypoint, MovementConfig.InteractRange.WithTolerance(1.5f), interactionInRange: InInteractionRange);
+                    started = DateTime.UtcNow;
+                }
             }
             else if (GameHelpers.IsPlayerAvailable() && distance > maxDistance)
             {
                 Status = $"Closing to {label} ({distance:F1}y; interaction range {maxDistance:F1}y)";
-                await MoveTo(obj.Position, MovementConfig.InteractRange.WithTolerance(MathF.Max(0.5f, maxDistance - 0.35f)));
+                await MoveTo(obj.Position, MovementConfig.InteractRange.WithTolerance(MathF.Max(0.5f, maxDistance - 0.35f)),
+                    interactionInRange: InInteractionRange);
+                started = DateTime.UtcNow;
             }
             else
             {
@@ -243,6 +276,7 @@ public abstract class TaskBase : AutoTask
                 // and retry, including a shop selector that appears on a later frame.
                 if ((interact ?? GameHelpers.InteractWithObject)(obj))
                 {
+                    if (!interacted) started = now;
                     interacted = true;
                     nextAction = now.AddSeconds(1);
                     Service.Log.Information($"[CustomDeliveries][Interaction] Interaction/menu dispatched for {label}; waiting for the owned UI");
@@ -251,6 +285,14 @@ public abstract class TaskBase : AutoTask
             await NextFrame();
         }
         Service.Log.Information($"[CustomDeliveries][Interaction] Owned UI opened for {label}");
+
+        IGameObject? FindNpc() => Service.Objects.Where(o => o.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventNpc
+            && ((baseId != 0 && o.BaseId == baseId) || (instanceId != 0 && o.GameObjectId == instanceId)))
+            .OrderByDescending(o => o.GameObjectId == instanceId)
+            .ThenBy(o => Vector3.DistanceSquared(o.Position, waypoint)).FirstOrDefault();
+
+        bool InInteractionRange() => FindNpc() is { } npc && Service.Objects.LocalPlayer is { } current
+            && Vector3.Distance(current.Position, npc.Position) <= GameHelpers.GetValidInteractionDistance(npc);
     }
 
     protected async Task WaitUntilSkipping(Func<bool> condition, string scopeName, UiSkipOptions skip,

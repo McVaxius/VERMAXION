@@ -84,7 +84,7 @@ public abstract class AutoTask
         CancelToken.ThrowIfCancellationRequested();
         return Service.Framework.DelayTicks(frames, CancelToken);
     }
-    protected async Task WaitWhile(Func<bool> condition, string scopeName)
+    protected async Task WaitWhile(Func<bool> condition, string scopeName, TimeSpan? timeout = null)
     {
         using var scope = BeginScope(scopeName);
         var began = DateTime.UtcNow;
@@ -92,12 +92,13 @@ public abstract class AutoTask
         {
             CancelToken.ThrowIfCancellationRequested();
             // A single bounded wait fails the current route; it does not retry or relog.
-            if (DateTime.UtcNow - began > TimeSpan.FromMinutes(30))
+            if (DateTime.UtcNow - began > (timeout ?? TimeSpan.FromMinutes(30)))
                 Error($"Timed out: {scopeName}");
             await NextFrame();
         }
     }
-    protected Task WaitUntil(Func<bool> condition, string scopeName) => WaitWhile(() => !condition(), scopeName);
+    protected Task WaitUntil(Func<bool> condition, string scopeName, TimeSpan? timeout = null)
+        => WaitWhile(() => !condition(), scopeName, timeout);
     protected DebugContext BeginScope(string name) => new(this, name);
     protected void Log(string message) => Service.Log.Debug($"[CustomDeliveries] [{string.Join(" > ", debugContext)}] {message}");
     protected void Warning(string message) => Service.Log.Warning($"[CustomDeliveries] {message}");

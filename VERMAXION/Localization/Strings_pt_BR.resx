@@ -2051,4 +2051,7 @@ Dependências: {1}</value></data>
   <data name="Show titlebar status" xml:space="preserve"><value>Mostrar status na barra de título</value></data>
   <data name="Detailed titlebar status" xml:space="preserve"><value>Status detalhado na barra de título</value></data>
   <data name="Pending tasks" xml:space="preserve"><value>Tarefas pendentes</value></data>
+  <data name="Reorder at" xml:space="preserve"><value>Repor ao chegar a</value></data>
+  <data name="Default / override" xml:space="preserve"><value>Padrão / personalizado</value></data>
+  <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Comprar apenas o estoque que falta para atingir esta quantidade.</value></data>
 </root>

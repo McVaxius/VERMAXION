@@ -106,7 +106,10 @@ public class RegistrableConfigWindow : Window
                         };
                         
                         // Additional filtering: look for keywords in item names
-                        bool isRegistrable = false;
+                        bool isRegistrable = RegistrableRegistrationPolicy.TryClassifyDirectAction(
+                            item.ItemAction.ValueNullable?.Action.RowId ?? 0,
+                            item.FilterGroup == 12 && item.ItemUICategory.RowId == 94,
+                            out _);
                         
                         // Check category first
                         if (registrableCategories.Contains(categoryId))

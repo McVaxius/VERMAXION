@@ -1630,63 +1630,7 @@ public class ConfigWindow : Window, IDisposable
                     }
 
                     UiGui.Text("Fishing stock for this config");
-                    foreach (var row in plugin.Configuration.FishingStockCatalog)
-                    {
-                        if (!cc.FishingStockItems.TryGetValue(row.ItemId, out var stock))
-                        {
-                            stock = new FishingStockSetting
-                            {
-                                Enabled = row.DefaultEnabled,
-                                Target = row.DefaultTarget,
-                                Min = row.DefaultMin,
-                            };
-                            cc.FishingStockItems[row.ItemId] = stock;
-                        }
-
-                        ImGui.PushID($"CharacterFishingStock_{row.ItemId}");
-                        var enabledStock = stock.Enabled;
-                        if (UIConstants.Checkbox("##Enabled", ref enabledStock))
-                        {
-                            stock.Enabled = enabledStock;
-                            changed = true;
-                        }
-                        ImGui.SameLine();
-                        UiGui.Text(GetItemName(row.ItemId));
-                        ImGui.Spacing();
-                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
-                        var stockTarget = stock.Target;
-                        if (UIConstants.InputInt("##Target", ref stockTarget))
-                        {
-                            stock.Target = Math.Max(0, stockTarget);
-                            changed = true;
-                        }
-                        ImGui.SameLine();
-                        UiGui.TextUnformatted("min");
-                        ImGui.SameLine();
-                        UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
-                        var stockMin = stock.Min;
-                        if (UIConstants.InputInt("##Min", ref stockMin))
-                        {
-                            stock.Min = Math.Max(0, stockMin);
-                            changed = true;
-                        }
-                        if (ImGui.IsItemHovered())
-                            UiGui.SetTooltip("Reorder point. 0 = buy whenever below target (default). Above 0 = only buy back up to target once inventory drops to this or lower.");
-                        DrawDefaultOverrideButton(
-                            isDefault,
-                            configManager,
-                            $"FishingStock_{row.ItemId}",
-                            $"{GetItemName(row.ItemId)} fishing stock",
-                            (source, target) =>
-                            {
-                                if (source.FishingStockItems.TryGetValue(row.ItemId, out var sourceStock))
-                                    target.FishingStockItems[row.ItemId] = sourceStock.Clone();
-                                else
-                                    target.FishingStockItems.Remove(row.ItemId);
-                            });
-                        ImGui.PopID();
-                    }
-                    DrawHelpMarker("Enabled rows are processed in catalog order. ADS is asked for the exact missing quantity. Optional bait failures are reported; fishing only blocks when Versatile Lure reaches zero.");
+                    changed |= DrawFishingStockGrid(cc, isDefault, configManager);
 
                     var returnDestination = cc.FishingReturnDestination;
                     if (UIConstants.BeginCombo("Return destination", FormatFishingReturnDestination(returnDestination)))
@@ -3937,12 +3881,110 @@ public class ConfigWindow : Window, IDisposable
             });
     }
 
+    private bool DrawFishingStockGrid(CharacterConfig config, bool isDefault, ConfigManager configManager)
+    {
+        var changed = false;
+        var stockIdRoot = ImGui.GetID(string.Empty);
+        using var controls = MaterialTable.PushControls();
+        using var rows = MaterialTable.PushTightRows();
+        var scale = UIConstants.Scale;
+        var enabledWidth = MathF.Max(32f * scale, MaterialText.Measure(UiText.T("Enabled")).X + 4f * scale);
+        var itemWidth = plugin.Configuration.FishingStockCatalog
+            .Select(row => MaterialText.Measure(GetItemName(row.ItemId)).X)
+            .DefaultIfEmpty(0).Max();
+        itemWidth = MathF.Max(itemWidth, MaterialText.Measure(UiText.T("Item")).X) + 4f * scale;
+        var targetWidth = MathF.Max(GetCompactNumericInputWidth(), MaterialText.Measure(UiText.T("Target")).X + 4f * scale);
+        var reorderWidth = MathF.Max(GetCompactNumericInputWidth(), MaterialText.Measure(UiText.T("Reorder at")).X + 4f * scale);
+        var defaultWidth = new[] { "Default / override", "Uses account default", "Use default", "Apply to all" }
+            .Max(label => MaterialText.Measure(UiText.T(label)).X) + 2 * ImGui.GetStyle().FramePadding.X + 4f * scale;
+        var innerWidth = enabledWidth + itemWidth + targetWidth + reorderWidth + defaultWidth
+            + 10 * ImGui.GetStyle().CellPadding.X + 6f * scale;
+        var scrolling = innerWidth > ImGui.GetContentRegionAvail().X;
+        var headerHeight = new[] { "Enabled", "Item", "Target", "Reorder at", "Default / override" }
+            .Max(label => MathF.Max(ImGui.GetTextLineHeight(), MaterialText.Measure(UiText.T(label)).Y));
+        var rowHeight = MathF.Max(ImGui.GetFrameHeight(), new[] { "Uses account default", "Use default", "Apply to all" }
+            .Max(label => MaterialText.Measure(UiText.T(label)).Y + 2 * ImGui.GetStyle().FramePadding.Y));
+        var height = scrolling ? MathF.Ceiling(headerHeight + plugin.Configuration.FishingStockCatalog.Count * rowHeight
+            + ImGui.GetStyle().ScrollbarSize + 2 * ImGui.GetStyle().WindowPadding.Y + 2f * scale) : 0;
+        var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.SizingFixedFit;
+        if (scrolling) flags |= ImGuiTableFlags.ScrollX;
+        if (!ImGui.BeginTable("CharacterFishingStock", 5,
+            flags, new Vector2(0, height), scrolling ? innerWidth : 0))
+            return false;
+        try
+        {
+            ImGui.TableSetupColumn("Enabled", ImGuiTableColumnFlags.WidthFixed, enabledWidth);
+            ImGui.TableSetupColumn("Item", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthFixed, targetWidth);
+            ImGui.TableSetupColumn("Reorder at", ImGuiTableColumnFlags.WidthFixed, reorderWidth);
+            ImGui.TableSetupColumn("Default / override", ImGuiTableColumnFlags.WidthFixed, defaultWidth);
+            var headerTop = ImGui.GetCursorScreenPos().Y;
+            UiGui.TableHeadersRow();
+            var headerBottom = ImGui.GetItemRectMax().Y;
+            for (var column = 0; column < 5; column++)
+            {
+                if (!ImGui.TableSetColumnIndex(column)) continue;
+                var left = ImGui.GetCursorScreenPos().X;
+                if (!ImGui.IsMouseHoveringRect(new Vector2(left, headerTop),
+                    new Vector2(left + ImGui.GetContentRegionAvail().X, headerBottom))) continue;
+                if (column == 0)
+                    UiGui.SetTooltip("Enabled rows are processed in catalog order. ADS is asked for the exact missing quantity. Optional bait failures are reported; fishing only blocks when Versatile Lure reaches zero.");
+                else if (column == 2)
+                    UiGui.SetTooltip("Buy only missing stock up to this target.");
+                else if (column == 3)
+                    UiGui.SetTooltip("Reorder point. 0 = buy whenever below target (default). Above 0 = only buy back up to target once inventory drops to this or lower.");
+            }
+            foreach (var row in plugin.Configuration.FishingStockCatalog)
+            {
+                if (!config.FishingStockItems.TryGetValue(row.ItemId, out var stock))
+                {
+                    stock = new FishingStockSetting { Enabled = row.DefaultEnabled, Target = row.DefaultTarget, Min = row.DefaultMin };
+                    config.FishingStockItems[row.ItemId] = stock;
+                }
+                ImGui.TableNextRow();
+                ImGuiP.PushOverrideID(stockIdRoot);
+                ImGui.PushID($"CharacterFishingStock_{row.ItemId}");
+                try
+                {
+                    ImGui.TableSetColumnIndex(0);
+                    var enabled = stock.Enabled;
+                    if (UIConstants.Checkbox("##Enabled", ref enabled)) { stock.Enabled = enabled; changed = true; }
+                    ImGui.TableSetColumnIndex(1);
+                    UiGui.Text(GetItemName(row.ItemId));
+                    ImGui.TableSetColumnIndex(2);
+                    ImGui.SetNextItemWidth(-1);
+                    var target = stock.Target;
+                    if (UIConstants.InputInt("##Target", ref target)) { stock.Target = Math.Max(0, target); changed = true; }
+                    ImGui.TableSetColumnIndex(3);
+                    ImGui.SetNextItemWidth(-1);
+                    var minimum = stock.Min;
+                    if (UIConstants.InputInt("##Min", ref minimum)) { stock.Min = Math.Max(0, minimum); changed = true; }
+                    if (ImGui.IsItemHovered())
+                        UiGui.SetTooltip("Reorder point. 0 = buy whenever below target (default). Above 0 = only buy back up to target once inventory drops to this or lower.");
+                    ImGui.TableSetColumnIndex(4);
+                    DrawDefaultOverrideButton(isDefault, configManager, $"FishingStock_{row.ItemId}",
+                        $"{GetItemName(row.ItemId)} fishing stock", (source, destination) =>
+                        {
+                            if (source.FishingStockItems.TryGetValue(row.ItemId, out var defaultStock))
+                                destination.FishingStockItems[row.ItemId] = defaultStock.Clone();
+                            else
+                                destination.FishingStockItems.Remove(row.ItemId);
+                        }, inline: true);
+                }
+                finally { ImGui.PopID(); ImGui.PopID(); }
+            }
+        }
+        finally { ImGui.EndTable(); }
+        return changed;
+    }
+
     private void DrawDefaultOverrideButton(
         bool isDefault,
         ConfigManager configManager,
         string id,
         string label,
-        Action<CharacterConfig, CharacterConfig> copy)
+        Action<CharacterConfig, CharacterConfig> copy,
+        bool inline = false)
     {
         var account = configManager.GetSelectedAccount();
         if (account == null)
@@ -3952,7 +3994,8 @@ public class ConfigWindow : Window, IDisposable
         {
             var selected = configManager.GetSelectedConfig();
             var matches = SettingMatchesDefault(account.DefaultConfig, selected, copy);
-            UiGui.TextWrapped(matches ? "Uses account default" : "Character override");
+            if (!inline) UiGui.TextWrapped(matches ? "Uses account default" : "Character override");
+            else if (matches) UiGui.Text("Uses account default");
             if (!matches)
             {
                 if (UIConstants.Button($"Use default##{id}"))
@@ -3970,13 +4013,14 @@ public class ConfigWindow : Window, IDisposable
                     else
                         ApplyDefault();
                 }
+                if (inline && ImGui.IsItemHovered()) UiGui.SetTooltip("Character override");
             }
             return;
         }
 
         var differing = account.Characters.Values.Count(character =>
             !SettingMatchesDefault(account.DefaultConfig, character, copy));
-        UiGui.TextWrapped(UiText.F($"{differing} characters differ"));
+        if (!inline) UiGui.TextWrapped(UiText.F($"{differing} characters differ"));
         ImGui.BeginDisabled(differing == 0);
         if (UIConstants.Button($"Apply to all##{id}"))
         {
@@ -3986,6 +4030,7 @@ public class ConfigWindow : Window, IDisposable
             Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
             Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
         }
+        if (inline && ImGui.IsItemHovered()) UiGui.SetTooltip(UiText.F($"{differing} characters differ"));
         ImGui.EndDisabled();
     }
 

@@ -37,7 +37,6 @@ public sealed class AutoFish(DeliveryRoute route, Func<DeliveryRoute, Cancellati
             "Fishing finished without the required qualifying collectible count");
         Status = "Returning to custom-delivery NPC";
         await TeleportTo(npc.TerritoryId, npc.CraftData!.TurnInLocation);
-        await MoveTo(npc.CraftData.TurnInLocation, MovementConfig.InteractRange);
         await TurnIn();
     }
 

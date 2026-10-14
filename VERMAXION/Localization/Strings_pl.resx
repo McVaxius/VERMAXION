@@ -2051,4 +2051,7 @@ Zależności: {1}</value></data>
   <data name="Show titlebar status" xml:space="preserve"><value>Pokaż status na pasku tytułu</value></data>
   <data name="Detailed titlebar status" xml:space="preserve"><value>Szczegółowy status na pasku tytułu</value></data>
   <data name="Pending tasks" xml:space="preserve"><value>Oczekujące zadania</value></data>
+  <data name="Reorder at" xml:space="preserve"><value>Uzupełniaj przy</value></data>
+  <data name="Default / override" xml:space="preserve"><value>Domyślne / własne</value></data>
+  <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Kupuj tylko brakujące zapasy do ilości docelowej.</value></data>
 </root>

@@ -24,8 +24,6 @@ public sealed class AutoGather(DeliveryRoute route) : AutoCommon(route)
         Status = "Teleporting back to Npc";
         await TeleportTo(npc.TerritoryId, npc.CraftData.TurnInLocation);
 
-        Status = "Moving to Npc";
-        await MoveTo(npc.CraftData.TurnInLocation, MovementConfig.InteractRange);
         Status = $"Turning in {remainingTurnins}x {ItemName(npc.TurnInItems[1])}";
         ErrorIf(Game.NumItemsInInventory(Route.ItemId, (short)Route.MinCollectibility) < Route.Count,
             "Wiggly Questionable finished without enough qualifying custom-delivery collectibles");

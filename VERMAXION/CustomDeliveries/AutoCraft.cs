@@ -40,10 +40,7 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
             if (missingIngredients > 0)
             {
                 Status = $"Buying {missingIngredients}x {ItemName(ingredient.id)}";
-                if (Service.ClientState.TerritoryType == npc.TerritoryId)
-                    await MoveTo(npc.CraftData.VendorLocation, MovementConfig.InteractRange, allowTeleportIfFaster: false, allowAethernet: false);
-                else
-                    await MoveTo(npc.TerritoryId, npc.CraftData.VendorLocation, MovementConfig.InteractRange, allowTeleportIfFaster: false, allowAethernetWithinTerritory: false);
+                await TeleportTo(npc.TerritoryId, npc.CraftData.VendorLocation);
                 await Dismount();
                 await BuyFromShop(npc.CraftData, ingredient.id, missingIngredients);
             }
@@ -54,10 +51,7 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
         ErrorIf(Game.NumItemsInInventory(turnInItemId, (short)Route.MinCollectibility) < remainingTurnins,
             $"The planned qualifying collectibles are missing for {ItemName(turnInItemId)}");
         Status = $"Turning in {remainingTurnins}x {ItemName(turnInItemId)}";
-        if (Service.ClientState.TerritoryType == npc.TerritoryId)
-            await MoveTo(npc.CraftData.TurnInLocation, MovementConfig.InteractRange, allowTeleportIfFaster: false, allowAethernet: false);
-        else
-            await MoveTo(npc.TerritoryId, npc.CraftData.TurnInLocation, MovementConfig.InteractRange, allowTeleportIfFaster: false, allowAethernetWithinTerritory: false);
+        await TeleportTo(npc.TerritoryId, npc.CraftData.TurnInLocation);
         await TurnIn();
     }
 

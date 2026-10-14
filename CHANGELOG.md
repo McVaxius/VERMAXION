@@ -1,3 +1,17 @@
+2026-10-13 - Tight fishing-stock settings table (I563)
+
+- Put each bait or food stock entry on one row with enablement, item, target, reorder point and default/override controls. Preserve existing values and copy actions for account defaults and characters, and move explanations to tooltips.
+- Let a fitting table use its natural row height; bound the horizontal scrolling child to its catalog rows at narrow widths so later settings follow without an empty pane-sized gap.
+
+2026-10-13 - Bound shared custom-delivery NPC approach (I564)
+
+- Let the shared NPC approach yield at the live interaction range and recheck actor/menu readiness before repathing or jumping. Stop visibly after 30 seconds without approach or interaction progress, preserving cancellation and actor/dialog checks.
+- Let vendor and delivery interactions own their approach instead of first requiring an exact waypoint behind counters. Keep rank-quest movement with its existing quest provider. Preserve item preparation and inventory checks.
+
+2026-10-13 - Register framer's kits (I561)
+
+- Include framer's kits in carried-item discovery and the registrable editor. Check their dedicated native unlock bitmap before using a kit, preserving already-unlocked handling and existing registration controls.
+
 2026-10-13 - Current-game Stage 24 warning observation
 
 - Retarget the Stage 24 ground-effect hook, director and VFX identity checks, and named VFX diagnostic reads to verified game 2026.10.06 addresses. Preserve native-call forwarding, slot and listener checks, the observation deadline and command holds while warning state is unreadable. Keep the release version unchanged.

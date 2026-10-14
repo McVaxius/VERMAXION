@@ -17,6 +17,7 @@ public sealed class RegisterRegistrablesPolicyTests
     [InlineData(2633u, RegistrableCategory.EmoteHairstyle)]
     [InlineData(1013u, RegistrableCategory.Barding)]
     [InlineData(3357u, RegistrableCategory.TripleTriadCard)]
+    [InlineData(29459u, RegistrableCategory.FramersKit)]
     public void AdsDirectActionIdsAreClassified(uint actionId, RegistrableCategory expected)
     {
         Assert.True(RegistrableRegistrationPolicy.TryClassifyDirectAction(

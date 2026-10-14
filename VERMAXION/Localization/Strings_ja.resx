@@ -4907,4 +4907,7 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Show titlebar status" xml:space="preserve"><value>タイトルバーに状態を表示</value></data>
   <data name="Detailed titlebar status" xml:space="preserve"><value>タイトルバーに詳細な状態を表示</value></data>
   <data name="Pending tasks" xml:space="preserve"><value>残りのタスク</value></data>
+  <data name="Reorder at" xml:space="preserve"><value>補充開始数</value></data>
+  <data name="Default / override" xml:space="preserve"><value>既定 / 個別設定</value></data>
+  <data name="Buy only missing stock up to this target." xml:space="preserve"><value>目標数まで不足している分だけ購入します。</value></data>
 </root>

@@ -2051,4 +2051,7 @@ Phụ thuộc: {1}</value></data>
   <data name="Show titlebar status" xml:space="preserve"><value>Hiện trạng thái trên thanh tiêu đề</value></data>
   <data name="Detailed titlebar status" xml:space="preserve"><value>Trạng thái chi tiết trên thanh tiêu đề</value></data>
   <data name="Pending tasks" xml:space="preserve"><value>Tác vụ còn lại</value></data>
+  <data name="Reorder at" xml:space="preserve"><value>Mua thêm khi còn</value></data>
+  <data name="Default / override" xml:space="preserve"><value>Mặc định / tùy chỉnh</value></data>
+  <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Chỉ mua lượng còn thiếu để đạt số lượng mục tiêu.</value></data>
 </root>

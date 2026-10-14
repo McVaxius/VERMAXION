@@ -4907,4 +4907,7 @@ Dependencies: {1}</value>
   <data name="Show titlebar status" xml:space="preserve"><value>Show titlebar status</value></data>
   <data name="Detailed titlebar status" xml:space="preserve"><value>Detailed titlebar status</value></data>
   <data name="Pending tasks" xml:space="preserve"><value>Pending tasks</value></data>
+  <data name="Reorder at" xml:space="preserve"><value>Reorder at</value></data>
+  <data name="Default / override" xml:space="preserve"><value>Default / override</value></data>
+  <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Buy only missing stock up to this target.</value></data>
 </root>

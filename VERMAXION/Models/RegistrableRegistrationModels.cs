@@ -14,6 +14,7 @@ public enum RegistrableCategory
     EmoteHairstyle,
     Barding,
     TripleTriadCard,
+    FramersKit,
 }
 
 public enum RegistrableUnlockState
@@ -67,11 +68,12 @@ public static class RegistrableRegistrationPolicy
             2633 => RegistrableCategory.EmoteHairstyle,
             1013 => RegistrableCategory.Barding,
             3357 => RegistrableCategory.TripleTriadCard,
+            29459 => RegistrableCategory.FramersKit,
             _ => default,
         };
 
         return !isFadedOrchestrionCopy &&
-               actionId is 1322 or 853 or 20086 or 37312 or 25183 or 2633 or 1013 or 3357;
+               actionId is 1322 or 853 or 20086 or 37312 or 25183 or 2633 or 1013 or 3357 or 29459;
     }
 
     public static bool TryBuildInventoryItemSnapshot(

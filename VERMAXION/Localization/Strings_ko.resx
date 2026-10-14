@@ -4907,4 +4907,7 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Show titlebar status" xml:space="preserve"><value>제목 표시줄 상태 표시</value></data>
   <data name="Detailed titlebar status" xml:space="preserve"><value>제목 표시줄 상세 상태</value></data>
   <data name="Pending tasks" xml:space="preserve"><value>남은 작업</value></data>
+  <data name="Reorder at" xml:space="preserve"><value>재구매 기준</value></data>
+  <data name="Default / override" xml:space="preserve"><value>기본값 / 개별 설정</value></data>
+  <data name="Buy only missing stock up to this target." xml:space="preserve"><value>목표 수량까지 부족한 재고만 구매합니다.</value></data>
 </root>

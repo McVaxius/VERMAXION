@@ -48,7 +48,7 @@ public sealed class AutoDeliveryQuest(NPCInfo npc, ushort questId, uint job) : T
         });
         await EquipJob(job);
         if (npc.CraftData is { } position)
-            await MoveTo(npc.TerritoryId, position.TurnInLocation, MovementConfig.InteractRange);
+            await TeleportTo(npc.TerritoryId, position.TurnInLocation);
         await WaitUntil(GameHelpers.IsPlayerAvailable, "Waiting before rank quest");
         CancelToken.ThrowIfCancellationRequested();
         ErrorIf(!ReferenceEquals(WigglyGathering.ResolvePlugin(), provider), "Wiggly Questionable reloaded before the rank quest");

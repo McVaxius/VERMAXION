@@ -455,6 +455,20 @@ public class RegisterRegistrablesService : IDisposable
                 return RegistrableUnlockState.Unreadable;
             }
 
+            if (GetItemActionId(item) == 29459)
+            {
+                var player = FFXIVClientStructs.FFXIV.Client.Game.UI.PlayerState.Instance();
+                var kitId = item.AdditionalData.RowId;
+                if (player == null || kitId == 0)
+                {
+                    error = "Framer's kit unlock data is unavailable";
+                    return RegistrableUnlockState.Unreadable;
+                }
+                return player->IsFramersKitUnlocked(kitId)
+                    ? RegistrableUnlockState.Unlocked
+                    : RegistrableUnlockState.Locked;
+            }
+
             if (!Plugin.UnlockState.IsItemUnlockable(item))
             {
                 error = $"Item {itemId} is not unlockable";
