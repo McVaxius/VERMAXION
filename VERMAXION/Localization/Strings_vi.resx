@@ -2054,4 +2054,16 @@ Phụ thuộc: {1}</value></data>
   <data name="Reorder at" xml:space="preserve"><value>Mua thêm khi còn</value></data>
   <data name="Default / override" xml:space="preserve"><value>Mặc định / tùy chỉnh</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Chỉ mua lượng còn thiếu để đạt số lượng mục tiêu.</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>Lộ trình</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>Sửa chữa</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>Dọn dẹp</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>Thức ăn</value>
+  </data>
 </root>

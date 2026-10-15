@@ -2054,4 +2054,16 @@ Dependensi: {1}</value></data>
   <data name="Reorder at" xml:space="preserve"><value>Isi ulang saat</value></data>
   <data name="Default / override" xml:space="preserve"><value>Bawaan / kustom</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Beli hanya stok yang kurang hingga jumlah target.</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>Rute</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>Perbaikan</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>Pembersihan</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>Makanan</value>
+  </data>
 </root>

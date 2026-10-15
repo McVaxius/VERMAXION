@@ -4910,4 +4910,16 @@ Dependencies: {1}</value>
   <data name="Reorder at" xml:space="preserve"><value>Reorder at</value></data>
   <data name="Default / override" xml:space="preserve"><value>Default / override</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Buy only missing stock up to this target.</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>Route</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>Repairs</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>Cleanup</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>Food</value>
+  </data>
 </root>

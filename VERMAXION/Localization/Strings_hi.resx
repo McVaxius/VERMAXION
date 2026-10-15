@@ -1693,4 +1693,16 @@
   <data name="Reorder at" xml:space="preserve"><value>पुनः खरीद की सीमा</value></data>
   <data name="Default / override" xml:space="preserve"><value>डिफ़ॉल्ट / कस्टम</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>लक्ष्य मात्रा तक पहुँचने के लिए केवल कम पड़ा सामान खरीदें।</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>मार्ग</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>मरम्मत</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>सफ़ाई</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>भोजन</value>
+  </data>
 </root>

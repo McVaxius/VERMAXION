@@ -2054,4 +2054,16 @@ Zależności: {1}</value></data>
   <data name="Reorder at" xml:space="preserve"><value>Uzupełniaj przy</value></data>
   <data name="Default / override" xml:space="preserve"><value>Domyślne / własne</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Kupuj tylko brakujące zapasy do ilości docelowej.</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>Trasa</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>Naprawy</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>Porządkowanie</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>Jedzenie</value>
+  </data>
 </root>

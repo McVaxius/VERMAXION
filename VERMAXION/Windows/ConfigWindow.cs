@@ -396,6 +396,7 @@ public class ConfigWindow : Window, IDisposable
 
     private void DrawGlobalSettingsTab()
     {
+        using var settingRows = UIConstants.PushSettingsRows();
         var config = plugin.Configuration;
 
         UiGui.TextWrapped("Shared settings for all accounts and characters. Per-character task settings are in Characters.");
@@ -1154,6 +1155,7 @@ public class ConfigWindow : Window, IDisposable
 
     private void DrawCharacterSettings(ConfigManager configManager)
     {
+        using var settingRows = UIConstants.PushSettingsRows(defaultActions: true);
         var charKey = configManager.SelectedCharacterKey;
         var cc = configManager.GetSelectedConfig();
         var isDefault = string.IsNullOrEmpty(charKey);
@@ -1563,6 +1565,7 @@ public class ConfigWindow : Window, IDisposable
                 if (cc.EnableFishing)
                 {
                     ImGui.Indent();
+                    MaterialSettings.Section(UiText.T("Route"));
 
                     if (!isDefault)
                     {
@@ -1629,9 +1632,6 @@ public class ConfigWindow : Window, IDisposable
                         }
                     }
 
-                    UiGui.Text("Fishing stock for this config");
-                    changed |= DrawFishingStockGrid(cc, isDefault, configManager);
-
                     var returnDestination = cc.FishingReturnDestination;
                     if (UIConstants.BeginCombo("Return destination", FormatFishingReturnDestination(returnDestination)))
                     {
@@ -1665,6 +1665,10 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.FishingReturnCommand = source.FishingReturnCommand);
                     DrawHelpMarker("Slash command sent for the selected return destination. Custom destinations require an explicit command.");
 
+                    MaterialSettings.Section(UiText.T("Fishing stock for this config"));
+                    changed |= DrawFishingStockGrid(cc, isDefault, configManager);
+
+                    MaterialSettings.Section(UiText.T("Repairs"));
                     var repairMode = cc.FishingRepairMode;
                     if (UIConstants.BeginCombo("Fishing repair mode", FormatFishingRepairMode(repairMode)))
                     {
@@ -1697,6 +1701,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.FishingRepairThresholdPercent = source.FishingRepairThresholdPercent);
                     DrawHelpMarker("Repairs when this character's lowest equipped gear condition is at or below this percent.");
 
+                    MaterialSettings.Section(UiText.T("Cleanup"));
                     var discardAfterVoyage = cc.FishingDiscardAfterVoyage;
                     if (UIConstants.Checkbox("Discard configured fish after voyage", ref discardAfterVoyage))
                     {
@@ -1717,6 +1722,7 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.FishingSellAfterVoyage = source.FishingSellAfterVoyage);
                     DrawHelpMarker("After FrenRider/ADS desynthesis settles, asks ADS to sell with AutoRetainer's configured list. Enable NPC selling in AutoRetainer. Unverified selling skips discard.");
 
+                    MaterialSettings.Section(UiText.T("Food"));
                     var eatAnyFood = cc.FishingEatAnyFood;
                     if (UIConstants.Checkbox("Eat any food in bags (pre-fishing lobby)", ref eatAnyFood))
                     {
@@ -2957,6 +2963,7 @@ public class ConfigWindow : Window, IDisposable
 
     private void DrawMarketboardSettings()
     {
+        using var settingRows = UIConstants.PushSettingsRows();
         var manager = plugin.ConfigManager;
         if (manager.GetSelectedAccount() == null)
         { UiGui.TextWrapped("Select an account to edit marketboard settings."); return; }
@@ -3574,7 +3581,7 @@ public class ConfigWindow : Window, IDisposable
     }
 
     private static float GetCompactNumericInputWidth()
-        => Math.Max(72f, MaterialText.Measure("00000").X + (ImGui.GetStyle().FramePadding.X * 2f) + 18f);
+        => UIConstants.MinimumFieldWidth;
 
     private void DrawChokeAboTargetStatus()
     {
@@ -3893,17 +3900,17 @@ public class ConfigWindow : Window, IDisposable
             .Select(row => MaterialText.Measure(GetItemName(row.ItemId)).X)
             .DefaultIfEmpty(0).Max();
         itemWidth = MathF.Max(itemWidth, MaterialText.Measure(UiText.T("Item")).X) + 4f * scale;
-        var targetWidth = MathF.Max(GetCompactNumericInputWidth(), MaterialText.Measure(UiText.T("Target")).X + 4f * scale);
-        var reorderWidth = MathF.Max(GetCompactNumericInputWidth(), MaterialText.Measure(UiText.T("Reorder at")).X + 4f * scale);
-        var defaultWidth = new[] { "Default / override", "Uses account default", "Use default", "Apply to all" }
-            .Max(label => MaterialText.Measure(UiText.T(label)).X) + 2 * ImGui.GetStyle().FramePadding.X + 4f * scale;
+        var targetWidth = MathF.Max(GetCompactNumericInputWidth(), MaterialText.Measure(UiText.T("Target")).X + 4f * scale)
+            + 2 * ImGui.GetStyle().CellPadding.X;
+        var reorderWidth = MathF.Max(GetCompactNumericInputWidth(), MaterialText.Measure(UiText.T("Reorder at")).X + 4f * scale)
+            + 2 * ImGui.GetStyle().CellPadding.X;
+        var defaultWidth = ImGui.GetFrameHeight() + 4f * scale;
         var innerWidth = enabledWidth + itemWidth + targetWidth + reorderWidth + defaultWidth
             + 10 * ImGui.GetStyle().CellPadding.X + 6f * scale;
         var scrolling = innerWidth > ImGui.GetContentRegionAvail().X;
-        var headerHeight = new[] { "Enabled", "Item", "Target", "Reorder at", "Default / override" }
+        var headerHeight = new[] { "Enabled", "Item", "Target", "Reorder at" }
             .Max(label => MathF.Max(ImGui.GetTextLineHeight(), MaterialText.Measure(UiText.T(label)).Y));
-        var rowHeight = MathF.Max(ImGui.GetFrameHeight(), new[] { "Uses account default", "Use default", "Apply to all" }
-            .Max(label => MaterialText.Measure(UiText.T(label)).Y + 2 * ImGui.GetStyle().FramePadding.Y));
+        var rowHeight = MathF.Max(ImGui.GetFrameHeight(), MaterialControls.Metrics.Height);
         var height = scrolling ? MathF.Ceiling(headerHeight + plugin.Configuration.FishingStockCatalog.Count * rowHeight
             + ImGui.GetStyle().ScrollbarSize + 2 * ImGui.GetStyle().WindowPadding.Y + 2f * scale) : 0;
         var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.SizingFixedFit;
@@ -3917,9 +3924,9 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TableSetupColumn("Item", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthFixed, targetWidth);
             ImGui.TableSetupColumn("Reorder at", ImGuiTableColumnFlags.WidthFixed, reorderWidth);
-            ImGui.TableSetupColumn("Default / override", ImGuiTableColumnFlags.WidthFixed, defaultWidth);
+            ImGui.TableSetupColumn("Default / override", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHeaderWidth, defaultWidth);
             var headerTop = ImGui.GetCursorScreenPos().Y;
-            UiGui.TableHeadersRow();
+            UiGui.TableHeadersRow(iconColumn: 4, headerIcon: MaterialIcon.Return);
             var headerBottom = ImGui.GetItemRectMax().Y;
             for (var column = 0; column < 5; column++)
             {
@@ -3990,15 +3997,18 @@ public class ConfigWindow : Window, IDisposable
         if (account == null)
             return;
 
+        if (!inline)
+            UIConstants.SameLineIfFits(string.Empty, ImGui.GetFrameHeight());
+
         if (!isDefault)
         {
             var selected = configManager.GetSelectedConfig();
             var matches = SettingMatchesDefault(account.DefaultConfig, selected, copy);
-            if (!inline) UiGui.TextWrapped(matches ? "Uses account default" : "Character override");
-            else if (matches) UiGui.Text("Uses account default");
-            if (!matches)
+            ImGui.BeginDisabled(matches);
+            try
             {
-                if (UIConstants.Button($"Use default##{id}"))
+                if (DrawDefaultActionIcon($"Use default##{id}", matches ? MaterialIcon.Link : MaterialIcon.Return,
+                        active: !matches))
                 {
                     void ApplyDefault() => RunConfigMutationWithTargetPause(
                         () =>
@@ -4013,25 +4023,43 @@ public class ConfigWindow : Window, IDisposable
                     else
                         ApplyDefault();
                 }
-                if (inline && ImGui.IsItemHovered()) UiGui.SetTooltip("Character override");
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    UiGui.SetTooltip(matches ? UiText.T("Uses account default")
+                        : UiText.T("Character override") + "\n" + UiText.T("Use default"));
             }
+            finally { ImGui.EndDisabled(); }
             return;
         }
 
         var differing = account.Characters.Values.Count(character =>
             !SettingMatchesDefault(account.DefaultConfig, character, copy));
-        if (!inline) UiGui.TextWrapped(UiText.F($"{differing} characters differ"));
         ImGui.BeginDisabled(differing == 0);
-        if (UIConstants.Button($"Apply to all##{id}"))
+        try
         {
-            var count = RunConfigMutationWithTargetPause(
-                () => configManager.ApplyDefaultSettingToAllCharacters(label, copy),
-                $"account default {label} applied to all characters");
-            Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
-            Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
+            if (DrawDefaultActionIcon($"Apply to all##{id}", MaterialIcon.Copy, active: differing > 0))
+            {
+                var count = RunConfigMutationWithTargetPause(
+                    () => configManager.ApplyDefaultSettingToAllCharacters(label, copy),
+                    $"account default {label} applied to all characters");
+                Plugin.Log.Information($"[Config] Applied default {label} to {count} characters");
+                Plugin.ChatGui.Print($"[Vermaxion] Default {label} applied to {count} characters.");
+            }
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiGui.SetTooltip(UiText.T("Apply to all") + "\n" + UiText.F($"{differing} characters differ"));
         }
-        if (inline && ImGui.IsItemHovered()) UiGui.SetTooltip(UiText.F($"{differing} characters differ"));
-        ImGui.EndDisabled();
+        finally { ImGui.EndDisabled(); }
+    }
+
+    private static bool DrawDefaultActionIcon(string label, MaterialIcon icon, bool active)
+    {
+        var side = ImGui.GetFrameHeight();
+        // Retain the existing text button's native ID, including its original wrapping decision.
+        var pressed = UIConstants.ButtonWithCaption(label, string.Empty, new Vector2(side), false,
+            UIConstants.ButtonWidth(label));
+        var iconSize = Math.Min(18 * UIConstants.Scale, side - 4 * UIConstants.Scale);
+        MaterialIcons.Draw(icon, ImGui.GetItemRectMin() + new Vector2((side - iconSize) * .5f), iconSize,
+            active ? UIConstants.Blue : UIConstants.Metadata);
+        return pressed;
     }
 
     private static bool SettingMatchesDefault(

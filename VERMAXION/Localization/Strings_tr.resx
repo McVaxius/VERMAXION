@@ -2054,4 +2054,16 @@ Bağımlılıklar: {1}</value></data>
   <data name="Reorder at" xml:space="preserve"><value>Yenileme eşiği</value></data>
   <data name="Default / override" xml:space="preserve"><value>Varsayılan / özel</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>Yalnızca hedef miktara ulaşmak için eksik olan stoğu satın al.</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>Rota</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>Onarımlar</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>Temizleme</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>Yiyecek</value>
+  </data>
 </root>

@@ -4910,4 +4910,16 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Reorder at" xml:space="preserve"><value>재구매 기준</value></data>
   <data name="Default / override" xml:space="preserve"><value>기본값 / 개별 설정</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>목표 수량까지 부족한 재고만 구매합니다.</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>항로</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>수리</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>정리</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>음식</value>
+  </data>
 </root>

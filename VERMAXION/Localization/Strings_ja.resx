@@ -4910,4 +4910,16 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Reorder at" xml:space="preserve"><value>補充開始数</value></data>
   <data name="Default / override" xml:space="preserve"><value>既定 / 個別設定</value></data>
   <data name="Buy only missing stock up to this target." xml:space="preserve"><value>目標数まで不足している分だけ購入します。</value></data>
+  <data name="Route" xml:space="preserve">
+    <value>航路</value>
+  </data>
+  <data name="Repairs" xml:space="preserve">
+    <value>修理</value>
+  </data>
+  <data name="Cleanup" xml:space="preserve">
+    <value>整理</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>食事</value>
+  </data>
 </root>

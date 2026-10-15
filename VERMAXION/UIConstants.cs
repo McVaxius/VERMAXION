@@ -25,6 +25,36 @@ public static class UIConstants
     internal static Vector4 SelectedHover => MaterialTheme.Current.Colors.PrimaryContainer;
     internal static Vector4 SelectedPressed => MaterialTheme.Current.Colors.Primary;
     internal static bool Compact;
+    [ThreadStatic] private static bool settingsRows;
+    [ThreadStatic] private static bool settingsDefaultActions;
+
+    internal static float MinimumFieldWidth => Math.Max(80 * Scale,
+        MaterialText.Measure("00000").X + ImGui.GetStyle().FramePadding.X * 2);
+
+    internal static SettingsRowsScope PushSettingsRows(bool defaultActions = false) => new(defaultActions);
+
+    internal ref struct SettingsRowsScope
+    {
+        private readonly bool previousRows;
+        private readonly bool previousDefaults;
+        private MaterialControls.ControlScope controls;
+
+        internal SettingsRowsScope(bool defaultActions)
+        {
+            previousRows = settingsRows;
+            previousDefaults = settingsDefaultActions;
+            controls = MaterialControls.Push(MaterialControlContext.Toolbar);
+            settingsRows = true;
+            settingsDefaultActions = defaultActions;
+        }
+
+        public void Dispose()
+        {
+            settingsRows = previousRows;
+            settingsDefaultActions = previousDefaults;
+            controls.Dispose();
+        }
+    }
     // Applied before Begin, so window padding and child/table density agree across every surface.
     public static void PushStyle(bool compact)
     {
@@ -307,8 +337,7 @@ public static class UIConstants
     }
 
     internal static void SetNextItemWidth(float width)
-        => ImGui.SetNextItemWidth(MaterialLayout.FitNextItemWidth(width,
-            Math.Max(80*Scale,MaterialText.Measure("00000").X+ImGui.GetStyle().FramePadding.X*2)));
+        => ImGui.SetNextItemWidth(MaterialLayout.FitNextItemWidth(width, MinimumFieldWidth));
 
     internal static bool Checkbox(string label, ref bool value)
     {
@@ -320,25 +349,44 @@ public static class UIConstants
         {
         var changed = ImGui.Checkbox("##Wrapped_" + label, ref value);
         ImGui.SameLine();
-        UiGui.TextUnformatted(text);
+        UiGui.TextWrapped(text);
         if (ImGui.IsItemClicked()) { value = !value; changed = true; }
         return changed;
         }
         finally { ImGui.EndGroup(); }
     }
 
-    private static string ControlLabel(string label)
+    private static string ControlLabel(string label, ref float width)
     {
         var text = UiText.T(label.Split("##", System.StringSplitOptions.None)[0]);
         if (text.Length == 0) return label;
-        MaterialText.Text(text);
+        if (!settingsRows)
+            MaterialText.Text(text);
+        else
+        {
+            var gap = ImGui.GetStyle().ItemInnerSpacing.X;
+            var tail = MaterialText.Measure("(?)").X + 2 * gap;
+            if (settingsDefaultActions) tail += ImGui.GetFrameHeight() + gap;
+            var available = ImGui.GetContentRegionAvail().X;
+            var labelWidth = MaterialText.Measure(text).X;
+            ImGui.AlignTextToFramePadding();
+            if (labelWidth + gap + MinimumFieldWidth + tail <= available)
+            {
+                MaterialText.Text(text);
+                ImGui.SameLine(0, gap);
+            }
+            else
+                MaterialText.Text(text, wrapWidth: Math.Max(1, available));
+            // Measure within this child/cell after the label; do not spend the reset/help slots.
+            width = Math.Max(MinimumFieldWidth, Math.Min(width, ImGui.GetContentRegionAvail().X - tail));
+        }
         return "##Control_" + label;
     }
 
     internal static bool InputInt(string label, ref int value, int step = 1, int fastStep = 100)
     {
         var width = ImGui.CalcItemWidth();
-        var id = ControlLabel(label);
+        var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
         var roomForSteps = System.Math.Min(width, ImGui.GetContentRegionAvail().X) >=
             MaterialText.Measure("00000").X + ImGui.GetStyle().FramePadding.X * 2 + ImGui.GetFrameHeight() * 2 + ImGui.GetStyle().ItemInnerSpacing.X * 2;
@@ -348,7 +396,7 @@ public static class UIConstants
     internal static bool InputFloat(string label, ref float value, float step = 0, float fastStep = 0, string format = "%.3f")
     {
         var width = ImGui.CalcItemWidth();
-        var id = ControlLabel(label);
+        var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
         return ImGui.InputFloat(id, ref value, step, fastStep, format);
     }
@@ -356,7 +404,7 @@ public static class UIConstants
     internal static bool BeginCombo(string label, string preview)
     {
         var width = ImGui.CalcItemWidth();
-        var id = ControlLabel(label);
+        var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
         var open = MaterialText.BeginCombo(id, UiText.T(preview));
         if (!open && ImGui.IsItemHovered()) MaterialText.SetTooltip(UiText.T(preview));
@@ -366,7 +414,7 @@ public static class UIConstants
     internal static bool Combo(string label, ref int index, string items)
     {
         var width = ImGui.CalcItemWidth();
-        var id = ControlLabel(label);
+        var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
         return UiGui.Combo(id, ref index, items.Split("\0").Where(item => item.Length > 0).ToArray(), items.Split("\0").Count(item => item.Length > 0));
     }
@@ -374,7 +422,7 @@ public static class UIConstants
     internal static bool Combo(string label, ref int index, string[] items, int count)
     {
         var width = ImGui.CalcItemWidth();
-        var id = ControlLabel(label);
+        var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
         return UiGui.Combo(id, ref index, items, count);
     }
@@ -382,7 +430,7 @@ public static class UIConstants
     internal static bool InputText(string label, ref string value, int maxLength)
     {
         var width = ImGui.CalcItemWidth();
-        var id = ControlLabel(label);
+        var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
         using var height = MaterialText.PushLineHeight(value);
         return MaterialShapedInput.SingleLine(id, "", ref value, maxLength);

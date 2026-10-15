@@ -205,7 +205,7 @@ internal static class UiGui
         }
         finally { dl.PopClipRect(); }
     }
-    internal static void TableHeadersRow(float height=0)
+    internal static void TableHeadersRow(float height=0, int iconColumn=-1, MaterialIcon headerIcon=MaterialIcon.None)
     {
         for(var column=0;column<ImGui.TableGetColumnCount();column++)
         {
@@ -219,6 +219,17 @@ internal static class UiGui
             var original=ImGui.TableGetColumnName(index);
             var position=ImGui.GetCursorScreenPos();
             var available=ImGui.GetContentRegionAvail().X;
+            if(index==iconColumn && headerIcon!=MaterialIcon.None)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text,Vector4.Zero);
+                try { ImGui.TableHeader(original); }
+                finally { ImGui.PopStyleColor(); }
+                var side=Math.Min(ImGui.GetTextLineHeight(),Math.Max(1,available));
+                MaterialIcons.Draw(headerIcon,position+new Vector2(Math.Max(0,(available-side)*.5f),0),side,
+                    ImGui.GetStyle().Colors[(int)ImGuiCol.Text]);
+                if(ImGui.IsItemHovered()) MaterialText.SetTooltip(UiText.T(original));
+                continue;
+            }
             ImGui.TableHeader(original);
             Label(original,position,ImGui.GetStyle().Colors[(int)ImGuiCol.TableHeaderBg],ImGui.GetStyle().Colors[(int)ImGuiCol.Text], position + new Vector2(Math.Max(1, available), Math.Max(ImGui.GetTextLineHeight(), MaterialText.Measure(UiText.T(original)).Y)));
             var translated=UiText.T(original);
