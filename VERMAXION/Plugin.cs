@@ -58,7 +58,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "vmx-fishing-sale-resume-20261014-01";
+    private const string DebugAttemptMarker = "vmx-settings-rows-20261014-02";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";

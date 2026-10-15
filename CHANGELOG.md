@@ -1,3 +1,9 @@
+2026-10-14 - Inline settings subframes
+
+- Preserve the native next-line origin after inline help text so subsequent settings stay at the subframe's left edge instead of shifting toward the right.
+- Keep settings labels, editors and compact default/reset actions on one row when they fit the current subframe. Show inherited/override and apply-to-all details in the action tooltip, preserving existing save and confirmation paths.
+- Keep fishing-stock numeric cells on their item row, share the editor and column minimum widths, and use a compact default-action column. Group fishing controls into Route, Stock, Repairs, Cleanup and Food, with headings translated in all fifteen catalogs.
+
 2026-10-14 - Preserve fishing across ADS sale failures
 
 - Keep the current voyage active when onboard selling fails. Surface ADS's rejection, settle only the matching sale and return to the saved fishing position instead of ending the run. Do not repeat a failed onboard sale on every full-inventory message; retain separate post-voyage selling and the existing setting.

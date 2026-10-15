@@ -162,7 +162,7 @@ public static class UIConstants
         ImGui.SetCursorPosX(x + insets.Left);
         ImGui.PushTextWrapPos(x + System.MathF.Max(1, width - insets.Right));
         try { MaterialText.TextColored(color, display); }
-        finally { ImGui.PopTextWrapPos(); ImGui.SetCursorPosX(x); }
+        finally { ImGui.PopTextWrapPos(); }
     }
 
     private static unsafe (float Left, float Right) WrappedTextInsets(string text)
