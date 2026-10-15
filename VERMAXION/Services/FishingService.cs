@@ -23,6 +23,9 @@ public sealed class FishingService
 {
     private string? npcSaleOperationId;
     private DateTime nextNpcSaleObservation;
+    private bool npcSaleCancellationSent;
+    private string npcSaleFailure = string.Empty;
+    private bool inventorySaleFailedThisVoyage;
     private const ushort LimsaTerritoryType = OceanFishingDockPreparationPolicy.LimsaTerritoryType;
     private const uint ArcanistsGuildAethernetId = OceanFishingDockPreparationPolicy.ArcanistsGuildAethernetId;
     private const uint OceanFishingUnlockQuestId = 69379;
@@ -286,10 +289,10 @@ public sealed class FishingService
                 text,
                 activelyFishing,
                 oceanFishingDutyActive,
-                recoveryActive: inventoryRecoveryActive,
+                recoveryActive: inventoryRecoveryActive || inventorySaleFailedThisVoyage,
                 provider: activeProvider))
         {
-            if (FishingInventoryRecoveryPolicy.IsInsufficientInventoryMessage(text))
+            if (!inventorySaleFailedThisVoyage && FishingInventoryRecoveryPolicy.IsInsufficientInventoryMessage(text))
             {
                 log.Information(
                     $"[Fishing][InventoryRecovery] Full-inventory message ignored " +
@@ -344,6 +347,9 @@ public sealed class FishingService
         activeRegistrationStartUtc = runLifecycle.Current.RegistrationStartUtc;
         activeProvider = runLifecycle.Current.Provider;
         activePositioningMode = configuration.OceanFishingPositioningMode;
+        inventorySaleFailedThisVoyage = false;
+        npcSaleFailure = string.Empty;
+        npcSaleCancellationSent = false;
         lastError = string.Empty;
         cleanupFeedback.Clear();
         desynthFeedbackRecorded = false;
@@ -412,6 +418,9 @@ public sealed class FishingService
 
     public void Reset(bool releaseRun = true)
     {
+        inventorySaleFailedThisVoyage = false;
+        npcSaleFailure = string.Empty;
+        npcSaleCancellationSent = false;
         collectionStopping = false;
         collectionSaleCancellationSent = false;
         CancelOwnedNpcSale();
@@ -622,6 +631,13 @@ public sealed class FishingService
         if (inventoryRecoveryActive &&
             (dutyCompletionObserved || IsOceanFishingResultAddonAvailable()))
         {
+            if (!SettleNpcSaleBeforeResuming())
+                return;
+            if (!string.IsNullOrEmpty(npcSaleFailure))
+            {
+                RecordCleanupFeedback(npcSaleFailure);
+                npcSaleFailure = string.Empty;
+            }
             vnavmesh.Stop();
             inventoryRecoveryActive = false;
             inventoryRecoveryReturnPosition = null;
@@ -1886,6 +1902,9 @@ public sealed class FishingService
         if (voyageState.SessionNumber == 0 && !BeginFishingSession("initial voyage session"))
             return;
 
+        if (ObserveNativeFishing(now))
+            return;
+
         if (voyageState.MovementLocked)
         {
             StopFishingNavigationAndFaceOutward("movement lock already active");
@@ -2531,6 +2550,8 @@ public sealed class FishingService
         }
 
         dutyContextLostAt = DateTime.MinValue;
+        if (ObserveNativeFishing(now))
+            return;
         var canFish = CanFish();
         var destination = CurrentRailDestination;
         var distance = destination.HasValue
@@ -2862,7 +2883,8 @@ public sealed class FishingService
 
         voyageState.BeginSession();
         lastCastGate = string.Empty;
-        if (voyageState.TryApplySessionBait() && activeRunMode != FishingRunMode.Collection)
+        if (voyageState.TryApplySessionBait() && activeRunMode != FishingRunMode.Collection &&
+            !Plugin.Condition[GatheringCondition] && !Plugin.Condition[FishingCondition])
             CommandHelper.SendCommand("/bait Versatile Lure");
 
         log.Information(
@@ -2942,8 +2964,10 @@ public sealed class FishingService
         if (evaluation.Decision == FishingCastDecision.Acknowledged)
         {
             if (!evaluation.StopNavigation)
-                return false;
+                return true;
 
+            if (Plugin.ObjectTable.LocalPlayer is { } fisher && CurrentRailDestination is { } spot)
+                currentRailDestination = spot with { Position = fisher.Position, Rotation = fisher.Rotation };
             StopFishingNavigationAndFaceOutward("Fishing/Gathering acknowledgement");
             var acknowledgement = fishing ? "Fishing" : "Gathering";
             log.Information(
@@ -2975,8 +2999,13 @@ public sealed class FishingService
             $"{FishingCastPolicy.DirectCastFallbackCommand} " +
             $"at continuous rail destination attempt {voyageState.DestinationAttemptNumber}; " +
             "awaiting Fishing/Gathering acknowledgement");
-        return false;
+        return true;
     }
+
+    private bool ObserveNativeFishing(DateTime now)
+        => OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider) &&
+           (Plugin.Condition[GatheringCondition] || Plugin.Condition[FishingCondition]) &&
+           TickFishingStartAttempt(now, IsOceanFishingResultAddonAvailable(), false, false, string.Empty);
 
     private bool TryAdvanceFishingDestination(
         OceanFishingAdvanceReason reason,
@@ -3257,7 +3286,8 @@ public sealed class FishingService
     private void StopFishingNavigationAndFaceOutward(string reason)
     {
         vnavmesh.Stop();
-        if (CurrentRailDestination is { } destination)
+        if (!Plugin.Condition[GatheringCondition] && !Plugin.Condition[FishingCondition] &&
+            CurrentRailDestination is { } destination)
             GameHelpers.TrySetLocalPlayerRotation(destination.Rotation);
 
         log.Debug(
@@ -3774,7 +3804,9 @@ public sealed class FishingService
             if (elapsed < CleanupReadyTimeout)
                 return;
 
-            Fail($"Remaining cleanup skipped: AutoRetainer state unreadable ({busy.Error})");
+            npcSaleFailure = $"Remaining cleanup skipped: AutoRetainer state unreadable ({busy.Error})";
+            if (inventoryRecoveryActive) ResumeAfterSaleFailure();
+            else Fail(npcSaleFailure);
             return;
         }
 
@@ -3784,7 +3816,9 @@ public sealed class FishingService
             if (elapsed < CleanupReadyTimeout)
                 return;
 
-            Fail("Remaining cleanup skipped: AutoRetainer stayed busy");
+            npcSaleFailure = "Remaining cleanup skipped: AutoRetainer stayed busy";
+            if (inventoryRecoveryActive) ResumeAfterSaleFailure();
+            else Fail(npcSaleFailure);
             return;
         }
 
@@ -3852,12 +3886,27 @@ public sealed class FishingService
         nextNpcSaleObservation = DateTime.UtcNow.AddSeconds(1);
         try
         {
+            if (!string.IsNullOrEmpty(npcSaleFailure))
+            {
+                if (SettleNpcSaleBeforeResuming())
+                    ResumeAfterSaleFailure();
+                return;
+            }
             if (npcSaleOperationId == null)
             {
+                npcSaleCancellationSent = false;
                 npcSaleOperationId = Guid.NewGuid().ToString("N");
                 var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, bool, bool>("ADS.StartNpcSale")
                     .InvokeFunc(npcSaleOperationId, inventoryRecoveryActive);
-                if (!accepted) throw new InvalidOperationException("ADS did not accept NPC selling.");
+                if (!accepted)
+                {
+                    var rejection = JObject.Parse(Plugin.PluginInterface.GetIpcSubscriber<string>("ADS.GetNpcSaleStatusJson").InvokeFunc());
+                    var reason = (string?)rejection["lastStartError"];
+                    if (string.IsNullOrWhiteSpace(reason) && (string?)rejection["operationId"] == npcSaleOperationId)
+                        reason = (string?)rejection["statusMessage"];
+                    npcSaleOperationId = null; // A rejected request owns no ADS work.
+                    throw new InvalidOperationException(reason ?? "ADS did not accept NPC selling.");
+                }
                 statusDetail = "ADS is handling vendor travel and AutoRetainer selling";
                 return;
             }
@@ -3872,6 +3921,11 @@ public sealed class FishingService
             }
             if ((bool?)status["done"] != true || (bool?)status["succeeded"] != true)
                 throw new InvalidOperationException((string?)status["statusMessage"] ?? "ADS NPC selling has no verified completion.");
+            if ((bool?)status["settled"] == false)
+            {
+                statusDetail = "Waiting for the ADS seller and its UI to settle";
+                return;
+            }
             npcSaleOperationId = null;
             RecordCleanupFeedback($"Sell: {(string?)status["statusMessage"] ?? "ADS sale flow settled"}");
             AdvanceInventoryCleanup();
@@ -3879,9 +3933,65 @@ public sealed class FishingService
         catch (Exception ex)
         {
             log.Warning($"[Fishing][Cleanup] {ex.Message}");
-            // An uncertain sale must not be followed by destructive discard of overlapping items.
-            // Fail cancels only our sale; it must not navigate while cancellation is unverified.
-            Fail($"Sell failed or unverified: {ex.GetBaseException().Message}");
+            npcSaleFailure = $"Sell failed or unverified: {ex.GetBaseException().Message}";
+            if (SettleNpcSaleBeforeResuming())
+                ResumeAfterSaleFailure();
+        }
+    }
+
+    private bool SettleNpcSaleBeforeResuming()
+    {
+        if (npcSaleOperationId == null) return true;
+        try
+        {
+            var status = JObject.Parse(Plugin.PluginInterface.GetIpcSubscriber<string>("ADS.GetNpcSaleStatusJson").InvokeFunc());
+            if ((string?)status["operationId"] != npcSaleOperationId)
+            {
+                statusDetail = "Waiting for readable ownership of the ADS sale; fishing voyage remains active";
+                return false;
+            }
+            if ((bool?)status["running"] == true)
+            {
+                if (!npcSaleCancellationSent)
+                {
+                    npcSaleCancellationSent = true;
+                    Plugin.PluginInterface.GetIpcSubscriber<string, bool>("ADS.CancelNpcSale").InvokeFunc(npcSaleOperationId);
+                }
+                statusDetail = "Waiting for the matching ADS sale to release control";
+                return false;
+            }
+            if ((bool?)status["done"] != true || (bool?)status["settled"] == false)
+            {
+                statusDetail = "Waiting for the seller/UI to settle; fishing voyage remains active";
+                return false;
+            }
+            npcSaleOperationId = null;
+            npcSaleCancellationSent = false;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            statusDetail = $"Waiting for ADS sale settlement: {ex.GetBaseException().Message}";
+            return false;
+        }
+    }
+
+    private void ResumeAfterSaleFailure()
+    {
+        var message = npcSaleFailure;
+        npcSaleFailure = string.Empty;
+        RecordCleanupFeedback(message);
+        if (inventoryRecoveryActive)
+        {
+            // Repeated full-bag chat must not redispatch the same failed sale on every cast.
+            inventorySaleFailedThisVoyage = true;
+            ResumeAfterInventoryRecovery(message);
+        }
+        else
+        {
+            // Preserve the normal ending flow; never discard after an uncertain sale.
+            cleanupCommands = Array.Empty<FishingCleanupCommand>();
+            ReturnAfterFishing();
         }
     }
 
@@ -3962,11 +4072,13 @@ public sealed class FishingService
     {
         var position = inventoryRecoveryReturnPosition!.Value;
         var distance = (float)DistanceTo(position);
-        if (distance <= BoatFishingPositionTolerance ||
+        var alreadyFishing = Plugin.Condition[GatheringCondition] || Plugin.Condition[FishingCondition];
+        if (alreadyFishing || distance <= BoatFishingPositionTolerance ||
             now - inventoryRecoveryReturnStartedAt >= TimeSpan.FromSeconds(60))
         {
             vnavmesh.Stop();
-            GameHelpers.TrySetLocalPlayerRotation(inventoryRecoveryReturnRotation);
+            if (!alreadyFishing)
+                GameHelpers.TrySetLocalPlayerRotation(inventoryRecoveryReturnRotation);
             inventoryRecoveryActive = false;
             inventoryRecoveryReturnPosition = null;
             inventoryRecoveryReturnStartedAt = DateTime.MinValue;
@@ -4095,6 +4207,8 @@ public sealed class FishingService
 
     private void BeginAbandonStuckVoyage()
     {
+        if (ObserveNativeFishing(DateTime.UtcNow))
+            return;
         vnavmesh.Stop();
         // Stand still, facing the sea, before anything else — the failure mode of the whole abandon path is
         // a stationary rail-facing character, never a running one. That alone ends the "sussy" behaviour.
@@ -4111,6 +4225,11 @@ public sealed class FishingService
     private void TickAbandonStuckVoyage(TimeSpan elapsed)
     {
         var now = DateTime.UtcNow;
+        if (ObserveNativeFishing(now))
+        {
+            SetState(FishingState.Fishing);
+            return;
+        }
         if (abandonStartedAt == DateTime.MinValue)
             abandonStartedAt = now;
 

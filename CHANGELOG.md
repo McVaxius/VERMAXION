@@ -1,3 +1,8 @@
+2026-10-14 - Preserve fishing across ADS sale failures
+
+- Keep the current voyage active when onboard selling fails. Surface ADS's rejection, settle only the matching sale and return to the saved fishing position instead of ending the run. Do not repeat a failed onboard sale on every full-inventory message; retain separate post-voyage selling and the existing setting.
+- Recognize real fishing before placement recovery, retain its actual position/facing and yield after cast dispatch. Do not turn or abandon an actively fishing character. Settle onboard sale ownership before post-voyage cleanup.
+
 2026-10-13 - Tight fishing-stock settings table (I563)
 
 - Put each bait or food stock entry on one row with enablement, item, target, reorder point and default/override controls. Preserve existing values and copy actions for account defaults and characters, and move explanations to tooltips.

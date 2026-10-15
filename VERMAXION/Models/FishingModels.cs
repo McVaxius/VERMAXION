@@ -1011,17 +1011,6 @@ internal sealed class OceanFishingVoyageState
         bool initialPlacementReady = false,
         string initialPlacementGate = "")
     {
-        if (!FishingEverStarted &&
-            (!DestinationArrived || !atDestination || !initialPlacementReady))
-        {
-            return new OceanFishingStartEvaluation(
-                FishingCastDecision.Suppressed,
-                string.IsNullOrWhiteSpace(initialPlacementGate)
-                    ? "waiting for verified rail placement"
-                    : initialPlacementGate,
-                StopNavigation: false);
-        }
-
         var evaluation = FishingCastPolicy.Evaluate(
             enabled,
             inFishingContext,
@@ -1033,6 +1022,15 @@ internal sealed class OceanFishingVoyageState
             lastStartAttemptAt.HasValue
                 ? nowUtc - lastStartAttemptAt.Value
                 : TimeSpan.MaxValue);
+
+        // Real fishing takes precedence over placement, but never over ownership/transition guards.
+        if (evaluation.Decision == FishingCastDecision.Suppressed)
+            return new OceanFishingStartEvaluation(evaluation.Decision, evaluation.Gate, false);
+        if (evaluation.Decision != FishingCastDecision.Acknowledged && !FishingEverStarted &&
+            (!DestinationArrived || !atDestination || !initialPlacementReady))
+            return new OceanFishingStartEvaluation(FishingCastDecision.Suppressed,
+                string.IsNullOrWhiteSpace(initialPlacementGate) ? "waiting for verified rail placement" : initialPlacementGate,
+                StopNavigation: false);
 
         if (evaluation.Decision == FishingCastDecision.Attempt)
         {
