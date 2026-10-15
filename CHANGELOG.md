@@ -1,3 +1,8 @@
+2026-10-15 - Six-hour daily chocobo racing allowance
+
+- Double progression racing time from three to six hours per character and server day, retaining time already used and the 09:00 UTC reset. Queue and racing activity count; breeding, feeding, travel and covering waits remain excluded.
+- Keep the current race safe at exhaustion and preserve Pause/Resume/Stop. Update the allowance explanation in every supported language.
+
 2026-10-14 - Inline settings subframes
 
 - Preserve the native next-line origin after inline help text so subsequent settings stay at the subframe's left edge instead of shifting toward the right.

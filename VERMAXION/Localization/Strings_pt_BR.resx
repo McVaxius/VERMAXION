@@ -1149,7 +1149,7 @@ Se desativado, Vermaxion tentará executar sem Saucy (pode não funcionar corret
   <data name="Sync target account: {0}" xml:space="preserve"><value>Conta de destino da sincronização: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Pedigree alvo</value></data>
-  <data name="Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Pedigree alvo usa uma permissão de corrida de três horas, reiniciada às 09:00 UTC. A reprodução pode continuar quando a permissão se esgota.</value></data>
+  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Pedigree alvo usa uma permissão de corrida de seis horas, reiniciada às 09:00 UTC. A reprodução pode continuar quando a permissão se esgota.</value></data>
   <data name="Targets" xml:space="preserve"><value>Alvos</value></data>
   <data name="Task Order" xml:space="preserve"><value>Ordem de tarefas</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Testar rank de chocobo</value></data>

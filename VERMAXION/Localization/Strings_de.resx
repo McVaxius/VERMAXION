@@ -3217,8 +3217,8 @@ Deaktiviert: Vermaxion versucht es ohne Saucy (funktioniert eventuell nicht rich
   <data name="Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable." xml:space="preserve">
     <value>Stylist ist optional. Ohne IPC nutzt Gear Updater VERMAXIONs native Ausrüstungsempfehlung.</value>
   </data>
-  <data name="Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>Zielabstammung verwendet drei Stunden Rennzeit mit Reset 09:00 UTC. Zucht läuft auch bei verbrauchter Zeit weiter.</value>
+  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
+    <value>Zielabstammung verwendet sechs Stunden Rennzeit mit Reset 09:00 UTC. Zucht läuft auch bei verbrauchter Zeit weiter.</value>
   </data>
   <data name="The standalone window runs on the current character. These settings belong to the selected configuration above." xml:space="preserve">
     <value>Das separate Fenster läuft auf dem aktuellen Charakter. Diese Einstellungen gehören zur oben gewählten Konfiguration.</value>

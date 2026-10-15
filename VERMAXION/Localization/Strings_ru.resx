@@ -3214,8 +3214,8 @@
   <data name="Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable." xml:space="preserve">
     <value>Stylist необязателен. Без его IPC обновление использует штатный подбор экипировки VERMAXION.</value>
   </data>
-  <data name="Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>Целевая родословная использует три часа гонок со сбросом в 09:00 UTC. Разведение продолжается при исчерпании времени.</value>
+  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
+    <value>Целевая родословная использует шесть часов гонок со сбросом в 09:00 UTC. Разведение продолжается при исчерпании времени.</value>
   </data>
   <data name="The standalone window runs on the current character. These settings belong to the selected configuration above." xml:space="preserve">
     <value>Отдельное окно работает с текущим персонажем. Эти настройки относятся к выбранной выше конфигурации.</value>

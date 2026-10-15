@@ -1149,7 +1149,7 @@ Nếu tắt, Vermaxion sẽ thử chạy mà không có Saucy (có thể không 
   <data name="Sync target account: {0}" xml:space="preserve"><value>Tài khoản đích đồng bộ: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Phả hệ mục tiêu</value></data>
-  <data name="Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Phả hệ mục tiêu dùng mức thời gian đua ba giờ, đặt lại lúc 09:00 UTC. Sinh sản có thể tiếp tục khi hết thời gian cho phép.</value></data>
+  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Phả hệ mục tiêu dùng mức thời gian đua sáu giờ, đặt lại lúc 09:00 UTC. Sinh sản có thể tiếp tục khi hết thời gian cho phép.</value></data>
   <data name="Targets" xml:space="preserve"><value>Mục tiêu</value></data>
   <data name="Task Order" xml:space="preserve"><value>Thứ tự tác vụ</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Kiểm tra hạng chocobo</value></data>

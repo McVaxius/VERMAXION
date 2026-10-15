@@ -2129,7 +2129,7 @@ public class ConfigWindow : Window, IDisposable
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "ChocoboAutomationMode", "Chocobo automation mode",
                         (source, target) => target.ChocoboAutomationMode = source.ChocoboAutomationMode);
-                    UiGui.TextDisabled("Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted.");
+                    UiGui.TextDisabled("Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted.");
 
                     if (cc.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
                     {

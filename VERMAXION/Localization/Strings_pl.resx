@@ -1149,7 +1149,7 @@ Po wyłączeniu Vermaxion spróbuje działać bez Saucy (może nie działać pra
   <data name="Sync target account: {0}" xml:space="preserve"><value>Docelowe konto synchronizacji: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Docelowy rodowód</value></data>
-  <data name="Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Docelowy rodowód używa trzygodzinnego limitu wyścigów, resetowanego o 09:00 UTC. Hodowla może trwać po wyczerpaniu limitu.</value></data>
+  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Docelowy rodowód używa sześciogodzinnego limitu wyścigów, resetowanego o 09:00 UTC. Hodowla może trwać po wyczerpaniu limitu.</value></data>
   <data name="Targets" xml:space="preserve"><value>Cele</value></data>
   <data name="Task Order" xml:space="preserve"><value>Kolejność zadań</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Testuj rangę chocobo</value></data>

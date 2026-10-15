@@ -1149,7 +1149,7 @@ Jika dinonaktifkan, Vermaxion akan mencoba berjalan tanpa Saucy (mungkin tidak b
   <data name="Sync target account: {0}" xml:space="preserve"><value>Akun target sinkronisasi: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Target Pedigree</value></data>
-  <data name="Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Target Pedigree memakai jatah balapan tiga jam, direset pada 09:00 UTC. Pembiakan dapat berlanjut saat jatah habis.</value></data>
+  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Target Pedigree memakai jatah balapan enam jam, direset pada 09:00 UTC. Pembiakan dapat berlanjut saat jatah habis.</value></data>
   <data name="Targets" xml:space="preserve"><value>Target</value></data>
   <data name="Task Order" xml:space="preserve"><value>Urutan Tugas</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Uji Peringkat Chocobo</value></data>

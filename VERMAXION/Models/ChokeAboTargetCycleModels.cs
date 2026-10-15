@@ -523,7 +523,7 @@ public static class ChocoboTargetCyclePolicy
 
 public static class ChocoboDailyAllowance
 {
-    public const double LimitSeconds = 3 * 60 * 60;
+    public const double LimitSeconds = 6 * 60 * 60;
 
     public static bool Sample(CharacterConfig config, DateTime utc, bool racingActivity, bool afterReload = false)
     {

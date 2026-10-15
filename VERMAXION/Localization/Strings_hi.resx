@@ -1091,7 +1091,7 @@
   <data name="Talk" xml:space="preserve"><value>बात करें</value></data>
   <data name="Target" xml:space="preserve"><value>लक्ष्य</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>लक्ष्य वंशावली</value></data>
-  <data name="Target Pedigree uses a three-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>लक्ष्य वंशावली तीन घंटे की रेसिंग अनुमति उपयोग करती है, जो 09:00 UTC पर रीसेट होती है। अनुमति समाप्त होने पर भी प्रजनन जारी रह सकता है।</value></data>
+  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>लक्ष्य वंशावली छह घंटे की रेसिंग अनुमति उपयोग करती है, जो 09:00 UTC पर रीसेट होती है। अनुमति समाप्त होने पर भी प्रजनन जारी रह सकता है।</value></data>
   <data name="Targets" xml:space="preserve"><value>लक्ष्य</value></data>
   <data name="Task" xml:space="preserve"><value>कार्य</value></data>
   <data name="Task Order" xml:space="preserve"><value>कार्य क्रम</value></data>

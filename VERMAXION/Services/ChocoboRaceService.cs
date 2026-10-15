@@ -131,7 +131,7 @@ public class ChocoboRaceService : IDisposable
         this.configManager = configManager;
         this.chokeAboIpcClient = chokeAboIpcClient;
         this.progressionStartBlock = progressionStartBlock;
-        log.Information("[ChocoboRace] Build marker chocobo-workflow-20260930-02.");
+        log.Information($"[ChocoboRace] Build marker chocobo-workflow-20261015-03; daily racing allowance={ChocoboDailyAllowance.LimitSeconds / 3600:0} hours.");
     }
 
     public bool Start(bool resume = false, bool startNewBatch = false)

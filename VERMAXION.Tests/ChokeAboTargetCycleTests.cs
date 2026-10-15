@@ -117,15 +117,18 @@ public sealed class ChokeAboTargetCycleTests
         }
         var day = new DateTime(2026, 9, 23, 9, 0, 0, DateTimeKind.Utc);
         ChocoboDailyAllowance.Account(config, day, day.AddHours(2), racingActivity: true);
-        Assert.Equal(3600, ChocoboDailyAllowance.Remaining(config, day.AddHours(2)));
+        Assert.Equal(14400, ChocoboDailyAllowance.Remaining(config, day.AddHours(2)));
         ChocoboDailyAllowance.Account(config, day.AddHours(2), day.AddHours(4), racingActivity: false);
-        Assert.Equal(3600, ChocoboDailyAllowance.Remaining(config, day.AddHours(4)));
+        Assert.Equal(14400, ChocoboDailyAllowance.Remaining(config, day.AddHours(4)));
         var resumed = JsonSerializer.Deserialize<CharacterConfig>(JsonSerializer.Serialize(config))!;
         ChocoboDailyAllowance.Account(resumed, day.AddHours(4), day.AddHours(5), racingActivity: true);
-        Assert.Equal(0, ChocoboDailyAllowance.Remaining(resumed, day.AddHours(5)));
+        Assert.Equal(10800, resumed.ChocoboAllowanceSecondsUsed);
+        Assert.Equal(10800, ChocoboDailyAllowance.Remaining(resumed, day.AddHours(5)));
+        ChocoboDailyAllowance.Account(resumed, day.AddHours(5), day.AddHours(8), racingActivity: true);
+        Assert.Equal(0, ChocoboDailyAllowance.Remaining(resumed, day.AddHours(8)));
         ChocoboDailyAllowance.Account(resumed, day.AddDays(1).AddSeconds(-30), day.AddDays(1).AddSeconds(30), racingActivity: true);
         Assert.Equal(30, resumed.ChocoboAllowanceSecondsUsed);
-        Assert.Equal(10770, ChocoboDailyAllowance.Remaining(resumed, day.AddDays(1).AddSeconds(30)));
+        Assert.Equal(21570, ChocoboDailyAllowance.Remaining(resumed, day.AddDays(1).AddSeconds(30)));
         resumed.ChocoboProgressionPaused = true;
         Assert.True(resumed.Clone().ChocoboProgressionPaused);
         Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, resumed, out var pausedRequest, out error), error);
