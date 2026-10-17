@@ -2719,9 +2719,7 @@
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve">
     <value>임무 {0}: {1}/{2}회 완료; 시도 {3}/{4}회.</value>
   </data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve">
-    <value>일일 경주 시간: 03:00:00 중 {0} 남음</value>
-  </data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Lazyparasite 경주 테스트 시간: {1} 중 {0} 남음</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve">
     <value>수령까지 {0} - 현지 시간 {1}</value>
   </data>
@@ -3213,9 +3211,6 @@
   </data>
   <data name="Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable." xml:space="preserve">
     <value>Stylist는 선택 사항입니다. IPC가 없으면 장비 갱신은 VERMAXION의 기본 추천 장비 경로를 사용합니다.</value>
-  </data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>목표 혈통은 09:00 UTC에 초기화되는 6시간 경주 한도를 사용합니다. 한도를 소진해도 교배는 계속할 수 있습니다.</value>
   </data>
   <data name="The standalone window runs on the current character. These settings belong to the selected configuration above." xml:space="preserve">
     <value>독립 창은 현재 캐릭터로 실행합니다. 이 설정은 위에서 선택한 설정에 속합니다.</value>
@@ -4050,9 +4045,6 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   </data>
   <data name="Current character: " xml:space="preserve">
     <value>현재 캐릭터: </value>
-  </data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve">
-    <value>일일 경주 시간: 03:00:00 중 {0:ss} 남음</value>
   </data>
   <data name="Error in pending before-AR login processing: {0}" xml:space="preserve">
     <value>AR 전 대기 중 로그인 처리 오류: {0}</value>
@@ -4922,4 +4914,7 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Food" xml:space="preserve">
     <value>음식</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>수령</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>수령 후 일시 정지</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>준비된 새끼 초코보 한 마리를 수령한 뒤 다음 교배 전에 일시 정지합니다.</value></data>
 </root>

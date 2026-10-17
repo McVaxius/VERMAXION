@@ -37,13 +37,14 @@ public sealed class ChokeAboTargetCycleTests
             Assert.Equal(5, document.RootElement.GetProperty("requestedOffspring").GetInt32());
             Assert.Equal(36U, document.RootElement.GetProperty("acceptableColourIds")[0].GetUInt32());
         }
-        string Status(int produced, bool completed, bool busy = false) => JsonSerializer.Serialize(new
+        string Status(int produced, bool completed, bool busy = false, string phase = "TargetReady",
+            long collected = 4, string? readyAt = null) => JsonSerializer.Serialize(new
         {
-            version = 3, contentId = ContentId, phase = "TargetReady", shouldBlockRacing = true,
+            version = 3, contentId = ContentId, phase, shouldBlockRacing = true,
             targetReady = false, gameActionInProgress = busy, reason = "Retained matching offspring",
-            nextCoveringEligibilityUtc = (string?)null, pedigree = 0, racingRank = 0, progressionComplete = false,
+            nextCoveringEligibilityUtc = readyAt, pedigree = 0, racingRank = 0, progressionComplete = false,
             offspringGoal = 1, matchingOffspringProduced = produced, matchingOffspringRequested = 3,
-            offspringCollected = 4L, productionComplete = completed,
+            offspringCollected = collected, productionComplete = completed,
         });
         Assert.True(ChokeAboTargetCycleProtocol.TryParseStatus(Status(3, true), ContentId, out var status, out error, 3), error);
         Assert.True(status!.ProductionComplete);
@@ -54,6 +55,28 @@ public sealed class ChokeAboTargetCycleTests
         Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(Status(2, true), ContentId, out _, out _, 3));
         Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(Status(3, true, true), ContentId, out _, out _, 3));
         Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(Status(-1, false), ContentId, out _, out _, 3));
+        // Collect-and-pause ends a round even when the genetic target did not match.
+        var pausedReceipt = Status(1, false, phase: "Paused", collected: 2);
+        Assert.True(ChokeAboTargetCycleProtocol.TryParseStatus(pausedReceipt, ContentId, out status, out error, 3), error);
+        Assert.Equal(2L, status!.OffspringCollected);
+        Assert.Equal(1, status.MatchingOffspringProduced);
+        Assert.False(status.ProductionComplete);
+        Assert.Null(status.NextCoveringEligibilityUtc);
+        Assert.Equal(ChocoboTargetHandoffAction.Defer,
+            ChocoboTargetCyclePolicy.DecideHandoff(ChokeAboTargetCycleCallResult.Success(status), 0, 5).Action);
+        // A paused or interrupted owned collection keeps its original eligibility across reload.
+        foreach (var phase in new[] { "Paused", "Blocked", "AdoptionPendingCapture" })
+        {
+            var pendingReceipt = Status(0, false, phase: phase, collected: 1, readyAt: "2026-10-17T12:28:41Z");
+            Assert.True(ChokeAboTargetCycleProtocol.TryParseStatus(pendingReceipt, ContentId, out status, out error, 3), error);
+            Assert.Equal(0, status!.MatchingOffspringProduced);
+            Assert.Equal(1L, status.OffspringCollected);
+            Assert.Equal(DateTimeOffset.Parse("2026-10-17T12:28:41Z"), status.NextCoveringEligibilityUtc);
+            Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(pendingReceipt.Replace("\"version\":3", "\"version\":2"),
+                ContentId, out _, out _, 2));
+        }
+        Assert.False(ChokeAboTargetCycleProtocol.TryParseStatus(
+            Status(0, false, phase: "Racing", readyAt: "2026-10-17T12:28:41Z"), ContentId, out _, out _, 3));
         config.ChocoboAcceptableColourIds.Clear();
         Assert.False(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, config, out _, out _));
     }
@@ -82,20 +105,20 @@ public sealed class ChokeAboTargetCycleTests
     {
         var config = CharacterConfig.CreateNew();
         var now = new DateTime(2026, 9, 23, 10, 0, 0, DateTimeKind.Utc);
-        ChocoboDailyAllowance.Sample(config, now, false);
-        ChocoboDailyAllowance.Sample(config, now.AddMinutes(20), true);
+        ChocoboDailyAllowance.Sample(config, now, false, testAllowanceEnabled: true);
+        ChocoboDailyAllowance.Sample(config, now.AddMinutes(20), true, testAllowanceEnabled: true);
         Assert.Equal(0, config.ChocoboAllowanceSecondsUsed);
-        ChocoboDailyAllowance.Sample(config, now.AddMinutes(21), true);
+        ChocoboDailyAllowance.Sample(config, now.AddMinutes(21), true, testAllowanceEnabled: true);
         var reloaded = JsonSerializer.Deserialize<CharacterConfig>(JsonSerializer.Serialize(config))!;
-        ChocoboDailyAllowance.Sample(reloaded, now.AddMinutes(22), true, afterReload: true);
+        ChocoboDailyAllowance.Sample(reloaded, now.AddMinutes(22), true, testAllowanceEnabled: true, afterReload: true);
         Assert.Equal(120, reloaded.ChocoboAllowanceSecondsUsed);
-        ChocoboDailyAllowance.Sample(reloaded, now.AddMinutes(23), false);
+        ChocoboDailyAllowance.Sample(reloaded, now.AddMinutes(23), false, testAllowanceEnabled: true);
         Assert.Equal(180, reloaded.ChocoboAllowanceSecondsUsed);
         Assert.False(reloaded.ChocoboRacePending);
         Assert.Equal(DateTime.MinValue, reloaded.ChocoboAllowanceSampleUtc);
-        ChocoboDailyAllowance.Sample(reloaded, now.AddHours(2), true, afterReload: true);
+        ChocoboDailyAllowance.Sample(reloaded, now.AddHours(2), true, testAllowanceEnabled: true, afterReload: true);
         Assert.Equal(180, reloaded.ChocoboAllowanceSecondsUsed);
-        ChocoboDailyAllowance.Sample(reloaded, now.AddHours(3), false, afterReload: true);
+        ChocoboDailyAllowance.Sample(reloaded, now.AddHours(3), false, testAllowanceEnabled: true, afterReload: true);
         Assert.Equal(180, reloaded.ChocoboAllowanceSecondsUsed); // A finished queue cannot charge an unknown unload interval.
     }
 
@@ -138,8 +161,24 @@ public sealed class ChokeAboTargetCycleTests
         exhausted.ChocoboAllowanceResetUtc = ChocoboDailyAllowance.ResetAt(DateTime.UtcNow);
         exhausted.ChocoboAllowanceSecondsUsed = ChocoboDailyAllowance.LimitSeconds;
         Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, exhausted, out var exhaustedRequest, out error), error);
+        using (var ordinaryUser = JsonDocument.Parse(exhaustedRequest))
+            Assert.True(ordinaryUser.RootElement.GetProperty("raceAdmissionAllowed").GetBoolean());
+        Assert.True(ChokeAboTargetCycleProtocol.TryCreateEnsureRequestJson(ContentId, exhausted, out exhaustedRequest, out error,
+            enforceTestAllowance: true), error);
         using (var noAllowance = JsonDocument.Parse(exhaustedRequest))
             Assert.False(noAllowance.RootElement.GetProperty("raceAdmissionAllowed").GetBoolean());
+        Assert.True(ChocoboDailyAllowance.IsSelected(AutomationCatalog.ChocoboRacing, "Test@World", "Test@World"));
+        Assert.False(ChocoboDailyAllowance.IsSelected(AutomationCatalog.ChocoboRacing, "Test@World", "Other@World"));
+        Assert.False(ChocoboDailyAllowance.IsSelected(AutomationCatalog.ChocoboRacing, null, "Test@World"));
+        Assert.False(ChocoboDailyAllowance.IsSelected(null, "Test@World", "Test@World"));
+        Assert.False(ChocoboDailyAllowance.IsSelected(AutomationCatalog.VerminionQueue, "Test@World", "Test@World"));
+        // Leaving the selected test stops accounting without replenishing saved consumption.
+        exhausted.ChocoboRacePending = true;
+        exhausted.ChocoboAllowanceSampleUtc = DateTime.UtcNow.AddHours(-1);
+        ChocoboDailyAllowance.Sample(exhausted, DateTime.UtcNow, true);
+        Assert.Equal(ChocoboDailyAllowance.LimitSeconds, exhausted.ChocoboAllowanceSecondsUsed);
+        Assert.False(exhausted.ChocoboRacePending);
+        Assert.Equal(DateTime.MinValue, exhausted.ChocoboAllowanceSampleUtc);
         var copied = CharacterConfig.CreateNew();
         copied.ChocoboAllowanceSecondsUsed = 321;
         ChocoboTargetCyclePolicy.CopySettings(resumed, copied);

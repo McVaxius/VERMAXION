@@ -369,7 +369,6 @@
   <data name="Daily / {0}" xml:space="preserve"><value>दैनिक / {0}</value></data>
   <data name="Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset." xml:space="preserve"><value>Daily MSQ, dad से कॉन्फ़िगर किए गए LAN Party शैली के प्रीसेट पर DadLanPartyModule चलाने को कहता है।</value></data>
   <data name="Daily Tasks" xml:space="preserve"><value>दैनिक कार्य</value></data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve"><value>दैनिक रेसिंग अनुमति: 03:00:00 में से {0:ss} शेष</value></data>
   <data name="Daily: {0}h {1}m | Weekly: {2}d {3}h {4}m | Fashion: {5}d {6}h {7}m | Jumbo payout: {8}d {9}h {10}m" xml:space="preserve"><value>दैनिक: {0} घंटे {1} मिनट | साप्ताहिक: {2} दिन {3} घंटे {4} मिनट | फ़ैशन: {5} दिन {6} घंटे {7} मिनट | Jumbo भुगतान: {8} दिन {9} घंटे {10} मिनट</value></data>
   <data name="Dashboard state: {0}&#xA;" xml:space="preserve"><value>डैशबोर्ड स्थिति: {0}&#xA;</value></data>
   <data name="Default &amp; Sync" xml:space="preserve"><value>डिफ़ॉल्ट और सिंक</value></data>
@@ -1091,7 +1090,6 @@
   <data name="Talk" xml:space="preserve"><value>बात करें</value></data>
   <data name="Target" xml:space="preserve"><value>लक्ष्य</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>लक्ष्य वंशावली</value></data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>लक्ष्य वंशावली छह घंटे की रेसिंग अनुमति उपयोग करती है, जो 09:00 UTC पर रीसेट होती है। अनुमति समाप्त होने पर भी प्रजनन जारी रह सकता है।</value></data>
   <data name="Targets" xml:space="preserve"><value>लक्ष्य</value></data>
   <data name="Task" xml:space="preserve"><value>कार्य</value></data>
   <data name="Task Order" xml:space="preserve"><value>कार्य क्रम</value></data>
@@ -1428,7 +1426,7 @@
   <data name="Paused. Explicit Resume is required, including after a reload." xml:space="preserve"><value>विराम लगा है. रीलोड के बाद भी स्पष्ट रूप से फिर शुरू करना आवश्यक है.</value></data>
   <data name="Next stage attempts: {0}/3 · Losses: {1} · Weekly: {2}/5 matches; {3} wins." xml:space="preserve"><value>अगले चरण के प्रयास: {0}/3 · हार: {1} · साप्ताहिक: {2}/5 मैच; {3} जीत.</value></data>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve"><value>मिशन {0}: {1}/{2} बार पूरा; प्रयास {3}/{4}.</value></data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve"><value>दैनिक रेसिंग सीमा: 03:00:00 में से {0} शेष</value></data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Lazyparasite रेसिंग परीक्षण समय: {1} में से {0} शेष</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve"><value>संग्रह {0} में तैयार होगा - स्थानीय समय {1}</value></data>
   <data name="Resets {0} local (09:00 UTC). Covering waits do not consume racing time." xml:space="preserve"><value>स्थानीय समय {0} पर रीसेट (09:00 UTC). कवरिंग की प्रतीक्षा रेसिंग समय नहीं घटाती.</value></data>
   <data name="NPC rank, crafting/gathering/fishing bonuses and verified progress are shown below the task table." xml:space="preserve"><value>NPC रैंक, क्राफ़्टिंग/गैदरिंग/फ़िशिंग बोनस और सत्यापित प्रगति कार्य तालिका के नीचे दिखाई गई है.</value></data>
@@ -1705,4 +1703,7 @@
   <data name="Food" xml:space="preserve">
     <value>भोजन</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>प्राप्त करें</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>प्राप्त करें और रोकें</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>तैयार संतति प्राप्त करें और अगले प्रजनन से पहले रुकें।</value></data>
 </root>

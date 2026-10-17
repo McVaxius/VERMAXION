@@ -2719,9 +2719,7 @@
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve">
     <value>任务{0}：通关{1}/{2}次；尝试{3}/{4}次。</value>
   </data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve">
-    <value>每日竞赛时间：03:00:00中剩余{0}</value>
-  </data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Lazyparasite竞赛测试时间：共{1}，剩余{0}</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve">
     <value>距离可领取还有{0} - 本地时间{1}</value>
   </data>
@@ -3213,9 +3211,6 @@
   </data>
   <data name="Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable." xml:space="preserve">
     <value>Stylist为可选插件。IPC不可用时，装备更新使用VERMAXION原生推荐装备流程。</value>
-  </data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>目标血统使用六小时竞赛额度，于09:00 UTC重置。额度耗尽后仍可继续繁育。</value>
   </data>
   <data name="The standalone window runs on the current character. These settings belong to the selected configuration above." xml:space="preserve">
     <value>独立窗口在当前角色上运行。这些设置属于上方所选配置。</value>
@@ -4050,9 +4045,6 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   </data>
   <data name="Current character: " xml:space="preserve">
     <value>当前角色： </value>
-  </data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve">
-    <value>每日竞赛时间：03:00:00 中剩余 {0:ss}</value>
   </data>
   <data name="Error in pending before-AR login processing: {0}" xml:space="preserve">
     <value>处理 AR 前待定登录时出错：{0}</value>
@@ -4922,4 +4914,7 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Food" xml:space="preserve">
     <value>食物</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>领取</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>领取并暂停</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>领取一只已准备好的幼鸟，并在下一次配种前暂停。</value></data>
 </root>

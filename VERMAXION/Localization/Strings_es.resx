@@ -2719,9 +2719,7 @@ Solo icono: '⚫'</value>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve">
     <value>Misión {0}: {1}/{2} victorias; intentos {3}/{4}.</value>
   </data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve">
-    <value>Tiempo de carrera diario: quedan {0} de 03:00:00</value>
-  </data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Tiempo de pruebas de carreras de Lazyparasite: quedan {0} de {1}</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve">
     <value>Recogida en {0} - {1} hora local</value>
   </data>
@@ -3213,9 +3211,6 @@ Desactivado: intenta ejecutarse sin Saucy (puede funcionar mal).</value>
   </data>
   <data name="Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable." xml:space="preserve">
     <value>Stylist es opcional. Sin su IPC, Gear Updater usa el equipo recomendado nativo de VERMAXION.</value>
-  </data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>Pedigrí objetivo usa seis horas de carrera, reiniciadas a las 09:00 UTC. La cría puede continuar si se agotan.</value>
   </data>
   <data name="The standalone window runs on the current character. These settings belong to the selected configuration above." xml:space="preserve">
     <value>La ventana independiente usa el personaje actual. Estos ajustes pertenecen a la configuración seleccionada arriba.</value>
@@ -4050,9 +4045,6 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   </data>
   <data name="Current character: " xml:space="preserve">
     <value>Personaje actual: </value>
-  </data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve">
-    <value>Tiempo diario de carreras: quedan {0:ss} de 03:00:00</value>
   </data>
   <data name="Error in pending before-AR login processing: {0}" xml:space="preserve">
     <value>Error al procesar el inicio de sesión pendiente antes de AR: {0}</value>
@@ -4922,4 +4914,7 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Food" xml:space="preserve">
     <value>Comida</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>Recoger</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>Recoger y pausar</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Recoge una cría disponible y pausa antes de otra cubrición.</value></data>
 </root>

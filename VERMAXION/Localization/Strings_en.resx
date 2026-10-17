@@ -1107,9 +1107,6 @@ Icon Only: '⚫'</value>
   <data name="Daily Tasks" xml:space="preserve">
     <value>Daily Tasks</value>
   </data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve">
-    <value>Daily racing allowance: {0:ss} of 03:00:00 remaining</value>
-  </data>
   <data name="Daily: {0}h {1}m | Weekly: {2}d {3}h {4}m | Fashion: {5}d {6}h {7}m | Jumbo payout: {8}d {9}h {10}m" xml:space="preserve">
     <value>Daily: {0}h {1}m | Weekly: {2}d {3}h {4}m | Fashion: {5}d {6}h {7}m | Jumbo payout: {8}d {9}h {10}m</value>
   </data>
@@ -3286,9 +3283,6 @@ If disabled, Vermaxion will attempt to run without Saucy (may not work properly)
   <data name="Target Pedigree" xml:space="preserve">
     <value>Target Pedigree</value>
   </data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted.</value>
-  </data>
   <data name="Targets" xml:space="preserve">
     <value>Targets</value>
   </data>
@@ -4303,9 +4297,7 @@ Dependencies: {1}</value>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve">
     <value>Mission {0}: {1}/{2} clears; attempts {3}/{4}.</value>
   </data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve">
-    <value>Daily racing allowance: {0} of 03:00:00 remaining</value>
-  </data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Lazyparasite racing budget: {0} of {1} remaining</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve">
     <value>Collection ready in {0} - {1} local</value>
   </data>
@@ -4922,4 +4914,7 @@ Dependencies: {1}</value>
   <data name="Food" xml:space="preserve">
     <value>Food</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>Collect</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>Collect and pause</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Collect one eligible offspring and pause before another covering.</value></data>
 </root>

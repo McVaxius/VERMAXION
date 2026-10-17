@@ -282,7 +282,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         VerminionService = new VerminionService(CommandManager, Condition, Log, ConfigManager, LifestreamIPC, VNavmeshIPC);
         CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC, LifestreamIPC);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient,
-            () => CanStartChocoboProgression(out var reason) ? null : reason);
+            () => CanStartChocoboProgression(out var reason) ? null : reason,
+            () => IsChocoboReloadTestSelected);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
         StylistIPC = new StylistIPC(PluginInterface, Log);
@@ -999,7 +1000,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             SetDebugTaskStatus("Questionable owns minion acquisition; this reload only observes the saved handoff.");
             return;
         }
-        if (taskId == AutomationCatalog.ChocoboRacing && ConfigManager.GetActiveConfig().ChocoboProgressionPaused)
+        if ((taskId == AutomationCatalog.ChocoboRacing || taskId == VERMAXION.Services.ChocoboRaceService.CollectAndPauseTaskId) &&
+            ConfigManager.GetActiveConfig().ChocoboProgressionPaused)
         {
             SetDebugTaskStatus("Chocobo progression is paused; explicit Resume is required before reload continuation.");
             return;
@@ -1619,6 +1621,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
             case "chocobo resume":
                 RunDashboardAction(() => ChocoboRaceService.ResumeProgression());
+                break;
+
+            case "chocobo collect":
+                RunDashboardAction(ChocoboRaceService.CollectAndPause);
                 break;
 
             case "chocobo settings":
@@ -3195,6 +3201,19 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         foreach (var addon in new[] { "Talk", "SelectString", "SelectIconString", "SelectYesno", "Shop", "RetainerList", "HousingChocoboList" })
             if (GameHelpers.IsAddonVisible(addon)) return false;
         return ConfigManager.GetActiveConfig().Enabled;
+    }
+
+    internal bool IsChocoboReloadTestSelected
+    {
+        get
+        {
+#if DEBUG
+            return ChocoboDailyAllowance.IsSelected(Configuration.DebugTaskId,
+                Configuration.DebugTaskCharacterKey, ConfigManager.CurrentCharacterKey);
+#else
+            return false;
+#endif
+        }
     }
 
     private void ProcessChocoboContinuation()

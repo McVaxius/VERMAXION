@@ -3,6 +3,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
+using VERMAXION.Models;
 
 namespace VERMAXION.Windows;
 
@@ -45,6 +46,16 @@ internal sealed class DebugWindow : Window
             plugin.FullStop();
         UiGui.TextWrapped(UiText.F($"Saved task: {plugin.Configuration.DebugTaskId ?? UiText.T("none")}"));
         UIConstants.Status("DebugStatus", plugin.DebugTaskStatus, UIConstants.Metadata);
+        if (plugin.IsChocoboReloadTestSelected)
+        {
+            var now = DateTime.UtcNow;
+            var allowance = ChocoboDailyAllowance.Remaining(plugin.ConfigManager.GetActiveConfig(), now);
+            UiGui.TextWrapped(UiText.F("Lazyparasite racing budget: {0} of {1} remaining",
+                TimeSpan.FromSeconds(allowance).ToString(@"hh\:mm\:ss", UiText.Current.Culture),
+                TimeSpan.FromSeconds(ChocoboDailyAllowance.LimitSeconds).ToString(@"hh\:mm\:ss", UiText.Current.Culture)));
+            UiGui.TextDisabled(UiText.F("Resets {0} local (09:00 UTC). Covering waits do not consume racing time.",
+                ChocoboDailyAllowance.ResetAt(now).AddDays(1).ToLocalTime().ToString("f", UiText.Current.Culture)));
+        }
         UIConstants.SetNextItemWidth(-1f);
         UiGui.InputTextWithHint("##DebugTaskSearch", "Search task name or identifier", ref taskSearch, 100);
         ImGui.Separator();

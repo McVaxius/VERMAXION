@@ -1,11 +1,16 @@
+2026-10-17 - Collect and pause; scope the racing budget to reload testing
+
+- Add a manual Collect and pause action in chocobo settings, the dashboard and `/vmx chocobo collect`. Collect one eligible offspring through the dedicated V3 operation, then retain the saved pause before another covering. Keep actual matches separate from collected rounds and preserve Stop/reload gates.
+- Restrict the saved six-hour racing budget to the selected character's Lazyparasite chocobo task in Debug builds. Ordinary user runs follow their configured race count or progression goal without a time cap, regardless of saved test consumption. Show test accounting only in the reload-testing window and retain consumed queue/racing time and the 09:00 UTC reset.
+
 2026-10-16 - Confirmation popups without screen dimming (I576)
 
 - Keep fishing-stock removal, the setup wizard, configuration actions and personal-list replacement in titled native popups without a full-screen dimmer. Preserve dialog IDs, validation, draft/cancel behavior, existing close controls and saved opacity. Dismissing a popup never applies its pending action.
 
-2026-10-15 - Six-hour daily chocobo racing allowance
+2026-10-15 - Six-hour daily chocobo reload-testing budget
 
-- Double progression racing time from three to six hours per character and server day, retaining time already used and the 09:00 UTC reset. Queue and racing activity count; breeding, feeding, travel and covering waits remain excluded.
-- Keep the current race safe at exhaustion and preserve Pause/Resume/Stop. Update the allowance explanation in every supported language.
+- Double the selected Lazyparasite test character's racing budget from three to six hours per server day, retaining time already used and the 09:00 UTC reset. Queue and racing activity count; breeding, feeding, travel and covering waits remain excluded.
+- Keep the current test race safe at exhaustion and preserve Pause/Resume/Stop. This budget belongs to automated development testing; normal user runs have no racing time cap.
 
 2026-10-14 - Inline settings subframes
 
@@ -340,7 +345,7 @@
 - Add searchable ability choices and readable summaries for both quantities, plus selected colour names and a clear-selection action. Copy the full goal settings without copying racing allowance consumption.
 - Add a permit objective for explicitly producing a missing current-pedigree counterpart. Pause when changing this objective and use dedicated Choke-abo V3 operations so an older executor cannot silently advance the pedigree instead. The final progression target stays unchanged.
 - Keep production start unavailable until native offspring ability and colour inspection is verified. The request path rejects production goals instead of silently treating them as ordinary pedigree progression. Production matching, quantity accounting and breeding execution remain unfinished.
-- Show registered pedigree and racing rank separately, native inherited/learned abilities and colour, remaining three-hour allowance, local reset and covering readiness, and the next action. Keep Pause/Resume/Stop accessible, and show daily race-count settings only in daily racing mode.
+- Show registered pedigree and racing rank separately, native inherited/learned abilities and colour, covering readiness and the next action. Keep Pause/Resume/Stop accessible, and show daily race-count settings only in daily racing mode.
 - Open the daily settings directly with `/vmx chocobo settings`. Progression Resume rejects daily-racing mode and unavailable production goals before clearing the saved pause; choosing a batch goal cannot silently start ordinary racing.
 
 ## Unreleased - Jumbo Cactpot purchase fixes
@@ -529,8 +534,8 @@
 - Detect a Choke-abo V3 endpoint disappearing while progression is deferred, then reassess through the normal readiness/Stop gates when it returns, even when no Ensure call occurred during the reload.
 - Require Choke-abo V3 for target progression and expose owned parents/NPC permits, Grade 1-3 feed, gil/MGP reserves, and Fall back/Skip/Stop. Keep legacy Always Race behavior and existing V1/V2 protocol parsing available.
 - Recognize the V3 required-supplies phase separately from optional feeding while Choke-abo owns the action.
-- Track three hours of queue/racing activity per character at the 09:00 UTC reset, retain consumption across reload, and split activity across the reset boundary. Exhaustion stops new race admissions while breeding remains eligible; a race already underway may finish.
-- Add explicit progression Pause/Resume/Stop, saved stop state, and continuation through the existing readiness/ownership checks and manual action path. Report current pedigree, racing rank, allowance and the next-action reason. Target completion requires current rank-50 evidence from V3.
+- Track the selected Lazyparasite test character's queue/racing budget at the 09:00 UTC reset, retain consumption across reload, and split activity across the reset boundary. Test-budget exhaustion stops new test-race admissions while breeding remains eligible; a race already underway may finish. Normal user runs have no racing time cap.
+- Add explicit progression Pause/Resume/Stop, saved stop state, and continuation through the existing readiness/ownership checks and manual action path. Report current pedigree, racing rank and the next-action reason. Target completion requires current rank-50 evidence from V3.
 - Route missing Gold Saucer/racing/breeding unlocks through existing single-quest paths. Recognize the installed WigglyQuest IPC names, retain only the selected unlock in its priority list while owned, and clean up that entry on completion or Stop. Ordinary level/MSQ prerequisites remain explicit blockers.
 - Bind new reload selections to the selected character and wait for owned UI cleanup before dispatch; FULL STOP cancels that pending dispatch.
 - Reconcile the registrar's tutorial queue into the existing racing loop. Send current race-admission allowance through V3 and identify owned queues by actual racing territories; the shared Gold Saucer content type alone is insufficient.

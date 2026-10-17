@@ -385,7 +385,6 @@ Chỉ biểu tượng: '⚫'</value></data>
   <data name="Daily / {0}" xml:space="preserve"><value>Hằng ngày / {0}</value></data>
   <data name="Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset." xml:space="preserve"><value>Daily MSQ yêu cầu dad chạy DadLanPartyModule với preset kiểu LAN Party đã cấu hình.</value></data>
   <data name="Daily Tasks" xml:space="preserve"><value>Tác vụ hằng ngày</value></data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve"><value>Thời lượng đua hằng ngày: còn {0:ss} trên 03:00:00</value></data>
   <data name="Daily: {0}h {1}m | Weekly: {2}d {3}h {4}m | Fashion: {5}d {6}h {7}m | Jumbo payout: {8}d {9}h {10}m" xml:space="preserve"><value>Hằng ngày: {0} giờ {1} phút | Hằng tuần: {2} ngày {3} giờ {4} phút | Fashion: {5} ngày {6} giờ {7} phút | Trả thưởng Jumbo: {8} ngày {9} giờ {10} phút</value></data>
   <data name="Dashboard state: {0}&#10;" xml:space="preserve"><value>Trạng thái bảng điều khiển: {0}
 </value></data>
@@ -1149,7 +1148,6 @@ Nếu tắt, Vermaxion sẽ thử chạy mà không có Saucy (có thể không 
   <data name="Sync target account: {0}" xml:space="preserve"><value>Tài khoản đích đồng bộ: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Phả hệ mục tiêu</value></data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Phả hệ mục tiêu dùng mức thời gian đua sáu giờ, đặt lại lúc 09:00 UTC. Sinh sản có thể tiếp tục khi hết thời gian cho phép.</value></data>
   <data name="Targets" xml:space="preserve"><value>Mục tiêu</value></data>
   <data name="Task Order" xml:space="preserve"><value>Thứ tự tác vụ</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Kiểm tra hạng chocobo</value></data>
@@ -1464,7 +1462,7 @@ Phụ thuộc: {1}</value></data>
   <data name="Paused. Explicit Resume is required, including after a reload." xml:space="preserve"><value>Đã tạm dừng. Phải chủ động dùng Tiếp tục, kể cả sau khi tải lại.</value></data>
   <data name="Next stage attempts: {0}/3 · Losses: {1} · Weekly: {2}/5 matches; {3} wins." xml:space="preserve"><value>Lần thử màn tiếp theo: {0}/3 · Thua: {1} · Hằng tuần: {2}/5 trận; {3} thắng.</value></data>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve"><value>Nhiệm vụ {0}: {1}/{2} lần hoàn thành; lần thử {3}/{4}.</value></data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve"><value>Thời gian đua cho phép hằng ngày: còn {0} trên 03:00:00</value></data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Thời gian thử đua Lazyparasite: còn {0} trên {1}</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve"><value>Thu thập sẵn sàng sau {0} - {1} giờ địa phương</value></data>
   <data name="Resets {0} local (09:00 UTC). Covering waits do not consume racing time." xml:space="preserve"><value>Đặt lại lúc {0} theo giờ địa phương (09:00 UTC). Chờ phối giống không tiêu tốn thời gian đua.</value></data>
   <data name="NPC rank, crafting/gathering/fishing bonuses and verified progress are shown below the task table." xml:space="preserve"><value>Hạng NPC, thưởng chế tạo/thu thập/câu cá và tiến độ đã xác minh hiển thị dưới bảng tác vụ.</value></data>
@@ -2066,4 +2064,7 @@ Phụ thuộc: {1}</value></data>
   <data name="Food" xml:space="preserve">
     <value>Thức ăn</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>Nhận</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>Nhận và tạm dừng</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Nhận một chocobo con đã sẵn sàng rồi tạm dừng trước lần phối giống tiếp theo.</value></data>
 </root>

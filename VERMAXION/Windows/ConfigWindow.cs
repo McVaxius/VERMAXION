@@ -2129,7 +2129,6 @@ public class ConfigWindow : Window, IDisposable
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "ChocoboAutomationMode", "Chocobo automation mode",
                         (source, target) => target.ChocoboAutomationMode = source.ChocoboAutomationMode);
-                    UiGui.TextDisabled("Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted.");
 
                     if (cc.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree)
                     {
@@ -3588,11 +3587,7 @@ public class ConfigWindow : Window, IDisposable
         var contentId = Plugin.PlayerState.ContentId;
         var now = DateTime.UtcNow;
         var config = plugin.ConfigManager.GetActiveConfig();
-        var allowance = ChocoboDailyAllowance.Remaining(config, now);
         ImGui.Separator();
-        UiGui.Text(UiText.F("Daily racing allowance: {0} of 03:00:00 remaining", TimeSpan.FromSeconds(allowance).ToString(@"hh\:mm\:ss", UiText.Current.Culture)));
-        ImGui.ProgressBar((float)(allowance / ChocoboDailyAllowance.LimitSeconds), new Vector2(-1, 0), UiText.T("Queue and racing time only"));
-        UiGui.TextDisabled(UiText.F("Resets {0} local (09:00 UTC). Covering waits do not consume racing time.", ChocoboDailyAllowance.ResetAt(now).AddDays(1).ToLocalTime().ToString("f", UiText.Current.Culture)));
         UiGui.Text(config.ChocoboProgressionPaused ? "Progression paused" : "Progression enabled");
         ImGui.BeginDisabled(config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree && !plugin.ChokeAboIpcClient.IsWorkflowAvailable);
         if (UIConstants.Button("Resume##ChocoboProgression"))
@@ -3602,6 +3597,12 @@ public class ConfigWindow : Window, IDisposable
         if (UIConstants.Button("Pause##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
         UIConstants.SameLineIfFits("Stop##ChocoboProgression");
         if (UIConstants.Button("Stop##ChocoboProgression")) plugin.ChocoboRaceService.PauseProgression();
+        UIConstants.SameLineIfFits("Collect and pause##ChocoCollection");
+        ImGui.BeginDisabled(plugin.ChocoboRaceService.IsActive || !plugin.ChokeAboIpcClient.IsCollectionPauseAvailable);
+        if (UIConstants.Button("Collect and pause##ChocoCollection"))
+            plugin.RunDashboardAction(plugin.ChocoboRaceService.CollectAndPause);
+        ImGui.EndDisabled();
+        UiGui.TextDisabled("Collect one eligible offspring and pause before another covering.");
         if (config.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree)
         {
             UiGui.TextWrapped("Matching offspring stay unregistered. A matching G9 racer retires at rank 40 to become breeding stock.");

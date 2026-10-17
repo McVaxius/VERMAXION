@@ -2719,9 +2719,7 @@
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve">
     <value>ミッション{0}: {1}/{2}回クリア、試行{3}/{4}回。</value>
   </data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve">
-    <value>今日のレース時間: 03:00:00中、残り{0}</value>
-  </data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Lazyparasiteレーステスト時間：{1}中 残り{0}</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve">
     <value>受取可能まで{0} - 現地時刻{1}</value>
   </data>
@@ -3213,9 +3211,6 @@
   </data>
   <data name="Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable." xml:space="preserve">
     <value>Stylistは任意です。IPCが利用できなければ、VERMAXIONのネイティブ最強装備経路を使います。</value>
-  </data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>目標血統は09:00 UTCにリセットされる6時間のレース枠を使います。時間枠を使い切っても交配は続けられます。</value>
   </data>
   <data name="The standalone window runs on the current character. These settings belong to the selected configuration above." xml:space="preserve">
     <value>単独ウィンドウは現在のキャラクターで実行します。ここでの設定は上で選択した設定範囲に属します。</value>
@@ -4050,9 +4045,6 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   </data>
   <data name="Current character: " xml:space="preserve">
     <value>現在のキャラクター: </value>
-  </data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve">
-    <value>1日のレース時間: 03:00:00 中 {0:ss} 残り</value>
   </data>
   <data name="Error in pending before-AR login processing: {0}" xml:space="preserve">
     <value>AR前の保留中ログイン処理でエラー: {0}</value>
@@ -4922,4 +4914,7 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Food" xml:space="preserve">
     <value>食事</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>受け取る</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>受け取って一時停止</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>受け取り可能な子チョコボを1羽受け取り、次の交配前に一時停止します。</value></data>
 </root>

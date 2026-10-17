@@ -73,7 +73,8 @@ public static class ChokeAboTargetCycleProtocol
 {
     public const int Version = 2;
 
-    public static bool TryCreateEnsureRequestJson(ulong contentId, CharacterConfig config, out string json, out string error)
+    public static bool TryCreateEnsureRequestJson(ulong contentId, CharacterConfig config, out string json, out string error,
+        bool enforceTestAllowance = false)
     {
         json = string.Empty;
         if (!Enum.IsDefined(config.ChocoboBreedingGoal))
@@ -105,7 +106,8 @@ public static class ChokeAboTargetCycleProtocol
             requestedOffspring = production ? requested : 0,
             desiredInheritedAbilityId = config.ChocoboDesiredInheritedAbilityId,
             acceptableColourIds = (config.ChocoboAcceptableColourIds ?? new List<uint>()).Distinct().Order().ToArray(),
-            raceAdmissionAllowed = ChocoboDailyAllowance.Remaining(config, DateTime.UtcNow) > 0 && !config.ChocoboProgressionPaused });
+            raceAdmissionAllowed = !config.ChocoboProgressionPaused &&
+                (!enforceTestAllowance || ChocoboDailyAllowance.Remaining(config, DateTime.UtcNow) > 0) });
         return true;
     }
 
@@ -208,9 +210,10 @@ public static class ChokeAboTargetCycleProtocol
                 return false;
             }
 
-            if (nextCoveringEligibilityUtc.HasValue && phase != ChokeAboTargetCyclePhase.CoveringWait)
+            if (nextCoveringEligibilityUtc.HasValue && phase != ChokeAboTargetCyclePhase.CoveringWait &&
+                !(expectedVersion == 3 && phase is ChokeAboTargetCyclePhase.Paused or ChokeAboTargetCyclePhase.Blocked or ChokeAboTargetCyclePhase.AdoptionPendingCapture))
             {
-                error = "Choke-abo returned covering eligibility outside CoveringWait.";
+                error = "Choke-abo returned covering eligibility outside an owned collection phase.";
                 return false;
             }
 
@@ -523,10 +526,23 @@ public static class ChocoboTargetCyclePolicy
 
 public static class ChocoboDailyAllowance
 {
+    // Saved Lazyparasite test budget; normal user workflows have no time cap.
     public const double LimitSeconds = 6 * 60 * 60;
 
-    public static bool Sample(CharacterConfig config, DateTime utc, bool racingActivity, bool afterReload = false)
+    public static bool IsSelected(string? taskId, string? selectedCharacterKey, string currentCharacterKey)
+        => taskId == AutomationCatalog.ChocoboRacing && !string.IsNullOrEmpty(selectedCharacterKey) &&
+           string.Equals(selectedCharacterKey, currentCharacterKey, StringComparison.Ordinal);
+
+    public static bool Sample(CharacterConfig config, DateTime utc, bool racingActivity,
+        bool testAllowanceEnabled = false, bool afterReload = false)
     {
+        if (!testAllowanceEnabled)
+        {
+            var cleared = config.ChocoboRacePending || config.ChocoboAllowanceSampleUtc != DateTime.MinValue;
+            config.ChocoboRacePending = false;
+            config.ChocoboAllowanceSampleUtc = DateTime.MinValue;
+            return cleared;
+        }
         var wasActive = config.ChocoboRacePending;
         var changed = Account(config, config.ChocoboAllowanceSampleUtc, utc,
             wasActive && (!afterReload || racingActivity));

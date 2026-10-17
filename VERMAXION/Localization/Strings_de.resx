@@ -2722,9 +2722,7 @@ Nur Symbol: '⚫'</value>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve">
     <value>Mission {0}: {1}/{2} Abschlüsse; Versuche {3}/{4}.</value>
   </data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve">
-    <value>Tägliche Rennzeit: {0} von 03:00:00 verbleibend</value>
-  </data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Lazyparasite-Renntestbudget: {0} von {1} verbleibend</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve">
     <value>Abholung in {0} – {1} Ortszeit</value>
   </data>
@@ -3216,9 +3214,6 @@ Deaktiviert: Vermaxion versucht es ohne Saucy (funktioniert eventuell nicht rich
   </data>
   <data name="Stylist is optional. Gear Updater falls back to VERMAXION's native recommended-equipment path when its IPC is unavailable." xml:space="preserve">
     <value>Stylist ist optional. Ohne IPC nutzt Gear Updater VERMAXIONs native Ausrüstungsempfehlung.</value>
-  </data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve">
-    <value>Zielabstammung verwendet sechs Stunden Rennzeit mit Reset 09:00 UTC. Zucht läuft auch bei verbrauchter Zeit weiter.</value>
   </data>
   <data name="The standalone window runs on the current character. These settings belong to the selected configuration above." xml:space="preserve">
     <value>Das separate Fenster läuft auf dem aktuellen Charakter. Diese Einstellungen gehören zur oben gewählten Konfiguration.</value>
@@ -4050,9 +4045,6 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   </data>
   <data name="Current character: " xml:space="preserve">
     <value>Aktueller Charakter: </value>
-  </data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve">
-    <value>Tägliche Rennzeit: {0:ss} von 03:00:00 verbleibend</value>
   </data>
   <data name="Error in pending before-AR login processing: {0}" xml:space="preserve">
     <value>Fehler bei ausstehender Login-Verarbeitung vor AR: {0}</value>
@@ -4922,4 +4914,7 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Food" xml:space="preserve">
     <value>Essen</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>Abholen</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>Abholen und pausieren</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Ein bereites Küken abholen und vor der nächsten Paarung pausieren.</value></data>
 </root>

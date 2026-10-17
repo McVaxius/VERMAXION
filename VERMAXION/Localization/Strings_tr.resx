@@ -385,7 +385,6 @@ Yalnızca Simge: '⚫'</value></data>
   <data name="Daily / {0}" xml:space="preserve"><value>Günlük / {0}</value></data>
   <data name="Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset." xml:space="preserve"><value>Günlük MSQ, dad'dan yapılandırılmış LAN Party tarzı önayarla DadLanPartyModule çalıştırmasını ister.</value></data>
   <data name="Daily Tasks" xml:space="preserve"><value>Günlük Görevler</value></data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve"><value>Günlük yarış hakkı: 03:00:00 süreden {0:ss} kaldı</value></data>
   <data name="Daily: {0}h {1}m | Weekly: {2}d {3}h {4}m | Fashion: {5}d {6}h {7}m | Jumbo payout: {8}d {9}h {10}m" xml:space="preserve"><value>Günlük: {0} sa {1} dk | Haftalık: {2} gün {3} sa {4} dk | Fashion: {5} gün {6} sa {7} dk | Jumbo ödemesi: {8} gün {9} sa {10} dk</value></data>
   <data name="Dashboard state: {0}&#10;" xml:space="preserve"><value>Pano durumu: {0}
 </value></data>
@@ -1149,7 +1148,6 @@ Devre dışıysa Vermaxion, Saucy olmadan çalışmayı dener (düzgün çalış
   <data name="Sync target account: {0}" xml:space="preserve"><value>Eşitleme hedef hesabı: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Hedef Soy</value></data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Hedef Soy, 09:00 UTC'de sıfırlanan altı saatlik yarış hakkı kullanır. Hak bittiğinde yetiştirme devam edebilir.</value></data>
   <data name="Targets" xml:space="preserve"><value>Hedefler</value></data>
   <data name="Task Order" xml:space="preserve"><value>Görev Sırası</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Chocobo Rütbesini Test Et</value></data>
@@ -1464,7 +1462,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="Paused. Explicit Resume is required, including after a reload." xml:space="preserve"><value>Duraklatıldı. Yeniden yükleme sonrasında da açıkça Sürdür gerekir.</value></data>
   <data name="Next stage attempts: {0}/3 · Losses: {1} · Weekly: {2}/5 matches; {3} wins." xml:space="preserve"><value>Sonraki aşama denemeleri: {0}/3 · Yenilgiler: {1} · Haftalık: {2}/5 maç; {3} galibiyet.</value></data>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve"><value>Görev {0}: {1}/{2} tamamlama; denemeler {3}/{4}.</value></data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve"><value>Günlük yarış hakkı: 03:00:00 içinden {0} kaldı</value></data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Lazyparasite yarış testi süresi: {1} içinden {0} kaldı</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve"><value>Koleksiyon {0} sonra hazır - yerel {1}</value></data>
   <data name="Resets {0} local (09:00 UTC). Covering waits do not consume racing time." xml:space="preserve"><value>Yerel {0} zamanında sıfırlanır (09:00 UTC). Çiftleşme beklemeleri yarış süresini tüketmez.</value></data>
   <data name="NPC rank, crafting/gathering/fishing bonuses and verified progress are shown below the task table." xml:space="preserve"><value>NPC rütbesi, üretim/toplama/balıkçılık bonusları ve doğrulanmış ilerleme görev tablosunun altında gösterilir.</value></data>
@@ -2066,4 +2064,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="Food" xml:space="preserve">
     <value>Yiyecek</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>Teslim al</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>Teslim al ve duraklat</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Hazır bir yavruyu teslim al ve sonraki çiftleşmeden önce duraklat.</value></data>
 </root>

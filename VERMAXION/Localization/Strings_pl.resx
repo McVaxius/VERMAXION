@@ -385,7 +385,6 @@ Tylko ikona: '⚫'</value></data>
   <data name="Daily / {0}" xml:space="preserve"><value>Codziennie / {0}</value></data>
   <data name="Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset." xml:space="preserve"><value>Codzienne MSQ zleca dad uruchomienie DadLanPartyModule ze skonfigurowanym presetem w stylu LAN Party.</value></data>
   <data name="Daily Tasks" xml:space="preserve"><value>Zadania dzienne</value></data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve"><value>Dzienny limit wyścigów: pozostało {0:ss} z 03:00:00</value></data>
   <data name="Daily: {0}h {1}m | Weekly: {2}d {3}h {4}m | Fashion: {5}d {6}h {7}m | Jumbo payout: {8}d {9}h {10}m" xml:space="preserve"><value>Codziennie: {0} godz. {1} min | Tygodniowo: {2} dni {3} godz. {4} min | Fashion: {5} dni {6} godz. {7} min | Wypłata Jumbo: {8} dni {9} godz. {10} min</value></data>
   <data name="Dashboard state: {0}&#10;" xml:space="preserve"><value>Stan panelu: {0}
 </value></data>
@@ -1149,7 +1148,6 @@ Po wyłączeniu Vermaxion spróbuje działać bez Saucy (może nie działać pra
   <data name="Sync target account: {0}" xml:space="preserve"><value>Docelowe konto synchronizacji: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Docelowy rodowód</value></data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Docelowy rodowód używa sześciogodzinnego limitu wyścigów, resetowanego o 09:00 UTC. Hodowla może trwać po wyczerpaniu limitu.</value></data>
   <data name="Targets" xml:space="preserve"><value>Cele</value></data>
   <data name="Task Order" xml:space="preserve"><value>Kolejność zadań</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Testuj rangę chocobo</value></data>
@@ -1464,7 +1462,7 @@ Zależności: {1}</value></data>
   <data name="Paused. Explicit Resume is required, including after a reload." xml:space="preserve"><value>Wstrzymane. Wymagane jest jawne Wznów, także po przeładowaniu.</value></data>
   <data name="Next stage attempts: {0}/3 · Losses: {1} · Weekly: {2}/5 matches; {3} wins." xml:space="preserve"><value>Próby następnego etapu: {0}/3 · Porażki: {1} · Tygodniowo: {2}/5 meczów; zwycięstwa: {3}.</value></data>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve"><value>Misja {0}: ukończenia {1}/{2}; próby {3}/{4}.</value></data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve"><value>Dzienny limit wyścigów: pozostało {0} z 03:00:00</value></data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Czas testów wyścigów Lazyparasite: pozostało {0} z {1}</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve"><value>Zbieranie gotowe za {0} - {1} czasu lokalnego</value></data>
   <data name="Resets {0} local (09:00 UTC). Covering waits do not consume racing time." xml:space="preserve"><value>Reset o {0} czasu lokalnego (09:00 UTC). Czekanie na krycie nie zużywa czasu wyścigów.</value></data>
   <data name="NPC rank, crafting/gathering/fishing bonuses and verified progress are shown below the task table." xml:space="preserve"><value>Ranga NPC, premie rzemieślnicze/zbierackie/wędkarskie i zweryfikowany postęp są pokazane pod tabelą zadań.</value></data>
@@ -2066,4 +2064,7 @@ Zależności: {1}</value></data>
   <data name="Food" xml:space="preserve">
     <value>Jedzenie</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>Odbierz</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>Odbierz i wstrzymaj</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Odbierz jedno gotowe pisklę i wstrzymaj przed kolejnym kryciem.</value></data>
 </root>

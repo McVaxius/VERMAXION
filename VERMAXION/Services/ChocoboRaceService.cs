@@ -21,6 +21,7 @@ namespace VERMAXION.Services;
 /// </summary>
 public class ChocoboRaceService : IDisposable
 {
+    public const string CollectAndPauseTaskId = "Collect##ChocoCollectPause";
     private readonly ICommandManager commandManager;
     private readonly ICondition condition;
     private readonly IPluginLog log;
@@ -50,6 +51,8 @@ public class ChocoboRaceService : IDisposable
     private string rankGateCheckReason = string.Empty;
     private bool targetCycleEnabledForBatch;
     private bool startNewProductionBatch;
+    private bool collectAndPauseForBatch;
+    private readonly Func<bool> testAllowanceEnabled;
     private bool targetReadyForBatch;
     private DateTime nextTargetStatusPollAt = DateTime.MinValue;
     private string targetCycleStatusReason = string.Empty;
@@ -123,7 +126,8 @@ public class ChocoboRaceService : IDisposable
         IPluginLog log,
         ConfigManager configManager,
         ChokeAboIpcClient chokeAboIpcClient,
-        Func<string?> progressionStartBlock)
+        Func<string?> progressionStartBlock,
+        Func<bool> testAllowanceEnabled)
     {
         this.commandManager = commandManager;
         this.log = log;
@@ -131,14 +135,16 @@ public class ChocoboRaceService : IDisposable
         this.configManager = configManager;
         this.chokeAboIpcClient = chokeAboIpcClient;
         this.progressionStartBlock = progressionStartBlock;
-        log.Information($"[ChocoboRace] Build marker chocobo-workflow-20261015-03; daily racing allowance={ChocoboDailyAllowance.LimitSeconds / 3600:0} hours.");
+        this.testAllowanceEnabled = testAllowanceEnabled;
+        log.Information($"[ChocoboRace] Build marker chocobo-workflow-20261017-05; Lazyparasite test racing budget={ChocoboDailyAllowance.LimitSeconds / 3600:0} hours; normal user runs have no racing time cap.");
     }
 
-    public bool Start(bool resume = false, bool startNewBatch = false)
+    public bool Start(bool resume = false, bool startNewBatch = false, bool collectAndPause = false)
     {
         if (IsActive) return false;
         resumeTargetCycle = resume;
         startNewProductionBatch = startNewBatch;
+        collectAndPauseForBatch = collectAndPause;
         waitingForChokeAbo = false;
         NextContinuationUtc = DateTime.MinValue;
         // Get configured number of races from active character config
@@ -157,6 +163,9 @@ public class ChocoboRaceService : IDisposable
         isActive = true;
 
         var mode = activeConfig?.ChocoboAutomationMode ?? ChocoboAutomationMode.AlwaysRace;
+        if (collectAndPauseForBatch && (mode != ChocoboAutomationMode.TargetPedigree ||
+            !chokeAboIpcClient.IsCollectionPauseAvailable || IsQueued() || condition[ConditionFlag.BoundByDuty]))
+            return Defer("Enable the current Choke-abo build to start or resume offspring production.");
         if (!Enum.IsDefined(mode))
             return Defer($"Saved Chocobo automation mode value {(int)mode} is invalid.");
 
@@ -196,12 +205,12 @@ public class ChocoboRaceService : IDisposable
             }
             if (IsQueued() || condition[ConditionFlag.BoundByDuty] || !GameHelpers.IsPlayerAvailable())
                 return Defer("Waiting for the previous race or queue to reconcile after reload.");
-            ChocoboDailyAllowance.Sample(activeConfig, DateTime.UtcNow, false, afterReload: true);
+            ChocoboDailyAllowance.Sample(activeConfig, DateTime.UtcNow, false, testAllowanceEnabled(), afterReload: true);
             configManager.SaveCurrentAccount();
         }
         if (IsQueued() || condition[ConditionFlag.BoundByDuty]) return Defer("Existing duty or queue does not belong to this progression.");
         TrackAllowance(forceSave: true);
-        if (BeginPrerequisiteIfNeeded()) return IsActive;
+        if (!collectAndPauseForBatch && BeginPrerequisiteIfNeeded()) return IsActive;
         return HandleTargetCycleResult(
             RequestTargetCycle(activeConfig));
     }
@@ -213,7 +222,7 @@ public class ChocoboRaceService : IDisposable
             SetState(ChocoboState.InDuty);
             return;
         }
-        if (targetCycleEnabledForBatch && ChocoboDailyAllowance.Remaining(configManager.GetActiveConfig(), DateTime.UtcNow) <= 0)
+        if (targetCycleEnabledForBatch && testAllowanceEnabled() && ChocoboDailyAllowance.Remaining(configManager.GetActiveConfig(), DateTime.UtcNow) <= 0)
         {
             if (IsQueued())
             {
@@ -221,7 +230,7 @@ public class ChocoboRaceService : IDisposable
                 if (!CancelOwnedQueue()) return;
             }
             NextContinuationUtc = ChocoboDailyAllowance.ResetAt(DateTime.UtcNow).AddDays(1);
-            Defer("Daily racing allowance exhausted; breeding remains eligible. Racing resets at 09:00 UTC.");
+            Defer("Lazyparasite racing test budget exhausted; breeding remains eligible. Testing resets at 09:00 UTC.");
             return;
         }
         if (targetCycleEnabledForBatch && IsQueued() && HasOwnedNativeQueue())
@@ -282,6 +291,7 @@ public class ChocoboRaceService : IDisposable
         GameHelpers.KeyUp(VirtualKey.W);
         SetState(ChocoboState.Idle);
         isActive = false;
+        collectAndPauseForBatch = false;
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
         joinAttempted = false;
@@ -329,6 +339,26 @@ public class ChocoboRaceService : IDisposable
         configManager.SaveCurrentAccount();
         chokeAboIpcClient.PauseTargetCycle(Plugin.PlayerState.ContentId);
         Reset();
+    }
+
+    public void CollectAndPause()
+    {
+        if (IsActive) return;
+        var config = configManager.GetActiveConfig();
+        if (config.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree || !chokeAboIpcClient.IsCollectionPauseAvailable)
+        { Defer("Enable the current Choke-abo build to start or resume offspring production."); return; }
+        if (progressionStartBlock() is { } reason) { Defer(reason); return; }
+        var status = chokeAboIpcClient.GetTargetCycleStatus(Plugin.PlayerState.ContentId);
+        if (!status.Succeeded || status.Status?.NextCoveringEligibilityUtc is not { } readyAt || readyAt > DateTimeOffset.UtcNow ||
+            status.Status.GameActionInProgress || IsQueued() || condition[ConditionFlag.BoundByDuty])
+        { Defer("Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering."); return; }
+        config.ChocoboProgressionPaused = false;
+        configManager.SaveCurrentAccount();
+        if (!Start(resume: true, collectAndPause: true))
+        {
+            config.ChocoboProgressionPaused = true;
+            configManager.SaveCurrentAccount();
+        }
     }
 
     private bool IsRankGateEnabled()
@@ -608,14 +638,14 @@ public class ChocoboRaceService : IDisposable
             Reset();
             return;
         }
-        if (targetCycleEnabledForBatch && !IsRacingTerritory() &&
+        if (targetCycleEnabledForBatch && testAllowanceEnabled() && !IsRacingTerritory() &&
             state is ChocoboState.OpeningDutyFinder or ChocoboState.QueueingForDuty or ChocoboState.WaitingForDutyPop or ChocoboState.ClickingCommence &&
             ChocoboDailyAllowance.Remaining(configManager.GetActiveConfig(), DateTime.UtcNow) <= 0)
         {
             if (CancelOwnedQueue())
             {
                 NextContinuationUtc = ChocoboDailyAllowance.ResetAt(DateTime.UtcNow).AddDays(1);
-                Defer("Daily racing allowance exhausted; waiting until 09:00 UTC for another race.");
+                Defer("Lazyparasite racing test budget exhausted; waiting until 09:00 UTC for another test race.");
             }
             return;
         }
@@ -1016,7 +1046,7 @@ public class ChocoboRaceService : IDisposable
                     if (targetCycleEnabledForBatch)
                     {
                         var activeConfig = configManager.GetActiveConfig();
-                        ChocoboDailyAllowance.Sample(activeConfig, DateTime.UtcNow, false);
+                        ChocoboDailyAllowance.Sample(activeConfig, DateTime.UtcNow, false, testAllowanceEnabled());
                         configManager.SaveCurrentAccount();
                         if (activeConfig == null || activeConfig.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree)
                         {
@@ -1203,20 +1233,22 @@ public class ChocoboRaceService : IDisposable
     private ChokeAboTargetCycleCallResult RequestTargetCycle(CharacterConfig config)
     {
         var result = chokeAboIpcClient.EnsureTargetCycle(Plugin.PlayerState.ContentId, config, resume: resumeTargetCycle,
-            startNewBatch: startNewProductionBatch);
+            startNewBatch: startNewProductionBatch, collectAndPause: collectAndPauseForBatch,
+            enforceTestAllowance: testAllowanceEnabled());
         if (result.Succeeded) { resumeTargetCycle = false; startNewProductionBatch = false; }
         return result;
     }
 
     private bool HandleTargetCycleResult(ChokeAboTargetCycleCallResult result)
     {
-        if (result.Succeeded && result.Status is { RacingRank: >= 40, Phase: ChokeAboTargetCyclePhase.Blocked } &&
+        if (!collectAndPauseForBatch && result.Succeeded && result.Status is { RacingRank: >= 40, Phase: ChokeAboTargetCyclePhase.Blocked } &&
             !QuestManager.IsQuestComplete(576))
         {
             resumeTargetCycle = true;
             if (BeginPrerequisiteIfNeeded()) return IsActive;
         }
-        if (result.Status?.Phase == ChokeAboTargetCyclePhase.Paused)
+        if (result.Status?.Phase == ChokeAboTargetCyclePhase.Paused || collectAndPauseForBatch &&
+            (!result.Succeeded || result.Status?.Phase is ChokeAboTargetCyclePhase.Blocked or ChokeAboTargetCyclePhase.TargetReady))
         {
             configManager.GetActiveConfig().ChocoboProgressionPaused = true;
             configManager.SaveCurrentAccount();
@@ -1280,15 +1312,15 @@ public class ChocoboRaceService : IDisposable
             progressionCharacter = configManager.CurrentCharacterKey;
             allowanceDirty |= ChocoboDailyAllowance.Sample(current, now,
                 !GameHelpers.IsAddonVisible("RaceChocoboResult") &&
-                (IsRacingTerritory() && condition[ConditionFlag.BoundByDuty] || IsQueued() && HasOwnedNativeQueue()), afterReload: true);
+                (IsRacingTerritory() && condition[ConditionFlag.BoundByDuty] || IsQueued() && HasOwnedNativeQueue()), testAllowanceEnabled(), afterReload: true);
         }
         if (!configManager.Accounts.TryGetValue(progressionAccount, out var account) ||
             !account.Characters.TryGetValue(progressionCharacter, out var config)) return;
-        var activity = Plugin.ClientState.IsLoggedIn && Plugin.PlayerState.ContentId == progressionContentId &&
+        var activity = testAllowanceEnabled() && Plugin.ClientState.IsLoggedIn && Plugin.PlayerState.ContentId == progressionContentId &&
             !GameHelpers.IsAddonVisible("RaceChocoboResult") &&
             (IsRacingTerritory() && condition[ConditionFlag.BoundByDuty] || IsQueued() && HasOwnedNativeQueue());
         var activityChanged = config.ChocoboRacePending != activity;
-        allowanceDirty |= ChocoboDailyAllowance.Sample(config, now, activity);
+        allowanceDirty |= ChocoboDailyAllowance.Sample(config, now, activity, testAllowanceEnabled());
         if (activityChanged || allowanceDirty && (forceSave || now - allowanceSaveUtc >= TimeSpan.FromSeconds(5)))
         {
             configManager.SaveAccount(progressionAccount);
@@ -1300,7 +1332,7 @@ public class ChocoboRaceService : IDisposable
     private void ReconcileReloadAllowance(CharacterConfig config)
     {
         var now = DateTime.UtcNow;
-        ChocoboDailyAllowance.Sample(config, now, !GameHelpers.IsAddonVisible("RaceChocoboResult"), afterReload: true);
+        ChocoboDailyAllowance.Sample(config, now, !GameHelpers.IsAddonVisible("RaceChocoboResult"), testAllowanceEnabled(), afterReload: true);
         configManager.SaveCurrentAccount();
     }
 

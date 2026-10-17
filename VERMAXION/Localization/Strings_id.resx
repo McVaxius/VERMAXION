@@ -385,7 +385,6 @@ Hanya ikon: '⚫'</value></data>
   <data name="Daily / {0}" xml:space="preserve"><value>Harian / {0}</value></data>
   <data name="Daily MSQ asks dad to run DadLanPartyModule against the configured LAN Party-style preset." xml:space="preserve"><value>MSQ harian meminta dad menjalankan DadLanPartyModule memakai preset bergaya LAN Party yang dikonfigurasi.</value></data>
   <data name="Daily Tasks" xml:space="preserve"><value>Tugas harian</value></data>
-  <data name="Daily racing allowance: {0:ss} of 03:00:00 remaining" xml:space="preserve"><value>Jatah balapan harian: {0:ss} dari 03:00:00 tersisa</value></data>
   <data name="Daily: {0}h {1}m | Weekly: {2}d {3}h {4}m | Fashion: {5}d {6}h {7}m | Jumbo payout: {8}d {9}h {10}m" xml:space="preserve"><value>Harian: {0}j {1}m | Mingguan: {2}h {3}j {4}m | Fashion: {5}h {6}j {7}m | Pembayaran Jumbo: {8}h {9}j {10}m</value></data>
   <data name="Dashboard state: {0}&#10;" xml:space="preserve"><value>Keadaan dasbor: {0}
 </value></data>
@@ -1149,7 +1148,6 @@ Jika dinonaktifkan, Vermaxion akan mencoba berjalan tanpa Saucy (mungkin tidak b
   <data name="Sync target account: {0}" xml:space="preserve"><value>Akun target sinkronisasi: {0}</value></data>
   <data name="Talk" xml:space="preserve"><value>Talk</value></data>
   <data name="Target Pedigree" xml:space="preserve"><value>Target Pedigree</value></data>
-  <data name="Target Pedigree uses a six-hour racing allowance, resetting at 09:00 UTC. Breeding can continue while the allowance is exhausted." xml:space="preserve"><value>Target Pedigree memakai jatah balapan enam jam, direset pada 09:00 UTC. Pembiakan dapat berlanjut saat jatah habis.</value></data>
   <data name="Targets" xml:space="preserve"><value>Target</value></data>
   <data name="Task Order" xml:space="preserve"><value>Urutan Tugas</value></data>
   <data name="Test Chocobo Rank" xml:space="preserve"><value>Uji Peringkat Chocobo</value></data>
@@ -1464,7 +1462,7 @@ Dependensi: {1}</value></data>
   <data name="Paused. Explicit Resume is required, including after a reload." xml:space="preserve"><value>Dijeda. Lanjutkan eksplisit diperlukan, termasuk setelah pemuatan ulang.</value></data>
   <data name="Next stage attempts: {0}/3 · Losses: {1} · Weekly: {2}/5 matches; {3} wins." xml:space="preserve"><value>Percobaan tahap berikutnya: {0}/3 · Kekalahan: {1} · Mingguan: {2}/5 pertandingan; {3} kemenangan.</value></data>
   <data name="Mission {0}: {1}/{2} clears; attempts {3}/{4}." xml:space="preserve"><value>Misi {0}: {1}/{2} penyelesaian; percobaan {3}/{4}.</value></data>
-  <data name="Daily racing allowance: {0} of 03:00:00 remaining" xml:space="preserve"><value>Jatah balapan harian: {0} dari 03:00:00 tersisa</value></data>
+  <data name="Lazyparasite racing budget: {0} of {1} remaining" xml:space="preserve"><value>Waktu uji balapan Lazyparasite: tersisa {0} dari {1}</value></data>
   <data name="Collection ready in {0} - {1} local" xml:space="preserve"><value>Koleksi siap dalam {0} - {1} waktu lokal</value></data>
   <data name="Resets {0} local (09:00 UTC). Covering waits do not consume racing time." xml:space="preserve"><value>Reset pada {0} waktu lokal (09:00 UTC). Waktu tunggu kawin tidak menghabiskan waktu balapan.</value></data>
   <data name="NPC rank, crafting/gathering/fishing bonuses and verified progress are shown below the task table." xml:space="preserve"><value>Peringkat NPC, bonus kerajinan/pengumpulan/memancing, dan progres terverifikasi ditampilkan di bawah tabel tugas.</value></data>
@@ -2066,4 +2064,7 @@ Dependensi: {1}</value></data>
   <data name="Food" xml:space="preserve">
     <value>Makanan</value>
   </data>
+  <data name="Collect" xml:space="preserve"><value>Ambil</value></data>
+  <data name="Collect and pause" xml:space="preserve"><value>Ambil dan jeda</value></data>
+  <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Ambil satu anak yang sudah siap lalu jeda sebelum perkawinan berikutnya.</value></data>
 </root>

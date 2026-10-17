@@ -778,6 +778,11 @@ public class MainWindow : Window, IDisposable
         AddTaskRow("Chocobo Racing", config.EnableChocoboRacing,
             GetDailyTaskStatus(config.ChocoboRacingLastCompleted, config.ChocoboRacingNextReset, "Done today", "Daily"),
             "Run##Choco", () => plugin.ChocoboRaceService.RunTask(), "OK");
+        AddTaskRow("Collect and pause", true, plugin.ChocoboRaceService.StatusText,
+            ChocoboRaceService.CollectAndPauseTaskId, plugin.ChocoboRaceService.CollectAndPause,
+            buttonDisabled: plugin.ChocoboRaceService.IsActive || !plugin.ChokeAboIpcClient.IsCollectionPauseAvailable ||
+                config.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree,
+            buttonTooltip: "Collect one eligible offspring and pause before another covering.");
         var alliedGearsetValid = IsAlliedSocietyGearsetValid(config);
         AddTaskRow("Allied Society", config.EnableAlliedSociety,
             GetAlliedSocietyStatus(config),

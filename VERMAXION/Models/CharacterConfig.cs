@@ -104,6 +104,7 @@ public class CharacterConfig
     public uint ChocoboGilReserve { get; set; } = 100000;
     public uint ChocoboMgpReserve { get; set; } = 50000;
     public bool ChocoboProgressionPaused { get; set; } = true;
+    // Existing saved Lazyparasite test accounting, excluded from normal user runs.
     public DateTime ChocoboAllowanceResetUtc { get; set; } = DateTime.MinValue;
     public double ChocoboAllowanceSecondsUsed { get; set; }
     public bool ChocoboRacePending { get; set; }
