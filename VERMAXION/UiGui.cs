@@ -392,16 +392,39 @@ internal static class UiGui
         ImGui.SetNextWindowSize(new Vector2(width, 0), ImGuiCond.Always);
         ImGui.SetNextWindowSizeConstraints(new Vector2(width, 0), new Vector2(width, height));
     }
-    internal static bool BeginPopupModal(string original, ImGuiWindowFlags flags)
+    internal static bool BeginConfirmationPopup(string original, ImGuiWindowFlags flags)
     {
-        ModalWidth(original);var open=ImGui.BeginPopupModal(original,flags);
-        try { if(open) Title(original.Split("##",2)[0],UiText.T(original.Split("##",2)[0])); }
-        catch { if(open) ImGui.EndPopup(); throw; }
-        return open;
+        var context = ImGui.GetCurrentContext();
+        if (!ImGui.IsPopupOpen(original)) { context.NextWindowData.Flags = 0; return false; }
+        if ((context.NextWindowData.Flags & ImGuiNextWindowDataFlags.HasPos) == 0)
+        {
+            var viewport = ImGui.GetWindowViewport();
+            ImGui.SetNextWindowPos(viewport.Pos + viewport.Size * .5f, ImGuiCond.Appearing, new System.Numerics.Vector2(.5f));
+        }
+        ModalWidth(original);
+        var open = ImGui.Begin(original, flags | ImGuiWindowFlags.Popup | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking);
+        if (!open) { ImGui.EndPopup(); return false; }
+        try { Title(original.Split("##",2)[0],UiText.T(original.Split("##",2)[0])); }
+        catch { ImGui.EndPopup(); throw; }
+        return true;
     }
-    internal static bool BeginPopupModal(string original, ref bool visible, ImGuiWindowFlags flags)
+    internal static bool BeginConfirmationPopup(string original, ref bool visible, ImGuiWindowFlags flags)
     {
-        ModalWidth(original);var open=ImGui.BeginPopupModal(original,ref visible,flags);
+        var context = ImGui.GetCurrentContext();
+        if (!ImGui.IsPopupOpen(original)) { context.NextWindowData.Flags = 0; return false; }
+        if ((context.NextWindowData.Flags & ImGuiNextWindowDataFlags.HasPos) == 0)
+        {
+            var viewport = ImGui.GetWindowViewport();
+            ImGui.SetNextWindowPos(viewport.Pos + viewport.Size * .5f, ImGuiCond.Appearing, new System.Numerics.Vector2(.5f));
+        }
+        ModalWidth(original);
+        var open=ImGui.Begin(original,ref visible,flags|ImGuiWindowFlags.Popup|ImGuiWindowFlags.NoCollapse|ImGuiWindowFlags.NoDocking);
+        if (!open || !visible)
+        {
+            if (!visible) ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
+            return false;
+        }
         try { if(open) Title(original.Split("##",2)[0],UiText.T(original.Split("##",2)[0])); }
         catch { if(open) ImGui.EndPopup(); throw; }
         return open;

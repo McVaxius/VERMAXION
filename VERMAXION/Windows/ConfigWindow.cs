@@ -4329,7 +4329,7 @@ public class ConfigWindow : Window, IDisposable
             UiGui.TextWrapped(UiText.F($"Affected account: {GetAccountDisplayName(configManager, configManager.SelectedAccountId)}"));
             ImGui.Separator();
 
-            if (UiGui.BeginPopupModal("Remove fishing-stock item?", ImGuiWindowFlags.AlwaysAutoResize))
+            if (UiGui.BeginConfirmationPopup("Remove fishing-stock item?", ImGuiWindowFlags.AlwaysAutoResize))
             {
                 UiGui.TextWrapped(UiText.F($"Remove {GetItemName(fishingCatalogRemoveItemId)} from the global catalog?"));
                 UiGui.TextWrapped("This also purges its account-default and character values. Re-adding it starts clean.");
@@ -4464,7 +4464,7 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var open = true;
-        if (!UiGui.BeginPopupModal("Setup Wizard", ref open, ImGuiWindowFlags.AlwaysAutoResize))
+        if (!UiGui.BeginConfirmationPopup("Setup Wizard", ref open, ImGuiWindowFlags.AlwaysAutoResize))
         {
             CloseWizard();
             return;
@@ -4791,7 +4791,7 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.SetNextWindowSize(new Vector2(ImGui.GetFontSize() * 34f, 0), ImGuiCond.Always);
         var open = true;
-        if (!UiGui.BeginPopupModal(
+        if (!UiGui.BeginConfirmationPopup(
                 "Confirm configuration action",
                 ref open,
                 ImGuiWindowFlags.AlwaysAutoResize))

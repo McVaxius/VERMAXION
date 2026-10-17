@@ -1,3 +1,7 @@
+2026-10-16 - Confirmation popups without screen dimming (I576)
+
+- Keep fishing-stock removal, the setup wizard, configuration actions and personal-list replacement in titled native popups without a full-screen dimmer. Preserve dialog IDs, validation, draft/cancel behavior, existing close controls and saved opacity. Dismissing a popup never applies its pending action.
+
 2026-10-15 - Six-hour daily chocobo racing allowance
 
 - Double progression racing time from three to six hours per character and server day, retaining time already used and the 09:00 UTC reset. Queue and racing activity count; breeding, feeding, travel and covering waits remain excluded.

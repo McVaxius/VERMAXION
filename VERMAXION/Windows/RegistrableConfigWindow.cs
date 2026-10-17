@@ -533,7 +533,7 @@ public class RegistrableConfigWindow : Window
 
         var open = true;
         ImGui.SetNextWindowSize(new Vector2(480 * UIConstants.Scale, 0), ImGuiCond.Appearing);
-        if (!UiGui.BeginPopupModal(
+        if (!UiGui.BeginConfirmationPopup(
                 "Confirm personal-list replacement",
                 ref open,
                 ImGuiWindowFlags.AlwaysAutoResize))
