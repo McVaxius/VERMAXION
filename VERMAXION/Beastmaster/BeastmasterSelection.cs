@@ -59,6 +59,9 @@ public static class BeastmasterSelection
 
     public static int TrainingTarget(uint board) => board is >= 1 and <= 5 ? (int)board * 5 : 0;
 
+    public static int TrainingTarget(BeastmasterSettings settings) =>
+        settings.TrainingTargetRank > 0 ? settings.TrainingTargetRank : TrainingTarget(settings.Board);
+
     public static int CompletedBoardRuns(int currentRun, bool resultSeen, int runLimit) =>
         Math.Clamp(Math.Max(0, currentRun - 1) + (currentRun > 0 && resultSeen ? 1 : 0), 0, Math.Max(0, runLimit));
 
@@ -82,7 +85,7 @@ public static class BeastmasterSelection
     public static bool RequiresTrainingCompletionRead(BeastmasterSettings settings, IReadOnlyCollection<uint>? owned,
         IReadOnlyDictionary<uint, CrucibleFamiliar> observations)
     {
-        var target = TrainingTarget(settings.Board);
+        var target = TrainingTarget(settings);
         return settings.Goal == BeastmasterRunGoal.TrainOwned && target > 0 && owned is { Count: > 0 } && owned.All(number =>
             observations.TryGetValue(number, out var beast) && beast.Rank is >= 1 and <= 25 && beast.Rank >= target);
     }
@@ -119,7 +122,7 @@ public static class BeastmasterSelection
             team = settings.TeamMode == CrucibleTeamMode.Recommended
                 ? Recommended(eligible, capacity)
                 : settings.Goal == BeastmasterRunGoal.TrainOwned
-                    ? Training(eligible, capacity, carry, TrainingTarget(settings.Board))
+                    ? Training(eligible, capacity, carry, TrainingTarget(settings))
                     : Leveling(eligible, capacity, carry);
             var missingRanks = eligible.Where(beast => !beast.PickBlocked && beast.Rank is < 1 or > 25)
                 .Select(beast => beast.Number).ToArray();

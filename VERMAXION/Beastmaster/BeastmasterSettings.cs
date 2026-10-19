@@ -10,14 +10,19 @@ public enum CrucibleLevelingMode { Full, Minus_3, Only_3, Carry_Minus_2 }
 public enum CrucibleDegree { Standard, First, Second, Third }
 public enum BeastmasterRunGoal { FixedRuns, TrainOwned }
 public enum BeastmasterTaskFrequency { EveryAR, Daily, Weekly, Monthly }
+public enum BeastmasterRepairMode { Disabled, Self, NpcNoInn, NpcNearby, NpcInn }
 
 public sealed class BeastmasterSettings
 {
     public BeastmasterRunGoal Goal { get; set; }
     public uint Board { get; set; } = 1;
+    // Zero retains the board default for existing settings and scheduled runs.
+    public int TrainingTargetRank { get; set => field = Math.Clamp(value, 0, 25); }
     public int RunCount { get; set; } = 1;
     public HashSet<uint>? WeeklyBoards { get; set; }
     public string CompletionCommand { get; set; } = string.Empty;
+    public BeastmasterRepairMode RepairMode { get; set => field = Enum.IsDefined(value) ? value : BeastmasterRepairMode.Self; } = BeastmasterRepairMode.Self;
+    public int RepairThreshold { get; set => field = Math.Clamp(value, 0, 100); } = 75;
     public CrucibleDegree Degree { get; set; } = CrucibleDegree.Standard;
     public CrucibleTeamMode TeamMode { get; set; } = CrucibleTeamMode.Recommended;
     public CrucibleLevelingMode LevelingMode { get; set; } = CrucibleLevelingMode.Minus_3;
@@ -39,8 +44,9 @@ public sealed class BeastmasterSettings
 
     public BeastmasterSettings Clone() => new()
     {
-        Goal = Goal, Board = Board, RunCount = RunCount,
+        Goal = Goal, Board = Board, TrainingTargetRank = TrainingTargetRank, RunCount = RunCount,
         WeeklyBoards = WeeklyBoards == null ? null : [..WeeklyBoards], CompletionCommand = CompletionCommand,
+        RepairMode = RepairMode, RepairThreshold = RepairThreshold,
         Degree = Degree, TeamMode = TeamMode, LevelingMode = LevelingMode,
         CustomTeam = [..CustomTeam], ShopLists = ShopLists.Select(list => list.Clone()).ToList(),
         ShopListIndex = ShopListIndex, ShopGearOrder = [..ShopGearOrder],

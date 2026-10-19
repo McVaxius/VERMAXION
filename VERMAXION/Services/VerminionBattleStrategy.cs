@@ -5,6 +5,29 @@ using System.Numerics;
 namespace VERMAXION.Services;
 
 internal sealed record VerminionMinion(ushort Id, string Name, int Cost, string Acquisition);
+internal sealed record VerminionPlayerMinion(ushort Id, string Name, int Cost, int Attack, int Defense, int Speed, bool Arcana);
+
+// Player-field decisions use observed objectives/roster, independent of CPU stages.
+internal static class VerminionPlayerStrategy
+{
+    public static bool ControlsAllowed(Models.VerminionMode mode, uint duty, Models.VerminionMode? admittedMode) =>
+        mode == Models.VerminionMode.PvpWin && admittedMode == mode && duty == Models.VerminionDutyRules.PlayerDuty;
+
+    public static int EnemyLane(IReadOnlyList<int?> hp) => hp.Count != 3 ? -1 :
+        Enumerable.Range(0, 3).Where(lane => hp[lane] > 0).OrderBy(lane => hp[lane]).FirstOrDefault(-1);
+
+    public static VerminionPlayerMinion? ChooseMinion(IEnumerable<VerminionPlayerMinion> available, bool defending,
+        IEnumerable<string> livingNames, int freeCapacity)
+    {
+        var living = livingNames.GroupBy(name => name).ToDictionary(group => group.Key, group => group.Count());
+        return available.Where(minion => minion.Id != 0 && minion.Name.Length > 0 && minion.Cost > 0 &&
+                minion.Cost <= freeCapacity && minion.Attack > 0)
+            .OrderByDescending(minion => ((double)minion.Attack + (defending ? minion.Defense * 0.5 :
+                    minion.Arcana ? minion.Attack : 0)) / minion.Cost)
+            .ThenBy(minion => living.GetValueOrDefault(minion.Name))
+            .ThenByDescending(minion => minion.Speed).ThenBy(minion => minion.Id).FirstOrDefault();
+    }
+}
 internal readonly record struct VerminionGroundOmen(int Slot, bool Tower, Vector3 Position, float Radius);
 // Battle-local observations follow native warning commands, not render-object lifetime.
 internal sealed class VerminionGroundWarnings
@@ -96,7 +119,8 @@ internal static class VerminionRoster
 
     // Participation needs a fighting roster only while unlocking Stage 2.
     public static bool NeedsBattleRoster(int stage, bool campaign, Models.VerminionMode mode, uint clears) =>
-        stage > 1 && (campaign || mode == Models.VerminionMode.MissionRepeat || (clears & 2) == 0);
+        stage > 1 && (campaign || !Models.VerminionDutyRules.IsPlayerMode(mode) &&
+            (mode == Models.VerminionMode.MissionRepeat || (clears & 2) == 0));
 
     public static string? Missing(int stage, System.Func<ushort, bool?> owns)
     {

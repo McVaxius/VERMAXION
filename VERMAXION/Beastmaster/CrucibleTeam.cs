@@ -280,7 +280,7 @@ internal static unsafe class CrucibleTeam
 
         return crucible.Goal == BeastmasterRunGoal.TrainOwned
             ? BeastmasterSelection.Training(Owned().Select(Candidate), sizeCap ? TeamSize() : int.MaxValue,
-                levelingMode == CrucibleLevelingMode.Carry_Minus_2, BeastmasterSelection.TrainingTarget(crucible.Board), crucible.ClassificationLock)
+                levelingMode == CrucibleLevelingMode.Carry_Minus_2, BeastmasterSelection.TrainingTarget(crucible), crucible.ClassificationLock)
             : BeastmasterSelection.Leveling(Owned().Select(Candidate), sizeCap ? TeamSize() : int.MaxValue,
                 levelingMode == CrucibleLevelingMode.Carry_Minus_2, crucible.ClassificationLock);
     }

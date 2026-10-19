@@ -51,7 +51,9 @@ Main's **Run due tasks on a timer** is saved for the current runtime account and
 
 - **FC Buff Refill** — Seal Sweetener II stock reconciliation and purchasing on an every-AR, daily, weekly, or monthly schedule, with per-character VERMAXION activation disabled by default
 - **Retainer Equipping** — Upgrade AutoRetainer-enabled combat retainers by compatible average item level and gatherers by Perception
-- **Lord of Verminion** — Queue 5 intentional fails per week
+- **Lord of Verminion** — CPU weekly participation, mission replays and campaign, tournament/prize checks, or independent Non-RP player matches with **PvP - Try to win** / **PvP - Throw**.
+
+Verminion's two player activities use native Non-RP matchmaking against any opponent; they do not pair accounts. Try to win reinforces from registered palette minions, intercepts threats near surviving friendly stones and redirects groups toward surviving enemy stones. Throw stays passive until the native result, without summoning, attacking, defending or forfeiting. Neither selection proves an outcome: an opponent's forfeit can give Throw a win. Choose a match count; Run starts it over and Resume preserves it. Only observed game results count, once, and player matches never clear CPU challenges. Queue ownership and the admitted mode survive reload; an uncertain Join is not replayed. FULL STOP withdraws the owned queue and releases controls. Native player matchmaking and tactics need live acceptance; offline checks do not establish a win rate.
 - **Mini Cactpot** — 3x daily via Saucy plugin
 - **Jumbo Cactpot** — Weekly submission (Saturdays)
 - **Chocobo Racing** — Native observable daily race loop with Always Race and optional Choke-abo Target Pedigree modes

@@ -53,7 +53,7 @@ internal sealed class UiText : IDisposable
     }
     internal static string T(string english)
     {
-        if (Current.Language == "en") return english;
+        if (Current.Language == "en") return Current.Resources.GetString(english, false) ?? english;
         if (Current.Resources.GetString(english, true) is { } exact) return exact;
         foreach (var template in Current.messageTemplates)
         {
@@ -140,6 +140,15 @@ internal sealed class UiText : IDisposable
                 return F(prefix + "{0}", T(english[prefix.Length..]));
         const string paused = "Paused: ";
         if (english.StartsWith(paused, StringComparison.Ordinal)) return F("Paused: {0}", Beastmaster(english[paused.Length..]));
+        var repair = Regex.Match(english, @"^Equipped durability (\d+)%; repair starts below (\d+)%\.$",
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
+        if (repair.Success) return F("Equipped durability {0}%; repair starts below {1}%.", repair.Groups[1].Value, repair.Groups[2].Value);
+        repair = Regex.Match(english, @"^Repair complete; equipped durability (\d+)%\.$",
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
+        if (repair.Success) return F("Repair complete; equipped durability {0}%.", repair.Groups[1].Value);
+        repair = Regex.Match(english, @"^Repair improved durability to (\d+)%, but it is still below (\d+)%; continuing\.$",
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
+        if (repair.Success) return F("Repair improved durability to {0}%, but it is still below {1}%; continuing.", repair.Groups[1].Value, repair.Groups[2].Value);
         var entry = Regex.Match(english, @"^Requires level (\d+) and item level (\d+); current level (\d+), item level (\d+)\.$",
             RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
         if (entry.Success) return F("Requires level {0} and item level {1}; current level {2}, item level {3}.",

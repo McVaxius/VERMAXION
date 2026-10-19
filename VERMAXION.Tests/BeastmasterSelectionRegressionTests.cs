@@ -257,6 +257,35 @@ public sealed class BeastmasterSelectionRegressionTests
     }
 
     [Fact]
+    public void EditedManualTargetControlsTraineesAndCompletionInsteadOfTheBoardDefault()
+    {
+        var settings = new BeastmasterSettings
+        {
+            Goal = BeastmasterRunGoal.TrainOwned, TeamMode = CrucibleTeamMode.Leveling,
+            Board = 1, TrainingTargetRank = 8,
+        };
+        BeastmasterCandidate[] owned = [new(1, 2, 0, 0), new(2, 4, 0, 1), new(3, 6, 0, 2), new(4, 9, 0, 3)];
+        Assert.True(BeastmasterSelection.TryPrepareTeam(settings, owned, 10, out var editedTeam, out _));
+        Assert.Equal(new uint[] { 1, 2, 3 }, editedTeam);
+
+        var records = new uint[] { 1, 2, 3, 4 }.ToDictionary(number => number, number => new CrucibleFamiliar(number)
+            { Rank = 5, Exp = "0", ObservedAtUtc = DateTime.UtcNow });
+        var numbers = records.Keys.ToArray();
+        Assert.False(BeastmasterSelection.RequiresTrainingCompletionRead(settings, numbers, records));
+        Assert.False(BeastmasterSelection.TrainingCompletionConfirmed(numbers, records,
+            BeastmasterSelection.TrainingTarget(settings), true, numbers));
+
+        foreach (var beast in records.Values) beast.Rank = 8;
+        Assert.True(BeastmasterSelection.RequiresTrainingCompletionRead(settings, numbers, records));
+        Assert.True(BeastmasterSelection.TrainingCompletionConfirmed(numbers, records,
+            BeastmasterSelection.TrainingTarget(settings), true, numbers));
+
+        settings.TrainingTargetRank = 0;
+        Assert.True(BeastmasterSelection.TryPrepareTeam(settings, owned, 10, out var boardDefaultTeam, out _));
+        Assert.Equal(new uint[] { 1, 2, 4 }, boardDefaultTeam);
+    }
+
+    [Fact]
     public void AllOwnedGoalIncludesExcludedBeastsAndNeverCompletesFromUnknownOrEmptyRecords()
     {
         var data = new BeastmasterCharacterData();

@@ -141,6 +141,39 @@ public sealed class BeastmasterPersistenceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void LegacyTrainingTargetsFollowTheirBoardAndManualEditsSurviveReopening(bool useNewtonsoft)
+    {
+        for (uint board = 1; board <= 5; board++)
+        {
+            var json = "{\"Board\":" + board + "}";
+            var legacy = useNewtonsoft ? JsonConvert.DeserializeObject<BeastmasterSettings>(json)!
+                : System.Text.Json.JsonSerializer.Deserialize<BeastmasterSettings>(json)!;
+            Assert.Equal((int)board * 5, BeastmasterSelection.TrainingTarget(legacy));
+        }
+
+        var data = new BeastmasterCharacterData();
+        var manual = data.GetSettings(new BeastmasterSettings { Board = 2 });
+        manual.TrainingTargetRank = 7;
+        var activeRun = manual.Clone();
+        var otherCharacter = new BeastmasterCharacterData();
+        Assert.Equal(10, BeastmasterSelection.TrainingTarget(otherCharacter.GetSettings(new BeastmasterSettings { Board = 2 })));
+        var restored = useNewtonsoft
+            ? JsonConvert.DeserializeObject<BeastmasterCharacterData>(JsonConvert.SerializeObject(data))!
+            : System.Text.Json.JsonSerializer.Deserialize<BeastmasterCharacterData>(System.Text.Json.JsonSerializer.Serialize(data))!;
+        Assert.Equal(7, BeastmasterSelection.TrainingTarget(restored.GetSettings(new BeastmasterSettings())));
+        Assert.Equal(10, BeastmasterSelection.TrainingTarget(restored.ScheduledSetup!.ApplyTo(restored.ManualSettings!)));
+
+        manual.TrainingTargetRank = 12;
+        Assert.Equal(7, BeastmasterSelection.TrainingTarget(activeRun));
+        data.ScheduledSetup!.Board = 4;
+        var scheduledRun = data.ScheduledSetup.ApplyTo(manual);
+        Assert.Equal(20, BeastmasterSelection.TrainingTarget(scheduledRun));
+        Assert.Equal(12, BeastmasterSelection.TrainingTarget(manual));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void WeeklyBoardPreferencesPersistNullEmptyAndExplicitChoices(bool useNewtonsoft)
     {
         const string legacyJson = "{\"AutoExitDuty\":false,\"RunCount\":2}";

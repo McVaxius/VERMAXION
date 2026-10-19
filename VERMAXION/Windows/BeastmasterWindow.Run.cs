@@ -19,7 +19,7 @@ internal sealed partial class BeastmasterWindow
     private static readonly string[] RunDegreeNames = ["Standard", "First Degree", "Second Degree", "Third Degree"];
     private static readonly string[] TeamMethodNames = ["Strongest available", "Train a full team", "Smaller training team", "Train three at a time", "Three strong fighters + trainees", "Custom"];
     private static string RunBoardName(uint board) => board is >= 1 and <= 5 ? UiText.T(RunBoardNames[board - 1]) : UiText.T("Unknown board");
-    private static int TrainingTarget(uint board) => BeastmasterSelection.TrainingTarget(board);
+    private static int TrainingTarget(BeastmasterSettings settings) => BeastmasterSelection.TrainingTarget(settings);
     private static int BoardCapacity(BeastmasterSettings settings) => BeastmasterSelection.TeamCapacity(BeastmasterService.TerritoryForBoard(settings.Board));
     private static int TeamMethodIndex(BeastmasterSettings settings) => settings.TeamMode switch
     {
@@ -82,7 +82,7 @@ internal sealed partial class BeastmasterWindow
             var board = settings.Board is >= 1 and <= 5 ? (int)settings.Board - 1 : -1;
             ImGui.SetNextItemWidth(-1);
             if (UIConstants.Combo("Board", ref board, RunBoardNames, RunBoardNames.Length))
-            { settings.Board = (uint)(board + 1); changed = true; }
+            { settings.Board = (uint)(board + 1); settings.TrainingTargetRank = 0; changed = true; }
             var degreeUnlocked = !ViewingCurrent || RunDegreeUnlocked();
             var degree = degreeUnlocked ? (int)settings.Degree : 0;
             ImGui.BeginDisabled(!degreeUnlocked);
@@ -92,7 +92,17 @@ internal sealed partial class BeastmasterWindow
             ImGui.EndDisabled();
             if (!degreeUnlocked) UiGui.TextDisabled("Higher degrees require completion of quest 71045. Standard will be used.");
             if (settings.Goal == BeastmasterRunGoal.TrainOwned)
-                UiGui.TextDisabled(UiText.F("Training target: Rank {0}", TrainingTarget(settings.Board)));
+            {
+                if (scheduled) UiGui.TextDisabled(UiText.F("Training target: Rank {0}", TrainingTarget(settings)));
+                else
+                {
+                    var target = TrainingTarget(settings);
+                    ImGui.SetNextItemWidth(130 * UIConstants.Scale);
+                    if (UIConstants.InputInt("Training target rank", ref target, 1, 5))
+                    { settings.TrainingTargetRank = Math.Clamp(target, 1, 25); changed = true; }
+                    UIConstants.WrappedText(UIConstants.Metadata, "Saved for manual Run. Choosing another board resets the target to its default rank.");
+                }
+            }
             var count = settings.RunCount;
             ImGui.SetNextItemWidth(130 * UIConstants.Scale);
             if (UIConstants.InputInt(scheduled ? "Boards per trigger" : "Boards this run", ref count, 1, 10))
@@ -193,7 +203,7 @@ internal sealed partial class BeastmasterWindow
     private void DrawTrainingProgress(BeastmasterSettings settings, string id)
     {
         var owned = RecordedOwned();
-        var target = TrainingTarget(settings.Board);
+        var target = TrainingTarget(settings);
         var candidates = RecordedCandidates(settings).ToList();
         var reached = candidates.Count(beast => beast.Rank is >= 1 and <= 25 && beast.Rank >= target && target > 0);
         var unknown = candidates.Count(beast => beast.Rank is < 1 or > 25);
@@ -273,7 +283,7 @@ internal sealed partial class BeastmasterWindow
         var candidates = RecordedCandidates(settings).ToList();
         var cap = TeamMethodCapacity(settings);
         if (settings.Goal == BeastmasterRunGoal.TrainOwned)
-            return BeastmasterSelection.Training(candidates, cap, settings.LevelingMode == CrucibleLevelingMode.Carry_Minus_2, TrainingTarget(settings.Board), settings.ClassificationLock);
+            return BeastmasterSelection.Training(candidates, cap, settings.LevelingMode == CrucibleLevelingMode.Carry_Minus_2, TrainingTarget(settings), settings.ClassificationLock);
         if (settings.TeamMode == CrucibleTeamMode.Custom)
             return settings.CustomTeam.Distinct().Where(number => candidates.Any(beast => beast.Number == number &&
                 (settings.ClassificationLock == 0 || beast.Classification == settings.ClassificationLock))).Take(cap).ToList();

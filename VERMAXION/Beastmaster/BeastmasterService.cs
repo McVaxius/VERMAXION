@@ -16,7 +16,7 @@ namespace VERMAXION.Beastmaster;
 
 internal sealed unsafe partial class BeastmasterService : IDisposable
 {
-    internal enum RunState { Idle, Refreshing, Travelling, OpeningBoard, SettingTeam, Confirming, WaitingDuty, Running, Leaving, WeeklyVerifying, Recovering, Complete, Failed }
+    internal enum RunState { Idle, Refreshing, Travelling, OpeningBoard, SettingTeam, Confirming, WaitingDuty, Running, Leaving, WeeklyVerifying, Recovering, Complete, Failed, Repairing }
     private readonly Func<BeastmasterSettings> getSettings;
     private readonly Func<BeastmasterCharacterData> getCharacterData;
     private readonly Action save;
@@ -62,7 +62,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     public RunState State { get; private set; }
     public bool IsPaused { get; private set; }
-    public bool IsActive => State is not (RunState.Idle or RunState.Complete or RunState.Failed) || ownsNavigation || ownsTravel || EntryPending || combat.OwnsState || refreshCleanupPending;
+    public bool IsActive => State is not (RunState.Idle or RunState.Complete or RunState.Failed) || ownsNavigation || ownsTravel || EntryPending || combat.OwnsState || refreshCleanupPending || repairRequestAccepted;
     public string Status => EntryPending && entryAttempt!.StopRequested
         ? "Stopping Crucible entry."
         : IsPaused ? "Paused: " + status : State == RunState.Running && menus.Status.Length > 0 ? menus.Status : status;
@@ -72,6 +72,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         Svc.PlayerState.ContentId == displayedRunCharacter;
     internal int DisplayRunLimit => Math.Max(1, displayedRunLimit);
     internal uint DisplayBoard => HasRunDisplay ? displayedRunSettings!.Board : Settings.Board;
+    internal int DisplayTrainingTarget => BeastmasterSelection.TrainingTarget(HasRunDisplay ? displayedRunSettings! : Settings);
     internal BeastmasterRunGoal DisplayGoal => HasRunDisplay ? displayedRunSettings!.Goal : Settings.Goal;
     internal bool DisplayWeekly => HasRunDisplay && displayedWeekly;
     internal int DisplayCompletedRuns => HasRunDisplay
@@ -90,6 +91,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         RunState.WeeklyVerifying => "Waiting for fresh weekly challenge credit.",
         RunState.Recovering => "Recovering",
         RunState.Refreshing => "Refresh beasts",
+        RunState.Repairing => "Repairing before entry",
         RunState.Complete => "Complete",
         RunState.Failed => "Unavailable",
         _ => IsActive ? "Stopping" : HasRunDisplay ? "Stopped" : "Ready",
@@ -120,10 +122,11 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     internal System.Collections.Generic.IReadOnlyCollection<uint>? PreparedOwned => preparedOwned;
 
     public BeastmasterService(Func<BeastmasterSettings> settings, Func<BeastmasterCharacterData> characterData,
-        Action save, VNavmeshIPC navigation, LifestreamIPC travel)
+        Action save, VNavmeshIPC navigation, LifestreamIPC travel, AdsIpcClient ads)
     {
         getSettings = settings; getCharacterData = characterData; this.save = save;
         this.navigation = navigation; this.travel = travel;
+        this.ads = ads;
         BeastmasterRuntime.Service = this;
     }
 
@@ -243,12 +246,14 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     {
         if (operatorStopped || IsPaused || !CanObserveCharacter ||
             State is not (RunState.Travelling or RunState.OpeningBoard or RunState.SettingTeam or
-                RunState.Confirming or RunState.WaitingDuty or RunState.Recovering) ||
+                RunState.Confirming or RunState.WaitingDuty or RunState.Recovering or RunState.Repairing) ||
             IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
             !CrucibleUi.TryPrompt(17787, out var prompt, finalLineOnly: true)) return false;
 
         // A matching question is the current entry, including after a reload.
         // Handle it before idle/combat readiness or unrelated queue-pop windows.
+        // ADS cleanup can close SelectYesno. Confirm this prompt first; the
+        // repair observer releases its utility after the prompt disappears.
         entryAttempt ??= new BeastmasterEntryAttempt(owner, Settings.Board);
         if (entryAttempt.Character != owner || entryAttempt.StopRequested) return false;
         if (State != RunState.WaitingDuty)
@@ -267,6 +272,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         {
             // Explicit Start selects this character's profile. Old entry and board
             // observations cannot authorize actions or completion on this character.
+            CancelOwnedRepair();
             StopNavigation();
             if (ownsTravel) travel.TryAbort();
             combat.TryRelease(out _);
@@ -523,6 +529,12 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private void BeginRegistration()
     {
+        if (TryPrepareRegistrationRepair()) return;
+        BeginRegistrationAfterRepair();
+    }
+
+    private void BeginRegistrationAfterRepair()
+    {
         if (!PrepareEntryObservation(out var entryReason)) { Fail(entryReason); return; }
         teamSetup.Start(Settings.TeamMode); boardStep = 0; travelRequested = false;
         ownershipNotebookRequested = false;
@@ -551,6 +563,9 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                 UpdateFullRefresh();
                 return;
             }
+            // ADS owns its accepted repair menus and travel. Observe it even
+            // while paused/zoning, before normal readiness and entry movement.
+            if (UpdateRegistrationRepair()) return;
             // Results own progression even if the native death state lingers.
             if (State == RunState.Running && !resultSeen && !CrucibleUi.IsOpen(CrucibleUi.ResultWindow) &&
                 Svc.Objects.LocalPlayer is { IsDead: true } && !waitingForRevival)
@@ -900,6 +915,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private void StopCore()
     {
         operatorStopped = true; recoveryAt = default;
+        CancelOwnedRepair();
         if (CanReinspectCurrent && owner != 0 && owner == Svc.PlayerState.ContentId) runData = getCharacterData();
         if (CanObserveCharacter && BeastmasterPlayer.IsValid && !IsCrucibleTerritory(Svc.ClientState.TerritoryType) && entryAttempt == null)
         {
@@ -920,7 +936,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         IsPaused = false; pausedAt = default; waitingForRevival = false; menus.Reset(); route = null;
         var released = combat.TryRelease(out var combatReason);
         preparedOwned = null;
-        if (!EntryPending && !combat.OwnsState && !refreshCleanupPending) { owner = 0; runData = null; runSettings = null; }
+        if (!EntryPending && !combat.OwnsState && !refreshCleanupPending && !repairRequestAccepted) { owner = 0; runData = null; runSettings = null; }
         Transition(RunState.Idle, released ? "Stopped" : "Stopped; combat restoration pending: " + combatReason); UpdateCleanup();
     }
     private bool UpdateCleanup()
@@ -929,6 +945,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         {
             UpdateRefreshCleanup();
             ReconcileEntry();
+            if (operatorStopped && repairRequestAccepted) ObserveStoppedRepair();
             bool cleaning = IsPaused || State is RunState.Idle or RunState.Failed or RunState.Complete;
             if (ownsNavigation && cleaning && NavigationSettled()) ownsNavigation = false;
             if (ownsTravel && cleaning && travel.TryReadBusy(out var busy) && !busy) ownsTravel = false;
@@ -939,7 +956,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             if (!confirmingTrainingCompletion && !IsPaused && State is RunState.Idle or RunState.Failed or RunState.Complete)
             {
                 if (!combat.TryRelease(out var reason)) status = "Combat restoration pending: " + reason;
-                if (!combat.OwnsState && !EntryPending && !refreshCleanupPending) { owner = 0; runData = null; runSettings = null; }
+                if (!combat.OwnsState && !EntryPending && !refreshCleanupPending && !repairRequestAccepted) { owner = 0; runData = null; runSettings = null; }
             }
             lastCleanupFailure = string.Empty;
             return true;
@@ -976,6 +993,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     {
         if (disposed) return;
         if (IsActive || IsPaused) Stop();
+        CancelOwnedRepair();
         if (EntryPending) Svc.Log.Warning("[Beastmaster] Unloading with an unresolved native entry; no completion was inferred.");
         if (combat.OwnsState) Svc.Log.Warning("[Beastmaster] Unloading with combat-provider restoration unresolved; check RSR operating mode and BMR preset before another run.");
         entryWithdrawalHook?.Dispose(); entryWithdrawalHook = null;

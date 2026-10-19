@@ -25,6 +25,7 @@ public sealed class BeastmasterRunSetup
     {
         var settings = shared.Clone();
         settings.Goal = Goal; settings.Board = Board; settings.RunCount = RunCount;
+        settings.TrainingTargetRank = 0;
         settings.CompletionCommand = CompletionCommand; settings.Degree = Degree;
         settings.TeamMode = TeamMode; settings.LevelingMode = LevelingMode;
         settings.RecommendedTeamCap = RecommendedTeamCap; settings.ClassificationLock = ClassificationLock;

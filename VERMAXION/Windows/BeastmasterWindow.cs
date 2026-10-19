@@ -148,6 +148,7 @@ internal sealed partial class BeastmasterWindow : Window
                 case 1: DrawBeasts(); break;
                 case 2: DrawSupplies(); break;
                 case 3: DrawSchedule(); break;
+                case 4: DrawRepair(); break;
             }
         }
         ImGui.EndChild();
@@ -161,12 +162,13 @@ internal sealed partial class BeastmasterWindow : Window
         tabStyle.Color(ImGuiCol.TabActive, Vector4.Zero);
         tabStyle.Color(ImGuiCol.TabUnfocused, Vector4.Zero);
         tabStyle.Color(ImGuiCol.TabUnfocusedActive, Vector4.Zero);
-        using var lineHeight = MaterialText.PushLineHeight(new[] { "Run", "Beasts", "Supplies", "VMX Schedule" }.Select(UiText.T).ToArray());
+        using var lineHeight = MaterialText.PushLineHeight(new[] { "Run", "Beasts", "Supplies", "VMX Schedule", "Repair" }.Select(UiText.T).ToArray());
         if (!ImGui.BeginTabBar("BeastmasterTabs", ImGuiTabBarFlags.FittingPolicyScroll)) return;
         Tab("Run", 0);
         Tab("Beasts", 1);
         Tab("Supplies", 2);
         Tab("VMX Schedule###BeastmasterScheduleTab", 3, selectScheduleTab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None);
+        Tab("Repair", 4);
         selectScheduleTab = false;
         scheduleTabActive = activeTab == 3;
         ImGui.EndTabBar();

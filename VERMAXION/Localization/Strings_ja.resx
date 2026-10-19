@@ -4946,7 +4946,7 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Beasts" xml:space="preserve"><value>魔獣</value></data>
   <data name="Block" xml:space="preserve"><value>禁止</value></data>
   <data name="Block category" xml:space="preserve"><value>カテゴリーを禁止</value></data>
-  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>禁止されたアイテムは購入、宝物としての選択、使用の対象になりません。Ctrlキーを押しながらクリックすると、カテゴリー全体を変更できます。</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>除外したアイテムは購入せず、宝箱からも選ばず、使用もしません。Ctrl＋クリックで同じカテゴリすべてに適用します。</value></data>
   <data name="Board" xml:space="preserve"><value>ボード</value></data>
   <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>ボード上での回復：次の戦闘までにキャンプがない場合、HPが60%以下で回復します。</value></data>
   <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>ボードのルート {0}/{1}: {2}</value></data>
@@ -4982,7 +4982,7 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>このリストを削除します。Ctrlキーを押しながらクリックしてください。最後のリストは削除できません。</value></data>
   <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic HelmにはSoulreaper's Armorが必要です。Thunder AxeにはUmbral Wristletが必要です。</value></data>
   <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>ハンドルをドラッグするか、新しい番号（#）を入力して順序を変更します。「禁止」をCtrlキーを押しながらクリックすると、カテゴリー単位で変更できます。</value></data>
-  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>ハンドルをドラッグするか、新しい番号（#）を入力して順序を変更します。禁止設定をCtrlキーを押しながらクリックすると、分類単位で変更できます。</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>ハンドルをドラッグするか新しい番号を入力して並べ替えます。チェックボックスをCtrl＋クリックすると同じ分類すべてに適用します。</value></data>
   <data name="EXP" xml:space="preserve"><value>EXP</value></data>
   <data name="Elite" xml:space="preserve"><value>エリート</value></data>
   <data name="Every familiar is knocked out" xml:space="preserve"><value>すべての使い魔が戦闘不能です</value></data>
@@ -4993,8 +4993,8 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Familiars {0}/{1}" xml:space="preserve"><value>使い魔 {0}/{1}</value></data>
   <data name="Feed" xml:space="preserve"><value>エサを与える</value></data>
   <data name="Fight" xml:space="preserve"><value>戦闘</value></data>
-  <data name="Fight Blocked" xml:space="preserve"><value>戦闘禁止</value></data>
-  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>「戦闘禁止」の使い魔は、禁止されていない戦闘可能な使い魔が3体未満にならない限り、控えになります。Ctrlキーを押しながらクリックすると、分類全体を変更できます。</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>控えにする</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>このファミリアを控えにします。控え以外の生存者が3体未満になると戦闘に参加できます。Ctrl＋クリックで同じ分類すべてに適用します。</value></data>
   <data name="Fight picks" xml:space="preserve"><value>戦闘メンバー</value></data>
   <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>ランクが低く、EXPが少ない使い魔から優先して、ボードの定員までチームを編成します。</value></data>
   <data name="Finishing the board" xml:space="preserve"><value>ボードを完了中</value></data>
@@ -5039,8 +5039,8 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Paused: " xml:space="preserve"><value>一時停止中: </value></data>
   <data name="Paused: {0}" xml:space="preserve"><value>一時停止中: {0}</value></data>
   <data name="Physical resistance: {0}" xml:space="preserve"><value>物理耐性: {0}</value></data>
-  <data name="Pick Blocked" xml:space="preserve"><value>選出禁止</value></data>
-  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>「選出禁止」は自動チーム選択の対象から除外します。Ctrlキーを押しながらクリックすると、分類全体を変更できます。</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>自動チームから除外</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>このファミリアを自動チーム選択から除外します。Ctrl＋クリックで同じ分類すべてに適用します。</value></data>
   <data name="Rank" xml:space="preserve"><value>ランク</value></data>
   <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>ランクは未読み取りです。次回のチーム編成時に図鑑から読み取ります。</value></data>
   <data name="Rank unknown" xml:space="preserve"><value>ランク不明</value></data>
@@ -5052,7 +5052,7 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Required immunity gear must be owned first." xml:space="preserve"><value>必要な免疫装備をあらかじめ所持している必要があります。</value></data>
   <data name="Rest at camps" xml:space="preserve"><value>キャンプで休む</value></data>
   <data name="Resting at the campsite" xml:space="preserve"><value>キャンプで休憩中</value></data>
-  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>このリストの順序を初期状態に戻し、禁止設定をすべて解除します。Ctrlキーを押しながらクリックしてください。</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>このリストを既定の順序に戻し、除外を解除します。Ctrlを押しながらクリックしてください。</value></data>
   <data name="Route has not started." xml:space="preserve"><value>ルートはまだ開始されていません。</value></data>
   <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>ルート {0:00} · {1}/{2}ステップ</value></data>
   <data name="Run setup" xml:space="preserve"><value>実行設定</value></data>
@@ -5317,7 +5317,7 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve"><value>単独の魔獣図鑑で要求した魔獣を選択できませんでした。</value></data>
   <data name="The standalone bestiary did not become ready." xml:space="preserve"><value>単独の魔獣図鑑が準備完了になりませんでした。</value></data>
   <data name="The standalone bestiary is unavailable." xml:space="preserve"><value>単独の魔獣図鑑を利用できません。</value></data>
-  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve"><value>この順序とブロック設定は、購入、宝箱の選択、アイテム使用に適用されます。</value></data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve"><value>この順序と除外設定は、購入、宝箱の選択、アイテムの使用に適用されます。</value></data>
   <data name="This run: {0}/{1} boards" xml:space="preserve"><value>今回: {0}/{1}ボード</value></data>
   <data name="Three strong fighters + trainees" xml:space="preserve"><value>強い戦闘要員3体＋育成対象</value></data>
   <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve"><value>最も強い3体が先に戦い、育成対象を最大{0}体加えます。2枠を空け、合計最大{1}体を連れていきます。控えもEXPを獲得します。</value></data>
@@ -5483,4 +5483,131 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Stopping when the current board ends." xml:space="preserve"><value>現在のボードが終了すると停止します。</value></data>
   <data name="Stopped after leaving the current board." xml:space="preserve"><value>現在のボードから退出したため停止しました。</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>クリア後に停止し、クルーシブルから退出しました。</value></data>
+  <data name="Training target rank" xml:space="preserve">
+    <value>育成目標ランク</value>
+  </data>
+  <data name="Saved for manual Run. Choosing another board resets the target to its default rank." xml:space="preserve">
+    <value>手動実行用に保存します。別のボードを選ぶと、そのボードの既定ランクに目標を戻します。</value>
+  </data>
+  <data name="Repair" xml:space="preserve">
+    <value>修理</value>
+  </data>
+  <data name="Self repair" xml:space="preserve">
+    <value>自己修理</value>
+  </data>
+  <data name="NPC repair without inn" xml:space="preserve">
+    <value>宿屋を使わずNPC修理</value>
+  </data>
+  <data name="Nearby NPC only" xml:space="preserve">
+    <value>近くのNPCのみ</value>
+  </data>
+  <data name="NPC repair with inn" xml:space="preserve">
+    <value>宿屋を使ってNPC修理</value>
+  </data>
+  <data name="Shared by this character&apos;s manual, scheduled and weekly runs." xml:space="preserve">
+    <value>このキャラクターの手動・スケジュール・ウィークリー実行で共通です。</value>
+  </data>
+  <data name="Repair edits apply to the next Start; the current run keeps its setup." xml:space="preserve">
+    <value>修理設定の変更は次回の開始から適用されます。現在の実行は開始時の設定を維持します。</value>
+  </data>
+  <data name="Repair mode" xml:space="preserve">
+    <value>修理方法</value>
+  </data>
+  <data name="Repair below durability (%)" xml:space="preserve">
+    <value>この耐久度未満で修理（%）</value>
+  </data>
+  <data name="Checks the lowest durability of equipped repairable gear before entry and between boards, outside the duty. Set 0 to disable automatic requests." xml:space="preserve">
+    <value>コンテンツ外で、入場前とボード間に修理可能な装備の最低耐久度を確認します。0にすると自動依頼を無効にします。</value>
+  </data>
+  <data name="Repairs remain manual." xml:space="preserve">
+    <value>修理は手動で行います。</value>
+  </data>
+  <data name="Self repair requires the appropriate crafting levels and repair materials. It never switches to an NPC automatically." xml:space="preserve">
+    <value>自己修理には対応するクラフターのレベルと修理素材が必要です。自動でNPC修理に切り替わることはありません。</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender without entering an inn." xml:space="preserve">
+    <value>ADSは宿屋に入らず、NPC修理屋への移動やテレポを行えます。</value>
+  </data>
+  <data name="Uses a nearby NPC mender only. No teleporting or inn travel." xml:space="preserve">
+    <value>近くのNPC修理屋のみを使用します。テレポや宿屋への移動は行いません。</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender and use an inn." xml:space="preserve">
+    <value>ADSはNPC修理屋への移動やテレポ、宿屋の利用を行えます。</value>
+  </data>
+  <data name="Choose a repair mode." xml:space="preserve">
+    <value>修理方法を選択してください。</value>
+  </data>
+  <data name="Automatic repair uses ADS. Crewcible resumes entry after the repair attempt." xml:space="preserve">
+    <value>自動修理にはADSを使用します。修理を試みた後、Crewcibleは入場を再開します。</value>
+  </data>
+  <data name="Repair disabled." xml:space="preserve">
+    <value>修理は無効です。</value>
+  </data>
+  <data name="Repair threshold is 0%; automatic repair is disabled." xml:space="preserve">
+    <value>修理のしきい値が0%のため、自動修理は無効です。</value>
+  </data>
+  <data name="Repair skipped: equipped durability is unavailable." xml:space="preserve">
+    <value>修理をスキップ：装備の耐久度を取得できません。</value>
+  </data>
+  <data name="Equipped durability {0}%; repair starts below {1}%." xml:space="preserve">
+    <value>装備の耐久度は{0}%です。{1}%未満で修理を開始します。</value>
+  </data>
+  <data name="Repair skipped: ADS is unavailable; continuing." xml:space="preserve">
+    <value>修理をスキップ：ADSを利用できません。続行します。</value>
+  </data>
+  <data name="Repair skipped: another ADS utility is active; continuing." xml:space="preserve">
+    <value>修理をスキップ：別のADSユーティリティが実行中です。続行します。</value>
+  </data>
+  <data name="Repair skipped: the player is busy; continuing." xml:space="preserve">
+    <value>修理をスキップ：プレイヤーが操作中です。続行します。</value>
+  </data>
+  <data name="Repair requested; waiting for ADS." xml:space="preserve">
+    <value>修理を依頼しました。ADSを待っています。</value>
+  </data>
+  <data name="Repairing equipment; entry is paused." xml:space="preserve">
+    <value>装備を修理中です。入場を一時停止しています。</value>
+  </data>
+  <data name="Repair finished; waiting for travel to settle." xml:space="preserve">
+    <value>修理が終了しました。移動の完了を待っています。</value>
+  </data>
+  <data name="Repair complete; equipped durability {0}%." xml:space="preserve">
+    <value>修理完了。装備の耐久度は{0}%です。</value>
+  </data>
+  <data name="Repair improved durability to {0}%, but it is still below {1}%; continuing." xml:space="preserve">
+    <value>修理で耐久度が{0}%に上がりましたが、まだ{1}%未満です。続行します。</value>
+  </data>
+  <data name="Repair did not improve equipped durability; continuing." xml:space="preserve">
+    <value>修理で装備の耐久度は改善しませんでした。続行します。</value>
+  </data>
+  <data name="Repair ended; equipped durability is unavailable; continuing." xml:space="preserve">
+    <value>修理が終了しました。装備の耐久度を取得できません。続行します。</value>
+  </data>
+  <data name="Repair was not accepted; continuing." xml:space="preserve">
+    <value>修理依頼が受け付けられませんでした。続行します。</value>
+  </data>
+  <data name="Repair timed out; continuing." xml:space="preserve">
+    <value>修理がタイムアウトしました。続行します。</value>
+  </data>
+  <data name="Repair ownership changed; continuing." xml:space="preserve">
+    <value>修理の管理元が変更されました。続行します。</value>
+  </data>
+  <data name="Repair cancelled." xml:space="preserve">
+    <value>修理をキャンセルしました。</value>
+  </data>
+  <data name="Repairing before entry" xml:space="preserve">
+    <value>入場前に修理中</value>
+  </data>
+  <data name="Repair cancellation is unconfirmed; waiting for the owned utility to settle." xml:space="preserve">
+    <value>修理のキャンセルを確認できません。管理中のユーティリティの終了を待っています。</value>
+  </data>
+  <data name="Repair failed; continuing." xml:space="preserve">
+    <value>修理に失敗しました。続行します。</value>
+  </data>
+  <data name="PvP - Try to win" xml:space="preserve"><value>PvP - 勝利を目指す</value></data>
+  <data name="PvP - Throw" xml:space="preserve"><value>PvP - 意図的に負ける</value></data>
+  <data name="Run player matches" xml:space="preserve"><value>対人戦を開始</value></data>
+  <data name="Number of player matches" xml:space="preserve"><value>対人戦の試合数</value></data>
+  <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>RPなしの対人戦：登録済みミニオンを補充し、自軍のストーンを守り、敵のストーンを攻撃します。勝利は保証されません。</value></data>
+  <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>RPなしの対人戦：ゲームの結果が出るまで何もせず待機します。召喚・攻撃・防御・降参は行いません。</value></data>
+  <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>対戦相手は誰でも可。パートナー不要。開始で試合数をリセットし、再開では保持します。ゲームの結果のみ集計。実機確認は未実施です。</value></data>
 </root>

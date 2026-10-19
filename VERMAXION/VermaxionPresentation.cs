@@ -92,6 +92,6 @@ internal static class VermaxionPresentation
                 draw.AddCircleFilled(P(.22f,.44f),size*.04f,MaterialCanvas.Color(MaterialTheme.Current.Colors.Surface),12);
             }
         }
-        else MaterialIcons.Draw(label switch { "Run All"=>MaterialIcon.Play,"Settings"=>MaterialIcon.Settings,"FULL STOP"=>MaterialIcon.Stop,_=>MaterialIcon.None },origin,size,color);
+        else MaterialIcons.Draw(label switch { "Run All"=>MaterialIcon.Play,"Settings"=>MaterialIcon.Settings,"Crewcible"=>MaterialIcon.Egg,"FULL STOP"=>MaterialIcon.Stop,_=>MaterialIcon.None },origin,size,color);
     }
 }

@@ -139,7 +139,7 @@ public class ChocoboRaceService : IDisposable
         this.progressionStartBlock = progressionStartBlock;
         this.testAllowanceEnabled = testAllowanceEnabled;
         this.cancelPendingReload = cancelPendingReload;
-        log.Information($"[ChocoboRace] Build marker chocobo-workflow-20261018-08; explicit collection reload preserves the saved pause; Lazyparasite test budget={ChocoboDailyAllowance.LimitSeconds / 3600:0} hours only.");
+        log.Information($"[ChocoboRace] Build marker chocobo-workflow-20261019-09; colour receipt2 collection-and-pause verification; Lazyparasite test budget={ChocoboDailyAllowance.LimitSeconds / 3600:0} hours only.");
     }
 
     public bool Start(bool resume = false, bool startNewBatch = false, bool collectAndPause = false)

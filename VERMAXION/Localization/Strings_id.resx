@@ -2096,7 +2096,7 @@ Dependensi: {1}</value></data>
   <data name="Beasts" xml:space="preserve"><value>Binatang</value></data>
   <data name="Block" xml:space="preserve"><value>Blokir</value></data>
   <data name="Block category" xml:space="preserve"><value>Blokir kategori</value></data>
-  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Item yang diblokir tidak akan dibeli, dipilih sebagai harta, atau digunakan. Klik sambil menahan Ctrl untuk mengubah seluruh kategori.</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Item yang dikecualikan tidak dibeli, dipilih sebagai harta, atau digunakan. Ctrl-klik untuk mengubah seluruh kategori.</value></data>
   <data name="Board" xml:space="preserve"><value>Papan</value></data>
   <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Pemulihan di papan: saat HP 60% atau kurang dan tidak ada perkemahan sebelum pertarungan berikutnya.</value></data>
   <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Rute papan {0}/{1}: {2}</value></data>
@@ -2132,7 +2132,7 @@ Dependensi: {1}</value></data>
   <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Hapus daftar ini. Tahan Ctrl lalu klik. Daftar terakhir tidak dapat dihapus.</value></data>
   <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm memerlukan Soulreaper's Armor. Thunder Axe memerlukan Umbral Wristlet.</value></data>
   <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Seret pegangan atau ketik # baru untuk mengubah urutan. Klik Blokir sambil menahan Ctrl untuk mengubah kategorinya.</value></data>
-  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Seret pegangan atau ketik # baru untuk mengubah urutan. Klik sebuah blokir sambil menahan Ctrl untuk mengubah klasifikasinya.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Seret pegangan atau masukkan nomor baru untuk mengurutkan ulang. Ctrl-klik kotak centang untuk menerapkan ke seluruh klasifikasi.</value></data>
   <data name="EXP" xml:space="preserve"><value>EXP</value></data>
   <data name="Elite" xml:space="preserve"><value>Elite</value></data>
   <data name="Every familiar is knocked out" xml:space="preserve"><value>Semua pendamping telah tumbang</value></data>
@@ -2143,8 +2143,8 @@ Dependensi: {1}</value></data>
   <data name="Familiars {0}/{1}" xml:space="preserve"><value>Pendamping {0}/{1}</value></data>
   <data name="Feed" xml:space="preserve"><value>Beri makan</value></data>
   <data name="Fight" xml:space="preserve"><value>Bertarung</value></data>
-  <data name="Fight Blocked" xml:space="preserve"><value>Dilarang bertarung</value></data>
-  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Dilarang bertarung menyimpan pendamping ini sebagai cadangan, kecuali petarung yang tidak diblokir dan masih hidup tersisa kurang dari tiga. Klik sambil menahan Ctrl untuk mengubah seluruh klasifikasi.</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Simpan sebagai cadangan</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Simpan familiar ini sebagai cadangan. Ia dapat bertarung saat kurang dari tiga petarung lain di luar cadangan yang masih hidup. Ctrl-klik untuk mengubah seluruh klasifikasi.</value></data>
   <data name="Fight picks" xml:space="preserve"><value>Pilihan petarung</value></data>
   <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Penuhi kapasitas tim papan dengan mendahulukan pendamping berperingkat terendah dan dengan EXP paling sedikit.</value></data>
   <data name="Finishing the board" xml:space="preserve"><value>Menyelesaikan papan</value></data>
@@ -2189,8 +2189,8 @@ Dependensi: {1}</value></data>
   <data name="Paused: " xml:space="preserve"><value>Dijeda: </value></data>
   <data name="Paused: {0}" xml:space="preserve"><value>Dijeda: {0}</value></data>
   <data name="Physical resistance: {0}" xml:space="preserve"><value>Ketahanan fisik: {0}</value></data>
-  <data name="Pick Blocked" xml:space="preserve"><value>Dilarang dipilih</value></data>
-  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Dilarang dipilih mencegah pemilihan tim secara otomatis. Klik sambil menahan Ctrl untuk mengubah seluruh klasifikasi.</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Kecualikan dari tim otomatis</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Kecualikan familiar ini dari pemilihan tim otomatis. Ctrl-klik untuk mengubah seluruh klasifikasi.</value></data>
   <data name="Rank" xml:space="preserve"><value>Peringkat</value></data>
   <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Peringkat belum dibaca. Akan dibaca dari bestiarium saat pengaturan tim berikutnya.</value></data>
   <data name="Rank unknown" xml:space="preserve"><value>Peringkat tidak diketahui</value></data>
@@ -2202,7 +2202,7 @@ Dependensi: {1}</value></data>
   <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Perlengkapan kekebalan yang diperlukan harus dimiliki terlebih dahulu.</value></data>
   <data name="Rest at camps" xml:space="preserve"><value>Istirahat di perkemahan</value></data>
   <data name="Resting at the campsite" xml:space="preserve"><value>Beristirahat di perkemahan</value></data>
-  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Pulihkan urutan bawaan daftar ini dan hapus semua pemblokirannya. Tahan Ctrl lalu klik.</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Pulihkan urutan bawaan daftar ini dan hapus pengecualiannya. Tahan Ctrl lalu klik.</value></data>
   <data name="Route has not started." xml:space="preserve"><value>Rute belum dimulai.</value></data>
   <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Rute {0:00} · {1}/{2} langkah</value></data>
   <data name="Run setup" xml:space="preserve"><value>Pengaturan sesi</value></data>
@@ -2754,7 +2754,7 @@ Dependensi: {1}</value></data>
     <value>Bestiari mandiri tidak tersedia.</value>
   </data>
   <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
-    <value>Urutan dan pemblokiran ini berlaku untuk pembelian, pilihan harta, dan penggunaan item.</value>
+    <value>Urutan dan pengecualian ini berlaku untuk pembelian, pilihan harta, dan penggunaan item.</value>
   </data>
   <data name="This run: {0}/{1} boards" xml:space="preserve">
     <value>Proses ini: {0}/{1} papan</value>
@@ -2989,4 +2989,131 @@ Dependensi: {1}</value></data>
   <data name="Stopping when the current board ends." xml:space="preserve"><value>Akan berhenti saat papan ini berakhir.</value></data>
   <data name="Stopped after leaving the current board." xml:space="preserve"><value>Berhenti setelah keluar dari papan saat ini.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Berhenti setelah selesai; sudah keluar dari Crucible.</value></data>
+  <data name="Training target rank" xml:space="preserve">
+    <value>Peringkat target latihan</value>
+  </data>
+  <data name="Saved for manual Run. Choosing another board resets the target to its default rank." xml:space="preserve">
+    <value>Disimpan untuk proses manual. Memilih papan lain mengembalikan target ke peringkat bawaan papan tersebut.</value>
+  </data>
+  <data name="Repair" xml:space="preserve">
+    <value>Perbaikan</value>
+  </data>
+  <data name="Self repair" xml:space="preserve">
+    <value>Perbaiki sendiri</value>
+  </data>
+  <data name="NPC repair without inn" xml:space="preserve">
+    <value>NPC tanpa penginapan</value>
+  </data>
+  <data name="Nearby NPC only" xml:space="preserve">
+    <value>Hanya NPC terdekat</value>
+  </data>
+  <data name="NPC repair with inn" xml:space="preserve">
+    <value>NPC dengan penginapan</value>
+  </data>
+  <data name="Shared by this character&apos;s manual, scheduled and weekly runs." xml:space="preserve">
+    <value>Digunakan bersama oleh putaran manual, terjadwal, dan mingguan karakter ini.</value>
+  </data>
+  <data name="Repair edits apply to the next Start; the current run keeps its setup." xml:space="preserve">
+    <value>Perubahan perbaikan berlaku pada Mulai berikutnya; putaran saat ini tetap memakai pengaturannya.</value>
+  </data>
+  <data name="Repair mode" xml:space="preserve">
+    <value>Mode perbaikan</value>
+  </data>
+  <data name="Repair below durability (%)" xml:space="preserve">
+    <value>Perbaiki jika ketahanan di bawah (%)</value>
+  </data>
+  <data name="Checks the lowest durability of equipped repairable gear before entry and between boards, outside the duty. Set 0 to disable automatic requests." xml:space="preserve">
+    <value>Memeriksa ketahanan terendah perlengkapan terpasang yang dapat diperbaiki sebelum masuk dan di antara papan, di luar duty. Nilai 0 menonaktifkan permintaan otomatis.</value>
+  </data>
+  <data name="Repairs remain manual." xml:space="preserve">
+    <value>Perbaikan tetap dilakukan manual.</value>
+  </data>
+  <data name="Self repair requires the appropriate crafting levels and repair materials. It never switches to an NPC automatically." xml:space="preserve">
+    <value>Perbaikan sendiri membutuhkan level perajin dan bahan perbaikan yang sesuai. Tidak pernah beralih otomatis ke NPC.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender without entering an inn." xml:space="preserve">
+    <value>ADS boleh berjalan atau berteleportasi ke NPC reparasi tanpa memasuki penginapan.</value>
+  </data>
+  <data name="Uses a nearby NPC mender only. No teleporting or inn travel." xml:space="preserve">
+    <value>Hanya menggunakan NPC reparasi terdekat. Tanpa teleportasi atau perjalanan ke penginapan.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender and use an inn." xml:space="preserve">
+    <value>ADS boleh berjalan atau berteleportasi ke NPC reparasi dan menggunakan penginapan.</value>
+  </data>
+  <data name="Choose a repair mode." xml:space="preserve">
+    <value>Pilih mode perbaikan.</value>
+  </data>
+  <data name="Automatic repair uses ADS. Crewcible resumes entry after the repair attempt." xml:space="preserve">
+    <value>Perbaikan otomatis menggunakan ADS. Crewcible melanjutkan proses masuk setelah upaya perbaikan.</value>
+  </data>
+  <data name="Repair disabled." xml:space="preserve">
+    <value>Perbaikan dinonaktifkan.</value>
+  </data>
+  <data name="Repair threshold is 0%; automatic repair is disabled." xml:space="preserve">
+    <value>Ambang perbaikan adalah 0%; perbaikan otomatis dinonaktifkan.</value>
+  </data>
+  <data name="Repair skipped: equipped durability is unavailable." xml:space="preserve">
+    <value>Perbaikan dilewati: ketahanan perlengkapan terpasang tidak tersedia.</value>
+  </data>
+  <data name="Equipped durability {0}%; repair starts below {1}%." xml:space="preserve">
+    <value>Ketahanan perlengkapan terpasang {0}%; perbaikan dimulai di bawah {1}%.</value>
+  </data>
+  <data name="Repair skipped: ADS is unavailable; continuing." xml:space="preserve">
+    <value>Perbaikan dilewati: ADS tidak tersedia; melanjutkan.</value>
+  </data>
+  <data name="Repair skipped: another ADS utility is active; continuing." xml:space="preserve">
+    <value>Perbaikan dilewati: utilitas ADS lain sedang aktif; melanjutkan.</value>
+  </data>
+  <data name="Repair skipped: the player is busy; continuing." xml:space="preserve">
+    <value>Perbaikan dilewati: pemain sedang sibuk; melanjutkan.</value>
+  </data>
+  <data name="Repair requested; waiting for ADS." xml:space="preserve">
+    <value>Perbaikan diminta; menunggu ADS.</value>
+  </data>
+  <data name="Repairing equipment; entry is paused." xml:space="preserve">
+    <value>Memperbaiki perlengkapan; proses masuk dijeda.</value>
+  </data>
+  <data name="Repair finished; waiting for travel to settle." xml:space="preserve">
+    <value>Perbaikan selesai; menunggu perjalanan berakhir.</value>
+  </data>
+  <data name="Repair complete; equipped durability {0}%." xml:space="preserve">
+    <value>Perbaikan berhasil; ketahanan perlengkapan terpasang {0}%.</value>
+  </data>
+  <data name="Repair improved durability to {0}%, but it is still below {1}%; continuing." xml:space="preserve">
+    <value>Perbaikan meningkatkan ketahanan menjadi {0}%, tetapi masih di bawah {1}%; melanjutkan.</value>
+  </data>
+  <data name="Repair did not improve equipped durability; continuing." xml:space="preserve">
+    <value>Perbaikan tidak meningkatkan ketahanan perlengkapan terpasang; melanjutkan.</value>
+  </data>
+  <data name="Repair ended; equipped durability is unavailable; continuing." xml:space="preserve">
+    <value>Perbaikan berakhir; ketahanan perlengkapan terpasang tidak tersedia; melanjutkan.</value>
+  </data>
+  <data name="Repair was not accepted; continuing." xml:space="preserve">
+    <value>Permintaan perbaikan tidak diterima; melanjutkan.</value>
+  </data>
+  <data name="Repair timed out; continuing." xml:space="preserve">
+    <value>Waktu perbaikan habis; melanjutkan.</value>
+  </data>
+  <data name="Repair ownership changed; continuing." xml:space="preserve">
+    <value>Kendali perbaikan berubah; melanjutkan.</value>
+  </data>
+  <data name="Repair cancelled." xml:space="preserve">
+    <value>Perbaikan dibatalkan.</value>
+  </data>
+  <data name="Repairing before entry" xml:space="preserve">
+    <value>Memperbaiki sebelum masuk</value>
+  </data>
+  <data name="Repair cancellation is unconfirmed; waiting for the owned utility to settle." xml:space="preserve">
+    <value>Pembatalan perbaikan belum terkonfirmasi; menunggu utilitas yang dikendalikan selesai.</value>
+  </data>
+  <data name="Repair failed; continuing." xml:space="preserve">
+    <value>Perbaikan gagal; melanjutkan.</value>
+  </data>
+  <data name="PvP - Try to win" xml:space="preserve"><value>PvP - Coba menang</value></data>
+  <data name="PvP - Throw" xml:space="preserve"><value>PvP - Sengaja kalah</value></data>
+  <data name="Run player matches" xml:space="preserve"><value>Mulai pertandingan pemain</value></data>
+  <data name="Number of player matches" xml:space="preserve"><value>Jumlah pertandingan pemain</value></data>
+  <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>Pertandingan tanpa RP: tambah minion terdaftar, pertahankan batu sendiri dan serang batu musuh. Kemenangan tidak dijamin.</value></data>
+  <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>Pertandingan tanpa RP: tetap pasif sampai hasil permainan. Tanpa pengerahan, serangan, pertahanan atau menyerah.</value></data>
+  <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Lawan siapa saja; tidak perlu pasangan. Mulai mereset hitungan; Lanjutkan menyimpannya. Hanya hasil permainan dihitung. Verifikasi langsung tertunda.</value></data>
 </root>

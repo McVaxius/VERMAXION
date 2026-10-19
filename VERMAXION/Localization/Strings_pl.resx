@@ -2096,7 +2096,7 @@ Zależności: {1}</value></data>
   <data name="Beasts" xml:space="preserve"><value>Bestie</value></data>
   <data name="Block" xml:space="preserve"><value>Blokuj</value></data>
   <data name="Block category" xml:space="preserve"><value>Blokuj kategorię</value></data>
-  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Zablokowane przedmioty nie są kupowane, wybierane jako skarb ani używane. Kliknij z wciśniętym Ctrl, aby zmienić całą kategorię.</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Wykluczone przedmioty nie są kupowane, wybierane jako skarb ani używane. Ctrl+kliknięcie zmienia całą kategorię.</value></data>
   <data name="Board" xml:space="preserve"><value>Plansza</value></data>
   <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Leczenie na planszy: przy 60% PŻ lub mniej, jeśli przed następną walką nie ma obozu.</value></data>
   <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Trasa planszy {0}/{1}: {2}</value></data>
@@ -2132,7 +2132,7 @@ Zależności: {1}</value></data>
   <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Usuń tę listę. Przytrzymaj Ctrl i kliknij. Nie można usunąć ostatniej listy.</value></data>
   <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm wymaga Soulreaper's Armor. Thunder Axe wymaga Umbral Wristlet.</value></data>
   <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Przeciągnij uchwyt lub wpisz nowy #, aby zmienić kolejność. Kliknij Blokuj z wciśniętym Ctrl, aby zmienić odpowiednią kategorię.</value></data>
-  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Przeciągnij uchwyt lub wpisz nowy #, aby zmienić kolejność. Kliknij blokadę z wciśniętym Ctrl, aby zmienić odpowiednią klasyfikację.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Przeciągnij uchwyt lub wpisz nowy numer, aby zmienić kolejność. Ctrl+kliknięcie pola wyboru stosuje zmianę do całej klasyfikacji.</value></data>
   <data name="EXP" xml:space="preserve"><value>PD</value></data>
   <data name="Elite" xml:space="preserve"><value>Elitarny</value></data>
   <data name="Every familiar is knocked out" xml:space="preserve"><value>Wszyscy chowańcy zostali pokonani</value></data>
@@ -2143,8 +2143,8 @@ Zależności: {1}</value></data>
   <data name="Familiars {0}/{1}" xml:space="preserve"><value>Chowańcy {0}/{1}</value></data>
   <data name="Feed" xml:space="preserve"><value>Nakarm</value></data>
   <data name="Fight" xml:space="preserve"><value>Walcz</value></data>
-  <data name="Fight Blocked" xml:space="preserve"><value>Walka zablokowana</value></data>
-  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Walka zablokowana pozostawia tego chowańca w rezerwie, chyba że przy życiu zostanie mniej niż trzech niezablokowanych wojowników. Kliknij z wciśniętym Ctrl, aby zmienić całą klasyfikację.</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Zachowaj w rezerwie</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Zachowaj tego chowańca w rezerwie. Może walczyć, jeśli przeżyło mniej niż trzech innych wojowników spoza rezerwy. Ctrl+kliknięcie zmienia całą klasyfikację.</value></data>
   <data name="Fight picks" xml:space="preserve"><value>Wybór do walki</value></data>
   <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Wypełnij limit drużyny na planszy, zaczynając od chowańców o najniższej randze i najmniejszej liczbie PD.</value></data>
   <data name="Finishing the board" xml:space="preserve"><value>Kończenie planszy</value></data>
@@ -2189,8 +2189,8 @@ Zależności: {1}</value></data>
   <data name="Paused: " xml:space="preserve"><value>Wstrzymano: </value></data>
   <data name="Paused: {0}" xml:space="preserve"><value>Wstrzymano: {0}</value></data>
   <data name="Physical resistance: {0}" xml:space="preserve"><value>Odporność fizyczna: {0}</value></data>
-  <data name="Pick Blocked" xml:space="preserve"><value>Wybór zablokowany</value></data>
-  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Wybór zablokowany uniemożliwia automatyczny wybór do drużyny. Kliknij z wciśniętym Ctrl, aby zmienić całą klasyfikację.</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Wyklucz z automatycznych drużyn</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Wyklucz tego chowańca z automatycznego doboru drużyny. Ctrl+kliknięcie zmienia całą klasyfikację.</value></data>
   <data name="Rank" xml:space="preserve"><value>Ranga</value></data>
   <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Ranga nie została jeszcze odczytana. Zostanie odczytana z bestiariusza przy następnym ustawianiu drużyny.</value></data>
   <data name="Rank unknown" xml:space="preserve"><value>Nieznana ranga</value></data>
@@ -2202,7 +2202,7 @@ Zależności: {1}</value></data>
   <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Najpierw trzeba posiadać wymagane wyposażenie zapewniające odporność.</value></data>
   <data name="Rest at camps" xml:space="preserve"><value>Odpoczywaj w obozach</value></data>
   <data name="Resting at the campsite" xml:space="preserve"><value>Odpoczynek w obozie</value></data>
-  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Przywróć domyślną kolejność tej listy i usuń jej blokady. Przytrzymaj Ctrl i kliknij.</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Przywróć domyślną kolejność tej listy i usuń wykluczenia. Przytrzymaj Ctrl i kliknij.</value></data>
   <data name="Route has not started." xml:space="preserve"><value>Trasa jeszcze się nie rozpoczęła.</value></data>
   <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Trasa {0:00} · {1}/{2} kroków</value></data>
   <data name="Run setup" xml:space="preserve"><value>Ustawienia podejścia</value></data>
@@ -2754,7 +2754,7 @@ Zależności: {1}</value></data>
     <value>Osobny bestiariusz jest niedostępny.</value>
   </data>
   <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
-    <value>Ta kolejność i te blokady dotyczą zakupów, wyboru skarbów i używania przedmiotów.</value>
+    <value>Ta kolejność i te wykluczenia dotyczą zakupów, wyboru skarbów i używania przedmiotów.</value>
   </data>
   <data name="This run: {0}/{1} boards" xml:space="preserve">
     <value>To uruchomienie: {0}/{1} plansz</value>
@@ -2989,4 +2989,131 @@ Zależności: {1}</value></data>
   <data name="Stopping when the current board ends." xml:space="preserve"><value>Zatrzymanie po zakończeniu obecnej planszy.</value></data>
   <data name="Stopped after leaving the current board." xml:space="preserve"><value>Zatrzymano po opuszczeniu obecnej planszy.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Zatrzymano po ukończeniu; postać opuściła Tygiel.</value></data>
+  <data name="Training target rank" xml:space="preserve">
+    <value>Docelowa ranga szkolenia</value>
+  </data>
+  <data name="Saved for manual Run. Choosing another board resets the target to its default rank." xml:space="preserve">
+    <value>Zapisane dla ręcznego uruchamiania. Wybór innej planszy przywraca jej domyślną rangę docelową.</value>
+  </data>
+  <data name="Repair" xml:space="preserve">
+    <value>Naprawa</value>
+  </data>
+  <data name="Self repair" xml:space="preserve">
+    <value>Samodzielna naprawa</value>
+  </data>
+  <data name="NPC repair without inn" xml:space="preserve">
+    <value>NPC bez gospody</value>
+  </data>
+  <data name="Nearby NPC only" xml:space="preserve">
+    <value>Tylko pobliski NPC</value>
+  </data>
+  <data name="NPC repair with inn" xml:space="preserve">
+    <value>NPC z gospodą</value>
+  </data>
+  <data name="Shared by this character&apos;s manual, scheduled and weekly runs." xml:space="preserve">
+    <value>Wspólne dla ręcznych, zaplanowanych i tygodniowych uruchomień tej postaci.</value>
+  </data>
+  <data name="Repair edits apply to the next Start; the current run keeps its setup." xml:space="preserve">
+    <value>Zmiany naprawy obowiązują od następnego startu; bieżący przebieg zachowuje swoje ustawienia.</value>
+  </data>
+  <data name="Repair mode" xml:space="preserve">
+    <value>Tryb naprawy</value>
+  </data>
+  <data name="Repair below durability (%)" xml:space="preserve">
+    <value>Napraw poniżej wytrzymałości (%)</value>
+  </data>
+  <data name="Checks the lowest durability of equipped repairable gear before entry and between boards, outside the duty. Set 0 to disable automatic requests." xml:space="preserve">
+    <value>Sprawdza najniższą wytrzymałość założonego wyposażenia, które można naprawić, przed wejściem i między planszami, poza instancją. Ustaw 0, aby wyłączyć automatyczne żądania.</value>
+  </data>
+  <data name="Repairs remain manual." xml:space="preserve">
+    <value>Naprawy pozostają ręczne.</value>
+  </data>
+  <data name="Self repair requires the appropriate crafting levels and repair materials. It never switches to an NPC automatically." xml:space="preserve">
+    <value>Samodzielna naprawa wymaga odpowiednich poziomów rzemiosła i materiałów naprawczych. Nigdy nie przełącza się automatycznie na NPC.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender without entering an inn." xml:space="preserve">
+    <value>ADS może podróżować lub teleportować się do NPC naprawiającego bez wchodzenia do gospody.</value>
+  </data>
+  <data name="Uses a nearby NPC mender only. No teleporting or inn travel." xml:space="preserve">
+    <value>Używa tylko pobliskiego NPC naprawiającego. Bez teleportacji i podróży do gospody.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender and use an inn." xml:space="preserve">
+    <value>ADS może podróżować lub teleportować się do NPC naprawiającego i korzystać z gospody.</value>
+  </data>
+  <data name="Choose a repair mode." xml:space="preserve">
+    <value>Wybierz tryb naprawy.</value>
+  </data>
+  <data name="Automatic repair uses ADS. Crewcible resumes entry after the repair attempt." xml:space="preserve">
+    <value>Automatyczna naprawa korzysta z ADS. Crewcible wznawia wejście po próbie naprawy.</value>
+  </data>
+  <data name="Repair disabled." xml:space="preserve">
+    <value>Naprawa wyłączona.</value>
+  </data>
+  <data name="Repair threshold is 0%; automatic repair is disabled." xml:space="preserve">
+    <value>Próg naprawy wynosi 0%; automatyczna naprawa jest wyłączona.</value>
+  </data>
+  <data name="Repair skipped: equipped durability is unavailable." xml:space="preserve">
+    <value>Pominięto naprawę: wytrzymałość założonego wyposażenia jest niedostępna.</value>
+  </data>
+  <data name="Equipped durability {0}%; repair starts below {1}%." xml:space="preserve">
+    <value>Wytrzymałość założonego wyposażenia {0}%; naprawa zaczyna się poniżej {1}%.</value>
+  </data>
+  <data name="Repair skipped: ADS is unavailable; continuing." xml:space="preserve">
+    <value>Pominięto naprawę: ADS jest niedostępny; kontynuowanie.</value>
+  </data>
+  <data name="Repair skipped: another ADS utility is active; continuing." xml:space="preserve">
+    <value>Pominięto naprawę: inne narzędzie ADS jest aktywne; kontynuowanie.</value>
+  </data>
+  <data name="Repair skipped: the player is busy; continuing." xml:space="preserve">
+    <value>Pominięto naprawę: gracz jest zajęty; kontynuowanie.</value>
+  </data>
+  <data name="Repair requested; waiting for ADS." xml:space="preserve">
+    <value>Zażądano naprawy; oczekiwanie na ADS.</value>
+  </data>
+  <data name="Repairing equipment; entry is paused." xml:space="preserve">
+    <value>Naprawianie wyposażenia; wejście wstrzymane.</value>
+  </data>
+  <data name="Repair finished; waiting for travel to settle." xml:space="preserve">
+    <value>Naprawa zakończona; oczekiwanie na koniec podróży.</value>
+  </data>
+  <data name="Repair complete; equipped durability {0}%." xml:space="preserve">
+    <value>Naprawa ukończona; wytrzymałość założonego wyposażenia {0}%.</value>
+  </data>
+  <data name="Repair improved durability to {0}%, but it is still below {1}%; continuing." xml:space="preserve">
+    <value>Naprawa zwiększyła wytrzymałość do {0}%, ale nadal jest ona poniżej {1}%; kontynuowanie.</value>
+  </data>
+  <data name="Repair did not improve equipped durability; continuing." xml:space="preserve">
+    <value>Naprawa nie zwiększyła wytrzymałości założonego wyposażenia; kontynuowanie.</value>
+  </data>
+  <data name="Repair ended; equipped durability is unavailable; continuing." xml:space="preserve">
+    <value>Naprawa zakończona; wytrzymałość założonego wyposażenia jest niedostępna; kontynuowanie.</value>
+  </data>
+  <data name="Repair was not accepted; continuing." xml:space="preserve">
+    <value>Żądanie naprawy nie zostało przyjęte; kontynuowanie.</value>
+  </data>
+  <data name="Repair timed out; continuing." xml:space="preserve">
+    <value>Upłynął czas naprawy; kontynuowanie.</value>
+  </data>
+  <data name="Repair ownership changed; continuing." xml:space="preserve">
+    <value>Zmieniła się kontrola nad naprawą; kontynuowanie.</value>
+  </data>
+  <data name="Repair cancelled." xml:space="preserve">
+    <value>Naprawa anulowana.</value>
+  </data>
+  <data name="Repairing before entry" xml:space="preserve">
+    <value>Naprawa przed wejściem</value>
+  </data>
+  <data name="Repair cancellation is unconfirmed; waiting for the owned utility to settle." xml:space="preserve">
+    <value>Anulowanie naprawy niepotwierdzone; oczekiwanie na zakończenie kontrolowanego narzędzia.</value>
+  </data>
+  <data name="Repair failed; continuing." xml:space="preserve">
+    <value>Naprawa nie powiodła się; kontynuowanie.</value>
+  </data>
+  <data name="PvP - Try to win" xml:space="preserve"><value>PvP - Spróbuj wygrać</value></data>
+  <data name="PvP - Throw" xml:space="preserve"><value>PvP - Celowo przegraj</value></data>
+  <data name="Run player matches" xml:space="preserve"><value>Rozpocznij mecze z graczami</value></data>
+  <data name="Number of player matches" xml:space="preserve"><value>Liczba meczów z graczami</value></data>
+  <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>Mecz bez RP: wzmacniaj zarejestrowane maskotki, broń własnych kamieni i atakuj wrogie. Bez gwarancji zwycięstwa.</value></data>
+  <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>Mecz bez RP: pozostań bierny do wyniku gry. Bez wystawiania jednostek, ataku, obrony i poddawania się.</value></data>
+  <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Dowolny przeciwnik; partner nie jest wymagany. Start zeruje licznik; Wznów go zachowuje. Liczą się tylko wyniki gry. Weryfikacja w grze oczekuje.</value></data>
 </root>

@@ -4946,7 +4946,7 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Beasts" xml:space="preserve"><value>Bêtes</value></data>
   <data name="Block" xml:space="preserve"><value>Bloquer</value></data>
   <data name="Block category" xml:space="preserve"><value>Bloquer la catégorie</value></data>
-  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Les objets bloqués ne sont ni achetés, ni choisis comme trésor, ni utilisés. Ctrl-clic pour modifier toute la catégorie.</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Les objets exclus ne sont ni achetés, ni choisis comme trésor, ni utilisés. Ctrl-clic pour modifier toute la catégorie.</value></data>
   <data name="Board" xml:space="preserve"><value>Plateau</value></data>
   <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Soins sur le plateau : à 60% de PV ou moins lorsqu'aucun camp ne précède le prochain combat.</value></data>
   <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Parcours du plateau {0}/{1} : {2}</value></data>
@@ -4982,7 +4982,7 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Supprimer cette liste. Maintenez Ctrl et cliquez. La dernière liste ne peut pas être supprimée.</value></data>
   <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm nécessite Soulreaper's Armor. Thunder Axe nécessite Umbral Wristlet.</value></data>
   <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Faites glisser la poignée ou saisissez un nouveau n° pour réorganiser. Ctrl-clic sur Bloquer pour modifier sa catégorie.</value></data>
-  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Faites glisser la poignée ou saisissez un nouveau n° pour réorganiser. Ctrl-clic sur un blocage pour modifier sa classification.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Glissez la poignée ou saisissez un nouveau numéro pour réordonner. Ctrl-clic sur une case pour l&apos;appliquer à toute la classification.</value></data>
   <data name="EXP" xml:space="preserve"><value>EXP</value></data>
   <data name="Elite" xml:space="preserve"><value>Élite</value></data>
   <data name="Every familiar is knocked out" xml:space="preserve"><value>Tous les familiers sont K.O.</value></data>
@@ -4993,8 +4993,8 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Familiars {0}/{1}" xml:space="preserve"><value>Familiers {0}/{1}</value></data>
   <data name="Feed" xml:space="preserve"><value>Nourrir</value></data>
   <data name="Fight" xml:space="preserve"><value>Combattre</value></data>
-  <data name="Fight Blocked" xml:space="preserve"><value>Combat bloqué</value></data>
-  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Combat bloqué garde ce familier en réserve, sauf s'il reste moins de trois combattants non bloqués en vie. Ctrl-clic pour modifier toute la classification.</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Garder en réserve</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Garder ce familier en réserve. Il peut combattre s&apos;il reste moins de trois autres combattants hors réserve en vie. Ctrl-clic pour modifier toute la classification.</value></data>
   <data name="Fight picks" xml:space="preserve"><value>Sélection pour le combat</value></data>
   <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Remplir l'équipe jusqu'à la capacité du plateau en privilégiant les familiers au rang le plus bas et ayant le moins d'EXP.</value></data>
   <data name="Finishing the board" xml:space="preserve"><value>Achèvement du plateau</value></data>
@@ -5039,8 +5039,8 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Paused: " xml:space="preserve"><value>En pause : </value></data>
   <data name="Paused: {0}" xml:space="preserve"><value>En pause : {0}</value></data>
   <data name="Physical resistance: {0}" xml:space="preserve"><value>Résistance physique : {0}</value></data>
-  <data name="Pick Blocked" xml:space="preserve"><value>Sélection bloquée</value></data>
-  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Sélection bloquée empêche la sélection automatique dans l'équipe. Ctrl-clic pour modifier toute la classification.</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Exclure des équipes automatiques</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Exclure ce familier de la sélection automatique des équipes. Ctrl-clic pour modifier toute la classification.</value></data>
   <data name="Rank" xml:space="preserve"><value>Rang</value></data>
   <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Rang pas encore lu. Il sera lu dans le bestiaire lors de la prochaine composition de l'équipe.</value></data>
   <data name="Rank unknown" xml:space="preserve"><value>Rang inconnu</value></data>
@@ -5052,7 +5052,7 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Les équipements d'immunité requis doivent déjà être possédés.</value></data>
   <data name="Rest at camps" xml:space="preserve"><value>Se reposer aux camps</value></data>
   <data name="Resting at the campsite" xml:space="preserve"><value>Repos au camp</value></data>
-  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Rétablir l'ordre par défaut de cette liste et supprimer ses blocages. Maintenez Ctrl et cliquez.</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Rétablir l&apos;ordre par défaut de cette liste et annuler ses exclusions. Maintenez Ctrl et cliquez.</value></data>
   <data name="Route has not started." xml:space="preserve"><value>Le parcours n'a pas commencé.</value></data>
   <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Parcours {0:00} · {1}/{2} étapes</value></data>
   <data name="Run setup" xml:space="preserve"><value>Configuration de la session</value></data>
@@ -5839,4 +5839,131 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Stopping when the current board ends." xml:space="preserve"><value>Arrêt à la fin du plateau actuel.</value></data>
   <data name="Stopped after leaving the current board." xml:space="preserve"><value>Arrêt après avoir quitté le plateau actuel.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Arrêt après une réussite ; sortie du Creuset effectuée.</value></data>
+  <data name="Training target rank" xml:space="preserve">
+    <value>Rang cible d&apos;entraînement</value>
+  </data>
+  <data name="Saved for manual Run. Choosing another board resets the target to its default rank." xml:space="preserve">
+    <value>Enregistré pour l&apos;exécution manuelle. Choisir un autre plateau rétablit son rang cible par défaut.</value>
+  </data>
+  <data name="Repair" xml:space="preserve">
+    <value>Réparation</value>
+  </data>
+  <data name="Self repair" xml:space="preserve">
+    <value>Autoréparation</value>
+  </data>
+  <data name="NPC repair without inn" xml:space="preserve">
+    <value>PNJ sans auberge</value>
+  </data>
+  <data name="Nearby NPC only" xml:space="preserve">
+    <value>PNJ à proximité uniquement</value>
+  </data>
+  <data name="NPC repair with inn" xml:space="preserve">
+    <value>PNJ avec auberge</value>
+  </data>
+  <data name="Shared by this character&apos;s manual, scheduled and weekly runs." xml:space="preserve">
+    <value>Partagé entre les parcours manuels, planifiés et hebdomadaires de ce personnage.</value>
+  </data>
+  <data name="Repair edits apply to the next Start; the current run keeps its setup." xml:space="preserve">
+    <value>Les modifications de réparation s&apos;appliquent au prochain démarrage ; le parcours actuel conserve ses réglages.</value>
+  </data>
+  <data name="Repair mode" xml:space="preserve">
+    <value>Mode de réparation</value>
+  </data>
+  <data name="Repair below durability (%)" xml:space="preserve">
+    <value>Réparer sous la durabilité (%)</value>
+  </data>
+  <data name="Checks the lowest durability of equipped repairable gear before entry and between boards, outside the duty. Set 0 to disable automatic requests." xml:space="preserve">
+    <value>Vérifie la durabilité la plus basse de l&apos;équipement réparable porté avant l&apos;entrée et entre les plateaux, hors instance. Régler sur 0 désactive les demandes automatiques.</value>
+  </data>
+  <data name="Repairs remain manual." xml:space="preserve">
+    <value>Les réparations restent manuelles.</value>
+  </data>
+  <data name="Self repair requires the appropriate crafting levels and repair materials. It never switches to an NPC automatically." xml:space="preserve">
+    <value>L&apos;autoréparation nécessite les niveaux d&apos;artisanat et les matériaux de réparation appropriés. Aucun passage automatique à un PNJ.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender without entering an inn." xml:space="preserve">
+    <value>ADS peut se déplacer ou se téléporter vers un PNJ réparateur sans entrer dans une auberge.</value>
+  </data>
+  <data name="Uses a nearby NPC mender only. No teleporting or inn travel." xml:space="preserve">
+    <value>Utilise uniquement un PNJ réparateur à proximité. Aucun déplacement vers une auberge ni téléportation.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender and use an inn." xml:space="preserve">
+    <value>ADS peut se déplacer ou se téléporter vers un PNJ réparateur et utiliser une auberge.</value>
+  </data>
+  <data name="Choose a repair mode." xml:space="preserve">
+    <value>Choisissez un mode de réparation.</value>
+  </data>
+  <data name="Automatic repair uses ADS. Crewcible resumes entry after the repair attempt." xml:space="preserve">
+    <value>La réparation automatique utilise ADS. Crewcible reprend l&apos;entrée après la tentative de réparation.</value>
+  </data>
+  <data name="Repair disabled." xml:space="preserve">
+    <value>Réparation désactivée.</value>
+  </data>
+  <data name="Repair threshold is 0%; automatic repair is disabled." xml:space="preserve">
+    <value>Le seuil de réparation est à 0 % ; la réparation automatique est désactivée.</value>
+  </data>
+  <data name="Repair skipped: equipped durability is unavailable." xml:space="preserve">
+    <value>Réparation ignorée : durabilité de l&apos;équipement porté indisponible.</value>
+  </data>
+  <data name="Equipped durability {0}%; repair starts below {1}%." xml:space="preserve">
+    <value>Durabilité de l&apos;équipement porté : {0} % ; réparation sous {1} %.</value>
+  </data>
+  <data name="Repair skipped: ADS is unavailable; continuing." xml:space="preserve">
+    <value>Réparation ignorée : ADS indisponible ; poursuite.</value>
+  </data>
+  <data name="Repair skipped: another ADS utility is active; continuing." xml:space="preserve">
+    <value>Réparation ignorée : un autre utilitaire ADS est actif ; poursuite.</value>
+  </data>
+  <data name="Repair skipped: the player is busy; continuing." xml:space="preserve">
+    <value>Réparation ignorée : le joueur est occupé ; poursuite.</value>
+  </data>
+  <data name="Repair requested; waiting for ADS." xml:space="preserve">
+    <value>Réparation demandée ; attente d&apos;ADS.</value>
+  </data>
+  <data name="Repairing equipment; entry is paused." xml:space="preserve">
+    <value>Réparation de l&apos;équipement ; entrée en pause.</value>
+  </data>
+  <data name="Repair finished; waiting for travel to settle." xml:space="preserve">
+    <value>Réparation terminée ; attente de la fin du déplacement.</value>
+  </data>
+  <data name="Repair complete; equipped durability {0}%." xml:space="preserve">
+    <value>Réparation réussie ; durabilité de l&apos;équipement porté : {0} %.</value>
+  </data>
+  <data name="Repair improved durability to {0}%, but it is still below {1}%; continuing." xml:space="preserve">
+    <value>La réparation a porté la durabilité à {0} %, encore sous {1} % ; poursuite.</value>
+  </data>
+  <data name="Repair did not improve equipped durability; continuing." xml:space="preserve">
+    <value>La réparation n&apos;a pas amélioré la durabilité de l&apos;équipement porté ; poursuite.</value>
+  </data>
+  <data name="Repair ended; equipped durability is unavailable; continuing." xml:space="preserve">
+    <value>Réparation terminée ; durabilité de l&apos;équipement porté indisponible ; poursuite.</value>
+  </data>
+  <data name="Repair was not accepted; continuing." xml:space="preserve">
+    <value>La demande de réparation n&apos;a pas été acceptée ; poursuite.</value>
+  </data>
+  <data name="Repair timed out; continuing." xml:space="preserve">
+    <value>Délai de réparation dépassé ; poursuite.</value>
+  </data>
+  <data name="Repair ownership changed; continuing." xml:space="preserve">
+    <value>Le contrôle de la réparation a changé ; poursuite.</value>
+  </data>
+  <data name="Repair cancelled." xml:space="preserve">
+    <value>Réparation annulée.</value>
+  </data>
+  <data name="Repairing before entry" xml:space="preserve">
+    <value>Réparation avant l&apos;entrée</value>
+  </data>
+  <data name="Repair cancellation is unconfirmed; waiting for the owned utility to settle." xml:space="preserve">
+    <value>L&apos;annulation de la réparation n&apos;est pas confirmée ; attente de l&apos;arrêt de l&apos;utilitaire contrôlé.</value>
+  </data>
+  <data name="Repair failed; continuing." xml:space="preserve">
+    <value>Échec de la réparation ; poursuite.</value>
+  </data>
+  <data name="PvP - Try to win" xml:space="preserve"><value>JcJ - Tenter de gagner</value></data>
+  <data name="PvP - Throw" xml:space="preserve"><value>JcJ - Se laisser perdre</value></data>
+  <data name="Run player matches" xml:space="preserve"><value>Lancer les matchs entre joueurs</value></data>
+  <data name="Number of player matches" xml:space="preserve"><value>Nombre de matchs entre joueurs</value></data>
+  <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>Match sans RP : renforcer les mascottes enregistrées, défendre ses pierres et attaquer les pierres adverses. Victoire non garantie.</value></data>
+  <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>Match sans RP : rester passif jusqu'au résultat du jeu. Aucun déploiement, attaque, défense ni abandon.</value></data>
+  <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Tout adversaire ; aucun partenaire requis. Lancer remet le compteur à zéro ; Reprendre le conserve. Seuls les résultats du jeu comptent. Vérification en jeu en attente.</value></data>
 </root>

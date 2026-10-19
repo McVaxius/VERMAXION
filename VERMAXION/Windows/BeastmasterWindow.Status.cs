@@ -87,7 +87,7 @@ internal sealed partial class BeastmasterWindow
         var owned = service.PreparedOwned ?? data.Owned;
         if (owned.Count == 0 || data.OwnershipObservedAtUtc == DateTime.MinValue)
             return UiText.T("Ownership has not been fully observed. Training completion is unknown.");
-        var target = TrainingTarget(service.DisplayBoard);
+        var target = service.DisplayTrainingTarget;
         var reached = owned.Count(number => data.Familiars.TryGetValue(number, out var beast) && beast.Rank is >= 1 and <= 25 && beast.Rank >= target);
         return UiText.F("{0}/{1} at Rank {2}", reached, owned.Count, target) + " · " + UiText.F("{0} remaining", owned.Count - reached);
     }
@@ -99,6 +99,11 @@ internal sealed partial class BeastmasterWindow
             ? UiText.Beastmaster(service.StatusText) : ready ? UiText.T("Ready to start") : UiText.Beastmaster(blocker);
         var lines = new List<string>();
         if (!string.IsNullOrWhiteSpace(status)) lines.Add(status);
+        if (!string.IsNullOrWhiteSpace(service.RepairStatus))
+        {
+            var repair = UiText.Beastmaster(service.RepairStatus);
+            if (!lines.Contains(repair)) lines.Add(repair);
+        }
         if (service.StopAfterNextOutcome) lines.Add(UiText.T("Stopping when the current board ends."));
         var headline = RunHeadline(ready, includeBoard: true);
         if (!lines.Contains(headline)) lines.Add(headline);

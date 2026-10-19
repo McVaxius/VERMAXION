@@ -1,3 +1,29 @@
+2026-10-19 - Independent Verminion player activities (I609)
+
+- Add saved PvP Try to win and Throw activities with a configurable verified-match goal, preserving existing CPU enum values and defaults. Use exact native Non-RP duty 199 with owned sole selection, one saved Join intent, ready/Commence, cancellation and reload reconciliation.
+- Try to win deploys registered palette minions, reinforces within observed capacity, intercepts threats at friendly stones and attacks surviving enemy stones through existing verified native controls. Throw stays passive until an actual result; no combat, forfeit or anti-idle input.
+- Credit only observed outcomes once, retain the admitted mode across editor changes/reload, and keep player results separate from CPU challenge clears and the five-match CPU participation goal. Update the existing activity editor and all fifteen catalogs. Live queue/tactics acceptance remains pending; no version or release change.
+
+2026-10-19 - Align Verminion host references
+
+- Update the two reload-observation host calls to the existing CurrentBattleDutyId helper after its rename, resolving the missing-member build errors.
+- Validation: the authorized vmx.bat build completed with zero errors and five existing warnings after concurrent Verminion edits settled; both Debug DLL outputs retain version 2.0.0.17 and the Crewcible repair marker. ADS is a separate build and was not rebuilt by this script.
+
+2026-10-19 - Crewcible repair configuration
+
+- Add a per-character Repair tab with Self repair enabled by default below 75% durability. Choose Disabled, Self, NPC without inn, nearby NPC without teleport/inn, or NPC with inn; manual, scheduled and weekly runs share these settings while active runs retain their copied setup.
+- Check equipped repairable gear before entry and between boards using the existing ADS repair integration. Let the selected repair finish before returning to Lauda; preserve open entry prompts, current-duty continuation, results, completion actions and the one-time stop request.
+- Ignore non-repairable equipment such as soul crystals, retain genuinely broken gear and preserve self-repair durability above 100%. Confirm actual durability after ADS completion; unavailable or unsuccessful repairs remain visible in Crewcible and allow progression without a permanent halt or automatic switch to NPC repair.
+- Keep repair activity in Crewcible full/mini status and translate the controls/messages in all fifteen languages. Preserve version 2.0.0.17; marker vmx-crewcible-repair-20261019-39. Native repair/travel/UI acceptance remains pending; no vmx.bat, shared Debug build or client action.
+- Validation: all 128 focused Beastmaster tests and fifteen locale catalogs passed. The isolated plugin build passed with zero errors and six existing warnings; VERMAXION Debug output/intermediate metadata stayed unchanged.
+
+2026-10-19 - Crewcible manual training target and clearer exclusions
+
+- Choose a training target rank on the manual Run tab. It starts with the selected board's default, is saved per character, and resets to the new default when another board is selected. Selection, progress and completion use the chosen target; scheduled tasks retain their board-based targets and active runs retain their copied settings.
+- Add the familiar egg symbol to the main-window Crewcible shortcut through the existing bot-button icon renderer.
+- Clarify automatic-team exclusions and reserve fighters in all fifteen languages, including when reserves can fight. Preserve saved exclusion values and the existing supply-exclusion behavior.
+- Keep version 2.0.0.17; marker vmx-crewcible-manual-target-wording-20261019-38. All 98 focused Beastmaster tests and fifteen locale catalogs passed. The isolated plugin build passed with zero errors and six existing warning messages. Debug output/intermediate files stayed unchanged; no vmx.bat, client copy or reload.
+
 2026-10-18 - Keep Crewcible messages local and stop at board outcomes
 
 - Suppress shared titlebar status while manual, paused, cleanup or scheduled Crewcible work owns the character. Full and mini Crewcible windows retain their dedicated status renderer.

@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     internal const string BeastmasterTaskId = "Run##Beastmaster";
     internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
-    private const string DebugAttemptMarker = "vmx-crewcible-board-outcome-titlebars-20261018-37";
+    private const string DebugAttemptMarker = "vmx-crewcible-repair-20261019-39";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -290,7 +290,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         BeastmasterService = new BeastmasterService(
             () => GetBeastmasterSettings(ConfigManager.GetActiveConfig()),
             () => ConfigManager.GetActiveConfig().Beastmaster ??= new(),
-            SaveBeastmasterConfiguration, VNavmeshIPC, LifestreamIPC);
+            SaveBeastmasterConfiguration, VNavmeshIPC, LifestreamIPC, AdsIpcClient);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, YesAlreadyIPC, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log, ConfigManager, LifestreamIPC, VNavmeshIPC);
@@ -1291,7 +1291,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (taskId == AutomationCatalog.VerminionQueue && ConfigManager.GetActiveConfig().VerminionPaused)
         {
             var progress = ConfigManager.GetActiveConfig().VerminionProgress;
-            Log.Information($"[Verminion] Paused reload observation: duty={VerminionGameInteraction.CurrentCpuDutyId()}; result={VerminionGameInteraction.ReadBattleOutcome()}; pending={progress.PendingMatch}; matches={progress.WeeklyMatches}; wins={progress.WeeklyWins}; no admission or credit.");
+            Log.Information($"[Verminion] Paused reload observation: duty={VerminionGameInteraction.CurrentBattleDutyId()}; result={VerminionGameInteraction.ReadBattleOutcome()}; pending={progress.PendingMatch}; matches={progress.WeeklyMatches}; wins={progress.WeeklyWins}; no admission or credit.");
             SetDebugTaskStatus("Verminion is paused; explicit Run/Resume is required before reload continuation.");
             return;
         }
@@ -2770,7 +2770,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var player = ObjectTable.LocalPlayer;
         return Configuration.DebugTaskId == AutomationCatalog.VerminionQueue && player != null &&
             Configuration.DebugTaskCharacterKey == $"{player.Name}@{player.HomeWorld.Value.Name}" &&
-            (VerminionGameInteraction.IsSetupMenu || VerminionGameInteraction.CurrentCpuDutyId() != 0);
+            (VerminionGameInteraction.IsSetupMenu || VerminionGameInteraction.CurrentBattleDutyId() != 0);
     }
 
     private bool TryGetWorldReadyCharacterForFishing(out string charName, out string worldName, out ulong contentId, out string reason)

@@ -2096,7 +2096,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="Beasts" xml:space="preserve"><value>Canavarlar</value></data>
   <data name="Block" xml:space="preserve"><value>Engelle</value></data>
   <data name="Block category" xml:space="preserve"><value>Kategoriyi engelle</value></data>
-  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Engellenen eşyalar satın alınmaz, hazine olarak seçilmez veya kullanılmaz. Tüm kategoriyi değiştirmek için Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Hariç tutulan eşyalar satın alınmaz, hazine olarak seçilmez veya kullanılmaz. Tüm kategoriyi değiştirmek için Ctrl ile tıklayın.</value></data>
   <data name="Board" xml:space="preserve"><value>Tahta</value></data>
   <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Tahtada iyileştirme: sonraki savaştan önce kamp yoksa HP %60 veya altındayken.</value></data>
   <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Tahta rotası {0}/{1}: {2}</value></data>
@@ -2132,7 +2132,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Bu listeyi silin. Ctrl tuşunu basılı tutarak tıklayın. Son liste silinemez.</value></data>
   <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm için Soulreaper's Armor gerekir. Thunder Axe için Umbral Wristlet gerekir.</value></data>
   <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Sıralamayı değiştirmek için tutamacı sürükleyin veya yeni bir # yazın. İlgili kategoriyi değiştirmek için Ctrl tuşunu basılı tutarak Engelle'ye tıklayın.</value></data>
-  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Sıralamayı değiştirmek için tutamacı sürükleyin veya yeni bir # yazın. İlgili sınıflandırmayı değiştirmek için Ctrl tuşunu basılı tutarak bir engelleme kutusuna tıklayın.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Yeniden sıralamak için tutamacı sürükleyin veya yeni bir sıra numarası girin. Tüm sınıflandırmaya uygulamak için onay kutusuna Ctrl ile tıklayın.</value></data>
   <data name="EXP" xml:space="preserve"><value>EXP</value></data>
   <data name="Elite" xml:space="preserve"><value>Seçkin</value></data>
   <data name="Every familiar is knocked out" xml:space="preserve"><value>Tüm yardımcı yaratıklar yenildi</value></data>
@@ -2143,8 +2143,8 @@ Bağımlılıklar: {1}</value></data>
   <data name="Familiars {0}/{1}" xml:space="preserve"><value>Yardımcı yaratıklar {0}/{1}</value></data>
   <data name="Feed" xml:space="preserve"><value>Besle</value></data>
   <data name="Fight" xml:space="preserve"><value>Savaş</value></data>
-  <data name="Fight Blocked" xml:space="preserve"><value>Savaşa kapalı</value></data>
-  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Savaşa kapalı, engellenmemiş savaşçılardan hayatta kalanların sayısı üçün altına düşmedikçe bu yardımcı yaratığı yedekte tutar. Tüm sınıflandırmayı değiştirmek için Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Yedekte tut</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Bu familiari yedekte tut. Yedek olmayan diğer savaşçılardan üçten azı hayatta kaldığında savaşabilir. Tüm sınıflandırmayı değiştirmek için Ctrl ile tıklayın.</value></data>
   <data name="Fight picks" xml:space="preserve"><value>Savaşçı seçimi</value></data>
   <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Tahtanın takım kapasitesini önce rütbesi en düşük ve EXP'si en az olan yardımcı yaratıklarla doldurun.</value></data>
   <data name="Finishing the board" xml:space="preserve"><value>Tahta tamamlanıyor</value></data>
@@ -2189,8 +2189,8 @@ Bağımlılıklar: {1}</value></data>
   <data name="Paused: " xml:space="preserve"><value>Duraklatıldı: </value></data>
   <data name="Paused: {0}" xml:space="preserve"><value>Duraklatıldı: {0}</value></data>
   <data name="Physical resistance: {0}" xml:space="preserve"><value>Fiziksel direnç: {0}</value></data>
-  <data name="Pick Blocked" xml:space="preserve"><value>Seçime kapalı</value></data>
-  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Seçime kapalı, otomatik takım seçimini engeller. Tüm sınıflandırmayı değiştirmek için Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Otomatik takımlardan hariç tut</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Bu familiari otomatik takım seçiminden hariç tut. Tüm sınıflandırmayı değiştirmek için Ctrl ile tıklayın.</value></data>
   <data name="Rank" xml:space="preserve"><value>Rütbe</value></data>
   <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Rütbe henüz okunmadı. Bir sonraki takım kurulumunda yaratık ansiklopedisinden okunacak.</value></data>
   <data name="Rank unknown" xml:space="preserve"><value>Rütbe bilinmiyor</value></data>
@@ -2202,7 +2202,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Önce gerekli bağışıklık ekipmanına sahip olunmalıdır.</value></data>
   <data name="Rest at camps" xml:space="preserve"><value>Kamplarda dinlen</value></data>
   <data name="Resting at the campsite" xml:space="preserve"><value>Kamp alanında dinleniliyor</value></data>
-  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Bu listenin varsayılan sırasını geri yükleyin ve engellemelerini temizleyin. Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Bu listenin varsayılan sırasını geri yükleyin ve hariç tutmaları temizleyin. Ctrl tuşunu basılı tutarak tıklayın.</value></data>
   <data name="Route has not started." xml:space="preserve"><value>Rota henüz başlamadı.</value></data>
   <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Rota {0:00} · {1}/{2} adım</value></data>
   <data name="Run setup" xml:space="preserve"><value>Tur ayarları</value></data>
@@ -2754,7 +2754,7 @@ Bağımlılıklar: {1}</value></data>
     <value>Bağımsız yaratık kitabı kullanılamıyor.</value>
   </data>
   <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
-    <value>Bu sıralama ve engellemeler satın alımlara, hazine seçimlerine ve eşya kullanımına uygulanır.</value>
+    <value>Bu sıra ve hariç tutmalar satın alma, hazine seçimi ve eşya kullanımına uygulanır.</value>
   </data>
   <data name="This run: {0}/{1} boards" xml:space="preserve">
     <value>Bu çalışma: {0}/{1} tahta</value>
@@ -2989,4 +2989,131 @@ Bağımlılıklar: {1}</value></data>
   <data name="Stopping when the current board ends." xml:space="preserve"><value>Mevcut tahta bittiğinde duracak.</value></data>
   <data name="Stopped after leaving the current board." xml:space="preserve"><value>Mevcut tahtadan ayrıldıktan sonra durdu.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Tamamladıktan sonra durdu; Crucible’dan çıktı.</value></data>
+  <data name="Training target rank" xml:space="preserve">
+    <value>Eğitim hedef rütbesi</value>
+  </data>
+  <data name="Saved for manual Run. Choosing another board resets the target to its default rank." xml:space="preserve">
+    <value>Manuel çalıştırma için kaydedilir. Başka bir tahta seçmek hedefi o tahtanın varsayılan rütbesine sıfırlar.</value>
+  </data>
+  <data name="Repair" xml:space="preserve">
+    <value>Onarım</value>
+  </data>
+  <data name="Self repair" xml:space="preserve">
+    <value>Kendin onar</value>
+  </data>
+  <data name="NPC repair without inn" xml:space="preserve">
+    <value>Hana girmeden NPC onarımı</value>
+  </data>
+  <data name="Nearby NPC only" xml:space="preserve">
+    <value>Yalnızca yakındaki NPC</value>
+  </data>
+  <data name="NPC repair with inn" xml:space="preserve">
+    <value>Han ile NPC onarımı</value>
+  </data>
+  <data name="Shared by this character&apos;s manual, scheduled and weekly runs." xml:space="preserve">
+    <value>Bu karakterin elle, zamanlanmış ve haftalık çalıştırmaları arasında ortaktır.</value>
+  </data>
+  <data name="Repair edits apply to the next Start; the current run keeps its setup." xml:space="preserve">
+    <value>Onarım değişiklikleri sonraki Başlat için geçerlidir; mevcut çalıştırma kendi ayarlarını korur.</value>
+  </data>
+  <data name="Repair mode" xml:space="preserve">
+    <value>Onarım modu</value>
+  </data>
+  <data name="Repair below durability (%)" xml:space="preserve">
+    <value>Şu dayanıklılığın altında onar (%)</value>
+  </data>
+  <data name="Checks the lowest durability of equipped repairable gear before entry and between boards, outside the duty. Set 0 to disable automatic requests." xml:space="preserve">
+    <value>Görev dışında, girişten önce ve tahtalar arasında onarılabilir kuşanılmış ekipmanın en düşük dayanıklılığını kontrol eder. 0, otomatik istekleri kapatır.</value>
+  </data>
+  <data name="Repairs remain manual." xml:space="preserve">
+    <value>Onarımlar elle yapılmaya devam eder.</value>
+  </data>
+  <data name="Self repair requires the appropriate crafting levels and repair materials. It never switches to an NPC automatically." xml:space="preserve">
+    <value>Kendi onarımın için uygun zanaat seviyeleri ve onarım malzemeleri gerekir. Otomatik olarak NPC&apos;ye geçmez.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender without entering an inn." xml:space="preserve">
+    <value>ADS, hana girmeden bir NPC tamirciye gidebilir veya ışınlanabilir.</value>
+  </data>
+  <data name="Uses a nearby NPC mender only. No teleporting or inn travel." xml:space="preserve">
+    <value>Yalnızca yakındaki bir NPC tamirciyi kullanır. Işınlanma veya hana yolculuk yapılmaz.</value>
+  </data>
+  <data name="ADS may travel or teleport to an NPC mender and use an inn." xml:space="preserve">
+    <value>ADS bir NPC tamirciye gidebilir veya ışınlanabilir ve hanı kullanabilir.</value>
+  </data>
+  <data name="Choose a repair mode." xml:space="preserve">
+    <value>Bir onarım modu seç.</value>
+  </data>
+  <data name="Automatic repair uses ADS. Crewcible resumes entry after the repair attempt." xml:space="preserve">
+    <value>Otomatik onarım ADS kullanır. Crewcible, onarım denemesinden sonra girişi sürdürür.</value>
+  </data>
+  <data name="Repair disabled." xml:space="preserve">
+    <value>Onarım kapalı.</value>
+  </data>
+  <data name="Repair threshold is 0%; automatic repair is disabled." xml:space="preserve">
+    <value>Onarım eşiği %0; otomatik onarım kapalı.</value>
+  </data>
+  <data name="Repair skipped: equipped durability is unavailable." xml:space="preserve">
+    <value>Onarım atlandı: kuşanılmış ekipman dayanıklılığı okunamıyor.</value>
+  </data>
+  <data name="Equipped durability {0}%; repair starts below {1}%." xml:space="preserve">
+    <value>Kuşanılmış ekipman dayanıklılığı %{0}; %{1} altında onarım başlar.</value>
+  </data>
+  <data name="Repair skipped: ADS is unavailable; continuing." xml:space="preserve">
+    <value>Onarım atlandı: ADS kullanılamıyor; devam ediliyor.</value>
+  </data>
+  <data name="Repair skipped: another ADS utility is active; continuing." xml:space="preserve">
+    <value>Onarım atlandı: başka bir ADS aracı etkin; devam ediliyor.</value>
+  </data>
+  <data name="Repair skipped: the player is busy; continuing." xml:space="preserve">
+    <value>Onarım atlandı: oyuncu meşgul; devam ediliyor.</value>
+  </data>
+  <data name="Repair requested; waiting for ADS." xml:space="preserve">
+    <value>Onarım istendi; ADS bekleniyor.</value>
+  </data>
+  <data name="Repairing equipment; entry is paused." xml:space="preserve">
+    <value>Ekipman onarılıyor; giriş duraklatıldı.</value>
+  </data>
+  <data name="Repair finished; waiting for travel to settle." xml:space="preserve">
+    <value>Onarım bitti; yolculuğun tamamlanması bekleniyor.</value>
+  </data>
+  <data name="Repair complete; equipped durability {0}%." xml:space="preserve">
+    <value>Onarım tamamlandı; kuşanılmış ekipman dayanıklılığı %{0}.</value>
+  </data>
+  <data name="Repair improved durability to {0}%, but it is still below {1}%; continuing." xml:space="preserve">
+    <value>Onarım dayanıklılığı %{0} değerine çıkardı ancak hâlâ %{1} altında; devam ediliyor.</value>
+  </data>
+  <data name="Repair did not improve equipped durability; continuing." xml:space="preserve">
+    <value>Onarım kuşanılmış ekipman dayanıklılığını artırmadı; devam ediliyor.</value>
+  </data>
+  <data name="Repair ended; equipped durability is unavailable; continuing." xml:space="preserve">
+    <value>Onarım bitti; kuşanılmış ekipman dayanıklılığı okunamıyor; devam ediliyor.</value>
+  </data>
+  <data name="Repair was not accepted; continuing." xml:space="preserve">
+    <value>Onarım isteği kabul edilmedi; devam ediliyor.</value>
+  </data>
+  <data name="Repair timed out; continuing." xml:space="preserve">
+    <value>Onarım zaman aşımına uğradı; devam ediliyor.</value>
+  </data>
+  <data name="Repair ownership changed; continuing." xml:space="preserve">
+    <value>Onarımın kontrolü değişti; devam ediliyor.</value>
+  </data>
+  <data name="Repair cancelled." xml:space="preserve">
+    <value>Onarım iptal edildi.</value>
+  </data>
+  <data name="Repairing before entry" xml:space="preserve">
+    <value>Girişten önce onarılıyor</value>
+  </data>
+  <data name="Repair cancellation is unconfirmed; waiting for the owned utility to settle." xml:space="preserve">
+    <value>Onarımın iptali doğrulanmadı; kontrol edilen aracın tamamlanması bekleniyor.</value>
+  </data>
+  <data name="Repair failed; continuing." xml:space="preserve">
+    <value>Onarım başarısız; devam ediliyor.</value>
+  </data>
+  <data name="PvP - Try to win" xml:space="preserve"><value>PvP - Kazanmaya çalış</value></data>
+  <data name="PvP - Throw" xml:space="preserve"><value>PvP - Bilerek kaybet</value></data>
+  <data name="Run player matches" xml:space="preserve"><value>Oyuncu maçlarını başlat</value></data>
+  <data name="Number of player matches" xml:space="preserve"><value>Oyuncu maçı sayısı</value></data>
+  <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>RP olmayan maç: kayıtlı minyonları takviye et, dost taşları savun ve düşman taşlarına saldır. Galibiyet garantisi yoktur.</value></data>
+  <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>RP olmayan maç: oyunun sonucuna kadar pasif kal. Birim çıkarma, saldırı, savunma veya teslim olma yoktur.</value></data>
+  <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Herhangi bir rakip; eş gerekmez. Başlat sayacı sıfırlar; Sürdür korur. Yalnızca oyun sonuçları sayılır. Canlı doğrulama bekleniyor.</value></data>
 </root>

@@ -46,7 +46,7 @@ internal static unsafe class VerminionGameInteraction
 
     public static void PrepareBattlefieldRendering()
     {
-        if (CurrentCpuDutyId() == 0) return;
+        if (CurrentBattleDutyId() == 0) return;
         var resolutionConfig = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Plugin.PluginInterface.GetPluginConfigDirectory())!, "CustomResolution2782.json");
         if (Plugin.CommandManager.Commands.ContainsKey("/gres") && System.IO.File.Exists(resolutionConfig))
         {
@@ -62,10 +62,10 @@ internal static unsafe class VerminionGameInteraction
 
     public static void RequestTutorialImage()
     {
-        if (CurrentCpuDutyId() == 0) return;
+        if (CurrentBattleDutyId() == 0) return;
         PrepareBattlefieldRendering();
         HideBattlefieldPanels();
-        if (CurrentCpuDutyId() == 575)
+        if (CurrentBattleDutyId() == 575)
         {
             var manager = RaptureAtkUnitManager.Instance();
             if (manager == null) return;
@@ -85,7 +85,7 @@ internal static unsafe class VerminionGameInteraction
     public static bool CaptureTutorialImage()
     {
         var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-        if (CurrentCpuDutyId() == 0 || window == 0 || PInvoke.User32.IsIconic(window) ||
+        if (CurrentBattleDutyId() == 0 || window == 0 || PInvoke.User32.IsIconic(window) ||
             !PInvoke.User32.GetClientRect(window, out var bounds)) return false;
         var foreground = PInvoke.User32.GetForegroundWindow() == window;
         var origin = new PInvoke.POINT();
@@ -130,14 +130,14 @@ internal static unsafe class VerminionGameInteraction
     }
 
     public static bool IsTutorialBattle()
-        => CurrentCpuDutyId() == 552;
+        => CurrentBattleDutyId() == 552;
 
-    public static uint CurrentCpuDutyId()
+    public static uint CurrentBattleDutyId()
     {
         var finder = ContentsFinder.Instance();
         return Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion] &&
             finder != null && finder->QueueInfo.PoppedQueueEntry.ContentType == ContentsType.Regular &&
-            VERMAXION.Models.VerminionDutyRules.IsCpu(finder->QueueInfo.PoppedQueueEntry.Id)
+            VERMAXION.Models.VerminionDutyRules.IsVerminion(finder->QueueInfo.PoppedQueueEntry.Id)
             ? finder->QueueInfo.PoppedQueueEntry.Id : 0;
     }
 
@@ -168,6 +168,72 @@ internal static unsafe class VerminionGameInteraction
                 return false;
         agent->OpenRegularDuty(VERMAXION.Models.VerminionTournamentEntryRules.CpuDuty);
         return true;
+    }
+
+    public static string PlayerBattleLabel()
+    {
+        var id = VERMAXION.Models.VerminionDutyRules.PlayerDuty;
+        if (!Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().TryGetRow(id, out var row)
+            || row.ShortCode.ToString() != "s1p3_4" || row.ContentType.RowId != 19 || row.TerritoryType.RowId != 506)
+            return string.Empty;
+        var name = row.Name.ToString();
+        // Finder rows omit the LoVM prefix in clients that include it in CFC names.
+        var colon = name.IndexOf(':');
+        return colon >= 0 ? name[(colon + 1)..].Trim() : name;
+    }
+
+    public static bool OpenPlayerFinder()
+    {
+        var agent = AgentContentsFinder.Instance();
+        var finder = ContentsFinder.Instance();
+        if (agent == null || finder == null || PlayerBattleLabel().Length == 0
+            || finder->QueueInfo.QueueState != ContentsFinderQueueState.None
+            || GameHelpers.IsAddonVisible("ContentsFinder")) return false;
+        foreach (var selected in agent->SelectedContent)
+            if (selected.ContentType != ContentsType.Regular || selected.Id != VERMAXION.Models.VerminionDutyRules.PlayerDuty)
+                return false;
+        agent->OpenRegularDuty(VERMAXION.Models.VerminionDutyRules.PlayerDuty);
+        return true;
+    }
+
+    public static bool IsPlayerFinder =>
+        Plugin.GameGui.GetAddonByName("ContentsFinder") is var handle && !handle.IsNull && handle.IsReady && handle.IsVisible
+        && AgentContentsFinder.Instance() is var agent && agent != null
+        && agent->SelectedDuty.ContentType == ContentsType.Regular
+        && agent->SelectedDuty.Id == VERMAXION.Models.VerminionDutyRules.PlayerDuty;
+
+    public static bool HasOnlyPlayerSelection()
+    {
+        if (!IsPlayerFinder) return false;
+        var agent = AgentContentsFinder.Instance();
+        var selected = new List<uint>();
+        foreach (var entry in agent->SelectedContent)
+            selected.Add(entry.ContentType == ContentsType.Regular ? entry.Id : uint.MaxValue);
+        return selected.SequenceEqual(new[] { VERMAXION.Models.VerminionDutyRules.PlayerDuty });
+    }
+
+    public static bool TryJoinPlayerBattle()
+    {
+        var finder = ContentsFinder.Instance();
+        if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.None
+            || !HasOnlyPlayerSelection()) return false;
+        var handle = Plugin.GameGui.GetAddonByName("ContentsFinder");
+        var addon = (AddonContentsFinder*)handle.Address;
+        // Use the current host's native Join/Withdraw button field; queue state
+        // and exact sole selection establish that this is an owned Join.
+        return addon->JoinButton != null && addon->JoinButton->OwnerNode != null
+            && GameHelpers.TryClickNativeButton("ContentsFinder", null, addon->JoinButton->OwnerNode->NodeId);
+    }
+
+    public static void ClosePlayerFinder()
+    {
+        if (!IsPlayerFinder || !HasOnlyPlayerSelection()) return;
+        var finder = ContentsFinder.Instance();
+        if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.None) return;
+        var addon = (AddonContentsFinder*)Plugin.GameGui.GetAddonByName("ContentsFinder").Address;
+        if (addon->ClearSelectionButton != null && addon->ClearSelectionButton->OwnerNode != null)
+            GameHelpers.TryClickNativeButton("ContentsFinder", null, addon->ClearSelectionButton->OwnerNode->NodeId);
+        addon->Close(true);
     }
 
     public static bool IsTournamentFinder =>
@@ -318,10 +384,10 @@ internal static unsafe class VerminionGameInteraction
     }
 
     public static string ChallengeName(int stage) => stage is >= 1 and <= 24
-        ? CpuDutyName((uint)(551 + stage))
+        ? BattleDutyName((uint)(551 + stage))
         : string.Empty;
 
-    public static string CpuDutyName(uint duty) => VERMAXION.Models.VerminionDutyRules.IsCpu(duty) &&
+    public static string BattleDutyName(uint duty) => VERMAXION.Models.VerminionDutyRules.IsVerminion(duty) &&
         Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().TryGetRow(duty, out var row)
         ? row.Name.ToString() : string.Empty;
 
@@ -451,7 +517,7 @@ internal static unsafe class VerminionGameInteraction
     {
         var stage = AtkStage.Instance();
         var array = stage == null ? null : stage->GetNumberArrayData(NumberArrayType.Lovm);
-        if (CurrentCpuDutyId() == 0 || lane is < 0 or > 2 || array == null || array->IntArray == null || array->Size != 31) return null;
+        if (CurrentBattleDutyId() == 0 || lane is < 0 or > 2 || array == null || array->IntArray == null || array->Size != 31) return null;
         var hp = array->IntArray[(enemy ? 9 : 6) + lane];
         return hp is >= 0 and <= 5000 ? hp : null;
     }
@@ -476,7 +542,7 @@ internal static unsafe class VerminionGameInteraction
     {
         var stage = AtkStage.Instance();
         var array = stage == null ? null : stage->GetNumberArrayData(NumberArrayType.LovmQueueList);
-        if (CurrentCpuDutyId() == 0 || array == null || array->IntArray == null || array->Size != 139) return null;
+        if (CurrentBattleDutyId() == 0 || array == null || array->IntArray == null || array->Size != 139) return null;
         // Observed alongside the last queued Haurchefant spawning: 1 -> 0,
         // while the visible queue entry disappears and living units go 11 -> 12.
         var count = array->IntArray[102];
@@ -490,13 +556,13 @@ internal static unsafe class VerminionGameInteraction
         // Index 17 is the entity shown in the native minion information panel.
         // Use it immediately after a click to verify the hit, not as durable
         // selection state while moving the pointer or camera.
-        return CurrentCpuDutyId() != 0 && array != null && array->IntArray != null && array->Size == 31
+        return CurrentBattleDutyId() != 0 && array != null && array->IntArray != null && array->Size == 31
             ? unchecked((uint)array->IntArray[17]) : 0;
     }
 
     public static bool IsPaletteActionReady(uint nodeId)
     {
-        if (CurrentCpuDutyId() == 0 || nodeId is not (81 or 82)) return false;
+        if (CurrentBattleDutyId() == 0 || nodeId is not (81 or 82)) return false;
         var handle = Plugin.GameGui.GetAddonByName("LovmPalette");
         if (handle.IsNull || !handle.IsVisible || !handle.IsReady) return false;
         var node = ((AtkUnitBase*)handle.Address)->GetNodeById(nodeId);
@@ -559,7 +625,7 @@ internal static unsafe class VerminionGameInteraction
     {
         var ui = UIState.Instance();
         var palette = GoldSaucerModule.Instance();
-        if (CurrentCpuDutyId() != 0 || ui == null || palette == null || !ui->IsCompanionUnlocked(minion)) return false;
+        if (CurrentBattleDutyId() != 0 || ui == null || palette == null || !ui->IsCompanionUnlocked(minion)) return false;
         if (FindPaletteMinion(minion) >= 0) return true;
         var slot = Array.IndexOf(palette->HotbarMinions.ToArray(), (ushort)0);
         if (slot < 0) return false;
@@ -661,9 +727,9 @@ internal static unsafe class VerminionGameInteraction
         return string.Empty;
     }
 
-    public static bool HasCpuQueue(uint duty)
+    public static bool HasBattleQueue(uint duty)
     {
-        if (!VERMAXION.Models.VerminionDutyRules.IsCpu(duty)) return false;
+        if (!(VERMAXION.Models.VerminionDutyRules.IsCpu(duty) || duty == VERMAXION.Models.VerminionDutyRules.PlayerDuty)) return false;
         var finder = ContentsFinder.Instance();
         if (finder == null || finder->QueueInfo.QueueState is ContentsFinderQueueState.None or ContentsFinderQueueState.InContent) return false;
         var queued = new List<uint>();
@@ -680,15 +746,15 @@ internal static unsafe class VerminionGameInteraction
         return VERMAXION.Models.VerminionDutyRules.OnlyExpectedQueue(duty, queued.ToArray(), poppedDuty);
     }
 
-    public static void CancelCpuQueue(uint duty)
+    public static void CancelBattleQueue(uint duty)
     {
-        if (!HasCpuQueue(duty)) return;
+        if (!HasBattleQueue(duty)) return;
         ContentsFinder.Instance()->QueueInfo.CancelQueue();
-        Plugin.Log.Information($"[VerminionControl] withdrawal requested for owned CPU duty {duty} queue; no result recorded");
+        Plugin.Log.Information($"[VerminionControl] withdrawal requested for owned Verminion duty {duty} queue; no result recorded");
     }
 
-    public static bool TryCommenceCpuDuty(uint duty) => HasCpuQueue(duty) &&
-        CpuDutyName(duty) is { Length: > 0 } expected &&
+    public static bool TryCommenceBattleDuty(uint duty) => HasBattleQueue(duty) &&
+        BattleDutyName(duty) is { Length: > 0 } expected &&
         GameHelpers.TryGetAddonText("ContentsFinderConfirm", 49, out var title) && title == expected &&
         GameHelpers.TryClickNativeButton("ContentsFinderConfirm", "Commence", 63);
 
@@ -722,7 +788,7 @@ internal static unsafe class VerminionGameInteraction
 
     public static bool TryClickPaletteIcon(uint nodeId)
     {
-        if (CurrentCpuDutyId() == 0) return false;
+        if (CurrentBattleDutyId() == 0) return false;
         var handle = Plugin.GameGui.GetAddonByName("LovmPalette");
         if (handle.IsNull || !handle.IsVisible || !handle.IsReady) return false;
         var addon = (AtkUnitBase*)handle.Address;
@@ -754,7 +820,7 @@ internal static unsafe class VerminionGameInteraction
         screen = default;
         var cameras = FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CameraManager.Instance();
         var camera = cameras == null ? null : cameras->CurrentCamera;
-        if (camera == null || camera->RenderCamera == null || CurrentCpuDutyId() == 0) return false;
+        if (camera == null || camera->RenderCamera == null || CurrentBattleDutyId() == 0) return false;
         var visible = camera->WorldToScreen(world, out var projected);
         screen = new(projected.X, projected.Y);
         Plugin.GameGui.WorldToScreen(world, out var controlProjection);
@@ -774,7 +840,7 @@ internal static unsafe class VerminionGameInteraction
     public static bool TryGetObjectCenter(Dalamud.Game.ClientState.Objects.Types.IGameObject obj, out System.Numerics.Vector3 world)
     {
         world = default;
-        if (CurrentCpuDutyId() == 0 || obj.Address == 0) return false;
+        if (CurrentBattleDutyId() == 0 || obj.Address == 0) return false;
         var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
         var center = new FFXIVClientStructs.FFXIV.Common.Math.Vector3();
         native->GetCenterPosition(&center);
@@ -868,7 +934,7 @@ internal static unsafe class VerminionGameInteraction
     {
         var click = battlefieldClick ?? battlefieldPointer;
         if (point == null || Environment.CurrentManagedThreadId != frameThreadId ||
-            click == null || DateTime.UtcNow >= click.Expires || CurrentCpuDutyId() != click.Duty || backgroundInputAllowed?.Invoke() != true)
+            click == null || DateTime.UtcNow >= click.Expires || CurrentBattleDutyId() != click.Duty || backgroundInputAllowed?.Invoke() != true)
             return battlefieldCursorHook!.Original(point);
         // Only the game's import sees this virtual position. No OS cursor is moved.
         *point = click.ScreenPoint;
@@ -923,7 +989,7 @@ internal static unsafe class VerminionGameInteraction
         var hovering = battlefieldClick == null;
         var click = battlefieldClick ?? battlefieldPointer;
         if (!inBattlefieldFrame || frameDeviceData != null || data == null || device != battlefieldMouse || click == null ||
-            CurrentCpuDutyId() != click.Duty || backgroundInputAllowed?.Invoke() != true) return data;
+            CurrentBattleDutyId() != click.Duty || backgroundInputAllowed?.Invoke() != true) return data;
 
         if (hovering && DateTime.UtcNow >= click.Expires) { battlefieldPointer = null; return data; }
         var release = !hovering && click.Pressed && (click.ReleaseRequested || DateTime.UtcNow >= click.Expires);
@@ -986,7 +1052,7 @@ internal static unsafe class VerminionGameInteraction
     public static bool TryFocusMiniMap(System.Numerics.Vector3 world, out System.Numerics.Vector2 click)
     {
         click = default;
-        if (CurrentCpuDutyId() is not (>= 553 and <= 575) || battlefieldClick != null) return false;
+        if (!(CurrentBattleDutyId() is >= 553 and <= 575 || CurrentBattleDutyId() == VERMAXION.Models.VerminionDutyRules.PlayerDuty) || battlefieldClick != null) return false;
         ReleaseBattlefieldInput(restoreRendering: false);
         var handle = Plugin.GameGui.GetAddonByName("LovmMiniMap");
         if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
@@ -1060,7 +1126,7 @@ internal static unsafe class VerminionGameInteraction
             }
             return true;
         }
-        var duty = CurrentCpuDutyId();
+        var duty = CurrentBattleDutyId();
         if (duty == 0 || battlefieldClick != null || backgroundInputAllowed?.Invoke() != true ||
             !float.IsFinite(screen.X) || !float.IsFinite(screen.Y) || !IsBattlefieldPointVisible(screen)) return false;
         var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
@@ -1093,7 +1159,7 @@ internal static unsafe class VerminionGameInteraction
     public static float? ReadBattlefieldCameraDistance()
     {
         var manager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance();
-        if (CurrentCpuDutyId() is not (563 or 570 or 575) || manager == null || manager->ActiveCameraIndex is not (0 or 3)) return null;
+        if (CurrentBattleDutyId() is not (563 or 570 or 575) || manager == null || manager->ActiveCameraIndex is not (0 or 3)) return null;
         var camera = manager->GetActiveCamera();
         return camera != null && float.IsFinite(camera->Distance) && camera->Distance > 0 ? camera->Distance : null;
     }
@@ -1102,7 +1168,7 @@ internal static unsafe class VerminionGameInteraction
     {
         point = default;
         var window = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-        if (CurrentCpuDutyId() is not (563 or 570 or 575) || window == 0 || !PInvoke.User32.GetClientRect(window, out var bounds)) return false;
+        if (CurrentBattleDutyId() is not (563 or 570 or 575) || window == 0 || !PInvoke.User32.GetClientRect(window, out var bounds)) return false;
         point = new(bounds.right / 2f, bounds.bottom / 2f);
         return SendBattlefieldClick(point, release: false, wheel: -1);
     }
@@ -1191,6 +1257,21 @@ internal static unsafe class VerminionGameInteraction
         return false;
     }
 
+    public static VerminionPlayerMinion[] PlayerPalette()
+    {
+        var palette = GoldSaucerModule.Instance();
+        if (palette == null || CurrentBattleDutyId() != VERMAXION.Models.VerminionDutyRules.PlayerDuty) return [];
+        var result = new List<VerminionPlayerMinion>();
+        foreach (var id in palette->HotbarMinions.ToArray().Where(id => id != 0).Distinct())
+        {
+            if (OwnsMinion(id) != true ||
+                !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Companion>().TryGetRow(id, out var minion) ||
+                !Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.CompanionTransient>().TryGetRow(id, out var stats)) continue;
+            result.Add(new(id, minion.Singular.ToString(), minion.Cost, stats.Attack, stats.Defense, stats.Speed, stats.StrengthArcana));
+        }
+        return result.ToArray();
+    }
+
     public static void CaptureSetup()
     {
         var localPlayer = Plugin.ObjectTable.LocalPlayer;
@@ -1268,7 +1349,7 @@ internal static unsafe class VerminionGameInteraction
         // Keep paired position evidence without filling Dalamud's capped log
         // with every selection retry. Opening, phase, special and result
         // snapshots are independent of this routine sampling interval.
-        if (CurrentCpuDutyId() != 552 && reason is "selection readback before movement" or
+        if (CurrentBattleDutyId() != 552 && reason is "selection readback before movement" or
             "after tutorial movement command" or "boss selection mismatch")
         {
             var now = DateTime.UtcNow;
@@ -1306,7 +1387,7 @@ internal static unsafe class VerminionGameInteraction
                 CaptureAddon(name);
         }
         var cameraManager = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance();
-        if (CurrentCpuDutyId() is 563 or 570 or 575 && cameraManager != null && cameraManager->ActiveCameraIndex is 0 or 3)
+        if (CurrentBattleDutyId() is 563 or 570 or 575 && cameraManager != null && cameraManager->ActiveCameraIndex is 0 or 3)
         {
             var camera = cameraManager->GetActiveCamera();
             if (camera != null)
@@ -1330,16 +1411,16 @@ internal static unsafe class VerminionGameInteraction
                 Plugin.Log.Information($"[VerminionControl] minionStatus id={obj.GameObjectId}; status={status.StatusId}; name={status.GameData.Value.Name}; remaining={status.RemainingTime}; param={status.Param}");
         }
         var stage = AtkStage.Instance();
-        if (detailed && CurrentCpuDutyId() != 0)
+        if (detailed && CurrentBattleDutyId() != 0)
         {
             foreach (var obj in Plugin.ObjectTable.Where(obj => obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc || obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj ||
-                CurrentCpuDutyId() == 575 && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.AreaObject).Take(128))
+                CurrentBattleDutyId() == 575 && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.AreaObject).Take(128))
             {
                 Plugin.GameGui.WorldToScreen(obj.Position, out var screen);
                 var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
                 Plugin.Log.Information($"[VerminionControl] fieldObject index={obj.ObjectIndex}; id={obj.GameObjectId}; kind={obj.ObjectKind}; base={obj.BaseId}; state={(native == null ? -1 : native->EventState)}; name={obj.Name}; position={obj.Position}; screen={screen}");
             }
-            if (CurrentCpuDutyId() == 575) CaptureFinalStageEffects(reason.Contains("image readback", StringComparison.Ordinal));
+            if (CurrentBattleDutyId() == 575) CaptureFinalStageEffects(reason.Contains("image readback", StringComparison.Ordinal));
             if (stage != null)
             {
                 var count = 0;
@@ -1404,7 +1485,7 @@ internal static unsafe class VerminionGameInteraction
             Plugin.Log.Information($"[VerminionControl] {name}.value[{i}]={text}; type={value.Type}");
         }
         CaptureNodes(name, &addon->UldManager, 0, tooltips);
-        if (name == "LovmMiniMap" && CurrentCpuDutyId() is 560 or 570 or 571 or 575)
+        if (name == "LovmMiniMap" && CurrentBattleDutyId() is 560 or 570 or 571 or 575)
         {
             // Bounded control captures supply minimap geometry for checking
             // camera routes against current gate and stone positions.
@@ -1440,7 +1521,7 @@ internal static unsafe class VerminionGameInteraction
 
     public static void BeginFinalStageEffectObservation()
     {
-        if (observingFinalStageEffects || CurrentCpuDutyId() != 575) return;
+        if (observingFinalStageEffects || CurrentBattleDutyId() != 575) return;
         finalStageEffectPaths.Clear();
         finalStageStaticCallbacks = finalStageActorCallbacks = 0;
         finalStageBossEffectSamples = finalStageSelectionEffectSamples = 0;
@@ -1537,7 +1618,7 @@ internal static unsafe class VerminionGameInteraction
         {
             if (!observingFinalStageEffects || DateTime.UtcNow >= finalStageEffectDeadline ||
                 Environment.CurrentManagedThreadId != finalStageEffectThread || slotIndex is < 0 or >= 19 ||
-                CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
+                CurrentBattleDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
             if (!TryGetFinalStageDirector(out var current, out _, out _) || current != director) return;
             var slot = slotIndex + 11;
             finalStageGroundWarnings.Command(slot, created: effectId != 0);
@@ -1562,7 +1643,7 @@ internal static unsafe class VerminionGameInteraction
         if (System.Threading.Interlocked.Increment(ref finalStageStaticCallbacks) == 1)
             Plugin.Log.Information($"[VerminionControl] first static effect creation callback; frameworkThread={onFramework}");
         if (!onFramework || finalStageEffectPaths.Count >= 64 || address == 0 ||
-            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
+            CurrentBattleDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
         if (path.Length == 0 || !finalStageEffectPaths.Add(path)) return;
         // Creation precedes caller positioning. Do not retain the pointer or
         // report its constructor transform as a placed battlefield warning.
@@ -1574,7 +1655,7 @@ internal static unsafe class VerminionGameInteraction
     {
         if (!observingFinalStageEffects || DateTime.UtcNow >= finalStageEffectDeadline ||
             Environment.CurrentManagedThreadId != finalStageEffectThread ||
-            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true || finalStageDirectorSamples >= 64) return;
+            CurrentBattleDutyId() != 575 || backgroundInputAllowed?.Invoke() != true || finalStageDirectorSamples >= 64) return;
         ++finalStageDirectorSamples;
         Plugin.Log.Information($"[VerminionControl] directorUpdate sample={finalStageDirectorSamples}; event={eventId:X8}; category={(uint)category:X8}; args={arg1:X8},{arg2:X8},{arg3:X8},{arg4:X8},{arg5:X8},{arg6:X8}");
     }
@@ -1599,7 +1680,7 @@ internal static unsafe class VerminionGameInteraction
     {
         FinalStageGroundStateKnown = false;
         if (Environment.CurrentManagedThreadId != finalStageEffectThread ||
-            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true ||
+            CurrentBattleDutyId() != 575 || backgroundInputAllowed?.Invoke() != true ||
             finalStageGroundHook?.IsEnabled != true || finalStageGroundObservationFailed ||
             !TryGetFinalStageDirector(out var director, out var start, out _)) return;
         var rows = new List<string>();
@@ -1701,7 +1782,7 @@ internal static unsafe class VerminionGameInteraction
         if (System.Threading.Interlocked.Increment(ref finalStageActorCallbacks) == 1)
             Plugin.Log.Information($"[VerminionControl] first actor effect callback; frameworkThread={onFramework}");
         if (!onFramework || address == 0 || pathAddress == 0 ||
-            CurrentCpuDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
+            CurrentBattleDutyId() != 575 || backgroundInputAllowed?.Invoke() != true) return;
         var path = Dalamud.Memory.MemoryHelper.ReadString(pathAddress, System.Text.Encoding.ASCII, 256);
         var caster = Plugin.ObjectTable.FirstOrDefault(obj => obj.Address == casterAddress);
         // 636 coincided with 358 HP already lost in the native readback. Neither

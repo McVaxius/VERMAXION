@@ -138,6 +138,7 @@ internal sealed class VerminionWindow : Window
             if (DrawGoalSettings(config)) plugin.ConfigManager.SaveCurrentAccount();
             var runLabel = config.VerminionMode == VerminionMode.MissionRepeat
                 ? $"Run mission {Math.Clamp(config.VerminionMission, 1, 24)} ({Math.Clamp(config.VerminionRepeatCount, 1, 1000)} clears)"
+                : VerminionDutyRules.IsPlayerMode(config.VerminionMode) ? "Run player matches"
                 : config.VerminionMode == VerminionMode.CpuRewards ? "Check tournament / prizes" : "Run weekly participation";
             if (UIConstants.Button(runLabel)) plugin.RunDashboardAction(service.RunTask);
             UIConstants.EndPanel();
@@ -206,14 +207,24 @@ internal sealed class VerminionWindow : Window
     {
         var changed = false;
         var mode = (int)config.VerminionMode;
-        if (UIConstants.Combo("Activity##Verminion", ref mode, "Weekly participation - 5 matches\0Win selected mission - repeat clears\0Tournament checks / prizes\0"))
+        if (UIConstants.Combo("Activity##Verminion", ref mode, "Weekly participation - 5 matches\0Win selected mission - repeat clears\0Tournament checks / prizes\0PvP - Try to win\0PvP - Throw\0"))
         { config.VerminionMode = (VerminionMode)mode; changed = true; }
         UiGui.TextWrapped(config.VerminionMode switch
         {
             VerminionMode.Participation => "Finish the remaining weekly participation matches through intentional CPU losses. Five matches award 27,000 base MGP; existing participation is counted.",
             VerminionMode.MissionRepeat => "Repeat one CPU mission for farming or testing. Run starts a fresh clear count; Resume keeps it. Count successful clears only; defeats retry, stopping after three consecutive losses or the attempt limit.",
+            VerminionMode.PvpWin => "Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win.",
+            VerminionMode.PvpThrow => "Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit.",
             _ => "Check tournament notices, registration and claimable prizes on your Home World. Entry currently stops before Join. When registration is closed or all 15 matches are used, finish remaining weekly participation through CPU losses. Registration and prize handling await live verification; automatic tournament battles remain under development.",
         });
+        if (VerminionDutyRules.IsPlayerMode(config.VerminionMode))
+        {
+            var count = config.VerminionRepeatCount;
+            UiGui.TextWrapped("Number of player matches"); UIConstants.SetNextItemWidth(-1);
+            if (UIConstants.InputInt("##VerminionPlayerCount", ref count))
+            { config.VerminionRepeatCount = Math.Clamp(count, 1, 1000); changed = true; }
+            UiGui.TextWrapped("Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending.");
+        }
         if (config.VerminionMode == VerminionMode.MissionRepeat)
         {
             var mission = config.VerminionMission;
