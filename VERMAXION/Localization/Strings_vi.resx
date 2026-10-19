@@ -1195,7 +1195,7 @@ Saucy xử lý việc giải trò chơi nhỏ.</value></data>
   <data name="Unsynced is a dad hint for duties that cannot use Trust or Duty Support." xml:space="preserve"><value>Không đồng bộ là gợi ý cho dad về nhiệm vụ không thể dùng Trust hoặc Duty Support.</value></data>
   <data name="Updates valid saved gearsets through optional Stylist IPC or the native recommended-equipment path. If none exist, first runs the bounded missing-gearset bootstrap." xml:space="preserve"><value>Cập nhật bộ trang bị đã lưu hợp lệ qua IPC Stylist tùy chọn hoặc đường trang bị đề xuất gốc. Nếu không có bộ nào, chạy bước khởi tạo bộ trang bị còn thiếu có giới hạn trước.</value></data>
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve"><value>Chỉ nâng cấp retainer được bật trong AutoRetainer. Nghề chiến đấu dùng cấp vật phẩm trung bình tương thích AutoRetainer; nghề thu thập chỉ dùng tổng Nhận thức.</value></data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Dùng bố hoặc mẹ thấp hơn phả hệ cao nhất đã đạt một bậc để tạo thêm chocobo con ở phả hệ đó. Giữ giới tính đã có không đăng ký; nuôi giới tính còn thiếu. Tiếp tục để áp dụng.</value></data>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Tạo chocobo có giới tính còn thiếu ở phả hệ cao nhất đã đạt. Dùng bố hoặc mẹ thấp hơn một bậc phả hệ, hoặc chocobo G9 được giữ lại khi đã đạt G9. Không đăng ký con trùng giới tính; nuôi con có giới tính còn thiếu. Tiếp tục để áp dụng.</value></data>
   <data name="Use a retained parent and a matching-pedigree permit for the opposite sex. MGP purchases respect the reserve." xml:space="preserve"><value>Dùng bố hoặc mẹ đã giữ và giấy phép cùng phả hệ cho giới tính đối diện. Mua bằng MGP tuân thủ mức dự trữ.</value></data>
   <data name="Use default" xml:space="preserve"><value>Dùng mặc định</value></data>
   <data name="Use default for {0}?" xml:space="preserve"><value>Dùng mặc định cho {0}?</value></data>
@@ -2067,4 +2067,926 @@ Phụ thuộc: {1}</value></data>
   <data name="Collect" xml:space="preserve"><value>Nhận</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>Nhận và tạm dừng</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Nhận một chocobo con đã sẵn sàng rồi tạm dừng trước lần phối giống tiếp theo.</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>Thuần thú sư</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>Thuần thú sư đang điều khiển nhân vật.</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>Thuần thú sư đang dọn dẹp và gỡ chặn AutoRetainer.</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>Đang chờ nhân vật hiện tại được đăng ký và sẵn sàng.</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · Số {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>Một lượt chạy Thuần Thú Sư hoặc quá trình dọn dẹp của lượt đó đang hoạt động</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>Đang thêm {0} ({1}/{2})</value></data>
+  <data name="All categories" xml:space="preserve"><value>Tất cả danh mục</value></data>
+  <data name="All kins" xml:space="preserve"><value>Tất cả họ thú</value></data>
+  <data name="Allow category" xml:space="preserve"><value>Cho phép danh mục</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>Đang đến gần Lauda</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>Cần ít nhất ba linh thú đủ điều kiện trước khi khiêu chiến một bàn đấu.</value></data>
+  <data name="Automation" xml:space="preserve"><value>Tự động hóa</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>Tránh trang bị gây hại khi chưa có miễn nhiễm</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>Danh sách ưu tiên thú</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>Đã sao chép bảng xếp hạng thú vào bảng nhớ tạm.</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>Đã nhập bảng xếp hạng thú.</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>Dịch vụ Thuần Thú Sư đã được hủy</value></data>
+  <data name="Beasts" xml:space="preserve"><value>Thú</value></data>
+  <data name="Block" xml:space="preserve"><value>Chặn</value></data>
+  <data name="Block category" xml:space="preserve"><value>Chặn danh mục</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Vật phẩm bị chặn sẽ không được mua, chọn làm kho báu hoặc sử dụng. Giữ Ctrl và nhấp để thay đổi cả danh mục.</value></data>
+  <data name="Board" xml:space="preserve"><value>Bàn đấu</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Hồi máu trên bàn đấu: khi HP còn 60% trở xuống và không có trại trước trận tiếp theo.</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Lộ trình bàn đấu {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>Sức chứa đội hình của bàn đấu: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>Trùm</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>Áp dụng cho cả danh mục</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>Đang mua {0} với giá {1}</value></data>
+  <data name="Camp" xml:space="preserve"><value>Trại</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>Trại: cho tối đa hai linh thú bị thương có HP dưới 60% nghỉ ngơi. Nếu không chọn linh thú nào, người chơi nhận hồi máu 90% cho bản thân từ trại.</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>Gánh trừ 2</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>Đang khiêu chiến bàn đấu</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>Chọn đội hình tùy chỉnh trong mục Thú. Thứ tự đã lưu sẽ được giữ nguyên.</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>Chọn ba linh thú có hạng thấp nhất và ít EXP nhất.</value></data>
+  <data name="Classification" xml:space="preserve"><value>Phân loại</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>Xóa lựa chọn linh thú tùy chỉnh</value></data>
+  <data name="Clear order" xml:space="preserve"><value>Xóa thứ tự</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>Xóa hạng đã lưu</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>Xóa đội hình tùy chỉnh. Giữ Ctrl và nhấp.</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>Đang hoàn thành bàn đấu để đọc thêm hạng</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>Hồi máu trong giao tranh: khi HP còn 40% trở xuống.</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>Đang bắt đầu trận đấu</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>Thể chất: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>Sao chép</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>Cần ít nhất ba linh thú khác nhau để vào Crucible. Hãy điều chỉnh lựa chọn đội hình và các hạn chế.</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>Cần ít nhất ba linh thú khác nhau để vào Crucible. Đội hình đã thay đổi trước khi xác nhận khiêu chiến.</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Đăng ký Crucible không hoàn tất trong vòng năm phút</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>Crucible yêu cầu nghề Thuần Thú Sư</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Đã hoàn tất lượt chạy Crucible</value></data>
+  <data name="Current board" xml:space="preserve"><value>Bàn đấu hiện tại</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>Vòng màu lục lam: điểm dừng hiện tại. Chấm màu lục lam: vị trí hiện tại của người chơi.</value></data>
+  <data name="Damage" xml:space="preserve"><value>Sát thương</value></data>
+  <data name="Degree" xml:space="preserve"><value>Bậc</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Xóa danh sách này. Giữ Ctrl và nhấp. Không thể xóa danh sách cuối cùng.</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm yêu cầu Soulreaper's Armor. Thunder Axe yêu cầu Umbral Wristlet.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Kéo tay nắm hoặc nhập # mới để đổi thứ tự. Giữ Ctrl và nhấp Chặn để thay đổi danh mục tương ứng.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Kéo tay nắm hoặc nhập # mới để đổi thứ tự. Giữ Ctrl và nhấp một ô chặn để thay đổi phân loại tương ứng.</value></data>
+  <data name="EXP" xml:space="preserve"><value>EXP</value></data>
+  <data name="Elite" xml:space="preserve"><value>Tinh nhuệ</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>Tất cả linh thú đều đã bị hạ gục</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>Thoát khi hoàn tất</value></data>
+  <data name="Export" xml:space="preserve"><value>Xuất</value></data>
+  <data name="Familiar" xml:space="preserve"><value>Linh thú</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>Không có dữ liệu linh thú. Hãy đăng nhập và chờ đăng ký nhân vật.</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>Linh thú {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>Cho ăn</value></data>
+  <data name="Fight" xml:space="preserve"><value>Chiến đấu</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Chặn chiến đấu</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Chặn chiến đấu giữ linh thú này ở đội dự bị, trừ khi còn dưới ba linh thú chiến đấu không bị chặn sống sót. Giữ Ctrl và nhấp để thay đổi cả phân loại.</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>Chọn linh thú chiến đấu</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Lấp đầy sức chứa đội hình của bàn đấu, ưu tiên linh thú có hạng thấp nhất và ít EXP nhất.</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>Đang hoàn tất bàn đấu</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>Bậc một</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>Đang đi theo bàn đấu Crucible</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>Quên các hạng đã lưu. Giữ Ctrl và nhấp.</value></data>
+  <data name="Full" xml:space="preserve"><value>Tối đa</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>Tối đa dùng hết sức chứa của bàn đấu. -3 chừa ba ô. Chỉ 3 chọn ba linh thú. Gánh chọn ba linh thú có hạng cao nhất rồi đến các linh thú luyện cấp, chừa hai ô.</value></data>
+  <data name="Gear" xml:space="preserve"><value>Trang bị</value></data>
+  <data name="HP" xml:space="preserve"><value>HP</value></data>
+  <data name="Heal items" xml:space="preserve"><value>Vật phẩm hồi máu</value></data>
+  <data name="Healing" xml:space="preserve"><value>Hồi máu</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>Hồi máu và trại</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>Các ngưỡng hồi máu được chức năng tự động hóa ấn định.</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>Các bậc cao hơn yêu cầu hoàn thành nhiệm vụ 71045. Sẽ dùng Tiêu chuẩn.</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>Ưu tiên linh thú có hạng cao nhất; nếu bằng hạng thì theo thứ tự trong bảng xếp hạng.</value></data>
+  <data name="Import" xml:space="preserve"><value>Nhập</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>Nhập sẽ thêm một danh sách mới từ JSON đã xuất hoặc ID vật phẩm đã biết. Các mục còn thiếu trong danh mục sẽ được thêm vào cuối. Xuất sẽ sao chép danh sách này vào bảng nhớ tạm.</value></data>
+  <data name="Imported" xml:space="preserve"><value>Đã nhập</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>Trí tuệ: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>Rời tổ đội trước khi vào Crucible</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Chừa ba ô đội hình; ưu tiên chọn linh thú có hạng thấp nhất và ít EXP nhất.</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>Đang rời bàn đấu đã hoàn thành</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>Đã rời Crucible trước khi ghi nhận được kết quả</value></data>
+  <data name="Leveling" xml:space="preserve"><value>Luyện cấp</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>Đội hình luyện cấp</value></data>
+  <data name="List name" xml:space="preserve"><value>Tên danh sách</value></data>
+  <data name="Loot" xml:space="preserve"><value>Chiến lợi phẩm</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>Kháng phép: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>Trừ 3</value></data>
+  <data name="New" xml:space="preserve"><value>Mới</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>Chưa biết linh thú nào đủ điều kiện cho thiết lập này. Khi vào, hệ thống sẽ quét sổ thú trước khi chọn đội hình.</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>Chưa biết linh thú nào. Hãy mở đội hình hoặc sổ thú tại Lauda để VERMAXION có thể đọc chúng.</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>Không tìm thấy điểm đến di chuyển cho Lauda</value></data>
+  <data name="No." xml:space="preserve"><value>Số</value></data>
+  <data name="Only 3" xml:space="preserve"><value>Chỉ 3</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>Chỉ được phép dùng một rìu nguyên tố; các rìu nguyên tố không tương thích luôn bị bỏ qua.</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>Linh thú sở hữu</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>Hiện chưa có thông tin sở hữu; bản xem trước này dùng dữ liệu linh thú đã ghi nhớ.</value></data>
+  <data name="Paused: " xml:space="preserve"><value>Đã tạm dừng: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>Đã tạm dừng: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>Kháng vật lý: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Chặn chọn</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Chặn chọn ngăn tự động chọn linh thú vào đội hình. Giữ Ctrl và nhấp để thay đổi cả phân loại.</value></data>
+  <data name="Rank" xml:space="preserve"><value>Hạng</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Chưa đọc hạng. Sẽ đọc từ sổ thú ở lần thiết lập đội hình tiếp theo.</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>Chưa biết hạng</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>Hạng {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>Đang đọc hạng linh thú ({0}/{1})</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>Sẵn sàng bắt đầu</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Đề xuất</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>Đang loại bỏ tất cả linh thú</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Phải sở hữu trang bị miễn nhiễm cần thiết trước.</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>Nghỉ tại trại</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>Đang nghỉ tại khu cắm trại</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Khôi phục thứ tự mặc định của danh sách này và bỏ các mục chặn. Giữ Ctrl và nhấp.</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>Lộ trình chưa bắt đầu.</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Lộ trình {0:00} · {1}/{2} bước</value></data>
+  <data name="Run setup" xml:space="preserve"><value>Thiết lập lượt chạy</value></data>
+  <data name="Runs" xml:space="preserve"><value>Lượt chạy</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>Bậc hai</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>Chọn một trong năm bàn đấu Crucible</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>Linh thú đã chọn</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>Đang thiết lập đội hình</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>Tô nền: đội hình chế độ này sẽ chọn. Di chuột lên tên để xem chỉ số.</value></data>
+  <data name="Shop List" xml:space="preserve"><value>Danh sách mua sắm</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>Đã sao chép danh sách mua sắm vào bảng nhớ tạm.</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>Đã nhập danh sách mua sắm.</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>Danh sách ưu tiên mua sắm</value></data>
+  <data name="Standard" xml:space="preserve"><value>Tiêu chuẩn</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>Dừng Thuần Thú Sư trước khi thay đổi thiết lập, thú hoặc vật tư.</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>Đã dừng sau khi đổi nhân vật</value></data>
+  <data name="Stopping" xml:space="preserve"><value>Đang dừng</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>Sức mạnh: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>Vật tư tuân theo thứ tự trong danh sách của bạn.</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>Chọn các linh thú bạn sở hữu và đánh dấu, tối đa bằng sức chứa của bàn đấu đã chọn.</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>Chọn các linh thú có hạng cao nhất của bạn. Nếu bằng hạng thì theo danh sách ưu tiên thú.</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>Chọn các linh thú có hạng thấp nhất của bạn, ưu tiên ít EXP nhất. Chúng cũng chiến đấu trước.</value></data>
+  <data name="Team cap" xml:space="preserve"><value>Giới hạn đội hình</value></data>
+  <data name="Team ready" xml:space="preserve"><value>Đội hình đã sẵn sàng</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>Thiết lập đội hình liên tục thay đổi mà không ổn định; đã dừng.</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>Bàn đấu hiện tại chỉ có sau khi vào Crucible. Không thể biết các nút và vị trí người chơi khi ở ngoài phó bản.</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>Bàn đấu đã chọn không khớp với phó bản Crucible hiện tại</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>Đội hình đã đầy. Bỏ chọn một linh thú để chọn linh thú khác.</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>Bậc ba</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>Ba linh thú mạnh gánh các linh thú luyện cấp; chừa hai ô đội hình.</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>Đánh dấu: đội hình bạn sẽ mang theo. Di chuột lên tên để xem chỉ số.</value></data>
+  <data name="Tier List" xml:space="preserve"><value>Bảng xếp hạng</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>Không thể bắt đầu di chuyển đến Lauda</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>Đang di chuyển đến Lauda</value></data>
+  <data name="Treasure" xml:space="preserve"><value>Kho báu</value></data>
+  <data name="Type" xml:space="preserve"><value>Loại</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>Không thể nhập bảng xếp hạng thú. Hãy dùng danh sách đã xuất hoặc các ID linh thú đã biết, phân cách bằng dấu cách hoặc dấu phẩy.</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>Không thể nhập danh sách mua sắm. Hãy dùng danh sách đã xuất hoặc các ID vật phẩm đã biết, phân cách bằng dấu cách hoặc dấu phẩy.</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>Bàn đấu không xác định</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>Phân loại không xác định</value></data>
+  <data name="Untitled" xml:space="preserve"><value>Chưa đặt tên</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · Thuần Thú Sư</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>Chờ nhân vật hiện tại sẵn sàng</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>Đang chờ chuyển động do plugin điều khiển dừng lại</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>Đang chờ hồi sinh</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>Đang chờ vào Crucible</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>Cần vnavmesh để di chuyển trên bàn đấu</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>Đã chọn {0} linh thú · hiển thị {1}/{2}</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>{0} điểm dừng · {1} kết nối</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · Điểm dừng {1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3} lượt chạy</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>Không xác định được linh thú "{0}". Hãy mở chi tiết của nó trong sổ thú một lần để VERMAXION ghi nhận tên.</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>Không thể chọn Số {0} trong sổ thú.</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>Nuôi con còn thiếu lên hạng đua 40 để phối giống.</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>Con non thừa hưởng màu của một trong hai bố mẹ. Một chocobo G9 phù hợp phải có sẵn một trong các màu đã chọn.</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>Cài đặt sản xuất chocobo con không hợp lệ.</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>Đã tạo {0}/{1} chocobo con G9 phù hợp; giữ lại chưa đăng ký.</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>Đối chiếu lần phối giống hiện tại trước khi tạo chocobo con khác.</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>Sản xuất chocobo con cần đàn giống G9; đã dừng đua các đời thấp hơn.</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>Chocobo đua G9 đã đăng ký chưa có đặc tính yêu cầu được xác nhận. Giữ nó và chọn đàn giống phù hợp.</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>Nuôi chim bố mẹ G9 dùng để nhân giống đến khi nghỉ hưu: hạng đua {0}/40. Chocobo con phù hợp vẫn chưa được đăng ký.</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>Phối đàn giống G9 phù hợp với bố mẹ G9 khác giới được giữ lại.</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>Không có bố mẹ G9 nghỉ hưu khả dụng có đặc tính yêu cầu đã xác nhận. Giữ chocobo con và bổ sung đàn giống G9 phù hợp.</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>Nuôi chocobo con G9 không phù hợp này làm cá thể đối ứng sở hữu còn thiếu; giữ những con phù hợp.</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>Thiếu bố mẹ G9 khác giới khả dụng. Chế độ sở hữu cần đàn giống G9 phù hợp hoặc chủ động đổi sang giấy phép NPC.</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>Chờ phối giống không có bằng chứng sẵn sàng hợp lệ.</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>Phối giống đã xong; có thể nhận chocobo con.</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>Chờ phối giống đến {0:u}.</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>Phối giống đã xong; đang nhận chocobo con.</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>Chu kỳ mục tiêu đã tạm dừng tại điểm an toàn.</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>VERMAXION đã tạm dừng tại điểm an toàn.</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>Nhận con cần lần phối giống hiện tại đã sẵn sàng, đời giống của bố mẹ được giữ lại và đúng một Proof of Covering.</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>Bằng chứng nhận con đã lưu không hợp lệ; không thực hiện lại việc nhận con.</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>Đã nhận con nhưng cần đối chiếu chính xác chocobo con mới và đặc tính trước khi tính số lượng hoặc phối giống lần nữa.</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>Đã yêu cầu nhận con; đối chiếu việc tiêu thụ giấy xác nhận và một chocobo con phù hợp trước yêu cầu khác.</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Tác vụ mục tiêu Choke-abo: {0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>Trì hoãn: {0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>Điều kiện tham gia: cấp {0}, cấp trang bị {1}. Cấp trang bị đang mặc: {2}.</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>Yêu cầu cấp {0} và cấp trang bị {1}; hiện tại cấp {2}, cấp trang bị {3}.</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>Không có thông tin điều kiện tham gia cho bảng này.</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>Không có thông tin cấp trang bị đang mặc.</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>Nhiệm vụ tuần của Thuần thú sư</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>Thử thách hằng tuần</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>Chạy thử thách tuần</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>Hoàn thành một lần mỗi thử thách Thuần thú sư còn thiếu và đủ điều kiện.</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>Chỉ tính hoàn thành bàn chơi một mình. Phụ bản không được tính.</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>Chưa xác nhận linh thú đã được thêm vào đội. Hãy kiểm tra đội hình trong trò chơi trước khi bắt đầu lại.</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>Đã dừng thiết lập đội vì đội hình thay đổi ngoài dự kiến.</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>Đã dừng thiết lập đội vì cửa sổ trong trò chơi chưa cập nhật xong.</value></data>
+  <data name="The bestiary did not show the requested familiar&apos;s details." xml:space="preserve"><value>Sổ thú không hiển thị thông tin chi tiết của linh thú được yêu cầu.</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>Không có dữ liệu Nhật ký thử thách hằng tuần.</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>Đã hoàn thành cả năm thử thách hằng tuần.</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>Thử thách hằng tuần đã hoàn thành: {0}/5.</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>Không còn thử thách hằng tuần chưa hoàn thành nào đủ điều kiện. Vẫn còn bàn chưa mở khóa hoặc chưa đáp ứng điều kiện trang bị.</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>Chưa hoàn thành nhiệm vụ mở khóa bàn hoặc Nhật ký thử thách cần thiết.</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>Cần Thuần thú sư cấp {0}.</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>Cần cấp vật phẩm {0}; cấp vật phẩm hiện tại là {1}.</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>Chưa hoàn thành</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>Đang chờ tải dữ liệu Nhật ký thử thách mới cho nhân vật và kỳ đặt lại này.</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>Hãy rời nhiệm vụ Crucible hiện tại trước khi bắt đầu các thử thách hằng tuần.</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>Đã hoàn thành các thử thách hằng tuần đủ điều kiện. Vẫn còn bàn chưa mở khóa hoặc chưa đáp ứng điều kiện trang bị.</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>Dữ liệu Nhật ký thử thách hằng tuần đã thay đổi hoặc không còn khả dụng. Không xếp thêm bàn tiếp theo vào hàng đợi.</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>Thử thách hằng tuần đã chọn đã hoàn thành. Không gửi thêm yêu cầu vào bàn.</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>Đang chờ xác nhận mới về việc hoàn thành thử thách hằng tuần.</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>Chưa xác nhận được việc hoàn thành thử thách hằng tuần sau khi có kết quả bàn. Không chơi lặp lại bàn nào.</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>Hàng chờ nội dung hiện tại phải kết thúc trước khi bắt đầu Thuần thú sư.</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>Không thể theo dõi trạng thái vào Crucible.</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>Yêu cầu vào Crucible đang chờ đã bị rút. Không yêu cầu vào lại.</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>Đang hủy yêu cầu vào Crucible.</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>Bàn Crucible đã vào không khớp với bàn được yêu cầu.</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>Chế độ mini</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>Cửa sổ đầy đủ</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve">
+    <value>Một lượt Thuần thú sư, cập nhật hoặc quá trình dọn dẹp của nó đang hoạt động.</value>
+  </data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve">
+    <value>Một trình hỗ trợ chiến đấu đã bị dỡ hoặc thay thế; quyền kiểm soát ban đầu chưa được giải quyết.</value>
+  </data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve">
+    <value>Tất cả thú sở hữu đã đạt mục tiêu huấn luyện của bàn đấu này.</value>
+  </data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve">
+    <value>Không tìm thấy một thú sở hữu trong sổ thú độc lập; dữ liệu đã quan sát được vẫn được giữ lại.</value>
+  </data>
+  <data name="Another automation owns the character." xml:space="preserve">
+    <value>Một tác vụ tự động khác đang kiểm soát nhân vật.</value>
+  </data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve">
+    <value>Quyền sở hữu thú thay đổi trong lúc cập nhật; dữ liệu đã quan sát được vẫn được giữ lại. Hãy cập nhật lại khi danh sách ổn định.</value>
+  </data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve">
+    <value>Đã hủy cập nhật thú; dữ liệu đã quan sát được vẫn được giữ lại.</value>
+  </data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve">
+    <value>Đã dừng cập nhật thú do nhân vật, khu vực hoặc ngữ cảnh trò chơi thay đổi.</value>
+  </data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve">
+    <value>Đã dừng cập nhật thú vì sổ thú chuyển sang dữ liệu đội.</value>
+  </data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve">
+    <value>Thuần thú sư không thể giành quyền kiểm soát AutoRetainer khi trạng thái tạm ngưng hiện có đang hoạt động hoặc không đọc được.</value>
+  </data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve">
+    <value>Thuần thú sư không thể xác minh trạng thái tạm ngưng AutoRetainer.</value>
+  </data>
+  <data name="Beastmaster frequency" xml:space="preserve">
+    <value>Tần suất Thuần thú sư</value>
+  </data>
+  <data name="Beastmaster scheduling" xml:space="preserve">
+    <value>Lịch Thuần thú sư</value>
+  </data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve">
+    <value>Thú và Vật tư được dùng chung cho nhân vật này.</value>
+  </data>
+  <data name="Boards per trigger" xml:space="preserve">
+    <value>Số bàn đấu mỗi lần kích hoạt</value>
+  </data>
+  <data name="Boards this run" xml:space="preserve">
+    <value>Số bàn đấu lượt này</value>
+  </data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve">
+    <value>BossMod &apos;passive - melee&apos; yêu cầu phạm vi 2.3 và di chuyển Pathfind.</value>
+  </data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve">
+    <value>Không có mục tiêu đi theo của AI BossMod.</value>
+  </data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve">
+    <value>Không có các điều khiển vòng đời AI BossMod.</value>
+  </data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve">
+    <value>Chưa xác nhận việc khôi phục trạng thái ban đầu của AI BossMod.</value>
+  </data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve">
+    <value>Trạng thái chạy của AI BossMod không tương thích.</value>
+  </data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve">
+    <value>Không có trạng thái chạy của AI BossMod.</value>
+  </data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve">
+    <value>Chưa xác nhận việc tạm ngưng AI BossMod.</value>
+  </data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve">
+    <value>BossMod không xác nhận bộ thiết lập di chuyển Thuần thú sư được yêu cầu.</value>
+  </data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve">
+    <value>Trạng thái bộ thiết lập bị buộc tắt của BossMod không nhất quán.</value>
+  </data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve">
+    <value>BossMod thiếu bộ thiết lập &apos;passive - melee&apos; hiện có.</value>
+  </data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve">
+    <value>Chưa xác nhận việc khôi phục bộ thiết lập ban đầu của BossMod.</value>
+  </data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve">
+    <value>BossMod yêu cầu bộ thiết lập &apos;passive - melee&apos; hiện có chỉ để di chuyển; không được chứa vòng kỹ năng DPS.</value>
+  </data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve">
+    <value>BossModReborn không còn được tải.</value>
+  </data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve">
+    <value>Mang ba thú cần luyện, ưu tiên hạng và EXP thấp nhất. Tập trung huấn luyện ít thú hơn, với ít dự bị hơn.</value>
+  </data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve">
+    <value>Mang tối đa {0} thú cần luyện, để trống ba ô đội. Đội nhỏ hơn có thể nhận nhiều EXP cho mỗi thú hơn, với ít dự bị hơn.</value>
+  </data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve">
+    <value>Mang tối đa {0} thú cần luyện, ưu tiên hạng và EXP thấp nhất. Huấn luyện nhiều thú cùng lúc với nhiều dự bị hơn.</value>
+  </data>
+  <data name="Checked at VMX opportunities." xml:space="preserve">
+    <value>Được kiểm tra tại các thời điểm VMX có thể chạy.</value>
+  </data>
+  <data name="Choose a training team method for this goal." xml:space="preserve">
+    <value>Chọn cách lập đội huấn luyện cho mục tiêu này.</value>
+  </data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve">
+    <value>Chọn thành viên tùy chỉnh trong Thú. Mọi thiết lập chọn Tùy chỉnh đều dùng danh sách chung của nhân vật này.</value>
+  </data>
+  <data name="Clear recorded beast data" xml:space="preserve">
+    <value>Xóa dữ liệu thú đã ghi nhận</value>
+  </data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve">
+    <value>Xóa bộ lọc sổ thú của trò chơi trước khi cập nhật toàn bộ thú sở hữu.</value>
+  </data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve">
+    <value>Xóa hạng, EXP, chỉ số, dữ liệu sở hữu và đội gần nhất đã lưu của nhân vật này. Giữ Ctrl và nhấp.</value>
+  </data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve">
+    <value>Đóng đăng ký Crucible và chờ hàng chờ nhiệm vụ ổn định trước khi cập nhật thú.</value>
+  </data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve">
+    <value>Đóng hộp xác nhận hiện tại trước khi cập nhật thú.</value>
+  </data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve">
+    <value>Đóng sổ thú của đội trước khi cập nhật thú.</value>
+  </data>
+  <data name="Collapse" xml:space="preserve">
+    <value>Thu gọn</value>
+  </data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve">
+    <value>Đang chờ khôi phục chiến đấu: {0}</value>
+  </data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve">
+    <value>Hoàn thành các mục tiêu Nhật ký thử thách đủ điều kiện còn thiếu trong trò chơi, độc lập với huấn luyện thông thường.</value>
+  </data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve">
+    <value>Cấu hình thiết lập lượt chạy và mục tiêu huấn luyện trong Lịch VMX của Thuần thú sư.</value>
+  </data>
+  <data name="Crewcible task" xml:space="preserve">
+    <value>Tác vụ Crewcible</value>
+  </data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve">
+    <value>Bước nhảy tuyến Crucible nằm ngoài bàn đấu</value>
+  </data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve">
+    <value>Mọi thiết lập chọn Tùy chỉnh đều dùng danh sách thành viên tùy chỉnh. Di chuột lên tên để xem chỉ số đã ghi nhận.</value>
+  </data>
+  <data name="Editing settings does not start a run." xml:space="preserve">
+    <value>Chỉnh sửa cài đặt không bắt đầu lượt chạy.</value>
+  </data>
+  <data name="Enable Beastmaster training" xml:space="preserve">
+    <value>Bật huấn luyện Thuần thú sư</value>
+  </data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve">
+    <value>Bật nhiệm vụ tuần Thuần thú sư</value>
+  </data>
+  <data name="Enable task" xml:space="preserve">
+    <value>Bật tác vụ</value>
+  </data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve">
+    <value>Đang giao chiến tại đấu trường Crucible hiện tại</value>
+  </data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve">
+    <value>Điều kiện tham gia được kiểm tra cho nhân vật đang hoạt động trước khi bắt đầu.</value>
+  </data>
+  <data name="Every AR" xml:space="preserve">
+    <value>Mỗi lần AR</value>
+  </data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve">
+    <value>Các thú bị loại trừ khiến mục tiêu này chưa hoàn thành.</value>
+  </data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve">
+    <value>Thứ tự thực hiện: Cài đặt VMX &gt; Thứ tự tác vụ.</value>
+  </data>
+  <data name="Expand" xml:space="preserve">
+    <value>Mở rộng</value>
+  </data>
+  <data name="Fixed board runs" xml:space="preserve">
+    <value>Số lượt bàn đấu cố định</value>
+  </data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve">
+    <value>Cần dữ liệu hạng và EXP mới trước khi quyết định huấn luyện đã hoàn thành.</value>
+  </data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve">
+    <value>Không thể quan sát đầy đủ hạng. Hạng chưa đọc được vẫn là chưa biết.</value>
+  </data>
+  <data name="Hide" xml:space="preserve">
+    <value>Ẩn</value>
+  </data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve">
+    <value>Ưu tiên thú có hạng cao nhất; dùng mức ưu tiên thú khi bằng nhau.</value>
+  </data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve">
+    <value>Độc lập với việc bật tác vụ thông thường, mục tiêu huấn luyện và hạn mức lượt bàn đấu.</value>
+  </data>
+  <data name="Invalid Crucible route jump" xml:space="preserve">
+    <value>Bước nhảy tuyến Crucible không hợp lệ</value>
+  </data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve">
+    <value>Bước xóa khi quét Crucible không hợp lệ</value>
+  </data>
+  <data name="Item and camp rules" xml:space="preserve">
+    <value>Quy tắc vật phẩm và trại</value>
+  </data>
+  <data name="Item priorities" xml:space="preserve">
+    <value>Ưu tiên vật phẩm</value>
+  </data>
+  <data name="Kin filter" xml:space="preserve">
+    <value>Bộ lọc hệ thú</value>
+  </data>
+  <data name="Last completed: {0}" xml:space="preserve">
+    <value>Hoàn thành gần nhất: {0}</value>
+  </data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve">
+    <value>Rời nhiệm vụ hiện tại trước khi cập nhật thú.</value>
+  </data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve">
+    <value>Tải Rotation Solver Reborn và chọn vòng kỹ năng Reborn Beastmaster.</value>
+  </data>
+  <data name="Manual setup" xml:space="preserve">
+    <value>Thiết lập thủ công</value>
+  </data>
+  <data name="Master Class I" xml:space="preserve">
+    <value>Lớp bậc thầy I</value>
+  </data>
+  <data name="Master Class II" xml:space="preserve">
+    <value>Lớp bậc thầy II</value>
+  </data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve">
+    <value>Không có dữ liệu sở hữu thú từ trò chơi; dữ liệu đã ghi nhận vẫn được giữ lại.</value>
+  </data>
+  <data name="Next eligible: {0}" xml:space="preserve">
+    <value>Lần đủ điều kiện tiếp theo: {0}</value>
+  </data>
+  <data name="No character" xml:space="preserve">
+    <value>Không có nhân vật</value>
+  </data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve">
+    <value>Không có hồ sơ nhân vật. Hãy đăng nhập và chờ đăng ký nhân vật.</value>
+  </data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve">
+    <value>Chưa ghi nhận thú đủ điều kiện cho thiết lập này. Hãy cập nhật thú trên nhân vật đang chơi.</value>
+  </data>
+  <data name="No full beast refresh has been requested." xml:space="preserve">
+    <value>Chưa yêu cầu cập nhật đầy đủ thú.</value>
+  </data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve">
+    <value>Chưa có thú được ghi nhận. Dùng Cập nhật thú khi đang chơi nhân vật này ngoài nhiệm vụ.</value>
+  </data>
+  <data name="No recorded character" xml:space="preserve">
+    <value>Chưa có nhân vật được ghi nhận</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Ngoại tuyến</value>
+  </data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve">
+    <value>Chỉ liệt kê nhân vật đã có thú được ghi nhận.</value>
+  </data>
+  <data name="Open VMX Schedule" xml:space="preserve">
+    <value>Mở Lịch VMX</value>
+  </data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve">
+    <value>Đang mở sổ thú độc lập để cập nhật hạng và EXP của thú.</value>
+  </data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve">
+    <value>Đã kiểm tra quyền sở hữu. Hạng đã ghi nhận có thể cần cập nhật đầy đủ.</value>
+  </data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve">
+    <value>Chưa quan sát đầy đủ quyền sở hữu. Chưa biết việc huấn luyện đã hoàn thành hay chưa.</value>
+  </data>
+  <data name="Ownership not fully observed." xml:space="preserve">
+    <value>Chưa quan sát đầy đủ quyền sở hữu.</value>
+  </data>
+  <data name="Ownership observed: {0}" xml:space="preserve">
+    <value>Ghi nhận quyền sở hữu: {0}</value>
+  </data>
+  <data name="Playing" xml:space="preserve">
+    <value>Đang chơi</value>
+  </data>
+  <data name="Playing: {0}" xml:space="preserve">
+    <value>Đang chơi: {0}</value>
+  </data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve">
+    <value>Reborn Beastmaster của RSR không còn là vòng kỹ năng hiện tại.</value>
+  </data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve">
+    <value>RSR không xác nhận chế độ hoạt động Thuần thú sư được yêu cầu.</value>
+  </data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve">
+    <value>Các cờ chế độ hoạt động RSR không nhất quán.</value>
+  </data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve">
+    <value>Chưa xác nhận việc khôi phục chế độ ban đầu của RSR.</value>
+  </data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve">
+    <value>Trạng thái chạy của RSR không tương thích: </value>
+  </data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve">
+    <value>Trạng thái chạy của RSR không tương thích: {0}</value>
+  </data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve">
+    <value>Không có trạng thái chạy của RSR.</value>
+  </data>
+  <data name="Ranks observed: {0}" xml:space="preserve">
+    <value>Ghi nhận hạng: {0}</value>
+  </data>
+  <data name="Recorded beasts" xml:space="preserve">
+    <value>Thú đã ghi nhận</value>
+  </data>
+  <data name="Refresh beasts" xml:space="preserve">
+    <value>Cập nhật thú</value>
+  </data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve">
+    <value>Chỉ có thể cập nhật cho nhân vật đang chơi.</value>
+  </data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve">
+    <value>Đã cập nhật hạng và EXP cho {0} thú sở hữu.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve">
+    <value>Đang cập nhật hạng và EXP của thú ({0}/{1}).</value>
+  </data>
+  <data name="Removing {0}" xml:space="preserve">
+    <value>Đang loại bỏ {0}</value>
+  </data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve">
+    <value>Đang tiếp tục tuyến bàn đấu {0}/{1}</value>
+  </data>
+  <data name="Resuming the current Crucible board" xml:space="preserve">
+    <value>Đang tiếp tục bàn đấu Crucible hiện tại</value>
+  </data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve">
+    <value>Phải tải cả Rotation Solver Reborn và BossModReborn.</value>
+  </data>
+  <data name="Run actions" xml:space="preserve">
+    <value>Thao tác chạy</value>
+  </data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve">
+    <value>Chạy tối đa {0} bàn đấu mỗi lần kích hoạt. Việc huấn luyện chưa xong sẽ tiếp tục ở lần kích hoạt đủ điều kiện tiếp theo.</value>
+  </data>
+  <data name="Run task now" xml:space="preserve">
+    <value>Chạy tác vụ ngay</value>
+  </data>
+  <data name="Run weeklies now" xml:space="preserve">
+    <value>Chạy nhiệm vụ tuần ngay</value>
+  </data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Chạy các bàn đấu đủ điều kiện còn thiếu. Mục bị khóa hoặc không đủ trang bị vẫn chưa hoàn thành.</value>
+  </data>
+  <data name="Saved data for {0}" xml:space="preserve">
+    <value>Dữ liệu đã lưu cho {0}</value>
+  </data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve">
+    <value>Được lưu riêng với cài đặt tác vụ VMX.</value>
+  </data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve">
+    <value>Cài đặt tác vụ theo lịch cho nhân vật này. Được lưu riêng với Chạy thủ công.</value>
+  </data>
+  <data name="Settings saved automatically" xml:space="preserve">
+    <value>Cài đặt được lưu tự động</value>
+  </data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve">
+    <value>Dùng chung cho các lượt thủ công và theo lịch của nhân vật này.</value>
+  </data>
+  <data name="Shop done, {0} coins left" xml:space="preserve">
+    <value>Đã mua xong, còn {0} xu</value>
+  </data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve">
+    <value>Quy tắc mua sắm, nghỉ ngơi và hồi phục nằm trong Vật tư.</value>
+  </data>
+  <data name="Smaller training team" xml:space="preserve">
+    <value>Đội huấn luyện nhỏ hơn</value>
+  </data>
+  <data name="Soul Survivor I" xml:space="preserve">
+    <value>Linh hồn sống sót I</value>
+  </data>
+  <data name="Soul Survivor II" xml:space="preserve">
+    <value>Linh hồn sống sót II</value>
+  </data>
+  <data name="Soul Survivor III" xml:space="preserve">
+    <value>Linh hồn sống sót III</value>
+  </data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve">
+    <value>Đã dừng; đang chờ khôi phục chiến đấu: {0}</value>
+  </data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve">
+    <value>Đã dừng; đang chờ sổ thú độc lập đóng. Hãy đóng thủ công nếu cần.</value>
+  </data>
+  <data name="Strongest available" xml:space="preserve">
+    <value>Mạnh nhất hiện có</value>
+  </data>
+  <data name="Taking {0}" xml:space="preserve">
+    <value>Đang lấy {0}</value>
+  </data>
+  <data name="Team method" xml:space="preserve">
+    <value>Cách lập đội</value>
+  </data>
+  <data name="The Crucible route has no actions" xml:space="preserve">
+    <value>Tuyến Crucible không có thao tác</value>
+  </data>
+  <data name="The Crucible route is missing" xml:space="preserve">
+    <value>Thiếu tuyến Crucible</value>
+  </data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve">
+    <value>Sổ thú không đóng sau khi cập nhật thú.</value>
+  </data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve">
+    <value>Sổ thú không hiển thị hạng và EXP của thú được yêu cầu; dữ liệu đã quan sát được vẫn được giữ lại.</value>
+  </data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve">
+    <value>Trang sổ thú không ổn định sau khi cập nhật.</value>
+  </data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve">
+    <value>Cập nhật sổ thú không hoàn thành trong năm phút; dữ liệu đã quan sát được vẫn được giữ lại.</value>
+  </data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve">
+    <value>Sổ thú trả về hạng thấp hơn dữ liệu đã ghi nhận; cập nhật đã dừng mà không thay thế dữ liệu đó.</value>
+  </data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve">
+    <value>Kết quả bàn đấu không cung cấp hạng và EXP mới cho đội tham gia.</value>
+  </data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve">
+    <value>Không thể khôi phục lựa chọn sổ thú ban đầu.</value>
+  </data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve">
+    <value>Không thể chọn thú được yêu cầu trong sổ thú độc lập.</value>
+  </data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve">
+    <value>Sổ thú độc lập không sẵn sàng.</value>
+  </data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve">
+    <value>Không có sổ thú độc lập.</value>
+  </data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
+    <value>Thứ tự và các mục chặn này áp dụng cho mua sắm, chọn kho báu và dùng vật phẩm.</value>
+  </data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve">
+    <value>Lượt này: {0}/{1} bàn đấu</value>
+  </data>
+  <data name="Three strong fighters + trainees" xml:space="preserve">
+    <value>Ba đấu sĩ mạnh + thú cần luyện</value>
+  </data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve">
+    <value>Ba thú mạnh nhất chiến đấu trước, cùng tối đa {0} thú cần luyện. Mang tối đa {1} thú, để trống hai ô. Thú dự bị cũng nhận EXP.</value>
+  </data>
+  <data name="Train a full team" xml:space="preserve">
+    <value>Huấn luyện đội đầy đủ</value>
+  </data>
+  <data name="Train owned familiars" xml:space="preserve">
+    <value>Huấn luyện thú sở hữu</value>
+  </data>
+  <data name="Train three at a time" xml:space="preserve">
+    <value>Huấn luyện ba thú mỗi lần</value>
+  </data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve">
+    <value>Huấn luyện toàn bộ thú sở hữu yêu cầu cách lập đội huấn luyện.</value>
+  </data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve">
+    <value>Đã hết hạn mức huấn luyện; thú chưa xong sẽ được kiểm tra ở lần kích hoạt tiếp theo.</value>
+  </data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve">
+    <value>Huấn luyện chưa hoàn thành nhưng có ít hơn ba thú đủ điều kiện để lập đội. Hãy kiểm tra các mục loại trừ và bộ lọc hệ thú.</value>
+  </data>
+  <data name="Training progress" xml:space="preserve">
+    <value>Tiến độ huấn luyện</value>
+  </data>
+  <data name="Training target: Rank {0}" xml:space="preserve">
+    <value>Mục tiêu huấn luyện: Hạng {0}</value>
+  </data>
+  <data name="Unsupported Crucible board" xml:space="preserve">
+    <value>Bàn đấu Crucible không được hỗ trợ</value>
+  </data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve">
+    <value>Điều kiện tuyến Crucible không được hỗ trợ</value>
+  </data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve">
+    <value>Thao tác tuyến chỉ dành cho Crucible không được hỗ trợ: {0}</value>
+  </data>
+  <data name="Up to {0} familiars" xml:space="preserve">
+    <value>Tối đa {0} thú</value>
+  </data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve">
+    <value>Chỉ dùng BossModReborn cho Thuần thú sư; cả hai trình BossMod dùng chung tên IPC.</value>
+  </data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve">
+    <value>Dùng cách lập đội theo lịch, độ khó đã lưu và vật tư dùng chung.</value>
+  </data>
+  <data name="Using {0} at {1}" xml:space="preserve">
+    <value>Đang dùng {0} tại {1}</value>
+  </data>
+  <data name="VMX Schedule" xml:space="preserve">
+    <value>Lịch VMX</value>
+  </data>
+  <data name="Viewing another character · automation not started" xml:space="preserve">
+    <value>Đang xem nhân vật khác · chưa bắt đầu tự động hóa</value>
+  </data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve">
+    <value>Chờ nhân vật hiện tại rảnh trước khi cập nhật thú.</value>
+  </data>
+  <data name="Wait until the current character is ready." xml:space="preserve">
+    <value>Chờ nhân vật hiện tại sẵn sàng.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve">
+    <value>Trạng thái Nhật ký thử thách tuần có sẵn cho nhân vật đang chơi.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve">
+    <value>Trạng thái Nhật ký thử thách tuần có sẵn cho nhân vật đang chơi. Vẫn có thể sửa cài đặt lịch đã lưu.</value>
+  </data>
+  <data name="Weekly Challenge Log task" xml:space="preserve">
+    <value>Tác vụ Nhật ký thử thách tuần</value>
+  </data>
+  <data name="Weekly challenge objectives" xml:space="preserve">
+    <value>Mục tiêu thử thách tuần</value>
+  </data>
+  <data name="Weekly progress" xml:space="preserve">
+    <value>Tiến độ tuần</value>
+  </data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve">
+    <value>Khi chỉ còn một hoặc hai thú cần luyện, chỉ thêm đủ đấu sĩ đã luyện để đạt ba thú.</value>
+  </data>
+  <data name="Wrong character" xml:space="preserve">
+    <value>Sai nhân vật</value>
+  </data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve">
+    <value>Sai nhân vật. Bạn có thể sửa hồ sơ này, nhưng phải chuyển sang nhân vật đó trước khi bắt đầu tự động hóa.</value>
+  </data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve">
+    <value>Bạn đang xem {0} nhưng đang chơi {1}. Chọn nhân vật hiện tại hoặc đăng nhập nhân vật đang xem trước khi bắt đầu tự động hóa.</value>
+  </data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve">
+    <value>{0} đủ điều kiện huấn luyện · {1} bị loại trừ · {2} chưa biết hạng</value>
+  </data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve">
+    <value>{0}/{1} ở Hạng {2}</value>
+  </data>
+  <data name="{0}/{1} complete" xml:space="preserve">
+    <value>{0}/{1} hoàn thành</value>
+  </data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>Không đủ linh thú đủ điều kiện có hạng đã ghi nhận. Chưa biết hạng: {0}.</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>Lựa chọn tùy chỉnh không thể tạo đội vào bàn đấu. Linh thú chưa sở hữu hoặc bị loại trừ: {0}.</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>Đóng sổ thú đang mở trước khi cập nhật thú.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>Đang cập nhật hạng và EXP của thú ({0}/{1}); trang {2}/{3}.</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>Cập nhật thú chưa hoàn tất: đã quan sát {0}/{1}; chưa đọc: {2}. {3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>Rời nhiệm vụ hiện tại trước khi bắt đầu Thuần thú sư.</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>Đang khôi phục sổ thú sau khi làm mới.</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>Đang chờ dữ liệu {0}.</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>Đang kiểm tra lại {0}; chờ điều khiển gốc hợp lệ.</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>Đã hoàn thành bàn; hạng và EXP của thú vẫn chưa được xác nhận.</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>Đã dừng; việc dọn dẹp gốc vẫn chưa được xác nhận: {0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>Đang kiểm tra lại trạng thái vào Crucible hiện tại.</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>Thử lại sau năm giây: {0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>Lượt {0}/{1}</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>Đã hoàn thành {0}/{1} lượt</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>Đang kiểm tra thú mới</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>Đã đọc {0}/{1}</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>Còn {0}</value></data>
+  <data name="Fighting" xml:space="preserve"><value>Đang chiến đấu</value></data>
+  <data name="Recovering" xml:space="preserve"><value>Đang khôi phục</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>Đang hoàn tất bàn đấu</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>Đang chuẩn bị đội</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>Tiếp tục</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>Thay đổi lịch áp dụng từ lần bắt đầu tiếp theo; lượt hiện tại giữ nguyên thiết lập.</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>Luôn tự động rời các bàn đã hoàn thành.</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>Lệnh khi hoàn thành (tùy chọn)</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>Để trống nếu không muốn làm gì. Chạy một lần sau khi hoàn thành kế hoạch, bên ngoài phụ bản.</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>Bàn hằng tuần</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>Tự động dùng các bàn đã mở khóa.</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>Dùng các bàn đã mở khóa</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>Các bàn đã mở khóa được chọn khi chơi nhân vật này. Chọn các bàn bên dưới để lưu lựa chọn cụ thể.</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>Chưa chọn bàn hằng tuần nào.</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Chạy các bàn đã chọn còn thiếu. Các mục bị khóa hoặc chưa đủ trang bị vẫn chưa hoàn thành.</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>Các thử thách hằng tuần đã chọn đã hoàn thành.</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>Thử thách hằng tuần đã chọn hoàn thành: {0}/{1}.</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>Các thử thách hằng tuần đã chọn đủ điều kiện đã hoàn thành. Vẫn còn bàn bị khóa hoặc chưa đủ trang bị.</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>Bàn hằng tuần hiện tại chưa được chọn.</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>Lệnh khi hoàn thành thất bại: {0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>Hoàn thành mỗi thử thách Beastmaster đã chọn và đủ điều kiện một lần.</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>Lệnh khi hoàn thành phải là một lệnh bắt đầu bằng dấu gạch chéo.</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>Không thể gửi lệnh khi hoàn thành; lệnh sẽ không được lặp lại.</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>Đã gửi lệnh khi hoàn thành.</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>Bỏ qua lệnh khi hoàn thành vì không thể lưu trạng thái hoàn thành Crewcible.</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>Bỏ qua lệnh khi hoàn thành vì lượt đã hoàn thành không còn là lượt hiện tại.</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>Beastmaster bị tắt cho nhân vật này.</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>Thử thách hằng tuần của Beastmaster bị tắt cho nhân vật này.</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>Beastmaster chưa đến lịch trước {0}.</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>Thử thách hằng tuần của Beastmaster chưa đến lịch trước {0}.</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Dừng sau lần thất bại hoặc hoàn thành tiếp theo</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>Hủy dừng sau kết quả tiếp theo</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Chỉ một lần: dừng trong phụ bản khi thất bại; nhận thưởng và rời đi khi hoàn thành.</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Sẽ dừng sau lần thất bại hoặc hoàn thành tiếp theo.</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Đã dừng sau thất bại; vẫn ở trong Crucible.</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Đã dừng sau khi hoàn thành; đã rời Crucible.</value></data>
 </root>

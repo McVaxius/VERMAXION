@@ -72,8 +72,9 @@ internal sealed class DebugWindow : Window
             UiGui.TextWrapped(UiText.F($"Loaded DLL: {typeof(Plugin).Assembly.Location}"));
         }
         var rows = plugin.MainWindow.GetDashboardTaskRows();
+        var selectedTaskId = AutomationCatalog.ResolveDebugTaskId(plugin.Configuration.DebugTaskId);
         if (!string.IsNullOrWhiteSpace(plugin.Configuration.DebugTaskId) &&
-            rows.All(row => row.Id != plugin.Configuration.DebugTaskId))
+            rows.All(row => row.Id != selectedTaskId))
         {
             UiGui.TextWrapped("The saved task is no longer available.");
             if (UIConstants.Button("Clear selection"))
@@ -83,20 +84,21 @@ internal sealed class DebugWindow : Window
         var visibleRows = rows.Where(row => string.IsNullOrWhiteSpace(taskSearch) ||
             row.Task.Contains(taskSearch, StringComparison.OrdinalIgnoreCase) ||
             UiText.T(row.Task).Contains(taskSearch, StringComparison.OrdinalIgnoreCase) ||
-            row.Id.Contains(taskSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+            row.Id.Contains(taskSearch, StringComparison.OrdinalIgnoreCase) ||
+            row.ButtonLabel.Contains(taskSearch, StringComparison.OrdinalIgnoreCase)).ToList();
         if (visibleRows.Count == 0)
             UiGui.TextDisabled("No tasks match this search.");
 
         foreach (var row in visibleRows)
         {
-            var selected = plugin.Configuration.DebugTaskId == row.Id;
+            var selected = selectedTaskId == row.Id;
             // A stale selected stub may still be unchecked, but cannot be armed.
             ImGui.BeginDisabled(row.IsConfigurationOnly && !selected);
             if (UIConstants.Checkbox($"##Debug_{row.Id}", ref selected))
                 plugin.SetDebugTaskSelection(selected ? row.Id : null);
             ImGui.SameLine();
             UiGui.TextWrapped(row.Task);
-            if (row.DebugBlockedReason is { } reason &&
+            if (plugin.GetDebugTaskBlockedReason(selected ? plugin.Configuration.DebugTaskId : row.Id, row.DebugBlockedReason) is { } reason &&
                 ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 UiGui.SetTooltip(reason);
             ImGui.EndDisabled();

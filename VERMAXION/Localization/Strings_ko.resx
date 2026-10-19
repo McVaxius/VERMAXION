@@ -3404,8 +3404,8 @@ NPC 등급, 제작/채집/낚시 보너스 및 검증된 진행도는 작업 표
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve">
     <value>AutoRetainer 활성 집사만 강화합니다. 전투는 호환 평균 아이템 레벨을, 채집은 총 감별력만 사용합니다.</value>
   </data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
-    <value>최고 도달 혈통보다 한 단계 낮은 부모로 해당 혈통의 자손을 하나 더 생산합니다. 중복 성별은 미등록으로 보관하고 부족한 성별을 육성합니다. 재개하여 적용하세요.</value>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
+    <value>도달한 최고 혈통에서 부족한 성별의 새끼를 생산합니다. 한 단계 아래 혈통의 부모를 사용하며, G9에서는 보관 중인 G9 부모도 사용할 수 있습니다. 이미 있는 성별의 새끼는 등록하지 말고, 부족한 성별의 새끼를 육성하세요. 적용하려면 재개하세요.</value>
   </data>
   <data name="Use retained parents. Missing counterparts stop this mode; covering permits are purchased only in permit mode." xml:space="preserve">
     <value>보관된 부모를 사용합니다. 짝이 없으면 이 모드는 멈추며 허가증 모드에서만 허가증을 구매합니다.</value>
@@ -4917,4 +4917,570 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Collect" xml:space="preserve"><value>수령</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>수령 후 일시 정지</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>준비된 새끼 초코보 한 마리를 수령한 뒤 다음 교배 전에 일시 정지합니다.</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>야수조련사</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>야수조련사가 캐릭터를 제어하고 있습니다.</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>야수조련사 정리 중 AutoRetainer 제한을 해제하고 있습니다.</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>현재 캐릭터가 등록되고 준비될 때까지 기다리고 있습니다.</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · 번호 {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>마수사 실행 또는 정리 작업이 이미 진행 중입니다</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>{0} 추가 중 ({1}/{2})</value></data>
+  <data name="All categories" xml:space="preserve"><value>모든 카테고리</value></data>
+  <data name="All kins" xml:space="preserve"><value>모든 계통</value></data>
+  <data name="Allow category" xml:space="preserve"><value>카테고리 허용</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>Lauda에게 접근 중</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>보드에 도전하려면 조건에 맞는 사역마가 최소 3마리 필요합니다.</value></data>
+  <data name="Automation" xml:space="preserve"><value>자동화</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>면역이 없으면 해로운 장비 피하기</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>마수 우선순위 목록</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>마수 티어 목록을 클립보드에 복사했습니다.</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>마수 티어 목록을 가져왔습니다.</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>마수사 서비스가 해제되었습니다</value></data>
+  <data name="Beasts" xml:space="preserve"><value>마수</value></data>
+  <data name="Block" xml:space="preserve"><value>차단</value></data>
+  <data name="Block category" xml:space="preserve"><value>카테고리 차단</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>차단된 아이템은 구매하거나 보물로 선택하거나 사용하지 않습니다. Ctrl을 누른 채 클릭하면 카테고리 전체를 변경합니다.</value></data>
+  <data name="Board" xml:space="preserve"><value>보드</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>보드 회복: 다음 전투 전에 야영지가 없으면 HP 60% 이하에서 회복합니다.</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>보드 경로 {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>보드의 팀 정원: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>우두머리</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>카테고리 일괄 변경</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>{0} 구매 중, 가격: {1}</value></data>
+  <data name="Camp" xml:space="preserve"><value>야영지</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>야영지: HP가 60% 미만인 부상당한 사역마를 최대 2마리 쉬게 합니다. 아무도 선택하지 않으면 플레이어가 야영지의 90% 자가 회복을 받습니다.</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>인솔 · 2칸 비우기</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>보드에 도전 중</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>마수에서 사용자 지정 팀을 선택하세요. 저장된 순서가 유지됩니다.</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>랭크가 낮고 EXP가 적은 사역마 3마리를 선택합니다.</value></data>
+  <data name="Classification" xml:space="preserve"><value>분류</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>사용자 지정 사역마 선택 해제</value></data>
+  <data name="Clear order" xml:space="preserve"><value>순서 초기화</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>저장된 랭크 삭제</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>사용자 지정 팀을 비웁니다. Ctrl을 누른 채 클릭하세요.</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>더 많은 랭크를 읽기 위해 보드 클리어 중</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>전투 중 회복: HP 40% 이하에서 회복합니다.</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>전투 시작 중</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>체질: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>복사</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>Crucible에 입장하려면 서로 다른 사역마가 최소 3마리 필요합니다. 팀 선택과 제한을 조정하세요.</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>Crucible에 입장하려면 서로 다른 사역마가 최소 3마리 필요합니다. 도전 확인 전에 팀이 변경되었습니다.</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Crucible 참가 등록이 5분 안에 완료되지 않았습니다</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>Crucible에는 마수사로 참가해야 합니다</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Crucible 실행 완료</value></data>
+  <data name="Current board" xml:space="preserve"><value>현재 보드</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>청록색 고리: 현재 지점. 청록색 점: 플레이어의 실시간 위치.</value></data>
+  <data name="Damage" xml:space="preserve"><value>피해량</value></data>
+  <data name="Degree" xml:space="preserve"><value>등급</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>이 목록을 삭제합니다. Ctrl을 누른 채 클릭하세요. 마지막 남은 목록은 삭제할 수 없습니다.</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm에는 Soulreaper's Armor가 필요합니다. Thunder Axe에는 Umbral Wristlet이 필요합니다.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>핸들을 끌거나 새 번호(#)를 입력해 순서를 바꾸세요. Ctrl을 누른 채 차단을 클릭하면 해당 카테고리 전체를 변경합니다.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>핸들을 끌거나 새 번호(#)를 입력해 순서를 바꾸세요. Ctrl을 누른 채 차단 항목을 클릭하면 해당 분류 전체를 변경합니다.</value></data>
+  <data name="EXP" xml:space="preserve"><value>EXP</value></data>
+  <data name="Elite" xml:space="preserve"><value>정예</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>모든 사역마가 전투 불능입니다</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>완료 후 퇴장</value></data>
+  <data name="Export" xml:space="preserve"><value>내보내기</value></data>
+  <data name="Familiar" xml:space="preserve"><value>사역마</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>사역마 데이터를 사용할 수 없습니다. 로그인한 뒤 캐릭터가 등록될 때까지 기다리세요.</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>사역마 {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>먹이 주기</value></data>
+  <data name="Fight" xml:space="preserve"><value>전투</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>전투 제외</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>전투 제외로 설정한 사역마는 제외되지 않은 전투 가능 사역마가 3마리 미만이 되기 전까지 예비로 남습니다. Ctrl을 누른 채 클릭하면 분류 전체를 변경합니다.</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>전투 참가 선택</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>랭크가 낮고 EXP가 적은 사역마부터 보드의 팀 정원까지 채웁니다.</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>보드 마무리 중</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>1등급</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>Crucible 보드를 따라 이동 중</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>저장된 랭크를 삭제합니다. Ctrl을 누른 채 클릭하세요.</value></data>
+  <data name="Full" xml:space="preserve"><value>최대 인원</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>최대 인원은 보드 정원을 모두 채웁니다. -3은 3칸을 비웁니다. 3마리만은 3마리를 데려갑니다. 인솔은 랭크가 가장 높은 3마리에 육성 대상을 추가하고 2칸을 비웁니다.</value></data>
+  <data name="Gear" xml:space="preserve"><value>장비</value></data>
+  <data name="HP" xml:space="preserve"><value>HP</value></data>
+  <data name="Heal items" xml:space="preserve"><value>회복 아이템</value></data>
+  <data name="Healing" xml:space="preserve"><value>회복</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>회복 및 야영지</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>회복 기준은 자동화에서 고정되어 있습니다.</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>상위 등급은 퀘스트 71045를 완료해야 합니다. 기본을 사용합니다.</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>랭크가 높은 사역마를 우선하며, 랭크가 같으면 티어 순서를 따릅니다.</value></data>
+  <data name="Import" xml:space="preserve"><value>가져오기</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>가져오기는 내보낸 JSON 또는 알려진 아이템 ID로 새 목록을 추가합니다. 누락된 카탈로그 항목은 끝에 추가됩니다. 내보내기는 이 목록을 클립보드에 복사합니다.</value></data>
+  <data name="Imported" xml:space="preserve"><value>가져옴</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>지능: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>Crucible에 입장하기 전에 파티를 탈퇴하세요</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>팀 3칸을 비우고 랭크가 낮고 EXP가 적은 사역마부터 선택합니다.</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>완료한 보드에서 퇴장 중</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>결과를 확인하기 전에 Crucible에서 나왔습니다</value></data>
+  <data name="Leveling" xml:space="preserve"><value>육성</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>육성 팀</value></data>
+  <data name="List name" xml:space="preserve"><value>목록 이름</value></data>
+  <data name="Loot" xml:space="preserve"><value>전리품</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>마법 저항: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>3칸 비우기</value></data>
+  <data name="New" xml:space="preserve"><value>새로 만들기</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>이 설정에 맞는 사역마 정보가 없습니다. 입장 시 팀을 선택하기 전에 도감을 확인합니다.</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>아직 사역마 정보가 없습니다. VERMAXION이 읽을 수 있도록 Lauda에게서 팀 또는 도감을 여세요.</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>Lauda로 가는 이동 목적지를 찾지 못했습니다</value></data>
+  <data name="No." xml:space="preserve"><value>번호</value></data>
+  <data name="Only 3" xml:space="preserve"><value>3마리만</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>속성 도끼는 하나만 허용됩니다. 함께 사용할 수 없는 속성 도끼는 항상 건너뜁니다.</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>보유 사역마</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>현재 보유 정보를 확인할 수 없어 이 미리보기에는 기억된 사역마 데이터를 사용합니다.</value></data>
+  <data name="Paused: " xml:space="preserve"><value>일시 정지: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>일시 정지: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>물리 저항: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>편성 제외</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>편성 제외는 자동 팀 선택을 막습니다. Ctrl을 누른 채 클릭하면 분류 전체를 변경합니다.</value></data>
+  <data name="Rank" xml:space="preserve"><value>랭크</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>아직 랭크를 읽지 않았습니다. 다음 팀 편성 시 도감에서 읽습니다.</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>랭크 알 수 없음</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>랭크 {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>사역마 랭크 읽는 중 ({0}/{1})</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>시작 준비 완료</value></data>
+  <data name="Recommended" xml:space="preserve"><value>추천</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>모든 사역마 제외 중</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>필요한 면역 장비를 먼저 보유해야 합니다.</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>야영지에서 휴식</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>야영지에서 휴식 중</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>이 목록의 기본 순서를 복원하고 모든 차단을 해제합니다. Ctrl을 누른 채 클릭하세요.</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>아직 경로를 시작하지 않았습니다.</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>경로 {0:00} · {1}/{2}단계</value></data>
+  <data name="Run setup" xml:space="preserve"><value>실행 설정</value></data>
+  <data name="Runs" xml:space="preserve"><value>실행 횟수</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>2등급</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>Crucible 보드 5개 중 하나를 선택하세요</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>선택한 사역마</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>팀 편성 중</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>음영 표시: 이 모드에서 데려가는 팀입니다. 이름에 마우스를 올리면 능력치를 볼 수 있습니다.</value></data>
+  <data name="Shop List" xml:space="preserve"><value>상점 목록</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>상점 목록을 클립보드에 복사했습니다.</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>상점 목록을 가져왔습니다.</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>상점 우선순위 목록</value></data>
+  <data name="Standard" xml:space="preserve"><value>기본</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>설정, 마수 또는 보급품을 변경하기 전에 마수사를 중지하세요.</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>캐릭터가 변경되어 중지했습니다</value></data>
+  <data name="Stopping" xml:space="preserve"><value>중지 중</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>힘: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>보급품은 목록 순서를 따릅니다.</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>선택한 보드의 정원까지 직접 선택한 보유 사역마를 데려갑니다.</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>랭크가 가장 높은 사역마를 데려갑니다. 랭크가 같으면 마수 우선순위 목록을 따릅니다.</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>랭크가 가장 낮은 사역마를 EXP가 적은 순으로 데려갑니다. 이 사역마들이 먼저 전투에 참가합니다.</value></data>
+  <data name="Team cap" xml:space="preserve"><value>팀 정원</value></data>
+  <data name="Team ready" xml:space="preserve"><value>팀 준비 완료</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>팀 편성이 확정되지 않고 계속되어 중지했습니다.</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>실시간 보드는 Crucible에 입장한 뒤 확인할 수 있습니다. 임무 밖에서는 노드와 플레이어 위치를 알 수 없습니다.</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>선택한 보드가 현재 Crucible 임무와 일치하지 않습니다</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>팀이 가득 찼습니다. 다른 사역마를 선택하려면 기존 선택을 하나 해제하세요.</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>3등급</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>강한 사역마 3마리가 육성 대상을 이끌며, 팀 2칸을 비웁니다.</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>체크 표시: 직접 데려가는 팀입니다. 이름에 마우스를 올리면 능력치를 볼 수 있습니다.</value></data>
+  <data name="Tier List" xml:space="preserve"><value>티어 목록</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>Lauda로 이동을 시작하지 못했습니다</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>Lauda로 이동 중</value></data>
+  <data name="Treasure" xml:space="preserve"><value>보물</value></data>
+  <data name="Type" xml:space="preserve"><value>유형</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>마수 티어 목록을 가져올 수 없습니다. 내보낸 목록이나 공백 또는 쉼표로 구분한 알려진 사역마 ID를 사용하세요.</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>상점 목록을 가져올 수 없습니다. 내보낸 목록이나 공백 또는 쉼표로 구분한 알려진 아이템 ID를 사용하세요.</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>알 수 없는 보드</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>알 수 없는 분류</value></data>
+  <data name="Untitled" xml:space="preserve"><value>제목 없음</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · 마수사</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>현재 캐릭터가 준비될 때까지 기다리세요</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>자동화가 제어하는 이동이 멈추기를 기다리는 중</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>부활 대기 중</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>Crucible 입장 대기 중</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>보드 내 이동에는 vnavmesh가 필요합니다</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>사역마 {0}마리 선택 · {1}/{2} 표시</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>지점 {0}개 · 연결 {1}개</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · 지점 {1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3}회</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>"{0}"이 어떤 사역마인지 알 수 없습니다. VERMAXION이 이름을 학습할 수 있도록 도감에서 해당 사역마의 상세 정보를 한 번 여세요.</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>도감에서 번호 {0}을 선택하지 못했습니다.</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>교배를 위해 부족한 짝을 경주 랭크 40까지 육성합니다.</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>새끼는 부모 중 한쪽의 색을 물려받습니다. 적합한 G9 부모가 이미 선택한 색을 가지고 있어야 합니다.</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>자손 생산 설정이 유효하지 않습니다.</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>조건에 맞는 G9 자손 {0}/{1} 생산; 미등록 상태로 보관.</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>새 자손 생산 전에 기존 교배를 대조하세요.</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>자손 생산은 G9 교배 개체가 필요하며 낮은 혈통 경주는 중지됩니다.</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>등록 G9 경주 개체의 요청 특성이 확인되지 않았습니다. 보관하고 적합한 교배 개체를 선택하세요.</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>번식용 G9 부모를 은퇴까지 육성: 경주 등급 {0}/40. 조건에 맞는 자손은 미등록 상태로 보관합니다.</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>일치하는 G9 개체와 보유한 반대 성별 G9 부모를 교배하세요.</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>요청 특성이 확인된 사용 가능 은퇴 G9 부모가 없습니다. 자손을 보관하고 적합한 G9 개체를 보충하세요.</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>불일치 G9 자손을 부족한 소유 짝으로 육성하고 일치 자손은 보관하세요.</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>사용 가능한 반대 성별 G9 부모가 없습니다. 소유 모드에는 적합한 G9 개체 또는 NPC 허가서로 명시적 전환이 필요합니다.</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>교배 대기에 유효한 수령 조건 증거가 없습니다.</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>교배가 완료되었습니다. 새끼를 수령할 수 있습니다.</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>교배 대기 종료: {0:u}.</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>교배가 완료되었습니다. 새끼를 수령합니다.</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>목표 주기가 안전한 지점에서 일시 정지되었습니다.</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>VERMAXION이 안전한 지점에서 일시 정지했습니다.</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>수령에는 기존 완료 교배, 보유 부모 혈통, 정확히 한 장의 교배 증명서가 필요합니다.</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>저장된 수령 증거가 유효하지 않아 재실행하지 않습니다.</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>수령 완료; 집계나 다음 교배 전 정확한 새 자손과 특성을 대조하세요.</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>수령 요청됨; 재요청 전에 증명서 소비와 일치하는 자손 한 마리를 대조하세요.</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Choke-abo 목표 작업: {0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>보류됨: {0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>입장 조건: 잡 레벨 {0}, 아이템 레벨 {1}. 현재 장비 아이템 레벨: {2}.</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>잡 레벨 {0}, 아이템 레벨 {1} 이상이 필요합니다. 현재 잡 레벨: {2}, 장비 아이템 레벨: {3}.</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>이 게시판의 입장 조건을 확인할 수 없습니다.</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>현재 장비 아이템 레벨을 확인할 수 없습니다.</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>야수조련사 주간 과제</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>주간 도전</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>주간 도전 시작</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>참가 가능한 미완료 야수조련사 도전을 각각 한 번 완료합니다.</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>혼자 보드를 완료해야 합니다. 던전은 포함되지 않습니다.</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>사역마가 팀에 추가되었는지 확인하지 못했습니다. 다시 시작하기 전에 게임 내 팀을 확인하세요.</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>팀이 예기치 않게 변경되어 팀 구성을 중지했습니다.</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>게임 내 창의 갱신이 완료되지 않아 팀 구성을 중지했습니다.</value></data>
+  <data name="The bestiary did not show the requested familiar&apos;s details." xml:space="preserve"><value>도감에 요청한 사역마의 상세 정보가 표시되지 않았습니다.</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>공략 수첩의 주간 도전 정보를 사용할 수 없습니다.</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>주간 도전 다섯 개를 모두 완료했습니다.</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>완료한 주간 도전: {0}/5.</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>진행할 수 있는 미완료 주간 도전이 없습니다. 잠겨 있거나 장비 조건을 충족하지 못한 보드가 남아 있습니다.</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>필요한 보드 또는 공략 수첩 해금 퀘스트를 완료하지 않았습니다.</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>야수조련사 레벨 {0}이 필요합니다.</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>필요 아이템 레벨: {0}. 현재 아이템 레벨: {1}.</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>미완료</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>현재 캐릭터와 초기화 주기에 맞는 새 공략 수첩 정보를 기다리는 중입니다.</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>주간 도전을 시작하기 전에 현재 Crucible 임무에서 나가세요.</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>진행 가능한 주간 도전을 완료했습니다. 잠겨 있거나 장비 조건을 충족하지 못한 보드가 남아 있습니다.</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>주간 공략 수첩 정보가 변경되었거나 사용할 수 없게 되었습니다. 다음 보드는 예약하지 않았습니다.</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>선택한 주간 도전은 이미 완료했습니다. 추가 입장 요청은 보내지 않았습니다.</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>주간 도전 달성 정보의 갱신을 기다리는 중입니다.</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>보드 결과가 표시된 후에도 새 주간 도전 달성 정보를 확인하지 못했습니다. 같은 보드를 다시 진행하지 않았습니다.</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>야수조련사를 시작하기 전에 기존 콘텐츠 대기열이 종료되어야 합니다.</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>Crucible 입장 상태를 확인할 수 없습니다.</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>대기 중인 Crucible 입장이 취소되었습니다. 입장을 다시 신청하지 않았습니다.</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>Crucible 입장을 취소하고 있습니다.</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>입장한 Crucible 보드가 요청한 보드와 다릅니다.</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>미니 보기</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>전체 창</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve"><value>야수조련사 실행, 새로 고침 또는 정리 작업이 이미 진행 중입니다.</value></data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve"><value>전투 제공자가 언로드되거나 교체되었습니다. 원래 제어권이 해결되지 않았습니다.</value></data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve"><value>보유한 모든 마수가 이 보드의 육성 목표에 도달했습니다.</value></data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve"><value>보유한 마수 일부를 독립 마수 도감에서 확인하지 못했습니다. 이미 읽은 기록은 유지했습니다.</value></data>
+  <data name="Another automation owns the character." xml:space="preserve"><value>다른 자동화가 캐릭터를 제어하고 있습니다.</value></data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve"><value>새로 고치는 동안 보유 마수가 변경되었습니다. 이미 읽은 기록은 유지했습니다. 목록이 안정된 뒤 다시 새로 고치세요.</value></data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve"><value>마수 새로 고침을 취소했습니다. 이미 읽은 기록은 유지했습니다.</value></data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve"><value>캐릭터, 지역 또는 게임 내 상태가 바뀌어 마수 새로 고침을 중지했습니다.</value></data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve"><value>마수 도감이 팀 데이터로 전환되어 새로 고침을 중지했습니다.</value></data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve"><value>기존 억제가 활성화되어 있거나 상태를 읽을 수 없어 야수조련사가 AutoRetainer 제어권을 가져올 수 없습니다.</value></data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve"><value>야수조련사가 AutoRetainer 억제를 확인하지 못했습니다.</value></data>
+  <data name="Beastmaster frequency" xml:space="preserve"><value>야수조련사 실행 빈도</value></data>
+  <data name="Beastmaster scheduling" xml:space="preserve"><value>야수조련사 일정</value></data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve"><value>이 캐릭터의 마수와 물자는 공유됩니다.</value></data>
+  <data name="Boards per trigger" xml:space="preserve"><value>트리거당 보드 수</value></data>
+  <data name="Boards this run" xml:space="preserve"><value>이번 실행의 보드 수</value></data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve"><value>BossMod의 &apos;passive - melee&apos;에는 거리 2.3과 Pathfind 이동이 필요합니다.</value></data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve"><value>BossMod AI의 추적 대상을 사용할 수 없습니다.</value></data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve"><value>BossMod AI의 수명 주기 제어 기능을 사용할 수 없습니다.</value></data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve"><value>BossMod AI의 원래 상태 복원이 확인되지 않았습니다.</value></data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve"><value>BossMod AI의 실행 상태가 호환되지 않습니다.</value></data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve"><value>BossMod AI의 실행 상태를 확인할 수 없습니다.</value></data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve"><value>BossMod AI의 일시 중단이 확인되지 않았습니다.</value></data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve"><value>BossMod가 요청한 야수조련사 이동 프리셋을 확인하지 않았습니다.</value></data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve"><value>BossMod의 강제 비활성화 프리셋 상태가 일치하지 않습니다.</value></data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve"><value>BossMod에 기존 &apos;passive - melee&apos; 프리셋이 없습니다.</value></data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve"><value>BossMod의 원래 프리셋 복원이 확인되지 않았습니다.</value></data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve"><value>BossMod에는 기존 이동 전용 &apos;passive - melee&apos; 프리셋이 필요합니다. DPS 로테이션을 포함하면 안 됩니다.</value></data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve"><value>BossModReborn이 더 이상 로드되어 있지 않습니다.</value></data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve"><value>랭크와 EXP가 낮은 순서로 육성 대상 3마리를 데려갑니다. 적은 수에 집중해 육성하지만 예비 인원도 적습니다.</value></data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve"><value>팀 슬롯 3칸을 비우고 육성 대상을 최대 {0}마리 데려갑니다. 적은 인원은 마수당 EXP를 더 얻을 수 있지만 예비 인원도 적습니다.</value></data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve"><value>랭크와 EXP가 낮은 순서로 육성 대상을 최대 {0}마리 데려갑니다. 예비 인원을 더 확보하면서 많은 마수를 함께 육성합니다.</value></data>
+  <data name="Checked at VMX opportunities." xml:space="preserve"><value>VMX 실행 기회에 확인합니다.</value></data>
+  <data name="Choose a training team method for this goal." xml:space="preserve"><value>이 목표에 사용할 육성 팀 방식을 선택하세요.</value></data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve"><value>사용자 지정 멤버는 마수 탭에서 선택하세요. 사용자 지정을 선택한 모든 설정은 이 캐릭터의 공통 선택을 사용합니다.</value></data>
+  <data name="Clear recorded beast data" xml:space="preserve"><value>기록된 마수 데이터 지우기</value></data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve"><value>보유한 모든 마수를 새로 고치기 전에 게임 내 마수 도감 필터를 해제하세요.</value></data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve"><value>이 캐릭터의 저장된 랭크, EXP, 능력치, 보유 기록과 마지막 팀을 지웁니다. Ctrl 키를 누른 채 클릭하세요.</value></data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve"><value>마수를 새로 고치기 전에 Crucible 참가 등록을 닫고 임무 대기열이 정리될 때까지 기다리세요.</value></data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve"><value>마수를 새로 고치기 전에 현재 확인 창을 닫으세요.</value></data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve"><value>마수를 새로 고치기 전에 팀 마수 도감을 닫으세요.</value></data>
+  <data name="Collapse" xml:space="preserve"><value>접기</value></data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve"><value>전투 설정 복원 대기 중: {0}</value></data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve"><value>일반 육성과 독립적으로 수행 가능한 미완료 게임 내 공략 수첩 목표를 완료합니다.</value></data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve"><value>야수조련사 VMX 일정에서 실행 설정과 육성 목표를 구성하세요.</value></data>
+  <data name="Crewcible task" xml:space="preserve"><value>Crewcible 작업</value></data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve"><value>Crucible 경로의 이동 대상이 보드 밖에 있습니다</value></data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve"><value>사용자 지정을 선택한 모든 설정에서 이 멤버 선택을 사용합니다. 이름에 마우스를 올리면 기록된 능력치가 표시됩니다.</value></data>
+  <data name="Editing settings does not start a run." xml:space="preserve"><value>설정을 편집해도 실행이 시작되지는 않습니다.</value></data>
+  <data name="Enable Beastmaster training" xml:space="preserve"><value>야수조련사 육성 활성화</value></data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve"><value>야수조련사 주간 작업 활성화</value></data>
+  <data name="Enable task" xml:space="preserve"><value>작업 활성화</value></data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve"><value>현재 Crucible 투기장에서 전투 시작 중</value></data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve"><value>시작 전에 현재 플레이 중인 캐릭터의 입장 조건을 확인합니다.</value></data>
+  <data name="Every AR" xml:space="preserve"><value>AR마다</value></data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve"><value>제외된 마수가 있으면 이 목표는 미완료 상태로 남습니다.</value></data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve"><value>실행 순서: VMX 설정 &gt; 작업 순서.</value></data>
+  <data name="Expand" xml:space="preserve"><value>펼치기</value></data>
+  <data name="Fixed board runs" xml:space="preserve"><value>정해진 횟수만큼 보드 실행</value></data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve"><value>육성 완료를 판단하려면 최신 랭크와 EXP 기록이 필요합니다.</value></data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve"><value>전체 랭크 기록을 사용할 수 없습니다. 읽지 않은 랭크는 알 수 없는 상태로 남습니다.</value></data>
+  <data name="Hide" xml:space="preserve"><value>숨기기</value></data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve"><value>랭크가 높은 마수를 우선하며, 동률이면 마수 우선순위를 따릅니다.</value></data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve"><value>일반 작업의 활성화 여부, 육성 목표 및 보드 실행 한도와 독립적입니다.</value></data>
+  <data name="Invalid Crucible route jump" xml:space="preserve"><value>유효하지 않은 Crucible 경로 이동입니다</value></data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve"><value>유효하지 않은 Crucible 스캔 해제 단계입니다</value></data>
+  <data name="Item and camp rules" xml:space="preserve"><value>아이템 및 야영 규칙</value></data>
+  <data name="Item priorities" xml:space="preserve"><value>아이템 우선순위</value></data>
+  <data name="Kin filter" xml:space="preserve"><value>분류 필터</value></data>
+  <data name="Last completed: {0}" xml:space="preserve"><value>마지막 완료: {0}</value></data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve"><value>마수를 새로 고치기 전에 현재 임무에서 나가세요.</value></data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve"><value>Rotation Solver Reborn을 로드하고 Reborn Beastmaster 로테이션을 선택하세요.</value></data>
+  <data name="Manual setup" xml:space="preserve"><value>수동 실행 설정</value></data>
+  <data name="Master Class I" xml:space="preserve"><value>마스터 클래스 I</value></data>
+  <data name="Master Class II" xml:space="preserve"><value>마스터 클래스 II</value></data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve"><value>게임 내 마수 보유 데이터를 사용할 수 없습니다. 기존 기록은 유지했습니다.</value></data>
+  <data name="Next eligible: {0}" xml:space="preserve"><value>다음 실행 가능 시각: {0}</value></data>
+  <data name="No character" xml:space="preserve"><value>캐릭터 없음</value></data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve"><value>사용 가능한 캐릭터 프로필이 없습니다. 로그인한 뒤 캐릭터 등록을 기다리세요.</value></data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve"><value>이 설정으로 사용할 수 있는 마수가 기록되어 있지 않습니다. 현재 플레이 중인 캐릭터의 마수를 새로 고치세요.</value></data>
+  <data name="No full beast refresh has been requested." xml:space="preserve"><value>전체 마수 새로 고침을 요청한 적이 없습니다.</value></data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve"><value>기록된 마수가 없습니다. 이 캐릭터로 플레이하며 임무 밖에서 마수 새로 고침을 사용하세요.</value></data>
+  <data name="No recorded character" xml:space="preserve"><value>기록된 캐릭터 없음</value></data>
+  <data name="Offline" xml:space="preserve"><value>오프라인</value></data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve"><value>기록된 마수가 있는 캐릭터만 표시합니다.</value></data>
+  <data name="Open VMX Schedule" xml:space="preserve"><value>VMX 일정 열기</value></data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve"><value>마수의 랭크와 EXP를 새로 고치기 위해 독립 마수 도감을 여는 중입니다.</value></data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve"><value>보유 상태를 확인했습니다. 기록된 랭크는 전체 새로 고침이 필요할 수 있습니다.</value></data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve"><value>보유 상태를 완전히 확인하지 못했습니다. 육성 완료 여부를 알 수 없습니다.</value></data>
+  <data name="Ownership not fully observed." xml:space="preserve"><value>보유 상태를 완전히 확인하지 못했습니다.</value></data>
+  <data name="Ownership observed: {0}" xml:space="preserve"><value>보유 상태 확인 시각: {0}</value></data>
+  <data name="Playing" xml:space="preserve"><value>플레이 중</value></data>
+  <data name="Playing: {0}" xml:space="preserve"><value>플레이 중: {0}</value></data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve"><value>RSR의 현재 로테이션이 더 이상 Reborn Beastmaster가 아닙니다.</value></data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve"><value>RSR이 요청한 야수조련사 동작 모드를 확인하지 않았습니다.</value></data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve"><value>RSR 동작 모드 플래그가 일치하지 않습니다.</value></data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve"><value>RSR의 원래 모드 복원이 확인되지 않았습니다.</value></data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve"><value>RSR 실행 상태가 호환되지 않습니다: </value></data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve"><value>RSR 실행 상태가 호환되지 않습니다: {0}</value></data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve"><value>RSR 실행 상태를 확인할 수 없습니다.</value></data>
+  <data name="Ranks observed: {0}" xml:space="preserve"><value>랭크 확인 시각: {0}</value></data>
+  <data name="Recorded beasts" xml:space="preserve"><value>기록된 마수</value></data>
+  <data name="Refresh beasts" xml:space="preserve"><value>마수 새로 고침</value></data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve"><value>현재 플레이 중인 캐릭터만 새로 고칠 수 있습니다.</value></data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve"><value>보유한 마수 {0}마리의 랭크와 EXP를 새로 고쳤습니다.</value></data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve"><value>마수 랭크와 EXP를 새로 고치는 중({0}/{1}).</value></data>
+  <data name="Removing {0}" xml:space="preserve"><value>{0} 제거 중</value></data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve"><value>보드 경로 재개 중 {0}/{1}</value></data>
+  <data name="Resuming the current Crucible board" xml:space="preserve"><value>현재 Crucible 보드를 재개하는 중</value></data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve"><value>Rotation Solver Reborn과 BossModReborn을 모두 로드해야 합니다.</value></data>
+  <data name="Run actions" xml:space="preserve"><value>실행 동작</value></data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve"><value>트리거당 최대 {0}개의 보드를 실행합니다. 미완료 육성은 다음 실행 가능한 트리거에서 계속합니다.</value></data>
+  <data name="Run task now" xml:space="preserve"><value>지금 작업 실행</value></data>
+  <data name="Run weeklies now" xml:space="preserve"><value>지금 주간 작업 실행</value></data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve"><value>입장 가능한 미완료 보드를 실행합니다. 잠겨 있거나 장비 조건이 부족한 항목은 미완료로 남습니다.</value></data>
+  <data name="Saved data for {0}" xml:space="preserve"><value>{0}의 저장 데이터</value></data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve"><value>VMX 작업 설정과 별도로 저장됩니다.</value></data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve"><value>이 캐릭터의 예약 작업 설정입니다. 수동 실행과 별도로 저장됩니다.</value></data>
+  <data name="Settings saved automatically" xml:space="preserve"><value>설정은 자동 저장됩니다</value></data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve"><value>이 캐릭터의 수동 실행과 예약 실행에서 공유됩니다.</value></data>
+  <data name="Shop done, {0} coins left" xml:space="preserve"><value>상점 이용 완료, 남은 동전 {0}개</value></data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve"><value>상점, 휴식 및 회복 규칙은 물자 탭에 있습니다.</value></data>
+  <data name="Smaller training team" xml:space="preserve"><value>소규모 육성 팀</value></data>
+  <data name="Soul Survivor I" xml:space="preserve"><value>영혼의 생존자 I</value></data>
+  <data name="Soul Survivor II" xml:space="preserve"><value>영혼의 생존자 II</value></data>
+  <data name="Soul Survivor III" xml:space="preserve"><value>영혼의 생존자 III</value></data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve"><value>중지됨; 전투 설정 복원 대기 중: {0}</value></data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve"><value>중지됨; 독립 마수 도감이 닫히기를 기다립니다. 필요하면 직접 닫으세요.</value></data>
+  <data name="Strongest available" xml:space="preserve"><value>사용 가능한 최강의 마수</value></data>
+  <data name="Taking {0}" xml:space="preserve"><value>{0} 획득 중</value></data>
+  <data name="Team method" xml:space="preserve"><value>팀 선택 방식</value></data>
+  <data name="The Crucible route has no actions" xml:space="preserve"><value>Crucible 경로에 동작이 없습니다</value></data>
+  <data name="The Crucible route is missing" xml:space="preserve"><value>Crucible 경로가 없습니다</value></data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve"><value>마수 새로 고침 후 도감이 닫히지 않았습니다.</value></data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve"><value>도감에 요청한 마수의 랭크와 EXP가 표시되지 않았습니다. 이미 읽은 기록은 유지했습니다.</value></data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve"><value>새로 고침 후 도감 페이지가 안정되지 않았습니다.</value></data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve"><value>도감 새로 고침이 5분 안에 완료되지 않았습니다. 이미 읽은 기록은 유지했습니다.</value></data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve"><value>도감에서 기록보다 낮은 랭크가 반환되었습니다. 기존 기록을 덮어쓰지 않고 새로 고침을 중지했습니다.</value></data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve"><value>보드 결과에서 참가 팀의 최신 랭크와 EXP를 확인할 수 없었습니다.</value></data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve"><value>도감의 원래 선택을 복원하지 못했습니다.</value></data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve"><value>독립 마수 도감에서 요청한 마수를 선택하지 못했습니다.</value></data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve"><value>독립 마수 도감이 준비되지 않았습니다.</value></data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve"><value>독립 마수 도감을 사용할 수 없습니다.</value></data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve"><value>이 순서와 차단 설정은 구매, 보물 선택 및 아이템 사용에 적용됩니다.</value></data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve"><value>이번 실행: {0}/{1} 보드</value></data>
+  <data name="Three strong fighters + trainees" xml:space="preserve"><value>강한 전투원 3마리 + 육성 대상</value></data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve"><value>가장 강한 마수 3마리가 먼저 싸우며, 육성 대상을 최대 {0}마리 추가합니다. 2칸을 비워 총 {1}마리까지 데려갑니다. 예비 인원도 EXP를 얻습니다.</value></data>
+  <data name="Train a full team" xml:space="preserve"><value>정원까지 채워 육성</value></data>
+  <data name="Train owned familiars" xml:space="preserve"><value>보유 마수 육성</value></data>
+  <data name="Train three at a time" xml:space="preserve"><value>3마리씩 육성</value></data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve"><value>보유한 모든 마수를 육성하려면 육성 팀 방식이 필요합니다.</value></data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve"><value>육성 실행 한도에 도달했습니다. 미완료 마수는 다음 트리거에서 확인합니다.</value></data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve"><value>육성은 미완료이지만 조건을 충족하는 마수가 3마리 미만이라 육성 팀을 구성할 수 없습니다. 선택 제외와 분류 필터를 확인하세요.</value></data>
+  <data name="Training progress" xml:space="preserve"><value>육성 진행 상황</value></data>
+  <data name="Training target: Rank {0}" xml:space="preserve"><value>육성 목표: 랭크 {0}</value></data>
+  <data name="Unsupported Crucible board" xml:space="preserve"><value>지원하지 않는 Crucible 보드입니다</value></data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve"><value>지원하지 않는 Crucible 경로 조건입니다</value></data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve"><value>지원하지 않는 Crucible 전용 경로 동작: {0}</value></data>
+  <data name="Up to {0} familiars" xml:space="preserve"><value>최대 {0}마리의 마수</value></data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve"><value>야수조련사에는 BossModReborn만 사용하세요. 두 BossMod 제공자는 같은 IPC 이름을 사용합니다.</value></data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve"><value>저장된 예약 실행 팀 방식, 난이도 및 공유 물자를 사용합니다.</value></data>
+  <data name="Using {0} at {1}" xml:space="preserve"><value>{1}에서 {0} 사용 중</value></data>
+  <data name="VMX Schedule" xml:space="preserve"><value>VMX 일정</value></data>
+  <data name="Viewing another character · automation not started" xml:space="preserve"><value>다른 캐릭터를 보는 중 · 자동화가 시작되지 않았습니다</value></data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve"><value>마수를 새로 고치기 전에 현재 캐릭터가 대기 상태가 될 때까지 기다리세요.</value></data>
+  <data name="Wait until the current character is ready." xml:space="preserve"><value>현재 캐릭터가 준비될 때까지 기다리세요.</value></data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve"><value>현재 플레이 중인 캐릭터의 주간 공략 수첩 상태를 확인할 수 있습니다.</value></data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve"><value>현재 플레이 중인 캐릭터의 주간 공략 수첩 상태를 확인할 수 있습니다. 저장된 일정 설정은 계속 편집할 수 있습니다.</value></data>
+  <data name="Weekly Challenge Log task" xml:space="preserve"><value>주간 공략 수첩 작업</value></data>
+  <data name="Weekly challenge objectives" xml:space="preserve"><value>주간 도전 목표</value></data>
+  <data name="Weekly progress" xml:space="preserve"><value>주간 진행 상황</value></data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve"><value>육성 대상이 1~2마리만 남으면 총 3마리가 되는 데 필요한 수만큼만 육성된 전투원을 추가합니다.</value></data>
+  <data name="Wrong character" xml:space="preserve"><value>다른 캐릭터입니다</value></data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve"><value>다른 캐릭터입니다. 이 프로필은 편집할 수 있지만 자동화를 시작하기 전에 해당 캐릭터로 전환하세요.</value></data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve"><value>{0}의 정보를 보고 있지만 {1}로 플레이 중입니다. 자동화를 시작하기 전에 현재 캐릭터를 선택하거나 보고 있는 캐릭터로 로그인하세요.</value></data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve"><value>육성 가능 {0}마리 · 제외 {1}마리 · 랭크 불명 {2}마리</value></data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve"><value>{0}/{1}마리가 랭크 {2}에 도달</value></data>
+  <data name="{0}/{1} complete" xml:space="preserve"><value>{0}/{1} 완료</value></data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>랭크가 기록된 적격 사역마가 부족합니다. 랭크 미확인: {0}.</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>사용자 지정 선택으로 입장 팀을 구성할 수 없습니다. 미보유 또는 제외된 사역마: {0}.</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>마수를 새로 고치기 전에 열려 있는 마수 도감을 닫으세요.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>마수 랭크와 EXP를 새로 고치는 중({0}/{1}), 페이지 {2}/{3}.</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>마수 새로 고침 미완료: {0}/{1} 확인, 읽지 못함: {2}. {3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>야수조련사를 시작하기 전에 현재 임무에서 나가세요.</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>새로고침 후 마수 도감을 원래 상태로 복원하는 중입니다.</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>{0} 데이터를 기다리는 중입니다.</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>{0} 재확인 중. 유효한 네이티브 컨트롤을 기다리고 있습니다.</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>보드를 완료했습니다. 야수의 등급과 EXP는 아직 확인되지 않았습니다.</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>중지됨. 네이티브 정리는 아직 확인되지 않았습니다: {0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>현재 Crucible 입장 상태를 다시 확인합니다.</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>5초 후 다시 시도: {0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>진행 {0}/{1}회</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>{0}/{1}회 완료</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>새 야수 확인 중</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>{0}/{1}마리 확인</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>{0}마리 남음</value></data>
+  <data name="Fighting" xml:space="preserve"><value>전투 중</value></data>
+  <data name="Recovering" xml:space="preserve"><value>복구 중</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>보드 마무리 중</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>팀 준비 중</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>계속</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>일정 변경은 다음 시작부터 적용되며 현재 실행은 기존 설정을 유지합니다.</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>완료한 보드에서는 항상 자동으로 퇴장합니다.</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>완료 명령어(선택 사항)</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>아무것도 하지 않으려면 비워 두세요. 계획 완료 후 임무 밖에서 한 번 실행합니다.</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>주간 보드</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>해금된 보드를 자동으로 사용합니다.</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>해금된 보드 사용</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>이 캐릭터로 플레이할 때 해금된 보드를 선택합니다. 고정된 선택을 저장하려면 아래에서 보드를 선택하세요.</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>선택한 주간 보드가 없습니다.</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>선택한 미완료 보드를 실행합니다. 잠겨 있거나 장비 조건을 충족하지 못한 항목은 미완료로 남습니다.</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>선택한 주간 도전 과제를 완료했습니다.</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>선택한 주간 도전 과제 완료: {0}/{1}.</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>선택한 실행 가능한 주간 도전 과제를 완료했습니다. 잠겨 있거나 장비 조건을 충족하지 못한 보드가 남아 있습니다.</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>현재 주간 보드는 선택하지 않았습니다.</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>완료 명령어 실패: {0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>선택한 실행 가능한 비스트마스터 도전 과제를 각각 한 번 완료합니다.</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>완료 명령어는 슬래시 명령어 하나여야 합니다.</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>완료 명령어를 보낼 수 없었습니다. 다시 실행하지 않습니다.</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>완료 명령어를 보냈습니다.</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>Crewcible 완료 상태를 저장하지 못해 완료 명령어를 건너뛰었습니다.</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>완료한 실행이 더 이상 현재 실행이 아니므로 완료 명령어를 건너뛰었습니다.</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>이 캐릭터의 비스트마스터 작업은 비활성화되어 있습니다.</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>이 캐릭터의 비스트마스터 주간 도전 과제는 비활성화되어 있습니다.</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>비스트마스터 작업은 {0} 이후에 예정되어 있습니다.</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>비스트마스터 주간 도전 과제는 {0} 이후에 예정되어 있습니다.</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>다음 전멸 또는 클리어 후 중지</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>다음 결과 후 중지 취소</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>일회성 동작: 전멸 시 임무 안에서 중지하고, 클리어 시 보상을 받은 뒤 퇴장합니다.</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>다음 전멸 또는 클리어 후 중지합니다.</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>전멸 후 중지했습니다. 크루시블 안에 머무릅니다.</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>클리어 후 중지하고 크루시블에서 퇴장했습니다.</value></data>
 </root>

@@ -14,6 +14,7 @@ using ECommons.Reflection;
 using VERMAXION.Models;
 using VERMAXION.Services;
 using VERMAXION.CustomDeliveries;
+using VERMAXION.Beastmaster;
 
 namespace VERMAXION.Windows;
 
@@ -306,7 +307,8 @@ public class MainWindow : Window, IDisposable
         void DrawHeaderScope()
         {
             ImGui.TableNextColumn(); UiGui.TextDisabled("Account");
-            MaterialText.Text(string.IsNullOrWhiteSpace(account?.AccountAlias) ? UiText.T("No account selected") : account.AccountAlias);
+            MaterialText.Text(string.IsNullOrWhiteSpace(account?.AccountAlias) ? UiText.T("No account selected") :
+                plugin.Configuration.KrangleEnabled ? KrangleService.KrangleName(account.AccountAlias) : account.AccountAlias);
             ImGui.TableNextColumn(); UiGui.TextDisabled("Current Character"); MaterialText.Text(displayName);
         }
 
@@ -343,13 +345,13 @@ public class MainWindow : Window, IDisposable
             var actionHeight = MaterialControlMetrics.Measure(MaterialTheme.Metrics, ImGui.GetTextLineHeight(), MaterialControlContext.Toolbar).Height;
             var available = ImGui.GetContentRegionAvail().X;
             var gap = ImGui.GetStyle().ItemSpacing.X;
-            var previousWidth = Math.Max(140 * scale, MathF.Floor((available - 4 * gap) / 5));
-            var labels = new[] { "FULL STOP", "Run All", "Settings", "Verminion", "Fish collection" };
+            var previousWidth = Math.Max(140 * scale, MathF.Floor((available - 5 * gap) / 6));
+            var labels = new[] { "FULL STOP", "Run All", "Settings", "Crewcible", "Verminion", "Fish collection" };
             var minimums = labels.Select(label => Math.Max(140 * scale, UIConstants.ButtonWidth(label) + 28 * scale)).ToArray();
-            var wideActions = minimums.Sum() + 4 * gap <= available;
-            var extra = wideActions ? (available - minimums.Sum() - 4 * gap) / 5 : 0;
+            var wideActions = minimums.Sum() + 5 * gap <= available;
+            var extra = wideActions ? (available - minimums.Sum() - 5 * gap) / 6 : 0;
             var primaryExtra = wideActions ? extra : Math.Max(0, (available - minimums[0] - minimums[1] - gap) / 2);
-            var navigationExtra = wideActions ? extra : Math.Max(0, (available - minimums.Skip(2).Sum() - 2 * gap) / 3);
+            var navigationExtra = wideActions ? extra : Math.Max(0, (available - minimums.Skip(2).Sum() - 3 * gap) / 4);
             var widths = minimums.Select((minimum, index) => MathF.Floor(minimum + (index < 2 ? primaryExtra : navigationExtra))).ToArray();
             if (UIConstants.FullStopButton(new Vector2(widths[0], actionHeight), previousWidth)) plugin.FullStop();
             UIConstants.SameLineIfFits("Run All", widths[1]);
@@ -367,11 +369,14 @@ public class MainWindow : Window, IDisposable
             if (wideActions) UIConstants.SameLineIfFits("Settings", widths[2]);
             if (UIConstants.Button("Settings", new Vector2(widths[2], actionHeight), true, previousWidth))
                 plugin.ToggleConfigUi();
-            UIConstants.SameLineIfFits("Verminion", widths[3]);
-            if (UIConstants.Button("Verminion", new Vector2(widths[3], actionHeight), true, previousWidth))
+            UIConstants.SameLineIfFits("Crewcible", widths[3]);
+            if (UIConstants.Button("Crewcible", new Vector2(widths[3], actionHeight), true, previousWidth))
+                plugin.BeastmasterWindow.IsOpen = true;
+            UIConstants.SameLineIfFits("Verminion", widths[4]);
+            if (UIConstants.Button("Verminion", new Vector2(widths[4], actionHeight), true, previousWidth))
                 plugin.VerminionWindow.IsOpen = true;
-            UIConstants.SameLineIfFits("Fish collection", widths[4]);
-            if (UIConstants.Button("Fish collection", new Vector2(widths[4], actionHeight), true, previousWidth))
+            UIConstants.SameLineIfFits("Fish collection", widths[5]);
+            if (UIConstants.Button("Fish collection", new Vector2(widths[5], actionHeight), true, previousWidth))
                 plugin.FishCollectionWindow.IsOpen = true;
             if (ImGui.IsItemHovered())
                 UiGui.SetTooltip("Open big and fabled fish collection.");
@@ -854,6 +859,25 @@ public class MainWindow : Window, IDisposable
                 Plugin.ChatGui.Print("[Vermaxion] Adventurer Activity (Evercold) is WIP. Progress is config-only for now.");
             }, "WIP");
 
+        var beastmaster = plugin.BeastmasterService;
+        var beastmasterReady = plugin.CanStartScheduledBeastmaster(false, out var beastmasterBlocker);
+        AddTaskRow("Beastmaster", config.EnableBeastmaster,
+            beastmaster.HasRunDisplay && !beastmaster.DisplayWeekly && (beastmaster.IsActive || beastmaster.IsPaused)
+                ? beastmaster.IsPaused ? "Paused" : "Running"
+                : config.BeastmasterFrequency == BeastmasterTaskFrequency.EveryAR ? "Every AR" : config.BeastmasterFrequency.ToString(),
+            Plugin.BeastmasterTaskId, () => plugin.RunScheduledBeastmasterTask(false),
+            buttonDisabled: !beastmasterReady || plugin.Engine.IsRunning,
+            buttonTooltip: plugin.Engine.IsRunning ? "An ordered task is already running." : beastmasterReady ? null : beastmasterBlocker);
+        var beastmasterWeeklyReady = plugin.CanStartScheduledBeastmaster(true, out var beastmasterWeeklyBlocker);
+        AddTaskRow("Beastmaster weeklies", config.EnableBeastmasterWeekly,
+            beastmaster.HasRunDisplay && beastmaster.DisplayWeekly && (beastmaster.IsActive || beastmaster.IsPaused)
+                ? beastmaster.IsPaused ? "Paused" : "Running"
+                : config.BeastmasterWeeklyFrequency == BeastmasterTaskFrequency.EveryAR ? "Every AR" : config.BeastmasterWeeklyFrequency.ToString(),
+            Plugin.BeastmasterWeeklyTaskId, () => plugin.RunScheduledBeastmasterTask(true),
+            buttonDisabled: !beastmasterWeeklyReady || plugin.Engine.IsRunning,
+            buttonTooltip: plugin.Engine.IsRunning ? "An ordered task is already running."
+                : beastmasterWeeklyReady ? "Clear each selected eligible Beastmaster challenge once." : beastmasterWeeklyBlocker);
+
         // --- Utility Tasks ---
         var collectionBlocker = plugin.FishCollection.GetStartBlockedReason();
         AddTaskRow("Fish collection", true, plugin.FishCollection.Status,
@@ -888,9 +912,14 @@ public class MainWindow : Window, IDisposable
         {
             var feature = GetDisplayedFeature(task);
             var eligibility = GetDashboardEligibility(feature, enabled, buttonDisabled, buttonTooltip, status);
+            var completed = feature?.Id == AutomationCatalog.BeastmasterWeekly
+                ? plugin.BeastmasterService.SelectedWeeklyComplete
+                : IsCompletedStatus(status);
             var dadHandoffBlocker = plugin.DadHandoffBlocksNewWork
                 ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
                 : null;
+            var beastmasterOwnsOtherWork = plugin.BeastmasterOwnsWork && task is not ("Beastmaster" or "Beastmaster weeklies");
+            var ownershipBlocker = beastmasterOwnsOtherWork ? "Beastmaster owns the character." : dadHandoffBlocker;
             var row = new TaskRowDescriptor(
                 feature,
                 task,
@@ -899,7 +928,7 @@ public class MainWindow : Window, IDisposable
                 eligibility,
                 AutomationDashboardPolicy.Classify(
                     eligibility.Status,
-                    IsCompletedStatus(status),
+                    completed,
                     feature?.Id,
                     eligibility.Reason),
                 GetNextEligibleAt(feature?.Id, plugin.ConfigManager.GetActiveConfig()),
@@ -909,16 +938,16 @@ public class MainWindow : Window, IDisposable
                 onClick,
                 maturity,
                 statusTooltip,
-                buttonDisabled || plugin.DadHandoffBlocksNewWork,
-                dadHandoffBlocker ?? buttonTooltip,
+                buttonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                ownershipBlocker ?? buttonTooltip,
                 secondaryButtonLabel,
                 secondaryOnClick,
-                secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
-                dadHandoffBlocker ?? secondaryButtonTooltip,
+                secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                ownershipBlocker ?? secondaryButtonTooltip,
                 tertiaryButtonLabel,
                 tertiaryOnClick,
-                tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork,
-                dadHandoffBlocker ?? tertiaryButtonTooltip);
+                tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                ownershipBlocker ?? tertiaryButtonTooltip);
             rows.Add(row);
         }
     }
@@ -1027,6 +1056,12 @@ public class MainWindow : Window, IDisposable
     {
         switch (task)
         {
+            case "Beastmaster":
+            case "Beastmaster weeklies":
+                return Plugin.ClientState.TerritoryType == BeastmasterService.LaudaTerritory ||
+                    BeastmasterService.IsCrucibleTerritory(Plugin.ClientState.TerritoryType)
+                    ? ["vnavmesh", "RotationSolver", "BossModReborn"]
+                    : ["vnavmesh", "Lifestream", "RotationSolver", "BossModReborn"];
             case "FC Buff Refill":
             case "Vendor Stock":
                 return ["ADS", "Lifestream", "vnavmesh"];
@@ -1171,7 +1206,9 @@ public class MainWindow : Window, IDisposable
             ? UiText.Collection(text, plugin.FishCollection.Supplies.Supplies.Select(supply => supply.Name), plugin.FishCollection.LastOutcome)
             : row.Feature?.Id == AutomationCatalog.VerminionQueue
                 ? UiText.Verminion(text, VerminionService.ProgressSummary(plugin.ConfigManager.GetActiveConfig()))
-                : UiText.T(text);
+                : row.Task == "Collect and pause" || row.Feature?.Id == AutomationCatalog.ChocoboRacing
+                    ? UiText.Chocobo(text)
+                    : row.Task is "Beastmaster" or "Beastmaster weeklies" ? UiText.Beastmaster(text) : UiText.T(text);
         var isFavorite = row.Feature != null && IsFavorite(row.Feature.Id);
         var dependencySummary = BuildTaskDependencySummary(row, loadedPluginInternalNames);
         var controlHeight = (UIConstants.Compact ? 24 : 28) * UIConstants.Scale;
@@ -1264,7 +1301,12 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.SameLine();
             if (UIConstants.Button($"Settings##Task_{row.Feature?.Id}", new Vector2(Math.Max(1f, available - gap - runWidth), controlHeight)))
-                plugin.ConfigWindow.OpenAutomationSettings(row.SettingsSection.Value, row.Feature?.Id);
+            {
+                if (row.Id is AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly)
+                    plugin.BeastmasterWindow.OpenSchedule(row.Id == AutomationCatalog.BeastmasterWeekly);
+                else
+                    plugin.ConfigWindow.OpenAutomationSettings(row.SettingsSection.Value, row.Feature?.Id);
+            }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 UiGui.SetTooltip("Open this task's settings in the selected editing scope.");
         }
@@ -1407,6 +1449,8 @@ public class MainWindow : Window, IDisposable
                 ? ResetDetectionService.GetNextWeeklyReset(DateTime.UtcNow) : DateTime.MinValue,
             AutomationCatalog.MiniCactpot => config.MiniCactpotNextReset,
             AutomationCatalog.ChocoboRacing => config.ChocoboRacingNextReset,
+            AutomationCatalog.Beastmaster => config.BeastmasterNextReset,
+            AutomationCatalog.BeastmasterWeekly => config.BeastmasterWeeklyNextReset,
             AutomationCatalog.ChocoboStables => config.ChocoboStablesNextTrainingUtc,
             AutomationCatalog.LootGoblinMapGather => config.LootGoblinMapGatherNextReset,
             AutomationCatalog.AlliedSociety => config.AlliedSocietyNextReset,
@@ -1567,6 +1611,8 @@ public class MainWindow : Window, IDisposable
             AutomationCatalog.AlliedSociety or
             AutomationCatalog.LootGoblinMapGather => ConfigurationSection.Daily,
             AutomationCatalog.RefillListings or
+            AutomationCatalog.Beastmaster or
+            AutomationCatalog.BeastmasterWeekly or
             AutomationCatalog.NagYourMom or
             AutomationCatalog.NagYourDad => ConfigurationSection.VariableTime,
             AutomationCatalog.ChocoboStables => ConfigurationSection.Weekly,

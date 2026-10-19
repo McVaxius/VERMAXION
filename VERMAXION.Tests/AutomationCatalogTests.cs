@@ -64,7 +64,7 @@ public sealed class AutomationCatalogTests
             .OrderBy(name => name)
             .ToList();
 
-        Assert.Equal(29, enableProperties.Count);
+        Assert.Equal(31, enableProperties.Count);
         Assert.Equal(enableProperties, catalogFlags);
         Assert.All(AutomationCatalog.Features, feature => Assert.True(Enum.IsDefined(feature.Owner)));
     }
@@ -75,7 +75,7 @@ public sealed class AutomationCatalogTests
         var engineIds = AutomationCatalog.EngineTasks.Select(feature => feature.Id).ToList();
         var validation = AutomationCatalog.ValidateRuntimeRegistry(engineIds, PostProcessTaskOrder.DefaultOrder);
 
-        Assert.Equal(22, engineIds.Count);
+        Assert.Equal(24, engineIds.Count);
         Assert.True(validation.IsValid, validation.Message);
     }
 
@@ -227,6 +227,38 @@ public sealed class AutomationCatalogTests
 
             Assert.Equal([runnableId], AutomationDispatchPlanner.BuildRunnableQueue(PostProcessTaskOrder.DefaultOrder, eligibility));
         }
+    }
+
+    [Fact]
+    public void LegacyBeastmasterDebugIdsResolveWithoutChangingOtherSelections()
+    {
+        Assert.Equal(AutomationCatalog.Beastmaster, AutomationCatalog.ResolveDebugTaskId("Run##Beastmaster"));
+        Assert.Equal(AutomationCatalog.BeastmasterWeekly, AutomationCatalog.ResolveDebugTaskId("Run##BeastmasterWeekly"));
+        Assert.Null(AutomationCatalog.ResolveDebugTaskId(null));
+        foreach (var id in new[] { AutomationCatalog.Beastmaster, AutomationCatalog.BeastmasterWeekly,
+            AutomationCatalog.VerminionQueue, "Run##FishCollection", "unrelated", "", "run##Beastmaster" })
+            Assert.Equal(id, AutomationCatalog.ResolveDebugTaskId(id));
+    }
+
+    [Theory]
+    [InlineData(AutomationCatalog.Beastmaster)]
+    [InlineData(AutomationCatalog.BeastmasterWeekly)]
+    public void BeastmasterTasksKeepIndependentSchedulingAndManualScope(string taskId)
+    {
+        var feature = AutomationCatalog.Get(taskId);
+        var siblingId = taskId == AutomationCatalog.Beastmaster
+            ? AutomationCatalog.BeastmasterWeekly : AutomationCatalog.Beastmaster;
+        var scope = AutomationRunScope.SingleTask(taskId);
+
+        Assert.Equal(AutomationOwner.EngineTask, feature.Owner);
+        Assert.Equal(AutomationCadence.Scheduled, feature.Cadence);
+        Assert.NotEqual(feature.FlagProperty, AutomationCatalog.Get(siblingId).FlagProperty);
+        Assert.Equal([taskId], AutomationRunScopePolicy.FilterOrderedIds(PostProcessTaskOrder.DefaultOrder, scope));
+        Assert.True(AutomationRunScopePolicy.IsTaskSchedulingEnabled(scope, taskId, configuredEnabled: false));
+        Assert.False(AutomationRunScopePolicy.IsTaskSchedulingEnabled(scope, siblingId, configuredEnabled: false));
+        Assert.False(AutomationRunScopePolicy.ShouldRunMiscHook(scope, enabled: true, beforeArRun: false));
+        Assert.Contains(taskId, PostProcessTaskOrder.Normalize([PostProcessTaskOrder.RegisterRegistrables]));
+        Assert.Equal([taskId], AutomationCatalog.ResolveFavorites([taskId]).Select(item => item.Id));
     }
 
     [Fact]

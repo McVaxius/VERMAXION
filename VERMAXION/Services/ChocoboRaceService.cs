@@ -53,6 +53,7 @@ public class ChocoboRaceService : IDisposable
     private bool startNewProductionBatch;
     private bool collectAndPauseForBatch;
     private readonly Func<bool> testAllowanceEnabled;
+    private readonly Action cancelPendingReload;
     private bool targetReadyForBatch;
     private DateTime nextTargetStatusPollAt = DateTime.MinValue;
     private string targetCycleStatusReason = string.Empty;
@@ -127,7 +128,8 @@ public class ChocoboRaceService : IDisposable
         ConfigManager configManager,
         ChokeAboIpcClient chokeAboIpcClient,
         Func<string?> progressionStartBlock,
-        Func<bool> testAllowanceEnabled)
+        Func<bool> testAllowanceEnabled,
+        Action cancelPendingReload)
     {
         this.commandManager = commandManager;
         this.log = log;
@@ -136,7 +138,8 @@ public class ChocoboRaceService : IDisposable
         this.chokeAboIpcClient = chokeAboIpcClient;
         this.progressionStartBlock = progressionStartBlock;
         this.testAllowanceEnabled = testAllowanceEnabled;
-        log.Information($"[ChocoboRace] Build marker chocobo-workflow-20261017-05; Lazyparasite test racing budget={ChocoboDailyAllowance.LimitSeconds / 3600:0} hours; normal user runs have no racing time cap.");
+        this.cancelPendingReload = cancelPendingReload;
+        log.Information($"[ChocoboRace] Build marker chocobo-workflow-20261018-08; explicit collection reload preserves the saved pause; Lazyparasite test budget={ChocoboDailyAllowance.LimitSeconds / 3600:0} hours only.");
     }
 
     public bool Start(bool resume = false, bool startNewBatch = false, bool collectAndPause = false)
@@ -182,7 +185,7 @@ public class ChocoboRaceService : IDisposable
             return Defer("No active character configuration is available for Target Pedigree mode.");
 
         targetCycleEnabledForBatch = true;
-        if (activeConfig.ChocoboProgressionPaused)
+        if (activeConfig.ChocoboProgressionPaused && !collectAndPauseForBatch)
             return Defer("Chocobo progression is paused; use Resume.");
         progressionContentId = Plugin.PlayerState.ContentId;
         progressionAccount = configManager.CurrentAccountId;
@@ -334,6 +337,7 @@ public class ChocoboRaceService : IDisposable
 
     public void PauseProgression()
     {
+        cancelPendingReload();
         var config = configManager.GetActiveConfig();
         config.ChocoboProgressionPaused = true;
         configManager.SaveCurrentAccount();
@@ -352,13 +356,10 @@ public class ChocoboRaceService : IDisposable
         if (!status.Succeeded || status.Status?.NextCoveringEligibilityUtc is not { } readyAt || readyAt > DateTimeOffset.UtcNow ||
             status.Status.GameActionInProgress || IsQueued() || condition[ConditionFlag.BoundByDuty])
         { Defer("Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering."); return; }
-        config.ChocoboProgressionPaused = false;
+        // Keep ordinary continuation stopped even if either plugin reloads before the receipt is saved.
+        config.ChocoboProgressionPaused = true;
         configManager.SaveCurrentAccount();
-        if (!Start(resume: true, collectAndPause: true))
-        {
-            config.ChocoboProgressionPaused = true;
-            configManager.SaveCurrentAccount();
-        }
+        Start(resume: true, collectAndPause: true);
     }
 
     private bool IsRankGateEnabled()

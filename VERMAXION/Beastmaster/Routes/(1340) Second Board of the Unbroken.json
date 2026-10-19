@@ -1,0 +1,854 @@
+{
+  "Actions": [
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "IsReady"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "MoveTo",
+      "Position": {
+        "X": -699.9999,
+        "Y": 0.0,
+        "Z": -8.000015
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "1",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -8.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": "<",
+          "distance": 1.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Boss",
+      "Position": {
+        "X": 120.0,
+        "Y": 9.5363004E-07,
+        "Z": -423.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -8.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": ">",
+          "distance": 1.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": -700.0,
+        "Y": 0.0,
+        "Z": -17.0
+      },
+      "Arguments": [
+        "5000"
+      ],
+      "Conditions": [],
+      "Note": "2",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "IsReady"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "MoveTo",
+      "Position": {
+        "X": -695.0,
+        "Y": 0.0,
+        "Z": -25.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "3",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -25.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": "<",
+          "distance": 20.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Boss",
+      "Position": {
+        "X": 520.0,
+        "Y": 0.0,
+        "Z": -7.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "Taurus Piece",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -25.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": ">",
+          "distance": 20.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": -695.0,
+        "Y": 0.0,
+        "Z": -34.0
+      },
+      "Arguments": [
+        "5000"
+      ],
+      "Conditions": [],
+      "Note": "4",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "IsReady"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "MoveTo",
+      "Position": {
+        "X": -700.0,
+        "Y": 0.0,
+        "Z": -41.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "5",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -41.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": "<",
+          "distance": 1.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Boss",
+      "Position": {
+        "X": 120.0,
+        "Y": -4.1618966E-09,
+        "Z": -7.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -41.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": ">",
+          "distance": 1.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": -700.0,
+        "Y": 0.0,
+        "Z": -50.0
+      },
+      "Arguments": [
+        "5000"
+      ],
+      "Conditions": [],
+      "Note": "6",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "IsReady"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "MoveTo",
+      "Position": {
+        "X": -700.0,
+        "Y": 0.0,
+        "Z": -59.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "7",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -59.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": "<",
+          "distance": 1.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Boss",
+      "Position": {
+        "X": 120.0,
+        "Y": -4.1618966E-09,
+        "Z": -3.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -59.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": ">",
+          "distance": 1.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": -695.0,
+        "Y": 0.0,
+        "Z": -67.0
+      },
+      "Arguments": [
+        "5000"
+      ],
+      "Conditions": [],
+      "Note": "8",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "IsReady"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": -700.0,
+        "Y": 0.0,
+        "Z": -74.0
+      },
+      "Arguments": [
+        "5000"
+      ],
+      "Conditions": [],
+      "Note": "9",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "IsReady"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "MoveTo",
+      "Position": {
+        "X": -700.0,
+        "Y": 0.0,
+        "Z": -83.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "10",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "500"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": -700.0,
+            "Y": 0.0,
+            "Z": -83.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": "<",
+          "distance": 1.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Boss",
+      "Position": {
+        "X": 520.0,
+        "Y": 0.0,
+        "Z": -420.0
+      },
+      "Arguments": [
+        ""
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "ModifyIndex",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "-1"
+      ],
+      "Conditions": [
+        {
+          "$type": "AutoDuty.Data.PathActionConditionDistance, AutoDuty",
+          "origin": "Location",
+          "originId": 0,
+          "originLoc": {
+            "X": 520.0,
+            "Y": 0.0,
+            "Z": -420.0
+          },
+          "target": "Player",
+          "targetId": 0,
+          "targetLoc": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "operatorValue": "<",
+          "distance": 50.0
+        }
+      ],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "Addon;XBMResult"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "WaitFor",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "IsReady"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    },
+    {
+      "Tag": "None",
+      "Name": "Wait",
+      "Position": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Arguments": [
+        "30000"
+      ],
+      "Conditions": [],
+      "Note": "",
+      "Flags": "None"
+    }
+  ],
+  "Meta": {
+    "CreatedAt": 348,
+    "Changelog": [],
+    "Notes": []
+  }
+}

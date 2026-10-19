@@ -124,6 +124,29 @@ internal sealed class UiText : IDisposable
     internal static string Fishing(string english)
         => string.Join(" | ", english.Split(" | ", StringSplitOptions.None).Select(T));
 
+    internal static string Chocobo(string english)
+    {
+        foreach (var prefix in new[] { "Choke-abo target work: ", "Deferred: " })
+            if (english.StartsWith(prefix, StringComparison.Ordinal))
+                return F(prefix + "{0}", T(english[prefix.Length..]));
+        return T(english);
+    }
+
+    internal static string Beastmaster(string english)
+    {
+        foreach (var prefix in new[] { "Stopped; combat restoration pending: ", "Combat restoration pending: ",
+            "RSR runtime state is incompatible: ", "Recovering in five seconds: " })
+            if (english.StartsWith(prefix, StringComparison.Ordinal))
+                return F(prefix + "{0}", T(english[prefix.Length..]));
+        const string paused = "Paused: ";
+        if (english.StartsWith(paused, StringComparison.Ordinal)) return F("Paused: {0}", Beastmaster(english[paused.Length..]));
+        var entry = Regex.Match(english, @"^Requires level (\d+) and item level (\d+); current level (\d+), item level (\d+)\.$",
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
+        if (entry.Success) return F("Requires level {0} and item level {1}; current level {2}, item level {3}.",
+            entry.Groups[1].Value, entry.Groups[2].Value, entry.Groups[3].Value, entry.Groups[4].Value);
+        return T(english);
+    }
+
     // Collection services retain their original English messages and logs. Resolve their
     // specific compositions here; punctuation-only patterns must never capture names.
     internal static string Collection(string english, IEnumerable<string>? supplyNames = null, string? lastOutcome = null)

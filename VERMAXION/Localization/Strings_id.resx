@@ -1195,7 +1195,7 @@ Saucy menangani penyelesaian mini-game.</value></data>
   <data name="Unsynced is a dad hint for duties that cannot use Trust or Duty Support." xml:space="preserve"><value>Tanpa sinkronisasi adalah petunjuk dad untuk tugas yang tidak dapat memakai Trust atau Duty Support.</value></data>
   <data name="Updates valid saved gearsets through optional Stylist IPC or the native recommended-equipment path. If none exist, first runs the bounded missing-gearset bootstrap." xml:space="preserve"><value>Memperbarui set perlengkapan tersimpan yang valid melalui IPC Stylist opsional atau jalur perlengkapan rekomendasi native. Jika tidak ada, jalankan bootstrap set yang belum ada berbatas dahulu.</value></data>
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve"><value>Meningkatkan hanya retainer yang aktif di AutoRetainer. Tempur memakai rata-rata level item yang kompatibel dengan AutoRetainer; pengumpul hanya memakai total Persepsi.</value></data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Gunakan induk satu pedigree di bawah yang tertinggi tercapai untuk menghasilkan anak lain pada pedigree itu. Biarkan jenis kelamin duplikat tidak terdaftar; besarkan jenis kelamin yang belum ada. Lanjutkan untuk menerapkan.</value></data>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Hasilkan jenis kelamin yang belum ada pada silsilah tertinggi yang telah dicapai. Gunakan induk satu tingkat silsilah di bawahnya, atau induk G9 yang disimpan saat sudah G9. Jangan daftarkan anak dengan jenis kelamin yang sudah ada; besarkan yang belum ada. Lanjutkan untuk menerapkan.</value></data>
   <data name="Use a retained parent and a matching-pedigree permit for the opposite sex. MGP purchases respect the reserve." xml:space="preserve"><value>Gunakan induk yang dipertahankan dan izin pedigree cocok untuk jenis kelamin lawan. Pembelian MGP mematuhi cadangan.</value></data>
   <data name="Use default" xml:space="preserve"><value>Gunakan default</value></data>
   <data name="Use default for {0}?" xml:space="preserve"><value>Gunakan default untuk {0}?</value></data>
@@ -2067,4 +2067,926 @@ Dependensi: {1}</value></data>
   <data name="Collect" xml:space="preserve"><value>Ambil</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>Ambil dan jeda</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Ambil satu anak yang sudah siap lalu jeda sebelum perkawinan berikutnya.</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>Pawang binatang</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>Pawang binatang sedang mengendalikan karakter.</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>Pembersihan Pawang binatang sedang melepas penangguhan AutoRetainer.</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>Menunggu karakter saat ini terdaftar dan siap.</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · No. {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>Sesi Penjinak Binatang atau proses pembersihannya masih berjalan</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>Menambahkan {0} ({1}/{2})</value></data>
+  <data name="All categories" xml:space="preserve"><value>Semua kategori</value></data>
+  <data name="All kins" xml:space="preserve"><value>Semua golongan</value></data>
+  <data name="Allow category" xml:space="preserve"><value>Izinkan kategori</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>Mendekati Lauda</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>Diperlukan setidaknya tiga pendamping yang memenuhi syarat sebelum menantang papan.</value></data>
+  <data name="Automation" xml:space="preserve"><value>Otomatisasi</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>Hindari perlengkapan berbahaya tanpa kekebalan</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>Daftar prioritas binatang</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>Daftar peringkat binatang disalin ke papan klip.</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>Daftar peringkat binatang diimpor.</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>Layanan Penjinak Binatang telah dihentikan</value></data>
+  <data name="Beasts" xml:space="preserve"><value>Binatang</value></data>
+  <data name="Block" xml:space="preserve"><value>Blokir</value></data>
+  <data name="Block category" xml:space="preserve"><value>Blokir kategori</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Item yang diblokir tidak akan dibeli, dipilih sebagai harta, atau digunakan. Klik sambil menahan Ctrl untuk mengubah seluruh kategori.</value></data>
+  <data name="Board" xml:space="preserve"><value>Papan</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Pemulihan di papan: saat HP 60% atau kurang dan tidak ada perkemahan sebelum pertarungan berikutnya.</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Rute papan {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>Kapasitas tim papan: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>Bos</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>Terapkan ke seluruh kategori</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>Membeli {0} seharga {1}</value></data>
+  <data name="Camp" xml:space="preserve"><value>Perkemahan</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>Perkemahan: istirahatkan hingga dua pendamping terluka dengan HP di bawah 60%. Jika tidak ada yang dipilih, pemain menerima pemulihan diri sebesar 90% dari perkemahan.</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>Bawa minus 2</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>Menantang papan</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>Pilih tim khusus di Binatang. Urutan yang tersimpan akan dipertahankan.</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>Pilih tiga pendamping dengan peringkat terendah dan EXP paling sedikit.</value></data>
+  <data name="Classification" xml:space="preserve"><value>Klasifikasi</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>Kosongkan pendamping khusus</value></data>
+  <data name="Clear order" xml:space="preserve"><value>Hapus urutan</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>Hapus peringkat tersimpan</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>Kosongkan tim khusus. Tahan Ctrl lalu klik.</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>Menyelesaikan papan untuk membaca lebih banyak peringkat</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>Pemulihan saat bertarung: saat HP 40% atau kurang.</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>Memulai pertempuran</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>Ketahanan: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>Salin</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>Diperlukan setidaknya tiga pendamping berbeda untuk masuk ke Crucible. Sesuaikan pilihan tim dan pembatasannya.</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>Diperlukan setidaknya tiga pendamping berbeda untuk masuk ke Crucible. Tim berubah sebelum konfirmasi tantangan.</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Pendaftaran Crucible tidak selesai dalam lima menit</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>Crucible memerlukan profesi Penjinak Binatang</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Sesi Crucible selesai</value></data>
+  <data name="Current board" xml:space="preserve"><value>Papan saat ini</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>Lingkaran sian: titik singgah saat ini. Titik sian: posisi pemain saat ini.</value></data>
+  <data name="Damage" xml:space="preserve"><value>Kerusakan</value></data>
+  <data name="Degree" xml:space="preserve"><value>Tingkat</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Hapus daftar ini. Tahan Ctrl lalu klik. Daftar terakhir tidak dapat dihapus.</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm memerlukan Soulreaper's Armor. Thunder Axe memerlukan Umbral Wristlet.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Seret pegangan atau ketik # baru untuk mengubah urutan. Klik Blokir sambil menahan Ctrl untuk mengubah kategorinya.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Seret pegangan atau ketik # baru untuk mengubah urutan. Klik sebuah blokir sambil menahan Ctrl untuk mengubah klasifikasinya.</value></data>
+  <data name="EXP" xml:space="preserve"><value>EXP</value></data>
+  <data name="Elite" xml:space="preserve"><value>Elite</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>Semua pendamping telah tumbang</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>Keluar setelah selesai</value></data>
+  <data name="Export" xml:space="preserve"><value>Ekspor</value></data>
+  <data name="Familiar" xml:space="preserve"><value>Pendamping</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>Data pendamping tidak tersedia. Masuk ke permainan dan tunggu pendaftaran karakter.</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>Pendamping {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>Beri makan</value></data>
+  <data name="Fight" xml:space="preserve"><value>Bertarung</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Dilarang bertarung</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Dilarang bertarung menyimpan pendamping ini sebagai cadangan, kecuali petarung yang tidak diblokir dan masih hidup tersisa kurang dari tiga. Klik sambil menahan Ctrl untuk mengubah seluruh klasifikasi.</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>Pilihan petarung</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Penuhi kapasitas tim papan dengan mendahulukan pendamping berperingkat terendah dan dengan EXP paling sedikit.</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>Menyelesaikan papan</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>Tingkat pertama</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>Mengikuti papan Crucible</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>Lupakan peringkat tersimpan. Tahan Ctrl lalu klik.</value></data>
+  <data name="Full" xml:space="preserve"><value>Penuh</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>Penuh menggunakan kapasitas papan. -3 menyisakan tiga slot. Hanya 3 membawa tiga pendamping. Bawa memilih tiga pendamping berperingkat tertinggi, lalu pendamping yang dilatih, dengan menyisakan dua slot.</value></data>
+  <data name="Gear" xml:space="preserve"><value>Perlengkapan</value></data>
+  <data name="HP" xml:space="preserve"><value>HP</value></data>
+  <data name="Heal items" xml:space="preserve"><value>Item pemulihan</value></data>
+  <data name="Healing" xml:space="preserve"><value>Pemulihan</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>Pemulihan dan perkemahan</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>Ambang pemulihan ditetapkan oleh otomatisasi.</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>Tingkat yang lebih tinggi memerlukan penyelesaian misi 71045. Standar akan digunakan.</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>Dahulukan pendamping berperingkat tertinggi; jika sama, gunakan urutan daftar peringkat.</value></data>
+  <data name="Import" xml:space="preserve"><value>Impor</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>Impor menambahkan daftar baru dari JSON hasil ekspor atau ID item yang dikenal. Entri katalog yang belum ada ditambahkan di akhir. Ekspor menyalin daftar ini ke papan klip.</value></data>
+  <data name="Imported" xml:space="preserve"><value>Diimpor</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>Kecerdasan: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>Tinggalkan grup sebelum masuk ke Crucible</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Sisakan tiga slot tim; dahulukan pendamping berperingkat terendah dan dengan EXP paling sedikit.</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>Meninggalkan papan yang telah selesai</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>Meninggalkan Crucible sebelum hasil teramati</value></data>
+  <data name="Leveling" xml:space="preserve"><value>Naik level</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>Tim untuk naik level</value></data>
+  <data name="List name" xml:space="preserve"><value>Nama daftar</value></data>
+  <data name="Loot" xml:space="preserve"><value>Rampasan</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>Ketahanan sihir: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>Minus 3</value></data>
+  <data name="New" xml:space="preserve"><value>Baru</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>Belum ada pendamping yang diketahui memenuhi syarat untuk pengaturan ini. Saat masuk, bestiarium dipindai sebelum memilih tim.</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>Belum ada pendamping yang dikenal. Buka tim atau bestiarium di Lauda agar VERMAXION dapat membacanya.</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>Tujuan perjalanan ke Lauda tidak ditemukan</value></data>
+  <data name="No." xml:space="preserve"><value>No.</value></data>
+  <data name="Only 3" xml:space="preserve"><value>Hanya 3</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>Hanya satu kapak elemen yang diizinkan; kapak elemen yang tidak kompatibel selalu dilewati.</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>Pendamping yang dimiliki</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>Informasi kepemilikan belum tersedia; pratinjau ini menggunakan data pendamping yang diingat.</value></data>
+  <data name="Paused: " xml:space="preserve"><value>Dijeda: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>Dijeda: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>Ketahanan fisik: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Dilarang dipilih</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Dilarang dipilih mencegah pemilihan tim secara otomatis. Klik sambil menahan Ctrl untuk mengubah seluruh klasifikasi.</value></data>
+  <data name="Rank" xml:space="preserve"><value>Peringkat</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Peringkat belum dibaca. Akan dibaca dari bestiarium saat pengaturan tim berikutnya.</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>Peringkat tidak diketahui</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>Peringkat {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>Membaca peringkat pendamping ({0}/{1})</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>Siap memulai</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Disarankan</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>Mengeluarkan semua pendamping</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Perlengkapan kekebalan yang diperlukan harus dimiliki terlebih dahulu.</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>Istirahat di perkemahan</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>Beristirahat di perkemahan</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Pulihkan urutan bawaan daftar ini dan hapus semua pemblokirannya. Tahan Ctrl lalu klik.</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>Rute belum dimulai.</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Rute {0:00} · {1}/{2} langkah</value></data>
+  <data name="Run setup" xml:space="preserve"><value>Pengaturan sesi</value></data>
+  <data name="Runs" xml:space="preserve"><value>Sesi</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>Tingkat kedua</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>Pilih salah satu dari lima papan Crucible</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>Pendamping yang dipilih</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>Menyiapkan tim</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>Diarsir: tim yang dibawa mode ini. Arahkan kursor ke nama untuk melihat statistik.</value></data>
+  <data name="Shop List" xml:space="preserve"><value>Daftar belanja</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>Daftar belanja disalin ke papan klip.</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>Daftar belanja diimpor.</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>Daftar prioritas belanja</value></data>
+  <data name="Standard" xml:space="preserve"><value>Standar</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>Hentikan Penjinak Binatang sebelum mengubah pengaturan, binatang, atau persediaannya.</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>Dihentikan setelah pergantian karakter</value></data>
+  <data name="Stopping" xml:space="preserve"><value>Menghentikan</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>Kekuatan: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>Persediaan mengikuti urutan daftar Anda.</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>Membawa pendamping milik Anda yang dipilih, hingga kapasitas papan yang dipilih.</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>Membawa pendamping berperingkat tertinggi. Jika sama, ikuti daftar prioritas binatang.</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>Membawa pendamping berperingkat terendah, dengan EXP paling sedikit lebih dahulu. Mereka juga bertarung lebih dahulu.</value></data>
+  <data name="Team cap" xml:space="preserve"><value>Batas tim</value></data>
+  <data name="Team ready" xml:space="preserve"><value>Tim siap</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>Pengaturan tim terus berlangsung tanpa mencapai keadaan stabil; dihentikan.</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>Papan aktual tersedia setelah masuk ke Crucible. Simpul dan posisi pemain tidak diketahui saat berada di luar instans.</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>Papan yang dipilih tidak sesuai dengan instans Crucible saat ini</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>Tim sudah penuh. Batalkan satu pilihan untuk memilih pendamping lain.</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>Tingkat ketiga</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>Tiga pendamping kuat membantu pendamping yang dilatih; sisakan dua slot tim.</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>Dicentang: tim yang Anda bawa. Arahkan kursor ke nama untuk melihat statistik.</value></data>
+  <data name="Tier List" xml:space="preserve"><value>Daftar peringkat</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>Perjalanan ke Lauda tidak dapat dimulai</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>Menuju Lauda</value></data>
+  <data name="Treasure" xml:space="preserve"><value>Harta</value></data>
+  <data name="Type" xml:space="preserve"><value>Jenis</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>Tidak dapat mengimpor daftar peringkat binatang. Gunakan daftar hasil ekspor atau ID pendamping yang dikenal, dipisahkan dengan spasi atau koma.</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>Tidak dapat mengimpor daftar belanja. Gunakan daftar hasil ekspor atau ID item yang dikenal, dipisahkan dengan spasi atau koma.</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>Papan tidak diketahui</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>Klasifikasi tidak diketahui</value></data>
+  <data name="Untitled" xml:space="preserve"><value>Tanpa judul</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · Penjinak Binatang</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>Tunggu hingga karakter saat ini siap</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>Menunggu pergerakan yang dikendalikan plugin berhenti</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>Menunggu kebangkitan</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>Menunggu masuk ke Crucible</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>vnavmesh diperlukan untuk navigasi papan</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>{0} pendamping dipilih · {1}/{2} ditampilkan</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>{0} titik singgah · {1} koneksi</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · Titik singgah {1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3} sesi</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>Tidak dapat menentukan pendamping mana yang bernama "{0}". Buka detailnya di bestiarium sekali agar VERMAXION mengenali namanya.</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>Tidak dapat memilih No. {0} di bestiarium.</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>Latih pasangan yang belum ada hingga rank balapan 40 untuk pembiakan.</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>Anak mewarisi warna salah satu induk. Induk G9 yang sesuai harus sudah memiliki salah satu warna pilihan.</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>Pengaturan produksi anak tidak valid.</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>Menghasilkan {0}/{1} anak G9 yang sesuai; disimpan tanpa didaftarkan.</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>Cocokkan perkawinan yang ada sebelum menghasilkan anak lain.</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>Produksi anak memerlukan stok induk G9; balapan generasi lebih rendah dihentikan.</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>Chocobo balap G9 terdaftar belum memiliki sifat yang diminta dan terkonfirmasi. Simpan dan pilih stok induk yang sesuai.</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>Besarkan induk pembiak G9 hingga pensiun: peringkat balapan {0}/40. Anak yang sesuai tetap tidak didaftarkan.</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>Kawinkan stok G9 yang sesuai dengan induk G9 lawan jenis yang disimpan.</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>Tidak ada induk G9 pensiun yang dapat digunakan dengan sifat yang diminta dan terkonfirmasi. Simpan anak dan isi kembali stok G9 yang sesuai.</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>Besarkan anak G9 yang tidak sesuai ini sebagai pasangan milik sendiri yang belum ada; simpan hasil yang sesuai.</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>Induk G9 lawan jenis yang dapat digunakan belum ada. Mode induk milik sendiri memerlukan stok G9 yang sesuai atau perubahan eksplisit ke izin NPC.</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>Waktu tunggu perkawinan tidak memiliki bukti kesiapan yang valid.</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>Pembiakan selesai; anak chocobo siap diambil.</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>Menunggu perkawinan hingga {0:u}.</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>Pembiakan selesai; mengambil anak chocobo.</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>Siklus target dijeda pada batas yang aman.</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>Dijeda oleh VERMAXION pada batas yang aman.</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>Pengambilan memerlukan perkawinan yang ada dan siap, silsilah induk tersimpan, dan tepat satu Proof of Covering.</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>Bukti pengambilan tersimpan tidak valid; tidak ada pengambilan yang akan dijalankan ulang.</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>Pengambilan terjadi, tetapi anak baru yang tepat dan sifatnya harus dicocokkan sebelum dihitung atau perkawinan lain.</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>Pengambilan diminta; konsumsi bukti dan satu anak yang sesuai harus dicocokkan sebelum permintaan lain.</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Pekerjaan target Choke-abo: {0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>Ditunda: {0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>Syarat masuk: level {0}, level item {1}. Level item perlengkapan yang dikenakan: {2}.</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>Memerlukan level {0} dan level item {1}; level saat ini {2}, level item {3}.</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>Syarat masuk untuk papan ini tidak tersedia.</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>Level item perlengkapan yang dikenakan tidak tersedia.</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>Tantangan mingguan Pawang binatang</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>Tantangan mingguan</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>Mulai tantangan mingguan</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>Selesaikan satu kali setiap tantangan Pawang binatang yang belum selesai dan memenuhi syarat.</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>Hanya penyelesaian papan solo yang dihitung. Dungeon tidak dihitung.</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>Penambahan pendamping ke tim belum terkonfirmasi. Periksa tim dalam game sebelum memulai kembali.</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>Penyiapan tim dihentikan karena tim berubah secara tak terduga.</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>Penyiapan tim dihentikan karena jendela dalam game belum selesai diperbarui.</value></data>
+  <data name="The bestiary did not show the requested familiar&apos;s details." xml:space="preserve"><value>Bestiari tidak menampilkan detail pendamping yang diminta.</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>Data Log Tantangan mingguan tidak tersedia.</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>Kelima tantangan mingguan telah selesai.</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>Tantangan mingguan selesai: {0}/5.</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>Tidak ada tantangan mingguan yang belum selesai dan memenuhi syarat. Masih ada papan yang terkunci atau terhalang persyaratan perlengkapan.</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>Misi pembuka papan atau Log Tantangan yang diperlukan belum selesai.</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>Memerlukan Pawang binatang level {0}.</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>Memerlukan level item {0}; level item saat ini {1}.</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>Belum selesai</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>Menunggu pemuatan baru Log Tantangan untuk karakter dan periode reset ini.</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>Keluar dari tugas Crucible saat ini sebelum memulai tantangan mingguan.</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>Tantangan mingguan yang memenuhi syarat telah selesai. Masih ada papan yang terkunci atau terhalang persyaratan perlengkapan.</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>Data Log Tantangan mingguan berubah atau tidak lagi tersedia. Papan berikutnya tidak dimasukkan ke antrean.</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>Tantangan mingguan yang dipilih sudah selesai. Tidak ada permintaan masuk berikutnya yang dikirim.</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>Menunggu konfirmasi terbaru penyelesaian tantangan mingguan.</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>Penyelesaian tantangan mingguan belum terkonfirmasi setelah hasil papan muncul. Tidak ada papan yang diulang.</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>Antrean konten yang ada harus selesai sebelum memulai Pawang binatang.</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>Pengamatan masuk Crucible tidak tersedia.</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>Permintaan masuk Crucible yang tertunda telah ditarik. Tidak ada permintaan masuk ulang.</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>Membatalkan masuk ke Crucible.</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>Papan Crucible yang dimasuki tidak sesuai dengan papan yang diminta.</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>Tampilan mini</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>Jendela lengkap</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve">
+    <value>Proses Pawang binatang, penyegaran, atau pembersihannya masih aktif.</value>
+  </data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve">
+    <value>Penyedia pertempuran dilepas atau diganti; kepemilikan awal belum terselesaikan.</value>
+  </data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve">
+    <value>Semua binatang yang dimiliki telah mencapai target latihan papan ini.</value>
+  </data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve">
+    <value>Salah satu binatang yang dimiliki tidak tersedia di bestiari mandiri; pengamatan sebagian tetap disimpan.</value>
+  </data>
+  <data name="Another automation owns the character." xml:space="preserve">
+    <value>Otomatisasi lain sedang mengendalikan karakter.</value>
+  </data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve">
+    <value>Kepemilikan binatang berubah saat penyegaran; pengamatan sebagian tetap disimpan. Segarkan lagi setelah daftar stabil.</value>
+  </data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve">
+    <value>Penyegaran binatang dibatalkan; pengamatan sebagian tetap disimpan.</value>
+  </data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve">
+    <value>Penyegaran binatang dihentikan setelah karakter, wilayah, atau konteks bawaan gim berubah.</value>
+  </data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve">
+    <value>Penyegaran binatang dihentikan karena bestiari beralih ke data tim.</value>
+  </data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve">
+    <value>Pawang binatang tidak dapat mengambil kendali AutoRetainer saat penangguhan yang ada aktif atau tidak terbaca.</value>
+  </data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve">
+    <value>Pawang binatang tidak dapat memverifikasi penangguhan AutoRetainer.</value>
+  </data>
+  <data name="Beastmaster frequency" xml:space="preserve">
+    <value>Frekuensi Pawang binatang</value>
+  </data>
+  <data name="Beastmaster scheduling" xml:space="preserve">
+    <value>Penjadwalan Pawang binatang</value>
+  </data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve">
+    <value>Binatang dan Persediaan digunakan bersama untuk karakter ini.</value>
+  </data>
+  <data name="Boards per trigger" xml:space="preserve">
+    <value>Papan per pemicu</value>
+  </data>
+  <data name="Boards this run" xml:space="preserve">
+    <value>Papan pada proses ini</value>
+  </data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve">
+    <value>BossMod &apos;passive - melee&apos; memerlukan jangkauan 2.3 dan gerakan Pathfind.</value>
+  </data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve">
+    <value>Target ikuti AI BossMod tidak tersedia.</value>
+  </data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve">
+    <value>Kontrol siklus hidup AI BossMod tidak tersedia.</value>
+  </data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve">
+    <value>Pemulihan status awal AI BossMod belum dikonfirmasi.</value>
+  </data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve">
+    <value>Status runtime AI BossMod tidak kompatibel.</value>
+  </data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve">
+    <value>Status runtime AI BossMod tidak tersedia.</value>
+  </data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve">
+    <value>Penangguhan AI BossMod belum dikonfirmasi.</value>
+  </data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve">
+    <value>BossMod tidak mengonfirmasi preset gerakan Pawang binatang yang diminta.</value>
+  </data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve">
+    <value>Status preset BossMod yang dinonaktifkan paksa tidak konsisten.</value>
+  </data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve">
+    <value>BossMod tidak memiliki preset &apos;passive - melee&apos; yang diperlukan.</value>
+  </data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve">
+    <value>Pemulihan preset awal BossMod belum dikonfirmasi.</value>
+  </data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve">
+    <value>BossMod memerlukan preset &apos;passive - melee&apos; yang ada khusus gerakan; rotasi DPS tidak boleh disertakan.</value>
+  </data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve">
+    <value>BossModReborn tidak lagi dimuat.</value>
+  </data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve">
+    <value>Bawa tiga binatang untuk dilatih, utamakan peringkat dan EXP terendah. Fokuskan latihan pada lebih sedikit binatang dengan lebih sedikit cadangan.</value>
+  </data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve">
+    <value>Bawa hingga {0} binatang untuk dilatih, sisakan tiga slot tim. Tim yang lebih kecil dapat memperoleh lebih banyak EXP per binatang dengan lebih sedikit cadangan.</value>
+  </data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve">
+    <value>Bawa hingga {0} binatang untuk dilatih, utamakan peringkat dan EXP terendah. Latih lebih banyak binatang bersama dengan lebih banyak cadangan.</value>
+  </data>
+  <data name="Checked at VMX opportunities." xml:space="preserve">
+    <value>Diperiksa saat VMX berkesempatan berjalan.</value>
+  </data>
+  <data name="Choose a training team method for this goal." xml:space="preserve">
+    <value>Pilih metode tim latihan untuk tujuan ini.</value>
+  </data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve">
+    <value>Pilih anggota kustom di Binatang. Setiap pengaturan yang memilih Kustom menggunakan pilihan bersama karakter ini.</value>
+  </data>
+  <data name="Clear recorded beast data" xml:space="preserve">
+    <value>Hapus data binatang yang tercatat</value>
+  </data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve">
+    <value>Hapus filter bestiari bawaan gim sebelum menyegarkan semua binatang yang dimiliki.</value>
+  </data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve">
+    <value>Hapus peringkat, EXP, statistik, pengamatan kepemilikan, dan tim terakhir yang disimpan untuk karakter ini. Tahan Ctrl lalu klik.</value>
+  </data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve">
+    <value>Tutup pendaftaran Crucible dan tunggu antrean tugas stabil sebelum menyegarkan binatang.</value>
+  </data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve">
+    <value>Tutup konfirmasi saat ini sebelum menyegarkan binatang.</value>
+  </data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve">
+    <value>Tutup bestiari tim sebelum menyegarkan binatang.</value>
+  </data>
+  <data name="Collapse" xml:space="preserve">
+    <value>Ciutkan</value>
+  </data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve">
+    <value>Pemulihan pertempuran tertunda: {0}</value>
+  </data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve">
+    <value>Menyelesaikan sasaran Challenge Log bawaan gim yang memenuhi syarat dan belum selesai, terpisah dari latihan biasa.</value>
+  </data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve">
+    <value>Atur konfigurasi proses dan target latihan di Jadwal VMX Pawang binatang.</value>
+  </data>
+  <data name="Crewcible task" xml:space="preserve">
+    <value>Tugas Crewcible</value>
+  </data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve">
+    <value>Lompatan rute Crucible berada di luar papan</value>
+  </data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve">
+    <value>Anggota kustom digunakan oleh setiap pengaturan yang memilih Kustom. Arahkan kursor ke nama untuk melihat statistik tercatat.</value>
+  </data>
+  <data name="Editing settings does not start a run." xml:space="preserve">
+    <value>Mengedit pengaturan tidak memulai proses.</value>
+  </data>
+  <data name="Enable Beastmaster training" xml:space="preserve">
+    <value>Aktifkan latihan Pawang binatang</value>
+  </data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve">
+    <value>Aktifkan tantangan mingguan Pawang binatang</value>
+  </data>
+  <data name="Enable task" xml:space="preserve">
+    <value>Aktifkan tugas</value>
+  </data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve">
+    <value>Bertarung di arena Crucible saat ini</value>
+  </data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve">
+    <value>Persyaratan masuk diperiksa untuk karakter aktif sebelum memulai.</value>
+  </data>
+  <data name="Every AR" xml:space="preserve">
+    <value>Setiap AR</value>
+  </data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve">
+    <value>Binatang yang dikecualikan membuat tujuan ini tetap belum selesai.</value>
+  </data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve">
+    <value>Urutan pelaksanaan: Pengaturan VMX &gt; Urutan Tugas.</value>
+  </data>
+  <data name="Expand" xml:space="preserve">
+    <value>Perluas</value>
+  </data>
+  <data name="Fixed board runs" xml:space="preserve">
+    <value>Jumlah proses papan tetap</value>
+  </data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve">
+    <value>Pengamatan peringkat dan EXP terbaru diperlukan sebelum menetapkan bahwa latihan selesai.</value>
+  </data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve">
+    <value>Pengamatan peringkat lengkap tidak tersedia. Peringkat yang belum terbaca tetap tidak diketahui.</value>
+  </data>
+  <data name="Hide" xml:space="preserve">
+    <value>Sembunyikan</value>
+  </data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve">
+    <value>Utamakan binatang berperingkat tertinggi; prioritas binatang menentukan urutan jika setara.</value>
+  </data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve">
+    <value>Terpisah dari pengaktifan tugas biasa, tujuan latihan, dan batas proses papan.</value>
+  </data>
+  <data name="Invalid Crucible route jump" xml:space="preserve">
+    <value>Lompatan rute Crucible tidak valid</value>
+  </data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve">
+    <value>Langkah pembersihan pemindaian Crucible tidak valid</value>
+  </data>
+  <data name="Item and camp rules" xml:space="preserve">
+    <value>Aturan item dan perkemahan</value>
+  </data>
+  <data name="Item priorities" xml:space="preserve">
+    <value>Prioritas item</value>
+  </data>
+  <data name="Kin filter" xml:space="preserve">
+    <value>Filter jenis</value>
+  </data>
+  <data name="Last completed: {0}" xml:space="preserve">
+    <value>Terakhir selesai: {0}</value>
+  </data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve">
+    <value>Keluar dari tugas saat ini sebelum menyegarkan binatang.</value>
+  </data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve">
+    <value>Muat Rotation Solver Reborn dan pilih rotasi Reborn Beastmaster.</value>
+  </data>
+  <data name="Manual setup" xml:space="preserve">
+    <value>Pengaturan manual</value>
+  </data>
+  <data name="Master Class I" xml:space="preserve">
+    <value>Kelas Master I</value>
+  </data>
+  <data name="Master Class II" xml:space="preserve">
+    <value>Kelas Master II</value>
+  </data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve">
+    <value>Data kepemilikan binatang bawaan gim tidak tersedia; pengamatan yang tercatat tetap disimpan.</value>
+  </data>
+  <data name="Next eligible: {0}" xml:space="preserve">
+    <value>Kesempatan memenuhi syarat berikutnya: {0}</value>
+  </data>
+  <data name="No character" xml:space="preserve">
+    <value>Tidak ada karakter</value>
+  </data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve">
+    <value>Profil karakter tidak tersedia. Masuk dan tunggu pendaftaran karakter.</value>
+  </data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve">
+    <value>Tidak ada binatang memenuhi syarat yang tercatat untuk pengaturan ini. Segarkan binatang pada karakter yang dimainkan.</value>
+  </data>
+  <data name="No full beast refresh has been requested." xml:space="preserve">
+    <value>Penyegaran binatang lengkap belum diminta.</value>
+  </data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve">
+    <value>Belum ada binatang tercatat. Gunakan Segarkan binatang saat memainkan karakter ini di luar tugas.</value>
+  </data>
+  <data name="No recorded character" xml:space="preserve">
+    <value>Tidak ada karakter tercatat</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Luring</value>
+  </data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve">
+    <value>Hanya karakter dengan binatang tercatat yang ditampilkan.</value>
+  </data>
+  <data name="Open VMX Schedule" xml:space="preserve">
+    <value>Buka Jadwal VMX</value>
+  </data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve">
+    <value>Membuka bestiari mandiri untuk menyegarkan peringkat dan EXP binatang.</value>
+  </data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve">
+    <value>Kepemilikan telah diperiksa. Peringkat tercatat mungkin memerlukan penyegaran lengkap.</value>
+  </data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve">
+    <value>Kepemilikan belum diamati sepenuhnya. Penyelesaian latihan belum diketahui.</value>
+  </data>
+  <data name="Ownership not fully observed." xml:space="preserve">
+    <value>Kepemilikan belum diamati sepenuhnya.</value>
+  </data>
+  <data name="Ownership observed: {0}" xml:space="preserve">
+    <value>Kepemilikan diamati: {0}</value>
+  </data>
+  <data name="Playing" xml:space="preserve">
+    <value>Dimainkan</value>
+  </data>
+  <data name="Playing: {0}" xml:space="preserve">
+    <value>Dimainkan: {0}</value>
+  </data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve">
+    <value>RSR Reborn Beastmaster bukan lagi rotasi saat ini.</value>
+  </data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve">
+    <value>RSR tidak mengonfirmasi mode operasi Pawang binatang yang diminta.</value>
+  </data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve">
+    <value>Flag mode operasi RSR tidak konsisten.</value>
+  </data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve">
+    <value>Pemulihan mode awal RSR belum dikonfirmasi.</value>
+  </data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve">
+    <value>Status runtime RSR tidak kompatibel: </value>
+  </data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve">
+    <value>Status runtime RSR tidak kompatibel: {0}</value>
+  </data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve">
+    <value>Status runtime RSR tidak tersedia.</value>
+  </data>
+  <data name="Ranks observed: {0}" xml:space="preserve">
+    <value>Peringkat diamati: {0}</value>
+  </data>
+  <data name="Recorded beasts" xml:space="preserve">
+    <value>Binatang tercatat</value>
+  </data>
+  <data name="Refresh beasts" xml:space="preserve">
+    <value>Segarkan binatang</value>
+  </data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve">
+    <value>Penyegaran hanya tersedia untuk karakter yang dimainkan.</value>
+  </data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve">
+    <value>Peringkat dan EXP {0} binatang yang dimiliki telah disegarkan.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve">
+    <value>Menyegarkan peringkat dan EXP binatang ({0}/{1}).</value>
+  </data>
+  <data name="Removing {0}" xml:space="preserve">
+    <value>Menghapus {0}</value>
+  </data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve">
+    <value>Melanjutkan rute papan {0}/{1}</value>
+  </data>
+  <data name="Resuming the current Crucible board" xml:space="preserve">
+    <value>Melanjutkan papan Crucible saat ini</value>
+  </data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve">
+    <value>Rotation Solver Reborn dan BossModReborn harus sama-sama dimuat.</value>
+  </data>
+  <data name="Run actions" xml:space="preserve">
+    <value>Tindakan proses</value>
+  </data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve">
+    <value>Jalankan paling banyak {0} papan per pemicu. Latihan yang belum selesai dilanjutkan pada pemicu berikutnya yang memenuhi syarat.</value>
+  </data>
+  <data name="Run task now" xml:space="preserve">
+    <value>Jalankan tugas sekarang</value>
+  </data>
+  <data name="Run weeklies now" xml:space="preserve">
+    <value>Jalankan tantangan mingguan sekarang</value>
+  </data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Menjalankan papan yang memenuhi syarat dan belum selesai. Entri terkunci atau terhalang perlengkapan tetap belum selesai.</value>
+  </data>
+  <data name="Saved data for {0}" xml:space="preserve">
+    <value>Data tersimpan untuk {0}</value>
+  </data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve">
+    <value>Disimpan terpisah dari pengaturan tugas VMX.</value>
+  </data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve">
+    <value>Pengaturan tugas terjadwal untuk karakter ini. Disimpan terpisah dari proses manual.</value>
+  </data>
+  <data name="Settings saved automatically" xml:space="preserve">
+    <value>Pengaturan disimpan otomatis</value>
+  </data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve">
+    <value>Digunakan bersama oleh proses manual dan terjadwal karakter ini.</value>
+  </data>
+  <data name="Shop done, {0} coins left" xml:space="preserve">
+    <value>Belanja selesai, tersisa {0} koin</value>
+  </data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve">
+    <value>Aturan belanja, istirahat, dan penyembuhan ada di Persediaan.</value>
+  </data>
+  <data name="Smaller training team" xml:space="preserve">
+    <value>Tim latihan lebih kecil</value>
+  </data>
+  <data name="Soul Survivor I" xml:space="preserve">
+    <value>Penyintas Jiwa I</value>
+  </data>
+  <data name="Soul Survivor II" xml:space="preserve">
+    <value>Penyintas Jiwa II</value>
+  </data>
+  <data name="Soul Survivor III" xml:space="preserve">
+    <value>Penyintas Jiwa III</value>
+  </data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve">
+    <value>Dihentikan; pemulihan pertempuran tertunda: {0}</value>
+  </data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve">
+    <value>Dihentikan; menunggu bestiari mandiri ditutup. Tutup secara manual jika perlu.</value>
+  </data>
+  <data name="Strongest available" xml:space="preserve">
+    <value>Terkuat yang tersedia</value>
+  </data>
+  <data name="Taking {0}" xml:space="preserve">
+    <value>Mengambil {0}</value>
+  </data>
+  <data name="Team method" xml:space="preserve">
+    <value>Metode tim</value>
+  </data>
+  <data name="The Crucible route has no actions" xml:space="preserve">
+    <value>Rute Crucible tidak memiliki tindakan</value>
+  </data>
+  <data name="The Crucible route is missing" xml:space="preserve">
+    <value>Rute Crucible tidak ditemukan</value>
+  </data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve">
+    <value>Bestiari tidak tertutup setelah penyegaran binatang.</value>
+  </data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve">
+    <value>Bestiari tidak menampilkan peringkat dan EXP binatang yang diminta; pengamatan sebagian tetap disimpan.</value>
+  </data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve">
+    <value>Halaman bestiari tidak stabil setelah penyegaran.</value>
+  </data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve">
+    <value>Penyegaran bestiari tidak selesai dalam lima menit; pengamatan sebagian tetap disimpan.</value>
+  </data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve">
+    <value>Bestiari mengembalikan peringkat lebih rendah dari yang tercatat; penyegaran dihentikan tanpa mengganti pengamatan tersebut.</value>
+  </data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve">
+    <value>Hasil papan tidak memberikan peringkat dan EXP terbaru untuk tim yang berpartisipasi.</value>
+  </data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve">
+    <value>Pilihan bestiari awal tidak dapat dipulihkan.</value>
+  </data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve">
+    <value>Binatang yang diminta tidak dapat dipilih di bestiari mandiri.</value>
+  </data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve">
+    <value>Bestiari mandiri tidak siap.</value>
+  </data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve">
+    <value>Bestiari mandiri tidak tersedia.</value>
+  </data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
+    <value>Urutan dan pemblokiran ini berlaku untuk pembelian, pilihan harta, dan penggunaan item.</value>
+  </data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve">
+    <value>Proses ini: {0}/{1} papan</value>
+  </data>
+  <data name="Three strong fighters + trainees" xml:space="preserve">
+    <value>Tiga petarung kuat + binatang latihan</value>
+  </data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve">
+    <value>Tiga binatang terkuat bertarung lebih dahulu, bersama hingga {0} binatang latihan. Bawa hingga {1} total, sisakan dua slot. Cadangan juga memperoleh EXP.</value>
+  </data>
+  <data name="Train a full team" xml:space="preserve">
+    <value>Latih tim penuh</value>
+  </data>
+  <data name="Train owned familiars" xml:space="preserve">
+    <value>Latih binatang yang dimiliki</value>
+  </data>
+  <data name="Train three at a time" xml:space="preserve">
+    <value>Latih tiga sekaligus</value>
+  </data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve">
+    <value>Melatih semua binatang yang dimiliki memerlukan metode tim latihan.</value>
+  </data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve">
+    <value>Batas latihan tercapai; binatang yang belum selesai akan diperiksa pada pemicu berikutnya.</value>
+  </data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve">
+    <value>Latihan belum selesai, tetapi kurang dari tiga binatang memenuhi syarat untuk membentuk tim latihan. Periksa pengecualian pilihan dan filter jenis.</value>
+  </data>
+  <data name="Training progress" xml:space="preserve">
+    <value>Progres latihan</value>
+  </data>
+  <data name="Training target: Rank {0}" xml:space="preserve">
+    <value>Target latihan: Peringkat {0}</value>
+  </data>
+  <data name="Unsupported Crucible board" xml:space="preserve">
+    <value>Papan Crucible tidak didukung</value>
+  </data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve">
+    <value>Kondisi rute Crucible tidak didukung</value>
+  </data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve">
+    <value>Tindakan rute khusus Crucible tidak didukung: {0}</value>
+  </data>
+  <data name="Up to {0} familiars" xml:space="preserve">
+    <value>Hingga {0} binatang</value>
+  </data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve">
+    <value>Gunakan hanya BossModReborn untuk Pawang binatang; kedua penyedia BossMod berbagi nama IPC.</value>
+  </data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve">
+    <value>Menggunakan metode tim terjadwal, tingkat kesulitan tersimpan, dan persediaan bersama.</value>
+  </data>
+  <data name="Using {0} at {1}" xml:space="preserve">
+    <value>Menggunakan {0} pada {1}</value>
+  </data>
+  <data name="VMX Schedule" xml:space="preserve">
+    <value>Jadwal VMX</value>
+  </data>
+  <data name="Viewing another character · automation not started" xml:space="preserve">
+    <value>Melihat karakter lain · otomatisasi belum dimulai</value>
+  </data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve">
+    <value>Tunggu hingga karakter saat ini tidak sibuk sebelum menyegarkan binatang.</value>
+  </data>
+  <data name="Wait until the current character is ready." xml:space="preserve">
+    <value>Tunggu hingga karakter saat ini siap.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve">
+    <value>Status Challenge Log mingguan tersedia untuk karakter yang dimainkan.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve">
+    <value>Status Challenge Log mingguan tersedia untuk karakter yang dimainkan. Pengaturan jadwal tersimpan tetap dapat diedit.</value>
+  </data>
+  <data name="Weekly Challenge Log task" xml:space="preserve">
+    <value>Tugas Challenge Log mingguan</value>
+  </data>
+  <data name="Weekly challenge objectives" xml:space="preserve">
+    <value>Sasaran tantangan mingguan</value>
+  </data>
+  <data name="Weekly progress" xml:space="preserve">
+    <value>Progres mingguan</value>
+  </data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve">
+    <value>Saat hanya tersisa satu atau dua binatang latihan, tambahkan petarung terlatih secukupnya untuk mencapai tiga.</value>
+  </data>
+  <data name="Wrong character" xml:space="preserve">
+    <value>Karakter salah</value>
+  </data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve">
+    <value>Karakter salah. Anda dapat mengedit profil ini, tetapi beralihlah ke karakter tersebut sebelum memulai otomatisasi.</value>
+  </data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve">
+    <value>Anda sedang melihat {0}, tetapi memainkan {1}. Pilih karakter saat ini atau masuk sebagai karakter yang dilihat sebelum memulai otomatisasi.</value>
+  </data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve">
+    <value>{0} memenuhi syarat latihan · {1} dikecualikan · {2} peringkat tidak diketahui</value>
+  </data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve">
+    <value>{0}/{1} pada Peringkat {2}</value>
+  </data>
+  <data name="{0}/{1} complete" xml:space="preserve">
+    <value>{0}/{1} selesai</value>
+  </data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>Tidak cukup pendamping yang memenuhi syarat dengan peringkat tercatat. Peringkat belum diketahui: {0}.</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>Pilihan kustom tidak dapat membentuk tim untuk masuk. Pendamping yang tidak dimiliki atau dikecualikan: {0}.</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>Tutup bestiari yang sudah terbuka sebelum menyegarkan binatang.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>Menyegarkan peringkat dan EXP binatang ({0}/{1}); halaman {2}/{3}.</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>Penyegaran binatang belum lengkap: {0}/{1} diamati; belum terbaca: {2}. {3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>Keluar dari tugas saat ini sebelum memulai Pawang binatang.</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>Memulihkan bestiari setelah penyegaran.</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>Menunggu data {0}.</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>Memeriksa ulang {0}; menunggu kontrol native yang valid.</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>Papan selesai; peringkat dan EXP makhluk masih belum dikonfirmasi.</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>Dihentikan; pembersihan native masih belum dikonfirmasi: {0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>Memeriksa ulang proses masuk Crucible saat ini.</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>Mencoba lagi dalam lima detik: {0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>Putaran {0}/{1}</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>{0}/{1} putaran selesai</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>Memeriksa hewan baru</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>{0}/{1} terbaca</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>Tersisa {0}</value></data>
+  <data name="Fighting" xml:space="preserve"><value>Bertarung</value></data>
+  <data name="Recovering" xml:space="preserve"><value>Memulihkan</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>Menyelesaikan papan</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>Menyiapkan tim</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>Lanjutkan</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>Perubahan jadwal berlaku pada mulai berikutnya; sesi saat ini tetap memakai pengaturannya.</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>Selalu keluar otomatis dari papan yang selesai.</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>Perintah setelah selesai (opsional)</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>Kosongkan untuk tidak melakukan apa pun. Dijalankan sekali setelah rencana selesai, di luar duty.</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>Papan mingguan</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>Gunakan papan yang terbuka secara otomatis.</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>Gunakan papan yang terbuka</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>Papan yang terbuka dipilih saat karakter ini dimainkan. Pilih papan di bawah untuk menyimpan pilihan tetap.</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>Tidak ada papan mingguan yang dipilih.</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Menjalankan papan terpilih yang belum selesai. Papan terkunci atau yang belum memenuhi syarat perlengkapan tetap belum selesai.</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>Tantangan mingguan terpilih telah selesai.</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>Tantangan mingguan terpilih selesai: {0}/{1}.</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>Tantangan mingguan terpilih yang memenuhi syarat telah selesai. Masih ada papan terkunci atau yang belum memenuhi syarat perlengkapan.</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>Papan mingguan saat ini tidak dipilih.</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>Perintah setelah selesai gagal: {0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>Selesaikan setiap tantangan Beastmaster terpilih yang memenuhi syarat satu kali.</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>Perintah setelah selesai harus berupa satu perintah slash.</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>Perintah setelah selesai tidak dapat dikirim; tidak akan diulang.</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>Perintah setelah selesai dikirim.</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>Perintah setelah selesai dilewati karena penyelesaian Crewcible tidak dapat disimpan.</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>Perintah setelah selesai dilewati karena sesi yang selesai bukan lagi sesi saat ini.</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>Beastmaster dinonaktifkan untuk karakter ini.</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>Tantangan mingguan Beastmaster dinonaktifkan untuk karakter ini.</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>Beastmaster belum waktunya sampai {0}.</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>Tantangan mingguan Beastmaster belum waktunya sampai {0}.</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Berhenti setelah kalah atau selesai berikutnya</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>Batalkan berhenti setelah hasil berikutnya</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Sekali saja: berhenti di dalam duty saat kalah; ambil hadiah dan keluar setelah selesai.</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Akan berhenti setelah kalah atau selesai berikutnya.</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Berhenti setelah kalah; tetap di dalam Crucible.</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Berhenti setelah selesai; sudah keluar dari Crucible.</value></data>
 </root>

@@ -64,9 +64,9 @@ Main's **Run due tasks on a timer** is saved for the current runtime account and
 
 Every per-character `Enable*` feature has one explicit owner. The Task Order tab contains only the 18 engine-dispatched tasks and shows their catalog cadence/ownership metadata. Existing custom order and Before-AR/After-AR phase choices are retained during normalization.
 
-Chocobo Racing defaults to **Always Race**, which preserves the existing fail-open V1 Choke-abo guard and makes no V2 calls. **Target Pedigree** adds per-character target pedigree G2-G9, retirement rank 40-50, and preferred feed grade 1-3. It validates strict Content-ID-bound V2 status, invokes Ensure only at the real race-start boundary and after each completed race, waits while Choke-abo owns an immediate game action, and yields other VERMAXION tasks with a distinct deferred result at stable breeding waits or blocks. Deferred work records neither completion nor failure; only a completed configured daily race batch writes the existing timestamps. Disabling target racing, changing to Always Race, global stop, and plugin disposal request a best-effort safe-boundary pause.
+Chocobo Racing defaults to **Always Race**, using the configured daily race count. **Target Pedigree** uses the current Choke-abo V3 workflow for pedigree G2-G9 and G9 ability or colour offspring goals. Choose feed grade 1-3, feeding policy, gil/MGP reserves and owned parents or NPC covering permits. Intermediate racers and breeding parents retire at racing rank40; ordinary pedigree progression retains the selected target to rank50. Pending actions are verified before advancing, and covering waits yield to other work. Pause/Resume/Stop control continuation; normal user runs have no racing time cap.
 
-Stage 1 intentionally leaves Choke-abo's retirement, covering, fledgling-selector, and adoption actions capture-blocked. Use Choke-abo's `/chokeabo dpopup` recorder and supply its four generated capture files before treating the target cycle as complete or live-accepted.
+Choke-abo performs verified retirement, owned-parent or permit covering, offspring collection and registration. VERMAXION owns progression goals, reserves and feeding policy through V3 IPC, preserving Pause/Resume/Stop and pending-action evidence across reloads. G9 offspring production is implemented; final colour/ability rounds and collection-only pause acceptance remain in progress.
 
 - **Ordered engine tasks:** Run through the configured task order. Retainer Equipping runs Before AR by default and is fully registered alongside Gear Updater, Highest Combat Job, Current Job Equipment, Seasonal Gear, Minion Roulette, and the existing tasks.
 - **Misc Commands hook:** Runs once at the beginning of an applicable After-AR or manual engine run, including when it is the only work. It never arms a Before-AR pass by itself.
@@ -151,6 +151,8 @@ Fish collection separates **Targets**, **Characters**, **Supplies** and **Alerts
 | `/vmx run` | Manual trigger |
 | `/vmx cancel` | Cancel current run |
 | `/vmx config` | Open config window |
+| `/vmx b` or `/vmx beast` | Open Beastmaster run setup, beasts and supplies |
+| `/vmx b mini` or `/vmx beast mini` | Open the Beastmaster mini monitor with the same run controls |
 | `/vmx chocobo settings` | Open Chocobo Racing settings in the selected editing scope |
 | `/vmx debug` | Select one manual task to attempt after the next plugin reload |
 

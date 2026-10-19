@@ -8,6 +8,15 @@ namespace VERMAXION.Models;
 [Serializable]
 public class CharacterConfig
 {
+    public Beastmaster.BeastmasterCharacterData Beastmaster { get; set; } = new();
+    public bool EnableBeastmaster { get; set; }
+    public bool EnableBeastmasterWeekly { get; set; }
+    public Beastmaster.BeastmasterTaskFrequency BeastmasterFrequency { get; set; } = global::VERMAXION.Beastmaster.BeastmasterTaskFrequency.Daily;
+    public Beastmaster.BeastmasterTaskFrequency BeastmasterWeeklyFrequency { get; set; } = global::VERMAXION.Beastmaster.BeastmasterTaskFrequency.Weekly;
+    public DateTime BeastmasterLastCompleted { get; set; }
+    public DateTime BeastmasterNextReset { get; set; }
+    public DateTime BeastmasterWeeklyLastCompleted { get; set; }
+    public DateTime BeastmasterWeeklyNextReset { get; set; }
     public bool FishCollectionSelected { get; set; }
     public FisherObservation? FisherObservation { get; set; }
     // --- Feature Toggles ---
@@ -217,6 +226,32 @@ public class CharacterConfig
         JumboCactpotUnclaimedTickets = 0,
     };
 
+    public void CopyBeastmasterSettingsFrom(CharacterConfig source)
+    {
+        EnableBeastmaster = source.EnableBeastmaster;
+        EnableBeastmasterWeekly = source.EnableBeastmasterWeekly;
+        if (BeastmasterFrequency != source.BeastmasterFrequency) ResetBeastmasterState();
+        if (BeastmasterWeeklyFrequency != source.BeastmasterWeeklyFrequency) ResetBeastmasterWeeklyState();
+        BeastmasterFrequency = source.BeastmasterFrequency;
+        BeastmasterWeeklyFrequency = source.BeastmasterWeeklyFrequency;
+        // Keep the observation object: an active run may retain this exact instance.
+        Beastmaster ??= new();
+        Beastmaster.ManualSettings = source.Beastmaster?.ManualSettings?.Clone();
+        Beastmaster.ScheduledSetup = source.Beastmaster?.ScheduledSetup?.Clone();
+    }
+
+    public void ResetBeastmasterState()
+    {
+        BeastmasterLastCompleted = DateTime.MinValue;
+        BeastmasterNextReset = DateTime.MinValue;
+    }
+
+    public void ResetBeastmasterWeeklyState()
+    {
+        BeastmasterWeeklyLastCompleted = DateTime.MinValue;
+        BeastmasterWeeklyNextReset = DateTime.MinValue;
+    }
+
     public void CopyVerminionSettingsFrom(CharacterConfig source)
     {
         EnableVerminionQueue = source.EnableVerminionQueue;
@@ -360,12 +395,23 @@ public class CharacterConfig
         ResetEvercoldAdventurerActivityState();
         ResetFCBuffState();
         ResetRefillFromListingsState();
+        ResetBeastmasterState();
+        ResetBeastmasterWeeklyState();
     }
 
     public CharacterConfig Clone()
     {
         return new CharacterConfig
         {
+            Beastmaster = Beastmaster?.Clone() ?? new(),
+            EnableBeastmaster = EnableBeastmaster,
+            EnableBeastmasterWeekly = EnableBeastmasterWeekly,
+            BeastmasterFrequency = BeastmasterFrequency,
+            BeastmasterWeeklyFrequency = BeastmasterWeeklyFrequency,
+            BeastmasterLastCompleted = BeastmasterLastCompleted,
+            BeastmasterNextReset = BeastmasterNextReset,
+            BeastmasterWeeklyLastCompleted = BeastmasterWeeklyLastCompleted,
+            BeastmasterWeeklyNextReset = BeastmasterWeeklyNextReset,
             FishCollectionSelected = FishCollectionSelected,
             FisherObservation = FisherObservation,
             EnableVerminionQueue = EnableVerminionQueue,

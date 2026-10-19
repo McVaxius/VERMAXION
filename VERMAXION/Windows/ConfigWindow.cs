@@ -11,6 +11,7 @@ using Lumina.Excel.Sheets;
 using VERMAXION.Models;
 using VERMAXION.Services;
 using VERMAXION.CustomDeliveries;
+using VERMAXION.Beastmaster;
 
 namespace VERMAXION.Windows;
 
@@ -120,7 +121,8 @@ public class ConfigWindow : Window, IDisposable
         AutomationCatalog.CustomDeliveries or AutomationCatalog.ChocoboStables or AutomationCatalog.RegisterRegistrables => ConfigurationSection.Weekly,
         AutomationCatalog.MiniCactpot or AutomationCatalog.ChocoboRacing or AutomationCatalog.AlliedSociety or
         AutomationCatalog.LootGoblinMapGather => ConfigurationSection.Daily,
-        AutomationCatalog.RefillListings or AutomationCatalog.ReturnBeforeNag or AutomationCatalog.NagYourMom or
+        AutomationCatalog.RefillListings or AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly or
+        AutomationCatalog.ReturnBeforeNag or AutomationCatalog.NagYourMom or
         AutomationCatalog.NagYourDad => ConfigurationSection.VariableTime,
         AutomationCatalog.EvercoldAdventurerActivity => ConfigurationSection.Wip,
         _ => ConfigurationSection.EveryAr,
@@ -1215,7 +1217,7 @@ public class ConfigWindow : Window, IDisposable
                 UIConstants.SameLineIfFits("Send now##MiscCmdConfig");
                 if (UIConstants.Button("Send now##MiscCmdConfig"))
                 {
-                    plugin.Engine.SendRunShutdownCommandBundle();
+                    plugin.RunDashboardAction(plugin.Engine.SendRunShutdownCommandBundle);
                 }
                 ImGui.SameLine();
                 UiGui.TextDisabled("(?)");
@@ -2145,7 +2147,11 @@ public class ConfigWindow : Window, IDisposable
                             (source, target) => target.ChocoboTargetPedigree = source.ChocoboTargetPedigree);
                         ImGui.EndDisabled();
 
-                        UiGui.TextDisabled("Intermediate chocobos retire at racing rank 40; retain the target pedigree to racing rank 50.");
+                        UiGui.TextDisabled(cc.ChocoboBreedingGoal != ChocoboBreedingGoal.ReachPedigree
+                            ? "Matching offspring stay unregistered. A matching G9 racer retires at rank 40 to become breeding stock."
+                            : cc.ChocoboBreedingMode == ChocoboBreedingMode.NpcPermits && cc.ChocoboProduceCounterpart
+                                ? "Raise the missing counterpart to racing rank 40 for breeding."
+                                : "Intermediate chocobos retire at racing rank 40; retain the target pedigree to racing rank 50.");
 
                         var breedingMode = (int)cc.ChocoboBreedingMode;
                         if (UIConstants.Combo("Breeding mode", ref breedingMode, "Owned parents\0NPC covering permits\0"))
@@ -2165,7 +2171,7 @@ public class ConfigWindow : Window, IDisposable
                                 changed = true;
                             }
                             UiGui.TextWrapped(cc.ChocoboProduceCounterpart
-                                ? "Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply."
+                                ? "Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply."
                                 : "Use the highest useful retained parent to advance by one pedigree.");
                         }
                         var feedPolicy = (int)cc.ChocoboFeedPolicy;
@@ -2358,6 +2364,67 @@ public class ConfigWindow : Window, IDisposable
 
         if (BeginConfigurationSection(UIConstants.ConfigLabels.VariableTimeTasks, ConfigurationSection.VariableTime))
         {
+            if (selectedAutomationId is AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly)
+            {
+                var weekly = selectedAutomationId == AutomationCatalog.BeastmasterWeekly;
+                var taskEnabled = weekly ? cc.EnableBeastmasterWeekly : cc.EnableBeastmaster;
+                if (UIConstants.Checkbox(weekly ? "Enable Beastmaster weeklies" : "Enable Beastmaster training", ref taskEnabled))
+                {
+                    if (weekly) cc.EnableBeastmasterWeekly = taskEnabled;
+                    else cc.EnableBeastmaster = taskEnabled;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, selectedAutomationId + "Enabled", "Beastmaster scheduling",
+                    (source, target) =>
+                    {
+                        if (weekly) target.EnableBeastmasterWeekly = source.EnableBeastmasterWeekly;
+                        else target.EnableBeastmaster = source.EnableBeastmaster;
+                    });
+
+                var frequency = weekly ? cc.BeastmasterWeeklyFrequency : cc.BeastmasterFrequency;
+                if (UIConstants.BeginCombo("Frequency##BeastmasterFrequency", frequency == BeastmasterTaskFrequency.EveryAR ? "Every AR" : frequency.ToString()))
+                {
+                    foreach (var option in Enum.GetValues<BeastmasterTaskFrequency>())
+                    {
+                        if (UiGui.Selectable(option == BeastmasterTaskFrequency.EveryAR ? "Every AR" : option.ToString(), option == frequency))
+                        {
+                            if (weekly)
+                            {
+                                cc.BeastmasterWeeklyFrequency = option;
+                                cc.BeastmasterWeeklyLastCompleted = cc.BeastmasterWeeklyNextReset = DateTime.MinValue;
+                            }
+                            else
+                            {
+                                cc.BeastmasterFrequency = option;
+                                cc.BeastmasterLastCompleted = cc.BeastmasterNextReset = DateTime.MinValue;
+                            }
+                            changed = true;
+                        }
+                    }
+                    ImGui.EndCombo();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, selectedAutomationId + "Frequency", "Beastmaster frequency",
+                    (source, target) =>
+                    {
+                        if (weekly && target.BeastmasterWeeklyFrequency != source.BeastmasterWeeklyFrequency)
+                        {
+                            target.BeastmasterWeeklyFrequency = source.BeastmasterWeeklyFrequency;
+                            target.BeastmasterWeeklyLastCompleted = target.BeastmasterWeeklyNextReset = DateTime.MinValue;
+                        }
+                        else if (!weekly && target.BeastmasterFrequency != source.BeastmasterFrequency)
+                        {
+                            target.BeastmasterFrequency = source.BeastmasterFrequency;
+                            target.BeastmasterLastCompleted = target.BeastmasterNextReset = DateTime.MinValue;
+                        }
+                    });
+                UiGui.TextWrapped(weekly
+                    ? "Completes missing eligible native Challenge Log objectives independently of ordinary training."
+                    : "Runs the scheduled fixed-run or conditional training setup at normal VMX opportunities.");
+                UiGui.TextWrapped("Configure the run setup and training targets in Beastmaster VMX Schedule.");
+                if (UIConstants.Button("Open VMX Schedule##BeastmasterSettings"))
+                    plugin.BeastmasterWindow.OpenSchedule(weekly);
+            }
+
             if (selectedAutomationId == AutomationCatalog.RefillListings)
             {
                 var refillListings = cc.EnableRefillFromListings;
@@ -3759,6 +3826,7 @@ public class ConfigWindow : Window, IDisposable
                 changed = true;
             }
             UiGui.TextWrapped("Accept any selected colour. The quantity is a total across the selected colours.");
+            UiGui.TextWrapped("Offspring inherit one parent's colour. A suitable G9 parent must already have a selected colour.");
             UIConstants.SetNextItemWidth(280f * UIConstants.Scale);
             UiGui.InputTextWithHint("##ChocoboColourSearch", "Find a colour", ref chocoboColourSearch, 80);
             if (ImGui.BeginChild("AcceptableChocoboColours", new Vector2(0, 190), true))

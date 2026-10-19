@@ -1,0 +1,467 @@
+// Adapted from erdelf/AutoDuty, commit 7e0ede4be688980d217faf6889ffdac53e18e30f. Private local port.
+using ECommons.GameHelpers;
+using Dalamud.Memory;
+using ECommons.DalamudServices;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Component.GUI;
+
+namespace VERMAXION.Beastmaster
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Globalization;
+    using System.Linq;
+    using System.Text.RegularExpressions;
+    using ECommons;
+    using ECommons.StringHelpers;
+    using ECommons.UIHelpers;
+    using VERMAXION.Beastmaster.Readers;
+    
+
+    internal static unsafe class CrucibleUi
+    {
+        public const string TeamWindow           = "XBMPetParty";
+        public const string BestiaryWindow       = "XBMMonsterNotebook";
+        public const string BestiaryWindowFilter = "XBMMonsterNotebookFilterSetting";
+        public const string BoardList            = "XBMStageList";
+        public const string BoardLayout          = "XBMStageDetailList";
+        public const string LootWindow           = "XBMContentsBooty";
+        public const string TreasureWindow       = "XBMContentsTreasure";
+        public const string ResultWindow         = "XBMResult";
+        public const string ShopWindow           = "XBMContentsItemShop";
+        public const string YesNo                = "SelectYesno";
+        public const string ContextMenu          = "ContextMenu";
+        public const string MainHud              = "XBMContentsMainHUD";
+
+        public const int BestiaryPageSize = 25;
+
+        private const uint TeamList = 11;
+        
+        public static AtkUnitBase* Ready(string name)
+        {
+            AtkUnitBase* addon = (AtkUnitBase*)Svc.GameGui.GetAddonByName(name).Address;
+            return addon != null && addon->IsVisible && addon->IsReady ? addon : null;
+        }
+
+        public static bool IsOpen(string name) => Ready(name) != null;
+
+        public static bool IsVisible(string name)
+        {
+            AtkUnitBase* addon = (AtkUnitBase*)Svc.GameGui.GetAddonByName(name).Address;
+            return addon != null && addon->IsVisible;
+        }
+
+        public static bool TryReady(string name, out AtkUnitBase* addon)
+        {
+            addon = Ready(name);
+            return addon != null;
+        }
+
+        public static bool TryPrompt(uint textRow, out AtkUnitBase* prompt, bool finalLineOnly = false)
+        {
+            if (!TryReady(YesNo, out prompt)) return false;
+            var node = ((AddonSelectYesno*)prompt)->PromptText;
+            if (node == null || node->NodeText.StringPtr.Value == null) return false;
+            var actual = MemoryHelper.ReadSeStringNullTerminated((nint)node->NodeText.StringPtr.Value).TextValue.Trim();
+            var expected = Svc.Data.GetExcelSheet<Lumina.Excel.Sheets.Addon>().TryGetRow(textRow, out var row)
+                ? row.Text.ExtractText().Trim() : "";
+            if (textRow == 17787 && finalLineOnly) return BeastmasterEntryPrompt.Matches(actual, expected);
+            if (finalLineOnly)
+            {
+                actual = actual[(actual.LastIndexOf('\n') + 1)..].Trim();
+                expected = expected[(expected.LastIndexOf('\n') + 1)..].Trim();
+            }
+            return expected.Length > 0 && string.Equals(actual, expected, StringComparison.Ordinal);
+        }
+
+        public static string PromptText(AtkUnitBase* prompt)
+        {
+            var node = ((AddonSelectYesno*)prompt)->PromptText;
+            return node == null || node->NodeText.StringPtr.Value == null ? string.Empty : MemoryHelper.ReadSeStringNullTerminated((nint)node->NodeText.StringPtr.Value).TextValue.Trim();
+        }
+
+        public static bool ClickButton(AtkUnitBase* addon, uint nodeId)
+        {
+            AtkResNode*       node   = addon->UldManager.SearchNodeById(nodeId);
+            AtkComponentNode* button = node == null ? null : node->GetAsAtkComponentNode();
+            if (button == null)
+            {
+                Svc.Log.Warning($"[Crucible] {addon->NameString} has no button node {nodeId}");
+                return false;
+            }
+
+            AtkEvent* evt = button->AtkResNode.AtkEventManager.Event;
+            while (evt != null && evt->State.EventType != AtkEventType.ButtonClick)
+                evt = evt->NextEvent;
+
+            if (evt == null)
+            {
+                Svc.Log.Warning($"[Crucible] {addon->NameString} button {nodeId} has no click event");
+                return false;
+            }
+
+            Svc.Log.Debug($"[Crucible] {addon->NameString} click button {nodeId} (param {evt->Param})");
+            addon->ReceiveEvent(evt->State.EventType, (int)evt->Param, evt);
+            return true;
+        }
+
+        public static bool ClickEvent(AtkUnitBase* addon, AtkEventType type, uint param)
+        {
+            AtkEvent* evt = FindEvent(&addon->UldManager, type, param, 0);
+            if (evt == null)
+            {
+                Svc.Log.Warning($"[Crucible] {addon->NameString} has no {type} event with param {param}");
+                return false;
+            }
+
+            Svc.Log.Debug($"[Crucible] {addon->NameString} {type} (param {param})");
+            AtkEventData data = new();
+            addon->ReceiveEvent(type, (int)param, evt, &data);
+            return true;
+        }
+
+        private static AtkEvent* FindEvent(AtkUldManager* uld, AtkEventType type, uint param, int depth)
+        {
+            if (depth > 6)
+                return null;
+
+            for (int i = 0; i < uld->NodeListCount; i++)
+            {
+                AtkResNode* node = uld->NodeList[i];
+                if (node == null || !node->IsVisible())
+                    continue;
+
+                for (AtkEvent* evt = node->AtkEventManager.Event; evt != null; evt = evt->NextEvent)
+                    if (evt->State.EventType == type && evt->Param == param)
+                        return evt;
+
+                AtkComponentNode* component = node->GetAsAtkComponentNode();
+                if (component == null || component->Component == null)
+                    continue;
+
+                AtkEvent* found = FindEvent(&component->Component->UldManager, type, param, depth + 1);
+                if (found != null)
+                    return found;
+            }
+
+            return null;
+        }
+
+        public static int ContextMenuOptionCount(AtkUnitBase* menu)
+        {
+            int count = 0;
+            for (int i = 0; i < menu->AtkValuesCount; i++)
+                if (menu->AtkValues[i].Type.ToString().Contains("String") && menu->AtkValues[i].GetValueAsString().Length > 0)
+                    count++;
+            return count;
+        }
+
+        public static int SelectStringIndex(AtkUnitBase* addon, params string[] contains)
+        {
+            AddonSelectString* select = (AddonSelectString*)addon;
+            ref PopupMenu      menu   = ref select->PopupMenu.PopupMenu;
+            if (menu.EntryNames == null)
+                return -1;
+
+            for (int i = 0; i < menu.EntryCount; i++)
+            {
+                if (menu.EntryNames[i].Value == null)
+                    continue;
+
+                string entry = MemoryHelper.ReadSeStringNullTerminated((nint)menu.EntryNames[i].Value).TextValue;
+                if (contains.Any(s => entry.Contains(s, StringComparison.OrdinalIgnoreCase)))
+                    return i;
+            }
+
+            return -1;
+        }
+
+        public readonly record struct ItemSlot(int Slot, uint Row, string Name);
+
+        public static int ShopCoins(AtkUnitBase* shop) =>
+            (int)new ReaderXBMContentsItemShop(shop).Coins;
+
+        public static List<ReaderXBMContentsItemShop.StockEntry> ShopStock(AtkUnitBase* shop) => 
+            new ReaderXBMContentsItemShop(shop).StockEntries;
+
+        public static uint[] ShopHeldItems(AtkUnitBase* shop) => 
+            new ReaderXBMContentsItemShop(shop).ItemEntriesValid.Select(ie => ie.Id).ToArray();
+
+        public static HashSet<uint> ShopOwnedGear(AtkUnitBase* shop) => 
+            new ReaderXBMContentsItemShop(shop).OwnedEntriesOwned.Select(ge => ge.Id).ToHashSet();
+
+        public static IEnumerable<uint> BestiaryShowing(AtkUnitBase* notebook)
+        {
+            ReaderXBMMonsterNotebook x = new(notebook);
+            return x.CurrentPageEntries.Select(m => m.Number);
+        }
+
+        public static bool BestiaryShows(AtkUnitBase* notebook, uint number)
+        {
+            ReaderXBMMonsterNotebook x = new(notebook);
+
+            foreach (ReaderXBMMonsterNotebook.MonsterEntry entry in x.CurrentPageEntries)
+                if (entry.Number == number)
+                    return true;
+
+            return false;
+        }
+
+        public static CrucibleFamiliar? BestiarySelected(AtkUnitBase* notebook)
+        {
+            ReaderXBMMonsterNotebook reader = new(notebook);
+
+            if (notebook->AtkValuesCount <= 273 || !reader.Selected)
+                return null;
+
+            uint number = reader.CurrentNumber;
+            int  rank   = reader.CurrentRank;
+            if (number == 0 || rank == 0)
+                return null;
+
+            return new CrucibleFamiliar(number)
+                   {
+                       Rank               = rank,
+                       Hp                 = reader.CurrentMaxHP,
+                       Exp                = reader.TryReadCurrentExperience(out var experience) ? experience.ToString() : string.Empty,
+                       Strength           = reader.CurrentStrength,
+                       PhysicalResistance = reader.CurrentPhysResistance,
+                       Constitution       = reader.CurrentConstitution,
+                       Intelligence       = reader.CurrentIntelligence,
+                       MagicResistance    = reader.CurrentMagicResistance,
+                   };
+        }
+
+        public static List<ReaderXBMPetParty.MonsterEntry>? Team(ReaderXBMPetParty? party = null)
+        {
+            if (party == null)
+            {
+                AtkUnitBase* addon = Ready(TeamWindow);
+                if (addon == null)
+                    return null;
+
+                party = new ReaderXBMPetParty(addon);
+            }
+
+            return party.TeamEntries;
+        }
+
+        public static bool TryRegistrationTeam(out AtkUnitBase* party, out List<ReaderXBMPetParty.MonsterEntry> rows)
+        {
+            party = Ready(TeamWindow);
+            rows = [];
+            if (party == null) return false;
+            if (party->AtkValues == null || party->AtkValuesCount <= 0)
+                throw new BeastmasterReadUnavailableException(TeamWindow, "the registration fields are not available");
+            if (!party->AtkValues[0].Bool) return false;
+            rows = new ReaderXBMPetParty(party).TeamEntries;
+            return true;
+        }
+
+        public static CrucibleFamiliar? FamiliarDetail(string window)
+        {
+            AtkUnitBase* addon = Ready(window);
+            if (addon == null)
+                return null;
+
+            AtkUldManager* uld  = &addon->UldManager;
+            string         name = Text(uld, 13);
+            string         hp   = Text(uld, 45);
+            if (name.Length == 0 || hp.Length == 0)
+                return null;
+
+            return new CrucibleFamiliar((uint)DigitParsers.Digits(Text(uld, 12)))
+                   {
+                       Rank               = DigitParsers.Digits(Text(uld, 40)),
+                       Hp                 = MaxOf(hp),
+                       Strength           = DigitParsers.Digits(ComponentText(uld, 47, 3)),
+                       PhysicalResistance = DigitParsers.Digits(ComponentText(uld, 48, 3)),
+                       Constitution       = DigitParsers.Digits(ComponentText(uld, 49, 3)),
+                       Intelligence       = DigitParsers.Digits(ComponentText(uld, 50, 3)),
+                       MagicResistance    = DigitParsers.Digits(ComponentText(uld, 51, 3)),
+                       Exp                = Text(uld, 42),
+                       //Element            = DigitParsers.LeadingGlyphs().Replace(Text(uld, 23), "")
+                   };
+        }
+
+        public static float ExpShare(string exp)
+        {
+            TryNumber(exp, out float total);
+            return total / 100f;
+            
+            static bool TryNumber(string text, out float value)
+            {
+                Match match = DigitParsers.GroupedNumber().Match(text);
+                value = 0;
+                return match.Success && float.TryParse(match.Value.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+            }
+        }
+
+        private static string AllText(AtkUldManager* uld)
+        {
+            List<string> parts = [];
+            for (int i = 0; i < uld->NodeListCount; i++)
+            {
+                AtkResNode* node = uld->NodeList[i];
+                if (node == null || !node->IsVisible())
+                    continue;
+
+                AtkTextNode* text = node->GetAsAtkTextNode();
+                if (text == null)
+                    continue;
+
+                string value = text->NodeText.ToString().Trim();
+                if (value.Length > 0)
+                    parts.Add(value);
+            }
+
+            return string.Join(" | ", parts);
+        }
+
+        private static string Text(AtkUldManager* uld, uint id, bool visibleOnly = false)
+        {
+            AtkResNode* node = uld->SearchNodeById(id);
+            if (node == null || (visibleOnly && !node->IsVisible()))
+                return "";
+
+            AtkTextNode* text = node->GetAsAtkTextNode();
+            return text == null ? "" : text->NodeText.ToString().Trim();
+        }
+
+        private static string ComponentText(AtkUldManager* uld, uint componentId, uint textId)
+        {
+            AtkResNode* node = uld->SearchNodeById(componentId);
+            if (node == null)
+                return "";
+
+            AtkComponentNode* componentNode = node->GetAsAtkComponentNode();
+            return componentNode == null || componentNode->Component == null ? "" : Text(&componentNode->Component->UldManager, textId);
+        }
+
+        private static uint AsUInt(AtkValue value) =>
+            value.Type.ToString() == "UInt" ? value.UInt : (uint)Math.Max(0, value.Int);
+
+        private static int CurrentOf(string fraction)
+        {
+            int slash = fraction.IndexOf('/');
+            return DigitParsers.Digits(slash >= 0 ? fraction[..slash] : fraction);
+        }
+
+        private static int MaxOf(string fraction)
+        {
+            int slash = fraction.LastIndexOf('/');
+            return DigitParsers.Digits(slash >= 0 ? fraction[(slash + 1)..] : fraction);
+        }
+
+        internal static class Screens
+        {
+            internal static class PetParty
+            {
+                private const uint RestOrReturnButton = 21;
+
+                public static int  GetTeamSize(AtkUnitBase*  party)          => (int) new ReaderXBMPetParty(party).TeamSize;
+                public static void Pick(AtkUnitBase*         party, int row) => BeastmasterAddon.FireCallBack(party, true, 1, row);
+                public static void OpenRowMenu(AtkUnitBase*  party, int row) => BeastmasterAddon.FireCallBack(party, true, 2, row);
+                public static void OpenBestiary(AtkUnitBase* party) => BeastmasterAddon.FireCallBack(party, true, 5);
+                public static void RestReturn(AtkUnitBase*   party) => BeastmasterAddon.FireCallBack(party, true, 4);
+                public static bool Rest(AtkUnitBase*         party) => ClickButton(party, RestOrReturnButton);
+                public static bool Return(AtkUnitBase*       party) => ClickButton(party, RestOrReturnButton);
+
+            }
+
+            internal static class StageList
+            {
+                public static void Highlight(AtkUnitBase* list, uint board) => BeastmasterAddon.FireCallBack(list, true, 2, (int)board);
+                public static void Open(AtkUnitBase*      list, uint board) => BeastmasterAddon.FireCallBack(list, true, 1, (int)board);
+            }
+
+            internal static class StageDetail
+            {
+                public static void SetDegree(AtkUnitBase* layout, CrucibleDegree degree) => BeastmasterAddon.FireCallBack(layout, true, 2, (int)degree);
+                public static void Confirm(AtkUnitBase*   layout) => BeastmasterAddon.FireCallBack(layout, true, 8);
+            }
+
+            internal static class Notebook
+            {
+                public static void Close(AtkUnitBase* notebook) => BeastmasterAddon.FireCallBack(notebook, true, 0);
+
+                public static void OpenFilter(AtkUnitBase* notebook) => BeastmasterAddon.FireCallBack(notebook, true, 2);
+
+                private const uint FirstEntryParam = 4;
+                public static void ShowPage(AtkUnitBase* notebook, uint page) => BeastmasterAddon.FireCallBack(notebook, true, 3, page);
+
+                public static bool PickEntry(AtkUnitBase* notebook, uint slotOnPage)
+                {
+                    if (slotOnPage >= ReaderXBMMonsterNotebook.EntryCountPerPage)
+                        return false;
+                    BeastmasterAddon.FireCallBack(notebook, true, 5, (int)slotOnPage);
+                    return ClickEvent(notebook, AtkEventType.MouseDown, FirstEntryParam + slotOnPage);
+                }
+            }
+
+            internal static class NotebookFilter
+            {
+                public static void ResetFilters(AtkUnitBase* filter) => BeastmasterAddon.FireCallBack(filter, true, 0u, string.Empty, 0u, 0u, 0u);
+            }
+
+            internal static class Menu
+            {
+                private const int RemoveAllOption = 2;
+
+                public static void ChooseFirst(AtkUnitBase*     menu) => BeastmasterAddon.FireCallBack(menu, true, 0, 0,               0);
+                public static void ChooseRemoveAll(AtkUnitBase* menu) => BeastmasterAddon.FireCallBack(menu, true, 0, RemoveAllOption, 0);
+                public static void Close(AtkUnitBase*           menu) => BeastmasterAddon.FireCallBack(menu, true, 0, -1,              0);
+            }
+
+            internal static class Booty
+            {
+                public static void Close(AtkUnitBase* loot)            => BeastmasterAddon.FireCallBack(loot, true, 0);
+                public static void TakeCoins(AtkUnitBase* loot)            => BeastmasterAddon.FireCallBack(loot, true, 3);
+                public static void Take(AtkUnitBase*      loot, int index) => BeastmasterAddon.FireCallBack(loot, true, 4, index);
+                public static bool TryReadTakeAll(AtkUnitBase* loot, out bool enabled)
+                {
+                    enabled = false;
+                    if (loot == null || !loot->IsReady || !loot->IsVisible) return false;
+                    var node = loot->UldManager.SearchNodeById(46);
+                    if (node == null || !node->IsVisible() || (ushort)node->Type < 1000) return false;
+                    var component = node->GetAsAtkComponentNode()->Component;
+                    if (component == null || component->GetComponentType() != ComponentType.Button) return false;
+                    enabled = ((AtkComponentButton*)component)->IsEnabled;
+                    return true;
+                }
+                public static bool TakeAll(AtkUnitBase* loot)
+                    => TryReadTakeAll(loot, out var enabled) && enabled &&
+                        Services.GameHelpers.TryClickNativeButton(LootWindow, label: null, observedNodeId: 46);
+            }
+
+            internal static class Treasure
+            {
+                public static void Close(AtkUnitBase* treasure) => BeastmasterAddon.FireCallBack(treasure, true, 0);
+                public static void Take(AtkUnitBase* treasure, uint nodeId) => BeastmasterAddon.FireCallBack(treasure, true, 2, nodeId);
+            }
+
+            internal static class Result
+            {
+                public static bool Continue(AtkUnitBase* result) => ClickButton(result, 61);
+            }
+
+            internal static class ItemShop
+            {
+                public static void Buy(AtkUnitBase* shop, int index) => BeastmasterAddon.FireCallBack(shop, true, 2, index);
+
+                public static bool Close(AtkUnitBase* shop) => ClickButton(shop, 40);
+            }
+
+            internal static class MainHud
+            {
+                public static void OpenItemMenu(AtkUnitBase* hud, int slot) => BeastmasterAddon.FireCallBack(hud, true, 6, slot);
+            }
+
+            internal static class Prompt
+            {
+                public static void Yes(AtkUnitBase* prompt) => new ECommons.UIHelpers.AddonMasterImplementations.AddonMaster.SelectYesno(prompt).Yes();
+                public static void No(AtkUnitBase* prompt) => new ECommons.UIHelpers.AddonMasterImplementations.AddonMaster.SelectYesno(prompt).No();
+            }
+        }
+    }
+}

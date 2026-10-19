@@ -1,6 +1,186 @@
+2026-10-18 - Crewcible weekly board choices and completion actions
+
+- Choose weekly boards per character in VMX Schedule. Defaults follow unlocked boards; explicit selections persist, and weekly entry, progress and completion use the selected boards while retaining native Challenge Log credit checks.
+- Always leave the Crucible after ordinary runs finish. Replace the exit checkbox with an optional completion slash command, saved independently for manual and scheduled setups and dispatched once after confirmed departure. Scheduled completion must save successfully before dispatch.
+- Keep VMX Schedule settings editable during a run. Saved edits apply to the next start; the current plan retains its copied settings and execution readiness checks.
+- Keep detailed Beastmaster activity, weekly progress and task readiness in Crewcible; main VMX task rows show brief activity/cadence summaries. Put the live status first in full and mini views, outside the three-line scrolling box that could hide it.
+- Add a one-time Stop after next wipe or clear action to full/mini run controls and titlebars. A wipe stops in duty; a clear collects rewards, exits and stops before another board. Cancelling, manual Stop, natural completion or a fresh run clears the request; ordinary Continue retains it. This operator stop does not send the completion command.
+- Preserve version 2.0.0.17; compiled marker vmx-crewcible-weeklies-outcome-controls-20261018-35. All 110 focused tests and fifteen locale catalogs passed. Final isolated build succeeded with zero errors and five inherited warnings. No vmx.bat, shared client build, reload or live automation; native acceptance remains pending.
+
+2026-10-18 - Remove automatic Crewcible halts and clarify run controls
+
+- Delete identity-loss and profile-rebinding Stops. Missing native identity preserves the run until the same character is readable; explicit current-character Start can rebind its profile. Same-character Continue retains counts, observed results, pending confirmations and purchase progress.
+- Remove standalone Crewcible AutoRetainer lease acquisition, release, busy probing and automatic ownership pauses. VMX scheduled tasks retain their existing AutoRetainer handling.
+- Keep owned scheduled Crewcible tasks through timer/session gaps, parent-engine profile/logout cancellation, watchdog timeouts and engine exceptions, using existing five-second recovery without cancellation or queue advancement. Preserve deliberate Pause and completion handling; explicit rebinding refreshes existing scheduler ownership metadata.
+- Use the same Start/Continue/Resume action in full/mini bodies and titlebars. Keep it visible on every tab, fold separate Resume into the primary action, and replace the titlebar triangle with a lightning bolt. Translate Continue across all fifteen catalogs.
+- Preserve version 2.0.0.17; marker vmx-crewcible-remove-auto-halts-20261018-33. All 103 focused tests and fifteen-language locale checks passed. Strict isolated compilation succeeded with zero errors and five inherited warnings; candidate marker/version verified and shared Debug DLL unchanged. No vmx.bat, shared client build, reload or live automation; native acceptance remains pending.
+
+2026-10-18 - Recheck Crewcible menus until native progression
+
+- Replace permanent submitted-window address latches with the existing five-second pacing for treasure selection/close, Take All, loot close, shop close and campsite Return. Reacquire the live window and reread reward availability, ownership and enabled controls before deciding again; retain purchase-attempt tracking and completed team selections. Empty treasure, campsite and feeding observations use existing five-second native Close/Return recovery instead of returning indefinitely.
+- Keep confirmation handling attached to the originating live menu, including delayed dialogs. Click enabled Yes with five-second pacing; remove the old three-second ownership cutoff and five-attempt No behavior. Confirmation submission also allows the parent time to settle. Stop clears intent, and Pause preserves remaining waits.
+- Preserve once-only board-result recording, the fast missing-only rank scan, titlebar controls and version 2.0.0.17. All 103 focused tests passed, including reused-address, exact retry-boundary and pause coverage. Marker vmx-crewcible-menu-progress-20261018-32. Authorized vmx.bat restore/build succeeded with zero errors and five inherited warnings; shared DLL marker -32 and unchanged version verified. Native menu acceptance remains unverified.
+
+2026-10-18 - Crewcible titlebar controls and readable run progress
+
+- Add native Start/Stop titlebar actions to full and mini Crewcible windows, using the existing manual handlers. Retain body controls, shared appearance/Krangle actions, stable window identities and current titlebar-status preferences.
+- Share run/board/phase status, completed-board totals, missing-scan progress, training targets/remaining beasts and existing weekly challenge data. Preserve final totals after Stop or completion; entry and scanning do not count as completed boards. Narrow titlebars shorten the visible caption to retain a numeric run counter; hover details retain the full window title and progress.
+- Keep goal progress visible outside the scroll-limited status box. Translate nine new labels/templates in all fifteen catalogs and keep invalid/unknown ranks separate from trained beasts.
+- Preserve version 2.0.0.17. All 102 focused tests and fifteen-language locale checks passed; isolated Debug/x64 build succeeded with zero errors and five inherited warnings. Native titlebar visual/click acceptance remains pending. Marker vmx-crewcible-titlebar-progress-20261018-30. No vmx.bat, shared client build, reload or automation dispatch.
+
+2026-10-18 - Restore the original fast Crewcible rank scan
+
+- Revert the automatic full-roster scanning introduced in -28, including its recovery and second-proof scan paths. Full Refresh remains an explicit manual action.
+- Restore Lauda's Bestiary dialogue and the original missing-record queue. Accept matching details immediately, retaining its 500 ms retry and 1.5 second unread limit; preserve the current exact-team validation and avoid the upstream PetParty-pointer defect.
+- Refresh ownership on an explicit outside-duty Start and run one missing-only pass. Automatic recovery retains that pass; completed training closes native registration and stops using known owned ranks rather than opening another full sweep. Preserve prior entry, result-exit and Stop fixes.
+- Version remains 2.0.0.17; isolated DLL marker vmx-crewcible-revert-start-scan-20261018-29 verified. All 95 focused tests passed; isolated Debug/x64 build succeeded with zero errors and five inherited warnings. No client build, reload or restart was performed for this scan correction. Native fast-scan acceptance is pending.
+
+2026-10-18 - Refresh Crewcible ownership and discover new trainees on Start (reverted)
+
+- Refresh native beast ownership when Start begins or restarts registration outside duty, including after recovery. Automatic recovery retains its current roster; existing entry prompts, queues and entered boards continue from their native state.
+- Read missing owned-beast ranks through the existing standalone bestiary before team selection. Share discovery with weekly preparation; retain partial-read details on the Beasts tab and allow a usable team to proceed without declaring unread beasts complete.
+- When no known beast remains below the training target, resolve unknown ranks and verify the whole owned roster. Newly discovered trainees continue into registration; confirmed completion closes native registration and stops without entering another board. Close a team-context notebook before the standalone read.
+- Keep invalid saved ranks from rejecting valid fresh observations. Preserve version 2.0.0.17. All 96 focused tests passed; authorized Z:\vmx.bat succeeded with zero errors and five inherited warnings. Shared Debug DLL marker vmx-crewcible-start-roster-20261018-28 verified. Native reload, new-catch selection and completed-target closure remain unverified.
+
+2026-10-18 - Resume open Crewcible registration on Start
+
+- Recognise Lauda's native registration screens as work already in progress. Allow their NPC interaction state through ordinary and weekly admission while retaining loaded-character, job, entry requirements, party, queue and competing-automation checks.
+- Resume the existing board/team flow before attempting movement toward Lauda. Retain team reconciliation, conditional training-completion proof, prior confirmation handling and completed-board exit retries.
+- When conditional training needs completion proof, close the existing registration and dialogue windows through their native close path before opening the standalone bestiary. Ordinary runs retain direct registration.
+- Preserve version 2.0.0.17. All 95 focused tests passed. The requested Z:\vmx.bat restore/build succeeded with zero errors and five inherited warnings; the shared Debug DLL contains marker vmx-crewcible-resume-registration-20261018-27. Native reload and registration acceptance remain unverified.
+
+2026-10-18 - Retry leaving a completed Crewcible board
+
+- Remove the permanent result-window submission latch. Retain recorded results and reacquire the existing native Leave control every five seconds until departure is observed; a dispatched click no longer prevents another exit attempt.
+- Handle a Yes/No opened by an owned result exit with the same five-second interval. Stop clears that exit intent, Pause retains its remaining wait, and disabling automatic exit still leaves the final board open as configured.
+- Handle a completed result before lingering team, shop or fight menus can starve it, while preserving loot collection priority. Leave other native action submission latches unchanged.
+- Account 1's 17:48:37 inspection confirms XBMResult was visible with automatic exit enabled in the saved manual setup. The capture has no result button IDs or enabled-state data, so the specific native click outcome remains unverified. All 95 existing focused tests passed. The isolated Debug/x64 build passed with zero errors and five inherited warnings; marker vmx-crewcible-result-exit-20261018-26. Version stays 2.0.0.17. Native exit acceptance remains pending; client builds remain user-owned.
+
+2026-10-18 - Accept an already-open Crewcible board confirmation
+
+- Recognise the complete board-entry question anywhere in the visible popup, ignoring case, Unicode whitespace and punctuation. Retain localized question matching and recognise the English question even when the text row is unavailable; unrelated confirmations keep their existing matching.
+- Let ordinary Start adopt an already-open matching popup and click Yes immediately. Handle matching confirmations during entry before idle/combat readiness or another duty-pop window can block them. Use the native Yes helper and existing five-second retries; explicit Stop cancels rather than accepting entry.
+- Leave an unowned board confirmation open during idle registration and disposal, so lifecycle cleanup cannot cancel it before Start adopts it. Owned work still receives its existing cleanup.
+- Keep version 2.0.0.17. All 95 focused tests passed, including the new board-prompt behavioral regression. Final isolated Debug/x64 build passed with zero errors and five inherited warnings; compiled marker is vmx-crewcible-board-confirm-20261018-25. The user owns client builds; no shared output or client action performed. Live popup acceptance remains unverified.
+
+2026-10-18 - Crewcible Start selects the logged-in character
+
+- Recognise a loaded character during combat, casting and occupied game screens. Keep login, loaded identity, home world, content ID and zone-transition checks. Background registration retains its existing stability wait; an explicit Start resolves a valid identity immediately.
+- Make Crewcible Start select the logged-in character's profile before launching its manual or scheduled setup, including weekly actions and the mini window. Browsing another saved profile no longer supplies execution settings or produces a false wrong-character block.
+- Display the live character identity with the existing Krangle setting while registration settles. Avoid automatically selecting an arbitrary saved character during logged-in registration; preserve offline browsing and editing.
+- Keep version 2.0.0.17. Isolated Debug/x64 build passed with zero errors and five inherited warnings; all 94 existing focused regressions passed. Reused captions validate in all fifteen catalogs. Shared output remains on -23; the staged -24 build has not been handed to clients, and native acceptance is pending.
+
+2026-10-18 - Beastmaster native screen recovery
+
+- Keep Start and Stop usable in the full and mini windows. Re-inspect an owned entry or already-entered board on Start, bypassing only Beastmaster's own active-work blockers and reusing its existing suppression ownership.
+- Replace terminal runtime failures with five-second recovery while preserving the selected plan. Recheck matching entry warnings and Commence every five seconds; manual Stop cancels the matching queue even after Commence, retries cancellation when needed and releases stale entry state after five seconds of observed native idle. Remove the obsolete pending-entry stopped message.
+- Local validation: 94 focused regressions passed; the isolated Debug build passes with zero errors and five inherited warnings. Shared-client handoff and native acceptance remain pending.
+- Guard Beastmaster native field bounds, types and list counts before reading team, bestiary, item, shop, treasure and result data. Temporary missing data no longer becomes a fatal out-of-range run failure.
+- Allow five seconds for incomplete screens, then reacquire the current window and use the established native recovery action where available. Keep submitted actions consumed while awaiting their native outcome; preserve team, queue and purchase checks.
+- Let completed boards continue when fresh beast rank/EXP cannot be read. Preserve known ranks, clear unconfirmed current EXP/observation freshness, and require a successful full observation before claiming the training goal complete. Keep weekly credit verification unchanged.
+- Save complete result observations before optional score/loot logging; missing optional details cannot block progression. Contain cleanup read failures without declaring restoration complete. Translate recovery messages in all fifteen locales. Version remains 2.0.0.17; native acceptance is pending.
+
+2026-10-18 - Shared Krangle, Crewcible navigation and native roster readiness
+
+- Use AethertekUI's standard Krangle titlebar action across VERMAXION windows, replacing the plugin's duplicate button. Retain the existing saved Krangle setting, localized On/Off tooltip and masking behavior. Version remains 2.0.0.17.
+- Add Crewcible beside the main navigation buttons, opening the same screen as /vmx b. Keep wrapping and translate the brand label in all fifteen catalogs.
+- Let Start open native registration when the ownership packet is still unavailable. Open the native team-picking bestiary once if needed to request ownership, wait within the existing team-setup lifecycle, then freeze ownership before selecting or changing the team. Missing early data no longer stops before the board opens.
+- Request automatic full reads only when known owned ranks suggest the training target is met. Unknown membership or ranks proceed to native team observation; successful fresh full coverage is still required to confirm all-owned completion.
+- Verification: shared library build/tests/consumer check passed (360 tests); VERMAXION build passed with five inherited warnings, 70 focused tests passed, and fifteen locale catalogs validate. Account 2 loaded marker vmx-crewcible-roster-ready-20261018-19 from the shared workspace DLL. Native Start and visual acceptance remain pending.
+
+2026-10-18 - Beastmaster saved reload actions and weekly task display
+
+- Keep saved Run##Beastmaster and Run##BeastmasterWeekly reload selections working after catalog integration. Resolve their dashboard rows without changing the saved selection or the existing manual action; new catalog selections keep their configured VMX task behavior.
+- Classify five completed native weekly objectives as Complete in the dashboard. Keep unknown native credit distinct from completion.
+- Stop sending positive entry confirmations after an observed user No, while retaining entry ownership until native cancellation settles.
+- Preserve version 2.0.0.17. Debug build passes with zero errors/five inherited warnings; 69 focused tests and six existing dashboard classification cases pass. Native weekly provenance and Account 1 acceptance remain unverified. No deployment or client action.
+
+2026-10-18 - Beastmaster direct startup and independent refresh
+
+- Remove the mandatory whole-bestiary read from ordinary and weekly Start, repeat runs and registration. Use live ownership plus the ranks needed by the chosen team; an unrelated unread beast no longer blocks a legal team. Custom teams do not need ranks for unrelated beasts.
+- Read the full frozen roster only when conditional training needs to confirm completion. Usable training teams proceed directly. Partial or old observations cannot finish the all-owned goal, and a zero-board check does not count as a completed board run.
+- Repair Refresh beasts to wait for real page data and confirmed page changes, visit each page once and retain successfully read ranks and EXP. Report unread names/numbers and reasons, preserve previous observations and native notebook state, and keep refresh cleanup separate from run failure.
+- Keep version 2.0.0.17, approved screens and fifty optimized splashes. Debug build passes with zero errors and five inherited warnings; all 67 focused tests pass. All fifteen locales validate. Account 1 native acceptance and weekly provenance remain unverified.
+
+2026-10-18 - Beastmaster profiles, native task scheduling and beast refresh
+
+- Give manual Run and VMX Schedule separate saved run setups for each character. Keep Beasts and Supplies shared, allow recorded characters to be viewed and edited offline, and warn before launching another character's automation.
+- Add ordinary Crewcible and Weekly Challenge Log tasks to VMX's catalog, task order and dashboard. Task Settings opens the dedicated VMX Schedule tab. Support fixed runs or training all owned beasts to the selected board's rank-sync target, bounded by the configured boards per trigger.
+- Add Refresh beasts and a lightweight ownership check when opening the full window outside duty. Explicitly read owned beasts' current ranks and EXP without changing their team or either saved run setup; keep unavailable and partially observed data distinct from confirmed progress.
+- Automatically accept recognized board-entry warnings for the requested entry and reconcile explicit manual cancellation so Stop can release settled ownership.
+- Add upper-right previous/next, Hide/Show and inline full-image controls, saving full and mini display preferences separately. Preserve fifty optimized runtime splashes and version 2.0.0.17.
+- Move the run controls beneath the splash so Start, Pause, Resume, Stop, Mini view and FULL STOP stay near the top. Add a shared titlebar Krangle toggle and mask Beastmaster character/account display labels using the existing saved privacy setting.
+- Keep an automatic ownership pause pending until owned movement settles and Resume actually succeeds; preserve an operator's Pause.
+- Local validation: Debug build passes with five inherited warnings; 50 focused tests pass, and all fifteen locale catalogs have matching keys/placeholders. Native weekly character/reset freshness and in-game acceptance remain unresolved; no release or deployment is claimed.
+
+2026-10-18 - Beastmaster mini window and fifty rotating splashes
+
+- Add ten new splash illustrations, including five Solution Nine scenes, for fifty total. Keep full-quality originals in code review and runtime JPEGs below 500 KB each at their original dimensions.
+- Change the splash every ten seconds and choose a different one whenever its window opens. Full and mini windows keep independent rotation state.
+- Open a separate Beastmaster monitor with `/vmx b mini` or `/vmx beast mini`, or the full window's Mini view button. Show the current board, run, route and status with the same guarded Start, Pause, Resume, Stop and FULL STOP controls, plus a Full window button.
+- Share AethertekUI appearance and compact settings, and translate the new labels in all fifteen catalogs. Opening either window starts no automation. Keep version 2.0.0.17; native UI acceptance remains pending.
+
+2026-10-18 - Engage live Crucible enemies before the first pull
+
+- Let nearby living, targetable hostiles and actual arena entry interrupt stale board movement/wait steps on every Crucible board. This fixes entering a fight before a board-arrival check completes, then remaining stuck with combat disabled.
+- Select the nearby hostile and enable RSR plus BMR melee movement before the game marks the player in combat. Remove the three-yard centre-distance requirement and avoid repeatedly toggling auto-attack after a pull request is accepted.
+- Keep the current encounter active through targetless phases and surviving enemies, then rejoin the route from the current board tile after victory. Preserve menus, pause, death/revival, Stop and version 2.0.0.17. Native acceptance remains pending.
+
+2026-10-18 - Beastmaster Start takes control and resumes an entered board
+
+- Fix Crucible stopping before its first action when RSR changes operating mode or has temporary IPC/targeting overrides. Start now takes control of the existing RSR/BMR runtime, sets the required combat or navigation state, and reasserts that state as the run progresses.
+- Handle re-enabled BMR AI and changed movement presets automatically. Preserve the single pre-Start snapshot and restore its RSR mode, temporary overrides, AI state, follow target and preset on Stop or completion. Keep saved settings and version 2.0.0.17 unchanged.
+- Reassert suspension during travel, registration, duty loading, board navigation, pause and revival. Cover forced takeover, provider drift and partial restoration failures with focused regression tests; native board acceptance remains pending.
+- Allow Start during combat or native menus inside Crucible, use the current duty rather than the saved board choice, and resume from the current tile after its menus settle. In an arena, handle the current enemies and find the next route step after returning to the board; reused arenas do not identify board progress. Preserve branch instructions, existing entry preferences and the current familiar team.
+
+2026-10-17 - Beastmaster automatic BMRAI handoff
+
+- Allow Start while BMRAI is running. Clicking ordinary or weekly Start now snapshots and suspends BMRAI before travel, team setup or combat; availability checks only read state. Keep BMR loaded and use its movement-only passive melee preset with RSR during fights.
+- Restore BMRAI's previous enabled state, follow target and manual rotation preset when the task ends, including after failed startup. Preserve an existing off state and retain unresolved restoration without overwriting a different follow target. Keep saved AI preferences and version 2.0.0.17 unchanged.
+
+2026-10-17 - Beastmaster automatic loot
+
+- Fix the loot reader throwing an out-of-range exception and stopping a run when the live loot window has fewer AtkValues than the copied layout expects. Use its native Take All button and enabled state instead, preserving the Loot switch and game-owned inventory limits.
+- Handle loot before fight, shop or camp logic can pre-empt it. Wait for ready native controls, use their registered click event, and close once nothing can be collected. Local build verification only; native acceptance remains pending. Keep version 2.0.0.17.
+
+2026-10-17 - Beastmaster combat providers and revival
+
+- Pair RSR's Reborn Beastmaster rotation with BMR's existing movement-only passive - melee preset during Crucible fights. Validate both providers before entry and fight confirmation, keep BMRAI separate, and retain the user's saved settings and prior runtime state.
+- Suspend combat control for board navigation, menus, death, Pause and results; restore it for a ready living player in the current fight, including after revival. Restore the prior provider state on task completion or Stop and retain ownership if restoration cannot be confirmed.
+- Reset stale fight observations after death without skipping the current route step. Retarget surviving arena enemies before advancing, keep positioning available during targetless combat, and prevent overlap between BMR movement and board navigation. Cover ordinary and weekly runs, and guard the Misc Commands button while Beastmaster owns the character.
+- Local build and focused regression verification only; live board acceptance and BMR's separate Black Eruption tracking issue remain open. Keep version 2.0.0.17.
+
+2026-10-17 - Beastmaster release image optimization
+
+- Reduce the forty runtime splash images from 109.37 MiB to 18.02 MiB (83.5% smaller) using the approved quality-90 JPEG settings at their original resolutions. Load and copy JPEGs in builds; retain full-quality PNG originals in the code review gallery.
+
+2026-10-17 - Beastmaster weekly challenges and observed team setup
+
+- Expand the Beastmaster splash set from ten to forty standalone illustrations, including exactly ten Solution Nine scenes and an even mix of mcvaxius, XA and both herders across the thirty additions. Include the full set in the runtime selection and local review gallery; keep a different splash per window open and a static image while open.
+- Keep rank scans and additions pending until the native roster confirms the intended familiar. Respect full teams, preserve matching selections, remove only unwanted members during rebuilding, and verify the exact team before challenge. Wait for native window closure and stop on unconfirmed outcomes.
+- Add a separate manual Beastmaster weekly challenge action to the native screen, dashboard and existing reload selection. Read all five native challenge entries, skip completed or ineligible boards, preserve ordinary run preferences, and require current-character/current-reset completion credit after a result and exit before advancing.
+- Retain pending native entry ownership through Stop/FULL STOP. Match the exact board queue and popup, dispatch Commence or owned withdrawal once, and observe a receive-side withdrawal or entered board before releasing a pending entry. Identify board and Remove All confirmation prompts through localized game text; Stop can decline the owned unaccepted board prompt once and wait for dismissal. A matching withdrawal receipt also settles a submitted Commence. Unknown outcomes remain held. Keep fifteen locales and version 2.0.0.17; native callback, freshness and game acceptance remain unverified.
+
+2026-10-17 - Crewcible entry requirements
+
+- Show the selected board's required job/item level and the character's equipped item level in Beastmaster Run setup, using current game data.
+- Block entry below either requirement before travel or familiar changes, and recheck during setup and before challenge. Preserve starting an already-entered matching board. Keep the release version unchanged.
+
+2026-10-17 - Beastmaster screen and Crucible integration
+
+- Open the dedicated Beastmaster screen with `/vmx b` or `/vmx beast`. Opening it does not start automation. Run, Beasts and Supplies share VERMAXION's AethertekUI appearance, language, compact mode and titlebar controls.
+- Add the approved "The Crewcible" banner and ten splash illustrations. Choose a different illustration whenever the window opens and retain it while the window stays open, including tab changes.
+- Add the complete Beastmaster-only Crucible backend, all five board routes, team modes and degree selection, familiar tracking, named beast/shop priorities, clipboard import/export, ordering, blocks, fixed healing behavior and board view. Keep global preferences separate from each character's learned familiar/team data.
+- Reuse guarded manual actions and the existing next-reload testing selection. Update with windows closed, retain owned AutoRetainer/YesAlready protection, block competing automation, and stop on FULL STOP, character changes and unload.
+- Correct reviewed entry, selection, camp, treasure and list-copy defects. Preserve positioned waits and local-arena battles, approach navigation, pause timing and idle bestiary learning. Resume approaching surviving enemies after revival, preserve a failed shop-close attempt for the next native-ready update, and prevent pausing stopped cleanup. No version bump, deployment or live-client verification accompanies this local implementation.
+
 2026-10-17 - Collect and pause; scope the racing budget to reload testing
 
 - Add a manual Collect and pause action in chocobo settings, the dashboard and `/vmx chocobo collect`. Collect one eligible offspring through the dedicated V3 operation, then retain the saved pause before another covering. Keep actual matches separate from collected rounds and preserve Stop/reload gates.
+- Keep the progression pause saved throughout collection-only work so reload cannot turn it into ordinary covering. Pause/Stop cancels pending chocobo reload dispatch as well as active work, preserving the intentional cleanup pause used by a newly selected reload attempt.
+- Allow the explicitly selected Collect and pause reload action through its own collection eligibility checks while the saved progression pause stays set; ordinary progression reloads still honor Stop.
+- Explain rank-40 breeding-parent retirement separately from rank-50 pedigree progression, and clarify that selected colours must already occur on suitable G9 parents.
+- Correct G9 counterpart guidance and translate breeding production, collection and pause status messages in every supported language.
 - Restrict the saved six-hour racing budget to the selected character's Lazyparasite chocobo task in Debug builds. Ordinary user runs follow their configured race count or progression goal without a time cap, regardless of saved test consumption. Show test accounting only in the reload-testing window and retain consumed queue/racing time and the 09:00 UTC reset.
 
 2026-10-16 - Confirmation popups without screen dimming (I576)

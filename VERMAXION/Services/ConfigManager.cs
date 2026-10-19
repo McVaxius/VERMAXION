@@ -284,9 +284,12 @@ public class ConfigManager
         }
         else if (account.Characters.ContainsKey(charKey))
         {
+            var beastmaster = account.Characters[charKey].Beastmaster;
             var verminionProgress = account.Characters[charKey].VerminionProgress;
             var verminionPaused = account.Characters[charKey].VerminionPaused;
             account.Characters[charKey] = account.DefaultConfig.Clone();
+            account.Characters[charKey].Beastmaster = beastmaster ?? new();
+            account.Characters[charKey].CopyBeastmasterSettingsFrom(account.DefaultConfig);
             // Settings reset must not erase spending/reservations or another run's pause.
             account.Characters[charKey].VerminionProgress = verminionProgress.Clone();
             account.Characters[charKey].VerminionPaused = verminionPaused;
@@ -520,6 +523,7 @@ public class ConfigManager
     internal static void CopyDefaultSettings(CharacterConfig source, CharacterConfig target)
     {
         target.Enabled = source.Enabled;
+        target.CopyBeastmasterSettingsFrom(source);
         target.CopyVerminionSettingsFrom(source);
         target.EnableJumboCactpot = source.EnableJumboCactpot;
         target.EnableMiniCactpot = source.EnableMiniCactpot;

@@ -3404,8 +3404,8 @@ NPC等级、制作／采集／钓鱼加成和已验证进度显示在任务表�
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve">
     <value>仅升级AutoRetainer中启用的雇员。战斗职业使用兼容平均品级；采集职业仅使用总鉴别力。</value>
   </data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
-    <value>使用比已达到最高血统低一级的亲鸟，生产同级的另一后代。重复性别保持未登记，培养缺少的性别。继续后应用。</value>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
+    <value>在已达到的最高血统级别培育缺少性别的幼鸟。使用低一级血统的亲鸟，达到G9后也可使用保留的G9亲鸟。已有性别的幼鸟保持未登记；培养缺少性别的幼鸟。恢复以应用。</value>
   </data>
   <data name="Use retained parents. Missing counterparts stop this mode; covering permits are purchased only in permit mode." xml:space="preserve">
     <value>使用保留亲鸟。缺少配对时此模式停止；仅许可证模式会购买配种许可证。</value>
@@ -4917,4 +4917,570 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Collect" xml:space="preserve"><value>领取</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>领取并暂停</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>领取一只已准备好的幼鸟，并在下一次配种前暂停。</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>驯兽师</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>驯兽师正在控制角色。</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>驯兽师正在清理并解除 AutoRetainer 限制。</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>正在等待当前角色完成注册并就绪。</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · 编号 {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>驯兽师运行或清理流程已在进行中</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>正在添加{0}（{1}/{2}）</value></data>
+  <data name="All categories" xml:space="preserve"><value>所有类别</value></data>
+  <data name="All kins" xml:space="preserve"><value>所有族系</value></data>
+  <data name="Allow category" xml:space="preserve"><value>允许此类别</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>正在接近Lauda</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>挑战棋盘前，至少需要三只符合条件的使魔。</value></data>
+  <data name="Automation" xml:space="preserve"><value>自动化</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>无免疫效果时避开有害装备</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>魔兽优先级列表</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>魔兽梯度榜已复制到剪贴板。</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>魔兽梯度榜已导入。</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>驯兽师服务已释放</value></data>
+  <data name="Beasts" xml:space="preserve"><value>魔兽</value></data>
+  <data name="Block" xml:space="preserve"><value>禁用</value></data>
+  <data name="Block category" xml:space="preserve"><value>禁用此类别</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>禁用的物品不会被购买、选作宝物或使用。按住Ctrl点击可更改整个类别。</value></data>
+  <data name="Board" xml:space="preserve"><value>棋盘</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>棋盘治疗：下次战斗前没有营地时，在HP为60%或以下时治疗。</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>棋盘路线 {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>棋盘队伍容量: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>首领</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>批量设置类别</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>正在以{1}购买{0}</value></data>
+  <data name="Camp" xml:space="preserve"><value>营地</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>营地：让最多两只HP低于60%的受伤使魔休息。如果未选择使魔，玩家将获得营地的90%自身治疗。</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>带练，留空2位</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>正在挑战棋盘</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>在“魔兽”中选择自定义队伍。将保留已保存的顺序。</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>选择等级最低、EXP最少的三只使魔。</value></data>
+  <data name="Classification" xml:space="preserve"><value>分类</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>清除自定义使魔选择</value></data>
+  <data name="Clear order" xml:space="preserve"><value>重置顺序</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>清除已保存的等级</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>清空自定义队伍。按住Ctrl点击。</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>正在通关棋盘以读取更多等级</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>战斗治疗：HP为40%或以下时治疗。</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>正在开始战斗</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>体质: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>复制</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>进入Crucible至少需要三只不同的使魔。请调整队伍选择和限制。</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>进入Crucible至少需要三只不同的使魔。队伍在确认挑战前发生了变化。</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Crucible报名未能在五分钟内完成</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>进入Crucible需要使用驯兽师</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Crucible运行完成</value></data>
+  <data name="Current board" xml:space="preserve"><value>当前棋盘</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>青色圆环：当前停靠点。青色圆点：玩家实时位置。</value></data>
+  <data name="Damage" xml:space="preserve"><value>伤害</value></data>
+  <data name="Degree" xml:space="preserve"><value>阶位</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>删除此列表。按住Ctrl点击。无法删除最后一个列表。</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm需要Soulreaper's Armor。Thunder Axe需要Umbral Wristlet。</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>拖动手柄或输入新的序号（#）以调整顺序。按住Ctrl点击“禁用”可更改其所属类别的设置。</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>拖动手柄或输入新的序号（#）以调整顺序。按住Ctrl点击禁用项可更改其所属分类的设置。</value></data>
+  <data name="EXP" xml:space="preserve"><value>EXP</value></data>
+  <data name="Elite" xml:space="preserve"><value>精英</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>所有使魔均已失去战斗能力</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>完成后退出</value></data>
+  <data name="Export" xml:space="preserve"><value>导出</value></data>
+  <data name="Familiar" xml:space="preserve"><value>使魔</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>使魔数据不可用。请登录并等待角色注册完成。</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>使魔 {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>喂食</value></data>
+  <data name="Fight" xml:space="preserve"><value>战斗</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>禁止出战</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>“禁止出战”会让此使魔留作后备，除非未被禁止且仍能战斗的使魔少于三只。按住Ctrl点击可更改整个分类。</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>出战选择</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>优先选择等级最低、EXP最少的使魔，直到填满棋盘的队伍容量。</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>正在完成棋盘</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>一阶</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>正在沿Crucible棋盘移动</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>清除已保存的等级。按住Ctrl点击。</value></data>
+  <data name="Full" xml:space="preserve"><value>满编</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>“满编”使用棋盘的全部队伍容量。“-3”留空三位。“仅3只”带上三只。“带练”先带上等级最高的三只使魔，再加入培养对象，并留空两位。</value></data>
+  <data name="Gear" xml:space="preserve"><value>装备</value></data>
+  <data name="HP" xml:space="preserve"><value>HP</value></data>
+  <data name="Heal items" xml:space="preserve"><value>治疗物品</value></data>
+  <data name="Healing" xml:space="preserve"><value>治疗</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>治疗与营地</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>治疗阈值由自动化固定设置。</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>更高阶位需要完成任务71045。将使用标准。</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>优先选择等级最高的使魔；等级相同时按梯度榜顺序选择。</value></data>
+  <data name="Import" xml:space="preserve"><value>导入</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>导入会根据导出的JSON或已知物品ID添加新列表。缺少的目录条目会追加到末尾。导出会将此列表复制到剪贴板。</value></data>
+  <data name="Imported" xml:space="preserve"><value>已导入</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>智力: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>进入Crucible前请先退出小队</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>留空三个队伍位置，优先选择等级最低、EXP最少的使魔。</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>正在离开已完成的棋盘</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>在确认结果前离开了Crucible</value></data>
+  <data name="Leveling" xml:space="preserve"><value>练级</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>练级队伍</value></data>
+  <data name="List name" xml:space="preserve"><value>列表名称</value></data>
+  <data name="Loot" xml:space="preserve"><value>战利品</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>魔法抗性: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>留空3位</value></data>
+  <data name="New" xml:space="preserve"><value>新建</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>尚无符合此配置的已知使魔。进入时会先扫描图鉴，再选择队伍。</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>尚无使魔信息。请在Lauda处打开队伍或图鉴，让VERMAXION读取。</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>未找到前往Lauda的目的地</value></data>
+  <data name="No." xml:space="preserve"><value>编号</value></data>
+  <data name="Only 3" xml:space="preserve"><value>仅3只</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>只允许使用一把属性斧；不兼容的属性斧始终会被跳过。</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>已拥有的使魔</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>当前无法获取拥有情况；此预览使用先前记住的使魔数据。</value></data>
+  <data name="Paused: " xml:space="preserve"><value>已暂停: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>已暂停: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>物理抗性: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>禁止选入</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>“禁止选入”会阻止自动选入队伍。按住Ctrl点击可更改整个分类。</value></data>
+  <data name="Rank" xml:space="preserve"><value>等级</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>尚未读取等级。下次组队时将从图鉴读取。</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>等级未知</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>等级 {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>正在读取使魔等级（{0}/{1}）</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>准备就绪</value></data>
+  <data name="Recommended" xml:space="preserve"><value>推荐</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>正在移除所有使魔</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>必须先拥有所需的免疫装备。</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>在营地休息</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>正在营地休息</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>恢复此列表的默认顺序并清除所有禁用设置。按住Ctrl点击。</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>路线尚未开始。</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>路线 {0:00} · {1}/{2}步</value></data>
+  <data name="Run setup" xml:space="preserve"><value>运行设置</value></data>
+  <data name="Runs" xml:space="preserve"><value>运行次数</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>二阶</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>从五个Crucible棋盘中选择一个</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>已选使魔</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>正在组队</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>阴影标记：此模式会带上的队伍。将鼠标悬停在名字上可查看属性。</value></data>
+  <data name="Shop List" xml:space="preserve"><value>商店清单</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>商店清单已复制到剪贴板。</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>商店清单已导入。</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>商店优先级列表</value></data>
+  <data name="Standard" xml:space="preserve"><value>标准</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>更改配置、魔兽或补给品前，请先停止驯兽师。</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>角色切换后已停止</value></data>
+  <data name="Stopping" xml:space="preserve"><value>正在停止</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>力量: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>补给品遵循列表顺序。</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>带上你选择的已拥有使魔，最多不超过所选棋盘的队伍容量。</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>带上等级最高的使魔。等级相同时遵循魔兽优先级列表。</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>带上等级最低的使魔，EXP最少的优先。它们也会优先出战。</value></data>
+  <data name="Team cap" xml:space="preserve"><value>队伍上限</value></data>
+  <data name="Team ready" xml:space="preserve"><value>队伍已就绪</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>组队流程持续运行但未能确定队伍，已停止。</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>进入Crucible后可查看实时棋盘。在副本外无法获知节点和玩家位置。</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>所选棋盘与当前Crucible副本不匹配</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>队伍已满。请取消一个选择，再选择其他使魔。</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>三阶</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>由三只强力使魔带练培养对象，留空两个队伍位置。</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>勾选标记：你会带上的队伍。将鼠标悬停在名字上可查看属性。</value></data>
+  <data name="Tier List" xml:space="preserve"><value>梯度榜</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>无法开始前往Lauda</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>正在前往Lauda</value></data>
+  <data name="Treasure" xml:space="preserve"><value>宝物</value></data>
+  <data name="Type" xml:space="preserve"><value>类型</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>无法导入魔兽梯度榜。请使用导出的列表，或以空格或逗号分隔的已知使魔ID。</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>无法导入商店清单。请使用导出的列表，或以空格或逗号分隔的已知物品ID。</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>未知棋盘</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>未知分类</value></data>
+  <data name="Untitled" xml:space="preserve"><value>未命名</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · 驯兽师</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>请等待当前角色准备就绪</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>正在等待自动化控制的移动停止</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>正在等待复活</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>正在等待进入Crucible</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>棋盘导航需要vnavmesh</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>已选{0}只使魔 · 显示{1}/{2}</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>{0}个停靠点 · {1}条连接</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · 停靠点{1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3}次</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>无法确定“{0}”是哪只使魔。请在图鉴中打开一次它的详情，让VERMAXION记住名字。</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>无法在图鉴中选择编号{0}。</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>将缺少的配对陆行鸟培养至竞赛等级40，以便繁育。</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>幼鸟会继承父母其中一方的羽色。适合的G9亲鸟必须已具有某种选中的羽色。</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>后代繁育设置无效。</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>已繁育 {0}/{1} 只符合条件的 G9 后代，保留未登记。</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>繁育下一只后代前请核对现有交配。</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>后代繁育需要 G9 库存；低世代参赛已停止。</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>已登记 G9 赛鸟未确认具备所需特征。请保留并选择合适繁育库存。</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>培养用于繁殖的 G9 亲鸟至退役：竞赛等级 {0}/40。匹配后代保持未登记。</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>将匹配 G9 库存与保留的异性 G9 亲鸟交配。</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>没有已确认所需特征的可用退役 G9 亲鸟。请保留后代并补充合适 G9 库存。</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>将不匹配 G9 后代培养为缺少的自有配偶，保留匹配后代。</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>缺少可用异性 G9 亲鸟。自有模式需要合适 G9 库存或明确切换为 NPC 许可。</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>交配等待缺少有效领取资格证据。</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>繁育已完成；可以领取幼鸟。</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>交配等待至 {0:u}。</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>繁育已完成；正在领取幼鸟。</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>目标循环已在安全节点暂停。</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>VERMAXION 已在安全节点暂停。</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>领取需要现有可领取交配、保留亲鸟血统以及恰好一份交配证明。</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>保存的领取证据无效，不会重放领取。</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>已领取；计数或再次交配前必须核对精确的新后代及其特征。</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>已请求领取；再次请求前必须核对证明消耗与一只匹配幼鸟。</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Choke-abo目标任务：{0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>已推迟：{0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>进入条件：职业等级{0}，品级{1}。当前装备品级：{2}。</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>需要职业等级{0}、品级{1}；当前职业等级{2}、装备品级{3}。</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>无法获取此布告板的进入条件。</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>无法获取当前装备品级。</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>驯兽师每周任务</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>每周挑战</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>开始每周挑战</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>将每项符合条件且尚未完成的驯兽师挑战各完成一次。</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>仅计算单人棋盘通关。地下城不计入。</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>未能确认使魔已加入队伍。重新开始前，请检查游戏内队伍。</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>队伍发生意外变化，已停止队伍配置。</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>游戏内窗口未完成更新，已停止队伍配置。</value></data>
+  <data name="The bestiary did not show the requested familiar&apos;s details." xml:space="preserve"><value>图鉴未显示所请求使魔的详细信息。</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>每周挑战笔记数据不可用。</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>五项每周挑战均已完成。</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>已完成的每周挑战：{0}/5。</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>当前没有符合条件的未完成每周挑战。仍有未解锁或装备条件不符的棋盘。</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>所需棋盘或挑战笔记的解锁任务尚未完成。</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>需要驯兽师等级{0}。</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>需要物品等级{0}；当前物品等级{1}。</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>未完成</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>正在等待当前角色及重置周期的最新挑战笔记数据。</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>开始每周挑战前，请先退出当前Crucible任务。</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>符合条件的每周挑战已完成。仍有未解锁或装备条件不符的棋盘。</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>每周挑战笔记数据已变化或不可用。未将后续棋盘加入队列。</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>所选每周挑战已经完成。未提交后续进入请求。</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>正在等待最新的每周挑战完成记录。</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>棋盘结果显示后，未能确认最新的每周挑战完成记录。没有重复挑战任何棋盘。</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>开始驯兽师任务前，须等待现有任务队列结束。</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>无法观察Crucible进入状态。</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>待处理的Crucible进入申请已撤回，未重复申请。</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>正在取消进入Crucible。</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>已进入的Crucible棋盘与申请的棋盘不符。</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>迷你视图</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>完整窗口</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve"><value>驯兽师运行、刷新或清理操作已在进行中。</value></data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve"><value>战斗提供程序已卸载或替换，原有控制权尚未恢复。</value></data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve"><value>所有已拥有的魔兽均已达到此棋盘的训练目标。</value></data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve"><value>部分已拥有的魔兽无法在独立魔兽图鉴中找到，已保留读取到的记录。</value></data>
+  <data name="Another automation owns the character." xml:space="preserve"><value>其他自动化正在控制该角色。</value></data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve"><value>刷新期间拥有的魔兽发生了变化，已保留读取到的记录。请在列表稳定后重新刷新。</value></data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve"><value>魔兽刷新已取消，已保留读取到的记录。</value></data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve"><value>角色、区域或游戏内状态发生变化，已停止刷新魔兽。</value></data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve"><value>图鉴切换为队伍数据，已停止刷新魔兽。</value></data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve"><value>现有抑制已启用或状态无法读取，驯兽师无法取得AutoRetainer控制权。</value></data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve"><value>驯兽师无法确认AutoRetainer抑制状态。</value></data>
+  <data name="Beastmaster frequency" xml:space="preserve"><value>驯兽师执行频率</value></data>
+  <data name="Beastmaster scheduling" xml:space="preserve"><value>驯兽师计划</value></data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve"><value>魔兽和补给由此角色共享。</value></data>
+  <data name="Boards per trigger" xml:space="preserve"><value>每次触发的棋盘数</value></data>
+  <data name="Boards this run" xml:space="preserve"><value>本次运行的棋盘数</value></data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve"><value>BossMod的“passive - melee”需要距离2.3和Pathfind移动。</value></data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve"><value>无法获取BossMod AI的跟随目标。</value></data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve"><value>无法使用BossMod AI生命周期控制。</value></data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve"><value>尚未确认BossMod AI已恢复原始状态。</value></data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve"><value>BossMod AI运行状态不兼容。</value></data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve"><value>无法获取BossMod AI运行状态。</value></data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve"><value>未确认BossMod AI已暂停。</value></data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve"><value>BossMod未确认请求的驯兽师移动预设。</value></data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve"><value>BossMod强制禁用预设的状态不一致。</value></data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve"><value>BossMod缺少现有的“passive - melee”预设。</value></data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve"><value>尚未确认BossMod已恢复原始预设。</value></data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve"><value>BossMod需要现有的纯移动“passive - melee”预设，不能包含DPS循环。</value></data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve"><value>BossModReborn已不再加载。</value></data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve"><value>携带3只训练对象，优先选择等级和EXP最低的魔兽。集中训练较少的魔兽，但替补也较少。</value></data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve"><value>最多携带{0}只训练对象，留空3个队伍位置。较小的队伍可能让每只魔兽获得更多EXP，但替补较少。</value></data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve"><value>最多携带{0}只训练对象，优先选择等级和EXP最低的魔兽。同时训练更多魔兽，并保留更多替补。</value></data>
+  <data name="Checked at VMX opportunities." xml:space="preserve"><value>在VMX执行机会到来时检查。</value></data>
+  <data name="Choose a training team method for this goal." xml:space="preserve"><value>请为此目标选择训练队伍方式。</value></data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve"><value>在“魔兽”中选择自定义成员。所有选择“自定义”的设置均使用此角色共享的成员选择。</value></data>
+  <data name="Clear recorded beast data" xml:space="preserve"><value>清除已记录的魔兽数据</value></data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve"><value>刷新所有已拥有的魔兽前，请清除游戏内魔兽图鉴的筛选条件。</value></data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve"><value>清除此角色保存的等级、EXP、属性、拥有记录和上次队伍。按住Ctrl点击。</value></data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve"><value>刷新魔兽前，请关闭Crucible报名界面并等待副本队列稳定。</value></data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve"><value>刷新魔兽前，请关闭当前确认窗口。</value></data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve"><value>刷新魔兽前，请关闭队伍魔兽图鉴。</value></data>
+  <data name="Collapse" xml:space="preserve"><value>收起</value></data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve"><value>等待恢复战斗设置：{0}</value></data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve"><value>独立于普通训练，完成游戏内符合条件但尚未完成的攻略笔记目标。</value></data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve"><value>请在驯兽师的VMX计划中配置运行设置和训练目标。</value></data>
+  <data name="Crewcible task" xml:space="preserve"><value>Crewcible任务</value></data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve"><value>Crucible路线跳转目标超出棋盘范围</value></data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve"><value>所有选择“自定义”的设置都会使用这些成员。将鼠标悬停于名称可查看已记录的属性。</value></data>
+  <data name="Editing settings does not start a run." xml:space="preserve"><value>编辑设置不会开始运行。</value></data>
+  <data name="Enable Beastmaster training" xml:space="preserve"><value>启用驯兽师训练</value></data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve"><value>启用驯兽师周常</value></data>
+  <data name="Enable task" xml:space="preserve"><value>启用任务</value></data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve"><value>正在当前Crucible竞技场交战</value></data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve"><value>开始前会检查当前游戏角色的进入条件。</value></data>
+  <data name="Every AR" xml:space="preserve"><value>每次AR</value></data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve"><value>存在被排除的魔兽时，此目标会保持未完成。</value></data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve"><value>执行顺序：VMX设置 &gt; 任务顺序。</value></data>
+  <data name="Expand" xml:space="preserve"><value>展开</value></data>
+  <data name="Fixed board runs" xml:space="preserve"><value>固定次数棋盘运行</value></data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve"><value>判断训练是否完成前，需要获取最新的等级和EXP记录。</value></data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve"><value>无法获取完整等级记录，未读取的等级仍为未知。</value></data>
+  <data name="Hide" xml:space="preserve"><value>隐藏</value></data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve"><value>优先选择等级最高的魔兽；等级相同时按魔兽优先级排序。</value></data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve"><value>独立于普通任务的启用状态、训练目标和棋盘运行次数上限。</value></data>
+  <data name="Invalid Crucible route jump" xml:space="preserve"><value>Crucible路线跳转无效</value></data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve"><value>Crucible扫描清除步骤无效</value></data>
+  <data name="Item and camp rules" xml:space="preserve"><value>物品和营地规则</value></data>
+  <data name="Item priorities" xml:space="preserve"><value>物品优先级</value></data>
+  <data name="Kin filter" xml:space="preserve"><value>种族筛选</value></data>
+  <data name="Last completed: {0}" xml:space="preserve"><value>上次完成：{0}</value></data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve"><value>刷新魔兽前，请离开当前副本。</value></data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve"><value>请加载Rotation Solver Reborn，并选择其Reborn Beastmaster循环。</value></data>
+  <data name="Manual setup" xml:space="preserve"><value>手动运行设置</value></data>
+  <data name="Master Class I" xml:space="preserve"><value>大师级I</value></data>
+  <data name="Master Class II" xml:space="preserve"><value>大师级II</value></data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve"><value>无法获取游戏内魔兽拥有数据，已保留现有记录。</value></data>
+  <data name="Next eligible: {0}" xml:space="preserve"><value>下次可执行时间：{0}</value></data>
+  <data name="No character" xml:space="preserve"><value>无角色</value></data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve"><value>没有可用的角色配置。请登录并等待角色注册。</value></data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve"><value>尚未记录适用于此设置的魔兽。请刷新当前游戏角色的魔兽。</value></data>
+  <data name="No full beast refresh has been requested." xml:space="preserve"><value>尚未请求完整刷新魔兽。</value></data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve"><value>没有已记录的魔兽。请使用此角色在副本外执行“刷新魔兽”。</value></data>
+  <data name="No recorded character" xml:space="preserve"><value>无已记录角色</value></data>
+  <data name="Offline" xml:space="preserve"><value>离线</value></data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve"><value>仅列出有魔兽记录的角色。</value></data>
+  <data name="Open VMX Schedule" xml:space="preserve"><value>打开VMX计划</value></data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve"><value>正在打开独立魔兽图鉴以刷新魔兽等级和EXP。</value></data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve"><value>已检查拥有状态，已记录的等级可能需要完整刷新。</value></data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve"><value>尚未完整确认拥有状态，无法确定训练是否完成。</value></data>
+  <data name="Ownership not fully observed." xml:space="preserve"><value>拥有状态尚未完整确认。</value></data>
+  <data name="Ownership observed: {0}" xml:space="preserve"><value>拥有状态记录时间：{0}</value></data>
+  <data name="Playing" xml:space="preserve"><value>游戏中</value></data>
+  <data name="Playing: {0}" xml:space="preserve"><value>游戏中：{0}</value></data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve"><value>RSR当前循环已不再是Reborn Beastmaster。</value></data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve"><value>RSR未确认请求的驯兽师运行模式。</value></data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve"><value>RSR运行模式标志不一致。</value></data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve"><value>尚未确认RSR已恢复原始模式。</value></data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve"><value>RSR运行状态不兼容： </value></data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve"><value>RSR运行状态不兼容：{0}</value></data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve"><value>无法获取RSR运行状态。</value></data>
+  <data name="Ranks observed: {0}" xml:space="preserve"><value>等级记录时间：{0}</value></data>
+  <data name="Recorded beasts" xml:space="preserve"><value>已记录的魔兽</value></data>
+  <data name="Refresh beasts" xml:space="preserve"><value>刷新魔兽</value></data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve"><value>只能刷新当前游戏角色。</value></data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve"><value>已刷新{0}只已拥有魔兽的等级和EXP。</value></data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve"><value>正在刷新魔兽等级和EXP（{0}/{1}）。</value></data>
+  <data name="Removing {0}" xml:space="preserve"><value>正在移除{0}</value></data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve"><value>正在恢复棋盘路线{0}/{1}</value></data>
+  <data name="Resuming the current Crucible board" xml:space="preserve"><value>正在恢复当前Crucible棋盘</value></data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve"><value>必须同时加载Rotation Solver Reborn和BossModReborn。</value></data>
+  <data name="Run actions" xml:space="preserve"><value>运行操作</value></data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve"><value>每次触发最多运行{0}个棋盘。未完成的训练将在下次符合条件的触发时继续。</value></data>
+  <data name="Run task now" xml:space="preserve"><value>立即执行任务</value></data>
+  <data name="Run weeklies now" xml:space="preserve"><value>立即执行周常</value></data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve"><value>运行符合条件的未完成棋盘。未解锁或装备不达标的项目会保持未完成。</value></data>
+  <data name="Saved data for {0}" xml:space="preserve"><value>{0}的保存数据</value></data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve"><value>与VMX任务设置分开保存。</value></data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve"><value>此角色的计划任务设置，与手动运行分开保存。</value></data>
+  <data name="Settings saved automatically" xml:space="preserve"><value>设置自动保存</value></data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve"><value>由此角色的手动运行和计划运行共享。</value></data>
+  <data name="Shop done, {0} coins left" xml:space="preserve"><value>购物完成，剩余{0}枚硬币</value></data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve"><value>商店、休息和治疗规则位于“补给”中。</value></data>
+  <data name="Smaller training team" xml:space="preserve"><value>小型训练队伍</value></data>
+  <data name="Soul Survivor I" xml:space="preserve"><value>灵魂幸存者I</value></data>
+  <data name="Soul Survivor II" xml:space="preserve"><value>灵魂幸存者II</value></data>
+  <data name="Soul Survivor III" xml:space="preserve"><value>灵魂幸存者III</value></data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve"><value>已停止，等待恢复战斗设置：{0}</value></data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve"><value>已停止，正在等待独立魔兽图鉴关闭。必要时请手动关闭。</value></data>
+  <data name="Strongest available" xml:space="preserve"><value>可用的最强魔兽</value></data>
+  <data name="Taking {0}" xml:space="preserve"><value>正在获取{0}</value></data>
+  <data name="Team method" xml:space="preserve"><value>队伍选择方式</value></data>
+  <data name="The Crucible route has no actions" xml:space="preserve"><value>Crucible路线中没有操作</value></data>
+  <data name="The Crucible route is missing" xml:space="preserve"><value>缺少Crucible路线</value></data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve"><value>刷新魔兽后，图鉴未关闭。</value></data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve"><value>图鉴未显示所请求魔兽的等级和EXP，已保留读取到的记录。</value></data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve"><value>刷新后图鉴页面未稳定。</value></data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve"><value>图鉴刷新未在5分钟内完成，已保留读取到的记录。</value></data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve"><value>图鉴返回的等级低于现有记录，已停止刷新且未覆盖该记录。</value></data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve"><value>棋盘结算未提供参战队伍的最新等级和EXP。</value></data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve"><value>无法恢复图鉴原来的选择。</value></data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve"><value>无法在独立魔兽图鉴中选中所请求的魔兽。</value></data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve"><value>独立魔兽图鉴未就绪。</value></data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve"><value>无法使用独立魔兽图鉴。</value></data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve"><value>此顺序和屏蔽设置适用于购买、宝藏选择及物品使用。</value></data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve"><value>本次运行：{0}/{1}个棋盘</value></data>
+  <data name="Three strong fighters + trainees" xml:space="preserve"><value>3只强力战斗魔兽＋训练对象</value></data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve"><value>最强的3只魔兽优先战斗，另带最多{0}只训练对象。总计最多携带{1}只，留空2个位置。替补同样获得EXP。</value></data>
+  <data name="Train a full team" xml:space="preserve"><value>满编训练</value></data>
+  <data name="Train owned familiars" xml:space="preserve"><value>训练已拥有的魔兽</value></data>
+  <data name="Train three at a time" xml:space="preserve"><value>每次训练3只</value></data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve"><value>训练所有已拥有的魔兽需要使用训练队伍方式。</value></data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve"><value>已达到本次训练运行上限，将在下次触发时检查未完成的魔兽。</value></data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve"><value>训练尚未完成，但符合条件的魔兽不足3只，无法组建训练队伍。请检查选取排除项和种族筛选。</value></data>
+  <data name="Training progress" xml:space="preserve"><value>训练进度</value></data>
+  <data name="Training target: Rank {0}" xml:space="preserve"><value>训练目标：等级{0}</value></data>
+  <data name="Unsupported Crucible board" xml:space="preserve"><value>不支持的Crucible棋盘</value></data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve"><value>不支持的Crucible路线条件</value></data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve"><value>不支持的Crucible专用路线操作：{0}</value></data>
+  <data name="Up to {0} familiars" xml:space="preserve"><value>最多{0}只魔兽</value></data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve"><value>驯兽师请仅使用BossModReborn；两个BossMod提供程序使用相同的IPC名称。</value></data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve"><value>使用已保存的计划运行队伍方式、难度及共享补给。</value></data>
+  <data name="Using {0} at {1}" xml:space="preserve"><value>正在{1}使用{0}</value></data>
+  <data name="VMX Schedule" xml:space="preserve"><value>VMX计划</value></data>
+  <data name="Viewing another character · automation not started" xml:space="preserve"><value>正在查看其他角色 · 未启动自动化</value></data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve"><value>刷新魔兽前，请等待当前角色空闲。</value></data>
+  <data name="Wait until the current character is ready." xml:space="preserve"><value>请等待当前角色准备就绪。</value></data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve"><value>可查看当前游戏角色的每周攻略笔记状态。</value></data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve"><value>可查看当前游戏角色的每周攻略笔记状态。已保存的计划设置仍可编辑。</value></data>
+  <data name="Weekly Challenge Log task" xml:space="preserve"><value>每周攻略笔记任务</value></data>
+  <data name="Weekly challenge objectives" xml:space="preserve"><value>每周挑战目标</value></data>
+  <data name="Weekly progress" xml:space="preserve"><value>每周进度</value></data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve"><value>只剩1或2只训练对象时，仅添加足够的已训练战斗魔兽，使队伍总数达到3只。</value></data>
+  <data name="Wrong character" xml:space="preserve"><value>角色不匹配</value></data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve"><value>角色不匹配。可以编辑此配置，但开始自动化前请切换到该角色。</value></data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve"><value>正在查看{0}，但游戏中使用的是{1}。开始自动化前，请选择当前角色或登录正在查看的角色。</value></data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve"><value>可训练{0}只 · 已排除{1}只 · 等级未知{2}只</value></data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve"><value>{0}/{1}只已达到等级{2}</value></data>
+  <data name="{0}/{1} complete" xml:space="preserve"><value>已完成{0}/{1}</value></data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>已记录等级的符合条件使魔不足。等级未读取：{0}。</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>自定义选择无法组成入场队伍。未拥有或已排除的使魔：{0}。</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>刷新魔兽前，请关闭已打开的魔兽图鉴。</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>正在刷新魔兽等级和EXP（{0}/{1}）；第{2}/{3}页。</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>魔兽刷新未完成：已读取{0}/{1}；未读取：{2}。{3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>开始驯兽师前，请离开当前副本。</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>刷新后正在还原魔兽图鉴。</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>正在等待{0}数据。</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>正在重新检查{0}；等待有效的原生控件。</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>已完成棋盘；魔兽的等级和EXP仍未确认。</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>已停止；原生清理仍未确认：{0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>正在重新检查当前Crucible进入状态。</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>五秒后重试：{0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>第{0}/{1}轮</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>已完成{0}/{1}轮</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>正在检查新魔兽</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>已读取{0}/{1}只</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>剩余{0}只</value></data>
+  <data name="Fighting" xml:space="preserve"><value>战斗中</value></data>
+  <data name="Recovering" xml:space="preserve"><value>正在恢复</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>正在结束棋盘</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>正在准备队伍</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>继续</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>计划设置的修改从下次开始时生效；当前运行保留原有设置。</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>完成的棋盘始终会自动退出。</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>完成后执行的命令（可选）</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>留空则不执行任何操作。计划完成后，在副本外执行一次。</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>每周棋盘</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>自动使用已解锁的棋盘。</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>使用已解锁的棋盘</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>使用此角色游玩时会选择已解锁的棋盘。在下方选择棋盘可保存明确的选择。</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>未选择每周棋盘。</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>运行已选择但未完成的棋盘。未解锁或装备条件不足的项目仍保持未完成。</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>所选每周挑战已完成。</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>所选每周挑战完成数：{0}/{1}。</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>所选且符合条件的每周挑战已完成。仍有未解锁或装备条件不足的棋盘。</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>未选择当前每周棋盘。</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>完成命令执行失败：{0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>将每项已选择且符合条件的驯兽师挑战完成一次。</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>完成命令必须是单条斜杠命令。</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>无法发送完成命令；不会重复执行。</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>已发送完成命令。</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>由于无法保存Crewcible完成状态，已跳过完成命令。</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>由于已完成的运行已不再是当前运行，已跳过完成命令。</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>此角色已禁用驯兽师任务。</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>此角色已禁用驯兽师每周挑战。</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>驯兽师任务在{0}之前无需运行。</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>驯兽师每周挑战在{0}之前无需运行。</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>下次团灭或通关后停止</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>取消下次结果后停止</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>仅本次：团灭后在副本内停止；通关后领取奖励并退出。</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>将在下次团灭或通关后停止。</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>团灭后已停止；仍留在试炼场内。</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>通关后已停止；已离开试炼场。</value></data>
 </root>

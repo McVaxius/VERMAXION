@@ -3404,8 +3404,8 @@
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve">
     <value>Улучшает только включённых слуг AutoRetainer. Бой — совместимый средний уровень предметов; сбор — только общая Perception.</value>
   </data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
-    <value>Использовать родителя на одну родословную ниже максимальной для ещё одного потомка этой родословной. Дубликаты пола не регистрировать; вырастить недостающий пол. Применяется при возобновлении.</value>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
+    <value>Получите птенца недостающего пола с наивысшей достигнутой родословной. Используйте родителя на одну ступень ниже или сохранённого родителя G9 при достижении G9. Не регистрируйте птенцов уже имеющегося пола; выращивайте птенца недостающего пола. Возобновите для применения.</value>
   </data>
   <data name="Use retained parents. Missing counterparts stop this mode; covering permits are purchased only in permit mode." xml:space="preserve">
     <value>Использовать сохранённых родителей. Без пары режим останавливается; разрешения покупаются только в режиме разрешений.</value>
@@ -4917,4 +4917,926 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Collect" xml:space="preserve"><value>Получить</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>Получить и приостановить</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Получить одного готового птенца и приостановить до следующего спаривания.</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>Повелитель зверей</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>Повелитель зверей управляет персонажем.</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>Завершение работы Повелителя зверей снимает блокировку AutoRetainer.</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>Ожидание регистрации и готовности текущего персонажа.</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · № {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>Прохождение за повелителя зверей или его завершение уже выполняется</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>Добавление {0} ({1}/{2})</value></data>
+  <data name="All categories" xml:space="preserve"><value>Все категории</value></data>
+  <data name="All kins" xml:space="preserve"><value>Все семейства</value></data>
+  <data name="Allow category" xml:space="preserve"><value>Разрешить категорию</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>Приближение к Lauda</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>Для испытания на поле нужны как минимум три подходящих питомца.</value></data>
+  <data name="Automation" xml:space="preserve"><value>Автоматизация</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>Избегать вредного снаряжения без иммунитета</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>Список приоритетов зверей</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>Рейтинг зверей скопирован в буфер обмена.</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>Рейтинг зверей импортирован.</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>Ресурсы службы повелителя зверей освобождены</value></data>
+  <data name="Beasts" xml:space="preserve"><value>Звери</value></data>
+  <data name="Block" xml:space="preserve"><value>Заблокировать</value></data>
+  <data name="Block category" xml:space="preserve"><value>Заблокировать категорию</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Заблокированные предметы не покупаются, не выбираются в качестве сокровищ и не используются. Щёлкните с зажатой Ctrl, чтобы изменить всю категорию.</value></data>
+  <data name="Board" xml:space="preserve"><value>Поле</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Лечение на поле: при 60% ОЗ или ниже, если до следующего боя нет лагеря.</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Маршрут по полю {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>Вместимость команды на поле: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>Босс</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>Вся категория</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>Покупка {0} за {1}</value></data>
+  <data name="Camp" xml:space="preserve"><value>Лагерь</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>Лагеря: отдых для двух или менее раненых питомцев с ОЗ ниже 60%. Если никто не выбран, игрок получает самолечение лагеря на 90%.</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>Поддержка минус 2</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>Начало испытания на поле</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>Выберите свою команду в разделе «Звери». Сохранённый порядок будет соблюдён.</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>Выбрать трёх питомцев с самым низким рангом и наименьшим опытом.</value></data>
+  <data name="Classification" xml:space="preserve"><value>Классификация</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>Очистить свой выбор питомцев</value></data>
+  <data name="Clear order" xml:space="preserve"><value>Сбросить порядок</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>Удалить сохранённые ранги</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>Очистить свою команду. Щёлкните с зажатой Ctrl.</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>Завершение поля для чтения остальных рангов</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>Лечение в бою: при 40% ОЗ или ниже.</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>Начало боя</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>Телосложение: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>Копировать</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>Для входа в Crucible нужны как минимум три разных питомца. Измените состав команды и ограничения.</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>Для входа в Crucible нужны как минимум три разных питомца. Команда изменилась до подтверждения испытания.</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Регистрация в Crucible не завершилась в течение пяти минут</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>Для Crucible требуется профессия повелителя зверей</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Прохождение Crucible завершено</value></data>
+  <data name="Current board" xml:space="preserve"><value>Текущее поле</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>Голубое кольцо: текущая остановка. Голубая точка: текущее положение игрока.</value></data>
+  <data name="Damage" xml:space="preserve"><value>Урон</value></data>
+  <data name="Degree" xml:space="preserve"><value>Степень</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Удалить этот список. Щёлкните с зажатой Ctrl. Последний список удалить нельзя.</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Для Demonic Helm требуется Soulreaper's Armor. Для Thunder Axe требуется Umbral Wristlet.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Перетащите маркер или введите новый №, чтобы изменить порядок. Щёлкните по кнопке блокировки с зажатой Ctrl, чтобы изменить категорию.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Перетащите маркер или введите новый №, чтобы изменить порядок. Щёлкните по блокировке с зажатой Ctrl, чтобы изменить классификацию.</value></data>
+  <data name="EXP" xml:space="preserve"><value>Опыт</value></data>
+  <data name="Elite" xml:space="preserve"><value>Элита</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>Все питомцы без сознания</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>Выйти после завершения</value></data>
+  <data name="Export" xml:space="preserve"><value>Экспорт</value></data>
+  <data name="Familiar" xml:space="preserve"><value>Питомец</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>Данные питомцев недоступны. Войдите в игру и дождитесь регистрации персонажа.</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>Питомцы {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>Кормить</value></data>
+  <data name="Fight" xml:space="preserve"><value>Сражаться</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Участие в бою запрещено</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>«Участие в бою запрещено» оставляет питомца в резерве, пока в живых есть хотя бы три бойца без этого запрета. Щёлкните с зажатой Ctrl, чтобы изменить всю классификацию.</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>Выбор бойцов</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Заполнить команду до вместимости поля, сначала выбирая питомцев с самым низким рангом и наименьшим опытом.</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>Завершение поля</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>Первая степень</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>Следование по полю Crucible</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>Забыть сохранённые ранги. Щёлкните с зажатой Ctrl.</value></data>
+  <data name="Full" xml:space="preserve"><value>Полная команда</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>«Полная команда» использует всю вместимость поля. -3 оставляет три свободных места. «Только 3» берёт трёх питомцев. «Поддержка» берёт трёх питомцев с самым высоким рангом, затем обучаемых, оставляя два свободных места.</value></data>
+  <data name="Gear" xml:space="preserve"><value>Снаряжение</value></data>
+  <data name="HP" xml:space="preserve"><value>ОЗ</value></data>
+  <data name="Heal items" xml:space="preserve"><value>Лечебные предметы</value></data>
+  <data name="Healing" xml:space="preserve"><value>Лечение</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>Лечение и лагеря</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>Пороги лечения заданы автоматизацией и не изменяются.</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>Для более высоких степеней нужно завершить задание 71045. Будет использован стандартный режим.</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>Сначала питомцы с самым высоким рангом; при равенстве учитывается порядок в рейтинге.</value></data>
+  <data name="Import" xml:space="preserve"><value>Импорт</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>Импорт добавляет новый список из экспортированного JSON или известных ID предметов. Недостающие записи каталога добавляются в конец. Экспорт копирует этот список в буфер обмена.</value></data>
+  <data name="Imported" xml:space="preserve"><value>Импортировано</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>Интеллект: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>Покиньте группу перед входом в Crucible</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Оставить три свободных места в команде; сначала выбирать питомцев с самым низким рангом и наименьшим опытом.</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>Выход с завершённого поля</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>Выход из Crucible произошёл до получения результата</value></data>
+  <data name="Leveling" xml:space="preserve"><value>Прокачка</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>Команда для прокачки</value></data>
+  <data name="List name" xml:space="preserve"><value>Название списка</value></data>
+  <data name="Loot" xml:space="preserve"><value>Добыча</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>Сопротивление магии: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>Минус 3</value></data>
+  <data name="New" xml:space="preserve"><value>Новый</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>Для этих настроек подходящие питомцы неизвестны. При входе перед выбором команды будет прочитан бестиарий.</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>Питомцы пока неизвестны. Откройте команду или бестиарий у Lauda, чтобы VERMAXION смог их прочитать.</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>Не найден пункт назначения для поездки к Lauda</value></data>
+  <data name="No." xml:space="preserve"><value>№</value></data>
+  <data name="Only 3" xml:space="preserve"><value>Только 3</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>Разрешён только один стихийный топор; несовместимые стихийные топоры всегда пропускаются.</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>Имеющиеся питомцы</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>Данные о владении сейчас недоступны; для предварительного просмотра используются сохранённые данные питомцев.</value></data>
+  <data name="Paused: " xml:space="preserve"><value>Приостановлено: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>Приостановлено: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>Физическое сопротивление: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Выбор запрещён</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>«Выбор запрещён» исключает питомца из автоматического подбора команды. Щёлкните с зажатой Ctrl, чтобы изменить всю классификацию.</value></data>
+  <data name="Rank" xml:space="preserve"><value>Ранг</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Ранг ещё не прочитан. Он будет прочитан из бестиария при следующем формировании команды.</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>Ранг неизвестен</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>Ранг {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>Чтение рангов питомцев ({0}/{1})</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>Готово к запуску</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Рекомендуется</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>Удаление всех питомцев</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Сначала нужно получить необходимое снаряжение, дающее иммунитет.</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>Отдыхать в лагерях</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>Отдых в лагере</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Восстановить исходный порядок этого списка и снять все его блокировки. Щёлкните с зажатой Ctrl.</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>Движение по маршруту ещё не началось.</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Маршрут {0:00} · {1}/{2} шагов</value></data>
+  <data name="Run setup" xml:space="preserve"><value>Настройка прохождения</value></data>
+  <data name="Runs" xml:space="preserve"><value>Прохождения</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>Вторая степень</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>Выберите одно из пяти полей Crucible</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>Выбранные питомцы</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>Формирование команды</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>Затемнением выделена команда, которую берёт этот режим. Наведите указатель на имя, чтобы увидеть характеристики.</value></data>
+  <data name="Shop List" xml:space="preserve"><value>Список покупок</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>Список покупок скопирован в буфер обмена.</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>Список покупок импортирован.</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>Список приоритетов покупок</value></data>
+  <data name="Standard" xml:space="preserve"><value>Стандартный</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>Остановите повелителя зверей перед изменением его настроек, зверей или припасов.</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>Остановлено после смены персонажа</value></data>
+  <data name="Stopping" xml:space="preserve"><value>Остановка</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>Сила: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>Припасы выбираются в порядке вашего списка.</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>Берёт выбранных вами имеющихся питомцев в пределах вместимости выбранного поля.</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>Берёт ваших питомцев с самым высоким рангом. При равенстве учитывается список приоритетов зверей.</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>Берёт ваших питомцев с самым низким рангом, начиная с тех, у кого меньше опыта. Они также сражаются первыми.</value></data>
+  <data name="Team cap" xml:space="preserve"><value>Лимит команды</value></data>
+  <data name="Team ready" xml:space="preserve"><value>Команда готова</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>Формирование команды продолжалось без окончательного результата; остановлено.</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>Текущее поле доступно после входа в Crucible. Узлы и положение игрока неизвестны за пределами задания.</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>Выбранное поле не соответствует текущему заданию Crucible</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>Команда заполнена. Снимите выбор с одного питомца, чтобы выбрать другого.</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>Третья степень</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>Три сильных питомца поддерживают обучаемых; оставьте два свободных места в команде.</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>Галочками отмечена команда, которую вы берёте. Наведите указатель на имя, чтобы увидеть характеристики.</value></data>
+  <data name="Tier List" xml:space="preserve"><value>Рейтинг по уровням</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>Не удалось начать поездку к Lauda</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>Поездка к Lauda</value></data>
+  <data name="Treasure" xml:space="preserve"><value>Сокровище</value></data>
+  <data name="Type" xml:space="preserve"><value>Тип</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>Не удалось импортировать рейтинг зверей. Используйте экспортированный список или известные ID питомцев, разделённые пробелами или запятыми.</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>Не удалось импортировать список покупок. Используйте экспортированный список или известные ID предметов, разделённые пробелами или запятыми.</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>Неизвестное поле</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>Неизвестная классификация</value></data>
+  <data name="Untitled" xml:space="preserve"><value>Без названия</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · Повелитель зверей</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>Дождитесь готовности текущего персонажа</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>Ожидание завершения управляемого перемещения</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>Ожидание воскрешения</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>Ожидание входа в Crucible</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>Для навигации по полю требуется vnavmesh</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>Выбрано питомцев: {0} · Показано: {1}/{2}</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>Остановок: {0} · Соединений: {1}</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · Остановка {1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3} прохождений</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>Не удалось определить, какой питомец скрывается под именем «{0}». Откройте его сведения в бестиарии один раз, чтобы VERMAXION запомнил имя.</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>Не удалось выбрать № {0} в бестиарии.</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>Вырастите недостающего партнёра до ранга гонщика 40 для разведения.</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>Птенец наследует цвет одного из родителей. Подходящий родитель G9 уже должен иметь один из выбранных цветов.</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>Недействительные настройки производства потомства.</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>Получено {0}/{1} подходящих потомков G9; сохранены без регистрации.</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>Сверьте текущее скрещивание перед следующим потомком.</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>Для производства нужен запас G9; гонки младших поколений остановлены.</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>У гонщика G9 нет подтверждённого нужного признака. Сохраните его и выберите подходящий запас.</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>Вырастите племенного родителя G9 до выхода на пенсию: гоночный ранг {0}/40. Подходящее потомство остаётся незарегистрированным.</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>Скрестите подходящий запас G9 с сохранённым родителем G9 противоположного пола.</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>Нет пригодного выведенного родителя G9 с нужным признаком. Сохраните потомство и пополните запас G9.</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>Вырастите неподходящего потомка G9 как недостающего партнёра; подходящих сохраняйте.</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>Нет пригодного родителя G9 другого пола. Нужен запас G9 или явный переход на разрешения NPC.</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>Ожидание скрещивания без действительного подтверждения готовности.</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>Разведение завершено; птенца можно забрать.</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>Ожидание скрещивания до {0:u}.</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>Разведение завершено; получение птенца.</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>Целевой цикл приостановлен на безопасной границе.</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>Приостановлено VERMAXION на безопасной границе.</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>Получение требует готового скрещивания, родословной родителей и ровно одного свидетельства.</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>Сохранённые данные получения недействительны; повтора не будет.</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>Получение произошло; сверьте точное потомство и признак перед подсчётом или скрещиванием.</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>Получение запрошено; сверьте расход свидетельства и одного подходящего птенца перед повтором.</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Выполнение цели Choke-abo: {0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>Отложено: {0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>Требования для входа: уровень {0}, уровень предметов {1}. Уровень надетых предметов: {2}.</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>Требуются уровень {0} и уровень предметов {1}; текущий уровень {2}, уровень предметов {3}.</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>Требования для входа для этой доски недоступны.</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>Уровень надетых предметов недоступен.</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>Еженедельные задания Повелителя зверей</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>Еженедельные испытания</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>Запустить еженедельные испытания</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>Пройти по одному разу каждое доступное незавершённое испытание Повелителя зверей.</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>Учитывается только одиночное прохождение досок. Подземелья не учитываются.</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>Присутствие фамильяра в команде не подтверждено. Проверьте команду в игре перед повторным запуском.</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>Все пять еженедельных испытаний завершены.</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>Доступные еженедельные испытания завершены. Остались доски, закрытые условиями открытия или экипировкой.</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>После результата доски новое еженедельное зачтение не подтверждено. Ни одна доска не была повторена.</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>Выйдите из текущей доски Crucible перед запуском еженедельных испытаний.</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>Нет доступных незавершённых еженедельных испытаний. Остались доски, закрытые условиями открытия или экипировкой.</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>Не завершено необходимое задание для доски или журнала испытаний.</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>Требуется {0}-й уровень Повелителя зверей.</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>Требуется уровень предметов {0}; текущий уровень предметов: {1}.</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>Подготовка команды остановлена: окно игры не завершило обновление.</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>Подготовка команды остановлена: состав команды неожиданно изменился.</value></data>
+  <data name="The bestiary did not show the requested familiar's details." xml:space="preserve"><value>Бестиарий не показал сведения о запрошенном фамильяре.</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>Выбранное еженедельное испытание уже завершено. Новый вход не запрашивался.</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>Ожидание новой загрузки журнала испытаний для этого персонажа и текущего сброса.</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>Ожидание нового еженедельного зачтения испытания.</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>Еженедельные данные журнала испытаний изменились или стали недоступны. Следующая доска не поставлена в очередь.</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>Еженедельные данные журнала испытаний недоступны.</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>Еженедельных испытаний завершено: {0}/5.</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>Не завершено</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>Перед запуском Повелителя зверей необходимо завершить текущую очередь на задание.</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>Наблюдение за входом в Crucible недоступно.</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>Ожидающий вход в Crucible был отменён. Повторный вход не запрашивался.</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>Отмена входа в Crucible.</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>Доска Crucible, на которую выполнен вход, не соответствует запрошенной.</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>Мини-окно</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>Полное окно</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve">
+    <value>Уже выполняется запуск Повелителя зверей, обновление или его очистка.</value>
+  </data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve">
+    <value>Модуль боя выгружен или заменён; исходная принадлежность управления не определена.</value>
+  </data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve">
+    <value>Все имеющиеся звери достигли цели обучения для этого поля.</value>
+  </data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve">
+    <value>Имеющийся зверь недоступен в отдельном бестиарии; частичные наблюдения сохранены.</value>
+  </data>
+  <data name="Another automation owns the character." xml:space="preserve">
+    <value>Персонажем управляет другая автоматизация.</value>
+  </data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve">
+    <value>Состав имеющихся зверей изменился во время обновления; частичные наблюдения сохранены. Обновите снова, когда состав стабилизируется.</value>
+  </data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve">
+    <value>Обновление зверей отменено; частичные наблюдения сохранены.</value>
+  </data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve">
+    <value>Обновление зверей остановлено после смены персонажа, территории или игрового контекста.</value>
+  </data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve">
+    <value>Обновление зверей остановлено, поскольку бестиарий переключился на данные команды.</value>
+  </data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve">
+    <value>Повелитель зверей не может получить управление AutoRetainer, пока существующее подавление активно или его состояние недоступно.</value>
+  </data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve">
+    <value>Повелитель зверей не смог проверить подавление AutoRetainer.</value>
+  </data>
+  <data name="Beastmaster frequency" xml:space="preserve">
+    <value>Частота задач Повелителя зверей</value>
+  </data>
+  <data name="Beastmaster scheduling" xml:space="preserve">
+    <value>Расписание Повелителя зверей</value>
+  </data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve">
+    <value>Звери и Припасы общие для этого персонажа.</value>
+  </data>
+  <data name="Boards per trigger" xml:space="preserve">
+    <value>Полей за срабатывание</value>
+  </data>
+  <data name="Boards this run" xml:space="preserve">
+    <value>Полей в этом запуске</value>
+  </data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve">
+    <value>Для пресета BossMod «passive - melee» нужны дистанция 2.3 и движение Pathfind.</value>
+  </data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve">
+    <value>Цель следования BossMod AI недоступна.</value>
+  </data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve">
+    <value>Управление жизненным циклом BossMod AI недоступно.</value>
+  </data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve">
+    <value>Восстановление исходного состояния BossMod AI не подтверждено.</value>
+  </data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve">
+    <value>Текущее состояние BossMod AI несовместимо.</value>
+  </data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve">
+    <value>Текущее состояние BossMod AI недоступно.</value>
+  </data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve">
+    <value>Приостановка BossMod AI не подтверждена.</value>
+  </data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve">
+    <value>BossMod не подтвердил запрошенный пресет движения для Повелителя зверей.</value>
+  </data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve">
+    <value>Состояние принудительного отключения пресета BossMod противоречиво.</value>
+  </data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve">
+    <value>В BossMod отсутствует существующий пресет «passive - melee».</value>
+  </data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve">
+    <value>Восстановление исходного пресета BossMod не подтверждено.</value>
+  </data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve">
+    <value>BossMod требует существующий пресет «passive - melee» только для движения; в нём не должно быть ротации урона.</value>
+  </data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve">
+    <value>BossModReborn больше не загружен.</value>
+  </data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve">
+    <value>Возьмите трёх обучаемых питомцев, начиная с наименьших ранга и опыта. Сосредоточьте обучение на меньшем числе питомцев с меньшим резервом.</value>
+  </data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve">
+    <value>Возьмите до {0} обучаемых питомцев, оставив три места в команде свободными. Меньшая команда может получать больше опыта на питомца, но имеет меньше резервов.</value>
+  </data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve">
+    <value>Возьмите до {0} обучаемых питомцев, начиная с наименьших ранга и опыта. Обучайте больше питомцев вместе с большим резервом.</value>
+  </data>
+  <data name="Checked at VMX opportunities." xml:space="preserve">
+    <value>Проверяется, когда VMX получает возможность выполнения.</value>
+  </data>
+  <data name="Choose a training team method for this goal." xml:space="preserve">
+    <value>Выберите способ формирования учебной команды для этой цели.</value>
+  </data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve">
+    <value>Выберите состав в разделе «Звери». Любая конфигурация с режимом «Свой вариант» использует общий выбор этого персонажа.</value>
+  </data>
+  <data name="Clear recorded beast data" xml:space="preserve">
+    <value>Очистить записанные данные зверей</value>
+  </data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve">
+    <value>Сбросьте фильтры игрового бестиария перед обновлением всех имеющихся зверей.</value>
+  </data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve">
+    <value>Удалить сохранённые ранги, опыт, характеристики, наблюдения о владении и последнюю команду этого персонажа. Удерживайте Ctrl и нажмите.</value>
+  </data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve">
+    <value>Закройте регистрацию в Crucible и дождитесь завершения очереди в задание, прежде чем обновлять зверей.</value>
+  </data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve">
+    <value>Закройте текущее подтверждение перед обновлением зверей.</value>
+  </data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve">
+    <value>Закройте бестиарий команды перед обновлением зверей.</value>
+  </data>
+  <data name="Collapse" xml:space="preserve">
+    <value>Свернуть</value>
+  </data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve">
+    <value>Ожидается восстановление боя: {0}</value>
+  </data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve">
+    <value>Выполняет недостающие доступные цели игрового журнала испытаний независимо от обычного обучения.</value>
+  </data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve">
+    <value>Настройте запуск и цели обучения в разделе Повелитель зверей &gt; Расписание VMX.</value>
+  </data>
+  <data name="Crewcible task" xml:space="preserve">
+    <value>Задача Crewcible</value>
+  </data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve">
+    <value>Переход маршрута Crucible выходит за пределы поля</value>
+  </data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve">
+    <value>Любая конфигурация с режимом «Свой вариант» использует этот состав. Наведите указатель на имя для просмотра записанных характеристик.</value>
+  </data>
+  <data name="Editing settings does not start a run." xml:space="preserve">
+    <value>Изменение настроек не запускает прохождение.</value>
+  </data>
+  <data name="Enable Beastmaster training" xml:space="preserve">
+    <value>Включить обучение Повелителя зверей</value>
+  </data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve">
+    <value>Включить еженедельные задачи Повелителя зверей</value>
+  </data>
+  <data name="Enable task" xml:space="preserve">
+    <value>Включить задачу</value>
+  </data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve">
+    <value>Вступление в бой на текущей арене Crucible</value>
+  </data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve">
+    <value>Перед запуском проверяются требования входа для активного персонажа.</value>
+  </data>
+  <data name="Every AR" xml:space="preserve">
+    <value>Каждый AR</value>
+  </data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve">
+    <value>Исключённые питомцы не позволяют завершить эту цель.</value>
+  </data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve">
+    <value>Порядок выполнения: Настройки VMX &gt; Порядок задач.</value>
+  </data>
+  <data name="Expand" xml:space="preserve">
+    <value>Развернуть</value>
+  </data>
+  <data name="Fixed board runs" xml:space="preserve">
+    <value>Фиксированное число прохождений поля</value>
+  </data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve">
+    <value>Для подтверждения завершения обучения нужны свежие наблюдения ранга и опыта.</value>
+  </data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve">
+    <value>Полное наблюдение рангов недоступно. Непрочитанные ранги остаются неизвестными.</value>
+  </data>
+  <data name="Hide" xml:space="preserve">
+    <value>Скрыть</value>
+  </data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve">
+    <value>Сначала питомцы с наивысшим рангом; при равенстве учитываются приоритеты зверей.</value>
+  </data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve">
+    <value>Не зависит от включения обычной задачи, её цели обучения и лимита прохождений поля.</value>
+  </data>
+  <data name="Invalid Crucible route jump" xml:space="preserve">
+    <value>Недопустимый переход маршрута Crucible</value>
+  </data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve">
+    <value>Недопустимый шаг очистки при чтении Crucible</value>
+  </data>
+  <data name="Item and camp rules" xml:space="preserve">
+    <value>Правила предметов и лагеря</value>
+  </data>
+  <data name="Item priorities" xml:space="preserve">
+    <value>Приоритеты предметов</value>
+  </data>
+  <data name="Kin filter" xml:space="preserve">
+    <value>Фильтр семейства</value>
+  </data>
+  <data name="Last completed: {0}" xml:space="preserve">
+    <value>Последнее завершение: {0}</value>
+  </data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve">
+    <value>Покиньте текущее задание перед обновлением зверей.</value>
+  </data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve">
+    <value>Загрузите Rotation Solver Reborn и выберите его ротацию Reborn Beastmaster.</value>
+  </data>
+  <data name="Manual setup" xml:space="preserve">
+    <value>Ручная настройка</value>
+  </data>
+  <data name="Master Class I" xml:space="preserve">
+    <value>Мастер-класс I</value>
+  </data>
+  <data name="Master Class II" xml:space="preserve">
+    <value>Мастер-класс II</value>
+  </data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve">
+    <value>Игровые данные о владении зверями недоступны; записанные наблюдения сохранены.</value>
+  </data>
+  <data name="Next eligible: {0}" xml:space="preserve">
+    <value>Следующий доступный запуск: {0}</value>
+  </data>
+  <data name="No character" xml:space="preserve">
+    <value>Нет персонажа</value>
+  </data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve">
+    <value>Нет доступного профиля персонажа. Войдите в игру и дождитесь регистрации персонажа.</value>
+  </data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve">
+    <value>Для этой настройки не записано подходящих питомцев. Обновите зверей играющего персонажа.</value>
+  </data>
+  <data name="No full beast refresh has been requested." xml:space="preserve">
+    <value>Полное обновление зверей ещё не запрашивалось.</value>
+  </data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve">
+    <value>Нет записанных зверей. Используйте Обновить зверей, играя этим персонажем вне задания.</value>
+  </data>
+  <data name="No recorded character" xml:space="preserve">
+    <value>Нет записанного персонажа</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Не в сети</value>
+  </data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve">
+    <value>В списке только персонажи с записанными зверями.</value>
+  </data>
+  <data name="Open VMX Schedule" xml:space="preserve">
+    <value>Открыть расписание VMX</value>
+  </data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve">
+    <value>Открывается отдельный бестиарий для обновления рангов и опыта зверей.</value>
+  </data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve">
+    <value>Владение проверено. Записанным рангам может потребоваться полное обновление.</value>
+  </data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve">
+    <value>Владение наблюдалось не полностью. Завершение обучения неизвестно.</value>
+  </data>
+  <data name="Ownership not fully observed." xml:space="preserve">
+    <value>Владение наблюдалось не полностью.</value>
+  </data>
+  <data name="Ownership observed: {0}" xml:space="preserve">
+    <value>Владение наблюдалось: {0}</value>
+  </data>
+  <data name="Playing" xml:space="preserve">
+    <value>В игре</value>
+  </data>
+  <data name="Playing: {0}" xml:space="preserve">
+    <value>В игре: {0}</value>
+  </data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve">
+    <value>RSR Reborn Beastmaster больше не является текущей ротацией.</value>
+  </data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve">
+    <value>RSR не подтвердил запрошенный режим работы Повелителя зверей.</value>
+  </data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve">
+    <value>Флаги режима работы RSR противоречивы.</value>
+  </data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve">
+    <value>Восстановление исходного режима RSR не подтверждено.</value>
+  </data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve">
+    <value>Текущее состояние RSR несовместимо: </value>
+  </data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve">
+    <value>Текущее состояние RSR несовместимо: {0}</value>
+  </data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve">
+    <value>Текущее состояние RSR недоступно.</value>
+  </data>
+  <data name="Ranks observed: {0}" xml:space="preserve">
+    <value>Ранги наблюдались: {0}</value>
+  </data>
+  <data name="Recorded beasts" xml:space="preserve">
+    <value>Записанные звери</value>
+  </data>
+  <data name="Refresh beasts" xml:space="preserve">
+    <value>Обновить зверей</value>
+  </data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve">
+    <value>Обновление доступно только для играющего персонажа.</value>
+  </data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve">
+    <value>Ранги и опыт обновлены для {0} имеющихся зверей.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve">
+    <value>Обновление рангов и опыта зверей ({0}/{1}).</value>
+  </data>
+  <data name="Removing {0}" xml:space="preserve">
+    <value>Удаление {0}</value>
+  </data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve">
+    <value>Возобновление маршрута поля {0}/{1}</value>
+  </data>
+  <data name="Resuming the current Crucible board" xml:space="preserve">
+    <value>Возобновление текущего поля Crucible</value>
+  </data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve">
+    <value>Rotation Solver Reborn и BossModReborn должны быть загружены одновременно.</value>
+  </data>
+  <data name="Run actions" xml:space="preserve">
+    <value>Действия запуска</value>
+  </data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve">
+    <value>Проходить не более {0} полей за срабатывание. Незавершённое обучение продолжится при следующем доступном срабатывании.</value>
+  </data>
+  <data name="Run task now" xml:space="preserve">
+    <value>Выполнить задачу сейчас</value>
+  </data>
+  <data name="Run weeklies now" xml:space="preserve">
+    <value>Выполнить еженедельные задачи сейчас</value>
+  </data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Проходит недостающие доступные поля. Закрытые или заблокированные экипировкой пункты остаются незавершёнными.</value>
+  </data>
+  <data name="Saved data for {0}" xml:space="preserve">
+    <value>Сохранённые данные для {0}</value>
+  </data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve">
+    <value>Сохраняется отдельно от настроек задач VMX.</value>
+  </data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve">
+    <value>Настройки запланированных задач этого персонажа. Сохраняются отдельно от ручного запуска.</value>
+  </data>
+  <data name="Settings saved automatically" xml:space="preserve">
+    <value>Настройки сохраняются автоматически</value>
+  </data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve">
+    <value>Общее для ручных и запланированных запусков этого персонажа.</value>
+  </data>
+  <data name="Shop done, {0} coins left" xml:space="preserve">
+    <value>Покупки завершены, осталось {0} монет</value>
+  </data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve">
+    <value>Правила покупок, отдыха и лечения находятся в разделе Припасы.</value>
+  </data>
+  <data name="Smaller training team" xml:space="preserve">
+    <value>Уменьшенная учебная команда</value>
+  </data>
+  <data name="Soul Survivor I" xml:space="preserve">
+    <value>Одинокий выживший I</value>
+  </data>
+  <data name="Soul Survivor II" xml:space="preserve">
+    <value>Одинокий выживший II</value>
+  </data>
+  <data name="Soul Survivor III" xml:space="preserve">
+    <value>Одинокий выживший III</value>
+  </data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve">
+    <value>Остановлено; ожидается восстановление боя: {0}</value>
+  </data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve">
+    <value>Остановлено; ожидается закрытие отдельного бестиария. При необходимости закройте его вручную.</value>
+  </data>
+  <data name="Strongest available" xml:space="preserve">
+    <value>Сильнейшие из доступных</value>
+  </data>
+  <data name="Taking {0}" xml:space="preserve">
+    <value>Получение {0}</value>
+  </data>
+  <data name="Team method" xml:space="preserve">
+    <value>Способ формирования команды</value>
+  </data>
+  <data name="The Crucible route has no actions" xml:space="preserve">
+    <value>В маршруте Crucible нет действий</value>
+  </data>
+  <data name="The Crucible route is missing" xml:space="preserve">
+    <value>Маршрут Crucible отсутствует</value>
+  </data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve">
+    <value>Бестиарий не закрылся после обновления зверей.</value>
+  </data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve">
+    <value>Бестиарий не показал ранг и опыт запрошенного зверя; частичные наблюдения сохранены.</value>
+  </data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve">
+    <value>Страница бестиария не стабилизировалась после обновления.</value>
+  </data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve">
+    <value>Обновление бестиария не завершилось за пять минут; частичные наблюдения сохранены.</value>
+  </data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve">
+    <value>Бестиарий вернул ранг ниже записанного; обновление остановлено без замены этого наблюдения.</value>
+  </data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve">
+    <value>Результат поля не предоставил свежие ранги и опыт участвовавшей команды.</value>
+  </data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve">
+    <value>Не удалось восстановить исходный выбор в бестиарии.</value>
+  </data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve">
+    <value>Не удалось выбрать запрошенного зверя в отдельном бестиарии.</value>
+  </data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve">
+    <value>Отдельный бестиарий не перешёл в состояние готовности.</value>
+  </data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve">
+    <value>Отдельный бестиарий недоступен.</value>
+  </data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
+    <value>Этот порядок и эти исключения применяются к покупкам, выбору сокровищ и использованию предметов.</value>
+  </data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve">
+    <value>Этот запуск: {0}/{1} полей</value>
+  </data>
+  <data name="Three strong fighters + trainees" xml:space="preserve">
+    <value>Три сильных бойца + обучаемые</value>
+  </data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve">
+    <value>Первыми сражаются три сильнейших питомца, с ними до {0} обучаемых. Возьмите не более {1} всего, оставив два места свободными. Резерв тоже получает опыт.</value>
+  </data>
+  <data name="Train a full team" xml:space="preserve">
+    <value>Обучать полную команду</value>
+  </data>
+  <data name="Train owned familiars" xml:space="preserve">
+    <value>Обучать имеющихся питомцев</value>
+  </data>
+  <data name="Train three at a time" xml:space="preserve">
+    <value>Обучать по трое</value>
+  </data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve">
+    <value>Для обучения всех имеющихся зверей нужен способ формирования учебной команды.</value>
+  </data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve">
+    <value>Лимит обучения исчерпан; необученные звери будут проверены при следующем срабатывании.</value>
+  </data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve">
+    <value>Обучение не завершено, но подходящих зверей для учебной команды меньше трёх. Проверьте исключения выбора и фильтры семейства.</value>
+  </data>
+  <data name="Training progress" xml:space="preserve">
+    <value>Ход обучения</value>
+  </data>
+  <data name="Training target: Rank {0}" xml:space="preserve">
+    <value>Цель обучения: ранг {0}</value>
+  </data>
+  <data name="Unsupported Crucible board" xml:space="preserve">
+    <value>Неподдерживаемое поле Crucible</value>
+  </data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve">
+    <value>Неподдерживаемое условие маршрута Crucible</value>
+  </data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve">
+    <value>Неподдерживаемое действие маршрута только для Crucible: {0}</value>
+  </data>
+  <data name="Up to {0} familiars" xml:space="preserve">
+    <value>До {0} питомцев</value>
+  </data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve">
+    <value>Для Повелителя зверей используйте только BossModReborn; оба модуля BossMod используют одни и те же имена IPC.</value>
+  </data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve">
+    <value>Использует сохранённый способ формирования запланированной команды, сложность и общие припасы.</value>
+  </data>
+  <data name="Using {0} at {1}" xml:space="preserve">
+    <value>Использование {0} на {1}</value>
+  </data>
+  <data name="VMX Schedule" xml:space="preserve">
+    <value>Расписание VMX</value>
+  </data>
+  <data name="Viewing another character · automation not started" xml:space="preserve">
+    <value>Просмотр другого персонажа · автоматизация не запущена</value>
+  </data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve">
+    <value>Перед обновлением зверей дождитесь, когда текущий персонаж будет бездействовать.</value>
+  </data>
+  <data name="Wait until the current character is ready." xml:space="preserve">
+    <value>Дождитесь готовности текущего персонажа.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve">
+    <value>Статус еженедельного журнала испытаний доступен для играющего персонажа.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve">
+    <value>Статус еженедельного журнала испытаний доступен для играющего персонажа. Сохранённые настройки расписания можно редактировать.</value>
+  </data>
+  <data name="Weekly Challenge Log task" xml:space="preserve">
+    <value>Задача еженедельного журнала испытаний</value>
+  </data>
+  <data name="Weekly challenge objectives" xml:space="preserve">
+    <value>Цели еженедельных испытаний</value>
+  </data>
+  <data name="Weekly progress" xml:space="preserve">
+    <value>Еженедельный прогресс</value>
+  </data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve">
+    <value>Когда остаётся один или два обучаемых, добавляйте только столько обученных бойцов, сколько нужно до трёх.</value>
+  </data>
+  <data name="Wrong character" xml:space="preserve">
+    <value>Не тот персонаж</value>
+  </data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve">
+    <value>Не тот персонаж. Этот профиль можно редактировать, но перед запуском автоматизации переключитесь на этого персонажа.</value>
+  </data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve">
+    <value>Вы просматриваете {0}, но играете за {1}. Перед запуском автоматизации выберите текущего персонажа или войдите за просматриваемого.</value>
+  </data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve">
+    <value>{0} подходят для обучения · {1} исключены · {2} с неизвестным рангом</value>
+  </data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve">
+    <value>{0}/{1} с рангом {2}</value>
+  </data>
+  <data name="{0}/{1} complete" xml:space="preserve">
+    <value>{0}/{1} завершено</value>
+  </data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>Недостаточно подходящих питомцев с записанными рангами. Неизвестные ранги: {0}.</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>Свой вариант состава не позволяет сформировать команду для входа. Отсутствующие или исключённые питомцы: {0}.</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>Закройте открытый бестиарий перед обновлением зверей.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>Обновление рангов и EXP зверей ({0}/{1}); страница {2}/{3}.</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>Обновление зверей не завершено: получены данные о {0}/{1}; не прочитаны: {2}. {3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>Выйдите из текущего задания перед запуском Повелителя зверей.</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>Восстановление бестиария после обновления.</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>Ожидание данных {0}.</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>Повторная проверка {0}; ожидание допустимого нативного элемента управления.</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>Поле пройдено; ранги и EXP зверей остаются неподтверждёнными.</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>Остановлено; завершение нативной очистки не подтверждено: {0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>Повторная проверка текущего входа в Crucible.</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>Повтор через пять секунд: {0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>Прохождение {0}/{1}</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>Завершено прохождений: {0}/{1}</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>Проверка новых зверей</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>Прочитано {0}/{1}</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>Осталось: {0}</value></data>
+  <data name="Fighting" xml:space="preserve"><value>В бою</value></data>
+  <data name="Recovering" xml:space="preserve"><value>Восстановление</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>Завершение доски</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>Подготовка команды</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>Продолжить</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>Изменения расписания действуют со следующего запуска; текущий запуск сохраняет свои настройки.</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>После прохождения доски выход всегда выполняется автоматически.</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>Команда по завершении (необязательно)</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>Оставьте пустым, чтобы ничего не выполнять. Выполняется один раз после завершения плана, вне задания.</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>Еженедельные доски</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>Автоматически использовать открытые доски.</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>Использовать открытые доски</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>Открытые доски выбираются при игре этим персонажем. Выберите доски ниже, чтобы сохранить явный выбор.</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>Еженедельные доски не выбраны.</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Запускает выбранные непройденные доски. Закрытые доски и доски с неподходящим снаряжением остаются незавершёнными.</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>Выбранные еженедельные испытания завершены.</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>Завершено выбранных еженедельных испытаний: {0}/{1}.</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>Доступные выбранные еженедельные испытания завершены. Остаются закрытые доски и доски с неподходящим снаряжением.</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>Текущая еженедельная доска не выбрана.</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>Не удалось выполнить команду по завершении: {0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>Пройти каждое выбранное доступное испытание Beastmaster один раз.</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>Команда по завершении должна быть одной командой с косой чертой.</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>Не удалось отправить команду по завершении; повторной попытки не будет.</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>Команда по завершении отправлена.</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>Команда по завершении пропущена, поскольку не удалось сохранить завершение Crewcible.</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>Команда по завершении пропущена, поскольку завершённый запуск больше не является текущим.</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>Beastmaster отключён для этого персонажа.</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>Еженедельные испытания Beastmaster отключены для этого персонажа.</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>Beastmaster запланирован не ранее {0}.</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>Еженедельные испытания Beastmaster запланированы не ранее {0}.</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Остановить после следующего поражения или прохождения</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>Отменить остановку после следующего исхода</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Одноразовое действие: при поражении остановиться в подземелье; после прохождения забрать награды и выйти.</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Остановка после следующего поражения или прохождения.</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Остановлено после поражения; персонаж остаётся в Горниле.</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Остановлено после прохождения; персонаж покинул Горнило.</value></data>
 </root>

@@ -75,6 +75,8 @@ public static class AutomationCatalog
     public const string JumboCactpot = "jumbo_cactpot";
     public const string MiniCactpot = "mini_cactpot";
     public const string ChocoboRacing = "chocobo_racing";
+    public const string Beastmaster = "beastmaster";
+    public const string BeastmasterWeekly = "beastmaster_weekly";
     public const string FCBuffRefill = "fc_buff_refill";
     public const string MinionRoulette = "minion_roulette";
     public const string SeasonalGear = "seasonal_gear";
@@ -107,6 +109,8 @@ public static class AutomationCatalog
         Engine(JumboCactpot, nameof(CharacterConfig.EnableJumboCactpot), "Jumbo Cactpot", AutomationCadence.Weekly),
         Engine(MiniCactpot, nameof(CharacterConfig.EnableMiniCactpot), "Mini Cactpot", AutomationCadence.Daily),
         Engine(ChocoboRacing, nameof(CharacterConfig.EnableChocoboRacing), "Chocobo Racing", AutomationCadence.Daily),
+        Engine(Beastmaster, nameof(CharacterConfig.EnableBeastmaster), "Beastmaster", AutomationCadence.Scheduled),
+        Engine(BeastmasterWeekly, nameof(CharacterConfig.EnableBeastmasterWeekly), "Beastmaster weeklies", AutomationCadence.Scheduled),
         Engine(FCBuffRefill, nameof(CharacterConfig.EnableFCBuffRefill), "FC Buff Refill", AutomationCadence.Scheduled),
         Engine(MinionRoulette, nameof(CharacterConfig.EnableMinionRoulette), "Minion Roulette", AutomationCadence.EveryRun),
         Engine(SeasonalGear, nameof(CharacterConfig.EnableSeasonalGearRoulette), "Seasonal Gear", AutomationCadence.EveryRun),
@@ -150,6 +154,15 @@ public static class AutomationCatalog
         => ById.TryGetValue(id, out var definition)
             ? definition
             : throw new KeyNotFoundException($"Unknown automation ID '{id}'.");
+
+    // Keep saved pre-catalog Beastmaster reload selections usable. Callers keep
+    // the original ID to preserve its existing manual-action semantics.
+    public static string? ResolveDebugTaskId(string? id) => id switch
+    {
+        "Run##Beastmaster" => Beastmaster,
+        "Run##BeastmasterWeekly" => BeastmasterWeekly,
+        _ => id,
+    };
 
     public static IReadOnlyList<AutomationFeatureDefinition> ResolveFavorites(IEnumerable<string>? favoriteIds)
     {

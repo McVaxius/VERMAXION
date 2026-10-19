@@ -3404,8 +3404,8 @@ NPCランク、製作・採集・釣りのボーナス、確認済み進捗は�
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve">
     <value>AutoRetainerで有効なリテイナーだけを更新します。戦闘職は対応する平均IL、採集職は合計識質力だけで判断します。</value>
   </data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
-    <value>到達した最高血統より一段低い親で、その血統の産駒をもう一羽作ります。重複する性別は未登録で保持し、不足する性別を育てます。「再開」で適用します。</value>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve">
+    <value>到達済みの最高血統で不足している性別の幼鳥を得ます。1世代下の親、またはG9到達時には保管中のG9の親を使います。既にいる性別の幼鳥は登録せず、不足している性別を育ててください。適用するには再開してください。</value>
   </data>
   <data name="Use retained parents. Missing counterparts stop this mode; covering permits are purchased only in permit mode." xml:space="preserve">
     <value>保持した親を使います。相手がなければこのモードは停止し、許可証は許可証モードでのみ購入します。</value>
@@ -4917,4 +4917,570 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Collect" xml:space="preserve"><value>受け取る</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>受け取って一時停止</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>受け取り可能な子チョコボを1羽受け取り、次の交配前に一時停止します。</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>魔獣使い</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>魔獣使いがキャラクターを操作しています。</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>魔獣使いの後処理でAutoRetainerの抑制を解除しています。</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>現在のキャラクターの登録と準備が完了するまで待機しています。</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · 番号 {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>魔獣使いの実行または終了処理がすでに進行中です</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>{0}を追加中（{1}/{2}）</value></data>
+  <data name="All categories" xml:space="preserve"><value>すべてのカテゴリー</value></data>
+  <data name="All kins" xml:space="preserve"><value>すべての系統</value></data>
+  <data name="Allow category" xml:space="preserve"><value>カテゴリーを許可</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>Laudaに接近中</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>ボードに挑戦するには、条件を満たす使い魔が最低3体必要です。</value></data>
+  <data name="Automation" xml:space="preserve"><value>自動化</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>免疫がない場合は有害な装備を避ける</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>魔獣の優先順位リスト</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>魔獣のティアリストをクリップボードにコピーしました。</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>魔獣のティアリストをインポートしました。</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>魔獣使いサービスは破棄されています</value></data>
+  <data name="Beasts" xml:space="preserve"><value>魔獣</value></data>
+  <data name="Block" xml:space="preserve"><value>禁止</value></data>
+  <data name="Block category" xml:space="preserve"><value>カテゴリーを禁止</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>禁止されたアイテムは購入、宝物としての選択、使用の対象になりません。Ctrlキーを押しながらクリックすると、カテゴリー全体を変更できます。</value></data>
+  <data name="Board" xml:space="preserve"><value>ボード</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>ボード上での回復：次の戦闘までにキャンプがない場合、HPが60%以下で回復します。</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>ボードのルート {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>ボードのチーム定員: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>ボス</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>カテゴリー一括変更</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>{0}を{1}で購入中</value></data>
+  <data name="Camp" xml:space="preserve"><value>キャンプ</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>キャンプ：HPが60%未満の負傷した使い魔を最大2体休ませます。選択しない場合は、プレイヤー自身のHPが90%回復します。</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>引率・2枠空け</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>ボードに挑戦中</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>「魔獣」でカスタムチームを選択してください。保存された順序が維持されます。</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>ランクが低く、EXPが少ない使い魔を3体選びます。</value></data>
+  <data name="Classification" xml:space="preserve"><value>分類</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>カスタム使い魔を解除</value></data>
+  <data name="Clear order" xml:space="preserve"><value>順序をリセット</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>保存済みランクを消去</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>カスタムチームを解除します。Ctrlキーを押しながらクリックしてください。</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>さらにランクを読み取るため、ボードをクリア中</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>戦闘中の回復：HPが40%以下で回復します。</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>戦闘を開始中</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>体力: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>コピー</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>Crucibleに参加するには、異なる使い魔が最低3体必要です。チームの選択と制限を調整してください。</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>Crucibleに参加するには、異なる使い魔が最低3体必要です。挑戦確定前にチームが変更されました。</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Crucibleの参加登録が5分以内に完了しませんでした</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>Crucibleへの参加には魔獣使いが必要です</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Crucibleの攻略が完了しました</value></data>
+  <data name="Current board" xml:space="preserve"><value>現在のボード</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>水色の輪：現在の地点。水色の点：プレイヤーの現在位置。</value></data>
+  <data name="Damage" xml:space="preserve"><value>ダメージ</value></data>
+  <data name="Degree" xml:space="preserve"><value>等級</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>このリストを削除します。Ctrlキーを押しながらクリックしてください。最後のリストは削除できません。</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic HelmにはSoulreaper's Armorが必要です。Thunder AxeにはUmbral Wristletが必要です。</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>ハンドルをドラッグするか、新しい番号（#）を入力して順序を変更します。「禁止」をCtrlキーを押しながらクリックすると、カテゴリー単位で変更できます。</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>ハンドルをドラッグするか、新しい番号（#）を入力して順序を変更します。禁止設定をCtrlキーを押しながらクリックすると、分類単位で変更できます。</value></data>
+  <data name="EXP" xml:space="preserve"><value>EXP</value></data>
+  <data name="Elite" xml:space="preserve"><value>エリート</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>すべての使い魔が戦闘不能です</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>完了時に退出</value></data>
+  <data name="Export" xml:space="preserve"><value>エクスポート</value></data>
+  <data name="Familiar" xml:space="preserve"><value>使い魔</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>使い魔のデータを取得できません。ログインしてキャラクターの登録を待ってください。</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>使い魔 {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>エサを与える</value></data>
+  <data name="Fight" xml:space="preserve"><value>戦闘</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>戦闘禁止</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>「戦闘禁止」の使い魔は、禁止されていない戦闘可能な使い魔が3体未満にならない限り、控えになります。Ctrlキーを押しながらクリックすると、分類全体を変更できます。</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>戦闘メンバー</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>ランクが低く、EXPが少ない使い魔から優先して、ボードの定員までチームを編成します。</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>ボードを完了中</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>第一等級</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>Crucibleのボードに沿って移動中</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>保存済みランクを消去します。Ctrlキーを押しながらクリックしてください。</value></data>
+  <data name="Full" xml:space="preserve"><value>上限まで</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>「上限まで」はボードの定員まで編成します。「-3」は3枠空けます。「3体のみ」は3体を連れていきます。「引率」はランク上位3体に育成対象を加え、2枠空けます。</value></data>
+  <data name="Gear" xml:space="preserve"><value>装備</value></data>
+  <data name="HP" xml:space="preserve"><value>HP</value></data>
+  <data name="Heal items" xml:space="preserve"><value>回復アイテム</value></data>
+  <data name="Healing" xml:space="preserve"><value>回復</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>回復とキャンプ</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>回復を行うHPの基準は自動化側で固定されています。</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>上位等級にはクエスト71045のクリアが必要です。標準を使用します。</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>ランクが高い使い魔を優先し、同じランクではティア順で決定します。</value></data>
+  <data name="Import" xml:space="preserve"><value>インポート</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>エクスポートしたJSONまたは既知のアイテムIDから新しいリストを追加します。不足しているカタログ項目は末尾に追加されます。エクスポートすると、このリストをクリップボードにコピーします。</value></data>
+  <data name="Imported" xml:space="preserve"><value>インポート済み</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>知力: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>Crucibleに参加する前にパーティを離脱してください</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>チームを3枠空け、ランクが低く、EXPが少ない使い魔から優先して選びます。</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>完了したボードから退出中</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>結果を確認する前にCrucibleから退出しました</value></data>
+  <data name="Leveling" xml:space="preserve"><value>育成</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>育成チーム</value></data>
+  <data name="List name" xml:space="preserve"><value>リスト名</value></data>
+  <data name="Loot" xml:space="preserve"><value>戦利品</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>魔法耐性: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>3枠空け</value></data>
+  <data name="New" xml:space="preserve"><value>新規</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>この設定で選択できる使い魔の情報がありません。参加時に図鑑を確認してからチームを選択します。</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>使い魔の情報がまだありません。VERMAXIONが読み取れるよう、Laudaでチームまたは図鑑を開いてください。</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>Laudaへの移動先が見つかりませんでした</value></data>
+  <data name="No." xml:space="preserve"><value>番号</value></data>
+  <data name="Only 3" xml:space="preserve"><value>3体のみ</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>属性斧は1本のみ使用できます。併用できない属性斧は常にスキップします。</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>所持している使い魔</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>現在の所持状況を取得できないため、このプレビューでは記憶済みの使い魔データを使用します。</value></data>
+  <data name="Paused: " xml:space="preserve"><value>一時停止中: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>一時停止中: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>物理耐性: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>選出禁止</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>「選出禁止」は自動チーム選択の対象から除外します。Ctrlキーを押しながらクリックすると、分類全体を変更できます。</value></data>
+  <data name="Rank" xml:space="preserve"><value>ランク</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>ランクは未読み取りです。次回のチーム編成時に図鑑から読み取ります。</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>ランク不明</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>ランク {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>使い魔のランクを読み取り中（{0}/{1}）</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>開始準備完了</value></data>
+  <data name="Recommended" xml:space="preserve"><value>推奨</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>すべての使い魔を外しています</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>必要な免疫装備をあらかじめ所持している必要があります。</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>キャンプで休む</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>キャンプで休憩中</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>このリストの順序を初期状態に戻し、禁止設定をすべて解除します。Ctrlキーを押しながらクリックしてください。</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>ルートはまだ開始されていません。</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>ルート {0:00} · {1}/{2}ステップ</value></data>
+  <data name="Run setup" xml:space="preserve"><value>実行設定</value></data>
+  <data name="Runs" xml:space="preserve"><value>実行回数</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>第二等級</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>5種類のCrucibleボードから1つ選択してください</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>選択した使い魔</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>チームを編成中</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>網掛け：このモードで選ばれるチーム。名前にカーソルを合わせると能力値を表示します。</value></data>
+  <data name="Shop List" xml:space="preserve"><value>ショップリスト</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>ショップリストをクリップボードにコピーしました。</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>ショップリストをインポートしました。</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>ショップの優先順位リスト</value></data>
+  <data name="Standard" xml:space="preserve"><value>標準</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>設定、魔獣、補給品を変更する前に魔獣使いを停止してください。</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>キャラクターが変更されたため停止しました</value></data>
+  <data name="Stopping" xml:space="preserve"><value>停止中</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>筋力: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>補給品はリストの順序に従います。</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>選択したボードの定員を上限として、選択した所持使い魔を連れていきます。</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>ランクが高い使い魔を連れていきます。同じランクでは魔獣の優先順位リストに従います。</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>ランクが低い使い魔を、EXPが少ない順に連れていきます。戦闘にも先に参加します。</value></data>
+  <data name="Team cap" xml:space="preserve"><value>チーム定員</value></data>
+  <data name="Team ready" xml:space="preserve"><value>チーム準備完了</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>チーム編成が確定せず処理が続いたため、停止しました。</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>現在のボードはCrucibleへの参加後に表示されます。コンテンツ外ではノードとプレイヤーの位置を取得できません。</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>選択したボードが現在のCrucibleコンテンツと一致しません</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>チームが満員です。別の使い魔を選ぶには、いずれかの選択を解除してください。</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>第三等級</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>強い使い魔3体が育成対象を引率します。チームを2枠空けます。</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>チェック：連れていくチーム。名前にカーソルを合わせると能力値を表示します。</value></data>
+  <data name="Tier List" xml:space="preserve"><value>ティアリスト</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>Laudaへの移動を開始できませんでした</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>Laudaへ移動中</value></data>
+  <data name="Treasure" xml:space="preserve"><value>宝物</value></data>
+  <data name="Type" xml:space="preserve"><value>種類</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>魔獣のティアリストをインポートできません。エクスポートしたリスト、またはスペースかカンマで区切った既知の使い魔IDを使用してください。</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>ショップリストをインポートできません。エクスポートしたリスト、またはスペースかカンマで区切った既知のアイテムIDを使用してください。</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>不明なボード</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>不明な分類</value></data>
+  <data name="Untitled" xml:space="preserve"><value>無題</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · 魔獣使い</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>現在のキャラクターの準備が整うまで待ってください</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>自動操作による移動の停止を待機中</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>蘇生待機中</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>Crucibleへの参加を待機中</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>ボード内の移動にはvnavmeshが必要です</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>使い魔{0}体を選択 · {1}/{2}体を表示</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>{0}地点 · {1}接続</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · 地点 {1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3}回</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>「{0}」がどの使い魔か判別できません。VERMAXIONが名前を学習できるよう、図鑑でその使い魔の詳細を一度開いてください。</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>図鑑で番号{0}を選択できませんでした。</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>不足している交配相手を競走ランク40まで育てます。</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>幼鳥はいずれかの親の羽色を引き継ぎます。選択した羽色を持つ適切なG9の親が必要です。</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>子の生産設定が無効です。</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>条件一致G9の子を{0}/{1}羽生産。未登録のまま保持。</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>次の子を作る前に既存の交配結果を照合してください。</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>子の生産にはG9交配ストックが必要です。低血統の出走は停止します。</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>登録G9レーサーの希望特性を確認できません。保持し、適切な交配ストックを選んでください。</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>繁殖用のG9親を引退まで育成：レースランク{0}/40。条件に一致する子は未登録で保持。</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>一致G9ストックと保持した異性G9親を交配してください。</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>希望特性を確認済みの使用可能な引退G9親がありません。子を保持して適切なG9を補充してください。</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>不一致のG9の子を不足する自前の相手として育て、一致する子は保持してください。</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>使用可能な異性G9親がいません。自前モードには適切なG9かNPC許可証への明示切替が必要です。</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>交配待ちに有効な引取条件の証拠がありません。</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>交配が完了しました。幼鳥を受け取れます。</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>交配待ち終了：{0:u}。</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>交配が完了しました。幼鳥を受け取っています。</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>目標サイクルを安全な区切りで一時停止しました。</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>VERMAXIONが安全な区切りで一時停止しました。</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>引き取りには現在の引取可能な交配、保持親の血統、交配証明書1枚が必要です。</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>保存済み回収証拠が無効です。回収を再実行しません。</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>引き取り済み。加算や次の交配前に、新しい子とその特性を正確に照合してください。</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>引き取り要求済み。再要求前に証明書消費と一致する子1羽を照合してください。</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Choke-aboの目標処理: {0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>保留: {0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>突入条件：ジョブレベル{0}、アイテムレベル{1}。現在の装備のアイテムレベル：{2}。</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>ジョブレベル{0}、アイテムレベル{1}が必要です。現在のジョブレベル：{2}、装備のアイテムレベル：{3}。</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>このボードの突入条件を取得できません。</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>現在の装備のアイテムレベルを取得できません。</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>魔獣使いの週間課題</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>週間チャレンジ</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>週間チャレンジを開始</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>参加可能な未達成の魔獣使いチャレンジをそれぞれ1回クリアします。</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>ソロでのボードクリアが対象です。ダンジョンは対象外です。</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>使い魔がチームに追加されたことを確認できませんでした。再開する前にゲーム内のチームを確認してください。</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>チームが予期せず変更されたため、チーム設定を停止しました。</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>ゲーム内ウィンドウの更新が完了しなかったため、チーム設定を停止しました。</value></data>
+  <data name="The bestiary did not show the requested familiar&apos;s details." xml:space="preserve"><value>図鑑に指定した使い魔の詳細が表示されませんでした。</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>攻略手帳の週間チャレンジ情報を取得できません。</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>5つの週間チャレンジはすべて完了しています。</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>週間チャレンジの完了数：{0}/5。</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>参加可能な未完了の週間チャレンジはありません。未解放または装備条件を満たさないボードが残っています。</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>必要なボード解放クエストまたは攻略手帳解放クエストが未完了です。</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>魔獣使いのレベル{0}が必要です。</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>必要アイテムレベル：{0}。現在のアイテムレベル：{1}。</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>未完了</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>現在のキャラクターとリセット期間に対応する攻略手帳情報の再読み込みを待っています。</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>週間チャレンジを開始する前に、現在のCrucibleのコンテンツから退出してください。</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>参加可能な週間チャレンジは完了しました。未解放または装備条件を満たさないボードが残っています。</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>攻略手帳の週間チャレンジ情報が変更されたか、取得できなくなりました。次のボードは予約していません。</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>選択した週間チャレンジはすでに完了しています。追加の参加申請は送信していません。</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>週間チャレンジの達成状況の更新を待っています。</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>ボードのリザルト表示後に週間チャレンジの達成を確認できませんでした。同じボードへの再挑戦は行っていません。</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>魔獣使いを開始する前に、現在のコンテンツ申請が終了するのを待ってください。</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>Crucibleへの突入状況を確認できません。</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>保留中のCrucible突入申請が取り下げられました。再申請はしていません。</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>Crucible突入を取り消しています。</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>突入したCrucibleのボードが、指定したボードと一致しません。</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>ミニ表示</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>全体ウィンドウ</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve"><value>魔獣使いの実行、更新、または終了処理がすでに進行中です。</value></data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve"><value>戦闘プロバイダーがアンロードまたは置換されました。元の制御権が未解決です。</value></data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve"><value>所有するすべての魔獣が、このボードの育成目標に到達しました。</value></data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve"><value>所有する魔獣の一部を単独の魔獣図鑑で確認できませんでした。取得済みの記録は保持しました。</value></data>
+  <data name="Another automation owns the character." xml:space="preserve"><value>別の自動処理がこのキャラクターを制御しています。</value></data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve"><value>更新中に所有する魔獣が変化しました。取得済みの記録は保持しました。一覧が安定してから再度更新してください。</value></data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve"><value>魔獣の更新をキャンセルしました。取得済みの記録は保持しました。</value></data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve"><value>キャラクター、エリア、またはゲーム内の状態が変わったため、魔獣の更新を停止しました。</value></data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve"><value>魔獣図鑑がチームのデータに切り替わったため、更新を停止しました。</value></data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve"><value>既存の抑制が有効、または状態を読み取れないため、魔獣使いはAutoRetainerの制御権を取得できません。</value></data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve"><value>魔獣使いはAutoRetainerの抑制を確認できませんでした。</value></data>
+  <data name="Beastmaster frequency" xml:space="preserve"><value>魔獣使いの実行頻度</value></data>
+  <data name="Beastmaster scheduling" xml:space="preserve"><value>魔獣使いのスケジュール</value></data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve"><value>魔獣と物資は、このキャラクターで共有されます。</value></data>
+  <data name="Boards per trigger" xml:space="preserve"><value>1回の起動でのボード数</value></data>
+  <data name="Boards this run" xml:space="preserve"><value>今回のボード数</value></data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve"><value>BossModの「passive - melee」には、距離2.3とPathfind移動が必要です。</value></data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve"><value>BossMod AIの追従対象を取得できません。</value></data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve"><value>BossMod AIのライフサイクル制御を利用できません。</value></data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve"><value>BossMod AIの元の状態への復元を確認できていません。</value></data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve"><value>BossMod AIの実行状態に互換性がありません。</value></data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve"><value>BossMod AIの実行状態を取得できません。</value></data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve"><value>BossMod AIの一時停止を確認できませんでした。</value></data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve"><value>BossModは要求された魔獣使い用の移動プリセットを確認しませんでした。</value></data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve"><value>BossModの強制無効化プリセットの状態に不整合があります。</value></data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve"><value>BossModに既存の「passive - melee」プリセットがありません。</value></data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve"><value>BossModの元のプリセットへの復元を確認できていません。</value></data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve"><value>BossModには移動専用の既存プリセット「passive - melee」が必要です。DPSローテーションを含めないでください。</value></data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve"><value>BossModRebornがロードされていません。</value></data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve"><value>ランク、EXPの低い順に育成対象を3体連れていきます。少数に集中して育成しますが、控えは少なくなります。</value></data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve"><value>3枠を空け、育成対象を最大{0}体連れていきます。少人数では1体あたりの獲得EXPが増える場合がありますが、控えは少なくなります。</value></data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve"><value>ランク、EXPの低い順に育成対象を最大{0}体連れていきます。控えを多く確保しながら、多数を同時に育成します。</value></data>
+  <data name="Checked at VMX opportunities." xml:space="preserve"><value>VMXの実行機会に判定します。</value></data>
+  <data name="Choose a training team method for this goal." xml:space="preserve"><value>この目標に使用する育成チームの方式を選んでください。</value></data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve"><value>カスタムのメンバーは「魔獣」で選択します。カスタムを選ぶすべての設定で、このキャラクターの選択を共有します。</value></data>
+  <data name="Clear recorded beast data" xml:space="preserve"><value>記録済みの魔獣データを消去</value></data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve"><value>所有するすべての魔獣を更新する前に、ゲーム内の魔獣図鑑のフィルターを解除してください。</value></data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve"><value>このキャラクターの保存済みランク、EXP、能力値、所有記録、前回のチームを消去します。Ctrlを押しながらクリックしてください。</value></data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve"><value>魔獣を更新する前に、Crucibleの参加登録を閉じ、コンテンツ申請が落ち着くまで待ってください。</value></data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve"><value>魔獣を更新する前に、現在の確認画面を閉じてください。</value></data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve"><value>魔獣を更新する前に、チームの魔獣図鑑を閉じてください。</value></data>
+  <data name="Collapse" xml:space="preserve"><value>縮小</value></data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve"><value>戦闘設定の復元待ち: {0}</value></data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve"><value>通常の育成とは独立して、実行可能な未完了のゲーム内攻略手帳の目標を達成します。</value></data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve"><value>実行設定と育成目標は、魔獣使いの「VMXスケジュール」で設定してください。</value></data>
+  <data name="Crewcible task" xml:space="preserve"><value>Crewcibleタスク</value></data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve"><value>Crucibleのルート移動先がボードの範囲外です</value></data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve"><value>カスタムを選ぶすべての設定で、このメンバー選択を使用します。名前にカーソルを合わせると記録済みの能力値を表示します。</value></data>
+  <data name="Editing settings does not start a run." xml:space="preserve"><value>設定を編集しても実行は開始されません。</value></data>
+  <data name="Enable Beastmaster training" xml:space="preserve"><value>魔獣使いの育成を有効化</value></data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve"><value>魔獣使いの週間タスクを有効化</value></data>
+  <data name="Enable task" xml:space="preserve"><value>タスクを有効化</value></data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve"><value>現在のCrucible闘技場で戦闘開始</value></data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve"><value>開始前に、操作中のキャラクターの参加条件を確認します。</value></data>
+  <data name="Every AR" xml:space="preserve"><value>ARごと</value></data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve"><value>除外された魔獣がいる限り、この目標は未完了のままです。</value></data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve"><value>実行順: VMX設定 &gt; タスク順序。</value></data>
+  <data name="Expand" xml:space="preserve"><value>拡大</value></data>
+  <data name="Fixed board runs" xml:space="preserve"><value>ボードを指定回数実行</value></data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve"><value>育成完了を判定するには、最新のランクとEXPの取得が必要です。</value></data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve"><value>全体のランク記録を取得できていません。未読のランクは不明のままです。</value></data>
+  <data name="Hide" xml:space="preserve"><value>非表示</value></data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve"><value>ランクの高い魔獣を優先し、同ランクでは魔獣の優先順位に従います。</value></data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve"><value>通常タスクの有効状態、育成目標、実行ボード数の上限とは独立しています。</value></data>
+  <data name="Invalid Crucible route jump" xml:space="preserve"><value>無効なCrucibleルートの移動先です</value></data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve"><value>Crucibleのスキャン解除ステップが無効です</value></data>
+  <data name="Item and camp rules" xml:space="preserve"><value>アイテムとキャンプのルール</value></data>
+  <data name="Item priorities" xml:space="preserve"><value>アイテムの優先順位</value></data>
+  <data name="Kin filter" xml:space="preserve"><value>系統フィルター</value></data>
+  <data name="Last completed: {0}" xml:space="preserve"><value>前回の完了: {0}</value></data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve"><value>魔獣を更新する前に、現在のコンテンツから退出してください。</value></data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve"><value>Rotation Solver Rebornをロードし、Reborn Beastmasterローテーションを選択してください。</value></data>
+  <data name="Manual setup" xml:space="preserve"><value>手動実行の設定</value></data>
+  <data name="Master Class I" xml:space="preserve"><value>マスタークラスI</value></data>
+  <data name="Master Class II" xml:space="preserve"><value>マスタークラスII</value></data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve"><value>ゲーム内の魔獣所有データを取得できません。記録済みの情報は保持しました。</value></data>
+  <data name="Next eligible: {0}" xml:space="preserve"><value>次回の実行可能時刻: {0}</value></data>
+  <data name="No character" xml:space="preserve"><value>キャラクターなし</value></data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve"><value>キャラクターのプロファイルがありません。ログインし、キャラクターの登録を待ってください。</value></data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve"><value>この設定で使用できる魔獣が記録されていません。操作中のキャラクターで魔獣を更新してください。</value></data>
+  <data name="No full beast refresh has been requested." xml:space="preserve"><value>魔獣の全体更新はまだ要求されていません。</value></data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve"><value>記録済みの魔獣がいません。このキャラクターを操作し、コンテンツ外で「魔獣を更新」を実行してください。</value></data>
+  <data name="No recorded character" xml:space="preserve"><value>記録済みのキャラクターなし</value></data>
+  <data name="Offline" xml:space="preserve"><value>オフライン</value></data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve"><value>魔獣の記録があるキャラクターのみ表示します。</value></data>
+  <data name="Open VMX Schedule" xml:space="preserve"><value>VMXスケジュールを開く</value></data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve"><value>単独の魔獣図鑑を開き、魔獣のランクとEXPを更新しています。</value></data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve"><value>所有状況を確認しました。記録済みランクの全体更新が必要な場合があります。</value></data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve"><value>所有状況を完全には確認できていません。育成の完了は不明です。</value></data>
+  <data name="Ownership not fully observed." xml:space="preserve"><value>所有状況の確認が不完全です。</value></data>
+  <data name="Ownership observed: {0}" xml:space="preserve"><value>所有状況の確認日時: {0}</value></data>
+  <data name="Playing" xml:space="preserve"><value>操作中</value></data>
+  <data name="Playing: {0}" xml:space="preserve"><value>操作中: {0}</value></data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve"><value>RSRの現在のローテーションがReborn Beastmasterではなくなりました。</value></data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve"><value>RSRは要求された魔獣使いの動作モードを確認しませんでした。</value></data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve"><value>RSRの動作モードフラグに不整合があります。</value></data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve"><value>RSRの元のモードへの復元を確認できていません。</value></data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve"><value>RSRの実行状態に互換性がありません: </value></data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve"><value>RSRの実行状態に互換性がありません: {0}</value></data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve"><value>RSRの実行状態を取得できません。</value></data>
+  <data name="Ranks observed: {0}" xml:space="preserve"><value>ランクの確認日時: {0}</value></data>
+  <data name="Recorded beasts" xml:space="preserve"><value>記録済みの魔獣</value></data>
+  <data name="Refresh beasts" xml:space="preserve"><value>魔獣を更新</value></data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve"><value>更新できるのは操作中のキャラクターのみです。</value></data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve"><value>所有する魔獣{0}体のランクとEXPを更新しました。</value></data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve"><value>魔獣のランクとEXPを更新中（{0}/{1}）。</value></data>
+  <data name="Removing {0}" xml:space="preserve"><value>{0}を外しています</value></data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve"><value>ボードのルートを再開中 {0}/{1}</value></data>
+  <data name="Resuming the current Crucible board" xml:space="preserve"><value>現在のCrucibleボードを再開中</value></data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve"><value>Rotation Solver RebornとBossModRebornの両方をロードする必要があります。</value></data>
+  <data name="Run actions" xml:space="preserve"><value>実行中の動作</value></data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve"><value>1回の起動で最大{0}ボードを実行します。未完了の育成は、次の実行可能な起動機会に続行します。</value></data>
+  <data name="Run task now" xml:space="preserve"><value>タスクを今すぐ実行</value></data>
+  <data name="Run weeklies now" xml:space="preserve"><value>週間タスクを今すぐ実行</value></data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve"><value>未完了で参加可能なボードを実行します。未開放や装備条件不足の項目は未完了のままです。</value></data>
+  <data name="Saved data for {0}" xml:space="preserve"><value>{0}の保存データ</value></data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve"><value>VMXのタスク設定とは別に保存されます。</value></data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve"><value>このキャラクターの予約タスク設定です。手動実行とは別に保存されます。</value></data>
+  <data name="Settings saved automatically" xml:space="preserve"><value>設定は自動保存されます</value></data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve"><value>このキャラクターの手動実行と予約実行で共有されます。</value></data>
+  <data name="Shop done, {0} coins left" xml:space="preserve"><value>買い物完了、残り{0}コイン</value></data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve"><value>買い物、休息、回復のルールは「物資」にあります。</value></data>
+  <data name="Smaller training team" xml:space="preserve"><value>小さな育成チーム</value></data>
+  <data name="Soul Survivor I" xml:space="preserve"><value>ソウルサバイバーI</value></data>
+  <data name="Soul Survivor II" xml:space="preserve"><value>ソウルサバイバーII</value></data>
+  <data name="Soul Survivor III" xml:space="preserve"><value>ソウルサバイバーIII</value></data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve"><value>停止しました。戦闘設定の復元待ち: {0}</value></data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve"><value>停止しました。単独の魔獣図鑑が閉じるのを待っています。必要なら手動で閉じてください。</value></data>
+  <data name="Strongest available" xml:space="preserve"><value>使用可能な最強の魔獣</value></data>
+  <data name="Taking {0}" xml:space="preserve"><value>{0}を取得中</value></data>
+  <data name="Team method" xml:space="preserve"><value>チームの選択方式</value></data>
+  <data name="The Crucible route has no actions" xml:space="preserve"><value>Crucibleルートに動作がありません</value></data>
+  <data name="The Crucible route is missing" xml:space="preserve"><value>Crucibleルートがありません</value></data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve"><value>魔獣の更新後、魔獣図鑑が閉じませんでした。</value></data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve"><value>魔獣図鑑に要求した魔獣のランクとEXPが表示されませんでした。取得済みの記録は保持しました。</value></data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve"><value>更新後に魔獣図鑑のページが安定しませんでした。</value></data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve"><value>魔獣図鑑の更新が5分以内に完了しませんでした。取得済みの記録は保持しました。</value></data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve"><value>魔獣図鑑で記録より低いランクが返されました。その記録を置き換えずに更新を停止しました。</value></data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve"><value>ボードの結果から、参加チームの最新ランクとEXPを取得できませんでした。</value></data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve"><value>魔獣図鑑の元の選択を復元できませんでした。</value></data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve"><value>単独の魔獣図鑑で要求した魔獣を選択できませんでした。</value></data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve"><value>単独の魔獣図鑑が準備完了になりませんでした。</value></data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve"><value>単独の魔獣図鑑を利用できません。</value></data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve"><value>この順序とブロック設定は、購入、宝箱の選択、アイテム使用に適用されます。</value></data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve"><value>今回: {0}/{1}ボード</value></data>
+  <data name="Three strong fighters + trainees" xml:space="preserve"><value>強い戦闘要員3体＋育成対象</value></data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve"><value>最も強い3体が先に戦い、育成対象を最大{0}体加えます。2枠を空け、合計最大{1}体を連れていきます。控えもEXPを獲得します。</value></data>
+  <data name="Train a full team" xml:space="preserve"><value>満員のチームを育成</value></data>
+  <data name="Train owned familiars" xml:space="preserve"><value>所有する魔獣を育成</value></data>
+  <data name="Train three at a time" xml:space="preserve"><value>3体ずつ育成</value></data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve"><value>所有するすべての魔獣を育成するには、育成チームの方式が必要です。</value></data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve"><value>今回の育成回数上限に達しました。未完了の魔獣は次の起動時に確認します。</value></data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve"><value>育成は未完了ですが、条件を満たす魔獣が3体未満のためチームを組めません。選出除外と系統フィルターを確認してください。</value></data>
+  <data name="Training progress" xml:space="preserve"><value>育成状況</value></data>
+  <data name="Training target: Rank {0}" xml:space="preserve"><value>育成目標: ランク{0}</value></data>
+  <data name="Unsupported Crucible board" xml:space="preserve"><value>未対応のCrucibleボードです</value></data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve"><value>未対応のCrucibleルート条件です</value></data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve"><value>未対応のCrucible専用ルート動作: {0}</value></data>
+  <data name="Up to {0} familiars" xml:space="preserve"><value>最大{0}体の魔獣</value></data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve"><value>魔獣使いにはBossModRebornのみを使用してください。両方のBossModプロバイダーでIPC名が共通しています。</value></data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve"><value>保存済みの予約実行用チーム方式、難易度、共有物資を使用します。</value></data>
+  <data name="Using {0} at {1}" xml:space="preserve"><value>{1}で{0}を使用中</value></data>
+  <data name="VMX Schedule" xml:space="preserve"><value>VMXスケジュール</value></data>
+  <data name="Viewing another character · automation not started" xml:space="preserve"><value>別のキャラクターを表示中 · 自動処理は開始されていません</value></data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve"><value>魔獣を更新する前に、操作中のキャラクターが待機状態になるまで待ってください。</value></data>
+  <data name="Wait until the current character is ready." xml:space="preserve"><value>操作中のキャラクターの準備が整うまで待ってください。</value></data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve"><value>操作中のキャラクターの週間攻略手帳の状況を表示できます。</value></data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve"><value>操作中のキャラクターの週間攻略手帳の状況を表示できます。保存済みのスケジュール設定は編集できます。</value></data>
+  <data name="Weekly Challenge Log task" xml:space="preserve"><value>週間攻略手帳タスク</value></data>
+  <data name="Weekly challenge objectives" xml:space="preserve"><value>週間チャレンジの目標</value></data>
+  <data name="Weekly progress" xml:space="preserve"><value>週間進捗</value></data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve"><value>育成対象が残り1～2体になった場合、合計3体になる分だけ育成済みの戦闘要員を追加します。</value></data>
+  <data name="Wrong character" xml:space="preserve"><value>キャラクターが異なります</value></data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve"><value>キャラクターが異なります。このプロファイルは編集できますが、自動処理の開始前に対象キャラクターへ切り替えてください。</value></data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve"><value>表示中は{0}、操作中は{1}です。自動処理を開始する前に、操作中のキャラクターを選ぶか、表示中のキャラクターでログインしてください。</value></data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve"><value>育成可能{0}体 · 除外{1}体 · ランク不明{2}体</value></data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve"><value>{0}/{1}体がランク{2}に到達</value></data>
+  <data name="{0}/{1} complete" xml:space="preserve"><value>{0}/{1}完了</value></data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>ランクが記録されている対象の使い魔が不足しています。ランク未取得: {0}。</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>カスタム選択では参加用チームを編成できません。未所持または除外された使い魔: {0}。</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>魔獣を更新する前に、開いている魔獣図鑑を閉じてください。</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>魔獣のランクとEXPを更新中（{0}/{1}）、ページ {2}/{3}。</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>魔獣の更新は未完了です: {0}/{1}体を確認済み、未取得: {2}。{3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>魔獣使いを開始する前に、現在のコンテンツから退出してください。</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>更新後の魔獣図鑑を元の状態に戻しています。</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>{0}のデータを待機中。</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>{0}を再確認中。有効なネイティブコントロールを待機しています。</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>ボード完了。魔獣のランクとEXPは未確認のままです。</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>停止しました。ネイティブの後処理は未確認のままです: {0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>現在のCrucible突入状態を再確認しています。</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>5秒後に再試行: {0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>{0}/{1}回目</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>{0}/{1}回完了</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>新しい魔獣を確認中</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>{0}/{1}体を確認</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>残り{0}体</value></data>
+  <data name="Fighting" xml:space="preserve"><value>戦闘中</value></data>
+  <data name="Recovering" xml:space="preserve"><value>復帰中</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>盤面を終了中</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>編成を準備中</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>続行</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>スケジュールの変更は次回の開始時に適用され、現在の実行では既存の設定を維持します。</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>クリアしたボードからは必ず自動で退出します。</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>完了時のコマンド（任意）</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>何もしない場合は空欄にしてください。計画完了後、コンテンツの外で一度だけ実行します。</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>週間ボード</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>解放済みのボードを自動で使用します。</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>解放済みのボードを使用</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>このキャラクターでプレイしたときに解放済みのボードを選択します。固定の選択を保存するには、以下でボードを選んでください。</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>週間ボードが選択されていません。</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>選択した未完了のボードを実行します。未解放または装備条件を満たさない項目は未完了のままです。</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>選択した週間チャレンジは完了しています。</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>選択した週間チャレンジの完了数：{0}/{1}。</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>選択した実行可能な週間チャレンジは完了しました。未解放または装備条件を満たさないボードが残っています。</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>現在の週間ボードは選択されていません。</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>完了時のコマンドに失敗しました：{0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>選択した実行可能な魔獣使いチャレンジをそれぞれ一度クリアします。</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>完了時のコマンドには、スラッシュで始まるコマンドを一つだけ指定してください。</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>完了時のコマンドを送信できませんでした。再実行はしません。</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>完了時のコマンドを送信しました。</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>Crewcibleの完了を保存できなかったため、完了時のコマンドを省略しました。</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>完了した実行が現在の実行ではなくなったため、完了時のコマンドを省略しました。</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>このキャラクターでは魔獣使いタスクが無効です。</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>このキャラクターでは魔獣使いの週間チャレンジが無効です。</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>魔獣使いタスクの次回実行予定は{0}です。</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>魔獣使いの週間チャレンジの次回実行予定は{0}です。</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>次の全滅またはクリア後に停止</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>次の結果後の停止を取り消す</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>今回限り：全滅時はコンテンツ内で停止し、クリア時は報酬を受け取って退出します。</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>次の全滅またはクリア後に停止します。</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>全滅後に停止しました。クルーシブル内に留まります。</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>クリア後に停止し、クルーシブルから退出しました。</value></data>
 </root>

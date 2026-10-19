@@ -1195,7 +1195,7 @@ Saucy rozwiązuje minigrę.</value></data>
   <data name="Unsynced is a dad hint for duties that cannot use Trust or Duty Support." xml:space="preserve"><value>Bez synchronizacji to wskazówka dla dad dla zadań, które nie mogą używać Trust ani Duty Support.</value></data>
   <data name="Updates valid saved gearsets through optional Stylist IPC or the native recommended-equipment path. If none exist, first runs the bounded missing-gearset bootstrap." xml:space="preserve"><value>Aktualizuje prawidłowe zapisane zestawy przez opcjonalne IPC Stylist lub natywną ścieżkę zalecanego wyposażenia. Jeśli brak zestawów, najpierw uruchamia ograniczoną inicjalizację brakujących zestawów.</value></data>
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve"><value>Ulepsza tylko retainerów włączonych w AutoRetainer. Walka używa średniego poziomu przedmiotów zgodnego z AutoRetainer; zbieracze używają tylko łącznej Percepcji.</value></data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Użyj rodzica o rodowodzie o jeden niższym niż najwyższy osiągnięty, aby uzyskać kolejne potomstwo na tym rodowodzie. Nie rejestruj powtarzającej się płci; wychowaj brakującą. Wznów, aby zastosować.</value></data>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Uzyskaj brakującą płeć na najwyższym osiągniętym rodowodzie. Użyj rodzica o rodowodzie o jeden niższym lub zachowanego rodzica G9, gdy osiągnięto G9. Nie rejestruj powtórzeń tej samej płci; wychowuj osobnika brakującej płci. Wznów, aby zastosować.</value></data>
   <data name="Use a retained parent and a matching-pedigree permit for the opposite sex. MGP purchases respect the reserve." xml:space="preserve"><value>Użyj zachowanego rodzica i zezwolenia o pasującym rodowodzie dla przeciwnej płci. Zakupy MGP respektują rezerwę.</value></data>
   <data name="Use default" xml:space="preserve"><value>Użyj domyślnych</value></data>
   <data name="Use default for {0}?" xml:space="preserve"><value>Użyć domyślnych dla {0}?</value></data>
@@ -2067,4 +2067,926 @@ Zależności: {1}</value></data>
   <data name="Collect" xml:space="preserve"><value>Odbierz</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>Odbierz i wstrzymaj</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Odbierz jedno gotowe pisklę i wstrzymaj przed kolejnym kryciem.</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>Władca bestii</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>Władca bestii steruje postacią.</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>Kończenie pracy Władcy bestii zwalnia blokadę AutoRetainer.</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>Oczekiwanie na rejestrację i gotowość bieżącej postaci.</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · Nr {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>Podejście Władcy bestii lub jego sprzątanie już trwa</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>Dodawanie {0} ({1}/{2})</value></data>
+  <data name="All categories" xml:space="preserve"><value>Wszystkie kategorie</value></data>
+  <data name="All kins" xml:space="preserve"><value>Wszystkie rodziny</value></data>
+  <data name="Allow category" xml:space="preserve"><value>Zezwól na kategorię</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>Zbliżanie się do Lauda</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>Do podjęcia wyzwania na planszy potrzeba co najmniej trzech kwalifikujących się chowańców.</value></data>
+  <data name="Automation" xml:space="preserve"><value>Automatyzacja</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>Unikaj szkodliwego wyposażenia bez odporności</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>Lista priorytetów bestii</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>Ranking bestii skopiowano do schowka.</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>Zaimportowano ranking bestii.</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>Usługa Władcy bestii została zamknięta</value></data>
+  <data name="Beasts" xml:space="preserve"><value>Bestie</value></data>
+  <data name="Block" xml:space="preserve"><value>Blokuj</value></data>
+  <data name="Block category" xml:space="preserve"><value>Blokuj kategorię</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Zablokowane przedmioty nie są kupowane, wybierane jako skarb ani używane. Kliknij z wciśniętym Ctrl, aby zmienić całą kategorię.</value></data>
+  <data name="Board" xml:space="preserve"><value>Plansza</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Leczenie na planszy: przy 60% PŻ lub mniej, jeśli przed następną walką nie ma obozu.</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Trasa planszy {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>Limit drużyny na planszy: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>Boss</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>Zastosuj do całej kategorii</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>Kupowanie {0} za {1}</value></data>
+  <data name="Camp" xml:space="preserve"><value>Obóz</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>Obozy: odpoczywa maksymalnie dwóch rannych chowańców z mniej niż 60% PŻ. Jeśli nie wybrano żadnego, gracz otrzymuje obozowe leczenie przywracające mu 90% PŻ.</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>Prowadzenie minus 2</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>Podejmowanie wyzwania na planszy</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>Wybierz własną drużynę w zakładce Bestie. Zapisana kolejność zostanie zachowana.</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>Wybierz trzech chowańców o najniższej randze i najmniejszej liczbie PD.</value></data>
+  <data name="Classification" xml:space="preserve"><value>Klasyfikacja</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>Wyczyść własny wybór chowańców</value></data>
+  <data name="Clear order" xml:space="preserve"><value>Wyczyść kolejność</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>Wyczyść zapisane rangi</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>Wyczyść własną drużynę. Przytrzymaj Ctrl i kliknij.</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>Kończenie planszy w celu odczytania kolejnych rang</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>Leczenie w walce: przy 40% PŻ lub mniej.</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>Rozpoczynanie bitwy</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>Kondycja: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>Kopiuj</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>Wejście do Crucible wymaga co najmniej trzech różnych chowańców. Dostosuj wybór drużyny i ograniczenia.</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>Wejście do Crucible wymaga co najmniej trzech różnych chowańców. Drużyna zmieniła się przed potwierdzeniem wyzwania.</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Rejestracja w Crucible nie zakończyła się w ciągu pięciu minut</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>Crucible wymaga profesji Władca bestii</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Podejście do Crucible ukończone</value></data>
+  <data name="Current board" xml:space="preserve"><value>Bieżąca plansza</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>Turkusowy okrąg: bieżący przystanek. Turkusowa kropka: aktualna pozycja gracza.</value></data>
+  <data name="Damage" xml:space="preserve"><value>Obrażenia</value></data>
+  <data name="Degree" xml:space="preserve"><value>Stopień</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Usuń tę listę. Przytrzymaj Ctrl i kliknij. Nie można usunąć ostatniej listy.</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm wymaga Soulreaper's Armor. Thunder Axe wymaga Umbral Wristlet.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Przeciągnij uchwyt lub wpisz nowy #, aby zmienić kolejność. Kliknij Blokuj z wciśniętym Ctrl, aby zmienić odpowiednią kategorię.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Przeciągnij uchwyt lub wpisz nowy #, aby zmienić kolejność. Kliknij blokadę z wciśniętym Ctrl, aby zmienić odpowiednią klasyfikację.</value></data>
+  <data name="EXP" xml:space="preserve"><value>PD</value></data>
+  <data name="Elite" xml:space="preserve"><value>Elitarny</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>Wszyscy chowańcy zostali pokonani</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>Wyjdź po zakończeniu</value></data>
+  <data name="Export" xml:space="preserve"><value>Eksportuj</value></data>
+  <data name="Familiar" xml:space="preserve"><value>Chowaniec</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>Dane chowańców są niedostępne. Zaloguj się i poczekaj na rejestrację postaci.</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>Chowańcy {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>Nakarm</value></data>
+  <data name="Fight" xml:space="preserve"><value>Walcz</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Walka zablokowana</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Walka zablokowana pozostawia tego chowańca w rezerwie, chyba że przy życiu zostanie mniej niż trzech niezablokowanych wojowników. Kliknij z wciśniętym Ctrl, aby zmienić całą klasyfikację.</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>Wybór do walki</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Wypełnij limit drużyny na planszy, zaczynając od chowańców o najniższej randze i najmniejszej liczbie PD.</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>Kończenie planszy</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>Pierwszy stopień</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>Podążanie trasą planszy Crucible</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>Zapomnij zapisane rangi. Przytrzymaj Ctrl i kliknij.</value></data>
+  <data name="Full" xml:space="preserve"><value>Pełny</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>Pełny wykorzystuje limit planszy. -3 pozostawia trzy miejsca. Tylko 3 zabiera trzech chowańców. Prowadzenie zabiera trzech chowańców o najwyższej randze, a następnie szkolonych, pozostawiając dwa miejsca.</value></data>
+  <data name="Gear" xml:space="preserve"><value>Wyposażenie</value></data>
+  <data name="HP" xml:space="preserve"><value>PŻ</value></data>
+  <data name="Heal items" xml:space="preserve"><value>Przedmioty lecznicze</value></data>
+  <data name="Healing" xml:space="preserve"><value>Leczenie</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>Leczenie i obozy</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>Progi leczenia są ustalone przez automatyzację.</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>Wyższe stopnie wymagają ukończenia zadania 71045. Zostanie użyty stopień Standardowy.</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>Najpierw chowańcy o najwyższej randze; przy tej samej randze decyduje kolejność w rankingu.</value></data>
+  <data name="Import" xml:space="preserve"><value>Importuj</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>Import dodaje nową listę z wyeksportowanego JSON lub znanych identyfikatorów przedmiotów. Brakujące wpisy katalogu są dopisywane na końcu. Eksport kopiuje tę listę do schowka.</value></data>
+  <data name="Imported" xml:space="preserve"><value>Zaimportowano</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>Inteligencja: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>Opuść drużynę przed wejściem do Crucible</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Pozostaw trzy wolne miejsca w drużynie; najpierw wybieraj chowańców o najniższej randze i najmniejszej liczbie PD.</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>Opuszczanie ukończonej planszy</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>Opuszczono Crucible przed odnotowaniem wyniku</value></data>
+  <data name="Leveling" xml:space="preserve"><value>Zdobywanie poziomów</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>Drużyna do zdobywania poziomów</value></data>
+  <data name="List name" xml:space="preserve"><value>Nazwa listy</value></data>
+  <data name="Loot" xml:space="preserve"><value>Łupy</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>Odporność na magię: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>Minus 3</value></data>
+  <data name="New" xml:space="preserve"><value>Nowa</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>Nie są znani żadni chowańcy spełniający warunki tej konfiguracji. Przy wejściu bestiariusz zostanie przeskanowany przed wyborem drużyny.</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>Nie są jeszcze znani żadni chowańcy. Otwórz drużynę lub bestiariusz u Lauda, aby VERMAXION mógł ich odczytać.</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>Nie znaleziono celu podróży do Lauda</value></data>
+  <data name="No." xml:space="preserve"><value>Nr</value></data>
+  <data name="Only 3" xml:space="preserve"><value>Tylko 3</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>Dozwolony jest tylko jeden topór żywiołu; niezgodne topory żywiołów są zawsze pomijane.</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>Posiadani chowańcy</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>Informacje o posiadanych chowańcach są obecnie niedostępne; ten podgląd używa zapamiętanych danych.</value></data>
+  <data name="Paused: " xml:space="preserve"><value>Wstrzymano: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>Wstrzymano: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>Odporność fizyczna: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Wybór zablokowany</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Wybór zablokowany uniemożliwia automatyczny wybór do drużyny. Kliknij z wciśniętym Ctrl, aby zmienić całą klasyfikację.</value></data>
+  <data name="Rank" xml:space="preserve"><value>Ranga</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Ranga nie została jeszcze odczytana. Zostanie odczytana z bestiariusza przy następnym ustawianiu drużyny.</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>Nieznana ranga</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>Ranga {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>Odczytywanie rang chowańców ({0}/{1})</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>Gotowe do rozpoczęcia</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Zalecane</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>Usuwanie wszystkich chowańców</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Najpierw trzeba posiadać wymagane wyposażenie zapewniające odporność.</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>Odpoczywaj w obozach</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>Odpoczynek w obozie</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Przywróć domyślną kolejność tej listy i usuń jej blokady. Przytrzymaj Ctrl i kliknij.</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>Trasa jeszcze się nie rozpoczęła.</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Trasa {0:00} · {1}/{2} kroków</value></data>
+  <data name="Run setup" xml:space="preserve"><value>Ustawienia podejścia</value></data>
+  <data name="Runs" xml:space="preserve"><value>Podejścia</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>Drugi stopień</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>Wybierz jedną z pięciu plansz Crucible</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>Wybrani chowańcy</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>Ustawianie drużyny</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>Zacieniowane: drużyna zabierana przez ten tryb. Najedź na nazwę, aby zobaczyć statystyki.</value></data>
+  <data name="Shop List" xml:space="preserve"><value>Lista zakupów</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>Listę zakupów skopiowano do schowka.</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>Zaimportowano listę zakupów.</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>Lista priorytetów zakupów</value></data>
+  <data name="Standard" xml:space="preserve"><value>Standardowy</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>Zatrzymaj Władcę bestii przed zmianą ustawień, bestii lub zapasów.</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>Zatrzymano po zmianie postaci</value></data>
+  <data name="Stopping" xml:space="preserve"><value>Zatrzymywanie</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>Siła: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>Zapasy są wybierane zgodnie z kolejnością na twojej liście.</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>Zabiera wybranych przez ciebie posiadanych chowańców, do limitu wybranej planszy.</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>Zabiera twoich chowańców o najwyższej randze. Przy tej samej randze decyduje lista priorytetów bestii.</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>Zabiera twoich chowańców o najniższej randze, zaczynając od tych z najmniejszą liczbą PD. Oni również walczą pierwsi.</value></data>
+  <data name="Team cap" xml:space="preserve"><value>Limit drużyny</value></data>
+  <data name="Team ready" xml:space="preserve"><value>Drużyna gotowa</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>Ustawianie drużyny trwało bez osiągnięcia stabilnego składu; zatrzymano.</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>Bieżąca plansza jest dostępna po wejściu do Crucible. Poza instancją węzły i pozycja gracza są nieznane.</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>Wybrana plansza nie odpowiada bieżącej instancji Crucible</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>Drużyna jest pełna. Odznacz jednego chowańca, aby wybrać innego.</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>Trzeci stopień</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>Trzej silni chowańcy prowadzą szkolonych; pozostaw dwa wolne miejsca w drużynie.</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>Zaznaczone: drużyna, którą zabierzesz. Najedź na nazwę, aby zobaczyć statystyki.</value></data>
+  <data name="Tier List" xml:space="preserve"><value>Ranking</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>Nie udało się rozpocząć podróży do Lauda</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>Podróż do Lauda</value></data>
+  <data name="Treasure" xml:space="preserve"><value>Skarb</value></data>
+  <data name="Type" xml:space="preserve"><value>Typ</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>Nie można zaimportować rankingu bestii. Użyj wyeksportowanej listy lub znanych identyfikatorów chowańców oddzielonych spacjami lub przecinkami.</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>Nie można zaimportować listy zakupów. Użyj wyeksportowanej listy lub znanych identyfikatorów przedmiotów oddzielonych spacjami lub przecinkami.</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>Nieznana plansza</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>Nieznana klasyfikacja</value></data>
+  <data name="Untitled" xml:space="preserve"><value>Bez tytułu</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · Władca bestii</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>Poczekaj, aż bieżąca postać będzie gotowa</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>Oczekiwanie na zatrzymanie ruchu sterowanego przez wtyczkę</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>Oczekiwanie na wskrzeszenie</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>Oczekiwanie na wejście do Crucible</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>Do poruszania się po planszy wymagany jest vnavmesh</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>Wybrani chowańcy: {0} · widoczni: {1}/{2}</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>{0} przystanków · {1} połączeń</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · Przystanek {1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3} podejść</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>Nie można ustalić, który chowaniec to "{0}". Otwórz raz jego szczegóły w bestiariuszu, aby VERMAXION poznał nazwę.</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>Nie udało się wybrać Nr {0} w bestiariuszu.</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>Wytrenuj brakującego partnera do rangi wyścigowej 40, aby rozpocząć hodowlę.</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>Potomstwo dziedziczy kolor jednego z rodziców. Odpowiedni rodzic G9 musi już mieć jeden z wybranych kolorów.</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>Nieprawidłowe ustawienia produkcji potomstwa.</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>Uzyskano {0}/{1} pasującego potomstwa G9; zachowano bez rejestracji.</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>Uzgodnij obecne krycie przed produkcją kolejnego potomstwa.</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>Produkcja potomstwa wymaga stada hodowlanego G9; wyścigi niższych pokoleń zatrzymano.</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>Zarejestrowany zawodnik G9 nie ma potwierdzonej żądanej cechy. Zachowaj go i wybierz odpowiednie stado hodowlane.</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>Rozwijaj rodzica hodowlanego G9 do wycofania z wyścigów: ranga wyścigowa {0}/40. Pasujące potomstwo pozostaje niezarejestrowane.</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>Pokryj pasujące stado G9 jego zachowanym rodzicem G9 przeciwnej płci.</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>Żaden użyteczny wycofany rodzic G9 nie ma potwierdzonej żądanej cechy. Zachowaj potomstwo i uzupełnij odpowiednie stado G9.</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>Rozwijaj to niepasujące potomstwo G9 jako brakującego własnego partnera; zachowaj pasujące wyniki.</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>Brak użytecznego rodzica G9 przeciwnej płci. Tryb własnych rodziców wymaga odpowiedniego stada G9 lub jawnego przełączenia na zezwolenia NPC.</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>Oczekiwanie na krycie nie ma prawidłowego potwierdzenia gotowości.</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>Krycie zakończone; pisklę jest gotowe do odbioru.</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>Oczekiwanie na krycie do {0:u}.</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>Krycie zakończone; odbieranie pisklęcia.</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>Cykl celu wstrzymany w bezpiecznym punkcie.</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>Wstrzymano przez VERMAXION w bezpiecznym punkcie.</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>Odbiór wymaga obecnego gotowego krycia, rodowodu zachowanego rodzica i dokładnie jednego Proof of Covering.</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>Zapisane potwierdzenie odbioru jest nieprawidłowe; żaden odbiór nie zostanie powtórzony.</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>Odbiór nastąpił, ale dokładne nowe potomstwo i jego cecha wymagają uzgodnienia przed zliczaniem lub kolejnym kryciem.</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>Zażądano odbioru; zużycie dowodu i jedno pasujące pisklę muszą zostać uzgodnione przed kolejnym żądaniem.</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Realizacja celu Choke-abo: {0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>Odroczono: {0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>Wymagania wejścia: poziom {0}, poziom przedmiotów {1}. Poziom założonego ekwipunku: {2}.</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>Wymaga poziomu {0} i poziomu przedmiotów {1}; obecny poziom {2}, poziom przedmiotów {3}.</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>Wymagania wejścia dla tej tablicy są niedostępne.</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>Poziom założonego ekwipunku jest niedostępny.</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>Tygodniowe zadania Władcy bestii</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>Wyzwania tygodniowe</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>Uruchom wyzwania tygodniowe</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>Ukończ raz każde dostępne i nieukończone wyzwanie Władcy bestii.</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>Liczą się tylko plansze ukończone solo. Lochy się nie liczą.</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>Nie potwierdzono dodania chowańca do drużyny. Przed ponownym rozpoczęciem sprawdź drużynę w grze.</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>Konfigurowanie drużyny zatrzymano, ponieważ jej skład nieoczekiwanie się zmienił.</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>Konfigurowanie drużyny zatrzymano, ponieważ okno gry nie zakończyło aktualizacji.</value></data>
+  <data name="The bestiary did not show the requested familiar&apos;s details." xml:space="preserve"><value>Bestiariusz nie wyświetlił szczegółów wskazanego chowańca.</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>Dane tygodniowego Dziennika wyzwań są niedostępne.</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>Ukończono wszystkie pięć wyzwań tygodniowych.</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>Ukończone wyzwania tygodniowe: {0}/5.</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>Brak nieukończonych wyzwań tygodniowych, do których spełniasz wymagania. Pozostały plansze zablokowane lub wymagające lepszego wyposażenia.</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>Nie ukończono wymaganego zadania odblokowującego planszę lub Dziennik wyzwań.</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>Wymagany poziom profesji Władca bestii: {0}.</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>Wymagany poziom przedmiotów: {0}; obecny poziom przedmiotów: {1}.</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>Nieukończone</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>Oczekiwanie na świeżo wczytane dane Dziennika wyzwań dla tej postaci i okresu resetu.</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>Przed rozpoczęciem wyzwań tygodniowych opuść bieżącą instancję Crucible.</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>Ukończono dostępne wyzwania tygodniowe. Pozostały plansze zablokowane lub wymagające lepszego wyposażenia.</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>Dane tygodniowego Dziennika wyzwań zmieniły się lub stały się niedostępne. Nie dodano kolejnej planszy do kolejki.</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>Wybrane wyzwanie tygodniowe jest już ukończone. Nie wysłano kolejnego zgłoszenia wejścia.</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>Oczekiwanie na aktualne potwierdzenie ukończenia wyzwania tygodniowego.</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>Po wyniku planszy nie potwierdzono ukończenia wyzwania tygodniowego. Żadnej planszy nie powtórzono.</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>Obecna kolejka do zawartości musi się zakończyć przed uruchomieniem Władcy bestii.</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>Obserwacja wejścia do Crucible jest niedostępna.</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>Oczekujące wejście do Crucible zostało wycofane. Nie ponowiono wejścia.</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>Anulowanie wejścia do Crucible.</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>Plansza Crucible, na którą wejdziono, nie odpowiada żądanej planszy.</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>Widok mini</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>Pełne okno</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve">
+    <value>Trwa już uruchomienie, odświeżanie lub sprzątanie Władcy bestii.</value>
+  </data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve">
+    <value>Dostawca obsługi walki został wyładowany lub zastąpiony; pierwotne uprawnienia nie zostały rozliczone.</value>
+  </data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve">
+    <value>Wszystkie posiadane bestie osiągnęły cel treningowy tej planszy.</value>
+  </data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve">
+    <value>Posiadana bestia była niedostępna w osobnym bestiariuszu; zachowano częściowe obserwacje.</value>
+  </data>
+  <data name="Another automation owns the character." xml:space="preserve">
+    <value>Inna automatyzacja kontroluje postać.</value>
+  </data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve">
+    <value>Własność bestii zmieniła się podczas odświeżania; zachowano częściowe obserwacje. Odśwież ponownie, gdy skład się ustabilizuje.</value>
+  </data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve">
+    <value>Anulowano odświeżanie bestii; zachowano częściowe obserwacje.</value>
+  </data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve">
+    <value>Odświeżanie bestii zatrzymano po zmianie postaci, obszaru lub kontekstu gry.</value>
+  </data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve">
+    <value>Odświeżanie bestii zatrzymano, ponieważ bestiariusz przełączył się na dane drużyny.</value>
+  </data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve">
+    <value>Władca bestii nie może przejąć AutoRetainer, gdy istniejące wstrzymanie jest aktywne lub nie można go odczytać.</value>
+  </data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve">
+    <value>Władca bestii nie mógł zweryfikować wstrzymania AutoRetainer.</value>
+  </data>
+  <data name="Beastmaster frequency" xml:space="preserve">
+    <value>Częstotliwość Władcy bestii</value>
+  </data>
+  <data name="Beastmaster scheduling" xml:space="preserve">
+    <value>Harmonogram Władcy bestii</value>
+  </data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve">
+    <value>Bestie i Zapasy są wspólne dla tej postaci.</value>
+  </data>
+  <data name="Boards per trigger" xml:space="preserve">
+    <value>Plansze na wyzwolenie</value>
+  </data>
+  <data name="Boards this run" xml:space="preserve">
+    <value>Plansze w tym uruchomieniu</value>
+  </data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve">
+    <value>Profil BossMod &apos;passive - melee&apos; wymaga zasięgu 2.3 i ruchu Pathfind.</value>
+  </data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve">
+    <value>Cel podążania SI BossMod jest niedostępny.</value>
+  </data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve">
+    <value>Sterowanie cyklem działania SI BossMod jest niedostępne.</value>
+  </data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve">
+    <value>Nie potwierdzono przywrócenia pierwotnego stanu SI BossMod.</value>
+  </data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve">
+    <value>Stan wykonawczy SI BossMod jest niezgodny.</value>
+  </data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve">
+    <value>Stan wykonawczy SI BossMod jest niedostępny.</value>
+  </data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve">
+    <value>Nie potwierdzono wstrzymania SI BossMod.</value>
+  </data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve">
+    <value>BossMod nie potwierdził żądanego profilu ruchu Władcy bestii.</value>
+  </data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve">
+    <value>Stan wymuszonego wyłączenia profilu BossMod jest niespójny.</value>
+  </data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve">
+    <value>W BossMod brakuje istniejącego profilu &apos;passive - melee&apos;.</value>
+  </data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve">
+    <value>Nie potwierdzono przywrócenia pierwotnego profilu BossMod.</value>
+  </data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve">
+    <value>BossMod wymaga istniejącego profilu &apos;passive - melee&apos; wyłącznie do ruchu; nie może on zawierać rotacji DPS.</value>
+  </data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve">
+    <value>BossModReborn nie jest już załadowany.</value>
+  </data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve">
+    <value>Zabierz trzy bestie do treningu, zaczynając od najniższej rangi i EXP. Skup trening na mniejszej liczbie chowańców, z mniejszą rezerwą.</value>
+  </data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve">
+    <value>Zabierz do {0} bestii do treningu, pozostawiając trzy wolne miejsca. Mniejszy skład może zdobywać więcej EXP na chowańca, z mniejszą rezerwą.</value>
+  </data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve">
+    <value>Zabierz do {0} bestii do treningu, zaczynając od najniższej rangi i EXP. Trenuj więcej chowańców jednocześnie, z większą rezerwą.</value>
+  </data>
+  <data name="Checked at VMX opportunities." xml:space="preserve">
+    <value>Sprawdzane przy okazjach do uruchomienia VMX.</value>
+  </data>
+  <data name="Choose a training team method for this goal." xml:space="preserve">
+    <value>Wybierz sposób tworzenia drużyny treningowej dla tego celu.</value>
+  </data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve">
+    <value>Wybierz własny skład w sekcji Bestie. Każda konfiguracja z opcją Własny korzysta ze wspólnego wyboru tej postaci.</value>
+  </data>
+  <data name="Clear recorded beast data" xml:space="preserve">
+    <value>Wyczyść zapisane dane bestii</value>
+  </data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve">
+    <value>Wyczyść filtry bestiariusza gry przed odświeżeniem wszystkich posiadanych bestii.</value>
+  </data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve">
+    <value>Usuń zapisane rangi, EXP, statystyki, obserwacje własności i ostatnią drużynę tej postaci. Przytrzymaj Ctrl i kliknij.</value>
+  </data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve">
+    <value>Zamknij rejestrację Crucible i poczekaj na ustabilizowanie kolejki instancji przed odświeżeniem bestii.</value>
+  </data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve">
+    <value>Zamknij bieżące potwierdzenie przed odświeżeniem bestii.</value>
+  </data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve">
+    <value>Zamknij bestiariusz drużyny przed odświeżeniem bestii.</value>
+  </data>
+  <data name="Collapse" xml:space="preserve">
+    <value>Zwiń</value>
+  </data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve">
+    <value>Oczekiwanie na przywrócenie obsługi walki: {0}</value>
+  </data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve">
+    <value>Kończy brakujące, dostępne cele Dziennika wyzwań w grze niezależnie od zwykłego treningu.</value>
+  </data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve">
+    <value>Skonfiguruj uruchomienie i cele treningu w Harmonogramie VMX Władcy bestii.</value>
+  </data>
+  <data name="Crewcible task" xml:space="preserve">
+    <value>Zadanie Crewcible</value>
+  </data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve">
+    <value>Skok trasy Crucible wykracza poza planszę</value>
+  </data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve">
+    <value>Każda konfiguracja z opcją Własny korzysta z własnego składu. Najedź na nazwę, aby zobaczyć zapisane statystyki.</value>
+  </data>
+  <data name="Editing settings does not start a run." xml:space="preserve">
+    <value>Edycja ustawień nie rozpoczyna uruchomienia.</value>
+  </data>
+  <data name="Enable Beastmaster training" xml:space="preserve">
+    <value>Włącz trening Władcy bestii</value>
+  </data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve">
+    <value>Włącz tygodniowe zadania Władcy bestii</value>
+  </data>
+  <data name="Enable task" xml:space="preserve">
+    <value>Włącz zadanie</value>
+  </data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve">
+    <value>Rozpoczynanie walki na bieżącej arenie Crucible</value>
+  </data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve">
+    <value>Wymagania wejścia są sprawdzane dla aktywnej postaci przed rozpoczęciem.</value>
+  </data>
+  <data name="Every AR" xml:space="preserve">
+    <value>Przy każdym AR</value>
+  </data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve">
+    <value>Wykluczone chowańce uniemożliwiają ukończenie tego celu.</value>
+  </data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve">
+    <value>Kolejność wykonania: Ustawienia VMX &gt; Kolejność zadań.</value>
+  </data>
+  <data name="Expand" xml:space="preserve">
+    <value>Rozwiń</value>
+  </data>
+  <data name="Fixed board runs" xml:space="preserve">
+    <value>Stała liczba przejść planszy</value>
+  </data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve">
+    <value>Przed uznaniem treningu za ukończony wymagane są świeże obserwacje rang i EXP.</value>
+  </data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve">
+    <value>Pełna obserwacja rang jest niedostępna. Nieodczytane rangi pozostają nieznane.</value>
+  </data>
+  <data name="Hide" xml:space="preserve">
+    <value>Ukryj</value>
+  </data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve">
+    <value>Najpierw chowańce o najwyższej randze; przy remisie decydują priorytety bestii.</value>
+  </data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve">
+    <value>Niezależne od włączenia zwykłego zadania, celu treningu i limitu przejść plansz.</value>
+  </data>
+  <data name="Invalid Crucible route jump" xml:space="preserve">
+    <value>Nieprawidłowy skok trasy Crucible</value>
+  </data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve">
+    <value>Nieprawidłowy krok czyszczenia podczas skanowania Crucible</value>
+  </data>
+  <data name="Item and camp rules" xml:space="preserve">
+    <value>Zasady przedmiotów i obozu</value>
+  </data>
+  <data name="Item priorities" xml:space="preserve">
+    <value>Priorytety przedmiotów</value>
+  </data>
+  <data name="Kin filter" xml:space="preserve">
+    <value>Filtr rodzaju</value>
+  </data>
+  <data name="Last completed: {0}" xml:space="preserve">
+    <value>Ostatnio ukończono: {0}</value>
+  </data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve">
+    <value>Opuść bieżącą instancję przed odświeżeniem bestii.</value>
+  </data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve">
+    <value>Załaduj Rotation Solver Reborn i wybierz rotację Reborn Beastmaster.</value>
+  </data>
+  <data name="Manual setup" xml:space="preserve">
+    <value>Konfiguracja ręczna</value>
+  </data>
+  <data name="Master Class I" xml:space="preserve">
+    <value>Klasa mistrzowska I</value>
+  </data>
+  <data name="Master Class II" xml:space="preserve">
+    <value>Klasa mistrzowska II</value>
+  </data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve">
+    <value>Dane własności bestii z gry są niedostępne; zachowano zapisane obserwacje.</value>
+  </data>
+  <data name="Next eligible: {0}" xml:space="preserve">
+    <value>Następna dostępność: {0}</value>
+  </data>
+  <data name="No character" xml:space="preserve">
+    <value>Brak postaci</value>
+  </data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve">
+    <value>Brak dostępnego profilu postaci. Zaloguj się i poczekaj na rejestrację postaci.</value>
+  </data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve">
+    <value>Dla tej konfiguracji nie zapisano dostępnych chowańców. Odśwież bestie na aktualnie granej postaci.</value>
+  </data>
+  <data name="No full beast refresh has been requested." xml:space="preserve">
+    <value>Nie zażądano pełnego odświeżenia bestii.</value>
+  </data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve">
+    <value>Brak zapisanych bestii. Użyj opcji Odśwież bestie podczas gry tą postacią poza instancją.</value>
+  </data>
+  <data name="No recorded character" xml:space="preserve">
+    <value>Brak zapisanej postaci</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Poza siecią</value>
+  </data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve">
+    <value>Wyświetlane są tylko postacie z zapisanymi bestiami.</value>
+  </data>
+  <data name="Open VMX Schedule" xml:space="preserve">
+    <value>Otwórz Harmonogram VMX</value>
+  </data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve">
+    <value>Otwieranie osobnego bestiariusza w celu odświeżenia rang i EXP bestii.</value>
+  </data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve">
+    <value>Sprawdzono własność. Zapisane rangi mogą wymagać pełnego odświeżenia.</value>
+  </data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve">
+    <value>Własność nie została w pełni zaobserwowana. Ukończenie treningu jest nieznane.</value>
+  </data>
+  <data name="Ownership not fully observed." xml:space="preserve">
+    <value>Własność nie została w pełni zaobserwowana.</value>
+  </data>
+  <data name="Ownership observed: {0}" xml:space="preserve">
+    <value>Zaobserwowana własność: {0}</value>
+  </data>
+  <data name="Playing" xml:space="preserve">
+    <value>W grze</value>
+  </data>
+  <data name="Playing: {0}" xml:space="preserve">
+    <value>W grze: {0}</value>
+  </data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve">
+    <value>Reborn Beastmaster w RSR nie jest już bieżącą rotacją.</value>
+  </data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve">
+    <value>RSR nie potwierdził żądanego trybu działania Władcy bestii.</value>
+  </data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve">
+    <value>Flagi trybu działania RSR są niespójne.</value>
+  </data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve">
+    <value>Nie potwierdzono przywrócenia pierwotnego trybu RSR.</value>
+  </data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve">
+    <value>Stan wykonawczy RSR jest niezgodny: </value>
+  </data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve">
+    <value>Stan wykonawczy RSR jest niezgodny: {0}</value>
+  </data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve">
+    <value>Stan wykonawczy RSR jest niedostępny.</value>
+  </data>
+  <data name="Ranks observed: {0}" xml:space="preserve">
+    <value>Zaobserwowane rangi: {0}</value>
+  </data>
+  <data name="Recorded beasts" xml:space="preserve">
+    <value>Zapisane bestie</value>
+  </data>
+  <data name="Refresh beasts" xml:space="preserve">
+    <value>Odśwież bestie</value>
+  </data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve">
+    <value>Odświeżanie jest dostępne tylko dla aktualnie granej postaci.</value>
+  </data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve">
+    <value>Odświeżono rangi i EXP {0} posiadanych bestii.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve">
+    <value>Odświeżanie rang i EXP bestii ({0}/{1}).</value>
+  </data>
+  <data name="Removing {0}" xml:space="preserve">
+    <value>Usuwanie {0}</value>
+  </data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve">
+    <value>Wznawianie trasy planszy {0}/{1}</value>
+  </data>
+  <data name="Resuming the current Crucible board" xml:space="preserve">
+    <value>Wznawianie bieżącej planszy Crucible</value>
+  </data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve">
+    <value>Rotation Solver Reborn i BossModReborn muszą być jednocześnie załadowane.</value>
+  </data>
+  <data name="Run actions" xml:space="preserve">
+    <value>Czynności uruchomienia</value>
+  </data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve">
+    <value>Przejdź najwyżej {0} plansz na wyzwolenie. Niedokończony trening będzie kontynuowany przy następnym dostępnym wyzwoleniu.</value>
+  </data>
+  <data name="Run task now" xml:space="preserve">
+    <value>Uruchom zadanie teraz</value>
+  </data>
+  <data name="Run weeklies now" xml:space="preserve">
+    <value>Uruchom zadania tygodniowe teraz</value>
+  </data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Przechodzi brakujące dostępne plansze. Zablokowane wpisy lub wpisy z niespełnionymi wymaganiami sprzętu pozostają nieukończone.</value>
+  </data>
+  <data name="Saved data for {0}" xml:space="preserve">
+    <value>Zapisane dane dla {0}</value>
+  </data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve">
+    <value>Zapisywane oddzielnie od ustawień zadań VMX.</value>
+  </data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve">
+    <value>Ustawienia zadań harmonogramu tej postaci. Zapisywane oddzielnie od uruchomienia ręcznego.</value>
+  </data>
+  <data name="Settings saved automatically" xml:space="preserve">
+    <value>Ustawienia zapisywane automatycznie</value>
+  </data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve">
+    <value>Wspólne dla ręcznych i zaplanowanych uruchomień tej postaci.</value>
+  </data>
+  <data name="Shop done, {0} coins left" xml:space="preserve">
+    <value>Zakupy zakończone, pozostało {0} monet</value>
+  </data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve">
+    <value>Zasady zakupów, odpoczynku i leczenia znajdują się w sekcji Zapasy.</value>
+  </data>
+  <data name="Smaller training team" xml:space="preserve">
+    <value>Mniejsza drużyna treningowa</value>
+  </data>
+  <data name="Soul Survivor I" xml:space="preserve">
+    <value>Ocalała dusza I</value>
+  </data>
+  <data name="Soul Survivor II" xml:space="preserve">
+    <value>Ocalała dusza II</value>
+  </data>
+  <data name="Soul Survivor III" xml:space="preserve">
+    <value>Ocalała dusza III</value>
+  </data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve">
+    <value>Zatrzymano; oczekiwanie na przywrócenie obsługi walki: {0}</value>
+  </data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve">
+    <value>Zatrzymano; oczekiwanie na zamknięcie osobnego bestiariusza. W razie potrzeby zamknij go ręcznie.</value>
+  </data>
+  <data name="Strongest available" xml:space="preserve">
+    <value>Najsilniejsze dostępne</value>
+  </data>
+  <data name="Taking {0}" xml:space="preserve">
+    <value>Zabieranie {0}</value>
+  </data>
+  <data name="Team method" xml:space="preserve">
+    <value>Sposób tworzenia drużyny</value>
+  </data>
+  <data name="The Crucible route has no actions" xml:space="preserve">
+    <value>Trasa Crucible nie zawiera czynności</value>
+  </data>
+  <data name="The Crucible route is missing" xml:space="preserve">
+    <value>Brak trasy Crucible</value>
+  </data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve">
+    <value>Bestiariusz nie zamknął się po odświeżeniu bestii.</value>
+  </data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve">
+    <value>Bestiariusz nie pokazał rangi i EXP żądanej bestii; zachowano częściowe obserwacje.</value>
+  </data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve">
+    <value>Strona bestiariusza nie ustabilizowała się po odświeżeniu.</value>
+  </data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve">
+    <value>Odświeżanie bestiariusza nie zakończyło się w ciągu pięciu minut; zachowano częściowe obserwacje.</value>
+  </data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve">
+    <value>Bestiariusz zwrócił rangę niższą od zapisanej; odświeżanie zatrzymano bez zastępowania tej obserwacji.</value>
+  </data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve">
+    <value>Wynik planszy nie dostarczył świeżych rang i EXP dla uczestniczącej drużyny.</value>
+  </data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve">
+    <value>Nie udało się przywrócić pierwotnego wyboru w bestiariuszu.</value>
+  </data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve">
+    <value>Nie udało się wybrać żądanej bestii w osobnym bestiariuszu.</value>
+  </data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve">
+    <value>Osobny bestiariusz nie osiągnął gotowości.</value>
+  </data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve">
+    <value>Osobny bestiariusz jest niedostępny.</value>
+  </data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
+    <value>Ta kolejność i te blokady dotyczą zakupów, wyboru skarbów i używania przedmiotów.</value>
+  </data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve">
+    <value>To uruchomienie: {0}/{1} plansz</value>
+  </data>
+  <data name="Three strong fighters + trainees" xml:space="preserve">
+    <value>Trzech silnych wojowników + bestie do treningu</value>
+  </data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve">
+    <value>Trzy najsilniejsze chowańce walczą jako pierwsze, z maksymalnie {0} bestiami do treningu. Zabierz łącznie do {1}, pozostawiając dwa wolne miejsca. Rezerwy również zdobywają EXP.</value>
+  </data>
+  <data name="Train a full team" xml:space="preserve">
+    <value>Trenuj pełną drużynę</value>
+  </data>
+  <data name="Train owned familiars" xml:space="preserve">
+    <value>Trenuj posiadane chowańce</value>
+  </data>
+  <data name="Train three at a time" xml:space="preserve">
+    <value>Trenuj po trzy</value>
+  </data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve">
+    <value>Trenowanie wszystkich posiadanych bestii wymaga metody drużyny treningowej.</value>
+  </data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve">
+    <value>Limit treningu osiągnięty; niedokończone bestie zostaną sprawdzone przy następnym wyzwoleniu.</value>
+  </data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve">
+    <value>Trening jest nieukończony, ale mniej niż trzy dostępne bestie mogą utworzyć drużynę treningową. Sprawdź wykluczenia wyboru i filtry rodzaju.</value>
+  </data>
+  <data name="Training progress" xml:space="preserve">
+    <value>Postęp treningu</value>
+  </data>
+  <data name="Training target: Rank {0}" xml:space="preserve">
+    <value>Cel treningu: ranga {0}</value>
+  </data>
+  <data name="Unsupported Crucible board" xml:space="preserve">
+    <value>Nieobsługiwana plansza Crucible</value>
+  </data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve">
+    <value>Nieobsługiwany warunek trasy Crucible</value>
+  </data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve">
+    <value>Nieobsługiwana czynność trasy tylko dla Crucible: {0}</value>
+  </data>
+  <data name="Up to {0} familiars" xml:space="preserve">
+    <value>Do {0} chowańców</value>
+  </data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve">
+    <value>Używaj wyłącznie BossModReborn dla Władcy bestii; obaj dostawcy BossMod współdzielą nazwy IPC.</value>
+  </data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve">
+    <value>Korzysta z zapisanego sposobu tworzenia drużyny harmonogramu, poziomu trudności i wspólnych zapasów.</value>
+  </data>
+  <data name="Using {0} at {1}" xml:space="preserve">
+    <value>Używanie {0} przy {1}</value>
+  </data>
+  <data name="VMX Schedule" xml:space="preserve">
+    <value>Harmonogram VMX</value>
+  </data>
+  <data name="Viewing another character · automation not started" xml:space="preserve">
+    <value>Wyświetlanie innej postaci · automatyzacja nie została uruchomiona</value>
+  </data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve">
+    <value>Przed odświeżeniem bestii poczekaj, aż bieżąca postać będzie bezczynna.</value>
+  </data>
+  <data name="Wait until the current character is ready." xml:space="preserve">
+    <value>Poczekaj, aż bieżąca postać będzie gotowa.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve">
+    <value>Stan tygodniowego Dziennika wyzwań jest dostępny dla aktualnie granej postaci.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve">
+    <value>Stan tygodniowego Dziennika wyzwań jest dostępny dla aktualnie granej postaci. Zapisane ustawienia harmonogramu nadal można edytować.</value>
+  </data>
+  <data name="Weekly Challenge Log task" xml:space="preserve">
+    <value>Zadanie tygodniowego Dziennika wyzwań</value>
+  </data>
+  <data name="Weekly challenge objectives" xml:space="preserve">
+    <value>Cele wyzwań tygodniowych</value>
+  </data>
+  <data name="Weekly progress" xml:space="preserve">
+    <value>Postęp tygodniowy</value>
+  </data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve">
+    <value>Gdy pozostanie tylko jedna lub dwie bestie do treningu, dodaj tylko tylu wyszkolonych wojowników, aby osiągnąć trzy.</value>
+  </data>
+  <data name="Wrong character" xml:space="preserve">
+    <value>Niewłaściwa postać</value>
+  </data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve">
+    <value>Niewłaściwa postać. Możesz edytować ten profil, ale przed uruchomieniem automatyzacji przełącz się na tę postać.</value>
+  </data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve">
+    <value>Wyświetlasz {0}, ale grasz jako {1}. Wybierz bieżącą postać lub zaloguj się wyświetlaną postacią przed uruchomieniem automatyzacji.</value>
+  </data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve">
+    <value>{0} dostępnych do treningu · {1} wykluczonych · {2} o nieznanej randze</value>
+  </data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve">
+    <value>{0}/{1} z rangą {2}</value>
+  </data>
+  <data name="{0}/{1} complete" xml:space="preserve">
+    <value>{0}/{1} ukończonych</value>
+  </data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>Za mało dostępnych chowańców ma zapisane rangi. Brakujące rangi: {0}.</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>Własny skład nie pozwala utworzyć drużyny do wejścia. Nieposiadane lub wykluczone chowańce: {0}.</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>Zamknij otwarty bestiariusz przed odświeżeniem bestii.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>Odświeżanie rang i EXP bestii ({0}/{1}); strona {2}/{3}.</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>Odświeżanie bestii nieukończone: zaobserwowano {0}/{1}; nieodczytane: {2}. {3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>Opuść bieżącą instancję przed uruchomieniem Władcy bestii.</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>Przywracanie bestiariusza po odświeżeniu.</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>Oczekiwanie na dane {0}.</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>Ponowne sprawdzanie {0}; oczekiwanie na prawidłową kontrolkę natywną.</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>Plansza ukończona; rangi i EXP bestii pozostają niepotwierdzone.</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>Zatrzymano; zakończenie natywnego porządkowania pozostaje niepotwierdzone: {0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>Ponowne sprawdzanie bieżącego wejścia do Crucible.</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>Ponowna próba za pięć sekund: {0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>Podejście {0}/{1}</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>Ukończono {0}/{1} podejść</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>Sprawdzanie nowych bestii</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>Odczytano {0}/{1}</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>Pozostało: {0}</value></data>
+  <data name="Fighting" xml:space="preserve"><value>Walka</value></data>
+  <data name="Recovering" xml:space="preserve"><value>Przywracanie</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>Kończenie planszy</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>Przygotowanie drużyny</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>Kontynuuj</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>Zmiany harmonogramu obowiązują od następnego uruchomienia; bieżąca sesja zachowuje swoje ustawienia.</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>Ukończone plansze są zawsze opuszczane automatycznie.</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>Polecenie po ukończeniu (opcjonalne)</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>Pozostaw puste, aby nic nie robić. Wykonywane raz po ukończeniu planu, poza instancją.</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>Plansze tygodniowe</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>Automatycznie używaj odblokowanych plansz.</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>Użyj odblokowanych plansz</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>Odblokowane plansze zostaną wybrane podczas gry tą postacią. Wybierz plansze poniżej, aby zapisać własny wybór.</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>Nie wybrano plansz tygodniowych.</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Uruchamia wybrane nieukończone plansze. Zablokowane pozycje lub te z niespełnionymi wymaganiami sprzętu pozostają nieukończone.</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>Wybrane wyzwania tygodniowe są ukończone.</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>Ukończone wybrane wyzwania tygodniowe: {0}/{1}.</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>Wybrane dostępne wyzwania tygodniowe są ukończone. Pozostają plansze zablokowane lub z niespełnionymi wymaganiami sprzętu.</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>Bieżąca plansza tygodniowa nie jest wybrana.</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>Polecenie po ukończeniu nie powiodło się: {0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>Ukończ raz każde wybrane dostępne wyzwanie Beastmastera.</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>Polecenie po ukończeniu musi być pojedynczym poleceniem zaczynającym się od ukośnika.</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>Nie udało się wysłać polecenia po ukończeniu; nie zostanie ponowione.</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>Wysłano polecenie po ukończeniu.</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>Pominięto polecenie po ukończeniu, ponieważ nie udało się zapisać ukończenia Crewcible.</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>Pominięto polecenie po ukończeniu, ponieważ ukończona sesja nie jest już bieżącą sesją.</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>Beastmaster jest wyłączony dla tej postaci.</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>Tygodniowe wyzwania Beastmastera są wyłączone dla tej postaci.</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>Beastmaster jest zaplanowany nie wcześniej niż {0}.</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>Tygodniowe wyzwania Beastmastera są zaplanowane nie wcześniej niż {0}.</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Zatrzymaj po następnej porażce lub ukończeniu</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>Anuluj zatrzymanie po następnym wyniku</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Jednorazowo: po porażce zatrzymaj w instancji; po ukończeniu odbierz nagrody i wyjdź.</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Zatrzymanie po następnej porażce lub ukończeniu.</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Zatrzymano po porażce; postać pozostaje w Tyglu.</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Zatrzymano po ukończeniu; postać opuściła Tygiel.</value></data>
 </root>

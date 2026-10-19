@@ -25,6 +25,7 @@ using VERMAXION.Services;
 using VERMAXION.Models;
 using VERMAXION.CustomDeliveries;
 using VERMAXION.Windows;
+using VERMAXION.Beastmaster;
 
 namespace VERMAXION;
 
@@ -58,7 +59,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private const string CommandName = "/vermaxion";
     private const string AliasCommandName = "/vmx";
-    private const string DebugAttemptMarker = "vmx-settings-rows-20261014-02";
+    internal const string BeastmasterTaskId = "Run##Beastmaster";
+    internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
+    private const string DebugAttemptMarker = "vmx-crewcible-weeklies-outcome-controls-20261018-35";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -90,6 +93,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public FCBuffService FCBuffService { get; init; }
     public FCBuffInventoryService FCBuffInventoryService { get; init; }
     public VerminionService VerminionService { get; init; }
+    internal BeastmasterService BeastmasterService { get; init; }
+    private ulong beastmasterOwner;
+    internal bool BeastmasterOwnsWork => BeastmasterService?.IsActive == true ||
+        BeastmasterService?.IsPaused == true;
     public CactpotService CactpotService { get; init; }
     public ChocoboRaceService ChocoboRaceService { get; init; }
     public FashionReportService FashionReportService { get; init; }
@@ -147,6 +154,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public MainWindow MainWindow { get; init; }
     internal DebugWindow DebugWindow { get; init; }
     internal VerminionWindow VerminionWindow { get; init; }
+    internal BeastmasterWindow BeastmasterWindow { get; init; }
+    internal BeastmasterMiniWindow BeastmasterMiniWindow { get; init; }
     public RegistrableConfigWindow RegistrableConfigWindow { get; init; }
 
     private IDtrBarEntry? dtrEntry;
@@ -277,13 +286,18 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
         ResetDetectionService = new ResetDetectionService(Log);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
+        BeastmasterService = new BeastmasterService(
+            () => GetBeastmasterSettings(ConfigManager.GetActiveConfig()),
+            () => ConfigManager.GetActiveConfig().Beastmaster ??= new(),
+            SaveBeastmasterConfiguration, VNavmeshIPC, LifestreamIPC);
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, YesAlreadyIPC, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log, ConfigManager, LifestreamIPC, VNavmeshIPC);
         CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC, LifestreamIPC);
         ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient,
             () => CanStartChocoboProgression(out var reason) ? null : reason,
-            () => IsChocoboReloadTestSelected);
+            () => IsChocoboReloadTestSelected,
+            CancelChocoboReloadAttempt);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
         StylistIPC = new StylistIPC(PluginInterface, Log);
@@ -344,7 +358,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             Log,
             OnARCharacterReady,
             ArmBeforeArSuppressionFromPostprocess,
-            () => Configuration.Enabled && !DadHandoffBlocksNewWork && !OfflineLogoutBlocksOrdinaryAutomation && !VerminionService.HasQuestAcquisition);
+            () => Configuration.Enabled && !DadHandoffBlocksNewWork && !OfflineLogoutBlocksOrdinaryAutomation &&
+                !VerminionService.HasQuestAcquisition && !BeastmasterOwnsWork);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
         CharacterSelectStallRecovery = new CharacterSelectStallRecoveryService(Log);
         ScheduledOfflineHoldCoordinator = new ScheduledOfflineHoldCoordinator(
@@ -375,9 +390,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             CurrentJobEquipmentService, SeasonalGearService, AlliedSocietyService, AfterArParkService,
             MinionRouletteService, EquipmentAutomationRuntime,
             RetainerListingRefillService, RetainerEquippingService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
-            ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter);
+            ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter, this);
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
+            : BeastmasterOwnsWork ? "Beastmaster owns the character."
             : VerminionService.HasQuestAcquisition ? "Questionable minion acquisition blocks new VERMAXION work."
             : DeliveryFishing.IsCleanupPending ? CustomDeliveriesService.StatusText
             : ChocoboStablesService.IsCleanupPending ? "Stable menu cleanup is still settling."
@@ -396,12 +412,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         MainWindow = new MainWindow(this);
         DebugWindow = new DebugWindow(this);
         VerminionWindow = new VerminionWindow(this);
+        BeastmasterWindow = new BeastmasterWindow(this);
+        BeastmasterMiniWindow = new BeastmasterMiniWindow(this);
         RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager, Configuration);
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(FishCollectionWindow);
         WindowSystem.AddWindow(DebugWindow);
         WindowSystem.AddWindow(VerminionWindow);
+        WindowSystem.AddWindow(BeastmasterWindow);
+        WindowSystem.AddWindow(BeastmasterMiniWindow);
         WindowSystem.AddWindow(RegistrableConfigWindow);
         if (setupWizardDecision.ShouldAutoOpen && !Configuration.SetupWizardCompleted)
         {
@@ -416,7 +436,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         });
         CommandManager.AddHandler(AliasCommandName, new CommandInfo(OnAliasCommand)
         {
-            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|v] or /vmx to open UI."
+            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|v|b|beast], /vmx b mini, or /vmx to open UI."
         });
 
         // Events
@@ -447,6 +467,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 DrawLanguageSelector,
                 () => { Configuration.CompactUi = !Configuration.CompactUi; Configuration.Save(); },
                 DrawWindowSettings, DrawTitleColour,
+                () =>
+                {
+                    Configuration.KrangleEnabled = !Configuration.KrangleEnabled;
+                    if (!Configuration.KrangleEnabled) KrangleService.ClearCache();
+                    Configuration.Save();
+                },
+                () => UiText.T(UIConstants.ConfigLabels.KrangleNames) + ": " +
+                    UiText.T(Configuration.KrangleEnabled ? "On" : "Off") + "\n" + UiText.T(UIConstants.Tooltips.KrangleNames),
                 () => owner is MainWindow
                     ? new(Configuration.UiLanguageVisibleOnMainWindow, Configuration.UiCompactVisibleOnMainWindow, Configuration.UiTransparencyVisibleOnMainWindow, true)
                     : new(true, true, true, true)));
@@ -460,8 +488,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         {
             if (!owner.IsOpen) continue;
             var title = owner is MainWindow ? UiText.T("Vermaxion") + " " + (typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0.0.0.0")
+                : owner is BeastmasterMiniWindow ? "VERMAXION " + (typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0.0.0.0") + " · " + UiText.T("Beastmaster") + " · " + UiText.T("Mini view")
+                : owner is BeastmasterWindow ? "VERMAXION " + (typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0.0.0.0") + " · " + UiText.T("Beastmaster")
                 : UiText.T(owner.WindowName.Split("##", 2)[0]);
-            UiGui.ImageTitleWithStatus(owner, title, OriginalIcon, status);
+            var ownerStatus = owner is VERMAXION.Windows.BeastmasterWindow or VERMAXION.Windows.BeastmasterMiniWindow
+                ? BeastmasterWindow.RunTitlebarStatus(owner, ref title) : status;
+            UiGui.ImageTitleWithStatus(owner, title, OriginalIcon, ownerStatus);
         }
         foreach (var actions in appearanceTitleBars.Values) actions.DrawPopups();
     }
@@ -470,14 +502,27 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         if (!Configuration.UiShowTitlebarStatus) return null;
         var runtime = BuildAutomationStatus();
-        var state = UiText.T(runtime.State);
+        var state = KrangleTitlebarText(UiText.T(runtime.State));
         var progress = runtime.Activity == AutomationActivity.Engine.ToString() && Engine.IsRunning
             ? UiText.T("Pending tasks") + ": " + Engine.GetPendingTaskCount() : string.Empty;
         var concise = string.Join(" | ", new[] { state, progress }.Where(value => !string.IsNullOrWhiteSpace(value)));
-        var detail = UiText.T(runtime.Summary);
+        var detail = KrangleTitlebarText(UiText.T(runtime.Summary));
         var tooltip = string.Join("\n", UiText.T(runtime.Activity), concise, detail);
         return new(Configuration.UiDetailedTitlebarStatus && !string.IsNullOrWhiteSpace(detail)
             ? concise + " | " + detail : concise, state, tooltip);
+    }
+
+    internal string KrangleTitlebarText(string text)
+    {
+        if (!Configuration.KrangleEnabled) return text;
+        var identities = ConfigManager.Accounts.Values.SelectMany(account => account.Characters.Keys)
+            .Append(ConfigManager.CurrentCharacterKey)
+            .Where(identity => !string.IsNullOrWhiteSpace(identity))
+            .SelectMany(identity => new[] { identity, identity.Split('@', 2)[0] })
+            .Distinct(StringComparer.Ordinal).OrderByDescending(identity => identity.Length);
+        foreach (var identity in identities)
+            text = text.Replace(identity, KrangleService.KrangleName(identity), StringComparison.Ordinal);
+        return text;
     }
 
     private void DrawTitleColour()
@@ -618,6 +663,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     public void Dispose()
     {
+        if (BeastmasterOwnsWork) StopBeastmaster();
+        BeastmasterService.Dispose();
         Engine.CancelNagYourMomSeriesRankTest();
         ChocoboRaceService.Dispose();
         ChokeAboIpcClient.SuspendTargetCycle(PlayerState.ContentId);
@@ -779,6 +826,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private (bool Active, string State, string Summary) GetActiveManualService()
     {
+        if (BeastmasterOwnsWork)
+            return (true, BeastmasterService.IsPaused ? "BeastmasterPaused" : "Beastmaster",
+                BeastmasterService.StatusText);
         if (FisherGearsetTestService.IsActive)
             return (true, "FisherGearsetTest", FisherGearsetTestService.StatusText);
         if (LootGoblinMapGatherManualRunCoordinator.IsActive)
@@ -827,6 +877,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     internal bool RunDashboardAction(Action action)
     {
+        if (BeastmasterOwnsWork)
+        {
+            ChatGui.Print("[Vermaxion] Beastmaster owns the character. Stop it before starting another task.");
+            return false;
+        }
         if (VerminionService.HasQuestAcquisition)
         {
             ChatGui.Print("[Vermaxion] Questionable owns minion acquisition. Wait for it to finish or use FULL STOP.");
@@ -919,6 +974,221 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
     }
 
+    private void SaveBeastmasterConfiguration()
+    {
+        Configuration.Save();
+        // Account saves may replace a merged profile while the run retains its own data.
+        if (beastmasterOwner != 0 && PlayerState.ContentId == beastmasterOwner)
+        {
+            var config = ConfigManager.GetActiveConfig();
+            var observed = BeastmasterService.CharacterData;
+            if (!ReferenceEquals(config.Beastmaster, observed))
+            {
+                // A merged save may replace the profile. Keep its latest saved
+                // choices while attaching this run's native observations again.
+                observed.ManualSettings = config.Beastmaster.ManualSettings;
+                observed.ScheduledSetup = config.Beastmaster.ScheduledSetup;
+            }
+            config.Beastmaster = observed;
+        }
+        ConfigManager.SaveCurrentAccount();
+    }
+
+    internal BeastmasterSettings GetBeastmasterSettings(CharacterConfig config)
+        => (config.Beastmaster ??= new()).GetSettings(Configuration.Beastmaster ??= new());
+
+    internal bool CanRefreshBeastmaster(out string reason)
+    {
+        if (!IsCharacterRegistered || !PlayerState.IsLoaded)
+        { reason = "Waiting for the current character to be registered and ready."; return false; }
+        if (!CanStartMainMenuTest(waitForOceanFishing: false, out reason, checkAutoRetainer: false)) return false;
+        return BeastmasterService.CanRefresh(out reason);
+    }
+
+    internal void RefreshBeastmaster()
+    {
+        if (!CanRefreshBeastmaster(out var reason))
+        { ChatGui.Print("[Vermaxion] " + UiText.Beastmaster(reason)); return; }
+        beastmasterOwner = PlayerState.ContentId;
+        try
+        {
+            BeastmasterService.DiscardCompletionCommand();
+            if (!BeastmasterService.RequestRefresh() && !BeastmasterService.IsActive)
+                beastmasterOwner = 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Beastmaster] Refresh needs a fresh native state check");
+            BeastmasterService.Recover(ex.Message);
+        }
+    }
+
+    internal void TryRefreshBeastmasterOwnership()
+    {
+        if (CanRefreshBeastmaster(out _)) BeastmasterService.TryRefreshOwnership();
+    }
+
+    internal bool CanStartScheduledBeastmaster(bool weekly, out string reason)
+    {
+        if (!IsCharacterRegistered || !PlayerState.IsLoaded)
+        { reason = "Waiting for the current character to be registered and ready."; return false; }
+        if (DadHandoffBlocksNewWork || IsFishingRunActive || VerminionService.HasQuestAcquisition)
+        { reason = "Another automation owns the character."; return false; }
+        var config = ConfigManager.GetActiveConfig();
+        var shared = GetBeastmasterSettings(config);
+        return BeastmasterService.CanStartConfigured(config.Beastmaster.ScheduledSetup!.ApplyTo(shared), weekly, out reason);
+    }
+
+    internal bool StartScheduledBeastmaster(bool weekly, out string reason)
+    {
+        if (!CanStartScheduledBeastmaster(weekly, out reason)) return false;
+        var config = ConfigManager.GetActiveConfig();
+        var settings = config.Beastmaster.ScheduledSetup!.ApplyTo(GetBeastmasterSettings(config));
+        // The ordered engine already owns AutoRetainer suppression and YesAlready.
+        // Do not acquire a second manual lease or reject the engine's own state.
+        beastmasterOwner = PlayerState.ContentId;
+        var accepted = BeastmasterService.StartConfigured(settings, weekly);
+        if (!accepted)
+        {
+            reason = BeastmasterService.StatusText;
+            if (!BeastmasterService.IsActive) beastmasterOwner = 0;
+        }
+        return accepted;
+    }
+
+    internal void RunScheduledBeastmasterTask(bool weekly)
+    {
+        if (Engine.IsRunning)
+        { ChatGui.Print("[Vermaxion] An ordered task is already running."); return; }
+        if (BeastmasterOwnsWork || DadHandoffBlocksNewWork || IsFishingRunActive)
+        { ChatGui.Print("[Vermaxion] Another automation owns the character."); return; }
+        Engine.ManualStartBeastmaster(weekly);
+    }
+
+    internal bool RunBeastmasterForCurrentCharacter(bool weekly, bool scheduled)
+    {
+        // An explicit Start resolves the loaded identity now. Background login
+        // registration retains its stability wait; neither needs an idle player.
+        if (!TryGetWorldReadyCharacterForRegistration(out var name, out var world, out _, out _, waitForStability: false))
+        {
+            ChatGui.Print("[Vermaxion] " + UiText.Beastmaster("Waiting for the current character to be registered and ready."));
+            return false;
+        }
+
+        var currentKey = $"{name}@{world}";
+        if (!IsCharacterRegistered ||
+            !string.Equals(currentKey, ConfigManager.CurrentCharacterKey, StringComparison.OrdinalIgnoreCase))
+        {
+            characterRegistrationCompletedThisLogin = false;
+            QueueCharacterRegistration("explicit Crewcible Start");
+            ProcessPendingCharacterRegistration(waitForStability: false);
+        }
+        if (!IsCharacterRegistered ||
+            !string.Equals(currentKey, ConfigManager.CurrentCharacterKey, StringComparison.OrdinalIgnoreCase) ||
+            ConfigManager.GetCurrentAccount()?.Characters.ContainsKey(ConfigManager.CurrentCharacterKey) != true)
+        {
+            ChatGui.Print("[Vermaxion] " + UiText.Beastmaster("Waiting for the current character to be registered and ready."));
+            return false;
+        }
+
+        // Resolve settings only after registration has rebound the current profile.
+        // Browsing an offline profile never supplies the execution settings.
+        BeastmasterWindow.SelectCurrentCharacter();
+        if (BeastmasterOwnsWork && !scheduled)
+        {
+            RunBeastmasterTask(weekly);
+            return true;
+        }
+        return RunDashboardAction(() =>
+        {
+            if (scheduled) RunScheduledBeastmasterTask(weekly);
+            else RunBeastmasterTask(weekly);
+        });
+    }
+
+    internal bool CanStartBeastmaster(out string reason)
+        => CanStartBeastmaster(weekly: false, out reason);
+
+    internal bool CanStartBeastmasterWeekly(out string reason)
+        => CanStartBeastmaster(weekly: true, out reason);
+
+    private bool CanStartBeastmaster(bool weekly, out string reason)
+    {
+        if (!IsCharacterRegistered || !PlayerState.IsLoaded)
+        { reason = "Waiting for the current character to be registered and ready."; return false; }
+        // An explicit current-state action can rebind its loaded character,
+        // including when registration replaced a saved profile.
+        if (BeastmasterOwnsWork && BeastmasterService.CanReinspectCurrent &&
+            !DadHandoffBlocksNewWork && !IsFishingRunActive && !VerminionService.HasQuestAcquisition &&
+            (!Engine.OwnsLiveWork || Engine.State is VermaxionEngine.EngineState.RunningBeastmaster or VermaxionEngine.EngineState.RunningBeastmasterWeekly))
+        { reason = string.Empty; return true; }
+        if (!CanStartMainMenuTest(waitForOceanFishing: false, out reason, checkAutoRetainer: false)) return false;
+        if (!weekly) return BeastmasterService.CanStart(out reason);
+        var config = ConfigManager.GetActiveConfig();
+        var shared = GetBeastmasterSettings(config);
+        return BeastmasterService.CanStartConfigured(config.Beastmaster.ScheduledSetup!.ApplyTo(shared), true, out reason);
+    }
+
+    internal void RunBeastmasterTask()
+        => RunBeastmasterTask(weekly: false);
+
+    internal void RunBeastmasterWeeklyTask()
+        => RunBeastmasterTask(weekly: true);
+
+    private void RunBeastmasterTask(bool weekly)
+    {
+        if (!CanStartBeastmaster(weekly, out var reason))
+        {
+            Log.Information($"[Beastmaster] Start blocked: {reason}");
+            ChatGui.Print($"[Vermaxion] Beastmaster: {reason}");
+            return;
+        }
+
+        beastmasterOwner = PlayerState.ContentId;
+        try
+        {
+            var config = ConfigManager.GetActiveConfig();
+            var shared = GetBeastmasterSettings(config);
+            var accepted = weekly ? BeastmasterService.StartConfigured(config.Beastmaster.ScheduledSetup!.ApplyTo(shared), true)
+                : BeastmasterService.Start();
+            if (accepted) Engine.RebindBeastmasterRunToCurrentCharacter();
+            else if (!BeastmasterService.IsActive) beastmasterOwner = 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Beastmaster] Start needs a fresh state check");
+            BeastmasterService.Recover(ex.Message);
+        }
+    }
+
+    internal void ResumeBeastmaster()
+        => RunBeastmasterForCurrentCharacter(weekly: false, scheduled: false);
+
+    internal void StopBeastmaster()
+    {
+        try { BeastmasterService?.Stop(); }
+        finally
+        {
+            if (BeastmasterService?.IsActive != true) beastmasterOwner = 0;
+        }
+    }
+
+    private void UpdateBeastmaster()
+    {
+        if (BeastmasterService.IsActive || BeastmasterService.IsPaused ||
+            (IsCharacterRegistered && PlayerState.IsLoaded))
+            BeastmasterService.Update();
+        if (!Engine.OwnsBeastmasterTask && BeastmasterService.CompletionCommandPending &&
+            BeastmasterService.CanFinalizeOrdinaryCompletion)
+        {
+            if (ConfigManager.TrySaveAccount(ConfigManager.CurrentAccountId))
+                BeastmasterService.TryExecuteCompletionCommand();
+            else BeastmasterService.DiscardCompletionCommand("Completion command skipped because Crewcible completion could not be saved.");
+        }
+        if (!BeastmasterService.IsActive && !BeastmasterService.IsPaused)
+            beastmasterOwner = 0;
+    }
+
     internal void SetDebugTaskSelection(string? taskId)
     {
         if (string.Equals(Configuration.DebugTaskId, taskId, StringComparison.Ordinal))
@@ -939,6 +1209,17 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Log.Information($"[DebugReload] marker={DebugAttemptMarker}; task={Configuration.DebugTaskId ?? "none"}; {status}");
     }
 
+    private static bool IsChocoboReloadTask(string? taskId)
+        => taskId is AutomationCatalog.ChocoboRacing or VERMAXION.Services.ChocoboRaceService.CollectAndPauseTaskId;
+
+    private void CancelChocoboReloadAttempt()
+    {
+        var cancelled = false;
+        if (IsChocoboReloadTask(pendingDebugTaskId)) { pendingDebugTaskId = null; cancelled = true; }
+        if (IsChocoboReloadTask(pendingDebugDispatchTaskId)) { pendingDebugDispatchTaskId = null; cancelled = true; }
+        if (cancelled) SetDebugTaskStatus("Chocobo progression is paused; explicit Resume is required before reload continuation.");
+    }
+
     private void ProcessPendingDebugTask()
     {
 #if DEBUG
@@ -952,7 +1233,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 SetDebugTaskStatus("Cancelled: the character changed during cleanup.");
                 return;
             }
-            var ready = !ChocoboStablesService.IsCleanupPending && (GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _) ||
+            var ready = !BeastmasterOwnsWork && !ChocoboStablesService.IsCleanupPending && (GameHelpers.IsPlayerAvailable() || pendingDebugDispatchTaskId == AutomationCatalog.ChocoboRacing && CanStartChocoboProgression(out _) ||
                 pendingDebugDispatchTaskId == AutomationCatalog.VerminionQueue && CanObserveVerminionForReload());
             if (pendingDebugDispatchTaskId == "Run##FishCollection")
             {
@@ -1000,7 +1281,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             SetDebugTaskStatus("Questionable owns minion acquisition; this reload only observes the saved handoff.");
             return;
         }
-        if ((taskId == AutomationCatalog.ChocoboRacing || taskId == VERMAXION.Services.ChocoboRaceService.CollectAndPauseTaskId) &&
+        if (taskId == AutomationCatalog.ChocoboRacing &&
             ConfigManager.GetActiveConfig().ChocoboProgressionPaused)
         {
             SetDebugTaskStatus("Chocobo progression is paused; explicit Resume is required before reload continuation.");
@@ -1031,25 +1312,39 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
     }
 
+    internal string? GetDebugTaskBlockedReason(string? taskId, string? dashboardReason)
+    {
+        if (taskId is not (BeastmasterTaskId or BeastmasterWeeklyTaskId)) return dashboardReason;
+        return CanStartBeastmaster(taskId == BeastmasterWeeklyTaskId, out var reason) ? null : reason;
+    }
+
     private void DispatchDebugTask(string taskId)
     {
         try
         {
+            var rowId = AutomationCatalog.ResolveDebugTaskId(taskId);
             var row = MainWindow.GetDashboardTaskRows(forceRefresh: true)
-                .FirstOrDefault(candidate => string.Equals(candidate.Id, taskId, StringComparison.Ordinal));
+                .FirstOrDefault(candidate => string.Equals(candidate.Id, rowId, StringComparison.Ordinal));
             if (row == null)
             {
                 SetDebugTaskStatus("Blocked: the saved task is no longer in the dashboard.");
                 return;
             }
 
-            if (row.DebugBlockedReason is { } reason)
+            var blockedReason = GetDebugTaskBlockedReason(taskId, row.DebugBlockedReason);
+            if (blockedReason is { } reason)
             {
                 SetDebugTaskStatus($"Blocked: {row.Task}. {reason}");
                 return;
             }
 
-            Action selectedAction = taskId == AutomationCatalog.VerminionQueue ? VerminionService.ResumeTask : row.OnClick;
+            Action selectedAction = taskId switch
+            {
+                BeastmasterTaskId => RunBeastmasterTask,
+                BeastmasterWeeklyTaskId => RunBeastmasterWeeklyTask,
+                AutomationCatalog.VerminionQueue => VerminionService.ResumeTask,
+                _ => row.OnClick,
+            };
 #if DEBUG
             if (taskId == "Run##FishCollection" &&
                 string.Equals(PluginInterface.AssemblyLocation.FullName, ExpectedDebugPluginPath, StringComparison.OrdinalIgnoreCase))
@@ -1156,6 +1451,12 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private bool ProcessPendingFishingPostprocessHandoff()
     {
+        if (BeastmasterOwnsWork)
+        {
+            if (pendingFishingPostprocessHandoff)
+            { pendingFishingPostprocessHandoff = false; FinishReleaseOnlyPostprocess("Beastmaster owns this run"); }
+            return true;
+        }
         if (FishCollection.IsActive)
         {
             if (pendingFishingPostprocessHandoff)
@@ -1218,7 +1519,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     public void RunFishingGearsetTest()
     {
-        if (DadHandoffBlocksNewWork || Engine.IsRunning || IsFishingRunActive)
+        if (DadHandoffBlocksNewWork || BeastmasterOwnsWork || Engine.IsRunning || IsFishingRunActive)
         {
             const string message = "Fisher gearset test is unavailable while DAD handoff, engine, fishing, or relog work is active.";
             Log.Warning($"[Fishing][GearsetTest] {message}");
@@ -1231,6 +1532,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     }
 
     internal bool CanStartMainMenuTest(bool waitForOceanFishing, out string reason)
+        => CanStartMainMenuTest(waitForOceanFishing, out reason, checkAutoRetainer: true);
+
+    private bool CanStartMainMenuTest(bool waitForOceanFishing, out string reason, bool checkAutoRetainer)
     {
         if (VerminionService.HasQuestAcquisition)
         { reason = "Questionable owns minion acquisition."; return false; }
@@ -1261,7 +1565,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 or BeforeArGateState.Running
                 or BeforeArGateState.ReleasePending ||
             releaseOnlyPostprocessFinishPending ||
-            AutoRetainerIPC.IsBusy())
+            (checkAutoRetainer && AutoRetainerIPC.IsBusy()))
         {
             reason = "VERMAXION engine or AutoRetainer postprocess work is active.";
             return false;
@@ -1555,8 +1859,13 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             // Reset engine state if running
             if (Engine.IsRunning)
             {
-                Log.Information("[Plugin] Stopping engine due to character change");
-                Engine.Stop(userRequested: false);
+                if (Engine.State is VermaxionEngine.EngineState.RunningBeastmaster or VermaxionEngine.EngineState.RunningBeastmasterWeekly)
+                    Log.Information("[Plugin] Retaining the current Crewcible task during profile rebinding");
+                else
+                {
+                    Log.Information("[Plugin] Stopping engine due to character change");
+                    Engine.Stop(userRequested: false);
+                }
             }
             else if (pendingBeforeArLogin)
             {
@@ -1640,6 +1949,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 VerminionWindow.IsOpen = true;
                 break;
 
+            case "b":
+            case "beast":
+                BeastmasterWindow.IsOpen = true;
+                break;
+
+            case "b mini":
+            case "beast mini":
+                BeastmasterMiniWindow.IsOpen = true;
+                break;
+
             case "debug":
                 DebugWindow.Toggle();
                 break;
@@ -1682,7 +2001,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Log.Information($"[Config] Character registration queued: reason={reason}");
     }
 
-    private void ProcessPendingCharacterRegistration()
+    private void ProcessPendingCharacterRegistration(bool waitForStability = true)
     {
         if (!pendingCharacterRegistration)
             return;
@@ -1693,7 +2012,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             return;
         }
 
-        if (!TryGetWorldReadyCharacterForRegistration(out var charName, out var worldName, out var contentId, out _))
+        if (!TryGetWorldReadyCharacterForRegistration(out var charName, out var worldName, out var contentId, out _, waitForStability))
             return;
 
         var characterKey = $"{charName}@{worldName}";
@@ -1751,6 +2070,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         // rechecks the saved handoff before any Before-AR work may start.
         if (VerminionService?.HasQuestAcquisition == true)
         { SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
+        if (BeastmasterOwnsWork)
+        { SkipBeforeArForLogin("Beastmaster owns the character"); return; }
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
             SkipBeforeArForLogin("Offline logout work suppresses Before-AR startup");
@@ -1789,6 +2110,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         if (VerminionService?.HasQuestAcquisition == true)
         { SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
+        if (BeastmasterOwnsWork)
+        { SkipBeforeArForLogin("Beastmaster owns the character"); return; }
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
             SkipBeforeArForLogin("Offline logout work suppresses Before-AR startup");
@@ -1858,7 +2181,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ArmBeforeArSuppressionFromPostprocess()
     {
-        if (VerminionService.HasQuestAcquisition) return;
+        if (VerminionService.HasQuestAcquisition || BeastmasterOwnsWork) return;
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
             beforeArArmedByPostprocess = false;
@@ -1940,6 +2263,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessPendingBeforeArLogin()
     {
+        if (BeastmasterOwnsWork)
+        { if (pendingBeforeArLogin) SkipBeforeArForLogin("Beastmaster owns the character"); return; }
         if (FishCollection.IsActive)
         { if (pendingBeforeArLogin) SkipBeforeArForLogin("Fish collection owns selected-character inspection or an opportunity"); return; }
         if (VerminionService.HasQuestAcquisition)
@@ -2164,6 +2489,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessBeforeArReleasePending()
     {
+        if (BeastmasterOwnsWork) return;
         if (BeforeArGate != BeforeArGateState.ReleasePending)
             return;
 
@@ -2217,6 +2543,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void ProcessBeforeArSuppressionRecovery()
     {
+        if (BeastmasterOwnsWork && !Engine.RequiresAutoRetainerSuppression) return;
         var activeRun = Engine.RequiresAutoRetainerSuppression;
         if (!Configuration.Enabled && !activeRun)
         {
@@ -2397,7 +2724,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         return true;
     }
 
-    private bool TryGetWorldReadyCharacterForRegistration(out string charName, out string worldName, out ulong contentId, out string reason)
+    private bool TryGetWorldReadyCharacterForRegistration(out string charName, out string worldName, out ulong contentId, out string reason, bool waitForStability = true)
     {
         charName = ObjectTable.LocalPlayer?.Name.ToString() ?? "";
         worldName = ObjectTable.LocalPlayer?.HomeWorld.Value.Name.ToString() ?? "";
@@ -2407,17 +2734,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var hasLocalPlayer = ObjectTable.LocalPlayer != null;
         var betweenAreas = Condition[ConditionFlag.BetweenAreas];
         var betweenAreas51 = Condition[ConditionFlag.BetweenAreas51];
-        var playerAvailable = GameHelpers.IsPlayerAvailable() || loggedIn && hasLocalPlayer && !betweenAreas && !betweenAreas51 &&
-            contentId != 0 && (ChokeAboIpcClient.GetTargetCycleStatus(contentId).Status?.CanResumeOwnedInteraction == true || CanObserveVerminionForReload());
+        var playerLoaded = PlayerState.IsLoaded;
 
         if (!loggedIn ||
             !hasLocalPlayer ||
+            !playerLoaded ||
             string.IsNullOrEmpty(charName) ||
             string.IsNullOrEmpty(worldName) ||
             contentId == 0 ||
             betweenAreas ||
-            betweenAreas51 ||
-            !playerAvailable)
+            betweenAreas51)
         {
             characterRegistrationWorldReadySince = DateTime.MinValue;
             reason = "waiting for character-registration world-ready";
@@ -2428,7 +2754,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (characterRegistrationWorldReadySince == DateTime.MinValue)
             characterRegistrationWorldReadySince = now;
 
-        if ((now - characterRegistrationWorldReadySince).TotalSeconds < BeforeArWorldReadyStableSeconds)
+        if (waitForStability && (now - characterRegistrationWorldReadySince).TotalSeconds < BeforeArWorldReadyStableSeconds)
         {
             reason = "waiting for character-registration world-ready stability";
             return false;
@@ -2524,7 +2850,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// Throttled to every 30s; skips entirely when a run or relog is already in progress.</summary>
     private void ProcessFishingFakeReady()
     {
-        if (VerminionService.HasQuestAcquisition) return;
+        if (VerminionService.HasQuestAcquisition || BeastmasterOwnsWork) return;
         if (!Configuration.Enabled ||
             !Configuration.OceanFishingFakeReadyEnabled ||
             OfflineLogoutBlocksOrdinaryAutomation)
@@ -2568,7 +2894,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// send it back to Limsa.</summary>
     private void ProcessIdleInnPark()
     {
-        if (VerminionService.HasQuestAcquisition) return;
+        if (VerminionService.HasQuestAcquisition || BeastmasterOwnsWork) return;
         if (!Configuration.Enabled ||
             !Configuration.OceanIdleInnParkEnabled ||
             OfflineLogoutBlocksOrdinaryAutomation)
@@ -2692,7 +3018,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             retainerCollectOnlyObservedArProcessing = false;
             wasLoggedIn = false;
             beforeArStartedThisLogin = false;
-            if (ARPostProcessService.IsProcessing || ARPostProcessService.IsRequested)
+            if ((ARPostProcessService.IsProcessing || ARPostProcessService.IsRequested) &&
+                !BeastmasterOwnsWork &&
+                Engine.State is not (VermaxionEngine.EngineState.RunningBeastmaster or VermaxionEngine.EngineState.RunningBeastmasterWeekly))
             {
                 const string reason = "Client disconnected during VERMAXION-owned postprocess";
                 Log.Warning($"[AR] {reason}; cancelling interrupted work and releasing ownership.");
@@ -2715,6 +3043,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
 
         ProcessPendingCharacterRegistration();
+        UpdateBeastmaster();
         FishCollection.Update();
         // Custom-delivery data and task progress must refresh with all windows closed.
         DeliveryFishing.Update();
@@ -2966,6 +3295,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     /// </summary>
     public void FullStop(bool preparingDebugTask = false)
     {
+        StopBeastmaster();
         if (!preparingDebugTask && Configuration.Enabled)
         {
             Configuration.Enabled = false;
@@ -3055,23 +3385,29 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Log.Information(FishCollection.IsActive ? "[FULL STOP] Owned VNavmesh cancellation requested by collection" : "[FULL STOP] VNavmesh stopped");
 
         // Unpause YesAlready
-        if (!FishCollection.IsActive) YesAlreadyIPC.Unpause();
-        dashboardRunYesAlreadyPauseOwned = false;
-        Log.Information(FishCollection.IsActive ? "[FULL STOP] YesAlready lease retained through collection cleanup" : "[FULL STOP] YesAlready unpaused");
+        if (!FishCollection.IsActive && !BeastmasterOwnsWork) YesAlreadyIPC.Unpause();
+        if (!BeastmasterOwnsWork) dashboardRunYesAlreadyPauseOwned = false;
+        Log.Information(BeastmasterOwnsWork ? "[FULL STOP] YesAlready lease retained through Beastmaster cleanup"
+            : FishCollection.IsActive ? "[FULL STOP] YesAlready lease retained through collection cleanup" : "[FULL STOP] YesAlready unpaused");
 
-        if (!FishCollection.IsActive) AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
+        if (!FishCollection.IsActive && !BeastmasterOwnsWork) AutoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         releaseOnlyPostprocessFinishPending = false;
         releaseOnlyPostprocessFinishReason = string.Empty;
         beforeArArmedByPostprocess = false;
         ClearBeforeArArmedTracking();
         pendingBeforeArLogin = false;
         SetBeforeArGate(BeforeArGateState.Idle, "Full Stop");
-        Log.Information(FishCollection.IsActive ? "[FULL STOP] AutoRetainer suppression retained through collection cleanup" : "[FULL STOP] AutoRetainer suppression released if owned");
+        Log.Information(BeastmasterOwnsWork ? "[FULL STOP] AutoRetainer suppression retained through Beastmaster cleanup"
+            : FishCollection.IsActive ? "[FULL STOP] AutoRetainer suppression retained through collection cleanup" : "[FULL STOP] AutoRetainer suppression released if owned");
 
-        Log.Information(FishCollection.IsActive
+        Log.Information(BeastmasterOwnsWork
+            ? "[FULL STOP] Beastmaster stopped; retaining ownership until external work and cleanup settle"
+            : FishCollection.IsActive
             ? "[FULL STOP] Collection stopped; retaining ownership until external work and cleanup settle"
             : "[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
-        ChatGui.Print(FishCollection.IsActive
+        ChatGui.Print(BeastmasterOwnsWork
+            ? "[Vermaxion] FULL STOP - Beastmaster stopped; owned external work and cleanup remain pending."
+            : FishCollection.IsActive
             ? "[Vermaxion] FULL STOP - Collection stopped; owned external work and cleanup remain pending."
             : VerminionService.HasQuestAcquisition
             ? "[Vermaxion] FULL STOP - Vermaxion halted. Questionable acquisition cancellation or cleanup remains pending."
@@ -3084,6 +3420,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (!targetModeWasActive && activeConfig?.ChocoboAutomationMode != ChocoboAutomationMode.TargetPedigree)
             return;
 
+        CancelChocoboReloadAttempt();
         if (activeConfig != null)
         {
             activeConfig.ChocoboProgressionPaused = true;
@@ -3247,7 +3584,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
            !Condition[ConditionFlag.BetweenAreas51] &&
            !Engine.IsRunning &&
            !CustomDeliveriesService.IsActive &&
-           !DadHandoffBlocksNewWork && !VerminionService.HasQuestAcquisition;
+           !DadHandoffBlocksNewWork && !VerminionService.HasQuestAcquisition && !BeastmasterOwnsWork;
 
     bool IFishingStartupRuntime.IsFishingActive => FishingService.IsActive;
     bool IFishingStartupRuntime.IsRelogActive => FishingRelogCoordinator.IsActive;

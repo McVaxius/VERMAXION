@@ -7,6 +7,7 @@ using Dalamud.Plugin.Services;
 using VERMAXION.IPC;
 using VERMAXION.Models;
 using VERMAXION.CustomDeliveries;
+using VERMAXION.Beastmaster;
 using static VERMAXION.Services.GameHelpers;
 using Quest = Lumina.Excel.Sheets.Quest;
 
@@ -146,6 +147,8 @@ public class VermaxionEngine
         [PostProcessTaskOrder.CustomDeliveries] = EngineState.RunningCustomDeliveries,
         [PostProcessTaskOrder.ChocoboStables] = EngineState.RunningChocoboStables,
         [PostProcessTaskOrder.ChocoboRacing] = EngineState.RunningChocoboRacing,
+        [PostProcessTaskOrder.Beastmaster] = EngineState.RunningBeastmaster,
+        [PostProcessTaskOrder.BeastmasterWeekly] = EngineState.RunningBeastmasterWeekly,
         [PostProcessTaskOrder.LootGoblinMapGather] = EngineState.RunningLootGoblinMapGather,
         [PostProcessTaskOrder.NagYourMom] = EngineState.RunningNagYourMom,
         [PostProcessTaskOrder.NagYourDad] = EngineState.RunningNagYourDad,
@@ -192,6 +195,9 @@ public class VermaxionEngine
     private readonly VNavmeshIPC vNavmeshIPC;
     private readonly LifestreamIPC lifestreamIPC;
     private readonly VermaxionIncidentWriter incidentWriter;
+    private readonly Plugin plugin;
+    private BeastmasterTaskFrequency beastmasterRunFrequency;
+    private ulong beastmasterRunOwner;
 
     private EngineState state = EngineState.Idle;
     private RunTaskPhaseFilter activePhaseFilter = RunTaskPhaseFilter.All;
@@ -281,6 +287,8 @@ public class VermaxionEngine
         RunningCustomDeliveries,
         RunningChocoboStables,
         RunningChocoboRacing,
+        RunningBeastmaster,
+        RunningBeastmasterWeekly,
         RunningLootGoblinMapGather,
         RunningNagYourMom,
         RunningNagYourDad,
@@ -315,6 +323,7 @@ public class VermaxionEngine
     public string ActiveHandoffBlocker => handoffBlockerReason;
     public bool OwnsActiveWork => IsRunning || runOwnedWorkStarted || arService.IsProcessing;
     public bool OwnsLiveWork => OwnsActiveWork || autoRetainerIPC.SuppressionOwnedByVermaxion;
+    internal bool OwnsBeastmasterTask => state is EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly;
     public AutomationRegistryValidation RegistryValidation { get; }
     public bool RegistryReady => RegistryValidation.IsValid;
     public string RegistryDiagnostic => RegistryValidation.Message;
@@ -360,7 +369,8 @@ public class VermaxionEngine
         AutoRetainerIPC autoRetainerIPC,
         VNavmeshIPC vNavmeshIPC,
         LifestreamIPC lifestreamIPC,
-        VermaxionIncidentWriter incidentWriter)
+        VermaxionIncidentWriter incidentWriter,
+        Plugin plugin)
     {
         this.log = log;
         this.configuration = configuration;
@@ -400,6 +410,7 @@ public class VermaxionEngine
         this.vNavmeshIPC = vNavmeshIPC;
         this.lifestreamIPC = lifestreamIPC;
         this.incidentWriter = incidentWriter;
+        this.plugin = plugin;
 
         var registrations = CreateTaskBindings();
         RegistryValidation = AutomationCatalog.ValidateRuntimeRegistry(
@@ -437,6 +448,7 @@ public class VermaxionEngine
                 status,
                 watchdogProgress ?? status);
 
+        Action stopBeastmaster = plugin.StopBeastmaster;
         var bindings = new[]
         {
             Bind(PostProcessTaskOrder.RefillListings, EvaluateRefillListings, retainerListingRefillService.Update,
@@ -480,6 +492,12 @@ public class VermaxionEngine
                 chocoboStablesService.Reset, () => chocoboStablesService.StatusText, chocoboStablesService.Cancel),
             Bind(PostProcessTaskOrder.ChocoboRacing, EvaluateChocoboRacing, chocoboRaceService.Update,
                 chocoboRaceService.Reset, () => chocoboRaceService.StatusText),
+            Bind(PostProcessTaskOrder.Beastmaster, config => EvaluateBeastmaster(config, false), () => { },
+                () => { }, () => plugin.BeastmasterService.StatusText, stopBeastmaster,
+                watchdogProgress: () => $"{plugin.BeastmasterService.StatusText}|{plugin.BeastmasterService.CurrentRun}|{plugin.BeastmasterService.RouteStep}"),
+            Bind(PostProcessTaskOrder.BeastmasterWeekly, config => EvaluateBeastmaster(config, true), () => { },
+                () => { }, () => plugin.BeastmasterService.StatusText, stopBeastmaster,
+                watchdogProgress: () => $"{plugin.BeastmasterService.StatusText}|{plugin.BeastmasterService.CurrentRun}|{plugin.BeastmasterService.RouteStep}"),
             Bind(PostProcessTaskOrder.LootGoblinMapGather, EvaluateLootGoblin, lootGoblinMapGatherService.Update,
                 lootGoblinMapGatherService.Reset, () => lootGoblinMapGatherService.StatusText, lootGoblinMapGatherService.Cancel),
             Bind(PostProcessTaskOrder.NagYourMom, EvaluateNagYourMom, () => { }, () => { },
@@ -720,6 +738,42 @@ public class VermaxionEngine
             ? TaskEligibility.Blocked(reason) : TaskEligibility.Runnable();
     }
 
+    private TaskEligibility EvaluateBeastmaster(CharacterConfig config, bool weekly, bool ignoreScheduling = false)
+    {
+        var label = weekly ? "Beastmaster weeklies" : "Beastmaster";
+        if (!ignoreScheduling && !(weekly ? config.EnableBeastmasterWeekly : config.EnableBeastmaster))
+            return TaskEligibility.Disabled($"{label} is disabled for this character.");
+
+        var frequency = weekly ? config.BeastmasterWeeklyFrequency : config.BeastmasterFrequency;
+        var completed = weekly ? config.BeastmasterWeeklyLastCompleted : config.BeastmasterLastCompleted;
+        var nextReset = weekly ? config.BeastmasterWeeklyNextReset : config.BeastmasterNextReset;
+        if (!ignoreScheduling && frequency != BeastmasterTaskFrequency.EveryAR &&
+            !ResetDetectionService.TaskNeedsRun(completed, nextReset))
+            return TaskEligibility.NotDue($"{label} is not due until {nextReset:u}.");
+
+        // Eligibility never treats cached ranks or a local timestamp as native weekly credit.
+        // The service refreshes observations before deciding whether the selected work is complete.
+        if (weekly)
+        {
+            var shared = plugin.GetBeastmasterSettings(config);
+            var settings = config.Beastmaster.ScheduledSetup!.ApplyTo(shared);
+            var rows = plugin.BeastmasterService.WeeklyObjectives;
+            var selected = BeastmasterWeeklyPolicy.SelectedObjectives(settings, rows);
+            if (selected.Count == 0)
+            {
+                if (settings.WeeklyBoards is { Count: 0 } || settings.WeeklyBoards == null &&
+                    rows.Count == 5 && rows.All(row => row.State != BeastmasterWeeklyState.Unavailable))
+                    return TaskEligibility.NotDue("No weekly boards selected.");
+                return TaskEligibility.Blocked("Weekly Challenge Log data is unavailable.");
+            }
+            if (selected.All(row => row.State == BeastmasterWeeklyState.Complete))
+                return TaskEligibility.NotDue("Selected weekly challenges are complete.");
+        }
+        return plugin.CanStartScheduledBeastmaster(weekly, out var reason)
+            ? TaskEligibility.Runnable()
+            : TaskEligibility.Blocked(reason);
+    }
+
     private TaskEligibility EvaluateChocoboRacing(CharacterConfig config)
     {
         var eligibility = config.ChocoboAutomationMode == ChocoboAutomationMode.TargetPedigree
@@ -917,6 +971,30 @@ public class VermaxionEngine
             automatedRun: false, "manual Custom Deliveries",
             AutomationRunScope.SingleTask(PostProcessTaskOrder.CustomDeliveries));
 
+    internal bool ManualStartBeastmaster(bool weekly)
+        => TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false,
+            automatedRun: false, weekly ? "manual Beastmaster weeklies" : "manual Beastmaster",
+            AutomationRunScope.SingleTask(weekly ? PostProcessTaskOrder.BeastmasterWeekly : PostProcessTaskOrder.Beastmaster));
+
+    internal void RebindBeastmasterRunToCurrentCharacter()
+    {
+        if (!currentTaskOwnedWorkStarted || state is not (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly) ||
+            !Plugin.PlayerState.IsLoaded || Plugin.PlayerState.ContentId == 0) return;
+        if (beastmasterRunOwner != Plugin.PlayerState.ContentId)
+        {
+            var config = GetLiveActiveConfig();
+            beastmasterRunFrequency = state == EngineState.RunningBeastmasterWeekly
+                ? config.BeastmasterWeeklyFrequency : config.BeastmasterFrequency;
+        }
+        beastmasterRunOwner = Plugin.PlayerState.ContentId;
+        if (retainerlessTimerRun)
+        {
+            retainerlessTimerCharacterId = Plugin.PlayerState.ContentId;
+            retainerlessTimerAccountId = configManager.CurrentAccountId;
+        }
+        ResetWatchdog();
+    }
+
     public void RecordSkippedOpportunity(string summary)
     {
         if (!IsRunning)
@@ -979,7 +1057,8 @@ public class VermaxionEngine
         retainerlessTimerCharacterId = timerOwnedRun ? Plugin.PlayerState.ContentId : 0;
         retainerlessTimerAccountId = timerOwnedRun ? configManager.CurrentAccountId : string.Empty;
         retainerSuppressionRequired = timerOwnedRun || automatedRun && runScope.SingleTaskId != null ||
-            runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables;
+            runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables or
+                PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly;
         suppressionReleasedForHandoff = false;
         retainerCleanupPending = false;
         activePhaseFilter = phaseFilter;
@@ -1084,8 +1163,31 @@ public class VermaxionEngine
         {
             if (retainerlessTimerRun && pendingRunOutcome != RunOutcome.Cancelled &&
                 (!clientState.IsLoggedIn || Plugin.PlayerState.ContentId != retainerlessTimerCharacterId ||
-                 configManager.CurrentAccountId != retainerlessTimerAccountId))
+                 configManager.CurrentAccountId != retainerlessTimerAccountId ||
+                 currentTaskOwnedWorkStarted && state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly) &&
+                 !Plugin.PlayerState.IsLoaded))
+            {
+                if (currentTaskOwnedWorkStarted && state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
+                {
+                    StatusText = "Waiting for the current character to be ready";
+                    ResetWatchdog();
+                    return;
+                }
                 CancelForSettling("Timer character session ended");
+            }
+            if (currentTaskOwnedWorkStarted && state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
+            {
+                var service = plugin.BeastmasterService;
+                // The independently updated service owns its existing recovery delay.
+                // Reuse the engine's state time to pace another observation after a hiccup,
+                // including a failed recovery dispatch or a completion-save exception.
+                if (service.State == BeastmasterService.RunState.Recovering ||
+                    DateTime.UtcNow - stateEnteredAt < BeastmasterReadRecovery.Delay)
+                {
+                    StatusText = service.StatusText;
+                    return;
+                }
+            }
             if (retainerUiOwned && Plugin.PlayerState.ContentId != retainerWorkCharacterId)
             {
                 retainerListingRefillService.CancelForCharacterChange();
@@ -1106,6 +1208,7 @@ public class VermaxionEngine
         {
             log.Error($"[Engine] Unhandled engine exception while state={state}: {ex}");
             WriteIncident("engine-exception", ex.Message);
+            if (RecoverOwnedBeastmaster($"Engine hiccup: {ex.Message}")) return;
             CleanupFaultingWork(state, "engine exception");
             runHadFailure = true;
             pendingRunOutcome = RunOutcome.Failed;
@@ -1171,7 +1274,7 @@ public class VermaxionEngine
                 
                 // NEW: Migrate from legacy flags if needed
                 resetService.MigrateFromLegacyFlags(activeConfig!);
-                
+
                 configManager.SaveCurrentAccount();
 
                 log.Information($"[Engine] Weekly reset: {weeklyResetDetected}, Daily reset: {dailyResetDetected}, Saturday: {resetService.IsSaturday()}");
@@ -1781,6 +1884,11 @@ public class VermaxionEngine
                 AdvanceToNextTask(EngineState.RunningChocoboStables);
                 break;
 
+            case EngineState.RunningBeastmaster:
+            case EngineState.RunningBeastmasterWeekly:
+                TickScheduledBeastmaster(state == EngineState.RunningBeastmasterWeekly);
+                break;
+
             case EngineState.RunningChocoboRacing:
                 activeConfig = GetLiveActiveConfig();
                 if (activeConfig!.EnableChocoboRacing &&
@@ -2171,6 +2279,104 @@ public class VermaxionEngine
         }
     }
 
+    private void TickScheduledBeastmaster(bool weekly)
+    {
+        var expectedState = weekly ? EngineState.RunningBeastmasterWeekly : EngineState.RunningBeastmaster;
+        var label = weekly ? "Beastmaster weeklies" : "Beastmaster";
+        var service = plugin.BeastmasterService;
+        if (!currentTaskOwnedWorkStarted)
+        {
+            var config = GetLiveActiveConfig();
+            if (!GetActiveRunEligibility(TaskIdByState[expectedState], config).IsRunnable)
+            {
+                AdvanceToNextTask(expectedState);
+                return;
+            }
+            if (ShouldHoldNonDutyTaskStart(label)) return;
+            if (!plugin.StartScheduledBeastmaster(weekly, out var reason))
+            {
+                runHadFailure = true;
+                log.Warning($"[Engine] {label} could not start: {reason}");
+                AdvanceToNextTask(expectedState);
+                return;
+            }
+            beastmasterRunFrequency = weekly ? config.BeastmasterWeeklyFrequency : config.BeastmasterFrequency;
+            beastmasterRunOwner = Plugin.PlayerState.ContentId;
+            MarkCurrentTaskWorkStarted();
+            return;
+        }
+
+        StatusText = service.StatusText;
+        if (service.IsActive || service.IsPaused) return;
+        if (service.State == BeastmasterService.RunState.Complete && beastmasterRunOwner != 0 &&
+            beastmasterRunOwner == Plugin.PlayerState.ContentId)
+        {
+            if (!weekly && !service.CanFinalizeOrdinaryCompletion) return;
+            if (service.BoardRunCompleted)
+            {
+                var config = GetLiveActiveConfig();
+                // Schedule edits govern the next trigger; team and run choices stay snapshotted.
+                beastmasterRunFrequency = weekly ? config.BeastmasterWeeklyFrequency : config.BeastmasterFrequency;
+                var completedAt = DateTime.UtcNow;
+                var nextReset = beastmasterRunFrequency switch
+                {
+                    BeastmasterTaskFrequency.Daily => ResetDetectionService.GetNextDailyReset(completedAt),
+                    BeastmasterTaskFrequency.Weekly => weekly
+                        ? service.WeeklyResetUtc ?? DateTime.MinValue
+                        : ResetDetectionService.GetNextWeeklyReset(completedAt),
+                    BeastmasterTaskFrequency.Monthly => GetFirstDayOfNextUtcMonth(completedAt),
+                    _ => DateTime.MinValue,
+                };
+                if (weekly && beastmasterRunFrequency == BeastmasterTaskFrequency.Weekly && nextReset == DateTime.MinValue)
+                {
+                    runHadFailure = true;
+                    log.Warning("[Engine] Beastmaster weekly reset is unavailable; cadence remains unstamped.");
+                    AdvanceToNextTask(expectedState);
+                    return;
+                }
+                if (weekly)
+                {
+                    config.BeastmasterWeeklyLastCompleted = completedAt;
+                    config.BeastmasterWeeklyNextReset = nextReset;
+                }
+                else
+                {
+                    config.BeastmasterLastCompleted = completedAt;
+                    config.BeastmasterNextReset = nextReset;
+                }
+            }
+
+            // Save even an already-satisfied training goal before its optional command.
+            // A terminating command cannot be sent on the void, best-effort save path.
+            if (!configManager.TrySaveAccount(configManager.CurrentAccountId))
+            {
+                runHadFailure = true;
+                service.DiscardCompletionCommand("Completion command skipped because Crewcible completion could not be saved.");
+                StatusText = service.StatusText;
+                log.Warning("[Engine] Crewcible completion could not be saved; no completion command was sent.");
+                AdvanceToNextTask(expectedState);
+                return;
+            }
+            log.Information(service.BoardRunCompleted
+                ? $"[Engine] {label} completed: {service.StatusText}"
+                : $"[Engine] {label} required no board run; cadence remains unstamped: {service.StatusText}");
+            if (!weekly)
+            {
+                if (!service.TryExecuteCompletionCommand()) return;
+                // The command may have synchronously stopped VMX or started a new run.
+                if (state != expectedState || !currentTaskOwnedWorkStarted || service.IsActive || service.IsPaused)
+                    return;
+            }
+        }
+        else
+        {
+            service.DiscardCompletionCommand("Completion command skipped because the completed run is no longer current.");
+            runHadFailure = true;
+            log.Warning($"[Engine] {label} did not complete; cadence remains unstamped: {service.StatusText}");
+        }
+        AdvanceToNextTask(expectedState);
+    }
+
     private void TickSimpleRegisteredTask(
         EngineState expectedState,
         bool enabled,
@@ -2370,6 +2576,9 @@ public class VermaxionEngine
 
     private void AdvanceToNextTask(EngineState currentTask)
     {
+        // No scheduled command may leak into the manual completion path after ownership ends.
+        if (currentTask is EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly)
+            plugin.BeastmasterService.DiscardCompletionCommand();
         if (!currentTaskOwnedWorkStarted)
         {
             log.Information($"[Engine] {currentTask} did not start owned work; advancing without settling");
@@ -2491,6 +2700,12 @@ public class VermaxionEngine
         var taskId = TaskIdByState[timedOutState];
         var stalledFor = now - watchdogLastProgressAt;
         var summary = $"{taskId} stalled for {stalledFor.TotalMinutes:F1} minutes without observable progress";
+        if (RecoverOwnedBeastmaster(summary))
+        {
+            log.Warning($"[Engine][Watchdog] {summary}; retaining the current Crewcible task for recovery");
+            WriteIncident("task-watchdog-timeout", summary);
+            return true;
+        }
         log.Error($"[Engine][Watchdog] {summary}; cleaning task and continuing queue");
         WriteIncident("task-watchdog-timeout", summary);
         CleanupFaultingWork(timedOutState, "watchdog timeout");
@@ -2499,8 +2714,31 @@ public class VermaxionEngine
         return true;
     }
 
+    private bool RecoverOwnedBeastmaster(string reason)
+    {
+        if (!currentTaskOwnedWorkStarted || state is not (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
+            return false;
+        var service = plugin.BeastmasterService;
+        try
+        {
+            // A completed plan still needs its normal completion/cadence handling.
+            // Otherwise reuse the service's five-second recovery without cancelling it.
+            if (!service.IsPaused && service.State != BeastmasterService.RunState.Complete) service.Recover(reason);
+        }
+        catch (Exception ex)
+        {
+            log.Error($"[Engine] Crewcible recovery observation failed; retaining the current task: {ex}");
+        }
+        StatusText = service.StatusText;
+        stateEnteredAt = DateTime.UtcNow;
+        ResetWatchdog();
+        return true;
+    }
+
     private string? GetTaskWatchdogPauseReason()
     {
+        if (state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly) && plugin.BeastmasterService.IsPaused)
+            return "Crewcible is paused";
         if (state == EngineState.RunningCustomDeliveries && customDeliveriesService.IsFishing)
             return "owned fishing handler enforces its ten-minute qualifying-fish deadline";
         if (state == EngineState.RunningChocoboStables && chocoboStablesService.IsAcquiringOnion)
@@ -2679,6 +2917,8 @@ public class VermaxionEngine
 
     private string? GetServiceOwnedHandoffBlocker()
     {
+        if (plugin.BeastmasterService.IsActive || plugin.BeastmasterService.IsPaused)
+            return $"Beastmaster service active ({plugin.BeastmasterService.StatusText})";
         if (retainerCleanupPending)
             return retainerCleanupStatus;
         if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker() is { } ownershipBlocker)
@@ -2822,6 +3062,8 @@ public class VermaxionEngine
     {
         // Vendor menus and their cleanup belong to ADS, including shared confirmation dialogs.
         if (AdsOwnsVendorUi()) return;
+        // Pending native entry and combat-provider restoration remain owned by Beastmaster.
+        if (plugin.BeastmasterService.IsActive || plugin.BeastmasterService.IsPaused) return;
         if (RequiresAutoRetainerSuppression && GetRetainerControlBlocker() != null)
             return;
         if (retainerUiOwned)
@@ -2980,7 +3222,8 @@ public class VermaxionEngine
                 continue;
             }
 
-            if (nextState is EngineState.RunningRetainerListingRefill or EngineState.RunningCustomDeliveries or EngineState.RunningChocoboStables)
+            if (nextState is EngineState.RunningRetainerListingRefill or EngineState.RunningCustomDeliveries or EngineState.RunningChocoboStables or
+                EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly)
                 retainerSuppressionRequired = true;
             if (nextState != EngineState.RunningRetainerListingRefill)
                 retainerUiOwned = false;
@@ -3004,6 +3247,9 @@ public class VermaxionEngine
 
     private TaskEligibility GetActiveRunEligibility(string taskId, CharacterConfig config)
     {
+        if (activeRunScope.BypassSelectedScheduling && activeRunScope.SingleTaskId == taskId &&
+            taskId is PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly)
+            return EvaluateBeastmaster(config, taskId == PostProcessTaskOrder.BeastmasterWeekly, ignoreScheduling: true);
         if (activeRunScope.BypassSelectedScheduling && activeRunScope.SingleTaskId == PostProcessTaskOrder.ChocoboStables && taskId == PostProcessTaskOrder.ChocoboStables)
             return EvaluateChocoboStables(config, true);
         if (activeRunScope.BypassSelectedScheduling &&
@@ -3172,6 +3418,8 @@ public class VermaxionEngine
             EngineState.RunningCustomDeliveries => "Custom Deliveries",
             EngineState.RunningChocoboStables => "Chocobo Stables",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
+            EngineState.RunningBeastmaster => "Beastmaster",
+            EngineState.RunningBeastmasterWeekly => "Beastmaster weeklies",
             EngineState.RunningLootGoblinMapGather => "LootGoblin Map Gather",
             EngineState.RunningNagYourMom => "nag your mom",
             EngineState.RunningNagYourDad => "nag your dad",

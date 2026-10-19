@@ -1195,7 +1195,7 @@ Mini oyun çözümünü Saucy yönetir.</value></data>
   <data name="Unsynced is a dad hint for duties that cannot use Trust or Duty Support." xml:space="preserve"><value>Eşzamanlamasız, Trust veya Duty Support kullanamayan görevler için bir dad ipucudur.</value></data>
   <data name="Updates valid saved gearsets through optional Stylist IPC or the native recommended-equipment path. If none exist, first runs the bounded missing-gearset bootstrap." xml:space="preserve"><value>Geçerli kayıtlı ekipman setlerini isteğe bağlı Stylist IPC veya yerel önerilen ekipman yoluyla günceller. Hiçbiri yoksa önce sınırlı eksik set başlangıç işlemini çalıştırır.</value></data>
   <data name="Upgrades only AutoRetainer-enabled retainers. Combat uses AutoRetainer-compatible average item level; gatherers use total Perception only." xml:space="preserve"><value>Yalnızca AutoRetainer'da etkin retainer'ları yükseltir. Savaşta AutoRetainer uyumlu ortalama öğe seviyesi, toplayıcılarda yalnızca toplam Algı kullanılır.</value></data>
-  <data name="Use a parent one pedigree below the highest reached pedigree to produce another offspring at that pedigree. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Ulaşılan en yüksek soy derecesinden bir düşük ebeveynle o derecede başka yavru üretin. Tekrarlanan cinsiyetleri kayıtsız tutup eksik cinsiyeti yetiştirin. Uygulamak için Sürdür kullanın.</value></data>
+  <data name="Produce the missing sex at the highest reached pedigree. Use a parent one pedigree below it, or a retained G9 parent at G9. Keep duplicate sexes unregistered; raise the missing sex. Resume to apply." xml:space="preserve"><value>Ulaşılan en yüksek soy seviyesinde eksik cinsiyeti üretin. Bir alt soy seviyesindeki ebeveyni veya G9 seviyesinde elde tutulan bir G9 ebeveyni kullanın. Mevcut cinsiyetteki yavruları kaydetmeyin; eksik cinsiyetteki yavruyu yetiştirin. Uygulamak için sürdürün.</value></data>
   <data name="Use a retained parent and a matching-pedigree permit for the opposite sex. MGP purchases respect the reserve." xml:space="preserve"><value>Saklanan ebeveyni ve karşı cinsiyet için eşleşen soy izin belgesini kullanın. MGP alımları rezervi korur.</value></data>
   <data name="Use default" xml:space="preserve"><value>Varsayılanı kullan</value></data>
   <data name="Use default for {0}?" xml:space="preserve"><value>{0} için varsayılan kullanılsın mı?</value></data>
@@ -2067,4 +2067,926 @@ Bağımlılıklar: {1}</value></data>
   <data name="Collect" xml:space="preserve"><value>Teslim al</value></data>
   <data name="Collect and pause" xml:space="preserve"><value>Teslim al ve duraklat</value></data>
   <data name="Collect one eligible offspring and pause before another covering." xml:space="preserve"><value>Hazır bir yavruyu teslim al ve sonraki çiftleşmeden önce duraklat.</value></data>
+  <data name="Beastmaster" xml:space="preserve">
+    <value>Canavar ustası</value>
+  </data>
+  <data name="Beastmaster owns the character." xml:space="preserve">
+    <value>Canavar ustası karakteri kontrol ediyor.</value>
+  </data>
+  <data name="Beastmaster cleanup is releasing AutoRetainer suppression." xml:space="preserve">
+    <value>Canavar ustası temizliği AutoRetainer engelini kaldırıyor.</value>
+  </data>
+  <data name="Waiting for the current character to be registered and ready." xml:space="preserve">
+    <value>Geçerli karakterin kaydedilip hazır olması bekleniyor.</value>
+  </data>
+  <data name=" · No. {0}" xml:space="preserve"><value> · No. {0}</value></data>
+  <data name="A Beastmaster run or its cleanup is already active" xml:space="preserve"><value>Bir Canavar Terbiyecisi turu veya turun temizleme işlemi zaten etkin</value></data>
+  <data name="Adding {0} ({1}/{2})" xml:space="preserve"><value>{0} ekleniyor ({1}/{2})</value></data>
+  <data name="All categories" xml:space="preserve"><value>Tüm kategoriler</value></data>
+  <data name="All kins" xml:space="preserve"><value>Tüm türler</value></data>
+  <data name="Allow category" xml:space="preserve"><value>Kategoriye izin ver</value></data>
+  <data name="Approaching Lauda" xml:space="preserve"><value>Lauda'ya yaklaşılıyor</value></data>
+  <data name="At least three eligible familiars are required before challenging a board." xml:space="preserve"><value>Bir tahtaya meydan okumadan önce en az üç uygun yardımcı yaratık gerekir.</value></data>
+  <data name="Automation" xml:space="preserve"><value>Otomasyon</value></data>
+  <data name="Avoid harmful gear without immunity" xml:space="preserve"><value>Bağışıklık yokken zararlı ekipmandan kaçın</value></data>
+  <data name="Beast priority list" xml:space="preserve"><value>Canavar öncelik listesi</value></data>
+  <data name="Beast tier list copied to clipboard." xml:space="preserve"><value>Canavar güç sıralaması panoya kopyalandı.</value></data>
+  <data name="Beast tier list imported." xml:space="preserve"><value>Canavar güç sıralaması içe aktarıldı.</value></data>
+  <data name="Beastmaster service is disposed" xml:space="preserve"><value>Canavar Terbiyecisi hizmeti sonlandırıldı</value></data>
+  <data name="Beasts" xml:space="preserve"><value>Canavarlar</value></data>
+  <data name="Block" xml:space="preserve"><value>Engelle</value></data>
+  <data name="Block category" xml:space="preserve"><value>Kategoriyi engelle</value></data>
+  <data name="Blocked items are not bought, chosen as treasure, or used. Ctrl-click to change the whole category." xml:space="preserve"><value>Engellenen eşyalar satın alınmaz, hazine olarak seçilmez veya kullanılmaz. Tüm kategoriyi değiştirmek için Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Board" xml:space="preserve"><value>Tahta</value></data>
+  <data name="Board healing: 60% HP or below when no camp comes before the next fight." xml:space="preserve"><value>Tahtada iyileştirme: sonraki savaştan önce kamp yoksa HP %60 veya altındayken.</value></data>
+  <data name="Board route {0}/{1}: {2}" xml:space="preserve"><value>Tahta rotası {0}/{1}: {2}</value></data>
+  <data name="Board team capacity: {0}" xml:space="preserve"><value>Tahtanın takım kapasitesi: {0}</value></data>
+  <data name="Boss" xml:space="preserve"><value>Patron</value></data>
+  <data name="Bulk category" xml:space="preserve"><value>Tüm kategoriye uygula</value></data>
+  <data name="Buying {0} for {1}" xml:space="preserve"><value>{0}, {1} karşılığında satın alınıyor</value></data>
+  <data name="Camp" xml:space="preserve"><value>Kamp</value></data>
+  <data name="Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal." xml:space="preserve"><value>Kamplar: HP'si %60'ın altında olan en fazla iki yaralı yardımcı yaratığı dinlendirin. Hiçbiri seçilmezse oyuncu, kampın %90'lık kişisel iyileştirmesini alır.</value></data>
+  <data name="Carry Minus 2" xml:space="preserve"><value>Taşıma eksi 2</value></data>
+  <data name="Challenging the board" xml:space="preserve"><value>Tahtaya meydan okunuyor</value></data>
+  <data name="Choose the custom team in Beasts. Its saved order is preserved." xml:space="preserve"><value>Canavarlar bölümünde özel takımı seçin. Kaydedilen sırası korunur.</value></data>
+  <data name="Choose three familiars with the lowest rank and EXP." xml:space="preserve"><value>Rütbesi en düşük ve EXP'si en az olan üç yardımcı yaratığı seçin.</value></data>
+  <data name="Classification" xml:space="preserve"><value>Sınıflandırma</value></data>
+  <data name="Clear custom familiars" xml:space="preserve"><value>Özel yardımcı yaratık seçimini temizle</value></data>
+  <data name="Clear order" xml:space="preserve"><value>Sıralamayı temizle</value></data>
+  <data name="Clear saved ranks" xml:space="preserve"><value>Kaydedilen rütbeleri temizle</value></data>
+  <data name="Clear the custom team. Hold Ctrl and click." xml:space="preserve"><value>Özel takımı temizleyin. Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Clearing the board to read more ranks" xml:space="preserve"><value>Daha fazla rütbe okumak için tahta tamamlanıyor</value></data>
+  <data name="Combat healing: 40% HP or below." xml:space="preserve"><value>Savaşta iyileştirme: HP %40 veya altındayken.</value></data>
+  <data name="Commencing the battle" xml:space="preserve"><value>Savaş başlatılıyor</value></data>
+  <data name="Constitution: {0}" xml:space="preserve"><value>Dayanıklılık: {0}</value></data>
+  <data name="Copy" xml:space="preserve"><value>Kopyala</value></data>
+  <data name="Crucible entry requires at least three different familiars. Adjust the team selection and restrictions." xml:space="preserve"><value>Crucible'a girmek için en az üç farklı yardımcı yaratık gerekir. Takım seçimini ve kısıtlamaları düzenleyin.</value></data>
+  <data name="Crucible entry requires at least three different familiars. The team changed before challenge confirmation." xml:space="preserve"><value>Crucible'a girmek için en az üç farklı yardımcı yaratık gerekir. Meydan okuma onaylanmadan önce takım değişti.</value></data>
+  <data name="Crucible registration did not complete within five minutes" xml:space="preserve"><value>Crucible kaydı beş dakika içinde tamamlanmadı</value></data>
+  <data name="Crucible requires Beastmaster" xml:space="preserve"><value>Crucible için Canavar Terbiyecisi mesleği gerekir</value></data>
+  <data name="Crucible run complete" xml:space="preserve"><value>Crucible turu tamamlandı</value></data>
+  <data name="Current board" xml:space="preserve"><value>Mevcut tahta</value></data>
+  <data name="Cyan ring: current stop. Cyan dot: live player position." xml:space="preserve"><value>Camgöbeği halka: mevcut durak. Camgöbeği nokta: oyuncunun anlık konumu.</value></data>
+  <data name="Damage" xml:space="preserve"><value>Hasar</value></data>
+  <data name="Degree" xml:space="preserve"><value>Derece</value></data>
+  <data name="Delete this list. Hold Ctrl and click. The last list cannot be deleted." xml:space="preserve"><value>Bu listeyi silin. Ctrl tuşunu basılı tutarak tıklayın. Son liste silinemez.</value></data>
+  <data name="Demonic Helm requires Soulreaper's Armor. Thunder Axe requires Umbral Wristlet." xml:space="preserve"><value>Demonic Helm için Soulreaper's Armor gerekir. Thunder Axe için Umbral Wristlet gerekir.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click Block to change its category." xml:space="preserve"><value>Sıralamayı değiştirmek için tutamacı sürükleyin veya yeni bir # yazın. İlgili kategoriyi değiştirmek için Ctrl tuşunu basılı tutarak Engelle'ye tıklayın.</value></data>
+  <data name="Drag the handle or type a new # to reorder. Ctrl-click a block to change its classification." xml:space="preserve"><value>Sıralamayı değiştirmek için tutamacı sürükleyin veya yeni bir # yazın. İlgili sınıflandırmayı değiştirmek için Ctrl tuşunu basılı tutarak bir engelleme kutusuna tıklayın.</value></data>
+  <data name="EXP" xml:space="preserve"><value>EXP</value></data>
+  <data name="Elite" xml:space="preserve"><value>Seçkin</value></data>
+  <data name="Every familiar is knocked out" xml:space="preserve"><value>Tüm yardımcı yaratıklar yenildi</value></data>
+  <data name="Exit when finished" xml:space="preserve"><value>Bitince çık</value></data>
+  <data name="Export" xml:space="preserve"><value>Dışa aktar</value></data>
+  <data name="Familiar" xml:space="preserve"><value>Yardımcı yaratık</value></data>
+  <data name="Familiar data is unavailable. Log in and wait for character registration." xml:space="preserve"><value>Yardımcı yaratık verileri kullanılamıyor. Giriş yapın ve karakter kaydını bekleyin.</value></data>
+  <data name="Familiars {0}/{1}" xml:space="preserve"><value>Yardımcı yaratıklar {0}/{1}</value></data>
+  <data name="Feed" xml:space="preserve"><value>Besle</value></data>
+  <data name="Fight" xml:space="preserve"><value>Savaş</value></data>
+  <data name="Fight Blocked" xml:space="preserve"><value>Savaşa kapalı</value></data>
+  <data name="Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification." xml:space="preserve"><value>Savaşa kapalı, engellenmemiş savaşçılardan hayatta kalanların sayısı üçün altına düşmedikçe bu yardımcı yaratığı yedekte tutar. Tüm sınıflandırmayı değiştirmek için Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Fight picks" xml:space="preserve"><value>Savaşçı seçimi</value></data>
+  <data name="Fill the board's team capacity with the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Tahtanın takım kapasitesini önce rütbesi en düşük ve EXP'si en az olan yardımcı yaratıklarla doldurun.</value></data>
+  <data name="Finishing the board" xml:space="preserve"><value>Tahta tamamlanıyor</value></data>
+  <data name="First Board of the Unbroken" xml:space="preserve"><value>First Board of the Unbroken</value></data>
+  <data name="First Degree" xml:space="preserve"><value>Birinci derece</value></data>
+  <data name="First Master's Board" xml:space="preserve"><value>First Master's Board</value></data>
+  <data name="Following the Crucible board" xml:space="preserve"><value>Crucible tahtası takip ediliyor</value></data>
+  <data name="Forget saved ranks. Hold Ctrl and click." xml:space="preserve"><value>Kaydedilen rütbeleri unutun. Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Full" xml:space="preserve"><value>Tam</value></data>
+  <data name="Full uses the board capacity. -3 leaves three slots. Only 3 takes three. Carry takes your three highest rank familiars, then trainees, leaving two slots." xml:space="preserve"><value>Tam, tahtanın kapasitesini kullanır. -3, üç yuva boş bırakır. Yalnızca 3, üç yardımcı yaratık alır. Taşıma, en yüksek rütbeli üç yardımcı yaratığınızı ve ardından eğitimdekileri alır; iki yuva boş bırakır.</value></data>
+  <data name="Gear" xml:space="preserve"><value>Ekipman</value></data>
+  <data name="HP" xml:space="preserve"><value>HP</value></data>
+  <data name="Heal items" xml:space="preserve"><value>İyileştirme eşyaları</value></data>
+  <data name="Healing" xml:space="preserve"><value>İyileştirme</value></data>
+  <data name="Healing and camps" xml:space="preserve"><value>İyileştirme ve kamplar</value></data>
+  <data name="Healing thresholds are fixed by the automation." xml:space="preserve"><value>İyileştirme eşikleri otomasyon tarafından sabitlenmiştir.</value></data>
+  <data name="Higher degrees require completion of quest 71045. Standard will be used." xml:space="preserve"><value>Daha yüksek dereceler için 71045 numaralı görevin tamamlanması gerekir. Standart kullanılacak.</value></data>
+  <data name="Highest-ranked familiars first; tier order breaks ties." xml:space="preserve"><value>Önce en yüksek rütbeli yardımcı yaratıklar seçilir; eşitlikte güç sıralaması belirleyicidir.</value></data>
+  <data name="Import" xml:space="preserve"><value>İçe aktar</value></data>
+  <data name="Import adds a new list from exported JSON or known item IDs. Missing catalog entries are appended. Export copies this list to the clipboard." xml:space="preserve"><value>İçe aktarma, dışa aktarılmış JSON veya bilinen eşya kimliklerinden yeni bir liste ekler. Eksik katalog girdileri sona eklenir. Dışa aktarma, bu listeyi panoya kopyalar.</value></data>
+  <data name="Imported" xml:space="preserve"><value>İçe aktarıldı</value></data>
+  <data name="Intelligence: {0}" xml:space="preserve"><value>Zekâ: {0}</value></data>
+  <data name="Leave the party before entering the Crucible" xml:space="preserve"><value>Crucible'a girmeden önce gruptan ayrılın</value></data>
+  <data name="Leave three team slots free; choose the lowest-rank, lowest-EXP familiars first." xml:space="preserve"><value>Üç takım yuvasını boş bırakın; önce rütbesi en düşük ve EXP'si en az olan yardımcı yaratıkları seçin.</value></data>
+  <data name="Leaving the completed board" xml:space="preserve"><value>Tamamlanan tahtadan çıkılıyor</value></data>
+  <data name="Left the Crucible before a result was observed" xml:space="preserve"><value>Sonuç gözlemlenmeden Crucible'dan çıkıldı</value></data>
+  <data name="Leveling" xml:space="preserve"><value>Seviye geliştirme</value></data>
+  <data name="Leveling team" xml:space="preserve"><value>Seviye geliştirme takımı</value></data>
+  <data name="List name" xml:space="preserve"><value>Liste adı</value></data>
+  <data name="Loot" xml:space="preserve"><value>Ganimet</value></data>
+  <data name="Magic resistance: {0}" xml:space="preserve"><value>Büyü direnci: {0}</value></data>
+  <data name="Minus 3" xml:space="preserve"><value>Eksi 3</value></data>
+  <data name="New" xml:space="preserve"><value>Yeni</value></data>
+  <data name="No eligible familiars are known for this setup. Entry scans the bestiary before choosing a team." xml:space="preserve"><value>Bu ayarlara uygun bilinen yardımcı yaratık yok. Girişte, takım seçilmeden önce yaratık ansiklopedisi taranır.</value></data>
+  <data name="No familiars known yet. Open the team or bestiary at Lauda so VERMAXION can read them." xml:space="preserve"><value>Henüz bilinen yardımcı yaratık yok. VERMAXION'ın okuyabilmesi için Lauda'da takımı veya yaratık ansiklopedisini açın.</value></data>
+  <data name="No travel destination for Lauda was found" xml:space="preserve"><value>Lauda için bir seyahat hedefi bulunamadı</value></data>
+  <data name="No." xml:space="preserve"><value>No.</value></data>
+  <data name="Only 3" xml:space="preserve"><value>Yalnızca 3</value></data>
+  <data name="Only one elemental axe is allowed; incompatible elemental axes are always skipped." xml:space="preserve"><value>Yalnızca bir element baltasına izin verilir; uyumsuz element baltaları her zaman atlanır.</value></data>
+  <data name="Owned familiars" xml:space="preserve"><value>Sahip olunan yardımcı yaratıklar</value></data>
+  <data name="Ownership is not currently available; this preview uses remembered familiar data." xml:space="preserve"><value>Sahiplik bilgisi şu anda kullanılamıyor; bu önizleme hatırlanan yardımcı yaratık verilerini kullanır.</value></data>
+  <data name="Paused: " xml:space="preserve"><value>Duraklatıldı: </value></data>
+  <data name="Paused: {0}" xml:space="preserve"><value>Duraklatıldı: {0}</value></data>
+  <data name="Physical resistance: {0}" xml:space="preserve"><value>Fiziksel direnç: {0}</value></data>
+  <data name="Pick Blocked" xml:space="preserve"><value>Seçime kapalı</value></data>
+  <data name="Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification." xml:space="preserve"><value>Seçime kapalı, otomatik takım seçimini engeller. Tüm sınıflandırmayı değiştirmek için Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Rank" xml:space="preserve"><value>Rütbe</value></data>
+  <data name="Rank not read yet. Read from the bestiary at the next team setup." xml:space="preserve"><value>Rütbe henüz okunmadı. Bir sonraki takım kurulumunda yaratık ansiklopedisinden okunacak.</value></data>
+  <data name="Rank unknown" xml:space="preserve"><value>Rütbe bilinmiyor</value></data>
+  <data name="Rank {0}" xml:space="preserve"><value>Rütbe {0}</value></data>
+  <data name="Reading familiar ranks ({0}/{1})" xml:space="preserve"><value>Yardımcı yaratık rütbeleri okunuyor ({0}/{1})</value></data>
+  <data name="Ready to start" xml:space="preserve"><value>Başlamaya hazır</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Önerilen</value></data>
+  <data name="Removing every familiar" xml:space="preserve"><value>Tüm yardımcı yaratıklar çıkarılıyor</value></data>
+  <data name="Required immunity gear must be owned first." xml:space="preserve"><value>Önce gerekli bağışıklık ekipmanına sahip olunmalıdır.</value></data>
+  <data name="Rest at camps" xml:space="preserve"><value>Kamplarda dinlen</value></data>
+  <data name="Resting at the campsite" xml:space="preserve"><value>Kamp alanında dinleniliyor</value></data>
+  <data name="Restore this list's default order and clear its blocks. Hold Ctrl and click." xml:space="preserve"><value>Bu listenin varsayılan sırasını geri yükleyin ve engellemelerini temizleyin. Ctrl tuşunu basılı tutarak tıklayın.</value></data>
+  <data name="Route has not started." xml:space="preserve"><value>Rota henüz başlamadı.</value></data>
+  <data name="Route {0:00} · {1}/{2} steps" xml:space="preserve"><value>Rota {0:00} · {1}/{2} adım</value></data>
+  <data name="Run setup" xml:space="preserve"><value>Tur ayarları</value></data>
+  <data name="Runs" xml:space="preserve"><value>Turlar</value></data>
+  <data name="Second Board of the Unbroken" xml:space="preserve"><value>Second Board of the Unbroken</value></data>
+  <data name="Second Degree" xml:space="preserve"><value>İkinci derece</value></data>
+  <data name="Second Master's Board" xml:space="preserve"><value>Second Master's Board</value></data>
+  <data name="Select one of the five Crucible boards" xml:space="preserve"><value>Beş Crucible tahtasından birini seçin</value></data>
+  <data name="Selected familiars" xml:space="preserve"><value>Seçilen yardımcı yaratıklar</value></data>
+  <data name="Setting up the team" xml:space="preserve"><value>Takım kuruluyor</value></data>
+  <data name="Shaded: the team this mode takes. Hover a name for stats." xml:space="preserve"><value>Gölgeli: bu modun alacağı takım. İstatistikler için imleci bir adın üzerine getirin.</value></data>
+  <data name="Shop List" xml:space="preserve"><value>Alışveriş listesi</value></data>
+  <data name="Shop list copied to clipboard." xml:space="preserve"><value>Alışveriş listesi panoya kopyalandı.</value></data>
+  <data name="Shop list imported." xml:space="preserve"><value>Alışveriş listesi içe aktarıldı.</value></data>
+  <data name="Shop priority list" xml:space="preserve"><value>Alışveriş öncelik listesi</value></data>
+  <data name="Standard" xml:space="preserve"><value>Standart</value></data>
+  <data name="Stop Beastmaster before changing its setup, beasts or supplies." xml:space="preserve"><value>Ayarlarını, canavarlarını veya malzemelerini değiştirmeden önce Canavar Terbiyecisi'ni durdurun.</value></data>
+  <data name="Stopped after character change" xml:space="preserve"><value>Karakter değişiminden sonra durduruldu</value></data>
+  <data name="Stopping" xml:space="preserve"><value>Durduruluyor</value></data>
+  <data name="Strength: {0}" xml:space="preserve"><value>Güç: {0}</value></data>
+  <data name="Supplies follow your list order." xml:space="preserve"><value>Malzemeler listenizdeki sırayı izler.</value></data>
+  <data name="THE CREWCIBLE" xml:space="preserve"><value>THE CREWCIBLE</value></data>
+  <data name="Takes the owned familiars you select, up to the selected board's capacity." xml:space="preserve"><value>Sahip olduğunuz ve seçtiğiniz yardımcı yaratıkları, seçilen tahtanın kapasitesine kadar alır.</value></data>
+  <data name="Takes your highest rank familiars. Ties follow the beast priority list." xml:space="preserve"><value>En yüksek rütbeli yardımcı yaratıklarınızı alır. Eşitlikte canavar öncelik listesi izlenir.</value></data>
+  <data name="Takes your lowest rank familiars, least EXP first. They also fight first." xml:space="preserve"><value>En düşük rütbeli yardımcı yaratıklarınızı, EXP'si en az olanlardan başlayarak alır. Bunlar savaşta da önce kullanılır.</value></data>
+  <data name="Team cap" xml:space="preserve"><value>Takım sınırı</value></data>
+  <data name="Team ready" xml:space="preserve"><value>Takım hazır</value></data>
+  <data name="Team setup kept going without settling; stopped." xml:space="preserve"><value>Takım kurulumu kararlı bir duruma ulaşmadan devam etti; durduruldu.</value></data>
+  <data name="The live board is available after entering the Crucible. Nodes and player position are unknown outside the duty." xml:space="preserve"><value>Güncel tahta Crucible'a girdikten sonra kullanılabilir. Görev alanı dışındayken düğümler ve oyuncu konumu bilinmez.</value></data>
+  <data name="The selected board does not match the current Crucible duty" xml:space="preserve"><value>Seçilen tahta mevcut Crucible göreviyle eşleşmiyor</value></data>
+  <data name="The team is full. Clear a selection to choose another familiar." xml:space="preserve"><value>Takım dolu. Başka bir yardımcı yaratık seçmek için bir seçimi kaldırın.</value></data>
+  <data name="Third Board of the Unbroken" xml:space="preserve"><value>Third Board of the Unbroken</value></data>
+  <data name="Third Degree" xml:space="preserve"><value>Üçüncü derece</value></data>
+  <data name="Three strong familiars carry the trainees; leave two team slots free." xml:space="preserve"><value>Üç güçlü yardımcı yaratık eğitimdekileri taşır; iki takım yuvasını boş bırakın.</value></data>
+  <data name="Ticked: the team you take. Hover a name for stats." xml:space="preserve"><value>İşaretli: yanınıza alacağınız takım. İstatistikler için imleci bir adın üzerine getirin.</value></data>
+  <data name="Tier List" xml:space="preserve"><value>Güç sıralaması</value></data>
+  <data name="Travel to Lauda could not start" xml:space="preserve"><value>Lauda'ya seyahat başlatılamadı</value></data>
+  <data name="Travelling to Lauda" xml:space="preserve"><value>Lauda'ya gidiliyor</value></data>
+  <data name="Treasure" xml:space="preserve"><value>Hazine</value></data>
+  <data name="Type" xml:space="preserve"><value>Tür</value></data>
+  <data name="Unable to import the beast tier list. Use an exported list or known familiar IDs separated by spaces or commas." xml:space="preserve"><value>Canavar güç sıralaması içe aktarılamadı. Dışa aktarılmış bir liste veya boşluk ya da virgülle ayrılmış bilinen yardımcı yaratık kimliklerini kullanın.</value></data>
+  <data name="Unable to import the shop list. Use an exported list or known item IDs separated by spaces or commas." xml:space="preserve"><value>Alışveriş listesi içe aktarılamadı. Dışa aktarılmış bir liste veya boşluk ya da virgülle ayrılmış bilinen eşya kimliklerini kullanın.</value></data>
+  <data name="Unknown board" xml:space="preserve"><value>Bilinmeyen tahta</value></data>
+  <data name="Unknown classification" xml:space="preserve"><value>Bilinmeyen sınıflandırma</value></data>
+  <data name="Untitled" xml:space="preserve"><value>Başlıksız</value></data>
+  <data name="VERMAXION · Beastmaster" xml:space="preserve"><value>VERMAXION · Canavar Terbiyecisi</value></data>
+  <data name="Wait until the current character is ready" xml:space="preserve"><value>Mevcut karakter hazır olana kadar bekleyin</value></data>
+  <data name="Waiting for owned movement to stop" xml:space="preserve"><value>Eklentinin yönettiği hareketin durması bekleniyor</value></data>
+  <data name="Waiting for revival" xml:space="preserve"><value>Dirilme bekleniyor</value></data>
+  <data name="Waiting to enter the Crucible" xml:space="preserve"><value>Crucible'a giriş bekleniyor</value></data>
+  <data name="vnavmesh is required for board navigation" xml:space="preserve"><value>Tahtada gezinmek için vnavmesh gereklidir</value></data>
+  <data name="{0} familiars selected · {1}/{2} shown" xml:space="preserve"><value>{0} yardımcı yaratık seçildi · {1}/{2} gösteriliyor</value></data>
+  <data name="{0} stops · {1} connections" xml:space="preserve"><value>{0} durak · {1} bağlantı</value></data>
+  <data name="{0} · Stop {1}" xml:space="preserve"><value>{0} · Durak {1}</value></data>
+  <data name="{0} · {1} · {2}/{3} runs" xml:space="preserve"><value>{0} · {1} · {2}/{3} tur</value></data>
+  <data name="Can't tell which familiar &quot;{0}&quot; is. Open its details in the bestiary once so VERMAXION learns the name." xml:space="preserve"><value>"{0}" adlı yardımcı yaratığın hangisi olduğu belirlenemiyor. VERMAXION'ın adını öğrenmesi için yaratık ansiklopedisinde ayrıntılarını bir kez açın.</value></data>
+  <data name="Couldn't pick No. {0} in the bestiary." xml:space="preserve"><value>Yaratık ansiklopedisinde No. {0} seçilemedi.</value></data>
+  <data name="Raise the missing counterpart to racing rank 40 for breeding." xml:space="preserve"><value>Eksik eşi çiftleştirme için yarış rütbesi 40’a yükseltin.</value></data>
+  <data name="Offspring inherit one parent&apos;s colour. A suitable G9 parent must already have a selected colour." xml:space="preserve"><value>Yavrular ebeveynlerden birinin rengini alır. Uygun bir G9 ebeveyn zaten seçilen renklerden birine sahip olmalıdır.</value></data>
+  <data name="Invalid offspring production settings." xml:space="preserve"><value>Yavru üretim ayarları geçersiz.</value></data>
+  <data name="Produced {0}/{1} matching G9 offspring; retained unregistered." xml:space="preserve"><value>{0}/{1} uygun G9 yavrusu üretildi; kaydedilmeden tutuldu.</value></data>
+  <data name="Reconcile the existing covering before producing another offspring." xml:space="preserve"><value>Başka bir yavru üretmeden önce mevcut çiftleştirmeyi uzlaştırın.</value></data>
+  <data name="Offspring production requires G9 breeding stock; lower-generation racing is stopped." xml:space="preserve"><value>Yavru üretimi G9 damızlıkları gerektirir; daha düşük nesil yarışları durduruldu.</value></data>
+  <data name="The registered G9 racer does not have a confirmed requested trait. Retain it and select suitable breeding stock." xml:space="preserve"><value>Kayıtlı G9 yarışçının istenen özelliği doğrulanmadı. Onu tutun ve uygun damızlıkları seçin.</value></data>
+  <data name="Raise the G9 breeding parent to retirement: racing rank {0}/40. Matching offspring stay unregistered." xml:space="preserve"><value>Üreme için G9 ebeveynini emekliliğe ulaştırın: yarış rütbesi {0}/40. Uygun yavrular kaydedilmeden tutulur.</value></data>
+  <data name="Cover matching G9 stock with its retained opposite-sex G9 parent." xml:space="preserve"><value>Uygun G9 damızlıklarını tutulan karşı cins G9 ebeveynle çiftleştirin.</value></data>
+  <data name="No usable retired G9 parent has a confirmed requested trait. Retain offspring and replenish suitable G9 stock." xml:space="preserve"><value>İstenen özelliği doğrulanmış, kullanılabilir emekli G9 ebeveyn yok. Yavruları tutun ve uygun G9 damızlıklarını tamamlayın.</value></data>
+  <data name="Raise this non-matching G9 offspring as the missing owned counterpart; retain matching outputs." xml:space="preserve"><value>Bu uygun olmayan G9 yavrusunu eksik sahip olunan eş olarak yetiştirin; uygun sonuçları tutun.</value></data>
+  <data name="Missing a usable opposite-sex G9 parent. Owned mode requires suitable G9 stock or an explicit switch to NPC permits." xml:space="preserve"><value>Kullanılabilir karşı cins G9 ebeveyn eksik. Sahip olunan ebeveyn modu uygun G9 damızlıkları veya NPC izinlerine açık geçiş gerektirir.</value></data>
+  <data name="Covering wait has no valid eligibility evidence." xml:space="preserve"><value>Çiftleştirme bekleyişinin geçerli hazır olma kanıtı yok.</value></data>
+  <data name="Covering is ready for offspring collection." xml:space="preserve"><value>Çiftleşme tamamlandı; yavru teslim alınmaya hazır.</value></data>
+  <data name="Covering wait until {0:u}." xml:space="preserve"><value>Çiftleştirme için {0:u} zamanına kadar bekleniyor.</value></data>
+  <data name="Covering is ready; collecting the offspring." xml:space="preserve"><value>Çiftleşme tamamlandı; yavru teslim alınıyor.</value></data>
+  <data name="Target cycle paused at a safe boundary." xml:space="preserve"><value>Hedef döngüsü güvenli bir noktada duraklatıldı.</value></data>
+  <data name="Paused by VERMAXION at a safe boundary." xml:space="preserve"><value>VERMAXION tarafından güvenli bir noktada duraklatıldı.</value></data>
+  <data name="Collection requires the existing eligible covering, its retained-parent pedigree and exactly one Proof of Covering." xml:space="preserve"><value>Teslim alma mevcut hazır çiftleştirmeyi, tutulan ebeveynin soy derecesini ve tam bir Proof of Covering gerektirir.</value></data>
+  <data name="Saved collection evidence is invalid; no collection will be replayed." xml:space="preserve"><value>Kaydedilmiş teslim alma kanıtı geçersiz; teslim alma tekrarlanmayacak.</value></data>
+  <data name="Collection occurred, but the exact new offspring and its trait must be reconciled before counting or another covering." xml:space="preserve"><value>Teslim alma gerçekleşti ancak sayım veya yeni çiftleştirme öncesinde tam yeni yavru ve özelliği uzlaştırılmalı.</value></data>
+  <data name="Collection was requested; proof consumption and one matching fledgling must be reconciled before another request." xml:space="preserve"><value>Teslim alma istendi; başka bir istekten önce belge tüketimi ve bir eşleşen yavru uzlaştırılmalı.</value></data>
+  <data name="Choke-abo target work: {0}" xml:space="preserve"><value>Choke-abo hedef işlemi: {0}</value></data>
+  <data name="Deferred: {0}" xml:space="preserve"><value>Ertelendi: {0}</value></data>
+  <data name="Entry requirements: level {0}, item level {1}. Equipped item level: {2}." xml:space="preserve"><value>Giriş gereksinimleri: seviye {0}, eşya seviyesi {1}. Kuşanılan ekipmanın eşya seviyesi: {2}.</value></data>
+  <data name="Requires level {0} and item level {1}; current level {2}, item level {3}." xml:space="preserve"><value>Seviye {0} ve eşya seviyesi {1} gerektirir; mevcut seviye {2}, eşya seviyesi {3}.</value></data>
+  <data name="Entry requirements unavailable for this board." xml:space="preserve"><value>Bu pano için giriş gereksinimleri mevcut değil.</value></data>
+  <data name="Equipped item level is unavailable." xml:space="preserve"><value>Kuşanılan ekipmanın eşya seviyesi mevcut değil.</value></data>
+  <data name="Beastmaster weeklies" xml:space="preserve"><value>Canavar ustası haftalık görevleri</value></data>
+  <data name="Weekly challenges" xml:space="preserve"><value>Haftalık mücadeleler</value></data>
+  <data name="Run weekly challenges" xml:space="preserve"><value>Haftalık mücadeleleri başlat</value></data>
+  <data name="Clear each missing eligible Beastmaster challenge once." xml:space="preserve"><value>Uygun olan her tamamlanmamış Canavar ustası mücadelesini bir kez tamamla.</value></data>
+  <data name="Solo board clears. Dungeon runs do not count." xml:space="preserve"><value>Yalnızca tek başına tamamlanan tahtalar sayılır. Zindanlar sayılmaz.</value></data>
+  <data name="{0:00} / {1:00}" xml:space="preserve"><value>{0:00} / {1:00}</value></data>
+  <data name="A familiar was not confirmed in the team. Check the native team before restarting." xml:space="preserve"><value>Yardımcı yaratığın takıma eklendiği doğrulanamadı. Yeniden başlatmadan önce oyun içindeki takımı kontrol edin.</value></data>
+  <data name="Team setup stopped because the team changed unexpectedly." xml:space="preserve"><value>Takım beklenmedik biçimde değiştiği için takım kurulumu durduruldu.</value></data>
+  <data name="Team setup stopped because a native window did not finish updating." xml:space="preserve"><value>Oyun içindeki pencerenin güncellenmesi tamamlanmadığı için takım kurulumu durduruldu.</value></data>
+  <data name="The bestiary did not show the requested familiar&apos;s details." xml:space="preserve"><value>Yaratık rehberi, istenen yardımcı yaratığın ayrıntılarını göstermedi.</value></data>
+  <data name="Weekly Challenge Log data is unavailable." xml:space="preserve"><value>Haftalık Mücadele Günlüğü verileri kullanılamıyor.</value></data>
+  <data name="All five weekly challenges are complete." xml:space="preserve"><value>Beş haftalık mücadelenin tamamı tamamlandı.</value></data>
+  <data name="Weekly challenges complete: {0}/5." xml:space="preserve"><value>Tamamlanan haftalık mücadeleler: {0}/5.</value></data>
+  <data name="No unfinished eligible weekly challenges. Locked or gear-blocked boards remain." xml:space="preserve"><value>Koşulları karşılanan tamamlanmamış haftalık mücadele yok. Kilitli veya ekipman koşulları karşılanmayan tahtalar kaldı.</value></data>
+  <data name="Required board or Challenge Log quest is incomplete." xml:space="preserve"><value>Gerekli tahtayı veya Mücadele Günlüğünü açan görev tamamlanmadı.</value></data>
+  <data name="Requires Beastmaster level {0}." xml:space="preserve"><value>Canavar ustası seviyesi {0} gerekli.</value></data>
+  <data name="Requires item level {0}; current item level {1}." xml:space="preserve"><value>Eşya seviyesi {0} gerekli; mevcut eşya seviyesi {1}.</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>Tamamlanmadı</value></data>
+  <data name="Waiting for a fresh Challenge Log load for this character and reset." xml:space="preserve"><value>Bu karakter ve sıfırlanma dönemi için Mücadele Günlüğünün yeniden yüklenmesi bekleniyor.</value></data>
+  <data name="Leave the current Crucible duty before starting weekly challenges." xml:space="preserve"><value>Haftalık mücadelelere başlamadan önce mevcut Crucible görevinden çıkın.</value></data>
+  <data name="Eligible weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve"><value>Koşulları karşılanan haftalık mücadeleler tamamlandı. Kilitli veya ekipman koşulları karşılanmayan tahtalar kaldı.</value></data>
+  <data name="Weekly Challenge Log data changed or became unavailable. No further board was queued." xml:space="preserve"><value>Haftalık Mücadele Günlüğü verileri değişti veya kullanılamaz oldu. Sonraki tahta sıraya alınmadı.</value></data>
+  <data name="The selected weekly challenge is already complete. No further entry was submitted." xml:space="preserve"><value>Seçilen haftalık mücadele zaten tamamlandı. Başka bir giriş isteği gönderilmedi.</value></data>
+  <data name="Waiting for fresh weekly challenge credit." xml:space="preserve"><value>Haftalık mücadele tamamlanmasının güncel doğrulaması bekleniyor.</value></data>
+  <data name="Fresh weekly challenge credit was not confirmed after the board result. No board was repeated." xml:space="preserve"><value>Tahta sonucu gösterildikten sonra haftalık mücadele tamamlanması doğrulanamadı. Hiçbir tahta tekrarlanmadı.</value></data>
+  <data name="An existing duty queue must settle before starting Beastmaster." xml:space="preserve"><value>Canavar ustasını başlatmadan önce mevcut içerik kuyruğunun sonuçlanması gerekir.</value></data>
+  <data name="Crucible entry observation is unavailable." xml:space="preserve"><value>Crucible girişini gözlemleme kullanılamıyor.</value></data>
+  <data name="The pending Crucible entry was withdrawn. No entry was repeated." xml:space="preserve"><value>Bekleyen Crucible giriş isteği geri çekildi. Giriş tekrarlanmadı.</value></data>
+  <data name="Stopping Crucible entry." xml:space="preserve"><value>Crucible girişi iptal ediliyor.</value></data>
+  <data name="The entered Crucible board does not match the requested board." xml:space="preserve"><value>Girilen Crucible tahtası istenen tahtayla eşleşmiyor.</value></data>
+  <data name="Mini view" xml:space="preserve">
+    <value>Mini görünüm</value>
+  </data>
+  <data name="Full window" xml:space="preserve">
+    <value>Tam pencere</value>
+  </data>
+  <data name="A Beastmaster run, refresh or its cleanup is already active." xml:space="preserve">
+    <value>Bir Canavar ustası çalışması, yenilemesi veya temizleme işlemi zaten etkin.</value>
+  </data>
+  <data name="A combat provider was unloaded or replaced; original ownership is unresolved." xml:space="preserve">
+    <value>Bir savaş sağlayıcısı kaldırıldı veya değiştirildi; önceki kontrol sahipliği çözümlenemedi.</value>
+  </data>
+  <data name="All owned beasts have reached this board&apos;s training target." xml:space="preserve">
+    <value>Sahip olunan tüm canavarlar bu tahtanın eğitim hedefine ulaştı.</value>
+  </data>
+  <data name="An owned beast was not available in the standalone bestiary; partial observations were retained." xml:space="preserve">
+    <value>Sahip olunan bir canavar bağımsız yaratık kitabında bulunamadı; kısmi gözlemler korundu.</value>
+  </data>
+  <data name="Another automation owns the character." xml:space="preserve">
+    <value>Karakteri başka bir otomasyon kontrol ediyor.</value>
+  </data>
+  <data name="Beast ownership changed during refresh; partial observations were retained. Refresh again when the roster is settled." xml:space="preserve">
+    <value>Yenileme sırasında canavar sahipliği değişti; kısmi gözlemler korundu. Kadro kararlı hale geldiğinde tekrar yenileyin.</value>
+  </data>
+  <data name="Beast refresh cancelled; partial observations were retained." xml:space="preserve">
+    <value>Canavar yenilemesi iptal edildi; kısmi gözlemler korundu.</value>
+  </data>
+  <data name="Beast refresh stopped after character, territory or native context changed." xml:space="preserve">
+    <value>Karakter, bölge veya oyun bağlamı değiştiği için canavar yenilemesi durduruldu.</value>
+  </data>
+  <data name="Beast refresh stopped because the bestiary changed to team data." xml:space="preserve">
+    <value>Yaratık kitabı takım verilerine geçtiği için canavar yenilemesi durduruldu.</value>
+  </data>
+  <data name="Beastmaster cannot claim AutoRetainer while existing suppression is active or unreadable." xml:space="preserve">
+    <value>Mevcut askıya alma etkin veya okunamıyor durumdayken Canavar ustası AutoRetainer kontrolünü devralamaz.</value>
+  </data>
+  <data name="Beastmaster could not verify AutoRetainer suppression." xml:space="preserve">
+    <value>Canavar ustası, AutoRetainer askıya alma durumunu doğrulayamadı.</value>
+  </data>
+  <data name="Beastmaster frequency" xml:space="preserve">
+    <value>Canavar ustası sıklığı</value>
+  </data>
+  <data name="Beastmaster scheduling" xml:space="preserve">
+    <value>Canavar ustası zamanlaması</value>
+  </data>
+  <data name="Beasts and Supplies are shared for this character." xml:space="preserve">
+    <value>Canavarlar ve Malzemeler bu karakter için ortaktır.</value>
+  </data>
+  <data name="Boards per trigger" xml:space="preserve">
+    <value>Tetikleme başına tahta</value>
+  </data>
+  <data name="Boards this run" xml:space="preserve">
+    <value>Bu çalışmadaki tahtalar</value>
+  </data>
+  <data name="BossMod &apos;passive - melee&apos; requires range 2.3 and Pathfind movement." xml:space="preserve">
+    <value>BossMod &apos;passive - melee&apos;, 2.3 menzil ve Pathfind hareketi gerektirir.</value>
+  </data>
+  <data name="BossMod AI follow target is unavailable." xml:space="preserve">
+    <value>BossMod yapay zekâ takip hedefi kullanılamıyor.</value>
+  </data>
+  <data name="BossMod AI lifecycle controls are unavailable." xml:space="preserve">
+    <value>BossMod yapay zekâ yaşam döngüsü kontrolleri kullanılamıyor.</value>
+  </data>
+  <data name="BossMod AI original state restoration is unconfirmed." xml:space="preserve">
+    <value>BossMod yapay zekâ önceki durumunun geri yüklenmesi doğrulanmadı.</value>
+  </data>
+  <data name="BossMod AI runtime state is incompatible." xml:space="preserve">
+    <value>BossMod yapay zekâ çalışma durumu uyumsuz.</value>
+  </data>
+  <data name="BossMod AI runtime state is unavailable." xml:space="preserve">
+    <value>BossMod yapay zekâ çalışma durumu kullanılamıyor.</value>
+  </data>
+  <data name="BossMod AI suspension was not confirmed." xml:space="preserve">
+    <value>BossMod yapay zekânın askıya alınması doğrulanmadı.</value>
+  </data>
+  <data name="BossMod did not confirm the requested Beastmaster movement preset." xml:space="preserve">
+    <value>BossMod, istenen Canavar ustası hareket ön ayarını doğrulamadı.</value>
+  </data>
+  <data name="BossMod forced-disabled preset state is inconsistent." xml:space="preserve">
+    <value>BossMod zorla devre dışı bırakılan ön ayar durumu tutarsız.</value>
+  </data>
+  <data name="BossMod is missing the existing &apos;passive - melee&apos; preset." xml:space="preserve">
+    <value>BossMod&apos;da mevcut &apos;passive - melee&apos; ön ayarı eksik.</value>
+  </data>
+  <data name="BossMod original preset restoration is unconfirmed." xml:space="preserve">
+    <value>BossMod önceki ön ayarının geri yüklenmesi doğrulanmadı.</value>
+  </data>
+  <data name="BossMod requires the existing movement-only &apos;passive - melee&apos; preset; no DPS rotation may be included." xml:space="preserve">
+    <value>BossMod, yalnızca hareket için mevcut &apos;passive - melee&apos; ön ayarını gerektirir; DPS rotasyonu içeremez.</value>
+  </data>
+  <data name="BossModReborn is no longer loaded." xml:space="preserve">
+    <value>BossModReborn artık yüklü değil.</value>
+  </data>
+  <data name="Bring three trainees, lowest rank and EXP first. Focus training on fewer familiars, with fewer reserves." xml:space="preserve">
+    <value>En düşük rütbe ve EXP öncelikli olacak şekilde üç eğitim canavarı getirin. Daha az yedekle daha az yardımcı canavarı eğitmeye odaklanın.</value>
+  </data>
+  <data name="Bring up to {0} trainees, leaving three team slots open. Smaller rosters can earn more EXP per familiar, with fewer reserves." xml:space="preserve">
+    <value>Üç takım yuvasını boş bırakarak en fazla {0} eğitim canavarı getirin. Daha küçük kadrolar, daha az yedekle yardımcı canavar başına daha fazla EXP kazanabilir.</value>
+  </data>
+  <data name="Bring up to {0} trainees, lowest rank and EXP first. Train more familiars together with more reserves." xml:space="preserve">
+    <value>En düşük rütbe ve EXP öncelikli olacak şekilde en fazla {0} eğitim canavarı getirin. Daha fazla yedekle daha çok yardımcı canavarı birlikte eğitin.</value>
+  </data>
+  <data name="Checked at VMX opportunities." xml:space="preserve">
+    <value>VMX çalıştırma fırsatlarında kontrol edilir.</value>
+  </data>
+  <data name="Choose a training team method for this goal." xml:space="preserve">
+    <value>Bu hedef için bir eğitim takımı yöntemi seçin.</value>
+  </data>
+  <data name="Choose custom membership in Beasts. Any setup that selects Custom uses this character&apos;s shared selection." xml:space="preserve">
+    <value>Canavarlar bölümünde özel üyeleri seçin. Özel seçeneğini kullanan her yapılandırma bu karakterin ortak seçimini kullanır.</value>
+  </data>
+  <data name="Clear recorded beast data" xml:space="preserve">
+    <value>Kayıtlı canavar verilerini temizle</value>
+  </data>
+  <data name="Clear the native bestiary filters before refreshing all owned beasts." xml:space="preserve">
+    <value>Sahip olunan tüm canavarları yenilemeden önce oyunun yaratık kitabı filtrelerini temizleyin.</value>
+  </data>
+  <data name="Clear this character&apos;s saved ranks, EXP, stats, ownership observations and last team. Hold Ctrl and click." xml:space="preserve">
+    <value>Bu karakterin kayıtlı rütbelerini, EXP&apos;sini, niteliklerini, sahiplik gözlemlerini ve son takımını temizleyin. Ctrl tuşunu basılı tutup tıklayın.</value>
+  </data>
+  <data name="Close Crucible registration and wait for the duty queue to settle before refreshing beasts." xml:space="preserve">
+    <value>Canavarları yenilemeden önce Crucible kaydını kapatın ve görev kuyruğunun kararlı hale gelmesini bekleyin.</value>
+  </data>
+  <data name="Close the current confirmation before refreshing beasts." xml:space="preserve">
+    <value>Canavarları yenilemeden önce mevcut onay penceresini kapatın.</value>
+  </data>
+  <data name="Close the team bestiary before refreshing beasts." xml:space="preserve">
+    <value>Canavarları yenilemeden önce takım yaratık kitabını kapatın.</value>
+  </data>
+  <data name="Collapse" xml:space="preserve">
+    <value>Daralt</value>
+  </data>
+  <data name="Combat restoration pending: {0}" xml:space="preserve">
+    <value>Savaş durumunun geri yüklenmesi bekleniyor: {0}</value>
+  </data>
+  <data name="Completes missing eligible native Challenge Log objectives independently of ordinary training." xml:space="preserve">
+    <value>Normal eğitimden bağımsız olarak oyunun Mücadele Günlüğündeki eksik ve uygun hedefleri tamamlar.</value>
+  </data>
+  <data name="Configure the run setup and training targets in Beastmaster VMX Schedule." xml:space="preserve">
+    <value>Çalışma yapılandırmasını ve eğitim hedeflerini Canavar ustası VMX Zamanlamasında ayarlayın.</value>
+  </data>
+  <data name="Crewcible task" xml:space="preserve">
+    <value>Crewcible görevi</value>
+  </data>
+  <data name="Crucible route jump is outside the board" xml:space="preserve">
+    <value>Crucible rota sıçraması tahtanın dışında</value>
+  </data>
+  <data name="Custom membership is used by any setup that selects Custom. Hover a name for recorded stats." xml:space="preserve">
+    <value>Özel seçeneğini kullanan her yapılandırma özel üyeleri kullanır. Kayıtlı nitelikleri görmek için adın üzerine gelin.</value>
+  </data>
+  <data name="Editing settings does not start a run." xml:space="preserve">
+    <value>Ayarları düzenlemek bir çalışma başlatmaz.</value>
+  </data>
+  <data name="Enable Beastmaster training" xml:space="preserve">
+    <value>Canavar ustası eğitimini etkinleştir</value>
+  </data>
+  <data name="Enable Beastmaster weeklies" xml:space="preserve">
+    <value>Canavar ustası haftalık görevlerini etkinleştir</value>
+  </data>
+  <data name="Enable task" xml:space="preserve">
+    <value>Görevi etkinleştir</value>
+  </data>
+  <data name="Engaging the current Crucible arena" xml:space="preserve">
+    <value>Mevcut Crucible arenasında savaşa giriliyor</value>
+  </data>
+  <data name="Entry requirements are checked for the active character before starting." xml:space="preserve">
+    <value>Başlatmadan önce etkin karakterin giriş gereksinimleri kontrol edilir.</value>
+  </data>
+  <data name="Every AR" xml:space="preserve">
+    <value>Her AR</value>
+  </data>
+  <data name="Excluded familiars keep this goal incomplete." xml:space="preserve">
+    <value>Hariç tutulan yardımcı canavarlar bu hedefin tamamlanmasını engeller.</value>
+  </data>
+  <data name="Execution order: VMX Settings &gt; Task Order." xml:space="preserve">
+    <value>Yürütme sırası: VMX Ayarları &gt; Görev Sırası.</value>
+  </data>
+  <data name="Expand" xml:space="preserve">
+    <value>Genişlet</value>
+  </data>
+  <data name="Fixed board runs" xml:space="preserve">
+    <value>Sabit sayıda tahta çalışması</value>
+  </data>
+  <data name="Fresh rank and EXP observations are required before deciding training is complete." xml:space="preserve">
+    <value>Eğitimin tamamlandığına karar vermeden önce güncel rütbe ve EXP gözlemleri gerekir.</value>
+  </data>
+  <data name="Full rank observation unavailable. Unread ranks remain unknown." xml:space="preserve">
+    <value>Tam rütbe gözlemi kullanılamıyor. Okunmayan rütbeler bilinmiyor olarak kalır.</value>
+  </data>
+  <data name="Hide" xml:space="preserve">
+    <value>Gizle</value>
+  </data>
+  <data name="Highest-ranked familiars first; beast priorities break ties." xml:space="preserve">
+    <value>Önce en yüksek rütbeli yardımcı canavarlar; eşitlikte canavar öncelikleri belirleyicidir.</value>
+  </data>
+  <data name="Independent of the ordinary task&apos;s enablement, training goal and board-run allowance." xml:space="preserve">
+    <value>Normal görevin etkinliğinden, eğitim hedefinden ve tahta çalışma sınırından bağımsızdır.</value>
+  </data>
+  <data name="Invalid Crucible route jump" xml:space="preserve">
+    <value>Geçersiz Crucible rota sıçraması</value>
+  </data>
+  <data name="Invalid Crucible scan clear step" xml:space="preserve">
+    <value>Geçersiz Crucible tarama temizleme adımı</value>
+  </data>
+  <data name="Item and camp rules" xml:space="preserve">
+    <value>Eşya ve kamp kuralları</value>
+  </data>
+  <data name="Item priorities" xml:space="preserve">
+    <value>Eşya öncelikleri</value>
+  </data>
+  <data name="Kin filter" xml:space="preserve">
+    <value>Tür filtresi</value>
+  </data>
+  <data name="Last completed: {0}" xml:space="preserve">
+    <value>Son tamamlanma: {0}</value>
+  </data>
+  <data name="Leave the current duty before refreshing beasts." xml:space="preserve">
+    <value>Canavarları yenilemeden önce mevcut görevden çıkın.</value>
+  </data>
+  <data name="Load Rotation Solver Reborn and select its Reborn Beastmaster rotation." xml:space="preserve">
+    <value>Rotation Solver Reborn&apos;u yükleyin ve Reborn Beastmaster rotasyonunu seçin.</value>
+  </data>
+  <data name="Manual setup" xml:space="preserve">
+    <value>Manuel yapılandırma</value>
+  </data>
+  <data name="Master Class I" xml:space="preserve">
+    <value>Ustalık Sınıfı I</value>
+  </data>
+  <data name="Master Class II" xml:space="preserve">
+    <value>Ustalık Sınıfı II</value>
+  </data>
+  <data name="Native beast ownership data is unavailable; recorded observations were retained." xml:space="preserve">
+    <value>Oyunun canavar sahipliği verileri kullanılamıyor; kayıtlı gözlemler korundu.</value>
+  </data>
+  <data name="Next eligible: {0}" xml:space="preserve">
+    <value>Sonraki uygun zaman: {0}</value>
+  </data>
+  <data name="No character" xml:space="preserve">
+    <value>Karakter yok</value>
+  </data>
+  <data name="No character profile is available. Log in and wait for character registration." xml:space="preserve">
+    <value>Kullanılabilir karakter profili yok. Giriş yapın ve karakter kaydını bekleyin.</value>
+  </data>
+  <data name="No eligible familiars are recorded for this setup. Refresh beasts on the playing character." xml:space="preserve">
+    <value>Bu yapılandırma için uygun yardımcı canavar kaydı yok. Oynanan karakterde canavarları yenileyin.</value>
+  </data>
+  <data name="No full beast refresh has been requested." xml:space="preserve">
+    <value>Tam canavar yenilemesi istenmedi.</value>
+  </data>
+  <data name="No recorded beasts. Use Refresh beasts while playing this character outside duty." xml:space="preserve">
+    <value>Kayıtlı canavar yok. Bu karakterle görev dışında oynarken Canavarları yenile seçeneğini kullanın.</value>
+  </data>
+  <data name="No recorded character" xml:space="preserve">
+    <value>Kayıtlı karakter yok</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Çevrimdışı</value>
+  </data>
+  <data name="Only characters with recorded beasts are listed." xml:space="preserve">
+    <value>Yalnızca kayıtlı canavarları olan karakterler listelenir.</value>
+  </data>
+  <data name="Open VMX Schedule" xml:space="preserve">
+    <value>VMX Zamanlamasını aç</value>
+  </data>
+  <data name="Opening the standalone bestiary to refresh beast ranks and EXP." xml:space="preserve">
+    <value>Canavar rütbelerini ve EXP&apos;sini yenilemek için bağımsız yaratık kitabı açılıyor.</value>
+  </data>
+  <data name="Ownership checked. Recorded ranks may need a full refresh." xml:space="preserve">
+    <value>Sahiplik kontrol edildi. Kayıtlı rütbeler için tam yenileme gerekebilir.</value>
+  </data>
+  <data name="Ownership has not been fully observed. Training completion is unknown." xml:space="preserve">
+    <value>Sahiplik tam olarak gözlemlenmedi. Eğitimin tamamlanma durumu bilinmiyor.</value>
+  </data>
+  <data name="Ownership not fully observed." xml:space="preserve">
+    <value>Sahiplik tam olarak gözlemlenmedi.</value>
+  </data>
+  <data name="Ownership observed: {0}" xml:space="preserve">
+    <value>Sahiplik gözlemi: {0}</value>
+  </data>
+  <data name="Playing" xml:space="preserve">
+    <value>Oynanıyor</value>
+  </data>
+  <data name="Playing: {0}" xml:space="preserve">
+    <value>Oynanıyor: {0}</value>
+  </data>
+  <data name="RSR Reborn Beastmaster is no longer the current rotation." xml:space="preserve">
+    <value>RSR Reborn Beastmaster artık mevcut rotasyon değil.</value>
+  </data>
+  <data name="RSR did not confirm the requested Beastmaster operating mode." xml:space="preserve">
+    <value>RSR, istenen Canavar ustası çalışma modunu doğrulamadı.</value>
+  </data>
+  <data name="RSR operating-mode flags are inconsistent." xml:space="preserve">
+    <value>RSR çalışma modu bayrakları tutarsız.</value>
+  </data>
+  <data name="RSR original mode restoration is unconfirmed." xml:space="preserve">
+    <value>RSR önceki modunun geri yüklenmesi doğrulanmadı.</value>
+  </data>
+  <data name="RSR runtime state is incompatible: " xml:space="preserve">
+    <value>RSR çalışma durumu uyumsuz: </value>
+  </data>
+  <data name="RSR runtime state is incompatible: {0}" xml:space="preserve">
+    <value>RSR çalışma durumu uyumsuz: {0}</value>
+  </data>
+  <data name="RSR runtime state is unavailable." xml:space="preserve">
+    <value>RSR çalışma durumu kullanılamıyor.</value>
+  </data>
+  <data name="Ranks observed: {0}" xml:space="preserve">
+    <value>Rütbe gözlemleri: {0}</value>
+  </data>
+  <data name="Recorded beasts" xml:space="preserve">
+    <value>Kayıtlı canavarlar</value>
+  </data>
+  <data name="Refresh beasts" xml:space="preserve">
+    <value>Canavarları yenile</value>
+  </data>
+  <data name="Refresh is available only for the playing character." xml:space="preserve">
+    <value>Yenileme yalnızca oynanan karakter için kullanılabilir.</value>
+  </data>
+  <data name="Refreshed ranks and EXP for {0} owned beasts." xml:space="preserve">
+    <value>Sahip olunan {0} canavarın rütbeleri ve EXP&apos;si yenilendi.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1})." xml:space="preserve">
+    <value>Canavar rütbeleri ve EXP&apos;si yenileniyor ({0}/{1}).</value>
+  </data>
+  <data name="Removing {0}" xml:space="preserve">
+    <value>{0} kaldırılıyor</value>
+  </data>
+  <data name="Resuming board route {0}/{1}" xml:space="preserve">
+    <value>Tahta rotasına devam ediliyor {0}/{1}</value>
+  </data>
+  <data name="Resuming the current Crucible board" xml:space="preserve">
+    <value>Mevcut Crucible tahtasına devam ediliyor</value>
+  </data>
+  <data name="Rotation Solver Reborn and BossModReborn must both be loaded." xml:space="preserve">
+    <value>Rotation Solver Reborn ve BossModReborn birlikte yüklü olmalıdır.</value>
+  </data>
+  <data name="Run actions" xml:space="preserve">
+    <value>Çalışma eylemleri</value>
+  </data>
+  <data name="Run at most {0} boards per trigger. Unfinished training continues at the next eligible trigger." xml:space="preserve">
+    <value>Tetikleme başına en fazla {0} tahta çalıştırın. Tamamlanmamış eğitim bir sonraki uygun tetiklemede devam eder.</value>
+  </data>
+  <data name="Run task now" xml:space="preserve">
+    <value>Görevi şimdi çalıştır</value>
+  </data>
+  <data name="Run weeklies now" xml:space="preserve">
+    <value>Haftalık görevleri şimdi çalıştır</value>
+  </data>
+  <data name="Runs missing eligible boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Eksik ve uygun tahtaları çalıştırır. Kilitli veya ekipman nedeniyle engellenen girişler tamamlanmamış kalır.</value>
+  </data>
+  <data name="Saved data for {0}" xml:space="preserve">
+    <value>{0} için kayıtlı veriler</value>
+  </data>
+  <data name="Saved separately from VMX task settings." xml:space="preserve">
+    <value>VMX görev ayarlarından ayrı kaydedilir.</value>
+  </data>
+  <data name="Scheduled task settings for this character. Saved separately from manual Run." xml:space="preserve">
+    <value>Bu karakterin zamanlanmış görev ayarları. Manuel çalıştırmadan ayrı kaydedilir.</value>
+  </data>
+  <data name="Settings saved automatically" xml:space="preserve">
+    <value>Ayarlar otomatik kaydedilir</value>
+  </data>
+  <data name="Shared by this character&apos;s manual and scheduled runs." xml:space="preserve">
+    <value>Bu karakterin manuel ve zamanlanmış çalışmaları arasında ortaktır.</value>
+  </data>
+  <data name="Shop done, {0} coins left" xml:space="preserve">
+    <value>Alışveriş tamamlandı, {0} sikke kaldı</value>
+  </data>
+  <data name="Shop, rest and healing rules are in Supplies." xml:space="preserve">
+    <value>Alışveriş, dinlenme ve iyileştirme kuralları Malzemeler bölümündedir.</value>
+  </data>
+  <data name="Smaller training team" xml:space="preserve">
+    <value>Daha küçük eğitim takımı</value>
+  </data>
+  <data name="Soul Survivor I" xml:space="preserve">
+    <value>Hayatta Kalan Ruh I</value>
+  </data>
+  <data name="Soul Survivor II" xml:space="preserve">
+    <value>Hayatta Kalan Ruh II</value>
+  </data>
+  <data name="Soul Survivor III" xml:space="preserve">
+    <value>Hayatta Kalan Ruh III</value>
+  </data>
+  <data name="Stopped; combat restoration pending: {0}" xml:space="preserve">
+    <value>Durduruldu; savaş durumunun geri yüklenmesi bekleniyor: {0}</value>
+  </data>
+  <data name="Stopped; waiting for the standalone bestiary to close. Close it manually if necessary." xml:space="preserve">
+    <value>Durduruldu; bağımsız yaratık kitabının kapanması bekleniyor. Gerekirse manuel kapatın.</value>
+  </data>
+  <data name="Strongest available" xml:space="preserve">
+    <value>Mevcut en güçlüler</value>
+  </data>
+  <data name="Taking {0}" xml:space="preserve">
+    <value>{0} alınıyor</value>
+  </data>
+  <data name="Team method" xml:space="preserve">
+    <value>Takım yöntemi</value>
+  </data>
+  <data name="The Crucible route has no actions" xml:space="preserve">
+    <value>Crucible rotasında eylem yok</value>
+  </data>
+  <data name="The Crucible route is missing" xml:space="preserve">
+    <value>Crucible rotası eksik</value>
+  </data>
+  <data name="The bestiary did not close after refreshing beasts." xml:space="preserve">
+    <value>Yaratık kitabı canavar yenilemesinden sonra kapanmadı.</value>
+  </data>
+  <data name="The bestiary did not show the requested beast&apos;s rank and EXP; partial observations were retained." xml:space="preserve">
+    <value>Yaratık kitabı istenen canavarın rütbesini ve EXP&apos;sini göstermedi; kısmi gözlemler korundu.</value>
+  </data>
+  <data name="The bestiary page did not settle after refresh." xml:space="preserve">
+    <value>Yaratık kitabı sayfası yenilemeden sonra kararlı hale gelmedi.</value>
+  </data>
+  <data name="The bestiary refresh did not finish within five minutes; partial observations were retained." xml:space="preserve">
+    <value>Yaratık kitabı yenilemesi beş dakika içinde tamamlanmadı; kısmi gözlemler korundu.</value>
+  </data>
+  <data name="The bestiary returned a lower rank than recorded; refresh stopped without replacing that observation." xml:space="preserve">
+    <value>Yaratık kitabı kayıtlı olandan daha düşük bir rütbe döndürdü; o gözlem değiştirilmeden yenileme durduruldu.</value>
+  </data>
+  <data name="The board result did not provide fresh ranks and EXP for the participating team." xml:space="preserve">
+    <value>Tahta sonucu, katılan takım için güncel rütbe ve EXP sağlamadı.</value>
+  </data>
+  <data name="The original bestiary selection could not be restored." xml:space="preserve">
+    <value>Yaratık kitabındaki önceki seçim geri yüklenemedi.</value>
+  </data>
+  <data name="The requested beast could not be selected in the standalone bestiary." xml:space="preserve">
+    <value>İstenen canavar bağımsız yaratık kitabında seçilemedi.</value>
+  </data>
+  <data name="The standalone bestiary did not become ready." xml:space="preserve">
+    <value>Bağımsız yaratık kitabı hazır hale gelmedi.</value>
+  </data>
+  <data name="The standalone bestiary is unavailable." xml:space="preserve">
+    <value>Bağımsız yaratık kitabı kullanılamıyor.</value>
+  </data>
+  <data name="This order and these blocks apply to buying, treasure choices and item use." xml:space="preserve">
+    <value>Bu sıralama ve engellemeler satın alımlara, hazine seçimlerine ve eşya kullanımına uygulanır.</value>
+  </data>
+  <data name="This run: {0}/{1} boards" xml:space="preserve">
+    <value>Bu çalışma: {0}/{1} tahta</value>
+  </data>
+  <data name="Three strong fighters + trainees" xml:space="preserve">
+    <value>Üç güçlü savaşçı + eğitim canavarları</value>
+  </data>
+  <data name="Three strongest familiars fight first, with up to {0} trainees. Bring up to {1} total, leaving two slots open. Reserves also earn EXP." xml:space="preserve">
+    <value>Önce en güçlü üç yardımcı canavar savaşır; yanlarında en fazla {0} eğitim canavarı bulunur. İki yuva boş bırakarak toplamda en fazla {1} getirin. Yedekler de EXP kazanır.</value>
+  </data>
+  <data name="Train a full team" xml:space="preserve">
+    <value>Tam takım eğit</value>
+  </data>
+  <data name="Train owned familiars" xml:space="preserve">
+    <value>Sahip olunan yardımcı canavarları eğit</value>
+  </data>
+  <data name="Train three at a time" xml:space="preserve">
+    <value>Bir seferde üç tane eğit</value>
+  </data>
+  <data name="Training all owned beasts requires a training team method." xml:space="preserve">
+    <value>Sahip olunan tüm canavarları eğitmek bir eğitim takımı yöntemi gerektirir.</value>
+  </data>
+  <data name="Training allowance complete; unfinished beasts will be checked at the next trigger." xml:space="preserve">
+    <value>Eğitim sınırı tamamlandı; tamamlanmamış canavarlar bir sonraki tetiklemede kontrol edilecek.</value>
+  </data>
+  <data name="Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters." xml:space="preserve">
+    <value>Eğitim tamamlanmadı, ancak eğitim takımı oluşturabilecek uygun canavar sayısı üçten az. Seçim dışı bırakılanları ve tür filtrelerini kontrol edin.</value>
+  </data>
+  <data name="Training progress" xml:space="preserve">
+    <value>Eğitim ilerlemesi</value>
+  </data>
+  <data name="Training target: Rank {0}" xml:space="preserve">
+    <value>Eğitim hedefi: Rütbe {0}</value>
+  </data>
+  <data name="Unsupported Crucible board" xml:space="preserve">
+    <value>Desteklenmeyen Crucible tahtası</value>
+  </data>
+  <data name="Unsupported Crucible route condition" xml:space="preserve">
+    <value>Desteklenmeyen Crucible rota koşulu</value>
+  </data>
+  <data name="Unsupported Crucible-only route action: {0}" xml:space="preserve">
+    <value>Desteklenmeyen yalnızca Crucible&apos;a özgü rota eylemi: {0}</value>
+  </data>
+  <data name="Up to {0} familiars" xml:space="preserve">
+    <value>En fazla {0} yardımcı canavar</value>
+  </data>
+  <data name="Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names." xml:space="preserve">
+    <value>Canavar ustası için yalnızca BossModReborn kullanın; her iki BossMod sağlayıcısı aynı IPC adlarını paylaşır.</value>
+  </data>
+  <data name="Uses the saved scheduled team method, difficulty and shared supplies." xml:space="preserve">
+    <value>Kayıtlı zamanlanmış takım yöntemini, zorluğu ve ortak malzemeleri kullanır.</value>
+  </data>
+  <data name="Using {0} at {1}" xml:space="preserve">
+    <value>{0}, {1} konumunda kullanılıyor</value>
+  </data>
+  <data name="VMX Schedule" xml:space="preserve">
+    <value>VMX Zamanlaması</value>
+  </data>
+  <data name="Viewing another character · automation not started" xml:space="preserve">
+    <value>Başka bir karakter görüntüleniyor · otomasyon başlatılmadı</value>
+  </data>
+  <data name="Wait until the current character is idle before refreshing beasts." xml:space="preserve">
+    <value>Canavarları yenilemeden önce mevcut karakterin boşta olmasını bekleyin.</value>
+  </data>
+  <data name="Wait until the current character is ready." xml:space="preserve">
+    <value>Mevcut karakterin hazır olmasını bekleyin.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character." xml:space="preserve">
+    <value>Haftalık Mücadele Günlüğü durumu oynanan karakter için kullanılabilir.</value>
+  </data>
+  <data name="Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable." xml:space="preserve">
+    <value>Haftalık Mücadele Günlüğü durumu oynanan karakter için kullanılabilir. Kayıtlı zamanlama ayarları düzenlenebilir.</value>
+  </data>
+  <data name="Weekly Challenge Log task" xml:space="preserve">
+    <value>Haftalık Mücadele Günlüğü görevi</value>
+  </data>
+  <data name="Weekly challenge objectives" xml:space="preserve">
+    <value>Haftalık mücadele hedefleri</value>
+  </data>
+  <data name="Weekly progress" xml:space="preserve">
+    <value>Haftalık ilerleme</value>
+  </data>
+  <data name="When only one or two trainees remain, add only enough trained fighters to reach three." xml:space="preserve">
+    <value>Yalnızca bir veya iki eğitim canavarı kaldığında, sayıyı üçe tamamlayacak kadar eğitimli savaşçı ekleyin.</value>
+  </data>
+  <data name="Wrong character" xml:space="preserve">
+    <value>Yanlış karakter</value>
+  </data>
+  <data name="Wrong character. You can edit this profile, but switch to that character before starting automation." xml:space="preserve">
+    <value>Yanlış karakter. Bu profili düzenleyebilirsiniz, ancak otomasyonu başlatmadan önce o karaktere geçin.</value>
+  </data>
+  <data name="You&apos;re viewing {0}, but playing {1}. Select the current character or log in as the viewed character before starting automation." xml:space="preserve">
+    <value>{0} görüntüleniyor, ancak {1} ile oynuyorsunuz. Otomasyonu başlatmadan önce mevcut karakteri seçin veya görüntülenen karakterle giriş yapın.</value>
+  </data>
+  <data name="{0} eligible to train · {1} excluded · {2} unknown rank" xml:space="preserve">
+    <value>{0} eğitime uygun · {1} hariç tutuldu · {2} rütbe bilinmiyor</value>
+  </data>
+  <data name="{0}/{1} at Rank {2}" xml:space="preserve">
+    <value>{0}/{1}, Rütbe {2}</value>
+  </data>
+  <data name="{0}/{1} complete" xml:space="preserve">
+    <value>{0}/{1} tamamlandı</value>
+  </data>
+  <data name="Not enough eligible familiars have recorded ranks. Missing ranks: {0}." xml:space="preserve">
+    <value>Kayıtlı rütbesi olan uygun yardımcı yaratık sayısı yetersiz. Rütbesi bilinmeyenler: {0}.</value>
+  </data>
+  <data name="Custom selection cannot form an entry team. Unowned or excluded familiars: {0}." xml:space="preserve">
+    <value>Özel seçimle giriş takımı oluşturulamıyor. Sahip olunmayan veya hariç tutulan yardımcı yaratıklar: {0}.</value>
+  </data>
+  <data name="Close the existing bestiary before refreshing beasts." xml:space="preserve">
+    <value>Canavarları yenilemeden önce açık yaratık kitabını kapatın.</value>
+  </data>
+  <data name="Refreshing beast ranks and EXP ({0}/{1}); page {2}/{3}." xml:space="preserve">
+    <value>Canavar rütbeleri ve EXP yenileniyor ({0}/{1}); sayfa {2}/{3}.</value>
+  </data>
+  <data name="Beast refresh incomplete: {0}/{1} observed; unread: {2}. {3}" xml:space="preserve">
+    <value>Canavar yenilemesi tamamlanmadı: {0}/{1} gözlemlendi; okunmayanlar: {2}. {3}</value>
+  </data>
+  <data name="Leave the current duty before starting Beastmaster." xml:space="preserve">
+    <value>Canavar ustasını başlatmadan önce mevcut görevden çıkın.</value>
+  </data>
+  <data name="Restoring the bestiary after refresh." xml:space="preserve">
+    <value>Yenilemeden sonra yaratık kitabı eski durumuna getiriliyor.</value>
+  </data>
+  <data name="Crewcible" xml:space="preserve">
+    <value>Crewcible</value>
+  </data>
+  <data name="Waiting for {0} data." xml:space="preserve">
+    <value>{0} verileri bekleniyor.</value>
+  </data>
+  <data name="Rechecking {0}; waiting for a valid native control." xml:space="preserve">
+    <value>{0} yeniden kontrol ediliyor; geçerli bir yerel denetim bekleniyor.</value>
+  </data>
+  <data name="Completed board; beast ranks and EXP remain unconfirmed." xml:space="preserve">
+    <value>Tahta tamamlandı; canavarların rütbeleri ve EXP değerleri hâlâ doğrulanmadı.</value>
+  </data>
+  <data name="Stopped; native cleanup remains unconfirmed: {0}" xml:space="preserve">
+    <value>Durduruldu; yerel temizliğin tamamlandığı hâlâ doğrulanmadı: {0}</value>
+  </data>
+  <data name="Rechecking the current Crucible entry." xml:space="preserve"><value>Mevcut Crucible girişi yeniden kontrol ediliyor.</value></data>
+  <data name="Recovering in five seconds: {0}" xml:space="preserve"><value>Beş saniye sonra yeniden denenecek: {0}</value></data>
+  <data name="Run {0}/{1}" xml:space="preserve"><value>Tur {0}/{1}</value></data>
+  <data name="{0}/{1} runs completed" xml:space="preserve"><value>{0}/{1} tur tamamlandı</value></data>
+  <data name="Checking new beasts" xml:space="preserve"><value>Yeni canavarlar kontrol ediliyor</value></data>
+  <data name="{0}/{1} read" xml:space="preserve"><value>{0}/{1} okundu</value></data>
+  <data name="{0} remaining" xml:space="preserve"><value>{0} kaldı</value></data>
+  <data name="Fighting" xml:space="preserve"><value>Savaşta</value></data>
+  <data name="Recovering" xml:space="preserve"><value>Kurtarılıyor</value></data>
+  <data name="Finishing board" xml:space="preserve"><value>Tahta tamamlanıyor</value></data>
+  <data name="Preparing team" xml:space="preserve"><value>Takım hazırlanıyor</value></data>
+  <data name="Continue" xml:space="preserve">
+    <value>Devam et</value>
+  </data>
+  <data name="Schedule edits apply to the next start; the current run keeps its setup." xml:space="preserve">
+    <value>Program değişiklikleri sonraki başlangıçta uygulanır; mevcut çalıştırma kendi ayarlarını korur.</value>
+  </data>
+  <data name="Completed boards are always exited automatically." xml:space="preserve">
+    <value>Tamamlanan tahtalardan her zaman otomatik olarak çıkılır.</value>
+  </data>
+  <data name="Completion command (optional)" xml:space="preserve">
+    <value>Tamamlanınca komut (isteğe bağlı)</value>
+  </data>
+  <data name="Leave blank to do nothing. Runs once after the plan completes, outside the duty." xml:space="preserve">
+    <value>Hiçbir şey yapmamak için boş bırakın. Plan tamamlandıktan sonra görev dışında bir kez çalışır.</value>
+  </data>
+  <data name="Weekly boards" xml:space="preserve">
+    <value>Haftalık tahtalar</value>
+  </data>
+  <data name="Automatically use unlocked boards." xml:space="preserve">
+    <value>Açılmış tahtaları otomatik kullan.</value>
+  </data>
+  <data name="Use unlocked boards" xml:space="preserve">
+    <value>Açılmış tahtaları kullan</value>
+  </data>
+  <data name="Unlocked boards are selected when this character is played. Choose boards below to save an explicit selection." xml:space="preserve">
+    <value>Açılmış tahtalar bu karakterle oynandığında seçilir. Belirli bir seçimi kaydetmek için aşağıdan tahtaları seçin.</value>
+  </data>
+  <data name="No weekly boards selected." xml:space="preserve">
+    <value>Haftalık tahta seçilmedi.</value>
+  </data>
+  <data name="Runs missing selected boards. Locked or gear-blocked entries remain unfinished." xml:space="preserve">
+    <value>Seçilen eksik tahtaları çalıştırır. Kilitli veya ekipman şartlarını karşılamayan girişler tamamlanmamış kalır.</value>
+  </data>
+  <data name="Selected weekly challenges are complete." xml:space="preserve">
+    <value>Seçilen haftalık meydan okumalar tamamlandı.</value>
+  </data>
+  <data name="Selected weekly challenges complete: {0}/{1}." xml:space="preserve">
+    <value>Tamamlanan seçili haftalık meydan okumalar: {0}/{1}.</value>
+  </data>
+  <data name="Eligible selected weekly challenges are complete. Locked or gear-blocked boards remain." xml:space="preserve">
+    <value>Seçilen uygun haftalık meydan okumalar tamamlandı. Kilitli veya ekipman şartlarını karşılamayan tahtalar kaldı.</value>
+  </data>
+  <data name="The current weekly board is not selected." xml:space="preserve">
+    <value>Mevcut haftalık tahta seçili değil.</value>
+  </data>
+  <data name="Completion command failed: {0}" xml:space="preserve">
+    <value>Tamamlanma komutu başarısız: {0}</value>
+  </data>
+  <data name="Clear each selected eligible Beastmaster challenge once." xml:space="preserve">
+    <value>Seçilen uygun her Beastmaster meydan okumasını bir kez tamamla.</value>
+  </data>
+  <data name="Completion command must be a single slash command." xml:space="preserve">
+    <value>Tamamlanma komutu tek bir eğik çizgi komutu olmalıdır.</value>
+  </data>
+  <data name="Completion command could not be sent; it will not be repeated." xml:space="preserve">
+    <value>Tamamlanma komutu gönderilemedi; tekrarlanmayacak.</value>
+  </data>
+  <data name="Completion command sent." xml:space="preserve">
+    <value>Tamamlanma komutu gönderildi.</value>
+  </data>
+  <data name="Completion command skipped because Crewcible completion could not be saved." xml:space="preserve">
+    <value>Crewcible tamamlanması kaydedilemediği için tamamlanma komutu atlandı.</value>
+  </data>
+  <data name="Completion command skipped because the completed run is no longer current." xml:space="preserve">
+    <value>Tamamlanan çalıştırma artık mevcut çalıştırma olmadığı için tamamlanma komutu atlandı.</value>
+  </data>
+  <data name="Beastmaster is disabled for this character." xml:space="preserve">
+    <value>Bu karakter için Beastmaster devre dışı.</value>
+  </data>
+  <data name="Beastmaster weeklies is disabled for this character." xml:space="preserve">
+    <value>Bu karakter için Beastmaster haftalık meydan okumaları devre dışı.</value>
+  </data>
+  <data name="Beastmaster is not due until {0}." xml:space="preserve">
+    <value>Beastmaster en erken {0} tarihinde çalışacak.</value>
+  </data>
+  <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
+    <value>Beastmaster haftalık meydan okumaları en erken {0} tarihinde çalışacak.</value>
+  </data>
+  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Sonraki yenilgi veya tamamlamadan sonra durdur</value></data>
+  <data name="Cancel stop after next outcome" xml:space="preserve"><value>Sonraki sonuçtan sonra durmayı iptal et</value></data>
+  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Tek seferlik: yenilgide görev içinde dur; tamamlayınca ödülleri al ve çık.</value></data>
+  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Sonraki yenilgi veya tamamlamadan sonra duracak.</value></data>
+  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Yenilgiden sonra durdu; Crucible içinde kalıyor.</value></data>
+  <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Tamamladıktan sonra durdu; Crucible’dan çıktı.</value></data>
 </root>

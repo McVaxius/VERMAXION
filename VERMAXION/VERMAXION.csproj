@@ -28,6 +28,7 @@
     <None Include="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Resources\fish-collection.json" />
     <EmbeddedResource Include="Resources\ocean-collection-presets.json" />
+    <EmbeddedResource Include="Beastmaster\Routes\*.json" />
   </ItemGroup>
 
   <Target Name="CopyPluginArtifacts" AfterTargets="Build">
@@ -50,6 +51,8 @@
       <PluginFiles Include="images\carrying chest of gold cleaned.png" />
       <PluginFiles Include="images\source image ai generated.png" />
       <PluginFiles Include="images\kofi-logo.png" />
+      <PluginFiles Include="images\beastmaster\*.jpg" />
+      <BeastmasterSplashFiles Include="images\beastmaster\*.jpg" />
     </ItemGroup>
 
     
@@ -57,6 +60,7 @@
 
           DestinationFolder="$(PluginOutput)" />
     <Copy SourceFiles="$(ProjectDir)images\icon.png" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(BeastmasterSplashFiles)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
 
   </Target>
 

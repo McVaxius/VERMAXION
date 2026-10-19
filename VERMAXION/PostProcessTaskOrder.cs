@@ -31,6 +31,8 @@ public static class PostProcessTaskOrder
     public const string CustomDeliveries = AutomationCatalog.CustomDeliveries;
     public const string ChocoboStables = AutomationCatalog.ChocoboStables;
     public const string ChocoboRacing = AutomationCatalog.ChocoboRacing;
+    public const string Beastmaster = AutomationCatalog.Beastmaster;
+    public const string BeastmasterWeekly = AutomationCatalog.BeastmasterWeekly;
     public const string LootGoblinMapGather = AutomationCatalog.LootGoblinMapGather;
     public const string NagYourMom = AutomationCatalog.NagYourMom;
     public const string NagYourDad = AutomationCatalog.NagYourDad;
@@ -57,6 +59,8 @@ public static class PostProcessTaskOrder
         RetainerEquipping,
         CustomDeliveries,
         ChocoboStables,
+        Beastmaster,
+        BeastmasterWeekly,
     ];
 
     public static readonly IReadOnlyList<string> DefaultOrder =
@@ -79,6 +83,8 @@ public static class PostProcessTaskOrder
         CustomDeliveries,
         ChocoboStables,
         ChocoboRacing,
+        Beastmaster,
+        BeastmasterWeekly,
         LootGoblinMapGather,
         NagYourMom,
         NagYourDad,

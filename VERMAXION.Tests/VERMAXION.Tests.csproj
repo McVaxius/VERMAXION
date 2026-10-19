@@ -7,6 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterSettings.cs" Link="BeastmasterSettings.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterRunSetup.cs" Link="BeastmasterRunSetup.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterCharacterData.cs" Link="BeastmasterCharacterData.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterSelection.cs" Link="BeastmasterSelection.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterRefreshTraversal.cs" Link="BeastmasterRefreshTraversal.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterReadRecovery.cs" Link="BeastmasterReadRecovery.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterWeeklyPolicy.cs" Link="BeastmasterWeeklyPolicy.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterCombat.cs" Link="BeastmasterCombat.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterSplashRotation.cs" Link="BeastmasterSplashRotation.cs" />
+    <EmbeddedResource Include="..\VERMAXION\Beastmaster\Routes\*.json" />
     <Compile Include="..\VERMAXION\Models\FishCollectionModels.cs" Link="FishCollectionModels.cs" />
     <Compile Include="..\VERMAXION\Services\FishCollectionCatalog.cs" Link="FishCollectionCatalog.cs" />
     <EmbeddedResource Include="..\VERMAXION\Resources\fish-collection.json" LogicalName="VERMAXION.Resources.fish-collection.json" />

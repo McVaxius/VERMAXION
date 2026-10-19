@@ -31,6 +31,11 @@ internal sealed class OceanFishingPositioningModeConverter : Newtonsoft.Json.Jso
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
+    public Beastmaster.BeastmasterSettings Beastmaster { get; set; } = new();
+    public bool BeastmasterSplashVisible { get; set; } = true;
+    public bool BeastmasterSplashExpanded { get; set; }
+    public bool BeastmasterMiniSplashVisible { get; set; } = true;
+    public bool BeastmasterMiniSplashExpanded { get; set; }
     public FishCollectionSettings FishCollection { get; set; } = new();
     public int Version { get; set; } = 1;
     public string UiLanguage { get; set; } = "en";
