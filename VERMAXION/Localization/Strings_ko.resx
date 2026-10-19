@@ -5477,10 +5477,10 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>비스트마스터 주간 도전 과제는 {0} 이후에 예정되어 있습니다.</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>다음 전멸 또는 클리어 후 중지</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>현재 보드 종료 후 중지</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>다음 결과 후 중지 취소</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>일회성 동작: 전멸 시 임무 안에서 중지하고, 클리어 시 보상을 받은 뒤 퇴장합니다.</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>다음 전멸 또는 클리어 후 중지합니다.</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>전멸 후 중지했습니다. 크루시블 안에 머무릅니다.</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>일회성 동작: 사망 후에도 계속하며, 클리어하거나 임무에서 퇴장되면 중지합니다.</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>현재 보드가 끝나면 중지합니다.</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>현재 보드에서 퇴장하여 중지했습니다.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>클리어 후 중지하고 크루시블에서 퇴장했습니다.</value></data>
 </root>

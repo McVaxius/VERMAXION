@@ -365,7 +365,7 @@ internal sealed partial class BeastmasterWindow : Window
         ImGui.EndDisabled();
         UIConstants.SameLineIfFits("Stop");
         if (UIConstants.Button("Stop##Beastmaster")) plugin.StopBeastmaster();
-        var stopNextLabel = service.StopAfterNextOutcome ? "Cancel stop after next outcome" : "Stop after next wipe or clear";
+        var stopNextLabel = service.StopAfterNextOutcome ? "Cancel stop after next outcome" : "Stop after current board";
         UIConstants.SameLineIfFits(stopNextLabel);
         ImGui.BeginDisabled(!service.CanStopAfterNextOutcome && !service.StopAfterNextOutcome);
         if (UIConstants.ButtonWithCaption("StopAfterNextOutcome##Beastmaster", UiText.T(stopNextLabel)))

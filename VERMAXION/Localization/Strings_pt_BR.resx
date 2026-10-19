@@ -2983,10 +2983,10 @@ Dependências: {1}</value></data>
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>Os desafios semanais de Beastmaster não estão previstos antes de {0}.</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Parar após a próxima derrota ou conclusão</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>Parar ao terminar o tabuleiro atual</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>Cancelar parada após o próximo resultado</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Ação única: parar na instância após uma derrota; coletar as recompensas e sair após uma conclusão.</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Parará após a próxima derrota ou conclusão.</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Parado após uma derrota; permanece no Crisol.</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>Ação única: continuar após as mortes; parar após concluir ou ser removido da instância.</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>Parará quando o tabuleiro atual terminar.</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>Parado após sair do tabuleiro atual.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Parado após uma conclusão; saiu do Crisol.</value></data>
 </root>

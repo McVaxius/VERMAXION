@@ -36,8 +36,8 @@ internal sealed partial class BeastmasterWindow
             Icon = FontAwesomeIcon.Clock, Priority = -5, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) plugin.BeastmasterService.ToggleStopAfterNextOutcome(); },
             ShowTooltip = () => MaterialText.SetTooltip(UiText.T(plugin.BeastmasterService.StopAfterNextOutcome
-                ? "Cancel stop after next outcome" : "Stop after next wipe or clear") + "\n" +
-                UiText.T("One-time action: stop in duty on a wipe; collect rewards and exit after a clear.")),
+                ? "Cancel stop after next outcome" : "Stop after current board") + "\n" +
+                UiText.T("One-time action: continue after deaths; stop after a clear or removal from the duty.")),
         });
         owner.TitleBarButtons.Add(new()
         {
@@ -99,7 +99,7 @@ internal sealed partial class BeastmasterWindow
             ? UiText.Beastmaster(service.StatusText) : ready ? UiText.T("Ready to start") : UiText.Beastmaster(blocker);
         var lines = new List<string>();
         if (!string.IsNullOrWhiteSpace(status)) lines.Add(status);
-        if (service.StopAfterNextOutcome) lines.Add(UiText.T("Stopping after the next wipe or clear."));
+        if (service.StopAfterNextOutcome) lines.Add(UiText.T("Stopping when the current board ends."));
         var headline = RunHeadline(ready, includeBoard: true);
         if (!lines.Contains(headline)) lines.Add(headline);
         if (service.HasRunDisplay && service.State is not (BeastmasterService.RunState.Idle or BeastmasterService.RunState.Complete or BeastmasterService.RunState.Failed))

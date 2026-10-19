@@ -5833,10 +5833,10 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>Le sfide settimanali di Beastmaster non sono previste prima di {0}.</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Ferma dopo la prossima sconfitta o conclusione</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>Ferma al termine del tabellone attuale</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>Annulla arresto al prossimo esito</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Azione singola: fermati nell’istanza in caso di sconfitta; raccogli le ricompense ed esci dopo una conclusione.</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Si fermerà dopo la prossima sconfitta o conclusione.</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Fermato dopo una sconfitta; rimane nel Crogiolo.</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>Azione singola: continua dopo le morti; fermati dopo il completamento o l’espulsione dall’istanza.</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>Si fermerà al termine del tabellone attuale.</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>Fermato dopo aver lasciato il tabellone attuale.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Fermato dopo una conclusione; uscito dal Crogiolo.</value></data>
 </root>

@@ -1,3 +1,11 @@
+2026-10-18 - Keep Crewcible messages local and stop at board outcomes
+
+- Suppress shared titlebar status while manual, paused, cleanup or scheduled Crewcible work owns the character. Full and mini Crewcible windows retain their dedicated status renderer.
+- Remove Crewcible engine messages and handoff details from main-window Run/Cancel titlebar tooltips and the Runtime hover. Keep the main Runtime label generic during Crewcible work. Automation ownership, IPC status and task execution are unchanged.
+- Rename the one-time action to Stop after current board. Deaths inside the duty keep the existing revival/retry flow and retain the request. Stop after a result and departure, or an observed departure from an entered board without a clear, including during recovery or an explicit Continue. Do not infer a death limit, grant clear credit or send a completion command for an uncleared exit.
+- Give visible or already-observed results priority over a lingering native death state, preserving reward and Leave handling until departure. An unobserved result is reported as a board exit, without guessing its outcome.
+- Preserve version 2.0.0.17; marker vmx-crewcible-board-outcome-titlebars-20261018-37. Final isolated build passed with zero errors and five inherited warnings; all fifteen locale catalogs and scoped whitespace checks passed; no vmx.bat, shared client build or reload.
+
 2026-10-18 - Crewcible weekly board choices and completion actions
 
 - Choose weekly boards per character in VMX Schedule. Defaults follow unlocked boards; explicit selections persist, and weekly entry, progress and completion use the selected boards while retaining native Challenge Log credit checks.

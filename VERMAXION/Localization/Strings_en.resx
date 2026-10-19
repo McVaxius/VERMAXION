@@ -5833,10 +5833,10 @@ Dependencies: {1}</value>
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>Beastmaster weeklies is not due until {0}.</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Stop after next wipe or clear</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>Stop after current board</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>Cancel stop after next outcome</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>One-time action: stop in duty on a wipe; collect rewards and exit after a clear.</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Stopping after the next wipe or clear.</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Stopped after a wipe; remaining in the Crucible.</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>One-time action: continue after deaths; stop after a clear or removal from the duty.</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>Stopping when the current board ends.</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>Stopped after leaving the current board.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Stopped after a clear; left the Crucible.</value></data>
 </root>

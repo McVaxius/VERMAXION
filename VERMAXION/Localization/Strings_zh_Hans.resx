@@ -5477,10 +5477,10 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>驯兽师每周挑战在{0}之前无需运行。</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>下次团灭或通关后停止</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>当前棋盘结束后停止</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>取消下次结果后停止</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>仅本次：团灭后在副本内停止；通关后领取奖励并退出。</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>将在下次团灭或通关后停止。</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>团灭后已停止；仍留在试炼场内。</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>仅本次：死亡后继续尝试；通关或被移出副本后停止。</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>当前棋盘结束后将停止。</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>已离开当前棋盘，现已停止。</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>通关后已停止；已离开试炼场。</value></data>
 </root>

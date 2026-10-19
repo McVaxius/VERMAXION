@@ -5833,10 +5833,10 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>Еженедельные испытания Beastmaster запланированы не ранее {0}.</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Остановить после следующего поражения или прохождения</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>Остановить после текущего поля</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>Отменить остановку после следующего исхода</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Одноразовое действие: при поражении остановиться в подземелье; после прохождения забрать награды и выйти.</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Остановка после следующего поражения или прохождения.</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Остановлено после поражения; персонаж остаётся в Горниле.</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>Одноразовое действие: продолжать после смертей; остановиться после прохождения или удаления из подземелья.</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>Остановка после завершения текущего поля.</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>Остановлено после выхода с текущего поля.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Остановлено после прохождения; персонаж покинул Горнило.</value></data>
 </root>

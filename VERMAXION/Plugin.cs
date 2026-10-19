@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     internal const string BeastmasterTaskId = "Run##Beastmaster";
     internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
-    private const string DebugAttemptMarker = "vmx-crewcible-weeklies-outcome-controls-20261018-35";
+    private const string DebugAttemptMarker = "vmx-crewcible-board-outcome-titlebars-20261018-37";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -97,6 +97,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private ulong beastmasterOwner;
     internal bool BeastmasterOwnsWork => BeastmasterService?.IsActive == true ||
         BeastmasterService?.IsPaused == true;
+    internal bool CrewcibleOwnsStatus => BeastmasterOwnsWork || Engine.OwnsBeastmasterTask;
     public CactpotService CactpotService { get; init; }
     public ChocoboRaceService ChocoboRaceService { get; init; }
     public FashionReportService FashionReportService { get; init; }
@@ -500,7 +501,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private MaterialTitlebarStatus? TitlebarStatus()
     {
-        if (!Configuration.UiShowTitlebarStatus) return null;
+        if (!Configuration.UiShowTitlebarStatus || CrewcibleOwnsStatus) return null;
         var runtime = BuildAutomationStatus();
         var state = KrangleTitlebarText(UiText.T(runtime.State));
         var progress = runtime.Activity == AutomationActivity.Engine.ToString() && Engine.IsRunning

@@ -2304,10 +2304,10 @@
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>Beastmaster की साप्ताहिक चुनौतियाँ {0} से पहले नियत नहीं हैं।</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>अगली हार या जीत के बाद रोकें</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>मौजूदा बोर्ड खत्म होने पर रोकें</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>अगले परिणाम के बाद रुकना रद्द करें</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>केवल एक बार: हार पर ड्यूटी के अंदर रुकें; जीत पर इनाम लें और बाहर निकलें।</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>अगली हार या जीत के बाद रुक जाएगा।</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>हार के बाद रुक गया; Crucible के अंदर रहेगा।</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>केवल एक बार: मरने के बाद भी जारी रखें; बोर्ड पूरा होने या ड्यूटी से निकाले जाने पर रुकें।</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>मौजूदा बोर्ड खत्म होने पर रुक जाएगा।</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>मौजूदा बोर्ड से बाहर निकलने के बाद रुक गया।</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>जीत के बाद रुक गया; Crucible से बाहर निकल गया।</value></data>
 </root>

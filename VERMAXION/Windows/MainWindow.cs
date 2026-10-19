@@ -95,14 +95,16 @@ public class MainWindow : Window, IDisposable
         {
             Icon = FontAwesomeIcon.Play, Priority = -20, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) RunAll(); },
-            ShowTooltip = () => MaterialText.SetTooltip(UiText.T("Run All") + "\n" + UiText.T(plugin.Engine.StatusText)
-                + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker)),
+            ShowTooltip = () => MaterialText.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Run All")
+                : UiText.T("Run All") + "\n" + UiText.T(plugin.Engine.StatusText)
+                    + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker)),
         });
         TitleBarButtons.Add(new()
         {
             Icon = FontAwesomeIcon.Stop, Priority = -30, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) CancelRun(); },
-            ShowTooltip = () => MaterialText.SetTooltip(UiText.T("Cancel") + "\n" + UiText.T(plugin.Engine.StatusText)),
+            ShowTooltip = () => MaterialText.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Cancel")
+                : UiText.T("Cancel") + "\n" + UiText.T(plugin.Engine.StatusText)),
         });
         TitleBarButtons.Add(new()
         {
@@ -329,9 +331,11 @@ public class MainWindow : Window, IDisposable
             if (ImGui.IsItemHovered()) UiGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
             ImGui.TableNextColumn(); UiGui.TextDisabled("Runtime");
             UiGui.TextColored(engine.RegistryReady ? UIConstants.Mint : UIConstants.Amber,
-                engine.RegistryReady ? UiText.F("Ready / {0}", UiText.T(engine.State.ToString())) : "Blocked");
+                engine.RegistryReady ? plugin.CrewcibleOwnsStatus ? UiText.T("Ready")
+                    : UiText.F("Ready / {0}", UiText.T(engine.State.ToString())) : "Blocked");
             UiGui.TextDisabled(UiText.F("{0} pending", engine.GetPendingTaskCount()));
-            if (ImGui.IsItemHovered()) UiGui.SetTooltip(string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker)));
+            if (ImGui.IsItemHovered()) UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T(engine.RegistryDiagnostic)
+                : string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker)));
         }
 
         void DrawControls()

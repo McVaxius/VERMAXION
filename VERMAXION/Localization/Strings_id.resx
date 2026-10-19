@@ -2983,10 +2983,10 @@ Dependensi: {1}</value></data>
   <data name="Beastmaster weeklies is not due until {0}." xml:space="preserve">
     <value>Tantangan mingguan Beastmaster belum waktunya sampai {0}.</value>
   </data>
-  <data name="Stop after next wipe or clear" xml:space="preserve"><value>Berhenti setelah kalah atau selesai berikutnya</value></data>
+  <data name="Stop after current board" xml:space="preserve"><value>Berhenti setelah papan saat ini berakhir</value></data>
   <data name="Cancel stop after next outcome" xml:space="preserve"><value>Batalkan berhenti setelah hasil berikutnya</value></data>
-  <data name="One-time action: stop in duty on a wipe; collect rewards and exit after a clear." xml:space="preserve"><value>Sekali saja: berhenti di dalam duty saat kalah; ambil hadiah dan keluar setelah selesai.</value></data>
-  <data name="Stopping after the next wipe or clear." xml:space="preserve"><value>Akan berhenti setelah kalah atau selesai berikutnya.</value></data>
-  <data name="Stopped after a wipe; remaining in the Crucible." xml:space="preserve"><value>Berhenti setelah kalah; tetap di dalam Crucible.</value></data>
+  <data name="One-time action: continue after deaths; stop after a clear or removal from the duty." xml:space="preserve"><value>Sekali saja: lanjutkan setelah mati; berhenti setelah selesai atau dikeluarkan dari duty.</value></data>
+  <data name="Stopping when the current board ends." xml:space="preserve"><value>Akan berhenti saat papan ini berakhir.</value></data>
+  <data name="Stopped after leaving the current board." xml:space="preserve"><value>Berhenti setelah keluar dari papan saat ini.</value></data>
   <data name="Stopped after a clear; left the Crucible." xml:space="preserve"><value>Berhenti setelah selesai; sudah keluar dari Crucible.</value></data>
 </root>

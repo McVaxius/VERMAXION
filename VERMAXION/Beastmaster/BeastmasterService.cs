@@ -321,6 +321,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         { Fail("Crucible requires Beastmaster"); return true; }
         if (!IsCrucibleTerritory(Svc.ClientState.TerritoryType) && Svc.Party.Length > 1)
         { Fail("Leave the party before entering the Crucible"); return true; }
+        if (TryStopAfterBoardExit()) return true;
         if (!freshPlan && weeklyActive && (State == RunState.WeeklyVerifying ||
                 State == RunState.Recovering && recoveryState == RunState.WeeklyVerifying))
         {
@@ -458,6 +459,18 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         status = reason;
     }
 
+    private bool TryStopAfterBoardExit()
+    {
+        // An entered route proves this attempt reached a board. Deaths within
+        // that board keep retrying; only an observed departure settles it.
+        if (!StopAfterNextOutcome || route == null || resultSeen || !CanObserveCharacter ||
+            !BeastmasterPlayer.IsValid || IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
+            Svc.Condition[ConditionFlag.BoundByDuty] || Svc.Condition[ConditionFlag.BoundByDuty56] ||
+            !NativeQueueIsIdle()) return false;
+        StopAtRequestedOutcome("Stopped after leaving the current board.");
+        return true;
+    }
+
     internal bool CanFinalizeOrdinaryCompletion => !disposed && State == RunState.Complete &&
         !IsActive && !IsPaused && HasRunDisplay && !displayedWeekly && OutsideCompletionReady(displayedRunCharacter);
 
@@ -531,18 +544,16 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             if (owner != 0) runData = getCharacterData();
             RefreshWeeklyStatus(weeklyRegistered);
             if (!UpdateCleanup()) return;
+            if (TryStopAfterBoardExit()) return;
             if (TryConfirmEntryPrompt()) return;
             if (State == RunState.Refreshing)
             {
                 UpdateFullRefresh();
                 return;
             }
-            if (State == RunState.Running && StopAfterNextOutcome && Svc.Objects.LocalPlayer is { IsDead: true })
-            {
-                StopAtRequestedOutcome("Stopped after a wipe; remaining in the Crucible.");
-                return;
-            }
-            if (State == RunState.Running && Svc.Objects.LocalPlayer is { IsDead: true } && !waitingForRevival)
+            // Results own progression even if the native death state lingers.
+            if (State == RunState.Running && !resultSeen && !CrucibleUi.IsOpen(CrucibleUi.ResultWindow) &&
+                Svc.Objects.LocalPlayer is { IsDead: true } && !waitingForRevival)
             {
                 StopNavigation(); route?.ResetAfterDeath(); menus.Reset(); waitingForRevival = true;
                 Svc.Log.Information("[Beastmaster] Player died; resetting the current fight before revival.");
