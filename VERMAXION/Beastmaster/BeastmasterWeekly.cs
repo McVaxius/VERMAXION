@@ -190,7 +190,7 @@ internal sealed unsafe partial class BeastmasterService
         runSettings!.Board = next.Board;
         weeklyAttempted.Add(next.Board);
         weeklyEnteredBoard = 0;
-        CurrentRun++; travelRequested = false; boardStep = 0; ResultObserved = resultSeen = false;
+        CurrentRun++; boardStep = 0; ResultObserved = resultSeen = false;
         BeginRegistration();
     }
 

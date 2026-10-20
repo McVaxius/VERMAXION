@@ -773,7 +773,12 @@ public sealed partial class VerminionService : IDisposable
                                     ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow)));
                         if (lastResultCredited)
                         {
-                            configManager.SaveCurrentAccount();
+                            if (!configManager.TrySaveAccount(ownerAccount))
+                            {
+                                StopOwnedMovement();
+                                SetState(VerminionState.Failed, "Result observed but its receipt could not be saved. Result screen retained; no continuation requested.");
+                                return;
+                            }
                         }
                         log.Information($"[Verminion] Verified outcome={lastBattleOutcome}; credited={lastResultCredited}; matches={resultProgress.WeeklyMatches}; wins={resultProgress.WeeklyWins}");
                         StopOwnedMovement();
@@ -1268,6 +1273,9 @@ public sealed partial class VerminionService : IDisposable
         // leaves uncertainty to reconcile; reload never replays that request.
         if (config.VerminionProgress.BeginMatch(battleDuty) == 0 || !configManager.TrySaveAccount(ownerAccount))
         { Fail("The player admission could not be saved; no Join requested."); return; }
+        var saved = configManager.GetActiveConfig().VerminionProgress;
+        if (saved.PendingMatch == 0 || saved.PendingDuty != battleDuty || saved.PendingMode != runMode)
+        { Fail("The saved player admission changed during persistence; no Join requested."); return; }
         if (!VerminionGameInteraction.TryJoinPlayerBattle())
         { Fail("The exact sole player selection or enabled Join was unavailable; no match credited."); return; }
         admissionConfirmed = true;

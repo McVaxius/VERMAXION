@@ -1,3 +1,9 @@
+2026-10-19 - Retry idle Crewcible travel to Bentbranch
+
+- Retry the existing Bentbranch travel command at the existing five-second interval while outside the destination, instead of treating one sent command as proof that travel started. Wait while the character is unavailable, occupied or animation-locked, or Lifestream is busy/unreadable.
+- Preserve arrival handling, repair boundaries, Pause/Stop and owned travel cleanup. Remove only the obsolete one-time travel flag and its resets; keep version 2.0.0.17 and shared IPC behavior unchanged.
+- Validation: 22 focused checks of the extracted production method passed with simulated dependencies; the original method reproduces the missed idle retry in the same fixture. Isolated plugin build passed with zero errors and six existing warning messages. Debug metadata for VMX and both UI projects is unchanged; native travel acceptance remains pending. No vmx.bat or client deployment this round.
+
 2026-10-19 - Independent Verminion player activities (I609)
 
 - Add saved PvP Try to win and Throw activities with a configurable verified-match goal, preserving existing CPU enum values and defaults. Use exact native Non-RP duty 199 with owned sole selection, one saved Join intent, ready/Commence, cancellation and reload reconciliation.

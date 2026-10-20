@@ -41,7 +41,6 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private DateTime challengedAt;
     private bool ownsNavigation;
     private bool ownsTravel;
-    private bool travelRequested;
     private bool resultSeen;
     private DateTime resultReadStarted;
     private bool resultRanksObserved;
@@ -219,7 +218,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         RequestFastRankScan();
         CurrentRun = 1; IsPaused = false; pausedAt = default; ResultObserved = false; resultSeen = false; BoardRunCompleted = false;
         RememberRunDisplay(weekly: false);
-        travelRequested = false; boardStep = 0; waitingForRevival = false; menus.Reset();
+        boardStep = 0; waitingForRevival = false; menus.Reset();
         var observedEntry = new BeastmasterEntryAttempt(owner, Settings.Board);
         if (!IsCrucibleTerritory(Svc.ClientState.TerritoryType) &&
             (QueueMatches(observedEntry) || CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true)))
@@ -536,7 +535,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private void BeginRegistrationAfterRepair()
     {
         if (!PrepareEntryObservation(out var entryReason)) { Fail(entryReason); return; }
-        teamSetup.Start(Settings.TeamMode); boardStep = 0; travelRequested = false;
+        teamSetup.Start(Settings.TeamMode); boardStep = 0;
         ownershipNotebookRequested = false;
         registrationReadRecovery.Reset(); lastReadFailure = string.Empty;
         Transition(Svc.ClientState.TerritoryType == LaudaTerritory ? RunState.OpeningBoard : RunState.Travelling,
@@ -738,12 +737,16 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             if (ownsTravel && (!travel.TryReadBusy(out var busy) || busy)) return;
             ownsTravel = false; Transition(RunState.OpeningBoard, "Approaching Lauda"); return;
         }
-        if (travelRequested || DateTime.UtcNow < nextTravel) return;
+        // A void command dispatch does not prove travel started. Recheck idle
+        // state after the existing cooldown until the destination is reached.
+        if (DateTime.UtcNow < nextTravel || !BeastmasterPlayer.IsReady ||
+            Player.IsAnimationLocked || Svc.Condition[ConditionFlag.Occupied] ||
+            !travel.TryReadBusy(out var travelBusy) || travelBusy) return;
         var aetheryte = Svc.Data.GetExcelSheet<Aetheryte>().FirstOrDefault(a => a.Territory.RowId == LaudaTerritory && a.IsAetheryte);
         var destination = aetheryte.PlaceName.Value.Name.ExtractText();
         if (destination.Length == 0) { Fail("No travel destination for Lauda was found"); return; }
         ownsTravel = travel.ExecuteCommand(destination);
-        travelRequested = ownsTravel; nextTravel = DateTime.UtcNow.AddSeconds(5);
+        nextTravel = DateTime.UtcNow.AddSeconds(5);
         if (!ownsTravel) Fail("Travel to Lauda could not start");
     }
 
