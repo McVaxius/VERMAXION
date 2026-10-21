@@ -850,7 +850,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     internal void Recover(string reason) => Fail(reason);
     internal bool CombatReady(out string reason)
         => combat.TrySuspend(out reason);
-    internal bool StartCombat()
+    internal BeastmasterCombat.Target ReadCombatTarget() => combat.ReadTarget();
+    internal bool StartCombat(bool allowAttacks = true)
     {
         if (IsPaused || waitingForRevival || !BeastmasterPlayer.IsCombatReady ||
             Svc.Objects.LocalPlayer is not { IsDead: false } ||
@@ -858,7 +859,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         { SuspendCombat(); return false; }
         StopNavigation();
         if (!NavigationSettled()) { status = "Waiting for owned movement to stop"; return false; }
-        if (combat.TryActivate(out var reason)) return true;
+        if (combat.TryActivate(out var reason, allowAttacks)) return true;
         Fail(reason); return false;
     }
     internal bool SuspendCombat()

@@ -282,6 +282,121 @@ namespace VERMAXION.Tests
             Assert.False(combat.OwnsState);
         }
 
+        [Fact]
+        public void WithholdingAttacksKeepsMovementAndRunOwnershipThenResumesAndRestores()
+        {
+            var provider = new FakeProvider();
+            provider.Current = provider.Current with
+            {
+                AiActive = true, AiMasterSlot = 3, ExternalOverrides = true,
+                IpcOverrides = new object(), TargetingTypeOverride = 2,
+            };
+            var original = provider.Current;
+            var combat = new BeastmasterCombat(provider);
+
+            Assert.True(combat.TryActivate(out var error), error);
+            Assert.Equal(BeastmasterCombat.Mode.Henched, provider.Current.Mode);
+            Assert.True(combat.TryActivate(out error, allowAttacks: false), error);
+            Assert.True(combat.IsRunning);
+            Assert.True(combat.OwnsState);
+            Assert.Equal(BeastmasterCombat.Mode.Off, provider.Current.Mode);
+            Assert.Equal(BeastmasterCombat.PresetName, provider.Current.Preset);
+            Assert.False(provider.Current.ForceDisabled);
+            Assert.False(provider.Current.AiActive);
+
+            // A repeated hold retains movement and never replaces the pre-Start snapshot.
+            Assert.True(combat.TryActivate(out error, allowAttacks: false), error);
+            Assert.True(combat.IsRunning);
+            Assert.True(combat.OwnsState);
+            Assert.Equal(BeastmasterCombat.PresetName, provider.Current.Preset);
+            Assert.False(provider.Current.ForceDisabled);
+            Assert.True(combat.TryActivate(out error), error);
+            Assert.Equal(BeastmasterCombat.Mode.Henched, provider.Current.Mode);
+            Assert.True(combat.IsRunning);
+            Assert.True(combat.TryRelease(out error), error);
+            Assert.False(combat.IsRunning);
+            Assert.False(combat.OwnsState);
+            Assert.Equal(original, provider.Current);
+        }
+
+        [Fact]
+        public void NativeTargetReadUsesBossModResolverAndFreshEncounterState()
+        {
+            var previousInventory = Plugin.PluginInterface.InstalledPlugins;
+            var previousInstances = ECommons.Reflection.DalamudReflector.PluginInstances;
+            var previousAi = BossMod.AI.AIManager.Instance;
+            try
+            {
+                Plugin.PluginInterface.InstalledPlugins = [new("BossModReborn", true)];
+                ECommons.Reflection.DalamudReflector.PluginInstances = new Dictionary<string, object?>
+                {
+                    ["BossModReborn"] = this,
+                };
+                var ai = new BossMod.AI.AIManager();
+                BossMod.AI.AIManager.Instance = ai;
+                var combat = new BeastmasterCombat();
+
+                // Before an encounter starts, the route can still pull a present enemy.
+                Assert.Equal(new BeastmasterCombat.Target(0, true), combat.ReadTarget());
+                ai.Autorot.SelectedTarget = new BossMod.AI.TargetActorFixture(17);
+                Assert.Equal(new BeastmasterCombat.Target(17, true), combat.ReadTarget());
+
+                var module = new BossMod.AI.EncounterModuleFixture();
+                ai.Autorot.Bossmods.ActiveModule = module;
+                Assert.Equal(new BeastmasterCombat.Target(17, true), combat.ReadTarget());
+                module.StateMachine.ActivePhase = new object();
+                ai.Autorot.SelectedTarget = new BossMod.AI.TargetActorFixture(23);
+                Assert.Equal(new BeastmasterCombat.Target(23, false), combat.ReadTarget());
+
+                // A null decision during an active fight must not become a nearest-target fallback.
+                ai.Autorot.SelectedTarget = null;
+                Assert.Equal(new BeastmasterCombat.Target(0, false), combat.ReadTarget());
+                module.StateMachine.ActivePhase = null;
+                Assert.Equal(new BeastmasterCombat.Target(0, true), combat.ReadTarget());
+                Assert.Equal(6, ai.Autorot.ResolverCalls.Count);
+                Assert.All(ai.Autorot.ResolverCalls, call =>
+                {
+                    Assert.Equal(BossMod.AI.TargetStrategyFixture.EnemyWithHighestPriority, call.Strategy);
+                    Assert.Equal(0, call.Selection);
+                });
+            }
+            finally
+            {
+                BossMod.AI.AIManager.Instance = previousAi;
+                Plugin.PluginInterface.InstalledPlugins = previousInventory;
+                ECommons.Reflection.DalamudReflector.PluginInstances = previousInstances;
+            }
+        }
+
+        [Fact]
+        public void NativeTargetReadWithoutBossModPlayerSuppressesPullAndSkipsResolver()
+        {
+            var previousInventory = Plugin.PluginInterface.InstalledPlugins;
+            var previousInstances = ECommons.Reflection.DalamudReflector.PluginInstances;
+            var previousAi = BossMod.AI.AIManager.Instance;
+            try
+            {
+                Plugin.PluginInterface.InstalledPlugins = [new("BossModReborn", true)];
+                ECommons.Reflection.DalamudReflector.PluginInstances = new Dictionary<string, object?>
+                {
+                    ["BossModReborn"] = this,
+                };
+                var ai = new BossMod.AI.AIManager();
+                ai.Autorot.Player = null;
+                ai.Autorot.SelectedTarget = new BossMod.AI.TargetActorFixture(17);
+                BossMod.AI.AIManager.Instance = ai;
+
+                Assert.Equal(default(BeastmasterCombat.Target), new BeastmasterCombat().ReadTarget());
+                Assert.Empty(ai.Autorot.ResolverCalls);
+            }
+            finally
+            {
+                BossMod.AI.AIManager.Instance = previousAi;
+                Plugin.PluginInterface.InstalledPlugins = previousInventory;
+                ECommons.Reflection.DalamudReflector.PluginInstances = previousInstances;
+            }
+        }
+
         private sealed class FakeProvider : BeastmasterCombat.IProvider
         {
             public BeastmasterCombat.State Current = new(new object(), new object(), BeastmasterCombat.Mode.Auto,
@@ -293,6 +408,7 @@ namespace VERMAXION.Tests
             public BeastmasterCombat.Mode? ModeAfterStoppingAi;
             public readonly List<(bool Enabled, int MasterSlot)> AiTransitions = [];
             public BeastmasterCombat.State Read() => Current;
+            public BeastmasterCombat.Target ReadTarget() => default;
             public string ReadPreset() => """
                 {"Name":"passive - melee","Modules":{
                   "BossMod.Autorotation.MiscAI.StayCloseToTarget":[{"Track":"range","Option":"2.3"}],
@@ -347,6 +463,53 @@ namespace VERMAXION.Tests
                 }
             }
         }
+    }
+}
+
+// Public member shapes needed by the native reflection bridge. Target decisions are
+// supplied by each test; this fixture deliberately implements no BMR selection rules.
+namespace BossMod.AI
+{
+    internal sealed class AIManager
+    {
+        public static AIManager? Instance;
+        public readonly AutorotationFixture Autorot = new();
+    }
+
+    internal enum TargetStrategyFixture { None, EnemyWithHighestPriority }
+
+    internal sealed class AutorotationFixture
+    {
+        public object? Player { get; set; } = new object();
+        public readonly BossModuleManagerFixture Bossmods = new();
+        public TargetActorFixture? SelectedTarget { get; set; }
+        public readonly List<(TargetStrategyFixture Strategy, int Selection)> ResolverCalls = [];
+
+        public TargetActorFixture? ResolveTargetOverride(TargetStrategyFixture strategy, int selection)
+        {
+            ResolverCalls.Add((strategy, selection));
+            return SelectedTarget;
+        }
+    }
+
+    internal sealed class BossModuleManagerFixture
+    {
+        public EncounterModuleFixture? ActiveModule { get; set; }
+    }
+
+    internal sealed class EncounterModuleFixture
+    {
+        public readonly StateMachineFixture StateMachine = new();
+    }
+
+    internal sealed class StateMachineFixture
+    {
+        public object? ActivePhase { get; set; }
+    }
+
+    internal sealed class TargetActorFixture(ulong instanceId)
+    {
+        public readonly ulong InstanceID = instanceId;
     }
 }
 

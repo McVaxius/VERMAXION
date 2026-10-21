@@ -1,3 +1,10 @@
+2026-10-21 - Follow BMR encounter targeting throughout Crewcible
+
+- Replace the nearest-enemy target lock on every Crucible board with BMR's existing highest-priority target selection, respecting its encounter target restrictions and shell/add priorities.
+- Preserve automatic opening engagement before an encounter starts. When no eligible target exists, withhold RSR attacks and character autoattacks while BMR movement stays active; keep the encounter running and resume when BMR allows a target. Only advance after the enemies are gone and combat has ended.
+- Guard the autoattack toggle so changing targets cannot turn active autoattacks off, and restore them after a temporary target restriction during combat. Keep the existing provider-state restoration and saved presets unchanged.
+- Validation: all 169 focused Beastmaster/dependency tests passed. Isolated Debug compilation and the subsequently authorized Z:\vmx.bat shared Debug build passed with zero errors and five inherited warnings at unchanged version 2.1.0.2; existing diagnostics are present in all fifteen locales. Native encounter acceptance and Dreadwash interrupt execution remain separate.
+
 2026-10-21 - Correct Beastmaster dependency detection
 
 - Read the main-window dependency inventory directly from Dalamud's loaded plugins, fixing false missing BMR/RSR warnings caused by the incomplete scan list.

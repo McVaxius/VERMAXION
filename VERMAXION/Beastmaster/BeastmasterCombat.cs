@@ -13,6 +13,7 @@ internal sealed class BeastmasterCombat
     internal const string PresetName = "passive - melee";
     internal const string RotationName = "RotationSolver.RebornRotations.Melee.BST_Reborn";
     internal enum Mode : byte { Off, Auto, TargetOnly, Manual, AutoDuty, Henched, PvP }
+    internal readonly record struct Target(ulong InstanceId, bool CanPull);
     internal readonly record struct State(object RotationProvider, object MovementProvider, Mode Mode,
         string? Rotation, bool ExternalOverrides, bool AiActive, string? Preset, bool ForceDisabled)
     {
@@ -24,6 +25,7 @@ internal sealed class BeastmasterCombat
     internal interface IProvider
     {
         State Read();
+        Target ReadTarget();
         string ReadPreset();
         void SetMode(Mode mode);
         void RestoreRotationOverrides(State saved);
@@ -49,10 +51,11 @@ internal sealed class BeastmasterCombat
         catch (Exception ex) { reason = Describe(ex); return false; }
     }
 
-    public bool TryActivate(out string reason) => TryApply(true, out reason);
+    public bool TryActivate(out string reason, bool allowAttacks = true) => TryApply(true, out reason, allowAttacks);
     public bool TrySuspend(out string reason) => TryApply(false, out reason);
+    internal Target ReadTarget() => provider.ReadTarget();
 
-    private bool TryApply(bool running, out string reason)
+    private bool TryApply(bool running, out string reason, bool allowAttacks = true)
     {
         try
         {
@@ -69,7 +72,7 @@ internal sealed class BeastmasterCombat
 
             // Start authorizes control until Stop. Runtime modes and preset selections
             // are state to reconcile, not ownership tokens that can abort the run.
-            if (!running) SetRotation(Mode.Off);
+            if (!running || !allowAttacks) SetRotation(Mode.Off);
             current = provider.Read();
             CheckProviders(current);
             if (current.AiActive)
@@ -88,7 +91,7 @@ internal sealed class BeastmasterCombat
             if (running)
             {
                 SetMovement(PresetName, false);
-                SetRotation(Mode.Henched);
+                SetRotation(allowAttacks ? Mode.Henched : Mode.Off);
             }
             else
             {
@@ -288,6 +291,45 @@ internal sealed class BeastmasterCombat
         public string ReadPreset()
             => Plugin.PluginInterface.GetIpcSubscriber<string, string?>("BossMod.Presets.Get").InvokeFunc(PresetName)
                 ?? throw new InvalidOperationException("BossMod is missing the existing 'passive - melee' preset.");
+
+        public Target ReadTarget()
+        {
+            var bmr = ReadPlugin("BossModReborn", out _);
+            var aiType = bmr.GetType().Assembly.GetType("BossMod.AI.AIManager", true)!;
+            var ai = aiType.GetField("Instance", Static)?.GetValue(null)
+                ?? throw new InvalidOperationException("BossMod AI runtime state is unavailable.");
+            var autorot = aiType.GetField("Autorot", Instance)?.GetValue(ai)
+                ?? throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+            var autorotType = autorot.GetType();
+            var player = autorotType.GetProperty("Player", Instance)
+                ?? throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+            if (player.GetValue(autorot) == null) return default;
+
+            var bossmods = autorotType.GetField("Bossmods", Instance)?.GetValue(autorot)
+                ?? throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+            var activeModule = bossmods.GetType().GetProperty("ActiveModule", Instance)
+                ?? throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+            var module = activeModule.GetValue(bossmods);
+            object? activePhase = null;
+            if (module != null)
+            {
+                var stateMachine = module.GetType().GetField("StateMachine", Instance)?.GetValue(module)
+                    ?? throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+                var phase = stateMachine.GetType().GetProperty("ActivePhase", Instance)
+                    ?? throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+                activePhase = phase.GetValue(stateMachine);
+            }
+
+            // Delegate the decision to BMR itself, including its encounter priorities
+            // and forbidden targets. No encounter-specific rules belong in VMX.
+            var resolve = autorotType.GetMethod("ResolveTargetOverride", Instance)
+                ?? throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+            var strategy = Enum.Parse(resolve.GetParameters()[0].ParameterType, "EnemyWithHighestPriority");
+            var actor = resolve.Invoke(autorot, [strategy, 0]); // StrategyEnemySelection.Closest
+            var targetId = actor == null ? 0UL : actor.GetType().GetField("InstanceID", Instance)?.GetValue(actor) is ulong id ? id
+                : throw new InvalidOperationException("BossMod AI runtime state is incompatible.");
+            return new Target(targetId, activePhase == null);
+        }
 
         public void SetMode(Mode mode)
             => Plugin.PluginInterface.GetIpcSubscriber<byte, object>("RotationSolverReborn.ChangeOperatingMode").InvokeAction((byte)mode);

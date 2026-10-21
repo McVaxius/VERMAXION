@@ -10,6 +10,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.DalamudServices;
 using ECommons.GameFunctions;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Newtonsoft.Json.Linq;
 
 namespace VERMAXION.Beastmaster;
@@ -25,7 +26,6 @@ internal sealed unsafe class BeastmasterRoute
     private bool battleObserved;
     private DateTime stepSince;
     private DateTime movementSince;
-    private ulong bossId;
     private ulong autoAttackTarget;
     private bool recoveringPosition;
     private bool recoveringArena;
@@ -132,34 +132,48 @@ internal sealed unsafe class BeastmasterRoute
 
     private void UpdateBattle()
     {
-        if (Svc.Condition[ConditionFlag.InCombat])
-        {
-            if (!service.StartCombat()) return;
-            battleObserved = true;
-        }
+        var inCombat = Svc.Condition[ConditionFlag.InCombat];
+        if (inCombat) battleObserved = true;
         var playerPosition = Svc.Objects.LocalPlayer!.Position;
         var enemies = NearbyEnemies(playerPosition).ToList();
-        var boss = bossId == 0 ? null : enemies.FirstOrDefault(e => e.GameObjectId == bossId);
-        if (boss == null)
-        {
+        var target = service.ReadCombatTarget();
+        var boss = enemies.FirstOrDefault(e => e.EntityId == target.InstanceId);
+        // BMR normally leaves idle enemies unprioritized. Keep the opening pull,
+        // but never substitute our own target during an active encounter.
+        if (boss == null && target.InstanceId == 0 && target.CanPull && !inCombat)
             boss = enemies.OrderBy(e => Vector3.DistanceSquared(e.Position, playerPosition)).FirstOrDefault();
-            if (boss == null && !battleObserved) return;
-            if (boss != null) bossId = boss.GameObjectId;
+        if (boss == null && (inCombat || enemies.Count > 0))
+        {
+            // No eligible target is not a victory. Keep BMR dodging while RSR
+            // and character autoattacks wait for BMR to allow a target again.
+            if (!service.StartCombat(allowAttacks: false)) return;
+            var ui = UIState.Instance();
+            var actionManager = ActionManager.Instance();
+            if (ui != null && actionManager != null && ui->WeaponState.AutoAttackState.IsAutoAttacking)
+                actionManager->UseAction(ActionType.GeneralAction, 1);
+            Svc.Targets.Target = null;
+            autoAttackTarget = 0;
+            return;
         }
         if (boss != null)
         {
-            Svc.Targets.Target = boss;
+            if (Svc.Targets.Target?.EntityId != boss.EntityId) Svc.Targets.Target = boss;
             // Enable RSR and BMR's approach immediately, including before the
             // first pull. Waiting for combat or three yards from its centre can
             // leave an idle enemy unengaged indefinitely.
             if (!service.StartCombat()) return;
-            if (!Svc.Condition[ConditionFlag.InCombat] && autoAttackTarget != boss.GameObjectId &&
-                ActionManager.Instance()->UseAction(ActionType.GeneralAction, 1, boss.GameObjectId))
-                autoAttackTarget = boss.GameObjectId;
+            if (autoAttackTarget != boss.GameObjectId)
+            {
+                var ui = UIState.Instance();
+                var actionManager = ActionManager.Instance();
+                if (ui != null && actionManager != null && (ui->WeaponState.AutoAttackState.IsAutoAttacking ||
+                    actionManager->UseAction(ActionType.GeneralAction, 1, boss.GameObjectId)))
+                    autoAttackTarget = boss.GameObjectId;
+            }
         }
-        if (battleObserved && !Svc.Condition[ConditionFlag.InCombat] && boss == null)
+        if (battleObserved && !inCombat && enemies.Count == 0)
         {
-            service.StopNavigation(); bossId = 0;
+            service.StopNavigation();
             if (recoveringPosition) service.SuspendCombat();
             else Advance();
         }
@@ -218,5 +232,5 @@ internal sealed unsafe class BeastmasterRoute
 
     private static Vector3 Vector(JToken? token) => token == null ? Vector3.Zero : new(token.Value<float>("X"), token.Value<float>("Y"), token.Value<float>("Z"));
     private void Advance() { Step++; ResetStep(); }
-    private void ResetStep() { started = false; movementStarted = false; positioned = false; battleObserved = false; bossId = autoAttackTarget = 0; }
+    private void ResetStep() { started = false; movementStarted = false; positioned = false; battleObserved = false; autoAttackTarget = 0; }
 }
