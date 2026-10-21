@@ -1412,6 +1412,7 @@ Dependensi: {1}</value></data>
   <data name="{0} extra: {1}." xml:space="preserve"><value>{0} tambahan: {1}.</value></data>
   <data name="{0} fishing stock" xml:space="preserve"><value>Stok memancing {0}</value></data>
   <data name="{0} is disabled for this character." xml:space="preserve"><value>{0} dinonaktifkan untuk karakter ini.</value></data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve"><value>{0} sudah dimuat, tetapi status runtime-nya tidak dapat dibaca.</value></data>
   <data name="{0} is not loaded." xml:space="preserve"><value>{0} belum dimuat.</value></data>
   <data name="{0} lane ({1})" xml:space="preserve"><value>Jalur {0} ({1})</value></data>
   <data name="{0} missing: {1}." xml:space="preserve"><value>{0} belum ada: {1}.</value></data>

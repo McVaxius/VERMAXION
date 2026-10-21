@@ -1412,6 +1412,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="{0} extra: {1}." xml:space="preserve"><value>{0} fazladan: {1}.</value></data>
   <data name="{0} fishing stock" xml:space="preserve"><value>{0} balıkçılık stoku</value></data>
   <data name="{0} is disabled for this character." xml:space="preserve"><value>Bu karakter için {0} devre dışı.</value></data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve"><value>{0} yüklü, ancak çalışma zamanı durumu okunamadı.</value></data>
   <data name="{0} is not loaded." xml:space="preserve"><value>{0} yüklü değil.</value></data>
   <data name="{0} lane ({1})" xml:space="preserve"><value>{0} yolu ({1})</value></data>
   <data name="{0} missing: {1}." xml:space="preserve"><value>{0} eksik: {1}.</value></data>

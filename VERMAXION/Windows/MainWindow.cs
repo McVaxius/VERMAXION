@@ -4,13 +4,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
-using System.Runtime.Loader;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
-using ECommons.Reflection;
 using VERMAXION.Models;
 using VERMAXION.Services;
 using VERMAXION.CustomDeliveries;
@@ -21,26 +18,6 @@ namespace VERMAXION.Windows;
 public class MainWindow : Window, IDisposable
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
-    private static readonly string[] TaskDependencyInternalNames =
-    [
-        "XADatabase",
-        "AutoRetainer",
-        "Lifestream",
-        "AutoHook",
-        "vnavmesh",
-        "YesAlready",
-        "ADS",
-        "Saucy",
-        "TextAdvance",
-        "XASlave",
-        "QSTCompanion",
-        "LootGoblin",
-        "mom",
-        "dad",
-        "Artisan",
-        "WigglyQuest",
-    ];
-
     private static readonly string[] RetainerBellSessionAddonNames =
     [
         "RetainerList",
@@ -1030,31 +1007,10 @@ public class MainWindow : Window, IDisposable
 
 
     private static HashSet<string> GetLoadedTaskDependencyNames()
-    {
-        var loaded = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var internalName in TaskDependencyInternalNames)
-        {
-            try
-            {
-                if (DalamudReflector.TryGetDalamudPlugin(
-                        internalName,
-                        out object pluginInstance,
-                        out AssemblyLoadContext? _,
-                        true,
-                        true) &&
-                    pluginInstance != null)
-                {
-                    loaded.Add(internalName);
-                }
-            }
-            catch
-            {
-                // Dependency status is informational; reflection failures count as not loaded.
-            }
-        }
-
-        return loaded;
-    }
+        => Plugin.PluginInterface.InstalledPlugins
+            .Where(candidate => candidate.IsLoaded)
+            .Select(candidate => candidate.InternalName)
+            .ToHashSet(StringComparer.Ordinal);
 
     private static IReadOnlyList<string> GetTaskDependencies(string task, CharacterConfig config)
     {

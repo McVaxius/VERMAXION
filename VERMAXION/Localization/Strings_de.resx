@@ -3872,6 +3872,9 @@ Saucy löst das eigentliche Minispiel.</value>
   <data name="{0} is disabled for this character." xml:space="preserve">
     <value>{0} ist für diesen Charakter deaktiviert.</value>
   </data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve">
+    <value>{0} ist geladen, aber der Laufzeitzustand konnte nicht gelesen werden.</value>
+  </data>
   <data name="{0} is not loaded." xml:space="preserve">
     <value>{0} ist nicht geladen.</value>
   </data>

@@ -3873,6 +3873,9 @@ Vermaxion は Gold Saucer にテレポし、Cactpot Board へ移動して操作�
   <data name="{0} is disabled for this character." xml:space="preserve">
     <value>このキャラクターでは {0} は無効です。</value>
   </data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve">
+    <value>{0} は読み込まれていますが、実行時の状態を読み取れませんでした。</value>
+  </data>
   <data name="{0} is not loaded." xml:space="preserve">
     <value>{0} が読み込まれていません。</value>
   </data>

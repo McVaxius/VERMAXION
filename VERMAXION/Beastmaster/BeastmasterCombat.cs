@@ -240,11 +240,10 @@ internal sealed class BeastmasterCombat
 
         public State Read()
         {
-            if (DalamudReflector.TryGetDalamudPlugin("BossMod", out object _, out AssemblyLoadContext? _, true, true))
+            if (Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "BossMod"))
                 throw new InvalidOperationException("Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names.");
-            if (!DalamudReflector.TryGetDalamudPlugin("RotationSolver", out object rsr, out AssemblyLoadContext? context, true, true) ||
-                !DalamudReflector.TryGetDalamudPlugin("BossModReborn", out object bmr, out AssemblyLoadContext? _, true, true))
-                throw new InvalidOperationException("Rotation Solver Reborn and BossModReborn must both be loaded.");
+            var rsr = ReadPlugin("RotationSolver", out var context);
+            var bmr = ReadPlugin("BossModReborn", out _);
             var loadContext = context ?? AssemblyLoadContext.GetLoadContext(rsr.GetType().Assembly);
             var basic = loadContext?.Assemblies.FirstOrDefault(a => a.GetName().Name == "RotationSolver.Basic")
                 ?? throw new InvalidOperationException("RSR runtime state is unavailable.");
@@ -315,8 +314,7 @@ internal sealed class BeastmasterCombat
 
         public void SetAiEnabled(bool enabled, int masterSlot)
         {
-            if (!DalamudReflector.TryGetDalamudPlugin("BossModReborn", out object bmr, out AssemblyLoadContext? _, true, true))
-                throw new InvalidOperationException("BossModReborn is no longer loaded.");
+            var bmr = ReadPlugin("BossModReborn", out _);
             var aiType = bmr.GetType().Assembly.GetType("BossMod.AI.AIManager", true)!;
             var ai = aiType.GetField("Instance", Static)?.GetValue(null)
                 ?? throw new InvalidOperationException("BossMod AI runtime state is unavailable.");
@@ -325,6 +323,15 @@ internal sealed class BeastmasterCombat
                 ?? throw new InvalidOperationException("BossMod AI lifecycle controls are unavailable.");
             // These existing BMR operations change runtime behavior, not saved AI preferences.
             method.Invoke(ai, enabled ? [masterSlot] : null);
+        }
+
+        private static object ReadPlugin(string internalName, out AssemblyLoadContext? context)
+        {
+            if (!Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == internalName))
+                throw new InvalidOperationException($"{internalName} is not loaded.");
+            if (!DalamudReflector.TryGetDalamudPlugin(internalName, out object instance, out context, true, true) || instance == null)
+                throw new InvalidOperationException($"{internalName} is loaded, but its runtime state could not be read.");
+            return instance;
         }
 
         private static object? ReadStatic(Type type, string name)

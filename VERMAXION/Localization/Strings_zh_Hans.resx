@@ -3873,6 +3873,9 @@ Vermaxion 会传送至 Gold Saucer，走到 Cactpot Board 并开始交互。
   <data name="{0} is disabled for this character." xml:space="preserve">
     <value>此角色已禁用 {0}。</value>
   </data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve">
+    <value>{0} 已加载，但无法读取其运行时状态。</value>
+  </data>
   <data name="{0} is not loaded." xml:space="preserve">
     <value>{0} 未加载。</value>
   </data>

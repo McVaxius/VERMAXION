@@ -8,6 +8,40 @@ namespace VERMAXION.Tests
 {
     public sealed class BeastmasterCombatTests
     {
+        [Theory]
+        [InlineData("RotationSolver", false, false, "RotationSolver is not loaded.")]
+        [InlineData("BossModReborn", false, false, "BossModReborn is not loaded.")]
+        [InlineData("RotationSolver", true, false, "RotationSolver is loaded, but its runtime state could not be read.")]
+        [InlineData("BossModReborn", true, false, "BossModReborn is loaded, but its runtime state could not be read.")]
+        [InlineData("RotationSolver", true, true, "RotationSolver is loaded, but its runtime state could not be read.")]
+        [InlineData("BossModReborn", true, true, "BossModReborn is loaded, but its runtime state could not be read.")]
+        public void NativeDiscoveryDistinguishesMissingProvidersFromUnreadableRuntime(
+            string name, bool loaded, bool reflectorReturnsNull, string expected)
+        {
+            var previousInventory = Plugin.PluginInterface.InstalledPlugins;
+            var previousInstances = ECommons.Reflection.DalamudReflector.PluginInstances;
+            try
+            {
+                Plugin.PluginInterface.InstalledPlugins = [
+                    new("RotationSolver", name != "RotationSolver" || loaded),
+                    new("BossModReborn", name != "BossModReborn" || loaded),
+                    new("BossMod", false),
+                ];
+                var instances = new Dictionary<string, object?>();
+                if (name == "BossModReborn") instances["RotationSolver"] = new object();
+                if (reflectorReturnsNull) instances[name] = null;
+                ECommons.Reflection.DalamudReflector.PluginInstances = instances;
+
+                Assert.False(BeastmasterCombat.CanStart(out var error));
+                Assert.Equal(expected, error);
+            }
+            finally
+            {
+                Plugin.PluginInterface.InstalledPlugins = previousInventory;
+                ECommons.Reflection.DalamudReflector.PluginInstances = previousInstances;
+            }
+        }
+
         [Fact]
         public void DeathResumeAndPartialFailurePreserveOriginalStateAndUnresolvedOwnership()
         {
@@ -316,7 +350,7 @@ namespace VERMAXION.Tests
     }
 }
 
-// Native provider boundaries are never invoked by this test. Existing test IPC fakes lack this action overload.
+// No live providers are loaded. Existing test IPC fakes lack this action overload.
 namespace VERMAXION.Beastmaster
 {
     internal static class BeastmasterCombatTestIpcAction
@@ -334,8 +368,16 @@ namespace ECommons.Reflection
 {
     internal static class DalamudReflector
     {
+        public static IReadOnlyDictionary<string, object?> PluginInstances { get; set; }
+            = new Dictionary<string, object?>();
+
         public static bool TryGetDalamudPlugin(string name, out object plugin, out AssemblyLoadContext? context,
             bool suppressErrors, bool ignoreCache)
-        { plugin = null!; context = null; return false; }
+        {
+            context = null;
+            var found = PluginInstances.TryGetValue(name, out var instance);
+            plugin = instance!;
+            return found;
+        }
     }
 }

@@ -3873,6 +3873,9 @@ Vermaxion은 Gold Saucer로 순간이동한 뒤 Cactpot Board로 이동하여 �
   <data name="{0} is disabled for this character." xml:space="preserve">
     <value>이 캐릭터에서는 {0} 작업이 비활성화되었습니다.</value>
   </data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve">
+    <value>{0} 플러그인이 로드되었지만 런타임 상태를 읽을 수 없습니다.</value>
+  </data>
   <data name="{0} is not loaded." xml:space="preserve">
     <value>{0} 플러그인이 로드되지 않았습니다.</value>
   </data>

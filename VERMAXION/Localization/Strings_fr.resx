@@ -3876,6 +3876,9 @@ Saucy résout le mini-jeu.</value>
   <data name="{0} is disabled for this character." xml:space="preserve">
     <value>{0} est désactivé pour ce personnage.</value>
   </data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve">
+    <value>{0} est chargé, mais son état d’exécution n’a pas pu être lu.</value>
+  </data>
   <data name="{0} is not loaded." xml:space="preserve">
     <value>{0} n’est pas chargé.</value>
   </data>

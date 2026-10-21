@@ -1412,6 +1412,7 @@ Zależności: {1}</value></data>
   <data name="{0} extra: {1}." xml:space="preserve"><value>{0} nadmiarowe: {1}.</value></data>
   <data name="{0} fishing stock" xml:space="preserve"><value>Zapasy wędkarskie {0}</value></data>
   <data name="{0} is disabled for this character." xml:space="preserve"><value>{0} jest wyłączone dla tej postaci.</value></data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve"><value>{0} jest załadowane, ale nie udało się odczytać jego stanu działania.</value></data>
   <data name="{0} is not loaded." xml:space="preserve"><value>{0} nie jest załadowane.</value></data>
   <data name="{0} lane ({1})" xml:space="preserve"><value>Ścieżka {0} ({1})</value></data>
   <data name="{0} missing: {1}." xml:space="preserve"><value>{0} brakujące: {1}.</value></data>

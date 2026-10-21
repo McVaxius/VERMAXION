@@ -31,6 +31,7 @@ namespace VERMAXION
 
         public string? SavedConfiguration { get; private set; }
         public System.Func<string, object?[], object?>? IpcCall { get; set; }
+        public System.Collections.Generic.IReadOnlyList<TestInstalledPlugin> InstalledPlugins { get; set; } = [];
 
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T> GetIpcSubscriber<T>(string name)
             => new(args => IpcCall!(name, args));
@@ -51,4 +52,6 @@ namespace VERMAXION
             return (T)value;
         }
     }
+
+    internal sealed record TestInstalledPlugin(string InternalName, bool IsLoaded);
 }

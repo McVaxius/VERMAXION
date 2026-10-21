@@ -1,3 +1,9 @@
+2026-10-21 - Correct Beastmaster dependency detection
+
+- Read the main-window dependency inventory directly from Dalamud's loaded plugins, fixing false missing BMR/RSR warnings caused by the incomplete scan list.
+- Check native loaded state before inspecting combat-provider instances. Identify the affected provider and distinguish a missing plugin from loaded but unreadable runtime state, while preserving combat, rotation, preset and ownership checks. Translate the new diagnostic in all fifteen languages.
+- Validation: isolated Debug compilation and all 166 focused Beastmaster/dependency tests passed; all fifteen catalogs parse without duplicate keys. The authorized Z:\vmx.bat build passed with zero errors and five inherited warnings at the unchanged version 2.1.0.1. Native task acceptance remains pending.
+
 2026-10-20 - Independent UI colours
 
 - Add Auto (default) and Picker in Colour and Settings, with independent Background, Controls and Text choices. Preserve the existing automatic palette, saved manual choices, native controls and unrelated settings. Translate the editor in every supported language.

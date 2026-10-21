@@ -1,4 +1,9 @@
+extern alias live;
+extern alias host;
+
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using VERMAXION.Models;
 using Xunit;
 
@@ -6,6 +11,36 @@ namespace VERMAXION.Tests;
 
 public sealed class TaskDependencyPolicyTests
 {
+    [Fact]
+    public void ProductionDashboardRecognizesLoadedCombatProvidersWithoutPrivateInstances()
+    {
+        var pluginInterface = DispatchProxy.Create<host::Dalamud.Plugin.IDalamudPluginInterface, InventoryPluginInterface>();
+        ((InventoryPluginInterface)(object)pluginInterface).Plugins = [
+            InventoryPlugin.Create("RotationSolver", true),
+            InventoryPlugin.Create("BossModReborn", true),
+            InventoryPlugin.Create("vnavmesh", true),
+            InventoryPlugin.Create("Lifestream", false),
+        ];
+        var interfaceProperty = typeof(live::VERMAXION.Plugin).GetProperty("PluginInterface", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var discover = typeof(live::VERMAXION.Windows.MainWindow).GetMethod("GetLoadedTaskDependencyNames", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var previous = interfaceProperty.GetValue(null);
+        try
+        {
+            interfaceProperty.SetValue(null, pluginInterface);
+            var loaded = Assert.IsType<HashSet<string>>(discover.Invoke(null, null));
+            Assert.Equal(3, loaded.Count);
+            Assert.Contains("RotationSolver", loaded);
+            Assert.Contains("BossModReborn", loaded);
+            Assert.Contains("vnavmesh", loaded);
+            Assert.DoesNotContain("Lifestream", loaded);
+            Assert.DoesNotContain("rotationsolver", loaded);
+        }
+        finally
+        {
+            interfaceProperty.SetValue(null, previous);
+        }
+    }
+
     [Fact]
     public void Aggregate_ReportsReadyWhenAllChecksAreReady()
     {
@@ -120,5 +155,36 @@ public sealed class TaskDependencyPolicyTests
         var check = TaskDependencyCheck.Configured("Saucy", accessible, accessible, "Saucy config status");
 
         Assert.Equal(expected, check.State);
+    }
+
+    public class InventoryPluginInterface : DispatchProxy
+    {
+        public host::Dalamud.Plugin.IExposedPlugin[] Plugins { get; set; } = [];
+
+        protected override object? Invoke(MethodInfo? method, object?[]? args)
+            => method?.Name == "get_InstalledPlugins" ? Plugins
+                : throw new InvalidOperationException("Unexpected plugin-interface access.");
+    }
+
+    public class InventoryPlugin : DispatchProxy
+    {
+        public string InternalName { get; set; } = "";
+        public bool IsLoaded { get; set; }
+
+        public static host::Dalamud.Plugin.IExposedPlugin Create(string name, bool loaded)
+        {
+            var plugin = DispatchProxy.Create<host::Dalamud.Plugin.IExposedPlugin, InventoryPlugin>();
+            var inventory = (InventoryPlugin)(object)plugin;
+            inventory.InternalName = name;
+            inventory.IsLoaded = loaded;
+            return plugin;
+        }
+
+        protected override object? Invoke(MethodInfo? method, object?[]? args) => method?.Name switch
+        {
+            "get_InternalName" => InternalName,
+            "get_IsLoaded" => IsLoaded,
+            _ => throw new InvalidOperationException("Unexpected installed-plugin access."),
+        };
     }
 }

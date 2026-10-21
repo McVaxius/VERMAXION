@@ -4120,6 +4120,9 @@ Dependencies: {1}</value>
   <data name="{0} is loaded." xml:space="preserve">
     <value>{0} is loaded.</value>
   </data>
+  <data name="{0} is loaded, but its runtime state could not be read." xml:space="preserve">
+    <value>{0} is loaded, but its runtime state could not be read.</value>
+  </data>
   <data name="{0} is not loaded." xml:space="preserve">
     <value>{0} is not loaded.</value>
   </data>
