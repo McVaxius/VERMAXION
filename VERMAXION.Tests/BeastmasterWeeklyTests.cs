@@ -27,24 +27,76 @@ public sealed class BeastmasterWeeklyTests
         Assert.False(BeastmasterWeeklyPolicy.TryReadCompletion(flags, 105, 104, out _));
     }
 
-    [Fact]
-    public void LoadedOnlyCannotSurviveLoginCharacterChangeResetOrUnknownState()
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    [InlineData(99, false)]
+    public void CurrentNativeLoadedStateDoesNotRequireThePluginToWitnessLoading(int state, bool expected)
     {
         var freshness = new BeastmasterWeeklyFreshness();
-        Assert.False(freshness.Observe(1, true, 1, 0, 1000));
-        Assert.False(freshness.Observe(1, true, 2, 2000, 1000));
-        Assert.False(freshness.Observe(1, true, 1, 2000, 1000));
-        Assert.True(freshness.Observe(1, true, 2, 2000, 1001));
-        Assert.False(freshness.Observe(2, true, 2, 2000, 1002));
-        Assert.False(freshness.Observe(2, true, 0, 2000, 1002));
-        Assert.True(freshness.Observe(2, true, 2, 2000, 1003));
-        Assert.False(freshness.Observe(2, true, 2, 2000, 2000));
-        Assert.False(freshness.Observe(2, true, 2, 3000, 2001));
-        Assert.False(freshness.Observe(2, true, 1, 3000, 2002));
-        Assert.False(freshness.Observe(2, true, 99, 3000, 2003));
-        Assert.False(freshness.Observe(2, true, 2, 3000, 2004));
-        Assert.False(freshness.Observe(0, false, 0, 0, 0));
-        Assert.False(freshness.Observe(2, true, 2, 3000, 2005));
+        Assert.Equal(expected, freshness.Observe(17, true, state, 2000, 1000));
+        Assert.Equal(expected, freshness.Fresh);
+        if (expected)
+        {
+            Assert.Equal(17UL, freshness.Character);
+            Assert.Equal(2000L, freshness.ResetTimestamp);
+        }
+    }
+
+    [Theory]
+    [InlineData(0, true, 2000, 1000)]
+    [InlineData(17, false, 2000, 1000)]
+    [InlineData(17, true, 0, 1000)]
+    [InlineData(17, true, 1000, 1000)]
+    [InlineData(17, true, 999, 1000)]
+    [InlineData(17, true, 605801, 1000)]
+    [InlineData(17, true, 1000, 0)]
+    [InlineData(17, true, 1000, -1)]
+    public void LoadedStateDoesNotOverrideAnUnavailableCharacterOrInvalidReset(
+        ulong character, bool ready, long reset, long now)
+    {
+        var freshness = new BeastmasterWeeklyFreshness();
+        Assert.True(freshness.Observe(17, true, 2, 2000, 1000));
+        Assert.False(freshness.Observe(character, ready, 2, reset, now));
+        Assert.False(freshness.Fresh);
+    }
+
+    [Fact]
+    public void FreshnessFollowsTheCurrentNativeCharacterResetAndLoadState()
+    {
+        var freshness = new BeastmasterWeeklyFreshness();
+        Assert.True(freshness.Observe(17, true, 2, 2000, 1000));
+        Assert.True(freshness.Observe(23, true, 2, 3000, 1001));
+        Assert.Equal(23UL, freshness.Character);
+        Assert.Equal(3000L, freshness.ResetTimestamp);
+
+        Assert.False(freshness.Observe(23, true, 1, 3000, 1002));
+        Assert.False(freshness.Fresh);
+        Assert.True(freshness.Observe(23, true, 2, 3000, 1003));
+        Assert.False(freshness.Observe(23, true, 99, 3000, 1004));
+        Assert.False(freshness.Fresh);
+        Assert.True(freshness.Observe(23, true, 2, 3000, 1005));
+
+        Assert.False(freshness.Observe(23, true, 2, 3000, 3000));
+        Assert.True(freshness.Observe(23, true, 2, 4000, 3001));
+        Assert.Equal(4000L, freshness.ResetTimestamp);
+    }
+
+    [Fact]
+    public void UnregisteredSessionCannotRetainTheCurrentCharactersWeeklyObservation()
+    {
+        var freshness = new BeastmasterWeeklyFreshness();
+        Assert.False(freshness.Observe(17, false, 1, 2000, 1000));
+        Assert.Equal(0UL, freshness.Character);
+        Assert.True(freshness.Observe(17, true, 2, 2000, 1001));
+        Assert.False(freshness.Observe(17, false, 2, 2000, 1003));
+        Assert.False(freshness.Fresh);
+        Assert.Equal(0UL, freshness.Character);
+        Assert.Equal(0L, freshness.ResetTimestamp);
+        Assert.True(freshness.Observe(17, true, 2, 2000, 1004));
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using System;
+using System.Linq;
 using VERMAXION.Beastmaster;
 using VERMAXION.Models;
 using Xunit;
@@ -8,6 +9,88 @@ namespace VERMAXION.Tests;
 
 public sealed class BeastmasterPersistenceTests
 {
+    [Fact]
+    public void PremadePriorityListsMatchTheElevenApprovedOrdersAndFlags()
+    {
+        (string Name, uint[] Prefix, bool ExcludeLate)[] approved =
+        [
+            ("Board 1 - First clear - Standard", [16, 8, 10, 13, 2, 27, 19, 7], false),
+            ("Board 2 - First clear - Standard", [11, 19, 32, 38, 23, 13, 20, 5], false),
+            ("Board 3 - First clear - Standard - Progression roster", [1, 26, 33, 38, 23, 13, 20, 32], true),
+            ("Board 3 - First clear - Standard - Expanded roster", [1, 50, 33, 47, 38, 23, 13, 44], false),
+            ("Board 4 - First clear - Standard", [1, 50, 33, 23, 9, 47, 13, 20], false),
+            ("Board 5 - First clear - Standard", [1, 50, 33, 23, 20, 9, 47, 13], false),
+            ("Board 1 - Farming - All difficulties", [11, 19, 32, 50, 47, 1, 5, 9], false),
+            ("Board 2 - Farming - All difficulties", [11, 19, 32, 20, 23, 5, 9, 50], false),
+            ("Board 3 - Farming - All difficulties", [11, 19, 32, 50, 47, 1, 33, 38], false),
+            ("Board 4 - Farming - All difficulties", [11, 19, 32, 23, 9, 50, 47, 5], false),
+            ("Board 5 - Farming - All difficulties", [11, 19, 32, 23, 50, 20, 9, 47], false),
+        ];
+        var names = BeastTierList.PremadeNames.ToArray();
+        Assert.Equal(11, names.Length);
+        Assert.Equal(approved.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal),
+            names.OrderBy(n => n, StringComparer.Ordinal));
+
+        foreach (var preset in approved)
+        {
+            var list = BeastTierList.CreatePremade(preset.Name);
+            Assert.Equal(preset.Name, list.Name);
+            Assert.Equal(preset.Prefix.Concat(BeastTierList.beastTierListDefault.Except(preset.Prefix)),
+                list.Select(e => e.ID));
+            Assert.Equal(Enumerable.Range(1, 50).Select(id => (uint)id), list.Select(e => e.ID).OrderBy(id => id));
+            Assert.All(list, entry =>
+            {
+                Assert.Equal(preset.ExcludeLate && entry.ID >= 43, entry.PickBlock);
+                Assert.False(entry.BattleBlock);
+            });
+        }
+    }
+
+    [Fact]
+    public void PremadeEditsAndCopiesRemainIndependentAndPersistAsOrdinaryLists()
+    {
+        const string name = "Board 3 - First clear - Standard - Progression roster";
+        var edited = BeastTierList.CreatePremade(name);
+        var pristine = BeastTierList.CreatePremade(name);
+        var other = BeastTierList.CreatePremade("Board 3 - First clear - Standard - Expanded roster");
+        var defaults = BeastTierList.Default();
+        var pristineJson = JsonConvert.SerializeObject(pristine);
+        var otherJson = JsonConvert.SerializeObject(other);
+        var defaultJson = JsonConvert.SerializeObject(defaults);
+        Assert.NotSame(edited, pristine);
+        foreach (var entry in edited)
+        {
+            Assert.NotSame(entry, pristine.Single(e => e.ID == entry.ID));
+            Assert.NotSame(entry, other.Single(e => e.ID == entry.ID));
+            Assert.NotSame(entry, defaults.Single(e => e.ID == entry.ID));
+        }
+
+        edited.Name = "Edited training list";
+        edited.Single(e => e.ID == 43).PickBlock = false;
+        edited[0].BattleBlock = true;
+        edited.Reverse();
+        var copied = edited.Clone();
+        var saved = new BeastmasterSettings { BeastTierLists = [edited] };
+        var restored = JsonConvert.DeserializeObject<BeastmasterSettings>(JsonConvert.SerializeObject(saved))!;
+        var roundTrip = Assert.Single(restored.BeastTierLists);
+        foreach (var independent in new[] { copied, roundTrip })
+        {
+            Assert.Equal(JsonConvert.SerializeObject(edited), JsonConvert.SerializeObject(independent));
+            Assert.NotSame(edited, independent);
+            for (var i = 0; i < edited.Count; i++) Assert.NotSame(edited[i], independent[i]);
+            independent[0].PickBlock = !independent[0].PickBlock;
+            independent.RemoveAt(1);
+        }
+
+        Assert.Equal(50, edited.Count);
+        Assert.Equal(pristineJson, JsonConvert.SerializeObject(pristine));
+        Assert.Equal(otherJson, JsonConvert.SerializeObject(other));
+        Assert.Equal(defaultJson, JsonConvert.SerializeObject(defaults));
+        Assert.Equal(pristineJson, JsonConvert.SerializeObject(BeastTierList.CreatePremade(name)));
+        Assert.Equal(BeastTierList.beastTierListDefault, defaults.Select(e => e.ID));
+        Assert.All(defaults, entry => { Assert.False(entry.PickBlock); Assert.False(entry.BattleBlock); });
+    }
+
     [Fact]
     public void DefaultSettingsPreserveLiveObservationsAndTheActiveRunSnapshot()
     {

@@ -2437,4 +2437,33 @@
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>बिना RP का मैच: पंजीकृत मिनियन बढ़ाएँ, अपने पत्थरों की रक्षा और शत्रु के पत्थरों पर हमला करें। जीत की गारंटी नहीं।</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>बिना RP का मैच: खेल का परिणाम आने तक निष्क्रिय रहें। तैनाती, हमला, रक्षा या आत्मसमर्पण नहीं।</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>कोई भी प्रतिद्वंद्वी; साथी आवश्यक नहीं। शुरू करने से गिनती रीसेट होती है; फिर शुरू करने पर बनी रहती है। केवल खेल के परिणाम गिने जाते हैं। लाइव सत्यापन लंबित।</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>मूल ड्यूटी फ़ाइंडर उपलब्ध नहीं है। Join का अनुरोध नहीं किया गया।</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>Non-RP Verminion ड्यूटी के डेटा की पुष्टि नहीं हो सकी। Join का अनुरोध नहीं किया गया।</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>ड्यूटी फ़ाइंडर में पहले से सक्रिय कतार है; उसे नहीं बदला गया। Join का अनुरोध नहीं किया गया।</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>निष्क्रिय ड्यूटी फ़ाइंडर का चयन सुरक्षित रूप से साफ़ नहीं हो सका। Join का अनुरोध नहीं किया गया।</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>बोर्ड 1 - पहली बार पूरा करना - मानक</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>बोर्ड 2 - पहली बार पूरा करना - मानक</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>बोर्ड 3 - पहली बार पूरा करना - मानक - प्रगति के लिए रोस्टर</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>बोर्ड 3 - पहली बार पूरा करना - मानक - विस्तृत रोस्टर</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>बोर्ड 4 - पहली बार पूरा करना - मानक</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>बोर्ड 5 - पहली बार पूरा करना - मानक</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>बोर्ड 1 - फ़ार्मिंग - सभी कठिनाइयाँ</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>बोर्ड 2 - फ़ार्मिंग - सभी कठिनाइयाँ</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>बोर्ड 3 - फ़ार्मिंग - सभी कठिनाइयाँ</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>बोर्ड 4 - फ़ार्मिंग - सभी कठिनाइयाँ</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>बोर्ड 5 - फ़ार्मिंग - सभी कठिनाइयाँ</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>तैयार सूचियाँ</value></data>
+  <data name="Auto" xml:space="preserve"><value>स्वचालित</value></data>
+  <data name="Picker" xml:space="preserve"><value>चयनकर्ता</value></data>
+  <data name="Default" xml:space="preserve"><value>डिफ़ॉल्ट</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>पृष्ठभूमि, नियंत्रण और पाठ आपकी थीम का पालन करते हैं।</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>थीम का रंग</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>हर रंग अलग से चुनें।</value></data>
+  <data name="Background" xml:space="preserve"><value>पृष्ठभूमि</value></data>
+  <data name="Controls" xml:space="preserve"><value>नियंत्रण</value></data>
+  <data name="Text" xml:space="preserve"><value>पाठ</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  पाठ का पूर्वावलोकन</value></data>
+  <data name="Control" xml:space="preserve"><value>नियंत्रण</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>हर रंग स्वयं तय करने के लिए चयनकर्ता चुनें।</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>स्वचालित थीम के लिए स्वचालित विकल्प चुनें।</value></data>
 </root>

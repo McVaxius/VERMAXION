@@ -4,6 +4,7 @@ using System.Linq;
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using NativeFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 using NoteRow = Lumina.Excel.Sheets.ContentsNote;
 using Lumina.Excel.Sheets;
@@ -20,6 +21,8 @@ internal sealed unsafe partial class BeastmasterService
     private long weeklyRunReset;
     private DateTime weeklyCreditDeadline;
     private uint weeklyEnteredBoard;
+    private DateTime nextWeeklyChallengeLogRequest;
+    private bool ownsWeeklyChallengeLog;
 
     internal bool WeeklyActive => weeklyActive;
     internal DateTime? WeeklyResetUtc => weeklyFreshness.Fresh && weeklyFreshness.ResetTimestamp > 0
@@ -133,17 +136,25 @@ internal sealed unsafe partial class BeastmasterService
         if (!Plugin.CommandManager.Commands.ContainsKey("/vnav")) { reason = "vnavmesh is required for board navigation"; return false; }
         if (!BeastmasterCombat.CanStart(out reason)) return false;
         if (!RunContextReady(out reason)) return false;
+        if (Svc.Objects.LocalPlayer?.ClassJob.Value.Abbreviation.ExtractText() != "BST")
+        { reason = "Crucible requires Beastmaster"; return false; }
         var selected = BeastmasterWeeklyPolicy.SelectedObjectives(settings, weeklyObjectives);
-        if (selected.Count == 0) { reason = "No weekly boards selected."; return false; }
-        if (!weeklyFreshness.Fresh || weeklyObjectives.Count != 5 || selected.Any(row => row.State == BeastmasterWeeklyState.Unavailable))
-        { reason = "Weekly Challenge Log data is unavailable."; return false; }
-        if (!selected.Any(row => row.State == BeastmasterWeeklyState.Unfinished))
+        if (selected.Count == 0 && (settings.WeeklyBoards != null ||
+            weeklyObjectives.Count == 5 && weeklyObjectives.All(row => row.State != BeastmasterWeeklyState.Unavailable)))
+        { reason = "No weekly boards selected."; return false; }
+        if (selected.Count > 0 && !selected.Any(row => row.State is BeastmasterWeeklyState.Unfinished or BeastmasterWeeklyState.Unavailable))
         {
             reason = selected.All(row => row.State == BeastmasterWeeklyState.Complete)
                 ? "Selected weekly challenges are complete."
                 : "No unfinished eligible weekly challenges. Locked or gear-blocked boards remain.";
             return false;
         }
+        // Run acquires unloaded native data before choosing any board. Readiness
+        // must not require a load that only the accepted Run can request.
+        if (!weeklyFreshness.Fresh)
+        { reason = string.Empty; return true; }
+        if (weeklyObjectives.Count != 5 || selected.Count == 0 || selected.Any(row => row.State == BeastmasterWeeklyState.Unavailable))
+        { reason = "Weekly Challenge Log data is unavailable."; return false; }
         reason = string.Empty;
         return true;
     }
@@ -155,21 +166,63 @@ internal sealed unsafe partial class BeastmasterService
         if (!CanStartWeekly(settings, out var reason)) { status = reason; return false; }
         if (!RunContextReady(out reason)) { status = reason; return false; }
         runSettings = BeastmasterWeeklyPolicy.CopySettings(settings);
-        runSettings.WeeklyBoards = BeastmasterWeeklyPolicy.SelectedObjectives(runSettings, weeklyObjectives).Select(row => row.Board).ToHashSet();
         runSettings.Goal = BeastmasterRunGoal.FixedRuns;
         runData = getCharacterData(); owner = Svc.PlayerState.ContentId;
         operatorStopped = false; recoveryAt = default;
         preparedOwned = null;
         runData.EnsureFamiliars(CrucibleTeam.FamiliarSheetDatas.Keys);
-        weeklyActive = true; weeklyRunReset = weeklyFreshness.ResetTimestamp; weeklyAttempted.Clear();
+        weeklyActive = true; weeklyRunReset = 0; weeklyAttempted.Clear();
         CurrentRun = 0; IsPaused = false; pausedAt = default; waitingForRevival = false; ResultObserved = resultSeen = false;
         BoardRunCompleted = false;
         RememberRunDisplay(weekly: true);
         PrepareRunOwnership(out _); // Native registration can finish loading ownership.
         RequestFastRankScan();
         if (!combat.TrySuspend(out var combatReason)) { Fail(combatReason); return true; }
-        BeginNextWeeklyBoard();
+        BeginWeeklyPreparation();
         return weeklyActive;
+    }
+
+    private void BeginWeeklyPreparation()
+    {
+        CloseWeeklyChallengeLog();
+        Transition(RunState.WeeklyPreparing, "Waiting for a fresh Challenge Log load for this character and reset.");
+    }
+
+    private void UpdateWeeklyPreparation()
+    {
+        if (operatorStopped || IsPaused || !weeklyActive || !CanObserveCharacter || !RegistrationPlayerReady) return;
+        if (!weeklyFreshness.Fresh)
+        {
+            var now = DateTime.UtcNow;
+            if (now < nextWeeklyChallengeLogRequest) return;
+            nextWeeklyChallengeLogRequest = now.AddSeconds(5);
+            var module = AgentModule.Instance();
+            var agent = module == null ? null : module->GetAgentByInternalId(AgentId.ContentsNote);
+            if (agent == null) return;
+            ownsWeeklyChallengeLog |= !agent->IsAgentActive();
+            agent->Show();
+            return;
+        }
+        // The native global completion flags need no category selection. An
+        // already-loaded current-character log is usable without reopening it.
+        CloseWeeklyChallengeLog();
+        weeklyRunReset = weeklyFreshness.ResetTimestamp;
+        runSettings!.WeeklyBoards = BeastmasterWeeklyPolicy.SelectedObjectives(Settings, weeklyObjectives)
+            .Select(row => row.Board).ToHashSet();
+        displayedRunLimit = EffectiveRunCount;
+        BeginNextWeeklyBoard();
+    }
+
+    private void CloseWeeklyChallengeLog()
+    {
+        if (ownsWeeklyChallengeLog && CanObserveCharacter)
+        {
+            var module = AgentModule.Instance();
+            var agent = module == null ? null : module->GetAgentByInternalId(AgentId.ContentsNote);
+            if (agent != null && agent->IsAgentActive()) agent->Hide();
+        }
+        ownsWeeklyChallengeLog = false;
+        nextWeeklyChallengeLogRequest = default;
     }
 
     private void BeginNextWeeklyBoard()

@@ -5610,4 +5610,33 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>RPなしの対人戦：登録済みミニオンを補充し、自軍のストーンを守り、敵のストーンを攻撃します。勝利は保証されません。</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>RPなしの対人戦：ゲームの結果が出るまで何もせず待機します。召喚・攻撃・防御・降参は行いません。</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>対戦相手は誰でも可。パートナー不要。開始で試合数をリセットし、再開では保持します。ゲームの結果のみ集計。実機確認は未実施です。</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>標準のコンテンツファインダーを利用できません。参加は要求していません。</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>RP変動なしのヴァーミニオンのコンテンツ情報を確認できませんでした。参加は要求していません。</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>コンテンツファインダーには既に有効な申請があります。変更していません。参加は要求していません。</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>待機中のコンテンツファインダーの選択を安全に解除できませんでした。参加は要求していません。</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>ボード 1 - 初回クリア - 標準</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>ボード 2 - 初回クリア - 標準</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>ボード 3 - 初回クリア - 標準 - 攻略段階の手持ち</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>ボード 3 - 初回クリア - 標準 - 拡充済みの手持ち</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>ボード 4 - 初回クリア - 標準</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>ボード 5 - 初回クリア - 標準</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>ボード 1 - 周回 - 全難易度</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>ボード 2 - 周回 - 全難易度</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>ボード 3 - 周回 - 全難易度</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>ボード 4 - 周回 - 全難易度</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>ボード 5 - 周回 - 全難易度</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>プリセットリスト</value></data>
+  <data name="Auto" xml:space="preserve"><value>自動</value></data>
+  <data name="Picker" xml:space="preserve"><value>ピッカー</value></data>
+  <data name="Default" xml:space="preserve"><value>既定</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>背景、コントロール、テキストはテーマに従います。</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>テーマの色</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>各色を個別に選択します。</value></data>
+  <data name="Background" xml:space="preserve"><value>背景</value></data>
+  <data name="Controls" xml:space="preserve"><value>コントロール</value></data>
+  <data name="Text" xml:space="preserve"><value>テキスト</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  テキストのプレビュー</value></data>
+  <data name="Control" xml:space="preserve"><value>コントロール</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>各色を自分で設定するにはピッカーに切り替えます。</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>自動テーマを使うには「自動」に戻します。</value></data>
 </root>

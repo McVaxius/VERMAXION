@@ -10,50 +10,35 @@ internal enum BeastmasterWeeklyState { Complete, Unfinished, Locked, GearBlocked
 internal sealed record BeastmasterWeeklyObjective(uint Board, uint ContentsNoteRowId, string Name, string BoardName,
     BeastmasterWeeklyState State, string Reason, int MinimumLevel, int MinimumItemLevel, bool Unlocked = true);
 
-// Session-only evidence. A pre-existing Loaded flag is not a fresh load receipt.
+// Session-only native data for the registered current character and reset.
 internal sealed class BeastmasterWeeklyFreshness
 {
     internal ulong Character { get; private set; }
     internal long ResetTimestamp { get; private set; }
     internal bool Fresh { get; private set; }
-    private bool pendingLoad;
 
     internal bool Observe(ulong character, bool ready, int loadState, long nextReset, long now)
     {
         if (!ready || character == 0)
         {
-            Character = 0; ResetTimestamp = 0; Fresh = pendingLoad = false;
+            Character = 0; ResetTimestamp = 0; Fresh = false;
             return false;
         }
         if (Character != character)
         {
-            Character = character; ResetTimestamp = 0; Fresh = pendingLoad = false;
+            Character = character; ResetTimestamp = 0; Fresh = false;
         }
         if (ResetTimestamp != nextReset)
         {
-            // Do not carry a load witness across a known reset epoch.
-            pendingLoad = false;
             ResetTimestamp = nextReset;
             Fresh = false;
         }
         if (nextReset <= now || nextReset - now > 604800 || now <= 0)
         {
-            Fresh = pendingLoad = false;
-            return false;
-        }
-        if (loadState is 0 or 1)
-        {
-            pendingLoad = true;
             Fresh = false;
             return false;
         }
-        if (loadState != 2)
-        {
-            if (loadState != 2) pendingLoad = false;
-            Fresh = false;
-            return false;
-        }
-        if (pendingLoad) { Fresh = true; pendingLoad = false; }
+        Fresh = loadState == 2;
         return Fresh;
     }
 }

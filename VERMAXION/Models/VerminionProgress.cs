@@ -28,6 +28,14 @@ public static class VerminionDutyRules
     public static bool IsCpu(uint duty) => duty is >= 552 and <= 579;
     public static bool IsPlayer(uint duty) => duty is 197 or 198 or PlayerDuty;
     public static bool IsVerminion(uint duty) => IsCpu(duty) || IsPlayer(duty);
+    public static bool MatchesTerritory(uint duty, uint territory) => duty switch
+    {
+        197 => territory == 589,
+        198 => territory == 590,
+        PlayerDuty => territory == 591,
+        >= 552 and <= 579 => territory == 506,
+        _ => false,
+    };
     public static bool IsPlayerMode(VerminionMode mode) => mode is VerminionMode.PvpWin or VerminionMode.PvpThrow;
     public static int ChallengeStage(uint duty) => duty is >= 552 and <= 575 ? (int)duty - 551 : 0;
 

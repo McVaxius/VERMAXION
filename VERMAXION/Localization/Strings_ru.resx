@@ -5966,4 +5966,33 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>Матч без RP: пополнять зарегистрированных питомцев, защищать свои камни и атаковать вражеские. Победа не гарантирована.</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>Матч без RP: оставаться пассивным до результата игры. Без призыва, атаки, защиты или сдачи.</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Любой соперник; партнёр не нужен. Запуск сбрасывает счётчик; продолжение сохраняет его. Учитываются только результаты игры. Проверка в игре ожидается.</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>Встроенный поиск заданий недоступен. Вход не запрошен.</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>Не удалось проверить данные задания Verminion без RP. Вход не запрошен.</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>В поиске заданий уже есть активная очередь; она оставлена без изменений. Вход не запрошен.</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>Не удалось безопасно очистить выбор в неактивном поиске заданий. Вход не запрошен.</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>Поле 1 - Первое прохождение - Стандартный</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>Поле 2 - Первое прохождение - Стандартный</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>Поле 3 - Первое прохождение - Стандартный - Состав для прохождения</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>Поле 3 - Первое прохождение - Стандартный - Расширенный состав</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>Поле 4 - Первое прохождение - Стандартный</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>Поле 5 - Первое прохождение - Стандартный</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>Поле 1 - Фарм - Все уровни сложности</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>Поле 2 - Фарм - Все уровни сложности</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>Поле 3 - Фарм - Все уровни сложности</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>Поле 4 - Фарм - Все уровни сложности</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>Поле 5 - Фарм - Все уровни сложности</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>Готовые списки</value></data>
+  <data name="Auto" xml:space="preserve"><value>Авто</value></data>
+  <data name="Picker" xml:space="preserve"><value>Палитра</value></data>
+  <data name="Default" xml:space="preserve"><value>По умолчанию</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>Фон, элементы управления и текст следуют теме.</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>Цвет темы</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>Выберите каждый цвет отдельно.</value></data>
+  <data name="Background" xml:space="preserve"><value>Фон</value></data>
+  <data name="Controls" xml:space="preserve"><value>Элементы управления</value></data>
+  <data name="Text" xml:space="preserve"><value>Текст</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  Образец текста</value></data>
+  <data name="Control" xml:space="preserve"><value>Кнопка</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>Переключитесь на Палитру, чтобы задать каждый цвет.</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>Вернитесь в Авто, чтобы использовать автоматическую тему.</value></data>
 </root>

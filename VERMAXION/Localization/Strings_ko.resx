@@ -5610,4 +5610,33 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>RP 없는 대전: 등록된 꼬마친구를 보충하고 아군 스톤을 방어하며 적 스톤을 공격합니다. 승리는 보장되지 않습니다.</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>RP 없는 대전: 게임 결과가 나올 때까지 수동적으로 대기합니다. 소환, 공격, 방어, 항복을 하지 않습니다.</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>어떤 상대든 가능하며 파트너가 필요 없습니다. 시작은 횟수를 초기화하고 재개는 유지합니다. 게임 결과만 집계합니다. 실전 검증 대기 중입니다.</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>기본 임무 찾기를 사용할 수 없습니다. 참가를 요청하지 않았습니다.</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>RP 변동 없는 버미니온 임무 정보를 확인하지 못했습니다. 참가를 요청하지 않았습니다.</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>임무 찾기에 이미 진행 중인 대기열이 있어 그대로 두었습니다. 참가를 요청하지 않았습니다.</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>유휴 임무 찾기의 선택을 안전하게 해제하지 못했습니다. 참가를 요청하지 않았습니다.</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>보드 1 - 첫 클리어 - 기본</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>보드 2 - 첫 클리어 - 기본</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>보드 3 - 첫 클리어 - 기본 - 진행용 보유 목록</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>보드 3 - 첫 클리어 - 기본 - 확장 보유 목록</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>보드 4 - 첫 클리어 - 기본</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>보드 5 - 첫 클리어 - 기본</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>보드 1 - 파밍 - 모든 난이도</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>보드 2 - 파밍 - 모든 난이도</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>보드 3 - 파밍 - 모든 난이도</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>보드 4 - 파밍 - 모든 난이도</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>보드 5 - 파밍 - 모든 난이도</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>미리 만든 목록</value></data>
+  <data name="Auto" xml:space="preserve"><value>자동</value></data>
+  <data name="Picker" xml:space="preserve"><value>색상 선택</value></data>
+  <data name="Default" xml:space="preserve"><value>기본값</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>배경, 컨트롤 및 텍스트는 테마를 따릅니다.</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>테마 색상</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>각 색상을 개별적으로 선택하세요.</value></data>
+  <data name="Background" xml:space="preserve"><value>배경</value></data>
+  <data name="Controls" xml:space="preserve"><value>컨트롤</value></data>
+  <data name="Text" xml:space="preserve"><value>텍스트</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  텍스트 미리 보기</value></data>
+  <data name="Control" xml:space="preserve"><value>컨트롤</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>각 색상을 직접 설정하려면 색상 선택으로 전환하세요.</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>자동 테마를 사용하려면 자동으로 돌아가세요.</value></data>
 </root>

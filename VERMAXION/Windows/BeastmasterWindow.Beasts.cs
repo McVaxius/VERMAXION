@@ -219,6 +219,18 @@ internal sealed partial class BeastmasterWindow
                             SaveSettings();
                         }
                     }
+                    ImGui.Separator();
+                    UiGui.TextDisabled(UiText.T("Premade lists"));
+                    foreach (var name in BeastTierList.PremadeNames)
+                    {
+                        if (!UiGui.Selectable("###BeastsPremade" + name, false, UiText.T(name))) continue;
+                        var list = BeastTierList.CreatePremade(name);
+                        list.Name = EditorUniqueName(settings.BeastTierLists, UiText.T(name));
+                        settings.BeastTierLists.Add(list);
+                        settings.BeastTierListIndex = settings.BeastTierLists.Count - 1;
+                        SaveSettings();
+                        break;
+                    }
                 }
                 finally { ImGui.EndCombo(); }
             }
@@ -296,6 +308,9 @@ internal sealed partial class BeastmasterWindow
         var moveFrom = -1;
         var moveTo = -1;
         using var controls = MaterialTable.PushControls();
+        var blockColumnWidth = Math.Max(ImGui.GetFrameHeight(), Math.Max(MaterialText.Measure("E").X, MaterialText.Measure("R").X));
+        const string excludeTooltip = "Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification.";
+        const string reserveTooltip = "Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification.";
         if (!ImGui.BeginTable("##BeastsPriorityRows", 5, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.ScrollX | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingFixedFit, new Vector2(0, height), 490 * scale)) return;
         try
         {
@@ -303,9 +318,28 @@ internal sealed partial class BeastmasterWindow
             ImGui.TableSetupColumn("##Drag", ImGuiTableColumnFlags.WidthFixed, 28 * scale);
             ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 50 * scale);
             ImGui.TableSetupColumn("Familiar", ImGuiTableColumnFlags.WidthStretch, 1);
-            ImGui.TableSetupColumn("Pick Blocked", ImGuiTableColumnFlags.WidthFixed, EditorColumnWidth("Pick Blocked", 92));
-            ImGui.TableSetupColumn("Fight Blocked", ImGuiTableColumnFlags.WidthFixed, EditorColumnWidth("Fight Blocked", 96));
-            UiGui.TableHeadersRow();
+            ImGui.TableSetupColumn("Pick Blocked", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHeaderWidth, blockColumnWidth);
+            ImGui.TableSetupColumn("Fight Blocked", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHeaderWidth, blockColumnWidth);
+            string[] headers = ["", "#", UiText.T("Familiar"), "E", "R"];
+            var headerHeight = Math.Max(ImGui.GetTextLineHeight(), headers.Max(caption => MaterialText.Measure(caption).Y)) + 2 * ImGui.GetStyle().CellPadding.Y;
+            ImGui.TableNextRow(ImGuiTableRowFlags.Headers, headerHeight);
+            for (var column = 0; column < headers.Length; column++)
+            {
+                if (!ImGui.TableSetColumnIndex(column)) continue;
+                var original = ImGui.TableGetColumnName(column);
+                var position = ImGui.GetCursorScreenPos();
+                var available = ImGui.GetContentRegionAvail().X;
+                var drawList = ImGui.GetWindowDrawList();
+                var color = ImGui.GetColorU32(ImGuiCol.Text);
+                ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
+                try { ImGui.TableHeader(original); }
+                finally { ImGui.PopStyleColor(); }
+                MaterialText.AddText(drawList, position, color, headers[column]);
+                if (column == 3) EditorTooltip(UiText.T("Pick Blocked") + "\n" + UiText.T(excludeTooltip));
+                else if (column == 4) EditorTooltip(UiText.T("Fight Blocked") + "\n" + UiText.T(reserveTooltip));
+                else if (headers[column] != original && MaterialText.Measure(headers[column]).X > available - 16 * scale)
+                    EditorTooltip(headers[column]);
+            }
             for (var index = 0; index < active.Count; index++)
             {
                 var row = active[index];
@@ -342,11 +376,11 @@ internal sealed partial class BeastmasterWindow
                     {
                         var pick = row.PickBlock;
                         if (ImGui.Checkbox("##PickBlock", ref pick)) SetBeastsBlock(active, row, pick, false);
-                        EditorTooltip("Pick Blocked prevents automatic team selection. Ctrl-click to change the whole classification.");
+                        EditorTooltip(excludeTooltip);
                         ImGui.TableSetColumnIndex(4);
                         var fight = row.BattleBlock;
                         if (ImGui.Checkbox("##FightBlock", ref fight)) SetBeastsBlock(active, row, fight, true);
-                        EditorTooltip("Fight Blocked keeps this familiar in reserve unless fewer than three unblocked fighters survive. Ctrl-click to change the whole classification.");
+                        EditorTooltip(reserveTooltip);
                     }
                     finally { ImGui.EndDisabled(); }
                 }

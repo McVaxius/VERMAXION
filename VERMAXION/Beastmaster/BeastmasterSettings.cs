@@ -97,6 +97,35 @@ public sealed class BeastTierList : List<BeastTierList.Entry>, IBeastmasterList
         34,21,29,38,3,28,48,33,31,43,5,14,12,45,26,49,1,40,9,42,22,25,32,24,30,
     };
 
+    private static readonly (string Name, uint[] Prefix, bool ExcludeLateBeasts)[] premadeDefinitions =
+    [
+        ("Board 1 - First clear - Standard", [16,8,10,13,2,27,19,7], false),
+        ("Board 2 - First clear - Standard", [11,19,32,38,23,13,20,5], false),
+        ("Board 3 - First clear - Standard - Progression roster", [1,26,33,38,23,13,20,32], true),
+        ("Board 3 - First clear - Standard - Expanded roster", [1,50,33,47,38,23,13,44], false),
+        ("Board 4 - First clear - Standard", [1,50,33,23,9,47,13,20], false),
+        ("Board 5 - First clear - Standard", [1,50,33,23,20,9,47,13], false),
+        ("Board 1 - Farming - All difficulties", [11,19,32,50,47,1,5,9], false),
+        ("Board 2 - Farming - All difficulties", [11,19,32,20,23,5,9,50], false),
+        ("Board 3 - Farming - All difficulties", [11,19,32,50,47,1,33,38], false),
+        ("Board 4 - Farming - All difficulties", [11,19,32,23,9,50,47,5], false),
+        ("Board 5 - Farming - All difficulties", [11,19,32,23,50,20,9,47], false),
+    ];
+
+    public static IEnumerable<string> PremadeNames => premadeDefinitions.Select(definition => definition.Name);
+
+    public static BeastTierList CreatePremade(string name)
+    {
+        var definition = premadeDefinitions.FirstOrDefault(definition => definition.Name == name);
+        if (definition.Name is null) throw new ArgumentException("Unknown premade beast priority list.", nameof(name));
+        var list = new BeastTierList { Name = definition.Name };
+        list.AddRange(definition.Prefix.Select(id => new Entry { ID = id }));
+        list.Complete();
+        if (definition.ExcludeLateBeasts)
+            foreach (var entry in list) entry.PickBlock = entry.ID is >= 43 and <= 50;
+        return list;
+    }
+
     public string Name { get; set; } = "Default";
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public List<Entry> Entries { get => this.ToList(); set { Clear(); AddRange(value); } }

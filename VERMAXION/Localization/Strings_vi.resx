@@ -3116,4 +3116,33 @@ Phụ thuộc: {1}</value></data>
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>Trận không RP: bổ sung thú đã đăng ký, bảo vệ đá đồng minh và tấn công đá địch. Không đảm bảo chiến thắng.</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>Trận không RP: giữ thụ động đến kết quả trò chơi. Không triển khai, tấn công, phòng thủ hay đầu hàng.</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Gặp bất kỳ đối thủ nào; không cần đồng hành. Chạy đặt lại số trận; Tiếp tục giữ nguyên. Chỉ tính kết quả trò chơi. Chưa xác minh trực tiếp.</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>Không thể dùng Duty Finder gốc. Chưa yêu cầu tham gia.</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>Không thể xác minh dữ liệu nhiệm vụ Verminion không RP. Chưa yêu cầu tham gia.</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>Duty Finder đã có hàng chờ hoạt động; hàng chờ được giữ nguyên. Chưa yêu cầu tham gia.</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>Không thể xóa an toàn lựa chọn trong Duty Finder đang rảnh. Chưa yêu cầu tham gia.</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>Bàn đấu 1 - Vượt lần đầu - Tiêu chuẩn</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>Bàn đấu 2 - Vượt lần đầu - Tiêu chuẩn</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>Bàn đấu 3 - Vượt lần đầu - Tiêu chuẩn - Đội hình theo tiến độ</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>Bàn đấu 3 - Vượt lần đầu - Tiêu chuẩn - Đội hình mở rộng</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>Bàn đấu 4 - Vượt lần đầu - Tiêu chuẩn</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>Bàn đấu 5 - Vượt lần đầu - Tiêu chuẩn</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>Bàn đấu 1 - Cày - Mọi độ khó</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>Bàn đấu 2 - Cày - Mọi độ khó</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>Bàn đấu 3 - Cày - Mọi độ khó</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>Bàn đấu 4 - Cày - Mọi độ khó</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>Bàn đấu 5 - Cày - Mọi độ khó</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>Danh sách tạo sẵn</value></data>
+  <data name="Auto" xml:space="preserve"><value>Tự động</value></data>
+  <data name="Picker" xml:space="preserve"><value>Bộ chọn</value></data>
+  <data name="Default" xml:space="preserve"><value>Mặc định</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>Nền, điều khiển và văn bản theo chủ đề của bạn.</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>Màu chủ đề</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>Chọn từng màu riêng biệt.</value></data>
+  <data name="Background" xml:space="preserve"><value>Nền</value></data>
+  <data name="Controls" xml:space="preserve"><value>Điều khiển</value></data>
+  <data name="Text" xml:space="preserve"><value>Văn bản</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  Xem trước văn bản</value></data>
+  <data name="Control" xml:space="preserve"><value>Điều khiển</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>Chuyển sang Bộ chọn để tự đặt từng màu.</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>Chuyển về Tự động để dùng chủ đề tự động.</value></data>
 </root>

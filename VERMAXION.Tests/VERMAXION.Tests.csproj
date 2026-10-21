@@ -1,12 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Alias the complete plugin alongside the existing linked contract models. -->
+    <ProjectReference Include="..\VERMAXION\VERMAXION.csproj" Aliases="live" />
+    <Reference Include="Dalamud;Dalamud.Common;Dalamud.Bindings.ImGui;Lumina;Lumina.Excel;FFXIVClientStructs;InteropGenerator.Runtime">
+      <HintPath Condition="'$(DALAMUD_HOME)' == ''">$(appdata)\XIVLauncher\addon\Hooks\dev\%(Identity).dll</HintPath>
+      <HintPath Condition="'$(DALAMUD_HOME)' != ''">$(DALAMUD_HOME)/%(Identity).dll</HintPath>
+      <Aliases>host</Aliases>
+      <Private>true</Private>
+    </Reference>
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterSettings.cs" Link="BeastmasterSettings.cs" />
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterRunSetup.cs" Link="BeastmasterRunSetup.cs" />
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterCharacterData.cs" Link="BeastmasterCharacterData.cs" />

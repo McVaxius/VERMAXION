@@ -40,6 +40,7 @@ public class Configuration : IPluginConfiguration
     public int Version { get; set; } = 1;
     public string UiLanguage { get; set; } = "en";
     public uint UiAccentRgb { get; set; } = 0x00C6DF;
+    public AethertekUI.MaterialColorSettings UiColors { get; set; } = new();
 
     // --- Global UI Settings ---
     public bool Enabled { get; set; } = true;

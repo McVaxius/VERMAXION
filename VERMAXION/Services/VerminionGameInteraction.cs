@@ -174,7 +174,8 @@ internal static unsafe class VerminionGameInteraction
     {
         var id = VERMAXION.Models.VerminionDutyRules.PlayerDuty;
         if (!Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().TryGetRow(id, out var row)
-            || row.ShortCode.ToString() != "s1p3_4" || row.ContentType.RowId != 19 || row.TerritoryType.RowId != 506)
+            || row.ShortCode.ToString() != "s1p3_4" || row.ContentType.RowId != 19
+            || !VERMAXION.Models.VerminionDutyRules.MatchesTerritory(id, row.TerritoryType.RowId))
             return string.Empty;
         var name = row.Name.ToString();
         // Finder rows omit the LoVM prefix in clients that include it in CFC names.
@@ -182,18 +183,38 @@ internal static unsafe class VerminionGameInteraction
         return colon >= 0 ? name[(colon + 1)..].Trim() : name;
     }
 
-    public static bool OpenPlayerFinder()
+    public static bool OpenPlayerFinder(out string failure)
     {
         var agent = AgentContentsFinder.Instance();
         var finder = ContentsFinder.Instance();
-        if (agent == null || finder == null || PlayerBattleLabel().Length == 0
-            || finder->QueueInfo.QueueState != ContentsFinderQueueState.None
-            || GameHelpers.IsAddonVisible("ContentsFinder")) return false;
-        foreach (var selected in agent->SelectedContent)
-            if (selected.ContentType != ContentsType.Regular || selected.Id != VERMAXION.Models.VerminionDutyRules.PlayerDuty)
-                return false;
+        failure = string.Empty;
+        if (agent == null || finder == null)
+        { failure = "The native Duty Finder is unavailable. No Join requested."; return false; }
+        if (PlayerBattleLabel().Length == 0)
+        { failure = "The Non-RP Verminion duty metadata could not be verified. No Join requested."; return false; }
+        if (finder->QueueInfo.QueueState != ContentsFinderQueueState.None)
+        {
+            Plugin.Log.Information($"[Verminion] Player entry blocked by native queue state {finder->QueueInfo.QueueState}");
+            failure = "Duty Finder already has an active queue; it was left untouched. No Join requested.";
+            return false;
+        }
+        // An already open idle Finder and retained idle selections are normal.
+        // Opening a row is not Join; selection is cleared/verified by the owned
+        // service before it saves an admission and requests the one Join.
         agent->OpenRegularDuty(VERMAXION.Models.VerminionDutyRules.PlayerDuty);
         return true;
+    }
+
+    public static bool ClearIdlePlayerSelection()
+    {
+        var finder = ContentsFinder.Instance();
+        if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.None || !IsPlayerFinder)
+            return false;
+        var agent = AgentContentsFinder.Instance();
+        if (agent->SelectedContent.Count == 0 || HasOnlyPlayerSelection()) return true;
+        var addon = (AddonContentsFinder*)Plugin.GameGui.GetAddonByName("ContentsFinder").Address;
+        return addon->ClearSelectionButton != null && addon->ClearSelectionButton->OwnerNode != null
+            && GameHelpers.TryClickNativeButton("ContentsFinder", null, addon->ClearSelectionButton->OwnerNode->NodeId);
     }
 
     public static bool IsPlayerFinder =>

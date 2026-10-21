@@ -3116,4 +3116,33 @@ Bağımlılıklar: {1}</value></data>
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>RP olmayan maç: kayıtlı minyonları takviye et, dost taşları savun ve düşman taşlarına saldır. Galibiyet garantisi yoktur.</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>RP olmayan maç: oyunun sonucuna kadar pasif kal. Birim çıkarma, saldırı, savunma veya teslim olma yoktur.</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Herhangi bir rakip; eş gerekmez. Başlat sayacı sıfırlar; Sürdür korur. Yalnızca oyun sonuçları sayılır. Canlı doğrulama bekleniyor.</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>Yerel Görev Bulucu kullanılamıyor. Katılma isteği gönderilmedi.</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>RP olmayan Verminion görev verileri doğrulanamadı. Katılma isteği gönderilmedi.</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>Görev Bulucuda zaten etkin bir kuyruk var; değiştirilmedi. Katılma isteği gönderilmedi.</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>Boştaki Görev Bulucu seçimi güvenle temizlenemedi. Katılma isteği gönderilmedi.</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>Tahta 1 - İlk tamamlama - Standart</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>Tahta 2 - İlk tamamlama - Standart</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>Tahta 3 - İlk tamamlama - Standart - İlerleme kadrosu</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>Tahta 3 - İlk tamamlama - Standart - Genişletilmiş kadro</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>Tahta 4 - İlk tamamlama - Standart</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>Tahta 5 - İlk tamamlama - Standart</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>Tahta 1 - Tekrarlı koşular - Tüm zorluklar</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>Tahta 2 - Tekrarlı koşular - Tüm zorluklar</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>Tahta 3 - Tekrarlı koşular - Tüm zorluklar</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>Tahta 4 - Tekrarlı koşular - Tüm zorluklar</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>Tahta 5 - Tekrarlı koşular - Tüm zorluklar</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>Hazır listeler</value></data>
+  <data name="Auto" xml:space="preserve"><value>Otomatik</value></data>
+  <data name="Picker" xml:space="preserve"><value>Seçici</value></data>
+  <data name="Default" xml:space="preserve"><value>Varsayılan</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>Arka plan, denetimler ve metin temanızı izler.</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>Tema rengi</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>Her rengi bağımsız olarak seçin.</value></data>
+  <data name="Background" xml:space="preserve"><value>Arka plan</value></data>
+  <data name="Controls" xml:space="preserve"><value>Denetimler</value></data>
+  <data name="Text" xml:space="preserve"><value>Metin</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  Metin önizlemesi</value></data>
+  <data name="Control" xml:space="preserve"><value>Denetim</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>Her rengi ayarlamak için Seçici'ye geçin.</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>Otomatik temayı kullanmak için Otomatik'e dönün.</value></data>
 </root>

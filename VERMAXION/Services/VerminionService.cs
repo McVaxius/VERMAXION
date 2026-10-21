@@ -39,6 +39,7 @@ public sealed partial class VerminionService : IDisposable
     private bool ownsPlayerFinder;
     private bool playerRowSelected;
     private bool playerCheckboxAttempted;
+    private bool playerSelectionPrepared;
     private VerminionSummonTracker playerSummons = new();
     private DateTime playerSummonUtc;
     private bool tournamentTabSelected;
@@ -472,7 +473,9 @@ public sealed partial class VerminionService : IDisposable
         owner = 0;
         ownerAccount = ownerCharacter = string.Empty;
         navigationRequested = false;
-        SetState(VerminionState.Idle, "Idle");
+        // Engine completion cleanup must retain the actionable failure for the
+        // operator. Start/Run/Resume replace it when a new attempt is requested.
+        SetState(VerminionState.Idle, IsFailed ? reason : "Idle");
     }
 
     public void Dispose()
@@ -485,7 +488,7 @@ public sealed partial class VerminionService : IDisposable
     private void OnDutyCompleted(Dalamud.Game.DutyState.IDutyStateEventArgs args)
     {
         if (!IsActive || owner == 0 || Plugin.PlayerState.ContentId != owner ||
-            args.TerritoryType.RowId != 506) return;
+            !VerminionDutyRules.MatchesTerritory(args.ContentFinderCondition.RowId, args.TerritoryType.RowId)) return;
         log.Information($"[VerminionControl] duty completion event; duty={args.ContentFinderCondition.RowId}; no victory inferred");
         VerminionGameInteraction.CaptureBattle("duty completion event");
         VerminionGameInteraction.CaptureSetup();
@@ -798,19 +801,7 @@ public sealed partial class VerminionService : IDisposable
                     }
                     if (IsPlayerBattle)
                     {
-                        if (activeAdmission.PendingMode != runMode)
-                        { Fail("The player admission mode does not match its saved owner; no controls or credit applied."); return; }
-                        if (runMode == VerminionMode.PvpThrow)
-                        {
-                            reason = "PvP Throw: staying passive until the native result";
-                            return;
-                        }
-                        if (!battlefieldRenderingPrepared)
-                        {
-                            VerminionGameInteraction.PrepareBattlefieldRendering();
-                            battlefieldRenderingPrepared = true;
-                        }
-                        UpdateTutorialProof(); // existing verified selection/movement owner
+                        UpdatePlayerBattle(activeAdmission);
                         return;
                     }
                     if (challengeStage == 0)
@@ -1237,10 +1228,10 @@ public sealed partial class VerminionService : IDisposable
 
     private bool BeginPlayerFinder()
     {
-        playerRowSelected = playerCheckboxAttempted = false;
-        ownsPlayerFinder = VerminionGameInteraction.OpenPlayerFinder();
+        playerRowSelected = playerCheckboxAttempted = playerSelectionPrepared = false;
+        ownsPlayerFinder = VerminionGameInteraction.OpenPlayerFinder(out var failure);
         if (!ownsPlayerFinder)
-        { Fail("The player Finder could not be opened with an idle queue and unchanged selection. No Join requested."); return false; }
+        { Fail(failure); return false; }
         nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
         SetState(VerminionState.SelectingPlayerBattle, "Selecting Non-RP player matchmaking; any matched opponent");
         return true;
@@ -1252,6 +1243,13 @@ public sealed partial class VerminionService : IDisposable
         if (DateTime.UtcNow < nextInteractionUtc || !VerminionGameInteraction.IsPlayerFinder) return;
         nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
         var label = VerminionGameInteraction.PlayerBattleLabel();
+        if (!playerSelectionPrepared)
+        {
+            if (!VerminionGameInteraction.ClearIdlePlayerSelection())
+            { Fail("The idle Finder selection could not be cleared safely. No Join requested."); return; }
+            playerSelectionPrepared = true;
+            return; // Let the native clear callback settle before selecting.
+        }
         if (!playerRowSelected)
         {
             playerRowSelected = GameHelpers.TrySelectNativeListEntry("ContentsFinder", label);
@@ -1297,6 +1295,23 @@ public sealed partial class VerminionService : IDisposable
             return; // Matchmaking has no artificial short combat/admission timeout.
         }
         if (elapsed > 15) Fail("The owned player queue disappeared without admission; no played match or victory recorded.");
+    }
+
+    private void UpdatePlayerBattle(VerminionProgress activeAdmission)
+    {
+        if (activeAdmission.PendingMode != runMode)
+        { Fail("The player admission mode does not match its saved owner; no controls or credit applied."); return; }
+        if (runMode == VerminionMode.PvpThrow)
+        {
+            reason = "PvP Throw: staying passive until the native result";
+            return;
+        }
+        if (!battlefieldRenderingPrepared)
+        {
+            VerminionGameInteraction.PrepareBattlefieldRendering();
+            battlefieldRenderingPrepared = true;
+        }
+        UpdateTutorialProof(); // existing verified selection/movement owner
     }
 
     private void UpdatePlayerStrategy()

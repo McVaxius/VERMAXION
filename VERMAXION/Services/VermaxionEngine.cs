@@ -755,18 +755,15 @@ public class VermaxionEngine
         // The service refreshes observations before deciding whether the selected work is complete.
         if (weekly)
         {
+            plugin.BeastmasterService.RefreshWeeklyStatus(plugin.IsCharacterRegistered);
             var shared = plugin.GetBeastmasterSettings(config);
             var settings = config.Beastmaster.ScheduledSetup!.ApplyTo(shared);
             var rows = plugin.BeastmasterService.WeeklyObjectives;
             var selected = BeastmasterWeeklyPolicy.SelectedObjectives(settings, rows);
-            if (selected.Count == 0)
-            {
-                if (settings.WeeklyBoards is { Count: 0 } || settings.WeeklyBoards == null &&
-                    rows.Count == 5 && rows.All(row => row.State != BeastmasterWeeklyState.Unavailable))
-                    return TaskEligibility.NotDue("No weekly boards selected.");
-                return TaskEligibility.Blocked("Weekly Challenge Log data is unavailable.");
-            }
-            if (selected.All(row => row.State == BeastmasterWeeklyState.Complete))
+            if (selected.Count == 0 && (settings.WeeklyBoards is { Count: 0 } || settings.WeeklyBoards == null &&
+                rows.Count == 5 && rows.All(row => row.State != BeastmasterWeeklyState.Unavailable)))
+                return TaskEligibility.NotDue("No weekly boards selected.");
+            if (selected.Count > 0 && selected.All(row => row.State == BeastmasterWeeklyState.Complete))
                 return TaskEligibility.NotDue("Selected weekly challenges are complete.");
         }
         return plugin.CanStartScheduledBeastmaster(weekly, out var reason)

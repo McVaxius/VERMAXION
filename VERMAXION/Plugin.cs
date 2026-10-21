@@ -81,6 +81,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private string appliedLanguage = "";
     private uint appliedAccent;
     private Vector3 accentDraft;
+    private MaterialColorSettings colorDraft = new();
+    private MaterialColorSettings? appliedSavedColors;
+    private MaterialColorSettings? appliedColors;
     private int checkedFontGeneration = -1;
     private int checkedHindiGeneration = -1;
     private bool fontIssueLogged;
@@ -526,15 +529,21 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         return text;
     }
 
+    private bool DrawColourEditor(string id)
+    {
+        var changed = MaterialAppearanceSelector.DrawColors(id, ref colorDraft, ref accentDraft,
+            new(UiText.T("Color"), UiText.T("Language"), UiText.T("Teal"), UiText.T("Blue"), UiText.T("Pink"), UiText.T("Custom RGB")),
+            new(UiText.T("Auto"), UiText.T("Picker"), UiText.T("Default"), UiText.T("Background, controls and text follow your theme."), UiText.T("Theme colour"), UiText.T("Choose each colour independently."), UiText.T("Background"), UiText.T("Controls"), UiText.T("Text"), UiText.T("Aa  Preview text"), UiText.T("Control"), UiText.T("Switch to Picker to set each colour yourself."), UiText.T("Switch back to Auto to use the automatic theme.")), Configuration.CompactUi ? 298 : 316);
+        if (!changed) return false;
+        Configuration.UiColors = colorDraft;
+        Configuration.UiAccentRgb = MaterialColorSettings.ToRgb(accentDraft);
+        return true;
+    }
+
     private void DrawTitleColour()
     {
         using var controls = MaterialControls.Push(VermaxionPresentation.Controls(28,18));
-        if (!MaterialAppearanceSelector.DrawPalette("titlebar-colour", ref accentDraft,
-            new(UiText.T("Color"), UiText.T("Language"), UiText.T("Teal"), UiText.T("Blue"), UiText.T("Pink"), UiText.T("Custom RGB")))) return;
-        Configuration.UiAccentRgb = ((uint)Math.Clamp((int)MathF.Round(accentDraft.X * 255), 0, 255) << 16)
-            | ((uint)Math.Clamp((int)MathF.Round(accentDraft.Y * 255), 0, 255) << 8)
-            | (uint)Math.Clamp((int)MathF.Round(accentDraft.Z * 255), 0, 255);
-        Configuration.Save();
+        if (DrawColourEditor("titlebar-colour")) Configuration.Save();
     }
 
 
@@ -632,25 +641,30 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             checkedHindiGeneration = -1;
             fontIssueLogged=false;
         }
-        if(uiTheme is null || (Configuration.UiAccentRgb & 0xFFFFFF)!=appliedAccent)
+        var savedColors = Configuration.UiColors ?? new MaterialColorSettings();
+        if (savedColors != appliedSavedColors)
         {
-            appliedAccent=Configuration.UiAccentRgb & 0xFFFFFF;
-            uiTheme=VermaxionPresentation.Theme(appliedAccent);
-            var color=VermaxionPresentation.Rgb(appliedAccent);
-            accentDraft=new(color.X,color.Y,color.Z);
+            colorDraft = savedColors;
+            appliedSavedColors = savedColors;
+        }
+        if (uiTheme is null || appliedAccent != (Configuration.UiAccentRgb & 0xFFFFFF) || colorDraft != appliedColors)
+        {
+            appliedAccent = Configuration.UiAccentRgb & 0xFFFFFF;
+            appliedColors = colorDraft;
+            uiTheme = VermaxionPresentation.Theme(appliedAccent, colorDraft);
+            var color = VermaxionPresentation.Rgb(appliedAccent);
+            accentDraft = new(color.X, color.Y, color.Z);
         }
     }
 
     public void DrawAppearanceSelector()
     {
-        var language=appliedLanguage;
-        using var controls=MaterialControls.Push(VermaxionPresentation.Controls(28,18));
-        var changed=MaterialAppearanceSelector.Draw("appearance",ref accentDraft,ref language,languageOptions,
-            new(UiText.T("Color"),UiText.T("Language"),UiText.T("Teal"),UiText.T("Blue"),UiText.T("Pink"),UiText.T("Custom RGB")), languageWidth: 140);
-        if(changed.AccentChanged) Configuration.UiAccentRgb=((uint)Math.Clamp((int)MathF.Round(accentDraft.X*255),0,255)<<16)
-            |((uint)Math.Clamp((int)MathF.Round(accentDraft.Y*255),0,255)<<8)|(uint)Math.Clamp((int)MathF.Round(accentDraft.Z*255),0,255);
-        if(changed.LanguageChanged) Configuration.UiLanguage=language;
-        if(changed.AccentChanged || changed.LanguageChanged) Configuration.Save();
+        var language = appliedLanguage;
+        using var controls = MaterialControls.Push(VermaxionPresentation.Controls(28,18));
+        var colorChanged = DrawColourEditor("appearance");
+        var languageChanged = MaterialAppearanceSelector.DrawLanguage("appearance", ref language, languageOptions, 140);
+        if (languageChanged) Configuration.UiLanguage = language;
+        if (colorChanged || languageChanged) Configuration.Save();
     }
 
 
@@ -1031,6 +1045,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     internal bool CanStartScheduledBeastmaster(bool weekly, out string reason)
     {
+        BeastmasterService.RefreshWeeklyStatus(IsCharacterRegistered);
         if (!IsCharacterRegistered || !PlayerState.IsLoaded)
         { reason = "Waiting for the current character to be registered and ready."; return false; }
         if (DadHandoffBlocksNewWork || IsFishingRunActive || VerminionService.HasQuestAcquisition)
@@ -1115,6 +1130,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private bool CanStartBeastmaster(bool weekly, out string reason)
     {
+        BeastmasterService.RefreshWeeklyStatus(IsCharacterRegistered);
         if (!IsCharacterRegistered || !PlayerState.IsLoaded)
         { reason = "Waiting for the current character to be registered and ready."; return false; }
         // An explicit current-state action can rebind its loaded character,
@@ -1176,6 +1192,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void UpdateBeastmaster()
     {
+        BeastmasterService.RefreshWeeklyStatus(IsCharacterRegistered);
         if (BeastmasterService.IsActive || BeastmasterService.IsPaused ||
             (IsCharacterRegistered && PlayerState.IsLoaded))
             BeastmasterService.Update();

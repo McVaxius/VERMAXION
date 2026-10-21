@@ -13,6 +13,8 @@ public sealed class UiUxPolicyTests
     {
         var configuration = new Configuration
         {
+            UiColors = new() { Mode = AethertekUI.MaterialColorMode.Picker,
+                BackgroundRgb = 0x123456, ControlsRgb = 0xABCDEF, TextRgb = 0xFEDCBA },
             UiLanguage = "tr",
             CompactUi = true,
             Enabled = false,
@@ -22,6 +24,8 @@ public sealed class UiUxPolicyTests
         var saved = Newtonsoft.Json.JsonConvert.SerializeObject(configuration);
         var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(saved)!;
 
+        Assert.Equal(configuration.UiColors, restored.UiColors);
+        Assert.Equal(AethertekUI.MaterialColorMode.Auto, Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>("{}")!.UiColors.Mode);
         Assert.Equal(configuration.PostProcessTaskOrder, restored.PostProcessTaskOrder);
         Assert.Equal(saved, Newtonsoft.Json.JsonConvert.SerializeObject(restored));
         Assert.Equal(PostProcessTaskOrder.DefaultOrder,

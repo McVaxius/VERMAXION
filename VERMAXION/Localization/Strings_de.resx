@@ -5966,4 +5966,33 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>Spielerkampf ohne RP: Registrierte Begleiter verstärken, eigene Steine verteidigen und gegnerische angreifen. Kein garantierter Sieg.</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>Spielerkampf ohne RP: Bis zum Spielergebnis passiv bleiben. Keine Aufstellung, Angriffe, Verteidigung oder Aufgabe.</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>Beliebiger Gegner; kein Partner nötig. Start setzt den Zähler zurück; Fortsetzen behält ihn. Nur Spielergebnisse zählen. Live-Prüfung ausstehend.</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>Die native Inhaltssuche ist nicht verfügbar. Kein Beitritt angefordert.</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>Die Inhaltsdaten für Non-RP-Verminion konnten nicht bestätigt werden. Kein Beitritt angefordert.</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>In der Inhaltssuche läuft bereits eine Anmeldung; sie wurde nicht verändert. Kein Beitritt angefordert.</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>Die Auswahl der inaktiven Inhaltssuche konnte nicht sicher gelöscht werden. Kein Beitritt angefordert.</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>Spielbrett 1 - Erster Abschluss - Standard</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>Spielbrett 2 - Erster Abschluss - Standard</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>Spielbrett 3 - Erster Abschluss - Standard - Fortschrittskader</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>Spielbrett 3 - Erster Abschluss - Standard - Erweiterter Kader</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>Spielbrett 4 - Erster Abschluss - Standard</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>Spielbrett 5 - Erster Abschluss - Standard</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>Spielbrett 1 - Farmen - Alle Schwierigkeitsgrade</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>Spielbrett 2 - Farmen - Alle Schwierigkeitsgrade</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>Spielbrett 3 - Farmen - Alle Schwierigkeitsgrade</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>Spielbrett 4 - Farmen - Alle Schwierigkeitsgrade</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>Spielbrett 5 - Farmen - Alle Schwierigkeitsgrade</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>Vorgefertigte Listen</value></data>
+  <data name="Auto" xml:space="preserve"><value>Automatisch</value></data>
+  <data name="Picker" xml:space="preserve"><value>Farbwahl</value></data>
+  <data name="Default" xml:space="preserve"><value>Standard</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>Hintergrund, Steuerelemente und Text folgen deinem Design.</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>Designfarbe</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>Wähle jede Farbe unabhängig aus.</value></data>
+  <data name="Background" xml:space="preserve"><value>Hintergrund</value></data>
+  <data name="Controls" xml:space="preserve"><value>Steuerelemente</value></data>
+  <data name="Text" xml:space="preserve"><value>Text</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  Textvorschau</value></data>
+  <data name="Control" xml:space="preserve"><value>Steuerelement</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>Wechsle zur Farbwahl, um jede Farbe selbst festzulegen.</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>Wechsle zurück zu Automatisch, um das automatische Design zu verwenden.</value></data>
 </root>

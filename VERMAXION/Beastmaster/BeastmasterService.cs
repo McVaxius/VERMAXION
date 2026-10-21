@@ -16,7 +16,7 @@ namespace VERMAXION.Beastmaster;
 
 internal sealed unsafe partial class BeastmasterService : IDisposable
 {
-    internal enum RunState { Idle, Refreshing, Travelling, OpeningBoard, SettingTeam, Confirming, WaitingDuty, Running, Leaving, WeeklyVerifying, Recovering, Complete, Failed, Repairing }
+    internal enum RunState { Idle, Refreshing, Travelling, OpeningBoard, SettingTeam, Confirming, WaitingDuty, Running, Leaving, WeeklyVerifying, Recovering, Complete, Failed, Repairing, WeeklyPreparing }
     private readonly Func<BeastmasterSettings> getSettings;
     private readonly Func<BeastmasterCharacterData> getCharacterData;
     private readonly Action save;
@@ -88,6 +88,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             : Svc.Condition[ConditionFlag.InCombat] ? "Fighting" : "Following the Crucible board",
         RunState.Leaving => "Leaving the completed board",
         RunState.WeeklyVerifying => "Waiting for fresh weekly challenge credit.",
+        RunState.WeeklyPreparing => "Waiting for a fresh Challenge Log load for this character and reset.",
         RunState.Recovering => "Recovering",
         RunState.Refreshing => "Refresh beasts",
         RunState.Repairing => "Repairing before entry",
@@ -271,6 +272,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         {
             // Explicit Start selects this character's profile. Old entry and board
             // observations cannot authorize actions or completion on this character.
+            CloseWeeklyChallengeLog();
             CancelOwnedRepair();
             StopNavigation();
             if (ownsTravel) travel.TryAbort();
@@ -300,10 +302,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             {
                 RefreshWeeklyStatus(weeklyRegistered);
                 runSettings.Goal = BeastmasterRunGoal.FixedRuns;
-                runSettings.WeeklyBoards = BeastmasterWeeklyPolicy.SelectedObjectives(runSettings, weeklyObjectives)
-                    .Select(row => row.Board).ToHashSet();
                 runSettings.CompletionCommand = string.Empty;
-                weeklyActive = true; weeklyRunReset = weeklyFreshness.ResetTimestamp;
+                weeklyActive = true; weeklyRunReset = 0;
                 weeklyAttempted.Clear(); CurrentRun = 0;
             }
             else weeklyActive = false;
@@ -360,7 +360,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             BeginRoute(resume: true, preserveMenus: !freshPlan);
             return true;
         }
-        if (weeklyActive && CurrentRun == 0) { BeginNextWeeklyBoard(); return true; }
+        if (weeklyActive && CurrentRun == 0) { BeginWeeklyPreparation(); return true; }
         entryAttempt ??= new BeastmasterEntryAttempt(owner, Settings.Board);
         if (QueueMatches(entryAttempt) || CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true))
         {
@@ -393,7 +393,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (operatorStopped || IsPaused || DateTime.UtcNow < recoveryAt) return;
         recoveryAt = DateTime.UtcNow.AddSeconds(5);
         if (!CanObserveCharacter || !BeastmasterPlayer.IsValid) return;
-        if (weeklyActive && CurrentRun == 0) { BeginNextWeeklyBoard(); return; }
+        if (weeklyActive && CurrentRun == 0) { BeginWeeklyPreparation(); return; }
         if (recoveryState == RunState.WeeklyVerifying && weeklyActive)
         { Transition(RunState.WeeklyVerifying, "Waiting for fresh weekly challenge credit."); VerifyWeeklyCredit(); return; }
         if (resultSeen && !IsCrucibleTerritory(Svc.ClientState.TerritoryType))
@@ -553,7 +553,6 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         try
         {
             if (owner != 0) runData = getCharacterData();
-            RefreshWeeklyStatus(weeklyRegistered);
             if (!UpdateCleanup()) return;
             if (TryStopAfterBoardExit()) return;
             if (TryConfirmEntryPrompt()) return;
@@ -576,6 +575,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                 (State != RunState.Running || IsPaused || !BeastmasterPlayer.IsValid || !combat.IsRunning) &&
                 !SuspendCombat()) return;
             if (IsPaused || !BeastmasterPlayer.IsValid) return;
+            if (State == RunState.WeeklyPreparing) { UpdateWeeklyPreparation(); return; }
             if (State == RunState.Recovering) { RecoverCurrentRun(); return; }
             CrucibleTeam.UpdateCache();
             if (State is RunState.Idle or RunState.Complete or RunState.Failed) return;
@@ -918,6 +918,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private void StopCore()
     {
         operatorStopped = true; recoveryAt = default;
+        CloseWeeklyChallengeLog();
         CancelOwnedRepair();
         if (CanReinspectCurrent && owner != 0 && owner == Svc.PlayerState.ContentId) runData = getCharacterData();
         if (CanObserveCharacter && BeastmasterPlayer.IsValid && !IsCrucibleTerritory(Svc.ClientState.TerritoryType) && entryAttempt == null)

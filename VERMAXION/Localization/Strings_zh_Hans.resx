@@ -5610,4 +5610,33 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win." xml:space="preserve"><value>不计RP的玩家对战：补充已登记宠物，防守己方水晶并攻击敌方水晶。不保证获胜。</value></data>
   <data name="Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit." xml:space="preserve"><value>不计RP的玩家对战：保持被动，等待游戏实际结果。不召唤、攻击、防守或投降。</value></data>
   <data name="Any opponent; no partner needed. Run resets the match count; Resume keeps it. Only native results count. Live verification pending." xml:space="preserve"><value>可匹配任何对手，无需搭档。开始会重置场数，继续会保留。仅计算游戏实际结果。尚待实战验证。</value></data>
+  <data name="The native Duty Finder is unavailable. No Join requested." xml:space="preserve"><value>原生任务搜索器不可用。未请求加入。</value></data>
+  <data name="The Non-RP Verminion duty metadata could not be verified. No Join requested." xml:space="preserve"><value>无法验证非RP变动萌宠之王任务信息。未请求加入。</value></data>
+  <data name="Duty Finder already has an active queue; it was left untouched. No Join requested." xml:space="preserve"><value>任务搜索器已有活动队列，已保持原样。未请求加入。</value></data>
+  <data name="The idle Finder selection could not be cleared safely. No Join requested." xml:space="preserve"><value>无法安全清除空闲任务搜索器中的选择。未请求加入。</value></data>
+  <data name="Board 1 - First clear - Standard" xml:space="preserve"><value>棋盘 1 - 首次通关 - 标准</value></data>
+  <data name="Board 2 - First clear - Standard" xml:space="preserve"><value>棋盘 2 - 首次通关 - 标准</value></data>
+  <data name="Board 3 - First clear - Standard - Progression roster" xml:space="preserve"><value>棋盘 3 - 首次通关 - 标准 - 开荒阵容</value></data>
+  <data name="Board 3 - First clear - Standard - Expanded roster" xml:space="preserve"><value>棋盘 3 - 首次通关 - 标准 - 扩充阵容</value></data>
+  <data name="Board 4 - First clear - Standard" xml:space="preserve"><value>棋盘 4 - 首次通关 - 标准</value></data>
+  <data name="Board 5 - First clear - Standard" xml:space="preserve"><value>棋盘 5 - 首次通关 - 标准</value></data>
+  <data name="Board 1 - Farming - All difficulties" xml:space="preserve"><value>棋盘 1 - 刷取 - 所有难度</value></data>
+  <data name="Board 2 - Farming - All difficulties" xml:space="preserve"><value>棋盘 2 - 刷取 - 所有难度</value></data>
+  <data name="Board 3 - Farming - All difficulties" xml:space="preserve"><value>棋盘 3 - 刷取 - 所有难度</value></data>
+  <data name="Board 4 - Farming - All difficulties" xml:space="preserve"><value>棋盘 4 - 刷取 - 所有难度</value></data>
+  <data name="Board 5 - Farming - All difficulties" xml:space="preserve"><value>棋盘 5 - 刷取 - 所有难度</value></data>
+  <data name="Premade lists" xml:space="preserve"><value>预制列表</value></data>
+  <data name="Auto" xml:space="preserve"><value>自动</value></data>
+  <data name="Picker" xml:space="preserve"><value>选色器</value></data>
+  <data name="Default" xml:space="preserve"><value>默认</value></data>
+  <data name="Background, controls and text follow your theme." xml:space="preserve"><value>背景、控件和文本跟随主题。</value></data>
+  <data name="Theme colour" xml:space="preserve"><value>主题颜色</value></data>
+  <data name="Choose each colour independently." xml:space="preserve"><value>分别选择每种颜色。</value></data>
+  <data name="Background" xml:space="preserve"><value>背景</value></data>
+  <data name="Controls" xml:space="preserve"><value>控件</value></data>
+  <data name="Text" xml:space="preserve"><value>文本</value></data>
+  <data name="Aa  Preview text" xml:space="preserve"><value>Aa  文本预览</value></data>
+  <data name="Control" xml:space="preserve"><value>控件</value></data>
+  <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>切换到选色器以自行设置每种颜色。</value></data>
+  <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>切换回自动以使用自动主题。</value></data>
 </root>

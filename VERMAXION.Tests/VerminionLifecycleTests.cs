@@ -1,4 +1,9 @@
+extern alias live;
+extern alias host;
+
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using VERMAXION.Models;
 using VERMAXION.Services;
@@ -8,6 +13,73 @@ namespace VERMAXION.Tests;
 
 public sealed class VerminionLifecycleTests
 {
+    [Theory]
+    [InlineData(199u, 591u, true)]
+    [InlineData(199u, 506u, false)]
+    [InlineData(197u, 589u, true)]
+    [InlineData(198u, 590u, true)]
+    [InlineData(197u, 591u, false)]
+    [InlineData(198u, 591u, false)]
+    [InlineData(552u, 506u, true)]
+    [InlineData(579u, 506u, true)]
+    [InlineData(552u, 591u, false)]
+    [InlineData(200u, 591u, false)]
+    public void NativeDutyMetadataKeepsPlayerTerritoriesSeparateFromCpu(uint duty, uint territory, bool matches)
+        => Assert.Equal(matches, VerminionDutyRules.MatchesTerritory(duty, territory));
+
+    [Fact]
+    public void ProductionCleanupRetainsActionableAdmissionFailure()
+    {
+        var type = typeof(live::VERMAXION.Services.VerminionService);
+        var service = (live::VERMAXION.Services.VerminionService)RuntimeHelpers.GetUninitializedObject(type);
+        type.GetField("log", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(service,
+            DispatchProxy.Create<host::Dalamud.Plugin.Services.IPluginLog, SilentHostLog>());
+        type.GetProperty("State")!.SetValue(service, live::VERMAXION.Services.VerminionService.VerminionState.Failed);
+        const string failure = "Duty Finder already has a queue; it was left untouched. No Join requested.";
+        type.GetField("reason", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(service, failure);
+        service.Reset();
+        Assert.False(service.IsActive);
+        Assert.False(service.IsFailed);
+        Assert.Equal(failure, type.GetField("reason", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service));
+    }
+
+    public class SilentHostLog : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? method, object?[]? args) => null;
+    }
+
+    [Fact]
+    public void ProductionThrowDispatchNeverTouchesRenderingOrBattleControls()
+    {
+        var type = typeof(live::VERMAXION.Services.VerminionService);
+        var service = (live::VERMAXION.Services.VerminionService)RuntimeHelpers.GetUninitializedObject(type);
+        var mode = live::VERMAXION.Models.VerminionMode.PvpThrow;
+        type.GetField("runMode", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(service, mode);
+        var progress = new live::VERMAXION.Models.VerminionProgress();
+        progress.EnsureRun(mode, 3);
+        var match = progress.BeginMatch(199);
+        Assert.True(match > 0);
+        var dispatch = type.GetMethod("UpdatePlayerBattle", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        // No plugin, native UI, object table, camera or input services exist in
+        // this instance. Any attempt to use a Win/CPU control fails this test.
+        for (var tick = 0; tick < 10; tick++) dispatch.Invoke(service, [progress]);
+        Assert.Equal("PvP Throw: staying passive until the native result",
+            type.GetField("reason", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service));
+        Assert.False((bool)type.GetField("battlefieldRenderingPrepared", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service)!);
+        Assert.Equal(match, progress.PendingMatch);
+        Assert.Equal(0, progress.RunMatches);
+        Assert.Equal(0, progress.RunWins);
+        // Reload retains the admitted mode even if an editor now chooses Win.
+        var saved = JsonConvert.DeserializeObject<live::VERMAXION.Models.VerminionProgress>(JsonConvert.SerializeObject(progress))!;
+        dispatch.Invoke(service, [saved]);
+        Assert.Equal(mode, saved.PendingMode);
+        Assert.True(saved.RecordResult(match, live::VERMAXION.Models.VerminionBattleOutcome.Victory, DateTime.UtcNow));
+        Assert.False(saved.RecordResult(match, live::VERMAXION.Models.VerminionBattleOutcome.Defeat, DateTime.UtcNow));
+        Assert.Equal(1, saved.RunMatches);
+        Assert.Equal(1, saved.RunWins);
+        Assert.Equal(0u, saved.ClearedChallengeMask);
+    }
+
     [Theory]
     [InlineData(VerminionMode.PvpWin)]
     [InlineData(VerminionMode.PvpThrow)]

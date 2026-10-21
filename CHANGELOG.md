@@ -1,3 +1,33 @@
+2026-10-20 - Independent UI colours
+
+- Add Auto (default) and Picker in Colour and Settings, with independent Background, Controls and Text choices. Preserve the existing automatic palette, saved manual choices, native controls and unrelated settings. Translate the editor in every supported language.
+
+2026-10-20 - Add eleven Crewcible beast priority templates
+
+- Offer six Standard first-clear templates and five farming templates in Beasts > Beast priority list > Premade lists. Each farming template covers all four difficulties; Board 3 has separate Progression roster and Expanded roster first-clear choices.
+- Selecting a template creates a uniquely named editable saved list. Keep Default, existing saved lists and the selection on opening unchanged. Preserve the approved order and existing exclusion/reserve flags, including beasts 43-50 excluded only in Board 3 Progression roster. Team selection, rank rules and run settings are unchanged.
+- Translate the template captions in all fifteen languages. Isolated plugin/test compilation passed with zero errors; all 145 focused Beastmaster tests and fifteen locale catalogs passed. VERMAXION and test-project Debug files are unchanged. Native menu acceptance remains pending. No vmx.bat or client deployment.
+
+2026-10-20 - Accept idle Verminion player Finder state (I615)
+
+- Correct Non-RP duty 199 to territory 591; territory 506 belongs to CPU battles. The old metadata guard rejected every supported player entry. Match duty-completion observations to each CPU/player route's territory.
+- Let both player activities open the Non-RP duty from an already visible idle Finder or retained idle selections. Clear idle selections through the native control, then verify the exact sole player duty before saving admission and requesting Join. Leave active queues untouched and explain the specific failed guard.
+- Preserve the admission failure text after engine cleanup. Keep designated Throw players passive before rendering, camera, summons and battle controls; record the actual native result even when the opponent forfeits. Each character selects Win or Throw independently.
+- Extend offline coverage to the compiled service's Throw dispatch alongside existing admission, reload, cancellation and result contracts. Native matchmaking acceptance remains separate.
+- Validation: current published CFC sheets confirm all five CPU/player sample routes. Release compilation passed with zero errors and dependency/native-reader/test-stub warnings; 1,137 tests passed, including 66 Verminion cases. Excluded the unchanged task-order assertion that still expects map gathering immediately after Chocobo Racing despite the existing Beastmaster entries. No live match, client deployment or version change.
+
+2026-10-20 - Give Crewcible beast names more room
+
+- Replace the wide priority-table checkbox captions with E and R, sized to the checkbox and current font. Keep the full translated exclude/reserve meanings on both header and checkbox hovers.
+- Preserve native table/control identities, list editing, saved flags, beast selection and automation behavior. Preset-list contents are being researched for separate review; no premades are added by this change.
+- Validation: isolated compilation passed with zero errors and six inherited warnings at version 2.1.0.0; all fifteen catalogs retain the required hover keys. All 858 Debug files have unchanged metadata. Native rendering/hover acceptance is pending; no vmx.bat or client deployment.
+
+2026-10-20 - Make Beastmaster weekly Run acquire Challenge Log data
+
+- Supply the weekly reader with the host's actual character registration state, including while idle or logged out, so native weekly objectives can become available and old observations are invalidated.
+- Use valid current native Loaded data without requiring VMX to observe an intermediate loading frame. If data is unavailable, weekly Run opens the native Challenge Log and retries every five seconds before choosing boards. Keep native completion flags, current-character/reset checks, selected boards, eligibility and Stop/Pause.
+- Validation: 143 focused Beastmaster tests and 12 extracted host-updater checks passed. Isolated plugin build passed with zero errors and six inherited warnings at the unchanged version 2.1.0.0. All 858 Debug files have unchanged metadata. Native acceptance is pending; no vmx.bat or client deployment.
+
 2026-10-19 - Retry idle Crewcible travel to Bentbranch
 
 - Retry the existing Bentbranch travel command at the existing five-second interval while outside the destination, instead of treating one sent command as proof that travel started. Wait while the character is unavailable, occupied or animation-locked, or Lifestream is busy/unreadable.
