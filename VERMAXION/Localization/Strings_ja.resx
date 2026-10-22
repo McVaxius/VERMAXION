@@ -5642,4 +5642,58 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Control" xml:space="preserve"><value>コントロール</value></data>
   <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>各色を自分で設定するにはピッカーに切り替えます。</value></data>
   <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>自動テーマを使うには「自動」に戻します。</value></data>
+  <data name="Island Sanctuary" xml:space="preserve"><value>無人島開拓</value></data>
+  <data name="Cowrie routine · Activity provider: Calypso · TBD" xml:space="preserve"><value>カウリールーティン · 実行元: Calypso · TBD</value></data>
+  <data name="Calypso integration TBD. Run, Stop and Open Calypso are unavailable. No schedule is created." xml:space="preserve"><value>Calypso連携はTBDです。実行・停止・Calypsoを開く操作は使用できません。予定は作成されません。</value></data>
+  <data name="This character" xml:space="preserve"><value>このキャラクター</value></data>
+  <data name="Enable Island routine" xml:space="preserve"><value>無人島ルーティンを有効にする</value></data>
+  <data name="Default: off for each character." xml:space="preserve"><value>既定: キャラクターごとに無効。</value></data>
+  <data name="Visit cadence" xml:space="preserve"><value>訪問頻度</value></data>
+  <data name="Manual only" xml:space="preserve"><value>手動のみ</value></data>
+  <data name="Saved preference only. Coverage and reset timing remain TBD; no visit is scheduled." xml:space="preserve"><value>保存する設定のみです。対応範囲とリセット時刻はTBDで、訪問は予定されません。</value></data>
+  <data name="Next visit: TBD" xml:space="preserve"><value>次回訪問: TBD</value></data>
+  <data name="Policies live in Calypso" xml:space="preserve"><value>詳細設定はCalypsoで管理</value></data>
+  <data name="Choose the chores here. Configure their detailed rules in Calypso." xml:space="preserve"><value>作業をここで選び、詳細ルールはCalypsoで設定してください。</value></data>
+  <data name="Agenda &amp; overwrite" xml:space="preserve"><value>生産予定と上書き</value></data>
+  <data name="Expedition assignments" xml:space="preserve"><value>探索の割り当て</value></data>
+  <data name="Crop &amp; pasture care" xml:space="preserve"><value>畑と放牧地の世話</value></data>
+  <data name="Material reserves" xml:space="preserve"><value>素材の確保量</value></data>
+  <data name="Seed stock &amp; spending" xml:space="preserve"><value>種の在庫と支出</value></data>
+  <data name="Cowrie limits" xml:space="preserve"><value>カウリー上限</value></data>
+  <data name="Proposed routine" xml:space="preserve"><value>予定ルーティン</value></data>
+  <data name="Both workshop actions share one visit. Refill seeds only when low. All execution remains TBD." xml:space="preserve"><value>工房の2作業は同じ訪問で行います。種は不足時のみ補充します。実行はすべてTBDです。</value></data>
+  <data name="{0}/7 chores selected. Execution TBD." xml:space="preserve"><value>作業を{0}/7件選択。実行はTBD。</value></data>
+  <data name="Construction splash / artwork TBD" xml:space="preserve"><value>建設イラスト: TBD</value></data>
+  <data name="Meteor watching mammets build. Reserved area only; no artwork supplied." xml:space="preserve"><value>メテオが魔法人形の建設を見守る予定の領域です。画像は未用意です。</value></data>
+  <data name="Routine not started" xml:space="preserve"><value>ルーティン未開始</value></data>
+  <data name="Island routine selected. Execution remains TBD." xml:space="preserve"><value>無人島ルーティンを選択済み。実行はTBDです。</value></data>
+  <data name="Island routine off" xml:space="preserve"><value>無人島ルーティンは無効</value></data>
+  <data name="Last completed: Unknown · Next visit: TBD · Chores confirmed: Unknown" xml:space="preserve"><value>前回完了: 不明 · 次回訪問: TBD · 確認済み作業: 不明</value></data>
+  <data name="Required first" xml:space="preserve"><value>最初に必須</value></data>
+  <data name="Only if low" xml:space="preserve"><value>不足時のみ</value></data>
+  <data name="Not selected" xml:space="preserve"><value>未選択</value></data>
+  <data name="TBD" xml:space="preserve"><value>TBD</value></data>
+  <data name="Provider inactivity or a stop request does not prove the routine completed." xml:space="preserve"><value>実行元の停止状態や停止要求だけでは完了を証明できません。</value></data>
+  <data name="Open Calypso" xml:space="preserve"><value>Calypsoを開く</value></data>
+  <data name="Visit island" xml:space="preserve"><value>無人島へ訪問</value></data>
+  <data name="Required first. Island entry remains TBD." xml:space="preserve"><value>最初に必須です。無人島への入場はTBDです。</value></data>
+  <data name="Workshop income" xml:space="preserve"><value>工房の収益</value></data>
+  <data name="Collect earned cowries during the workshop visit." xml:space="preserve"><value>工房訪問時に獲得したカウリーを回収します。</value></data>
+  <data name="Workshop agenda" xml:space="preserve"><value>工房の生産予定</value></data>
+  <data name="At the same workshop stop, use Calypso's plan. Full-week coverage is TBD." xml:space="preserve"><value>同じ工房訪問でCalypsoの計画を使用します。1週間全体の対応はTBDです。</value></data>
+  <data name="Partial" xml:space="preserve"><value>一部対応</value></data>
+  <data name="Granary mammets" xml:space="preserve"><value>グラナリーの魔法人形</value></data>
+  <data name="Collect expedition yields and send the mammets back out." xml:space="preserve"><value>探索の収穫を回収し、魔法人形を再派遣します。</value></data>
+  <data name="Main building: sell excess stock" xml:space="preserve"><value>本館: 余剰在庫を売却</value></data>
+  <data name="Enter the main building and sell under Calypso's reserve rules." xml:space="preserve"><value>本館に入り、Calypsoの確保量ルールに従って売却します。</value></data>
+  <data name="Existing" xml:space="preserve"><value>既存機能</value></data>
+  <data name="Pasture care" xml:space="preserve"><value>放牧地の世話</value></data>
+  <data name="Collect leavings and care for the animals." xml:space="preserve"><value>飼育素材を回収し、動物の世話をします。</value></data>
+  <data name="Crop care" xml:space="preserve"><value>畑の世話</value></data>
+  <data name="Harvest, replant and care for the plants." xml:space="preserve"><value>収穫、植え直し、植物の世話をします。</value></data>
+  <data name="Seed replenishment: only if low" xml:space="preserve"><value>種の補充: 不足時のみ</value></data>
+  <data name="Refill only low seed types under Calypso's stock and spending policy." xml:space="preserve"><value>Calypsoの在庫・支出方針に従い、不足した種だけ補充します。</value></data>
+  <data name="Open Island Sanctuary" xml:space="preserve"><value>無人島開拓を開く</value></data>
+  <data name="Selection" xml:space="preserve"><value>選択</value></data>
+  <data name="Status" xml:space="preserve"><value>状態</value></data>
 </root>

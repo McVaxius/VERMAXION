@@ -64,7 +64,7 @@ public sealed class AutomationCatalogTests
             .OrderBy(name => name)
             .ToList();
 
-        Assert.Equal(31, enableProperties.Count);
+        Assert.Equal(32, enableProperties.Count);
         Assert.Equal(enableProperties, catalogFlags);
         Assert.All(AutomationCatalog.Features, feature => Assert.True(Enum.IsDefined(feature.Owner)));
     }

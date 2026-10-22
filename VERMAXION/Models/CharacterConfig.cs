@@ -61,6 +61,8 @@ public class CharacterConfig
     public bool EnableNagYourDad { get; set; } = false;
     public bool EnableReturnBeforeNag { get; set; } = true;
     public string ReturnBeforeNagCommand { get; set; } = "/li fc";
+    public bool EnableIslandSanctuary { get; set; }
+    public IslandSanctuarySettings IslandSanctuary { get; set; } = new();
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
     public bool EnableMiscCmd { get; set; } = true;
     public bool EnableLootGoblinMapGather { get; set; } = false;
@@ -451,6 +453,8 @@ public class CharacterConfig
             EnableNagYourDad = EnableNagYourDad,
             EnableReturnBeforeNag = EnableReturnBeforeNag,
             ReturnBeforeNagCommand = ReturnBeforeNagCommand,
+            EnableIslandSanctuary = EnableIslandSanctuary,
+            IslandSanctuary = IslandSanctuary.Clone(),
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
             EnableMiscCmd = EnableMiscCmd,
             EnableLootGoblinMapGather = EnableLootGoblinMapGather,

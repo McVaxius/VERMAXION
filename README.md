@@ -74,7 +74,7 @@ Choke-abo performs verified retirement, owned-parent or permit covering, offspri
 - **Misc Commands hook:** Runs once at the beginning of an applicable After-AR or manual engine run, including when it is the only work. It never arms a Before-AR pass by itself.
 - **Fishing coordinator:** Ocean Fishing retains its preemptive startup window and account/relog coordinator. Configuration → Global → Fishing includes the disabled-by-default `Watch Ocean Fishing windows` checkbox that can invoke that same coordinator without AR pre/post processing. It is intentionally not reorderable through the engine task list.
 - **Manual utility:** Retainer Bell remains an explicit manual utility rather than a character enable flag.
-- **Configuration-only WIP:** Adventurer Activity (Evercold) is labelled as configuration-only and is not advertised as runtime dispatch.
+- **Configuration-only WIP:** Adventurer Activity (Evercold) and Island Sanctuary are outside runtime dispatch. `/vmx is` opens the Island Run/Settings window. Its per-character opt-in defaults off; Weekly is the default saved cadence, with Daily/Manual and seven selected chores. Settings remain editable offline and without Calypso, including account defaults. Run, Stop and Open Calypso are disabled/TBD; no visits are scheduled, executed or credited. Detailed Island policies remain Calypso-owned.
 
 The main and configuration windows show exact blocked prerequisites, such as an empty Register Registrables list when automatic inventory discovery is disabled, rather than collapsing them into a generic no-work result. If the catalog, task order definitions, and runtime bindings ever disagree, VERMAXION rejects the run visibly and safely releases its AutoRetainer ownership instead of partially dispatching.
 
@@ -153,6 +153,7 @@ Fish collection separates **Targets**, **Characters**, **Supplies** and **Alerts
 | `/vmx run` | Manual trigger |
 | `/vmx cancel` | Cancel current run |
 | `/vmx config` | Open config window |
+| `/vmx is` | Open Island Sanctuary Run/Settings; execution remains TBD |
 | `/vmx b` or `/vmx beast` | Open Beastmaster run setup, beasts and supplies |
 | `/vmx b mini` or `/vmx beast mini` | Open the Beastmaster mini monitor with the same run controls |
 | `/vmx chocobo settings` | Open Chocobo Racing settings in the selected editing scope |

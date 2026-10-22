@@ -832,6 +832,8 @@ public class MainWindow : Window, IDisposable
                     activeConfig.NagYourDadSelectionDisplayName);
                 Plugin.ChatGui.Print($"[Vermaxion] {result.StatusText}");
             }, "OK");
+        AddTaskRow("Island Sanctuary", config.EnableIslandSanctuary, IslandSanctuaryView.Unavailable,
+            "Open##IslandSanctuary", () => plugin.IslandSanctuaryWindow.Open(), "WIP");
         AddTaskRow("Adventurer Activity (Evercold)", config.EnableEvercoldAdventurerActivity,
             GetEvercoldAdventurerActivityStatus(config),
             "Stub##EvercoldActivity", () =>
@@ -919,8 +921,8 @@ public class MainWindow : Window, IDisposable
                 onClick,
                 maturity,
                 statusTooltip,
-                buttonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
-                ownershipBlocker ?? buttonTooltip,
+                feature?.Id == AutomationCatalog.IslandSanctuary ? false : buttonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                feature?.Id == AutomationCatalog.IslandSanctuary ? null : ownershipBlocker ?? buttonTooltip,
                 secondaryButtonLabel,
                 secondaryOnClick,
                 secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
@@ -1252,7 +1254,10 @@ public class MainWindow : Window, IDisposable
             ? Math.Max(1f, available - gap) * runMeasure / (runMeasure + settingsMeasure) : available;
         ImGui.BeginDisabled(row.ButtonDisabled);
         if (UIConstants.Button(row.ButtonLabel, new Vector2(runWidth, controlHeight)))
-            plugin.RunDashboardAction(row.OnClick);
+        {
+            if (row.Feature?.Id == AutomationCatalog.IslandSanctuary) row.OnClick();
+            else plugin.RunDashboardAction(row.OnClick);
+        }
         ImGui.EndDisabled();
         if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             MaterialText.SetTooltip(StatusText(row.ButtonTooltip));
@@ -1576,7 +1581,7 @@ public class MainWindow : Window, IDisposable
             AutomationCatalog.NagYourMom or
             AutomationCatalog.NagYourDad => ConfigurationSection.VariableTime,
             AutomationCatalog.ChocoboStables => ConfigurationSection.Weekly,
-            AutomationCatalog.EvercoldAdventurerActivity => ConfigurationSection.Wip,
+            AutomationCatalog.EvercoldAdventurerActivity or AutomationCatalog.IslandSanctuary => ConfigurationSection.Wip,
             _ => null,
         };
 

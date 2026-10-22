@@ -15,6 +15,33 @@ public sealed class AccountConfigPersistenceTests
         new(2026, 7, 1, 12, 0, 0, DateTimeKind.Utc);
 
     [Fact]
+    public void IslandPreferencesPersistForViewedCharacterWithoutChangingOtherProfilesOrHistory()
+    {
+        using var directory = new TemporaryDirectory();
+        var persistence = new AccountConfigPersistence(directory.Path);
+        var account = CreateAccount("playing-fixture", "viewed-fixture");
+        account.Characters["playing-fixture"].JumboCactpotLastCompleted = CreatedAtUtc;
+        Assert.True(persistence.Save(AccountId, account).Succeeded);
+        var viewed = account.Characters["viewed-fixture"];
+        viewed.EnableIslandSanctuary = true;
+        viewed.IslandSanctuary.Cadence = IslandVisitCadence.Daily;
+        viewed.IslandSanctuary.Income = false;
+        viewed.IslandSanctuary.Seeds = false;
+        Assert.True(persistence.Save(AccountId, account).Succeeded);
+
+        var reloaded = LoadSingle(new AccountConfigPersistence(directory.Path));
+        Assert.True(reloaded.Characters["viewed-fixture"].EnableIslandSanctuary);
+        Assert.Equal(IslandVisitCadence.Daily, reloaded.Characters["viewed-fixture"].IslandSanctuary.Cadence);
+        Assert.False(reloaded.Characters["viewed-fixture"].IslandSanctuary.Income);
+        Assert.False(reloaded.Characters["viewed-fixture"].IslandSanctuary.Seeds);
+        Assert.False(reloaded.Characters["playing-fixture"].EnableIslandSanctuary);
+        Assert.True(reloaded.Characters["playing-fixture"].IslandSanctuary.Seeds);
+        Assert.False(reloaded.DefaultConfig.EnableIslandSanctuary);
+        Assert.Equal(IslandVisitCadence.Weekly, reloaded.DefaultConfig.IslandSanctuary.Cadence);
+        Assert.Equal(CreatedAtUtc, reloaded.Characters["playing-fixture"].JumboCactpotLastCompleted);
+    }
+
+    [Fact]
     public void TimerDefaultsAndIndependentFieldMergesPreserveAccountEdits()
     {
         using var directory = new TemporaryDirectory();

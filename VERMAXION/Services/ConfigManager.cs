@@ -553,6 +553,8 @@ public class ConfigManager
         target.EnableNagYourDad = source.EnableNagYourDad;
         target.EnableReturnBeforeNag = source.EnableReturnBeforeNag;
         target.ReturnBeforeNagCommand = source.ReturnBeforeNagCommand;
+        target.EnableIslandSanctuary = source.EnableIslandSanctuary;
+        target.IslandSanctuary = source.IslandSanctuary.Clone();
         target.EnableEvercoldAdventurerActivity = source.EnableEvercoldAdventurerActivity;
         target.EnableMiscCmd = source.EnableMiscCmd;
         target.EnableLootGoblinMapGather = source.EnableLootGoblinMapGather;

@@ -124,7 +124,7 @@ public class ConfigWindow : Window, IDisposable
         AutomationCatalog.RefillListings or AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly or
         AutomationCatalog.ReturnBeforeNag or AutomationCatalog.NagYourMom or
         AutomationCatalog.NagYourDad => ConfigurationSection.VariableTime,
-        AutomationCatalog.EvercoldAdventurerActivity => ConfigurationSection.Wip,
+        AutomationCatalog.EvercoldAdventurerActivity or AutomationCatalog.IslandSanctuary => ConfigurationSection.Wip,
         _ => ConfigurationSection.EveryAr,
     };
 
@@ -2931,6 +2931,18 @@ public class ConfigWindow : Window, IDisposable
 
         if (BeginConfigurationSection(UIConstants.ConfigLabels.WipTasks, ConfigurationSection.Wip))
         {
+            if (selectedAutomationId == AutomationCatalog.IslandSanctuary)
+            {
+                changed |= IslandSanctuaryView.DrawSettings(cc);
+                DrawDefaultOverrideButton(isDefault, configManager, "IslandSanctuary", "Island Sanctuary",
+                    (source, target) =>
+                    {
+                        target.EnableIslandSanctuary = source.EnableIslandSanctuary;
+                        target.IslandSanctuary = source.IslandSanctuary.Clone();
+                    });
+                if (UIConstants.Button("Open Island Sanctuary##Settings")) plugin.IslandSanctuaryWindow.Open(settings: true);
+                UiGui.TextWrapped(IslandSanctuaryView.Unavailable);
+            }
             if (selectedAutomationId == AutomationCatalog.EvercoldAdventurerActivity)
             {
                 var evercoldActivity = cc.EnableEvercoldAdventurerActivity;
@@ -3706,9 +3718,29 @@ public class ConfigWindow : Window, IDisposable
         {
             UiGui.TextUnformatted(status.OffspringGoal == ChocoboBreedingGoal.AbilityOffspring ? "Offspring printer" : "Colour seeker");
             UiGui.Text(UiText.F($"Matching G9 offspring: {status.MatchingOffspringProduced:N0} / {status.MatchingOffspringRequested:N0}"));
-            ImGui.ProgressBar(status.MatchingOffspringRequested > 0
-                ? Math.Clamp((float)status.MatchingOffspringProduced / status.MatchingOffspringRequested, 0, 1) : 0,
-                new Vector2(-1, 0), UiText.T("Matching offspring retained unregistered"));
+            var progress = status.MatchingOffspringRequested > 0
+                ? Math.Clamp((float)status.MatchingOffspringProduced / status.MatchingOffspringRequested, 0, 1) : 0;
+            var progressCaption = UiText.T("Matching offspring retained unregistered");
+            var shapedProgressCaption = MaterialText.RequiresShaping(progressCaption);
+            using (MaterialText.PushLineHeight(progressCaption))
+            {
+                ImGui.ProgressBar(progress, new Vector2(-1, 0), shapedProgressCaption ? string.Empty : progressCaption);
+                if (shapedProgressCaption && ImGui.IsItemVisible())
+                {
+                    var min = ImGui.GetItemRectMin();
+                    var max = ImGui.GetItemRectMax();
+                    var captionSize = MaterialText.Measure(progressCaption);
+                    var captionPadding = ImGui.GetStyle().FramePadding.X;
+                    var captionPosition = new Vector2(
+                        Math.Clamp(min.X + (max.X - min.X) * progress + ImGui.GetStyle().ItemSpacing.X,
+                            min.X + captionPadding, Math.Max(min.X + captionPadding, max.X - captionSize.X - captionPadding)),
+                        min.Y + (max.Y - min.Y - captionSize.Y) * .5f);
+                    var drawList = ImGui.GetWindowDrawList();
+                    drawList.PushClipRect(min, max, true);
+                    try { MaterialText.AddText(drawList, captionPosition, ImGui.GetColorU32(ImGuiCol.Text), progressCaption); }
+                    finally { drawList.PopClipRect(); }
+                }
+            }
             if (status.ProductionComplete)
                 UiGui.TextColored(UIConstants.Text, "Complete: offspring quantity reached. Use Start new batch to repeat this goal.");
         }

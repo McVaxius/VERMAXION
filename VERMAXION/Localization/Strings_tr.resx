@@ -3146,4 +3146,58 @@ Bağımlılıklar: {1}</value></data>
   <data name="Control" xml:space="preserve"><value>Denetim</value></data>
   <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>Her rengi ayarlamak için Seçici'ye geçin.</value></data>
   <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>Otomatik temayı kullanmak için Otomatik'e dönün.</value></data>
+  <data name="Island Sanctuary" xml:space="preserve"><value>Ada Sığınağı</value></data>
+  <data name="Cowrie routine · Activity provider: Calypso · TBD" xml:space="preserve"><value>Deniz kabuğu rutini · Sağlayıcı: Calypso · TBD</value></data>
+  <data name="Calypso integration TBD. Run, Stop and Open Calypso are unavailable. No schedule is created." xml:space="preserve"><value>Calypso entegrasyonu TBD. Çalıştır, Durdur ve Calypso'yu aç kullanılamıyor. Zamanlama oluşturulmaz.</value></data>
+  <data name="This character" xml:space="preserve"><value>Bu karakter</value></data>
+  <data name="Enable Island routine" xml:space="preserve"><value>Ada rutinini etkinleştir</value></data>
+  <data name="Default: off for each character." xml:space="preserve"><value>Varsayılan: her karakter için kapalı.</value></data>
+  <data name="Visit cadence" xml:space="preserve"><value>Ziyaret sıklığı</value></data>
+  <data name="Manual only" xml:space="preserve"><value>Yalnızca elle</value></data>
+  <data name="Saved preference only. Coverage and reset timing remain TBD; no visit is scheduled." xml:space="preserve"><value>Yalnızca kaydedilen tercih. Kapsam ve sıfırlama zamanı TBD; ziyaret planlanmaz.</value></data>
+  <data name="Next visit: TBD" xml:space="preserve"><value>Sonraki ziyaret: TBD</value></data>
+  <data name="Policies live in Calypso" xml:space="preserve"><value>Kurallar Calypso'da yönetilir</value></data>
+  <data name="Choose the chores here. Configure their detailed rules in Calypso." xml:space="preserve"><value>İşleri burada seçin. Ayrıntılı kuralları Calypso'da ayarlayın.</value></data>
+  <data name="Agenda &amp; overwrite" xml:space="preserve"><value>Plan ve üzerine yazma</value></data>
+  <data name="Expedition assignments" xml:space="preserve"><value>Keşif görevleri</value></data>
+  <data name="Crop &amp; pasture care" xml:space="preserve"><value>Ekin ve otlak bakımı</value></data>
+  <data name="Material reserves" xml:space="preserve"><value>Malzeme rezervleri</value></data>
+  <data name="Seed stock &amp; spending" xml:space="preserve"><value>Tohum stoku ve harcama</value></data>
+  <data name="Cowrie limits" xml:space="preserve"><value>Deniz kabuğu sınırları</value></data>
+  <data name="Proposed routine" xml:space="preserve"><value>Önerilen rutin</value></data>
+  <data name="Both workshop actions share one visit. Refill seeds only when low. All execution remains TBD." xml:space="preserve"><value>İki atölye işi aynı ziyarette yapılır. Tohumları yalnızca azsa tamamlayın. Tüm yürütme TBD.</value></data>
+  <data name="{0}/7 chores selected. Execution TBD." xml:space="preserve"><value>{0}/7 iş seçildi. Yürütme TBD.</value></data>
+  <data name="Construction splash / artwork TBD" xml:space="preserve"><value>İnşaat görseli TBD</value></data>
+  <data name="Meteor watching mammets build. Reserved area only; no artwork supplied." xml:space="preserve"><value>Meteor, mammetlerin inşaatını izliyor. Yalnızca ayrılmış alan; görsel yok.</value></data>
+  <data name="Routine not started" xml:space="preserve"><value>Rutin başlamadı</value></data>
+  <data name="Island routine selected. Execution remains TBD." xml:space="preserve"><value>Ada rutini seçildi. Yürütme hâlâ TBD.</value></data>
+  <data name="Island routine off" xml:space="preserve"><value>Ada rutini kapalı</value></data>
+  <data name="Last completed: Unknown · Next visit: TBD · Chores confirmed: Unknown" xml:space="preserve"><value>Son tamamlanma: bilinmiyor · Sonraki ziyaret: TBD · Doğrulanan işler: bilinmiyor</value></data>
+  <data name="Required first" xml:space="preserve"><value>Önce gerekli</value></data>
+  <data name="Only if low" xml:space="preserve"><value>Yalnızca azsa</value></data>
+  <data name="Not selected" xml:space="preserve"><value>Seçilmedi</value></data>
+  <data name="TBD" xml:space="preserve"><value>TBD</value></data>
+  <data name="Provider inactivity or a stop request does not prove the routine completed." xml:space="preserve"><value>Sağlayıcının boşta olması veya durdurma isteği rutinin tamamlandığını kanıtlamaz.</value></data>
+  <data name="Open Calypso" xml:space="preserve"><value>Calypso'yu aç</value></data>
+  <data name="Visit island" xml:space="preserve"><value>Adayı ziyaret et</value></data>
+  <data name="Required first. Island entry remains TBD." xml:space="preserve"><value>Önce gerekli. Adaya giriş TBD.</value></data>
+  <data name="Workshop income" xml:space="preserve"><value>Atölye geliri</value></data>
+  <data name="Collect earned cowries during the workshop visit." xml:space="preserve"><value>Atölye ziyareti sırasında kazanılan deniz kabuklarını al.</value></data>
+  <data name="Workshop agenda" xml:space="preserve"><value>Atölye planı</value></data>
+  <data name="At the same workshop stop, use Calypso's plan. Full-week coverage is TBD." xml:space="preserve"><value>Aynı atölye ziyaretinde Calypso planını kullan. Tam haftalık kapsam TBD.</value></data>
+  <data name="Partial" xml:space="preserve"><value>Kısmi</value></data>
+  <data name="Granary mammets" xml:space="preserve"><value>Ambar mammetleri</value></data>
+  <data name="Collect expedition yields and send the mammets back out." xml:space="preserve"><value>Keşif ürünlerini al ve mammetleri yeniden gönder.</value></data>
+  <data name="Main building: sell excess stock" xml:space="preserve"><value>Ana bina: fazla stoku sat</value></data>
+  <data name="Enter the main building and sell under Calypso's reserve rules." xml:space="preserve"><value>Ana binaya gir ve Calypso rezerv kurallarına göre sat.</value></data>
+  <data name="Existing" xml:space="preserve"><value>Mevcut</value></data>
+  <data name="Pasture care" xml:space="preserve"><value>Otlak bakımı</value></data>
+  <data name="Collect leavings and care for the animals." xml:space="preserve"><value>Ürünleri topla ve hayvanlarla ilgilen.</value></data>
+  <data name="Crop care" xml:space="preserve"><value>Ekin bakımı</value></data>
+  <data name="Harvest, replant and care for the plants." xml:space="preserve"><value>Hasat et, yeniden dik ve bitkilerle ilgilen.</value></data>
+  <data name="Seed replenishment: only if low" xml:space="preserve"><value>Tohum tamamlama: yalnızca azsa</value></data>
+  <data name="Refill only low seed types under Calypso's stock and spending policy." xml:space="preserve"><value>Yalnızca azalan tohum türlerini Calypso stok ve harcama kurallarına göre tamamla.</value></data>
+  <data name="Open Island Sanctuary" xml:space="preserve"><value>Ada Sığınağı'nı aç</value></data>
+  <data name="Selection" xml:space="preserve"><value>Seçim</value></data>
+  <data name="Status" xml:space="preserve"><value>Durum</value></data>
 </root>

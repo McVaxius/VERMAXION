@@ -1,3 +1,17 @@
+2026-10-22 - Add Island Sanctuary settings with deferred execution
+
+- Add `/vmx is` and task/settings navigation to the native Island Run/Settings window, sharing existing appearance, localization and Full/Compact controls. Save independent per-character/account-default preferences: opt-in off, Weekly cadence with Daily/Manual choices, and seven selected chores.
+- Preserve the approved route: arrive, workshop income and agenda at one stop, granary, main-building surplus sales, pasture, crops, then replenish only low seeds. Show unknown history and a construction-art placeholder. Run, Stop and Open Calypso remain disabled/TBD; no provider calls, visits, schedule or completion writes are implemented. Island remains configuration-only and outside engine dispatch.
+- Correct the stale map-gathering regression to cover the existing Chocobo Racing, Beastmaster, Beastmaster weeklies, map-gathering default sequence and preserve custom-order migration; production ordering is unchanged.
+- Validation: isolated Debug/x64 compilation passed with zero errors and five inherited warnings at unchanged version 2.2.0.1. All 72 focused tests passed, including actual saved-profile copying/persistence and native view interaction/layout in both densities at 520/1060 widths. All fifteen catalogs passed duplicate/placeholder checks; eight default-font CPU renders were inspected. The complete unchanged test assembly passed all 1,210 tests after using the repository-relative output depth required by nine source-reading tests; the fresh handoff rerun also passed all 72 focused tests. Game fonts, GPU appearance and Calypso execution remain untested.
+
+2026-10-22 - Add read-only client inspection
+
+- Render shaped Chocobo progress captions through the existing text renderer so Hindi displays correctly inside the native progress bar.
+- Add `/vmx inspect`, using the existing diagnostics log to capture current engine/reload state, UI/font/window state, dependency availability, Chocobo settings and runtime, and Choke-abo's confirmed progression and offspring counts.
+- Reuse Choke-abo's native inspection command when available. The saved Chocobo reload test also inspects before its pause guard, preserving the paused state while making its evidence available. Inspection does not save settings, stop or resume automation, or perform gameplay actions.
+- Validation: the inspector main-source build passed with zero errors and five inherited warnings. The final isolated bundle passed with zero errors and one inherited dependency warning; all fifteen Chocobo UI locales passed 3,720 checks across 720 scenes and 60 native quantity edits, including complete progress-caption glyphs. Native inspection verified the fresh compiled marker, idle engine, loaded UI fonts, paused progression and four retained collections with no pending covering or receipt baseline.
+
 2026-10-21 - Recover Crewcible training blocked by excluded unfinished beasts
 
 - When training cannot prepare an entry team, temporarily allow owned, known-rank unfinished beasts excluded by the active priority list, then rebuild through the existing team setup. The selection error triggers recovery even after a fresh reload.

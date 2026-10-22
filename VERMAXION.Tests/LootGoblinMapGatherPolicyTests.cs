@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using VERMAXION.Models;
 using Xunit;
 
@@ -7,13 +8,30 @@ namespace VERMAXION.Tests;
 public sealed class LootGoblinMapGatherPolicyTests
 {
     [Fact]
-    public void NewTaskNormalizesIntoDefaultOrderAfterChocoboRacing()
+    public void DefaultOrderKeepsBeastmasterAndWeeklyBetweenRacingAndMapGathering()
     {
         var normalized = PostProcessTaskOrder.Normalize([]);
 
         var chocoboIndex = normalized.IndexOf(PostProcessTaskOrder.ChocoboRacing);
         Assert.True(chocoboIndex >= 0);
-        Assert.Equal(PostProcessTaskOrder.LootGoblinMapGather, normalized[chocoboIndex + 1]);
+        Assert.Equal(new[] { PostProcessTaskOrder.ChocoboRacing, PostProcessTaskOrder.Beastmaster,
+            PostProcessTaskOrder.BeastmasterWeekly, PostProcessTaskOrder.LootGoblinMapGather }, normalized.Skip(chocoboIndex).Take(4));
+        Assert.Equal(PostProcessTaskOrder.DefaultOrder, normalized);
+        Assert.Equal(normalized, PostProcessTaskOrder.Normalize(normalized));
+    }
+
+    [Fact]
+    public void ExistingMapGatherPlacementSurvivesBeastmasterMigrationAndRepeatedNormalization()
+    {
+        var original = new[] { PostProcessTaskOrder.LootGoblinMapGather, PostProcessTaskOrder.ChocoboRacing,
+            PostProcessTaskOrder.RegisterRegistrables, PostProcessTaskOrder.NagYourDad };
+        var normalized = PostProcessTaskOrder.Normalize(original);
+        Assert.Equal(original, normalized.Where(original.Contains));
+        Assert.Single(normalized, id => id == PostProcessTaskOrder.Beastmaster);
+        Assert.Single(normalized, id => id == PostProcessTaskOrder.BeastmasterWeekly);
+        Assert.Equal(normalized.IndexOf(PostProcessTaskOrder.Beastmaster) + 1,
+            normalized.IndexOf(PostProcessTaskOrder.BeastmasterWeekly));
+        Assert.Equal(normalized, PostProcessTaskOrder.Normalize(normalized));
     }
 
     [Fact]

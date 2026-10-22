@@ -5998,4 +5998,58 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Control" xml:space="preserve"><value>Commande</value></data>
   <data name="Switch to Picker to set each colour yourself." xml:space="preserve"><value>Passez au Sélecteur pour définir chaque couleur.</value></data>
   <data name="Switch back to Auto to use the automatic theme." xml:space="preserve"><value>Revenez à Automatique pour utiliser le thème automatique.</value></data>
+  <data name="Island Sanctuary" xml:space="preserve"><value>Félicité insulaire</value></data>
+  <data name="Cowrie routine · Activity provider: Calypso · TBD" xml:space="preserve"><value>Routine des cauris · Fournisseur : Calypso · TBD</value></data>
+  <data name="Calypso integration TBD. Run, Stop and Open Calypso are unavailable. No schedule is created." xml:space="preserve"><value>Intégration Calypso TBD. Démarrer, Arrêter et Ouvrir Calypso indisponibles. Aucun horaire créé.</value></data>
+  <data name="This character" xml:space="preserve"><value>Ce personnage</value></data>
+  <data name="Enable Island routine" xml:space="preserve"><value>Activer la routine insulaire</value></data>
+  <data name="Default: off for each character." xml:space="preserve"><value>Par défaut : désactivée pour chaque personnage.</value></data>
+  <data name="Visit cadence" xml:space="preserve"><value>Fréquence des visites</value></data>
+  <data name="Manual only" xml:space="preserve"><value>Manuel uniquement</value></data>
+  <data name="Saved preference only. Coverage and reset timing remain TBD; no visit is scheduled." xml:space="preserve"><value>Préférence enregistrée uniquement. Couverture et réinitialisation TBD ; aucune visite planifiée.</value></data>
+  <data name="Next visit: TBD" xml:space="preserve"><value>Prochaine visite : TBD</value></data>
+  <data name="Policies live in Calypso" xml:space="preserve"><value>Règles gérées dans Calypso</value></data>
+  <data name="Choose the chores here. Configure their detailed rules in Calypso." xml:space="preserve"><value>Choisissez les tâches ici. Réglez leurs détails dans Calypso.</value></data>
+  <data name="Agenda &amp; overwrite" xml:space="preserve"><value>Programme et remplacement</value></data>
+  <data name="Expedition assignments" xml:space="preserve"><value>Affectations des expéditions</value></data>
+  <data name="Crop &amp; pasture care" xml:space="preserve"><value>Soins des cultures et du pâturage</value></data>
+  <data name="Material reserves" xml:space="preserve"><value>Réserves de matériaux</value></data>
+  <data name="Seed stock &amp; spending" xml:space="preserve"><value>Stock de graines et dépenses</value></data>
+  <data name="Cowrie limits" xml:space="preserve"><value>Limites de cauris</value></data>
+  <data name="Proposed routine" xml:space="preserve"><value>Routine proposée</value></data>
+  <data name="Both workshop actions share one visit. Refill seeds only when low. All execution remains TBD." xml:space="preserve"><value>Les deux tâches d'atelier partagent une visite. Graines seulement si stock faible. Exécution TBD.</value></data>
+  <data name="{0}/7 chores selected. Execution TBD." xml:space="preserve"><value>{0}/7 tâches sélectionnées. Exécution TBD.</value></data>
+  <data name="Construction splash / artwork TBD" xml:space="preserve"><value>Illustration de construction TBD</value></data>
+  <data name="Meteor watching mammets build. Reserved area only; no artwork supplied." xml:space="preserve"><value>Meteor regarde les automates construire. Emplacement réservé sans illustration.</value></data>
+  <data name="Routine not started" xml:space="preserve"><value>Routine non démarrée</value></data>
+  <data name="Island routine selected. Execution remains TBD." xml:space="preserve"><value>Routine insulaire sélectionnée. Exécution toujours TBD.</value></data>
+  <data name="Island routine off" xml:space="preserve"><value>Routine insulaire désactivée</value></data>
+  <data name="Last completed: Unknown · Next visit: TBD · Chores confirmed: Unknown" xml:space="preserve"><value>Dernière fin : inconnue · Prochaine visite : TBD · Tâches confirmées : inconnues</value></data>
+  <data name="Required first" xml:space="preserve"><value>Obligatoire en premier</value></data>
+  <data name="Only if low" xml:space="preserve"><value>Seulement si stock faible</value></data>
+  <data name="Not selected" xml:space="preserve"><value>Non sélectionné</value></data>
+  <data name="TBD" xml:space="preserve"><value>TBD</value></data>
+  <data name="Provider inactivity or a stop request does not prove the routine completed." xml:space="preserve"><value>L'inactivité du fournisseur ou une demande d'arrêt ne prouve pas la fin de la routine.</value></data>
+  <data name="Open Calypso" xml:space="preserve"><value>Ouvrir Calypso</value></data>
+  <data name="Visit island" xml:space="preserve"><value>Visiter l'île</value></data>
+  <data name="Required first. Island entry remains TBD." xml:space="preserve"><value>Obligatoire en premier. Accès à l'île TBD.</value></data>
+  <data name="Workshop income" xml:space="preserve"><value>Revenus de l'atelier</value></data>
+  <data name="Collect earned cowries during the workshop visit." xml:space="preserve"><value>Collecter les cauris gagnés lors de la visite de l'atelier.</value></data>
+  <data name="Workshop agenda" xml:space="preserve"><value>Programme de l'atelier</value></data>
+  <data name="At the same workshop stop, use Calypso's plan. Full-week coverage is TBD." xml:space="preserve"><value>Utiliser le plan Calypso au même arrêt. Couverture hebdomadaire TBD.</value></data>
+  <data name="Partial" xml:space="preserve"><value>Partiel</value></data>
+  <data name="Granary mammets" xml:space="preserve"><value>Automates de la grenier</value></data>
+  <data name="Collect expedition yields and send the mammets back out." xml:space="preserve"><value>Collecter les récoltes des expéditions et renvoyer les automates.</value></data>
+  <data name="Main building: sell excess stock" xml:space="preserve"><value>Bâtiment principal : vendre le surplus</value></data>
+  <data name="Enter the main building and sell under Calypso's reserve rules." xml:space="preserve"><value>Entrer dans le bâtiment principal et respecter les réserves Calypso pour vendre.</value></data>
+  <data name="Existing" xml:space="preserve"><value>Existant</value></data>
+  <data name="Pasture care" xml:space="preserve"><value>Soins du pâturage</value></data>
+  <data name="Collect leavings and care for the animals." xml:space="preserve"><value>Collecter les produits et soigner les animaux.</value></data>
+  <data name="Crop care" xml:space="preserve"><value>Soins des cultures</value></data>
+  <data name="Harvest, replant and care for the plants." xml:space="preserve"><value>Récolter, replanter et entretenir les plantes.</value></data>
+  <data name="Seed replenishment: only if low" xml:space="preserve"><value>Réapprovisionnement des graines : si stock faible</value></data>
+  <data name="Refill only low seed types under Calypso's stock and spending policy." xml:space="preserve"><value>Réapprovisionner seulement les graines manquantes selon les règles de stock et de dépenses Calypso.</value></data>
+  <data name="Open Island Sanctuary" xml:space="preserve"><value>Ouvrir la Félicité insulaire</value></data>
+  <data name="Selection" xml:space="preserve"><value>Sélection</value></data>
+  <data name="Status" xml:space="preserve"><value>État</value></data>
 </root>

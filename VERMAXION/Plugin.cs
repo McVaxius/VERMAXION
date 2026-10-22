@@ -158,6 +158,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public MainWindow MainWindow { get; init; }
     internal DebugWindow DebugWindow { get; init; }
     internal VerminionWindow VerminionWindow { get; init; }
+    internal IslandSanctuaryWindow IslandSanctuaryWindow { get; init; }
     internal BeastmasterWindow BeastmasterWindow { get; init; }
     internal BeastmasterMiniWindow BeastmasterMiniWindow { get; init; }
     public RegistrableConfigWindow RegistrableConfigWindow { get; init; }
@@ -416,6 +417,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         MainWindow = new MainWindow(this);
         DebugWindow = new DebugWindow(this);
         VerminionWindow = new VerminionWindow(this);
+        IslandSanctuaryWindow = new IslandSanctuaryWindow(this);
         BeastmasterWindow = new BeastmasterWindow(this);
         BeastmasterMiniWindow = new BeastmasterMiniWindow(this);
         RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager, Configuration);
@@ -424,6 +426,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         WindowSystem.AddWindow(FishCollectionWindow);
         WindowSystem.AddWindow(DebugWindow);
         WindowSystem.AddWindow(VerminionWindow);
+        WindowSystem.AddWindow(IslandSanctuaryWindow);
         WindowSystem.AddWindow(BeastmasterWindow);
         WindowSystem.AddWindow(BeastmasterMiniWindow);
         WindowSystem.AddWindow(RegistrableConfigWindow);
@@ -440,7 +443,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         });
         CommandManager.AddHandler(AliasCommandName, new CommandInfo(OnAliasCommand)
         {
-            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|v|b|beast], /vmx b mini, or /vmx to open UI."
+            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|inspect|v|b|beast|is], /vmx b mini, or /vmx to open UI."
         });
 
         // Events
@@ -1299,6 +1302,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             SetDebugTaskStatus("Questionable owns minion acquisition; this reload only observes the saved handoff.");
             return;
         }
+        if (taskId == AutomationCatalog.ChocoboRacing)
+            InspectClient();
         if (taskId == AutomationCatalog.ChocoboRacing &&
             ConfigManager.GetActiveConfig().ChocoboProgressionPaused)
         {
@@ -1314,8 +1319,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
         try
         {
-            if (taskId == AutomationCatalog.ChocoboRacing)
-                CommandManager.ProcessCommand("/chokeabo inspect");
             FullStop(preparingDebugTask: true);
             if (taskId == AutomationCatalog.ChocoboStables)
                 ChocoboStablesService.CleanupReloadMenu(ConfigManager.GetActiveConfig().ChocoboStablesSettings);
@@ -1907,6 +1910,71 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         MainWindow.Toggle();
     }
 
+    private void InspectClient()
+    {
+        try
+        {
+            Log.Information("[VMX Inspect] Client: utc={Utc:O}; version={Version}; loaded={Loaded}; registered={Registered}; territory={Territory}; enabled={Enabled}; observationOnly=true",
+                DateTime.UtcNow, typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown", ClientState.IsLoggedIn,
+                IsCharacterRegistered, ClientState.TerritoryType, Configuration.Enabled);
+            Log.Information("[VMX Inspect] Engine: state={State}; running={Running}; pendingTasks={Pending}; status={Status}; reloadTask={ReloadTask}; reloadStatus={ReloadStatus}",
+                Engine.State, Engine.IsRunning, Engine.GetPendingTaskCount(), Engine.StatusText,
+                Configuration.DebugTaskId ?? "none", DebugTaskStatus);
+            Log.Information("[VMX Inspect] UI: language={Language}; compact={Compact}; fontsReady={Ready}; fontGeneration={Generation}; checkedGlyphGeneration={CheckedGeneration}; checkedHindiGeneration={HindiGeneration}; fontError={FontError}",
+                appliedLanguage, Configuration.CompactUi, uiFonts.Ready, uiFonts.Generation,
+                checkedFontGeneration, checkedHindiGeneration, uiFonts.LoadException?.Message ?? "none");
+            foreach (var window in WindowSystem.Windows.OfType<Window>())
+                Log.Information("[VMX Inspect] Window: name={Name}; open={Open}; position={Position}; size={Size}; constraints={Constraints}",
+                    window.WindowName, window.IsOpen, window.Position?.ToString() ?? "automatic",
+                    window.Size?.ToString() ?? "automatic", window.SizeConstraints?.ToString() ?? "none");
+            foreach (var name in new[] { "ChokeAbo", "AutoRetainer", "Lifestream", "vnavmesh", "YesAlready" })
+            {
+                var dependency = PluginInterface.InstalledPlugins.FirstOrDefault(p =>
+                    string.Equals(p.InternalName, name, StringComparison.OrdinalIgnoreCase));
+                Log.Information("[VMX Inspect] Dependency: name={Name}; installed={Installed}; loaded={Loaded}",
+                    name, dependency != null, dependency?.IsLoaded == true);
+            }
+            if (!ClientState.IsLoggedIn || !IsCharacterRegistered || ObjectTable.LocalPlayer == null ||
+                ConfigManager.GetCurrentAccount() == null)
+            {
+                Log.Information("[VMX Inspect] Character-specific inspection unavailable until the current character is registered and loaded.");
+                ChatGui.Print("[Vermaxion] Client and UI inspection written to diagnostics; current character is not ready.");
+                return;
+            }
+
+            var config = ConfigManager.GetActiveConfig();
+            Log.Information("[VMX Inspect] Chocobo settings: enabled={Enabled}; mode={Mode}; paused={Paused}; pedigree={Pedigree}; goal={Goal}; breeding={Breeding}; counterpart={Counterpart}; ability={Ability}; abilityQuantity={AbilityQuantity}; colours={Colours}; colourQuantity={ColourQuantity}; feedGrade={FeedGrade}; feedPolicy={FeedPolicy}; gilReserve={GilReserve}; mgpReserve={MgpReserve}",
+                config.EnableChocoboRacing, config.ChocoboAutomationMode, config.ChocoboProgressionPaused,
+                config.ChocoboTargetPedigree, config.ChocoboBreedingGoal, config.ChocoboBreedingMode,
+                config.ChocoboProduceCounterpart, config.ChocoboDesiredInheritedAbilityId,
+                config.ChocoboDesiredAbilityOffspringCount, string.Join(",", config.ChocoboAcceptableColourIds ?? new()),
+                config.ChocoboDesiredColourOffspringCount, config.ChocoboPreferredFeedGrade,
+                config.ChocoboFeedPolicy, config.ChocoboGilReserve, config.ChocoboMgpReserve);
+            Log.Information("[VMX Inspect] Chocobo runtime: state={State}; active={Active}; attempt={Attempt}; nextContinuation={Next:O}; status={Status}; testSecondsUsed={Seconds}; testReset={Reset:O}; racePending={Pending}",
+                ChocoboRaceService.State, ChocoboRaceService.IsActive, ChocoboRaceService.CurrentAttempt,
+                ChocoboRaceService.NextContinuationUtc, ChocoboRaceService.StatusText,
+                config.ChocoboAllowanceSecondsUsed, config.ChocoboAllowanceResetUtc, config.ChocoboRacePending);
+            var result = ChokeAboIpcClient.GetTargetCycleStatus(PlayerState.ContentId);
+            if (result.Succeeded && result.Status is { } status)
+                Log.Information("[VMX Inspect] Choke-abo: phase={Phase}; goal={Goal}; collected={Collected}; matched={Produced}/{Requested}; productionComplete={Complete}; actionInProgress={Action}; blocksRacing={BlocksRacing}; nextCovering={Next}; pedigree={Pedigree}; racingRank={Rank}; racerData={RacerData}; colour={Colour}; inheritedAbility={Ability}; reason={Reason}",
+                    status.Phase, status.OffspringGoal, status.OffspringCollected,
+                    status.MatchingOffspringProduced, status.MatchingOffspringRequested, status.ProductionComplete,
+                    status.GameActionInProgress, status.ShouldBlockRacing, status.NextCoveringEligibilityUtc?.ToString("O") ?? "none",
+                    status.Pedigree, status.RacingRank, status.RacerDataAvailable, status.ColourId,
+                    status.InheritedAbilityId, status.Reason);
+            else
+                Log.Warning("[VMX Inspect] Choke-abo status unavailable: {Reason}", result.Error);
+            if (CommandManager.Commands.ContainsKey("/chokeabo"))
+                CommandManager.ProcessCommand("/chokeabo inspect");
+            ChatGui.Print("[Vermaxion] Read-only inspection written to diagnostics.");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[VMX Inspect] Read-only client inspection failed.");
+            ChatGui.PrintError("[Vermaxion] Inspection failed; see diagnostics.");
+        }
+    }
+
     private void OnAliasCommand(string command, string args)
     {
         var arg = args.Trim().ToLowerInvariant();
@@ -1963,6 +2031,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 ChocoboRaceService.PauseProgression();
                 break;
 
+            case "is":
+                IslandSanctuaryWindow.Open();
+                break;
+
             case "v":
                 VerminionWindow.IsOpen = true;
                 break;
@@ -1975,6 +2047,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             case "b mini":
             case "beast mini":
                 BeastmasterMiniWindow.IsOpen = true;
+                break;
+
+            case "inspect":
+                InspectClient();
                 break;
 
             case "debug":
