@@ -478,11 +478,49 @@ internal static unsafe class VerminionGameInteraction
             ? matches : null;
     }
 
+    public static byte? ReadBattlefieldBattalion()
+    {
+        if (CurrentBattleDutyId() == 0 || !Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion]) return null;
+        var handle = Plugin.GameGui.GetAddonByName("LovmMiniMap");
+        var stage = AtkStage.Instance();
+        var array = stage == null ? null : stage->GetNumberArrayData(NumberArrayType.LovmMiniMap);
+        if (handle.IsNull || !handle.IsReady || array == null || array->IntArray == null || array->Size != 261) return null;
+        var count = array->IntArray[4];
+        if (count is <= 0 or > 64) return null;
+        var stones = Plugin.ObjectTable.Where(obj => obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj &&
+            obj.BaseId is 2006533 or 2006537).ToArray();
+        var observed = new List<(uint StoneBaseId, bool Enemy)>();
+        // Native minimap records are [marker, flags, world X, world Z]. The
+        // stone type is 0x200; bit 0 is relative enemy affiliation. Match the
+        // static stone object, rather than inferring a team from spawn position.
+        for (var index = 0; index < count; ++index)
+        {
+            var offset = 5 + index * 4;
+            var flags = array->IntArray[offset + 1];
+            if ((flags & 0xFF00) != 0x200) continue;
+            if ((flags & 0xFF) is not (0 or 1)) return null;
+            var x = BitConverter.Int32BitsToSingle(array->IntArray[offset + 2]);
+            var z = BitConverter.Int32BitsToSingle(array->IntArray[offset + 3]);
+            if (!float.IsFinite(x) || !float.IsFinite(z)) return null;
+            var matches = stones.Where(stone => Math.Abs(stone.Position.X - x) < 0.01f &&
+                Math.Abs(stone.Position.Z - z) < 0.01f).ToArray();
+            if (matches.Length != 1) return null;
+            observed.Add((matches[0].BaseId, (flags & 1) != 0));
+        }
+        return VerminionPlayerStrategy.ResolveBattalion(observed);
+    }
+
     public static bool IsFriendlyMinion(Dalamud.Game.ClientState.Objects.Types.IGameObject obj)
-        => IsMinionSide(obj, 0);
+    {
+        var side = VERMAXION.Models.VerminionDutyRules.IsPlayer(CurrentBattleDutyId()) ? ReadBattlefieldBattalion() : (byte?)0;
+        return side is { } battalion && IsMinionSide(obj, battalion);
+    }
 
     public static bool IsEnemyMinion(Dalamud.Game.ClientState.Objects.Types.IGameObject obj)
-        => IsMinionSide(obj, 1);
+    {
+        var side = VERMAXION.Models.VerminionDutyRules.IsPlayer(CurrentBattleDutyId()) ? ReadBattlefieldBattalion() : (byte?)0;
+        return side is { } battalion && IsMinionSide(obj, (byte)(1 - battalion));
+    }
 
     private static bool IsMinionSide(Dalamud.Game.ClientState.Objects.Types.IGameObject obj, byte battalion)
     {
@@ -1391,7 +1429,7 @@ internal static unsafe class VerminionGameInteraction
             }
             detailed = false;
         }
-        Plugin.Log.Information($"[VerminionControl] snapshot={reason}; territory={Plugin.ClientState.TerritoryType}; playing={Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion]}");
+        Plugin.Log.Information($"[VerminionControl] snapshot={reason}; territory={Plugin.ClientState.TerritoryType}; playing={Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion]}; localBattalion={ReadBattlefieldBattalion()?.ToString() ?? "unknown"}");
         var chat = RaptureLogModule.Instance();
         if (detailed && chat != null)
         {

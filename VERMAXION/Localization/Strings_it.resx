@@ -1807,11 +1807,11 @@
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve">
     <value>Il provider è bloccato sullo snapshot della pesca attiva.</value>
   </data>
-  <data name="Purchase limits" xml:space="preserve">
-    <value>Limiti acquisto</value>
+  <data name="Purchases" xml:space="preserve">
+    <value>Acquisti</value>
   </data>
-  <data name="Purchase limits for this character" xml:space="preserve">
-    <value>Limiti acquisto di questo personaggio</value>
+  <data name="Minion purchases" xml:space="preserve">
+    <value>Acquisti di minion</value>
   </data>
   <data name="Purchase quantity / stock target" xml:space="preserve">
     <value>Quantità acquisto / scorte obiettivo</value>
@@ -3521,8 +3521,8 @@ Dettaglio dello stato: {0}</value>
   <data name="Achievement Certificates spent: {0:N0}/{1:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate." xml:space="preserve">
     <value>Certificati spesi: {0:N0}/{1:N0}. Limite per personaggio, zero di default, persistente tra settimane e senza autorizzazione gil/MGP. Ritiri non consumano budget. Viaggi separati.</value>
   </data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve">
-    <value>Dopo registrazione inventario, l’ingresso può richiedere {0} ({1:N0} gil totali). Servono limite residuo e fondi sufficienti.</value>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve">
+    <value>Dopo la registrazione degli oggetti dell’inventario, l’ingresso può richiedere {0} ({1:N0} gil totali). Gli acquisti richiedono fondi sufficienti e mantengono il saldo minimo di gil.</value>
   </data>
   <data name="{0}: {1}. This guide option is not a current admission requirement." xml:space="preserve">
     <value>{0}: {1}. Questa opzione della guida non è un requisito d’ingresso attuale.</value>
@@ -3572,8 +3572,8 @@ Dettaglio dello stato: {0}</value>
   <data name="Enabled stable feeding also starts automatically when the logged-in character is idle and training is due. Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, the Marketboard tab can enable a bounded Emptor purchase. Otherwise, Wiggly Quest can acquire an unfinished free-onion reward and its sidequest prerequisites. Stops after one onion is available; using it remains manual. Quest acquisition requires the appropriate job, level, MSQ progress and Wiggly routes." xml:space="preserve">
     <value>Il nutrimento attivo parte anche con personaggio libero e addestramento dovuto. Usa un Krakka Root (8165) per volta. Pulizia opzionale usa Magicked Stable Broom (8168) posseduto; senza, prosegue senza pulire o comprare. Se il tuo chocobo rango 10–19 è al limite senza Thavnairian Onion, Mercato permette un acquisto Emptor limitato. Altrimenti Wiggly Quest ottiene la ricompensa gratuita e prerequisiti. Ferma a una cipolla; uso manuale. Richiede job, livello, MSQ e percorsi Wiggly adatti.</value>
   </data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve">
-    <value>Acquisisci {0}: Questionable gestisce missioni e percorsi DAD/FrenRider/ADS fino alla ricompensa. Richiede priorità/stop nativi WigglyQuest, lista vuota e multi AutoRetainer spento. La catena può essere lunga; viaggi separati dai limiti minion. Configura i provider prima.</value>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve">
+    <value>Acquisisci {0}: Questionable gestisce missioni e percorsi DAD/FrenRider/ADS fino alla ricompensa. Richiede priorità/stop nativi WigglyQuest, lista vuota e multi AutoRetainer spento. La catena può essere lunga; anche i viaggi costano gil. Configura i provider prima.</value>
   </data>
   <data name="Commands: /dduck stop (FULL STOP: stops Deep Duck automation), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False" xml:space="preserve">
     <value>Comandi: /dduck stop (FULL STOP: interrompe l’automazione di Deep Duck), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False</value>
@@ -6129,5 +6129,8 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin e Wind-up Cursor costano due certificati obiettivo ciascuno. Le rispettive azioni di acquisizione comprano solo la mascotte richiesta e mancante.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - Provare a vincere: in attesa dello schieramento sul campo di battaglia indicato dal gioco</value>
   </data>
 </root>

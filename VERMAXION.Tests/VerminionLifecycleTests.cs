@@ -27,6 +27,47 @@ public sealed class VerminionLifecycleTests
     public void NativeDutyMetadataKeepsPlayerTerritoriesSeparateFromCpu(uint duty, uint territory, bool matches)
         => Assert.Equal(matches, VerminionDutyRules.MatchesTerritory(duty, territory));
 
+    [Theory]
+    [InlineData(197u)]
+    [InlineData(198u)]
+    [InlineData(199u)]
+    [InlineData(552u)]
+    [InlineData(553u)]
+    [InlineData(579u)]
+    public void ReloadKeepsCommenceOnlyForAnExactlyOwnedVerminionAdmission(uint duty)
+    {
+        var progress = new live::VERMAXION.Models.VerminionProgress();
+        var mode = live::VERMAXION.Models.VerminionDutyRules.IsPlayer(duty)
+            ? live::VERMAXION.Models.VerminionMode.PvpThrow : live::VERMAXION.Models.VerminionMode.WeeklyWin;
+        progress.EnsureRun(mode, 1, playerDuty: duty);
+        var match = progress.BeginMatch(duty);
+        Assert.True(match > 0);
+        var preserve = typeof(live::VERMAXION.Services.VermaxionEngine).GetMethod("ShouldPreserveVerminionCommence",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        const string expected = "Selected native Verminion duty";
+        bool Keeps(bool reloading = true, bool matchingQueue = true, string prompt = expected, string dutyName = expected)
+            => (bool)preserve.Invoke(null, [reloading, progress, matchingQueue, prompt, dutyName])!;
+
+        Assert.True(Keeps());
+        Assert.False(Keeps(reloading: false)); // Explicit FULL STOP still closes its admission UI.
+        Assert.False(Keeps(prompt: "Another native duty"));
+        Assert.False(Keeps(prompt: string.Empty));
+        Assert.False(Keeps(prompt: string.Empty, dutyName: string.Empty));
+        var otherDuty = duty == 199 ? 197u : 199u;
+        Assert.False(Keeps(matchingQueue: live::VERMAXION.Models.VerminionDutyRules.OnlyExpectedQueue(
+            duty, [otherDuty], 0)));
+        Assert.False(Keeps(matchingQueue: live::VERMAXION.Models.VerminionDutyRules.OnlyExpectedQueue(
+            duty, [duty, otherDuty], 0)));
+        progress.PendingDuty = 200; // An unrelated admission cannot keep the shared Finder prompt.
+        Assert.False(Keeps());
+        progress.PendingDuty = duty;
+        Assert.Equal(match, progress.PendingMatch);
+        Assert.Equal(0, progress.RunMatches);
+        Assert.Equal(0, progress.WeeklyMatches);
+        progress.AbandonMatch();
+        Assert.False(Keeps()); // A cancelled/foreign queue cannot be adopted on reload.
+    }
+
     [Fact]
     public void ProductionCleanupRetainsActionableAdmissionFailure()
     {
@@ -113,6 +154,62 @@ public sealed class VerminionLifecycleTests
         Assert.Equal(-1, VerminionPlayerStrategy.EnemyLane([null, 0, 0]));
         Assert.False(VerminionRoster.NeedsBattleRoster(2, false, VerminionMode.PvpWin, 0));
         Assert.True(VerminionRoster.NeedsBattleRoster(2, true, VerminionMode.PvpWin, 0));
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 1)]
+    public void PlayerBattalionUsesBothRelativeStoneBanksRegardlessOfObservationOrder(bool firstBankEnemy, int expected)
+    {
+        (uint StoneBaseId, bool Enemy)[] stones =
+        [
+            (2006533u, firstBankEnemy), (2006537u, !firstBankEnemy),
+            (2006533u, firstBankEnemy), (2006537u, !firstBankEnemy),
+            (2006537u, !firstBankEnemy), (2006533u, firstBankEnemy),
+        ];
+        Assert.Equal<byte?>((byte)expected, VerminionPlayerStrategy.ResolveBattalion(stones.Take(2)));
+        Assert.Equal<byte?>((byte)expected, VerminionPlayerStrategy.ResolveBattalion(stones));
+        Assert.Equal<byte?>((byte)expected, VerminionPlayerStrategy.ResolveBattalion(stones.Reverse()));
+    }
+
+    [Fact]
+    public void PlayerBattalionNeedsStoneEvidenceFromBothRelativeSides()
+    {
+        Assert.Null(VerminionPlayerStrategy.ResolveBattalion([]));
+        foreach (var stoneBaseId in new uint[] { 2006533u, 2006537u })
+            foreach (var enemy in new[] { false, true })
+            {
+                Assert.Null(VerminionPlayerStrategy.ResolveBattalion([(stoneBaseId, enemy)]));
+                Assert.Null(VerminionPlayerStrategy.ResolveBattalion([(stoneBaseId, enemy), (stoneBaseId, enemy)]));
+            }
+    }
+
+    [Theory]
+    [InlineData(2006533u)]
+    [InlineData(2006537u)]
+    public void PlayerBattalionRejectsConflictingRelativeOwnershipForTheSameStone(uint stoneBaseId)
+    {
+        Assert.Null(VerminionPlayerStrategy.ResolveBattalion([(stoneBaseId, false), (stoneBaseId, true)]));
+        Assert.Null(VerminionPlayerStrategy.ResolveBattalion([(stoneBaseId, true), (stoneBaseId, false)]));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PlayerBattalionRejectsBothAbsoluteStoneBanksClaimingTheSameRelativeSide(bool enemy)
+        => Assert.Null(VerminionPlayerStrategy.ResolveBattalion([(2006533u, enemy), (2006537u, enemy)]));
+
+    [Theory]
+    [InlineData(0u)]
+    [InlineData(2006534u)] // A gate is not stone evidence.
+    [InlineData(2006538u)]
+    [InlineData(uint.MaxValue)]
+    public void PlayerBattalionRejectsForeignBaseIdsEvenWithCompleteValidEvidence(uint foreignBaseId)
+    {
+        Assert.Null(VerminionPlayerStrategy.ResolveBattalion(
+            [(2006533u, false), (2006537u, true), (foreignBaseId, false)]));
+        Assert.Null(VerminionPlayerStrategy.ResolveBattalion(
+            [(foreignBaseId, true), (2006537u, false), (2006533u, true)]));
     }
 
     [Fact]
@@ -245,6 +342,109 @@ public sealed class VerminionLifecycleTests
         Assert.Equal(character.VerminionPlayerQueue, copy.VerminionPlayerQueue);
         Assert.Equal(0, copy.VerminionProgress.RunMatches);
         Assert.Equal(character.VerminionPlayerQueue, character.Clone().VerminionPlayerQueue);
+    }
+
+    [Theory]
+    [InlineData(197u, VerminionMode.PvpWin)]
+    [InlineData(197u, VerminionMode.PvpThrow)]
+    [InlineData(198u, VerminionMode.PvpWin)]
+    [InlineData(198u, VerminionMode.PvpThrow)]
+    public void SelectingAnotherPlayerQueueDoesNotInheritCompletedMatchesBeforeRunStarts(uint duty, VerminionMode mode)
+    {
+        var week = live::VERMAXION.Services.ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow);
+        var character = new CharacterConfig { VerminionMode = mode, VerminionRepeatCount = 2 };
+        var progress = character.VerminionProgress;
+        progress.ObserveWeek(week);
+        progress.EnsureRun(mode, 2);
+        for (var result = 0; result < 2; ++result)
+            Assert.True(progress.RecordResult(progress.BeginMatch(VerminionDutyRules.PlayerDuty), VerminionBattleOutcome.Victory, week));
+        Assert.True(progress.WeeklyGoalReached(mode, 2, week));
+        Assert.Contains("2/2 verified matches this run; 2 wins", progress.Summary(mode, 2, week));
+        var production = JsonConvert.DeserializeObject<live::VERMAXION.Models.CharacterConfig>(JsonConvert.SerializeObject(character))!;
+        Assert.True(live::VERMAXION.Services.VerminionService.WeeklyGoalReached(production));
+        Assert.Contains("2/2 verified matches this run; 2 wins", live::VERMAXION.Services.VerminionService.ProgressSummary(production));
+
+        character.VerminionPlayerQueue = (VerminionPlayerQueue)duty;
+        // Eligibility/status queries happen before Start can call EnsureRun.
+        Assert.Equal(2, progress.Remaining(mode, 2, playerDuty: (uint)character.VerminionPlayerQueue));
+        Assert.False(progress.WeeklyGoalReached(mode, 2, week, playerDuty: (uint)character.VerminionPlayerQueue));
+        Assert.Contains("0/2 verified matches this run; 0 wins",
+            progress.Summary(mode, 2, week, playerDuty: (uint)character.VerminionPlayerQueue));
+        production.VerminionPlayerQueue = (live::VERMAXION.Models.VerminionPlayerQueue)duty;
+        Assert.False(live::VERMAXION.Services.VerminionService.WeeklyGoalReached(production));
+        Assert.Contains("0/2 verified matches this run; 0 wins", live::VERMAXION.Services.VerminionService.ProgressSummary(production));
+        Assert.Equal(VerminionDutyRules.PlayerDuty, progress.RunPlayerDuty);
+        Assert.Equal(2, progress.RunMatches);
+        Assert.Equal(2, progress.WeeklyMatches);
+        Assert.Equal(2, progress.WeeklyWins);
+    }
+
+    [Theory]
+    [InlineData(VerminionMode.Participation, VerminionMode.WeeklyWin, false)]
+    [InlineData(VerminionMode.WeeklyWin, VerminionMode.Participation, false)]
+    [InlineData(VerminionMode.MissionRepeat, VerminionMode.WeeklyWin, false)]
+    [InlineData(VerminionMode.MissionRepeat, VerminionMode.MissionRepeat, false)]
+    [InlineData(VerminionMode.Participation, VerminionMode.WeeklyWin, true)]
+    public void PendingCpuAdmissionKeepsItsBehaviorAndGoalWhenEditedBeforeReload(
+        VerminionMode admittedMode, VerminionMode editedMode, bool campaign)
+    {
+        // Start performs native observation before selecting the saved goal.
+        // Verify that boundary directly, then exercise the real saved model/results.
+        DirectoryInfo? root = new(AppContext.BaseDirectory);
+        while (root != null && !File.Exists(Path.Combine(root.FullName, "VERMAXION", "Services", "VerminionService.cs")))
+            root = root.Parent;
+        Assert.NotNull(root);
+        var source = File.ReadAllText(Path.Combine(root.FullName, "VERMAXION", "Services", "VerminionService.cs"));
+        var start = source.IndexOf("// A saved admission retains its behavior and goal", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var end = source.IndexOf("var pendingQueue =", start, StringComparison.Ordinal);
+        Assert.True(end > start);
+        var selection = source[start..end];
+        Assert.Contains("VerminionDutyRules.IsCpu(progress.PendingDuty)", selection);
+        Assert.Contains("runMode = pendingMode;", selection);
+        Assert.Contains("repeatCount = progress.RunRepeatCount;", selection);
+        Assert.Contains("selectedMission = progress.RunMission;", selection);
+        Assert.Contains("if (VerminionDutyRules.IsPlayer(progress.PendingDuty))", selection);
+        Assert.Contains("else progress.EnsureRun(", selection);
+        Assert.DoesNotContain("CampaignRequested =", selection);
+        Assert.DoesNotContain("RunIsCampaign =", selection);
+
+        var week = new DateTime(2026, 10, 20, 8, 0, 0, DateTimeKind.Utc);
+        var character = new CharacterConfig { VerminionMode = admittedMode, VerminionMission = 2, VerminionRepeatCount = 3 };
+        var progress = character.VerminionProgress;
+        progress.ObserveWeek(week);
+        progress.EnsureRun(admittedMode, 3, mission: 2);
+        progress.CampaignRequested = progress.RunIsCampaign = campaign;
+        progress.RecordChallengeClear(1);
+        var outcome = admittedMode == VerminionMode.Participation && !campaign
+            ? VerminionBattleOutcome.Defeat : VerminionBattleOutcome.Victory;
+        Assert.True(progress.RecordResult(progress.BeginMatch(553), outcome, week));
+        var match = progress.BeginMatch(campaign ? 554u : 553u);
+        Assert.True(match > 0);
+
+        character.VerminionMode = editedMode;
+        character.VerminionMission = 4;
+        character.VerminionRepeatCount = 7;
+        character = JsonConvert.DeserializeObject<CharacterConfig>(JsonConvert.SerializeObject(character))!;
+        progress = character.VerminionProgress;
+        Assert.Equal(editedMode, character.VerminionMode);
+        Assert.Equal(admittedMode, progress.PendingMode);
+        Assert.Equal(admittedMode, progress.RunMode);
+        Assert.Equal(2, progress.RunMission);
+        Assert.Equal(3, progress.RunRepeatCount);
+        Assert.Equal(campaign, progress.CampaignRequested);
+        Assert.Equal(campaign, progress.RunIsCampaign);
+        Assert.Equal(admittedMode == VerminionMode.MissionRepeat && !campaign, progress.PendingMissionRepeat);
+        Assert.Equal(admittedMode == VerminionMode.MissionRepeat ? 1 : 0, progress.RunWins);
+        Assert.True(progress.RecordResult(match, outcome, week));
+        Assert.False(progress.RecordResult(match, outcome, week));
+        Assert.Equal(2, progress.WeeklyMatches);
+        Assert.Equal(outcome == VerminionBattleOutcome.Victory ? 2 : 0, progress.WeeklyWins);
+        Assert.Equal(admittedMode == VerminionMode.MissionRepeat ? 2 : 0, progress.RunWins);
+        Assert.Equal(campaign, progress.CampaignRequested);
+        Assert.Equal(campaign, progress.RunIsCampaign);
+        Assert.Equal(campaign ? 7u : outcome == VerminionBattleOutcome.Victory ? 3u : 1u, progress.ClearedChallengeMask);
+        Assert.Equal(0, progress.PendingMatch);
     }
 
     [Fact]

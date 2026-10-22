@@ -219,8 +219,8 @@ Status detail: {0}</value>
   <data name="Acquire {0} with Questionable" xml:space="preserve">
     <value>Acquire {0} with Questionable</value>
   </data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve">
-    <value>Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting.</value>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve">
+    <value>Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest&apos;s native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting.</value>
   </data>
   <data name="Action" xml:space="preserve">
     <value>Action</value>
@@ -282,8 +282,8 @@ Status detail: {0}</value>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve">
     <value>After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button.</value>
   </data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve">
-    <value>After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds.</value>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve">
+    <value>After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance.</value>
   </data>
   <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
     <value>After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits.</value>
@@ -2504,11 +2504,11 @@ If disabled, Vermaxion will attempt to run without Saucy (may not work properly)
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve">
     <value>Provider is locked to the active Fishing run snapshot.</value>
   </data>
-  <data name="Purchase limits" xml:space="preserve">
-    <value>Purchase limits</value>
+  <data name="Purchases" xml:space="preserve">
+    <value>Purchases</value>
   </data>
-  <data name="Purchase limits for this character" xml:space="preserve">
-    <value>Purchase limits for this character</value>
+  <data name="Minion purchases" xml:space="preserve">
+    <value>Minion purchases</value>
   </data>
   <data name="Purchase quantity / stock target" xml:space="preserve">
     <value>Purchase quantity / stock target</value>
@@ -6129,5 +6129,8 @@ Dependencies: {1}</value>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP Try to win: waiting to identify your side</value>
   </data>
 </root>

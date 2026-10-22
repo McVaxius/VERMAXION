@@ -81,7 +81,7 @@ Detail status: {0}</value></data>
   <data name="Acknowledgement saved; waiting for the exact MGP receipt. " xml:space="preserve"><value>Pengakuan disimpan; menunggu bukti penerimaan MGP yang tepat. </value></data>
   <data name="Acquire {0} through ADS" xml:space="preserve"><value>Dapatkan {0} melalui ADS</value></data>
   <data name="Acquire {0} with Questionable" xml:space="preserve"><value>Dapatkan {0} dengan Questionable</value></data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve"><value>Dapatkan {0}: Questionable menangani quest yang belum selesai dan rute tugas DAD / FrenRider / ADS yang dikonfigurasi, berhenti setelah quest hadiah. Memerlukan kontrol prioritas/berhenti asli WigglyQuest, daftar prioritas kosong, dan multi mode AutoRetainer nonaktif. Ini bisa menjadi rangkaian quest panjang; perjalanan quest menghabiskan gil terpisah dari batas pembelian minion. Atur penyedia quest dan tugas sebelum mulai.</value></data>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve"><value>Dapatkan {0}: Questionable menangani quest yang belum selesai dan rute tugas DAD / FrenRider / ADS yang dikonfigurasi, berhenti setelah quest hadiah. Memerlukan kontrol prioritas/berhenti asli WigglyQuest, daftar prioritas kosong, dan multi mode AutoRetainer nonaktif. Ini bisa menjadi rangkaian quest panjang; perjalanan quest juga menghabiskan gil. Atur penyedia quest dan tugas sebelum mulai.</value></data>
   <data name="Action" xml:space="preserve"><value>Tindakan</value></data>
   <data name="Actions" xml:space="preserve"><value>Tindakan</value></data>
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve"><value>Periksa secara aktif jendela Ocean Fishing tanpa pra/pascaproses AR. Masuk ulang dan memancing memakai pengaturan memancing Anda.</value></data>
@@ -104,7 +104,7 @@ Detail status: {0}</value></data>
     <value>Aktifkan penjualan NPC di AutoRetainer. Penjualan yang belum terverifikasi melewati pembuangan.</value>
   </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>Setelah lima menit menunggu pada pemilihan karakter selama masuk ulang memancing VERMAXION, coba memuat karakter aktif pertama sekali. Pengaman yang sama juga mengontrol tombol uji status.</value></data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>Setelah mendaftarkan item inventaris, masuk mungkin memerlukan {0} (total {1:N0} gil). Pembelian memerlukan sisa batas dan dana yang cukup.</value></data>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve"><value>Setelah mendaftarkan item inventaris, masuk mungkin memerlukan {0} (total {1:N0} gil). Pembelian memerlukan dana yang cukup dan mempertahankan saldo gil minimum.</value></data>
   <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
     <value>FrenRider/ADS: desintesis, penjualan, lalu /ays discard. Mematuhi daftar, perlindungan dan batas tumpukan AutoRetainer.</value>
   </data>
@@ -913,8 +913,8 @@ Jika dinonaktifkan, Vermaxion akan mencoba berjalan tanpa Saucy (mungkin tidak b
   <data name="Progression enabled" xml:space="preserve"><value>Progresi diaktifkan</value></data>
   <data name="Progression paused" xml:space="preserve"><value>Progresi dijeda</value></data>
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve"><value>Penyedia dikunci ke snapshot eksekusi Memancing aktif.</value></data>
-  <data name="Purchase limits" xml:space="preserve"><value>Batas pembelian</value></data>
-  <data name="Purchase limits for this character" xml:space="preserve"><value>Batas pembelian untuk karakter ini</value></data>
+  <data name="Purchases" xml:space="preserve"><value>Pembelian</value></data>
+  <data name="Minion purchases" xml:space="preserve"><value>Pembelian minion</value></data>
   <data name="Purchase quantity / stock target" xml:space="preserve"><value>Jumlah pembelian / target stok</value></data>
   <data name="Purchasing and live stock reconciliation remain enabled when activation is off." xml:space="preserve"><value>Pembelian dan rekonsiliasi stok saat ini tetap aktif saat aktivasi nonaktif.</value></data>
   <data name="Purchasing settings for the account and profile shown above." xml:space="preserve"><value>Pengaturan pembelian untuk akun dan profil yang ditampilkan di atas.</value></data>
@@ -3277,5 +3277,8 @@ Dependensi: {1}</value></data>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin dan Wind-up Cursor masing-masing berharga dua Sertifikat Pencapaian. Aksi perolehan hanya membeli minion yang diminta dan belum dimiliki.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - Coba menang: menunggu informasi pihak di medan tempur dari game</value>
   </data>
 </root>

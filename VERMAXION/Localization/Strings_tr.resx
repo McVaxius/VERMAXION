@@ -81,7 +81,7 @@ Durum ayrıntısı: {0}</value></data>
   <data name="Acknowledgement saved; waiting for the exact MGP receipt. " xml:space="preserve"><value>Onay kaydedildi; tam MGP makbuzu bekleniyor. </value></data>
   <data name="Acquire {0} through ADS" xml:space="preserve"><value>{0} öğesini ADS üzerinden edin</value></data>
   <data name="Acquire {0} with Questionable" xml:space="preserve"><value>{0} öğesini Questionable ile edin</value></data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve"><value>{0} öğesini edin: Questionable tamamlanmamış görevleri ve yapılandırılmış DAD / FrenRider / ADS görev rotalarını yönetir, ödül görevinden sonra durur. WigglyQuest'in yerel öncelik/durdurma kontrolleri, boş bir öncelik listesi ve AutoRetainer multi mode'un kapalı olması gerekir. Bu uzun bir görev zinciri olabilir; görev yolculuğu, minion satın alma sınırlarından ayrı gil harcar. Başlamadan önce görev ve içerik sağlayıcılarını yapılandırın.</value></data>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve"><value>{0} öğesini edin: Questionable tamamlanmamış görevleri ve yapılandırılmış DAD / FrenRider / ADS görev rotalarını yönetir, ödül görevinden sonra durur. WigglyQuest&apos;in yerel öncelik/durdurma kontrolleri, boş bir öncelik listesi ve AutoRetainer multi mode&apos;un kapalı olması gerekir. Bu uzun bir görev zinciri olabilir; görev yolculuğu da gil harcar. Başlamadan önce görev ve içerik sağlayıcılarını yapılandırın.</value></data>
   <data name="Action" xml:space="preserve"><value>İşlem</value></data>
   <data name="Actions" xml:space="preserve"><value>İşlemler</value></data>
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve"><value>AR ön/son işlemi olmadan Ocean Fishing zaman aralıklarını etkin olarak kontrol eder. Balıkçılık ayarlarınızı kullanarak yeniden giriş yapar ve balık tutar.</value></data>
@@ -104,7 +104,7 @@ Durum ayrıntısı: {0}</value></data>
     <value>AutoRetainer'da NPC satışını açın. Doğrulanamayan satıştan sonra atma işlemi atlanır.</value>
   </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>VERMAXION balıkçılık yeniden girişinde karakter seçiminde beş dakika bekledikten sonra ilk mevcut karakteri bir kez yüklemeyi dener. Aynı güvenlik kontrolü durum test düğmesini de yönetir.</value></data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>Envanter öğelerini kaydettikten sonra katılım {0} gerektirebilir (toplam {1:N0} gil). Satın almalar yeterli kalan sınır ve para gerektirir.</value></data>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve"><value>Envanter öğelerini kaydettikten sonra katılım {0} gerektirebilir (toplam {1:N0} gil). Satın almalar yeterli bakiye gerektirir ve minimum gil bakiyesini korur.</value></data>
   <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
     <value>FrenRider/ADS: ayrıştırma, satış, sonra /ays discard. AutoRetainer listeleri, koruması ve yığın sınırları korunur.</value>
   </data>
@@ -913,8 +913,8 @@ Devre dışıysa Vermaxion, Saucy olmadan çalışmayı dener (düzgün çalış
   <data name="Progression enabled" xml:space="preserve"><value>İlerleme etkin</value></data>
   <data name="Progression paused" xml:space="preserve"><value>İlerleme duraklatıldı</value></data>
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve"><value>Sağlayıcı, etkin Balıkçılık çalıştırması görüntüsüne kilitli.</value></data>
-  <data name="Purchase limits" xml:space="preserve"><value>Satın alma sınırları</value></data>
-  <data name="Purchase limits for this character" xml:space="preserve"><value>Bu karakterin satın alma sınırları</value></data>
+  <data name="Purchases" xml:space="preserve"><value>Satın almalar</value></data>
+  <data name="Minion purchases" xml:space="preserve"><value>Minion satın almaları</value></data>
   <data name="Purchase quantity / stock target" xml:space="preserve"><value>Satın alma miktarı / stok hedefi</value></data>
   <data name="Purchasing and live stock reconciliation remain enabled when activation is off." xml:space="preserve"><value>Etkinleştirme kapalıyken satın alma ve mevcut stok uzlaştırması etkin kalır.</value></data>
   <data name="Purchasing settings for the account and profile shown above." xml:space="preserve"><value>Yukarıda gösterilen hesap ve profilin satın alma ayarları.</value></data>
@@ -3277,5 +3277,8 @@ Bağımlılıklar: {1}</value></data>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin ve Wind-up Cursor için ayrı ayrı iki Başarım Sertifikası gerekir. Edinme işlemleri yalnızca istenen eksik minyonu satın alır.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - Kazanmaya çalış: oyunun bildirdiği savaş alanı tarafı bekleniyor</value>
   </data>
 </root>

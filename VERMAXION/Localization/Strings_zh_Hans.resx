@@ -1798,11 +1798,11 @@
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve">
     <value>执行插件已锁定为当前钓鱼运行快照中的设置。</value>
   </data>
-  <data name="Purchase limits" xml:space="preserve">
-    <value>购买上限</value>
+  <data name="Purchases" xml:space="preserve">
+    <value>购买</value>
   </data>
-  <data name="Purchase limits for this character" xml:space="preserve">
-    <value>此角色的购买上限</value>
+  <data name="Minion purchases" xml:space="preserve">
+    <value>宠物购买</value>
   </data>
   <data name="Purchase quantity / stock target" xml:space="preserve">
     <value>购买数量 / 库存目标</value>
@@ -3524,8 +3524,8 @@ NPC等级、制作／采集／钓鱼加成和已验证进度显示在任务表�
   <data name="Achievement Certificates spent: {0:N0}/{1:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate." xml:space="preserve">
     <value>成就证书已花费：{0:N0}/{1:N0}。独立角色上限默认零、跨周保留，不授权金币或MGP花费。领取不消耗此预算。移动费用单独计算。</value>
   </data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve">
-    <value>登记背包物品后，入场可能需要{0}（共{1:N0}金币）。购买需要足够剩余上限和资金。</value>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve">
+    <value>登记背包物品后，入场可能需要{0}（共{1:N0}金币）。购买需要足够资金，并保留最低金币余额。</value>
   </data>
   <data name="{0}: {1}. This guide option is not a current admission requirement." xml:space="preserve">
     <value>{0}：{1}。此攻略选项目前不是入场要求。</value>
@@ -3575,8 +3575,8 @@ NPC等级、制作／采集／钓鱼加成和已验证进度显示在任务表�
   <data name="Enabled stable feeding also starts automatically when the logged-in character is idle and training is due. Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, the Marketboard tab can enable a bounded Emptor purchase. Otherwise, Wiggly Quest can acquire an unfinished free-onion reward and its sidequest prerequisites. Stops after one onion is available; using it remains manual. Quest acquisition requires the appropriate job, level, MSQ progress and Wiggly routes." xml:space="preserve">
     <value>启用鸟厩喂养后，登录角色空闲且训练到期时也会自动启动。每次训练使用一个Krakka Root（8165）。可选清洁使用背包Magicked Stable Broom（8168）；没有时继续访问，不清洁或购买补给。若自己的10–19级陆行鸟达到上限且无Thavnairian Onion，市场页可启用有限Emptor购买。否则Wiggly Quest可完成未完成的免费洋葱奖励及其前置支线。一个洋葱可用后停止；使用仍手动。任务获取需要合适职业、等级、主线进度及Wiggly路线。</value>
   </data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve">
-    <value>获取{0}：Questionable处理未完成任务及配置的DAD／FrenRider／ADS任务路线，在奖励任务后停止。需要WigglyQuest原生优先／停止控制、空优先列表及关闭AutoRetainer多角色模式。任务链可能很长；移动金币与宠物购买上限分开。开始前配置任务和副本提供者。</value>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve">
+    <value>获取{0}：Questionable处理未完成任务及配置的DAD／FrenRider／ADS任务路线，在奖励任务后停止。需要WigglyQuest原生优先／停止控制、空优先列表及关闭AutoRetainer多角色模式。任务链可能很长；任务移动也会消耗金币。开始前配置任务和副本提供者。</value>
   </data>
   <data name="Commands: /dduck stop (FULL STOP: stops Deep Duck automation), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False" xml:space="preserve">
     <value>命令：/dduck stop（FULL STOP：停止 Deep Duck 自动化），/rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False</value>
@@ -5773,5 +5773,8 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>发条奥丁和发条光标各需两枚成就币。获取操作只购买指定且尚未拥有的宠物。</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - 尝试获胜：等待游戏提供的战场阵营信息</value>
   </data>
 </root>

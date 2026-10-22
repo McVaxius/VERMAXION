@@ -78,7 +78,7 @@ internal sealed class VerminionWindow : Window
         if (warnings.Count > 0) UIConstants.Status("VerminionWarnings", string.Join("\n", warnings), UIConstants.Amber);
         ImGui.Separator();
         bool tabsOpen;
-        using (MaterialText.PushLineHeight(new[] { "Run", "Minions & guide", "Purchase limits", "Tournament" }.Select(UiText.T).ToArray()))
+        using (MaterialText.PushLineHeight(new[] { "Run", "Minions & guide", "Purchases", "Tournament" }.Select(UiText.T).ToArray()))
             tabsOpen = ImGui.BeginTabBar("VerminionTabs", ImGuiTabBarFlags.FittingPolicyScroll);
         if (tabsOpen)
         {
@@ -94,11 +94,11 @@ internal sealed class VerminionWindow : Window
                 ImGui.EndChild();
                 ImGui.EndTabItem();
             }
-            if (UiGui.BeginTabItem("Purchase limits"))
+            if (UiGui.BeginTabItem("Purchases"))
             {
                 if (ImGui.BeginChild("VerminionPurchases", Vector2.Zero, false))
                 {
-                    UIConstants.Heading("Purchase limits for this character", plugin.Configuration.CompactUi);
+                    UIConstants.Heading("Minion purchases", plugin.Configuration.CompactUi);
                     ImGui.BeginDisabled(!loggedIn || service.IsActive || service.HasQuestAcquisition);
                     if (DrawSettings(config, includeGoalSettings: false, includeStatus: false)) plugin.ConfigManager.SaveCurrentAccount();
                     ImGui.EndDisabled();
@@ -194,7 +194,7 @@ internal sealed class VerminionWindow : Window
         foreach (var minion in VerminionRoster.Required(stage).Where(minion => VerminionRoster.AcquisitionQuests(minion.Id).Length > 0))
         {
             if (!loggedIn || VerminionGameInteraction.OwnsMinion(minion.Id) != false) continue;
-            UiGui.TextWrapped(UiText.F($"Acquire {minion.Name}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting."));
+            UiGui.TextWrapped(UiText.F($"Acquire {minion.Name}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting."));
             UiGui.TextWrapped("Hildibrand includes three eight-player trials. For a solo run with this stack, configure those duties as unsynced in Questionable and enable FrenRider's eight-player ADS handoff. Check that ADS permits each trial at your chosen maturity threshold. Verminion uses these provider settings; it does not change them or guarantee a trial clear.");
             var dutyBlocker = plugin.VerminionQuestHandoffBlocker();
             if (dutyBlocker != null) UiGui.TextWrapped(dutyBlocker);
@@ -347,7 +347,7 @@ internal sealed class VerminionWindow : Window
             UiGui.TextWrapped(UiText.F($"Registered minions: {registered.Length} (entry requires 3)."));
             var entry = VerminionRoster.EntryPurchases(registered);
             if (entry.Length > 0)
-                UiGui.TextWrapped(UiText.F($"After registering inventory items, entry may need {string.Join(", ", entry.Select(offer => offer.Name))} ({entry.Sum(offer => (long)offer.Gil):N0} gil total). Purchases require enough remaining cap and funds."));
+                UiGui.TextWrapped(UiText.F($"After registering inventory items, entry may need {string.Join(", ", entry.Select(offer => offer.Name))} ({entry.Sum(offer => (long)offer.Gil):N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance."));
         }
         UiGui.TextWrapped(UiText.F("Stage guide: {0}", VerminionRoster.GuideUrl(stage)));
         if (stage is 12 or 15 or 23 or 24)

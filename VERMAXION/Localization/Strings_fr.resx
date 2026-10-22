@@ -1810,11 +1810,11 @@
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve">
     <value>Le fournisseur est verrouillé sur l'instantané de pêche active.</value>
   </data>
-  <data name="Purchase limits" xml:space="preserve">
-    <value>Limites d'achat</value>
+  <data name="Purchases" xml:space="preserve">
+    <value>Achats</value>
   </data>
-  <data name="Purchase limits for this character" xml:space="preserve">
-    <value>Limites d'achat de ce personnage</value>
+  <data name="Minion purchases" xml:space="preserve">
+    <value>Achats de mascottes</value>
   </data>
   <data name="Purchase quantity / stock target" xml:space="preserve">
     <value>Quantité d'achat / stock cible</value>
@@ -3527,8 +3527,8 @@ Détail de l’état : {0}</value>
   <data name="Achievement Certificates spent: {0:N0}/{1:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate." xml:space="preserve">
     <value>Certificats dépensés : {0:N0}/{1:N0}. Plafond par personnage, zéro par défaut, persistant entre semaines, sans autorisation gil/MGP. Réclamations sans consommation ; trajets séparés.</value>
   </data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve">
-    <value>Après enregistrement de l’inventaire, l’entrée peut nécessiter {0} ({1:N0} gils au total). Achats soumis au plafond restant et aux fonds.</value>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve">
+    <value>Après enregistrement de l’inventaire, l’entrée peut nécessiter {0} ({1:N0} gils au total). Les achats nécessitent des fonds suffisants et préservent le solde minimum de gils.</value>
   </data>
   <data name="{0}: {1}. This guide option is not a current admission requirement." xml:space="preserve">
     <value>{0} : {1}. Cette option du guide n’est pas une condition d’entrée actuelle.</value>
@@ -3578,8 +3578,8 @@ Détail de l’état : {0}</value>
   <data name="Enabled stable feeding also starts automatically when the logged-in character is idle and training is due. Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, the Marketboard tab can enable a bounded Emptor purchase. Otherwise, Wiggly Quest can acquire an unfinished free-onion reward and its sidequest prerequisites. Stops after one onion is available; using it remains manual. Quest acquisition requires the appropriate job, level, MSQ progress and Wiggly routes." xml:space="preserve">
     <value>Le nourrissage actif démarre aussi quand le personnage connecté est libre et l’entraînement dû. Un Krakka Root (8165) par entraînement. Nettoyage optionnel avec Magicked Stable Broom (8168) possédé ; sans balai, continue sans nettoyer ni acheter. Si votre chocobo rang 10–19 est plafonné sans Thavnairian Onion, Marché autorise un achat Emptor limité. Sinon Wiggly Quest peut obtenir la récompense gratuite et ses prérequis. Arrête à un oignon ; usage manuel. Job, niveau, MSQ et routes Wiggly adaptés requis.</value>
   </data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve">
-    <value>Acquérir {0} : Questionable gère quêtes et routes DAD/FrenRider/ADS jusqu’à la récompense. Nécessite contrôles natifs priorité/arrêt WigglyQuest, liste vide et mode multi AutoRetainer désactivé. La chaîne peut être longue ; trajets séparés des plafonds de mascotte. Configurez les fournisseurs avant.</value>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve">
+    <value>Acquérir {0} : Questionable gère quêtes et routes DAD/FrenRider/ADS jusqu’à la récompense. Nécessite contrôles natifs priorité/arrêt WigglyQuest, liste vide et mode multi AutoRetainer désactivé. La chaîne peut être longue ; les trajets coûtent aussi des gils. Configurez les fournisseurs avant.</value>
   </data>
   <data name="Commands: /dduck stop (FULL STOP: stops Deep Duck automation), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False" xml:space="preserve">
     <value>Commandes : /dduck stop (FULL STOP : arrête l’automatisation de Deep Duck), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False</value>
@@ -6129,5 +6129,8 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Odin mécanique et le curseur mécanique coûtent deux certificats de haut fait chacun. Leurs actions d’acquisition achètent uniquement la mascotte manquante demandée.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>JcJ - Tenter de gagner : en attente du camp sur le champ de bataille indiqué par le jeu</value>
   </data>
 </root>

@@ -81,7 +81,7 @@ Detalhes do status: {0}</value></data>
   <data name="Acknowledgement saved; waiting for the exact MGP receipt. " xml:space="preserve"><value>Confirmação salva; aguardando o recibo exato de MGP. </value></data>
   <data name="Acquire {0} through ADS" xml:space="preserve"><value>Adquirir {0} via ADS</value></data>
   <data name="Acquire {0} with Questionable" xml:space="preserve"><value>Adquirir {0} com Questionable</value></data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve"><value>Adquirir {0}: Questionable cuida das missões inacabadas e de suas rotas de conteúdo DAD / FrenRider / ADS configuradas, parando após a missão de recompensa. Requer os controles nativos de prioridade/parada do WigglyQuest, lista de prioridades vazia e multi mode do AutoRetainer desligado. Pode ser uma longa sequência de missões; viagens de missão gastam gil separadamente dos limites de compra de minions. Configure os provedores de missões e conteúdo antes de começar.</value></data>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve"><value>Adquirir {0}: Questionable cuida das missões inacabadas e de suas rotas de conteúdo DAD / FrenRider / ADS configuradas, parando após a missão de recompensa. Requer os controles nativos de prioridade/parada do WigglyQuest, lista de prioridades vazia e multi mode do AutoRetainer desligado. Pode ser uma longa sequência de missões; viagens de missão também gastam gil. Configure os provedores de missões e conteúdo antes de começar.</value></data>
   <data name="Action" xml:space="preserve"><value>Ação</value></data>
   <data name="Actions" xml:space="preserve"><value>Ações</value></data>
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve"><value>Verifica ativamente janelas de Ocean Fishing sem pré/pós-processamento AR. Reconecta e pesca usando suas configurações de pesca.</value></data>
@@ -104,7 +104,7 @@ Detalhes do status: {0}</value></data>
     <value>Ative a venda a NPCs no AutoRetainer. Uma venda não verificada ignora o descarte.</value>
   </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>Após cinco minutos na seleção de personagem durante uma reconexão de pesca do VERMAXION, tenta carregar o primeiro personagem atual uma vez. A mesma proteção também controla o botão de teste de status.</value></data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>Após registrar itens do inventário, a entrada pode precisar de {0} ({1:N0} gil no total). As compras exigem limite restante e fundos suficientes.</value></data>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve"><value>Após registrar itens do inventário, a entrada pode precisar de {0} ({1:N0} gil no total). As compras exigem fundos suficientes e preservam o saldo mínimo de gil.</value></data>
   <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
     <value>FrenRider/ADS: dessíntese, venda e depois /ays discard. Respeita listas, proteção e limites de pilhas do AutoRetainer.</value>
   </data>
@@ -913,8 +913,8 @@ Se desativado, Vermaxion tentará executar sem Saucy (pode não funcionar corret
   <data name="Progression enabled" xml:space="preserve"><value>Progressão ativada</value></data>
   <data name="Progression paused" xml:space="preserve"><value>Progressão pausada</value></data>
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve"><value>O provedor está bloqueado no snapshot da execução ativa de Pesca.</value></data>
-  <data name="Purchase limits" xml:space="preserve"><value>Limites de compra</value></data>
-  <data name="Purchase limits for this character" xml:space="preserve"><value>Limites de compra deste personagem</value></data>
+  <data name="Purchases" xml:space="preserve"><value>Compras</value></data>
+  <data name="Minion purchases" xml:space="preserve"><value>Compras de minions</value></data>
   <data name="Purchase quantity / stock target" xml:space="preserve"><value>Quantidade de compra / meta de estoque</value></data>
   <data name="Purchasing and live stock reconciliation remain enabled when activation is off." xml:space="preserve"><value>Compras e reconciliação do estoque atual continuam ativadas quando a ativação está desligada.</value></data>
   <data name="Purchasing settings for the account and profile shown above." xml:space="preserve"><value>Configurações de compra da conta e do perfil exibidos acima.</value></data>
@@ -3277,5 +3277,8 @@ Dependências: {1}</value></data>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin e Wind-up Cursor custam dois certificados de conquista cada. Suas ações de aquisição compram apenas a mascote solicitada que estiver faltando.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - Tentar vencer: aguardando a identificação do lado no campo de batalha pelo jogo</value>
   </data>
 </root>

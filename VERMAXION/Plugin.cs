@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     internal const string BeastmasterTaskId = "Run##Beastmaster";
     internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
-    private const string DebugAttemptMarker = "vmx-verminion-client5-20261022-04";
+    private const string DebugAttemptMarker = "vmx-verminion-client5-20261022-39";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -988,6 +988,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
         catch (Exception ex)
         {
+            Log.Warning($"[Verminion] Minion acquisition unavailable: {ex.Message}");
             ChatGui.Print($"[Vermaxion] Minion acquisition unavailable: {ex.Message}");
         }
     }
@@ -1314,6 +1315,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         {
             var progress = ConfigManager.GetActiveConfig().VerminionProgress;
             Log.Information($"[Verminion] Paused reload observation: duty={VerminionGameInteraction.CurrentBattleDutyId()}; result={VerminionGameInteraction.ReadBattleOutcome()}; pending={progress.PendingMatch}; matches={progress.WeeklyMatches}; wins={progress.WeeklyWins}; no admission or credit.");
+            VerminionGameInteraction.CaptureBattle("paused reload observation");
             SetDebugTaskStatus("Verminion is paused; explicit Run/Resume is required before reload continuation.");
             return;
         }

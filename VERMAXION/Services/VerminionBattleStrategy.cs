@@ -10,6 +10,24 @@ internal sealed record VerminionPlayerMinion(ushort Id, string Name, int Cost, i
 // Player-field decisions use observed objectives/roster, independent of CPU stages.
 internal static class VerminionPlayerStrategy
 {
+    public static byte? ResolveBattalion(IEnumerable<(uint StoneBaseId, bool Enemy)> stones)
+    {
+        byte? local = null;
+        var friendlySeen = false;
+        var enemySeen = false;
+        foreach (var (stoneBaseId, enemy) in stones)
+        {
+            if (stoneBaseId is not (2006533 or 2006537)) return null;
+            var absoluteSide = stoneBaseId == 2006533 ? 0 : 1;
+            var observedLocal = (byte)(enemy ? 1 - absoluteSide : absoluteSide);
+            if (local != null && local != observedLocal) return null;
+            local = observedLocal;
+            if (enemy) enemySeen = true;
+            else friendlySeen = true;
+        }
+        return friendlySeen && enemySeen ? local : null;
+    }
+
     public static bool ControlsAllowed(Models.VerminionMode mode, uint duty, Models.VerminionMode? admittedMode) =>
         mode == Models.VerminionMode.PvpWin && admittedMode == mode && Models.VerminionDutyRules.IsPlayer(duty);
 

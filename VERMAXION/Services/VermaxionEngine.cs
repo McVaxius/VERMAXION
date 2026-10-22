@@ -3054,6 +3054,11 @@ public class VermaxionEngine
         }
     }
 
+    internal static bool ShouldPreserveVerminionCommence(bool preparingVerminionReload, VerminionProgress progress,
+        bool matchingQueue, string prompt, string expectedDutyName) => preparingVerminionReload && progress.PendingMatch != 0 &&
+        VerminionDutyRules.IsVerminion(progress.PendingDuty) && matchingQueue &&
+        expectedDutyName.Length > 0 && prompt == expectedDutyName;
+
     private void TryCloseOwnedUiBestEffort(UiCloseFallbackMode fallbackMode = UiCloseFallbackMode.Always,
         bool preserveVerminionResult = false)
     {
@@ -3072,13 +3077,25 @@ public class VermaxionEngine
         }
         var knownAddonWasVisible = TaskOwnedAddonNames.Any(IsAddonVisible);
         var keepVerminionResult = preserveVerminionResult && IsAddonVisible("LovmResult");
+        var keepVerminionCommence = false;
+        if (preserveVerminionResult && configManager.GetActiveConfig().VerminionProgress is { PendingMatch: not 0 } progress &&
+            VerminionDutyRules.IsVerminion(progress.PendingDuty))
+        {
+            keepVerminionCommence = ShouldPreserveVerminionCommence(preserveVerminionResult, progress,
+                VerminionGameInteraction.HasBattleQueue(progress.PendingDuty),
+                TryGetAddonText("ContentsFinderConfirm", 49, out var prompt) ? prompt : string.Empty,
+                VerminionGameInteraction.BattleDutyName(progress.PendingDuty));
+        }
 
         foreach (var addonName in TaskOwnedAddonNames)
-            if (!keepVerminionResult || addonName != "LovmResult") TryCloseAddonByCallback(addonName);
+            if ((!keepVerminionResult || addonName != "LovmResult") &&
+                (!keepVerminionCommence || addonName is not ("ContentsFinder" or "ContentsFinderConfirm")))
+                TryCloseAddonByCallback(addonName);
 
-        // The selected reload task must read its result before closing it.
+        // The selected reload task must reconcile its saved admission/result first.
         // Explicit FULL STOP retains the normal cleanup behavior.
-        if (!keepVerminionResult && UiCloseFallbackPolicy.ShouldPressFallbackEscape(fallbackMode, knownAddonWasVisible))
+        if (!keepVerminionResult && !keepVerminionCommence &&
+            UiCloseFallbackPolicy.ShouldPressFallbackEscape(fallbackMode, knownAddonWasVisible))
             ResetInteractionState();
     }
 

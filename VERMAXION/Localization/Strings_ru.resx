@@ -1798,11 +1798,11 @@
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve">
     <value>Поставщик закреплён за снимком текущей рыбалки.</value>
   </data>
-  <data name="Purchase limits" xml:space="preserve">
-    <value>Лимиты покупок</value>
+  <data name="Purchases" xml:space="preserve">
+    <value>Покупки</value>
   </data>
-  <data name="Purchase limits for this character" xml:space="preserve">
-    <value>Лимиты покупок этого персонажа</value>
+  <data name="Minion purchases" xml:space="preserve">
+    <value>Покупки миньонов</value>
   </data>
   <data name="Purchase quantity / stock target" xml:space="preserve">
     <value>Количество покупки / целевой запас</value>
@@ -3524,8 +3524,8 @@
   <data name="Achievement Certificates spent: {0:N0}/{1:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate." xml:space="preserve">
     <value>Потрачено сертификатов: {0:N0}/{1:N0}. Отдельный лимит персонажа, стандарт ноль, сохраняется между неделями и не разрешает гил/MGP. Получение сертификатов не расходует бюджет. Проезд отдельно.</value>
   </data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve">
-    <value>После регистрации инвентаря для входа может понадобиться {0} (всего {1:N0} гил). Нужны достаточные средства и остаток лимита.</value>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve">
+    <value>После регистрации предметов из инвентаря для входа может понадобиться {0} (всего {1:N0} гил). Для покупок нужны достаточные средства с сохранением минимального остатка гил.</value>
   </data>
   <data name="{0}: {1}. This guide option is not a current admission requirement." xml:space="preserve">
     <value>{0}: {1}. Этот вариант руководства сейчас не обязателен для входа.</value>
@@ -3575,8 +3575,8 @@
   <data name="Enabled stable feeding also starts automatically when the logged-in character is idle and training is due. Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, the Marketboard tab can enable a bounded Emptor purchase. Otherwise, Wiggly Quest can acquire an unfinished free-onion reward and its sidequest prerequisites. Stops after one onion is available; using it remains manual. Quest acquisition requires the appropriate job, level, MSQ progress and Wiggly routes." xml:space="preserve">
     <value>Включённое кормление запускается также при свободном персонаже и наступившей тренировке. Один Krakka Root (8165) за тренировку. Очистка использует имеющийся Magicked Stable Broom (8168); без него продолжает без очистки и покупки. Если ваш чокобо ранга 10–19 достиг предела и нет Thavnairian Onion, вкладка рынка разрешает ограниченную покупку Emptor. Иначе Wiggly Quest получает бесплатную награду и её предпосылки. Останавливается при одном луке; использование вручную. Нужны профессия, уровень, MSQ и маршруты Wiggly.</value>
   </data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve">
-    <value>Получить {0}: Questionable выполняет незавершённые задания и маршруты DAD/FrenRider/ADS до награды. Нужны штатные приоритет/стоп WigglyQuest, пустой список приоритетов и выключенный мульти-режим AutoRetainer. Цепочка может быть длинной; проезд отдельно от лимитов миньона. Настройте поставщиков до запуска.</value>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve">
+    <value>Получить {0}: Questionable выполняет незавершённые задания и маршруты DAD/FrenRider/ADS до награды. Нужны штатные приоритет/стоп WigglyQuest, пустой список приоритетов и выключенный мульти-режим AutoRetainer. Цепочка может быть длинной; поездки также расходуют гил. Настройте поставщиков до запуска.</value>
   </data>
   <data name="Commands: /dduck stop (FULL STOP: stops Deep Duck automation), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False" xml:space="preserve">
     <value>Команды: /dduck stop (FULL STOP: останавливает автоматизацию Deep Duck), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False</value>
@@ -6129,5 +6129,8 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin и Wind-up Cursor стоят по два сертификата достижений. Команда получения покупает только указанного недостающего спутника.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP — попытаться победить: ожидание данных игры о стороне на поле боя</value>
   </data>
 </root>

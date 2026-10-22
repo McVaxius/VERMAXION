@@ -1807,11 +1807,11 @@
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve">
     <value>Anbieter ist für den aktiven Angellauf gesperrt.</value>
   </data>
-  <data name="Purchase limits" xml:space="preserve">
-    <value>Kauflimits</value>
+  <data name="Purchases" xml:space="preserve">
+    <value>Käufe</value>
   </data>
-  <data name="Purchase limits for this character" xml:space="preserve">
-    <value>Kauflimits dieses Charakters</value>
+  <data name="Minion purchases" xml:space="preserve">
+    <value>Begleiterkäufe</value>
   </data>
   <data name="Purchase quantity / stock target" xml:space="preserve">
     <value>Kaufmenge / Vorratsziel</value>
@@ -3523,8 +3523,8 @@ Statusdetails: {0}</value>
   <data name="Achievement Certificates spent: {0:N0}/{1:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate." xml:space="preserve">
     <value>Zertifikate verbraucht: {0:N0}/{1:N0}. Separates Charakterlimit, standardmäßig null, bleibt über Wochen erhalten und erlaubt keine Gil-/MGP-Ausgaben. Abholungen verbrauchen es nicht. Reisekosten separat.</value>
   </data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve">
-    <value>Nach Registrierung vorhandener Gegenstände benötigt Teilnahme eventuell {0} (gesamt {1:N0} Gil). Käufe erfordern ausreichendes Restlimit und Guthaben.</value>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve">
+    <value>Nach Registrierung vorhandener Gegenstände benötigt die Teilnahme eventuell {0} (gesamt {1:N0} Gil). Käufe erfordern ausreichendes Guthaben und erhalten das Mindest-Gil-Guthaben.</value>
   </data>
   <data name="{0}: {1}. This guide option is not a current admission requirement." xml:space="preserve">
     <value>{0}: {1}. Diese Anleitungsoption ist derzeit keine Teilnahmevoraussetzung.</value>
@@ -3574,8 +3574,8 @@ Statusdetails: {0}</value>
   <data name="Enabled stable feeding also starts automatically when the logged-in character is idle and training is due. Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, the Marketboard tab can enable a bounded Emptor purchase. Otherwise, Wiggly Quest can acquire an unfinished free-onion reward and its sidequest prerequisites. Stops after one onion is available; using it remains manual. Quest acquisition requires the appropriate job, level, MSQ progress and Wiggly routes." xml:space="preserve">
     <value>Aktivierte Stallfütterung startet automatisch, wenn der eingeloggte Charakter frei und Training fällig ist. Je Training ein Krakka Root (8165). Optionale Reinigung nutzt vorhandenen Magicked Stable Broom (8168); ohne Besen weiter ohne Reinigung oder Vorratskauf. Bei eigenem Rang-10–19-Chocobo am Limit ohne Thavnairian Onion erlaubt Marktbrett einen begrenzten Emptor-Kauf. Sonst kann Wiggly Quest die kostenlose Zwiebelbelohnung samt Voraussetzungen holen. Stoppt bei einer Zwiebel; Verwendung manuell. Benötigt passende Klasse, Stufe, MSQ und Wiggly-Routen.</value>
   </data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve">
-    <value>{0} erwerben: Questionable übernimmt offene Quests und konfigurierte DAD-/FrenRider-/ADS-Inhaltsrouten bis zur Belohnungsquest. Benötigt native WigglyQuest-Prioritäts-/Stoppsteuerung, leere Prioritätsliste und AutoRetainer-Multimodus aus. Die Kette kann lang sein; Reisekosten sind separat vom Begleiterlimit. Anbieter vorher konfigurieren.</value>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve">
+    <value>{0} erwerben: Questionable übernimmt offene Quests und konfigurierte DAD-/FrenRider-/ADS-Inhaltsrouten bis zur Belohnungsquest. Benötigt native WigglyQuest-Prioritäts-/Stoppsteuerung, leere Prioritätsliste und AutoRetainer-Multimodus aus. Die Kette kann lang sein; auch Reisen kosten Gil. Anbieter vorher konfigurieren.</value>
   </data>
   <data name="Commands: /dduck stop (FULL STOP: stops Deep Duck automation), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False" xml:space="preserve">
     <value>Befehle: /dduck stop (FULL STOP: beendet die Deep Duck-Automatisierung), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False</value>
@@ -6129,5 +6129,8 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Aufzieh-Odin und Aufzieh-Cursor kosten jeweils zwei Errungenschaftszertifikate. Die Beschaffungsaktionen kaufen nur den angeforderten fehlenden Begleiter.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - Sieg versuchen: Warten auf die vom Spiel gemeldete Seite auf dem Schlachtfeld</value>
   </data>
 </root>

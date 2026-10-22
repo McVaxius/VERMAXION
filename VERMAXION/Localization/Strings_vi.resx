@@ -81,7 +81,7 @@ Chi tiết trạng thái: {0}</value></data>
   <data name="Acknowledgement saved; waiting for the exact MGP receipt. " xml:space="preserve"><value>Đã lưu xác nhận; đang chờ biên nhận MGP chính xác. </value></data>
   <data name="Acquire {0} through ADS" xml:space="preserve"><value>Nhận {0} qua ADS</value></data>
   <data name="Acquire {0} with Questionable" xml:space="preserve"><value>Nhận {0} bằng Questionable</value></data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve"><value>Nhận {0}: Questionable xử lý nhiệm vụ chưa hoàn thành và các tuyến nhiệm vụ DAD / FrenRider / ADS đã cấu hình, dừng sau nhiệm vụ trao thưởng. Cần điều khiển ưu tiên/dừng gốc của WigglyQuest, danh sách ưu tiên trống và tắt AutoRetainer multi mode. Đây có thể là chuỗi nhiệm vụ dài; di chuyển nhiệm vụ chi gil tách biệt với giới hạn mua minion. Cấu hình nhà cung cấp nhiệm vụ và nội dung trước khi bắt đầu.</value></data>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve"><value>Nhận {0}: Questionable xử lý nhiệm vụ chưa hoàn thành và các tuyến nhiệm vụ DAD / FrenRider / ADS đã cấu hình, dừng sau nhiệm vụ trao thưởng. Cần điều khiển ưu tiên/dừng gốc của WigglyQuest, danh sách ưu tiên trống và tắt AutoRetainer multi mode. Đây có thể là chuỗi nhiệm vụ dài; di chuyển nhiệm vụ cũng tốn gil. Cấu hình nhà cung cấp nhiệm vụ và nội dung trước khi bắt đầu.</value></data>
   <data name="Action" xml:space="preserve"><value>Thao tác</value></data>
   <data name="Actions" xml:space="preserve"><value>Thao tác</value></data>
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve"><value>Chủ động kiểm tra khung giờ Ocean Fishing mà không xử lý trước/sau AR. Đăng nhập lại và câu cá bằng cài đặt câu cá của bạn.</value></data>
@@ -104,7 +104,7 @@ Chi tiết trạng thái: {0}</value></data>
     <value>Bật bán cho NPC trong AutoRetainer. Nếu chưa xác minh được việc bán, bỏ qua việc vứt đồ.</value>
   </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>Sau năm phút chờ tại màn hình chọn nhân vật trong lần đăng nhập lại để câu cá của VERMAXION, thử tải nhân vật hiện hành đầu tiên một lần. Cùng điều kiện bảo vệ đó cũng kiểm soát nút kiểm thử trạng thái.</value></data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>Sau khi đăng ký vật phẩm trong túi, lượt tham gia có thể cần {0} (tổng {1:N0} gil). Giao dịch cần đủ giới hạn còn lại và tiền.</value></data>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve"><value>Sau khi đăng ký vật phẩm trong túi, lượt tham gia có thể cần {0} (tổng {1:N0} gil). Giao dịch cần đủ tiền và giữ lại số dư gil tối thiểu.</value></data>
   <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
     <value>FrenRider/ADS: phân giải, bán, rồi /ays discard. Tuân theo danh sách, bảo vệ và giới hạn chồng của AutoRetainer.</value>
   </data>
@@ -913,8 +913,8 @@ Nếu tắt, Vermaxion sẽ thử chạy mà không có Saucy (có thể không 
   <data name="Progression enabled" xml:space="preserve"><value>Tiến trình được bật</value></data>
   <data name="Progression paused" xml:space="preserve"><value>Tiến trình tạm dừng</value></data>
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve"><value>Nhà cung cấp bị khóa theo ảnh chụp lượt Câu cá đang hoạt động.</value></data>
-  <data name="Purchase limits" xml:space="preserve"><value>Giới hạn mua</value></data>
-  <data name="Purchase limits for this character" xml:space="preserve"><value>Giới hạn mua cho nhân vật này</value></data>
+  <data name="Purchases" xml:space="preserve"><value>Mua sắm</value></data>
+  <data name="Minion purchases" xml:space="preserve"><value>Mua minion</value></data>
   <data name="Purchase quantity / stock target" xml:space="preserve"><value>Số lượng mua / tồn kho mục tiêu</value></data>
   <data name="Purchasing and live stock reconciliation remain enabled when activation is off." xml:space="preserve"><value>Mua hàng và đối chiếu tồn kho hiện tại vẫn được bật khi tắt kích hoạt.</value></data>
   <data name="Purchasing settings for the account and profile shown above." xml:space="preserve"><value>Cài đặt mua cho tài khoản và hồ sơ hiển thị ở trên.</value></data>
@@ -3277,5 +3277,8 @@ Phụ thuộc: {1}</value></data>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin và Wind-up Cursor có giá hai Chứng chỉ Thành tựu mỗi con. Thao tác thu thập chỉ mua thú cưng được yêu cầu còn thiếu.</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - Cố gắng thắng: đang chờ thông tin phe trên chiến trường từ trò chơi</value>
   </data>
 </root>

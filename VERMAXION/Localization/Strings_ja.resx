@@ -1798,11 +1798,11 @@
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve">
     <value>実行元は現在の釣り実行の保存状態に固定されています。</value>
   </data>
-  <data name="Purchase limits" xml:space="preserve">
-    <value>購入上限</value>
+  <data name="Purchases" xml:space="preserve">
+    <value>購入</value>
   </data>
-  <data name="Purchase limits for this character" xml:space="preserve">
-    <value>このキャラクターの購入上限</value>
+  <data name="Minion purchases" xml:space="preserve">
+    <value>ミニオン購入</value>
   </data>
   <data name="Purchase quantity / stock target" xml:space="preserve">
     <value>購入数 / 在庫目標</value>
@@ -3524,8 +3524,8 @@ NPCランク、製作・採集・釣りのボーナス、確認済み進捗は�
   <data name="Achievement Certificates spent: {0:N0}/{1:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate." xml:space="preserve">
     <value>スクリップ使用: {0:N0}/{1:N0}枚。キャラクター別の独立上限は既定0で、週をまたいで保持し、ギル・MGP消費を許可しません。受領はこの予算を消費せず、移動費は別です。</value>
   </data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve">
-    <value>所持品の登録後、参加に{0}（合計{1:N0}ギル）が必要な場合があります。購入には十分な残上限と資金が必要です。</value>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve">
+    <value>所持品の登録後、参加に{0}（合計{1:N0}ギル）が必要な場合があります。購入には十分な資金が必要で、最低ギル残高を維持します。</value>
   </data>
   <data name="{0}: {1}. This guide option is not a current admission requirement." xml:space="preserve">
     <value>{0}: {1}。この攻略候補は現在の参加必須条件ではありません。</value>
@@ -3575,8 +3575,8 @@ NPCランク、製作・採集・釣りのボーナス、確認済み進捗は�
   <data name="Enabled stable feeding also starts automatically when the logged-in character is idle and training is due. Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, the Marketboard tab can enable a bounded Emptor purchase. Otherwise, Wiggly Quest can acquire an unfinished free-onion reward and its sidequest prerequisites. Stops after one onion is available; using it remains manual. Quest acquisition requires the appropriate job, level, MSQ progress and Wiggly routes." xml:space="preserve">
     <value>給餌を有効にすると、ログイン中のキャラクターが待機し訓練時刻になった場合も自動開始します。1回にKrakka Root（8165）を1個使います。任意の清掃は所持品のMagicked Stable Broom（8168）を使い、なければ清掃・補充購入なしで続けます。自分のランク10～19チョコボが上限でThavnairian Onion未所持なら、マーケット欄で制限付きEmptor購入を許可できます。それ以外はWiggly Questで未完了の無料オニオン報酬と前提クエストを取得できます。1個入手で止まり、使用は手動です。ジョブ・レベル・MSQ進捗・Wiggly経路の条件が必要です。</value>
   </data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve">
-    <value>{0}取得: Questionableが未完了クエストと設定済みDAD／FrenRider／ADSコンテンツ経路を処理し、報酬クエスト後に止まります。WigglyQuestの標準優先・停止操作、空の優先リスト、AutoRetainerマルチモード無効が必要です。長い連続クエストになる場合があり、移動費はミニオン購入上限とは別です。開始前に実行元を設定してください。</value>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve">
+    <value>{0}取得: Questionableが未完了クエストと設定済みDAD／FrenRider／ADSコンテンツ経路を処理し、報酬クエスト後に止まります。WigglyQuestの標準優先・停止操作、空の優先リスト、AutoRetainerマルチモード無効が必要です。長い連続クエストになる場合があり、クエストの移動にもギルがかかります。開始前に実行元を設定してください。</value>
   </data>
   <data name="Commands: /dduck stop (FULL STOP: stops Deep Duck automation), /rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False" xml:space="preserve">
     <value>コマンド: /dduck stop（FULL STOP: Deep Duck の自動化を停止）、/rotation Cancel, /at enable, /vbmai off, /bmrai off, /wrath auto off, /vnavmesh stop, /visland stop, /ad stop, /sice stop, /ochillegal off, /fr off, /rotation Settings StartOnCountdown False</value>
@@ -5773,5 +5773,8 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>マメット・オーディンとマメット・カーソルは各アチーブメントスクリップ2枚です。取得操作では指定した未所持ミニオンのみ購入します。</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - 勝利を目指す：ゲーム側の戦場陣営情報を待機中</value>
   </data>
 </root>

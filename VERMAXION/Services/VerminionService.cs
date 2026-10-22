@@ -37,7 +37,6 @@ public sealed partial class VerminionService : IDisposable
     private bool ownsTournamentInfo;
     private bool ownsTournamentFinder;
     private bool ownsPlayerFinder;
-    private bool playerRowSelected;
     private bool playerCheckboxAttempted;
     private bool playerSelectionPrepared;
     private VerminionSummonTracker playerSummons = new();
@@ -182,10 +181,12 @@ public sealed partial class VerminionService : IDisposable
     public string StatusText => $"{(IsComplete ? "Complete: " : string.Empty)}{reason} | {ProgressSummary(configManager.GetActiveConfig())}";
 
     public static string ProgressSummary(CharacterConfig config) => config.VerminionProgress.Summary(
-        config.VerminionMode, config.VerminionRepeatCount, ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow), config.VerminionMission);
+        config.VerminionMode, config.VerminionRepeatCount, ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow),
+        config.VerminionMission, (uint)config.VerminionPlayerQueue);
 
     public static bool WeeklyGoalReached(CharacterConfig config) => config.VerminionProgress.WeeklyGoalReached(
-        config.VerminionMode, config.VerminionRepeatCount, ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow), mission: config.VerminionMission);
+        config.VerminionMode, config.VerminionRepeatCount, ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow),
+        mission: config.VerminionMission, playerDuty: (uint)config.VerminionPlayerQueue);
 
     public VerminionService(ICommandManager commandManager, ICondition condition, IPluginLog log,
         ConfigManager configManager, LifestreamIPC lifestream, VNavmeshIPC navigation)
@@ -249,16 +250,20 @@ public sealed partial class VerminionService : IDisposable
             return;
         }
         progress.ObserveWeek(ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow));
-        // A saved player admission retains its behavior even if the editor was
-        // changed while queued or before reload. Never reinterpret Throw as Win.
-        if (progress.PendingMatch != 0 && VerminionDutyRules.IsPlayer(progress.PendingDuty) &&
-            progress.PendingMode is { } pendingMode && VerminionDutyRules.IsPlayerMode(pendingMode))
+        // A saved admission retains its behavior and goal even if the editor
+        // changed while queued or before reload. Do not reset its run accounting.
+        if (progress.PendingMatch != 0 && progress.PendingMode is { } pendingMode &&
+            (VerminionDutyRules.IsCpu(progress.PendingDuty) ||
+                VerminionDutyRules.IsPlayer(progress.PendingDuty) && VerminionDutyRules.IsPlayerMode(pendingMode)))
         {
             runMode = pendingMode;
             repeatCount = progress.RunRepeatCount;
             selectedMission = progress.RunMission;
-            selectedPlayerDuty = progress.PendingDuty;
-            campaign = false;
+            if (VerminionDutyRules.IsPlayer(progress.PendingDuty))
+            {
+                selectedPlayerDuty = progress.PendingDuty;
+                campaign = false;
+            }
         }
         else progress.EnsureRun(config.VerminionMode, repeatCount, mission: selectedMission, playerDuty: selectedPlayerDuty);
         if (!campaign && VerminionDutyRules.IsPlayerMode(runMode) && !VerminionDutyRules.IsPlayer(selectedPlayerDuty))
@@ -288,7 +293,7 @@ public sealed partial class VerminionService : IDisposable
             return;
         }
         if (!campaign && progress.PendingMatch == 0 && progress.WinningRunLimitReached &&
-            progress.Remaining(runMode, repeatCount, selectedMission) > 0)
+            progress.Remaining(runMode, repeatCount, selectedMission, selectedPlayerDuty) > 0)
         {
             config.VerminionPaused = true;
             configManager.SaveCurrentAccount();
@@ -1228,7 +1233,7 @@ public sealed partial class VerminionService : IDisposable
 
     private bool BeginPlayerFinder()
     {
-        playerRowSelected = playerCheckboxAttempted = playerSelectionPrepared = false;
+        playerCheckboxAttempted = playerSelectionPrepared = false;
         ownsPlayerFinder = VerminionGameInteraction.OpenPlayerFinder(battleDuty, out var failure);
         if (!ownsPlayerFinder)
         { Fail(failure); return false; }
@@ -1239,7 +1244,12 @@ public sealed partial class VerminionService : IDisposable
 
     private void UpdatePlayerFinder(double elapsed)
     {
-        if (elapsed > 20) { Fail("The selected player duty was not verified; no Join requested."); return; }
+        if (elapsed > 20)
+        {
+            VerminionGameInteraction.CaptureFinder();
+            Fail("The selected player duty was not verified; no Join requested.");
+            return;
+        }
         if (DateTime.UtcNow < nextInteractionUtc || !VerminionGameInteraction.IsPlayerFinder(battleDuty)) return;
         nextInteractionUtc = DateTime.UtcNow.AddSeconds(1);
         var label = VerminionGameInteraction.PlayerBattleLabel(battleDuty);
@@ -1250,11 +1260,8 @@ public sealed partial class VerminionService : IDisposable
             playerSelectionPrepared = true;
             return; // Let the native clear callback settle before selecting.
         }
-        if (!playerRowSelected)
-        {
-            playerRowSelected = GameHelpers.TrySelectNativeListEntry("ContentsFinder", label);
-            return;
-        }
+        // OpenRegularDuty already selects the native duty. Finder's grouped
+        // renderer indices do not identify the same entries in ContentList.
         if (!VerminionGameInteraction.HasOnlyPlayerSelection(battleDuty))
         {
             if (!playerCheckboxAttempted)
@@ -1306,6 +1313,16 @@ public sealed partial class VerminionService : IDisposable
             reason = "PvP Throw: staying passive until the native result";
             return;
         }
+        if (VerminionGameInteraction.ReadBattlefieldBattalion() == null)
+        {
+            if (pendingGroupDestination != null || pendingSameTypeSelection != null || pendingTutorialMove)
+                CancelLostBossGroup();
+            pendingBattlefieldClick = null;
+            ReleaseKey();
+            VerminionGameInteraction.ReleaseBattlefieldInput(restoreRendering: false);
+            reason = "PvP Try to win: waiting to identify your side";
+            return;
+        }
         if (!battlefieldRenderingPrepared)
         {
             VerminionGameInteraction.PrepareBattlefieldRendering();
@@ -1318,13 +1335,16 @@ public sealed partial class VerminionService : IDisposable
     {
         var progress = configManager.GetActiveConfig().VerminionProgress;
         if (!VerminionPlayerStrategy.ControlsAllowed(runMode, VerminionGameInteraction.CurrentBattleDutyId(), progress.PendingMode)) return;
+        if (VerminionGameInteraction.ReadBattlefieldBattalion() is not { } localBattalion) return;
         var now = DateTime.UtcNow;
         var units = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
             .Where(unit => unit.CurrentHp > 0 && VerminionGameInteraction.IsFriendlyMinion(unit)).ToArray();
         playerSummons.ObserveUnits(units.Select(unit => unit.GameObjectId));
         var queued = VerminionGameInteraction.ReadQueuedSummonCount();
         if (reconcilingSummonQueue && queued == 0) reconcilingSummonQueue = false;
-        var friendlyStones = Plugin.ObjectTable.Where(obj => obj.BaseId == 2006533 &&
+        var friendlyStoneBase = localBattalion == 0 ? 2006533u : 2006537u;
+        var enemyStoneBase = localBattalion == 0 ? 2006537u : 2006533u;
+        var friendlyStones = Plugin.ObjectTable.Where(obj => obj.BaseId == friendlyStoneBase &&
             Enumerable.Range(0, 3).Any(lane => VerminionGameInteraction.ReadStoneHp(false, lane) > 0 &&
                 obj.Name.TextValue == $"Arcana Stone {(char)('A' + lane)}")).ToArray();
         var threat = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
@@ -1333,7 +1353,7 @@ public sealed partial class VerminionService : IDisposable
             .OrderBy(enemy => enemy.CurrentHp).FirstOrDefault();
         var lane = VerminionPlayerStrategy.EnemyLane(Enumerable.Range(0, 3)
             .Select(index => VerminionGameInteraction.ReadStoneHp(true, index)).ToArray());
-        var objective = lane < 0 ? null : Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == 2006537 &&
+        var objective = lane < 0 ? null : Plugin.ObjectTable.FirstOrDefault(obj => obj.BaseId == enemyStoneBase &&
             obj.Name.TextValue == $"Arcana Stone {(char)('A' + lane)}");
         var destination = threat?.Position ?? objective?.Position;
         reason = threat != null ? "PvP Try to win: intercepting threats near a surviving friendly stone" :
@@ -1749,7 +1769,7 @@ public sealed partial class VerminionService : IDisposable
     {
         var config = configManager.GetActiveConfig();
         if (campaign || !config.VerminionProgress.WeeklyGoalReached(runMode, repeatCount,
-                ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow), tournamentEntryUnavailable, selectedMission)) return false;
+                ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow), tournamentEntryUnavailable, selectedMission, selectedPlayerDuty)) return false;
         StopOwnedMovement();
         VerminionGameInteraction.CloseChallengeMenu();
         config.VerminionCompletedThisWeek = config.VerminionProgress.WeeklyMatches >= 5;
@@ -1965,7 +1985,7 @@ public sealed partial class VerminionService : IDisposable
         {
             if (progress.PendingPurchase != null && ReconcileMinionPurchase())
             {
-                progress.MinionAcquisition = null;
+                if (!acquisition.Standalone) progress.MinionAcquisition = null;
                 configManager.SaveCurrentAccount();
                 registeringItem = 0;
                 SetState(VerminionState.RegisteringMinions, "Registering the minion from the reconciled purchase");

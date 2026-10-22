@@ -71,7 +71,7 @@
   <data name="Acknowledgement saved; waiting for the exact MGP receipt. " xml:space="preserve"><value>पुष्टि सहेजी गई; सटीक MGP रसीद की प्रतीक्षा है। </value></data>
   <data name="Acquire {0} through ADS" xml:space="preserve"><value>ADS से {0} प्राप्त करें</value></data>
   <data name="Acquire {0} with Questionable" xml:space="preserve"><value>Questionable से {0} प्राप्त करें</value></data>
-  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel spends gil separately from the minion purchase caps. Configure the quest and duty providers before starting." xml:space="preserve"><value>{0} प्राप्त करें: Questionable अधूरे क्वेस्ट और उसके कॉन्फ़िगर किए गए DAD / FrenRider / ADS ड्यूटी मार्ग संभालता है और इनाम वाले क्वेस्ट के बाद रुकता है। WigglyQuest के मूल priority/stop नियंत्रण, खाली priority सूची और बंद AutoRetainer multi mode आवश्यक हैं। यह लंबी क्वेस्ट शृंखला हो सकती है; क्वेस्ट यात्रा का gil खर्च मिनियन खरीद सीमा से अलग है। शुरू करने से पहले क्वेस्ट और ड्यूटी प्रदाता कॉन्फ़िगर करें।</value></data>
+  <data name="Acquire {0}: Questionable handles the unfinished quests and its configured DAD / FrenRider / ADS duty routes, stopping after the reward quest. Requires WigglyQuest's native priority/stop controls, an empty priority list and AutoRetainer multi mode off. This can be a long quest chain; quest travel also spends gil. Configure the quest and duty providers before starting." xml:space="preserve"><value>{0} प्राप्त करें: Questionable अधूरे क्वेस्ट और उसके कॉन्फ़िगर किए गए DAD / FrenRider / ADS ड्यूटी मार्ग संभालता है और इनाम वाले क्वेस्ट के बाद रुकता है। WigglyQuest के मूल priority/stop नियंत्रण, खाली priority सूची और बंद AutoRetainer multi mode आवश्यक हैं। यह लंबी क्वेस्ट शृंखला हो सकती है; क्वेस्ट यात्रा में भी gil खर्च होता है। शुरू करने से पहले क्वेस्ट और ड्यूटी प्रदाता कॉन्फ़िगर करें।</value></data>
   <data name="Action" xml:space="preserve"><value>कार्रवाई</value></data>
   <data name="Actions" xml:space="preserve"><value>कार्रवाइयाँ</value></data>
   <data name="Actively check for Ocean Fishing windows without AR pre/post processing. Relogs and fishes using your configured fishing settings." xml:space="preserve"><value>AR प्री/पोस्टप्रोसेस के बिना Ocean Fishing समय सक्रिय रूप से जाँचें। आपकी मछली पकड़ने की सेटिंग्स से फिर लॉगिन करता है और मछली पकड़ता है।</value></data>
@@ -94,7 +94,7 @@
     <value>AutoRetainer में NPC बिक्री चालू करें। अपुष्ट बिक्री के बाद वस्तुएँ नहीं फेंकी जातीं।</value>
   </data>
   <data name="After five minutes waiting at character select during a VERMAXION fishing relog, attempt to load the first live character once. The same guard also controls the status test button." xml:space="preserve"><value>VERMAXION fishing relog के दौरान पात्र चयन पर पाँच मिनट प्रतीक्षा के बाद, पहले लाइव पात्र को एक बार लोड करने का प्रयास करें। यही सुरक्षा जाँच स्थिति परीक्षण बटन को भी नियंत्रित करती है।</value></data>
-  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require enough remaining cap and funds." xml:space="preserve"><value>इन्वेंटरी आइटम पंजीकरण के बाद, प्रवेश के लिए {0} आवश्यक हो सकता है (कुल {1:N0} gil)। खरीद के लिए सीमा और राशि दोनों पर्याप्त बचनी चाहिए।</value></data>
+  <data name="After registering inventory items, entry may need {0} ({1:N0} gil total). Purchases require sufficient funds and preserve the minimum gil balance." xml:space="preserve"><value>इन्वेंटरी आइटम पंजीकरण के बाद, प्रवेश के लिए {0} आवश्यक हो सकता है (कुल {1:N0} gil)। खरीद के लिए पर्याप्त धन आवश्यक है और न्यूनतम gil शेष सुरक्षित रखा जाता है।</value></data>
   <data name="After FrenRider/ADS desynthesis and selling settle, runs /ays discard using AutoRetainer's configured discard list, protection and stack limits." xml:space="preserve">
     <value>FrenRider/ADS: विघटन, बिक्री, फिर /ays discard। AutoRetainer की सूची, सुरक्षा और स्टैक सीमा का पालन होता है।</value>
   </data>
@@ -831,8 +831,8 @@
   <data name="Progression enabled" xml:space="preserve"><value>प्रगति सक्षम</value></data>
   <data name="Progression paused" xml:space="preserve"><value>प्रगति रुकी हुई</value></data>
   <data name="Provider is locked to the active Fishing run snapshot." xml:space="preserve"><value>प्रदाता सक्रिय Fishing दौर के स्नैपशॉट में लॉक है।</value></data>
-  <data name="Purchase limits" xml:space="preserve"><value>खरीद सीमाएँ</value></data>
-  <data name="Purchase limits for this character" xml:space="preserve"><value>इस पात्र की खरीद सीमाएँ</value></data>
+  <data name="Purchases" xml:space="preserve"><value>खरीदारी</value></data>
+  <data name="Minion purchases" xml:space="preserve"><value>मिनियन खरीदारी</value></data>
   <data name="Purchase quantity / stock target" xml:space="preserve"><value>खरीद मात्रा / स्टॉक लक्ष्य</value></data>
   <data name="Purchasing and live stock reconciliation remain enabled when activation is off." xml:space="preserve"><value>सक्रिय करना बंद होने पर खरीद और लाइव स्टॉक मिलान सक्षम रहते हैं।</value></data>
   <data name="Purchasing settings for the account and profile shown above." xml:space="preserve"><value>ऊपर दिखाए खाते और प्रोफ़ाइल की खरीद सेटिंग्स।</value></data>
@@ -2598,5 +2598,8 @@
   </data>
   <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
     <value>Wind-up Odin और Wind-up Cursor की कीमत प्रत्येक दो उपलब्धि प्रमाणपत्र है। प्राप्ति की कार्रवाई केवल माँगा गया अनुपलब्ध मिनियन खरीदती है।</value>
+  </data>
+  <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
+    <value>PvP - जीतने का प्रयास: युद्धक्षेत्र में अपने पक्ष की जानकारी खेल से मिलने की प्रतीक्षा</value>
   </data>
 </root>
