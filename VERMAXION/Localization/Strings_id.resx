@@ -3263,4 +3263,19 @@ Dependensi: {1}</value></data>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>Mengantre pencocokan pemain {0}; menunggu lawan</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>Minion yang belum dimiliki dan dibutuhkan untuk aktivitas terpilih dibeli otomatis. Minion yang sudah terbuka dan item dalam inventaris digunakan terlebih dahulu.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>Pembelian menggunakan ADS dan memeriksa dana saat ini serta saldo gil minimum sebelum membeli. Tidak perlu mengatur anggaran pembelian.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>Pengeluaran karakter ini: {0:N0} gil; {1:N0} MGP; {2:N0} Sertifikat Pencapaian.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>Minion untuk masuk berharga 2.400 gil per minion; Zu Hatchling berharga 10.000 MGP. Biaya perjalanan misi dihitung terpisah.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>Wind-up Odin dan Wind-up Cursor masing-masing berharga dua Sertifikat Pencapaian. Aksi perolehan hanya membeli minion yang diminta dan belum dimiliki.</value>
+  </data>
 </root>

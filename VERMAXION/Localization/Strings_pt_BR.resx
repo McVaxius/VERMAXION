@@ -3263,4 +3263,19 @@ Dependências: {1}</value></data>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>Na fila de pareamento {0}; aguardando um advers?rio</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>As mascotes ausentes necessárias para a execução selecionada são compradas automaticamente. Mascotes já obtidas e itens do inventário são usados primeiro.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>As compras usam ADS e verificam os fundos atuais e o saldo mínimo de gil antes de comprar. Não é necessário definir um orçamento de compras.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>Gasto com este personagem: {0:N0} gil; {1:N0} MGP; {2:N0} certificados de conquista.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>As mascotes de entrada custam 2.400 gil cada; Zu Hatchling custa 10.000 MGP. Os custos de viagem das missões são separados.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>Wind-up Odin e Wind-up Cursor custam dois certificados de conquista cada. Suas ações de aquisição compram apenas a mascote solicitada que estiver faltando.</value>
+  </data>
 </root>

@@ -6115,4 +6115,19 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>??????? ?????? ??????? {0}; ???????? ??????????</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>Недостающие спутники, необходимые для выбранного запуска, покупаются автоматически. Сначала используются уже открытые спутники и предметы в инвентаре.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>Покупки выполняются через ADS с проверкой доступных средств и минимального остатка гил. Бюджет покупок задавать не нужно.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>Потрачено этим персонажем: {0:N0} гил; {1:N0} MGP; {2:N0} сертификатов достижений.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>Стартовые спутники стоят по 2 400 гил; Zu Hatchling стоит 10 000 MGP. Поездки по заданиям оплачиваются отдельно.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>Wind-up Odin и Wind-up Cursor стоят по два сертификата достижений. Команда получения покупает только указанного недостающего спутника.</value>
+  </data>
 </root>

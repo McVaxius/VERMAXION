@@ -6115,4 +6115,19 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>En file pour la recherche de joueurs {0} ; attente d?un adversaire</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>Les mascottes manquantes nécessaires à la session choisie sont achetées automatiquement. Les mascottes déjà obtenues et les objets en inventaire sont utilisés en priorité.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>Les achats passent par ADS. Les fonds disponibles et le solde minimal de gils sont vérifiés avant l’achat. Aucun budget d’achat n’est requis.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>Dépenses de ce personnage : {0:N0} gils ; {1:N0} PGS ; {2:N0} certificats de haut fait.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>Les mascottes de départ coûtent 2 400 gils chacune ; le bébé zu coûte 10 000 PGS. Les frais de déplacement des quêtes sont distincts.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>Odin mécanique et le curseur mécanique coûtent deux certificats de haut fait chacun. Leurs actions d’acquisition achètent uniquement la mascotte manquante demandée.</value>
+  </data>
 </root>

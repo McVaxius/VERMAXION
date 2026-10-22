@@ -5759,4 +5759,19 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>{0} ???? ?? ?? ??; ?? ?? ?</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>선택한 실행에 필요한 미보유 꼬마 친구는 자동으로 구매합니다. 이미 등록한 꼬마 친구와 소지품의 아이템을 먼저 사용합니다.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>구매는 ADS를 통해 진행하며 구매 전에 현재 잔액과 최소 길 잔액을 확인합니다. 구매 예산 설정은 필요하지 않습니다.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>이 캐릭터의 지출: {0:N0}길; {1:N0}MGP; 업적 증서 {2:N0}개.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>입장용 꼬마 친구는 각각 2,400길이며, 주 새끼는 10,000MGP입니다. 퀘스트 이동 비용은 별도입니다.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>태엽 오딘과 태엽 커서는 각각 업적 증서 2개가 필요합니다. 획득 기능은 요청한 미보유 꼬마 친구만 구매합니다.</value>
+  </data>
 </root>

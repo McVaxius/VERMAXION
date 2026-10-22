@@ -502,29 +502,23 @@ public sealed class VerminionProgress
         };
     }
 
-    public bool CanSpend(uint gil, uint mgp, uint gilCap, uint mgpCap, uint certificates = 0, uint certificateCap = 0) =>
-        PendingPurchase == null && GilSpent <= gilCap && MgpSpent <= mgpCap &&
-        gil <= gilCap - GilSpent && mgp <= mgpCap - MgpSpent &&
-        (certificates == 0 || CertificatesSpent <= certificateCap && certificates <= certificateCap - CertificatesSpent);
-
     public static bool PreservesGilReserve(uint balance, uint price, uint reserve) =>
         price == 0 || balance >= reserve && price <= balance - reserve;
 
     public bool ReservePurchase(uint itemId, ushort minionId, uint gil, uint mgp,
-        uint gilBefore, uint mgpBefore, uint itemsBefore, bool alreadyOwned, uint gilCap, uint mgpCap, uint gilReserve = 0,
-        uint certificates = 0, uint certificatesBefore = 0, uint certificateCap = 0)
+        uint gilBefore, uint mgpBefore, uint itemsBefore, bool alreadyOwned, uint gilReserve = 0,
+        uint certificates = 0, uint certificatesBefore = 0)
     {
-        if (PendingTournamentReward != null || itemId == 0 || minionId == 0 || alreadyOwned || itemsBefore != 0 ||
+        if (PendingPurchase != null || PendingTournamentReward != null || itemId == 0 || minionId == 0 || alreadyOwned || itemsBefore != 0 ||
             (gil > 0 ? 1 : 0) + (mgp > 0 ? 1 : 0) + (certificates > 0 ? 1 : 0) != 1 ||
             gil > gilBefore || mgp > mgpBefore || certificates > certificatesBefore ||
-            !PreservesGilReserve(gilBefore, gil, gilReserve) ||
-            !CanSpend(gil, mgp, gilCap, mgpCap, certificates, certificateCap)) return false;
+            !PreservesGilReserve(gilBefore, gil, gilReserve)) return false;
         PendingPurchase = new(itemId, minionId, gil, mgp, gilBefore, mgpBefore, itemsBefore, certificates, certificatesBefore);
         return true;
     }
 
     public bool CanResumeReservedPurchase(uint gilNow, uint mgpNow, uint itemsNow, bool? nowOwned,
-        uint certificatesNow, uint gilCap, uint mgpCap, uint certificateCap, uint gilReserve)
+        uint certificatesNow, uint gilReserve)
     {
         var pending = PendingPurchase;
         return pending != null && MinionAcquisition is { } acquisition &&
@@ -535,9 +529,6 @@ public sealed class VerminionProgress
             (pending.Certificates == 0 || certificatesNow == pending.CertificatesBefore) &&
             (pending.Gil > 0 ? 1 : 0) + (pending.Mgp > 0 ? 1 : 0) + (pending.Certificates > 0 ? 1 : 0) == 1 &&
             pending.Gil <= gilNow && pending.Mgp <= mgpNow && pending.Certificates <= certificatesNow &&
-            GilSpent <= gilCap && pending.Gil <= gilCap - GilSpent &&
-            MgpSpent <= mgpCap && pending.Mgp <= mgpCap - MgpSpent &&
-            (pending.Certificates == 0 || CertificatesSpent <= certificateCap && pending.Certificates <= certificateCap - CertificatesSpent) &&
             PreservesGilReserve(gilNow, pending.Gil, gilReserve);
     }
 

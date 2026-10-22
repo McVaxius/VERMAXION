@@ -5759,4 +5759,19 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>???{0}?????????????</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>自动购买所选运行所需的未拥有宠物。优先使用已解锁宠物和背包中的物品。</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>通过ADS购买，购买前检查现有资金和最低金币余额。无需设置购买预算。</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>此角色已花费：{0:N0}金币；{1:N0}金碟币；{2:N0}成就币。</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>入场宠物每只售价2,400金币；祖幼鸟售价10,000金碟币。任务交通费另计。</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>发条奥丁和发条光标各需两枚成就币。获取操作只购买指定且尚未拥有的宠物。</value>
+  </data>
 </root>

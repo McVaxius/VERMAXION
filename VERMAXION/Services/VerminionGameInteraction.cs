@@ -1063,7 +1063,7 @@ internal static unsafe class VerminionGameInteraction
 
     private static void HideBattlefieldPanels(bool keepMiniMap = false)
     {
-        foreach (var name in new[] { "ChatLog", "LovmPalette", "LovmPartyList", "LovmMiniMap", "LovmQueueList", "LovmNamePlate", "HowTo" })
+        foreach (var name in new[] { "ChatLog", "LovmPalette", "LovmPartyList", "LovmMiniMap", "LovmQueueList", "LovmNamePlate", "HowTo", "HowToNotice" })
         {
             if (keepMiniMap && name == "LovmMiniMap") continue;
             var addon = Plugin.GameGui.GetAddonByName(name);

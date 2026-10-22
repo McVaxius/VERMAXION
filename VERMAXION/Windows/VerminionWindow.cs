@@ -173,7 +173,8 @@ internal sealed class VerminionWindow : Window
             if (registered == planned.Length) UiGui.TextWrapped("All planned minions are registered.");
             ImGui.Separator();
         }
-        UiGui.TextWrapped("Setup registers inventory minions first. If fewer than three are registered, it can buy only the missing entry minions from the Minion Trader: Mammet #001, Wayward Hatchling and Cherry Bomb, each 2,400 gil. The whole entry plan must fit your remaining cap and leave the minimum gil balance. Stages 12, 15, 23 and 24 require Wind-up Gentleman from Her Last Vow. Select its acquisition action below to hand the ARR Hildibrand chain to Questionable. The full first-entry sequence, other vendor routes and CPU tournaments remain unverified or unavailable.");
+        UiGui.TextWrapped("Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first.");
+        UiGui.TextWrapped("Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate.");
 
         ImGui.Separator();
         var next = VerminionService.PlannedStage(config, progress.CampaignRequested);
@@ -278,27 +279,16 @@ internal sealed class VerminionWindow : Window
     {
         var changed = includeGoalSettings && DrawGoalSettings(config);
         if (includeStatus) DrawTournamentInfo(config);
-        var gil = (int)Math.Min(config.VerminionGilPurchaseCap, int.MaxValue);
-        var mgp = (int)Math.Min(config.VerminionMgpPurchaseCap, int.MaxValue);
-        var certificates = (int)Math.Min(config.VerminionCertificatePurchaseCap, int.MaxValue);
         var reserve = (int)Math.Min(config.VerminionGilReserve, int.MaxValue);
-        UiGui.TextWrapped("Cumulative gil purchase cap"); UIConstants.SetNextItemWidth(-1);
-        if (UIConstants.InputInt("##VerminionGilCap", ref gil))
-        { config.VerminionGilPurchaseCap = (uint)Math.Max(0, gil); changed = true; }
-        UiGui.TextWrapped("Cumulative MGP purchase cap"); UIConstants.SetNextItemWidth(-1);
-        if (UIConstants.InputInt("##VerminionMgpCap", ref mgp))
-        { config.VerminionMgpPurchaseCap = (uint)Math.Max(0, mgp); changed = true; }
-        UiGui.TextWrapped("Cumulative certificate purchase cap"); UIConstants.SetNextItemWidth(-1);
-        if (UIConstants.InputInt("##VerminionCertificateCap", ref certificates))
-        { config.VerminionCertificatePurchaseCap = (uint)Math.Max(0, certificates); changed = true; }
-        UiGui.TextWrapped(UiText.F($"Achievement Certificates spent: {config.VerminionProgress.CertificatesSpent:N0}/{config.VerminionCertificatePurchaseCap:N0}. This separate per-character cap defaults to zero, persists across weeks, and authorizes no gil or MGP spending. Claims do not consume this budget. Travel costs are separate."));
         UiGui.TextWrapped("Minimum gil balance"); UIConstants.SetNextItemWidth(-1);
         if (UIConstants.InputInt("##VerminionGilReserve", ref reserve))
         { config.VerminionGilReserve = (uint)Math.Max(0, reserve); changed = true; }
-        UiGui.TextWrapped("ADS handles every vendor purchase, including travel and menus. Its guarded purchase API is required. Each gil purchase must leave the minimum balance; the saved cap and current funds are checked before ADS submits or confirms it.");
-        UiGui.TextWrapped(UiText.F($"Spent on this character: {config.VerminionProgress.GilSpent:N0}/{config.VerminionGilPurchaseCap:N0} gil; {config.VerminionProgress.MgpSpent:N0}/{config.VerminionMgpPurchaseCap:N0} MGP. Caps are cumulative and do not reset weekly. Zero prevents purchases. Entry minions cost 2,400 gil each; the campaign's Zu Hatchling costs 10,000 MGP from permanent Gold Saucer stock. Already owned or unregistered inventory minions are used before buying."));
+        UiGui.TextWrapped("Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first.");
+        UiGui.TextWrapped("Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required.");
+        UiGui.TextWrapped(UiText.F($"Spent on this character: {config.VerminionProgress.GilSpent:N0} gil; {config.VerminionProgress.MgpSpent:N0} MGP; {config.VerminionProgress.CertificatesSpent:N0} Achievement Certificates."));
+        UiGui.TextWrapped("Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate.");
         UiGui.TextWrapped("The selected roster has no FATE-vendor requirement. Stage 6 cleared with Zu defenders. The Zu-only Stage 7 roster cleared on its third attempt after two defeats; repeated-win reliability is not established. Stage 15 cleared with Wind-up Gentleman on its second attempt. Stage 16 cleared on the first attempt with Mammet stone attackers and Zu defenders, after three Zu-only defeats.");
-        UiGui.TextWrapped("Achievement vendor: Jonathas in Old Gridania sells these minions for two Achievement Certificates each. Wind-up Odin and Wind-up Cursor can be requested below through ADS within the certificate cap. Travel, certificate claiming, both purchases and registration are verified; their support compositions are not yet selected by the battle strategies.");
+        UiGui.TextWrapped("Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion.");
         if (includeStatus) DrawPurchaseWarnings(config);
         return changed;
     }

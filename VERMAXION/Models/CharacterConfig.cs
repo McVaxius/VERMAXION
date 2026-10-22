@@ -26,9 +26,6 @@ public class CharacterConfig
     public VerminionPlayerQueue VerminionPlayerQueue { get; set; } = VerminionPlayerQueue.NonRp;
     public int VerminionMission { get; set; } = 2;
     public int VerminionRepeatCount { get; set; } = 5;
-    public uint VerminionGilPurchaseCap { get; set; }
-    public uint VerminionMgpPurchaseCap { get; set; }
-    public uint VerminionCertificatePurchaseCap { get; set; }
     public uint VerminionGilReserve { get; set; }
     public VerminionProgress VerminionProgress { get; set; } = new();
     public bool EnableJumboCactpot { get; set; } = false;
@@ -262,9 +259,6 @@ public class CharacterConfig
         VerminionPlayerQueue = source.VerminionPlayerQueue;
         VerminionMission = source.VerminionMission;
         VerminionRepeatCount = source.VerminionRepeatCount;
-        VerminionGilPurchaseCap = source.VerminionGilPurchaseCap;
-        VerminionMgpPurchaseCap = source.VerminionMgpPurchaseCap;
-        VerminionCertificatePurchaseCap = source.VerminionCertificatePurchaseCap;
         VerminionGilReserve = source.VerminionGilReserve;
     }
 
@@ -424,9 +418,6 @@ public class CharacterConfig
             VerminionPlayerQueue = VerminionPlayerQueue,
             VerminionMission = VerminionMission,
             VerminionRepeatCount = VerminionRepeatCount,
-            VerminionGilPurchaseCap = VerminionGilPurchaseCap,
-            VerminionMgpPurchaseCap = VerminionMgpPurchaseCap,
-            VerminionCertificatePurchaseCap = VerminionCertificatePurchaseCap,
             VerminionGilReserve = VerminionGilReserve,
             VerminionProgress = VerminionProgress.Clone(),
             EnableJumboCactpot = EnableJumboCactpot,

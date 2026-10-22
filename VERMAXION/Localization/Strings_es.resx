@@ -6115,4 +6115,19 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>En cola de emparejamiento {0}; esperando un rival</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>Las mascotas que falten para la ejecución seleccionada se compran automáticamente. Primero se usan las mascotas obtenidas y los objetos del inventario.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>Las compras se realizan mediante ADS y comprueban los fondos disponibles y el saldo mínimo de guiles. No se requiere un presupuesto de compra.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>Gastado por este personaje: {0:N0} guiles; {1:N0} MGP; {2:N0} certificados de logros.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>Las mascotas de entrada cuestan 2400 guiles cada una; Zu Hatchling cuesta 10 000 MGP. Los viajes de las misiones se pagan aparte.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>Wind-up Odin y Wind-up Cursor cuestan dos certificados de logros cada uno. Sus acciones de adquisición compran solo la mascota solicitada que falte.</value>
+  </data>
 </root>

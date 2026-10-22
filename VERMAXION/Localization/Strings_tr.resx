@@ -3263,4 +3263,19 @@ Bağımlılıklar: {1}</value></data>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>{0} oyuncu e?le?tirmesi kuyru?unda; rakip bekleniyor</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>Seçilen çalıştırma için gereken eksik minyonlar otomatik satın alınır. Önce açılmış minyonlar ve envanterdeki eşyalar kullanılır.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>Satın alımlar ADS üzerinden yapılır; satın almadan önce mevcut para ve minimum gil bakiyesi kontrol edilir. Satın alma bütçesi ayarlamak gerekmez.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>Bu karakterin harcaması: {0:N0} gil; {1:N0} MGP; {2:N0} Başarım Sertifikası.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>Giriş minyonlarının her biri 2.400 gil; Zu Hatchling 10.000 MGP tutar. Görev yolculuklarının masrafı ayrıdır.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>Wind-up Odin ve Wind-up Cursor için ayrı ayrı iki Başarım Sertifikası gerekir. Edinme işlemleri yalnızca istenen eksik minyonu satın alır.</value>
+  </data>
 </root>

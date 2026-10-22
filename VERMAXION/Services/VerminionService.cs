@@ -396,18 +396,11 @@ public sealed partial class VerminionService : IDisposable
             var requirement = requirements.FirstOrDefault(minion => VerminionGameInteraction.OwnsMinion(minion.Id) != true);
             var offer = requirement == null ? null : VerminionRoster.VendorOffer(requirement.Id);
             var missingVendorMinion = offer != null && VerminionGameInteraction.OwnsMinion(offer.MinionId) == false;
-            var canBuy = missingVendorMinion &&
-                config.VerminionProgress.CanSpend(offer!.Gil, offer.Mgp,
-                    config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap);
-            if (canBuy && Plugin.ClientState.TerritoryType == 388)
+            if (missingVendorMinion && Plugin.ClientState.TerritoryType == 388)
             {
                 BeginMinionPurchase(offer!);
                 return false;
             }
-            if (missingVendorMinion && !canBuy)
-                missing += offer!.Mgp > 0
-                    ? $" Cumulative MGP cap: {config.VerminionMgpPurchaseCap:N0}; spent: {config.VerminionProgress.MgpSpent:N0}. Register an owned item or set a cap of at least {config.VerminionProgress.MgpSpent + offer.Mgp:N0} MGP."
-                    : $" Cumulative gil cap: {config.VerminionGilPurchaseCap:N0}; spent: {config.VerminionProgress.GilSpent:N0}. Register an owned item or set a cap of at least {config.VerminionProgress.GilSpent + offer.Gil:N0} gil.";
             Fail(missing);
             return false;
         }
@@ -434,13 +427,10 @@ public sealed partial class VerminionService : IDisposable
         if (offer == null || progress.PendingMatch != 0 || progress.PendingTournamentReward != null || progress.PendingPurchase != null ||
             progress.MinionAcquisition != null || condition[ConditionFlag.BoundByDuty])
         { reason = "Finish or reconcile the existing run before requesting a minion."; return; }
-        if (!VerminionGameInteraction.TryReadMinionInventory(offer.ItemId, out _, out _, out var items))
+        if (!VerminionGameInteraction.TryReadMinionInventory(offer.ItemId, out _, out _, out _))
         { reason = "Minion inventory is unavailable."; return; }
         if (VerminionGameInteraction.OwnsMinion(minionId) == true)
         { reason = $"{offer.Name} is already registered."; return; }
-        if (items == 0 && !progress.CanSpend(0, 0, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
-                offer.Certificates, config.VerminionCertificatePurchaseCap))
-        { reason = $"{offer.Name} needs two certificates within the remaining cumulative certificate cap."; return; }
         config.VerminionPaused = false;
         progress.MinionAcquisition = new(Guid.NewGuid().ToString("N"), offer.ItemId, offer.MinionId, Standalone: true);
         if (!configManager.TrySaveAccount(configManager.CurrentAccountId))
@@ -1192,12 +1182,11 @@ public sealed partial class VerminionService : IDisposable
         if (entryPurchases.Length > 0)
         {
             var entryGil = (uint)entryPurchases.Sum(offer => (long)offer.Gil);
-            if (!progress.CanSpend(entryGil, 0, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap) ||
-                !VerminionGameInteraction.TryReadMinionInventory(entryPurchases[0].ItemId, out var gil, out _, out _) ||
+            if (!VerminionGameInteraction.TryReadMinionInventory(entryPurchases[0].ItemId, out var gil, out _, out _) ||
                 !VerminionProgress.PreservesGilReserve(gil, entryGil, config.VerminionGilReserve))
             {
                 Fail($"Entry requires three registered minions; {ownedMinions.Length} owned. " +
-                    $"Register owned inventory items or allow {entryGil:N0} gil within the remaining cumulative cap for " +
+                    $"Register owned inventory items or have {entryGil:N0} gil available for " +
                     $"{string.Join(", ", entryPurchases.Select(offer => offer.Name))}, leaving at least {config.VerminionGilReserve:N0} gil. No purchase submitted.");
                 return;
             }
@@ -1879,7 +1868,7 @@ public sealed partial class VerminionService : IDisposable
     private void BeginMinionPurchase(VerminionVendorMinion offer)
     {
         purchasingMinion = offer;
-        SetState(VerminionState.AcquiringMinion, $"Requesting capped {offer.Name} acquisition through ADS");
+        SetState(VerminionState.AcquiringMinion, $"Requesting {offer.Name} acquisition through ADS");
     }
 
     private JObject ReadAdsPurchaseStatus() => JObject.Parse(Plugin.PluginInterface
@@ -1932,17 +1921,14 @@ public sealed partial class VerminionService : IDisposable
                 SetState(VerminionState.RegisteringMinions, "Registering the available minion");
                 return;
             }
-            var withinBudget = progress.PendingPurchase == null
-                ? progress.CanSpend(offer.Gil, offer.Mgp, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
-                    offer.Certificates, config.VerminionCertificatePurchaseCap)
-                : VerminionGameInteraction.TryReadAchievementCertificates(out var certificates) &&
+            var purchaseReady = progress.PendingPurchase == null ||
+                VerminionGameInteraction.TryReadAchievementCertificates(out var certificates) &&
                     progress.CanResumeReservedPurchase(gil, mgp, items, VerminionGameInteraction.OwnsMinion(offer.MinionId),
-                        certificates, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
-                        config.VerminionCertificatePurchaseCap, config.VerminionGilReserve);
-            if (!withinBudget ||
+                        certificates, config.VerminionGilReserve);
+            if (!purchaseReady ||
                 gil < offer.Gil || mgp < offer.Mgp ||
                 !VerminionProgress.PreservesGilReserve(gil, offer.Gil, config.VerminionGilReserve))
-            { Fail("The minion purchase would exceed the remaining cap, balance or gil reserve."); return; }
+            { Fail("The minion purchase has unresolved evidence or insufficient funds above the minimum gil balance."); return; }
             var capabilities = JObject.Parse(Plugin.PluginInterface.GetIpcSubscriber<string>("ADS.GetCapabilitiesJson").InvokeFunc());
             if ((int?)capabilities["guardedShopPurchases"] != 1)
             { Fail("ADS needs its guarded single-item purchase API before minion acquisition can start."); return; }
@@ -1993,8 +1979,7 @@ public sealed partial class VerminionService : IDisposable
                 VerminionGameInteraction.TryReadMinionInventory(offer.ItemId, out var gil, out var mgp, out var items) &&
                 VerminionGameInteraction.TryReadAchievementCertificates(out var certificates) &&
                 progress.CanResumeReservedPurchase(gil, mgp, items, VerminionGameInteraction.OwnsMinion(offer.MinionId),
-                    certificates, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap,
-                    config.VerminionCertificatePurchaseCap, config.VerminionGilReserve))
+                    certificates, config.VerminionGilReserve))
             {
                 progress.MinionAcquisition = acquisition with { DispatchAttempted = false };
                 if (!configManager.TrySaveAccount(ownerAccount))
@@ -2055,16 +2040,14 @@ public sealed partial class VerminionService : IDisposable
             if (progress.PendingPurchase == null)
             {
                 if (!progress.ReservePurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, gil, mgp, items,
-                        false, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap, config.VerminionGilReserve,
-                        offer.Certificates, offer.Certificates > 0 ? certificates : 0, config.VerminionCertificatePurchaseCap) ||
+                        false, config.VerminionGilReserve,
+                        offer.Certificates, offer.Certificates > 0 ? certificates : 0) ||
                     !configManager.TrySaveAccount(ownerAccount)) return false;
                 config = configManager.GetActiveConfig();
                 progress = config.VerminionProgress;
             }
             return !config.VerminionPaused && progress.MinionAcquisition?.OperationId == operationId &&
-                progress.PendingPurchase == expected && progress.GilSpent + offer.Gil <= config.VerminionGilPurchaseCap &&
-                progress.MgpSpent + offer.Mgp <= config.VerminionMgpPurchaseCap &&
-                (offer.Certificates == 0 || progress.CertificatesSpent + offer.Certificates <= config.VerminionCertificatePurchaseCap) &&
+                progress.PendingPurchase == expected &&
                 VerminionProgress.PreservesGilReserve(gil, offer.Gil, config.VerminionGilReserve);
         }
         catch (Exception ex) { log.Warning($"[Verminion] ADS purchase authorization refused: {ex.Message}"); return false; }

@@ -5759,4 +5759,19 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>{0}????????????????????????</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>選択した実行に必要な未所持ミニオンは自動購入されます。習得済みのミニオンと所持品内のアイテムを優先します。</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>購入はADSを使用し、購入前に所持金と最低ギル残高を確認します。購入予算の設定は不要です。</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>このキャラクターの支出：{0:N0}ギル、{1:N0}MGP、アチーブメントスクリップ{2:N0}枚。</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>参加用ミニオンは各2,400ギル、ズー・ハッチリングは10,000MGPです。クエストの移動費は別途必要です。</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>マメット・オーディンとマメット・カーソルは各アチーブメントスクリップ2枚です。取得操作では指定した未所持ミニオンのみ購入します。</value>
+  </data>
 </root>

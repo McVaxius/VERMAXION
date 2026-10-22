@@ -3263,4 +3263,19 @@ Zależności: {1}</value></data>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
     <value>W kolejce dobierania graczy {0}; oczekiwanie na przeciwnika</value>
   </data>
+  <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
+    <value>Brakujące miniony potrzebne do wybranego przebiegu są kupowane automatycznie. Najpierw używane są odblokowane miniony i przedmioty w ekwipunku.</value>
+  </data>
+  <data name="Purchases use ADS and check current funds and the minimum gil balance before buying. No purchase budget is required." xml:space="preserve">
+    <value>Zakupy odbywają się przez ADS. Przed zakupem sprawdzane są dostępne środki i minimalne saldo gil. Nie trzeba ustawiać budżetu zakupów.</value>
+  </data>
+  <data name="Spent on this character: {0:N0} gil; {1:N0} MGP; {2:N0} Achievement Certificates." xml:space="preserve">
+    <value>Wydatki tej postaci: {0:N0} gil; {1:N0} MGP; {2:N0} certyfikatów osiągnięć.</value>
+  </data>
+  <data name="Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Quest travel costs are separate." xml:space="preserve">
+    <value>Miniony wymagane do wejścia kosztują po 2400 gil; Zu Hatchling kosztuje 10 000 MGP. Koszty podróży podczas zadań są oddzielne.</value>
+  </data>
+  <data name="Wind-up Odin and Wind-up Cursor cost two Achievement Certificates each. Their acquisition actions buy only the requested missing minion." xml:space="preserve">
+    <value>Wind-up Odin i Wind-up Cursor kosztują po dwa certyfikaty osiągnięć. Akcje pozyskania kupują tylko wskazanego brakującego miniona.</value>
+  </data>
 </root>

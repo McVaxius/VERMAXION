@@ -449,8 +449,8 @@ public sealed class VerminionLifecycleTests
             Assert.False(saved.ConfirmTournamentReward(53000, requested.AddMinutes(1))); // Balance alone is insufficient.
             Assert.False(saved.BeginTournamentReward(title, 3000, 53000, requested));
             Assert.Equal(0, saved.BeginMatch(579));
-            Assert.False(saved.ReservePurchase(7561, 76, 0, 0, 50000, 50000, 0, false, 2400, 10000,
-                certificates: 2, certificatesBefore: 6, certificateCap: 6));
+            Assert.False(saved.ReservePurchase(7561, 76, 0, 0, 50000, 50000, 0, false,
+                certificates: 2, certificatesBefore: 6));
             Assert.False(saved.AcknowledgeTournamentReward(progress.LastTournamentInfo.Title));
             Assert.Null(saved.LastTournamentReward);
             Assert.True(saved.AcknowledgeTournamentReward(title));
@@ -513,8 +513,8 @@ public sealed class VerminionLifecycleTests
         Assert.NotEqual(0, busy.BeginMatch(579));
         Assert.False(busy.BeginTournamentReward(title, 3000, 50000, now));
         busy.AbandonMatch();
-        Assert.True(busy.ReservePurchase(7561, 76, 0, 0, 50000, 50000, 0, false, 0, 0,
-            certificates: 2, certificatesBefore: 6, certificateCap: 2));
+        Assert.True(busy.ReservePurchase(7561, 76, 0, 0, 50000, 50000, 0, false,
+            certificates: 2, certificatesBefore: 6));
         Assert.False(busy.BeginTournamentReward(title, 3000, 50000, now));
         Assert.False(new VerminionProgress { MinionAcquisition = new("test", 7561, 76) }
             .BeginTournamentReward(title, 3000, 50000, now));
@@ -523,18 +523,17 @@ public sealed class VerminionLifecycleTests
     }
 
     [Fact]
-    public void CertificateCapAndReceiptSurviveReloadWithoutSpendingOtherBudgets()
+    public void CertificatePurchaseNeedsFundsAndExactReceiptWithoutAPurchaseBudget()
     {
-        var character = new CharacterConfig { VerminionCertificatePurchaseCap = 2 };
+        var character = new CharacterConfig();
         var progress = character.VerminionProgress;
-        Assert.False(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 0, false, 0, 0,
-            certificates: 2, certificatesBefore: 6)); // Zero cap.
-        Assert.False(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 1, false, 0, 0,
-            certificates: 2, certificatesBefore: 6, certificateCap: 2)); // Already in inventory.
-        Assert.True(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 0, false, 0, 0,
-            certificates: 2, certificatesBefore: 6, certificateCap: 2));
+        Assert.False(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 0, false,
+            certificates: 2, certificatesBefore: 1)); // Insufficient certificates.
+        Assert.False(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 1, false,
+            certificates: 2, certificatesBefore: 6)); // Already in inventory.
+        Assert.True(progress.ReservePurchase(7561, 76, 0, 0, 50000, 100000, 0, false,
+            certificates: 2, certificatesBefore: 6));
         var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<CharacterConfig>(Newtonsoft.Json.JsonConvert.SerializeObject(character))!;
-        Assert.Equal(2u, restored.VerminionCertificatePurchaseCap);
         var receipt = restored.VerminionProgress;
         Assert.False(receipt.ConfirmPurchase(50000, 100000, 0, false, 4)); // Currency alone.
         Assert.False(receipt.ConfirmPurchase(50000, 100000, 1, false, 6)); // Item alone.
@@ -545,8 +544,8 @@ public sealed class VerminionLifecycleTests
         Assert.Equal(2ul, receipt.CertificatesSpent);
         Assert.Equal(0ul, receipt.GilSpent);
         Assert.Equal(0ul, receipt.MgpSpent);
-        Assert.False(receipt.CanSpend(0, 0, 0, 0, 2, 2));
-        Assert.True(new VerminionProgress().CanSpend(0, 0, 0, 0, 2, 2)); // Separate character.
+        Assert.True(receipt.ReservePurchase(6212, 51, 0, 0, 50000, 100000, 0, false,
+            certificates: 2, certificatesBefore: 4)); // Prior spending is history.
         Assert.NotNull(progress.PendingPurchase); // Deserialization did not mutate the source.
     }
 
@@ -1182,16 +1181,14 @@ public sealed class VerminionLifecycleTests
         var defaults = new CharacterConfig
         {
             EnableVerminionQueue = true, VerminionMode = VerminionMode.MissionRepeat,
-            VerminionMission = 7, VerminionRepeatCount = 3, VerminionGilPurchaseCap = 100,
-            VerminionMgpPurchaseCap = 200,
+            VerminionMission = 7, VerminionRepeatCount = 3, VerminionGilReserve = 100,
         };
         character.CopyVerminionSettingsFrom(defaults);
         Assert.True(character.EnableVerminionQueue);
         Assert.Equal(VerminionMode.MissionRepeat, character.VerminionMode);
         Assert.Equal(3, character.VerminionRepeatCount);
         Assert.Equal(7, character.VerminionMission);
-        Assert.Equal(100u, character.VerminionGilPurchaseCap);
-        Assert.Equal(200u, character.VerminionMgpPurchaseCap);
+        Assert.Equal(100u, character.VerminionGilReserve);
         Assert.True(character.VerminionPaused);
         Assert.Same(progress, character.VerminionProgress);
         Assert.Equal(2, progress.WeeklyWins);
@@ -1229,7 +1226,6 @@ public sealed class VerminionLifecycleTests
         var week = new System.DateTime(2026, 9, 22, 9, 0, 0, System.DateTimeKind.Utc);
         var config = JsonConvert.DeserializeObject<CharacterConfig>("{\"EnableVerminionQueue\":true}")!;
         Assert.Equal(VerminionMode.WeeklyWin, config.VerminionMode);
-        Assert.False(config.VerminionProgress.CanSpend(1, 0, config.VerminionGilPurchaseCap, config.VerminionMgpPurchaseCap));
         var progress = config.VerminionProgress;
         progress.ObserveParticipation(week, 3); // Matches played manually.
         progress.EnsureRun(VerminionMode.MissionRepeat, 2);
@@ -1263,9 +1259,6 @@ public sealed class VerminionLifecycleTests
         cloned.VerminionProgress.WeeklyWins = 99;
         Assert.Equal(2, progress.WeeklyWins);
         progress.GilSpent = 2400;
-        Assert.True(progress.CanSpend(100, 0, 2500, 0));
-        Assert.False(progress.CanSpend(101, 0, 2500, 0));
-        Assert.False(progress.CanSpend(0, 1, 2500, 0));
         progress.ObserveWeek(week.AddDays(7));
         Assert.False(progress.ObserveParticipation(week, 5));
         Assert.Equal(0, progress.WeeklyWins);
@@ -1595,19 +1588,19 @@ public sealed class VerminionLifecycleTests
         var fullPlan = VerminionRoster.EntryPurchases(registered);
         var total = (uint)fullPlan.Sum(offer => (long)offer.Gil);
         Assert.Equal(7200u, total);
-        Assert.False(progress.CanSpend(total, 0, 0, 0));
-        Assert.False(progress.CanSpend(total, 0, 7199, 0));
-        Assert.True(progress.CanSpend(total, 0, 7200, 0));
+        Assert.False(VerminionProgress.PreservesGilReserve(7199, total, 0));
+        Assert.True(VerminionProgress.PreservesGilReserve(7200, total, 0));
         uint gil = 7200;
         foreach (var expected in fullPlan)
         {
             var remaining = VerminionRoster.EntryPurchases(registered);
             Assert.Equal(expected, remaining[0]);
-            Assert.True(progress.CanSpend((uint)remaining.Sum(offer => (long)offer.Gil), 0, 7200, 0));
+            Assert.True(VerminionProgress.PreservesGilReserve(gil, (uint)remaining.Sum(offer => (long)offer.Gil), 0));
             Assert.True(progress.ReservePurchase(expected.ItemId, expected.MinionId, expected.Gil, 0,
-                gil, 0, 0, false, 7200, 0));
+                gil, 0, 0, false));
             progress = JsonConvert.DeserializeObject<VerminionProgress>(JsonConvert.SerializeObject(progress))!;
-            Assert.False(progress.CanSpend(expected.Gil, 0, 7200, 0)); // Reload cannot submit the reservation again.
+            Assert.False(progress.ReservePurchase(expected.ItemId, expected.MinionId, expected.Gil, 0,
+                gil, 0, 0, false)); // Reload cannot submit the reservation again.
             gil -= expected.Gil;
             Assert.True(progress.ConfirmPurchase(gil, 0, 1, false));
             registered.Add(expected.MinionId); // Registration must be verified before continuing.
@@ -1624,7 +1617,7 @@ public sealed class VerminionLifecycleTests
     [Fact]
     public void PurchasesPreserveTheConfiguredGilBalanceAcrossReloadAndSettingsCopies()
     {
-        var character = new CharacterConfig { VerminionGilPurchaseCap = 999999999, VerminionGilReserve = 50000 };
+        var character = new CharacterConfig { VerminionGilReserve = 50000 };
         character = JsonConvert.DeserializeObject<CharacterConfig>(JsonConvert.SerializeObject(character))!;
         Assert.Equal(50000u, character.Clone().VerminionGilReserve);
         var other = new CharacterConfig();
@@ -1632,67 +1625,64 @@ public sealed class VerminionLifecycleTests
         Assert.Equal(50000u, other.VerminionGilReserve);
         Assert.Equal(0ul, other.VerminionProgress.GilSpent);
         var progress = character.VerminionProgress;
-        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 52399, 0, 0, false, character.VerminionGilPurchaseCap, 0, character.VerminionGilReserve));
+        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 52399, 0, 0, false, character.VerminionGilReserve));
         Assert.Null(progress.PendingPurchase);
         Assert.False(VerminionProgress.PreservesGilReserve(49999, 2400, 50000));
         Assert.False(VerminionProgress.PreservesGilReserve(uint.MaxValue, 1, uint.MaxValue));
         Assert.True(VerminionProgress.PreservesGilReserve(0, 0, 50000)); // MGP purchases do not spend gil.
-        Assert.True(progress.ReservePurchase(6004, 2, 2400, 0, 52400, 0, 0, false, character.VerminionGilPurchaseCap, 0, character.VerminionGilReserve));
+        Assert.True(progress.ReservePurchase(6004, 2, 2400, 0, 52400, 0, 0, false, character.VerminionGilReserve));
         var pending = progress.PendingPurchase!;
         Assert.False(VerminionProgress.PreservesGilReserve(52400, pending.Gil, 50001)); // Reserve raised before confirmation.
         Assert.False(VerminionProgress.PreservesGilReserve(52399, pending.Gil, 50000)); // Funds changed before confirmation.
         Assert.True(progress.ConfirmPurchase(50000, 0, 1, false));
         Assert.Equal(2400ul, progress.GilSpent);
-        Assert.False(progress.ReservePurchase(6003, 1, 2400, 0, 50000, 0, 0, false, character.VerminionGilPurchaseCap, 0, character.VerminionGilReserve));
+        Assert.False(progress.ReservePurchase(6003, 1, 2400, 0, 50000, 0, 0, false, character.VerminionGilReserve));
         Assert.Equal(0, progress.WeeklyMatches);
         Assert.Equal(0, progress.WeeklyWins);
     }
 
     [Fact]
-    public void ReservedPurchaseRecoveryNeedsUnchangedEvidenceAndRetainsItsBudgetReservation()
+    public void ReservedPurchaseRecoveryNeedsUnchangedEvidenceAndRetainsItsReservation()
     {
         var progress = new VerminionProgress();
-        Assert.True(progress.ReservePurchase(6005, 3, 2400, 0, 10000, 20000, 0, false, 2400, 0, 5000));
+        Assert.True(progress.ReservePurchase(6005, 3, 2400, 0, 10000, 20000, 0, false, 5000));
         progress.MinionAcquisition = new("reserved-recovery", 6005, 3, true);
         progress = System.Text.Json.JsonSerializer.Deserialize<VerminionProgress>(System.Text.Json.JsonSerializer.Serialize(progress))!;
         var reservation = progress.PendingPurchase;
-        Assert.True(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 5000));
-        Assert.False(progress.CanSpend(2400, 0, 4800, 0));
-        Assert.False(progress.CanResumeReservedPurchase(7600, 20000, 0, false, 6, 2400, 0, 0, 5000));
-        Assert.False(progress.CanResumeReservedPurchase(10000, 20001, 0, false, 6, 2400, 0, 0, 5000));
-        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 1, false, 6, 2400, 0, 0, 5000));
-        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, true, 6, 2400, 0, 0, 5000));
-        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, null, 6, 2400, 0, 0, 5000));
-        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2399, 0, 0, 5000));
-        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 7601));
+        Assert.True(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 5000));
+        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 10000, 20000, 0, false, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(7600, 20000, 0, false, 6, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20001, 0, false, 6, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 1, false, 6, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, true, 6, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, null, 6, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 7601));
         Assert.Equal(reservation, progress.PendingPurchase);
         Assert.Equal(0ul, progress.GilSpent);
         Assert.Equal(0, progress.WeeklyMatches);
         progress.MinionAcquisition = progress.MinionAcquisition! with { ItemId = 6004 };
-        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 5000));
         progress.MinionAcquisition = new("reserved-recovery", 6005, 3, false);
-        Assert.True(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 2400, 0, 0, 5000));
+        Assert.True(progress.CanResumeReservedPurchase(10000, 20000, 0, false, 6, 5000));
         progress.MinionAcquisition = progress.MinionAcquisition with { DispatchAttempted = true };
         Assert.True(progress.ConfirmPurchase(7600, 20000, 1, false));
         Assert.Equal(2400ul, progress.GilSpent);
-        Assert.False(progress.CanResumeReservedPurchase(7600, 20000, 1, false, 6, 4800, 0, 0, 5000));
+        Assert.False(progress.CanResumeReservedPurchase(7600, 20000, 1, false, 6, 5000));
         Assert.False(progress.ConfirmPurchase(7600, 20000, 1, false));
     }
 
     [Fact]
     public void PurchaseReservationSurvivesStopReloadAndResetAndNeedsBothReceiptFacts()
     {
-        var character = new CharacterConfig { VerminionGilPurchaseCap = 2400 };
+        var character = new CharacterConfig();
         var progress = character.VerminionProgress;
-        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 0, false, 0, 0));
-        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 2399, 0, 0, false, 2400, 0));
-        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 1, false, 2400, 0));
-        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 0, true, 2400, 0));
-        Assert.True(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 0, false, 2400, 0));
+        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 2399, 0, 0, false));
+        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 1, false));
+        Assert.False(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 0, true));
+        Assert.True(progress.ReservePurchase(6004, 2, 2400, 0, 5000, 0, 0, false));
         progress.MinionAcquisition = new("ads-minion-test", 6004, 2, true);
         Assert.Equal(0ul, progress.GilSpent); // Submission is not a receipt.
-        Assert.False(progress.CanSpend(1, 0, 10000, 0));
-        Assert.False(progress.ReservePurchase(6187, 26, 2400, 0, 5000, 0, 0, false, 10000, 0));
+        Assert.False(progress.ReservePurchase(6187, 26, 2400, 0, 5000, 0, 0, false));
         character.VerminionPaused = true;
         character.ResetVerminionState();
         character = System.Text.Json.JsonSerializer.Deserialize<CharacterConfig>(System.Text.Json.JsonSerializer.Serialize(character))!;
@@ -1715,7 +1705,6 @@ public sealed class VerminionLifecycleTests
         Assert.Equal(2400ul, progress.GilSpent);
         Assert.Null(progress.PendingPurchase);
         Assert.False(progress.ConfirmPurchase(2600, 0, 1, false)); // Exactly once.
-        Assert.False(progress.CanSpend(1, 0, 2400, 0));
         Assert.Equal(0, progress.WeeklyMatches);
         Assert.Equal(0, progress.WeeklyWins);
         Assert.Equal(0ul, new CharacterConfig().VerminionProgress.GilSpent);
@@ -1724,22 +1713,61 @@ public sealed class VerminionLifecycleTests
         var offer = VerminionRoster.NeroOffer;
         Assert.Equal(offer, VerminionRoster.VendorOffer(14096, 174));
         Assert.DoesNotContain(offer, VerminionRoster.EntryPurchases([]));
-        Assert.False(mgp.ReservePurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, 50000, 60000, 0, false, 0, 0, 50000));
-        Assert.False(mgp.ReservePurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, 50000, 29999, 0, false, 0, 30000, 50000));
-        Assert.True(mgp.ReservePurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, 50000, 60000, 0, false, 0, 30000, 50000));
+        Assert.False(mgp.ReservePurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, 50000, 29999, 0, false, 50000));
+        Assert.True(mgp.ReservePurchase(offer.ItemId, offer.MinionId, offer.Gil, offer.Mgp, 50000, 60000, 0, false, 50000));
         mgp = JsonConvert.DeserializeObject<VerminionProgress>(JsonConvert.SerializeObject(mgp))!;
         Assert.False(mgp.ConfirmPurchase(50000, 60000, 1, false));
         Assert.False(mgp.ConfirmPurchase(49999, 30000, 1, false));
         Assert.True(mgp.ConfirmPurchase(50000, 30000, 1, false));
-        Assert.False(mgp.CanSpend(0, 1, 0, 30000));
         Assert.Equal(30000ul, mgp.MgpSpent);
         Assert.Equal(0ul, mgp.GilSpent);
         var zu = VerminionRoster.ZuOffer;
         Assert.Equal(zu, VerminionRoster.VendorOffer(7565, 83));
         Assert.DoesNotContain(zu, VerminionRoster.EntryPurchases([]));
-        Assert.False(mgp.ReservePurchase(zu.ItemId, zu.MinionId, 0, zu.Mgp, 50000, 30000, 0, false, 0, 39999, 50000));
-        Assert.True(mgp.ReservePurchase(zu.ItemId, zu.MinionId, 0, zu.Mgp, 50000, 30000, 0, false, 0, 40000, 50000));
+        Assert.False(mgp.ReservePurchase(zu.ItemId, zu.MinionId, 0, zu.Mgp, 50000, 9999, 0, false, 50000));
+        Assert.True(mgp.ReservePurchase(zu.ItemId, zu.MinionId, 0, zu.Mgp, 50000, 30000, 0, false, 50000));
         Assert.True(mgp.ConfirmPurchase(50000, 20000, 1, false));
         Assert.Equal(40000ul, mgp.MgpSpent);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void LegacyPurchaseCapsDoNotBlockNeededMinionsOrLoseSavedProgress(int legacyCap)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            VerminionGilPurchaseCap = legacyCap,
+            VerminionMgpPurchaseCap = legacyCap,
+            VerminionCertificatePurchaseCap = legacyCap,
+            VerminionGilReserve = 5000,
+            VerminionProgress = new { ClearedChallengeMask = 1, GilSpent = 100000, MgpSpent = 100000, CertificatesSpent = 20 },
+        });
+        foreach (var character in new[]
+        {
+            JsonConvert.DeserializeObject<CharacterConfig>(json)!,
+            System.Text.Json.JsonSerializer.Deserialize<CharacterConfig>(json)!,
+            new CharacterConfig { VerminionGilReserve = 5000 },
+        })
+        {
+            var progress = character.VerminionProgress;
+            var priorGil = progress.GilSpent;
+            var priorMgp = progress.MgpSpent;
+            var priorCertificates = progress.CertificatesSpent;
+            var clears = progress.ClearedChallengeMask;
+            Assert.Equal(5000u, character.VerminionGilReserve);
+            Assert.True(progress.ReservePurchase(6004, 2, 2400, 0, 10000, 20000, 0, false, character.VerminionGilReserve));
+            Assert.True(progress.ConfirmPurchase(7600, 20000, 1, false));
+            Assert.True(progress.ReservePurchase(7565, 83, 0, 10000, 7600, 20000, 0, false, character.VerminionGilReserve));
+            Assert.True(progress.ConfirmPurchase(7600, 10000, 1, false));
+            Assert.True(progress.ReservePurchase(7561, 76, 0, 0, 7600, 10000, 0, false,
+                character.VerminionGilReserve, certificates: 2, certificatesBefore: 4));
+            Assert.True(progress.ConfirmPurchase(7600, 10000, 1, false, 2));
+            Assert.Equal(priorGil + 2400, progress.GilSpent);
+            Assert.Equal(priorMgp + 10000, progress.MgpSpent);
+            Assert.Equal(priorCertificates + 2, progress.CertificatesSpent);
+            Assert.Equal(clears, progress.ClearedChallengeMask);
+            Assert.DoesNotContain("PurchaseCap", JsonConvert.SerializeObject(character));
+        }
     }
 }
