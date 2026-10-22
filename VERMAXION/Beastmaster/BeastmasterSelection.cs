@@ -137,6 +137,31 @@ public static class BeastmasterSelection
         return true;
     }
 
+    public static bool TryRecoverExcludedTrainees(BeastmasterSettings runSettings, IEnumerable<BeastmasterCandidate> owned,
+        int capacity, out List<uint> team)
+    {
+        team = [];
+        var candidates = owned.Where(beast => beast.Number != 0).DistinctBy(beast => beast.Number).ToArray();
+        if (runSettings.Goal != BeastmasterRunGoal.TrainOwned || runSettings.TeamMode != CrucibleTeamMode.Leveling ||
+            TryPrepareTeam(runSettings, candidates, capacity, out _, out _)) return false;
+
+        var list = runSettings.BeastTierLists.ElementAtOrDefault(runSettings.BeastTierListIndex);
+        if (list == null) return false;
+        var target = TrainingTarget(runSettings);
+        var excluded = candidates.Where(beast => beast.PickBlocked && beast.Rank is >= 1 and <= 25 && beast.Rank < target &&
+            (runSettings.ClassificationLock == 0 || beast.Classification == runSettings.ClassificationLock) &&
+            list.Any(entry => entry.ID == beast.Number && entry.PickBlock)).Select(beast => beast.Number).ToHashSet();
+        if (excluded.Count == 0 || !TryPrepareTeam(runSettings,
+            candidates.Select(beast => excluded.Contains(beast.Number) ? beast with { PickBlocked = false } : beast),
+            capacity, out var rebuilt, out _)) return false;
+
+        // The caller supplies the active run's deep clone. Commit only a usable
+        // recovery, retaining saved exclusions, list order and reserve flags.
+        foreach (var entry in list.Where(entry => excluded.Contains(entry.ID))) entry.PickBlock = false;
+        team = rebuilt;
+        return true;
+    }
+
     private static float ExperienceOrder(BeastmasterCandidate beast) =>
         float.IsNaN(beast.Experience) ? float.PositiveInfinity : beast.Experience;
 

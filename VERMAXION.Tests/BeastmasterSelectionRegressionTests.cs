@@ -116,6 +116,151 @@ public sealed class BeastmasterSelectionRegressionTests
     }
 
     [Fact]
+    public void ExcludedTraineeRecoveryRebuildsOnlyTheRunCopyAfterOrdinaryPreparationFails()
+    {
+        var saved = ExcludedTrainingSettings();
+        var savedBefore = JToken.FromObject(saved);
+        var run = saved.Clone();
+        var owned = ExcludedTrainingCandidates();
+
+        Assert.False(BeastmasterSelection.TryPrepareTeam(run, owned, 12, out var initial, out var reason));
+        Assert.Empty(initial);
+        Assert.Equal("Training is incomplete, but fewer than three eligible beasts can form a training team. Check pick exclusions and kin filters.", reason);
+        Assert.True(BeastmasterSelection.TryRecoverExcludedTrainees(run, owned, 12, out var team));
+        Assert.Equal(new uint[] { 44, 45, 50 }, team);
+
+        var expectedRun = saved.Clone();
+        foreach (var entry in expectedRun.BeastTierLists[1].Where(entry => entry.ID is 44 or 45 or 50))
+            entry.PickBlock = false;
+        Assert.True(JToken.DeepEquals(JToken.FromObject(expectedRun), JToken.FromObject(run)));
+        Assert.True(JToken.DeepEquals(savedBefore, JToken.FromObject(saved)));
+        Assert.All(owned.Where(beast => beast.Number is 44 or 45 or 50), beast => Assert.True(beast.PickBlocked));
+    }
+
+    [Fact]
+    public void RecoveryUsesTheExplicitTargetAndRelaxesOnlyOwnedKnownMatchingKinBlockedEntries()
+    {
+        var saved = ExcludedTrainingSettings();
+        saved.TrainingTargetRank = 12;
+        saved.ClassificationLock = 1;
+        var savedBefore = JToken.FromObject(saved);
+        var run = saved.Clone();
+        BeastmasterCandidate[] owned = [
+            new(13, 12, 0, 0, Classification: 1), new(20, 12, 0, 2, Classification: 1),
+            new(27, 12, 0, 4, Classification: 1),
+            new(44, 11, 0, 1, Classification: 1, PickBlocked: true, FightBlocked: true),
+            new(45, 0, float.NaN, 3, Classification: 1, PickBlocked: true),
+            new(50, 9, 0, 5, Classification: 2, PickBlocked: true),
+            new(43, 12, 0, 6, Classification: 1, PickBlocked: true),
+            new(46, 26, 0, 7, Classification: 1, PickBlocked: true),
+            new(48, 9, 0, 9, Classification: 1, PickBlocked: true), // No selected-list entry.
+            new(49, 9, 0, 10, Classification: 1, PickBlocked: true), // Its list entry is not blocked.
+        ];
+
+        Assert.False(BeastmasterSelection.TryPrepareTeam(run, owned, 12, out _, out _));
+        Assert.True(BeastmasterSelection.TryRecoverExcludedTrainees(run, owned, 12, out var team));
+        Assert.Equal(new uint[] { 44, 13, 20 }, team);
+        var expectedRun = saved.Clone();
+        expectedRun.BeastTierLists[1].Single(entry => entry.ID == 44).PickBlock = false;
+        Assert.True(JToken.DeepEquals(JToken.FromObject(expectedRun), JToken.FromObject(run)));
+        Assert.True(JToken.DeepEquals(savedBefore, JToken.FromObject(saved)));
+        Assert.True(run.BeastTierLists[1].Single(entry => entry.ID == 47).PickBlock); // Unowned.
+    }
+
+    [Fact]
+    public void RecoveryLeavesAnAlreadyUsableTrainingTeamAndItsExclusionsAlone()
+    {
+        var run = ExcludedTrainingSettings();
+        var before = JToken.FromObject(run);
+        var owned = ExcludedTrainingCandidates().Select(beast => beast.Number == 13 ? beast with { Rank = 9 } : beast).ToArray();
+        Assert.True(BeastmasterSelection.TryPrepareTeam(run, owned, 12, out var ordinary, out var reason), reason);
+        Assert.Equal(new uint[] { 13, 20, 27 }, ordinary);
+
+        Assert.False(BeastmasterSelection.TryRecoverExcludedTrainees(run, owned, 12, out var recovered));
+        Assert.Empty(recovered);
+        Assert.True(JToken.DeepEquals(before, JToken.FromObject(run)));
+    }
+
+    [Theory]
+    [InlineData(BeastmasterRunGoal.FixedRuns, CrucibleTeamMode.Leveling)]
+    [InlineData(BeastmasterRunGoal.FixedRuns, CrucibleTeamMode.Recommended)]
+    [InlineData(BeastmasterRunGoal.FixedRuns, CrucibleTeamMode.Custom)]
+    [InlineData(BeastmasterRunGoal.TrainOwned, CrucibleTeamMode.Recommended)]
+    [InlineData(BeastmasterRunGoal.TrainOwned, CrucibleTeamMode.Custom)]
+    public void RecoveryDoesNotOverrideOtherGoalsOrTeamMethods(BeastmasterRunGoal goal, CrucibleTeamMode mode)
+    {
+        var run = ExcludedTrainingSettings();
+        run.Goal = goal;
+        run.TeamMode = mode;
+        run.CustomTeam = [13, 20, 27];
+        var before = JToken.FromObject(run);
+
+        Assert.False(BeastmasterSelection.TryRecoverExcludedTrainees(run, ExcludedTrainingCandidates(), 12, out var team));
+        Assert.Empty(team);
+        Assert.True(JToken.DeepEquals(before, JToken.FromObject(run)));
+    }
+
+    [Theory]
+    [InlineData(0, 1, 3)]
+    [InlineData(26, 1, 3)]
+    [InlineData(9, 2, 3)]
+    [InlineData(9, 1, 1)]
+    public void RecoveryDoesNotMutateSettingsForUnknownInvalidWrongKinOrInsufficientTeams(int rank, int kin, int supportCount)
+    {
+        var run = ExcludedTrainingSettings();
+        run.ClassificationLock = 1;
+        var before = JToken.FromObject(run);
+        var owned = ExcludedTrainingCandidates().Where(beast => beast.Number is 13 or 20 or 27)
+            .Take(supportCount).Select(beast => beast with { Classification = 1 })
+            .Append(new BeastmasterCandidate(44, rank, rank == 0 ? float.NaN : 0, 1,
+                Classification: (byte)kin, PickBlocked: true)).ToArray();
+
+        Assert.False(BeastmasterSelection.TryRecoverExcludedTrainees(run, owned, 12, out var team));
+        Assert.Empty(team);
+        Assert.True(JToken.DeepEquals(before, JToken.FromObject(run)));
+    }
+
+    [Fact]
+    public void RecoveryDoesNotTurnGenuineTrainingCompletionIntoAnotherTeam()
+    {
+        var run = ExcludedTrainingSettings();
+        var before = JToken.FromObject(run);
+        var owned = ExcludedTrainingCandidates().Select(beast => beast with { Rank = 10 }).ToArray();
+        var numbers = owned.Select(beast => beast.Number).ToArray();
+        var records = owned.ToDictionary(beast => beast.Number, beast => new CrucibleFamiliar(beast.Number)
+            { Rank = beast.Rank, Exp = "0", ObservedAtUtc = DateTime.UtcNow });
+
+        Assert.False(BeastmasterSelection.TryPrepareTeam(run, owned, 12, out _, out _));
+        Assert.False(BeastmasterSelection.TryRecoverExcludedTrainees(run, owned, 12, out var team));
+        Assert.Empty(team);
+        Assert.True(JToken.DeepEquals(before, JToken.FromObject(run)));
+        Assert.True(BeastmasterSelection.TrainingComplete(numbers, records, 10));
+        Assert.True(BeastmasterSelection.RequiresTrainingCompletionRead(run, numbers, records));
+        Assert.False(BeastmasterSelection.TrainingCompletionConfirmed(numbers, records, 10, false, null));
+    }
+
+    private static BeastmasterSettings ExcludedTrainingSettings() => new()
+    {
+        Goal = BeastmasterRunGoal.TrainOwned, TeamMode = CrucibleTeamMode.Leveling,
+        LevelingMode = CrucibleLevelingMode.Full, Board = 2, RunCount = 4, BeastTierListIndex = 1,
+        BeastTierLists = [
+            new() { Name = "Other list", Entries = [new() { ID = 44, PickBlock = true, BattleBlock = true }] },
+            new() { Name = "Selected list", Entries = [
+                new() { ID = 13 }, new() { ID = 44, PickBlock = true, BattleBlock = true },
+                new() { ID = 20 }, new() { ID = 45, PickBlock = true }, new() { ID = 27 },
+                new() { ID = 50, PickBlock = true, BattleBlock = true }, new() { ID = 43, PickBlock = true },
+                new() { ID = 46, PickBlock = true }, new() { ID = 47, PickBlock = true }, new() { ID = 49 },
+            ] },
+        ],
+    };
+
+    private static BeastmasterCandidate[] ExcludedTrainingCandidates() => [
+        new(13, 10, 0, 0), new(20, 10, 0, 2), new(27, 10, 0, 4),
+        new(44, 9, 0, 1, PickBlocked: true, FightBlocked: true),
+        new(45, 9, 1, 3, PickBlocked: true), new(50, 9, 2, 5, PickBlocked: true, FightBlocked: true),
+    ];
+
+    [Fact]
     public void DuplicateCandidatesAndSelectionsCannotSatisfyTheEntryMinimum()
     {
         var settings = new BeastmasterSettings { TeamMode = CrucibleTeamMode.Recommended };

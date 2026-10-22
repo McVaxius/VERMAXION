@@ -396,6 +396,100 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.Empty(host.MovementCommands);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionSelectionRecoversExcludedTraineesWithoutInterruptedStartHistoryOrSavedChanges(bool existingTeam)
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        var teamType = Production.GetType("VERMAXION.Beastmaster.CrucibleTeam", true)!;
+        var catalog = (SortedDictionary<uint, live::VERMAXION.Beastmaster.CrucibleFamiliarSheetData>)
+            teamType.GetProperty("FamiliarSheetDatas", Static)!.GetValue(null)!;
+        (uint Number, int Rank, byte Kin, bool Owned, bool Blocked, bool Reserve)[] beasts =
+        [
+            (101, 20, 1, true, false, false),
+            (102, 20, 1, true, false, true),
+            (103, 20, 1, true, false, false),
+            (104, 10, 1, true, true, true),
+            (105, 12, 1, true, true, false),
+            (106, 20, 1, true, true, false),
+            (107, 3, 1, false, true, false),
+            (108, 0, 1, true, true, false),
+            (109, 5, 2, true, true, false),
+        ];
+        var data = new live::VERMAXION.Beastmaster.BeastmasterCharacterData();
+        foreach (var beast in beasts)
+        {
+            catalog.Add(beast.Number, new()
+            {
+                Number = beast.Number, Name = $"Synthetic beast {beast.Number}", Element = "", Classification = beast.Kin,
+            });
+            data.Familiars.Add(beast.Number, new(beast.Number) { Rank = beast.Rank, Exp = "0" });
+            if (beast.Owned) data.Owned.Add(beast.Number);
+        }
+        if (existingTeam) data.Team = [106, 102, 101];
+        var savedList = new live::VERMAXION.Beastmaster.BeastTierList { Name = "Synthetic training order" };
+        foreach (var number in new uint[] { 106, 104, 103, 109, 101, 105, 102, 107, 108 })
+        {
+            var beast = beasts.Single(entry => entry.Number == number);
+            savedList.Add(new() { ID = number, PickBlock = beast.Blocked, BattleBlock = beast.Reserve });
+        }
+        savedList.Complete(catalog.Keys);
+        var otherList = savedList.Clone("Synthetic inactive list");
+        var saved = new live::VERMAXION.Beastmaster.BeastmasterSettings
+        {
+            Goal = live::VERMAXION.Beastmaster.BeastmasterRunGoal.TrainOwned,
+            TeamMode = live::VERMAXION.Beastmaster.CrucibleTeamMode.Leveling,
+            LevelingMode = live::VERMAXION.Beastmaster.CrucibleLevelingMode.Carry_Minus_2,
+            Board = 2, TrainingTargetRank = 15, ClassificationLock = 1,
+            BeastTierLists = [otherList, savedList], BeastTierListIndex = 1,
+        };
+        data.ManualSettings = saved;
+        var run = saved.Clone();
+        Set(service, "runSettings", run);
+        Set(service, "runData", data);
+        Set(service, "preparedOwned", data.Owned.ToHashSet());
+        var originalOrder = savedList.Select(entry => entry.ID).ToArray();
+        var originalFlags = savedList.Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)).ToArray();
+        Assert.Equal("Idle", Field(service, "State")!.ToString());
+        Assert.Equal(0, Read<int>(service, "CurrentRun"));
+
+        // Invoke the real production wrapper: no native team edits, failed Start,
+        // recovery state, or prior attempt is needed to repair this planning error.
+        var prepare = teamType.GetMethod("TryPrepareSelection", Static)!;
+        object?[] first = [null, null];
+        Assert.True((bool)prepare.Invoke(null, first)!);
+        Assert.Equal(new uint[] { 103, 101, 102, 104, 105 }, (List<uint>)first[0]!);
+        Assert.Equal(string.Empty, first[1]);
+        Assert.Single(host.Warnings);
+        var active = run.BeastTierLists[1];
+        Assert.NotSame(savedList, active);
+        Assert.Equal(originalOrder, active.Select(entry => entry.ID));
+        Assert.Equal(originalFlags, savedList.Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)));
+        Assert.Equal(originalFlags, run.BeastTierLists[0].Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)));
+        Assert.Equal(originalFlags, otherList.Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)));
+        foreach (var before in originalFlags)
+        {
+            var after = active.Single(entry => entry.ID == before.ID);
+            Assert.Equal(before.BattleBlock, after.BattleBlock);
+            Assert.Equal(before.ID is 104 or 105 ? false : before.PickBlock, after.PickBlock);
+        }
+        Assert.Equal(existingTeam ? new uint[] { 106, 102, 101 } : Array.Empty<uint>(), data.Team);
+
+        // A subsequent preparation consumes the recovered runtime eligibility;
+        // the ordinary path succeeds without another recovery or preference edit.
+        var recoveredFlags = active.Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)).ToArray();
+        object?[] second = [null, null];
+        Assert.True((bool)prepare.Invoke(null, second)!);
+        Assert.Equal((List<uint>)first[0]!, (List<uint>)second[0]!);
+        Assert.Equal(string.Empty, second[1]);
+        Assert.Single(host.Warnings);
+        Assert.Same(active, run.BeastTierLists[1]);
+        Assert.Equal(recoveredFlags, active.Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)));
+        Assert.Equal(originalFlags, savedList.Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)));
+    }
+
     private static void AssertNewPlan(object service)
     {
         var settings = (live::VERMAXION.Beastmaster.BeastmasterSettings)Field(service, "runSettings")!;
@@ -456,6 +550,7 @@ public sealed class BeastmasterRouteLifecycleTests
         public bool Pathfinding;
         public readonly HashSet<string> Conditions = [];
         public readonly List<string> Commands = [];
+        public readonly List<string> Warnings = [];
         public List<string> MovementCommands => Commands.Where(command => command.StartsWith("/vnav moveto ", StringComparison.Ordinal)).ToList();
 
         public HostFixture()
@@ -475,7 +570,11 @@ public sealed class BeastmasterRouteLifecycleTests
                 });
                 var conditions = Proxy(typeof(host::Dalamud.Plugin.Services.ICondition), (method, args) =>
                     method.Name == "get_Item" ? Conditions.Contains(args![0]!.ToString()!) : Default(method.ReturnType));
-                log = Proxy(typeof(host::Dalamud.Plugin.Services.IPluginLog), (method, _) => Default(method.ReturnType));
+                log = Proxy(typeof(host::Dalamud.Plugin.Services.IPluginLog), (method, args) =>
+                {
+                    if (method.Name == "Warning" && args?.FirstOrDefault() is string message) Warnings.Add(message);
+                    return Default(method.ReturnType);
+                });
                 pluginInterface = Proxy(typeof(host::Dalamud.Plugin.IDalamudPluginInterface), (method, _) =>
                     method.Name == "get_InstalledPlugins" ? Array.Empty<host::Dalamud.Plugin.IExposedPlugin>() : Default(method.ReturnType));
                 Replace(typeof(live::VERMAXION.Plugin), "PluginInterface", pluginInterface);

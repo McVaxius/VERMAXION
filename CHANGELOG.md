@@ -1,3 +1,9 @@
+2026-10-21 - Recover Crewcible training blocked by excluded unfinished beasts
+
+- When training cannot prepare an entry team, temporarily allow owned, known-rank unfinished beasts excluded by the active priority list, then rebuild through the existing team setup. The selection error triggers recovery even after a fresh reload.
+- Apply the change only to the current run after a valid team is calculated. Preserve saved exclusions, priority order, reserve flags, kin restrictions, target rank and ordinary team selection; retain the existing missing-only scan and three-familiar entry minimum.
+- Validation: isolated Debug compilation and all 215 focused Beastmaster/dependency tests passed, including 15 new recovery/preservation cases and production-wrapper checks. The authorized Z:\vmx.bat build passed with zero errors and five existing warnings; Account 1 reload was verified. Native menu progression remains awaiting user acceptance.
+
 2026-10-21 - Restore Second Master's Board forward-jump destinations
 
 - Correct explicit forward jumps only on Second Master's Board so its branches reach their intended tile movements instead of skipping them and waiting for a fight at the wrong position. Preserve Boards 1-4, backward/absolute jumps, route conditions and the existing movement-readiness checks.

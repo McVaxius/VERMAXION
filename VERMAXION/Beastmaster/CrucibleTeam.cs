@@ -285,9 +285,18 @@ internal static unsafe class CrucibleTeam
                 levelingMode == CrucibleLevelingMode.Carry_Minus_2, crucible.ClassificationLock);
     }
 
-    public static bool TryPrepareSelection(out List<uint> team, out string reason) =>
-        BeastmasterSelection.TryPrepareTeam(BeastmasterRuntime.Settings,
-            Owned().Where(FamiliarSheetDatas.ContainsKey).Select(Candidate), TeamSize(), out team, out reason);
+    public static bool TryPrepareSelection(out List<uint> team, out string reason)
+    {
+        var settings = BeastmasterRuntime.Settings;
+        var candidates = Owned().Where(FamiliarSheetDatas.ContainsKey).Select(Candidate).ToArray();
+        var capacity = TeamSize();
+        if (BeastmasterSelection.TryPrepareTeam(settings, candidates, capacity, out team, out reason)) return true;
+        if (!BeastmasterSelection.TryRecoverExcludedTrainees(settings, candidates, capacity, out var rebuilt)) return false;
+        team = rebuilt;
+        reason = string.Empty;
+        Svc.Log.Warning("[Crewcible] Training selection failed because unfinished beasts were excluded; temporarily allowing those beasts for this run and rebuilding the team.");
+        return true;
+    }
 
     private static BeastmasterCandidate Candidate(uint number)
     {
