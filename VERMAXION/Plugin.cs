@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     internal const string BeastmasterTaskId = "Run##Beastmaster";
     internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
-    private const string DebugAttemptMarker = "vmx-verminion-client5-20261022-49";
+    private const string DebugAttemptMarker = "vmx-verminion-client5-20261022-57";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -1299,54 +1299,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         { SetDebugTaskStatus("Blocked: this reload task belongs to a different character."); return; }
         if (VerminionService.HasQuestAcquisition)
         {
-#if DEBUG
-            if (taskId == AutomationCatalog.VerminionQueue &&
-                string.Equals(PluginInterface.AssemblyLocation.FullName, @"A:\ff14\parasite\vmx\VERMAXION.dll", StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(PluginInterface.ConfigDirectory.FullName, @"A:\ff14\XIVLauncher5\pluginConfigs\VERMAXION", StringComparison.OrdinalIgnoreCase) &&
-                ConfigManager.GetActiveConfig().VerminionProgress.QuestAcquisition is
-                    { MinionId: 21, Provider: "WigglyQuest", DispatchAttempted: true, CancellationRequested: false, OwnershipReleased: false } handoff &&
-                handoff.Owner == PlayerState.ContentId)
-            {
-                try
-                {
-                    var current = PluginInterface.GetIpcSubscriber<string?>("WigglyQuest.GetCurrentQuestId").InvokeFunc();
-                    if (!handoff.OwnsQuest(PlayerState.ContentId, current) ||
-                        !PluginInterface.GetIpcSubscriber<bool>("WigglyQuest.IsRunning").InvokeFunc())
-                        throw new InvalidOperationException("The saved acquisition is not the current running quest; trial settings were not changed.");
-                    if (VerminionQuestHandoffBlocker() is { } dutyBlocker)
-                        throw new InvalidOperationException(dutyBlocker);
-                    var level = VerminionGameInteraction.ReadUnsyncedJobLevel();
-                    var overrides = PluginInterface.GetIpcSubscriber<Dictionary<uint, int>>("WigglyQuest.Duty.GetOverrides").InvokeFunc()
-                        ?? throw new InvalidOperationException("Duty overrides were unavailable.");
-                    var defaultMode = PluginInterface.GetIpcSubscriber<int>("WigglyQuest.Duty.GetDefaultMode").InvokeFunc();
-                    uint[] trials = [76, 81, 85];
-                    Log.Information($"[VerminionTest] Owned acquisition trial preparation; current={current}; level={level}; job={ObjectTable.LocalPlayer?.ClassJob.RowId}; defaultMode={defaultMode}");
-                    foreach (var id in trials)
-                    {
-                        if (!DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().TryGetRow(id, out var duty) ||
-                            duty.ContentType.RowId != 4 || !duty.IsInDutyFinder || !duty.AllowUndersized ||
-                            level == null || level < duty.ClassJobLevelRequired + 20 || overrides.ContainsKey(id))
-                            throw new InvalidOperationException($"Trial {id} did not match the approved native catalog, level or absent-override preflight.");
-                        var unlocked = FFXIVClientStructs.FFXIV.Client.Game.UI.UIState.IsInstanceContentUnlocked(duty.Content.RowId);
-                        Log.Information($"[VerminionTest] Acquisition trial eligibility; cfc={id}; name={duty.Name}; territory={duty.TerritoryType.RowId}; content={duty.Content.RowId}; levelRequired={duty.ClassJobLevelRequired}; itemLevelRequired={duty.ItemLevelRequired}; allowUndersized={duty.AllowUndersized}; unlockedNow={unlocked}; previousOverride=absent; requestedMode=UnsyncSolo");
-                    }
-                    foreach (var id in trials)
-                    {
-                        var changed = PluginInterface.GetIpcSubscriber<uint, int, (bool, string?)>("WigglyQuest.Duty.SetOverride").InvokeFunc(id, 1);
-                        if (!changed.Item1) throw new InvalidOperationException($"Trial {id} mode was rejected: {changed.Item2}");
-                        Log.Information($"[VerminionTest] Owned acquisition trial override set; cfc={id}; previous=absent; current=1; restore by removing only if still 1");
-                    }
-                    var readback = PluginInterface.GetIpcSubscriber<Dictionary<uint, int>>("WigglyQuest.Duty.GetOverrides").InvokeFunc();
-                    if (readback == null || trials.Any(id => !readback.TryGetValue(id, out var mode) || mode != 1))
-                        throw new InvalidOperationException("Trial mode readback disagreed; reconcile the existing settings before any further changes.");
-                    Log.Information("[VerminionTest] All three owned trial overrides read back as UnsyncSolo; future unlocks remain subject to native duty eligibility.");
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning($"[VerminionTest] One-shot acquisition trial preparation ended: {ex.Message}");
-                }
-            }
-#endif
             SetDebugTaskStatus("Questionable owns minion acquisition; this reload only observes the saved handoff.");
             return;
         }
