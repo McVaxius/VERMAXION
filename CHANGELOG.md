@@ -1,3 +1,14 @@
+2026-10-21 - Restore Second Master's Board forward-jump destinations
+
+- Correct explicit forward jumps only on Second Master's Board so its branches reach their intended tile movements instead of skipping them and waiting for a fight at the wrong position. Preserve Boards 1-4, backward/absolute jumps, route conditions and the existing movement-readiness checks.
+- Validation: isolated Debug compilation and all 200 focused tests passed, including 22 new branch, movement and preservation cases. All fifteen locale catalogs passed validation. The authorized shared Debug build also passed with zero errors and five inherited warnings; Account 1 reload was verified. Native board progression remains awaiting user acceptance.
+
+2026-10-21 - Retain interrupted Crewcible map moves until arrival
+
+- Recheck player readiness and loading restrictions before each map movement, retaining the current step through intro or loading interruptions.
+- Advance a settled movement only after reaching its waypoint. If movement stops short, the same route step moves again automatically instead of waiting for a fight at the entrance or a later map position. Keep existing arena detection and BMR targeting behavior.
+- Validation: isolated Debug build and 178 focused tests passed, including nine production-path route/lifecycle cases. Full same-instance batch restart still requires native acceptance.
+
 2026-10-21 - Follow BMR encounter targeting throughout Crewcible
 
 - Replace the nearest-enemy target lock on every Crucible board with BMR's existing highest-priority target selection, respecting its encounter target restrictions and shell/add priorities.

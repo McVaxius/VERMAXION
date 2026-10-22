@@ -116,6 +116,7 @@ internal sealed unsafe class BeastmasterRoute
             case "ModifyIndex":
                 if (!int.TryParse(arg, out var offset)) throw new InvalidOperationException("Invalid Crucible route jump");
                 Step = arg.StartsWith('+') || arg.StartsWith('-') ? Step + offset + 1 : offset + 1;
+                if (Svc.ClientState.TerritoryType == 1343 && arg.StartsWith('+')) Step--;
                 if (Step < 0 || Step > actions.Count) throw new InvalidOperationException("Crucible route jump is outside the board");
                 ResetStep();
                 break;
@@ -185,7 +186,9 @@ internal sealed unsafe class BeastmasterRoute
 
     private bool Approach(Vector3 position)
     {
-        if (Svc.Condition[ConditionFlag.InCombat])
+        if (Svc.Condition[ConditionFlag.InCombat] || !BeastmasterPlayer.IsReady ||
+            Svc.Condition[ConditionFlag.SufferingStatusAffliction2] ||
+            Svc.Condition[ConditionFlag.SufferingStatusAffliction63])
         { service.StopNavigation(); movementStarted = false; return false; }
         if (!movementStarted)
         {
@@ -197,7 +200,7 @@ internal sealed unsafe class BeastmasterRoute
         if (DateTime.UtcNow - movementSince < TimeSpan.FromMilliseconds(500) || !service.NavigationSettled()) return false;
         service.StopNavigation();
         movementStarted = false;
-        return true;
+        return BeastmasterPlayer.BelowDistanceToPlayer(position, 0.5f, 1f);
     }
 
     private static bool BlockingMenu() => new[]

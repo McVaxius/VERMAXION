@@ -1,0 +1,602 @@
+extern alias live;
+extern alias host;
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Numerics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using Newtonsoft.Json.Linq;
+using Xunit;
+
+namespace VERMAXION.Tests;
+
+// This collection changes only synthetic, process-local host services and restores
+// them afterwards. It must not overlap other tests that replace host services.
+[CollectionDefinition("Beastmaster production host", DisableParallelization = true)]
+public sealed class BeastmasterProductionHostCollection { }
+
+[Collection("Beastmaster production host")]
+public sealed class BeastmasterRouteLifecycleTests
+{
+    private const BindingFlags Instance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    private const BindingFlags Static = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+    private static readonly Assembly Production = typeof(live::VERMAXION.Plugin).Assembly;
+    private static readonly Type ServiceType = Production.GetType("VERMAXION.Beastmaster.BeastmasterService", true)!;
+    private static readonly Type RouteType = Production.GetType("VERMAXION.Beastmaster.BeastmasterRoute", true)!;
+
+    [Fact]
+    public void CancelledEntranceMoveStaysPendingAndReissuesUntilActualArrival()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        var route = CreateRoute(service, 1339);
+        var destination = RoutePosition(route, "MoveTo", 0);
+        host.Position = destination + new Vector3(0, 0, 8);
+
+        Invoke(route, "Update"); // The bundled route's initial WaitFor(IsReady).
+        Assert.Equal(1, Read<int>(route, "Step"));
+        Invoke(route, "Update");
+        Assert.Single(host.MovementCommands);
+        AgeMovement(route);
+        // The command was accepted but the intro cancelled it before any movement.
+        Invoke(route, "Update");
+        Assert.Equal(1, Read<int>(route, "Step"));
+        Assert.False(Read<bool>(route, "movementStarted"));
+        Invoke(route, "Update");
+        Assert.Equal(1, Read<int>(route, "Step"));
+        Assert.Equal(2, host.MovementCommands.Count);
+
+        host.Position = destination;
+        AgeMovement(route);
+        Invoke(route, "Update");
+        Assert.Equal(2, Read<int>(route, "Step"));
+        Assert.False(Read<bool>(service, "ownsNavigation"));
+    }
+
+    [Theory]
+    [InlineData("OccupiedInCutSceneEvent")]
+    [InlineData("BetweenAreas")]
+    [InlineData("SufferingStatusAffliction2")]
+    [InlineData("SufferingStatusAffliction63")]
+    public void IntroOrLoadingRetainsTheMoveAndStopsAnInterruptedOwnedPath(string condition)
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        var route = CreateRoute(service, 1339);
+        var destination = RoutePosition(route, "MoveTo", 0);
+        host.Position = destination + new Vector3(0, 0, 8);
+        host.Conditions.Add(condition);
+
+        Assert.False(Approach(route, destination));
+        Assert.Empty(host.MovementCommands);
+        host.Conditions.Clear();
+        Assert.False(Approach(route, destination));
+        Assert.Single(host.MovementCommands);
+        host.Conditions.Add(condition);
+        AgeMovement(route);
+        Assert.False(Approach(route, destination));
+        Assert.False(Read<bool>(route, "movementStarted"));
+        Assert.Contains("/vnav stop", host.Commands);
+
+        host.Conditions.Clear();
+        Assert.False(Approach(route, destination));
+        Assert.Equal(2, host.MovementCommands.Count);
+    }
+
+    [Fact]
+    public void LaterPositionedTileWaitsForPathfindingAndForActualHorizontalAndVerticalArrival()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        var route = CreateRoute(service, 1340);
+        var destination = RoutePosition(route, "Wait", 0);
+        host.Position = destination + new Vector3(0, 0, 9);
+        Assert.False(Approach(route, destination));
+        AgeMovement(route);
+        host.Pathfinding = true;
+        Assert.False(Approach(route, destination));
+        Assert.True(Read<bool>(route, "movementStarted"));
+        Assert.DoesNotContain("/vnav stop", host.Commands);
+
+        host.Pathfinding = false;
+        Assert.False(Approach(route, destination));
+        Assert.False(Approach(route, destination));
+        host.Position = destination + new Vector3(0, 2, 0);
+        AgeMovement(route);
+        Assert.False(Approach(route, destination));
+        Assert.False(Approach(route, destination));
+        host.Position = destination;
+        AgeMovement(route);
+        Assert.True(Approach(route, destination));
+    }
+
+    [Fact]
+    public void ArenaTransitionTakesOverAnUnfinishedWaypoint()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        var route = CreateRoute(service, 1339);
+        var destination = RoutePosition(route, "MoveTo", 0);
+        host.Position = destination + new Vector3(0, 0, 8);
+        Assert.False(Approach(route, destination));
+        // The arena is separated from every board waypoint. ObserveArena must
+        // replace the approach before a proximity check can hold the old tile.
+        host.Position = new Vector3(1000, 0, 1000);
+        Invoke(route, "ObserveArena");
+        Assert.True(Read<bool>(route, "recoveringPosition"));
+        Assert.True(Read<bool>(route, "recoveringArena"));
+        Assert.False(Read<bool>(route, "movementStarted"));
+        Assert.True(Read<bool>(route, "AllowsCombat"));
+    }
+
+    [Fact]
+    public void PauseStopsOwnedMovementWithoutAdvancingThePendingWaypoint()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        var route = CreateRoute(service, 1339);
+        Set(service, "route", route);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+        var destination = RoutePosition(route, "MoveTo", 0);
+        host.Position = destination + new Vector3(0, 0, 8);
+        Assert.False(Approach(route, destination));
+
+        Invoke(service, "Pause");
+        Assert.True(Read<bool>(service, "IsPaused"));
+        Assert.False(Read<bool>(service, "ownsNavigation"));
+        Assert.False(Read<bool>(route, "movementStarted"));
+        Assert.Equal(0, Read<int>(route, "Step"));
+        Assert.Contains("/vnav stop", host.Commands);
+    }
+
+    [Fact]
+    public void CompletedBatchRestartsItsPlanAndReusesMenusAndNavigationLikeAFreshInstance()
+    {
+        using var host = new HostFixture();
+        var reused = host.CreateService();
+        var menus = Field(reused, "menus")!;
+        var navigation = Field(reused, "navigation");
+        Set(reused, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = 2, RunCount = 40 });
+        Set(reused, "CurrentRun", 40);
+        Set(reused, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Complete"));
+        Set(reused, "resultSeen", true);
+        Set(reused, "ResultObserved", true);
+        Set(reused, "BoardRunCompleted", true);
+        Set(reused, "resultRanksObserved", true);
+        Set(reused, "resultRanksUnavailable", true);
+        Set(reused, "resultReadStarted", DateTime.UtcNow.AddMinutes(-1));
+        Set(reused, "completionCommandPending", true);
+        Set(reused, "StopAfterNextOutcome", true);
+        Set(menus, "resultsRecorded", true);
+        Set(menus, "resultExitPending", true);
+        Set(menus, "confirmationWindow", "XBMResult");
+
+        var next = new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = 1, RunCount = 30 };
+        // Deliberately stop at the native player boundary after real fresh-plan
+        // initialization. This does not claim offline duty registration succeeds.
+        host.NativePlayerAvailable = false;
+        Invoke(reused, "RestartFromCurrent", next, true, false);
+        AssertNewPlan(reused);
+        Assert.Same(menus, Field(reused, "menus"));
+        Assert.Same(navigation, Field(reused, "navigation"));
+
+        var fresh = host.CreateService(separateNavigation: true);
+        Invoke(fresh, "RestartFromCurrent", next, true, false);
+        AssertNewPlan(fresh);
+        Assert.NotSame(navigation, Field(fresh, "navigation"));
+
+        // BeginRoute resets the existing menus before reaching combat-provider
+        // validation. The offline host deliberately has no combat plugins loaded.
+        host.Territory = 1339;
+        Invoke(reused, "BeginRoute", false, false);
+        Assert.False(Read<bool>(menus, "resultsRecorded"));
+        Assert.False(Read<bool>(menus, "resultExitPending"));
+        Assert.Null(Field(menus, "confirmationWindow"));
+        Assert.Same(menus, Field(reused, "menus"));
+        Assert.Same(navigation, Field(reused, "navigation"));
+
+        host.NativePlayerAvailable = true;
+        foreach (var service in new[] { reused, fresh })
+        {
+            var route = CreateRoute(service, 1339);
+            var first = RoutePosition(route, "MoveTo", 0);
+            host.Position = first + new Vector3(0, 0, 8);
+            Assert.False(Approach(route, first));
+            AgeMovement(route);
+            Assert.False(Approach(route, first));
+            Assert.False(Approach(route, first));
+            host.Position = first;
+            AgeMovement(route);
+            Assert.True(Approach(route, first));
+        }
+    }
+
+    [Fact]
+    public void SecondMasterFirstFightReturnResumesThroughItsBranchAndDispatchesTheNextTile()
+    {
+        using var host = new HostFixture { Territory = 1343, Position = new(-700, 0, -8) };
+        var service = host.CreateService();
+        // Resume on the board after the native first-fight return. Combat and
+        // native tile menus are outside this offline fixture's boundary.
+        var route = CreateRoute(service, 1343, resume: true);
+        Invoke(route, "Update");
+        Assert.Equal(6, Read<int>(route, "Step"));
+        Set(route, "stepSince", DateTime.UtcNow.AddSeconds(-1));
+        Invoke(route, "Update");
+        Assert.Equal(7, Read<int>(route, "Step"));
+        Invoke(route, "Update"); // The post-fight distance check has settled.
+        Assert.Equal(8, Read<int>(route, "Step"));
+        Invoke(route, "Update");
+        Assert.Equal(26, Read<int>(route, "Step"));
+        Invoke(route, "Update");
+        Assert.Equal(26, Read<int>(route, "Step"));
+        Assert.Equal("/vnav moveto -692.00 0.00 -9.00", Assert.Single(host.MovementCommands));
+
+        host.Position = new(-692, 0, -9);
+        AgeMovement(route);
+        Invoke(route, "Update");
+        Assert.True(Read<bool>(route, "positioned"));
+        Assert.Equal(26, Read<int>(route, "Step"));
+        Set(route, "stepSince", DateTime.UtcNow.AddSeconds(-2));
+        Invoke(route, "Update");
+        Assert.Equal(27, Read<int>(route, "Step"));
+        Invoke(route, "Update");
+        Set(route, "stepSince", DateTime.UtcNow.AddSeconds(-1));
+        Invoke(route, "Update");
+        Assert.Equal(28, Read<int>(route, "Step"));
+        Invoke(route, "Update");
+        Assert.Equal(29, Read<int>(route, "Step"));
+        Invoke(route, "Update");
+        Assert.Equal(30, Read<int>(route, "Step"));
+        Invoke(route, "Update");
+        Assert.Equal("/vnav moveto -691.00 0.00 -17.00", host.MovementCommands.Last());
+        Assert.Equal(2, host.MovementCommands.Count);
+    }
+
+    [Theory]
+    [InlineData(8, 26, 26, -692f, -9f)]
+    [InlineData(21, 25, 50, -700f, -35f)]
+    [InlineData(25, 50, 50, -700f, -35f)]
+    [InlineData(29, 30, 30, -691f, -17f)]
+    [InlineData(33, 37, 37, -691f, -26f)]
+    [InlineData(40, 50, 50, -700f, -35f)]
+    public void SecondMasterForwardBranchesReachTheirActualPositionedDestination(
+        int source, int destination, int positionedStep, float x, float z)
+    {
+        using var host = new HostFixture { Territory = 1343, Position = new(-700, 0, -8) };
+        var route = CreateRoute(host.CreateService(), 1343);
+        Set(route, "Step", source);
+        // Leave started=false: the two conditional jumps must pass their real,
+        // unchanged distance predicates before the production jump can execute.
+        Invoke(route, "Update");
+        Assert.Equal(destination, Read<int>(route, "Step"));
+        if (destination == 25)
+        {
+            Invoke(route, "Update");
+            Assert.Equal(50, Read<int>(route, "Step"));
+        }
+        Invoke(route, "Update");
+        Assert.Equal(positionedStep, Read<int>(route, "Step"));
+        var command = Assert.Single(host.MovementCommands).Split(' ');
+        Assert.Equal("/vnav", command[0]);
+        Assert.Equal("moveto", command[1]);
+        Assert.Equal(new Vector3(x, 0, z), new Vector3(
+            float.Parse(command[2], CultureInfo.InvariantCulture),
+            float.Parse(command[3], CultureInfo.InvariantCulture),
+            float.Parse(command[4], CultureInfo.InvariantCulture)));
+    }
+
+    [Theory]
+    [InlineData(21)]
+    [InlineData(33)]
+    public void SecondMasterConditionalForwardBranchesRetainTheirDistancePredicates(int source)
+    {
+        using var host = new HostFixture { Territory = 1343, Position = new(-700, 0, -8) };
+        var route = CreateRoute(host.CreateService(), 1343);
+        var action = (JObject)((JArray)Field(route, "actions")!)[source]!;
+        var condition = Assert.IsType<JObject>(Assert.Single((JArray)action["Conditions"]!));
+        var evaluate = RouteType.GetMethod("Condition", Static)!;
+        Assert.True((bool)evaluate.Invoke(null, [condition])!);
+
+        host.Position = new(120, 0, -420);
+        Assert.False((bool)evaluate.Invoke(null, [condition])!);
+        // Full Update at this position intentionally belongs to ObserveArena,
+        // which precedes route conditions and needs a native combat provider.
+    }
+
+    [Fact]
+    public void SecondMasterBackwardLoadingLoopStaysPendingThenAdvancesWhenTheConditionClears()
+    {
+        using var host = new HostFixture { Territory = 1343, Position = new(-700, 0, -8) };
+        var route = CreateRoute(host.CreateService(), 1343);
+        Set(route, "Step", 1);
+        host.Conditions.Add("SufferingStatusAffliction2");
+        Invoke(route, "Update");
+        Assert.Equal(1, Read<int>(route, "Step"));
+        host.Conditions.Clear();
+        Invoke(route, "Update");
+        Assert.Equal(2, Read<int>(route, "Step"));
+        Assert.Empty(host.MovementCommands);
+    }
+
+    [Theory]
+    [InlineData(8, 11)]
+    [InlineData(12, 15)]
+    public void FirstMasterConditionalForwardJumpsKeepTheirExistingDestinations(int source, int destination)
+    {
+        using var host = new HostFixture { Territory = 1342, Position = new(-700, 0, -16) };
+        host.AddBoardObject(2015483, new(-695, 0, -16.5f));
+        var route = CreateRoute(host.CreateService(), 1342);
+        Set(route, "Step", source);
+        Invoke(route, "Update");
+        Assert.Equal(destination, Read<int>(route, "Step"));
+        Assert.Empty(host.MovementCommands);
+    }
+
+    [Theory]
+    [InlineData(1339u)]
+    [InlineData(1340u)]
+    [InlineData(1341u)]
+    [InlineData(1342u)]
+    [InlineData(1343u)]
+    public void ExistingBackwardJumpsAndOtherBoardsForwardDestinationsStayUnchanged(uint territory)
+    {
+        using var host = new HostFixture { Territory = territory, Position = new(-700, 0, -8) };
+        var route = CreateRoute(host.CreateService(), territory);
+        var actions = (JArray)Field(route, "actions")!;
+        var checkedJumps = 0;
+        for (var source = 0; source < actions.Count; source++)
+        {
+            if (actions[source]!.Value<string>("Name") != "ModifyIndex") continue;
+            var argument = actions[source]!["Arguments"]!.First!.Value<string>();
+            if (territory == 1343 && argument!.StartsWith('+')) continue;
+            Set(route, "Step", source);
+            // This tests an already-admitted jump. Its native encounter/distance
+            // condition is deliberately outside this preservation assertion.
+            Set(route, "started", true);
+            Invoke(route, "Update");
+            var expected = (territory, source) switch
+            {
+                (1342, 8) => 11,
+                (1342, 12) => 15,
+                _ => source,
+            };
+            if (territory != 1342 || source is not (8 or 12)) Assert.Equal("-1", argument);
+            Assert.Equal(expected, Read<int>(route, "Step"));
+            checkedJumps++;
+        }
+        Assert.True(checkedJumps > 0);
+        Assert.Empty(host.MovementCommands);
+    }
+
+    [Theory]
+    [InlineData(1339u)]
+    [InlineData(1340u)]
+    [InlineData(1341u)]
+    [InlineData(1342u)]
+    [InlineData(1343u)]
+    public void AbsoluteJumpRetainsItsExistingDestinationOnEveryBoard(uint territory)
+    {
+        using var host = new HostFixture { Territory = territory, Position = new(-700, 0, -8) };
+        var route = CreateRoute(host.CreateService(), territory);
+        var actions = (JArray)Field(route, "actions")!;
+        var source = actions.Select((action, index) => (action, index))
+            .First(entry => entry.action!.Value<string>("Name") == "ModifyIndex").index;
+        // No bundled route currently uses an absolute argument. Change only this
+        // test instance's argument to exercise the preserved production branch.
+        actions[source]!["Arguments"]![0] = "4";
+        Set(route, "Step", source);
+        Set(route, "started", true);
+        Invoke(route, "Update");
+        Assert.Equal(5, Read<int>(route, "Step"));
+        Assert.Empty(host.MovementCommands);
+    }
+
+    private static void AssertNewPlan(object service)
+    {
+        var settings = (live::VERMAXION.Beastmaster.BeastmasterSettings)Field(service, "runSettings")!;
+        Assert.Equal(1u, settings.Board);
+        Assert.Equal(30, settings.RunCount);
+        Assert.Equal(1, Read<int>(service, "CurrentRun"));
+        Assert.False(Read<bool>(service, "resultSeen"));
+        Assert.False(Read<bool>(service, "ResultObserved"));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        Assert.False(Read<bool>(service, "resultRanksObserved"));
+        Assert.False(Read<bool>(service, "resultRanksUnavailable"));
+        Assert.Equal(default, Read<DateTime>(service, "resultReadStarted"));
+        Assert.False(Read<bool>(service, "completionCommandPending"));
+        Assert.False(Read<bool>(service, "StopAfterNextOutcome"));
+    }
+
+    private static object CreateRoute(object service, uint territory, bool resume = false)
+        => Activator.CreateInstance(RouteType, Instance, null, [service, territory, resume], null)!;
+    private static bool Approach(object route, Vector3 destination) => (bool)Invoke(route, "Approach", destination)!;
+    private static void AgeMovement(object route) => Set(route, "movementSince", DateTime.UtcNow.AddSeconds(-1));
+    private static Vector3 RoutePosition(object route, string name, int ordinal)
+    {
+        var position = ((JArray)Field(route, "actions")!).OfType<JObject>()
+            .Where(action => action.Value<string>("Name") == name)
+            .Select(action => action["Position"]!)
+            .Where(position => position.Value<float>("X") != 0 || position.Value<float>("Z") != 0).ElementAt(ordinal);
+        return new(position.Value<float>("X"), position.Value<float>("Y"), position.Value<float>("Z"));
+    }
+    private static object? Invoke(object target, string name, params object?[] arguments)
+        => target.GetType().GetMethod(name, Instance)!.Invoke(target, arguments);
+    private static object? Field(object target, string name)
+        => target.GetType().GetField(name, Instance)?.GetValue(target) ?? target.GetType().GetProperty(name, Instance)?.GetValue(target);
+    private static T Read<T>(object target, string name) => (T)Field(target, name)!;
+    private static void Set(object target, string name, object? value)
+    {
+        if (target.GetType().GetField(name, Instance) is { } field) field.SetValue(target, value);
+        else target.GetType().GetProperty(name, Instance)!.SetValue(target, value);
+    }
+
+    public class HostProxy : DispatchProxy
+    {
+        public Func<MethodInfo, object?[]?, object?> Handler { get; set; } = null!;
+        protected override object? Invoke(MethodInfo? method, object?[]? args) => Handler(method!, args);
+    }
+
+    private sealed class HostFixture : IDisposable
+    {
+        private readonly List<Action> restore = [];
+        private readonly Type svc = Assembly.Load("ECommons").GetType("ECommons.DalamudServices.Svc", true)!;
+        private readonly object player;
+        private readonly object navigation;
+        private readonly object pluginInterface;
+        private readonly object log;
+        private readonly List<host::Dalamud.Game.ClientState.Objects.Types.IGameObject> objects = [];
+        private nint nativePlayerSlot;
+        public Vector3 Position;
+        public uint Territory = 1339;
+        public bool Pathfinding;
+        public readonly HashSet<string> Conditions = [];
+        public readonly List<string> Commands = [];
+        public List<string> MovementCommands => Commands.Where(command => command.StartsWith("/vnav moveto ", StringComparison.Ordinal)).ToList();
+
+        public HostFixture()
+        {
+            try
+            {
+                player = Proxy(typeof(host::Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter), (method, _) => method.Name switch
+                {
+                    "get_Position" => Position, "get_IsDead" => false, "get_IsCasting" => false,
+                    "get_CurrentHp" => 100u, _ => Default(method.ReturnType),
+                });
+                var objects = Proxy(typeof(host::Dalamud.Plugin.Services.IObjectTable), (method, _) => method.Name switch
+                {
+                    "get_LocalPlayer" => player,
+                    "GetEnumerator" => this.objects.GetEnumerator(),
+                    _ => Default(method.ReturnType),
+                });
+                var conditions = Proxy(typeof(host::Dalamud.Plugin.Services.ICondition), (method, args) =>
+                    method.Name == "get_Item" ? Conditions.Contains(args![0]!.ToString()!) : Default(method.ReturnType));
+                log = Proxy(typeof(host::Dalamud.Plugin.Services.IPluginLog), (method, _) => Default(method.ReturnType));
+                pluginInterface = Proxy(typeof(host::Dalamud.Plugin.IDalamudPluginInterface), (method, _) =>
+                    method.Name == "get_InstalledPlugins" ? Array.Empty<host::Dalamud.Plugin.IExposedPlugin>() : Default(method.ReturnType));
+                Replace(typeof(live::VERMAXION.Plugin), "PluginInterface", pluginInterface);
+                Replace(typeof(live::VERMAXION.Plugin), "ObjectTable", objects);
+                Replace(typeof(live::VERMAXION.Plugin), "Condition", conditions);
+                Replace(svc, "Objects", objects);
+                Replace(svc, "Condition", conditions);
+                Replace(svc, "Log", log);
+                Replace(svc, "GameGui", Proxy(typeof(host::Dalamud.Plugin.Services.IGameGui), (method, _) => Default(method.ReturnType)));
+                Replace(svc, "ClientState", Proxy(typeof(host::Dalamud.Plugin.Services.IClientState), (method, _) => method.Name switch
+                {
+                    "get_TerritoryType" => Territory, "get_IsLoggedIn" => true, _ => Default(method.ReturnType),
+                }));
+                Replace(svc, "PlayerState", Proxy(typeof(host::Dalamud.Plugin.Services.IPlayerState), (method, _) => method.Name switch
+                {
+                    "get_IsLoaded" => true, "get_ContentId" => 17UL, _ => Default(method.ReturnType),
+                }));
+
+                navigation = CreateNavigation();
+
+                var catalogType = Production.GetType("VERMAXION.Beastmaster.CrucibleTeam", true)!;
+                var catalog = catalogType.GetField("<FamiliarSheetDatas>k__BackingField", Static)!;
+                var oldCatalog = catalog.GetValue(null);
+                catalog.SetValue(null, Activator.CreateInstance(catalog.FieldType));
+                restore.Add(() => catalog.SetValue(null, oldCatalog));
+                var runtime = Production.GetType("VERMAXION.Beastmaster.BeastmasterRuntime", true)!;
+                var runtimeService = runtime.GetProperty("Service", Static)!;
+                var oldService = runtimeService.GetValue(null);
+                restore.Add(() => runtimeService.SetValue(null, oldService));
+
+                CreateNativePlayerAvailability();
+            }
+            catch
+            {
+                Dispose();
+                throw;
+            }
+        }
+
+        // Implemented against the existing generated ClientStructs static-address
+        // seam; the only synthetic native fact is whether a player slot exists.
+        private void CreateNativePlayerAvailability()
+        {
+            var manager = typeof(host::FFXIVClientStructs.FFXIV.Client.Game.Object.GameObjectManager);
+            var address = manager.GetNestedType("Addresses")!.GetField("Instance", Static)!.GetValue(null)!;
+            var value = address.GetType().GetField("Value")!;
+            var original = value.GetValue(address);
+            var size = (int)manager.GetField("StructSize")!.GetRawConstantValue()!;
+            var block = Marshal.AllocHGlobal(size);
+            restore.Add(() =>
+            {
+                value.SetValue(address, original);
+                Marshal.FreeHGlobal(block);
+            });
+            Marshal.Copy(new byte[size], 0, block, size);
+            var objects = manager.GetField("Objects")!;
+            var playerSlot = objects.FieldType.GetField("_indexSorted", Instance)!;
+            nativePlayerSlot = block + objects.GetCustomAttribute<FieldOffsetAttribute>()!.Value
+                + playerSlot.GetCustomAttribute<FieldOffsetAttribute>()!.Value;
+            // Instance uses pInstance directly, with no pointer-to-pointer indirection.
+            value.SetValue(address, block);
+            NativePlayerAvailable = true;
+        }
+        public bool NativePlayerAvailable { set => Marshal.WriteIntPtr(nativePlayerSlot, value ? (nint)1 : 0); }
+
+        public void AddBoardObject(uint baseId, Vector3 position) => objects.Add(
+            (host::Dalamud.Game.ClientState.Objects.Types.IGameObject)Proxy(
+                typeof(host::Dalamud.Game.ClientState.Objects.Types.IGameObject), (method, _) => method.Name switch
+                {
+                    "get_BaseId" => baseId, "get_Position" => position, _ => Default(method.ReturnType),
+                }));
+
+        public object CreateService(bool separateNavigation = false)
+        {
+            var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings();
+            var data = new live::VERMAXION.Beastmaster.BeastmasterCharacterData();
+            return Activator.CreateInstance(ServiceType, Instance, null,
+                [new Func<live::VERMAXION.Beastmaster.BeastmasterSettings>(() => settings),
+                 new Func<live::VERMAXION.Beastmaster.BeastmasterCharacterData>(() => data),
+                 new Action(() => { }), separateNavigation ? CreateNavigation() : navigation, null, null], null)!;
+        }
+
+        private object CreateNavigation()
+        {
+            var navType = typeof(live::VERMAXION.IPC.VNavmeshIPC);
+            var instance = RuntimeHelpers.GetUninitializedObject(navType);
+            Set(instance, "log", log);
+            Set(instance, "groundRecovery", new live::VERMAXION.Models.GroundNavigationRecoveryTracker());
+            Set(instance, "commandManager", Proxy(typeof(host::Dalamud.Plugin.Services.ICommandManager), (method, args) =>
+            {
+                if (method.Name != "ProcessCommand") return Default(method.ReturnType);
+                Commands.Add((string)args![0]!);
+                return true;
+            }));
+            foreach (var name in new[] { "pathIsRunningSubscriber", "pathfindInProgressSubscriber", "navIsReadySubscriber" })
+            {
+                var field = navType.GetField(name, Instance)!;
+                field.SetValue(instance, Proxy(field.FieldType, (method, _) => method.Name == "InvokeFunc"
+                    ? name == "navIsReadySubscriber" || name == "pathfindInProgressSubscriber" && Pathfinding
+                    : Default(method.ReturnType)));
+            }
+            return instance;
+        }
+
+        private void Replace(Type type, string name, object value)
+        {
+            var property = type.GetProperty(name, Static)!;
+            var previous = property.GetValue(null);
+            property.SetValue(null, value);
+            restore.Add(() => property.SetValue(null, previous));
+        }
+        private static object Proxy(Type type, Func<MethodInfo, object?[]?, object?> handler)
+        {
+            var proxy = DispatchProxy.Create(type, typeof(HostProxy));
+            ((HostProxy)proxy).Handler = handler;
+            return proxy;
+        }
+        private static object? Default(Type type) => type == typeof(void) || !type.IsValueType ? null : Activator.CreateInstance(type);
+        public void Dispose()
+        {
+            for (var index = restore.Count - 1; index >= 0; index--) restore[index]();
+        }
+    }
+}
