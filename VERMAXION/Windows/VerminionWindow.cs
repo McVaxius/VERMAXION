@@ -112,7 +112,7 @@ internal sealed class VerminionWindow : Window
                 {
                     UIConstants.Heading("Tournament and prizes", plugin.Configuration.CompactUi);
                     DrawTournamentInfo(config);
-                    UiGui.TextWrapped("Tournament checks / prizes checks the Recordkeeper on your Home World, handles the known registration and prize prompts, and reads the game's visible tournament allowance. Claims need the owned prize acknowledgement and exact MGP receipt; interrupted acceptance is never resubmitted. When registration is closed or all 15 matches are used, it finishes any remaining weekly participation through ordinary CPU losses. Entry preparation stops before Join in Master Tournament. Open-period registration and reward collection need live verification; automatic tournament battles remain under development. Hidden counters remain unknown.");
+                    UiGui.TextWrapped("Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle.");
                     UiGui.TextWrapped("Choose Tournament checks / prizes under Run to start this activity.");
                 }
                 ImGui.EndChild();
@@ -139,7 +139,9 @@ internal sealed class VerminionWindow : Window
             var runLabel = config.VerminionMode == VerminionMode.MissionRepeat
                 ? $"Run mission {Math.Clamp(config.VerminionMission, 1, 24)} ({Math.Clamp(config.VerminionRepeatCount, 1, 1000)} clears)"
                 : VerminionDutyRules.IsPlayerMode(config.VerminionMode) ? "Run player matches"
-                : config.VerminionMode == VerminionMode.CpuRewards ? "Check tournament / prizes" : "Run weekly participation";
+                : config.VerminionMode == VerminionMode.CpuRewards ? "Check tournament / prizes"
+                : config.VerminionMode == VerminionMode.Participation ? "Run weekly CPU - stay passive / intentionally lose"
+                : "Run weekly CPU - fight to win";
             if (UIConstants.Button(runLabel)) plugin.RunDashboardAction(service.RunTask);
             UIConstants.EndPanel();
         }
@@ -206,19 +208,28 @@ internal sealed class VerminionWindow : Window
     private static bool DrawGoalSettings(CharacterConfig config)
     {
         var changed = false;
-        var mode = (int)config.VerminionMode;
-        if (UIConstants.Combo("Activity##Verminion", ref mode, "Weekly participation - 5 matches\0Win selected mission - repeat clears\0Tournament checks / prizes\0PvP - Try to win\0PvP - Throw\0"))
-        { config.VerminionMode = (VerminionMode)mode; changed = true; }
+        var modes = new[] { VerminionMode.WeeklyWin, VerminionMode.Participation, VerminionMode.MissionRepeat,
+            VerminionMode.CpuRewards, VerminionMode.PvpWin, VerminionMode.PvpThrow };
+        var mode = Math.Max(0, Array.IndexOf(modes, config.VerminionMode));
+        if (UIConstants.Combo("Activity##Verminion", ref mode, "Weekly CPU - fight to win (5 matches)\0Weekly CPU - stay passive / intentionally lose (5 matches)\0Win selected mission - repeat clears\0Tournament checks / prizes\0PvP - Try to win\0PvP - stay passive / throw\0"))
+        { config.VerminionMode = modes[mode]; changed = true; }
         UiGui.TextWrapped(config.VerminionMode switch
         {
-            VerminionMode.Participation => "Finish the remaining weekly participation matches through intentional CPU losses. Five matches award 27,000 base MGP; existing participation is counted.",
+            VerminionMode.WeeklyWin => "Summon and fight to win. Stop after five completed weekly CPU matches; only actual victories count as wins.",
+            VerminionMode.Participation => "Stay passive and intentionally lose CPU battles after the tutorial. Stop after five completed weekly matches.",
             VerminionMode.MissionRepeat => "Repeat one CPU mission for farming or testing. Run starts a fresh clear count; Resume keeps it. Count successful clears only; defeats retry, stopping after three consecutive losses or the attempt limit.",
-            VerminionMode.PvpWin => "Non-RP player match: reinforce registered minions, defend friendly stones and attack enemy stones. No guaranteed win.",
-            VerminionMode.PvpThrow => "Non-RP player match: stay passive until the native result. No deployment, attack, defense or forfeit.",
-            _ => "Check tournament notices, registration and claimable prizes on your Home World. Entry currently stops before Join. When registration is closed or all 15 matches are used, finish remaining weekly participation through CPU losses. Registration and prize handling await live verification; automatic tournament battles remain under development.",
+            VerminionMode.PvpWin => "Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed.",
+            VerminionMode.PvpThrow => "Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win.",
+            _ => "Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle.",
         });
         if (VerminionDutyRules.IsPlayerMode(config.VerminionMode))
         {
+            var queues = new[] { VerminionPlayerQueue.NonRp, VerminionPlayerQueue.Rp, VerminionPlayerQueue.Tournament };
+            var queue = Math.Max(0, Array.IndexOf(queues, config.VerminionPlayerQueue));
+            if (UIConstants.Combo("Player queue##Verminion", ref queue, "Non-RP player battle\0RP player battle\0Tournament player battle\0"))
+            { config.VerminionPlayerQueue = queues[queue]; changed = true; }
+            if (config.VerminionPlayerQueue == VerminionPlayerQueue.Tournament)
+                UiGui.TextWrapped("Tournament battles require your Home World, registration and remaining allowance. This selection plays actual matches.");
             var count = config.VerminionRepeatCount;
             UiGui.TextWrapped("Number of player matches"); UIConstants.SetNextItemWidth(-1);
             if (UIConstants.InputInt("##VerminionPlayerCount", ref count))

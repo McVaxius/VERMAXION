@@ -3200,4 +3200,67 @@ Bağımlılıklar: {1}</value></data>
   <data name="Open Island Sanctuary" xml:space="preserve"><value>Ada Sığınağı'nı aç</value></data>
   <data name="Selection" xml:space="preserve"><value>Seçim</value></data>
   <data name="Status" xml:space="preserve"><value>Durum</value></data>
+  <data name="Run weekly CPU - fight to win" xml:space="preserve">
+    <value>Haftal?k CPU ba?lat - kazanmay? dene</value>
+  </data>
+  <data name="Run weekly CPU - stay passive / intentionally lose" xml:space="preserve">
+    <value>Haftal?k CPU ba?lat - pasif kal / bilerek kaybet</value>
+  </data>
+  <data name="Weekly CPU - fight to win (5 matches)" xml:space="preserve">
+    <value>Haftal?k CPU - kazanmay? dene (5 ma?)</value>
+  </data>
+  <data name="Weekly CPU - stay passive / intentionally lose (5 matches)" xml:space="preserve">
+    <value>Haftal?k CPU - pasif kal / bilerek kaybet (5 ma?)</value>
+  </data>
+  <data name="PvP - stay passive / throw" xml:space="preserve">
+    <value>PvP - pasif kal / bilerek kaybet</value>
+  </data>
+  <data name="Player queue" xml:space="preserve">
+    <value>Oyuncu kuyru?u</value>
+  </data>
+  <data name="Non-RP player battle" xml:space="preserve">
+    <value>RP olmayan oyuncu sava??</value>
+  </data>
+  <data name="RP player battle" xml:space="preserve">
+    <value>RP oyuncu sava??</value>
+  </data>
+  <data name="Tournament player battle" xml:space="preserve">
+    <value>Turnuva oyuncu sava??</value>
+  </data>
+  <data name="Summon and fight to win. Stop after five completed weekly CPU matches; only actual victories count as wins." xml:space="preserve">
+    <value>Minyon ?a??r ve kazanmak i?in sava?. Be? tamamlanm?? haftal?k CPU ma??ndan sonra dur; yaln?zca ger?ek zaferler galibiyet say?l?r.</value>
+  </data>
+  <data name="Stay passive and intentionally lose CPU battles after the tutorial. Stop after five completed weekly matches." xml:space="preserve">
+    <value>E?itimden sonra pasif kal ve CPU sava?lar?n? bilerek kaybet. Be? tamamlanm?? haftal?k ma?tan sonra dur.</value>
+  </data>
+  <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
+    <value>Se?ilen oyuncu kuyru?unda minyon ?a??r, takviye et, savun ve sald?r. Galibiyet garanti de?ildir.</value>
+  </data>
+  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
+    <value>Sonu? ??kana kadar pasif kal: ?a??rma, sald?r?, savunma veya teslim olma yok. Rakibin teslim olmas? yine de galibiyet sa?layabilir.</value>
+  </data>
+  <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
+    <value>Ana D?nyanda turnuva kayd?n? ve ?d?lleri kontrol et. Giri? m?mk?n de?ilse kalan haftal?k CPU ma?lar?n? kazanmaya ?al??. Turnuva ma?lar? i?in PvP etkinli?i ve Turnuva oyuncu sava?? se?.</value>
+  </data>
+  <data name="Tournament battles require your Home World, registration and remaining allowance. This selection plays actual matches." xml:space="preserve">
+    <value>Turnuva ma?lar? Ana D?nya, kay?t ve kalan kat?l?m hakk? gerektirir. Bu se?enek ger?ek ma?lar oynar.</value>
+  </data>
+  <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>Haftal?k CPU kazanmay? dene: {0}/5 ma?; {1} galibiyet; {2} ma? kald?</value>
+  </data>
+  <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>Haftal?k CPU pasif kal / bilerek kaybet: {0}/5 ma?; {1} galibiyet; {2} ma? kald?</value>
+  </data>
+  <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
+    <value>Haftal?k CPU kazanmay? dene ma? hedefi tamamland?</value>
+  </data>
+  <data name="Weekly CPU passive / intentional-loss match goal complete" xml:space="preserve">
+    <value>Haftal?k CPU pasif / bilerek kaybet ma? hedefi tamamland?</value>
+  </data>
+  <data name="Selecting {0} player matchmaking; any matched opponent" xml:space="preserve">
+    <value>{0} oyuncu e?le?tirmesi se?iliyor; herhangi bir rakip</value>
+  </data>
+  <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
+    <value>{0} oyuncu e?le?tirmesi kuyru?unda; rakip bekleniyor</value>
+  </data>
 </root>

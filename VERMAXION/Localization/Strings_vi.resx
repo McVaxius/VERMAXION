@@ -3200,4 +3200,67 @@ Phụ thuộc: {1}</value></data>
   <data name="Open Island Sanctuary" xml:space="preserve"><value>Mở đảo nghỉ dưỡng</value></data>
   <data name="Selection" xml:space="preserve"><value>Lựa chọn</value></data>
   <data name="Status" xml:space="preserve"><value>Trạng thái</value></data>
+  <data name="Run weekly CPU - fight to win" xml:space="preserve">
+    <value>Ch?y CPU h?ng tu?n - c? g?ng th?ng</value>
+  </data>
+  <data name="Run weekly CPU - stay passive / intentionally lose" xml:space="preserve">
+    <value>Ch?y CPU h?ng tu?n - th? ??ng / c? ? thua</value>
+  </data>
+  <data name="Weekly CPU - fight to win (5 matches)" xml:space="preserve">
+    <value>CPU h?ng tu?n - c? g?ng th?ng (5 tr?n)</value>
+  </data>
+  <data name="Weekly CPU - stay passive / intentionally lose (5 matches)" xml:space="preserve">
+    <value>CPU h?ng tu?n - th? ??ng / c? ? thua (5 tr?n)</value>
+  </data>
+  <data name="PvP - stay passive / throw" xml:space="preserve">
+    <value>PvP - th? ??ng / c? ? thua</value>
+  </data>
+  <data name="Player queue" xml:space="preserve">
+    <value>H?ng ch? ng??i ch?i</value>
+  </data>
+  <data name="Non-RP player battle" xml:space="preserve">
+    <value>Tr?n ng??i ch?i kh?ng RP</value>
+  </data>
+  <data name="RP player battle" xml:space="preserve">
+    <value>Tr?n ng??i ch?i RP</value>
+  </data>
+  <data name="Tournament player battle" xml:space="preserve">
+    <value>Tr?n ng??i ch?i gi?i ??u</value>
+  </data>
+  <data name="Summon and fight to win. Stop after five completed weekly CPU matches; only actual victories count as wins." xml:space="preserve">
+    <value>Tri?u h?i v? chi?n ??u ?? th?ng. D?ng sau n?m tr?n CPU h?ng tu?n ho?n t?t; ch? chi?n th?ng th?c t? m?i ???c t?nh l? th?ng.</value>
+  </data>
+  <data name="Stay passive and intentionally lose CPU battles after the tutorial. Stop after five completed weekly matches." xml:space="preserve">
+    <value>Gi? th? ??ng v? c? ? thua CPU sau h??ng d?n. D?ng sau n?m tr?n h?ng tu?n ho?n t?t.</value>
+  </data>
+  <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
+    <value>Tri?u h?i, t?ng vi?n, ph?ng th? v? t?n c?ng trong h?ng ch? ?? ch?n. Kh?ng b?o ??m chi?n th?ng.</value>
+  </data>
+  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
+    <value>Gi? th? ??ng ??n khi c? k?t qu?: kh?ng tri?u h?i, t?n c?ng, ph?ng th? hay ??u h?ng. ??i th? ??u h?ng v?n c? th? gi?p b?n th?ng.</value>
+  </data>
+  <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
+    <value>Ki?m tra ??ng k? v? ph?n th??ng gi?i ??u t?i Th? gi?i g?c. N?u kh?ng th? tham gia, c? g?ng th?ng c?c tr?n CPU h?ng tu?n c?n l?i. ?? ??u gi?i, ch?n ho?t ??ng PvP v? Tr?n ng??i ch?i gi?i ??u.</value>
+  </data>
+  <data name="Tournament battles require your Home World, registration and remaining allowance. This selection plays actual matches." xml:space="preserve">
+    <value>Tr?n gi?i ??u y?u c?u Th? gi?i g?c, ??ng k? v? l??t ??u c?n l?i. L?a ch?n n?y ch?i c?c tr?n th?c t?.</value>
+  </data>
+  <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>CPU h?ng tu?n c? g?ng th?ng: {0}/5 tr?n; {1} th?ng; c?n {2} tr?n</value>
+  </data>
+  <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>CPU h?ng tu?n th? ??ng / c? ? thua: {0}/5 tr?n; {1} th?ng; c?n {2} tr?n</value>
+  </data>
+  <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
+    <value>Ho?n t?t m?c ti?u tr?n CPU h?ng tu?n c? g?ng th?ng</value>
+  </data>
+  <data name="Weekly CPU passive / intentional-loss match goal complete" xml:space="preserve">
+    <value>Ho?n t?t m?c ti?u tr?n CPU h?ng tu?n th? ??ng / c? ? thua</value>
+  </data>
+  <data name="Selecting {0} player matchmaking; any matched opponent" xml:space="preserve">
+    <value>?ang ch?n gh?p tr?n ng??i ch?i {0}; ??i th? b?t k?</value>
+  </data>
+  <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
+    <value>?? v?o h?ng ch? gh?p tr?n {0}; ?ang ??i ??i th?</value>
+  </data>
 </root>

@@ -11,7 +11,7 @@ internal sealed record VerminionPlayerMinion(ushort Id, string Name, int Cost, i
 internal static class VerminionPlayerStrategy
 {
     public static bool ControlsAllowed(Models.VerminionMode mode, uint duty, Models.VerminionMode? admittedMode) =>
-        mode == Models.VerminionMode.PvpWin && admittedMode == mode && duty == Models.VerminionDutyRules.PlayerDuty;
+        mode == Models.VerminionMode.PvpWin && admittedMode == mode && Models.VerminionDutyRules.IsPlayer(duty);
 
     public static int EnemyLane(IReadOnlyList<int?> hp) => hp.Count != 3 ? -1 :
         Enumerable.Range(0, 3).Where(lane => hp[lane] > 0).OrderBy(lane => hp[lane]).FirstOrDefault(-1);
@@ -117,10 +117,10 @@ internal static class VerminionRoster
     public static VerminionMinion[] Required(int stage) => stage is < 2 or > 24 ? [] :
         HasDefenders(stage) ? [Attacker(stage), stage == 20 ? Hatchling : Zu] : [Attacker(stage)];
 
-    // Participation needs a fighting roster only while unlocking Stage 2.
+    // The tutorial remains active, but passive weekly battles need no fighting roster.
     public static bool NeedsBattleRoster(int stage, bool campaign, Models.VerminionMode mode, uint clears) =>
         stage > 1 && (campaign || !Models.VerminionDutyRules.IsPlayerMode(mode) &&
-            (mode == Models.VerminionMode.MissionRepeat || (clears & 2) == 0));
+            mode != Models.VerminionMode.Participation);
 
     public static string? Missing(int stage, System.Func<ushort, bool?> owns)
     {

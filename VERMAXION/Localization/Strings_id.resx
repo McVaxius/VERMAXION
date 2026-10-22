@@ -3200,4 +3200,67 @@ Dependensi: {1}</value></data>
   <data name="Open Island Sanctuary" xml:space="preserve"><value>Buka suaka pulau</value></data>
   <data name="Selection" xml:space="preserve"><value>Pilihan</value></data>
   <data name="Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Run weekly CPU - fight to win" xml:space="preserve">
+    <value>Jalankan CPU mingguan - berusaha menang</value>
+  </data>
+  <data name="Run weekly CPU - stay passive / intentionally lose" xml:space="preserve">
+    <value>Jalankan CPU mingguan - pasif / sengaja kalah</value>
+  </data>
+  <data name="Weekly CPU - fight to win (5 matches)" xml:space="preserve">
+    <value>CPU mingguan - berusaha menang (5 pertandingan)</value>
+  </data>
+  <data name="Weekly CPU - stay passive / intentionally lose (5 matches)" xml:space="preserve">
+    <value>CPU mingguan - pasif / sengaja kalah (5 pertandingan)</value>
+  </data>
+  <data name="PvP - stay passive / throw" xml:space="preserve">
+    <value>PvP - pasif / sengaja kalah</value>
+  </data>
+  <data name="Player queue" xml:space="preserve">
+    <value>Antrean pemain</value>
+  </data>
+  <data name="Non-RP player battle" xml:space="preserve">
+    <value>Pertarungan pemain Non-RP</value>
+  </data>
+  <data name="RP player battle" xml:space="preserve">
+    <value>Pertarungan pemain RP</value>
+  </data>
+  <data name="Tournament player battle" xml:space="preserve">
+    <value>Pertarungan pemain turnamen</value>
+  </data>
+  <data name="Summon and fight to win. Stop after five completed weekly CPU matches; only actual victories count as wins." xml:space="preserve">
+    <value>Panggil minion dan berjuang untuk menang. Berhenti setelah lima pertandingan CPU mingguan selesai; hanya kemenangan nyata dihitung sebagai menang.</value>
+  </data>
+  <data name="Stay passive and intentionally lose CPU battles after the tutorial. Stop after five completed weekly matches." xml:space="preserve">
+    <value>Tetap pasif dan sengaja kalah melawan CPU setelah tutorial. Berhenti setelah lima pertandingan mingguan selesai.</value>
+  </data>
+  <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
+    <value>Panggil, perkuat, bertahan, dan menyerang dalam antrean pemain pilihan. Kemenangan tidak dijamin.</value>
+  </data>
+  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
+    <value>Tetap pasif sampai hasil keluar: tanpa memanggil, menyerang, bertahan, atau menyerah. Lawan yang menyerah tetap dapat memberi kemenangan.</value>
+  </data>
+  <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
+    <value>Periksa pendaftaran dan hadiah turnamen di Dunia Asal. Jika tidak bisa masuk, berusaha menangkan sisa pertandingan CPU mingguan. Untuk bertanding turnamen, pilih aktivitas PvP dan Pertarungan pemain turnamen.</value>
+  </data>
+  <data name="Tournament battles require your Home World, registration and remaining allowance. This selection plays actual matches." xml:space="preserve">
+    <value>Pertandingan turnamen memerlukan Dunia Asal, pendaftaran, dan sisa jatah. Pilihan ini memainkan pertandingan sungguhan.</value>
+  </data>
+  <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>CPU mingguan berusaha menang: {0}/5 pertandingan; {1} menang; tersisa {2} pertandingan</value>
+  </data>
+  <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>CPU mingguan pasif / sengaja kalah: {0}/5 pertandingan; {1} menang; tersisa {2} pertandingan</value>
+  </data>
+  <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
+    <value>Target pertandingan CPU mingguan berusaha menang selesai</value>
+  </data>
+  <data name="Weekly CPU passive / intentional-loss match goal complete" xml:space="preserve">
+    <value>Target pertandingan CPU mingguan pasif / sengaja kalah selesai</value>
+  </data>
+  <data name="Selecting {0} player matchmaking; any matched opponent" xml:space="preserve">
+    <value>Memilih pencocokan pemain {0}; lawan mana saja</value>
+  </data>
+  <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
+    <value>Mengantre pencocokan pemain {0}; menunggu lawan</value>
+  </data>
 </root>

@@ -6052,4 +6052,67 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Open Island Sanctuary" xml:space="preserve"><value>Abrir santuario insular</value></data>
   <data name="Selection" xml:space="preserve"><value>Selección</value></data>
   <data name="Status" xml:space="preserve"><value>Estado</value></data>
+  <data name="Run weekly CPU - fight to win" xml:space="preserve">
+    <value>Iniciar CPU semanal - intentar ganar</value>
+  </data>
+  <data name="Run weekly CPU - stay passive / intentionally lose" xml:space="preserve">
+    <value>Iniciar CPU semanal - permanecer pasivo / perder a prop?sito</value>
+  </data>
+  <data name="Weekly CPU - fight to win (5 matches)" xml:space="preserve">
+    <value>CPU semanal - intentar ganar (5 partidas)</value>
+  </data>
+  <data name="Weekly CPU - stay passive / intentionally lose (5 matches)" xml:space="preserve">
+    <value>CPU semanal - permanecer pasivo / perder a prop?sito (5 partidas)</value>
+  </data>
+  <data name="PvP - stay passive / throw" xml:space="preserve">
+    <value>JcJ - permanecer pasivo / perder a prop?sito</value>
+  </data>
+  <data name="Player queue" xml:space="preserve">
+    <value>Cola de jugadores</value>
+  </data>
+  <data name="Non-RP player battle" xml:space="preserve">
+    <value>Combate de jugadores sin RP</value>
+  </data>
+  <data name="RP player battle" xml:space="preserve">
+    <value>Combate de jugadores con RP</value>
+  </data>
+  <data name="Tournament player battle" xml:space="preserve">
+    <value>Combate de jugadores de torneo</value>
+  </data>
+  <data name="Summon and fight to win. Stop after five completed weekly CPU matches; only actual victories count as wins." xml:space="preserve">
+    <value>Invocar y luchar para ganar. Detenerse tras cinco partidas CPU semanales completadas; solo las victorias reales cuentan como victorias.</value>
+  </data>
+  <data name="Stay passive and intentionally lose CPU battles after the tutorial. Stop after five completed weekly matches." xml:space="preserve">
+    <value>Permanecer pasivo y perder a prop?sito contra la CPU despu?s del tutorial. Detenerse tras cinco partidas semanales completadas.</value>
+  </data>
+  <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
+    <value>Invocar, reforzar, defender y atacar en la cola de jugadores elegida. No se garantiza ganar.</value>
+  </data>
+  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
+    <value>Permanecer pasivo hasta el resultado: sin invocaciones, ataques, defensa ni rendici?n. La rendici?n rival puede darte la victoria.</value>
+  </data>
+  <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
+    <value>Comprobar inscripci?n y premios del torneo en tu Mundo de origen. Si no se puede entrar, luchar para ganar las partidas CPU semanales restantes. Para torneos, elegir una actividad JcJ y Combate de jugadores de torneo.</value>
+  </data>
+  <data name="Tournament battles require your Home World, registration and remaining allowance. This selection plays actual matches." xml:space="preserve">
+    <value>Los torneos requieren tu Mundo de origen, inscripci?n y participaciones restantes. Esta opci?n juega partidas reales.</value>
+  </data>
+  <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>CPU semanal para ganar: {0}/5 partidas; {1} victorias; quedan {2} partidas</value>
+  </data>
+  <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
+    <value>CPU semanal pasivo / perder a prop?sito: {0}/5 partidas; {1} victorias; quedan {2} partidas</value>
+  </data>
+  <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
+    <value>Objetivo semanal CPU intentando ganar completado</value>
+  </data>
+  <data name="Weekly CPU passive / intentional-loss match goal complete" xml:space="preserve">
+    <value>Objetivo semanal CPU pasivo / perder a prop?sito completado</value>
+  </data>
+  <data name="Selecting {0} player matchmaking; any matched opponent" xml:space="preserve">
+    <value>Seleccionando emparejamiento de jugadores {0}; cualquier rival</value>
+  </data>
+  <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
+    <value>En cola de emparejamiento {0}; esperando un rival</value>
+  </data>
 </root>

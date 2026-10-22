@@ -7,6 +7,7 @@ using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using NativeFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
 using QuestManager = FFXIVClientStructs.FFXIV.Client.Game.QuestManager;
+using GameMain = FFXIVClientStructs.FFXIV.Client.Game.GameMain;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Enums;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -134,11 +135,14 @@ internal static unsafe class VerminionGameInteraction
 
     public static uint CurrentBattleDutyId()
     {
-        var finder = ContentsFinder.Instance();
-        return Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion] &&
-            finder != null && finder->QueueInfo.PoppedQueueEntry.ContentType == ContentsType.Regular &&
-            VERMAXION.Models.VerminionDutyRules.IsVerminion(finder->QueueInfo.PoppedQueueEntry.Id)
-            ? finder->QueueInfo.PoppedQueueEntry.Id : 0;
+        if (!Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.PlayingLordOfVerminion]) return 0;
+        var game = GameMain.Instance();
+        var duty = game == null ? 0u : game->CurrentContentFinderConditionId;
+        // PoppedQueueEntry describes a queue notification and can be cleared or
+        // retained after entry. The current native content and territory own
+        // battle identity; a stale notification cannot authorize controls.
+        return VERMAXION.Models.VerminionDutyRules.IsVerminion(duty) &&
+            VERMAXION.Models.VerminionDutyRules.MatchesTerritory(duty, Plugin.ClientState.TerritoryType) ? duty : 0;
     }
 
     public static int CompletedStages() => PlayerState.Instance() is var player && player != null ? player->CompletedLoVMStages : -1;
@@ -170,11 +174,11 @@ internal static unsafe class VerminionGameInteraction
         return true;
     }
 
-    public static string PlayerBattleLabel()
+    public static string PlayerBattleLabel(uint id = VERMAXION.Models.VerminionDutyRules.PlayerDuty)
     {
-        var id = VERMAXION.Models.VerminionDutyRules.PlayerDuty;
+        var shortCode = id switch { 197 => "s1p3_2", 198 => "s1p3_3", 199 => "s1p3_4", _ => string.Empty };
         if (!Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>().TryGetRow(id, out var row)
-            || row.ShortCode.ToString() != "s1p3_4" || row.ContentType.RowId != 19
+            || shortCode.Length == 0 || row.ShortCode.ToString() != shortCode || row.ContentType.RowId != 19
             || !VERMAXION.Models.VerminionDutyRules.MatchesTerritory(id, row.TerritoryType.RowId))
             return string.Empty;
         var name = row.Name.ToString();
@@ -183,15 +187,15 @@ internal static unsafe class VerminionGameInteraction
         return colon >= 0 ? name[(colon + 1)..].Trim() : name;
     }
 
-    public static bool OpenPlayerFinder(out string failure)
+    public static bool OpenPlayerFinder(uint duty, out string failure)
     {
         var agent = AgentContentsFinder.Instance();
         var finder = ContentsFinder.Instance();
         failure = string.Empty;
         if (agent == null || finder == null)
         { failure = "The native Duty Finder is unavailable. No Join requested."; return false; }
-        if (PlayerBattleLabel().Length == 0)
-        { failure = "The Non-RP Verminion duty metadata could not be verified. No Join requested."; return false; }
+        if (PlayerBattleLabel(duty).Length == 0)
+        { failure = "The selected Verminion player-duty metadata could not be verified. No Join requested."; return false; }
         if (finder->QueueInfo.QueueState != ContentsFinderQueueState.None)
         {
             Plugin.Log.Information($"[Verminion] Player entry blocked by native queue state {finder->QueueInfo.QueueState}");
@@ -201,43 +205,43 @@ internal static unsafe class VerminionGameInteraction
         // An already open idle Finder and retained idle selections are normal.
         // Opening a row is not Join; selection is cleared/verified by the owned
         // service before it saves an admission and requests the one Join.
-        agent->OpenRegularDuty(VERMAXION.Models.VerminionDutyRules.PlayerDuty);
+        agent->OpenRegularDuty(duty);
         return true;
     }
 
-    public static bool ClearIdlePlayerSelection()
+    public static bool ClearIdlePlayerSelection(uint duty)
     {
         var finder = ContentsFinder.Instance();
-        if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.None || !IsPlayerFinder)
+        if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.None || !IsPlayerFinder(duty))
             return false;
         var agent = AgentContentsFinder.Instance();
-        if (agent->SelectedContent.Count == 0 || HasOnlyPlayerSelection()) return true;
+        if (agent->SelectedContent.Count == 0 || HasOnlyPlayerSelection(duty)) return true;
         var addon = (AddonContentsFinder*)Plugin.GameGui.GetAddonByName("ContentsFinder").Address;
         return addon->ClearSelectionButton != null && addon->ClearSelectionButton->OwnerNode != null
             && GameHelpers.TryClickNativeButton("ContentsFinder", null, addon->ClearSelectionButton->OwnerNode->NodeId);
     }
 
-    public static bool IsPlayerFinder =>
+    public static bool IsPlayerFinder(uint duty) =>
         Plugin.GameGui.GetAddonByName("ContentsFinder") is var handle && !handle.IsNull && handle.IsReady && handle.IsVisible
         && AgentContentsFinder.Instance() is var agent && agent != null
         && agent->SelectedDuty.ContentType == ContentsType.Regular
-        && agent->SelectedDuty.Id == VERMAXION.Models.VerminionDutyRules.PlayerDuty;
+        && VERMAXION.Models.VerminionDutyRules.IsPlayer(duty) && agent->SelectedDuty.Id == duty;
 
-    public static bool HasOnlyPlayerSelection()
+    public static bool HasOnlyPlayerSelection(uint duty)
     {
-        if (!IsPlayerFinder) return false;
+        if (!IsPlayerFinder(duty)) return false;
         var agent = AgentContentsFinder.Instance();
         var selected = new List<uint>();
         foreach (var entry in agent->SelectedContent)
             selected.Add(entry.ContentType == ContentsType.Regular ? entry.Id : uint.MaxValue);
-        return selected.SequenceEqual(new[] { VERMAXION.Models.VerminionDutyRules.PlayerDuty });
+        return selected.SequenceEqual(new[] { duty });
     }
 
-    public static bool TryJoinPlayerBattle()
+    public static bool TryJoinPlayerBattle(uint duty)
     {
         var finder = ContentsFinder.Instance();
         if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.None
-            || !HasOnlyPlayerSelection()) return false;
+            || !HasOnlyPlayerSelection(duty)) return false;
         var handle = Plugin.GameGui.GetAddonByName("ContentsFinder");
         var addon = (AddonContentsFinder*)handle.Address;
         // Use the current host's native Join/Withdraw button field; queue state
@@ -246,9 +250,9 @@ internal static unsafe class VerminionGameInteraction
             && GameHelpers.TryClickNativeButton("ContentsFinder", null, addon->JoinButton->OwnerNode->NodeId);
     }
 
-    public static void ClosePlayerFinder()
+    public static void ClosePlayerFinder(uint duty)
     {
-        if (!IsPlayerFinder || !HasOnlyPlayerSelection()) return;
+        if (!IsPlayerFinder(duty) || !HasOnlyPlayerSelection(duty)) return;
         var finder = ContentsFinder.Instance();
         if (finder == null || finder->QueueInfo.QueueState != ContentsFinderQueueState.None) return;
         var addon = (AddonContentsFinder*)Plugin.GameGui.GetAddonByName("ContentsFinder").Address;
@@ -750,7 +754,7 @@ internal static unsafe class VerminionGameInteraction
 
     public static bool HasBattleQueue(uint duty)
     {
-        if (!(VERMAXION.Models.VerminionDutyRules.IsCpu(duty) || duty == VERMAXION.Models.VerminionDutyRules.PlayerDuty)) return false;
+        if (!(VERMAXION.Models.VerminionDutyRules.IsCpu(duty) || VERMAXION.Models.VerminionDutyRules.IsPlayer(duty))) return false;
         var finder = ContentsFinder.Instance();
         if (finder == null || finder->QueueInfo.QueueState is ContentsFinderQueueState.None or ContentsFinderQueueState.InContent) return false;
         var queued = new List<uint>();
@@ -1073,7 +1077,7 @@ internal static unsafe class VerminionGameInteraction
     public static bool TryFocusMiniMap(System.Numerics.Vector3 world, out System.Numerics.Vector2 click)
     {
         click = default;
-        if (!(CurrentBattleDutyId() is >= 553 and <= 575 || CurrentBattleDutyId() == VERMAXION.Models.VerminionDutyRules.PlayerDuty) || battlefieldClick != null) return false;
+        if (!(CurrentBattleDutyId() is >= 553 and <= 575 || VERMAXION.Models.VerminionDutyRules.IsPlayer(CurrentBattleDutyId())) || battlefieldClick != null) return false;
         ReleaseBattlefieldInput(restoreRendering: false);
         var handle = Plugin.GameGui.GetAddonByName("LovmMiniMap");
         if (handle.IsNull || !handle.IsReady || !handle.IsVisible) return false;
@@ -1281,7 +1285,7 @@ internal static unsafe class VerminionGameInteraction
     public static VerminionPlayerMinion[] PlayerPalette()
     {
         var palette = GoldSaucerModule.Instance();
-        if (palette == null || CurrentBattleDutyId() != VERMAXION.Models.VerminionDutyRules.PlayerDuty) return [];
+        if (palette == null || !VERMAXION.Models.VerminionDutyRules.IsPlayer(CurrentBattleDutyId())) return [];
         var result = new List<VerminionPlayerMinion>();
         foreach (var id in palette->HotbarMinions.ToArray().Where(id => id != 0).Distinct())
         {

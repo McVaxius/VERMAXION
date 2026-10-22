@@ -22,7 +22,8 @@ public class CharacterConfig
     // --- Feature Toggles ---
     public bool EnableVerminionQueue { get; set; } = false;
     public bool VerminionPaused { get; set; }
-    public VerminionMode VerminionMode { get; set; } = VerminionMode.Participation;
+    public VerminionMode VerminionMode { get; set; } = VerminionMode.WeeklyWin;
+    public VerminionPlayerQueue VerminionPlayerQueue { get; set; } = VerminionPlayerQueue.NonRp;
     public int VerminionMission { get; set; } = 2;
     public int VerminionRepeatCount { get; set; } = 5;
     public uint VerminionGilPurchaseCap { get; set; }
@@ -258,6 +259,7 @@ public class CharacterConfig
     {
         EnableVerminionQueue = source.EnableVerminionQueue;
         VerminionMode = source.VerminionMode;
+        VerminionPlayerQueue = source.VerminionPlayerQueue;
         VerminionMission = source.VerminionMission;
         VerminionRepeatCount = source.VerminionRepeatCount;
         VerminionGilPurchaseCap = source.VerminionGilPurchaseCap;
@@ -419,6 +421,7 @@ public class CharacterConfig
             EnableVerminionQueue = EnableVerminionQueue,
             VerminionPaused = VerminionPaused,
             VerminionMode = VerminionMode,
+            VerminionPlayerQueue = VerminionPlayerQueue,
             VerminionMission = VerminionMission,
             VerminionRepeatCount = VerminionRepeatCount,
             VerminionGilPurchaseCap = VerminionGilPurchaseCap,

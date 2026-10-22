@@ -1,3 +1,12 @@
+2026-10-22 - Separate manual Verminion runs from the weekly Challenge Log
+
+- Start and continue the standalone CPU campaign, mission replays and player matches without opening or requiring weekly Challenge Log data. Explicit weekly runs also use their selected run and observed match results rather than blocking on a locked or unreadable log. Scheduled weekly tasks retain their existing progress inspection.
+- Preserve campaign/mission/player selection, native prerequisites, roster checks, saved admissions, exact result credit and existing battle strategies. Client5 campaign and lifecycle acceptance is in progress; this entry does not claim runtime completion.
+- Add separate, plainly labeled weekly CPU fight-to-win and passive/intentional-loss choices. New profiles default to fighting; saved legacy passive settings and admissions retain their numeric value and behavior. Only completed native matches satisfy the five-match goal.
+- Add independent RP and Tournament player queue selection alongside Non-RP, preserving the selected queue and Win/Throw behavior in owned admissions and run results. Tournament player entry uses the existing Recordkeeper registration/prize path and reads fresh allowance before each match. Existing Master Tournament preparation remains separate from player Tournament battles.
+- Identify active battles by native current content and its matching territory, rather than a retained queue notification. RP/tournament and lifecycle native acceptance remains in progress.
+- Send tutorial healing/transfer orders to the gate's native ground position, consistent with the existing healing strategies. A tutorial instruction timeout releases controls while retaining a positively matched owned admission for Resume; FULL STOP and unrelated failures keep their existing cancellation semantics. Native healing replay remains pending.
+
 2026-10-22 - Add Island Sanctuary settings with deferred execution
 
 - Add `/vmx is` and task/settings navigation to the native Island Run/Settings window, sharing existing appearance, localization and Full/Compact controls. Save independent per-character/account-default preferences: opt-in off, Weekly cadence with Daily/Manual choices, and seven selected chores.

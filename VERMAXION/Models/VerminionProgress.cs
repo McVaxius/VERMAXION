@@ -7,11 +7,20 @@ namespace VERMAXION.Models;
 
 public enum VerminionMode
 {
+    // Keep legacy passive admissions/settings stable; new profiles default to WeeklyWin.
     Participation = 0,
     MissionRepeat = 1,
     CpuRewards = 2,
     PvpWin = 3,
     PvpThrow = 4,
+    WeeklyWin = 5,
+}
+
+public enum VerminionPlayerQueue
+{
+    NonRp = 199,
+    Rp = 197,
+    Tournament = 198,
 }
 
 public enum VerminionBattleOutcome
@@ -37,13 +46,20 @@ public static class VerminionDutyRules
         _ => false,
     };
     public static bool IsPlayerMode(VerminionMode mode) => mode is VerminionMode.PvpWin or VerminionMode.PvpThrow;
+    public static string PlayerQueueLabel(uint duty) => duty switch
+    {
+        197 => "RP",
+        198 => "Tournament",
+        PlayerDuty => "Non-RP",
+        _ => "Unknown",
+    };
     public static int ChallengeStage(uint duty) => duty is >= 552 and <= 575 ? (int)duty - 551 : 0;
 
     // Zero means an empty slot. Non-Regular entries must be mapped to MaxValue,
     // never to zero. The caller supplies poppedDuty only for Ready/Accepted queues.
     public static bool OnlyExpectedQueue(uint expectedDuty, ReadOnlySpan<uint> queuedDuties, uint poppedDuty)
     {
-        if (!(IsCpu(expectedDuty) || expectedDuty == PlayerDuty) || poppedDuty != 0 && poppedDuty != expectedDuty) return false;
+        if (!(IsCpu(expectedDuty) || IsPlayer(expectedDuty)) || poppedDuty != 0 && poppedDuty != expectedDuty) return false;
         var found = false;
         foreach (var duty in queuedDuties)
         {
@@ -237,6 +253,7 @@ public sealed class VerminionProgress
     public DateTime RunWeekStartUtc { get; set; }
     public int RunMission { get; set; }
     public int RunRepeatCount { get; set; }
+    public uint RunPlayerDuty { get; set; } = VerminionDutyRules.PlayerDuty;
     public int RunWins { get; set; }
     public int RunMatches { get; set; }
     public int RunAttempts { get; set; }
@@ -301,16 +318,19 @@ public sealed class VerminionProgress
         return true;
     }
 
-    public void EnsureRun(VerminionMode mode, int repeatCount, bool restart = false, int mission = 2)
+    public void EnsureRun(VerminionMode mode, int repeatCount, bool restart = false, int mission = 2,
+        uint playerDuty = VerminionDutyRules.PlayerDuty)
     {
         repeatCount = Math.Clamp(repeatCount, 1, 1000);
         mission = Math.Clamp(mission, 1, 24);
-        if (!restart && RunMode == mode && RunRepeatCount == repeatCount && RunMission == mission &&
+        if (!VerminionDutyRules.IsPlayerMode(mode)) playerDuty = VerminionDutyRules.PlayerDuty;
+        if (!restart && RunMode == mode && RunRepeatCount == repeatCount && RunMission == mission && RunPlayerDuty == playerDuty &&
             (mode == VerminionMode.MissionRepeat || VerminionDutyRules.IsPlayerMode(mode)
                 || RunWeekStartUtc == WeekStartUtc)) return;
         RunMode = mode;
         RunRepeatCount = repeatCount;
         RunMission = mission;
+        RunPlayerDuty = playerDuty;
         RunWins = 0;
         RunMatches = 0;
         RunWeekStartUtc = WeekStartUtc;
@@ -356,7 +376,7 @@ public sealed class VerminionProgress
 
     public long BeginMatch(uint duty)
     {
-        var player = duty == VerminionDutyRules.PlayerDuty && RunMode is { } mode
+        var player = VerminionDutyRules.IsPlayer(duty) && duty == RunPlayerDuty && RunMode is { } mode
             && VerminionDutyRules.IsPlayerMode(mode) && !CampaignRequested;
         if ((!VerminionDutyRules.IsCpu(duty) && !player)
             || !CampaignRequested && RunMode is { } selected && VerminionDutyRules.IsPlayerMode(selected) && !player
@@ -401,7 +421,7 @@ public sealed class VerminionProgress
 
     public bool RecordResult(long match, VerminionBattleOutcome outcome, DateTime weekStartUtc)
     {
-        var player = PendingDuty == VerminionDutyRules.PlayerDuty && PendingMode is { } mode
+        var player = VerminionDutyRules.IsPlayer(PendingDuty) && PendingDuty == RunPlayerDuty && PendingMode is { } mode
             && VerminionDutyRules.IsPlayerMode(mode) && RunMode == mode && !CampaignRequested;
         if (match == 0 || match != PendingMatch || (!player && PendingDuty is < 553 or > 579) ||
             outcome is not (VerminionBattleOutcome.Defeat or VerminionBattleOutcome.Victory) ||
@@ -478,7 +498,7 @@ public sealed class VerminionProgress
                 $"PvP {(mode == VerminionMode.PvpWin ? "Try to win" : "Throw")}: {Math.Clamp(repeatCount, 1, 1000) - Remaining(mode, repeatCount, mission)}/{Math.Clamp(repeatCount, 1, 1000)} verified matches this run; {RunWins} wins",
             VerminionMode.MissionRepeat => $"Mission {Math.Clamp(mission, 1, 24)}: {Math.Clamp(repeatCount, 1, 1000) - Remaining(mode, repeatCount, mission)}/{Math.Clamp(repeatCount, 1, 1000)} clears this run; {Remaining(mode, repeatCount, mission)} remaining; {matches} weekly matches, {wins} weekly wins",
             VerminionMode.CpuRewards => $"{matches} matches, {wins} wins; CPU tournament opportunities pending",
-            _ => $"{Math.Min(5, matches)}/5 participation, {wins} wins; {Math.Max(0, 5 - matches)} matches remaining",
+            _ => $"Weekly CPU {(mode == VerminionMode.Participation ? "stay passive / intentionally lose" : "fight to win")}: {Math.Min(5, matches)}/5 matches; {wins} wins; {Math.Max(0, 5 - matches)} matches remaining",
         };
     }
 
