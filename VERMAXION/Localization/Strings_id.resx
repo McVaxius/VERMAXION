@@ -3281,4 +3281,20 @@ Dependensi: {1}</value></data>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - Coba menang: menunggu informasi pihak di medan tempur dari game</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>Semua yang dapat dilatih</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Latih sekali setiap burung siap, belum mencapai batas, dan di bawah peringkat 20 di kandang ini. Hanya memakai akar di inventaris; berhenti jika stok kurang atau hasil tidak pasti. Hitungan bersifat sementara. Progres bawang terpisah.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>Berjalan melalui fase AutoRetainer yang dikonfigurasi, timer akun yang aktif, atau tindakan manual. Menganggur saja tidak memulai proses.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>Latihan memakai satu Krakka Root (8165) di inventaris per burung; pembersihan opsional memakai Magicked Stable Broom (8168). Tanpa sapu, latihan tetap berjalan.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>Pengadaan bawang memakai pengaturan pasar atau hadiah gratis dari misi yang belum selesai. Misi memerlukan Wiggly Quest, job dan level yang tepat, progres MSQ, serta rute yang didukung.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>Semua yang dapat dilatih: terlatih {0}; dilewati {1}; tersisa {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>Semua yang dapat dilatih: terlatih {0}; dilewati {1}; tersisa {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>Chocobo terpilih tidak tersedia; latihan tidak dimulai.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Inventaris Krakka Root tidak terbaca; latihan tidak dimulai.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Krakka Root tidak cukup; burung yang tersisa belum dilatih.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Hasil latihan tidak pasti; tidak ada latihan lanjutan.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Batch terverifikasi.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>Tidak ada burung yang memenuhi syarat tersisa.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Memvalidasi ulang chocobo terpilih sebelum latihan</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Kunjungan kandang dibatalkan</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Stok pakan berubah sebelum Reward; latihan tidak dimulai.</value></data>
 </root>

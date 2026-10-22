@@ -3281,4 +3281,20 @@ Phụ thuộc: {1}</value></data>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - Cố gắng thắng: đang chờ thông tin phe trên chiến trường từ trò chơi</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>Tất cả có thể huấn luyện</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Huấn luyện một lần mỗi chim sẵn sàng, chưa chạm giới hạn và dưới hạng 20 trong chuồng này. Chỉ dùng rễ trong túi; dừng khi thiếu hoặc kết quả không rõ. Bộ đếm là tạm thời. Tiến trình hành tây được xử lý riêng.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>Chạy qua các giai đoạn AutoRetainer đã cấu hình, bộ hẹn giờ tài khoản đã bật hoặc thao tác thủ công. Chỉ rảnh không tự bắt đầu lượt chạy.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>Mỗi chim dùng một Krakka Root (8165) trong túi; dọn chuồng tùy chọn dùng Magicked Stable Broom (8168). Thiếu chổi không dừng huấn luyện.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>L?y h?nh t?y theo c?i ??t ch? ho?c ph?n th??ng mi?n ph? c?a nhi?m v? ch?a ho?n th?nh. Nhi?m v? c?n Wiggly Quest, ngh? v? c?p ph? h?p, ti?n ?? MSQ v? tuy?n ???ng ???c h? tr?.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>Tất cả có thể huấn luyện: đã luyện {0}; bỏ qua {1}; còn lại {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>Tất cả có thể huấn luyện: đã luyện {0}; bỏ qua {1}; còn lại {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>Không xác định được chocobo đã chọn; chưa bắt đầu huấn luyện.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Không đọc được Krakka Root trong túi; chưa bắt đầu huấn luyện.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Thiếu Krakka Root; các chim còn lại chưa được huấn luyện.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Kết quả huấn luyện không rõ; không bắt đầu lượt tiếp theo.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Đã xác minh cả lượt.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>Không còn chim đủ điều kiện.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Đang xác minh lại chocobo đã chọn trước khi huấn luyện</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Đã hủy chuyến thăm chuồng</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Lượng thức ăn thay đổi trước Reward; chưa bắt đầu huấn luyện.</value></data>
 </root>

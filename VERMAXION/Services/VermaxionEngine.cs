@@ -732,7 +732,7 @@ public class VermaxionEngine
     private TaskEligibility EvaluateChocoboStables(CharacterConfig config, bool manual)
     {
         if (!manual && !config.EnableChocoboStables) return TaskEligibility.Disabled("Chocobo Stables is disabled for this character.");
-        if (!manual && config.ChocoboStablesNextTrainingUtc > DateTime.UtcNow)
+        if (!manual && config.ChocoboStablesSettings.Target != StableTarget.AllTrainable && config.ChocoboStablesNextTrainingUtc > DateTime.UtcNow)
             return TaskEligibility.NotDue($"Selected chocobo's training cooldown runs until {config.ChocoboStablesNextTrainingUtc:u}.");
         return chocoboStablesService.GetStartBlockedReason(config.ChocoboStablesSettings, manual && stablesScanRequested) is { } reason
             ? TaskEligibility.Blocked(reason) : TaskEligibility.Runnable();
@@ -1867,7 +1867,10 @@ public class VermaxionEngine
                 }
                 StatusText = chocoboStablesService.StatusText;
                 if (chocoboStablesService.IsActive) break;
-                if (chocoboStablesService.IsComplete && chocoboStablesService.Trained)
+                if (chocoboStablesService.IsBatch && activeConfig.ChocoboStablesNextTrainingUtc != DateTime.MinValue)
+                    PersistCurrentCharacterConfig(config => config.ChocoboStablesNextTrainingUtc = DateTime.MinValue,
+                        "Stable batches use per-bird native cooldowns");
+                if (chocoboStablesService.CanRecordTrainingCompletion)
                     PersistCurrentCharacterConfig(config =>
                     {
                         config.ChocoboStablesLastCompleted = DateTime.UtcNow;
@@ -1877,6 +1880,12 @@ public class VermaxionEngine
                 {
                     runHadFailure = true;
                     log.Warning($"[Engine] Chocobo Stables failed: {chocoboStablesService.StatusText}");
+                }
+                if (chocoboStablesService.IsBatch && activeRunScope.SingleTaskId == PostProcessTaskOrder.ChocoboStables)
+                {
+                    pendingRunOutcome = chocoboStablesService.IsFailed ? RunOutcome.PartialFailure
+                        : chocoboStablesService.CanRecordTrainingCompletion ? RunOutcome.Succeeded : RunOutcome.Skipped;
+                    pendingRunSummary = chocoboStablesService.StatusText;
                 }
                 AdvanceToNextTask(EngineState.RunningChocoboStables);
                 break;

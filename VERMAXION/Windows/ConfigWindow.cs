@@ -3093,13 +3093,21 @@ public class ConfigWindow : Window, IDisposable
             var fc = ChocoboStablesService.HasFreeCompany();
             UiGui.TextDisabled(fc == true ? "FC membership: member" : fc == false ? "FC membership: no FC" : "FC membership: unavailable");
         }
-        if (UIConstants.BeginCombo("Chocobo to train", settings.Target == Models.StableTarget.OwnChocobo ? "Own chocobo" : "Specific other chocobo"))
+        static string TargetLabel(Models.StableTarget value) => value switch
+        {
+            Models.StableTarget.AllTrainable => "All trainable",
+            Models.StableTarget.SpecificOther => "Specific other chocobo",
+            _ => "Own chocobo",
+        };
+        if (UIConstants.BeginCombo("Chocobo to train", TargetLabel(settings.Target)))
         {
             foreach (var target in Enum.GetValues<Models.StableTarget>())
-                if (UiGui.Selectable(target == Models.StableTarget.OwnChocobo ? "Own chocobo" : "Specific other chocobo", settings.Target == target))
+                if (UiGui.Selectable(TargetLabel(target), settings.Target == target))
                 { settings.Target = target; cc.ChocoboStablesNextTrainingUtc = DateTime.MinValue; changed = true; }
             ImGui.EndCombo();
         }
+        if (settings.Target == Models.StableTarget.AllTrainable)
+            UiGui.TextWrapped("Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate.");
         var clean = settings.CleanStable;
         if (UIConstants.Checkbox("Clean stable when needed", ref clean)) { settings.CleanStable = clean; changed = true; }
         if (currentCharacter)
@@ -3134,7 +3142,13 @@ public class ConfigWindow : Window, IDisposable
                 UiGui.TextWrapped(UiText.F($"{bird.Name} ({bird.Owner}): {bird.Progression}; training {bird.Training}"));
         }
         else UiGui.TextDisabled("Load this character to scan its selected estate and select another chocobo.");
-        UiGui.TextWrapped("Enabled stable feeding also starts automatically when the logged-in character is idle and training is due. Uses one Krakka Root (8165) per training. Optional cleaning uses an inventory Magicked Stable Broom (8168); without one, the visit continues without cleaning or purchasing supplies. If your own rank 10-19 chocobo is capped and no Thavnairian Onion is in inventory, the Marketboard tab can enable a bounded Emptor purchase. Otherwise, Wiggly Quest can acquire an unfinished free-onion reward and its sidequest prerequisites. Stops after one onion is available; using it remains manual. Quest acquisition requires the appropriate job, level, MSQ progress and Wiggly routes.");
+        UiGui.TextWrapped("Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run.");
+        UiGui.TextWrapped("Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training.");
+        if (settings.Target == Models.StableTarget.OwnChocobo)
+        {
+            UiGui.TextWrapped("Buys one onion on the current world only when your own rank 10-19 stabled chocobo is capped and no onion is in inventory. Both limits must be positive. Requires Emptor API 5; using the onion remains manual. When buying is disabled, the existing free quest-reward acquisition remains available.");
+            UiGui.TextWrapped("Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes.");
+        }
         ImGui.Unindent();
         return changed;
     }

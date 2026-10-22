@@ -5777,4 +5777,20 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - 승리 시도: 게임에서 전장 진영 정보를 확인할 때까지 대기 중</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>훈련 가능한 모두</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>이 마구간에서 준비 완료이며 상한에 도달하지 않은 20등급 미만 새를 각각 한 번 훈련합니다. 소지품의 뿌리만 사용하며 부족하거나 결과가 불확실하면 중지합니다. 집계는 임시입니다. 양파 성장은 별도입니다.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>설정된 AutoRetainer 단계, 활성화된 계정 타이머 또는 수동 동작으로 실행합니다. 유휴 상태만으로 시작하지 않습니다.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>새 한 마리당 소지품의 크라카 뿌리(8165) 하나를 사용합니다. 선택적 청소에는 마법의 마구간 빗자루(8168)를 사용합니다. 빗자루가 없어도 훈련은 계속됩니다.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>?? ???? ?? ?? ?? ??? ???? ?? ??? ?????. ?? ????? Wiggly Quest, ??? ??? ??, MSQ ?? ? ?? ??? ?????.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>훈련 가능한 모두: 훈련 {0}, 건너뜀 {1}, 남음 {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>훈련 가능한 모두: 훈련 {0}, 건너뜀 {1}, 남음 {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>선택한 초코보를 확인할 수 없어 훈련하지 않았습니다.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>크라카 뿌리 소지품을 읽을 수 없어 훈련하지 않았습니다.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>크라카 뿌리가 부족하여 남은 새는 훈련하지 않았습니다.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>훈련 결과가 불확실하여 추가 훈련을 진행하지 않았습니다.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>일괄 훈련이 확인되었습니다.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>적격한 새가 남아 있지 않습니다.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>훈련 전 선택한 초코보 재확인 중</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>마구간 방문 취소됨</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Reward 전에 먹이 수가 바뀌어 훈련하지 않았습니다.</value></data>
 </root>

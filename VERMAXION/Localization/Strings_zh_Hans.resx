@@ -5777,4 +5777,20 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - 尝试获胜：等待游戏提供的战场阵营信息</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>所有可训练陆行鸟</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>在此鸟房内，对准备就绪、未达上限且等级低于20的鸟各训练一次。仅使用背包中的根；物资不足或结果不确定时停止。计数为临时数据。洋葱突破另行处理。</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>通过已配置的AutoRetainer阶段、已启用的账号计时器或手动操作运行。仅仅空闲不会启动任务。</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>每只鸟使用背包中的一个库里尔萝卜（8165）；可选清洁使用魔法鸟房扫帚（8168）。缺少扫帚不会阻止训练。</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>????????????????????????????Wiggly Quest??????????????????????</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>所有可训练：已训练 {0}；已跳过 {1}；剩余 {2}。</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>所有可训练：已训练 {0}；已跳过 {1}；剩余 {2}。 {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>无法确认所选陆行鸟；未发起训练。</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>无法读取背包中的克拉卡萝卜；未发起训练。</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>克拉卡萝卜不足；剩余陆行鸟未训练。</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>训练结果不确定；未发起后续训练。</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>批次已验证。</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>没有剩余的符合条件的陆行鸟。</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>正在训练前重新确认所选陆行鸟</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>鸟房访问已取消</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Reward前饲料数量发生变化；未发起训练。</value></data>
 </root>

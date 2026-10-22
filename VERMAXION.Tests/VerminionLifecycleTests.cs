@@ -2,6 +2,8 @@ extern alias live;
 extern alias host;
 
 using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
@@ -785,6 +787,244 @@ public sealed class VerminionLifecycleTests
         Assert.False(progress.RecordTutorialCompletion(ordinary, VerminionBattleOutcome.Victory));
         Assert.Equal(ordinary, progress.PendingMatch);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionAcquisitionRewardSelectionPreservesUnrelatedStopDefinitions(bool systemText)
+    {
+        const string json = """
+            {"Enabled":true,"Conditions":[
+              {"Type":"InventoryFull","Mode":2},
+              {"Type":"Level","Mode":1,"Value":60},
+              {"Type":"QuestComplete","QuestId":"501","Mode":2,"Sequence":9},
+              {"Type":"QuestAccept","QuestId":"502","Mode":2},
+              {"Type":"QuestComplete","QuestId":"502","Mode":1,"Sequence":null,"Value":null},
+              {"Type":"BeforeDuty","Mode":0}]}
+            """;
+        var settings = DeserializeAcquisitionStops(json, systemText)!;
+        var before = JsonConvert.SerializeObject(settings);
+        Assert.Same(settings, InvokeAcquisitionHelper("ValidateAcquisitionStopSettings", settings));
+        var entries = (IList)settings.GetType().GetProperty("Conditions")!.GetValue(settings)!;
+        var reward = InvokeAcquisitionHelper("AcquisitionRewardStop", settings, (ushort)502);
+        Assert.Same(entries[4], reward); // Same-ID acceptance and another quest's completion are unrelated.
+        Assert.True((bool)InvokeAcquisitionHelper("IsAcquisitionRewardStop", reward)!);
+        Assert.Null(reward!.GetType().GetProperty("Sequence")!.GetValue(reward));
+        Assert.Null(reward.GetType().GetProperty("Value")!.GetValue(reward));
+        Assert.Null(InvokeAcquisitionHelper("AcquisitionRewardStop", settings, (ushort)503));
+        Assert.False((bool)InvokeAcquisitionHelper("IsAcquisitionRewardStop", (object?)null)!);
+        Assert.Equal(6, entries.Count);
+        Assert.Equal(before, JsonConvert.SerializeObject(settings));
+    }
+
+    [Theory]
+    [InlineData(1, null, null, true)]
+    [InlineData(0, null, null, false)]
+    [InlineData(2, null, null, false)]
+    [InlineData(1, 0, null, false)]
+    [InlineData(1, 9, null, false)]
+    [InlineData(1, null, 0, false)]
+    [InlineData(1, null, 60, false)]
+    public void ProductionAcquisitionRewardStopRequiresAnUnmodifiedWholeQuestPause(int mode, int? sequence, int? value, bool expected)
+    {
+        var json = JsonConvert.SerializeObject(new
+        {
+            Enabled = true,
+            Conditions = new[] { new { Type = "QuestComplete", QuestId = "502", Mode = mode, Sequence = sequence, Value = value } },
+        });
+        var settings = DeserializeAcquisitionStops(json, systemText: false)!;
+        Assert.Same(settings, InvokeAcquisitionHelper("ValidateAcquisitionStopSettings", settings));
+        var reward = InvokeAcquisitionHelper("AcquisitionRewardStop", settings, (ushort)502);
+        Assert.NotNull(reward);
+        Assert.Equal(expected, (bool)InvokeAcquisitionHelper("IsAcquisitionRewardStop", reward)!);
+    }
+
+    [Theory]
+    [InlineData("[null]")]
+    [InlineData("""[{"Type":"","Mode":1}]""")]
+    [InlineData("""[{"Type":" \t","Mode":1}]""")]
+    [InlineData("""[{"Type":"BeforeDuty","Mode":-1}]""")]
+    [InlineData("""[{"Type":"BeforeDuty","Mode":3}]""")]
+    [InlineData("""[{"Type":"QuestComplete","Mode":1}]""")]
+    [InlineData("""[{"Type":"QuestAccept","QuestId":" ","Mode":1}]""")]
+    [InlineData("""[{"Type":"Level","Mode":1,"Value":50},{"Type":"Level","QuestId":"502","Mode":2,"Value":60}]""")]
+    [InlineData("""[{"Type":"QuestComplete","QuestId":"502","Mode":1},{"Type":"QuestComplete","QuestId":"502","Mode":2,"Sequence":9}]""")]
+    [InlineData("""[{"Type":"QuestAccept","QuestId":"502","Mode":1},{"Type":"QuestAccept","QuestId":"502","Mode":2}]""")]
+    public void ProductionAcquisitionStopSettingsRejectMalformedOrDuplicateEntries(string conditionsJson)
+    {
+        foreach (var systemText in new[] { false, true })
+        {
+            var settings = DeserializeAcquisitionStops("{\"Enabled\":true,\"Conditions\":" + conditionsJson + "}", systemText)!;
+            var before = JsonConvert.SerializeObject(settings);
+            AssertAcquisitionRejected("ValidateAcquisitionStopSettings", settings);
+            Assert.Equal(before, JsonConvert.SerializeObject(settings));
+        }
+    }
+
+    [Fact]
+    public void ProductionAcquisitionStopSettingsRejectNullOrUninitializedDtos()
+    {
+        AssertAcquisitionRejected("ValidateAcquisitionStopSettings", (object?)null);
+        var settings = Activator.CreateInstance(AcquisitionStopDataType)!;
+        AssertAcquisitionRejected("ValidateAcquisitionStopSettings", settings);
+
+        settings = DeserializeAcquisitionStops("{\"Enabled\":true,\"Conditions\":[]}", systemText: false)!;
+        var entries = (IList)settings.GetType().GetProperty("Conditions")!.GetValue(settings)!;
+        var entryType = typeof(live::VERMAXION.Services.VerminionService).GetNestedType("AcquisitionStopEntry", BindingFlags.NonPublic)!;
+        var entry = Activator.CreateInstance(entryType)!;
+        Assert.Equal(-1, entryType.GetProperty("Mode")!.GetValue(entry));
+        entryType.GetProperty("Type")!.SetValue(entry, "BeforeDuty");
+        entries.Add(entry);
+        AssertAcquisitionRejected("ValidateAcquisitionStopSettings", settings);
+    }
+
+    [Theory]
+    [InlineData("""{"Conditions":[]}""", "Enabled")]
+    [InlineData("""{"Enabled":true}""", "Conditions")]
+    [InlineData("""{"Enabled":true,"Conditions":[{"Mode":1}]}""", "Type")]
+    [InlineData("""{"Enabled":true,"Conditions":[{"Type":"QuestComplete","QuestId":"502"}]}""", "Mode")]
+    public void ProductionAcquisitionStopDtosRequireWireFieldsInBothSerializers(string json, string missingProperty)
+    {
+        var newtonsoft = Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject(json, AcquisitionStopDataType));
+        Assert.Contains(missingProperty, newtonsoft.Message);
+        var systemText = Assert.Throws<System.Text.Json.JsonException>(() => System.Text.Json.JsonSerializer.Deserialize(json, AcquisitionStopDataType));
+        Assert.Contains(missingProperty, systemText.Message);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionAcquisitionStopSettingsKeepAnExplicitEmptyConfigurationDistinctFromAnUnreadableOne(bool enabled)
+    {
+        foreach (var systemText in new[] { false, true })
+        {
+            var settings = DeserializeAcquisitionStops(JsonConvert.SerializeObject(new { Enabled = enabled, Conditions = Array.Empty<object>() }), systemText)!;
+            Assert.Same(settings, InvokeAcquisitionHelper("ValidateAcquisitionStopSettings", settings));
+            Assert.Equal(enabled, settings.GetType().GetProperty("Enabled")!.GetValue(settings));
+            Assert.Null(InvokeAcquisitionHelper("AcquisitionRewardStop", settings, (ushort)502));
+        }
+    }
+
+    [Fact]
+    public void ProductionAcquisitionRewardSelectionRejectsDuplicateRewardKeysBeforeClaimingEither()
+    {
+        const string json = """
+            {"Enabled":true,"Conditions":[
+              {"Type":"QuestComplete","QuestId":"502","Mode":1},
+              {"Type":"QuestComplete","QuestId":"502","Mode":2}]}
+            """;
+        var settings = DeserializeAcquisitionStops(json, systemText: false)!;
+        AssertAcquisitionRejected("AcquisitionRewardStop", settings, (ushort)502);
+    }
+
+    [Theory]
+    [InlineData("Priority.Get")]
+    [InlineData("Blacklist.Get")]
+    public void ProductionAcquisitionQuestListsRejectUnavailableOrAmbiguousSnapshotsWithoutTreatingThemAsEmpty(string method)
+    {
+        Assert.Contains(method, AssertAcquisitionRejected("ValidateAcquisitionQuestList", null, method).Message);
+        List<string> empty = [];
+        Assert.Same(empty, InvokeAcquisitionHelper("ValidateAcquisitionQuestList", empty, method));
+        List<string> ordered = ["204", "490", "502"];
+        Assert.Same(ordered, InvokeAcquisitionHelper("ValidateAcquisitionQuestList", ordered, method));
+        Assert.Equal(new[] { "204", "490", "502" }, ordered);
+        List<string>[] malformed = [[null!], [string.Empty], [" \t"], ["204", "204"]];
+        foreach (var quests in malformed)
+        {
+            var before = quests.ToArray();
+            Assert.Contains(method, AssertAcquisitionRejected("ValidateAcquisitionQuestList", quests, method).Message);
+            Assert.Equal(before, quests);
+        }
+    }
+
+    [Theory]
+    [InlineData(null, false, true, true)]
+    [InlineData(null, false, false, false)]
+    [InlineData(null, true, true, false)]
+    [InlineData(null, true, false, false)]
+    [InlineData("999", false, true, false)]
+    [InlineData("999", true, true, false)]
+    [InlineData("", false, true, false)]
+    [InlineData("1204", false, false, false)]
+    [InlineData("1204", false, true, true)]
+    public void ProductionAcquisitionSelectionRequiresReadinessBeforeDispatchingAnUnselectedQuest(string? current, bool accepted, bool ready, bool expected)
+        => Assert.Equal(expected, (bool)InvokeAcquisitionHelper("AcquisitionSelectionMatches",
+            "1204", current, accepted, ready, null, (byte)0)!);
+
+    [Theory]
+    [InlineData("1204", "1204", 0, 0, true)]
+    [InlineData("1204", "1204", 9, 9, true)]
+    [InlineData("1204", "1204", 255, 255, true)]
+    [InlineData("1204", "1204", 0, 1, false)]
+    [InlineData("1204", "1204", 9, 0, false)]
+    [InlineData("1204", "999", 9, 9, false)]
+    [InlineData("999", "1204", 9, 9, false)]
+    [InlineData(null, "1204", 9, 9, false)]
+    [InlineData("1204", null, 0, 0, false)]
+    [InlineData("1204", "", 0, 0, false)]
+    public void ProductionAcquisitionAcceptedQuestNeedsMatchingSelectionAndNativeSequence(string? current, string? stepQuest, byte reportedSequence, byte nativeSequence, bool expected)
+    {
+        foreach (var systemText in new[] { false, true })
+        {
+            var step = stepQuest == null ? null : DeserializeAcquisitionStep(
+                JsonConvert.SerializeObject(new { QuestId = stepQuest, Sequence = reportedSequence }), systemText);
+            var before = JsonConvert.SerializeObject(step);
+            // Readiness cannot replace native progress agreement for an accepted quest.
+            foreach (var ready in new[] { false, true })
+                Assert.Equal(expected, (bool)InvokeAcquisitionHelper("AcquisitionSelectionMatches",
+                    "1204", current, true, ready, step, nativeSequence)!);
+            Assert.Equal(before, JsonConvert.SerializeObject(step));
+        }
+    }
+
+    [Theory]
+    [InlineData("""{"QuestId":"1204"}""", "Sequence")]
+    [InlineData("""{"Sequence":0}""", "QuestId")]
+    public void ProductionAcquisitionStepDtosRejectMissingIdentityOrSequenceInBothSerializers(string json, string missingProperty)
+    {
+        // A missing byte sequence must not become a successful comparison with native sequence zero.
+        var newtonsoft = Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject(json, AcquisitionStepDataType));
+        Assert.Contains(missingProperty, newtonsoft.Message);
+        var systemText = Assert.Throws<System.Text.Json.JsonException>(() => System.Text.Json.JsonSerializer.Deserialize(json, AcquisitionStepDataType));
+        Assert.Contains(missingProperty, systemText.Message);
+    }
+
+    [Fact]
+    public void ProductionAcquisitionSelectionRejectsDefaultStepDataAndAnAbsentFirstQuest()
+    {
+        var step = Activator.CreateInstance(AcquisitionStepDataType)!;
+        Assert.False((bool)InvokeAcquisitionHelper("AcquisitionSelectionMatches",
+            "1204", "1204", true, true, step, (byte)0)!);
+        Assert.False((bool)InvokeAcquisitionHelper("AcquisitionSelectionMatches",
+            string.Empty, null, false, true, null, (byte)0)!);
+
+        const string nullQuest = """{"QuestId":null,"Sequence":0}""";
+        Assert.Throws<JsonSerializationException>(() => DeserializeAcquisitionStep(nullQuest, systemText: false));
+        var nullIdentityStep = DeserializeAcquisitionStep(nullQuest, systemText: true);
+        Assert.False((bool)InvokeAcquisitionHelper("AcquisitionSelectionMatches",
+            "1204", "1204", true, true, nullIdentityStep, (byte)0)!);
+    }
+
+    private static Type AcquisitionStepDataType =>
+        typeof(live::VERMAXION.Services.VerminionService).GetNestedType("AcquisitionStepData", BindingFlags.NonPublic)!;
+
+    private static object? DeserializeAcquisitionStep(string json, bool systemText) => systemText
+        ? System.Text.Json.JsonSerializer.Deserialize(json, AcquisitionStepDataType)
+        : JsonConvert.DeserializeObject(json, AcquisitionStepDataType);
+
+    private static Type AcquisitionStopDataType =>
+        typeof(live::VERMAXION.Services.VerminionService).GetNestedType("AcquisitionStopData", BindingFlags.NonPublic)!;
+
+    private static object? DeserializeAcquisitionStops(string json, bool systemText) => systemText
+        ? System.Text.Json.JsonSerializer.Deserialize(json, AcquisitionStopDataType)
+        : JsonConvert.DeserializeObject(json, AcquisitionStopDataType);
+
+    private static object? InvokeAcquisitionHelper(string method, params object?[] arguments) =>
+        typeof(live::VERMAXION.Services.VerminionService).GetMethod(method, BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, arguments);
+
+    private static InvalidOperationException AssertAcquisitionRejected(string method, params object?[] arguments) =>
+        Assert.IsType<InvalidOperationException>(Assert.Throws<TargetInvocationException>(() => InvokeAcquisitionHelper(method, arguments)).InnerException);
 
     [Fact]
     public void NativeAcquisitionRetainsOwnershipAndCancellationWithoutSharingCharactersOrCreditingBattles()

@@ -3281,4 +3281,20 @@ Dependências: {1}</value></data>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - Tentar vencer: aguardando a identificação do lado no campo de batalha pelo jogo</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>Todos os treináveis</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Treina uma vez cada ave pronta, sem limite atingido e abaixo do rank 20 neste estábulo. Usa raízes do inventário; para se faltar estoque ou o resultado for incerto. As contagens são temporárias. A progressão com cebolas é separada.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>Executa pelas fases configuradas do AutoRetainer, pelo temporizador de conta ativado ou por ações manuais. Ficar ocioso não inicia uma execução.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>O treino usa uma raiz de Krakka (8165) do inventário por ave; a limpeza opcional usa uma vassoura mágica de estábulo (8168). A falta de vassouras não impede o treino.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>A obten??o de cebolas usa as configura??es do mercado ou recompensas gratuitas de miss?es pendentes. As miss?es exigem Wiggly Quest, job e n?vel adequados, progresso de MSQ e rotas compat?veis.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>Todos os treináveis: treinados {0}; ignorados {1}; restantes {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>Todos os treináveis: treinados {0}; ignorados {1}; restantes {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>O chocobo selecionado está indisponível; nenhum treino iniciado.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Inventário de raízes de Krakka ilegível; nenhum treino iniciado.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Raízes de Krakka insuficientes; as aves restantes não foram treinadas.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Resultado do treino incerto; nenhum outro treino iniciado.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Lote verificado.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>Não há aves elegíveis restantes.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Revalidando o chocobo selecionado antes do treino</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Visita ao estábulo cancelada</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>O estoque mudou antes de Reward; nenhum treino iniciado.</value></data>
 </root>

@@ -6133,4 +6133,20 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP — попытаться победить: ожидание данных игры о стороне на поле боя</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>Все доступные для тренировки</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Тренирует один раз каждую готовую птицу ниже 20 ранга без достигнутого лимита в этой конюшне. Использует корни из инвентаря; останавливается при нехватке или неясном результате. Счётчики временные. Прогресс с луком остаётся отдельным.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>Запускается через настроенные этапы AutoRetainer, включённый таймер аккаунта или вручную. Одно лишь бездействие не запускает выполнение.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>На птицу нужен один корень Кракки (8165) из инвентаря; необязательная уборка использует волшебную метлу для конюшни (8168). Отсутствие метлы не останавливает тренировку.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>????????? ???? ?????????? ????????? ????? ??? ?????????? ??????? ????????????? ???????. ??????? ??????? Wiggly Quest, ?????????? ????????? ? ??????, ????????? MSQ ? ?????????????? ?????????.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>Все доступные: обучено {0}; пропущено {1}; осталось {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>Все доступные: обучено {0}; пропущено {1}; осталось {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>Выбранный чокобо недоступен; тренировка не запущена.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Инвентарь корней Кракки недоступен; тренировка не запущена.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Недостаточно корней Кракки; оставшиеся птицы не обучены.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Результат тренировки неясен; дальнейшие тренировки не запущены.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Партия проверена.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>Подходящих птиц не осталось.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Повторная проверка выбранного чокобо перед тренировкой</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Посещение конюшни отменено</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Запас корма изменился до Reward; тренировка не запущена.</value></data>
 </root>

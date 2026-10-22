@@ -6133,4 +6133,20 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>JcJ - Tenter de gagner : en attente du camp sur le champ de bataille indiqué par le jeu</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>Tous les entraînables</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Entraîne une fois chaque oiseau prêt, non plafonné et de rang inférieur à 20 dans cette écurie. Utilise les racines en inventaire ; s’arrête si le stock manque ou si le résultat est incertain. Les compteurs sont temporaires. La progression par oignon reste séparée.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>S’exécute via les phases AutoRetainer configurées, le minuteur de compte activé ou les actions manuelles. L’inactivité seule ne lance rien.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>L’entraînement utilise une racine de Krakka (8165) en inventaire par oiseau ; le nettoyage facultatif utilise un balai magique d’écurie (8168). L’absence de balai ne bloque pas l’entraînement.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>L?acquisition d?oignons utilise les r?glages du march? ou les r?compenses gratuites de qu?tes inachev?es. Ces qu?tes n?cessitent Wiggly Quest, le bon job et niveau, la progression MSQ et des routes prises en charge.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>Tous les entraînables : entraînés {0} ; ignorés {1} ; restants {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>Tous les entraînables : entraînés {0} ; ignorés {1} ; restants {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>Le chocobo sélectionné est indisponible ; aucun entraînement lancé.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>L’inventaire des racines de Krakka est illisible ; aucun entraînement lancé.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Racines de Krakka insuffisantes ; les oiseaux restants n’ont pas été entraînés.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Résultat d’entraînement incertain ; aucun entraînement supplémentaire lancé.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Lot vérifié.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>Aucun oiseau éligible restant.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Nouvelle vérification du chocobo sélectionné avant l’entraînement</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Visite de l’écurie annulée</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Le stock a changé avant Reward ; aucun entraînement lancé.</value></data>
 </root>

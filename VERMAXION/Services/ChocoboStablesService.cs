@@ -37,8 +37,9 @@ public sealed unsafe class ChocoboStablesService
     private TeleportInfo destination;
     private bool scanOnly, moving, travelStarted, stableLookupLogged, rosterShapeLogged, cleanupPending;
     private DateTime cleanupQuietSince = DateTime.MinValue;
-    private int page, feedBefore, broomBefore;
+    private int page, feedBefore, broomBefore, rosterPages;
     private StableBird? selected;
+    private StableTrainingBatch? batch;
     private ulong scannedCharacter;
     private StableDestination scannedDestination;
     private ushort onionQuestId;
@@ -54,6 +55,11 @@ public sealed unsafe class ChocoboStablesService
     public bool IsComplete { get; private set; }
     public bool IsFailed { get; private set; }
     public bool Trained { get; private set; }
+    public bool IsBatch => batch != null;
+    public int TrainedCount => batch?.Trained ?? (Trained ? 1 : 0);
+    public int SkippedCount => batch?.Skipped ?? 0;
+    public int RemainingCount => batch?.Remaining ?? 0;
+    public bool CanRecordTrainingCompletion => IsComplete && Trained && (batch == null || batch.CanRecordCompletion);
     public bool Cleaned { get; private set; }
     public string StatusText { get; private set; } = "Not scanned";
     public string Cleanliness { get; private set; } = "Unknown";
@@ -110,6 +116,7 @@ public sealed unsafe class ChocoboStablesService
         }
         if (!forScan && choice.Target == StableTarget.SpecificOther && (string.IsNullOrEmpty(choice.OtherOwner) || string.IsNullOrEmpty(choice.OtherChocobo)))
             return "Scan the selected stable and select one other chocobo first.";
+        if (!Enum.IsDefined(choice.Target)) return "Select a supported chocobo target first.";
         return TryResolveDestination(choice.Destination, out _) ? null : "The selected estate has no available teleport entry. Check ownership, tenancy and estate access.";
     }
 
@@ -479,6 +486,8 @@ public sealed unsafe class ChocoboStablesService
         }
         if (addon == null || !TryReadPage(addon, out var actual, out var pages, out var rows, out _)) return;
         if (actual != page) { ClickList(addon, 3, page); return; }
+        if (rosterPages != 0 && rosterPages != pages) { Fail("Selected chocobo is unavailable; no training dispatched."); return; }
+        rosterPages = pages;
         birds.RemoveAll(b => b.Page == page);
         birds.AddRange(rows);
         Plugin.Log.Information($"[Stables] Scanned page {page + 1}/{pages}; rows={rows.Count}; ready={rows.Count(b => b.Ready)}; capped={rows.Count(b => b.Capped)}");
@@ -491,6 +500,12 @@ public sealed unsafe class ChocoboStablesService
         scannedCharacter = character;
         scannedDestination = settings.Destination;
         if (scanOnly) { Complete($"Scanned {birds.Count} chocobos; select a target in character settings"); return; }
+        if (settings.Target == StableTarget.AllTrainable)
+        {
+            batch = new StableTrainingBatch(birds);
+            ContinueBatch();
+            return;
+        }
         var owner = settings.Target == StableTarget.OwnChocobo ? Plugin.ObjectTable.LocalPlayer!.Name.TextValue : settings.OtherOwner;
         var matches = birds.Where(b => b.Owner.Equals(owner, StringComparison.Ordinal) && (settings.Target == StableTarget.OwnChocobo || b.Name.Equals(settings.OtherChocobo, StringComparison.Ordinal))).ToList();
         if (matches.Count != 1) { Fail(matches.Count == 0 ? "Selected chocobo is not stabled here; scan and check its destination." : "Selected bird identity is ambiguous; no training dispatched."); return; }
@@ -525,14 +540,21 @@ public sealed unsafe class ChocoboStablesService
     private void SelectBird()
     {
         var addon = Own("HousingChocoboList");
-        if (addon == null || selected == null || !TryReadPage(addon, out var actual, out _, out var rows, out _)) return;
+        if (addon == null || selected == null || !TryReadPage(addon, out var actual, out var pages, out var rows, out _)) return;
         if (actual != selected.Page) { ClickList(addon, 3, selected.Page); return; }
+        if (pages != rosterPages) { Fail("Selected chocobo is unavailable; no training dispatched."); return; }
+        if (batch != null)
+        {
+            if (!batch.TryRevalidate(rows, out var candidate)) { Fail(batch.Detail); return; }
+            if (!candidate!.Trainable) { batch.SkipCurrent(); ContinueBatch(); return; }
+        }
         var current = rows.Where(b => b.Matches(selected.Owner, selected.Name)).ToList();
-        if (current.Count != 1 || !current[0].Ready || current[0].Capped || current[0].Rank >= 20)
+        if (current.Count != 1 || current[0].Page != selected.Page || current[0].Row != selected.Row || !current[0].Trainable)
         { Fail("Selected chocobo changed or is no longer trainable; scan again."); return; }
         selected = current[0];
         feedBefore = Count(FeedItemId);
-        if (feedBefore < 1) { Fail("Krakka Root is no longer available; no training dispatched."); return; }
+        if (feedBefore < 1)
+        { Fail(feedBefore < 0 ? "Krakka Root inventory is unreadable; no training dispatched." : "Insufficient Krakka Roots; remaining birds were not trained."); return; }
         if (selected.Row == PersonalBirdRow ? ClickPersonalBird(addon) : ClickList(addon, 18, selected.Row))
             Transition(Step.Inventory, "Selecting one Krakka Root for training");
     }
@@ -637,7 +659,18 @@ public sealed unsafe class ChocoboStablesService
             var label = value.String.ToString();
             if (label.Equals("Reward", StringComparison.OrdinalIgnoreCase))
             {
+                if (batch != null)
+                {
+                    // Reuse only the visible, loaded native roster. A hidden/stale addon is not proof.
+                    var roster = Own("HousingChocoboList");
+                    if (roster == null || !TryReadPage(roster, out var actual, out var pages, out var rows, out _)
+                        || selected == null || actual != selected.Page || pages != rosterPages
+                        || !batch.TryRevalidate(rows, out var current) || !current!.Trainable)
+                    { Fail("Selected chocobo is unavailable; no training dispatched."); return; }
+                }
                 if (Count(FeedItemId) != feedBefore) { Fail("Feed stock changed before Reward; no training dispatched."); return; }
+                // Consume this in-memory attempt before the native callback, including a throwing callback.
+                if (batch != null && !batch.Dispatch(feedBefore)) { Fail(batch.Detail); return; }
                 Plugin.Log.Information($"[Stables] Dispatching one Krakka Root Reward; feedStock={feedBefore}");
                 Callback.Fire(menu, false, 0, index, 0, 0, 0);
                 Transition(Step.TrainingResult, "Training dispatched; waiting for feed consumption and native cooldown");
@@ -652,7 +685,8 @@ public sealed unsafe class ChocoboStablesService
     {
         AdvanceTalk();
         var count = Count(FeedItemId);
-        if (count < feedBefore - 1) { Fail("Feed stock changed by more than one; training result is uncertain."); return; }
+        if (count < 0 || count < feedBefore - 1 || count > feedBefore)
+        { Fail("Training result is uncertain; no further training dispatched."); return; }
         if (count != feedBefore - 1) return;
         var addon = Own("HousingChocoboList");
         if (addon == null)
@@ -662,14 +696,42 @@ public sealed unsafe class ChocoboStablesService
             if (menu != null) SelectEntry(menu, "Tend to a Specified Chocobo");
             return;
         }
-        if (selected == null || !TryReadPage(addon, out var actual, out _, out var rows, out _)) return;
+        if (selected == null || !TryReadPage(addon, out var actual, out var pages, out var rows, out _)) return;
         if (actual != selected.Page) { ClickList(addon, 3, selected.Page); return; }
-        var current = rows.SingleOrDefault(b => b.Matches(selected.Owner, selected.Name));
-        if (current == null || current.Ready) return;
+        if (pages != rosterPages) { Fail("Training result is uncertain; no further training dispatched."); return; }
+        if (batch != null)
+        {
+            var receipt = batch.ObserveReceipt(count, rows);
+            if (receipt == StableTrainingReceipt.Uncertain) { Fail(batch.Detail); return; }
+            if (receipt != StableTrainingReceipt.Verified) return;
+            Trained = true;
+            birds.RemoveAll(b => b.Page == actual); birds.AddRange(rows);
+            ContinueBatch();
+            return;
+        }
+        var matches = rows.Where(b => b.Matches(selected.Owner, selected.Name)).ToArray();
+        if (matches.Length != 1 || matches[0].Page != selected.Page || matches[0].Row != selected.Row)
+        { Fail("Training result is uncertain; no further training dispatched."); return; }
+        var current = matches[0];
+        if (!current.HasTrainingCooldown) return;
         Trained = true;
         NextTrainingUtc = DateTime.UtcNow.AddHours(1);
         birds.RemoveAll(b => b.Page == actual); birds.AddRange(rows);
         Complete($"Training verified; {current.Progression}; cooldown {current.Training}");
+    }
+
+    private void ContinueBatch()
+    {
+        if (batch!.Stopped) { Fail(batch.Detail); return; }
+        // Each bird has its own native cooldown. Never impose a whole-stable hour timer.
+        NextTrainingUtc = DateTime.MinValue;
+        if (batch.Complete)
+        {
+            Complete(batch.Summary + (batch.Trained > 0 ? " Batch verified." : " No eligible birds remain."));
+            return;
+        }
+        selected = batch.Current;
+        Transition(Step.SelectBird, batch.Summary + " Revalidating the selected chocobo before training");
     }
 
     private void AdvanceTalk()
@@ -914,9 +976,21 @@ public sealed unsafe class ChocoboStablesService
 
     private int Count(uint itemId)
     {
-        if (!NativeStateReady) return 0;
+        if (!NativeStateReady) return -1;
         var manager = InventoryManager.Instance();
-        return manager == null ? 0 : manager->GetInventoryItemCount(itemId);
+        if (manager == null) return -1;
+        var count = 0;
+        foreach (var bag in Bags)
+        {
+            var container = manager->GetInventoryContainer(bag);
+            if (container == null || !container->IsLoaded) return -1;
+            for (var slot = 0; slot < container->Size; slot++)
+            {
+                var item = container->GetInventorySlot(slot);
+                if (item != null && item->GetItemId() == itemId) count += (int)item->Quantity;
+            }
+        }
+        return count;
     }
 
     private void Transition(Step next, string status)
@@ -981,6 +1055,7 @@ public sealed unsafe class ChocoboStablesService
 
     private void Fail(string reason)
     {
+        if (batch != null) { batch.Stop(reason); reason = batch.Summary + " " + reason; }
         Cleanup(); IsFailed = true; IsComplete = false; StatusText = reason;
         Plugin.Log.Warning($"[Stables] {reason}");
     }
@@ -993,13 +1068,14 @@ public sealed unsafe class ChocoboStablesService
 
     public void Cancel()
     {
-        if (IsActive) { Cleanup(); IsFailed = true; IsComplete = false; StatusText = "Stable visit cancelled"; Plugin.Log.Information("[Stables] Cancelled owned visit"); }
+        if (IsActive) Fail("Stable visit cancelled");
     }
 
     public void Reset()
     {
         Cleanup(); IsComplete = IsFailed = Trained = Cleaned = false;
         NextTrainingUtc = DateTime.MinValue;
+        batch = null; rosterPages = 0;
         stableObject = 0; page = 0; selected = null; travelStarted = stableLookupLogged = rosterShapeLogged = false;
         nextAction = DateTime.MinValue;
     }

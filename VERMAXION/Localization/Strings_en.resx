@@ -6133,4 +6133,20 @@ Dependencies: {1}</value>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP Try to win: waiting to identify your side</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>All trainable</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>All trainable: trained {0}; skipped {1}; remaining {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>All trainable: trained {0}; skipped {1}; remaining {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>Selected chocobo is unavailable; no training dispatched.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Krakka Root inventory is unreadable; no training dispatched.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Insufficient Krakka Roots; remaining birds were not trained.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Training result is uncertain; no further training dispatched.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Batch verified.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>No eligible birds remain.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Revalidating the selected chocobo before training</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Stable visit cancelled</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Feed stock changed before Reward; no training dispatched.</value></data>
 </root>

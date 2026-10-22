@@ -3281,4 +3281,20 @@ Bağımlılıklar: {1}</value></data>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - Kazanmaya çalış: oyunun bildirdiği savaş alanı tarafı bekleniyor</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>Eğitilebilir tümü</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Bu ahırdaki hazır, sınırına ulaşmamış ve 20. rütbenin altındaki her kuşu bir kez eğitir. Yalnızca envanterdeki kökleri kullanır; stok eksikse veya sonuç belirsizse durur. Sayımlar geçicidir. Soğan ilerlemesi ayrıdır.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>Yapılandırılmış AutoRetainer aşamaları, etkin hesap zamanlayıcısı veya elle işlemlerle çalışır. Yalnızca boşta olmak çalışmayı başlatmaz.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>Kuş başına envanterden bir Krakka Root (8165) kullanılır; isteğe bağlı temizlik Magicked Stable Broom (8168) kullanır. Süpürge eksikliği eğitimi durdurmaz.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>So?an edinme, pazar ayarlar?n? veya tamamlanmam?? g?revlerin ?cretsiz ?d?llerini kullan?r. G?revler Wiggly Quest, uygun job ve seviye, MSQ ilerlemesi ve desteklenen rotalar gerektirir.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>Eğitilebilir tümü: eğitilen {0}; atlanan {1}; kalan {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>Eğitilebilir tümü: eğitilen {0}; atlanan {1}; kalan {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>Seçili chocobo kullanılamıyor; eğitim başlatılmadı.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Krakka Root envanteri okunamıyor; eğitim başlatılmadı.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Krakka Root yetersiz; kalan kuşlar eğitilmedi.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Eğitim sonucu belirsiz; başka eğitim başlatılmadı.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Toplu işlem doğrulandı.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>Uygun kuş kalmadı.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Eğitimden önce seçili chocobo yeniden doğrulanıyor</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Ahır ziyareti iptal edildi</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Reward öncesi yem stoku değişti; eğitim başlatılmadı.</value></data>
 </root>

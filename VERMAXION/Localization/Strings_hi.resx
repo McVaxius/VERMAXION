@@ -2602,4 +2602,20 @@
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - जीतने का प्रयास: युद्धक्षेत्र में अपने पक्ष की जानकारी खेल से मिलने की प्रतीक्षा</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>सभी प्रशिक्षण योग्य</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>इस अस्तबल में तैयार, सीमा तक न पहुँचे और रैंक 20 से नीचे के हर पक्षी को एक बार प्रशिक्षित करता है। केवल इन्वेंटरी की जड़ें उपयोग होती हैं; सामान कम या परिणाम अनिश्चित हो तो रुकता है। गिनती अस्थायी है। प्याज़ की प्रगति अलग है।</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>कॉन्फ़िगर किए AutoRetainer चरणों, सक्रिय खाता टाइमर या मैनुअल कार्रवाई से चलता है। केवल खाली रहने से रन शुरू नहीं होता।</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>हर पक्षी के लिए इन्वेंटरी से एक Krakka Root (8165) लगता है; वैकल्पिक सफ़ाई में Magicked Stable Broom (8168) लगता है। झाड़ू न होने पर प्रशिक्षण नहीं रुकता।</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>?????? ???? ?? ??? ???????????? ?????? ?? ????? ??????? ?? ????? ???????? ????? ???? ???? ????? ??????? ?? ??? Wiggly Quest, ??? ??? ?? ????, MSQ ?????? ?? ??????? ?????? ??????</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>सभी प्रशिक्षण योग्य: प्रशिक्षित {0}; छोड़े {1}; शेष {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>सभी प्रशिक्षण योग्य: प्रशिक्षित {0}; छोड़े {1}; शेष {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>चुना chocobo उपलब्ध नहीं है; प्रशिक्षण शुरू नहीं किया गया।</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Krakka Root की इन्वेंटरी पढ़ी नहीं जा सकती; प्रशिक्षण शुरू नहीं किया गया।</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Krakka Root कम हैं; बाकी पक्षियों का प्रशिक्षण नहीं हुआ।</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>प्रशिक्षण परिणाम अनिश्चित है; आगे प्रशिक्षण शुरू नहीं किया गया।</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>बैच सत्यापित है।</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>कोई योग्य पक्षी शेष नहीं है।</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>प्रशिक्षण से पहले चुने chocobo की फिर जाँच हो रही है</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>अस्तबल की यात्रा रद्द हुई</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Reward से पहले चारे की मात्रा बदल गई; प्रशिक्षण शुरू नहीं किया गया।</value></data>
 </root>

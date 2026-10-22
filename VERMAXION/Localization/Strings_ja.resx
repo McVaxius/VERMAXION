@@ -5777,4 +5777,20 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - 勝利を目指す：ゲーム側の戦場陣営情報を待機中</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>訓練可能なすべて</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>この厩舎で準備完了、上限未達、ランク20未満の鳥を各1回訓練します。所持品の根だけを使い、不足や結果不明時は停止します。件数は一時的です。オニオンによる育成は別扱いです。</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>設定済みのAutoRetainerフェーズ、有効なアカウントタイマー、手動操作から実行します。待機中というだけでは開始しません。</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>鳥1羽につき所持品のクラッカの野菜（8165）を1個使います。任意の清掃にはマジックブルーム（8168）を使います。ブルーム不足でも訓練は続けます。</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>???????????????????????????????????????????Wiggly Quest????????????MSQ??????????????</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>訓練可能なすべて：訓練済み {0}、スキップ {1}、残り {2}。</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>訓練可能なすべて：訓練済み {0}、スキップ {1}、残り {2}。 {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>選択したチョコボを確認できません。訓練は実行していません。</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>クラッカの野菜の所持数を読み取れません。訓練は実行していません。</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>クラッカの野菜が不足しています。残りの鳥は訓練していません。</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>訓練結果が不明です。以降の訓練は実行していません。</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>一括訓練を確認しました。</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>対象となる鳥は残っていません。</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>訓練前に選択したチョコボを再確認中</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>厩舎への訪問をキャンセルしました</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Rewardの前に飼料数が変わりました。訓練は実行していません。</value></data>
 </root>

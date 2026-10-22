@@ -6133,4 +6133,20 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="PvP Try to win: waiting to identify your side" xml:space="preserve">
     <value>PvP - Provare a vincere: in attesa dello schieramento sul campo di battaglia indicato dal gioco</value>
   </data>
+  <data name="All trainable" xml:space="preserve"><value>Tutti gli addestrabili</value></data>
+  <data name="Train each ready, uncapped bird below rank 20 in this stable once. Uses inventory roots; stops on missing stock or uncertain results. Counts are temporary. Onion progression is separate." xml:space="preserve"><value>Addestra una volta ogni volatile pronto, non al limite e sotto il rango 20 di questa stalla. Usa radici nell’inventario; si ferma se mancano o l’esito è incerto. I contatori sono temporanei. La progressione con le cipolle resta separata.</value></data>
+  <data name="Runs through configured AutoRetainer phases, the enabled account timer, or manual actions. Idle alone does not start a run." xml:space="preserve"><value>Si avvia tramite le fasi configurate di AutoRetainer, il timer account attivo o azioni manuali. La sola inattività non avvia un’esecuzione.</value></data>
+  <data name="Training uses one inventory Krakka Root (8165) per bird; optional cleaning uses a Magicked Stable Broom (8168). Missing brooms do not stop training." xml:space="preserve"><value>L’addestramento usa una radice di Krakka (8165) nell’inventario per volatile; la pulizia facoltativa usa una scopa magica da stalla (8168). Senza scope l’addestramento continua.</value></data>
+  <data name="Onion acquisition uses the Marketboard settings or unfinished free quest rewards. Free quests require Wiggly Quest, the right job and level, MSQ progress and supported routes." xml:space="preserve"><value>L?acquisizione di cipolle usa le impostazioni del mercato o ricompense gratuite di missioni incomplete. Le missioni richiedono Wiggly Quest, job e livello adatti, progressi MSQ e percorsi supportati.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}." xml:space="preserve"><value>Tutti gli addestrabili: addestrati {0}; saltati {1}; rimanenti {2}.</value></data>
+  <data name="All trainable: trained {0}; skipped {1}; remaining {2}. {3}" xml:space="preserve"><value>Tutti gli addestrabili: addestrati {0}; saltati {1}; rimanenti {2}. {3}</value></data>
+  <data name="Selected chocobo is unavailable; no training dispatched." xml:space="preserve"><value>Il chocobo selezionato non è disponibile; nessun addestramento avviato.</value></data>
+  <data name="Krakka Root inventory is unreadable; no training dispatched." xml:space="preserve"><value>Inventario delle radici di Krakka illeggibile; nessun addestramento avviato.</value></data>
+  <data name="Insufficient Krakka Roots; remaining birds were not trained." xml:space="preserve"><value>Radici di Krakka insufficienti; i volatili rimanenti non sono stati addestrati.</value></data>
+  <data name="Training result is uncertain; no further training dispatched." xml:space="preserve"><value>Esito dell’addestramento incerto; nessun altro addestramento avviato.</value></data>
+  <data name="Batch verified." xml:space="preserve"><value>Lotto verificato.</value></data>
+  <data name="No eligible birds remain." xml:space="preserve"><value>Nessun volatile idoneo rimanente.</value></data>
+  <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Nuova verifica del chocobo selezionato prima dell’addestramento</value></data>
+  <data name="Stable visit cancelled" xml:space="preserve"><value>Visita alla stalla annullata</value></data>
+  <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Le scorte sono cambiate prima di Reward; nessun addestramento avviato.</value></data>
 </root>

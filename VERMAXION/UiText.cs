@@ -64,6 +64,9 @@ internal sealed class UiText : IDisposable
             // intact; typed UI numbers are formatted by F with the selected culture.
             var args = Enumerable.Range(0, template.ArgumentCount)
                 .Select(index => (object)match.Groups[$"arg{index}"].Value).ToArray();
+            // This template's final argument is our authored visit status, not a native name/ID.
+            if (template.Key == "All trainable: trained {0}; skipped {1}; remaining {2}. {3}")
+                args[3] = T((string)args[3]);
             return string.Format(Current.Culture, Current.Resources.GetString(template.Key, false)!, args);
         }
         if (english.Contains('\n')) return string.Join("\n", english.Split('\n').Select(T));

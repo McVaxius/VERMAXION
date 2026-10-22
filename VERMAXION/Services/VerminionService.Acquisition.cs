@@ -34,9 +34,6 @@ public sealed partial class VerminionService
                 progress.PendingMatch != 0 || progress.PendingPurchase != null ||
                 !lifestream.TryReadBusy(out var busy) || busy)
                 throw new InvalidOperationException("Character, duty, purchase or travel work is unresolved.");
-            ReconcileLegacyAcquisitionMetadata();
-            if (progress.UnlockPriorityInserted)
-                throw new InvalidOperationException("Release the previous unlock priority in Questionable before starting this handoff.");
             if (new ushort[] { 434, 435, 1431 }.Any(id => !QuestManager.IsQuestComplete(id)))
                 throw new InvalidOperationException("Finish Verminion's Gold Saucer prerequisites first.");
 
@@ -45,17 +42,21 @@ public sealed partial class VerminionService
             const string provider = "WigglyQuest";
             if (ChocoboRaceService.QuestIpcPrefix != provider)
                 throw new InvalidOperationException("This acquisition needs WigglyQuest's native priority and quest-stop controls.");
+            RequireQuestAcquisitionIpc(provider);
+            ReconcileLegacyAcquisitionMetadata();
+            if (progress.UnlockPriorityInserted)
+                throw new InvalidOperationException("Release the previous unlock priority in Questionable before starting this handoff.");
             if (QuestCall<bool>(provider, "IsRunning") ||
-                QuestCall<List<string>>(provider, "GetPriorityQuests").Count != 0)
+                AcquisitionQuestList(provider, "Priority.Get").Count != 0)
                 throw new InvalidOperationException("Questionable already has a run or priority list. Finish or clear it before handing over minion acquisition.");
-            if (!QuestCall<bool>(provider, "GetStopConditionsEnabled") ||
-                QuestCall<List<string>>(provider, "GetStopQuestList").Contains(route[^1].ToString()))
+            var stops = AcquisitionStopSettings(provider);
+            if (!stops.Enabled || AcquisitionRewardStop(stops, route[^1]) != null)
                 throw new InvalidOperationException("Enable Questionable stop conditions and remove any existing stop for this reward quest before handing over acquisition.");
 
             var remaining = route.Where(id => !QuestManager.IsQuestComplete(id)).ToArray();
             if (remaining.Length == 0 || QuestManager.IsQuestComplete(route[^1]))
                 throw new InvalidOperationException("The reward quest is already complete. Register its minion item, then Resume Verminion.");
-            var blacklisted = QuestCall<List<string>>(provider, "GetBlacklistedQuests");
+            var blacklisted = AcquisitionQuestList(provider, "Blacklist.Get");
             if (remaining.FirstOrDefault(id => blacklisted.Contains(id.ToString())) is var blockedQuest && blockedQuest != 0)
                 throw new InvalidOperationException($"{AcquisitionQuestName(blockedQuest)} is blacklisted in Questionable. Remove that quest from its blacklist before starting acquisition.");
             var first = remaining[0];
@@ -74,21 +75,20 @@ public sealed partial class VerminionService
             progress.QuestAcquisition = new(Plugin.PlayerState.ContentId, minionId, provider, remaining);
             SaveAcquisition();
             SetState(VerminionState.Idle, "Handing minion acquisition to Questionable");
-            if (!Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{provider}.AddStopQuest").InvokeFunc(route[^1].ToString()))
-                throw new InvalidOperationException("Questionable rejected the reward quest stop.");
+            SetAcquisitionRewardStop(provider, route[^1], 1);
             foreach (var id in remaining)
                 if (!Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{provider}.AddQuestPriority").InvokeFunc(id.ToString()))
                     throw new InvalidOperationException("Questionable rejected an acquisition priority.");
-            if (!QuestCall<List<string>>(provider, "GetPriorityQuests").SequenceEqual(remaining.Select(id => id.ToString())) ||
-                !QuestCall<List<string>>(provider, "GetStopQuestList").Contains(route[^1].ToString()) ||
-                !QuestCall<bool>(provider, "GetStopConditionsEnabled"))
+            if (!AcquisitionQuestList(provider, "Priority.Get").SequenceEqual(remaining.Select(id => id.ToString())) ||
+                !HasAcquisitionRewardStop(provider, route[^1]))
                 throw new InvalidOperationException("Questionable priority/stop readback disagreed; no quest submitted.");
             acquisitionStopSent = false;
             preparedAcquisition = progress.QuestAcquisition;
             nextAcquisitionObservation = DateTime.UtcNow.AddSeconds(3);
-            // The provider resolves newly inserted priorities on its own update.
-            // Starting an accepted quest in this same frame can run its old selection.
-            reason = $"Waiting for Questionable to select {AcquisitionQuestName(first)} before starting acquisition. Verminion is paused.";
+            // Recheck native selection/readiness before the one-shot targeted dispatch.
+            // Idle Questionable need not resolve priorities while its quest window is closed.
+            reason = $"Preparing targeted Questionable dispatch for {AcquisitionQuestName(first)}. Verminion is paused.";
+            log.Information($"[Verminion] Native minion acquisition prepared; minion={minionId}; first={first}; reward={route[^1]}; priorities={remaining.Length}; reward stop=Pause after quest completion; IPC=3");
         }
         catch (Exception ex)
         {
@@ -100,14 +100,120 @@ public sealed partial class VerminionService
     private static T QuestCall<T>(string provider, string method) =>
         Plugin.PluginInterface.GetIpcSubscriber<T>($"{provider}.{method}").InvokeFunc();
 
+    private static void RequireQuestAcquisitionIpc(string provider)
+    {
+        var version = QuestCall<(int, int)>(provider, "ApiVersion");
+        if (version.Item1 != 3)
+            throw new InvalidOperationException($"Minion acquisition requires Questionable IPC 3.x; detected {version.Item1}.{version.Item2}.");
+    }
+
+    private static List<string> AcquisitionQuestList(string provider, string method) =>
+        ValidateAcquisitionQuestList(QuestCall<List<string>>(provider, method), method);
+
+    private static List<string> ValidateAcquisitionQuestList(List<string>? quests, string method)
+    {
+        if (quests == null || quests.Any(string.IsNullOrWhiteSpace) || quests.Distinct(StringComparer.Ordinal).Count() != quests.Count)
+            throw new InvalidOperationException($"Questionable {method} returned an unavailable or ambiguous quest list.");
+        return quests;
+    }
+
+    // IPC 3.x DTO fields match the provider's public wire contract.
+    private sealed class AcquisitionStopData
+    {
+        public AcquisitionStopData() { }
+        [Newtonsoft.Json.JsonProperty(Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonRequired]
+        public bool Enabled { get; set; }
+        [Newtonsoft.Json.JsonProperty(Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonRequired]
+        public List<AcquisitionStopEntry>? Conditions { get; set; }
+    }
+
+    private sealed class AcquisitionStopEntry
+    {
+        public AcquisitionStopEntry() { }
+        [Newtonsoft.Json.JsonProperty(Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonRequired]
+        public string Type { get; set; } = string.Empty;
+        [Newtonsoft.Json.JsonProperty(Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonRequired]
+        public int Mode { get; set; } = -1;
+        public int? Value { get; set; }
+        public string? QuestId { get; set; }
+        public int? Sequence { get; set; }
+    }
+
+    private sealed class AcquisitionStepData
+    {
+        public AcquisitionStepData() { }
+        [Newtonsoft.Json.JsonProperty(Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonRequired]
+        public string QuestId { get; set; } = string.Empty;
+        [Newtonsoft.Json.JsonProperty(Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonRequired]
+        public byte Sequence { get; set; }
+    }
+
+    private static bool AcquisitionSelectionMatches(string first, string? current, bool firstAccepted,
+        bool firstReadyToAccept, AcquisitionStepData? step, byte nativeSequence)
+    {
+        if (string.IsNullOrEmpty(first)) return false;
+        if (current != first)
+            return current == null && !firstAccepted && firstReadyToAccept;
+        return firstAccepted
+            ? step != null && step.QuestId == first && step.Sequence == nativeSequence
+            : firstReadyToAccept;
+    }
+
+    private static AcquisitionStopData AcquisitionStopSettings(string provider) =>
+        ValidateAcquisitionStopSettings(QuestCall<AcquisitionStopData>(provider, "StopConditions.Get"));
+
+    private static AcquisitionStopData ValidateAcquisitionStopSettings(AcquisitionStopData? settings)
+    {
+        if (settings?.Conditions == null || settings.Conditions.Any(entry => entry == null ||
+                string.IsNullOrWhiteSpace(entry.Type) || entry.Mode is < 0 or > 2 ||
+                (entry.Type is "QuestComplete" or "QuestAccept") && string.IsNullOrWhiteSpace(entry.QuestId)) ||
+            settings.Conditions.GroupBy(entry => (entry.Type,
+                entry.Type is "QuestComplete" or "QuestAccept" ? entry.QuestId : null)).Any(group => group.Count() > 1))
+            throw new InvalidOperationException("Questionable stop conditions are unavailable; no stop settings changed.");
+        return settings;
+    }
+
+    private static AcquisitionStopEntry? AcquisitionRewardStop(AcquisitionStopData settings, ushort reward)
+    {
+        var entries = settings.Conditions!.Where(entry => entry.Type == "QuestComplete" && entry.QuestId == reward.ToString()).ToArray();
+        if (entries.Length > 1)
+            throw new InvalidOperationException("Questionable has duplicate reward quest stops; no stop settings changed.");
+        return entries.SingleOrDefault();
+    }
+
+    private static bool IsAcquisitionRewardStop(AcquisitionStopEntry? entry) =>
+        entry is { Mode: 1, Sequence: null, Value: null };
+
+    private static bool HasAcquisitionRewardStop(string provider, ushort reward)
+    {
+        var settings = AcquisitionStopSettings(provider);
+        return settings.Enabled && IsAcquisitionRewardStop(AcquisitionRewardStop(settings, reward));
+    }
+
+    private static void SetAcquisitionRewardStop(string provider, ushort reward, int mode)
+    {
+        // Pause stops native automation without invoking the user's CommandAfterStop.
+        // A null Sequence means completion of the whole reward quest; Off removes only this key.
+        var result = Plugin.PluginInterface.GetIpcSubscriber<AcquisitionStopEntry, (bool, string?)>($"{provider}.StopConditions.Set")
+            .InvokeFunc(new() { Type = "QuestComplete", QuestId = reward.ToString(), Mode = mode });
+        if (!result.Item1)
+            throw new InvalidOperationException($"Questionable rejected the reward quest stop change: {result.Item2 ?? "no error detail"}.");
+    }
+
     private void ReconcileLegacyAcquisitionMetadata()
     {
         var progress = configManager.GetActiveConfig().VerminionProgress;
         if (!VerminionRoster.GentlemanQuests.Contains(progress.UnlockQuestId)) return;
+        RequireQuestAcquisitionIpc("WigglyQuest");
         if (progress.UnlockPriorityInserted &&
             (progress.UnlockQuestProvider != "WigglyQuest" ||
-             Plugin.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsQuestInPriority")
-                 .InvokeFunc(progress.UnlockQuestId.ToString())))
+             AcquisitionQuestList("WigglyQuest", "Priority.Get").Contains(progress.UnlockQuestId.ToString())))
             throw new InvalidOperationException("Release the previous Hildibrand priority in Questionable before starting Verminion again.");
         // Only discard the old claim after its priority is absent. Do not stop,
         // adopt or modify the separately launched native Questionable chain.
@@ -154,6 +260,7 @@ public sealed partial class VerminionService
                 handoff.RewardQuest != VerminionRoster.AcquisitionQuests(handoff.MinionId).LastOrDefault() ||
                 handoff.Quests.Any(id => !VerminionRoster.AcquisitionQuests(handoff.MinionId).Contains(id)))
                 throw new InvalidOperationException("Saved acquisition does not match a supported route; no provider action taken.");
+            RequireQuestAcquisitionIpc(handoff.Provider);
             var running = QuestCall<bool>(handoff.Provider, "IsRunning");
             var current = QuestCall<string?>(handoff.Provider, "GetCurrentQuestId");
             var rewardComplete = QuestManager.IsQuestComplete(handoff.RewardQuest);
@@ -189,23 +296,32 @@ public sealed partial class VerminionService
                 var first = handoff.Quests[0].ToString();
                 if (!ReferenceEquals(preparedAcquisition, handoff))
                     dispatchBlocker = "Minion acquisition preparation was interrupted. No quest started; use Acquire to start a new handoff.";
-                else if (current != first ||
-                    !QuestCall<List<string>>(handoff.Provider, "GetPriorityQuests").SequenceEqual(handoff.Quests.Select(id => id.ToString())) ||
-                    !QuestCall<bool>(handoff.Provider, "GetStopConditionsEnabled") ||
-                    !QuestCall<List<string>>(handoff.Provider, "GetStopQuestList").Contains(handoff.RewardQuest.ToString()) ||
-                    QuestCall<List<string>>(handoff.Provider, "GetBlacklistedQuests").Any(id => handoff.Quests.Any(quest => quest.ToString() == id)))
-                    dispatchBlocker = "Questionable did not select the requested acquisition quest with its priority and reward stop intact. No quest started; review its selection and settings before trying again.";
                 else
                 {
-                    preparedAcquisition = null;
-                    progress.QuestAcquisition = handoff with { DispatchAttempted = true };
-                    SaveAcquisition();
-                    var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{handoff.Provider}.StartQuest").InvokeFunc(first);
-                    reason = accepted
-                        ? $"Questionable is acquiring the required minion; native stop after {AcquisitionQuestName(handoff.RewardQuest)}. Verminion is paused."
-                        : "Questionable rejected acquisition; no automatic retry. Reconciling owned settings.";
-                    log.Information($"[Verminion] Native minion acquisition submitted; minion={handoff.MinionId}; first={first}; reward={handoff.RewardQuest}; accepted={accepted}");
-                    return;
+                    var prioritiesMatch = AcquisitionQuestList(handoff.Provider, "Priority.Get").SequenceEqual(handoff.Quests.Select(id => id.ToString()));
+                    var rewardStopMatches = HasAcquisitionRewardStop(handoff.Provider, handoff.RewardQuest);
+                    var blacklisted = AcquisitionQuestList(handoff.Provider, "Blacklist.Get").Any(id => handoff.Quests.Any(quest => quest.ToString() == id));
+                    var firstAccepted = Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{handoff.Provider}.IsQuestAccepted").InvokeFunc(first);
+                    var firstReady = Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{handoff.Provider}.IsReadyToAcceptQuest").InvokeFunc(first);
+                    var step = firstAccepted && current == first
+                        ? QuestCall<AcquisitionStepData?>(handoff.Provider, "GetCurrentStepData") : null;
+                    var nativeSequence = firstAccepted ? QuestManager.GetQuestSequence(handoff.Quests[0]) : (byte)0;
+                    var selectionMatches = AcquisitionSelectionMatches(first, current, firstAccepted, firstReady, step, nativeSequence);
+                    log.Information($"[Verminion] Acquisition dispatch preflight; first={first}; current={current ?? "none"}; firstAccepted={firstAccepted}; readyToAccept={firstReady}; selectionMatches={selectionMatches}; reportedSequence={step?.Sequence}; nativeSequence={nativeSequence}; prioritiesExact={prioritiesMatch}; rewardStopExact={rewardStopMatches}; routeBlacklisted={blacklisted}");
+                    if (!selectionMatches || !prioritiesMatch || !rewardStopMatches || blacklisted)
+                        dispatchBlocker = "Questionable acquisition preflight disagreed. No quest started; review its quest readiness, selection, priorities, blacklist and reward stop before trying again.";
+                    else
+                    {
+                        preparedAcquisition = null;
+                        progress.QuestAcquisition = handoff with { DispatchAttempted = true };
+                        SaveAcquisition();
+                        var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{handoff.Provider}.StartQuest").InvokeFunc(first);
+                        reason = accepted
+                            ? $"Questionable is acquiring the required minion; native stop after {AcquisitionQuestName(handoff.RewardQuest)}. Verminion is paused."
+                            : "Questionable rejected acquisition; no automatic retry. Reconciling owned settings.";
+                        log.Information($"[Verminion] Native minion acquisition submitted; minion={handoff.MinionId}; first={first}; reward={handoff.RewardQuest}; accepted={accepted}");
+                        return;
+                    }
                 }
             }
 
@@ -214,16 +330,22 @@ public sealed partial class VerminionService
             foreach (var id in handoff.Quests)
             {
                 var key = id.ToString();
-                if (QuestCall<List<string>>(handoff.Provider, "GetPriorityQuests").Contains(key) &&
-                    !Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{handoff.Provider}.RemovePriorityQuest").InvokeFunc(key))
-                    throw new InvalidOperationException("Questionable could not release an owned priority; cleanup remains pending.");
+                if (AcquisitionQuestList(handoff.Provider, "Priority.Get").Contains(key))
+                {
+                    var removed = Plugin.PluginInterface.GetIpcSubscriber<string, (bool, string?)>($"{handoff.Provider}.Priority.Remove").InvokeFunc(key);
+                    if (!removed.Item1)
+                        throw new InvalidOperationException($"Questionable could not release an owned priority ({removed.Item2}); cleanup remains pending.");
+                }
             }
-            var rewardKey = handoff.RewardQuest.ToString();
-            if (QuestCall<List<string>>(handoff.Provider, "GetStopQuestList").Contains(rewardKey) &&
-                !Plugin.PluginInterface.GetIpcSubscriber<string, bool>($"{handoff.Provider}.RemoveStopQuest").InvokeFunc(rewardKey))
-                throw new InvalidOperationException("Questionable could not release the owned reward stop; cleanup remains pending.");
-            if (QuestCall<List<string>>(handoff.Provider, "GetPriorityQuests").Any(id => handoff.Quests.Any(quest => quest.ToString() == id)) ||
-                QuestCall<List<string>>(handoff.Provider, "GetStopQuestList").Contains(rewardKey))
+            var rewardStop = AcquisitionRewardStop(AcquisitionStopSettings(handoff.Provider), handoff.RewardQuest);
+            if (rewardStop != null)
+            {
+                if (!IsAcquisitionRewardStop(rewardStop))
+                    throw new InvalidOperationException("Questionable's owned reward stop was changed; cleanup remains pending without modifying it.");
+                SetAcquisitionRewardStop(handoff.Provider, handoff.RewardQuest, 0);
+            }
+            if (AcquisitionQuestList(handoff.Provider, "Priority.Get").Any(id => handoff.Quests.Any(quest => quest.ToString() == id)) ||
+                AcquisitionRewardStop(AcquisitionStopSettings(handoff.Provider), handoff.RewardQuest) != null)
                 throw new InvalidOperationException("Questionable cleanup readback disagreed; the handoff remains reserved.");
             config.VerminionPaused = true;
             preparedAcquisition = null;
