@@ -63,12 +63,16 @@ namespace VERMAXION.Beastmaster
 
         private readonly Dictionary<string, BeastmasterReadRecovery> readRecovery = [];
         private readonly Dictionary<string, BeastmasterMenuSubmission> submittedWindows = [];
+        private nint rejectedLootAddress;
+        private nint acknowledgedLootNotice;
+        private DateTime nextLootNotice;
         private nint resultAddress;
         private bool resultsRecorded;
         private bool resultExitPending;
         private DateTime nextResultExit;
 
         public string Status { get; private set; } = "";
+        internal bool LootRejectionPending => this.rejectedLootAddress != 0;
 
         private static BeastmasterSettings Config => BeastmasterRuntime.Settings;
 
@@ -84,6 +88,9 @@ namespace VERMAXION.Beastmaster
             this.ResetShopVisit();
             this.readRecovery.Clear();
             this.submittedWindows.Clear();
+            this.rejectedLootAddress = 0;
+            this.acknowledgedLootNotice = 0;
+            this.nextLootNotice = default;
             this.resultAddress = 0;
             this.resultsRecorded = false;
             this.resultExitPending = false;
@@ -98,6 +105,7 @@ namespace VERMAXION.Beastmaster
             Shift(ref this.feedFrom); Shift(ref this.itemNext); Shift(ref this.itemLastUse);
             Shift(ref this.itemMenuFrom); Shift(ref this.nextResultExit);
             Shift(ref this.nextConfirmation);
+            Shift(ref this.nextLootNotice);
             foreach (var window in this.submittedWindows.Keys.ToArray())
                 this.submittedWindows[window] = this.submittedWindows[window].ResumeAfterPause(elapsed);
             foreach (var recovery in this.readRecovery.Values) recovery.ResumeAfterPause(elapsed);
@@ -112,6 +120,9 @@ namespace VERMAXION.Beastmaster
                 return;
 
             this.ObserveWindowChanges();
+
+            if ((this.LootRejectionPending || CrucibleUi.IsVisible(CrucibleUi.LootWindow)) &&
+                this.HandleLootRejection(now, CrucibleUi.LootRejectionText)) return;
 
             // Only a result exit submitted by this run owns this confirmation.
             if (this.resultExitPending && CrucibleUi.TryReady(CrucibleUi.YesNo, out AtkUnitBase* leaveConfirm))
@@ -198,6 +209,78 @@ namespace VERMAXION.Beastmaster
 
         }
 
+        internal bool HandleLootRejection(DateTime now, string expected)
+        {
+            if (!BeastmasterService.IsCrucibleTerritory(Svc.ClientState.TerritoryType))
+            {
+                this.rejectedLootAddress = 0;
+                this.acknowledgedLootNotice = 0;
+                this.nextLootNotice = default;
+                return false;
+            }
+
+            var loot = (AtkUnitBase*)Svc.GameGui.GetAddonByName(CrucibleUi.LootWindow).Address;
+            if (loot != null && !loot->IsVisible) loot = null;
+            if (loot == null && !this.LootRejectionPending) return false;
+            if (loot != null && this.rejectedLootAddress != (nint)loot)
+            {
+                this.rejectedLootAddress = 0;
+                this.acknowledgedLootNotice = 0;
+                this.nextLootNotice = default;
+            }
+
+            var notice = CrucibleUi.LootRejectionNotice(expected, out var anyVisibleOk);
+            if (notice != null)
+            {
+                if (!this.LootRejectionPending && loot != null)
+                {
+                    this.rejectedLootAddress = (nint)loot;
+                    // The rejection settles the failed Take All attempt. Its old
+                    // submission delay must not defer closing this loot visit.
+                    this.submittedWindows.Remove(CrucibleUi.LootWindow);
+                    if (this.confirmationWindow == CrucibleUi.LootWindow)
+                    {
+                        this.confirmationWindow = null;
+                        this.confirmationAddress = 0;
+                    }
+                    Svc.Log.Warning("[Crewcible] Take All was rejected; clearing its notices and closing this loot window without further takes.");
+                }
+                this.Status = "Loot";
+                if (this.acknowledgedLootNotice == (nint)notice && now < this.nextLootNotice) return true;
+                var button = ((FFXIVClientStructs.FFXIV.Client.UI.AddonSelectOk*)notice)->OkButton;
+                if (button == null || !button->IsEnabled) return true;
+                this.acknowledgedLootNotice = (nint)notice;
+                this.nextLootNotice = now + BeastmasterReadRecovery.Delay;
+                new AddonMaster.SelectOk(notice).Ok();
+                return true;
+            }
+
+            // Do not retry the parent beneath an unrelated or unsettled modal.
+            if (anyVisibleOk) return true;
+            if (!this.LootRejectionPending) return false;
+            if (this.ConfirmOwnedMenu(now)) return true;
+            if (loot == null)
+            {
+                if (now < this.nextLootNotice) return true;
+                // Closing can hide the parent before its abandonment question
+                // arrives. Use the existing submission window to let it settle.
+                if (this.confirmationWindow == CrucibleUi.LootWindow &&
+                    this.confirmationAddress == this.rejectedLootAddress &&
+                    now - this.confirmFrom < BeastmasterReadRecovery.Delay) return true;
+                this.rejectedLootAddress = 0;
+                this.acknowledgedLootNotice = 0;
+                this.nextLootNotice = default;
+                return false;
+            }
+            this.acknowledgedLootNotice = 0;
+            this.nextLootNotice = default;
+            if (!loot->IsReady || CrucibleUi.IsVisible(CrucibleUi.YesNo) ||
+                this.WasSubmitted(CrucibleUi.LootWindow, loot)) return true;
+            Screens.Booty.Close(loot);
+            this.Submitted(CrucibleUi.LootWindow, loot);
+            return true;
+        }
+
         private void ObserveWindowChanges()
         {
             foreach (var window in this.readRecovery.Keys.ToArray())
@@ -240,19 +323,23 @@ namespace VERMAXION.Beastmaster
         {
             if (this.confirmationWindow == null) return false;
             var source = CrucibleUi.Ready(this.confirmationWindow);
-            if (!CrucibleUi.IsVisible(this.confirmationWindow) || source != null && (nint)source != this.confirmationAddress)
+            var rejectedLootClose = this.LootRejectionPending && this.confirmationWindow == CrucibleUi.LootWindow &&
+                this.confirmationAddress == this.rejectedLootAddress;
+            if (!rejectedLootClose && (!CrucibleUi.IsVisible(this.confirmationWindow) ||
+                source != null && (nint)source != this.confirmationAddress))
             {
                 this.confirmationWindow = null;
                 this.confirmationAddress = 0;
                 return false;
             }
-            if (source == null || !CrucibleUi.TryReady(CrucibleUi.YesNo, out AtkUnitBase* confirm)) return false;
+            if ((source == null && !rejectedLootClose) || !CrucibleUi.TryReady(CrucibleUi.YesNo, out AtkUnitBase* confirm)) return false;
             var yes = ((FFXIVClientStructs.FFXIV.Client.UI.AddonSelectYesno*)confirm)->YesButton;
             if (now >= this.nextConfirmation && yes != null && yes->IsEnabled)
             {
                 new AddonMaster.SelectYesno(confirm).Yes();
                 this.nextConfirmation = now + BeastmasterReadRecovery.Delay;
-                this.submittedWindows[this.confirmationWindow] = new((nint)source, now);
+                this.submittedWindows[this.confirmationWindow] = new(this.confirmationAddress, now);
+                if (rejectedLootClose) this.confirmFrom = now;
                 if (this.FeedPending(now))
                 {
                     this.feedFrom = DateTime.MinValue;
@@ -278,6 +365,7 @@ namespace VERMAXION.Beastmaster
         internal bool RecoverUnreadable(BeastmasterReadUnavailableException exception)
         {
             var window = exception.Window;
+            if (window == CrucibleUi.LootWindow && this.LootRejectionPending) return false;
             var addon = CrucibleUi.Ready(window);
             if (addon == null || this.WasSubmitted(window, addon)) return false;
             if (!this.readRecovery.TryGetValue(window, out var recovery))

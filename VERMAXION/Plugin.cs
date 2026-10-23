@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     internal const string BeastmasterTaskId = "Run##Beastmaster";
     internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
-    private const string DebugAttemptMarker = "vmx-verminion-client5-20261022-65";
+    private const string DebugAttemptMarker = "vmx-verminion-client5-20261022-91";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -1299,30 +1299,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         { SetDebugTaskStatus("Blocked: this reload task belongs to a different character."); return; }
         if (VerminionService.HasQuestAcquisition)
         {
-#if DEBUG
-            if (taskId == AutomationCatalog.VerminionQueue &&
-                string.Equals(PluginInterface.AssemblyLocation.FullName, @"A:\ff14\parasite\vmx\VERMAXION.dll", StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(PluginInterface.ConfigDirectory.FullName.TrimEnd('\\'), @"A:\ff14\XIVLauncher5\pluginConfigs\VERMAXION", StringComparison.OrdinalIgnoreCase))
-            {
-                try
-                {
-                    unsafe
-                    {
-                        var game = FFXIVClientStructs.FFXIV.Client.Game.GameMain.Instance();
-                        var run = Newtonsoft.Json.Linq.JObject.FromObject(PluginInterface.GetIpcSubscriber<object>("WigglyQuest.Run.GetState").InvokeFunc());
-                        if (game == null || game->CurrentContentFinderConditionId != 76 ||
-                            (string?)run["QuestId"] != "1318" || (int?)run["Sequence"] != 6 ||
-                            (bool?)run["Running"] != true || (string?)run["TaskName"] != "Wait(AutoDuty, left instance 76)" ||
-                            !PluginInterface.GetIpcSubscriber<bool>("ADS.IsDutyOwned").InvokeFunc() ||
-                            Condition[ConditionFlag.InCombat] || Condition[ConditionFlag.BetweenAreas] || Condition[ConditionFlag.BetweenAreas51])
-                            throw new InvalidOperationException("Owned trial cancellation preflight disagreed; no stop sent.");
-                    }
-                    Log.Information("[VerminionTest] Owned trial navigation is alternating stale Shortcut and frontier; invoking existing CancelQuestAcquisition once before repair. No win or quest completion credited.");
-                    VerminionService.CancelQuestAcquisition();
-                }
-                catch (Exception ex) { Log.Warning($"[VerminionTest] Owned trial cancellation ended: {ex.Message}"); }
-            }
-#endif
             SetDebugTaskStatus("Questionable owns minion acquisition; this reload only observes the saved handoff.");
             return;
         }

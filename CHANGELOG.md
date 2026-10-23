@@ -1,3 +1,15 @@
+2026-10-22 - Recognize Take All rejections with extra popup text
+
+- Fuzzy-search localized rejection wording inside the full popup text, tolerating added text, line breaks and spacing. The previous matcher required conditional message sections that the sheet text reader omits.
+- Preserve recovery of queued notices and parent loot closure, including its abandonment confirmation, before continuing the board. Skip only the rejected loot visit; later loot preferences and collection remain unchanged.
+- Validation: all 233 focused Beastmaster/dependency tests passed, including a real encoded conditional-message regression exercising native OK and parent Close callbacks. Z:\vmx.bat completed successfully with zero errors and five existing warnings at unchanged version 2.2.0.8. Actual client recovery remains unverified.
+
+2026-10-22 - Continue Crewcible after a rejected Take All
+
+- Recognize the game's localized Take All rejection, acknowledge its queued OK notices and close that loot window before continuing the current board. Handle notices already open on Start or reload without another Take All attempt.
+- Skip remaining rewards only for the rejected loot visit. Preserve saved loot preferences and later loot visits, keep the existing close confirmation, and hold route progression until the notices and parent window settle.
+- Validation: isolated Debug compilation and all 228 focused Beastmaster/dependency tests passed, including 13 new native-menu and localized-matching cases. All fifteen locale catalogs passed validation. The authorized Z:\vmx.bat shared build passed with zero errors and five existing warnings at version 2.2.0.8; actual client recovery remains awaiting acceptance.
+
 2026-10-22 - Train every eligible bird in the selected stable (I628)
 
 - Add All trainable to the existing per-character target selector without changing saved target values or defaults. Scan every page and include the personal bird once; train only ready, uncapped birds below rank 20 in that one stable.

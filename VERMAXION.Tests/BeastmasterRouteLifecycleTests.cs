@@ -9,6 +9,8 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Gui = host::FFXIVClientStructs.FFXIV.Component.GUI;
+using NativeUi = host::FFXIVClientStructs.FFXIV.Client.UI;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -490,6 +492,206 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.Equal(originalFlags, savedList.Select(entry => (entry.ID, entry.PickBlock, entry.BattleBlock)));
     }
 
+    private const string SyntheticLootReference = "Synthetic item capacity.\nSynthetic gear capacity.\nSynthetic token capacity.\nSynthetic finish.";
+    private const string SyntheticGearNotice = "Synthetic gear capacity.\nSynthetic finish.";
+
+    [Fact]
+    public void LootCapacityConditionalSheetTextMatchesRenderedNoticeAndClosesTheOwnedLootVisit()
+    {
+        // Lumina's ExtractText omits the evaluated If branches. The previous
+        // fixtures supplied their text directly and missed this production shape.
+        var row = new host::Lumina.Text.SeStringBuilder();
+        row.Append("Unable to take all.");
+        row.AppendNewLine();
+        row.BeginMacro(host::Lumina.Text.Payloads.MacroCode.If);
+        row.AppendUIntExpression(1);
+        row.AppendStringExpression("You will exceed the capacity of your beast gear inventory.");
+        row.AppendStringExpression("");
+        row.EndMacro();
+        row.AppendNewLine();
+        row.Append("Please select which rewards to take.");
+        var expected = row.ToReadOnlySeString().ExtractText();
+        Assert.DoesNotContain("beast gear", expected);
+        Assert.Contains("Unable to take all.", expected);
+
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var menus = Field(host.CreateService(), "menus")!;
+        var loot = host.AddLoot();
+        host.AddOk("Additional information.\nUNABLE TO TAKE ALL.\nYou will exceed the capacity of your beast gear inventory.\nPlease select which rewards to take.\nAdditional details.");
+        var now = DateTime.UtcNow;
+
+        Assert.True(HandleLootRejection(menus, now, expected));
+        Assert.Equal(1, host.OkClicks);
+        Assert.Equal(0, host.TakeAllClicks);
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(1), expected));
+        Assert.Equal(1, host.LootCloseCallbacks);
+        Assert.Equal(0, host.TakeAllClicks);
+        host.ShowAddon(loot, false);
+        Assert.False(HandleLootRejection(menus, now.AddSeconds(6), expected));
+        Assert.False(Read<bool>(menus, "LootRejectionPending"));
+    }
+
+    [Fact]
+    public void LootCapacityStackAcknowledgesAllEighteenNoticesThenClosesWithoutRepeatingTakeAll()
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var service = host.CreateService();
+        var menus = Field(service, "menus")!;
+        var loot = host.AddLoot();
+        Assert.True(host.TakeAll(loot));
+        Assert.Equal(1, host.TakeAllClicks);
+        host.RecordLootSubmission(menus, loot);
+        for (var index = 0; index < 18; index++) host.AddOk(SyntheticGearNotice);
+        var now = DateTime.UtcNow;
+
+        for (var index = 0; index < 18; index++)
+        {
+            Assert.True(HandleLootRejection(menus, now.AddMilliseconds(index), SyntheticLootReference));
+            Assert.Equal(index + 1, host.OkClicks);
+            Assert.Equal(1, host.TakeAllClicks);
+            Assert.Equal(0, host.LootCloseCallbacks);
+            Assert.True(Read<bool>(menus, "LootRejectionPending"));
+        }
+        Assert.Null(Field(menus, "confirmationWindow"));
+        var unrelated = host.AddOk("Synthetic unrelated alert.");
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(30), SyntheticLootReference));
+        Assert.Equal(18, host.OkClicks);
+        Assert.Equal(0, host.LootCloseCallbacks);
+        host.ShowAddon(unrelated, false);
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(50), SyntheticLootReference));
+        Assert.Equal(1, host.LootCloseCallbacks);
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(100), SyntheticLootReference));
+        Assert.Equal(1, host.LootCloseCallbacks);
+        Assert.Equal(1, host.TakeAllClicks);
+
+        // Even after the ordinary five-second submission protection expires,
+        // a still-open rejected parent retries Close rather than Take All.
+        var submissions = (System.Collections.IDictionary)Field(menus, "submittedWindows")!;
+        var submissionType = submissions.GetType().GetGenericArguments()[1];
+        submissions["XBMContentsBooty"] = Activator.CreateInstance(submissionType,
+            loot, DateTime.UtcNow.AddSeconds(-6));
+        Assert.True(HandleLootRejection(menus, now.AddSeconds(6), SyntheticLootReference));
+        Assert.Equal(2, host.LootCloseCallbacks);
+        Assert.Equal(1, host.TakeAllClicks);
+        host.ShowAddon(loot, false);
+        Invoke(menus, "ObserveWindowChanges");
+        Assert.False(HandleLootRejection(menus, now.AddSeconds(12), SyntheticLootReference));
+        Assert.False(Read<bool>(menus, "LootRejectionPending"));
+        // The game can reuse an addon address on a later loot visit. A prior
+        // rejection must not turn that fresh visit into another forced close.
+        host.ShowAddon(loot, true);
+        Assert.False(HandleLootRejection(menus, now.AddSeconds(13), SyntheticLootReference));
+        Assert.True(host.TakeAll(loot));
+        Assert.Equal(2, host.TakeAllClicks);
+        Assert.Equal(2, host.LootCloseCallbacks);
+    }
+
+    [Fact]
+    public void AlreadyOpenLootNoticeWaitsForNativeClosureAndDelayedAbandonmentBeforeRouteContinues()
+    {
+        using var host = new HostFixture { Territory = 1340 };
+        host.EnableNativeUi();
+        var service = host.CreateService();
+        var menus = Field(service, "menus")!;
+        var loot = host.AddLoot();
+        var notice = host.AddOk(SyntheticGearNotice, hideOnClick: false);
+        var now = DateTime.UtcNow;
+        // No Take All submission history exists: this also covers Start/reload
+        // while the native capacity popup is already open.
+        Assert.True(HandleLootRejection(menus, now, SyntheticLootReference));
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(10), SyntheticLootReference));
+        Assert.Equal(1, host.OkClicks);
+        Assert.Equal(0, host.TakeAllClicks);
+        Assert.Equal(0, host.LootCloseCallbacks);
+        host.ShowAddon(notice, false);
+        // The parent can also hide after OK, before Close has been submitted.
+        host.ShowAddon(loot, false);
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(20), SyntheticLootReference));
+        Assert.True(Read<bool>(menus, "LootRejectionPending"));
+        Assert.Equal(0, host.LootCloseCallbacks);
+        host.ShowAddon(loot, true);
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(25), SyntheticLootReference));
+        Assert.Equal(1, host.LootCloseCallbacks);
+
+        var route = CreateRoute(service, 1340);
+        var actions = (JArray)Field(route, "actions")!;
+        var move = actions.Select((action, index) => (action, index))
+            .First(entry => entry.action!.Value<string>("Name") == "MoveTo").index;
+        Set(route, "Step", move);
+        var destination = RoutePosition(route, "MoveTo", 0);
+        host.Position = destination + new Vector3(0, 0, 8);
+        Set(service, "route", route);
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = 2 });
+        Set(service, "owner", 17UL);
+        Set(service, "operatorStopped", false);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+        Set(Field(service, "combat")!, "IsRunning", true);
+        // Native close can hide the parent before its abandonment question is
+        // ready. Pending ownership, rather than a visible-parent assumption,
+        // keeps the route from walking away during that interval.
+        host.ShowAddon(loot, false);
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(30), SyntheticLootReference));
+        host.SuppressOrdinaryMenuTick();
+        Invoke(service, "Update");
+        Assert.Equal(move, Read<int>(route, "Step"));
+        Assert.Empty(host.MovementCommands);
+        host.AddYesNo();
+        Assert.True(HandleLootRejection(menus, now.AddMilliseconds(40), SyntheticLootReference));
+        Assert.Equal(1, host.YesClicks);
+        Assert.Equal(0, host.TakeAllClicks);
+        Assert.False(HandleLootRejection(menus, now.AddSeconds(6), SyntheticLootReference));
+        Assert.False(Read<bool>(menus, "LootRejectionPending"));
+        host.SuppressOrdinaryMenuTick();
+        Invoke(service, "Update");
+        Assert.Single(host.MovementCommands);
+        Assert.Equal(move, Read<int>(route, "Step"));
+    }
+
+    [Theory]
+    [InlineData("unrelated")]
+    [InlineData("no parent")]
+    [InlineData("outside Crucible")]
+    [InlineData("not ready")]
+    [InlineData("disabled OK")]
+    public void LootCapacityHandlingLeavesUnrelatedOrUnownedNativeNoticesAlone(string scenario)
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var menus = Field(host.CreateService(), "menus")!;
+        if (scenario != "no parent") host.AddLoot();
+        var notice = host.AddOk(scenario == "unrelated" ? "Synthetic unrelated alert." : SyntheticGearNotice);
+        if (scenario == "outside Crucible") host.Territory = 148;
+        if (scenario == "not ready") host.SetAddonReady(notice, false);
+        if (scenario == "disabled OK") host.SetOkEnabled(notice, false);
+        var handled = HandleLootRejection(menus, DateTime.UtcNow, SyntheticLootReference);
+        Assert.Equal(scenario is not ("no parent" or "outside Crucible"), handled);
+        Assert.False(Read<bool>(menus, "LootRejectionPending"));
+        Assert.Equal(0, host.OkClicks);
+        Assert.Equal(0, host.YesClicks);
+        Assert.Equal(0, host.TakeAllClicks);
+        Assert.Equal(0, host.LootCloseCallbacks);
+    }
+
+    [Theory]
+    [InlineData("物品が満杯です。\n装備が満杯です。\n証が満杯です。\n報酬を選んでください。", "装備が満杯です。\n報酬を選んでください。", true)]
+    [InlineData("Inventaire plein.\nÉquipement plein.\nJetons pleins.\nChoisissez les récompenses.", "  Équipement   plein.\r\nChoisissez les récompenses. ", true)]
+    [InlineData(SyntheticLootReference, "Synthetic gear capacity.\nDifferent finish.", true)]
+    [InlineData(SyntheticLootReference, "Synthetic token capacity.\nSynthetic gear capacity.\nSynthetic finish.", true)]
+    [InlineData("Unable to take all.\nPlease select which rewards to take.", "Extra text: unable  to\ntake all. More details.", true)]
+    [InlineData("Please select which rewards to take.", "Capacity warning.\nPlease select which rewards to take.\nAdditional details.", true)]
+    [InlineData("Unable to take all.\nPlease select which rewards to take.", "An unrelated notice.", false)]
+    [InlineData("", "An unrelated notice.", false)]
+    public void LootRejectionMatchingFindsLocalizedPhrasesWithinRenderedNoticeText(string expected, string actual, bool matches)
+    {
+        var ui = Production.GetType("VERMAXION.Beastmaster.CrucibleUi", true)!;
+        Assert.Equal(matches, (bool)ui.GetMethod("MatchesLootRejection", Static)!.Invoke(null, [actual, expected])!);
+    }
+
+    private static bool HandleLootRejection(object menus, DateTime now, string expected)
+        => (bool)Invoke(menus, "HandleLootRejection", now, expected)!;
+
     private static void AssertNewPlan(object service)
     {
         var settings = (live::VERMAXION.Beastmaster.BeastmasterSettings)Field(service, "runSettings")!;
@@ -535,7 +737,7 @@ public sealed class BeastmasterRouteLifecycleTests
         protected override object? Invoke(MethodInfo? method, object?[]? args) => Handler(method!, args);
     }
 
-    private sealed class HostFixture : IDisposable
+    private sealed unsafe class HostFixture : IDisposable
     {
         private readonly List<Action> restore = [];
         private readonly Type svc = Assembly.Load("ECommons").GetType("ECommons.DalamudServices.Svc", true)!;
@@ -545,12 +747,23 @@ public sealed class BeastmasterRouteLifecycleTests
         private readonly object log;
         private readonly List<host::Dalamud.Game.ClientState.Objects.Types.IGameObject> objects = [];
         private nint nativePlayerSlot;
+        private nint nativeAtkModule;
+        private readonly Dictionary<string, nint> addons = [];
+        private readonly List<Delegate> nativeCallbacks = [];
+        private readonly Dictionary<nint, Action<int>> addonEvents = [];
+        private readonly List<(string Name, int Param)> receivedEvents = [];
+        private readonly List<(string Name, int Param)> firedCallbacks = [];
+        private const int TakeAllParam = 7009;
         public Vector3 Position;
         public uint Territory = 1339;
         public bool Pathfinding;
         public readonly HashSet<string> Conditions = [];
         public readonly List<string> Commands = [];
         public readonly List<string> Warnings = [];
+        public int OkClicks => receivedEvents.Count(entry => entry.Name == "SelectOk");
+        public int YesClicks => receivedEvents.Count(entry => entry.Name == "SelectYesno");
+        public int TakeAllClicks => receivedEvents.Count(entry => entry.Name == "XBMContentsBooty" && entry.Param == TakeAllParam);
+        public int LootCloseCallbacks => firedCallbacks.Count(entry => entry.Name == "XBMContentsBooty" && entry.Param == 0);
         public List<string> MovementCommands => Commands.Where(command => command.StartsWith("/vnav moveto ", StringComparison.Ordinal)).ToList();
 
         public HostFixture()
@@ -583,7 +796,13 @@ public sealed class BeastmasterRouteLifecycleTests
                 Replace(svc, "Objects", objects);
                 Replace(svc, "Condition", conditions);
                 Replace(svc, "Log", log);
-                Replace(svc, "GameGui", Proxy(typeof(host::Dalamud.Plugin.Services.IGameGui), (method, _) => Default(method.ReturnType)));
+                var gameGui = Proxy(typeof(host::Dalamud.Plugin.Services.IGameGui), (method, args) =>
+                    method.Name == "GetAddonByName" && args?.FirstOrDefault() is string name
+                        ? new host::Dalamud.Game.NativeWrapper.AtkUnitBasePtr(addons.GetValueOrDefault(name))
+                        : Default(method.ReturnType));
+                Replace(svc, "GameGui", gameGui);
+                Replace(typeof(live::VERMAXION.Plugin), "GameGui", gameGui);
+                Replace(typeof(live::VERMAXION.Plugin), "Log", log);
                 Replace(svc, "ClientState", Proxy(typeof(host::Dalamud.Plugin.Services.IClientState), (method, _) => method.Name switch
                 {
                     "get_TerritoryType" => Territory, "get_IsLoggedIn" => true, _ => Default(method.ReturnType),
@@ -639,6 +858,191 @@ public sealed class BeastmasterRouteLifecycleTests
             NativePlayerAvailable = true;
         }
         public bool NativePlayerAvailable { set => Marshal.WriteIntPtr(nativePlayerSlot, value ? (nint)1 : 0); }
+
+        // Existing generated native-address seams point only at allocations and
+        // callbacks owned by this fixture. No game process or client is involved.
+        public void EnableNativeUi()
+        {
+            var framework = Allocate<host::FFXIVClientStructs.FFXIV.Client.System.Framework.Framework>();
+            var frameworkSlot = Allocate<nint>();
+            *frameworkSlot = (nint)framework;
+            ReplaceNativeAddress(typeof(host::FFXIVClientStructs.FFXIV.Client.System.Framework.Framework), "Instance", (nint)frameworkSlot);
+            var ui = Allocate<NativeUi.UIModule>();
+            var atk = Allocate<NativeUi.RaptureAtkModule>();
+            var uiAddress = (nint)ui;
+            nativeAtkModule = (nint)atk;
+            ReplaceNativeAddress(typeof(host::FFXIVClientStructs.FFXIV.Client.System.Framework.Framework), "GetUIModule",
+                CallbackPointer(new NativeGetter(_ => uiAddress)));
+            var uiVtable = AllocatePointers(16);
+            uiVtable[7] = CallbackPointer(new NativeGetter(_ => nativeAtkModule));
+            *(nint*)ui = (nint)uiVtable;
+
+            ReplaceNativeAddress(typeof(Gui.AtkUldManager), "SearchNodeById", CallbackPointer(new NativeFindNode((manager, id) =>
+            {
+                var uld = (Gui.AtkUldManager*)manager;
+                for (var index = 0; index < uld->NodeListCount; index++)
+                    if (uld->NodeList[index] != null && uld->NodeList[index]->NodeId == id) return (nint)uld->NodeList[index];
+                return 0;
+            })));
+            ReplaceNativeAddress(typeof(Gui.AtkResNode), "IsVisible", CallbackPointer(new NativePredicate(node =>
+                (byte)((((Gui.AtkResNode*)node)->NodeFlags & Gui.NodeFlags.Visible) != 0 ? 1 : 0))));
+            ReplaceNativeAddress(typeof(Gui.AtkResNode), "GetAsAtkComponentNode", CallbackPointer(new NativeGetter(node => node)));
+            ReplaceNativeAddress(typeof(Gui.AtkComponentBase), "GetComponentType", CallbackPointer(new NativeIntGetter(_ => (int)Gui.ComponentType.Button)));
+            var fire = CallbackPointer(new NativeFireCallback(FireNativeCallback));
+            ReplaceNativeAddress(typeof(Gui.AtkUnitBase), "FireCallback", fire);
+            var callbackType = Assembly.Load("ECommons").GetType("ECommons.Automation.Callback", true)!;
+            if (callbackType.GetField("FireCallback", Static) is { } callbackField)
+            {
+                var previous = callbackField.GetValue(null);
+                callbackField.SetValue(null, Delegate.CreateDelegate(callbackField.FieldType, this,
+                    GetType().GetMethod(nameof(FireNativeCallback), Instance)!));
+                restore.Add(() => callbackField.SetValue(null, previous));
+            }
+            var throttlerType = Assembly.Load("ECommons").GetType("ECommons.Throttlers.EzThrottler", true)!;
+            var throttler = throttlerType.GetField("Throttler", Static)!;
+            var original = throttler.GetValue(null);
+            throttler.SetValue(null, Activator.CreateInstance(throttler.FieldType));
+            restore.Add(() => throttler.SetValue(null, original));
+        }
+
+        public nint AddLoot()
+        {
+            var loot = Allocate<Gui.AtkUnitBase>();
+            InitializeAddon(loot, "XBMContentsBooty");
+            var button = AddButton(loot, TakeAllParam, 46);
+            loot->UldManager.NodeList = (Gui.AtkResNode**)AllocatePointers(1);
+            loot->UldManager.NodeList[0] = (Gui.AtkResNode*)button->AtkComponentBase.OwnerNode;
+            loot->UldManager.NodeListCount = 1;
+            return (nint)loot;
+        }
+
+        public nint AddOk(string text, bool hideOnClick = true)
+        {
+            var notice = Allocate<NativeUi.AddonSelectOk>();
+            var addon = (Gui.AtkUnitBase*)notice;
+            InitializeAddon(addon, "SelectOk");
+            notice->OkButton = AddButton(addon, 1, 3);
+            notice->PromptText = Allocate<Gui.AtkTextNode>();
+            var bytes = System.Text.Encoding.UTF8.GetBytes(text + "\0");
+            var buffer = AllocateBytes(bytes.Length);
+            Marshal.Copy(bytes, 0, buffer, bytes.Length);
+            notice->PromptText->NodeText.StringPtr = (byte*)buffer;
+            notice->PromptText->NodeText.BufSize = bytes.Length;
+            notice->PromptText->NodeText.BufUsed = bytes.Length;
+            notice->PromptText->NodeText.StringLength = bytes.Length - 1;
+            var address = (nint)notice;
+            addonEvents[address] = _ => { if (hideOnClick) ShowAddon(address, false); };
+            return address;
+        }
+
+        public nint AddYesNo()
+        {
+            var question = Allocate<NativeUi.AddonSelectYesno>();
+            var addon = (Gui.AtkUnitBase*)question;
+            InitializeAddon(addon, "SelectYesno");
+            question->YesButton = AddButton(addon, 1, 3);
+            var address = (nint)question;
+            addonEvents[address] = _ => ShowAddon(address, false);
+            return address;
+        }
+
+        public void ShowAddon(nint address, bool visible) => ((Gui.AtkUnitBase*)address)->IsVisible = visible;
+        public void SetAddonReady(nint address, bool ready)
+        {
+            var addon = (Gui.AtkUnitBase*)address;
+            addon->Flags1A1 = ready ? (byte)(addon->Flags1A1 | 1) : (byte)(addon->Flags1A1 & ~1);
+        }
+        public void SetOkEnabled(nint address, bool enabled)
+        {
+            var node = ((NativeUi.AddonSelectOk*)address)->OkButton->AtkComponentBase.OwnerNode;
+            if (enabled) node->AtkResNode.NodeFlags |= Gui.NodeFlags.Enabled;
+            else node->AtkResNode.NodeFlags &= ~Gui.NodeFlags.Enabled;
+        }
+        public bool TakeAll(nint address)
+        {
+            var booty = Production.GetType("VERMAXION.Beastmaster.CrucibleUi+Screens+Booty", true)!;
+            return (bool)booty.GetMethod("TakeAll", Static)!.Invoke(null,
+                [Pointer.Box((void*)address, typeof(Gui.AtkUnitBase*))])!;
+        }
+        public void RecordLootSubmission(object menus, nint address) => Invoke(menus, "Submitted", "XBMContentsBooty",
+            Pointer.Box((void*)address, typeof(Gui.AtkUnitBase*)));
+        public void SuppressOrdinaryMenuTick()
+        {
+            // The real service guard runs while the ordinary menu poll is
+            // throttled; the tested helper already supplied its localized text.
+            var type = Assembly.Load("ECommons").GetType("ECommons.Throttlers.EzThrottler", true)!;
+            type.GetMethod("Throttle", Static, null, [typeof(string), typeof(TimeSpan), typeof(bool)], null)!
+                .Invoke(null, ["CrucibleMenus", TimeSpan.FromMinutes(1), true]);
+        }
+
+        private void InitializeAddon(Gui.AtkUnitBase* addon, string name)
+        {
+            addon->NameString = name;
+            addon->IsVisible = true;
+            addon->Flags1A1 |= 1;
+            addon->UldManager.LoadedState = Gui.AtkLoadState.Loaded;
+            var vtable = AllocatePointers(80);
+            vtable[2] = CallbackPointer(new NativeReceiveEvent((self, _, param, _, _) =>
+            {
+                receivedEvents.Add((((Gui.AtkUnitBase*)self)->NameString, param));
+                if (addonEvents.TryGetValue(self, out var handle)) handle(param);
+            }));
+            *(nint*)addon = (nint)vtable;
+            addons[name] = (nint)addon;
+            ref var list = ref ((NativeUi.RaptureAtkModule*)nativeAtkModule)->RaptureAtkUnitManager.AllLoadedUnitsList;
+            list.Entries[list.Count] = addon;
+            list.Count++;
+        }
+        private Gui.AtkComponentButton* AddButton(Gui.AtkUnitBase* addon, int param, uint nodeId)
+        {
+            var button = Allocate<Gui.AtkComponentButton>();
+            var node = Allocate<Gui.AtkComponentNode>();
+            var evt = Allocate<Gui.AtkEvent>();
+            node->AtkResNode.NodeId = nodeId;
+            node->AtkResNode.Type = (Gui.NodeType)1000;
+            node->AtkResNode.NodeFlags = Gui.NodeFlags.Enabled | Gui.NodeFlags.Visible;
+            node->AtkResNode.AtkEventManager.Event = evt;
+            node->Component = (Gui.AtkComponentBase*)button;
+            button->AtkComponentBase.AtkResNode = (Gui.AtkResNode*)node;
+            button->AtkComponentBase.OwnerNode = node;
+            evt->State.EventType = Gui.AtkEventType.ButtonClick;
+            evt->Param = (uint)param;
+            evt->Listener = (Gui.AtkEventListener*)addon;
+            return button;
+        }
+        private byte FireNativeCallback(Gui.AtkUnitBase* addon, int count, Gui.AtkValue* values, byte _)
+        {
+            firedCallbacks.Add((addon->NameString, count > 0 ? values[0].Int : -1));
+            return 1;
+        }
+        private nint CallbackPointer(Delegate callback)
+        {
+            nativeCallbacks.Add(callback);
+            return Marshal.GetFunctionPointerForDelegate(callback);
+        }
+        private void ReplaceNativeAddress(Type type, string name, nint pointer)
+        {
+            var address = type.GetNestedType("Addresses")!.GetField(name, Static)!.GetValue(null)!;
+            var value = address.GetType().GetField("Value")!;
+            var previous = value.GetValue(address);
+            value.SetValue(address, pointer);
+            restore.Add(() => value.SetValue(address, previous));
+        }
+        private T* Allocate<T>() where T : unmanaged => (T*)AllocateBytes(sizeof(T));
+        private nint* AllocatePointers(int count) => (nint*)AllocateBytes(count * nint.Size);
+        private nint AllocateBytes(int size)
+        {
+            var block = Marshal.AllocHGlobal(size);
+            new Span<byte>((void*)block, size).Clear();
+            restore.Add(() => Marshal.FreeHGlobal(block));
+            return block;
+        }
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate nint NativeGetter(nint self);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate nint NativeFindNode(nint self, uint id);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate byte NativePredicate(nint self);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int NativeIntGetter(nint self);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate byte NativeFireCallback(Gui.AtkUnitBase* self, int count, Gui.AtkValue* values, byte update);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void NativeReceiveEvent(nint self, Gui.AtkEventType type, int param, nint evt, nint data);
 
         public void AddBoardObject(uint baseId, Vector3 position) => objects.Add(
             (host::Dalamud.Game.ClientState.Objects.Types.IGameObject)Proxy(

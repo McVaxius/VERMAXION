@@ -700,6 +700,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                     menus.Update();
                     if (State != RunState.Running) break;
                     if (ResultObserved) { FinishRun(); break; }
+                    if (menus.LootRejectionPending) { status = menus.Status; break; }
                     if (!resultSeen) route?.Update();
                     if (route?.AllowsCombat != true) SuspendCombat();
                     break;

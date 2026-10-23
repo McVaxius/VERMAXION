@@ -57,6 +57,42 @@ namespace VERMAXION.Beastmaster
             return addon != null;
         }
 
+        internal static string LootRejectionText =>
+            Svc.Data.GetExcelSheet<Lumina.Excel.Sheets.Addon>().TryGetRow(17677, out var row)
+                ? row.Text.ExtractText() : string.Empty;
+
+        internal static AtkUnitBase* LootRejectionNotice(string expected, out bool anyVisibleOk)
+        {
+            anyVisibleOk = false;
+            var manager = RaptureAtkUnitManager.Instance();
+            if (manager == null) return null;
+            for (var index = Math.Min((int)manager->AllLoadedUnitsList.Count, 256) - 1; index >= 0; index--)
+            {
+                var addon = manager->AllLoadedUnitsList.Entries[index].Value;
+                if (addon == null || !addon->IsVisible || addon->NameString != "SelectOk") continue;
+                anyVisibleOk = true;
+                if (!addon->IsReady) continue;
+                var notice = (AddonSelectOk*)addon;
+                if (notice->PromptText == null || notice->PromptText->NodeText.StringPtr.Value == null ||
+                    notice->OkButton == null || !notice->OkButton->IsEnabled) continue;
+                var actual = MemoryHelper.ReadSeStringNullTerminated((nint)notice->PromptText->NodeText.StringPtr.Value).TextValue;
+                if (MatchesLootRejection(actual, expected)) return addon;
+            }
+            return null;
+        }
+
+        internal static bool MatchesLootRejection(string actual, string expected)
+        {
+            static string Normalize(string text) => Regex.Replace(text, @"\s+", " ").Trim();
+            var observed = Normalize(actual);
+            // ExtractText omits the conditional reasons in row 17677. Its
+            // remaining localized header/footer identifies this owned loot
+            // notice even when the rendered popup contains additional text.
+            return expected.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(Normalize)
+                .Any(phrase => phrase.Length > 0 && observed.Contains(phrase, StringComparison.OrdinalIgnoreCase));
+        }
+
         public static bool TryPrompt(uint textRow, out AtkUnitBase* prompt, bool finalLineOnly = false)
         {
             if (!TryReady(YesNo, out prompt)) return false;
