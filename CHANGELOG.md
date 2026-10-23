@@ -1,8 +1,21 @@
+2026-10-22 - Read AutoRetainer state through IPC
+
+- Read character selection, enabled-retainer equipment data, earliest venture times and collect-only state through supported AutoRetainer IPC. Validate the returned character and keep unavailable members distinct from observed false/empty/zero values.
+- Read the additional-data configuration snapshot without creating missing retainer defaults. Retain existing narrow reflection writes where the published whole-record API cannot preserve their scope and persistence behavior. No new dependency, version or live-client change.
+- Validation: Release/x64 plugin build and all 10 new IPC-read cases passed. The wider retainer filter passed 76/77; the remaining existing inn-parking source-text check resolves its hardcoded relative path incorrectly under x64 test output. No live provider/client acceptance is claimed.
+
+2026-10-22 - Current WigglyQuest gathering and priority IPC
+
+- Use WigglyQuest API 3's gather-only request/status/cancel calls instead of private gathering services. Let the provider own travel and updates; preserve inventory-total/collectability semantics, exact provider/character/request ownership, terminal stock checks and VERMAXION's native turn-in validation. An uncertain start cannot redispatch.
+- Read priority persistence and the priority queue through supported IPC, use the current tuple-returning removal endpoint, and preserve pre-existing priorities and owned cleanup after uncertain mutations. Replace owned quest-stop commands with the supported Stop IPC.
+- Retain provider-instance discovery only where the public API has no load identity. No version, deployment or live-client change.
+- Validation: Release/x64 plugin compilation and all 56 focused IPC/stables/custom-delivery tests passed. Current-game/provider acceptance remains unverified.
+
 2026-10-22 - Recognize Take All rejections with extra popup text
 
 - Fuzzy-search localized rejection wording inside the full popup text, tolerating added text, line breaks and spacing. The previous matcher required conditional message sections that the sheet text reader omits.
 - Preserve recovery of queued notices and parent loot closure, including its abandonment confirmation, before continuing the board. Skip only the rejected loot visit; later loot preferences and collection remain unchanged.
-- Validation: all 233 focused Beastmaster/dependency tests passed, including a real encoded conditional-message regression exercising native OK and parent Close callbacks. Z:\vmx.bat completed successfully with zero errors and five existing warnings at unchanged version 2.2.0.8. Actual client recovery remains unverified.
+- Validation: all 233 focused Beastmaster/dependency tests passed, including a real encoded conditional-message regression exercising native OK and parent Close callbacks. Z:\vmx.bat completed successfully with zero errors and five existing warnings at unchanged version 2.2.0.8. The user subsequently confirmed the loot recovery worked in-game.
 
 2026-10-22 - Continue Crewcible after a rejected Take All
 

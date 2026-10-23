@@ -33,9 +33,7 @@ public sealed class AutoGather(DeliveryRoute route) : AutoCommon(route)
     private async Task Gather()
     {
         var gathering = new WigglyGathering(Route);
-        Status = "Travelling to Wiggly Questionable's gathering route";
-        await TeleportTo(gathering.TerritoryId, gathering.Position);
-        Status = "Gathering with Wiggly Questionable";
+        Status = "Gathering with Wiggly Questionable (including travel)";
         using var scope = BeginScope("Gathering");
         using var stop = new OnDispose(gathering.Stop);
         gathering.Start();

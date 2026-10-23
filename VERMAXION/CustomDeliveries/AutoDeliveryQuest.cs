@@ -17,6 +17,7 @@ public sealed class AutoDeliveryQuest(NPCInfo npc, ushort questId, uint job) : T
             if (!Service.PluginInterface.GetIpcSubscriber<bool>("WigglyQuest.IsRunning").HasFunction
                 || !Service.PluginInterface.GetIpcSubscriber<string?>("WigglyQuest.GetCurrentQuestId").HasFunction
                 || !Service.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.StartSingleQuest").HasFunction
+                || !Service.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.Stop").HasFunction
                 || !Service.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsQuestLocked").HasFunction
                 || !Service.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsReadyToAcceptQuest").HasFunction
                 || !Service.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsQuestAccepted").HasFunction)
@@ -44,7 +45,10 @@ public sealed class AutoDeliveryQuest(NPCInfo npc, ushort questId, uint job) : T
             if (dispatched && ReferenceEquals(WigglyGathering.ResolvePlugin(), provider)
                 && (Service.PlayerState.ContentId == character || !Service.ClientState.IsLoggedIn)
                 && currentQuest.InvokeFunc() == quest)
-                Plugin.CommandManager.ProcessCommand("/wqst stop");
+            {
+                if (!Service.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.Stop").InvokeFunc("VERMAXION rank-quest cleanup"))
+                    throw new InvalidOperationException("Wiggly Questionable did not acknowledge owned rank-quest cancellation");
+            }
         });
         await EquipJob(job);
         if (npc.CraftData is { } position)

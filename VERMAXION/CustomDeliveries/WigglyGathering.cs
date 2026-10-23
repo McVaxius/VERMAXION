@@ -1,87 +1,63 @@
 using System;
-using System.Collections;
-using System.Linq;
-using System.Numerics;
-using System.Reflection;
 using System.Runtime.Loader;
+using Dalamud.Plugin;
+using Dalamud.Plugin.Ipc;
 using ECommons.Reflection;
 
 namespace VERMAXION.CustomDeliveries;
 
-// WigglyQuest 7.5.27 has no StartGatheringComplex/Stop IPC. Use the same native
-// registry and controller calls as its CustomDeliveryController, without starting
-// that controller's turn-ins or changing its saved delivery queue/settings.
+// WigglyQuest API 3 owns gather-only travel/update. Reflection is retained solely
+// for provider-instance identity, which the public operation API does not expose.
 internal sealed class WigglyGathering
 {
     internal const string PluginInternalName = "WigglyQuest";
-    private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private readonly object owner;
-    private readonly object controller;
-    private readonly object movement;
-    private readonly object request;
-    private readonly MethodInfo start;
-    private readonly MethodInfo update;
-    private readonly MethodInfo stop;
-    private readonly MethodInfo stopMovement;
-    private readonly FieldInfo currentRequest;
-    private readonly PropertyInfo isRunning;
-    private readonly int missingItems;
-    private object? ownedRequest;
-
-    internal uint TerritoryId { get; }
-    internal Vector3 Position { get; }
+    private readonly ulong character;
+    private readonly Func<object> currentPlugin;
+    private readonly Func<ulong> currentCharacter;
+    private readonly WigglyGatheringRequest request;
+    private readonly ICallGateSubscriber<bool> running;
+    private readonly ICallGateSubscriber<WigglyGatheringRequest, WigglyGatheringStartResult?> start;
+    private readonly ICallGateSubscriber<WigglyGatheringStatus?> status;
+    private readonly ICallGateSubscriber<string, (bool, string?)> cancel;
+    private string? ownedRequestId;
+    private bool startAttempted;
 
     internal WigglyGathering(DeliveryRoute route)
-    {
-        owner = ResolvePlugin();
-        var services = owner.GetType().GetField("_serviceProvider", Members)?.GetValue(owner) as IServiceProvider
-            ?? throw new InvalidOperationException("Wiggly Questionable services are unavailable");
-        object GetService(string name) => services.GetService(owner.GetType().Assembly.GetType(name, true)!)
-            ?? throw new InvalidOperationException($"Wiggly Questionable {name} is unavailable");
-        var registry = GetService("Questionable.Controller.GatheringPointRegistry");
-        controller = GetService("Questionable.Controller.GatheringController");
-        movement = GetService("Questionable.Controller.MovementController");
-        var requestType = controller.GetType().GetNestedType("GatheringRequest", BindingFlags.Public)
-            ?? throw new InvalidOperationException("Wiggly Questionable gathering request contract is unavailable");
-        start = RequireMethod(controller, "Start", [requestType]);
-        update = RequireMethod(controller, "Update", Type.EmptyTypes);
-        stop = RequireMethod(controller, "Stop", [typeof(string)]);
-        stopMovement = RequireMethod(movement, "Stop", Type.EmptyTypes);
-        currentRequest = controller.GetType().GetField("_currentRequest", Members)
-            ?? throw new InvalidOperationException("Wiggly Questionable gathering ownership cannot be read");
-        isRunning = controller.GetType().GetProperty("IsRunning", Members)
-            ?? throw new InvalidOperationException("Wiggly Questionable gathering state cannot be read");
-        if (start.ReturnType != typeof(bool) || isRunning.PropertyType != typeof(bool) || !update.ReturnType.IsEnum)
-            throw new InvalidOperationException("Wiggly Questionable gathering contract has changed");
-        EnsureIdle();
+        : this(Service.PluginInterface, route, ResolvePlugin, () => Service.PlayerState.ContentId,
+            quality => Game.NumItemsInInventory(route.ItemId, (short)quality)) { }
 
-        var find = registry.GetType().GetMethod("TryGetGatheringPointId", Members)
-            ?? throw new InvalidOperationException("Wiggly Questionable gathering route lookup is unavailable");
-        var args = new object?[] { route.ItemId, Enum.ToObject(find.GetParameters()[1].ParameterType, route.Job), null };
-        if (find.Invoke(registry, args) is not true || args[2] == null)
+    internal WigglyGathering(IDalamudPluginInterface ipc, DeliveryRoute route, Func<object> currentPlugin,
+        Func<ulong> currentCharacter, Func<ushort, int> inventory)
+    {
+        this.currentPlugin = currentPlugin;
+        this.currentCharacter = currentCharacter;
+        owner = currentPlugin();
+        character = currentCharacter();
+        if (character == 0) throw new InvalidOperationException("The gathering character is unavailable");
+        var eligible = inventory(route.MinCollectibility);
+        var atTargetQuality = inventory(route.TargetCollectibility);
+        if (eligible < 0 || atTargetQuality < 0)
+            throw new InvalidOperationException("Custom-delivery inventory is unavailable");
+        request = new()
+        {
+            ItemId = route.ItemId,
+            ClassJob = checked((byte)route.Job),
+            // Quantity is an inventory total at the requested quality. Existing
+            // lower-quality qualifying items still count toward our turn-ins.
+            Quantity = checked(atTargetQuality + DeliveryPlanning.MissingItems(route.Count, eligible)),
+            Collectability = route.TargetCollectibility,
+        };
+        running = ipc.GetIpcSubscriber<bool>("WigglyQuest.IsRunning");
+        var canGather = ipc.GetIpcSubscriber<uint, byte, bool>("WigglyQuest.Gathering.CanGather");
+        start = ipc.GetIpcSubscriber<WigglyGatheringRequest, WigglyGatheringStartResult?>("WigglyQuest.Gathering.Start");
+        status = ipc.GetIpcSubscriber<WigglyGatheringStatus?>("WigglyQuest.Gathering.GetStatus");
+        cancel = ipc.GetIpcSubscriber<string, (bool, string?)>("WigglyQuest.Gathering.Cancel");
+        if (!running.HasFunction || !canGather.HasFunction || !start.HasFunction || !status.HasFunction || !cancel.HasFunction)
+            throw new InvalidOperationException("WigglyQuest gathering IPC is unavailable; API 3 is required");
+        EnsureIdle();
+        if (!canGather.InvokeFunc(request.ItemId, request.ClassJob))
             throw new InvalidOperationException($"Wiggly Questionable has no gathering route for item {route.ItemId}, job {route.Job}");
-        var point = args[2]!;
-        var read = registry.GetType().GetMethod("TryGetGatheringPoint", Members)
-            ?? throw new InvalidOperationException("Wiggly Questionable gathering path lookup is unavailable");
-        var pathArgs = new object?[] { point, null };
-        if (read.Invoke(registry, pathArgs) is not true || pathArgs[1] == null)
-            throw new InvalidOperationException($"Wiggly Questionable has no supported gathering path for item {route.ItemId}");
-        var root = pathArgs[1]!;
-        var step = ReadList(root, "Steps").LastOrDefault()
-            ?? throw new InvalidOperationException("Wiggly Questionable gathering path has no territory");
-        TerritoryId = Convert.ToUInt32(step.GetType().GetProperty("TerritoryId")?.GetValue(step));
-        var location = ReadList(root, "Groups").SelectMany(group => ReadList(group, "Nodes"))
-            .SelectMany(node => ReadList(node, "Locations")).FirstOrDefault();
-        if (TerritoryId == 0 || location?.GetType().GetProperty("Position")?.GetValue(location) is not Vector3 position)
-            throw new InvalidOperationException("Wiggly Questionable gathering destination is unavailable");
-        Position = position;
-        missingItems = DeliveryPlanning.MissingItems(route.Count,
-            Game.NumItemsInInventory(route.ItemId, (short)route.MinCollectibility));
-        // Wiggly's Quantity is an inventory total at its requested quality.
-        // Existing lower-quality eligible items still count toward our turn-ins.
-        var requestedTotal = Game.NumItemsInInventory(route.ItemId, (short)route.TargetCollectibility) + missingItems;
-        request = Activator.CreateInstance(requestType, point, route.ItemId, 0u, requestedTotal, route.TargetCollectibility)
-            ?? throw new InvalidOperationException("Wiggly Questionable gathering request could not be created");
     }
 
     internal static string? GetBlockedReason(DeliveryRoute route)
@@ -92,54 +68,77 @@ internal sealed class WigglyGathering
 
     internal void Start()
     {
-        EnsureLoaded();
+        EnsureCurrent();
+        if (startAttempted) throw new InvalidOperationException("This gathering start was already attempted; no redispatch");
         EnsureIdle();
-        Service.Log.Information($"[CustomDeliveries][Gathering] Starting Wiggly request: toProduce={missingItems}; targetInventory={request.GetType().GetProperty("Quantity")?.GetValue(request)}");
-        // Capture the native request even if Start throws after acquiring it.
-        object? accepted;
-        try { accepted = start.Invoke(controller, [request]); }
-        finally { ownedRequest = currentRequest.GetValue(controller); }
-        if (accepted is not true || ownedRequest == null)
-            throw new InvalidOperationException("Wiggly Questionable rejected the gathering request");
+        startAttempted = true; // A missing acknowledgement never authorizes another start.
+        var result = start.InvokeFunc(request);
+        ownedRequestId = result?.RequestId;
+        if (result?.Accepted != true || string.IsNullOrWhiteSpace(ownedRequestId))
+            throw new InvalidOperationException($"Wiggly Questionable did not acknowledge the gathering request: {result?.Reason ?? "unavailable response"}");
+        Service.Log?.Information($"[CustomDeliveries][Gathering] Accepted Wiggly request: item={request.ItemId}; targetInventory={request.Quantity}; collectability={request.Collectability}");
     }
 
     internal bool Update()
     {
-        EnsureLoaded();
-        var current = currentRequest.GetValue(controller);
-        if (current == null) return false;
-        if (!ReferenceEquals(current, ownedRequest))
-            throw new InvalidOperationException("Another Wiggly Questionable gathering request replaced the owned request");
-        // The provider's ordinary delivery controller does this once per frame.
-        // It is idle here; VERMAXION drives only this owned gathering request.
-        update.Invoke(controller, null);
-        return isRunning.GetValue(controller) is true;
+        EnsureCurrent();
+        var observed = ReadStatus();
+        if (!MatchesOwned(observed))
+            throw new InvalidOperationException("The owned Wiggly Questionable gathering request was replaced or is unavailable");
+        switch (observed.State)
+        {
+            case "Travelling":
+            case "Gathering":
+                return true;
+            case "Complete" when observed.Have >= request.Quantity:
+                return false;
+            default:
+                throw new InvalidOperationException($"Wiggly Questionable gathering ended without verified stock: {observed.State}; {observed.FailureReason}");
+        }
     }
 
     internal void Stop()
     {
-        if (ownedRequest == null) return;
-        if (DalamudReflector.TryGetDalamudPlugin(PluginInternalName, out object plugin, out AssemblyLoadContext? _, true, true)
-            && ReferenceEquals(plugin, owner) && ReferenceEquals(currentRequest.GetValue(controller), ownedRequest))
+        if (ownedRequestId == null || currentCharacter() != character) return;
+        object current;
+        try { current = currentPlugin(); }
+        catch { return; } // Never cancel through a departed/unreadable provider.
+        if (!ReferenceEquals(current, owner)) return;
+        var observed = ReadStatus();
+        if (!MatchesOwned(observed) || observed.State is "Complete" or "Cancelled" or "Failed")
         {
-            try { stop.Invoke(controller, ["VERMAXION custom-delivery cleanup"]); }
-            finally { stopMovement.Invoke(movement, null); }
+            ownedRequestId = null;
+            return;
         }
-        ownedRequest = null;
+        if (observed.State is not ("Travelling" or "Gathering"))
+            throw new InvalidOperationException("Wiggly gathering cancellation state is unavailable");
+        var result = cancel.InvokeFunc(ownedRequestId);
+        var after = ReadStatus();
+        if (MatchesOwned(after) && after.State is not ("Complete" or "Cancelled" or "Failed"))
+            throw new InvalidOperationException($"Wiggly gathering cancellation is unconfirmed: {result.Item2 ?? after.State}");
+        ownedRequestId = null;
     }
+
+    private bool MatchesOwned(WigglyGatheringStatus observed)
+        => !string.IsNullOrEmpty(ownedRequestId) && observed.RequestId == ownedRequestId
+            && observed.ItemId == request.ItemId && observed.Need == request.Quantity;
+
+    private WigglyGatheringStatus ReadStatus()
+        => status.InvokeFunc() ?? throw new InvalidOperationException("Wiggly gathering status is unavailable");
 
     private void EnsureIdle()
     {
-        var running = Service.PluginInterface.GetIpcSubscriber<bool>("WigglyQuest.IsRunning");
-        if (!running.HasFunction) throw new InvalidOperationException("Wiggly Questionable ownership IPC is unavailable");
-        if (running.InvokeFunc() || isRunning.GetValue(controller) is true)
+        var observed = ReadStatus();
+        if (running.InvokeFunc() || observed.State is "Travelling" or "Gathering")
             throw new InvalidOperationException("Wiggly Questionable is already running another task");
+        if (observed.State is not ("Idle" or "Complete" or "Cancelled" or "Failed"))
+            throw new InvalidOperationException("Wiggly gathering readiness is unavailable");
     }
 
-    private void EnsureLoaded()
+    private void EnsureCurrent()
     {
-        if (!ReferenceEquals(ResolvePlugin(), owner))
-            throw new InvalidOperationException("Wiggly Questionable reloaded during the gathering request");
+        if (currentCharacter() != character || !ReferenceEquals(currentPlugin(), owner))
+            throw new InvalidOperationException("Wiggly Questionable or the character changed during the gathering request");
     }
 
     internal static object ResolvePlugin()
@@ -148,12 +147,31 @@ internal sealed class WigglyGathering
             || plugin == null) throw new InvalidOperationException("Wiggly Questionable (WigglyQuest) is not loaded");
         return plugin;
     }
+}
 
-    private static MethodInfo RequireMethod(object service, string name, Type[] parameters)
-        => service.GetType().GetMethod(name, Members, null, parameters, null)
-            ?? throw new InvalidOperationException($"Wiggly Questionable {service.GetType().Name}.{name} contract is unavailable");
+// Independent IPC DTOs are converted by Dalamud; do not reference the provider assembly.
+public sealed class WigglyGatheringRequest
+{
+    public uint ItemId { get; set; }
+    public byte ClassJob { get; set; }
+    public int Quantity { get; set; }
+    public ushort Collectability { get; set; }
+}
 
-    private static System.Collections.Generic.IEnumerable<object> ReadList(object source, string name)
-        => (source.GetType().GetProperty(name)?.GetValue(source) as IEnumerable)?.Cast<object>()
-            ?? throw new InvalidOperationException($"Wiggly Questionable gathering {name} contract is unavailable");
+public sealed class WigglyGatheringStartResult
+{
+    public bool Accepted { get; set; }
+    public string? RequestId { get; set; }
+    public string? Reason { get; set; }
+    public ushort? TerritoryId { get; set; }
+}
+
+public sealed class WigglyGatheringStatus
+{
+    public string? RequestId { get; set; }
+    public string? State { get; set; }
+    public uint ItemId { get; set; }
+    public int Have { get; set; }
+    public int Need { get; set; }
+    public string? FailureReason { get; set; }
 }

@@ -18,6 +18,7 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
     private const string MultiModeTypeName = "AutoRetainer.Modules.Multi.MultiMode";
 
     private readonly IPluginLog log;
+    private readonly IDalamudPluginInterface pluginInterface;
     private readonly ICallGateSubscriber<bool> getSuppressedSubscriber;
     private readonly ICallGateSubscriber<bool, object> setSuppressedSubscriber;
     private readonly ICallGateSubscriber<bool> isBusySubscriber;
@@ -32,12 +33,47 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
     public AutoRetainerIPC(IDalamudPluginInterface pluginInterface, IPluginLog log)
     {
         this.log = log;
+        this.pluginInterface = pluginInterface;
         getSuppressedSubscriber = pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.GetSuppressed");
         setSuppressedSubscriber = pluginInterface.GetIpcSubscriber<bool, object>("AutoRetainer.SetSuppressed");
         isBusySubscriber = pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.PluginState.IsBusy");
         getMultiModeEnabledSubscriber = pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.GetMultiModeEnabled");
         setMultiModeEnabledSubscriber = pluginInterface.GetIpcSubscriber<bool, object>("AutoRetainer.SetMultiModeEnabled");
         LastSnapshot = new SuppressionSnapshot(false, false, false);
+    }
+
+    // Independent read-only IPC shapes. Nullable members keep missing provider
+    // data distinct from an observed disabled/empty/zero value.
+    public sealed class OfflineCharacterSnapshot
+    {
+        public ulong? CID { get; set; }
+        public bool? Enabled { get; set; }
+        public List<OfflineRetainerSnapshot?>? RetainerData { get; set; }
+    }
+
+    public sealed class OfflineRetainerSnapshot
+    {
+        public ulong? RetainerID { get; set; }
+        public string? Name { get; set; }
+        public uint? Job { get; set; }
+        public int? Level { get; set; }
+        public bool? HasVenture { get; set; }
+        public long? VentureEndsAt { get; set; }
+    }
+
+    public sealed class AdditionalRetainerSnapshot
+    {
+        public int? Ilvl { get; set; }
+        public int? Perception { get; set; }
+    }
+
+    private OfflineCharacterSnapshot ReadCharacterSnapshot(ulong contentId)
+    {
+        if (contentId == 0) throw new InvalidOperationException("The local content ID was zero.");
+        var character = pluginInterface.GetIpcSubscriber<ulong, OfflineCharacterSnapshot?>("AutoRetainer.GetOfflineCharacterData").InvokeFunc(contentId);
+        if (character == null || character.CID != contentId)
+            throw new InvalidOperationException("AutoRetainer returned no matching character snapshot.");
+        return character;
     }
 
     AutoRetainerSelectionReadResult IAutoRetainerSelectionAccessor.ReadCharacterSelection(
@@ -53,10 +89,10 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
     {
         try
         {
-            if (!TryGetLoadedAutoRetainer(out var autoRetainerPlugin, out var error))
-                return AutoRetainerSelectionReadResult.Failed(error);
-
-            return AutoRetainerSelectionReflection.Read(autoRetainerPlugin, contentId);
+            var character = ReadCharacterSnapshot(contentId);
+            return character.Enabled is bool enabled
+                ? AutoRetainerSelectionReadResult.Known(enabled)
+                : AutoRetainerSelectionReadResult.Failed("AutoRetainer character selection is unavailable.");
         }
         catch (Exception ex)
         {
@@ -104,53 +140,37 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
     {
         try
         {
-            if (!TryGetLoadedAutoRetainer(out var plugin, out var error))
-                return AutoRetainerEquipmentReadResult.Failed(error);
-            if (!TryGetAutoRetainerConfig(plugin, out var config, out error))
-                return AutoRetainerEquipmentReadResult.Failed(error);
-
-            var selected = ReadDictionaryValue(config, "SelectedRetainers", contentId) as IEnumerable;
-            var selectedNames = selected == null
+            if (contentId == 0) throw new InvalidOperationException("The local content ID was zero.");
+            var selections = pluginInterface.GetIpcSubscriber<Dictionary<ulong, HashSet<string>>?>("AutoRetainer.PluginState.GetEnabledRetainers").InvokeFunc()
+                ?? throw new InvalidOperationException("AutoRetainer enabled retainer state is unavailable.");
+            var selectedNames = !selections.TryGetValue(contentId, out var selected)
                 ? new HashSet<string>(StringComparer.Ordinal)
-                : selected.Cast<object>()
-                    .Select(value => value?.ToString() ?? string.Empty)
-                    .Where(value => value.Length > 0)
-                    .ToHashSet(StringComparer.Ordinal);
+                : (selected ?? throw new InvalidOperationException("AutoRetainer selected retainer names are unavailable."))
+                    .Where(name => !string.IsNullOrEmpty(name)).ToHashSet(StringComparer.Ordinal);
             if (selectedNames.Count == 0)
                 return AutoRetainerEquipmentReadResult.Known([]);
 
-            var offlineCharacters = ReadMember(config, "OfflineData") as IEnumerable;
-            var character = offlineCharacters?.Cast<object>()
-                .FirstOrDefault(value => ReadUInt64(value, "CID") == contentId);
-            if (character == null)
-                return AutoRetainerEquipmentReadResult.Failed(
-                    "AutoRetainer offline data did not contain the current character.");
-
-            var additionalData = ReadMember(config, "AdditionalData") as IDictionary;
-            var retainerData = ReadMember(character, "RetainerData") as IEnumerable;
-            if (retainerData == null)
-                return AutoRetainerEquipmentReadResult.Failed(
-                    "AutoRetainer retainer data was not readable.");
+            var character = ReadCharacterSnapshot(contentId);
+            var retainerData = character.RetainerData
+                ?? throw new InvalidOperationException("AutoRetainer retainer data is unavailable.");
+            // The per-retainer getter creates a default entry when absent. Read the
+            // published configuration snapshot instead, preserving a read-only probe.
+            var additionalData = pluginInterface.GetIpcSubscriber<Dictionary<string, AdditionalRetainerSnapshot>?>("AutoRetainer.GetConfig.AdditionalData").InvokeFunc()
+                ?? throw new InvalidOperationException("AutoRetainer additional retainer data is unavailable.");
 
             var result = new List<AutoRetainerRetainerSnapshot>();
-            foreach (var retainer in retainerData.Cast<object>())
+            foreach (var retainer in retainerData)
             {
-                var name = ReadString(retainer, "Name");
-                if (!selectedNames.Contains(name))
+                if (retainer == null || !selectedNames.Contains(retainer.Name ?? string.Empty))
                     continue;
+                var name = retainer.Name!;
+                if (retainer.RetainerID is not ulong id || retainer.Job is not uint job || retainer.Level is not int level ||
+                    retainer.HasVenture is not bool venture || retainer.VentureEndsAt is not long endsAt)
+                    throw new InvalidOperationException("AutoRetainer selected retainer data is incomplete.");
                 var key = $"#{contentId:X16} {name}";
-                var additional = additionalData?.Contains(key) == true
-                    ? additionalData[key]
-                    : null;
+                additionalData.TryGetValue(key, out var additional);
                 result.Add(new AutoRetainerRetainerSnapshot(
-                    ReadUInt64(retainer, "RetainerID"),
-                    name,
-                    (uint)ReadInt64(retainer, "Job"),
-                    (int)ReadInt64(retainer, "Level"),
-                    ReadBool(retainer, "HasVenture"),
-                    ReadInt64(retainer, "VentureEndsAt"),
-                    additional == null ? -1 : (int)ReadInt64(additional, "Ilvl", -1),
-                    additional == null ? -1 : (int)ReadInt64(additional, "Perception", -1)));
+                    id, name, job, level, venture, endsAt, additional?.Ilvl ?? -1, additional?.Perception ?? -1));
             }
 
             return AutoRetainerEquipmentReadResult.Known(result);
@@ -226,11 +246,8 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
     {
         try
         {
-            if (!TryGetLoadedAutoRetainer(out var plugin, out var error))
-                return AutoRetainerCollectOnlyReadResult.Failed(error);
-            if (!TryGetAutoRetainerConfig(plugin, out var config, out error))
-                return AutoRetainerCollectOnlyReadResult.Failed(error);
-            return AutoRetainerCollectOnlyReadResult.Known(ReadBool(config, "_dontReassign"));
+            return AutoRetainerCollectOnlyReadResult.Known(
+                pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.GetConfig._dontReassign").InvokeFunc());
         }
         catch (Exception ex)
         {
@@ -243,6 +260,11 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         error = string.Empty;
         try
         {
+            if (!pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.GetConfig._dontReassign").HasFunction)
+            {
+                error = "AutoRetainer collect-only readback IPC is unavailable; the setting was not changed.";
+                return false;
+            }
             if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
                 !TryGetAutoRetainerConfig(plugin, out var config, out error))
             {
@@ -317,12 +339,6 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         {
             return new(false, Error: ex.GetBaseException().Message);
         }
-    }
-
-    private static object? ReadDictionaryValue(object owner, string memberName, object key)
-    {
-        var dictionary = ReadMember(owner, memberName) as IDictionary;
-        return dictionary?.Contains(key) == true ? dictionary[key] : null;
     }
 
     private static object? ReadMember(object owner, string name)
@@ -646,30 +662,16 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         error = string.Empty;
         try
         {
-            if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
-                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+            var retainers = ReadCharacterSnapshot(contentId).RetainerData
+                ?? throw new InvalidOperationException("AutoRetainer retainer data is unavailable.");
+            foreach (var retainer in retainers)
             {
-                return false;
-            }
-            if (ReadMember(config, "OfflineData") is not IEnumerable offline)
-            {
-                error = "AutoRetainer OfflineData was not readable.";
-                return false;
-            }
-            var character = offline.Cast<object?>()
-                .FirstOrDefault(value => value != null && ReadUInt64(value, "CID") == contentId);
-            if (character == null)
-            {
-                error = $"no OfflineData entry for content id {contentId:X}.";
-                return false;
-            }
-            if (ReadMember(character, "RetainerData") is not IEnumerable retainers)
-                return true; // no retainers — nothing ever due
-            foreach (var retainer in retainers.Cast<object?>())
-            {
-                if (retainer == null || !ReadBool(retainer, "HasVenture"))
+                if (retainer == null || retainer.HasVenture is not bool hasVenture)
+                    throw new InvalidOperationException("AutoRetainer venture state is unavailable.");
+                if (!hasVenture)
                     continue;
-                var ends = ReadInt64(retainer, "VentureEndsAt");
+                var ends = retainer.VentureEndsAt
+                    ?? throw new InvalidOperationException("AutoRetainer venture time is unavailable.");
                 if (ends > 0 && ends < earliestEndsAt)
                     earliestEndsAt = ends;
             }

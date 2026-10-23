@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json;
+using Dalamud.Plugin;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -905,23 +906,43 @@ public sealed unsafe class ChocoboStablesService
         onionQuestAcknowledged = false;
         onionQuestStopRequested = onionQuestStopWarningLogged = false;
         onionQuestAcknowledgementDeadline = DateTime.UtcNow.AddSeconds(5);
-        if (!Plugin.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsQuestInPriority").InvokeFunc(next.ToString()))
-        {
-            const System.Reflection.BindingFlags members = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-            var services = provider.GetType().GetField("_serviceProvider", members)?.GetValue(provider) as IServiceProvider;
-            var configuration = services?.GetService(provider.GetType().Assembly.GetType("Questionable.Configuration", true)!);
-            var general = configuration?.GetType().GetProperty("General")?.GetValue(configuration);
-            if (general?.GetType().GetProperty("PersistPriorityQuestsBetweenSessions")?.GetValue(general) is not false)
-            { Fail("Wiggly priority persistence must be disabled for temporary onion acquisition; its saved settings were not changed."); return; }
-            // Record ownership before mutation; remove only an entry we inserted.
-            onionQuestPriorityInserted = true;
-            if (!Plugin.PluginInterface.GetIpcSubscriber<int, string, bool>("WigglyQuest.InsertQuestPriority").InvokeFunc(0, next.ToString())
-                || !Plugin.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsQuestInPriority").InvokeFunc(next.ToString()))
-            { Fail("Wiggly Quest did not retain the temporary onion priority; no quest dispatched."); return; }
-        }
+        try { PrepareOnionPriority(Plugin.PluginInterface); }
+        catch (InvalidOperationException ex) { Fail(ex.Message); return; }
         StatusText = $"Preparing {quests.GetRow((uint)next + 65536).Name} through Wiggly Quest";
         Plugin.Log.Information($"[Stables] Prepared onion-chain quest: quest={next}; temporaryPriority={onionQuestPriorityInserted}; onionStock={OnionStock}");
     }
+
+    internal void PrepareOnionPriority(IDalamudPluginInterface ipc)
+    {
+        if (onionQuestId == 0) throw new InvalidOperationException("No onion quest owns the priority request.");
+        var quest = onionQuestId.ToString();
+        if (IsWigglyPriorityQuest(ipc, quest)) return;
+        var persistence = ipc.GetIpcSubscriber<bool>("WigglyQuest.Priority.GetPersistBetweenSessions");
+        if (!persistence.HasFunction || persistence.InvokeFunc())
+            throw new InvalidOperationException("Wiggly priority persistence must be readable and disabled for temporary onion acquisition; its saved settings were not changed.");
+        // Retain ownership before the first mutation, including an uncertain acknowledgement.
+        onionQuestPriorityInserted = true;
+        if (!ipc.GetIpcSubscriber<int, string, bool>("WigglyQuest.InsertQuestPriority").InvokeFunc(0, quest)
+            || !IsWigglyPriorityQuest(ipc, quest))
+            throw new InvalidOperationException("Wiggly Quest did not retain the temporary onion priority; no quest dispatched.");
+    }
+
+    internal void ReleaseOnionPriority(IDalamudPluginInterface ipc)
+    {
+        if (!onionQuestPriorityInserted) return;
+        var quest = onionQuestId.ToString();
+        if (IsWigglyPriorityQuest(ipc, quest))
+        {
+            var removed = ipc.GetIpcSubscriber<string, (bool, string?)>("WigglyQuest.Priority.Remove").InvokeFunc(quest);
+            if (!removed.Item1 || IsWigglyPriorityQuest(ipc, quest))
+                throw new InvalidOperationException("The temporary onion priority could not be removed: " + removed.Item2);
+        }
+        onionQuestPriorityInserted = false;
+    }
+
+    private static bool IsWigglyPriorityQuest(IDalamudPluginInterface ipc, string quest)
+        => (ipc.GetIpcSubscriber<List<string>?>("WigglyQuest.Priority.Get").InvokeFunc()
+            ?? throw new InvalidOperationException("Wiggly priority state is unavailable.")).Contains(quest, StringComparer.Ordinal);
 
     private bool StopOwnedOnionQuest(bool clearOwnership = true)
     {
@@ -938,7 +959,7 @@ public sealed unsafe class ChocoboStablesService
                 if (!onionQuestStopRequested)
                 {
                     onionQuestStopRequested = true;
-                    if (!Plugin.CommandManager.ProcessCommand("/wqst stop"))
+                    if (!Plugin.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.Stop").InvokeFunc("VERMAXION onion-quest cleanup"))
                     {
                         onionQuestStopWarningLogged = true;
                         Plugin.Log.Warning("[Stables] Wiggly Quest did not accept owned onion-quest cancellation; cleanup remains pending");
@@ -950,11 +971,7 @@ public sealed unsafe class ChocoboStablesService
             if (onionQuestPriorityInserted && Plugin.PluginInterface.InstalledPlugins.Any(p => p.IsLoaded && p.InternalName == "WigglyQuest")
                 && ReferenceEquals(WigglyGathering.ResolvePlugin(), onionQuestProvider))
             {
-                if (Plugin.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsQuestInPriority").InvokeFunc(onionQuestId.ToString())
-                    && (!Plugin.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.RemovePriorityQuest").InvokeFunc(onionQuestId.ToString())
-                        || Plugin.PluginInterface.GetIpcSubscriber<string, bool>("WigglyQuest.IsQuestInPriority").InvokeFunc(onionQuestId.ToString())))
-                    throw new InvalidOperationException("The temporary onion priority could not be removed.");
-                onionQuestPriorityInserted = false;
+                ReleaseOnionPriority(Plugin.PluginInterface);
                 Plugin.Log.Information($"[Stables] Temporary onion priority released: quest={onionQuestId}");
             }
         }
