@@ -58,6 +58,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private RunState recoveryState;
     private DateTime recoveryAt;
     private string status = "Idle";
+    private Vector3 stationaryPosition;
+    private DateTime stationarySince;
 
     public RunState State { get; private set; }
     public bool IsPaused { get; private set; }
@@ -548,10 +550,18 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         // Missing identity is a temporary observation gap. A different loaded
         // character also waits for explicit Start; neither cancels the old plan.
         if (owner != 0 && (!Svc.ClientState.IsLoggedIn || !Svc.PlayerState.IsLoaded ||
-                Svc.PlayerState.ContentId == 0 || Svc.PlayerState.ContentId != owner)) return;
-        if (State is not (RunState.Idle or RunState.Complete or RunState.Failed) && owner == 0) return;
+                Svc.PlayerState.ContentId == 0 || Svc.PlayerState.ContentId != owner))
+        { stationarySince = default; return; }
+        if (State is not (RunState.Idle or RunState.Complete or RunState.Failed) && owner == 0)
+        { stationarySince = default; return; }
         try
         {
+            if (ShouldResumeStationaryRun(DateTime.UtcNow))
+            {
+                Svc.Log.Warning("[Crewcible] Stationary for 30 seconds outside combat; resuming the current board.");
+                RestartFromCurrent(Settings);
+                return;
+            }
             if (owner != 0) runData = getCharacterData();
             if (!UpdateCleanup()) return;
             if (TryStopAfterBoardExit()) return;
@@ -869,11 +879,39 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (combat.TrySuspend(out var reason)) return true;
         Fail(reason); return false;
     }
-    private void Transition(RunState state, string text) { State = state; status = text; stateSince = DateTime.UtcNow; }
+    private bool ShouldResumeStationaryRun(DateTime now)
+    {
+        if (State != RunState.Running || operatorStopped || IsPaused || owner == 0 || !CanObserveCharacter ||
+            !BeastmasterPlayer.IsValid || Svc.Objects.LocalPlayer is not { IsDead: false } player ||
+            !IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
+            Svc.ClientState.TerritoryType != TerritoryForBoard(Settings.Board) ||
+            !Svc.Condition[ConditionFlag.BoundByDuty] || Svc.Condition[ConditionFlag.InCombat] ||
+            resultSeen || ResultObserved || CrucibleUi.IsOpen(CrucibleUi.ResultWindow))
+        {
+            stationarySince = default;
+            return false;
+        }
+        if (stationarySince == default || player.Position != stationaryPosition)
+        {
+            stationaryPosition = player.Position;
+            stationarySince = now;
+            return false;
+        }
+        if (now - stationarySince < TimeSpan.FromSeconds(30)) return false;
+        stationarySince = now;
+        return true;
+    }
+
+    private void Transition(RunState state, string text)
+    {
+        stationarySince = default;
+        State = state; status = text; stateSince = DateTime.UtcNow;
+    }
 
     public void Pause()
     {
         if (!IsActive || IsPaused || State is RunState.Idle or RunState.Complete or RunState.Failed) return;
+        stationarySince = default;
         IsPaused = true; pausedAt = DateTime.UtcNow; StopNavigation();
         if (ownsTravel) travel.TryAbort();
         route?.Pause();

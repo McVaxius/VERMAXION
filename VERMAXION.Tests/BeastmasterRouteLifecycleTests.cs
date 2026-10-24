@@ -31,6 +31,160 @@ public sealed class BeastmasterRouteLifecycleTests
     private static readonly Type RouteType = Production.GetType("VERMAXION.Beastmaster.BeastmasterRoute", true)!;
 
     [Fact]
+    public void StationaryRunResumesAtThirtySecondsAndSpacesFurtherAttempts()
+    {
+        using var host = new HostFixture();
+        var service = CreateStationaryRun(host);
+        var now = DateTime.UtcNow;
+
+        Assert.False(ShouldResume(now));
+        Assert.False(ShouldResume(now.AddMilliseconds(29_999)));
+        Assert.True(ShouldResume(now.AddSeconds(30)));
+        Assert.False(ShouldResume(now.AddMilliseconds(59_999)));
+        Assert.True(ShouldResume(now.AddSeconds(60)));
+
+        bool ShouldResume(DateTime at) => (bool)Invoke(service, "ShouldResumeStationaryRun", at)!;
+    }
+
+    [Theory]
+    [InlineData(1f, 0f, 0f)]
+    [InlineData(0f, 1f, 0f)]
+    [InlineData(0f, 0f, 1f)]
+    public void MovementOnAnyAxisStartsANewThirtySecondInterval(float x, float y, float z)
+    {
+        using var host = new HostFixture();
+        var service = CreateStationaryRun(host);
+        var now = DateTime.UtcNow;
+        Assert.False(ShouldResume(now));
+        host.Position += new Vector3(x, y, z);
+        Assert.False(ShouldResume(now.AddSeconds(29)));
+        Assert.False(ShouldResume(now.AddMilliseconds(58_999)));
+        Assert.True(ShouldResume(now.AddSeconds(59)));
+
+        bool ShouldResume(DateTime at) => (bool)Invoke(service, "ShouldResumeStationaryRun", at)!;
+    }
+
+    [Theory]
+    [InlineData("combat")]
+    [InlineData("paused")]
+    [InlineData("stopped")]
+    [InlineData("outside Crucible")]
+    [InlineData("different board")]
+    [InlineData("outside duty")]
+    [InlineData("dead")]
+    [InlineData("zoning")]
+    [InlineData("logged out")]
+    [InlineData("unloaded character")]
+    [InlineData("different character")]
+    [InlineData("no owner")]
+    [InlineData("finished")]
+    [InlineData("result seen")]
+    [InlineData("result observed")]
+    public void IneligibleRunDiscardsStationaryTimeInsteadOfResuming(string reason)
+    {
+        using var host = new HostFixture();
+        var service = CreateStationaryRun(host);
+        var now = DateTime.UtcNow;
+        Assert.False(ShouldResume(now));
+        switch (reason)
+        {
+            case "combat": host.Conditions.Add("InCombat"); break;
+            case "paused": Set(service, "IsPaused", true); break;
+            case "stopped": Set(service, "operatorStopped", true); break;
+            case "outside Crucible": host.Territory = 1; break;
+            case "different board": host.Territory = 1343; break;
+            case "outside duty": host.Conditions.Remove("BoundByDuty"); break;
+            case "dead": host.PlayerDead = true; break;
+            case "zoning": host.Conditions.Add("BetweenAreas"); break;
+            case "logged out": host.LoggedIn = false; break;
+            case "unloaded character": host.PlayerLoaded = false; break;
+            case "different character": host.Character = 18; break;
+            case "no owner": Set(service, "owner", 0UL); break;
+            case "finished": Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Complete")); break;
+            case "result seen": Set(service, "resultSeen", true); break;
+            case "result observed": Set(service, "ResultObserved", true); break;
+        }
+        Assert.False(ShouldResume(now.AddMinutes(1)));
+        Assert.Equal(default, Read<DateTime>(service, "stationarySince"));
+
+        host.Conditions.Clear(); host.Conditions.Add("BoundByDuty");
+        host.Territory = 1342; host.PlayerDead = false; host.LoggedIn = host.PlayerLoaded = true; host.Character = 17;
+        Set(service, "IsPaused", false); Set(service, "operatorStopped", false); Set(service, "owner", 17UL);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+        Set(service, "resultSeen", false); Set(service, "ResultObserved", false);
+        Assert.False(ShouldResume(now.AddMinutes(1)));
+        Assert.False(ShouldResume(now.AddMilliseconds(89_999)));
+        Assert.True(ShouldResume(now.AddSeconds(90)));
+
+        bool ShouldResume(DateTime at) => (bool)Invoke(service, "ShouldResumeStationaryRun", at)!;
+    }
+
+    [Theory]
+    [InlineData("logged out")]
+    [InlineData("unloaded character")]
+    [InlineData("different character")]
+    [InlineData("no owner")]
+    public void UpdateIdentityWaitDiscardsAnAlreadyAgedStationaryInterval(string reason)
+    {
+        using var host = new HostFixture();
+        var service = CreateStationaryRun(host);
+        Set(service, "stationarySince", DateTime.UtcNow.AddMinutes(-1));
+        if (reason == "logged out") host.LoggedIn = false;
+        if (reason == "unloaded character") host.PlayerLoaded = false;
+        if (reason == "different character") host.Character = 18;
+        if (reason == "no owner") Set(service, "owner", 0UL);
+        Invoke(service, "Update");
+        Assert.Equal(default, Read<DateTime>(service, "stationarySince"));
+        Assert.Empty(host.Warnings);
+    }
+
+    [Fact]
+    public void StationaryUpdateInvokesExistingResumeAndRetainsRunAndPendingMenus()
+    {
+        using var host = new HostFixture();
+        var service = CreateStationaryRun(host);
+        var settings = Field(service, "runSettings");
+        var menus = Field(service, "menus")!;
+        Set(menus, "confirmationWindow", "XBMContentsTreasure");
+        Set(menus, "confirmationAddress", (nint)123);
+        var readRecovery = Field(service, "registrationReadRecovery")!;
+        Invoke(readRecovery, "Ready", "SyntheticTreasure", (nint)1, DateTime.UtcNow);
+        Set(service, "CurrentRun", 7);
+        Set(service, "completionCommandPending", true);
+        Set(service, "StopAfterNextOutcome", true);
+        Set(service, "stationaryPosition", host.Position);
+        Set(service, "stationarySince", DateTime.UtcNow.AddSeconds(-31));
+
+        Invoke(service, "Update");
+
+        Assert.Single(host.Warnings, message => message.Contains("Stationary for 30 seconds", StringComparison.Ordinal));
+        // RestartFromCurrent clears this registration observation before its
+        // native BST check; the fixture intentionally has no native job sheet.
+        Assert.Null(Field(readRecovery, "window"));
+        Assert.Equal(7, Read<int>(service, "CurrentRun"));
+        Assert.Same(settings, Field(service, "runSettings"));
+        Assert.True(Read<bool>(service, "completionCommandPending"));
+        Assert.True(Read<bool>(service, "StopAfterNextOutcome"));
+        Assert.False(Read<bool>(service, "resultSeen"));
+        Assert.False(Read<bool>(service, "ResultObserved"));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        Assert.Same(menus, Field(service, "menus"));
+        Assert.Equal("XBMContentsTreasure", Field(menus, "confirmationWindow"));
+        Assert.Equal((nint)123, Field(menus, "confirmationAddress"));
+    }
+
+    private static object CreateStationaryRun(HostFixture host)
+    {
+        host.Territory = 1342; host.Position = new(-695, 0, -16);
+        host.Conditions.Add("BoundByDuty");
+        var service = host.CreateService();
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = 4 });
+        Set(service, "owner", 17UL); Set(service, "operatorStopped", false);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+        return service;
+    }
+
+    [Fact]
     public void CancelledEntranceMoveStaysPendingAndReissuesUntilActualArrival()
     {
         using var host = new HostFixture();
@@ -756,6 +910,8 @@ public sealed class BeastmasterRouteLifecycleTests
         private const int TakeAllParam = 7009;
         public Vector3 Position;
         public uint Territory = 1339;
+        public bool LoggedIn = true, PlayerLoaded = true, PlayerDead;
+        public ulong Character = 17;
         public bool Pathfinding;
         public readonly HashSet<string> Conditions = [];
         public readonly List<string> Commands = [];
@@ -772,7 +928,7 @@ public sealed class BeastmasterRouteLifecycleTests
             {
                 player = Proxy(typeof(host::Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter), (method, _) => method.Name switch
                 {
-                    "get_Position" => Position, "get_IsDead" => false, "get_IsCasting" => false,
+                    "get_Position" => Position, "get_IsDead" => PlayerDead, "get_IsCasting" => false,
                     "get_CurrentHp" => 100u, _ => Default(method.ReturnType),
                 });
                 var objects = Proxy(typeof(host::Dalamud.Plugin.Services.IObjectTable), (method, _) => method.Name switch
@@ -805,11 +961,11 @@ public sealed class BeastmasterRouteLifecycleTests
                 Replace(typeof(live::VERMAXION.Plugin), "Log", log);
                 Replace(svc, "ClientState", Proxy(typeof(host::Dalamud.Plugin.Services.IClientState), (method, _) => method.Name switch
                 {
-                    "get_TerritoryType" => Territory, "get_IsLoggedIn" => true, _ => Default(method.ReturnType),
+                    "get_TerritoryType" => Territory, "get_IsLoggedIn" => LoggedIn, _ => Default(method.ReturnType),
                 }));
                 Replace(svc, "PlayerState", Proxy(typeof(host::Dalamud.Plugin.Services.IPlayerState), (method, _) => method.Name switch
                 {
-                    "get_IsLoaded" => true, "get_ContentId" => 17UL, _ => Default(method.ReturnType),
+                    "get_IsLoaded" => PlayerLoaded, "get_ContentId" => Character, _ => Default(method.ReturnType),
                 }));
 
                 navigation = CreateNavigation();

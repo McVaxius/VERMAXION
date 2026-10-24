@@ -1,3 +1,8 @@
+2026-10-24 - Resume stationary Crewcible runs
+
+- Reuse the existing Resume path after 30 continuous seconds without XYZ movement outside combat during an active, unpaused Crucible run. Reset timing on movement, combat, pause, run transitions, or loss of character/duty context; retain the current run and pending menu ownership.
+- Validation: isolated Debug compilation and all 242 focused Beastmaster cases passed, including 24 new stationary-recovery cases. Native game acceptance remains pending.
+
 2026-10-23 - Approved LCARS appearance
 
 - Add LCARS after Auto and Picker through the existing shared appearance path. Retain Main task/account scope, all nine windows, the separate Beastmaster Mini, native action IDs, privacy controls and conditional run gates; add segmented rails, framed panels/headings and outlined controls.
