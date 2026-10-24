@@ -38,6 +38,7 @@ internal sealed class VerminionWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
+        if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T("Verminion"));
         UiGui.TitleWithButtons("Lord of Verminion", UiText.T("Lord of Verminion"), this);
         var config = plugin.ConfigManager.GetActiveConfig();
         var service = plugin.VerminionService;

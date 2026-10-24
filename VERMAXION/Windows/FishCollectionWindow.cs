@@ -40,6 +40,7 @@ internal sealed class FishCollectionWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
+        if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T("Fish collection"));
         UiGui.TitleWithButtons("Big and fabled fish collection", UiText.T("Big and fabled fish collection"), this);
         var service = plugin.FishCollection;
         var settings = plugin.Configuration.FishCollection;

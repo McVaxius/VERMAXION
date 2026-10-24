@@ -5793,4 +5793,20 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>訓練前に選択したチョコボを再確認中</value></data>
   <data name="Stable visit cancelled" xml:space="preserve"><value>厩舎への訪問をキャンセルしました</value></data>
   <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Rewardの前に飼料数が変わりました。訓練は実行していません。</value></data>
+  <data name="Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested." xml:space="preserve"><value>プレイヤー対戦を始める前に、コンテンツファインダー設定の「Unrestricted Party」をオフにしてください。参加申請は行っていません。</value></data>
+  <data name="The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited." xml:space="preserve"><value>保存済みの対人戦参加情報に一致するキューまたは対戦が見つかりません。「再開」または「すべて停止」を明示的に選択するまで参加情報を保持します。参加リクエストの再送信や対戦数の加算は行っていません。</value></data>
+  <data name="Resuming the owned player-duty entry intro; waiting for battle controls" xml:space="preserve"><value>管理中の対人戦への入場演出を再開しています。戦闘操作が可能になるまで待機中</value></data>
+  <data name="The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded." xml:space="preserve"><value>管理中の対人戦キューが、戦闘準備完了前に消えました。「再開」または「すべて停止」を明示的に選択するまで保存済みの参加情報を保持します。対戦数や勝利数は加算していません。</value></data>
+  <data name="Resuming the owned CPU-duty entry intro; waiting for battle controls" xml:space="preserve"><value>管理中のCPU対戦への入場演出を再開しています。戦闘操作が可能になるまで待機中</value></data>
+  <data name="LCARS" xml:space="preserve"><value>LCARS</value></data>
+  <data name="LCARS panels, bars and controls" xml:space="preserve"><value>LCARSのパネル、バー、コントロール</value></data>
+  <data name="LCARS UI sounds" xml:space="preserve"><value>LCARSの操作音</value></data>
+  <data name="UI sounds" xml:space="preserve"><value>操作音</value></data>
+  <data name="Preview sound" xml:space="preserve"><value>音を試聴</value></data>
+  <data name="Custom UI tones. The titlebar speaker toggles the same setting." xml:space="preserve"><value>専用の操作音です。タイトルバーのスピーカーも同じ設定を切り替えます。</value></data>
+  <data name="Select LCARS to use UI sounds." xml:space="preserve"><value>操作音を使うにはLCARSを選択してください。</value></data>
+  <data name="Turn on UI sounds to preview." xml:space="preserve"><value>試聴するには操作音をオンにしてください。</value></data>
+  <data name="Audio output is unavailable." xml:space="preserve"><value>音声出力を利用できません。</value></data>
+  <data name="UI sounds muted" xml:space="preserve"><value>操作音はミュート中</value></data>
+  <data name="UI sounds on" xml:space="preserve"><value>操作音はオン</value></data>
 </root>

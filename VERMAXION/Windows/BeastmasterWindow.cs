@@ -131,6 +131,7 @@ internal sealed partial class BeastmasterWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
+        if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T("Beastmaster"));
         if (ViewedConfig == null && plugin.IsCharacterRegistered) SelectCurrentCharacter();
         DrawShellBanner();
         DrawCharacterPicker();
@@ -158,10 +159,13 @@ internal sealed partial class BeastmasterWindow : Window
     {
         if (ViewedConfig == null) return;
         using var tabStyle = new MaterialStyleScope();
-        tabStyle.Color(ImGuiCol.Tab, Vector4.Zero);
-        tabStyle.Color(ImGuiCol.TabActive, Vector4.Zero);
-        tabStyle.Color(ImGuiCol.TabUnfocused, Vector4.Zero);
-        tabStyle.Color(ImGuiCol.TabUnfocusedActive, Vector4.Zero);
+        if (!MaterialTheme.Current.IsLcars)
+        {
+            tabStyle.Color(ImGuiCol.Tab, Vector4.Zero);
+            tabStyle.Color(ImGuiCol.TabActive, Vector4.Zero);
+            tabStyle.Color(ImGuiCol.TabUnfocused, Vector4.Zero);
+            tabStyle.Color(ImGuiCol.TabUnfocusedActive, Vector4.Zero);
+        }
         using var lineHeight = MaterialText.PushLineHeight(new[] { "Run", "Beasts", "Supplies", "VMX Schedule", "Repair" }.Select(UiText.T).ToArray());
         if (!ImGui.BeginTabBar("BeastmasterTabs", ImGuiTabBarFlags.FittingPolicyScroll)) return;
         Tab("Run", 0);
@@ -186,27 +190,39 @@ internal sealed partial class BeastmasterWindow : Window
     {
         if (ViewedConfig == null && plugin.IsCharacterRegistered) SelectCurrentCharacter();
         DrawShellBanner(rotation, mini: true);
-        DrawCharacterPicker();
-        var ready = plugin.CanStartBeastmaster(out var blocker);
-        DrawRunControls(ready, blocker, mini: true);
-        if (ViewedConfig != null)
+        var nativeRoot = ImGui.GetID("");
+        var lcars = MaterialTheme.Current.IsLcars;
+        if (lcars && !UIConstants.BeginPanel("BeastmasterMiniRunFrame")) return;
+        if (lcars) ImGuiP.PushOverrideID(nativeRoot);
+        try
         {
-            if (!ViewingCurrent) UiGui.TextDisabled(UiText.F("Saved data for {0}", DisplayIdentity(viewedCharacterKey)));
-            var settings = ViewingCurrent && plugin.BeastmasterOwnsWork ? plugin.BeastmasterService.Settings : Settings;
-            using (UiText.Font(UiFontRole.BodyStrong)) UiGui.TextWrapped(RunBoardName(settings.Board));
-            UiGui.TextWrapped(settings.Goal == BeastmasterRunGoal.TrainOwned ? "Train owned familiars" : "Fixed board runs");
-            UiGui.TextWrapped(TeamMethodCaption(settings));
-            DrawTrainingProgress(settings, "Mini");
+            DrawCharacterPicker();
+            var ready = plugin.CanStartBeastmaster(out var blocker);
+            DrawRunControls(ready, blocker, mini: true);
+            if (ViewedConfig != null)
+            {
+                if (!ViewingCurrent) UiGui.TextDisabled(UiText.F("Saved data for {0}", DisplayIdentity(viewedCharacterKey)));
+                var settings = ViewingCurrent && plugin.BeastmasterOwnsWork ? plugin.BeastmasterService.Settings : Settings;
+                using (UiText.Font(UiFontRole.BodyStrong)) UiGui.TextWrapped(RunBoardName(settings.Board));
+                UiGui.TextWrapped(settings.Goal == BeastmasterRunGoal.TrainOwned ? "Train owned familiars" : "Fixed board runs");
+                UiGui.TextWrapped(TeamMethodCaption(settings));
+                DrawTrainingProgress(settings, "Mini");
+            }
+            if (!ViewingCurrent && !string.IsNullOrEmpty(PlayingCharacterKey))
+                UiGui.TextDisabled(UiText.F("Playing: {0}", DisplayIdentity(PlayingCharacterKey)));
+            var service = plugin.BeastmasterService;
+            if (service.RouteStepCount > 0)
+                UiGui.TextDisabled(UiText.F("Route {0:00} · {1}/{2} steps", service.EffectiveBoard, service.RouteStep, service.RouteStepCount));
         }
-        if (!ViewingCurrent && !string.IsNullOrEmpty(PlayingCharacterKey))
-            UiGui.TextDisabled(UiText.F("Playing: {0}", DisplayIdentity(PlayingCharacterKey)));
-        var service = plugin.BeastmasterService;
-        if (service.RouteStepCount > 0)
-            UiGui.TextDisabled(UiText.F("Route {0:00} · {1}/{2} steps", service.EffectiveBoard, service.RouteStep, service.RouteStepCount));
+        finally
+        {
+            if (lcars) { ImGui.PopID(); UIConstants.EndPanel(); }
+        }
     }
 
     private static void DrawShellTabUnderline()
     {
+        if (MaterialTheme.Current.IsLcars) return;
         var min = ImGui.GetItemRectMin();
         var max = ImGui.GetItemRectMax();
         ImGui.GetWindowDrawList().AddLine(new Vector2(min.X, max.Y), max, ImGui.GetColorU32(UIConstants.Blue), 2 * UIConstants.Scale);

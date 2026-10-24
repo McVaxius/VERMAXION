@@ -30,6 +30,19 @@ public sealed class UiUxPolicyTests
         Assert.Equal(saved, Newtonsoft.Json.JsonConvert.SerializeObject(restored));
         Assert.Equal(PostProcessTaskOrder.DefaultOrder,
             Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>("{}")!.PostProcessTaskOrder);
+        Assert.True(restored.UiLcarsSoundsMuted);
+        restored.UiColors = restored.UiColors with { Mode = AethertekUI.MaterialColorMode.Lcars };
+        restored.UiLcarsSoundsMuted = false;
+        var lcars = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(restored))!;
+        Assert.Equal(restored.UiColors, lcars.UiColors);
+        Assert.False(lcars.UiLcarsSoundsMuted);
+        Assert.Equal(configuration.PostProcessTaskOrder, lcars.PostProcessTaskOrder);
+        lcars.UiColors = lcars.UiColors with { Mode = AethertekUI.MaterialColorMode.Auto };
+        Assert.Equal(configuration.UiColors.BackgroundRgb, lcars.UiColors.BackgroundRgb);
+        Assert.Equal(configuration.UiColors.ControlsRgb, lcars.UiColors.ControlsRgb);
+        Assert.Equal(configuration.UiColors.TextRgb, lcars.UiColors.TextRgb);
+        Assert.True(Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>("{}")!.UiLcarsSoundsMuted);
     }
 
     [Fact]

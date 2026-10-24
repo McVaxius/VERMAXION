@@ -6149,4 +6149,20 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Повторная проверка выбранного чокобо перед тренировкой</value></data>
   <data name="Stable visit cancelled" xml:space="preserve"><value>Посещение конюшни отменено</value></data>
   <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Запас корма изменился до Reward; тренировка не запущена.</value></data>
+  <data name="Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested." xml:space="preserve"><value>Перед боем Verminion с игроками отключите «Unrestricted Party» в настройках Duty Finder. Заявка на участие не отправлена.</value></data>
+  <data name="The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited." xml:space="preserve"><value>Для сохранённой заявки на бой с игроками нет соответствующей очереди или боя; заявка сохранена до явного выбора «Продолжить» или «ПОЛНАЯ ОСТАНОВКА». Повторный запрос на вход не отправлен, бой не засчитан.</value></data>
+  <data name="Resuming the owned player-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Возобновление вступительной сцены перед текущим боем с игроками; ожидание доступности управления боем</value></data>
+  <data name="The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded." xml:space="preserve"><value>Очередь на текущий бой с игроками исчезла до готовности к бою; сохранённая заявка оставлена до явного выбора «Продолжить» или «ПОЛНАЯ ОСТАНОВКА». Ни бой, ни победа не зарегистрированы.</value></data>
+  <data name="Resuming the owned CPU-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Возобновление вступительной сцены перед текущим боем с компьютером; ожидание доступности управления боем</value></data>
+  <data name="LCARS" xml:space="preserve"><value>LCARS</value></data>
+  <data name="LCARS panels, bars and controls" xml:space="preserve"><value>Панели, полосы и элементы управления LCARS</value></data>
+  <data name="LCARS UI sounds" xml:space="preserve"><value>Звуки интерфейса LCARS</value></data>
+  <data name="UI sounds" xml:space="preserve"><value>Звуки интерфейса</value></data>
+  <data name="Preview sound" xml:space="preserve"><value>Прослушать звук</value></data>
+  <data name="Custom UI tones. The titlebar speaker toggles the same setting." xml:space="preserve"><value>Специальные звуки интерфейса. Динамик в заголовке переключает ту же настройку.</value></data>
+  <data name="Select LCARS to use UI sounds." xml:space="preserve"><value>Выберите LCARS для использования звуков интерфейса.</value></data>
+  <data name="Turn on UI sounds to preview." xml:space="preserve"><value>Включите звуки интерфейса для прослушивания.</value></data>
+  <data name="Audio output is unavailable." xml:space="preserve"><value>Аудиовыход недоступен.</value></data>
+  <data name="UI sounds muted" xml:space="preserve"><value>Звуки интерфейса отключены</value></data>
+  <data name="UI sounds on" xml:space="preserve"><value>Звуки интерфейса включены</value></data>
 </root>

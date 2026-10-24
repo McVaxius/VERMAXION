@@ -178,6 +178,7 @@ public class RegistrableConfigWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
+        if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T(WindowName.Split("##", 2)[0]));
         UiGui.TitleWithButtons("Register Registrables Configuration", UiText.T("Register Registrables Configuration"), this);
         DrawHeader();
         if (pendingImportPreview != null &&

@@ -11,19 +11,19 @@ public static class UIConstants
     public static float Scale => ImGuiHelpers.GlobalScale;
     public static Vector4 Text => MaterialTheme.Current.Colors.OnSurface; // #F3F5F7
     public static Vector4 Metadata => MaterialTheme.Current.Colors.OnSurfaceVariant; // #B8C4CC
-    public static Vector4 Blue => MaterialTheme.Current.Colors.Primary; // #7DE7F0
+    public static Vector4 Blue => MaterialTheme.Current.IsLcars ? MaterialLcars.ControlBlue : MaterialTheme.Current.Colors.Primary; // #7DE7F0
     public static readonly Vector4 Amber = new(255 / 255f, 211 / 255f, 138 / 255f, 1f); // #FFD38A
     internal static readonly Vector4 Mint = new(135 / 255f, 230 / 255f, 199 / 255f, 1f);
     internal static Vector4 Window => MaterialTheme.Current.Colors.Background;
     internal static Vector4 Panel => MaterialTheme.Current.Colors.Surface;
     internal static Vector4 Raised => MaterialTheme.Current.Colors.SurfaceContainerHigh;
     internal static Vector4 Border => MaterialTheme.Current.Colors.OutlineVariant;
-    internal static Vector4 ButtonColor => MaterialTheme.Current.Colors.SurfaceContainerHigh;
+    internal static Vector4 ButtonColor => MaterialTheme.Current.IsLcars ? MaterialTheme.Current.Colors.SurfaceContainerHighest : MaterialTheme.Current.Colors.SurfaceContainerHigh;
     internal static Vector4 Hover => MaterialTheme.Current.Colors.SurfaceContainerHighest;
     internal static Vector4 Pressed => MaterialTheme.Current.Colors.PrimaryContainer;
-    internal static Vector4 Selected => MaterialTheme.Current.Colors.PrimaryContainer;
-    internal static Vector4 SelectedHover => MaterialTheme.Current.Colors.PrimaryContainer;
-    internal static Vector4 SelectedPressed => MaterialTheme.Current.Colors.Primary;
+    internal static Vector4 Selected => MaterialTheme.Current.IsLcars ? MaterialLcars.Lilac : MaterialTheme.Current.Colors.PrimaryContainer;
+    internal static Vector4 SelectedHover => MaterialTheme.Current.IsLcars ? MaterialLcars.Periwinkle : MaterialTheme.Current.Colors.PrimaryContainer;
+    internal static Vector4 SelectedPressed => MaterialTheme.Current.IsLcars ? MaterialLcars.Orange : MaterialTheme.Current.Colors.Primary;
     internal static bool Compact;
     [ThreadStatic] private static bool settingsRows;
     [ThreadStatic] private static bool settingsDefaultActions;
@@ -134,8 +134,10 @@ public static class UIConstants
     {
         if (!compact) ImGui.Spacing();
         using (UiText.Font(UiFontRole.PluginName))
-            WrappedText(Text, text);
-        ImGui.Separator();
+        {
+            if (MaterialTheme.Current.IsLcars) MaterialLcars.PanelHeading(UiText.T(text), 1);
+            else { WrappedText(Text, text); ImGui.Separator(); }
+        }
     }
 
     public static void SameLineIfFits(string nextLabel, float measuredWidth = 0)
@@ -149,7 +151,10 @@ public static class UIConstants
     internal static void ApplicationHeading(string subtitle)
     {
         using (UiText.Font(Compact ? UiFontRole.CompactTitle : UiFontRole.Title))
-            MaterialText.Text("VERMAXION");
+        {
+            if (MaterialTheme.Current.IsLcars) MaterialLcars.Header("VERMAXION");
+            else MaterialText.Text("VERMAXION");
+        }
         WrappedText(Metadata, subtitle);
     }
 
@@ -183,7 +188,12 @@ public static class UIConstants
     internal static bool BeginPanel(string id, string? title = null)
     {
         ImGui.BeginGroup();
-        if (!ImGui.BeginTable(id, 1, ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchProp))
+        var lcars = MaterialTheme.Current.IsLcars;
+        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, lcars ? Vector2.Max(ImGui.GetStyle().CellPadding, new Vector2(22, 12) * Scale) : ImGui.GetStyle().CellPadding);
+        var visible = ImGui.BeginTable(id, 1, ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchProp
+            | (lcars ? ImGuiTableFlags.PadOuterX : ImGuiTableFlags.None));
+        ImGui.PopStyleVar();
+        if (!visible)
         {
             ImGui.EndGroup();
             return false;
@@ -191,13 +201,24 @@ public static class UIConstants
         ImGui.TableSetupColumn("##Panel", ImGuiTableColumnFlags.WidthStretch, 1f);
         ImGui.TableNextRow();
         ImGui.TableNextColumn();
-        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(Panel));
+        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, MaterialTheme.Current.IsLcars ? 0 : ImGui.GetColorU32(Panel));
         if (title != null) Heading(title, true);
         return true;
     }
 
     internal static void EndPanel()
     {
+        if (MaterialTheme.Current.IsLcars)
+        {
+            var table = ImGuiP.GetCurrentTable();
+            ImGuiP.TableEndRow(table);
+            ImGuiP.TablePushBackgroundChannel();
+            try { MaterialLcars.PanelFrame(table.OuterRect.Min, new Vector2(table.OuterRect.Max.X, table.RowPosY2), 1); }
+            finally { ImGuiP.TablePopBackgroundChannel(); }
+            ImGui.EndTable();
+            ImGui.EndGroup();
+            return;
+        }
         ImGui.EndTable();
         // A group's bounds follow content width; the table fills the available width.
         var panelMin = ImGui.GetItemRectMin();
@@ -210,9 +231,10 @@ public static class UIConstants
     internal static bool CollapsingHeading(string title, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None, string? display = null)
     {
         using var headerStyle = new MaterialStyleScope();
-        headerStyle.Color(ImGuiCol.Header, Raised);
-        headerStyle.Color(ImGuiCol.HeaderHovered, Hover);
-        headerStyle.Color(ImGuiCol.HeaderActive, Pressed);
+        headerStyle.Color(ImGuiCol.Header, MaterialTheme.Current.IsLcars ? MaterialLcars.Lilac : Raised);
+        headerStyle.Color(ImGuiCol.HeaderHovered, MaterialTheme.Current.IsLcars ? MaterialLcars.Periwinkle : Hover);
+        headerStyle.Color(ImGuiCol.HeaderActive, MaterialTheme.Current.IsLcars ? MaterialLcars.Orange : Pressed);
+        if (MaterialTheme.Current.IsLcars) headerStyle.Color(ImGuiCol.Text, MaterialLcars.Background);
         bool open;
         using (UiText.Font(UiFontRole.PluginName))
         {
@@ -227,13 +249,14 @@ public static class UIConstants
             open = ImGui.CollapsingHeader(ImGui.CalcTextSize(original).X <= width ? title : "##Wrapped_" + title, flags);
             ImGui.PopStyleColor(); ImGui.PopStyleVar();
             var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetTreeNodeToLabelSpacing(), padding.Y);
-            MaterialIcons.Draw(open ? MaterialIcon.ChevronDown : MaterialIcon.ArrowRight, ImGui.GetItemRectMin() + padding, ImGui.GetFontSize(), Text);
+            MaterialIcons.Draw(open ? MaterialIcon.ChevronDown : MaterialIcon.ArrowRight, ImGui.GetItemRectMin() + padding, ImGui.GetFontSize(), MaterialTheme.Current.IsLcars ? MaterialLcars.Background : Text);
             var drawing=ImGui.GetWindowDrawList();
             drawing.PushClipRect(ImGui.GetItemRectMin(),ImGui.GetItemRectMax(),true);
             try { MaterialText.AddText(drawing,position,ImGui.GetColorU32(ImGuiCol.Text),translated); }
             finally { drawing.PopClipRect(); }
             if(size.X>width && ImGui.IsItemHovered()) MaterialText.SetTooltip(translated);
         }
+        MaterialLcars.Feedback(ImGui.IsItemActivated(), MaterialUiSoundCue.Toggle);
         return open;
     }
 
@@ -250,11 +273,14 @@ public static class UIConstants
         if(current)
             ImGui.GetWindowDrawList().AddRectFilled(position,position+new Vector2(width,height),ImGui.GetColorU32(MaterialColor.Alpha(Selected,.5f)),4*Scale);
         var clicked = ImGui.Selectable("##Wrapped_" + label, selected, ImGuiSelectableFlags.None, new Vector2(width, height));
+        using var selectedInk = new MaterialStyleScope();
+        if (MaterialTheme.Current.IsLcars && (selected || current)) selectedInk.Color(ImGuiCol.Text, MaterialLcars.Background);
         MaterialText.AddText(ImGui.GetWindowDrawList(),ImGui.GetFont(), ImGui.GetFontSize(),
             position + new Vector2(ImGui.GetStyle().FramePadding.X, (height - textHeight) / 2),
             ImGui.GetColorU32(ImGuiCol.Text), text);
         if(current)
             ImGui.GetWindowDrawList().AddLine(position+new Vector2(2*Scale,3*Scale),position+new Vector2(2*Scale,height-3*Scale),ImGui.GetColorU32(Blue),3*Scale);
+        MaterialLcars.Feedback(clicked);
         return clicked;
     }
 
@@ -286,7 +312,9 @@ public static class UIConstants
         var height = System.Math.Max(size.Y > 0 ? size.Y : MaterialControls.Metrics.Height,
             System.Math.Max(textSize.Y, action ? 20 * Scale : 0) + paddingY * 2);
         var emphasis = originalVisible is "Run" or "Run All" or "Resume" or "CPU campaign" or "Scan";
-        if (emphasis)
+        using var outline = MaterialLcars.NativeButtonStyle(emphasis ? MaterialLcars.ControlBlue : MaterialLcars.Lilac);
+        var filledEmphasis = emphasis && !MaterialTheme.Current.IsLcars;
+        if (filledEmphasis)
         {
             var colors = MaterialTheme.Current.Colors;
             ImGui.PushStyleColor(ImGuiCol.Button, colors.PrimaryContainer);
@@ -297,11 +325,12 @@ public static class UIConstants
         ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
         var clicked = ImGui.Button(oldWrapped ? "##Wrapped_" + label : label, new Vector2(width, height));
         ImGui.PopStyleColor();
-        if (emphasis) ImGui.PopStyleColor(4);
+        if (filledEmphasis) ImGui.PopStyleColor(4);
         var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetStyle().FramePadding.X + iconWidth, (height - textSize.Y) / 2);
         if (action) VermaxionPresentation.ActionIcon(originalVisible, ImGui.GetItemRectMin() + new Vector2(ImGui.GetStyle().FramePadding.X, (height - 20 * Scale) / 2), 20 * Scale);
         MaterialText.AddText(ImGui.GetWindowDrawList(),ImGui.GetFont(), ImGui.GetFontSize(), position,
             ImGui.GetColorU32(ImGuiCol.Text), visibleLabel);
+        MaterialLcars.Feedback(clicked);
         return clicked;
     }
 

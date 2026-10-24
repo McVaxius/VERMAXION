@@ -3297,4 +3297,20 @@ Bağımlılıklar: {1}</value></data>
   <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Eğitimden önce seçili chocobo yeniden doğrulanıyor</value></data>
   <data name="Stable visit cancelled" xml:space="preserve"><value>Ahır ziyareti iptal edildi</value></data>
   <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Reward öncesi yem stoku değişti; eğitim başlatılmadı.</value></data>
+  <data name="Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested." xml:space="preserve"><value>Oyunculara karşı Verminion savaşı başlatmadan önce Duty Finder ayarlarında &quot;Unrestricted Party&quot; seçeneğini kapatın. Katılım isteği gönderilmedi.</value></data>
+  <data name="The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited." xml:space="preserve"><value>Oyuncu savaşı için kaydedilen girişe karşılık gelen bir kuyruk veya savaş yok; kayıt, &quot;Sürdür&quot; ya da &quot;TAM DURDUR&quot; açıkça seçilene kadar korunuyor. Katılma isteği yeniden gönderilmedi ve hiçbir maç kaydedilmedi.</value></data>
+  <data name="Resuming the owned player-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Yönetilen oyuncu savaşının giriş sahnesi sürdürülüyor; savaş kontrollerinin kullanılabilir olması bekleniyor</value></data>
+  <data name="The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded." xml:space="preserve"><value>Yönetilen oyuncu savaşı kuyruğu, savaş hazır olmadan kayboldu; kaydedilen giriş, &quot;Sürdür&quot; ya da &quot;TAM DURDUR&quot; açıkça seçilene kadar korunuyor. Hiçbir maç veya zafer kaydedilmedi.</value></data>
+  <data name="Resuming the owned CPU-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Yönetilen CPU savaşının giriş sahnesi sürdürülüyor; savaş kontrollerinin kullanılabilir olması bekleniyor</value></data>
+  <data name="LCARS" xml:space="preserve"><value>LCARS</value></data>
+  <data name="LCARS panels, bars and controls" xml:space="preserve"><value>LCARS panelleri, çubukları ve denetimleri</value></data>
+  <data name="LCARS UI sounds" xml:space="preserve"><value>LCARS arayüz sesleri</value></data>
+  <data name="UI sounds" xml:space="preserve"><value>Arayüz sesleri</value></data>
+  <data name="Preview sound" xml:space="preserve"><value>Sesi dinle</value></data>
+  <data name="Custom UI tones. The titlebar speaker toggles the same setting." xml:space="preserve"><value>Özel arayüz sesleri. Başlık çubuğundaki hoparlör aynı ayarı değiştirir.</value></data>
+  <data name="Select LCARS to use UI sounds." xml:space="preserve"><value>Arayüz seslerini kullanmak için LCARS seçin.</value></data>
+  <data name="Turn on UI sounds to preview." xml:space="preserve"><value>Önizleme için arayüz seslerini açın.</value></data>
+  <data name="Audio output is unavailable." xml:space="preserve"><value>Ses çıkışı kullanılamıyor.</value></data>
+  <data name="UI sounds muted" xml:space="preserve"><value>Arayüz sesleri kapalı</value></data>
+  <data name="UI sounds on" xml:space="preserve"><value>Arayüz sesleri açık</value></data>
 </root>

@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     internal const string BeastmasterTaskId = "Run##Beastmaster";
     internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
-    private const string DebugAttemptMarker = "vmx-verminion-client5-20261022-107";
+    private const string DebugAttemptMarker = "vmx-verminion-client5-20261023-161";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -75,6 +75,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private UiText uiText = null!;
     private AethertekUI.Dalamud.MaterialTextHost? shapedText;
     private MaterialTheme uiTheme = null!;
+    private MaterialUiSoundPlayer? uiSounds;
+    private bool appliedUiSoundsMuted = true;
+    private readonly Dictionary<Window, TitleBarButton> soundTitleButtons = new();
     private readonly MaterialWindowFold fontStatusFold = new();
     private readonly MaterialWindowDecorations fontStatusDecorations = new();
     private MaterialOptions<string> languageOptions = null!;
@@ -468,8 +471,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         foreach (var owner in WindowSystem.Windows.OfType<Dalamud.Interface.Windowing.Window>())
         {
-            if ((owner.Flags & ImGuiWindowFlags.NoTitleBar) != 0 || appearanceTitleBars.ContainsKey(owner)) continue;
-            appearanceTitleBars.Add(owner, AethertekUI.Dalamud.MaterialAppearanceTitleBar.Register(owner,
+            if ((owner.Flags & ImGuiWindowFlags.NoTitleBar) != 0) continue;
+            if (!appearanceTitleBars.ContainsKey(owner)) appearanceTitleBars.Add(owner, AethertekUI.Dalamud.MaterialAppearanceTitleBar.Register(owner,
                 () => new(UiText.T("Language"), UiText.T("Compact mode"), UiText.T("Transparency"), UiText.T("Color")),
                 DrawLanguageSelector,
                 () => { Configuration.CompactUi = !Configuration.CompactUi; Configuration.Save(); },
@@ -485,6 +488,21 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 () => owner is MainWindow
                     ? new(Configuration.UiLanguageVisibleOnMainWindow, Configuration.UiCompactVisibleOnMainWindow, Configuration.UiTransparencyVisibleOnMainWindow, true)
                     : new(true, true, true, true)));
+            appearanceTitleBars[owner].SetLcarsIcons(uiTheme.IsLcars);
+            if (!soundTitleButtons.TryGetValue(owner, out var speaker))
+            {
+                speaker = new()
+                {
+                    Priority = (int)Math.Max(int.MinValue + 1L, owner.TitleBarButtons.Select(static button => (long)button.Priority).DefaultIfEmpty(0).Min() - 1),
+                    IconOffset = new(2, 1),
+                    Click = button => { if (button == ImGuiMouseButton.Left && LcarsActive) SetUiSoundsMuted(!Configuration.UiLcarsSoundsMuted); },
+                    ShowTooltip = () => MaterialText.SetTooltip(UiText.T(Configuration.UiLcarsSoundsMuted ? "UI sounds muted" : "UI sounds on")),
+                };
+                soundTitleButtons.Add(owner, speaker);
+            }
+            speaker.Icon = Configuration.UiLcarsSoundsMuted ? Dalamud.Interface.FontAwesomeIcon.VolumeMute : Dalamud.Interface.FontAwesomeIcon.VolumeUp;
+            if (uiTheme.IsLcars && !owner.TitleBarButtons.Contains(speaker)) owner.TitleBarButtons.Add(speaker);
+            else if (!uiTheme.IsLcars) owner.TitleBarButtons.Remove(speaker);
         }
     }
 
@@ -536,9 +554,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         var changed = MaterialAppearanceSelector.DrawColors(id, ref colorDraft, ref accentDraft,
             new(UiText.T("Color"), UiText.T("Language"), UiText.T("Teal"), UiText.T("Blue"), UiText.T("Pink"), UiText.T("Custom RGB")),
-            new(UiText.T("Auto"), UiText.T("Picker"), UiText.T("Default"), UiText.T("Background, controls and text follow your theme."), UiText.T("Theme colour"), UiText.T("Choose each colour independently."), UiText.T("Background"), UiText.T("Controls"), UiText.T("Text"), UiText.T("Aa  Preview text"), UiText.T("Control"), UiText.T("Switch to Picker to set each colour yourself."), UiText.T("Switch back to Auto to use the automatic theme.")), Configuration.CompactUi ? 298 : 316);
+            new(UiText.T("Auto"), UiText.T("Picker"), UiText.T("Default"), UiText.T("Background, controls and text follow your theme."), UiText.T("Theme colour"), UiText.T("Choose each colour independently."), UiText.T("Background"), UiText.T("Controls"), UiText.T("Text"), UiText.T("Aa  Preview text"), UiText.T("Control"), UiText.T("Switch to Picker to set each colour yourself."), UiText.T("Switch back to Auto to use the automatic theme."))
+            { Lcars = UiText.T("LCARS"), LcarsHelp = UiText.T("LCARS panels, bars and controls") }, Configuration.CompactUi ? 298 : 316);
         if (!changed) return false;
         Configuration.UiColors = colorDraft;
+        if (!LcarsActive) uiSounds?.Stop();
         Configuration.UiAccentRgb = MaterialColorSettings.ToRgb(accentDraft);
         return true;
     }
@@ -612,6 +632,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             if (visible)
             {
                 fontStatusDecorations.Paint();
+                if (uiTheme.IsLcars) MaterialLcars.Header("VERMAXION");
                 if (appliedLanguage == "hi")
                 {
                     ImGui.TextWrapped(loading ? "Loading Hindi UI fonts..." : "Hindi UI fonts are unavailable. See the plugin log.");
@@ -655,9 +676,85 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             appliedAccent = Configuration.UiAccentRgb & 0xFFFFFF;
             appliedColors = colorDraft;
             uiTheme = VermaxionPresentation.Theme(appliedAccent, colorDraft);
+            uiTheme.Feedback = PlayUiSound;
+            if (!uiTheme.IsLcars) uiSounds?.Stop();
             var color = VermaxionPresentation.Rgb(appliedAccent);
             accentDraft = new(color.X, color.Y, color.Z);
         }
+        uiTheme.Density = uiTheme.IsLcars && Configuration.CompactUi ? MaterialDensity.Compact : MaterialDensity.Standard;
+        if (appliedUiSoundsMuted != Configuration.UiLcarsSoundsMuted)
+        {
+            appliedUiSoundsMuted = Configuration.UiLcarsSoundsMuted;
+            if (appliedUiSoundsMuted) uiSounds?.Stop();
+        }
+    }
+
+    private bool LcarsActive => Configuration.UiColors?.Mode == MaterialColorMode.Lcars;
+
+    private void PlayUiSound(MaterialUiSoundCue cue)
+    {
+        if (LcarsActive && !Configuration.UiLcarsSoundsMuted)
+            (uiSounds ??= new MaterialUiSoundPlayer()).TryPlay(cue);
+    }
+
+    private void SetUiSoundsMuted(bool muted)
+    {
+        Configuration.UiLcarsSoundsMuted = muted;
+        if (muted) uiSounds?.Stop();
+        Configuration.Save();
+    }
+
+    internal void DrawLcarsQuickPreferences()
+    {
+        foreach (var mode in new[] { MaterialColorMode.Auto, MaterialColorMode.Picker, MaterialColorMode.Lcars })
+        {
+            var caption = mode == MaterialColorMode.Lcars ? "LCARS" : mode.ToString();
+            if (mode != MaterialColorMode.Auto) UIConstants.SameLineIfFits(caption,
+                ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X + MaterialText.Measure(UiText.T(caption)).X);
+            if (UiGui.RadioButton(caption + "##MainColour", Configuration.UiColors.Mode == mode)
+                && Configuration.UiColors.Mode != mode)
+            {
+                Configuration.UiColors = Configuration.UiColors with { Mode = mode };
+                if (!LcarsActive) uiSounds?.Stop();
+                Configuration.Save();
+            }
+        }
+        UIConstants.SameLineIfFits("UI sounds",
+            ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X + MaterialText.Measure(UiText.T("UI sounds")).X);
+        ImGui.BeginDisabled(!LcarsActive);
+        try
+        {
+            var enabled = !Configuration.UiLcarsSoundsMuted;
+            if (UiGui.Checkbox("UI sounds", ref enabled)) SetUiSoundsMuted(!enabled);
+        }
+        finally { ImGui.EndDisabled(); }
+    }
+
+    private void DrawLcarsSounds()
+    {
+        MaterialSettings.Section(UiText.T("LCARS UI sounds"));
+        ImGui.BeginDisabled(!LcarsActive);
+        try
+        {
+            var enabled = !Configuration.UiLcarsSoundsMuted;
+            if (UiGui.Checkbox("UI sounds", ref enabled)) SetUiSoundsMuted(!enabled);
+            UiGui.TextWrapped("Custom UI tones. The titlebar speaker toggles the same setting.");
+            ImGui.BeginDisabled(Configuration.UiLcarsSoundsMuted);
+            try
+            {
+                var current = MaterialTheme.Current;
+                var feedback = current.Feedback;
+                bool preview;
+                try { current.Feedback = null; preview = UiGui.Button("Preview sound"); }
+                finally { current.Feedback = feedback; }
+                MaterialLcars.Feedback(preview, MaterialUiSoundCue.Preview);
+            }
+            finally { ImGui.EndDisabled(); }
+            if (uiSounds?.Error is not null) UiGui.TextWrapped("Audio output is unavailable.");
+        }
+        finally { ImGui.EndDisabled(); }
+        if (!LcarsActive) UiGui.TextDisabled("Select LCARS to use UI sounds.");
+        else if (Configuration.UiLcarsSoundsMuted) UiGui.TextDisabled("Turn on UI sounds to preview.");
     }
 
     public void DrawAppearanceSelector()
@@ -681,6 +778,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     public void Dispose()
     {
+        uiSounds?.Dispose();
         if (BeastmasterOwnsWork) StopBeastmaster();
         BeastmasterService.Dispose();
         Engine.CancelNagYourMomSeriesRankTest();
@@ -958,13 +1056,54 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     {
         // No parent engine/manual task or AR suppression may survive the handoff.
         // Do not make the ownership IPC lie to admit a child duty.
+        if (characterRegistrationCompletedThisLogin && ClientState.IsLoggedIn && PlayerState.IsLoaded &&
+            BeforeArGate is BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady &&
+            TryGetWorldReadyCharacterForRegistration(out var name, out var world, out var contentId,
+                out _, waitForStability: false) && contentId == PlayerState.ContentId &&
+            ConfigManager.CurrentCharacterKey == $"{name}@{world}" &&
+            ConfigManager.GetCurrentAccount() is { } account &&
+            account.Characters.TryGetValue(ConfigManager.CurrentCharacterKey, out var profile) &&
+            ReferenceEquals(profile, ConfigManager.GetActiveConfig()))
+        {
+            var beforeAr = BuildDadHandoffBeforeArYieldSnapshot();
+            var ar = AutoRetainerIPC.ReadBusyState();
+            var suppression = AutoRetainerIPC.GetSuppressionSnapshot();
+            var beforeArMulti = AutoRetainerIPC.ReadMultiModeEnabled();
+            if (beforeAr.GateState is BeforeArGateState.Armed or BeforeArGateState.WaitingForWorldReady &&
+                !beforeAr.ReservationActive && !beforeAr.EngineOwnsActiveWork && !beforeAr.FishingOwnsWork &&
+                !beforeAr.ManualServiceOwnsWork && !beforeAr.CharacterPostprocessRequested && !beforeAr.CleanupOwnsWork &&
+                !ARPostProcessService.IsProcessing && !FishCollection.IsActive && !FishCollection.IsCleanupPending &&
+                !pendingFishingPostprocessHandoff && !OfflineLogoutBlocksOrdinaryAutomation && !VerminionService.HasQuestAcquisition &&
+                pendingDebugTaskId == null && pendingDebugDispatchTaskId == null &&
+                ar.Success && !ar.Busy && beforeArMulti.Success && !beforeArMulti.Enabled && suppression.RemoteKnown &&
+                (!suppression.RemoteSuppressed || suppression.OwnedByVermaxion) &&
+                GameHelpers.IsPlayerAvailable() && !Condition[ConditionFlag.InCombat] &&
+                !Condition[ConditionFlag.BoundByDuty] && !Condition[ConditionFlag.BoundByDuty56] &&
+                !Condition[ConditionFlag.InDutyQueue] && !Condition[ConditionFlag.WaitingForDutyFinder] &&
+                LifestreamIPC.TryReadBusy(out var travelling) && !travelling &&
+                VNavmeshIPC.TryGetPathIsRunning(out var moving) && !moving &&
+                VNavmeshIPC.TryGetPathfindInProgress(out var pathfinding) && !pathfinding)
+                SkipBeforeArForLogin("Yielded unstarted Before-AR work to manual Verminion minion acquisition");
+        }
         var automation = BuildAutomationStatus();
+        var arReady = AutoRetainerIPC.ReadBusyState();
+        var suppressionReady = AutoRetainerIPC.GetSuppressionSnapshot();
+        var currentCharacterReady = characterRegistrationCompletedThisLogin && ClientState.IsLoggedIn && PlayerState.IsLoaded &&
+            TryGetWorldReadyCharacterForRegistration(out var readyName, out var readyWorld, out var readyContentId,
+                out _, waitForStability: false) && readyContentId == PlayerState.ContentId &&
+            ConfigManager.CurrentCharacterKey == $"{readyName}@{readyWorld}" &&
+            ConfigManager.GetCurrentAccount() is { } readyAccount &&
+            readyAccount.Characters.TryGetValue(ConfigManager.CurrentCharacterKey, out var readyProfile) &&
+            ReferenceEquals(readyProfile, ConfigManager.GetActiveConfig());
         var blocker = !characterRegistrationCompletedThisLogin ? "Waiting for character registration." :
+            !currentCharacterReady ? "Waiting for the current character to be registered and ready." :
             automation.IsBusy ? automation.Summary :
             DadHandoffBlocksNewWork ? "DAD owns the character." :
             OfflineLogoutBlocksOrdinaryAutomation ? "An offline logout hold is active." :
             VerminionService.HasQuestAcquisition ? "A minion acquisition handoff is already reserved." :
-            AutoRetainerIPC.IsBusy() ? "AutoRetainer is busy or its state is unavailable." :
+            !suppressionReady.RemoteKnown || suppressionReady.RemoteSuppressed || suppressionReady.OwnedByVermaxion
+                ? "AutoRetainer suppression is active or unreadable." :
+            !arReady.Success || arReady.Busy ? "AutoRetainer is busy or its state is unavailable." :
             pendingDebugTaskId != null || pendingDebugDispatchTaskId != null ? "A reload action is pending." : null;
         if (blocker != null)
         {
@@ -2862,9 +3001,28 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private bool CanObserveVerminionForReload()
     {
         var player = ObjectTable.LocalPlayer;
-        return Configuration.DebugTaskId == AutomationCatalog.VerminionQueue && player != null &&
-            Configuration.DebugTaskCharacterKey == $"{player.Name}@{player.HomeWorld.Value.Name}" &&
-            (VerminionGameInteraction.IsSetupMenu || VerminionGameInteraction.CurrentBattleDutyId() != 0);
+        if (Configuration.DebugTaskId != AutomationCatalog.VerminionQueue || player == null ||
+            Configuration.DebugTaskCharacterKey != $"{player.Name}@{player.HomeWorld.Value.Name}") return false;
+        if (VerminionGameInteraction.IsSetupMenu || VerminionGameInteraction.CurrentBattleDutyId() != 0) return true;
+        // Registration has established identity stability. Recheck loaded native
+        // identity without requiring general availability during the entry intro.
+        if (!IsCharacterRegistered || !ClientState.IsLoggedIn || !PlayerState.IsLoaded ||
+            Condition[ConditionFlag.BetweenAreas] || Condition[ConditionFlag.BetweenAreas51] ||
+            !TryGetWorldReadyCharacterForRegistration(out var name, out var world, out var contentId, out _, waitForStability: false) ||
+            contentId == 0 || contentId != PlayerState.ContentId ||
+            Configuration.DebugTaskCharacterKey != $"{name}@{world}" ||
+            Configuration.DebugTaskCharacterKey != ConfigManager.CurrentCharacterKey ||
+            string.IsNullOrEmpty(ConfigManager.CurrentAccountId) ||
+            ConfigManager.GetCurrentAccount() is not { } account || account.AccountId != ConfigManager.CurrentAccountId ||
+            !account.Characters.TryGetValue(ConfigManager.CurrentCharacterKey, out var config) ||
+            !ReferenceEquals(config, ConfigManager.GetActiveConfig())) return false;
+        var progress = config.VerminionProgress;
+        // This opens only Resume's observation path. Strict battlefield identity
+        // continues to own all controls and result credit.
+        return progress.PendingMatch > 0 && progress.PendingMatch == progress.MatchSequence &&
+            VerminionDutyRules.IsCpu(progress.PendingDuty) &&
+            progress.PendingMode is { } pendingMode && Enum.IsDefined(pendingMode) && progress.RunMode == pendingMode &&
+            VerminionGameInteraction.HasBattleEntry(progress.PendingDuty);
     }
 
     private bool TryGetWorldReadyCharacterForFishing(out string charName, out string worldName, out ulong contentId, out string reason)
@@ -3448,7 +3606,19 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
         // Stop all services that have state machines
         FCBuffService.Reset();
-        VerminionService.Reset();
+        var registeredVerminionStop = false;
+        ulong verminionStopContentId = 0;
+        string? verminionStopActorKey = null;
+        if (!preparingDebugTask && IsCharacterRegistered && ClientState.IsLoggedIn && PlayerState.IsLoaded &&
+            !Condition[ConditionFlag.BetweenAreas] && !Condition[ConditionFlag.BetweenAreas51] &&
+            TryGetWorldReadyCharacterForRegistration(out var stopName, out var stopWorld, out var stopContentId,
+                out _, waitForStability: false))
+        {
+            registeredVerminionStop = true;
+            verminionStopContentId = stopContentId;
+            verminionStopActorKey = $"{stopName}@{stopWorld}";
+        }
+        VerminionService.Reset(registeredVerminionStop, verminionStopContentId, verminionStopActorKey);
         CactpotService.Reset();
         ChocoboRaceService.Reset();
         FashionReportService.Reset();
@@ -3845,6 +4015,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     internal void DrawWindowSettings()
     {
+        DrawLcarsSounds();
         var config = Configuration;
         var changed = false;
         var showStatus = config.UiShowTitlebarStatus;

@@ -5793,4 +5793,20 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>正在训练前重新确认所选陆行鸟</value></data>
   <data name="Stable visit cancelled" xml:space="preserve"><value>鸟房访问已取消</value></data>
   <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Reward前饲料数量发生变化；未发起训练。</value></data>
+  <data name="Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested." xml:space="preserve"><value>开始萌宠之王玩家对战前，请在任务搜索器设置中关闭“Unrestricted Party”。未发送参加申请。</value></data>
+  <data name="The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited." xml:space="preserve"><value>已保存的玩家对战入场记录没有对应的排队或战斗；将保留该记录，等待你主动选择“继续”或“全部停止”。未重新发送加入请求，也未计入任何对战。</value></data>
+  <data name="Resuming the owned player-duty entry intro; waiting for battle controls" xml:space="preserve"><value>正在恢复由插件管理的玩家对战入场过场；等待战斗操作可用</value></data>
+  <data name="The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded." xml:space="preserve"><value>由插件管理的玩家对战排队在战斗就绪前消失；将保留已保存的入场记录，等待你主动选择“继续”或“全部停止”。未记录任何对战或胜利。</value></data>
+  <data name="Resuming the owned CPU-duty entry intro; waiting for battle controls" xml:space="preserve"><value>正在恢复由插件管理的CPU对战入场过场；等待战斗操作可用</value></data>
+  <data name="LCARS" xml:space="preserve"><value>LCARS</value></data>
+  <data name="LCARS panels, bars and controls" xml:space="preserve"><value>LCARS 面板、栏和控件</value></data>
+  <data name="LCARS UI sounds" xml:space="preserve"><value>LCARS 界面音效</value></data>
+  <data name="UI sounds" xml:space="preserve"><value>界面音效</value></data>
+  <data name="Preview sound" xml:space="preserve"><value>试听音效</value></data>
+  <data name="Custom UI tones. The titlebar speaker toggles the same setting." xml:space="preserve"><value>自定义界面音效。标题栏扬声器切换同一设置。</value></data>
+  <data name="Select LCARS to use UI sounds." xml:space="preserve"><value>选择 LCARS 以使用界面音效。</value></data>
+  <data name="Turn on UI sounds to preview." xml:space="preserve"><value>开启界面音效后即可试听。</value></data>
+  <data name="Audio output is unavailable." xml:space="preserve"><value>音频输出不可用。</value></data>
+  <data name="UI sounds muted" xml:space="preserve"><value>界面音效已静音</value></data>
+  <data name="UI sounds on" xml:space="preserve"><value>界面音效已开启</value></data>
 </root>

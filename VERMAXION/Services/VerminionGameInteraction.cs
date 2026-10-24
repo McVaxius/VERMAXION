@@ -145,6 +145,16 @@ internal static unsafe class VerminionGameInteraction
             VERMAXION.Models.VerminionDutyRules.MatchesTerritory(duty, Plugin.ClientState.TerritoryType) ? duty : 0;
     }
 
+    // Entry intros precede PlayingLordOfVerminion. This retains an existing
+    // admission only; CurrentBattleDutyId still owns controls and result credit.
+    public static bool HasBattleEntry(uint duty)
+    {
+        var game = GameMain.Instance();
+        return VERMAXION.Models.VerminionDutyRules.IsVerminion(duty) && game != null &&
+            game->CurrentContentFinderConditionId == duty &&
+            VERMAXION.Models.VerminionDutyRules.MatchesTerritory(duty, Plugin.ClientState.TerritoryType);
+    }
+
     public static int CompletedStages() => PlayerState.Instance() is var player && player != null ? player->CompletedLoVMStages : -1;
 
     public static bool OpenTournamentInfo()
@@ -200,6 +210,11 @@ internal static unsafe class VerminionGameInteraction
         {
             Plugin.Log.Information($"[Verminion] Player entry blocked by native queue state {finder->QueueInfo.QueueState}");
             failure = "Duty Finder already has an active queue; it was left untouched. No Join requested.";
+            return false;
+        }
+        if (finder->IsUnrestrictedParty)
+        {
+            failure = "Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested.";
             return false;
         }
         // An already open idle Finder and retained idle selections are normal.

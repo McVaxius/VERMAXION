@@ -144,6 +144,7 @@ public class MainWindow : Window, IDisposable
     public override void Draw()
     {
         motion.DrawChrome();
+        if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(string.Empty);
         var config = plugin.ConfigManager.GetActiveConfig();
         var engine = plugin.Engine;
         var charKey = plugin.ConfigManager.CurrentCharacterKey;
@@ -217,6 +218,9 @@ public class MainWindow : Window, IDisposable
         statusDraw.ChannelsSetCurrent(1);
         try
         {
+            using var framePadding = new MaterialStyleScope();
+            if (MaterialTheme.Current.IsLcars)
+                framePadding.Style(ImGuiStyleVar.CellPadding, Vector2.Max(ImGui.GetStyle().CellPadding, new Vector2(18, 12) * scale));
             if (ImGui.BeginTable("DashboardHeader", wideHeader ? 5 : 2, headerFlags))
             {
                 headerId = ImGui.GetID("");
@@ -256,7 +260,12 @@ public class MainWindow : Window, IDisposable
         }
         ImGui.SetCursorScreenPos(new Vector2(statusStart.X, Math.Max(ImGui.GetCursorScreenPos().Y, statusStart.Y + statusHeight)));
         ImGui.Dummy(new Vector2(0, (compact ? 8 : 12) * scale));
-        DrawControls();
+        if (MaterialTheme.Current.IsLcars)
+        {
+            DrawFramedControls("MainAppearanceFrame", "Window appearance", plugin.DrawLcarsQuickPreferences);
+            DrawFramedControls("MainActionsFrame", "Actions", DrawControls);
+        }
+        else DrawControls();
         var watchFishingWindows=plugin.Configuration.OceanFishingWindowWatchEnabled;
         if(UIConstants.Checkbox("Watch Ocean Fishing windows",ref watchFishingWindows))
         {
@@ -313,6 +322,16 @@ public class MainWindow : Window, IDisposable
             UiGui.TextDisabled(UiText.F("{0} pending", engine.GetPendingTaskCount()));
             if (ImGui.IsItemHovered()) UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T(engine.RegistryDiagnostic)
                 : string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker)));
+        }
+
+        void DrawFramedControls(string id, string title, Action draw)
+        {
+            var originalRoot = ImGui.GetID("");
+            if (!UIConstants.BeginPanel(id, title)) return;
+            ImGuiP.PushOverrideID(originalRoot);
+            try { draw(); }
+            finally { ImGui.PopID(); UIConstants.EndPanel(); }
+            ImGui.Spacing();
         }
 
         void DrawControls()

@@ -58,6 +58,7 @@ internal sealed class IslandSanctuaryWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
+        if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T(WindowName.Split("##", 2)[0]));
         UIConstants.Heading("Island Sanctuary", plugin.Configuration.CompactUi);
         UiGui.TextWrapped("Cowrie routine · Activity provider: Calypso · TBD");
         DrawProfilePicker();

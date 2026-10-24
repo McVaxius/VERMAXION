@@ -6149,4 +6149,20 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Ausgewählten Chocobo vor dem Training erneut prüfen</value></data>
   <data name="Stable visit cancelled" xml:space="preserve"><value>Stallbesuch abgebrochen</value></data>
   <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Futterbestand vor Reward geändert; kein Training ausgelöst.</value></data>
+  <data name="Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested." xml:space="preserve"><value>Deaktiviere &quot;Unrestricted Party&quot; in den Einstellungen der Inhaltssuche, bevor du einen Verminion-Spielerkampf startest. Kein Beitritt angefordert.</value></data>
+  <data name="The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited." xml:space="preserve"><value>Die gespeicherte Anmeldung für den Spielerkampf hat keine passende Warteschlange oder Partie; sie bleibt für ein ausdrückliches Resume oder FULL STOP erhalten. Join wird nicht erneut ausgelöst und keine Partie angerechnet.</value></data>
+  <data name="Resuming the owned player-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Die Einleitungssequenz des zugehörigen Spielerkampfs wird fortgesetzt; warte auf die Kampfsteuerung.</value></data>
+  <data name="The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded." xml:space="preserve"><value>Die zugehörige Warteschlange für den Spielerkampf ist verschwunden, bevor der Kampf bereit war; die gespeicherte Anmeldung bleibt für ein ausdrückliches Resume oder FULL STOP erhalten. Weder eine Partie noch ein Sieg wurden angerechnet.</value></data>
+  <data name="Resuming the owned CPU-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Die Einleitungssequenz des zugehörigen CPU-Kampfs wird fortgesetzt; warte auf die Kampfsteuerung.</value></data>
+  <data name="LCARS" xml:space="preserve"><value>LCARS</value></data>
+  <data name="LCARS panels, bars and controls" xml:space="preserve"><value>LCARS-Bedienfelder, Leisten und Steuerelemente</value></data>
+  <data name="LCARS UI sounds" xml:space="preserve"><value>LCARS-Oberflächentöne</value></data>
+  <data name="UI sounds" xml:space="preserve"><value>Oberflächentöne</value></data>
+  <data name="Preview sound" xml:space="preserve"><value>Ton vorhören</value></data>
+  <data name="Custom UI tones. The titlebar speaker toggles the same setting." xml:space="preserve"><value>Eigene Oberflächentöne. Der Lautsprecher in der Titelleiste schaltet dieselbe Einstellung um.</value></data>
+  <data name="Select LCARS to use UI sounds." xml:space="preserve"><value>LCARS auswählen, um Oberflächentöne zu verwenden.</value></data>
+  <data name="Turn on UI sounds to preview." xml:space="preserve"><value>Oberflächentöne zum Vorhören einschalten.</value></data>
+  <data name="Audio output is unavailable." xml:space="preserve"><value>Die Audioausgabe ist nicht verfügbar.</value></data>
+  <data name="UI sounds muted" xml:space="preserve"><value>Oberflächentöne stumm</value></data>
+  <data name="UI sounds on" xml:space="preserve"><value>Oberflächentöne an</value></data>
 </root>

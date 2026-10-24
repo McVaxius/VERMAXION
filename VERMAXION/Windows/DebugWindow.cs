@@ -40,6 +40,7 @@ internal sealed class DebugWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
+        if (AethertekUI.MaterialTheme.Current.IsLcars) AethertekUI.MaterialLcars.Header(UiText.T(WindowName.Split("##", 2)[0]));
         UiGui.TitleWithButtons("Vermaxion Debug", UiText.T("Vermaxion Debug"), this);
         UIConstants.Heading("Reload task selection", plugin.Configuration.CompactUi);
         if (UIConstants.FullStopButton())

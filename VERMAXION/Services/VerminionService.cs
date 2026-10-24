@@ -269,10 +269,15 @@ public sealed partial class VerminionService : IDisposable
         if (!campaign && VerminionDutyRules.IsPlayerMode(runMode) && !VerminionDutyRules.IsPlayer(selectedPlayerDuty))
         { Fail("The selected Verminion player queue is unsupported; no Join requested."); return; }
         var pendingQueue = progress.PendingMatch != 0 && VerminionGameInteraction.HasBattleQueue(progress.PendingDuty);
+        var pendingEntry = progress.PendingMatch != 0 && VerminionGameInteraction.HasBattleEntry(progress.PendingDuty);
         if (progress.PendingMatch != 0 && VerminionDutyRules.IsPlayer(progress.PendingDuty) &&
-            currentDuty != progress.PendingDuty && !pendingQueue)
-        { Fail("The saved player admission has no matching queue or battle; no Join replayed or match credited. Use Resume after checking the queue."); return; }
-        if (progress.PendingMatch != 0 && currentDuty != progress.PendingDuty && !pendingQueue)
+            currentDuty != progress.PendingDuty && !pendingQueue && !pendingEntry)
+        {
+            Fail("The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited.",
+                preservePlayerAdmission: true);
+            return;
+        }
+        if (progress.PendingMatch != 0 && currentDuty != progress.PendingDuty && !pendingQueue && !pendingEntry)
             progress.AbandonMatch();
         configManager.SaveCurrentAccount();
         if (campaign && progress.NextUnclearedChallenge == 25 && currentDuty == 0 && !pendingQueue && progress.PendingMatch == 0)
@@ -281,10 +286,10 @@ public sealed partial class VerminionService : IDisposable
         // Do not bypass the goal check by resuming that menu. Active admissions
         // still reconcile their existing result before completion is considered.
         if (currentDuty == 0 && !pendingQueue && progress.PendingMatch == 0 && TryCompleteWeeklyGoal()) return;
-        if (!campaign && runMode == VerminionMode.CpuRewards && currentDuty == 0 && !pendingQueue &&
+        if (!campaign && runMode == VerminionMode.CpuRewards && currentDuty == 0 && !pendingQueue && !pendingEntry &&
             TournamentWorldRequirement() != null)
         { BeginTournamentInspection(); return; }
-        if (!campaign && runMode == VerminionMode.CpuRewards && currentDuty == 0 && !pendingQueue &&
+        if (!campaign && runMode == VerminionMode.CpuRewards && currentDuty == 0 && !pendingQueue && !pendingEntry &&
             VerminionGameInteraction.IsSetupMenu)
         {
             // An open ordinary challenge menu must not bypass CPU-mode setup.
@@ -300,13 +305,14 @@ public sealed partial class VerminionService : IDisposable
             Fail("Winning attempt limit reached; use Resume after reviewing the strategy.");
             return;
         }
-        battleDuty = currentDuty != 0 ? currentDuty : pendingQueue ? progress.PendingDuty :
+        battleDuty = currentDuty != 0 ? currentDuty : pendingQueue || pendingEntry ? progress.PendingDuty :
             (uint)(551 + (progress.SelectedChallengeStage is >= 1 and <= 24 ? progress.SelectedChallengeStage : 2));
         challengeStage = VerminionDutyRules.ChallengeStage(battleDuty);
-        reconcilingSummonQueue = currentDuty != 0;
+        reconcilingSummonQueue = currentDuty != 0 || pendingEntry;
         admissionConfirmed = false;
         admissionSnapshot = false;
-        tutorialPromptFloor = currentDuty == 552 ? -1 : VerminionGameInteraction.CurrentLogIndex();
+        tutorialPromptFloor = currentDuty == 552 || pendingEntry && progress.PendingDuty == 552
+            ? -1 : VerminionGameInteraction.CurrentLogIndex();
         handledPrompt = string.Empty;
         pendingGateSummon = false;
         pendingTutorialSummons = 0;
@@ -333,6 +339,14 @@ public sealed partial class VerminionService : IDisposable
         lastResultCredited = false;
         verifyingTutorialExit = false;
         nextPromptCheckUtc = DateTime.MinValue;
+        if (pendingEntry && currentDuty == 0)
+        {
+            admissionConfirmed = true;
+            SetState(IsPlayerBattle ? VerminionState.WaitingForPlayerBattle : VerminionState.WaitingForTutorial,
+                IsPlayerBattle ? "Resuming the owned player-duty entry intro; waiting for battle controls"
+                    : "Resuming the owned CPU-duty entry intro; waiting for battle controls");
+            return;
+        }
         if (VerminionGameInteraction.HasBattleQueue(battleDuty))
         {
             // Reload may observe a cancelled or manually created queue. Only
@@ -468,15 +482,65 @@ public sealed partial class VerminionService : IDisposable
         Start(manual: true);
     }
 
-    public void Reset()
+    public void Reset() => Reset(false, 0, null);
+
+    internal void Reset(bool currentCharacterRegistered, ulong registeredContentId, string? liveActorKey)
     {
         savedPurchaseRecoveryRequested = false;
         preparedAcquisition = null;
         StopOwnedMovement();
+        // Only explicit FULL STOP supplies a registered live identity. A reload
+        // or ordinary engine cleanup cannot adopt a saved admission by itself.
+        if (owner == 0 && currentCharacterRegistered && registeredContentId != 0 &&
+            !string.IsNullOrEmpty(liveActorKey) && liveActorKey == configManager.CurrentCharacterKey &&
+            !string.IsNullOrEmpty(configManager.CurrentAccountId) &&
+            configManager.Accounts.TryGetValue(configManager.CurrentAccountId, out var account) &&
+            account.Characters.TryGetValue(liveActorKey, out var stopped) &&
+            ReferenceEquals(stopped, configManager.GetActiveConfig()) && stopped.VerminionPaused &&
+            stopped.VerminionProgress is { PendingMatch: > 0, PendingMode: { } pendingMode } saved &&
+            saved.PendingMatch == saved.MatchSequence && saved.RunMode == pendingMode &&
+            saved.RunRepeatCount is >= 1 and <= 1000 && saved.RunMission is >= 1 and <= 24 &&
+            saved.RunMatches >= 0 && saved.RunWins >= 0)
+        {
+            var playerAdmission = VerminionDutyRules.IsPlayer(saved.PendingDuty) &&
+                !saved.CampaignRequested && !saved.RunIsCampaign && !saved.PendingMissionRepeat &&
+                VerminionDutyRules.IsPlayerMode(pendingMode) && saved.RunPlayerDuty == saved.PendingDuty &&
+                saved.RunMatches < saved.RunRepeatCount && saved.RunWins <= saved.RunMatches;
+            var stage = VerminionDutyRules.ChallengeStage(saved.PendingDuty);
+            var cpuAdmission = VerminionDutyRules.IsCpu(saved.PendingDuty) &&
+                (stage == 0 || saved.SelectedChallengeStage == stage) &&
+                (VerminionDutyRules.IsPlayerMode(pendingMode)
+                    ? VerminionDutyRules.IsPlayer(saved.RunPlayerDuty) : saved.RunPlayerDuty == VerminionDutyRules.PlayerDuty) &&
+                (saved.CampaignRequested
+                    ? saved.RunIsCampaign && stage > 0 && saved.CampaignStage == stage && saved.CampaignStageAttempts > 0 &&
+                        !saved.PendingMissionRepeat && Enum.IsDefined(pendingMode)
+                    : !saved.RunIsCampaign && (pendingMode == VerminionMode.MissionRepeat
+                        ? stage == saved.RunMission && saved.RunWins < saved.RunRepeatCount && saved.PendingMissionRepeat
+                        : !saved.PendingMissionRepeat && pendingMode is
+                            VerminionMode.Participation or VerminionMode.WeeklyWin or VerminionMode.CpuRewards));
+            if (playerAdmission || cpuAdmission)
+            {
+                owner = registeredContentId;
+                ownerAccount = configManager.CurrentAccountId;
+                ownerCharacter = liveActorKey;
+            }
+        }
+        var retainPlayerOwner = owner != 0 && Plugin.PlayerState.ContentId == owner &&
+            configManager.CurrentAccountId == ownerAccount && configManager.CurrentCharacterKey == ownerCharacter &&
+            configManager.GetActiveConfig() is { VerminionPaused: false } current &&
+            current.VerminionProgress is { PendingMatch: not 0 } player &&
+            VerminionDutyRules.IsPlayer(player.PendingDuty) && player.PendingDuty == selectedPlayerDuty &&
+            VerminionDutyRules.IsPlayerMode(runMode) && player.PendingMode == runMode && player.RunMode == runMode &&
+            player.RunPlayerDuty == player.PendingDuty;
         if (owner != 0 && (Plugin.PlayerState.ContentId != owner || configManager.GetActiveConfig().VerminionPaused))
             AbandonPendingMatch();
-        owner = 0;
-        ownerAccount = ownerCharacter = string.Empty;
+        // A retained uncertain admission still needs its existing owner for a
+        // later explicit FULL STOP. Idle retains no battle controls.
+        if (!retainPlayerOwner)
+        {
+            owner = 0;
+            ownerAccount = ownerCharacter = string.Empty;
+        }
         navigationRequested = false;
         // Engine completion cleanup must retain the actionable failure for the
         // operator. Start/Run/Resume replace it when a new attempt is requested.
@@ -726,7 +790,11 @@ public sealed partial class VerminionService : IDisposable
                     else Fail($"Stage {challengeStage} is unavailable in the challenge menu.");
                     return;
                 case VerminionState.WaitingForTutorial:
-                    if (elapsed > 60) { VerminionGameInteraction.CaptureBattle("admission timeout"); Fail($"{BattleLabel} admission timed out; no result recorded."); return; }
+                    var entering = configManager.GetActiveConfig().VerminionProgress;
+                    var retainedCpuEntry = entering.PendingMatch != 0 && entering.PendingDuty == battleDuty &&
+                        VerminionGameInteraction.HasBattleEntry(battleDuty);
+                    if (retainedCpuEntry && !condition[ConditionFlag.PlayingLordOfVerminion]) return;
+                    if (elapsed > 60 && !retainedCpuEntry) { VerminionGameInteraction.CaptureBattle("admission timeout"); Fail($"{BattleLabel} admission timed out; no result recorded."); return; }
                     if (elapsed < 2) return;
                     if (challengeStage > 0 && !admissionConfirmed && VerminionGameInteraction.IsAdmissionPrompt)
                         admissionConfirmed = GameHelpers.TryClickNativeButton("SelectYesno", "Yes", 8);
@@ -1288,20 +1356,29 @@ public sealed partial class VerminionService : IDisposable
     }
 
     private void UpdatePlayerQueue(double elapsed)
+        => UpdatePlayerQueue(configManager.GetActiveConfig().VerminionProgress, elapsed,
+            VerminionGameInteraction.CurrentBattleDutyId() == battleDuty && condition[ConditionFlag.PlayingLordOfVerminion],
+            VerminionGameInteraction.HasBattleEntry(battleDuty),
+            condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51],
+            VerminionGameInteraction.HasBattleQueue(battleDuty));
+
+    private void UpdatePlayerQueue(VerminionProgress progress, double elapsed, bool battleReady,
+        bool nativeEntry, bool betweenAreas, bool queued)
     {
-        var progress = configManager.GetActiveConfig().VerminionProgress;
         if (progress.PendingMatch == 0 || progress.PendingDuty != battleDuty || progress.PendingMode != runMode)
         { Fail("The player queue has no matching saved admission; no Commence requested."); return; }
-        if (VerminionGameInteraction.CurrentBattleDutyId() == battleDuty && condition[ConditionFlag.PlayingLordOfVerminion])
+        if (battleReady)
         { SetState(VerminionState.InDuty, $"PvP {runMode}: admitted against the native matched opponent"); return; }
-        if (condition[ConditionFlag.BetweenAreas] || condition[ConditionFlag.BetweenAreas51]) return;
-        if (VerminionGameInteraction.HasBattleQueue(battleDuty))
+        if (nativeEntry || betweenAreas) return;
+        if (queued)
         {
             if (DateTime.UtcNow >= nextInteractionUtc && VerminionGameInteraction.TryCommenceBattleDuty(battleDuty))
                 nextInteractionUtc = DateTime.UtcNow.AddSeconds(5);
             return; // Matchmaking has no artificial short combat/admission timeout.
         }
-        if (elapsed > 15) Fail("The owned player queue disappeared without admission; no played match or victory recorded.");
+        if (elapsed > 15)
+            Fail("The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded.",
+                preservePlayerAdmission: true);
     }
 
     private void UpdatePlayerBattle(VerminionProgress activeAdmission)
@@ -1323,6 +1400,10 @@ public sealed partial class VerminionService : IDisposable
             reason = "PvP Try to win: waiting to identify your side";
             return;
         }
+        playerSummons.ObserveUnits(Plugin.ObjectTable
+            .OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+            .Where(unit => unit.CurrentHp > 0 && VerminionGameInteraction.IsFriendlyMinion(unit))
+            .Select(unit => unit.GameObjectId));
         if (!battlefieldRenderingPrepared)
         {
             VerminionGameInteraction.PrepareBattlefieldRendering();
@@ -1339,7 +1420,6 @@ public sealed partial class VerminionService : IDisposable
         var now = DateTime.UtcNow;
         var units = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
             .Where(unit => unit.CurrentHp > 0 && VerminionGameInteraction.IsFriendlyMinion(unit)).ToArray();
-        playerSummons.ObserveUnits(units.Select(unit => unit.GameObjectId));
         var queued = VerminionGameInteraction.ReadQueuedSummonCount();
         if (reconcilingSummonQueue && queued == 0) reconcilingSummonQueue = false;
         var friendlyStoneBase = localBattalion == 0 ? 2006533u : 2006537u;
@@ -3396,6 +3476,7 @@ public sealed partial class VerminionService : IDisposable
                     bossOrderUtc = now;
                     bossOrderPosition = destination;
                     bossOrderTarget = combatTarget ?? 0;
+                    bossOrderRotation = boss.Rotation;
                 }
                 break;
             case VerminionBossStrategy.Action.FollowBoss:
@@ -3421,11 +3502,10 @@ public sealed partial class VerminionService : IDisposable
                 bossOrderUtc = now;
                 bossOrderPosition = destination;
                 bossOrderTarget = combatTarget ?? 0;
+                bossOrderRotation = boss.Rotation;
                 break;
         }
         if (!sent) { Fail($"Stage {challengeStage} {action} unavailable; no result recorded."); return; }
-        if (action is VerminionBossStrategy.Action.SendWave or VerminionBossStrategy.Action.FollowBoss)
-            bossOrderRotation = boss.Rotation;
         if (action != VerminionBossStrategy.Action.Wait)
             log.Information($"[VerminionControl] Stage {challengeStage} order={action}; target={commandTargetName}; ready={ready.Length}; deployed={deployed.Length}; bossHp={boss.CurrentHp}/{boss.MaxHp}; capacity={used}/{capacity}");
         if (action == VerminionBossStrategy.Action.Summon && !bossStrategy.WaitingForWave)
@@ -3574,15 +3654,21 @@ public sealed partial class VerminionService : IDisposable
         return shield != null && TrySelectTutorialGroup(shield.Position + new Vector3(0, 0, 2), "Cherry Bomb");
     }
 
-    private void Fail(string message, bool preserveTutorialAdmission = false)
+    private void Fail(string message, bool preserveTutorialAdmission = false, bool preservePlayerAdmission = false)
     {
         savedPurchaseRecoveryRequested = false;
         var retainOwnedTutorial = preserveTutorialAdmission && owner != 0 && Plugin.PlayerState.ContentId == owner &&
             battleDuty == 552 && VerminionGameInteraction.CurrentBattleDutyId() == battleDuty &&
             configManager.GetActiveConfig().VerminionProgress is { PendingMatch: not 0, PendingDuty: 552 };
-        if (!retainOwnedTutorial) AbandonPendingMatch();
+        var retainOwnedPlayer = preservePlayerAdmission && owner != 0 && Plugin.PlayerState.ContentId == owner &&
+            configManager.CurrentAccountId == ownerAccount && configManager.CurrentCharacterKey == ownerCharacter &&
+            configManager.GetActiveConfig().VerminionProgress is { PendingMatch: not 0 } player &&
+            VerminionDutyRules.IsPlayer(player.PendingDuty) && player.PendingDuty == selectedPlayerDuty &&
+            VerminionDutyRules.IsPlayerMode(runMode) && player.PendingMode == runMode && player.RunMode == runMode &&
+            player.RunPlayerDuty == player.PendingDuty;
+        if (!retainOwnedTutorial && !retainOwnedPlayer) AbandonPendingMatch();
         StopOwnedMovement();
-        if (!retainOwnedTutorial && campaign && owner != 0 && owner == Plugin.PlayerState.ContentId)
+        if (!retainOwnedTutorial && !retainOwnedPlayer && campaign && owner != 0 && owner == Plugin.PlayerState.ContentId)
         {
             var config = configManager.GetActiveConfig();
             if (config.VerminionProgress.CampaignStageLimitReached(challengeStage))

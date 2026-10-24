@@ -47,6 +47,7 @@ internal sealed class BeastmasterMiniWindow : Window
     public override void Draw()
     {
         motion.DrawChrome();
+        if (AethertekUI.MaterialTheme.Current.IsLcars) AethertekUI.MaterialLcars.Header(UiText.T("Beastmaster"));
         plugin.BeastmasterWindow.DrawMiniContents(splashes);
     }
 }

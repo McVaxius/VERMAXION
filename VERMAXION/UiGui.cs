@@ -37,6 +37,7 @@ internal static class UiGui
         using var controls = ImGui.GetStyle().FramePadding.Y == 0 || MaterialControls.Context == MaterialControlContext.Dense
             ? default(MaterialControls.ControlScope) : MaterialControls.Push(MaterialControlContext.Toolbar);
         using var height = MaterialText.PushLineHeight(translated);
+        using var outline = MaterialLcars.NativeButtonStyle();
         var width=MaterialText.Measure(translated).X+2*ImGui.GetStyle().FramePadding.X;
         if(width>ImGui.GetContentRegionAvail().X && ImGui.GetCursorPosX()>ImGui.GetStyle().WindowPadding.X+1) ImGui.NewLine();
         var foreground=ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
@@ -51,6 +52,7 @@ internal static class UiGui
         MaterialText.AddText(ImGui.GetWindowDrawList(),min+(max-min-MaterialText.Measure(translated))*.5f,ImGui.ColorConvertFloat4ToU32(foreground),translated);
         }
         finally { ImGui.GetWindowDrawList().PopClipRect(); }
+        MaterialLcars.Feedback(clicked);
         return clicked;
     }
     internal static bool SmallButton(string label,string? display=null)
@@ -77,6 +79,7 @@ internal static class UiGui
         var p=ImGui.GetItemRectMin()+new Vector2(ImGui.GetFrameHeight()+gap.X,ImGui.GetStyle().FramePadding.Y);
         foreground.W*=ImGui.GetStyle().Alpha;
         MaterialText.AddText(ImGui.GetWindowDrawList(),p,ImGui.ColorConvertFloat4ToU32(foreground),translated);
+        MaterialLcars.Feedback(changed, MaterialUiSoundCue.Toggle);
         return changed;
     }
     internal static bool Selectable(string original,bool selected=false,string? display=null)
@@ -84,7 +87,7 @@ internal static class UiGui
         var translated=display ?? UiText.T(original.Split("##",2)[0]);
         var origin=ImGui.GetCursorScreenPos();
         var width=ImGui.GetContentRegionAvail().X;
-        var foreground=ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
+        var foreground=MaterialTheme.Current.IsLcars && selected ? MaterialLcars.Background : ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
         ImGui.PushStyleColor(ImGuiCol.Text,Vector4.Zero);
         var height=Math.Max(ImGui.GetTextLineHeight(),MaterialText.Measure(translated).Y);
         var clicked=ImGui.Selectable(original,selected,ImGuiSelectableFlags.None,new Vector2(0,height));
@@ -98,6 +101,7 @@ internal static class UiGui
         }
         finally { dl.PopClipRect(); }
         if(MaterialText.Measure(translated).X>width && ImGui.IsItemHovered()) MaterialText.SetTooltip(translated);
+        MaterialLcars.Feedback(clicked);
         return clicked;
     }
     private static float FitField(string label)
@@ -272,6 +276,9 @@ internal static class UiGui
         ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
         var open=ImGui.BeginTabItem(label, flags);
         ImGui.PopStyleColor();
+        MaterialLcars.Feedback(ImGui.IsItemActivated());
+        using var selectedInk = new MaterialStyleScope();
+        if (MaterialTheme.Current.IsLcars && open) selectedInk.Color(ImGuiCol.Text, MaterialLcars.Background);
         var min=ImGui.GetItemRectMin(); var max=ImGui.GetItemRectMax();
         ImGui.GetWindowDrawList().PushClipRect(min,max,true);
         try
@@ -302,7 +309,7 @@ internal static class UiGui
     {
         var translated=UiText.T(original.Split("##",2)[0]);
         if(MaterialText.RequiresShaping(translated)) size.Y=Math.Max(size.Y,MaterialText.Measure(translated).Y);
-        var foreground=ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
+        var foreground=MaterialTheme.Current.IsLcars && selected ? MaterialLcars.Background : ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
         ImGui.PushStyleColor(ImGuiCol.Text,Vector4.Zero);
         var clicked=ImGui.Selectable(original,selected,flags,size);
         ImGui.PopStyleColor();
@@ -314,6 +321,7 @@ internal static class UiGui
         MaterialText.AddText(ImGui.GetWindowDrawList(),min,ImGui.ColorConvertFloat4ToU32(foreground),translated);
         }
         finally { ImGui.GetWindowDrawList().PopClipRect(); }
+        MaterialLcars.Feedback(clicked);
         return clicked;
     }
 
@@ -328,13 +336,14 @@ internal static class UiGui
         var changed=ImGui.Checkbox(original,ref value);
         ImGui.PopStyleColor(5);ImGui.PopStyleVar();
         var min=ImGui.GetItemRectMin();var draw=ImGui.GetWindowDrawList();
-        var fill=value?c.Primary:c.SurfaceContainerHigh;
+        var fill=value?(MaterialTheme.Current.IsLcars ? MaterialLcars.ControlBlue : c.Primary):c.SurfaceContainerHigh;
         if(ImGui.IsItemHovered()) fill=MaterialColor.Layer(fill,c.OnSurface,.08f);
         if(ImGui.IsItemActive()) fill=MaterialColor.Layer(fill,c.OnSurface,.12f);
         draw.AddRectFilled(min,min+new Vector2(44,26)*scale,MaterialCanvas.Color(fill),13*scale);
         draw.AddRect(min,min+new Vector2(44,26)*scale,MaterialCanvas.Color(ImGui.IsItemFocused()?c.Primary:c.Outline),13*scale);
         draw.AddCircleFilled(min+new Vector2(value?31:13,13)*scale,10*scale,MaterialCanvas.Color(c.OnSurface),24);
         MaterialText.AddText(draw,min+new Vector2(56*scale,(height-textSize.Y)/2),MaterialCanvas.Color(c.OnSurface),caption);
+        MaterialLcars.Feedback(changed, MaterialUiSoundCue.Toggle);
         return changed;
     }
 
@@ -349,6 +358,7 @@ internal static class UiGui
         ImGui.PopStyleColor();ImGui.PopStyleVar();
         var min=ImGui.GetItemRectMin()+new Vector2(ImGui.GetFrameHeight()+gap.X,ImGui.GetStyle().FramePadding.Y);
         MaterialText.AddText(ImGui.GetWindowDrawList(),min,ImGui.GetColorU32(ImGuiCol.Text),translated);
+        MaterialLcars.Feedback(changed, MaterialUiSoundCue.Toggle);
         return changed;
     }
     internal static bool SliderInt(string original, ref int value, int min, int max)

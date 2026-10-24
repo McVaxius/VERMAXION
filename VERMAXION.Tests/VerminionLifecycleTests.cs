@@ -91,6 +91,375 @@ public sealed class VerminionLifecycleTests
         protected override object? Invoke(MethodInfo? method, object?[]? args) => null;
     }
 
+    [Theory]
+    [InlineData(197u, live::VERMAXION.Models.VerminionMode.PvpWin)]
+    [InlineData(197u, live::VERMAXION.Models.VerminionMode.PvpThrow)]
+    [InlineData(198u, live::VERMAXION.Models.VerminionMode.PvpWin)]
+    [InlineData(198u, live::VERMAXION.Models.VerminionMode.PvpThrow)]
+    [InlineData(199u, live::VERMAXION.Models.VerminionMode.PvpWin)]
+    [InlineData(199u, live::VERMAXION.Models.VerminionMode.PvpThrow)]
+    public void ProductionPlayerEntryIntroAfterLongQueueRetainsAdmissionUntilBattleReady(
+        uint duty, live::VERMAXION.Models.VerminionMode mode)
+    {
+        var type = typeof(live::VERMAXION.Services.VerminionService);
+        var service = (live::VERMAXION.Services.VerminionService)RuntimeHelpers.GetUninitializedObject(type);
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        type.GetField("log", flags)!.SetValue(service, DispatchProxy.Create<host::Dalamud.Plugin.Services.IPluginLog, SilentHostLog>());
+        type.GetField("runMode", flags)!.SetValue(service, mode);
+        type.GetField("battleDuty", flags)!.SetValue(service, duty);
+        type.GetProperty("State")!.SetValue(service, live::VERMAXION.Services.VerminionService.VerminionState.WaitingForPlayerBattle);
+        var progress = new live::VERMAXION.Models.VerminionProgress { WeeklyMatches = 4, WeeklyWins = 3, ClearedChallengeMask = 31 };
+        progress.EnsureRun(mode, 1, playerDuty: duty);
+        var match = progress.BeginMatch(duty);
+        var observe = type.GetMethods(flags).Single(method => method.Name == "UpdatePlayerQueue" && method.GetParameters().Length == 6);
+        // Native CFC/territory identify entry, while Playing is still false.
+        // No host input services exist: the intro must only retain and wait.
+        observe.Invoke(service, [progress, 130d, false, true, false, false]);
+        observe.Invoke(service, [progress, 134d, false, true, false, false]);
+        Assert.Equal(live::VERMAXION.Services.VerminionService.VerminionState.WaitingForPlayerBattle, service.State);
+        Assert.Equal(match, progress.PendingMatch);
+        Assert.Equal(0, progress.RunMatches);
+        observe.Invoke(service, [progress, 135d, true, true, false, false]);
+        Assert.Equal(live::VERMAXION.Services.VerminionService.VerminionState.InDuty, service.State);
+        Assert.Equal(match, progress.PendingMatch);
+        Assert.Equal(4, progress.WeeklyMatches);
+        Assert.Equal(3, progress.WeeklyWins);
+        Assert.Equal(31u, progress.ClearedChallengeMask);
+    }
+
+    [Fact]
+    public void ProductionPlayerFullStopCancelsRetainedAndReloadedAdmissionsWithoutCreditingResults()
+    {
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var type = typeof(live::VERMAXION.Services.VerminionService);
+        var service = (live::VERMAXION.Services.VerminionService)RuntimeHelpers.GetUninitializedObject(type);
+        var log = DispatchProxy.Create<host::Dalamud.Plugin.Services.IPluginLog, SilentHostLog>();
+        var profile = new live::VERMAXION.Models.CharacterConfig();
+        var progress = profile.VerminionProgress;
+        progress.WeeklyMatches = 4;
+        progress.WeeklyWins = 3;
+        progress.ClearedChallengeMask = 31;
+        progress.EnsureRun(live::VERMAXION.Models.VerminionMode.PvpWin, 1, playerDuty: 197);
+        var match = progress.BeginMatch(197);
+        var managerType = typeof(live::VERMAXION.Services.ConfigManager);
+        var manager = (live::VERMAXION.Services.ConfigManager)RuntimeHelpers.GetUninitializedObject(managerType);
+        var account = new live::VERMAXION.Models.AccountConfig { AccountId = "queue-test" };
+        account.Characters["test-character"] = profile;
+        managerType.GetField("accounts", flags)!.SetValue(manager,
+            new Dictionary<string, live::VERMAXION.Models.AccountConfig> { [account.AccountId] = account });
+        managerType.GetField("unreadableAccountIds", flags)!.SetValue(manager, new HashSet<string>());
+        managerType.GetField("log", flags)!.SetValue(manager, log);
+        manager.CurrentAccountId = account.AccountId;
+        managerType.GetProperty("CurrentCharacterKey")!.SetValue(manager, "test-character");
+        type.GetField("log", flags)!.SetValue(service, log);
+        type.GetField("configManager", flags)!.SetValue(service, manager);
+        type.GetField("runMode", flags)!.SetValue(service, live::VERMAXION.Models.VerminionMode.PvpWin);
+        type.GetField("battleDuty", flags)!.SetValue(service, 197u);
+        type.GetField("selectedPlayerDuty", flags)!.SetValue(service, 197u);
+        type.GetField("owner", flags)!.SetValue(service, 7UL);
+        type.GetField("ownerAccount", flags)!.SetValue(service, account.AccountId);
+        type.GetField("ownerCharacter", flags)!.SetValue(service, "test-character");
+        type.GetProperty("State")!.SetValue(service, live::VERMAXION.Services.VerminionService.VerminionState.WaitingForPlayerBattle);
+        var playerState = DispatchProxy.Create<host::Dalamud.Plugin.Services.IPlayerState, QueuePlayerState>();
+        var host = (QueuePlayerState)(object)playerState;
+        host.ContentId = 7;
+        var playerProperty = typeof(live::VERMAXION.Plugin).GetProperty("PlayerState", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var previousPlayer = playerProperty.GetValue(null);
+        var directory = Path.Combine(Path.GetTempPath(), "vmx-queue-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var persistence = managerType.GetField("persistence", flags)!;
+        persistence.SetValue(manager, Activator.CreateInstance(persistence.FieldType, [directory]));
+        try
+        {
+            playerProperty.SetValue(null, playerState);
+            var observe = type.GetMethods(flags).Single(method => method.Name == "UpdatePlayerQueue" && method.GetParameters().Length == 6);
+            observe.Invoke(service, [progress, 130d, false, false, false, false]);
+            Assert.True(service.IsFailed);
+            Assert.Equal(match, progress.PendingMatch);
+            service.Reset(); // Existing engine failure cleanup.
+            Assert.Equal(live::VERMAXION.Services.VerminionService.VerminionState.Idle, service.State);
+            Assert.Equal(match, progress.PendingMatch);
+            Assert.Equal(7UL, type.GetField("owner", flags)!.GetValue(service));
+            profile.VerminionPaused = true; // Normal FULL STOP persists this before Reset.
+            host.ContentId = 0; // A logout before withdrawal must not send input to another actor.
+            service.Reset();
+            Assert.Equal(0, progress.PendingMatch);
+            Assert.Equal(0u, progress.PendingDuty);
+            Assert.Equal(0UL, type.GetField("owner", flags)!.GetValue(service));
+            Assert.Equal(0, progress.RunMatches);
+            Assert.Equal(4, progress.WeeklyMatches);
+            Assert.Equal(3, progress.WeeklyWins);
+            Assert.Equal(31u, progress.ClearedChallengeMask);
+            Assert.Equal(0, manager.GetActiveConfig().VerminionProgress.PendingMatch);
+            var saved = JsonConvert.DeserializeObject<live::VERMAXION.Models.AccountConfig>(
+                File.ReadAllText(Path.Combine(directory, "queue-test_Vermaxion.json")))!;
+            Assert.Equal(0, saved.Characters["test-character"].VerminionProgress.PendingMatch);
+            Assert.False(progress.RecordResult(match, live::VERMAXION.Models.VerminionBattleOutcome.Victory, DateTime.UtcNow));
+
+            // Reload loses every runtime ownership field. Only explicit Stop's
+            // registered identity may cancel the current profile's admission.
+            account.Characters["test-character"] = profile;
+            progress.EnsureRun(live::VERMAXION.Models.VerminionMode.PvpWin, 1, restart: true, playerDuty: 197);
+            var reloadedMatch = progress.BeginMatch(197);
+            var reloaded = (live::VERMAXION.Services.VerminionService)RuntimeHelpers.GetUninitializedObject(type);
+            type.GetField("log", flags)!.SetValue(reloaded, log);
+            type.GetField("configManager", flags)!.SetValue(reloaded, manager);
+            var registeredReset = type.GetMethod("Reset", flags, null,
+                [typeof(bool), typeof(ulong), typeof(string)], null)!;
+            reloaded.Reset(); // Ordinary engine/unload cleanup has no trusted identity.
+            Assert.Equal(reloadedMatch, progress.PendingMatch);
+            registeredReset.Invoke(reloaded, [false, 7UL, "test-character"]);
+            registeredReset.Invoke(reloaded, [true, 7UL, "different-character"]);
+            Assert.Equal(reloadedMatch, progress.PendingMatch);
+            account.Characters.Remove("test-character");
+            account.DefaultConfig = profile; // GetActiveConfig's default fallback cannot authorize cancellation.
+            registeredReset.Invoke(reloaded, [true, 7UL, "test-character"]);
+            Assert.Equal(reloadedMatch, progress.PendingMatch);
+            account.Characters["test-character"] = profile;
+            progress.RunPlayerDuty = 199; // Conflicting saved ownership must stay untouched.
+            registeredReset.Invoke(reloaded, [true, 7UL, "test-character"]);
+            Assert.Equal(reloadedMatch, progress.PendingMatch);
+            Assert.Equal(0UL, type.GetField("owner", flags)!.GetValue(reloaded));
+            progress.RunPlayerDuty = 197;
+            profile.VerminionPaused = false;
+            registeredReset.Invoke(reloaded, [true, 7UL, "test-character"]);
+            Assert.Equal(reloadedMatch, progress.PendingMatch);
+            profile.VerminionPaused = true;
+            registeredReset.Invoke(reloaded, [true, 7UL, "test-character"]);
+            Assert.Equal(0, progress.PendingMatch);
+            Assert.Equal(0u, progress.PendingDuty);
+            Assert.Equal(0UL, type.GetField("owner", flags)!.GetValue(reloaded));
+            Assert.Equal(0, progress.RunMatches);
+            Assert.Equal(4, progress.WeeklyMatches);
+            Assert.Equal(3, progress.WeeklyWins);
+            Assert.Equal(31u, progress.ClearedChallengeMask);
+            saved = JsonConvert.DeserializeObject<live::VERMAXION.Models.AccountConfig>(
+                File.ReadAllText(Path.Combine(directory, "queue-test_Vermaxion.json")))!;
+            Assert.Equal(0, saved.Characters["test-character"].VerminionProgress.PendingMatch);
+            Assert.False(progress.RecordResult(reloadedMatch, live::VERMAXION.Models.VerminionBattleOutcome.Victory, DateTime.UtcNow));
+        }
+        finally
+        {
+            playerProperty.SetValue(null, previousPlayer);
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [Theory]
+    [InlineData(552u, live::VERMAXION.Models.VerminionMode.Participation, true)]
+    [InlineData(553u, live::VERMAXION.Models.VerminionMode.Participation, false)]
+    [InlineData(553u, live::VERMAXION.Models.VerminionMode.WeeklyWin, false)]
+    [InlineData(575u, live::VERMAXION.Models.VerminionMode.MissionRepeat, false)]
+    [InlineData(563u, live::VERMAXION.Models.VerminionMode.PvpWin, true)]
+    [InlineData(575u, live::VERMAXION.Models.VerminionMode.PvpThrow, true)]
+    [InlineData(579u, live::VERMAXION.Models.VerminionMode.CpuRewards, false)]
+    public void ProductionRegisteredCpuFullStopCancelsReloadedAdmissionWithoutChangingProgress(
+        uint duty, live::VERMAXION.Models.VerminionMode mode, bool campaign)
+    {
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var type = typeof(live::VERMAXION.Services.VerminionService);
+        var service = (live::VERMAXION.Services.VerminionService)RuntimeHelpers.GetUninitializedObject(type);
+        var log = DispatchProxy.Create<host::Dalamud.Plugin.Services.IPluginLog, SilentHostLog>();
+        var stage = live::VERMAXION.Models.VerminionDutyRules.ChallengeStage(duty);
+        var mission = mode == live::VERMAXION.Models.VerminionMode.MissionRepeat ? stage : 2;
+        var profile = new live::VERMAXION.Models.CharacterConfig
+        {
+            VerminionMode = mode, VerminionMission = mission, VerminionRepeatCount = 3,
+        };
+        var progress = profile.VerminionProgress;
+        var week = new DateTime(2026, 10, 20, 8, 0, 0, DateTimeKind.Utc);
+        progress.ObserveWeek(week);
+        progress.WeeklyMatches = mode == live::VERMAXION.Models.VerminionMode.MissionRepeat ? 19 : 20;
+        progress.WeeklyWins = mode == live::VERMAXION.Models.VerminionMode.MissionRepeat ? 13 : 14;
+        progress.ClearedChallengeMask = stage > 0 ? (1u << (stage - 1)) - 1 : 2047;
+        progress.GilSpent = 2400;
+        progress.MgpSpent = 40000;
+        progress.CertificatesSpent = 2;
+        progress.EnsureRun(mode, 3, mission: mission);
+        progress.CampaignRequested = progress.RunIsCampaign = campaign;
+        progress.SelectedChallengeStage = stage;
+        if (campaign)
+        {
+            progress.CampaignStage = stage;
+            progress.CampaignStageAttempts = 1;
+        }
+        if (mode == live::VERMAXION.Models.VerminionMode.MissionRepeat)
+            Assert.True(progress.RecordResult(progress.BeginMatch(duty), live::VERMAXION.Models.VerminionBattleOutcome.Victory, week));
+        var match = progress.BeginMatch(duty);
+        Assert.True(match > 0);
+        Assert.Equal(mode, progress.PendingMode); // A campaign can retain a PvP editor mode.
+        var expected = progress.Clone();
+        profile.VerminionMode = mode == live::VERMAXION.Models.VerminionMode.WeeklyWin
+            ? live::VERMAXION.Models.VerminionMode.Participation : live::VERMAXION.Models.VerminionMode.WeeklyWin;
+        profile.VerminionMission = 4;
+        profile.VerminionRepeatCount = 7; // Editor changes cannot replace the saved admission's goal.
+        profile.VerminionPaused = true; // FULL STOP saves pause before the registered Reset.
+        var managerType = typeof(live::VERMAXION.Services.ConfigManager);
+        var manager = (live::VERMAXION.Services.ConfigManager)RuntimeHelpers.GetUninitializedObject(managerType);
+        var account = new live::VERMAXION.Models.AccountConfig { AccountId = "cpu-stop-test" };
+        account.Characters["cpu-test-character"] = profile;
+        var accounts = new Dictionary<string, live::VERMAXION.Models.AccountConfig> { [account.AccountId] = account };
+        managerType.GetField("accounts", flags)!.SetValue(manager, accounts);
+        managerType.GetField("unreadableAccountIds", flags)!.SetValue(manager, new HashSet<string>());
+        managerType.GetField("log", flags)!.SetValue(manager, log);
+        manager.CurrentAccountId = account.AccountId;
+        managerType.GetProperty("CurrentCharacterKey")!.SetValue(manager, "cpu-test-character");
+        type.GetField("log", flags)!.SetValue(service, log);
+        type.GetField("configManager", flags)!.SetValue(service, manager);
+        var registeredReset = type.GetMethod("Reset", flags, null,
+            [typeof(bool), typeof(ulong), typeof(string)], null)!;
+        var playerState = DispatchProxy.Create<host::Dalamud.Plugin.Services.IPlayerState, QueuePlayerState>();
+        // The trusted snapshot was taken for actor 7, then logout happened.
+        // Persisted cancellation must succeed without touching native queue/input.
+        ((QueuePlayerState)(object)playerState).ContentId = 0;
+        var playerProperty = typeof(live::VERMAXION.Plugin).GetProperty("PlayerState", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var previousPlayer = playerProperty.GetValue(null);
+        var directory = Path.Combine(Path.GetTempPath(), "vmx-cpu-stop-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var persistence = managerType.GetField("persistence", flags)!;
+        persistence.SetValue(manager, Activator.CreateInstance(persistence.FieldType, [directory]));
+        void AssertRetained()
+        {
+            Assert.Equal(match, progress.PendingMatch);
+            Assert.Equal(duty, progress.PendingDuty);
+            Assert.Equal(0UL, type.GetField("owner", flags)!.GetValue(service));
+            Assert.Equal(20, progress.WeeklyMatches);
+            Assert.Equal(14, progress.WeeklyWins);
+            Assert.Equal(expected.ClearedChallengeMask, progress.ClearedChallengeMask);
+        }
+        try
+        {
+            playerProperty.SetValue(null, playerState);
+            service.Reset(); // Ordinary engine/unload cleanup cannot adopt a saved CPU owner.
+            AssertRetained();
+            registeredReset.Invoke(service, [false, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            registeredReset.Invoke(service, [true, 0UL, "cpu-test-character"]);
+            AssertRetained();
+            registeredReset.Invoke(service, [true, 7UL, "another-character"]);
+            AssertRetained();
+            accounts.Remove(account.AccountId);
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            accounts[account.AccountId] = account;
+            account.Characters.Remove("cpu-test-character");
+            account.DefaultConfig = profile; // Default-profile fallback is not a registered character.
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            account.Characters["cpu-test-character"] = profile;
+            profile.VerminionPaused = false;
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            profile.VerminionPaused = true;
+            progress.MatchSequence = match + 1;
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            progress.MatchSequence = match;
+            progress.PendingMode = null;
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            progress.PendingMode = mode;
+            progress.RunMode = mode == live::VERMAXION.Models.VerminionMode.WeeklyWin
+                ? live::VERMAXION.Models.VerminionMode.Participation : live::VERMAXION.Models.VerminionMode.WeeklyWin;
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            progress.RunMode = mode;
+            if (stage > 0)
+            {
+                progress.SelectedChallengeStage = stage == 24 ? 23 : stage + 1;
+                registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+                AssertRetained();
+                progress.SelectedChallengeStage = stage;
+            }
+            progress.RunPlayerDuty = 200;
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            progress.RunPlayerDuty = expected.RunPlayerDuty;
+            progress.RunIsCampaign = !campaign;
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            progress.RunIsCampaign = campaign;
+            if (campaign)
+            {
+                progress.CampaignRequested = false;
+                registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+                AssertRetained();
+                progress.CampaignRequested = true;
+                progress.CampaignStage = stage == 24 ? 23 : stage + 1;
+                registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+                AssertRetained();
+                progress.CampaignStage = stage;
+                progress.CampaignStageAttempts = 0;
+                registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+                AssertRetained();
+                progress.CampaignStageAttempts = expected.CampaignStageAttempts;
+            }
+            else if (mode == live::VERMAXION.Models.VerminionMode.MissionRepeat)
+            {
+                progress.RunMission = stage == 24 ? 23 : stage + 1;
+                registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+                AssertRetained();
+                progress.RunMission = mission;
+                progress.RunWins = progress.RunRepeatCount;
+                registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+                AssertRetained();
+                progress.RunWins = expected.RunWins;
+            }
+            progress.PendingMissionRepeat = !expected.PendingMissionRepeat;
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            AssertRetained();
+            progress.PendingMissionRepeat = expected.PendingMissionRepeat;
+            progress.PendingDuty = 200; // Unrelated content cannot authorize CPU cancellation.
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            Assert.Equal(match, progress.PendingMatch);
+            Assert.Equal(200u, progress.PendingDuty);
+            Assert.Equal(0UL, type.GetField("owner", flags)!.GetValue(service));
+            progress.PendingDuty = duty;
+            Assert.False(File.Exists(Path.Combine(directory, "cpu-stop-test_Vermaxion.json")));
+
+            registeredReset.Invoke(service, [true, 7UL, "cpu-test-character"]);
+            Assert.Equal(0, progress.PendingMatch);
+            Assert.Equal(0u, progress.PendingDuty);
+            Assert.Null(progress.PendingMode);
+            Assert.Equal(0UL, type.GetField("owner", flags)!.GetValue(service));
+            var saved = JsonConvert.DeserializeObject<live::VERMAXION.Models.AccountConfig>(
+                File.ReadAllText(Path.Combine(directory, "cpu-stop-test_Vermaxion.json")))!;
+            var savedProgress = saved.Characters["cpu-test-character"].VerminionProgress;
+            Assert.True(saved.Characters["cpu-test-character"].VerminionPaused);
+            foreach (var actual in new[] { progress, savedProgress })
+            {
+                Assert.Equal(0, actual.PendingMatch);
+                Assert.Equal(0u, actual.PendingDuty);
+                Assert.Equal(expected.MatchSequence, actual.MatchSequence);
+                Assert.Equal(expected.WeeklyMatches, actual.WeeklyMatches);
+                Assert.Equal(expected.WeeklyWins, actual.WeeklyWins);
+                Assert.Equal(expected.ClearedChallengeMask, actual.ClearedChallengeMask);
+                Assert.Equal(expected.CampaignRequested, actual.CampaignRequested);
+                Assert.Equal(expected.RunIsCampaign, actual.RunIsCampaign);
+                Assert.Equal(expected.CampaignStageAttempts, actual.CampaignStageAttempts);
+                Assert.Equal(expected.RunAttempts, actual.RunAttempts);
+                Assert.Equal(expected.RunWins, actual.RunWins);
+                Assert.Equal(expected.RunMatches, actual.RunMatches);
+                Assert.Equal(expected.GilSpent, actual.GilSpent);
+                Assert.Equal(expected.MgpSpent, actual.MgpSpent);
+                Assert.Equal(expected.CertificatesSpent, actual.CertificatesSpent);
+                Assert.False(actual.RecordResult(match, live::VERMAXION.Models.VerminionBattleOutcome.Victory, DateTime.UtcNow));
+            }
+        }
+        finally
+        {
+            playerProperty.SetValue(null, previousPlayer);
+            Directory.Delete(directory, true);
+        }
+    }
+
+    public class QueuePlayerState : DispatchProxy
+    {
+        public ulong ContentId { get; set; }
+        protected override object? Invoke(MethodInfo? method, object?[]? args)
+            => method?.Name == "get_ContentId" ? ContentId : null;
+    }
+
     [Fact]
     public void ProductionThrowDispatchNeverTouchesRenderingOrBattleControls()
     {

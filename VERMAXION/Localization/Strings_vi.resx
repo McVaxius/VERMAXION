@@ -3297,4 +3297,20 @@ Phụ thuộc: {1}</value></data>
   <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Đang xác minh lại chocobo đã chọn trước khi huấn luyện</value></data>
   <data name="Stable visit cancelled" xml:space="preserve"><value>Đã hủy chuyến thăm chuồng</value></data>
   <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>Lượng thức ăn thay đổi trước Reward; chưa bắt đầu huấn luyện.</value></data>
+  <data name="Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested." xml:space="preserve"><value>Tắt &quot;Unrestricted Party&quot; trong cài đặt Duty Finder trước khi bắt đầu trận Verminion với người chơi. Chưa gửi yêu cầu tham gia.</value></data>
+  <data name="The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited." xml:space="preserve"><value>Không có hàng chờ hay trận đấu nào khớp với thông tin vào trận PvP đã lưu; thông tin này được giữ lại cho đến khi bạn chủ động chọn Tiếp tục hoặc DỪNG HOÀN TOÀN. Không gửi lại yêu cầu tham gia và không tính thêm trận nào.</value></data>
+  <data name="Resuming the owned player-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Tiếp tục phần mở đầu khi vào trận PvP do plugin quản lý; chờ có thể điều khiển trong trận</value></data>
+  <data name="The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded." xml:space="preserve"><value>Hàng chờ PvP do plugin quản lý đã biến mất trước khi trận đấu sẵn sàng; thông tin vào trận đã lưu được giữ lại cho đến khi bạn chủ động chọn Tiếp tục hoặc DỪNG HOÀN TOÀN. Không ghi nhận trận đấu hay chiến thắng nào.</value></data>
+  <data name="Resuming the owned CPU-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Tiếp tục phần mở đầu khi vào trận đấu với CPU do plugin quản lý; chờ có thể điều khiển trong trận</value></data>
+  <data name="LCARS" xml:space="preserve"><value>LCARS</value></data>
+  <data name="LCARS panels, bars and controls" xml:space="preserve"><value>Bảng, thanh và điều khiển LCARS</value></data>
+  <data name="LCARS UI sounds" xml:space="preserve"><value>Âm thanh giao diện LCARS</value></data>
+  <data name="UI sounds" xml:space="preserve"><value>Âm thanh giao diện</value></data>
+  <data name="Preview sound" xml:space="preserve"><value>Nghe thử âm thanh</value></data>
+  <data name="Custom UI tones. The titlebar speaker toggles the same setting." xml:space="preserve"><value>Âm giao diện tùy chỉnh. Loa trên thanh tiêu đề cũng bật tắt thiết lập này.</value></data>
+  <data name="Select LCARS to use UI sounds." xml:space="preserve"><value>Chọn LCARS để dùng âm thanh giao diện.</value></data>
+  <data name="Turn on UI sounds to preview." xml:space="preserve"><value>Bật âm thanh giao diện để nghe thử.</value></data>
+  <data name="Audio output is unavailable." xml:space="preserve"><value>Không có đầu ra âm thanh.</value></data>
+  <data name="UI sounds muted" xml:space="preserve"><value>Âm thanh giao diện đã tắt</value></data>
+  <data name="UI sounds on" xml:space="preserve"><value>Âm thanh giao diện đang bật</value></data>
 </root>

@@ -6149,4 +6149,20 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Revalidating the selected chocobo before training" xml:space="preserve"><value>Revalidando el chocobo seleccionado antes de entrenar</value></data>
   <data name="Stable visit cancelled" xml:space="preserve"><value>Visita al establo cancelada</value></data>
   <data name="Feed stock changed before Reward; no training dispatched." xml:space="preserve"><value>El alimento cambió antes de Reward; no se inició entrenamiento.</value></data>
+  <data name="Turn off Unrestricted Party in Duty Finder settings before starting a Verminion player battle. No Join requested." xml:space="preserve"><value>Desactiva &quot;Unrestricted Party&quot; en los ajustes del buscador de contenido antes de iniciar un combate de Verminion contra jugadores. No se ha solicitado entrar.</value></data>
+  <data name="The saved player admission has no matching queue or battle; retained for explicit Resume or FULL STOP. No Join replayed or match credited." xml:space="preserve"><value>La inscripción guardada para el combate entre jugadores no coincide con ninguna cola ni combate; se conserva para usar explícitamente Resume o FULL STOP. No se vuelve a ejecutar Join ni se contabiliza ninguna partida.</value></data>
+  <data name="Resuming the owned player-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Reanudando la secuencia de entrada del combate entre jugadores asociado; esperando a que se habiliten los controles de combate</value></data>
+  <data name="The owned player queue disappeared before battle readiness; saved admission retained for explicit Resume or FULL STOP. No match or victory recorded." xml:space="preserve"><value>La cola asociada al combate entre jugadores ha desaparecido antes de que el combate estuviera listo; se conserva la inscripción guardada para usar explícitamente Resume o FULL STOP. No se ha contabilizado ninguna partida ni victoria.</value></data>
+  <data name="Resuming the owned CPU-duty entry intro; waiting for battle controls" xml:space="preserve"><value>Reanudando la secuencia de entrada del combate contra la CPU asociado; esperando a que se habiliten los controles de combate</value></data>
+  <data name="LCARS" xml:space="preserve"><value>LCARS</value></data>
+  <data name="LCARS panels, bars and controls" xml:space="preserve"><value>Paneles, barras y controles LCARS</value></data>
+  <data name="LCARS UI sounds" xml:space="preserve"><value>Sonidos de la interfaz LCARS</value></data>
+  <data name="UI sounds" xml:space="preserve"><value>Sonidos de la interfaz</value></data>
+  <data name="Preview sound" xml:space="preserve"><value>Probar sonido</value></data>
+  <data name="Custom UI tones. The titlebar speaker toggles the same setting." xml:space="preserve"><value>Tonos de interfaz propios. El altavoz de la barra de título cambia el mismo ajuste.</value></data>
+  <data name="Select LCARS to use UI sounds." xml:space="preserve"><value>Selecciona LCARS para usar sonidos de interfaz.</value></data>
+  <data name="Turn on UI sounds to preview." xml:space="preserve"><value>Activa los sonidos de interfaz para probarlos.</value></data>
+  <data name="Audio output is unavailable." xml:space="preserve"><value>La salida de audio no está disponible.</value></data>
+  <data name="UI sounds muted" xml:space="preserve"><value>Sonidos de interfaz silenciados</value></data>
+  <data name="UI sounds on" xml:space="preserve"><value>Sonidos de interfaz activados</value></data>
 </root>
