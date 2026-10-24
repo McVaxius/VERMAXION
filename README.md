@@ -57,7 +57,7 @@ Manual campaign, mission and player runs do not open or require the weekly Chall
 
 Missing vendor minions needed for the selected run, or explicitly requested through acquisition actions, are purchased automatically through ADS. No gil, MGP or Achievement Certificate budget is required, including for existing profiles. Owned minions and inventory items are used first; current funds, the minimum gil balance, exact vendor quotes and saved purchase receipts still apply. Spending totals are history. Entry minions cost 2,400 gil each and Zu Hatchling costs 10,000 MGP; quest rewards retain their acquisition prerequisites and travel costs are separate.
 
-CPU runs retain their saved admission while the duty entry intro loads; battlefield controls and result accounting wait for the native battle identity. FULL STOP can cancel a coherent saved CPU admission after reload before Resume, using the registered current character.
+CPU runs retain their saved admission while the duty entry intro loads; battlefield controls and result accounting wait for the native battle identity. FULL STOP can cancel a coherent saved CPU admission after reload before Resume, using the registered current character. Stage 24 also requires a supported native warning reader; an unsupported game build stops before admission.
 
 Wind-up Gentleman acquisition uses the existing WigglyQuest quest chain with its IPC 3.x controls and DAD duty handoff. It requires an idle character and providers, preserves the selected campaign, and leaves Verminion paused after the reward. Resume registers the minion and continues that campaign.
 

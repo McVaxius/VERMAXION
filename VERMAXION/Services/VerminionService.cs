@@ -774,6 +774,8 @@ public sealed partial class VerminionService : IDisposable
                     if (campaign && challengeStage == 25) { CompleteCampaign(); return; }
                     if (challengeStage > highestStage)
                     { Fail($"Mission {challengeStage} is locked; complete the preceding CPU challenges with Complete or continue 24 CPU challenges first. No other mission substituted."); return; }
+                    if (challengeStage == 24 && !VerminionGameInteraction.IsFinalStageBuildSupported)
+                    { Fail("Stage 24 native warning reader is unsupported on this game build; no admission requested."); return; }
                     battleDuty = (uint)(551 + challengeStage);
                     if (campaign && challengeProgress.CampaignStageLimitReached(challengeStage))
                     { PauseCampaignAtLimit(); return; }
@@ -1334,8 +1336,8 @@ public sealed partial class VerminionService : IDisposable
         {
             if (!playerCheckboxAttempted)
             {
-                playerCheckboxAttempted = true;
-                GameHelpers.TryCheckNativeListRow("ContentsFinder", label, 5);
+                // Readiness checks may precede the leaf renderer; consume only a dispatched click.
+                playerCheckboxAttempted = GameHelpers.TryCheckNativeListRow("ContentsFinder", label, 5);
             }
             return;
         }
@@ -2294,6 +2296,8 @@ public sealed partial class VerminionService : IDisposable
             { Fail("The tutorial unit's center is unavailable; no result recorded."); return; }
             var framed = TryFrameTutorialPoint(center, out var point);
             if (framed == null) return;
+            if (framed == false && preserveObscuredGroup)
+            { CancelLostBossGroup(); return; }
             if (framed == false) { Fail("Cannot frame the battle group; no result recorded."); return; }
             if (!groupSelectionCleared)
             {
@@ -2392,6 +2396,8 @@ public sealed partial class VerminionService : IDisposable
             var framed = TryFrameTutorialPoint(center, out var point);
             if (framed == null)
             { pendingSameTypeSelection = selected.GameObjectId; groupSingleSelectionVerified = true; return; }
+            if (framed == false && preserveObscuredGroup)
+            { CancelLostBossGroup(); return; }
             if (framed == false || !VerminionGameInteraction.SendBattlefieldClick(point, release: false, doubleClick: true))
             { Fail("Cannot frame or click the selected battle unit; no result recorded."); return; }
             pendingSameTypeSelection = null;
@@ -2471,6 +2477,8 @@ public sealed partial class VerminionService : IDisposable
             }
             var framed = TryFrameTutorialPoint(tutorialDestination, out var destination);
             if (framed == null) return;
+            if (framed == false && preserveObscuredGroup)
+            { CancelLostBossGroup(); return; }
             pendingTutorialMove = false;
             VerminionGameInteraction.CaptureBattle("selection readback before movement", detailed: challengeStage == 1);
             // Destinations come from tutorial image readback, not EventObj 2005110.

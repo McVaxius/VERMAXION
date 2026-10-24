@@ -557,6 +557,28 @@ public static class GameHelpers
                     evt->State.StateFlags.HasFlag(AtkEventStateFlags.IsGlobalEvent)) continue;
                 var click = *evt;
                 var data = new AtkEventData();
+                if (addonName == "ContentsFinder" && checkbox->GetComponentType() == ComponentType.CheckBox)
+                {
+                    if (component->GetComponentType() != ComponentType.TreeList) return false;
+                    AtkEvent* listClick = null;
+                    var listEventCount = 0;
+                    for (var listEvent = node->AtkEventManager.Event; listEvent != null && listEventCount++ < 32; listEvent = listEvent->NextEvent)
+                    {
+                        if (listEvent->State.EventType != AtkEventType.ListItemClick || listEvent->Param != 0 ||
+                            listEvent->Listener != (AtkEventListener*)addon ||
+                            listEvent->State.StateFlags.HasFlag(AtkEventStateFlags.IsGlobalEvent)) continue;
+                        if (listClick != null) return false;
+                        listClick = listEvent;
+                    }
+                    if (listClick == null) return false;
+                    // Checkbox events use the hovered row, which is absent during background selection.
+                    // Let the native tree dispatch the exact renderer and its own duty mapping instead.
+                    renderer->EventNode = child;
+                    data.MouseData.ButtonId = 0;
+                    Plugin.Log.Information($"[NativeUI] Dispatching observed tree checkbox: addon={addonName}; row={row}; child={observedChildId}; label={label}");
+                    list->DispatchEvent(AtkEventType.ListItemClick, &click, &data, checked((uint)row), true);
+                    return true; // One dispatched action; the caller still verifies the native selection.
+                }
                 button->SetChecked(true);
                 Plugin.Log.Information($"[NativeUI] Checking observed list row: addon={addonName}; row={row}; child={observedChildId}; param={click.Param}; label={label}");
                 click.Listener->ReceiveEvent(AtkEventType.ButtonClick, checked((int)click.Param), &click, &data);

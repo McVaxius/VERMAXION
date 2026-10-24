@@ -1617,11 +1617,11 @@ internal static unsafe class VerminionGameInteraction
         finalStageEffectDeadline = DateTime.UtcNow.AddSeconds(FinalStageObservationSeconds);
         try
         {
-            if (!TryGetFinalStageDirector(out _, out var image, out var imageSize) || imageSize <= 0xE7CA00)
+            if (!TryGetFinalStageDirector(out _, out var image, out var imageSize) || imageSize <= 0xE7D1CD)
                 throw new InvalidOperationException("The validated Stage 24 director is unavailable.");
-            // Game 2026.10.06's verified E7C910 routine receives director,
+            // The current client's verified E7D0E0 routine receives director,
             // slot, effect ID, x, z and scale. ID zero is the native removal command.
-            finalStageGroundHook = Plugin.GameInterop.HookFromAddress<SetGroundEffect>(image + 0xE7C910, ObserveFinalStageGroundCommand);
+            finalStageGroundHook = Plugin.GameInterop.HookFromAddress<SetGroundEffect>(image + 0xE7D0E0, ObserveFinalStageGroundCommand);
             observingFinalStageEffects = true;
             finalStageGroundHook.Enable();
             ECommons.Hooks.StaticVfx.StaticVfxCreateEvent += ObserveFinalStageEffect;
@@ -1664,6 +1664,18 @@ internal static unsafe class VerminionGameInteraction
         finalStageEffectPaths.Clear();
     }
 
+    // Check the validated image even outside a battle, before requesting admission.
+    public static bool IsFinalStageBuildSupported
+    {
+        get
+        {
+            using var process = System.Diagnostics.Process.GetCurrentProcess();
+            var module = process.MainModule;
+            return module != null && module.ModuleMemorySize > 0x21D8550 + 3 * sizeof(nint) &&
+                ((nint*)(module.BaseAddress + 0x21D8550))[2] == module.BaseAddress + 0xE762A0;
+        }
+    }
+
     private static bool TryGetFinalStageDirector(out nint directorAddress, out nint image, out int imageSize)
     {
         directorAddress = image = 0;
@@ -1674,14 +1686,15 @@ internal static unsafe class VerminionGameInteraction
         if (framework == null || module == null) return false;
         image = module.BaseAddress;
         imageSize = module.ModuleMemorySize;
-        if (imageSize <= 0x21D7B20 + 3 * sizeof(nint)) return false;
+        if (imageSize <= 0x21D8550 + 3 * sizeof(nint) ||
+            ((nint*)(image + 0x21D8550))[2] != image + 0xE762A0) return false;
         var directors = framework->DirectorModule.DirectorList;
         if (directors.LongCount is < 0 or > 16) return false;
         foreach (var item in directors)
         {
             var director = item.Value;
             if (director == null || director->Info.EventId.Id >> 16 != 0x800A ||
-                *(nint*)director != image + 0x21D7B20 || ((nint*)*(nint*)director)[2] != image + 0xE75AD0) continue;
+                *(nint*)director != image + 0x21D8550 || ((nint*)*(nint*)director)[2] != image + 0xE762A0) continue;
             directorAddress = (nint)director;
             return true;
         }
@@ -1763,25 +1776,27 @@ internal static unsafe class VerminionGameInteraction
             !TryGetFinalStageDirector(out var director, out var start, out _)) return;
         var rows = new List<string>();
         var omens = new List<VerminionGroundOmen>();
-        // The verified E7C910 routine stores ground VfxData at +718 (slot
-        // 11 of the 30-slot array). E77ED0 and E762F0 establish its extent
-        // and ownership. Read on the native update thread, retaining no pointers.
+        // The verified E7D0E0 setter stores ground VfxData at +718 (slot
+        // 11 of the 30-slot array) with the director's +620 listener.
+        // Read on the native update thread, retaining no pointers.
         for (var slot = 11; slot < 30; ++slot)
         {
             var data = *(byte**)((byte*)director + 0x6C0 + slot * sizeof(nint));
             if (data == null) continue;
+            // Reload can attach after creation; unreadable active slots stay unknown.
+            if (seedExisting) finalStageGroundWarnings.Command(slot, created: true);
             var dataTable = *(nint*)data - start;
-            if (dataTable != 0x215F7C0)
+            if (dataTable != 0x215FC20)
             { rows.Add($"slot={slot}/dataTable={dataTable:X}/unverified"); continue; }
             var effect = (FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxData*)data;
             if ((nint)effect->DataListenner != director + 0x620) continue;
-            // Native 3905F0 takes VfxData+1B8 and writes the four matrix
+            // Native 390880 takes VfxData+1B8 and writes the four matrix
             // rows at +20..50. Validate the published resource-instance
             // table before following its declared resource/path fields.
             var instance = *(byte**)(data + 0x1B8);
             if (instance == null) continue;
             var instanceTable = *(nint*)instance - start;
-            if (instanceTable != 0x215F7B0)
+            if (instanceTable != 0x215FC10)
             { rows.Add($"slot={slot}/instanceTable={instanceTable:X}/unverified"); continue; }
             var resource = ((FFXIVClientStructs.FFXIV.Client.Graphics.Vfx.VfxResourceInstance*)instance)->VfxResourceObject;
             var handle = resource == null ? null : resource->ApricotResourceHandle;
@@ -1830,25 +1845,6 @@ internal static unsafe class VerminionGameInteraction
                 if (address >= start && address < end) entries.Add($"{index}:{address - start:X}");
             }
             Plugin.Log.Information($"[VerminionControl] directorLayout event={director->Info.EventId.Id:X8}; content={director->ContentId}; sequence={director->Sequence}; tableRva={table - start:X}; entries={string.Join(',', entries)}");
-            // Native readback identifies this as VerminionDirector; its table
-            // matches ClientStructs' published class map. Inspect a bounded code
-            // window at its setup override to locate the battle-state owner.
-            // This is executable code, not a dump of character/instance data.
-            var setup = ((nint*)table)[2];
-            if (director->Info.EventId.Id >> 16 != 0x800A || setup - start != 0xE75AD0) continue;
-            // Follow only targets read from this exact native build's captured
-            // call instructions. These are diagnostic reads, never invocations.
-            foreach (var (label, rva, length) in new[]
-            {
-                ("directorRemainder", 0xE7BBD0, 4096),
-                ("VfxCreateById", 0x8587B0, 1024),
-                ("VfxTransform", 0x3905F0, 128),
-            })
-            {
-                var address = start + rva;
-                if (address < start || address > end - length) continue;
-                Plugin.Log.Information($"[VerminionControl] directorCode label={label}; rva={rva:X}; bytes={Convert.ToHexString(new ReadOnlySpan<byte>((void*)address, length))}");
-            }
         }
     }
 
