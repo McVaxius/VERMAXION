@@ -8,6 +8,124 @@ namespace VERMAXION.Tests
 {
     public sealed class BeastmasterCombatTests
     {
+        [Fact]
+        public void MissingPresetIsCreatedOnceWithoutOverwriteAndPassesExistingValidation()
+        {
+            var previousIpc = Plugin.PluginInterface.IpcCall;
+            try
+            {
+                string? stored = null;
+                var creates = 0;
+                var reads = 0;
+                Plugin.PluginInterface.IpcCall = (name, args) =>
+                {
+                    if (name == "BossMod.Presets.Get")
+                    {
+                        Assert.Equal(BeastmasterCombat.PresetName, Assert.Single(args));
+                        reads++;
+                        return stored;
+                    }
+                    Assert.Equal("BossMod.Presets.Create", name);
+                    Assert.False(Assert.IsType<bool>(args[1]));
+                    creates++;
+                    stored = Assert.IsType<string>(args[0]);
+                    return true;
+                };
+
+                var native = NativePresetProvider();
+                var preset = native.ReadPreset();
+                Assert.True(BeastmasterCombat.CanStart(new FakeProvider { PresetJson = preset }, out var error), error);
+                Assert.Equal(preset, native.ReadPreset());
+                Assert.Equal(1, creates);
+                Assert.Equal(3, reads);
+            }
+            finally { Plugin.PluginInterface.IpcCall = previousIpc; }
+        }
+
+        [Theory]
+        [InlineData("{\"Name\":\"passive - melee\",\"Modules\":{}}")]
+        [InlineData("invalid user preset")]
+        public void ExistingPresetIsPreservedAndStillSubjectToValidation(string existing)
+        {
+            var previousIpc = Plugin.PluginInterface.IpcCall;
+            try
+            {
+                Plugin.PluginInterface.IpcCall = (name, args) =>
+                {
+                    Assert.Equal("BossMod.Presets.Get", name);
+                    return existing;
+                };
+                Assert.Equal(existing, NativePresetProvider().ReadPreset());
+                Assert.False(BeastmasterCombat.CanStart(new FakeProvider { PresetJson = existing }, out _));
+            }
+            finally { Plugin.PluginInterface.IpcCall = previousIpc; }
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void CreationWithoutReadbackKeepsTheMissingPresetError(bool creationResult)
+        {
+            var previousIpc = Plugin.PluginInterface.IpcCall;
+            try
+            {
+                var creates = 0;
+                Plugin.PluginInterface.IpcCall = (name, args) =>
+                {
+                    if (name == "BossMod.Presets.Get") return null;
+                    Assert.Equal("BossMod.Presets.Create", name);
+                    creates++;
+                    return creationResult;
+                };
+                var error = Assert.Throws<InvalidOperationException>(() => NativePresetProvider().ReadPreset());
+                Assert.Equal("BossMod is missing the existing 'passive - melee' preset.", error.Message);
+                Assert.Equal(1, creates);
+            }
+            finally { Plugin.PluginInterface.IpcCall = previousIpc; }
+        }
+
+        [Fact]
+        public void ConcurrentPresetCreationUsesTheStoredCopyWithoutOverwrite()
+        {
+            var previousIpc = Plugin.PluginInterface.IpcCall;
+            try
+            {
+                string? stored = null;
+                const string concurrent = "another plugin's existing preset";
+                Plugin.PluginInterface.IpcCall = (name, args) =>
+                {
+                    if (name == "BossMod.Presets.Get") return stored;
+                    Assert.Equal("BossMod.Presets.Create", name);
+                    Assert.False(Assert.IsType<bool>(args[1]));
+                    stored = concurrent;
+                    return false;
+                };
+                Assert.Equal(concurrent, NativePresetProvider().ReadPreset());
+            }
+            finally { Plugin.PluginInterface.IpcCall = previousIpc; }
+        }
+
+        [Fact]
+        public void UnavailablePresetReadDoesNotAttemptCreation()
+        {
+            var previousIpc = Plugin.PluginInterface.IpcCall;
+            try
+            {
+                Plugin.PluginInterface.IpcCall = (name, args) =>
+                {
+                    Assert.Equal("BossMod.Presets.Get", name);
+                    throw new InvalidOperationException("IPC is unavailable");
+                };
+                var error = Assert.Throws<InvalidOperationException>(() => NativePresetProvider().ReadPreset());
+                Assert.Equal("IPC is unavailable", error.Message);
+            }
+            finally { Plugin.PluginInterface.IpcCall = previousIpc; }
+        }
+
+        private static BeastmasterCombat.IProvider NativePresetProvider()
+            => (BeastmasterCombat.IProvider)Activator.CreateInstance(typeof(BeastmasterCombat)
+                .GetNestedType("NativeProvider", System.Reflection.BindingFlags.NonPublic)!, nonPublic: true)!;
+
         [Theory]
         [InlineData("RotationSolver", false, false, "RotationSolver is not loaded.")]
         [InlineData("BossModReborn", false, false, "BossModReborn is not loaded.")]
@@ -409,7 +527,7 @@ namespace VERMAXION.Tests
             public readonly List<(bool Enabled, int MasterSlot)> AiTransitions = [];
             public BeastmasterCombat.State Read() => Current;
             public BeastmasterCombat.Target ReadTarget() => default;
-            public string ReadPreset() => """
+            public string PresetJson = """
                 {"Name":"passive - melee","Modules":{
                   "BossMod.Autorotation.MiscAI.StayCloseToTarget":[{"Track":"range","Option":"2.3"}],
                   "BossMod.Autorotation.MiscAI.StayWithinLeylines":[],
@@ -418,6 +536,7 @@ namespace VERMAXION.Tests
                   "BossMod.Autorotation.MiscAI.NormalMovement":[{"Track":"Destination","Option":"Pathfind"}]
                 }}
                 """;
+            public string ReadPreset() => PresetJson;
             public void SetMode(BeastmasterCombat.Mode mode)
             {
                 Current = Current with
