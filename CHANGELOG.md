@@ -1,3 +1,8 @@
+2026-10-25 - Supply the missing Beastmaster movement preset
+
+- Create the bundled movement-only `passive - melee` preset through BossMod IPC when it is missing, so Beastmaster does not depend on FrenRider having installed it first. Preserve existing presets, read back the stored copy and retain the current validation and combat-state restoration.
+- Validation: the new missing-preset case reproduces the reported error against the original production class; all 24 isolated combat tests pass with the fix. The bundled JSON matches FrenRider's preset. Full Dalamud build and in-game acceptance remain unverified.
+
 2026-10-24 - Resume stationary Crewcible runs
 
 - Reuse the existing Resume path after 30 continuous seconds without XYZ movement outside combat during an active, unpaused Crucible run. Reset timing on movement, combat, pause, run transitions, or loss of character/duty context; retain the current run and pending menu ownership.

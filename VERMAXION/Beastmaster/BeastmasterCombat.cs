@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace VERMAXION.Beastmaster;
 
-// A run-local lease. No provider configuration or preset database is changed.
+// A run-local lease. Only a missing bundled movement preset is added to the preset database.
 internal sealed class BeastmasterCombat
 {
     internal const string PresetName = "passive - melee";
@@ -240,6 +240,16 @@ internal sealed class BeastmasterCombat
     {
         private const BindingFlags Static = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         private const BindingFlags Instance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        // Same movement-only preset shipped by FrenRider; never replace a user's existing copy.
+        private const string DefaultPreset = """
+            {"Name":"passive - melee","Modules":{
+              "BossMod.Autorotation.MiscAI.StayCloseToTarget":[{"Track":"range","Option":"2.3"}],
+              "BossMod.Autorotation.MiscAI.StayWithinLeylines":[{"Track":"Use Between The Lines","Option":"Yes"},{"Track":"Use Retrace","Option":"Yes"}],
+              "BossMod.Autorotation.MiscAI.GoToPositional":[{"Track":"Positional","Option":"Rear"}],
+              "BossMod.Autorotation.MiscAI.StayCloseToPartyRole":[{"Track":"range","Option":"20"}],
+              "BossMod.Autorotation.MiscAI.NormalMovement":[{"Track":"ForbiddenZoneCushion","Option":"Medium"},{"Track":"Destination","Option":"Pathfind"},{"Track":"Range","Option":"MaxRange"}]
+            }}
+            """;
 
         public State Read()
         {
@@ -289,8 +299,18 @@ internal sealed class BeastmasterCombat
         }
 
         public string ReadPreset()
-            => Plugin.PluginInterface.GetIpcSubscriber<string, string?>("BossMod.Presets.Get").InvokeFunc(PresetName)
+        {
+            var get = Plugin.PluginInterface.GetIpcSubscriber<string, string?>("BossMod.Presets.Get");
+            var preset = get.InvokeFunc(PresetName);
+            if (preset != null) return preset;
+
+            // overwrite=false also preserves a preset another plugin creates after our lookup.
+            Plugin.PluginInterface.GetIpcSubscriber<string, bool, bool>("BossMod.Presets.Create")
+                .InvokeFunc(DefaultPreset, false);
+            // Validate the stored preset, rather than assuming creation succeeded.
+            return get.InvokeFunc(PresetName)
                 ?? throw new InvalidOperationException("BossMod is missing the existing 'passive - melee' preset.");
+        }
 
         public Target ReadTarget()
         {
