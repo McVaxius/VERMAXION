@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Gui = host::FFXIVClientStructs.FFXIV.Component.GUI;
@@ -841,6 +842,123 @@ public sealed class BeastmasterRouteLifecycleTests
     {
         var ui = Production.GetType("VERMAXION.Beastmaster.CrucibleUi", true)!;
         Assert.Equal(matches, (bool)ui.GetMethod("MatchesLootRejection", Static)!.Invoke(null, [actual, expected])!);
+    }
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("de")]
+    [InlineData("es")]
+    [InlineData("fr")]
+    [InlineData("hi")]
+    [InlineData("id")]
+    [InlineData("it")]
+    [InlineData("ja")]
+    [InlineData("ko")]
+    [InlineData("pl")]
+    [InlineData("pt-BR")]
+    [InlineData("ru")]
+    [InlineData("tr")]
+    [InlineData("vi")]
+    [InlineData("zh-Hans")]
+    public void ProductionBeastmasterNumericStatusesPreserveLocalizedTextSemantics(string language)
+    {
+        var type = Production.GetType("VERMAXION.UiText", true)!;
+        var constructor = type.GetConstructors(Instance).Single();
+        var fontDelegateType = constructor.GetParameters()[1].ParameterType;
+        var font = typeof(ChocoboStablesBatchTests).GetMethod("NoFont", Static)!
+            .MakeGenericMethod(fontDelegateType.GenericTypeArguments[0]).CreateDelegate(fontDelegateType);
+        using var text = (IDisposable)constructor.Invoke([language, font]);
+        using var frame = (IDisposable)type.GetMethod("Enter", Instance)!.Invoke(text, null)!;
+        var beastmaster = type.GetMethod("Beastmaster", Static)!;
+        var translate = type.GetMethod("T", Static)!;
+        var culture = CultureInfo.GetCultureInfo(language);
+        var manager = new ResourceManager("VERMAXION.Localization.Strings_" + language.Replace('-', '_'), Production);
+        var resources = manager.GetResourceSet(CultureInfo.InvariantCulture, true, false)!;
+        (string Key, int Fields)[] templates =
+        [
+            ("Equipped durability {0}%; repair starts below {1}%.", 2),
+            ("Repair complete; equipped durability {0}%.", 1),
+            ("Repair improved durability to {0}%, but it is still below {1}%; continuing.", 2),
+            ("Requires level {0} and item level {1}; current level {2}, item level {3}.", 4),
+        ];
+        object[][] captures =
+        [
+            ["47", "50", "90", "500"],
+            ["0047", "0050", "0090", "0500"],
+            ["\u0664\u0667", "\u096b\u0966", "\uff19\uff10", "\u06f5\u06f0\u06f0"],
+            ["2147483648", "999999999999999999999999999999", "0", "100000000000000000000"],
+        ];
+        foreach (var (key, fields) in templates)
+        {
+            foreach (var values in captures)
+            {
+                var status = string.Format(CultureInfo.InvariantCulture, key, values);
+                var expected = string.Format(culture, resources.GetString(key, false)!, values);
+                Assert.Equal(expected, beastmaster.Invoke(null, [status]));
+                // The old regex $ anchor admits one final LF and drops it on translation.
+                Assert.Equal(expected, beastmaster.Invoke(null, [status + "\n"]));
+                var paused = string.Format(culture, resources.GetString("Paused: {0}", false)!, expected);
+                Assert.Equal(paused, beastmaster.Invoke(null, ["Paused: " + status]));
+                Assert.Equal(paused, beastmaster.Invoke(null, ["Paused: " + status + "\n"]));
+            }
+
+            var ordinary = string.Format(CultureInfo.InvariantCulture, key, captures[0]);
+            var localized = string.Format(culture, resources.GetString(key, false)!, captures[0]);
+            Assert.Equal(ordinary + "\r\n", beastmaster.Invoke(null, [ordinary + "\r\n"]));
+            Assert.Equal(localized + "\n\n", beastmaster.Invoke(null, [ordinary + "\n\n"]));
+            foreach (var opaque in new[]
+            {
+                "Synthetic prefix: " + ordinary,
+                char.ToLowerInvariant(ordinary[0]) + ordinary[1..],
+                ordinary.Replace(" ", "  ", StringComparison.Ordinal),
+                ordinary + "!",
+                ordinary[..^1] + "!",
+            })
+                Assert.Equal(opaque, beastmaster.Invoke(null, [opaque]));
+
+            // Invalid numeric fields retain the existing T(original) fallback. Generic
+            // localization templates can still translate their opaque field contents.
+            foreach (var invalid in new[] { "", "+47", "-47", "4.7", "\u00b2", "\u2167", "\U0001D7CE" })
+                for (var field = 0; field < fields; field++)
+                {
+                    var values = (object[])captures[0].Clone();
+                    values[field] = invalid;
+                    var status = string.Format(CultureInfo.InvariantCulture, key, values) + "\n";
+                    Assert.Equal(translate.Invoke(null, [status]), beastmaster.Invoke(null, [status]));
+                }
+        }
+
+        const string provider = "Synthetic provider: route #007; opaque {0}\r\nSynthetic detail.";
+        Assert.Equal(provider, beastmaster.Invoke(null, [provider]));
+        Assert.Equal(string.Format(culture, resources.GetString("Paused: {0}", false)!, provider),
+            beastmaster.Invoke(null, ["Paused: " + provider]));
+        foreach (var prefix in new[] { "Stopped; combat restoration pending: ", "Combat restoration pending: ",
+            "RSR runtime state is incompatible: ", "Recovering in five seconds: " })
+            foreach (var detail in new[] { provider, "Repair complete; equipped durability 0047%.\n" })
+            {
+                var expected = string.Format(culture, resources.GetString(prefix + "{0}", false)!,
+                    translate.Invoke(null, [detail]));
+                Assert.Equal(expected, beastmaster.Invoke(null, [prefix + detail]));
+            }
+        manager.ReleaseAllResources();
+    }
+
+    [Fact]
+    public void ProductionBeastmasterLongNumericNearMatchRemainsOpaqueWithoutThrowing()
+    {
+        var type = Production.GetType("VERMAXION.UiText", true)!;
+        var constructor = type.GetConstructors(Instance).Single();
+        var fontDelegateType = constructor.GetParameters()[1].ParameterType;
+        var font = typeof(ChocoboStablesBatchTests).GetMethod("NoFont", Static)!
+            .MakeGenericMethod(fontDelegateType.GenericTypeArguments[0]).CreateDelegate(fontDelegateType);
+        using var text = (IDisposable)constructor.Invoke(["de", font]);
+        using var frame = (IDisposable)type.GetMethod("Enter", Instance)!.Invoke(text, null)!;
+        // This bounded synthetic response cannot complete the third numeric template.
+        // The wrong delimiter also prevents generic resource-template localization.
+        var status = "Repair improved durability to " + new string('9', 2 * 1024 * 1024) + "!";
+        var actual = (string)type.GetMethod("Beastmaster", Static)!.Invoke(null, [status])!;
+        Assert.True(string.Equals(status, actual, StringComparison.Ordinal),
+            "An unmatched provider response must remain opaque.");
     }
 
     private static bool HandleLootRejection(object menus, DateTime now, string expected)

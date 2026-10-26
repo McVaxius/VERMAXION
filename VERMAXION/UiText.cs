@@ -143,20 +143,34 @@ internal sealed class UiText : IDisposable
                 return F(prefix + "{0}", T(english[prefix.Length..]));
         const string paused = "Paused: ";
         if (english.StartsWith(paused, StringComparison.Ordinal)) return F("Paused: {0}", Beastmaster(english[paused.Length..]));
-        var repair = Regex.Match(english, @"^Equipped durability (\d+)%; repair starts below (\d+)%\.$",
-            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
-        if (repair.Success) return F("Equipped durability {0}%; repair starts below {1}%.", repair.Groups[1].Value, repair.Groups[2].Value);
-        repair = Regex.Match(english, @"^Repair complete; equipped durability (\d+)%\.$",
-            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
-        if (repair.Success) return F("Repair complete; equipped durability {0}%.", repair.Groups[1].Value);
-        repair = Regex.Match(english, @"^Repair improved durability to (\d+)%, but it is still below (\d+)%; continuing\.$",
-            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
-        if (repair.Success) return F("Repair improved durability to {0}%, but it is still below {1}%; continuing.", repair.Groups[1].Value, repair.Groups[2].Value);
-        var entry = Regex.Match(english, @"^Requires level (\d+) and item level (\d+); current level (\d+), item level (\d+)\.$",
-            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(20));
-        if (entry.Success) return F("Requires level {0} and item level {1}; current level {2}, item level {3}.",
-            entry.Groups[1].Value, entry.Groups[2].Value, entry.Groups[3].Value, entry.Groups[4].Value);
+        var repair = BeastmasterNumbers(english, "Equipped durability ", "%; repair starts below ", "%.");
+        if (repair != null) return F("Equipped durability {0}%; repair starts below {1}%.", repair[0], repair[1]);
+        repair = BeastmasterNumbers(english, "Repair complete; equipped durability ", "%.");
+        if (repair != null) return F("Repair complete; equipped durability {0}%.", repair[0]);
+        repair = BeastmasterNumbers(english, "Repair improved durability to ", "%, but it is still below ", "%; continuing.");
+        if (repair != null) return F("Repair improved durability to {0}%, but it is still below {1}%; continuing.", repair[0], repair[1]);
+        var entry = BeastmasterNumbers(english, "Requires level ", " and item level ", "; current level ", ", item level ", ".");
+        if (entry != null) return F("Requires level {0} and item level {1}; current level {2}, item level {3}.",
+            entry[0], entry[1], entry[2], entry[3]);
         return T(english);
+    }
+
+    private static string[]? BeastmasterNumbers(string english, params string[] literals)
+    {
+        if (!english.StartsWith(literals[0], StringComparison.Ordinal)) return null;
+        var arguments = new string[literals.Length - 1];
+        var offset = literals[0].Length;
+        for (var index = 0; index < arguments.Length; index++)
+        {
+            var start = offset;
+            while (offset < english.Length && char.IsDigit(english[offset])) offset++;
+            var literal = literals[index + 1];
+            if (offset == start || !english.AsSpan(offset).StartsWith(literal, StringComparison.Ordinal)) return null;
+            arguments[index] = english[start..offset];
+            offset += literal.Length;
+        }
+        // Preserve the original regex $ allowance for one final LF, outside the captures.
+        return offset == english.Length || offset == english.Length - 1 && english[offset] == '\n' ? arguments : null;
     }
 
     // Collection services retain their original English messages and logs. Resolve their

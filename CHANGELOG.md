@@ -1,3 +1,8 @@
+2026-10-26 - Remove Crewcible status-text regex timeouts
+
+- Replace four short-timeout numeric status matches with native character matching. Retain the existing translated messages, captured number text and opaque provider details.
+- Validation: Debug/x64 plugin build and all 89 Beastmaster lifecycle cases passed, including the new 15-language numeric-format and bounded long-input checks. Game/relog acceptance remains pending.
+
 2026-10-25 - Supply the missing Beastmaster movement preset
 
 - Create the bundled movement-only `passive - melee` preset through BossMod IPC when it is missing, so Beastmaster does not depend on FrenRider having installed it first. Preserve existing presets, read back the stored copy and retain the current validation and combat-state restoration.
