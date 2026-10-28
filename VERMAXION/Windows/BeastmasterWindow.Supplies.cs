@@ -64,10 +64,15 @@ internal sealed partial class BeastmasterWindow
         try
         {
             ImGui.SetNextItemWidth(EditorListComboWidth(out var inlineActions));
-            if (MaterialText.BeginCombo("##SuppliesList", active.Name))
+            bool listOpen;
+            using (MaterialSkin.NativeFieldStyle())
+            using (MaterialSkin.BackdropStyle(popup: true))
+                listOpen = MaterialText.BeginCombo("##SuppliesList", active.Name);
+            if (listOpen)
             {
                 try
                 {
+                    MaterialSkin.Backdrop();
                     for (var index = 0; index < settings.ShopLists.Count; index++)
                     {
                         var list = settings.ShopLists[index];
@@ -153,10 +158,15 @@ internal sealed partial class BeastmasterWindow
         {
             UiGui.TextUnformatted("Bulk category");
             ImGui.SetNextItemWidth(Math.Min(ImGui.GetContentRegionAvail().X, 260 * MaterialTheme.Metrics.Scale));
-            if (MaterialText.BeginCombo("##SuppliesBulkCategory", UiText.T(suppliesBulkCategory == CrucibleItemData.CrucibleItemCategory.None ? "All categories" : SuppliesCategoryCaption(suppliesBulkCategory))))
+            bool categoryOpen;
+            using (MaterialSkin.NativeFieldStyle())
+            using (MaterialSkin.BackdropStyle(popup: true))
+                categoryOpen = MaterialText.BeginCombo("##SuppliesBulkCategory", UiText.T(suppliesBulkCategory == CrucibleItemData.CrucibleItemCategory.None ? "All categories" : SuppliesCategoryCaption(suppliesBulkCategory)));
+            if (categoryOpen)
             {
                 try
                 {
+                    MaterialSkin.Backdrop();
                     CrucibleItemData.CrucibleItemCategory[] categories = [CrucibleItemData.CrucibleItemCategory.None,
                         CrucibleItemData.CrucibleItemCategory.Gear, CrucibleItemData.CrucibleItemCategory.HealItem,
                         CrucibleItemData.CrucibleItemCategory.DamageItem, CrucibleItemData.CrucibleItemCategory.OtherItem,
@@ -243,7 +253,7 @@ internal sealed partial class BeastmasterWindow
                     try
                     {
                         var blocked = row.Blocked;
-                        if (ImGui.Checkbox("##Blocked", ref blocked))
+                        if (UiGui.Checkbox("##Blocked", ref blocked))
                         {
                             foreach (var entry in active.Order)
                                 if (ReferenceEquals(entry, row) || ImGui.GetIO().KeyCtrl && entry.GetCategory == row.GetCategory) entry.Blocked = blocked;
@@ -280,9 +290,10 @@ internal sealed partial class BeastmasterWindow
     {
         var info = CrucibleItemData.InfoOf(id);
         if (info is null) return;
-        ImGui.BeginTooltip();
+        using (MaterialSkin.BackdropStyle(popup: true)) ImGui.BeginTooltip();
         try
         {
+            MaterialSkin.Backdrop();
             ImGui.PushTextWrapPos(420 * MaterialTheme.Metrics.Scale);
             try
             {

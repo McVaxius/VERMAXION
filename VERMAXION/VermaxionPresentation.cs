@@ -14,6 +14,7 @@ internal static class VermaxionPresentation
     internal static readonly float[] FontSizes = [16, 16, 38, 20, 22, 18, 26];
     internal static readonly string[] FontFiles = ["segoeui.ttf", "seguisb.ttf", "segoeuib.ttf", "seguisb.ttf", "seguisb.ttf", "seguisb.ttf", "segoeuib.ttf"];
     internal static float AtlasHeight(UiFontRole role) => FontSizes[(int)role] * 4 / 3;
+    internal static bool HasMaterial => MaterialTheme.Current.IsGlassmorphism || MaterialTheme.Current.IsSpatial || MaterialTheme.Current.IsCyberpunk;
     internal static Vector4 Rgb(uint rgb) => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, 1);
     internal static readonly Vector4 Ready = Rgb(0x7DCF6E), Pending = Rgb(0xE8B86C), Error = Rgb(0xEE7788);
     internal static MaterialControlMetrics Controls(float height, float icon = 20)
@@ -60,7 +61,7 @@ internal static class VermaxionPresentation
     }
     internal static void Surface(Vector2 min, Vector2 max, bool raised = false)
     {
-        if (MaterialTheme.Current.IsLcars) { MaterialLcars.PanelFrame(min, max, 1); return; }
+        if (MaterialTheme.Current.IsLcars || HasMaterial) { MaterialSkin.PanelFrame(min, max, 1); return; }
         var c = MaterialTheme.Current.Colors;
         MaterialCanvas.Surface(min, max, raised ? c.SurfaceContainerHigh : c.Surface, c.Background, 4 * MaterialTheme.Metrics.Scale);
         Dalamud.Bindings.ImGui.ImGui.GetWindowDrawList().AddRect(min, max, MaterialCanvas.Color(c.OutlineVariant), 4 * MaterialTheme.Metrics.Scale);

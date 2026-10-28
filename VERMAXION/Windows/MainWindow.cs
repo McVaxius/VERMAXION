@@ -18,6 +18,7 @@ namespace VERMAXION.Windows;
 public class MainWindow : Window, IDisposable
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
+    private bool materialBackdropStylePushed;
     private static readonly string[] RetainerBellSessionAddonNames =
     [
         "RetainerList",
@@ -66,13 +67,13 @@ public class MainWindow : Window, IDisposable
         {
             Icon = FontAwesomeIcon.PowerOff, Priority = -10, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) SetEnabled(!plugin.Configuration.Enabled); },
-            ShowTooltip = () => MaterialText.SetTooltip(UiText.T("Enabled") + ": " + UiText.T(plugin.Configuration.Enabled ? "On" : "Off")),
+            ShowTooltip = () => UiGui.SetTooltip(UiText.T("Enabled") + ": " + UiText.T(plugin.Configuration.Enabled ? "On" : "Off")),
         });
         TitleBarButtons.Add(new()
         {
             Icon = FontAwesomeIcon.Play, Priority = -20, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) RunAll(); },
-            ShowTooltip = () => MaterialText.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Run All")
+            ShowTooltip = () => UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Run All")
                 : UiText.T("Run All") + "\n" + UiText.T(plugin.Engine.StatusText)
                     + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker)),
         });
@@ -80,7 +81,7 @@ public class MainWindow : Window, IDisposable
         {
             Icon = FontAwesomeIcon.Stop, Priority = -30, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) CancelRun(); },
-            ShowTooltip = () => MaterialText.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Cancel")
+            ShowTooltip = () => UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Cancel")
                 : UiText.T("Cancel") + "\n" + UiText.T(plugin.Engine.StatusText)),
         });
         TitleBarButtons.Add(new()
@@ -114,12 +115,31 @@ public class MainWindow : Window, IDisposable
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
+        if (VermaxionPresentation.HasMaterial)
+        {
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
+            materialBackdropStylePushed = true;
+        }
         motion.Prepare(this, reducedMotion: false, roundedCorners: true);
     }
     public override void PostDraw()
     {
         motion.Restore(this);
+        ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
+    }
+
+    private void BeginMaterialContent()
+    {
+        ReleaseMaterialBackdropStyle();
+        MaterialSkin.Backdrop();
+    }
+
+    private void ReleaseMaterialBackdropStyle()
+    {
+        if (!materialBackdropStylePushed) return;
+        ImGui.PopStyleColor();
+        materialBackdropStylePushed = false;
     }
 
     internal void UpdateCustomDeliveryVisibility()
@@ -143,6 +163,7 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
+        BeginMaterialContent();
         motion.DrawChrome();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(string.Empty);
         var config = plugin.ConfigManager.GetActiveConfig();
@@ -1200,7 +1221,7 @@ public class MainWindow : Window, IDisposable
         {
             var enabled = row.Enabled;
             ImGui.BeginDisabled(plugin.ConfigManager.GetCurrentAccount() == null);
-            if (ImGui.Checkbox("##TaskEnabled_" + row.Id, ref enabled))
+            if (UiGui.Checkbox("##TaskEnabled_" + row.Id, ref enabled))
             {
                 typeof(CharacterConfig).GetProperty(row.Feature.FlagProperty)?.SetValue(plugin.ConfigManager.GetActiveConfig(), enabled);
                 if (!enabled && row.Id == AutomationCatalog.ChocoboRacing)
@@ -1229,7 +1250,7 @@ public class MainWindow : Window, IDisposable
         UiGui.TextUnformatted(row.Task);
         ImGui.PopTextWrapPos();
         if (ImGui.IsItemHovered())
-            MaterialText.SetTooltip(UiText.F($"{BuildTaskTooltip(row, StatusText)}\nDependencies: {UiText.T(dependencySummary.Tooltip)}"));
+            UiGui.SetTooltip(UiText.F($"{BuildTaskTooltip(row, StatusText)}\nDependencies: {UiText.T(dependencySummary.Tooltip)}"));
 
         if (automatic || split) ImGui.TableSetColumnIndex(1);
         var timing = row.Feature == null ? "On demand" : FormatWhen(row);
@@ -1254,7 +1275,7 @@ public class MainWindow : Window, IDisposable
         UIConstants.WrappedText(GetSectionColor(row.Section), stateText, translate: false);
         ImGui.EndGroup();
         if (ImGui.IsItemHovered())
-            MaterialText.SetTooltip(UiText.F($"{BuildTaskTooltip(row, StatusText)}\nDependencies: {UiText.T(dependencySummary.Tooltip)}"));
+            UiGui.SetTooltip(UiText.F($"{BuildTaskTooltip(row, StatusText)}\nDependencies: {UiText.T(dependencySummary.Tooltip)}"));
         if (wip)
         {
             if (statusSplit) ImGui.TableNextColumn();
@@ -1279,7 +1300,7 @@ public class MainWindow : Window, IDisposable
         }
         ImGui.EndDisabled();
         if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            MaterialText.SetTooltip(StatusText(row.ButtonTooltip));
+            UiGui.SetTooltip(StatusText(row.ButtonTooltip));
 
         if (row.SettingsSection.HasValue)
         {

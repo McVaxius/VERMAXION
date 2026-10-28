@@ -12,6 +12,7 @@ namespace VERMAXION.Windows;
 internal sealed class VerminionWindow : Window
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
+    private bool materialBackdropStylePushed;
     private readonly Plugin plugin;
     private int previewStage;
     private bool showPlannedMinions;
@@ -27,16 +28,36 @@ internal sealed class VerminionWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
+        if (VermaxionPresentation.HasMaterial)
+        {
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
+            materialBackdropStylePushed = true;
+        }
         motion.Prepare(this, reducedMotion: false, roundedCorners: true);
     }
     public override void PostDraw()
     {
         motion.Restore(this);
+        ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
+    }
+
+    private void BeginMaterialContent()
+    {
+        ReleaseMaterialBackdropStyle();
+        MaterialSkin.Backdrop();
+    }
+
+    private void ReleaseMaterialBackdropStyle()
+    {
+        if (!materialBackdropStylePushed) return;
+        ImGui.PopStyleColor();
+        materialBackdropStylePushed = false;
     }
 
     public override void Draw()
     {
+        BeginMaterialContent();
         motion.DrawChrome();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T("Verminion"));
         UiGui.TitleWithButtons("Lord of Verminion", UiText.T("Lord of Verminion"), this);

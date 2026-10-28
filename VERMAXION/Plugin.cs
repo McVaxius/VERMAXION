@@ -496,7 +496,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                     Priority = (int)Math.Max(int.MinValue + 1L, owner.TitleBarButtons.Select(static button => (long)button.Priority).DefaultIfEmpty(0).Min() - 1),
                     IconOffset = new(2, 1),
                     Click = button => { if (button == ImGuiMouseButton.Left && LcarsActive) SetUiSoundsMuted(!Configuration.UiLcarsSoundsMuted); },
-                    ShowTooltip = () => MaterialText.SetTooltip(UiText.T(Configuration.UiLcarsSoundsMuted ? "UI sounds muted" : "UI sounds on")),
+                    ShowTooltip = () => UiGui.SetTooltip(UiText.T(Configuration.UiLcarsSoundsMuted ? "UI sounds muted" : "UI sounds on")),
                 };
                 soundTitleButtons.Add(owner, speaker);
             }
@@ -555,7 +555,17 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         var changed = MaterialAppearanceSelector.DrawColors(id, ref colorDraft, ref accentDraft,
             new(UiText.T("Color"), UiText.T("Language"), UiText.T("Teal"), UiText.T("Blue"), UiText.T("Pink"), UiText.T("Custom RGB")),
             new(UiText.T("Auto"), UiText.T("Picker"), UiText.T("Default"), UiText.T("Background, controls and text follow your theme."), UiText.T("Theme colour"), UiText.T("Choose each colour independently."), UiText.T("Background"), UiText.T("Controls"), UiText.T("Text"), UiText.T("Aa  Preview text"), UiText.T("Control"), UiText.T("Switch to Picker to set each colour yourself."), UiText.T("Switch back to Auto to use the automatic theme."))
-            { Lcars = UiText.T("LCARS"), LcarsHelp = UiText.T("LCARS panels, bars and controls") }, Configuration.CompactUi ? 298 : 316);
+            {
+                Lcars = UiText.T("LCARS"), LcarsHelp = UiText.T("LCARS panels, bars and controls"),
+                LcarsBar1 = UiText.T("LCARS bar 1"), LcarsBar2 = UiText.T("LCARS bar 2"), LcarsBar3 = UiText.T("LCARS bar 3"),
+                Glassmorphism = UiText.T("Glassmorphism"), Spatial = UiText.T("Spatial"), Cyberpunk = UiText.T("Cyberpunk"),
+                Reset = UiText.T("Reset"), ResetColors = UiText.T("Reset colours"),
+                Animation = UiText.T("Animation"), AnimationSpeed = UiText.T("Animation speed (0.1–10x; default 1x)"),
+                WaveColors = UiText.T("Wave colours"), GlassWave1 = UiText.T("Wave colour 1"),
+                GlassWave2 = UiText.T("Wave colour 2"), GlassWave3 = UiText.T("Wave colour 3"), ResetWaveColors = UiText.T("Reset wave colours"),
+            },
+            new MaterialColorSettings(), MaterialColorSettings.Rgb(VermaxionPresentation.ReferenceAccent),
+            Configuration.CompactUi ? 298 : 316);
         if (!changed) return false;
         Configuration.UiColors = colorDraft;
         if (!LcarsActive) uiSounds?.Stop();
@@ -626,11 +636,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         using var chrome = MaterialWindowChrome.Push();
         Dalamud.Bindings.ImGui.ImGui.SetNextWindowSize(new System.Numerics.Vector2(460f*ImGuiHelpers.GlobalScale,0f));
         fontStatusFold.PreDraw("VERMAXION##FontStatus", null, null, false, fontStatusDecorations.Prepare);
-        var visible = Dalamud.Bindings.ImGui.ImGui.Begin("VERMAXION##FontStatus",Dalamud.Bindings.ImGui.ImGuiWindowFlags.AlwaysAutoResize);
+        bool visible;
+        using (MaterialSkin.BackdropStyle())
+            visible = Dalamud.Bindings.ImGui.ImGui.Begin("VERMAXION##FontStatus",Dalamud.Bindings.ImGui.ImGuiWindowFlags.AlwaysAutoResize);
         try
         {
             if (visible)
             {
+                MaterialSkin.Backdrop();
                 fontStatusDecorations.Paint();
                 if (uiTheme.IsLcars) MaterialLcars.Header("VERMAXION");
                 if (appliedLanguage == "hi")
@@ -681,7 +694,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             var color = VermaxionPresentation.Rgb(appliedAccent);
             accentDraft = new(color.X, color.Y, color.Z);
         }
-        uiTheme.Density = uiTheme.IsLcars && Configuration.CompactUi ? MaterialDensity.Compact : MaterialDensity.Standard;
+        uiTheme.Density = Configuration.CompactUi && (uiTheme.IsLcars || uiTheme.IsGlassmorphism || uiTheme.IsSpatial || uiTheme.IsCyberpunk)
+            ? MaterialDensity.Compact : MaterialDensity.Standard;
         if (appliedUiSoundsMuted != Configuration.UiLcarsSoundsMuted)
         {
             appliedUiSoundsMuted = Configuration.UiLcarsSoundsMuted;
@@ -706,7 +720,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     internal void DrawLcarsQuickPreferences()
     {
-        foreach (var mode in new[] { MaterialColorMode.Auto, MaterialColorMode.Picker, MaterialColorMode.Lcars })
+        foreach (var mode in new[]
+        {
+            MaterialColorMode.Auto, MaterialColorMode.Picker, MaterialColorMode.Lcars,
+            MaterialColorMode.Glassmorphism, MaterialColorMode.Spatial, MaterialColorMode.Cyberpunk,
+        })
         {
             var caption = mode == MaterialColorMode.Lcars ? "LCARS" : mode.ToString();
             if (mode != MaterialColorMode.Auto) UIConstants.SameLineIfFits(caption,

@@ -19,6 +19,7 @@ public class ConfigWindow : Window, IDisposable
 {
     private readonly AethertekUI.Dalamud.MaterialSupportLog supportLog = new();
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
+    private bool materialBackdropStylePushed;
     private const string StylistRepositoryUrl = "https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json";
     private readonly Plugin plugin;
     private string editAccountAlias = "";
@@ -161,17 +162,37 @@ public class ConfigWindow : Window, IDisposable
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
+        if (VermaxionPresentation.HasMaterial)
+        {
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
+            materialBackdropStylePushed = true;
+        }
         motion.Prepare(this, reducedMotion: false, roundedCorners: true);
     }
 
     public override void PostDraw()
     {
         motion.Restore(this);
+        ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
+    }
+
+    private void BeginMaterialContent()
+    {
+        ReleaseMaterialBackdropStyle();
+        MaterialSkin.Backdrop();
+    }
+
+    private void ReleaseMaterialBackdropStyle()
+    {
+        if (!materialBackdropStylePushed) return;
+        ImGui.PopStyleColor();
+        materialBackdropStylePushed = false;
     }
 
     public override void Draw()
     {
+        BeginMaterialContent();
         motion.DrawChrome();
         UiGui.TitleWithButtons("Vermaxion Configuration", UiText.T("Vermaxion Configuration"), this);
         UIConstants.ApplicationHeading("Settings");
@@ -305,6 +326,13 @@ public class ConfigWindow : Window, IDisposable
                          ImGuiTableFlags.Resizable |
                          ImGuiTableFlags.ScrollY |
                          ImGuiTableFlags.SizingStretchProp;
+        float laneActionWidth;
+        using (MaterialControls.Push(MaterialControlContext.Toolbar))
+            laneActionWidth = Math.Max(
+                MaterialText.Measure(UiText.F("Move to {0}", UiText.T("Before"))).X,
+                MaterialText.Measure(UiText.F("Move to {0}", UiText.T("After"))).X) + ImGui.GetStyle().FramePadding.X * 2;
+        var laneColumnWidth = Math.Max(104f * UIConstants.Scale,
+            laneActionWidth + ImGui.GetStyle().CellPadding.X * 2);
         using var tightRows = config.CompactUi ? MaterialTable.PushTightRows() : default;
         if (!ImGui.BeginTable($"TaskOrder_{phase}", 4, tableFlags, new Vector2(0, 230f)))
             return;
@@ -313,7 +341,7 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TableSetupColumn("Move", ImGuiTableColumnFlags.WidthFixed, 72f);
         ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch, 1.2f);
         ImGui.TableSetupColumn("Cadence / owner / blocker", ImGuiTableColumnFlags.WidthStretch, 2f);
-        ImGui.TableSetupColumn("Lane", ImGuiTableColumnFlags.WidthFixed, 104f);
+        ImGui.TableSetupColumn("Lane", ImGuiTableColumnFlags.WidthFixed, laneColumnWidth);
         UiGui.TableHeadersRow();
 
         for (var laneIndex = 0; laneIndex < lane.Count; laneIndex++)
@@ -367,7 +395,9 @@ public class ConfigWindow : Window, IDisposable
             var rawMoveLabel = $"Move to {destinationLabel}";
             var legacyCaption = UiText.F("Move to {0}", destinationLabel);
             var legacySize = new Vector2(MaterialText.Measure(legacyCaption).X + ImGui.GetStyle().FramePadding.X * 2, 0);
-            if (UIConstants.ButtonWithCaption(rawMoveLabel, UiText.F("Move to {0}", UiText.T(destinationLabel)), legacySize))
+            // Keep the old fixed-column width when choosing the existing native button ID.
+            if (UIConstants.ButtonWithCaption(rawMoveLabel, UiText.F("Move to {0}", UiText.T(destinationLabel)),
+                new Vector2(laneActionWidth, legacySize.Y), false, Math.Min(legacySize.X, 104f)))
             {
                 config.PostProcessTaskPlacement = PostProcessTaskOrder.ChangePhase(
                     config.PostProcessTaskPlacement,
@@ -945,8 +975,12 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.OpenPopup("EditAccountPopup");
             }
 
-            if (ImGui.BeginPopup("EditAccountPopup"))
+            bool editAccountPopupVisible;
+            using (MaterialSkin.BackdropStyle(popup: true))
+                editAccountPopupVisible = ImGui.BeginPopup("EditAccountPopup");
+            if (editAccountPopupVisible)
             {
+                MaterialSkin.Backdrop();
                 UiGui.Text(UIConstants.ConfigLabels.AccountAlias);
                 UIConstants.InputText("##EditAlias", ref editAccountAlias, 64);
                 if (UIConstants.Button(UIConstants.ConfigLabels.Save) && !string.IsNullOrWhiteSpace(editAccountAlias))
@@ -1099,8 +1133,12 @@ public class ConfigWindow : Window, IDisposable
 
 
                     // Right-click context menu
-                    if (ImGui.BeginPopupContextItem($"CharContext_{charKey}"))
+                    bool characterContextVisible;
+                    using (MaterialSkin.BackdropStyle(popup: true))
+                        characterContextVisible = ImGui.BeginPopupContextItem($"CharContext_{charKey}");
+                    if (characterContextVisible)
                     {
+                        MaterialSkin.Backdrop();
                         if (UiGui.MenuItem("Reset to Default"))
                         {
                             var accountLabel = configManager.GetSelectedAccount()?.AccountAlias ?? "current account";

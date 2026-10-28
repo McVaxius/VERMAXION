@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using AethertekUI;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using VERMAXION.Beastmaster;
@@ -10,6 +11,7 @@ internal sealed class BeastmasterMiniWindow : Window
 {
     private readonly Plugin plugin;
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
+    private bool materialBackdropStylePushed;
     private readonly BeastmasterSplashRotation splashes = new();
 
     internal BeastmasterMiniWindow(Plugin plugin)
@@ -35,17 +37,37 @@ internal sealed class BeastmasterMiniWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
+        if (VermaxionPresentation.HasMaterial)
+        {
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
+            materialBackdropStylePushed = true;
+        }
         motion.Prepare(this, reducedMotion: false, roundedCorners: true);
     }
 
     public override void PostDraw()
     {
         motion.Restore(this);
+        ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
+    }
+
+    private void BeginMaterialContent()
+    {
+        ReleaseMaterialBackdropStyle();
+        MaterialSkin.Backdrop();
+    }
+
+    private void ReleaseMaterialBackdropStyle()
+    {
+        if (!materialBackdropStylePushed) return;
+        ImGui.PopStyleColor();
+        materialBackdropStylePushed = false;
     }
 
     public override void Draw()
     {
+        BeginMaterialContent();
         motion.DrawChrome();
         if (AethertekUI.MaterialTheme.Current.IsLcars) AethertekUI.MaterialLcars.Header(UiText.T("Beastmaster"));
         plugin.BeastmasterWindow.DrawMiniContents(splashes);

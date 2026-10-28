@@ -27,7 +27,7 @@ internal sealed partial class BeastmasterWindow
             ShowTooltip = () =>
             {
                 var ready = plugin.CanStartBeastmaster(out var reason);
-                MaterialText.SetTooltip(UiText.T(PrimaryRunAction) + "\n" + plugin.KrangleTitlebarText(
+                UiGui.SetTooltip(UiText.T(PrimaryRunAction) + "\n" + plugin.KrangleTitlebarText(
                     ready ? BuildRunDetail(ready, reason) : UiText.Beastmaster(reason)));
             },
         });
@@ -35,7 +35,7 @@ internal sealed partial class BeastmasterWindow
         {
             Icon = FontAwesomeIcon.Clock, Priority = -5, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) plugin.BeastmasterService.ToggleStopAfterNextOutcome(); },
-            ShowTooltip = () => MaterialText.SetTooltip(UiText.T(plugin.BeastmasterService.StopAfterNextOutcome
+            ShowTooltip = () => UiGui.SetTooltip(UiText.T(plugin.BeastmasterService.StopAfterNextOutcome
                 ? "Cancel stop after next outcome" : "Stop after current board") + "\n" +
                 UiText.T("One-time action: continue after deaths; stop after a clear or removal from the duty.")),
         });
@@ -46,7 +46,7 @@ internal sealed partial class BeastmasterWindow
             ShowTooltip = () =>
             {
                 var ready = plugin.CanStartBeastmaster(out var reason);
-                MaterialText.SetTooltip(UiText.T("Stop") + "\n" + plugin.KrangleTitlebarText(BuildRunDetail(ready, reason)));
+                UiGui.SetTooltip(UiText.T("Stop") + "\n" + plugin.KrangleTitlebarText(BuildRunDetail(ready, reason)));
             },
         });
     }

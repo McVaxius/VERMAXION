@@ -12,6 +12,7 @@ namespace VERMAXION.Windows;
 internal sealed class FishCollectionWindow : Window
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
+    private bool materialBackdropStylePushed;
     private readonly Plugin plugin;
     private string search = "", foodSearch = "", characterKey = "";
     private bool missingOnly = true, eligibleOnly;
@@ -29,16 +30,36 @@ internal sealed class FishCollectionWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
+        if (VermaxionPresentation.HasMaterial)
+        {
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
+            materialBackdropStylePushed = true;
+        }
         motion.Prepare(this, reducedMotion: false, roundedCorners: true);
     }
     public override void PostDraw()
     {
         motion.Restore(this);
+        ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
+    }
+
+    private void BeginMaterialContent()
+    {
+        ReleaseMaterialBackdropStyle();
+        MaterialSkin.Backdrop();
+    }
+
+    private void ReleaseMaterialBackdropStyle()
+    {
+        if (!materialBackdropStylePushed) return;
+        ImGui.PopStyleColor();
+        materialBackdropStylePushed = false;
     }
 
     public override void Draw()
     {
+        BeginMaterialContent();
         motion.DrawChrome();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T("Fish collection"));
         UiGui.TitleWithButtons("Big and fabled fish collection", UiText.T("Big and fabled fish collection"), this);
@@ -250,7 +271,7 @@ internal sealed class FishCollectionWindow : Window
                 var readiness = FishCollectionPolicy.Readiness(fish, viewed?.FisherObservation, known, settings, service.Observation.Meals);
                 UIConstants.WrappedText(ready ? UIConstants.Metadata : UIConstants.Amber,
                     ready ? UiText.T("Eligible") : viewed?.FisherObservation == null || known == null ? UiText.T("Needs inspection") : UiText.Collection(readiness), translate: false);
-                if (ImGui.IsItemHovered()) MaterialText.SetTooltip(UiText.Collection(readiness));
+                if (ImGui.IsItemHovered()) UiGui.SetTooltip(UiText.Collection(readiness));
                 ImGui.TableNextColumn();
                 var opportunity = service.Opportunities.FirstOrDefault(o => o.Fish.ItemId == fish.ItemId);
                 UiGui.TextWrapped(fish.AlwaysAvailable ? "Always available" : opportunity?.StartUtc.ToLocalTime().ToString("g", UiText.Current.Culture) ?? "Forecast on Start");

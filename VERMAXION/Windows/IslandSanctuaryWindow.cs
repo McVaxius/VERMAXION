@@ -13,6 +13,7 @@ internal sealed class IslandSanctuaryWindow : Window
 {
     private readonly Plugin plugin;
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
+    private bool materialBackdropStylePushed;
     private string viewedAccountId = "";
     private string viewedCharacterKey = "";
     private bool selectSettings;
@@ -50,13 +51,37 @@ internal sealed class IslandSanctuaryWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
+        if (VermaxionPresentation.HasMaterial)
+        {
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
+            materialBackdropStylePushed = true;
+        }
         motion.Prepare(this, reducedMotion: false, roundedCorners: true);
     }
 
-    public override void PostDraw() { motion.Restore(this); UIConstants.PopStyle(); }
+    public override void PostDraw()
+    {
+        motion.Restore(this);
+        ReleaseMaterialBackdropStyle();
+        UIConstants.PopStyle();
+    }
+
+    private void BeginMaterialContent()
+    {
+        ReleaseMaterialBackdropStyle();
+        MaterialSkin.Backdrop();
+    }
+
+    private void ReleaseMaterialBackdropStyle()
+    {
+        if (!materialBackdropStylePushed) return;
+        ImGui.PopStyleColor();
+        materialBackdropStylePushed = false;
+    }
 
     public override void Draw()
     {
+        BeginMaterialContent();
         motion.DrawChrome();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T(WindowName.Split("##", 2)[0]));
         UIConstants.Heading("Island Sanctuary", plugin.Configuration.CompactUi);

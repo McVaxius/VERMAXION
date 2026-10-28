@@ -135,7 +135,7 @@ public static class UIConstants
         if (!compact) ImGui.Spacing();
         using (UiText.Font(UiFontRole.PluginName))
         {
-            if (MaterialTheme.Current.IsLcars) MaterialLcars.PanelHeading(UiText.T(text), 1);
+            if (MaterialTheme.Current.IsLcars || VermaxionPresentation.HasMaterial) MaterialSkin.Heading(UiText.T(text), 1);
             else { WrappedText(Text, text); ImGui.Separator(); }
         }
     }
@@ -153,6 +153,7 @@ public static class UIConstants
         using (UiText.Font(Compact ? UiFontRole.CompactTitle : UiFontRole.Title))
         {
             if (MaterialTheme.Current.IsLcars) MaterialLcars.Header("VERMAXION");
+            else if (VermaxionPresentation.HasMaterial) MaterialSkin.Heading("VERMAXION");
             else MaterialText.Text("VERMAXION");
         }
         WrappedText(Metadata, subtitle);
@@ -160,6 +161,11 @@ public static class UIConstants
 
     internal static void WrappedText(Vector4 color, string text, bool translate = true)
     {
+        if (MaterialTheme.Current.IsSpatial && MaterialColor.Contrast(color, Panel) < 4.5f)
+        {
+            var ink = Text;
+            color = new Vector4(ink.X, ink.Y, ink.Z, color.W);
+        }
         var display = translate ? UiText.T(text) : text;
         var insets = WrappedTextInsets(display);
         var x = ImGui.GetCursorPosX();
@@ -201,19 +207,19 @@ public static class UIConstants
         ImGui.TableSetupColumn("##Panel", ImGuiTableColumnFlags.WidthStretch, 1f);
         ImGui.TableNextRow();
         ImGui.TableNextColumn();
-        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, MaterialTheme.Current.IsLcars ? 0 : ImGui.GetColorU32(Panel));
+        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, MaterialTheme.Current.IsLcars || VermaxionPresentation.HasMaterial ? 0 : ImGui.GetColorU32(Panel));
         if (title != null) Heading(title, true);
         return true;
     }
 
     internal static void EndPanel()
     {
-        if (MaterialTheme.Current.IsLcars)
+        if (MaterialTheme.Current.IsLcars || VermaxionPresentation.HasMaterial)
         {
             var table = ImGuiP.GetCurrentTable();
             ImGuiP.TableEndRow(table);
             ImGuiP.TablePushBackgroundChannel();
-            try { MaterialLcars.PanelFrame(table.OuterRect.Min, new Vector2(table.OuterRect.Max.X, table.RowPosY2), 1); }
+            try { MaterialSkin.PanelFrame(table.OuterRect.Min, new Vector2(table.OuterRect.Max.X, table.RowPosY2), 1); }
             finally { ImGuiP.TablePopBackgroundChannel(); }
             ImGui.EndTable();
             ImGui.EndGroup();
@@ -234,7 +240,6 @@ public static class UIConstants
         headerStyle.Color(ImGuiCol.Header, MaterialTheme.Current.IsLcars ? MaterialLcars.Lilac : Raised);
         headerStyle.Color(ImGuiCol.HeaderHovered, MaterialTheme.Current.IsLcars ? MaterialLcars.Periwinkle : Hover);
         headerStyle.Color(ImGuiCol.HeaderActive, MaterialTheme.Current.IsLcars ? MaterialLcars.Orange : Pressed);
-        if (MaterialTheme.Current.IsLcars) headerStyle.Color(ImGuiCol.Text, MaterialLcars.Background);
         bool open;
         using (UiText.Font(UiFontRole.PluginName))
         {
@@ -248,13 +253,20 @@ public static class UIConstants
             // Keep the original English-derived helper identity at the original wrapping boundary.
             open = ImGui.CollapsingHeader(ImGui.CalcTextSize(original).X <= width ? title : "##Wrapped_" + title, flags);
             ImGui.PopStyleColor(); ImGui.PopStyleVar();
+            using var captionInk = new MaterialStyleScope();
+            if (MaterialTheme.Current.IsLcars)
+            {
+                var fill = ImGui.GetStyle().Colors[(int)(ImGui.IsItemHovered()
+                    ? ImGui.IsItemActive() ? ImGuiCol.HeaderActive : ImGuiCol.HeaderHovered : ImGuiCol.Header)];
+                captionInk.Color(ImGuiCol.Text, MaterialSkin.ReadableInk(fill));
+            }
             var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetTreeNodeToLabelSpacing(), padding.Y);
-            MaterialIcons.Draw(open ? MaterialIcon.ChevronDown : MaterialIcon.ArrowRight, ImGui.GetItemRectMin() + padding, ImGui.GetFontSize(), MaterialTheme.Current.IsLcars ? MaterialLcars.Background : Text);
+            MaterialIcons.Draw(open ? MaterialIcon.ChevronDown : MaterialIcon.ArrowRight, ImGui.GetItemRectMin() + padding, ImGui.GetFontSize(), ImGui.GetStyle().Colors[(int)ImGuiCol.Text]);
             var drawing=ImGui.GetWindowDrawList();
             drawing.PushClipRect(ImGui.GetItemRectMin(),ImGui.GetItemRectMax(),true);
             try { MaterialText.AddText(drawing,position,ImGui.GetColorU32(ImGuiCol.Text),translated); }
             finally { drawing.PopClipRect(); }
-            if(size.X>width && ImGui.IsItemHovered()) MaterialText.SetTooltip(translated);
+            if(size.X>width && ImGui.IsItemHovered()) UiGui.SetTooltip(translated);
         }
         MaterialLcars.Feedback(ImGui.IsItemActivated(), MaterialUiSoundCue.Toggle);
         return open;
@@ -274,7 +286,21 @@ public static class UIConstants
             ImGui.GetWindowDrawList().AddRectFilled(position,position+new Vector2(width,height),ImGui.GetColorU32(MaterialColor.Alpha(Selected,.5f)),4*Scale);
         var clicked = ImGui.Selectable("##Wrapped_" + label, selected, ImGuiSelectableFlags.None, new Vector2(width, height));
         using var selectedInk = new MaterialStyleScope();
-        if (MaterialTheme.Current.IsLcars && (selected || current)) selectedInk.Color(ImGuiCol.Text, MaterialLcars.Background);
+        if (MaterialTheme.Current.IsLcars && (selected || current || ImGui.IsItemHovered()))
+        {
+            Vector4 fill;
+            if (selected || ImGui.IsItemHovered())
+                fill = ImGui.GetStyle().Colors[(int)(ImGui.IsItemHovered()
+                    ? ImGui.IsItemActive() ? ImGuiCol.HeaderActive : ImGuiCol.HeaderHovered : ImGuiCol.Header)];
+            else
+            {
+                var flags = ImGuiP.GetCurrentWindow().Flags;
+                var background = ImGui.GetStyle().Colors[(int)((flags & ImGuiWindowFlags.ChildWindow) != 0
+                    ? ImGuiCol.ChildBg : (flags & ImGuiWindowFlags.Popup) != 0 ? ImGuiCol.PopupBg : ImGuiCol.WindowBg)];
+                fill = MaterialColor.Layer(background, Selected, .5f);
+            }
+            selectedInk.Color(ImGuiCol.Text, MaterialSkin.ReadableInk(fill));
+        }
         MaterialText.AddText(ImGui.GetWindowDrawList(),ImGui.GetFont(), ImGui.GetFontSize(),
             position + new Vector2(ImGui.GetStyle().FramePadding.X, (height - textHeight) / 2),
             ImGui.GetColorU32(ImGuiCol.Text), text);
@@ -304,7 +330,10 @@ public static class UIConstants
         var oldWrapped = ImGui.CalcTextSize(originalVisible).X > Math.Max(1,legacyWidth-ImGui.GetStyle().FramePadding.X*2-iconWidth);
         using var controls = ImGui.GetStyle().FramePadding.Y == 0 || MaterialControls.Context == MaterialControlContext.Dense
             ? default(MaterialControls.ControlScope) : MaterialControls.Push(MaterialControlContext.Toolbar);
+        var material = VermaxionPresentation.HasMaterial;
         var paddingY = ImGui.GetStyle().FramePadding.Y;
+        var radius = ImGui.GetStyle().FrameRounding;
+        var alpha = ImGui.GetStyle().Alpha;
         using var lineHeight = MaterialText.PushLineHeight(visibleLabel);
         var textSize = MaterialText.Measure(visibleLabel);
         var naturalWidth = textSize.X+ImGui.GetStyle().FramePadding.X*2+iconWidth;
@@ -312,24 +341,58 @@ public static class UIConstants
         var height = System.Math.Max(size.Y > 0 ? size.Y : MaterialControls.Metrics.Height,
             System.Math.Max(textSize.Y, action ? 20 * Scale : 0) + paddingY * 2);
         var emphasis = originalVisible is "Run" or "Run All" or "Resume" or "CPU campaign" or "Scan";
-        using var outline = MaterialLcars.NativeButtonStyle(emphasis ? MaterialLcars.ControlBlue : MaterialLcars.Lilac);
+        var stopBorder = ImGui.GetStyle().Colors[(int)ImGuiCol.Border];
+        using var outline = MaterialSkin.NativeButtonStyle(MaterialTheme.Current.IsLcars
+            ? emphasis ? MaterialLcars.ControlBlue : MaterialLcars.Lilac : null);
+        using var rounding = new MaterialStyleScope();
+        if (material) rounding.Style(ImGuiStyleVar.FrameRounding, radius);
         var filledEmphasis = emphasis && !MaterialTheme.Current.IsLcars;
+        using var emphasisStyle = new MaterialStyleScope();
         if (filledEmphasis)
         {
             var colors = MaterialTheme.Current.Colors;
-            ImGui.PushStyleColor(ImGuiCol.Button, colors.PrimaryContainer);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, MaterialColor.Layer(colors.PrimaryContainer, colors.Primary, .16f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, MaterialColor.Layer(colors.PrimaryContainer, colors.Primary, .28f));
-            ImGui.PushStyleColor(ImGuiCol.Border, colors.Primary);
+            emphasisStyle.Color(ImGuiCol.Button, colors.PrimaryContainer);
+            emphasisStyle.Color(ImGuiCol.ButtonHovered, MaterialColor.Layer(colors.PrimaryContainer, colors.Primary, .16f));
+            emphasisStyle.Color(ImGuiCol.ButtonActive, MaterialColor.Layer(colors.PrimaryContainer, colors.Primary, .28f));
+            emphasisStyle.Color(ImGuiCol.Border, colors.Primary);
         }
-        ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
-        var clicked = ImGui.Button(oldWrapped ? "##Wrapped_" + label : label, new Vector2(width, height));
-        ImGui.PopStyleColor();
-        if (filledEmphasis) ImGui.PopStyleColor(4);
-        var position = ImGui.GetItemRectMin() + new Vector2(ImGui.GetStyle().FramePadding.X + iconWidth, (height - textSize.Y) / 2);
-        if (action) VermaxionPresentation.ActionIcon(originalVisible, ImGui.GetItemRectMin() + new Vector2(ImGui.GetStyle().FramePadding.X, (height - 20 * Scale) / 2), 20 * Scale);
-        MaterialText.AddText(ImGui.GetWindowDrawList(),ImGui.GetFont(), ImGui.GetFontSize(), position,
-            ImGui.GetColorU32(ImGuiCol.Text), visibleLabel);
+        var drawing = ImGui.GetWindowDrawList();
+        var splitter = material ? ImGui.ImDrawListSplitter() : default;
+        bool clicked;
+        try
+        {
+            if (material) { splitter.Split(drawing, 2); splitter.SetCurrentChannel(drawing, 1); }
+            ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
+            try
+            {
+                using var face = material ? MaterialSkin.TransparentButtonFace() : new MaterialStyleScope();
+                clicked = ImGui.Button(oldWrapped ? "##Wrapped_" + label : label, new Vector2(width, height));
+            }
+            finally { ImGui.PopStyleColor(); }
+            var min = ImGui.GetItemRectMin();
+            var max = ImGui.GetItemRectMax();
+            if (material)
+            {
+                splitter.SetCurrentChannel(drawing, 0);
+                MaterialSkin.PaintButton(min, max, alpha, radius);
+                if (originalVisible == "FULL STOP")
+                    drawing.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(new Vector4(stopBorder.X, stopBorder.Y, stopBorder.Z, stopBorder.W * alpha)),
+                        radius, ImDrawFlags.None, Scale);
+                splitter.SetCurrentChannel(drawing, 1);
+            }
+            using var captionInk = new MaterialStyleScope();
+            if (MaterialTheme.Current.IsLcars)
+            {
+                var fill = ImGui.GetStyle().Colors[(int)(ImGui.IsItemHovered()
+                    ? ImGui.IsItemActive() ? ImGuiCol.ButtonActive : ImGuiCol.ButtonHovered : ImGuiCol.Button)];
+                if (fill.W > .01f) captionInk.Color(ImGuiCol.Text, MaterialSkin.ReadableInk(fill));
+            }
+            var position = min + new Vector2(ImGui.GetStyle().FramePadding.X + iconWidth, (height - textSize.Y) / 2);
+            if (action) VermaxionPresentation.ActionIcon(originalVisible, min + new Vector2(ImGui.GetStyle().FramePadding.X, (height - 20 * Scale) / 2), 20 * Scale);
+            MaterialText.AddText(drawing, ImGui.GetFont(), ImGui.GetFontSize(), position,
+                ImGui.GetColorU32(ImGuiCol.Text), visibleLabel);
+        }
+        finally { if (material) { splitter.Merge(drawing); splitter.Destroy(); } }
         MaterialLcars.Feedback(clicked);
         return clicked;
     }
@@ -362,7 +425,7 @@ public static class UIConstants
             finally { ImGui.EndChild(); }
         }
         else WrappedText(color, display, translate: false);
-        if (ImGui.IsItemHovered()) MaterialText.SetTooltip(display);
+        if (ImGui.IsItemHovered()) UiGui.SetTooltip(display);
     }
 
     internal static void SetNextItemWidth(float width)
@@ -376,7 +439,7 @@ public static class UIConstants
         ImGui.BeginGroup();
         try
         {
-        var changed = ImGui.Checkbox("##Wrapped_" + label, ref value);
+        var changed = UiGui.Checkbox("##Wrapped_" + label, ref value);
         ImGui.SameLine();
         UiGui.TextWrapped(text);
         if (ImGui.IsItemClicked()) { value = !value; changed = true; }
@@ -419,6 +482,7 @@ public static class UIConstants
         SetNextItemWidth(width);
         var roomForSteps = System.Math.Min(width, ImGui.GetContentRegionAvail().X) >=
             MaterialText.Measure("00000").X + ImGui.GetStyle().FramePadding.X * 2 + ImGui.GetFrameHeight() * 2 + ImGui.GetStyle().ItemInnerSpacing.X * 2;
+        using var field = MaterialSkin.NativeFieldStyle();
         return ImGui.InputInt(id, ref value, roomForSteps ? step : 0, roomForSteps ? fastStep : 0);
     }
 
@@ -427,6 +491,7 @@ public static class UIConstants
         var width = ImGui.CalcItemWidth();
         var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
+        using var field = MaterialSkin.NativeFieldStyle();
         return ImGui.InputFloat(id, ref value, step, fastStep, format);
     }
 
@@ -435,8 +500,12 @@ public static class UIConstants
         var width = ImGui.CalcItemWidth();
         var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
-        var open = MaterialText.BeginCombo(id, UiText.T(preview));
-        if (!open && ImGui.IsItemHovered()) MaterialText.SetTooltip(UiText.T(preview));
+        bool open;
+        using (MaterialSkin.NativeFieldStyle())
+        using (MaterialSkin.BackdropStyle(popup: true))
+            open = MaterialText.BeginCombo(id, UiText.T(preview));
+        if (open) MaterialSkin.Backdrop();
+        if (!open && ImGui.IsItemHovered()) UiGui.SetTooltip(UiText.T(preview));
         return open;
     }
 
@@ -462,6 +531,7 @@ public static class UIConstants
         var id = ControlLabel(label, ref width);
         SetNextItemWidth(width);
         using var height = MaterialText.PushLineHeight(value);
+        using var field = MaterialSkin.NativeFieldStyle();
         return MaterialShapedInput.SingleLine(id, "", ref value, maxLength);
     }
 

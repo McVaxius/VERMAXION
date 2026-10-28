@@ -389,7 +389,7 @@ internal sealed partial class BeastmasterWindow
                 MaterialIcons.Draw(DrawBoardStopIcon(stop.Kind), point - new Vector2(radius * .66f), radius * 1.32f, color);
                 if (current?.Id == stop.Id) draw.AddCircle(point, radius + 4 * UIConstants.Scale, ImGui.GetColorU32(UIConstants.Blue), 0, 2.5f * UIConstants.Scale);
                 if (hovered && Vector2.DistanceSquared(ImGui.GetMousePos(), point) <= radius * radius)
-                    MaterialText.SetTooltip(UiText.F("{0} · Stop {1}", UiText.T(DrawBoardStopName(stop.Kind)), stop.Id) +
+                    UiGui.SetTooltip(UiText.F("{0} · Stop {1}", UiText.T(DrawBoardStopName(stop.Kind)), stop.Id) +
                         (stop.Number > 0 ? UiText.F(" · No. {0}", stop.Number) : string.Empty));
             }
             if (Plugin.ObjectTable.LocalPlayer is { } player)

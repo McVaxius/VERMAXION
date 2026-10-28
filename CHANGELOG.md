@@ -1,3 +1,12 @@
+2026-10-27 - Additional appearance materials (2.2.1.7)
+
+- Add Glassmorphism, Spatial and Cyberpunk alongside Auto, Picker and LCARS across all nine owners, native popups and font-status windows. Preserve existing actions, task/account scopes, native identities and font sizes in both densities.
+- Add independent material palettes, individual and palette resets, four LCARS colour roles, and Glass animation speed plus three independently resettable wave colours. Resetting the Glass palette retains its waves; Auto resets to VERMAXION's original accent.
+- Keep LCARS selection captions readable for custom bar colours, including hover and active states. Retain the existing global appearance storage and all fifteen translation catalogs.
+- Preserve complete selectable captions, including descenders, within their existing native item bounds without changing row geometry, fonts or identities.
+- Measure task-order lane actions from their translated captions so the existing move buttons fit at both densities and scales.
+- Keep legacy status text readable on Spatial's light surfaces through the selected text colour, and use chamfered Cyberpunk tabs and panel frames while retaining native tab identities and actions.
+
 2026-10-26 - Remove Crewcible status-text regex timeouts
 
 - Replace four short-timeout numeric status matches with native character matching. Retain the existing translated messages, captured number text and opaque provider details.

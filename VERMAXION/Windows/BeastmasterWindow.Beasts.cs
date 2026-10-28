@@ -145,7 +145,7 @@ internal sealed partial class BeastmasterWindow
                         ImGui.BeginDisabled(EditingLocked || full);
                         try
                         {
-                            if (ImGui.Checkbox("##Selected", ref picked))
+                            if (UiGui.Checkbox("##Selected", ref picked))
                             {
                                 if (picked && owned.Contains(number)) settings.CustomTeam.Add(number);
                                 else settings.CustomTeam.RemoveAll(id => id == number);
@@ -180,9 +180,10 @@ internal sealed partial class BeastmasterWindow
 
     private static void DrawBeastsStatsTooltip(uint number, CrucibleFamiliar? familiar)
     {
-        ImGui.BeginTooltip();
+        using (MaterialSkin.BackdropStyle(popup: true)) ImGui.BeginTooltip();
         try
         {
+            MaterialSkin.Backdrop();
             MaterialText.Text(CrucibleTeam.NameOf(number));
             if (familiar is not { Rank: > 0 }) UiGui.TextUnformatted("Rank not read yet. Read from the bestiary at the next team setup.");
             else
@@ -206,10 +207,15 @@ internal sealed partial class BeastmasterWindow
         try
         {
             ImGui.SetNextItemWidth(EditorListComboWidth(out var inlineActions));
-            if (MaterialText.BeginCombo("##BeastsList", active.Name))
+            bool listOpen;
+            using (MaterialSkin.NativeFieldStyle())
+            using (MaterialSkin.BackdropStyle(popup: true))
+                listOpen = MaterialText.BeginCombo("##BeastsList", active.Name);
+            if (listOpen)
             {
                 try
                 {
+                    MaterialSkin.Backdrop();
                     for (var index = 0; index < settings.BeastTierLists.Count; index++)
                     {
                         var list = settings.BeastTierLists[index];
@@ -375,11 +381,11 @@ internal sealed partial class BeastmasterWindow
                     try
                     {
                         var pick = row.PickBlock;
-                        if (ImGui.Checkbox("##PickBlock", ref pick)) SetBeastsBlock(active, row, pick, false);
+                        if (UiGui.Checkbox("##PickBlock", ref pick)) SetBeastsBlock(active, row, pick, false);
                         EditorTooltip(excludeTooltip);
                         ImGui.TableSetColumnIndex(4);
                         var fight = row.BattleBlock;
-                        if (ImGui.Checkbox("##FightBlock", ref fight)) SetBeastsBlock(active, row, fight, true);
+                        if (UiGui.Checkbox("##FightBlock", ref fight)) SetBeastsBlock(active, row, fight, true);
                         EditorTooltip(reserveTooltip);
                     }
                     finally { ImGui.EndDisabled(); }
@@ -467,9 +473,12 @@ internal sealed partial class BeastmasterWindow
     private void EditorRenamePopup<T>(IEnumerable<T> lists, string popup) where T : IBeastmasterList
     {
         ImGui.SetNextWindowSize(new Vector2(Math.Min(360 * MaterialTheme.Metrics.Scale, ImGui.GetWindowWidth()), 0), ImGuiCond.Always);
-        if (!ImGui.BeginPopup(popup)) return;
+        bool opened;
+        using (MaterialSkin.BackdropStyle(popup: true)) opened = ImGui.BeginPopup(popup);
+        if (!opened) return;
         try
         {
+            MaterialSkin.Backdrop();
             UiGui.TextUnformatted("List name");
             ImGui.SetNextItemWidth(-1);
             UiGui.InputTextWithHint("##Name", "List name", ref editorRenameDraft, 128);
@@ -489,7 +498,9 @@ internal sealed partial class BeastmasterWindow
     {
         var value = ReferenceEquals(editorPositionTarget, row) ? editorPositionDraft : index + 1;
         ImGui.SetNextItemWidth(-1);
-        if (ImGui.InputInt("##Position", ref value, 0, 0))
+        bool changed;
+        using (MaterialSkin.NativeFieldStyle()) changed = ImGui.InputInt("##Position", ref value, 0, 0);
+        if (changed)
         {
             editorPositionTarget = row;
             editorPositionDraft = value;
