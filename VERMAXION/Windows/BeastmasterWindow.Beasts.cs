@@ -84,9 +84,10 @@ internal sealed partial class BeastmasterWindow
     {
         var settings = Settings;
         var owned = RecordedOwned().OrderBy(number => number).ToList();
-        var team = settings.CustomTeam;
+        var required = BeastmasterSelection.RequiresClearTeam(settings);
+        var team = required ? BeastmasterSelection.ClearRoster(settings.Board) : settings.CustomTeam;
         var cache = CharacterData.Familiars;
-        ImGui.BeginDisabled(EditingLocked || !ImGui.GetIO().KeyCtrl);
+        ImGui.BeginDisabled(EditingLocked || required || !ImGui.GetIO().KeyCtrl);
         try
         {
             if (UiGui.Button("Clear recorded beast data###BeastsClearRanks"))
@@ -142,7 +143,7 @@ internal sealed partial class BeastmasterWindow
                         if (picked) ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg1, ImGui.ColorConvertFloat4ToU32(MaterialTheme.Current.Colors.PrimaryContainer));
                         ImGui.TableSetColumnIndex(0);
                         var full = !picked && team.Count >= 15;
-                        ImGui.BeginDisabled(EditingLocked || full);
+                        ImGui.BeginDisabled(EditingLocked || required || full);
                         try
                         {
                             if (UiGui.Checkbox("##Selected", ref picked))
@@ -175,7 +176,8 @@ internal sealed partial class BeastmasterWindow
             }
             finally { ImGui.EndTable(); }
         }
-        UiGui.TextDisabled("Custom membership is used by any setup that selects Custom. Hover a name for recorded stats.");
+        if (required) UiGui.TextDisabled("Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply.");
+        else UiGui.TextDisabled("Custom membership is used by any setup that selects Custom. Hover a name for recorded stats.");
     }
 
     private static void DrawBeastsStatsTooltip(uint number, CrucibleFamiliar? familiar)

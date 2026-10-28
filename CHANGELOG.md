@@ -14,6 +14,40 @@
 - Preserve complete selectable captions, including descenders, within their existing native item bounds without changing row geometry, fonts or identities.
 - Measure task-order lane actions from their translated captions so the existing move buttons fit at both densities and scales.
 - Keep legacy status text readable on Spatial's light surfaces through the selected text colour, and use chamfered Cyberpunk tabs and panel frames while retaining native tab identities and actions.
+2026-10-27 - Protect Crewcible revival and prepare supplies
+
+- Keep BMR dodging while Transcendent revival protection is active; withhold RSR attacks, native autoattacks and ephemeral items until it ends. Restore the ordinary combat path afterward and retain the existing Stop restoration.
+- Prioritize Geshunpest for the recorded 21-second player HP-absorption effect, with Bat third when available. Preserve forced board rosters/rank prerequisites for degrees 1–3; this is a reliable-clear candidate awaiting live acceptance.
+- Add optional inventory food with exact HQ/NQ selection. Refresh Well Fed at 90 seconds or less before entry and on a safe board walkway between fights; use bounded readback, warn and continue when food is unavailable or unusable. Arena handling and revival protection take priority over supplies.
+- Add default-on ADS materia extraction before each board, using the existing utility lease and fresh completion status. Stop cancels only the matching owned task. Checkbox-only tests bypass repair, extraction, food and team setup and continue to stop before entry.
+- Repair encoding loss in the added Crewcible translations and restore the two degree-range resource keys to their actual C# spelling across all fifteen locales.
+- Validation: the isolated Debug/x64 Beastmaster filter passes 355 cases with zero failed/skipped, including all-five-board route boundaries, unsafe supply exclusions, pending-food timeout/resume, revival hold/resume and checkbox-only behavior. All 35,325 compiled catalog keys/values and 225 supply values match source; 585 added entries pass UTF-8/key/placeholder checks. Existing package/reader/test-reflector warnings remain; version stays 2.2.1.6. No watched build, reload or live scenario was dispatched; native food/extraction, all-five checkbox/entry paths and full clears remain unverified.
+
+2026-10-27 - Keep checkbox tests independent of registered teams
+
+- Open the requested board and select Third Degree without scanning beast ranks, changing the registered roster or waiting for a clear-ready team. A Second Board checkbox test had failed during unnecessary familiar changes before reaching the checkbox. Preserve forced reliable-clear teams and entry validation for actual runs.
+- Let actual team additions wait within the existing five-second readiness limit when the bestiary is temporarily unavailable between selections. Preserve failure on expiry; log the failed setup step and pending count.
+- Retain checkbox readback and the stop-before-entry boundary. Isolated Debug/x64 validation passed all 311 Beastmaster tests with zero failures/skips, including sequential native board switching, preserved ordinary team checks and transient-readiness expiry. No watched build or reload while the user runs ten First Board attempts; version remains 2.2.1.6.
+
+2026-10-27 - Stop ranking-checkbox tests before entry
+
+- Correct the five board tests, which previously entered the full run flow. Each now stops at the ranking checkbox regardless of checkbox success; preparation failures also stop without automatic run recovery.
+- Wrap registered checkbox input in the native UI dispatch context and restore its previous state. The game requires this context to forward ButtonClick to the owning window; direct component input alone could change checked state without updating the entry choice. Keep later native readback and two checked updates before ordinary ranked entry.
+- Clarify checkbox-only scope and outcomes in all fifteen catalogs. Release version remains 2.2.1.6. Final isolated Debug/x64 validation: 308 Beastmaster tests passed, zero failed/skipped; all 90 new compiled values match the fifteen source catalogs. Watched-output rebuild/reload and visible native acceptance remain pending; the previously loaded test buttons remain unsafe to use.
+
+2026-10-27 - Dedicated Crewcible movement and compulsory clear teams
+
+- Inject the movement-only VERMAXION - Crewcible preset through existing BMR IPC, with a soft melee-uptime goal, Pathfind, Any range and Medium cushion. Preserve other presets and restore the previous active selection on Stop. Reject unsafe or ambiguous stored movement options.
+- Degrees 1–3 enforce the board-specific roster and battlehorn picks, ignoring custom choices, editable priorities, caps, exclusions and kin filters. Use the existing board compositions as the initial clear baseline, led by Vulture/Bat/Colibri; keep HP-absorption support among survivors. Required beasts must meet the board's rank sync. Missing prerequisites or an unsafe fighting trio hold entry/fight; training remains Standard-only.
+- Show the required team as fixed in manual/scheduled setup and disable custom membership and fight-pick switches for higher degrees. Add no optimization selector. Existing Standard choices remain available. Unowned higher-degree entry/duty adoption is blocked so the roster can be verified before entry; owned continuations remain supported.
+- Translate controls, prerequisites and preset diagnostics in all fifteen catalogs. Both current-source Debug/x64 runs passed all 299 Beastmaster cases; 285 changed compiled resource values match source. Native preset injection, roster quality and reliable live clears remain unverified. No private RSR implementation or Arch Demon encounter change is included.
+
+2026-10-27 - Ranked Crewcible entry and board test controls
+
+- Add a saved Ranked entry option, enabled by default and applied only to Third Degree. Preserve it in manual, scheduled and weekly setups. When disabled, leave the game's checkbox unchanged.
+- Let difficulty selection settle before challenge confirmation. For ranked entries, identify the localized native ranking checkbox, dispatch its registered component MouseDown/MouseClick input once and read its native checked state on a later update before confirming. The initial live attempt bypassed this component path and failed; remove the manual visual-state write that could falsely acknowledge it. Missing, disabled or ambiguous controls hold entry through the existing registration lifecycle.
+- Add five ranking-checkbox tests beside the main window's existing test controls. Force Third Degree and ranking ON in a test-local settings copy. Stop after checkbox input/readback, leaving registration visible; never submit Challenge, accept an entry prompt, create an entry attempt, count a result, repeat runs or execute a completion command. Preserve saved manual/scheduled setups and ordinary Start behavior. Existing active-work, duty, queue and unlock guards still apply.
+- Translate the new controls and statuses in all fifteen existing catalogs. Validation: Debug/x64 builds and all 285 Beastmaster cases passed, including persistence/copy/test-setup cases and ten native-input/acknowledgement cases. All 135 added compiled resource values match source. Account 1 loaded the corrected DLL with marker vmx-crewcible-ranked-input-20261027-1; native checkbox acceptance, repeated entries and fight acceptance remain pending.
 
 2026-10-26 - Remove Crewcible status-text regex timeouts
 

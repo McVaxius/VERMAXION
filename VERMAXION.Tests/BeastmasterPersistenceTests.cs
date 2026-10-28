@@ -45,6 +45,83 @@ public sealed class BeastmasterPersistenceTests
     }
 
     [Fact]
+    public void ExistingProfilesDefaultRankedEntryOnAndExplicitOffSurvivesBothSerializers()
+    {
+        Assert.True(JsonConvert.DeserializeObject<BeastmasterSettings>("{}")!.RankedEntry);
+        Assert.True(JsonConvert.DeserializeObject<BeastmasterRunSetup>("{}")!.RankedEntry);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize<BeastmasterSettings>("{}")!.RankedEntry);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize<BeastmasterRunSetup>("{}")!.RankedEntry);
+        var data = new BeastmasterCharacterData
+        {
+            ManualSettings = new() { RankedEntry = false },
+            ScheduledSetup = new() { RankedEntry = false },
+        };
+        var json = JsonConvert.DeserializeObject<BeastmasterCharacterData>(JsonConvert.SerializeObject(data))!;
+        var system = System.Text.Json.JsonSerializer.Deserialize<BeastmasterCharacterData>(
+            System.Text.Json.JsonSerializer.Serialize(data))!;
+        foreach (var restored in new[] { json, system })
+        {
+            Assert.False(restored.ManualSettings!.RankedEntry);
+            Assert.False(restored.ScheduledSetup!.RankedEntry);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RankedEntryPreferenceSurvivesRunAndWeeklyCopies(bool ranked)
+    {
+        var source = new BeastmasterSettings { Degree = CrucibleDegree.Third, RankedEntry = ranked };
+        var setup = BeastmasterRunSetup.From(source).Clone();
+        Assert.Equal(ranked, source.Clone().RankedEntry);
+        Assert.Equal(ranked, setup.RankedEntry);
+        Assert.Equal(ranked, setup.ApplyTo(new BeastmasterSettings { RankedEntry = !ranked }).RankedEntry);
+        Assert.Equal(ranked, BeastmasterWeeklyPolicy.CopySettings(source).RankedEntry);
+        source.Degree = CrucibleDegree.First;
+        Assert.Equal(ranked, source.Clone().RankedEntry);
+    }
+
+    [Theory]
+    [InlineData(1u)]
+    [InlineData(2u)]
+    [InlineData(3u)]
+    [InlineData(4u)]
+    [InlineData(5u)]
+    public void CheckboxTestsForceRankedSetupOnceAndPreserveSavedChoices(uint board)
+    {
+        var source = new BeastmasterSettings
+        {
+            Goal = BeastmasterRunGoal.TrainOwned, Board = 2, Degree = CrucibleDegree.First,
+            RankedEntry = false, RunCount = 5, CompletionCommand = "/synthetic-completion", CustomTeam = [13, 20, 27],
+            TeamMode = CrucibleTeamMode.Custom, Shop = false, Rest = false, Items = false,
+        };
+        var scheduled = BeastmasterRunSetup.From(source);
+        var before = JsonConvert.SerializeObject(source);
+        var scheduledBefore = JsonConvert.SerializeObject(scheduled);
+        var test = BeastmasterRunSetup.ForBoardTest(source, board);
+        Assert.Equal(board, test.Board);
+        Assert.Equal(CrucibleDegree.Third, test.Degree);
+        Assert.Equal(BeastmasterRunGoal.FixedRuns, test.Goal);
+        Assert.Equal(1, test.RunCount);
+        Assert.True(test.RankedEntry);
+        Assert.Empty(test.CompletionCommand);
+        Assert.Equal(CrucibleTeamMode.Custom, test.TeamMode);
+        Assert.Equal(source.CustomTeam, test.CustomTeam);
+        Assert.False(test.Shop);
+        Assert.False(test.Rest);
+        Assert.False(test.Items);
+        test.CustomTeam.Clear();
+        Assert.Equal(before, JsonConvert.SerializeObject(source));
+        Assert.Equal(scheduledBefore, JsonConvert.SerializeObject(scheduled));
+    }
+
+    [Theory]
+    [InlineData(0u)]
+    [InlineData(6u)]
+    public void BoardTestsRejectUnknownBoards(uint board)
+        => Assert.Throws<ArgumentOutOfRangeException>(() => BeastmasterRunSetup.ForBoardTest(new(), board));
+
+    [Fact]
     public void PremadePriorityListsMatchTheElevenApprovedOrdersAndFlags()
     {
         (string Name, uint[] Prefix, bool ExcludeLate)[] approved =

@@ -508,9 +508,6 @@ namespace VERMAXION.Beastmaster
 
         private bool StartFight(DateTime now)
         {
-            if (!Config.FightPicks)
-                return false;
-
             AtkUnitBase* layout = CrucibleUi.Ready(CrucibleUi.BoardLayout);
             AtkUnitBase* party  = CrucibleUi.Ready(CrucibleUi.TeamWindow);
             if (layout == null || party == null)
@@ -520,11 +517,22 @@ namespace VERMAXION.Beastmaster
             if (CrucibleUi.IsOpen(CrucibleUi.YesNo) || now < this.fightNext)
                 return true;
 
+            if (BeastmasterRuntime.Service.TryPrepareFood(betweenFights: true)) return true;
+
+            if (!Config.FightPicks && !BeastmasterSelection.RequiresClearTeam(Config))
+                return false;
+
             List<ReaderXBMPetParty.MonsterEntry>? team = CrucibleUi.Team();
             if (team == null || team.Count == 0)
                 return true;
 
             List<ReaderXBMPetParty.MonsterEntry> alive = CrucibleTeam.FightOrder(team).Take(FightPicks).ToList();
+            if (BeastmasterSelection.RequiresClearTeam(Config) &&
+                !BeastmasterSelection.ClearFightReady(alive.Select(row => row.Number)))
+            {
+                this.Status = "Reliable-clear setup needs three trained survivors, including a healing familiar.";
+                return true;
+            }
             if (alive.Count == 0)
             {
                 this.Status = "Every familiar is knocked out";
@@ -852,7 +860,8 @@ namespace VERMAXION.Beastmaster
 
             this.itemNext = now + TimeSpan.FromMilliseconds(250);
 
-            if (!Config.Items || now - this.itemLastUse < ItemGap || Svc.Objects.LocalPlayer is not { IsDead: false, MaxHp: > 0 } me)
+            if (!Config.Items || now - this.itemLastUse < ItemGap ||
+                Svc.Objects.LocalPlayer is not { IsDead: false, MaxHp: > 0 } me || BeastmasterPlayer.HasStatus(418))
                 return;
 
             AtkUnitBase* hud = CrucibleUi.Ready(CrucibleUi.MainHud);

@@ -8,6 +8,25 @@ namespace VERMAXION.Tests
 {
     public sealed class BeastmasterCombatTests
     {
+        [Theory]
+        [InlineData("Range", "MaxRange")]
+        [InlineData("Destination", "None")]
+        [InlineData("ForbiddenZoneCushion", "None")]
+        [InlineData("Range", "Any", true)]
+        public void CrewciblePresetRejectsUnsafeOrAmbiguousMovement(string track, string option, bool duplicate = false)
+        {
+            var provider = new FakeProvider();
+            var preset = Newtonsoft.Json.Linq.JObject.Parse(provider.PresetJson);
+            var movement = (Newtonsoft.Json.Linq.JArray)preset["Modules"]!["BossMod.Autorotation.MiscAI.NormalMovement"]!;
+            var value = movement.Single(value => (string?)value["Track"] == track);
+            value["Option"] = option;
+            if (duplicate) movement.Add(value.DeepClone());
+            provider.PresetJson = preset.ToString();
+            Assert.False(BeastmasterCombat.CanStart(provider, out var reason));
+            Assert.Contains("unrestricted dodge range", reason);
+            Assert.Equal("Original movement", provider.Current.Preset);
+        }
+
         [Fact]
         public void MissingPresetIsCreatedOnceWithoutOverwriteAndPassesExistingValidation()
         {
@@ -43,7 +62,7 @@ namespace VERMAXION.Tests
         }
 
         [Theory]
-        [InlineData("{\"Name\":\"passive - melee\",\"Modules\":{}}")]
+        [InlineData("{\"Name\":\"VERMAXION - Crewcible\",\"Modules\":{}}")]
         [InlineData("invalid user preset")]
         public void ExistingPresetIsPreservedAndStillSubjectToValidation(string existing)
         {
@@ -78,7 +97,7 @@ namespace VERMAXION.Tests
                     return creationResult;
                 };
                 var error = Assert.Throws<InvalidOperationException>(() => NativePresetProvider().ReadPreset());
-                Assert.Equal("BossMod is missing the existing 'passive - melee' preset.", error.Message);
+                Assert.Equal("BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection.", error.Message);
                 Assert.Equal(1, creates);
             }
             finally { Plugin.PluginInterface.IpcCall = previousIpc; }
@@ -550,12 +569,9 @@ namespace VERMAXION.Tests
             public BeastmasterCombat.State Read() => Current;
             public BeastmasterCombat.Target ReadTarget() => default;
             public string PresetJson = """
-                {"Name":"passive - melee","Modules":{
+                {"Name":"VERMAXION - Crewcible","Modules":{
                   "BossMod.Autorotation.MiscAI.StayCloseToTarget":[{"Track":"range","Option":"2.3"}],
-                  "BossMod.Autorotation.MiscAI.StayWithinLeylines":[],
-                  "BossMod.Autorotation.MiscAI.GoToPositional":[],
-                  "BossMod.Autorotation.MiscAI.StayCloseToPartyRole":[],
-                  "BossMod.Autorotation.MiscAI.NormalMovement":[{"Track":"Destination","Option":"Pathfind"}]
+                  "BossMod.Autorotation.MiscAI.NormalMovement":[{"Track":"Destination","Option":"Pathfind"},{"Track":"Range","Option":"Any"},{"Track":"ForbiddenZoneCushion","Option":"Medium"}]
                 }}
                 """;
             public string ReadPreset() => PresetJson;

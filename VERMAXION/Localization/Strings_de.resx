@@ -6192,4 +6192,43 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva ist nicht geladen.</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva ist geladen, aber der Laufzeitstatus konnte nicht gelesen werden.</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> Bereinigung: {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>Teilnahme an der Rangliste</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>Aktiviert die Rangliste vor jedem Eintritt auf Schwierigkeit 3. Wenn deaktiviert, bleibt das Kontrollkästchen des Spiels unverändert.</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Crewcible-Tests auf Schwierigkeit 3</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>{0} testen (Schwierigkeit 3)</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>Verwendet deine manuelle Laufanzahl, dein Team, deine Vorräte und deine Ranglistenwahl.</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>Beastmaster vor einem Bretttest stoppen.</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>Schwierigkeit 3 erfordert den Abschluss von Quest 71045.</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>Warte auf die Schwierigkeitsauswahl für Crewcible.</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>Warte auf Bestätigung der Ranglistenteilnahme.</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossMod benötigt das reine Bewegungsprofil 'VERMAXION - Crewcible'; Schadensrotationen und andere Hilfsmodule sind nicht zulässig.</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>BossMod 'VERMAXION - Crewcible' benötigt Pathfind, uneingeschränktes Ausweichen (Any), Medium-Puffer und das Nahkampfziel 2.3.</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>BossMod konnte das Profil 'VERMAXION - Crewcible' nach dem Hinzufügen nicht bestätigen.</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>Team für zuverlässige Abschlüsse (erforderlich)</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>Die Grade 1–3 verwenden einen festgelegten Kader und ein Kampftrio. Eigene Auswahl, Ausschlüsse und Sippenfilter gelten nicht.</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>Die Grade 1–3 benötigen ein Team für zuverlässige Abschlüsse. Zum Trainieren Standard verwenden.</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>Das Abschlussteam benötigt diese Vertrautennummern mit mindestens Rang {0}: {1}.</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>Das Abschlussteam benötigt drei trainierte Überlebende, darunter einen heilenden Vertrauten.</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>Außerhalb des Crucible starten, damit VERMAXION die Schwierigkeit prüfen und das erforderliche Team registrieren kann.</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>Verwendet die manuelle Laufanzahl, Vorräte und Ranglistenwahl mit dem erforderlichen Abschlussteam.</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Crewcible-Ranglisten-Kontrollkästchen testen</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>Rangliste testen: {0} (Schwierigkeit 3)</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>Öffnet dieses Brett auf Schwierigkeit 3, aktiviert die Rangliste zum Test und stoppt. Bestätigt keinen Eintritt und startet keinen Durchlauf.</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>Ranglisten-Kontrollkästchen wird getestet</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>Kontrollkästchen meldet aktiviert. Test vor dem Eintritt gestoppt.</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Aktivierung nicht bestätigt. Test vor dem Eintritt gestoppt.</value></data>
+  <data name="No food" xml:space="preserve"><value>Keine Nahrung</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>Materia vor dem Eintritt extrahieren</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Nahrung erneuert Satt bei 90 Sekunden vor dem Eintritt und zwischen Kämpfen. Fehlende Nahrung meldet eine Warnung und setzt fort; die Qualität wird nie ersetzt.</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>Die Materiaextraktion nutzt ADS außerhalb des Inhalts vor jedem Brett. Kontrollkästchentests nutzen keine Vorräte.</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>Vorräte vorbereiten</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Gewählte Nahrung fehlt; wird fortgesetzt.</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>Gewählte Nahrung nicht nutzbar; wird fortgesetzt.</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>Nahrungsnutzung nicht bestätigt; wird fortgesetzt.</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>Gewählte Nahrung wird gegessen.</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>Satt: {0}s.</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>Materiaextraktion nicht verfügbar; wird fortgesetzt.</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>Materia vor dem Eintritt extrahieren.</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Materiaextraktion unbestätigt; wird fortgesetzt.</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>Materiaextraktion abgeschlossen.</value></data>
 </root>

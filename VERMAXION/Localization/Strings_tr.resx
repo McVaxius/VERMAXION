@@ -3340,4 +3340,43 @@ Bağımlılıklar: {1}</value></data>
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva yüklü değil.</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva yüklü, ancak çalışma zamanı durumu okunamadı.</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> Temizleme: {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>Sıralamaya katıl</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>3. zorlukta her girişten önce sıralamayı etkinleştirir. Devre dışıyken oyundaki onay kutusunu değiştirmez.</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Crewcible 3. zorluk testleri</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>{0} testi (3. zorluk)</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>Manuel ayarlarınızdaki tur sayısını, ekibi, malzemeleri ve sıralama tercihini kullanır.</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>Tahta testine başlamadan önce Beastmaster’ı durdurun.</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>3. zorluk için 71045 numaralı görevin tamamlanması gerekir.</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>Crewcible zorluk seçimi bekleniyor.</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>Sıralamaya katılım onayı bekleniyor.</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossMod yalnızca hareket için 'VERMAXION - Crewcible' ön ayarını gerektirir; hasar rotasyonu veya ilgisiz yardımcılar eklenemez.</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>BossMod 'VERMAXION - Crewcible' için Pathfind, sınırsız menzilli kaçınma (Any), Medium payı ve 2.3 yakın dövüş hedefi gerekir.</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>BossMod ekleme sonrasında 'VERMAXION - Crewcible' ön ayarını doğrulayamadı.</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>Güvenilir tamamlama takımı (zorunlu)</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>1–3. dereceler yönetilen kadro ve savaş üçlüsü kullanır. Özel seçimler, dışlamalar ve soy filtreleri uygulanmaz.</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>1–3. dereceler güvenilir tamamlama takımı gerektirir. Eğitim için Standard kullanın.</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>Takım, şu yoldaş numaralarının en az {0} rütbesinde olmasını gerektirir: {1}.</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>Takım, bir şifacı dahil hayatta olan üç eğitimli yoldaş gerektirir.</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>VERMAXION zorluğu doğrulayıp zorunlu takımı kaydetsin diye Crucible dışında başlatın.</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>Zorunlu takımla birlikte elle belirlenen tur sayısı, erzak ve sıralama seçimini kullanır.</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Crewcible sıralama kutusu testleri</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>Sıralamayı test et: {0} (zorluk 3)</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>Bu tahtayı zorluk 3 ile açar, sıralamayı açmayı test eder ve durur. Girişi onaylamaz veya koşu başlatmaz.</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>Sıralama kutusu test ediliyor</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>Kutu işaretli olarak bildiriliyor. Test girişten önce durduruldu.</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Kutunun işaretlendiği doğrulanamadı. Test girişten önce durduruldu.</value></data>
+  <data name="No food" xml:space="preserve"><value>Yiyecek yok</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>Girişten önce materia çıkar</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Girişten önce ve savaşlar arasında Well Fed 90 saniye kaldığında yenilenir. Yiyecek yoksa uyarıp devam eder; seçilen kalite değiştirilmez.</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>Materia her tahta öncesinde görev dışında ADS ile çıkarılır. Onay kutusu testleri erzak kullanmaz.</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>Erzak hazırlanıyor</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Seçilen yiyecek yok; devam ediliyor.</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>Seçilen yiyecek kullanılamıyor; devam ediliyor.</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>Yiyecek kullanımı doğrulanmadı; devam ediliyor.</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>Seçilen yiyecek yeniyor.</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>Well Fed: {0} sn.</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>Materia çıkarma kullanılamıyor; devam ediliyor.</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>Girişten önce materia çıkarılıyor.</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Materia çıkarma doğrulanmadı; devam ediliyor.</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>Materia çıkarma tamamlandı.</value></data>
 </root>

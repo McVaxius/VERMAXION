@@ -33,6 +33,11 @@ internal sealed unsafe class BeastmasterRoute
     internal int StepCount => actions.Count;
     internal bool AllowsCombat => (recoveringPosition ? recoveringArena : Step < actions.Count &&
         actions[Step]!.Value<string>("Name") == "Boss") && !BlockingMenu();
+    internal bool FoodBoundary => !recoveringPosition && !recoveringArena && Step < actions.Count &&
+        actions[Step]!.Value<string>("Name") != "Boss" && !BlockingMenu() && BeastmasterPlayer.IsValid &&
+        Svc.Objects.LocalPlayer is { IsDead: false, CurrentHp: > 0 } player &&
+        !Svc.Condition[ConditionFlag.InCombat] && !NearbyEnemies(player.Position).Any() &&
+        BeastmasterSelection.ResumeRoute(actions, player.Position) != null;
 
     internal BeastmasterRoute(BeastmasterService service, uint territory, bool resume = false)
     {
@@ -89,6 +94,10 @@ internal sealed unsafe class BeastmasterRoute
         var name = action.Value<string>("Name") ?? "";
         if (!started && ((JArray?)action["Conditions"] ?? []).Any(c => !Condition((JObject)c))) { Advance(); return; }
         if (BlockingMenu()) return;
+        // Refresh on the board before its occupied team menu opens. Arena
+        // observation and recovery above always take priority over supplies.
+        if (FoodBoundary && service.TryPrepareFood(betweenFights: true))
+        { movementStarted = false; return; }
         if (!started)
         {
             started = true; stepSince = DateTime.UtcNow;
@@ -143,10 +152,11 @@ internal sealed unsafe class BeastmasterRoute
         // but never substitute our own target during an active encounter.
         if (boss == null && target.InstanceId == 0 && target.CanPull && !inCombat)
             boss = enemies.OrderBy(e => Vector3.DistanceSquared(e.Position, playerPosition)).FirstOrDefault();
-        if (boss == null && (inCombat || enemies.Count > 0))
+        if (BeastmasterPlayer.HasStatus(418) || boss == null && (inCombat || enemies.Count > 0))
         {
-            // No eligible target is not a victory. Keep the selected provider dodging while RSR
-            // and character autoattacks wait for an eligible target again.
+            // Preserve observed revival protection while the selected provider moves out of danger.
+            // No eligible target is not a victory either: both holds keep movement
+            // active while withholding RSR abilities and native autoattacks.
             if (!service.StartCombat(allowAttacks: false)) return;
             var ui = UIState.Instance();
             var actionManager = ActionManager.Instance();

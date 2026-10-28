@@ -40,6 +40,12 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private DateTime nextTravel;
     private DateTime nextCleanupAttempt;
     private DateTime challengedAt;
+    private nint entryDegreeLayout;
+    private bool entryDegreeSelected;
+    private bool rankedEntryClickSubmitted;
+    private int rankedEntryCheckedUpdates;
+    private bool rankingCheckboxTest;
+    private string rankedEntryDiagnostic = string.Empty;
     private bool ownsNavigation;
     private bool ownsTravel;
     private bool resultSeen;
@@ -86,6 +92,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         RunState.Travelling => "Travelling to Lauda",
         RunState.OpeningBoard => fastRankScanPending ? "Checking new beasts" : "Preparing team",
         RunState.SettingTeam => "Preparing team",
+        RunState.Confirming when rankingCheckboxTest => "Testing the ranking checkbox",
         RunState.Confirming or RunState.WaitingDuty => "Waiting to enter the Crucible",
         RunState.Running => resultSeen ? "Finishing board" : waitingForRevival ? "Waiting for revival"
             : Svc.Condition[ConditionFlag.InCombat] ? "Fighting" : "Following the Crucible board",
@@ -94,7 +101,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         RunState.WeeklyPreparing => "Waiting for a fresh Challenge Log load for this character and reset.",
         RunState.Recovering => "Recovering",
         RunState.Refreshing => "Refresh beasts",
-        RunState.Repairing => "Repairing before entry",
+        RunState.Repairing => repairRequestedMode == "extract-materia" || foodPendingUntil != default
+            ? "Preparing supplies" : "Repairing before entry",
         RunState.Complete => "Complete",
         RunState.Failed => "Unavailable",
         _ => IsActive ? "Stopping" : HasRunDisplay ? "Stopped" : "Ready",
@@ -190,6 +198,17 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         return true;
     }
 
+    internal bool CanStartBoardTest(BeastmasterSettings settings, out string reason)
+    {
+        if (IsActive)
+        { reason = "Stop Beastmaster before starting a board test."; return false; }
+        if (IsCrucibleTerritory(Svc.ClientState.TerritoryType) || Svc.Condition[ConditionFlag.BoundByDuty])
+        { reason = "Leave the current duty before starting Beastmaster."; return false; }
+        if (!NativeQueueIsIdle() || CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true))
+        { reason = "An existing duty queue must settle before starting Beastmaster."; return false; }
+        return CanStartConfigured(settings, false, out reason);
+    }
+
     public bool CanStartConfigured(BeastmasterSettings settings, bool weekly, out string reason)
     {
         if (CanReinspectCurrent && IsActive)
@@ -200,6 +219,10 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         var inside = IsCrucibleTerritory(Svc.ClientState.TerritoryType);
         var nativeEntry = QueueMatches(new BeastmasterEntryAttempt(Svc.PlayerState.ContentId, settings.Board)) ||
             CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true);
+        // Higher-degree fresh adoption cannot prove the required registered roster.
+        // Active, owned continuations are handled above by CanReinspectCurrent.
+        if (BeastmasterSelection.RequiresClearTeam(settings) && (inside || nativeEntry))
+        { reason = "Start outside the Crucible so VERMAXION can verify difficulty and register the required team."; return false; }
         var registration = HasOpenRegistrationScreen;
         if (!(registration ? RegistrationInteractionReady : inside || nativeEntry ? BeastmasterPlayer.IsValid : BeastmasterPlayer.IsReady) ||
             Svc.Objects.LocalPlayer is not { } player)
@@ -209,6 +232,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (!inside && !nativeEntry && !NativeQueueIsIdle())
         { reason = "An existing duty queue must settle before starting Beastmaster."; return false; }
         if (!inside && settings.Board is < 1 or > 5) { reason = "Select one of the five Crucible boards"; return false; }
+        if (BeastmasterSelection.RequiresClearTeam(settings) && settings.Goal == BeastmasterRunGoal.TrainOwned)
+        { reason = "Degrees 1–3 require a reliable-clear team. Use Standard for training."; return false; }
         if (settings.Goal == BeastmasterRunGoal.TrainOwned && settings.TeamMode != CrucibleTeamMode.Leveling)
         { reason = "Training all owned beasts requires a training team method."; return false; }
         if (!inside && !MeetsEntryRequirements(settings.Board, out reason)) return false;
@@ -222,12 +247,21 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     public bool Start() => StartConfigured(getSettings(), false);
 
-    public bool StartConfigured(BeastmasterSettings settings, bool weekly)
+    public bool StartConfigured(BeastmasterSettings settings, bool weekly) => StartConfiguredCore(settings, weekly, false);
+
+    internal bool StartRankingCheckboxTest(BeastmasterSettings shared, uint board)
+        => StartConfiguredCore(BeastmasterRunSetup.ForBoardTest(shared, board), false, true);
+
+    private bool StartConfiguredCore(BeastmasterSettings settings, bool weekly, bool rankingCheckboxTest)
     {
+        if (rankingCheckboxTest && (weekly || !CanStartBoardTest(settings, out _))) return false;
         if (CanReinspectCurrent && IsActive) return RestartFromCurrent(settings, manual: true, weekly: weekly);
         if (weekly) return StartWeeklyConfigured(settings);
         if (!CanStartConfigured(settings, false, out var reason)) { status = reason; return false; }
         if (!TryCaptureCombatProvider(settings, out reason)) { status = "Combat restoration pending: " + reason; return false; }
+        this.rankingCheckboxTest = rankingCheckboxTest;
+        FoodStatus = RepairStatus = string.Empty;
+        foodPendingUntil = default;
         runSettings = settings.Clone(); runData = getCharacterData(); owner = Svc.PlayerState.ContentId;
         operatorStopped = false; recoveryAt = default;
         preparedOwned = null;
@@ -242,7 +276,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         RememberRunDisplay(weekly: false);
         boardStep = 0; waitingForRevival = false; menus.Reset();
         var observedEntry = new BeastmasterEntryAttempt(owner, Settings.Board);
-        if (!IsCrucibleTerritory(Svc.ClientState.TerritoryType) &&
+        if (!rankingCheckboxTest && !IsCrucibleTerritory(Svc.ClientState.TerritoryType) &&
             (QueueMatches(observedEntry) || CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true)))
         {
             entryAttempt = observedEntry;
@@ -265,7 +299,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private bool TryConfirmEntryPrompt()
     {
-        if (operatorStopped || IsPaused || !CanObserveCharacter ||
+        if (rankingCheckboxTest || operatorStopped || IsPaused || !CanObserveCharacter ||
             State is not (RunState.Travelling or RunState.OpeningBoard or RunState.SettingTeam or
                 RunState.Confirming or RunState.WaitingDuty or RunState.Recovering or RunState.Repairing) ||
             IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
@@ -558,6 +592,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private void BeginRegistrationAfterRepair()
     {
+        if (TryPrepareRegistrationExtraction()) return;
+        if (TryPrepareFood()) { Transition(RunState.Repairing, "Preparing supplies"); return; }
         if (!PrepareEntryObservation(out var entryReason)) { Fail(entryReason); return; }
         teamSetup.Start(Settings.TeamMode); boardStep = 0;
         ownershipNotebookRequested = false;
@@ -639,14 +675,15 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                     {
                         StopNavigation();
                         if (RegistrationInteractionReady && OpenBoard(Settings.Board))
-                            Transition(RunState.SettingTeam, "Setting up the team");
+                            BoardRegistrationOpened();
                         break;
                     }
                     if (Svc.Objects.LocalPlayer is not { } local) break;
                     if (Vector3.Distance(local.Position, LaudaPosition) > 4)
                     { MoveTo(LaudaPosition); break; }
                     StopNavigation();
-                    if (OpenBoard(Settings.Board)) Transition(RunState.SettingTeam, "Setting up the team");
+                    if (TryPrepareFood()) break;
+                    if (OpenBoard(Settings.Board)) BoardRegistrationOpened();
                     break;
                 case RunState.SettingTeam:
                     if (!MeetsEntryRequirements(out var teamReason)) { Fail(teamReason); break; }
@@ -675,24 +712,40 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                             }
                             else Fail(error);
                         }
-                        else Transition(RunState.Confirming, "Challenging the board");
+                        else Transition(RunState.Confirming, rankingCheckboxTest ? "Testing the ranking checkbox" : "Challenging the board");
                     }
                     break;
                 case RunState.Confirming:
                     if (!MeetsEntryRequirements(out var entryReason)) { Fail(entryReason); break; }
-                    if (!CrucibleUi.TryReady(CrucibleUi.BoardLayout, out var layout)) break;
-                    if (CrucibleUi.Team() is not { } entryTeam) break;
-                    if (!BeastmasterSelection.CanEnterBoard(entryTeam.Select(familiar => familiar.Number)))
-                    { Fail("Crucible entry requires at least three different familiars. The team changed before challenge confirmation."); break; }
-                    if (!teamSetup.ValidateReadyTeam(out var plannedTeamReason)) { Fail(plannedTeamReason); break; }
-                    if (CrucibleTeam.RememberTeam(entryTeam)) Save();
+                    if (!CrucibleUi.TryReady(CrucibleUi.BoardLayout, out var layout))
+                    { entryDegreeLayout = 0; entryDegreeSelected = false; rankedEntryClickSubmitted = false; rankedEntryCheckedUpdates = 0; break; }
+                    if (!ValidateEntryTeam()) break;
                     if (CrucibleUi.IsVisible(CrucibleUi.YesNo)) break;
                     if (!NativeQueueIsIdle()) { Fail("An existing duty queue must settle before starting Beastmaster."); break; }
-                    if (QuestManager.IsQuestComplete(71045)) CrucibleUi.Screens.StageDetail.SetDegree(layout, Settings.Degree);
-                    entryAttempt = new BeastmasterEntryAttempt(owner, Settings.Board);
-                    challengedAt = DateTime.UtcNow;
-                    CrucibleUi.Screens.StageDetail.Confirm(layout);
-                    Transition(RunState.WaitingDuty, "Waiting to enter the Crucible");
+                    if (entryDegreeLayout != (nint)layout)
+                    { entryDegreeLayout = (nint)layout; entryDegreeSelected = false; rankedEntryClickSubmitted = false; rankedEntryCheckedUpdates = 0; }
+                    var effectiveDegree = QuestManager.IsQuestComplete(71045) ? Settings.Degree : CrucibleDegree.Standard;
+                    if (!entryDegreeSelected)
+                    {
+                        if (QuestManager.IsQuestComplete(71045)) CrucibleUi.Screens.StageDetail.SetDegree(layout, effectiveDegree);
+                        entryDegreeSelected = true;
+                        status = "Waiting for Crucible difficulty selection.";
+                        break;
+                    }
+                    var rankingReady = true;
+                    if (effectiveDegree == CrucibleDegree.Third && Settings.RankedEntry)
+                    {
+                        var alreadySubmitted = rankedEntryClickSubmitted;
+                        var nativeChecked = CrucibleUi.Screens.StageDetail.EnsureRankedEntry(layout,
+                            ref rankedEntryClickSubmitted, out rankedEntryDiagnostic);
+                        rankedEntryCheckedUpdates = nativeChecked ? rankedEntryCheckedUpdates + 1 : 0;
+                        rankingReady = rankedEntryCheckedUpdates >= 2;
+                        if (!alreadySubmitted && rankedEntryClickSubmitted || nativeChecked && !rankingReady)
+                        { status = "Waiting for ranked entry to be confirmed."; break; }
+                    }
+                    if (!rankingCheckboxTest && !rankingReady)
+                    { status = "Waiting for ranked entry to be confirmed."; break; }
+                    SubmitPreparedEntry(layout, rankingReady);
                     break;
                 case RunState.WaitingDuty:
                     if (IsCrucibleTerritory(Svc.ClientState.TerritoryType)) { BeginRoute(); break; }
@@ -924,9 +977,50 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         return true;
     }
 
+    private void BoardRegistrationOpened()
+        => Transition(rankingCheckboxTest ? RunState.Confirming : RunState.SettingTeam,
+            rankingCheckboxTest ? "Testing the ranking checkbox" : "Setting up the team");
+
+    private bool ValidateEntryTeam()
+    {
+        if (rankingCheckboxTest) return true;
+        if (CrucibleUi.Team() is not { } entryTeam) return false;
+        if (!BeastmasterSelection.CanEnterBoard(entryTeam.Select(familiar => familiar.Number)))
+        { Fail("Crucible entry requires at least three different familiars. The team changed before challenge confirmation."); return false; }
+        if (!teamSetup.ValidateReadyTeam(out var plannedTeamReason)) { Fail(plannedTeamReason); return false; }
+        if (CrucibleTeam.RememberTeam(entryTeam)) Save();
+        return true;
+    }
+
+    private void SubmitPreparedEntry(AtkUnitBase* layout, bool rankingReady)
+    {
+        // This boundary owns registration Challenge dispatch. A checkbox test must finish
+        // here even on a failed readback; it never creates an entry attempt.
+        if (rankingCheckboxTest)
+        {
+            var diagnostic = rankedEntryDiagnostic;
+            var submitted = rankedEntryClickSubmitted;
+            DiscardCompletionCommand();
+            Stop();
+            var text = rankingReady
+                ? "Checkbox reports checked. Test stopped before entry."
+                : "Checkbox was not confirmed. Test stopped before entry.";
+            if (!rankingReady && diagnostic.Length > 0) text += "\n" + diagnostic;
+            Transition(RunState.Complete, IsActive ? text + "\n" + status : text);
+            Svc.Log.Information($"[Crewcible] Ranking checkbox test stopped: nativeChecked={rankingReady}; clickSubmitted={submitted}; challengeSubmitted=false; {diagnostic}");
+            return;
+        }
+        if (!rankingReady) return;
+        entryAttempt = new BeastmasterEntryAttempt(owner, Settings.Board);
+        challengedAt = DateTime.UtcNow;
+        CrucibleUi.Screens.StageDetail.Confirm(layout);
+        Transition(RunState.WaitingDuty, "Waiting to enter the Crucible");
+    }
+
     private void Transition(RunState state, string text)
     {
         stationarySince = default;
+        entryDegreeLayout = 0; entryDegreeSelected = false; rankedEntryClickSubmitted = false; rankedEntryCheckedUpdates = 0;
         State = state; status = text; stateSince = DateTime.UtcNow;
     }
 
@@ -983,7 +1077,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         CloseWeeklyChallengeLog();
         CancelOwnedRepair();
         if (CanReinspectCurrent && owner != 0 && owner == Svc.PlayerState.ContentId) runData = getCharacterData();
-        if (CanObserveCharacter && BeastmasterPlayer.IsValid && !IsCrucibleTerritory(Svc.ClientState.TerritoryType) && entryAttempt == null)
+        if (!rankingCheckboxTest && CanObserveCharacter && BeastmasterPlayer.IsValid && !IsCrucibleTerritory(Svc.ClientState.TerritoryType) && entryAttempt == null)
         {
             var observed = new BeastmasterEntryAttempt(Svc.PlayerState.ContentId, Settings.Board);
             if (QueueMatches(observed) || CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true))
@@ -1003,6 +1097,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         var released = combat.TryRelease(out var combatReason);
         preparedOwned = null;
         if (!EntryPending && !combat.OwnsState && !refreshCleanupPending && !repairRequestAccepted) { owner = 0; runData = null; runSettings = null; }
+        rankingCheckboxTest = false;
         Transition(RunState.Idle, released ? "Stopped" : "Stopped; combat restoration pending: " + combatReason); UpdateCleanup();
     }
     private bool UpdateCleanup()
@@ -1040,6 +1135,12 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     }
     private void Fail(string reason)
     {
+        if (rankingCheckboxTest && !operatorStopped && !disposed)
+        {
+            rankedEntryDiagnostic = reason;
+            SubmitPreparedEntry(null, false);
+            return;
+        }
         if (operatorStopped || disposed) { status = reason; return; }
         if (State != RunState.Recovering)
         {

@@ -11,6 +11,8 @@ using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Gui = host::FFXIVClientStructs.FFXIV.Component.GUI;
+using NativeGame = host::FFXIVClientStructs.FFXIV.Client.Game;
+using NativeGameUi = host::FFXIVClientStructs.FFXIV.Client.Game.UI;
 using NativeUi = host::FFXIVClientStructs.FFXIV.Client.UI;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -30,6 +32,237 @@ public sealed class BeastmasterRouteLifecycleTests
     private static readonly Assembly Production = typeof(live::VERMAXION.Plugin).Assembly;
     private static readonly Type ServiceType = Production.GetType("VERMAXION.Beastmaster.BeastmasterService", true)!;
     private static readonly Type RouteType = Production.GetType("VERMAXION.Beastmaster.BeastmasterRoute", true)!;
+
+    [Fact]
+    public void CheckboxTestsSwitchAcrossAllFiveBoardsWithoutRegisteringTeamsOrEntering()
+    {
+        using var host = new HostFixture();
+        host.Territory = 148;
+        host.EnableNativeUi();
+        var layout = host.AddRankingCheckbox(true);
+        var party = host.AddRegistrationWindow("XBMPetParty");
+        var list = host.AddRegistrationWindow("XBMStageList");
+        host.ShowAddon(list, false);
+        var service = host.CreateService();
+        foreach (var board in new uint[] { 1, 2, 3, 4, 5 })
+        {
+            var settings = live::VERMAXION.Beastmaster.BeastmasterRunSetup.ForBoardTest(new(), board);
+            Set(service, "runSettings", settings);
+            Set(service, "rankingCheckboxTest", true);
+            Set(service, "fastRankScanPending", true);
+            Set(service, "boardStep", 0);
+            host.AllowOpenBoardUpdate();
+            Assert.False((bool)Invoke(service, "OpenBoard", board)!);
+            Assert.False(host.IsAddonVisible(party));
+            host.AllowOpenBoardUpdate();
+            Assert.False((bool)Invoke(service, "OpenBoard", board)!);
+            Assert.False(host.IsAddonVisible(layout));
+            Assert.False((bool)Invoke(service, "OpenBoard", board)!);
+            Assert.False(Read<bool>(service, "fastRankScanPending"));
+
+            host.ShowAddon(list, true);
+            host.AllowOpenBoardUpdate();
+            Assert.False((bool)Invoke(service, "OpenBoard", board)!);
+            host.AllowOpenBoardUpdate();
+            Assert.False((bool)Invoke(service, "OpenBoard", board)!);
+            Assert.Equal(board, host.OpenedBoards.Last());
+            Assert.True((bool)Invoke(service, "OpenBoard", board)!);
+            Invoke(service, "BoardRegistrationOpened");
+            Assert.Equal("Confirming", Field(service, "State")!.ToString());
+            // The native team has no fields. Checkbox tests must not read or
+            // rewrite it, even when moving from First Board to Second Board.
+            Assert.True((bool)Invoke(service, "ValidateEntryTeam")!);
+            var submitted = false;
+            Assert.False(host.EnsureRanking(layout, ref submitted));
+            Assert.True(host.EnsureRanking(layout, ref submitted));
+            host.SubmitPrepared(service, layout, true);
+            Assert.Equal("Complete", Field(service, "State")!.ToString());
+            Assert.True(host.IsAddonVisible(layout));
+            Assert.Equal(0, host.ChallengeCallbacks);
+            Assert.Equal(0, host.TeamPreparationCallbacks);
+            Assert.Null(Field(service, "entryAttempt"));
+            Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        }
+        Assert.Equal(new uint[] { 1, 2, 3, 4, 5 }, host.OpenedBoards);
+        Assert.Equal(10, host.RankingInputs.Count);
+        Assert.Equal(10, host.ClosedRegistrationWindows);
+    }
+
+    [Fact]
+    public void TeamAdditionWaitsForTemporaryBestiaryReadinessWithinTheExistingLimit()
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var notebook = host.AddRegistrationWindow("XBMMonsterNotebook");
+        host.SetAddonReady(notebook, false);
+        var service = host.CreateService();
+        var setup = Field(service, "teamSetup")!;
+        var now = DateTime.UtcNow;
+        Set(setup, "goal", new List<uint> { 11, 19, 32 });
+        var batch = (List<uint>)Field(setup, "batch")!;
+        batch.Add(11);
+        Set(setup, "step", Enum.Parse(setup.GetType().GetNestedType("Step", BindingFlags.NonPublic)!, "AddBatch"));
+        Set(setup, "stepSince", now);
+        var team = new List<uint> { 19, 32 };
+        Assert.False((bool)Invoke(setup, "AddBatch", team, now.AddMilliseconds(100))!);
+        Assert.False((bool)Invoke(setup, "AddBatch", team, now.AddSeconds(1))!);
+        Assert.Null(Field(setup, "Error"));
+        Assert.Equal(new uint[] { 11 }, batch);
+        Assert.True((bool)Invoke(setup, "AddBatch", team, now.AddSeconds(6))!);
+        Assert.Equal("Team setup stopped because a native window did not finish updating.", Field(setup, "Error"));
+        Assert.Equal(0, host.TeamPreparationCallbacks);
+        Assert.Equal(0, host.ChallengeCallbacks);
+        Assert.Null(Field(service, "entryAttempt"));
+        Assert.True(host.IsAddonVisible(notebook));
+    }
+
+    [Fact]
+    public void OrdinaryRegistrationStillPreparesAndValidatesTheTeam()
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var service = host.CreateService();
+        Invoke(service, "BoardRegistrationOpened");
+        Assert.Equal("SettingTeam", Field(service, "State")!.ToString());
+        Assert.False((bool)Invoke(service, "ValidateEntryTeam")!);
+        Assert.Equal(0, host.ChallengeCallbacks);
+        Assert.Null(Field(service, "entryAttempt"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CheckboxTestSubmissionBoundaryNeverConfirmsOrCreatesAnEntryEvenIfNativeStateReportsChecked(bool nativeChecked)
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var layout = host.AddRankingCheckbox(false);
+        var service = host.CreateService();
+        Set(service, "rankingCheckboxTest", true);
+        Set(service, "rankedEntryClickSubmitted", true);
+        host.SubmitPrepared(service, layout, nativeChecked);
+        Assert.Equal(0, host.ChallengeCallbacks);
+        Assert.Null(Field(service, "entryAttempt"));
+        Assert.Equal("Complete", Field(service, "State")!.ToString());
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        Assert.False(Read<bool>(service, "completionCommandPending"));
+        Assert.True(host.IsAddonVisible(layout));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrdinarySubmissionStillRequiresReadyRankingAndUsesTheNormalConfirmBoundary(bool rankingReady)
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var layout = host.AddRankingCheckbox(false);
+        var service = host.CreateService();
+        host.SubmitPrepared(service, layout, rankingReady);
+        Assert.Equal(rankingReady ? 1 : 0, host.ChallengeCallbacks);
+        Assert.Equal(rankingReady, Field(service, "entryAttempt") != null);
+    }
+
+    [Fact]
+    public void CheckboxTestCannotAdoptOrConfirmAnEntryPrompt()
+    {
+        using var host = new HostFixture();
+        host.Territory = 148;
+        host.EnableNativeUi();
+        host.AddYesNo();
+        var service = host.CreateService();
+        Set(service, "rankingCheckboxTest", true);
+        Set(service, "operatorStopped", false);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Confirming"));
+        Assert.False((bool)Invoke(service, "TryConfirmEntryPrompt")!);
+        Assert.Equal(0, host.YesClicks);
+        Assert.Null(Field(service, "entryAttempt"));
+        Assert.Equal("Confirming", Field(service, "State")!.ToString());
+    }
+
+    [Fact]
+    public void CheckboxPreparationFailureEndsTheTestWithoutRecoveryOrEntry()
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var service = host.CreateService();
+        Set(service, "rankingCheckboxTest", true);
+        Set(service, "operatorStopped", false);
+        Invoke(service, "Fail", "Synthetic unavailable ranking control.");
+        Assert.Equal("Complete", Field(service, "State")!.ToString());
+        Assert.Equal(0, host.ChallengeCallbacks);
+        Assert.Null(Field(service, "entryAttempt"));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public void RankedEntryUsesComponentInputAndWaitsForIndependentNativeAcknowledgement(bool nativeAccepts, bool wasDispatching)
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        host.NativeEventDispatchEnabled = wasDispatching;
+        var layout = host.AddRankingCheckbox(nativeAccepts);
+        var submitted = false;
+        Assert.False(host.EnsureRanking(layout, ref submitted));
+        Assert.True(submitted);
+        Assert.Equal(new[] { (Gui.AtkEventType.MouseDown, 351), (Gui.AtkEventType.MouseClick, 517) }, host.RankingInputs);
+        Assert.True(host.RankingInputMetadataValid);
+        Assert.Equal(wasDispatching, host.NativeEventDispatchEnabled);
+        Assert.Equal(nativeAccepts, host.RankingChecked);
+        Assert.Equal(nativeAccepts ? 1 : 0, host.RankingOwnerNotifications);
+        Assert.Equal(nativeAccepts, host.EnsureRanking(layout, ref submitted));
+        Assert.Equal(wasDispatching, host.NativeEventDispatchEnabled);
+        Assert.Equal(2, host.RankingInputs.Count);
+
+        // A missing native acknowledgement must never become success or trigger a retry.
+        host.RankingChecked = false;
+        Assert.False(host.EnsureRanking(layout, ref submitted));
+        Assert.False(host.RankingChecked);
+        Assert.Equal(2, host.RankingInputs.Count);
+
+        // Each new entry resets preparation, even if the native address is reused.
+        submitted = false;
+        Assert.False(host.EnsureRanking(layout, ref submitted));
+        Assert.Equal(4, host.RankingInputs.Count);
+        Assert.Equal(nativeAccepts, host.EnsureRanking(layout, ref submitted));
+    }
+
+    [Theory]
+    [InlineData("missing down")]
+    [InlineData("missing click")]
+    [InlineData("duplicate click")]
+    [InlineData("foreign listener")]
+    [InlineData("global click")]
+    [InlineData("disabled")]
+    [InlineData("wrong label")]
+    [InlineData("dispatch full")]
+    public void RankedEntryLeavesUnavailableOrAmbiguousNativeInputUntouched(string defect)
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var layout = host.AddRankingCheckbox(true, defect);
+        var submitted = false;
+        Assert.False(host.EnsureRanking(layout, ref submitted));
+        Assert.False(submitted);
+        Assert.False(host.RankingChecked);
+        Assert.Empty(host.RankingInputs);
+    }
+
+    [Fact]
+    public void RankedEntryDoesNotToggleAnAlreadyCheckedNativeControl()
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var layout = host.AddRankingCheckbox(true);
+        host.RankingChecked = true;
+        var submitted = false;
+        Assert.True(host.EnsureRanking(layout, ref submitted));
+        Assert.False(submitted);
+        Assert.Empty(host.RankingInputs);
+    }
 
     [Fact]
     public void StationaryRunResumesAtThirtySecondsAndSpacesFurtherAttempts()
@@ -183,6 +416,236 @@ public sealed class BeastmasterRouteLifecycleTests
         Set(service, "owner", 17UL); Set(service, "operatorStopped", false);
         Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
         return service;
+    }
+
+    [Theory]
+    [InlineData(1339u)]
+    [InlineData(1340u)]
+    [InlineData(1341u)]
+    [InlineData(1342u)]
+    [InlineData(1343u)]
+    public void RevivalProtectionKeepsMovementButWithholdsAbilitiesAndNativeAutoattacksUntilTheStatusEnds(uint territory)
+    {
+        using var host = new HostFixture { Territory = territory, Position = new(120, 0, -420) };
+        var service = host.CreateService();
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = territory - 1338 });
+        host.EnableBattle(service);
+        host.Conditions.Add("InCombat");
+        host.PlayerStatus = 418;
+        host.AutoAttacking = true;
+        var route = CreateRoute(service, territory);
+
+        Invoke(route, "UpdateBattle");
+        Assert.Equal("Off", Field(host.CombatState!, "Mode")!.ToString());
+        Assert.True(Read<bool>(Field(service, "combat")!, "IsRunning"));
+        Assert.Equal("VERMAXION - Crewcible", Field(host.CombatState!, "Preset"));
+        Assert.False(Read<bool>(host.CombatState!, "ForceDisabled"));
+        Assert.False(host.AutoAttacking);
+        Assert.Null(host.BattleTarget);
+        Assert.Equal(0UL, Read<ulong>(route, "autoAttackTarget"));
+        Assert.Equal((1u, 0xE0000000UL), Assert.Single(host.AutoattackCalls));
+
+        // Repeated updates keep dodging without toggling an already-disabled
+        // autoattack on. There is no elapsed-time guess for this protection.
+        Invoke(route, "UpdateBattle");
+        Assert.Single(host.AutoattackCalls);
+        Assert.Equal("Off", Field(host.CombatState!, "Mode")!.ToString());
+
+        host.PlayerStatus = 0;
+        Invoke(route, "UpdateBattle");
+        Assert.Equal("Henched", Field(host.CombatState!, "Mode")!.ToString());
+        Assert.True(host.AutoAttacking);
+        Assert.NotNull(host.BattleTarget);
+        Assert.Equal(1001UL, Read<ulong>(route, "autoAttackTarget"));
+        Assert.Equal(new[] { (1u, 0xE0000000UL), (1u, 1001UL) }, host.AutoattackCalls);
+
+        Assert.True((bool)Invoke(Field(service, "combat")!, "TryRelease", new object?[] { null })!);
+        Assert.Equal("Auto", Field(host.CombatState!, "Mode")!.ToString());
+        Assert.Equal("Original movement", Field(host.CombatState!, "Preset"));
+    }
+
+    [Fact]
+    public void RevivalProtectionDefersEphemeralItemsBeforeReadingTheirNativeHud()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        host.EnableBattle(service);
+        var menus = Field(service, "menus")!;
+        var now = DateTime.UtcNow;
+        host.PlayerStatus = 418;
+        Invoke(menus, "UpdateItems", now);
+        Assert.Equal(0, host.MainHudReads);
+
+        host.PlayerStatus = 0;
+        Invoke(menus, "UpdateItems", now.AddMilliseconds(251));
+        Assert.Equal(1, host.MainHudReads);
+    }
+
+    [Fact]
+    public void OtherStatusesDoNotDelayTheOrdinaryCombatHandoff()
+    {
+        using var host = new HostFixture { Position = new(120, 0, -420) };
+        var service = host.CreateService();
+        host.EnableBattle(service);
+        host.Conditions.Add("InCombat");
+        host.PlayerStatus = 43; // Weakness is not revival protection.
+        var route = CreateRoute(service, 1339);
+        Invoke(route, "UpdateBattle");
+        Assert.Equal("Henched", Field(host.CombatState!, "Mode")!.ToString());
+        Assert.True(host.AutoAttacking);
+        Assert.Equal((1u, 1001UL), Assert.Single(host.AutoattackCalls));
+    }
+
+    [Fact]
+    public void CheckboxTestsSkipAllSuppliesBeforeReadingNativeStateOrCallingAds()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService(); // ADS and native inventory are intentionally absent.
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings
+        { FoodItemId = 1, ExtractMateria = true });
+        Set(service, "operatorStopped", false);
+        Set(service, "rankingCheckboxTest", true);
+
+        Assert.False((bool)Invoke(service, "TryPrepareRegistrationRepair")!);
+        Assert.False((bool)Invoke(service, "TryPrepareRegistrationExtraction")!);
+        Assert.False((bool)Invoke(service, "TryPrepareFood", false)!);
+        Assert.False((bool)Invoke(service, "TryPrepareFood", true)!);
+        Assert.Null(Field(service, "repairBoundarySettings"));
+        Assert.False(Read<bool>(service, "extractionPrepared"));
+        Assert.Equal(default, Read<DateTime>(service, "foodPendingUntil"));
+        Assert.Empty(host.Commands);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RevivalProtectionSkipsFoodBeforeAnyInventoryAccess(bool betweenFights)
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        host.EnableBattle(service);
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { FoodItemId = 1 });
+        Set(service, "operatorStopped", false);
+        host.PlayerStatus = 418;
+
+        Assert.False((bool)Invoke(service, "TryPrepareFood", betweenFights)!);
+        Assert.Equal(default, Read<DateTime>(service, "foodPendingUntil"));
+        Assert.Empty(host.AutoattackCalls);
+        Assert.Empty(host.Commands);
+    }
+
+    [Theory]
+    [InlineData(1339u)]
+    [InlineData(1340u)]
+    [InlineData(1341u)]
+    [InlineData(1342u)]
+    [InlineData(1343u)]
+    public void EachBoardHasAFoodBoundaryOnItsWalkwayBeforeTheTeamMenu(uint territory)
+    {
+        using var host = new HostFixture { Territory = territory };
+        var service = host.CreateService();
+        var route = CreateRoute(service, territory);
+        host.Position = RoutePosition(route, "MoveTo", 0) + new Vector3(0, 0, 8);
+        Assert.True(Read<bool>(route, "FoodBoundary"));
+    }
+
+    [Theory]
+    [InlineData("boss step")]
+    [InlineData("position recovery")]
+    [InlineData("arena recovery")]
+    [InlineData("combat")]
+    [InlineData("nearby hostile")]
+    [InlineData("arena position")]
+    [InlineData("dead player")]
+    [InlineData("zero HP")]
+    [InlineData("area transition")]
+    [InlineData("completed route")]
+    [InlineData("result window")]
+    [InlineData("team window")]
+    public void FoodBoundaryRequiresASafeLivingBoardWalkway(string obstruction)
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        host.EnableBattle(service);
+        host.EnemyHp = 0;
+        var route = CreateRoute(service, 1339);
+        var actions = (JArray)Field(route, "actions")!;
+        host.Position = RoutePosition(route, "MoveTo", 0) + new Vector3(0, 0, 8);
+        Assert.True(Read<bool>(route, "FoodBoundary"));
+
+        switch (obstruction)
+        {
+            case "boss step":
+                Set(route, "Step", actions.Select((action, index) => (action, index))
+                    .First(entry => entry.action!.Value<string>("Name") == "Boss").index);
+                break;
+            case "position recovery": Set(route, "recoveringPosition", true); break;
+            case "arena recovery": Set(route, "recoveringArena", true); break;
+            case "combat": host.Conditions.Add("InCombat"); break;
+            case "nearby hostile": host.EnemyHp = 100; break;
+            case "arena position": host.Position = new(120, 0, -420); break;
+            case "dead player": host.PlayerDead = true; break;
+            case "zero HP": host.PlayerCurrentHp = 0; break;
+            case "area transition": host.Conditions.Add("BetweenAreas"); break;
+            case "completed route": Set(route, "Step", actions.Count); break;
+            case "result window":
+                host.EnableNativeUi(); host.AddRegistrationWindow("XBMResult"); break;
+            case "team window":
+                host.EnableNativeUi(); host.AddRegistrationWindow("XBMPetParty"); break;
+            default: throw new InvalidOperationException(obstruction);
+        }
+        Assert.False(Read<bool>(route, "FoodBoundary"));
+    }
+
+    [Fact]
+    public void PendingBoardFoodPausesTheRouteAndItsBoundedTimeoutResumesMovement()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        host.EnableBattle(service);
+        host.EnemyHp = 0;
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { FoodItemId = 1 });
+        Set(service, "operatorStopped", false);
+        var route = CreateRoute(service, 1339);
+        Set(service, "route", route);
+        var actions = (JArray)Field(route, "actions")!;
+        Set(route, "Step", actions.Select((action, index) => (action, index))
+            .First(entry => entry.action!.Value<string>("Name") == "MoveTo").index);
+        host.Position = RoutePosition(route, "MoveTo", 0) + new Vector3(0, 0, 8);
+        Set(route, "movementStarted", true);
+        Set(service, "foodPendingUntil", DateTime.UtcNow.AddSeconds(5));
+
+        Invoke(route, "Update");
+        Assert.False(Read<bool>(route, "movementStarted"));
+        Assert.Empty(host.MovementCommands);
+
+        Set(service, "foodPendingUntil", DateTime.UtcNow.AddSeconds(-1));
+        Invoke(route, "Update");
+        Assert.True(Read<bool>(route, "movementStarted"));
+        Assert.Single(host.MovementCommands);
+        Assert.Equal(default, Read<DateTime>(service, "foodPendingUntil"));
+        Assert.Contains("not confirmed", Read<string>(service, "FoodStatus"));
+    }
+
+    [Fact]
+    public void ArenaObservationStartsCombatBeforeConsideringPendingFood()
+    {
+        using var host = new HostFixture { Position = new(120, 0, -420) };
+        var service = host.CreateService();
+        host.EnableBattle(service);
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { FoodItemId = 1 });
+        Set(service, "operatorStopped", false);
+        var route = CreateRoute(service, 1339);
+        Set(service, "route", route);
+        var pending = DateTime.UtcNow.AddSeconds(5);
+        Set(service, "foodPendingUntil", pending);
+
+        Invoke(route, "Update");
+        Assert.True(Read<bool>(route, "recoveringArena"));
+        Assert.False(Read<bool>(route, "FoodBoundary"));
+        Assert.Equal("Henched", Field(host.CombatState!, "Mode")!.ToString());
+        Assert.Equal(pending, Read<DateTime>(service, "foodPendingUntil"));
+        Assert.Empty(host.MovementCommands);
     }
 
     [Fact]
@@ -1119,11 +1582,45 @@ public sealed class BeastmasterRouteLifecycleTests
         private readonly List<host::Dalamud.Game.ClientState.Objects.Types.IGameObject> objects = [];
         private nint nativePlayerSlot;
         private nint nativeAtkModule;
+        private nint nativeStage;
         private readonly Dictionary<string, nint> addons = [];
         private readonly List<Delegate> nativeCallbacks = [];
         private readonly Dictionary<nint, Action<int>> addonEvents = [];
         private readonly List<(string Name, int Param)> receivedEvents = [];
         private readonly List<(string Name, int Param)> firedCallbacks = [];
+        private readonly Dictionary<nint, Gui.ComponentType> nativeComponentTypes = [];
+        private nint rankingCheckbox;
+        private nint battleUi, battleStatuses;
+        private object? playerStatuses;
+        public object? CombatState { get; private set; }
+        public object? BattleTarget { get; private set; }
+        public readonly List<(uint Action, ulong Target)> AutoattackCalls = [];
+        public uint PlayerMaximumHp;
+        public uint PlayerCurrentHp = 100;
+        public uint EnemyHp = 100;
+        public int MainHudReads;
+        public bool AutoAttacking
+        {
+            get => ((NativeGameUi.UIState*)battleUi)->WeaponState.AutoAttackState.IsAutoAttacking;
+            set => ((NativeGameUi.UIState*)battleUi)->WeaponState.AutoAttackState.IsAutoAttacking = value;
+        }
+        public ushort PlayerStatus
+        {
+            set
+            {
+                var statuses = (NativeGame.StatusManager*)battleStatuses;
+                statuses->NumValidStatuses = (byte)(value == 0 ? 0 : 1);
+                statuses->Status[0].StatusId = value;
+            }
+        }
+        public readonly List<(Gui.AtkEventType Type, int Param)> RankingInputs = [];
+        public bool RankingInputMetadataValid = true;
+        public int RankingOwnerNotifications;
+        public bool NativeEventDispatchEnabled
+        {
+            get => ((Gui.AtkStage*)nativeStage)->CanDispatchEvents;
+            set => ((Gui.AtkStage*)nativeStage)->CanDispatchEvents = value;
+        }
         private const int TakeAllParam = 7009;
         public Vector3 Position;
         public uint Territory = 1339;
@@ -1138,6 +1635,13 @@ public sealed class BeastmasterRouteLifecycleTests
         public int YesClicks => receivedEvents.Count(entry => entry.Name == "SelectYesno");
         public int TakeAllClicks => receivedEvents.Count(entry => entry.Name == "XBMContentsBooty" && entry.Param == TakeAllParam);
         public int LootCloseCallbacks => firedCallbacks.Count(entry => entry.Name == "XBMContentsBooty" && entry.Param == 0);
+        public int ChallengeCallbacks => firedCallbacks.Count(entry => entry.Name == "XBMStageDetailList" && entry.Param == 8);
+        public int TeamPreparationCallbacks => firedCallbacks.Count(entry => entry.Name is "XBMPetParty" or "XBMMonsterNotebook");
+        public readonly List<uint> OpenedBoards = [];
+        public int ClosedRegistrationWindows;
+        public bool IsAddonVisible(nint address) => ((Gui.AtkUnitBase*)address)->IsVisible;
+        public void SubmitPrepared(object service, nint address, bool ready) => Invoke(service, "SubmitPreparedEntry",
+            Pointer.Box((void*)address, typeof(Gui.AtkUnitBase*)), ready);
         public List<string> MovementCommands => Commands.Where(command => command.StartsWith("/vnav moveto ", StringComparison.Ordinal)).ToList();
 
         public HostFixture()
@@ -1147,7 +1651,8 @@ public sealed class BeastmasterRouteLifecycleTests
                 player = Proxy(typeof(host::Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter), (method, _) => method.Name switch
                 {
                     "get_Position" => Position, "get_IsDead" => PlayerDead, "get_IsCasting" => false,
-                    "get_CurrentHp" => 100u, _ => Default(method.ReturnType),
+                    "get_CurrentHp" => PlayerCurrentHp, "get_MaxHp" => PlayerMaximumHp,
+                    "get_StatusList" => playerStatuses, _ => Default(method.ReturnType),
                 });
                 var objects = Proxy(typeof(host::Dalamud.Plugin.Services.IObjectTable), (method, _) => method.Name switch
                 {
@@ -1171,9 +1676,12 @@ public sealed class BeastmasterRouteLifecycleTests
                 Replace(svc, "Condition", conditions);
                 Replace(svc, "Log", log);
                 var gameGui = Proxy(typeof(host::Dalamud.Plugin.Services.IGameGui), (method, args) =>
-                    method.Name == "GetAddonByName" && args?.FirstOrDefault() is string name
-                        ? new host::Dalamud.Game.NativeWrapper.AtkUnitBasePtr(addons.GetValueOrDefault(name))
-                        : Default(method.ReturnType));
+                {
+                    if (method.Name != "GetAddonByName" || args?.FirstOrDefault() is not string name)
+                        return Default(method.ReturnType);
+                    if (name == "XBMContentsMainHUD") MainHudReads++;
+                    return new host::Dalamud.Game.NativeWrapper.AtkUnitBasePtr(addons.GetValueOrDefault(name));
+                });
                 Replace(svc, "GameGui", gameGui);
                 Replace(typeof(live::VERMAXION.Plugin), "GameGui", gameGui);
                 Replace(typeof(live::VERMAXION.Plugin), "Log", log);
@@ -1237,6 +1745,11 @@ public sealed class BeastmasterRouteLifecycleTests
         // callbacks owned by this fixture. No game process or client is involved.
         public void EnableNativeUi()
         {
+            var stage = Allocate<Gui.AtkStage>();
+            nativeStage = (nint)stage;
+            var stageSlot = Allocate<nint>();
+            *stageSlot = nativeStage;
+            ReplaceNativeAddress(typeof(Gui.AtkStage), "Instance", (nint)stageSlot);
             var framework = Allocate<host::FFXIVClientStructs.FFXIV.Client.System.Framework.Framework>();
             var frameworkSlot = Allocate<nint>();
             *frameworkSlot = (nint)framework;
@@ -1261,7 +1774,8 @@ public sealed class BeastmasterRouteLifecycleTests
             ReplaceNativeAddress(typeof(Gui.AtkResNode), "IsVisible", CallbackPointer(new NativePredicate(node =>
                 (byte)((((Gui.AtkResNode*)node)->NodeFlags & Gui.NodeFlags.Visible) != 0 ? 1 : 0))));
             ReplaceNativeAddress(typeof(Gui.AtkResNode), "GetAsAtkComponentNode", CallbackPointer(new NativeGetter(node => node)));
-            ReplaceNativeAddress(typeof(Gui.AtkComponentBase), "GetComponentType", CallbackPointer(new NativeIntGetter(_ => (int)Gui.ComponentType.Button)));
+            ReplaceNativeAddress(typeof(Gui.AtkComponentBase), "GetComponentType", CallbackPointer(new NativeIntGetter(component =>
+                (int)nativeComponentTypes.GetValueOrDefault(component, Gui.ComponentType.Button))));
             var fire = CallbackPointer(new NativeFireCallback(FireNativeCallback));
             ReplaceNativeAddress(typeof(Gui.AtkUnitBase), "FireCallback", fire);
             var callbackType = Assembly.Load("ECommons").GetType("ECommons.Automation.Callback", true)!;
@@ -1277,6 +1791,107 @@ public sealed class BeastmasterRouteLifecycleTests
             var original = throttler.GetValue(null);
             throttler.SetValue(null, Activator.CreateInstance(throttler.FieldType));
             restore.Add(() => throttler.SetValue(null, original));
+        }
+
+        public nint AddRankingCheckbox(bool nativeAccepts, string defect = "")
+        {
+            if (defect == "dispatch full") ((Gui.AtkStage*)nativeStage)->NextEventDispatcherIndex = 32;
+            var layout = Allocate<Gui.AtkUnitBase>();
+            InitializeAddon(layout, "XBMStageDetailList");
+            var checkbox = Allocate<Gui.AtkComponentCheckBox>();
+            rankingCheckbox = (nint)checkbox;
+            nativeComponentTypes[rankingCheckbox] = Gui.ComponentType.CheckBox;
+            var owner = Allocate<Gui.AtkComponentNode>();
+            owner->Component = (Gui.AtkComponentBase*)checkbox;
+            owner->AtkResNode.Type = (Gui.NodeType)1000;
+            owner->AtkResNode.NodeId = 30;
+            owner->AtkResNode.ScreenX = 23;
+            owner->AtkResNode.ScreenY = 41;
+            owner->AtkResNode.NodeFlags = Gui.NodeFlags.Visible | (defect == "disabled" ? 0 : Gui.NodeFlags.Enabled);
+            checkbox->OwnerNode = owner;
+            checkbox->ButtonTextNode = Allocate<Gui.AtkTextNode>();
+            var text = System.Text.Encoding.UTF8.GetBytes("Synthetic ranking label.\0");
+            var buffer = AllocateBytes(text.Length);
+            Marshal.Copy(text, 0, buffer, text.Length);
+            checkbox->ButtonTextNode->NodeText.StringPtr = (byte*)buffer;
+            checkbox->ButtonTextNode->NodeText.BufSize = text.Length;
+            checkbox->ButtonTextNode->NodeText.BufUsed = text.Length;
+            checkbox->ButtonTextNode->NodeText.StringLength = text.Length - 1;
+            layout->UldManager.NodeList = (Gui.AtkResNode**)AllocatePointers(1);
+            layout->UldManager.NodeList[0] = (Gui.AtkResNode*)owner;
+            layout->UldManager.NodeListCount = 1;
+
+            var collision = Allocate<Gui.AtkResNode>();
+            checkbox->UldManager.NodeList = (Gui.AtkResNode**)AllocatePointers(1);
+            checkbox->UldManager.NodeList[0] = collision;
+            checkbox->UldManager.NodeListCount = 1;
+            var down = Allocate<Gui.AtkEvent>();
+            var click = Allocate<Gui.AtkEvent>();
+            down->State.EventType = Gui.AtkEventType.MouseDown;
+            down->Param = 351;
+            down->Listener = (Gui.AtkEventListener*)checkbox;
+            down->Node = collision;
+            down->NextEvent = defect == "missing click" ? null : click;
+            click->State.EventType = Gui.AtkEventType.MouseClick;
+            click->Param = 517;
+            click->Listener = defect == "foreign listener" ? (Gui.AtkEventListener*)layout : (Gui.AtkEventListener*)checkbox;
+            click->Node = collision;
+            if (defect == "global click") click->State.StateFlags = Gui.AtkEventStateFlags.IsGlobalEvent;
+            if (defect == "duplicate click")
+            {
+                var duplicate = Allocate<Gui.AtkEvent>();
+                *duplicate = *click;
+                click->NextEvent = duplicate;
+            }
+            collision->AtkEventManager.Event = defect == "missing down" ? click : down;
+            var vtable = AllocatePointers(16);
+            var pressed = false;
+            var collisionAddress = (nint)collision;
+            vtable[2] = CallbackPointer(new NativeReceiveEvent((self, type, param, evt, data) =>
+            {
+                RankingInputs.Add((type, param));
+                var binding = (Gui.AtkEvent*)evt;
+                var mouse = (Gui.AtkEventData*)data;
+                RankingInputMetadataValid &= self == rankingCheckbox && binding->Listener == (Gui.AtkEventListener*)self
+                    && (nint)binding->Node == collisionAddress && binding->State.EventType == type
+                    && mouse->MouseData.ButtonId == 0 && mouse->MouseData.PosX == 23 && mouse->MouseData.PosY == 41
+                    && NativeEventDispatchEnabled;
+                if (type == Gui.AtkEventType.MouseDown && param == 351) pressed = true;
+                if (type == Gui.AtkEventType.MouseClick && param == 517 && pressed)
+                {
+                    if (nativeAccepts)
+                    {
+                        RankingChecked = !RankingChecked;
+                        if (NativeEventDispatchEnabled) RankingOwnerNotifications++;
+                    }
+                    pressed = false;
+                }
+            }));
+            *(nint*)checkbox = (nint)vtable;
+            rankingLabelMatches = defect != "wrong label";
+            return (nint)layout;
+        }
+
+        private bool rankingLabelMatches;
+        public bool RankingChecked
+        {
+            get => ((Gui.AtkComponentCheckBox*)rankingCheckbox)->IsChecked;
+            set
+            {
+                var checkbox = (Gui.AtkComponentCheckBox*)rankingCheckbox;
+                checkbox->Flags = value ? checkbox->Flags | (1u << 18) : checkbox->Flags & ~(1u << 18);
+            }
+        }
+
+        public bool EnsureRanking(nint layout, ref bool submitted)
+        {
+            var detail = Production.GetType("VERMAXION.Beastmaster.CrucibleUi+Screens+StageDetail", true)!;
+            var method = detail.GetMethods(Static).Single(method => method.Name == "EnsureRankedEntry" && method.GetParameters().Length == 4);
+            object?[] args = [Pointer.Box((void*)layout, typeof(Gui.AtkUnitBase*)),
+                rankingLabelMatches ? "Synthetic ranking label." : "Other label.", submitted, null];
+            var result = (bool)method.Invoke(null, args)!;
+            submitted = (bool)args[2]!;
+            return result;
         }
 
         public nint AddLoot()
@@ -1321,6 +1936,18 @@ public sealed class BeastmasterRouteLifecycleTests
         }
 
         public void ShowAddon(nint address, bool visible) => ((Gui.AtkUnitBase*)address)->IsVisible = visible;
+        public nint AddRegistrationWindow(string name)
+        {
+            var addon = Allocate<Gui.AtkUnitBase>();
+            InitializeAddon(addon, name);
+            return (nint)addon;
+        }
+        public void AllowOpenBoardUpdate()
+        {
+            var type = Assembly.Load("ECommons").GetType("ECommons.Throttlers.EzThrottler", true)!;
+            type.GetMethod("Reset", Static, null, [typeof(string)], null)!
+                .Invoke(null, ["CrucibleOpenBoard"]);
+        }
         public void SetAddonReady(nint address, bool ready)
         {
             var addon = (Gui.AtkUnitBase*)address;
@@ -1361,6 +1988,12 @@ public sealed class BeastmasterRouteLifecycleTests
                 receivedEvents.Add((((Gui.AtkUnitBase*)self)->NameString, param));
                 if (addonEvents.TryGetValue(self, out var handle)) handle(param);
             }));
+            vtable[4] = CallbackPointer(new NativeClose((self, _) =>
+            {
+                ((Gui.AtkUnitBase*)self)->IsVisible = false;
+                ClosedRegistrationWindows++;
+                return 1;
+            }));
             *(nint*)addon = (nint)vtable;
             addons[name] = (nint)addon;
             ref var list = ref ((NativeUi.RaptureAtkModule*)nativeAtkModule)->RaptureAtkUnitManager.AllLoadedUnitsList;
@@ -1387,6 +2020,14 @@ public sealed class BeastmasterRouteLifecycleTests
         private byte FireNativeCallback(Gui.AtkUnitBase* addon, int count, Gui.AtkValue* values, byte _)
         {
             firedCallbacks.Add((addon->NameString, count > 0 ? values[0].Int : -1));
+            if (addon->NameString == "XBMStageList" && count >= 2 && values[0].Int == 1)
+            {
+                OpenedBoards.Add((uint)values[1].Int);
+                addon->IsVisible = false;
+                ShowAddon(addons["XBMStageDetailList"], true);
+                ShowAddon(addons["XBMPetParty"], true);
+                RankingChecked = false;
+            }
             return 1;
         }
         private nint CallbackPointer(Delegate callback)
@@ -1416,6 +2057,7 @@ public sealed class BeastmasterRouteLifecycleTests
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate byte NativePredicate(nint self);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int NativeIntGetter(nint self);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate byte NativeFireCallback(Gui.AtkUnitBase* self, int count, Gui.AtkValue* values, byte update);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate byte NativeClose(nint self, byte fireCloseCallback);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void NativeReceiveEvent(nint self, Gui.AtkEventType type, int param, nint evt, nint data);
 
         public void AddBoardObject(uint baseId, Vector3 position) => objects.Add(
@@ -1424,6 +2066,85 @@ public sealed class BeastmasterRouteLifecycleTests
                 {
                     "get_BaseId" => baseId, "get_Position" => position, _ => Default(method.ReturnType),
                 }));
+
+        public void EnableBattle(object service)
+        {
+            // Native status reads and autoattack calls use only this fixture's
+            // allocations/callbacks; the process has no game client attached.
+            PlayerMaximumHp = 100;
+            var threadFlag = typeof(host::Dalamud.Plugin.IDalamudPluginInterface).Assembly
+                .GetType("Dalamud.Utility.ThreadSafety", true)!.GetField("threadStaticIsMainThread", Static)!;
+            var oldThread = threadFlag.GetValue(null);
+            threadFlag.SetValue(null, true);
+            restore.Add(() => threadFlag.SetValue(null, oldThread));
+            var statuses = Allocate<NativeGame.StatusManager>();
+            battleStatuses = (nint)statuses;
+            playerStatuses = Activator.CreateInstance(typeof(host::Dalamud.Game.ClientState.Statuses.StatusList),
+                Instance, null, [(nint)statuses], null);
+            var ui = Allocate<NativeGameUi.UIState>();
+            battleUi = (nint)ui;
+            ReplaceNativeAddress(typeof(NativeGameUi.UIState), "Instance", battleUi);
+            var manager = Allocate<NativeGame.ActionManager>();
+            ReplaceNativeAddress(typeof(NativeGame.ActionManager), "Instance", (nint)manager);
+            ReplaceNativeAddress(typeof(NativeGame.ActionManager), "UseAction", CallbackPointer(new NativeUseAction(
+                (_, _, id, target, _, _, _, _) =>
+                {
+                    AutoattackCalls.Add((id, target));
+                    AutoAttacking = !AutoAttacking;
+                    return 1;
+                })));
+            var hostile = Assembly.Load("ECommons").GetType("ECommons.GameFunctions.ObjectFunctions", true)!
+                .GetField("GetNameplateColorNative", Static)!;
+            var oldHostile = hostile.GetValue(null);
+            hostile.SetValue(null, Delegate.CreateDelegate(hostile.FieldType,
+                typeof(HostFixture).GetMethod(nameof(HostileNameplate), Static)!));
+            restore.Add(() => hostile.SetValue(null, oldHostile));
+            var enemy = Proxy(typeof(host::Dalamud.Game.ClientState.Objects.Types.IBattleNpc), (method, _) => method.Name switch
+            {
+                "get_EntityId" => 1001u, "get_GameObjectId" => 1001UL, "get_Address" => (nint)1001,
+                "get_Position" => Position + new Vector3(1, 0, 0), "get_CurrentHp" => EnemyHp,
+                "get_IsTargetable" => true, _ => Default(method.ReturnType),
+            });
+            objects.Add((host::Dalamud.Game.ClientState.Objects.Types.IGameObject)enemy);
+            BattleTarget = enemy;
+            Replace(svc, "Targets", Proxy(typeof(host::Dalamud.Plugin.Services.ITargetManager), (method, args) =>
+            {
+                if (method.Name == "get_Target") return BattleTarget;
+                if (method.Name == "set_Target") BattleTarget = args![0];
+                return Default(method.ReturnType);
+            }));
+
+            var combatType = Production.GetType("VERMAXION.Beastmaster.BeastmasterCombat", true)!;
+            var providerType = combatType.GetNestedType("IProvider", BindingFlags.NonPublic)!;
+            var stateType = combatType.GetNestedType("State", BindingFlags.NonPublic)!;
+            var modeType = combatType.GetNestedType("Mode", BindingFlags.NonPublic)!;
+            var targetType = combatType.GetNestedType("Target", BindingFlags.NonPublic)!;
+            var nativeType = combatType.GetNestedType("NativeProvider", BindingFlags.NonPublic)!;
+            var preset = (string)nativeType.GetField("DefaultPreset", Static)!.GetRawConstantValue()!;
+            CombatState = Activator.CreateInstance(stateType,
+                [new object(), new object(), Enum.Parse(modeType, "Auto"),
+                 "RotationSolver.RebornRotations.Melee.BST_Reborn", false, false, "Original movement", false]);
+            var provider = Proxy(providerType, (method, args) =>
+            {
+                switch (method.Name)
+                {
+                    case "Read": return CombatState;
+                    case "ReadTarget": return Activator.CreateInstance(targetType, [1001UL, false]);
+                    case "ReadPreset": return preset;
+                    case "SetMode": Set(CombatState!, "Mode", args![0]); break;
+                    case "SetPreset": Set(CombatState!, "Preset", args![0]); Set(CombatState!, "ForceDisabled", args[1]); break;
+                    case "SetAiEnabled": Set(CombatState!, "AiActive", args![0]); break;
+                    case "RestoreRotationOverrides": break;
+                    default: throw new InvalidOperationException("Unexpected synthetic combat provider operation: " + method.Name);
+                }
+                return null;
+            });
+            Set(Field(service, "combat")!, "provider", provider);
+        }
+        private static byte HostileNameplate(nint _) => 4;
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate byte NativeUseAction(NativeGame.ActionManager* self, NativeGame.ActionType type,
+            uint action, ulong target, uint extra, NativeGame.ActionManager.UseActionMode mode, uint combo, bool* area);
 
         public object CreateService(bool separateNavigation = false)
         {

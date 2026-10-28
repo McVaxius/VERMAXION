@@ -6192,4 +6192,43 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva n’est pas chargé.</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva est chargé, mais son état d’exécution n’a pas pu être lu.</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> Nettoyage : {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>Participation au classement</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>Active le classement avant chaque entrée en difficulté 3. Si cette option est désactivée, la case du jeu reste inchangée.</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Tests Crewcible en difficulté 3</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>Tester {0} (difficulté 3)</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>Utilise le nombre de parcours, l’équipe, les provisions et le choix de classement de votre configuration manuelle.</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>Arrêtez Beastmaster avant de tester un plateau.</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>La difficulté 3 nécessite de terminer la quête 71045.</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>En attente du choix de difficulté de Crewcible.</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>En attente de confirmation de la participation au classement.</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossMod exige le préréglage de déplacement 'VERMAXION - Crewcible', sans rotation de dégâts ni utilitaire sans rapport.</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>Le préréglage BossMod 'VERMAXION - Crewcible' exige Pathfind, une esquive sans limite de portée (Any), une marge Medium et l'objectif de mêlée 2.3.</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>BossMod n'a pas pu confirmer le préréglage 'VERMAXION - Crewcible' après son ajout.</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>Équipe de réussite fiable (obligatoire)</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>Les degrés 1–3 imposent un effectif et un trio de combat. Les choix personnels, exclusions et filtres de famille ne s'appliquent pas.</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>Les degrés 1–3 exigent une équipe de réussite fiable. Utilisez Standard pour l'entraînement.</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>L'équipe exige ces numéros de familiers au rang {0} ou supérieur : {1}.</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>L'équipe exige trois survivants entraînés, dont un familier soigneur.</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>Démarrez hors du Crucible pour que VERMAXION vérifie la difficulté et inscrive l'équipe requise.</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>Utilise votre nombre de parcours manuel, vos provisions et votre choix de classement, avec l'équipe obligatoire.</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Tests de la case de classement du Crewcible</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>Tester le classement : {0} (difficulté 3)</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>Ouvre ce plateau en difficulté 3, teste la case de classement activée, puis s’arrête. Ne confirme jamais l’entrée et ne lance aucune partie.</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>Test de la case de classement</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>La case indique qu’elle est cochée. Test arrêté avant l’entrée.</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>La case n’a pas été confirmée. Test arrêté avant l’entrée.</value></data>
+  <data name="No food" xml:space="preserve"><value>Aucune nourriture</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>Extraire les matérias avant l&apos;entrée</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>La nourriture renouvelle Bien nourri à 90 secondes avant l&apos;entrée et entre les combats. Une absence affiche un avertissement et continue ; la qualité choisie est conservée.</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>L&apos;extraction de matérias utilise ADS hors instance avant chaque plateau. Les tests de case ne consomment rien.</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>Préparation des provisions</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Nourriture choisie absente ; poursuite.</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>Nourriture choisie inutilisable ; poursuite.</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>Consommation non confirmée ; poursuite.</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>Consommation de la nourriture choisie.</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>Bien nourri : {0}s.</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>Extraction de matérias indisponible ; poursuite.</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>Extraction des matérias avant l&apos;entrée.</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Extraction des matérias non confirmée ; poursuite.</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>Extraction des matérias terminée.</value></data>
 </root>

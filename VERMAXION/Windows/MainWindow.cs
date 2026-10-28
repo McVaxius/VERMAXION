@@ -553,6 +553,22 @@ public class MainWindow : Window, IDisposable
             UiGui.TextDisabled("Route tests stop at the NPC without buying tickets or claiming payouts.");
             if (plugin.CactpotService.IsJumboRouteTest)
                 UiGui.TextWrapped(UiText.F($"Jumbo route test: {UiText.T(plugin.CactpotService.StatusText)}"));
+
+            ImGui.Spacing();
+            UiGui.Text("Crewcible ranking-checkbox tests");
+            for (uint board = 1; board <= 5; board++)
+            {
+                var label = UiText.F("Test ranking: {0} (difficulty 3)", BeastmasterWindow.RunBoardName(board));
+                if (board > 1) UIConstants.SameLineIfFits(label);
+                var canTest = plugin.CanStartBeastmasterBoardTest(board, out var testReason);
+                ImGui.BeginDisabled(!canTest);
+                if (UIConstants.Button(label + "##CrewcibleBoardTest" + board))
+                    plugin.RunBeastmasterBoardTest(board);
+                ImGui.EndDisabled();
+                if (!canTest && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    UiGui.SetTooltip(UiText.Beastmaster(testReason));
+            }
+            UiGui.TextDisabled("Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run.");
             ImGui.EndDisabled();
         }
 

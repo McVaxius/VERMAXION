@@ -11,6 +11,111 @@ namespace VERMAXION.Tests;
 public sealed class BeastmasterSelectionRegressionTests
 {
     [Theory]
+    [InlineData(1u, 10, 5)]
+    [InlineData(2u, 12, 10)]
+    [InlineData(3u, 14, 15)]
+    [InlineData(4u, 12, 20)]
+    [InlineData(5u, 15, 25)]
+    public void HigherDegreesForceBoardRosterDespiteCustomPicksCapsKinAndExclusions(uint board, int capacity, int syncRank)
+    {
+        foreach (var degree in new[] { CrucibleDegree.First, CrucibleDegree.Second, CrucibleDegree.Third })
+        {
+            var settings = new BeastmasterSettings
+            {
+                Board = board, Degree = degree, TeamMode = CrucibleTeamMode.Custom,
+                CustomTeam = [2, 4, 6], ClassificationLock = 8, RecommendedTeamCap = 3, FightPicks = false,
+            };
+            var candidates = Enumerable.Range(1, 50).Select(number => new BeastmasterCandidate((uint)number,
+                syncRank, 0, 50 - number, Classification: 1, PickBlocked: true, FightBlocked: true)).ToArray();
+            Assert.True(BeastmasterSelection.TryPrepareTeam(settings, candidates, 3, out var team, out var reason), reason);
+            Assert.Equal(capacity, team.Count);
+            Assert.Equal(capacity, team.Distinct().Count());
+            Assert.Equal(new uint[] { 11, 19, 32 }, team.Take(3));
+            Assert.Contains(13u, team);
+            var fights = BeastmasterSelection.ClearFightOrder(settings, candidates);
+            Assert.Equal(new uint[] { 13, 11, 19 }, fights.Take(3));
+            Assert.Equal(team.Order(), fights.Order());
+            Assert.True(BeastmasterSelection.ClearFightReady(fights));
+            Assert.Equal(new uint[] { 2, 4, 6 }, settings.CustomTeam);
+            Assert.Equal(8, settings.ClassificationLock);
+            Assert.False(settings.FightPicks);
+        }
+    }
+
+    [Theory]
+    [InlineData(0)] // Unread.
+    [InlineData(14)] // Below Board 3's rank sync.
+    [InlineData(26)] // Invalid.
+    public void RequiredBeastRanksBlockEntryInsteadOfSubstitutingUserChoices(int rank)
+    {
+        var settings = new BeastmasterSettings { Board = 3, Degree = CrucibleDegree.Third };
+        var candidates = Enumerable.Range(1, 50).Select(number => new BeastmasterCandidate((uint)number,
+            number == 19 ? rank : 25, 0, 0)).ToArray();
+        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 14, out var team, out var reason));
+        Assert.Empty(team);
+        Assert.Contains("rank 15", reason);
+        Assert.Contains("19.", reason);
+    }
+
+    [Fact]
+    public void MissingRequiredBeastAndTrainingGoalCannotBypassClearPolicy()
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.First };
+        var candidates = Enumerable.Range(1, 50).Where(number => number != 19)
+            .Select(number => new BeastmasterCandidate((uint)number, 25, 0, 0)).ToArray();
+        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 10, out _, out var reason));
+        Assert.Contains("19.", reason);
+        settings.Goal = BeastmasterRunGoal.TrainOwned;
+        settings.TeamMode = CrucibleTeamMode.Leveling;
+        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 10, out _, out reason));
+        Assert.Contains("Use Standard for training", reason);
+        Assert.False(BeastmasterSelection.TryRecoverExcludedTrainees(settings, candidates, 10, out _));
+    }
+
+    [Fact]
+    public void ClearFightSelectionKeepsHealingSupportAndNeverAddsUnregisteredOrUnderRankedBeasts()
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
+        var candidates = BeastmasterSelection.ClearRoster(1).Select(number => new BeastmasterCandidate(number,
+            5, 0, 0, Alive: number != 19)).Append(new(17, 25, 0, -1)).ToArray(); // Slime is outside this roster.
+        var order = BeastmasterSelection.ClearFightOrder(settings, candidates);
+        Assert.Equal(13u, order[0]); // Geshunpest supplies absorption before ordinary pet cycling.
+        Assert.True(BeastmasterSelection.ClearFightReady(order));
+        Assert.DoesNotContain(17u, order);
+        order = BeastmasterSelection.ClearFightOrder(settings, candidates.Select(beast => beast.Number == 13
+            ? beast with { Rank = 4 } : beast));
+        Assert.False(BeastmasterSelection.ClearFightReady(order));
+        Assert.DoesNotContain(13u, order);
+        Assert.Single(BeastmasterSelection.ClearFightOrder(settings, [new(19, 5, 0, 0)])); // Feeding a single eligible beast remains possible.
+    }
+
+    [Fact]
+    public void ClearFightOrderKeepsBatThirdWhenThePreferredDamageFamiliarIsKnockedOut()
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
+        var candidates = BeastmasterSelection.ClearRoster(1).Select(number => new BeastmasterCandidate(number,
+            5, 0, 0, Alive: number != 11)).ToArray();
+        var order = BeastmasterSelection.ClearFightOrder(settings, candidates);
+        Assert.Equal(new uint[] { 13, 32, 19 }, order.Take(3));
+        Assert.DoesNotContain(11u, order);
+        Assert.True(BeastmasterSelection.ClearFightReady(order));
+    }
+
+    [Fact]
+    public void SustainOrderRetainsRegisteredFallbackAndSmallFeedingSubsets()
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
+        var candidates = BeastmasterSelection.ClearRoster(1).Select(number => new BeastmasterCandidate(number,
+            5, 0, 0, Alive: number != 13)).ToArray();
+        var fallback = BeastmasterSelection.ClearFightOrder(settings, candidates);
+        Assert.Equal(new uint[] { 11, 19, 32 }, fallback.Take(3));
+        Assert.True(BeastmasterSelection.ClearFightReady(fallback));
+        Assert.DoesNotContain(13u, fallback);
+        Assert.Equal(new uint[] { 13, 19 }, BeastmasterSelection.ClearFightOrder(settings, [new(19, 5, 0, 0), new(13, 5, 0, 0)]));
+        Assert.Equal(new uint[] { 13 }, BeastmasterSelection.ClearFightOrder(settings, [new(13, 5, 0, 0)]));
+    }
+
+    [Theory]
     [InlineData(0, false, 10, 0)]
     [InlineData(1, false, 10, 0)] // Registration and scanning are not completed boards.
     [InlineData(1, true, 10, 1)]

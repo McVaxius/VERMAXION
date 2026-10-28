@@ -55,6 +55,8 @@ internal static unsafe class CrucibleTeam
 
         BeastmasterSettings crucible = BeastmasterRuntime.Settings;
 
+        if (BeastmasterSelection.RequiresClearTeam(crucible)) return size;
+
         return crucible.TeamMode switch
         {
             CrucibleTeamMode.Recommended => Math.Min(size, crucible.RecommendedTeamCap),
@@ -223,7 +225,9 @@ internal static unsafe class CrucibleTeam
         }
     }
 
-    public static List<uint> For(CrucibleTeamMode mode, bool sizeCap = true) => mode switch
+    public static List<uint> For(CrucibleTeamMode mode, bool sizeCap = true) => BeastmasterSelection.RequiresClearTeam(BeastmasterRuntime.Settings)
+        ? BeastmasterSelection.ClearRoster(BeastmasterRuntime.Settings.Board)
+        : mode switch
     {
         CrucibleTeamMode.Leveling    => Leveling(sizeCap),
         CrucibleTeamMode.Recommended => Recommended(sizeCap),
@@ -318,8 +322,11 @@ internal static unsafe class CrucibleTeam
     {
         var settings = BeastmasterRuntime.Settings;
         bool leveling = settings.TeamMode == CrucibleTeamMode.Leveling && settings.LevelingMode != CrucibleLevelingMode.Carry_Minus_2;
-        var order = BeastmasterSelection.FightOrder(team.Select(row => Candidate(row.Number) with
-            { Rank = row.Rank > 0 ? row.Rank : Candidate(row.Number).Rank, Alive = !row.Disabled && (row.MaxHP == 0 || row.HP > 0) }), leveling);
+        var candidates = team.Select(row => Candidate(row.Number) with
+            { Rank = row.Rank > 0 ? row.Rank : Candidate(row.Number).Rank, Alive = !row.Disabled && (row.MaxHP == 0 || row.HP > 0) }).ToArray();
+        var order = BeastmasterSelection.RequiresClearTeam(settings)
+            ? BeastmasterSelection.ClearFightOrder(settings, candidates)
+            : BeastmasterSelection.FightOrder(candidates, leveling);
         return order.Select(number => team.First(row => row.Number == number)).ToList();
     }
 
@@ -872,7 +879,7 @@ internal sealed unsafe class CrucibleTeamSetup
         if (CrucibleUi.IsVisible(CrucibleUi.YesNo) || CrucibleUi.IsVisible(CrucibleUi.ContextMenu))
             return now - this.stepSince > StepPatience ? this.Fail(UnconfirmedWindow) : false;
         if (!CrucibleUi.TryReady(CrucibleUi.BestiaryWindow, out AtkUnitBase* bestiary))
-            return this.Fail(UnconfirmedWindow);
+            return now - this.stepSince > StepPatience ? this.Fail(UnconfirmedWindow) : false;
         if (!this.ShowPageOf(bestiary, next, now))
         {
             if (now - this.stepSince > PreparationLimit)
@@ -957,7 +964,7 @@ internal sealed unsafe class CrucibleTeamSetup
     {
         this.Error  = message;
         this.Status = message;
-        Svc.Log.Error($"[Crucible] {message}");
+        Svc.Log.Error($"[Crucible] {message} Step: {this.step}; pending additions: {this.batch.Count}.");
         return true;
     }
 

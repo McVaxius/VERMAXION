@@ -415,6 +415,96 @@ namespace VERMAXION.Beastmaster
             {
                 public static void SetDegree(AtkUnitBase* layout, CrucibleDegree degree) => BeastmasterAddon.FireCallBack(layout, true, 2, (int)degree);
                 public static void Confirm(AtkUnitBase*   layout) => BeastmasterAddon.FireCallBack(layout, true, 8);
+
+                public static bool EnsureRankedEntry(AtkUnitBase* layout, ref bool clickSubmitted)
+                    => EnsureRankedEntry(layout, ref clickSubmitted, out _);
+
+                public static bool EnsureRankedEntry(AtkUnitBase* layout, ref bool clickSubmitted, out string diagnostic)
+                {
+                    diagnostic = "Localized ranking label is unavailable.";
+                    // Current native Addon row: "Participate in rankings." Resolve its game-language text.
+                    if (!Svc.Data.GetExcelSheet<Lumina.Excel.Sheets.Addon>().TryGetRow(17568, out var row)) return false;
+                    var label = row.Text.ExtractText().Trim();
+                    return EnsureRankedEntry(layout, label, ref clickSubmitted, out diagnostic);
+                }
+
+                internal static bool EnsureRankedEntry(AtkUnitBase* layout, string label, ref bool clickSubmitted, out string diagnostic)
+                {
+                    diagnostic = "Ranking window or label is unavailable.";
+                    if (label.Length == 0 || layout == null || layout->UldManager.NodeList == null ||
+                        layout->UldManager.NodeListCount > 512) return false;
+                    AtkComponentCheckBox* checkbox = null;
+                    AtkResNode* checkboxNode = null;
+                    for (var i = 0; i < layout->UldManager.NodeListCount; ++i)
+                    {
+                        var node = layout->UldManager.NodeList[i];
+                        if (node == null || !node->IsVisible() || (ushort)node->Type < 1000) continue;
+                        var component = node->GetAsAtkComponentNode()->Component;
+                        if (component == null || component->GetComponentType() != ComponentType.CheckBox) continue;
+                        var candidate = (AtkComponentCheckBox*)component;
+                        if (candidate->ButtonTextNode == null || candidate->ButtonTextNode->NodeText.ToString().Trim() != label) continue;
+                        if (checkbox != null) { diagnostic = "Multiple native checkboxes have the ranking label."; return false; }
+                        checkbox = candidate; checkboxNode = node;
+                    }
+                    if (checkbox == null || !checkbox->IsEnabled)
+                    { diagnostic = "Ranking checkbox is missing or disabled."; return false; }
+                    if (checkbox->IsChecked)
+                    { diagnostic = $"Checkbox {checkboxNode->NodeId} reports checked."; return true; }
+                    if (clickSubmitted)
+                    { diagnostic = $"Checkbox {checkboxNode->NodeId} remains unchecked after its input request."; return false; }
+
+                    // The checkbox owns the toggle and forwards ButtonClick to its addon. Calling
+                    // the addon directly bypasses that input path and does not select rankings.
+                    if (!TryFindRankingInput(checkbox, AtkEventType.MouseDown, out var down) ||
+                        !TryFindRankingInput(checkbox, AtkEventType.MouseClick, out var click))
+                    { diagnostic = $"Checkbox {checkboxNode->NodeId} has no unique component MouseDown/MouseClick bindings."; return false; }
+                    var stage = AtkStage.Instance();
+                    if (stage == null || stage->NextEventDispatcherIndex >= 32)
+                    { diagnostic = "Native UI event dispatch is unavailable."; return false; }
+                    clickSubmitted = true;
+                    var data = new AtkEventData();
+                    data.MouseData.PosX = (short)Math.Clamp(checkboxNode->ScreenX, short.MinValue, short.MaxValue);
+                    data.MouseData.PosY = (short)Math.Clamp(checkboxNode->ScreenY, short.MinValue, short.MaxValue);
+                    data.MouseData.ButtonId = 0; // Native left mouse button.
+                    // Component input forwards ButtonClick only inside an enabled native
+                    // dispatch scope. Restore the previous state even if a listener fails.
+                    var couldDispatch = stage->CanDispatchEvents;
+                    Svc.Log.Information($"[Crewcible] Requesting ranked entry through checkbox {checkboxNode->NodeId} input events {down.Param}/{click.Param}; nativeDispatchWasEnabled={couldDispatch}; awaiting native checked state.");
+                    try
+                    {
+                        stage->CanDispatchEvents = true;
+                        down.Listener->ReceiveEvent(AtkEventType.MouseDown, checked((int)down.Param), &down, &data);
+                        click.Listener->ReceiveEvent(AtkEventType.MouseClick, checked((int)click.Param), &click, &data);
+                    }
+                    finally { stage->CanDispatchEvents = couldDispatch; }
+                    diagnostic = $"Checkbox {checkboxNode->NodeId} input {down.Param}/{click.Param} submitted; awaiting independent readback.";
+                    return false;
+                }
+
+                private static bool TryFindRankingInput(AtkComponentCheckBox* checkbox, AtkEventType type, out AtkEvent binding)
+                {
+                    binding = default;
+                    var uld = &checkbox->UldManager;
+                    if (uld->NodeList == null || uld->NodeListCount > 64 || checkbox->OwnerNode == null) return false;
+                    AtkEvent* selected = null;
+                    for (var i = -1; i < uld->NodeListCount; ++i)
+                    {
+                        var node = i < 0 ? (AtkResNode*)checkbox->OwnerNode : uld->NodeList[i];
+                        if (node == null || (i >= 0 && node == (AtkResNode*)checkbox->OwnerNode)) continue;
+                        var count = 0;
+                        for (var evt = node->AtkEventManager.Event; evt != null; evt = evt->NextEvent)
+                        {
+                            if (++count > 32) return false;
+                            if (evt->State.EventType != type || evt->Listener != (AtkEventListener*)checkbox ||
+                                evt->State.StateFlags.HasFlag(AtkEventStateFlags.IsGlobalEvent)) continue;
+                            if (selected != null || evt->Param > int.MaxValue) return false;
+                            selected = evt;
+                        }
+                    }
+                    if (selected == null) return false;
+                    binding = *selected;
+                    return true;
+                }
             }
 
             internal static class Notebook

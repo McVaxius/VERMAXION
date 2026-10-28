@@ -4,6 +4,7 @@ using AethertekUI;
 using Dalamud.Bindings.ImGui;
 using Newtonsoft.Json;
 using VERMAXION.Beastmaster;
+using VERMAXION.Services;
 
 namespace VERMAXION.Windows;
 
@@ -314,6 +315,8 @@ internal sealed partial class BeastmasterWindow
         ImGui.BeginDisabled(EditingLocked);
         try
         {
+            DrawFoodAndExtraction();
+            ImGui.Separator();
             var shop = settings.Shop;
             if (UiGui.Checkbox("Shop###SuppliesShop", ref shop)) { settings.Shop = shop; SaveSettings(); }
             var rest = settings.Rest;
@@ -338,6 +341,30 @@ internal sealed partial class BeastmasterWindow
         ImGui.Separator();
         UiGui.TextWrapped("Camps: rest up to two injured familiars below 60% HP. With none selected, the player receives the camp's 90% self heal.");
         UiGui.TextDisabled("Healing thresholds are fixed by the automation.");
+    }
+
+    private void DrawFoodAndExtraction()
+    {
+        var settings = Settings;
+        using (UIConstants.PushSettingsRows())
+        {
+            var foods = new List<uint> { 0 };
+            if (ViewingCurrent)
+                foods.AddRange(GameHelpers.GetFishingFoodCandidates().SelectMany(GameHelpers.GetHeldFoodVariants)
+                    .OrderBy(GameHelpers.GetItemName, StringComparer.CurrentCulture));
+            if (!foods.Contains(settings.FoodItemId)) foods.Add(settings.FoodItemId);
+            var names = foods.Select(id => id == 0 ? UiText.T("No food")
+                : $"{GameHelpers.GetItemName(id)} ({(id >= 1_000_000 ? "HQ" : "NQ")})").ToArray();
+            var selected = foods.IndexOf(settings.FoodItemId);
+            ImGui.SetNextItemWidth(-1);
+            if (UIConstants.Combo("Food", ref selected, names, names.Length))
+            { settings.FoodItemId = foods[selected]; SaveSettings(); }
+            var extract = settings.ExtractMateria;
+            if (UIConstants.Checkbox("Extract materia before entry", ref extract))
+            { settings.ExtractMateria = extract; SaveSettings(); }
+        }
+        UiGui.TextWrapped("Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted.");
+        UiGui.TextDisabled("Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies.");
     }
 
     private void ImportSuppliesEditorList()

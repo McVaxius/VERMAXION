@@ -126,6 +126,13 @@ internal sealed unsafe partial class BeastmasterService
                         previous->Close(true);
                     return false;
                 }
+                // Checkbox tests only need a fresh board window. They never need
+                // the bestiary scan or a different registered team.
+                if (this.rankingCheckboxTest)
+                {
+                    this.CancelFastRankScan();
+                    return false;
+                }
                 if (CrucibleUi.TryReady(CrucibleUi.BestiaryWindow, out var scanningNotebook))
                 {
                     if (!this.fastRankScanOpened)

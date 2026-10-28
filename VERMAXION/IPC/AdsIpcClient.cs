@@ -6,6 +6,9 @@ using Dalamud.Plugin.Services;
 
 namespace VERMAXION.IPC;
 
+internal readonly record struct AdsExtractionStatus(bool Readable, bool Running, bool Done,
+    bool? Succeeded, DateTime? CompletedAtUtc);
+
 public sealed class AdsUtilityStatusSnapshot
 {
     public static AdsUtilityStatusSnapshot Empty { get; } = new();
@@ -52,6 +55,8 @@ public sealed class AdsIpcClient
 {
     private readonly IPluginLog log;
     private readonly ICallGateSubscriber<string, bool> startRepairSubscriber;
+    private readonly ICallGateSubscriber<bool> startExtractMateriaSubscriber;
+    private readonly ICallGateSubscriber<string> getExtractMateriaStatusSubscriber;
     private readonly ICallGateSubscriber<string> getStatusJsonSubscriber;
     private readonly ICallGateSubscriber<uint, int, bool> startShopPurchaseSubscriber;
     private readonly ICallGateSubscriber<bool, bool> setShopKeepOpenSubscriber;
@@ -70,6 +75,8 @@ public sealed class AdsIpcClient
     {
         this.log = log;
         startRepairSubscriber = pluginInterface.GetIpcSubscriber<string, bool>("ADS.StartRepair");
+        startExtractMateriaSubscriber = pluginInterface.GetIpcSubscriber<bool>("ADS.StartExtractMateria");
+        getExtractMateriaStatusSubscriber = pluginInterface.GetIpcSubscriber<string>("ADS.GetExtractMateriaStatusJson");
         getStatusJsonSubscriber = pluginInterface.GetIpcSubscriber<string>("ADS.GetStatusJson");
         startShopPurchaseSubscriber =
             pluginInterface.GetIpcSubscriber<uint, int, bool>("ADS.StartShopPurchase");
@@ -249,6 +256,24 @@ public sealed class AdsIpcClient
             log.Warning($"[ADS] Failed to start repair mode '{mode}': {ex.Message}");
             return false;
         }
+    }
+
+    internal bool StartExtractMateria()
+    {
+        try { return startExtractMateriaSubscriber.InvokeFunc(); }
+        catch (Exception ex) { log.Warning($"[ADS] Failed to start materia extraction: {ex.Message}"); return false; }
+    }
+
+    internal AdsExtractionStatus ReadExtractionStatus()
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(getExtractMateriaStatusSubscriber.InvokeFunc());
+            var root = document.RootElement;
+            return new(true, GetBool(root, "running"), GetBool(root, "done"),
+                GetNullableBool(root, "succeeded"), GetDateTime(root, "completedAtUtc"));
+        }
+        catch { return default; }
     }
 
     public AdsUtilityStatusSnapshot Refresh(bool force = false)

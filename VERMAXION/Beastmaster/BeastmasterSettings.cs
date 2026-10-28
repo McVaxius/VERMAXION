@@ -29,7 +29,11 @@ public sealed class BeastmasterSettings
         get;
         set => field = Enum.IsDefined(value) ? value : BeastmasterCombatProvider.BossModReborn;
     }
+    // HQ use IDs retain the exact selected quality (base item ID + 1,000,000).
+    public uint FoodItemId { get; set; }
+    public bool ExtractMateria { get; set; } = true;
     public CrucibleDegree Degree { get; set; } = CrucibleDegree.Standard;
+    public bool RankedEntry { get; set; } = true;
     public CrucibleTeamMode TeamMode { get; set; } = CrucibleTeamMode.Recommended;
     public CrucibleLevelingMode LevelingMode { get; set; } = CrucibleLevelingMode.Minus_3;
     public List<uint> CustomTeam { get; set; } = [];
@@ -53,7 +57,8 @@ public sealed class BeastmasterSettings
         Goal = Goal, Board = Board, TrainingTargetRank = TrainingTargetRank, RunCount = RunCount,
         WeeklyBoards = WeeklyBoards == null ? null : [..WeeklyBoards], CompletionCommand = CompletionCommand,
         RepairMode = RepairMode, RepairThreshold = RepairThreshold, CombatProvider = CombatProvider,
-        Degree = Degree, TeamMode = TeamMode, LevelingMode = LevelingMode,
+        FoodItemId = FoodItemId, ExtractMateria = ExtractMateria,
+        Degree = Degree, RankedEntry = RankedEntry, TeamMode = TeamMode, LevelingMode = LevelingMode,
         CustomTeam = [..CustomTeam], ShopLists = ShopLists.Select(list => list.Clone()).ToList(),
         ShopListIndex = ShopListIndex, ShopGearOrder = [..ShopGearOrder],
         BeastTierLists = BeastTierLists.Select(list => list.Clone()).ToList(),

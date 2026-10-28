@@ -5836,4 +5836,43 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva가 로드되지 않았습니다.</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva가 로드되었지만 런타임 상태를 읽을 수 없습니다.</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> 정리: {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>순위 집계 참여</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>난이도 3에 입장할 때마다 순위 집계를 활성화합니다. 비활성화하면 게임의 체크박스를 변경하지 않습니다.</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Crewcible 난이도 3 테스트</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>{0} 테스트 (난이도 3)</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>수동 설정의 반복 횟수, 팀, 보급품 및 순위 참여 설정을 사용합니다.</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>보드 테스트를 시작하기 전에 Beastmaster를 중지하세요.</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>난이도 3은 퀘스트 71045를 완료해야 합니다.</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>Crewcible 난이도 선택을 기다리는 중입니다.</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>순위 집계 참여 확인을 기다리는 중입니다.</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossMod에는 이동 전용 'VERMAXION - Crewcible' 프리셋이 필요합니다. DPS 로테이션이나 관련 없는 보조 기능을 포함할 수 없습니다.</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>BossMod 'VERMAXION - Crewcible'에는 Pathfind, 회피 범위 제한 없음(Any), 회피 여유 Medium, 근접 공격 유지 목표 2.3이 필요합니다.</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>BossMod에 설정을 적용한 후 'VERMAXION - Crewcible' 프리셋을 확인하지 못했습니다.</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>안정적인 클리어용 팀 (필수)</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>난이도 1–3에서는 관리되는 명단과 전투용 3마리를 사용합니다. 사용자 지정 선택, 제외 설정 및 계통 필터는 적용되지 않습니다.</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>난이도 1–3에는 안정적인 클리어용 팀이 필요합니다. 육성에는 Standard를 사용하세요.</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>안정적인 클리어용 구성에는 다음 번호의 사역마가 랭크 {0} 이상이어야 합니다: {1}.</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>안정적인 클리어용 구성에는 회복 사역마를 포함해 육성되었고 생존한 사역마 3마리가 필요합니다.</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>VERMAXION이 난이도를 확인하고 필수 팀을 등록할 수 있도록 Crucible 밖에서 시작하세요.</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>수동 설정의 반복 횟수, 보급품 및 순위 참여 설정과 안정적인 클리어를 위한 필수 팀을 사용합니다.</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Crewcible 순위 체크박스 테스트</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>순위 테스트: {0} (난이도 3)</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>이 보드를 난이도 3으로 열어 순위 집계 켜기를 테스트한 뒤 중지합니다. 입장을 확정하거나 반복 실행을 시작하지 않습니다.</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>순위 체크박스 테스트 중</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>체크박스가 선택된 것으로 확인되었습니다. 입장 전에 테스트를 중지했습니다.</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>체크박스 선택을 확인하지 못했습니다. 입장 전에 테스트를 중지했습니다.</value></data>
+  <data name="No food" xml:space="preserve"><value>음식 없음</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>입장 전 마테리아 추출</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>입장 전과 전투 사이에 음식 효과가 90초 이하이면 갱신합니다. 음식이 없으면 경고 후 계속하며 선택한 품질은 바꾸지 않습니다.</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>각 보드 입장 전 임무 밖에서 ADS로 마테리아를 추출합니다. 체크박스 테스트는 보급품을 사용하지 않습니다.</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>보급품 준비 중</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>선택한 음식이 없습니다. 계속합니다.</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>선택한 음식을 사용할 수 없습니다. 계속합니다.</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>음식 사용이 확인되지 않았습니다. 계속합니다.</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>선택한 음식 사용 중.</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>음식 효과: {0}초.</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>마테리아 추출을 사용할 수 없습니다. 계속합니다.</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>입장 전 마테리아 추출 중.</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>마테리아 추출이 확인되지 않았습니다. 계속합니다.</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>마테리아 추출 완료.</value></data>
 </root>

@@ -11,6 +11,71 @@ public sealed class BeastmasterRepairTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void SuppliesDefaultExtractionOnAndPersistExactFoodQuality(bool useNewtonsoft)
+    {
+        BeastmasterSettings Read(string text) => useNewtonsoft
+            ? JsonConvert.DeserializeObject<BeastmasterSettings>(text)!
+            : System.Text.Json.JsonSerializer.Deserialize<BeastmasterSettings>(text)!;
+        Assert.True(Read("{}").ExtractMateria);
+        Assert.Equal(0u, Read("{}").FoodItemId);
+        var selected = Read("{\"FoodItemId\":1001234,\"ExtractMateria\":false}");
+        foreach (var copy in new[] { selected.Clone(), BeastmasterRunSetup.From(selected).ApplyTo(selected),
+            BeastmasterWeeklyPolicy.CopySettings(selected) })
+        {
+            Assert.Equal(1001234u, copy.FoodItemId);
+            Assert.False(copy.ExtractMateria);
+        }
+        var serialized = useNewtonsoft ? JsonConvert.SerializeObject(selected)
+            : System.Text.Json.JsonSerializer.Serialize(selected);
+        Assert.Equal(1001234u, Read(serialized).FoodItemId);
+        Assert.False(Read(serialized).ExtractMateria);
+    }
+
+    [Theory]
+    [InlineData(0u, 0f, false)]
+    [InlineData(1234u, 91f, false)]
+    [InlineData(1234u, 90f, true)]
+    [InlineData(1001234u, 90f, true)]
+    [InlineData(1001234u, 0f, true)]
+    public void FoodIsOptionalAndRefreshesAtTheAgreedThreshold(uint selected, float seconds, bool expected)
+        => Assert.Equal(expected, BeastmasterRepairPolicy.ShouldRefreshFood(selected, seconds));
+
+    [Theory]
+    [InlineData(1u)]
+    [InlineData(2u)]
+    [InlineData(3u)]
+    [InlineData(4u)]
+    [InlineData(5u)]
+    public void CheckboxOnlySetupNeverCarriesFoodOrExtraction(uint board)
+    {
+        var shared = new BeastmasterSettings { FoodItemId = 1001234, ExtractMateria = true };
+        var checkbox = BeastmasterRunSetup.ForBoardTest(shared, board);
+        Assert.Equal(0u, checkbox.FoodItemId);
+        Assert.False(checkbox.ExtractMateria);
+        Assert.Equal(1001234u, shared.FoodItemId);
+        Assert.True(shared.ExtractMateria);
+    }
+
+    [Fact]
+    public void ExtractionCancellationRejectsUnrelatedStaleOrReplacedUtilities()
+    {
+        var at = new DateTime(2026, 10, 27, 12, 0, 0, DateTimeKind.Utc);
+        bool Owns(string task = "materia extraction", string mode = "extract-materia",
+            bool readable = true, bool running = true, DateTime? complete = null)
+            => BeastmasterRepairPolicy.CanCancelOwnedRequest(true, at, "extract-materia", readable,
+                running, task, mode, complete);
+        Assert.True(Owns());
+        Assert.False(Owns(task: "NPC repair"));
+        Assert.False(Owns(mode: "self"));
+        Assert.False(Owns(readable: false));
+        Assert.False(Owns(running: false));
+        Assert.False(Owns(complete: at));
+        Assert.False(Owns(complete: at.AddSeconds(1)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void OlderProfilesDefaultToSelfAtSeventyFiveAndThresholdsAreBounded(bool useNewtonsoft)
     {
         BeastmasterSettings Read(string json) => useNewtonsoft

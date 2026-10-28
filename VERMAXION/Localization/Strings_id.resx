@@ -3340,4 +3340,43 @@ Dependensi: {1}</value></data>
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva belum dimuat.</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva telah dimuat, tetapi status runtime-nya tidak dapat dibaca.</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> Pembersihan: {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>Ikut peringkat</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>Aktifkan peringkat sebelum setiap masuk ke kesulitan 3. Jika dinonaktifkan, kotak centang dalam game tidak diubah.</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Uji Crewcible kesulitan 3</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>Uji {0} (kesulitan 3)</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>Menggunakan jumlah putaran, tim, persediaan, dan pilihan peringkat dari pengaturan manual.</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>Hentikan Beastmaster sebelum menguji papan.</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>Kesulitan 3 memerlukan penyelesaian misi 71045.</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>Menunggu pemilihan kesulitan Crewcible.</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>Menunggu konfirmasi keikutsertaan peringkat.</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossMod memerlukan preset khusus gerakan 'VERMAXION - Crewcible', tanpa rotasi serangan atau utilitas yang tidak terkait.</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>Preset BossMod 'VERMAXION - Crewcible' memerlukan Pathfind, penghindaran tanpa batas jarak (Any), bantalan Medium, dan sasaran jarak dekat 2.3.</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>BossMod tidak dapat mengonfirmasi preset 'VERMAXION - Crewcible' setelah ditambahkan.</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>Tim untuk penyelesaian andal (wajib)</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>Tingkat 1–3 memakai daftar dan trio tempur terkelola. Pilihan pribadi, pengecualian, dan filter keluarga tidak berlaku.</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>Tingkat 1–3 memerlukan tim untuk penyelesaian andal. Gunakan Standard untuk latihan.</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>Tim memerlukan nomor familiar berikut pada peringkat {0} atau lebih tinggi: {1}.</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>Tim memerlukan tiga familiar terlatih yang masih hidup, termasuk satu penyembuh.</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>Mulai di luar Crucible agar VERMAXION dapat memverifikasi kesulitan dan mendaftarkan tim wajib.</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>Memakai jumlah putaran manual, persediaan, dan pilihan peringkat dengan tim wajib.</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Uji kotak peringkat Crewcible</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>Uji peringkat: {0} (kesulitan 3)</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>Membuka papan ini pada kesulitan 3, menguji peringkat AKTIF, lalu berhenti. Tidak mengonfirmasi masuk atau memulai permainan.</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>Menguji kotak peringkat</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>Kotak menunjukkan sudah dicentang. Uji berhenti sebelum masuk.</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Centang kotak belum terkonfirmasi. Uji berhenti sebelum masuk.</value></data>
+  <data name="No food" xml:space="preserve"><value>Tanpa makanan</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>Ekstrak materia sebelum masuk</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Makanan memperbarui Well Fed saat tersisa 90 detik sebelum masuk dan di antara pertarungan. Jika habis, peringatan muncul lalu lanjut; kualitas tidak diganti.</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>Ekstraksi memakai ADS di luar duty sebelum setiap papan. Uji kotak centang tidak memakai perbekalan.</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>Menyiapkan perbekalan</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Makanan pilihan tidak tersedia; melanjutkan.</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>Makanan pilihan tidak dapat dipakai; melanjutkan.</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>Pemakaian makanan belum dikonfirmasi; melanjutkan.</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>Memakan makanan pilihan.</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>Well Fed: {0} dtk.</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>Ekstraksi materia tidak tersedia; melanjutkan.</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>Mengekstrak materia sebelum masuk.</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Ekstraksi belum dikonfirmasi; melanjutkan.</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>Ekstraksi materia selesai.</value></data>
 </root>

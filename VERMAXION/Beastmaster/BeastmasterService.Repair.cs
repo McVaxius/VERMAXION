@@ -4,6 +4,7 @@ using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel.Sheets;
 using VERMAXION.IPC;
+using VERMAXION.Services;
 
 namespace VERMAXION.Beastmaster;
 
@@ -20,10 +21,16 @@ internal sealed unsafe partial class BeastmasterService
     private ulong repairCharacter;
     private DateTime repairRequestedAt;
     private int? repairDurabilityBefore;
+    private bool extractionPrepared;
+    private DateTime foodPendingUntil;
+    private DateTime foodNextAttempt;
+    private float foodPriorRemaining;
     internal string RepairStatus { get; private set; } = string.Empty;
+    internal string FoodStatus { get; private set; } = string.Empty;
 
     private bool TryPrepareRegistrationRepair()
     {
+        if (rankingCheckboxTest) return false;
         // A resumed Start keeps observing its accepted utility rather than
         // issuing a second request or restarting its NPC travel.
         if (repairRequestAccepted && repairCharacter == owner)
@@ -39,7 +46,11 @@ internal sealed unsafe partial class BeastmasterService
         repairBoundarySettings = runSettings;
         repairBoundaryRun = CurrentRun;
         repairBoundaryBoard = Settings.Board;
+        extractionPrepared = false;
         RepairStatus = string.Empty;
+        FoodStatus = string.Empty;
+        foodPendingUntil = foodNextAttempt = default;
+        foodPriorRemaining = 0;
 
         // Existing native entry/results interactions always own progression.
         // Repair is only preparation for a board that has yet to register.
@@ -82,6 +93,90 @@ internal sealed unsafe partial class BeastmasterService
         repairRequestAccepted = true;
         RepairStatus = "Repair requested; waiting for ADS.";
         Transition(RunState.Repairing, "Repairing before entry");
+        return true;
+    }
+
+    private bool TryPrepareRegistrationExtraction()
+    {
+        if (rankingCheckboxTest || extractionPrepared) return false;
+        extractionPrepared = true;
+        if (!Settings.ExtractMateria || operatorStopped || IsPaused || resultSeen || EntryPending ||
+            HasOpenRegistrationScreen || !NativeQueueIsIdle() ||
+            IsCrucibleTerritory(Svc.ClientState.TerritoryType) || Svc.Condition[ConditionFlag.BoundByDuty] ||
+            Svc.Condition[ConditionFlag.BoundByDuty56] || !RepairPlayerReady() || ownsNavigation || ownsTravel ||
+            CrucibleUi.IsVisible(CrucibleUi.ResultWindow) || CrucibleUi.IsVisible(CrucibleUi.YesNo)) return false;
+        var snapshot = ads.Refresh(force: true);
+        if (!snapshot.IsAvailable || !snapshot.StatusReadable || snapshot.UtilityRunning)
+        { RepairStatus = "Materia extraction unavailable; continuing."; return false; }
+        StopNavigation();
+        repairRequestedMode = "extract-materia";
+        repairCharacter = owner;
+        repairRequestedAt = DateTime.UtcNow;
+        repairUtilityObserved = repairCancellationRequested = false;
+        if (!ads.StartExtractMateria())
+        { ClearRepairRequest(); RepairStatus = "Materia extraction unavailable; continuing."; return false; }
+        repairRequestAccepted = true;
+        RepairStatus = "Extracting materia before entry.";
+        Transition(RunState.Repairing, "Preparing supplies");
+        return true;
+    }
+
+    // Called only by pre-entry preparation, a safe board walkway or the actual team window.
+    // A temporary out-of-combat flag after revival is never a food opportunity.
+    internal bool TryPrepareFood(bool betweenFights = false)
+    {
+        if (rankingCheckboxTest || operatorStopped || IsPaused || resultSeen || Settings.FoodItemId == 0 ||
+            BeastmasterPlayer.HasStatus(418) || !BeastmasterPlayer.IsValid ||
+            Svc.Condition[ConditionFlag.InCombat] || Svc.Objects.LocalPlayer is not { IsDead: false } ||
+            betweenFights && (!IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
+                !(route?.FoodBoundary == true || CrucibleUi.IsOpen(CrucibleUi.BoardLayout) &&
+                    CrucibleUi.IsOpen(CrucibleUi.TeamWindow))) ||
+            !betweenFights && (IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
+                Svc.Condition[ConditionFlag.BoundByDuty] || Svc.Condition[ConditionFlag.BoundByDuty56] ||
+                EntryPending || !NativeQueueIsIdle() || HasOpenRegistrationScreen) ||
+            CrucibleUi.IsVisible(CrucibleUi.ResultWindow) ||
+            CrucibleUi.IsVisible(CrucibleUi.YesNo)) return false;
+        var now = DateTime.UtcNow;
+        var remaining = GameHelpers.GetStatusTimeRemaining(48);
+        if (foodPendingUntil != default)
+        {
+            if (remaining > foodPriorRemaining)
+            { foodPendingUntil = default; FoodStatus = $"Well Fed: {remaining:F0}s."; return false; }
+            if (now < foodPendingUntil) return true;
+            foodPendingUntil = default;
+            foodNextAttempt = now.AddSeconds(5);
+            FoodStatus = "Food was not confirmed; continuing.";
+            return false;
+        }
+        if (!BeastmasterRepairPolicy.ShouldRefreshFood(Settings.FoodItemId, remaining) || now < foodNextAttempt)
+            return false;
+        if (!BeastmasterPlayer.IsReady)
+        {
+            FoodStatus = "Selected food is not usable; continuing.";
+            return false;
+        }
+        var useId = Settings.FoodItemId;
+        var hq = useId >= 1_000_000;
+        var baseId = hq ? useId - 1_000_000 : useId;
+        var inventory = InventoryManager.Instance();
+        if (inventory == null || inventory->GetInventoryItemCount(baseId, hq) == 0)
+        { foodNextAttempt = now.AddSeconds(5); FoodStatus = "Selected food unavailable; continuing."; return false; }
+        if (!Svc.Data.GetExcelSheet<Item>().TryGetRow(baseId, out var item) ||
+            item.ItemUICategory.RowId != 46 || item.ItemAction.ValueNullable is not { } action ||
+            action.Data[0] != 48)
+        { foodNextAttempt = now.AddSeconds(5); FoodStatus = "Selected food is not usable; continuing."; return false; }
+        var stoppedForFood = ownsNavigation;
+        if (ownsNavigation)
+        {
+            StopNavigation();
+            if (ownsNavigation) { FoodStatus = "Preparing supplies"; return true; }
+        }
+        foodNextAttempt = now.AddSeconds(5);
+        if (GameHelpers.GetItemActionStatus(useId) != 0 || !GameHelpers.UseItem(useId))
+        { FoodStatus = "Selected food is not usable; continuing."; return stoppedForFood; }
+        foodPriorRemaining = remaining;
+        foodPendingUntil = now.AddSeconds(5);
+        FoodStatus = "Eating selected food.";
         return true;
     }
 
@@ -153,6 +248,27 @@ internal sealed unsafe partial class BeastmasterService
         }
         var snapshot = ads.Refresh();
         var elapsed = DateTime.UtcNow - repairRequestedAt;
+        if (repairRequestedMode == "extract-materia")
+        {
+            if (RepairMatches(snapshot) && elapsed < TimeSpan.FromSeconds(180))
+            { RepairStatus = "Extracting materia before entry."; return true; }
+            if (snapshot.StatusReadable && snapshot.UtilityRunning)
+            {
+                if (RepairMatches(snapshot)) CancelOwnedRepair();
+                ClearRepairRequest();
+                RepairStatus = "Materia extraction unconfirmed; continuing.";
+                return true;
+            }
+            if (!BeastmasterRepairPolicy.HasFreshCompletion(repairRequestedAt, snapshot.StatusReadable,
+                snapshot.UtilityRunning, snapshot.UtilityCompletedAtUtc) && elapsed < TimeSpan.FromSeconds(180))
+                return true;
+            var result = ads.ReadExtractionStatus();
+            var confirmed = result.Readable && result.Done && !result.Running && result.Succeeded == true &&
+                result.CompletedAtUtc >= repairRequestedAt;
+            ClearRepairRequest();
+            RepairStatus = confirmed ? "Materia extraction complete." : "Materia extraction unconfirmed; continuing.";
+            return true;
+        }
         if (RepairMatches(snapshot))
         {
             repairUtilityObserved = true;

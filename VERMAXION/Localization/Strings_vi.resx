@@ -3340,4 +3340,43 @@ Phụ thuộc: {1}</value></data>
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva chưa được tải.</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva đã được tải nhưng không thể đọc trạng thái lúc chạy.</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> Dọn dẹp: {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>Tham gia xếp hạng</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>Bật xếp hạng trước mỗi lần vào độ khó 3. Khi tắt, giữ nguyên ô chọn trong trò chơi.</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Kiểm thử Crewcible ở độ khó 3</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>Thử {0} (độ khó 3)</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>Dùng số lượt, đội hình, vật tư và lựa chọn xếp hạng trong thiết lập thủ công.</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>Dừng Beastmaster trước khi thử một bàn.</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>Độ khó 3 yêu cầu hoàn thành nhiệm vụ 71045.</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>Đang chờ chọn độ khó Crewcible.</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>Đang chờ xác nhận tham gia xếp hạng.</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossMod cần cấu hình chỉ di chuyển &apos;VERMAXION - Crewcible&apos;; không được kèm chuỗi kỹ năng gây sát thương hoặc tiện ích không liên quan.</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>Cấu hình BossMod &apos;VERMAXION - Crewcible&apos; cần Pathfind, phạm vi né Any (không giới hạn), khoảng đệm Medium và mục tiêu duy trì cận chiến 2.3.</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>BossMod không xác nhận được cấu hình &apos;VERMAXION - Crewcible&apos; sau khi nạp.</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>Đội hình ưu tiên vượt ải ổn định (bắt buộc)</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>Độ khó 1–3 dùng danh sách và bộ ba chiến đấu do hệ thống quản lý. Lựa chọn riêng, danh sách loại trừ và bộ lọc hệ thú không áp dụng.</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>Độ khó 1–3 cần đội hình vượt ải ổn định. Dùng Standard để huấn luyện.</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>Đội hình vượt ải ổn định yêu cầu các thú có số hiệu sau đạt hạng {0} trở lên: {1}.</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>Đội hình vượt ải ổn định cần ba thú đã được huấn luyện và còn sống, gồm một thú hồi máu.</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>Bắt đầu bên ngoài Crucible để VERMAXION xác minh độ khó và đăng ký đội hình bắt buộc.</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>Dùng số lượt, vật tư và lựa chọn tham gia xếp hạng trong thiết lập thủ công, cùng đội hình vượt ải ổn định bắt buộc.</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Kiểm thử ô chọn xếp hạng Crewcible</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>Thử xếp hạng: {0} (độ khó 3)</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>Mở bàn này ở độ khó 3, thử bật xếp hạng rồi dừng. Không xác nhận vào hoặc bắt đầu lượt chơi.</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>Đang kiểm thử ô chọn xếp hạng</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>Ô chọn báo đã được đánh dấu. Đã dừng kiểm thử trước khi vào.</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Chưa xác nhận ô chọn đã được đánh dấu. Đã dừng kiểm thử trước khi vào.</value></data>
+  <data name="No food" xml:space="preserve"><value>Không dùng thức ăn</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>Tách materia trước khi vào</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Làm mới hiệu ứng no khi còn 90 giây trước khi vào và giữa các trận. Thiếu thức ăn sẽ cảnh báo rồi tiếp tục; không thay đổi phẩm chất đã chọn.</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>ADS tách materia ngoài phụ bản trước mỗi bàn. Kiểm tra ô chọn không dùng vật phẩm.</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>Đang chuẩn bị vật phẩm</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Không có thức ăn đã chọn; tiếp tục.</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>Không dùng được thức ăn đã chọn; tiếp tục.</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>Chưa xác nhận dùng thức ăn; tiếp tục.</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>Đang dùng thức ăn đã chọn.</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>Hiệu ứng no: {0} giây.</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>Không thể tách materia; tiếp tục.</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>Đang tách materia trước khi vào.</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Chưa xác nhận tách materia; tiếp tục.</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>Đã tách materia xong.</value></data>
 </root>

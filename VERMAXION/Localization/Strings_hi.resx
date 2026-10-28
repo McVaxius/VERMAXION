@@ -2661,4 +2661,43 @@
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva लोड नहीं है।</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva लोड है, लेकिन उसकी रनटाइम स्थिति पढ़ी नहीं जा सकी।</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> सफ़ाई: {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>रैंकिंग में भाग लें</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>कठिनाई 3 में हर प्रवेश से पहले रैंकिंग सक्षम करें। बंद होने पर गेम का चेकबॉक्स न बदलें।</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Crewcible कठिनाई 3 परीक्षण</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>{0} का परीक्षण (कठिनाई 3)</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>मैन्युअल सेटअप की रन संख्या, टीम, सामग्री और रैंकिंग विकल्प का उपयोग करता है।</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>बोर्ड परीक्षण शुरू करने से पहले Beastmaster रोकें।</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>कठिनाई 3 के लिए क्वेस्ट 71045 पूरा करना आवश्यक है।</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>Crewcible की कठिनाई चुनने की प्रतीक्षा है।</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>रैंकिंग में भाग लेने की पुष्टि की प्रतीक्षा है।</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossMod को केवल चलने के लिए 'VERMAXION - Crewcible' प्रीसेट चाहिए; इसमें क्षति पहुँचाने वाली रोटेशन या असंबंधित सहायक सुविधाएँ शामिल नहीं होनी चाहिए।</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>BossMod के 'VERMAXION - Crewcible' प्रीसेट में Pathfind, बचाव के लिए असीमित दूरी (Any), Medium सुरक्षा अंतर और नज़दीकी हमले के लिए 2.3 दूरी का लक्ष्य चाहिए।</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>प्रीसेट जोड़ने के बाद BossMod 'VERMAXION - Crewcible' की पुष्टि नहीं कर सका।</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>भरोसेमंद जीत के लिए टीम (आवश्यक)</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>कठिनाई 1–3 में टीम की सूची और लड़ने वाले तीन साथी अपने आप चुने जाते हैं। मनचुने साथी, बहिष्करण और वंश फ़िल्टर लागू नहीं होते।</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>कठिनाई 1–3 के लिए भरोसेमंद जीत की टीम आवश्यक है। प्रशिक्षण के लिए Standard का उपयोग करें।</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>भरोसेमंद जीत के लिए इन संख्या वाले साथी रैंक {0} या उससे ऊपर होने चाहिए: {1}।</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>भरोसेमंद जीत के लिए तीन प्रशिक्षित जीवित साथी चाहिए, जिनमें एक उपचार करने वाला साथी भी हो।</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>Crucible के बाहर शुरू करें, ताकि VERMAXION कठिनाई की जाँच करके आवश्यक टीम पंजीकृत कर सके।</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>मैन्युअल सेटअप की रन संख्या, सामग्री और रैंकिंग विकल्प के साथ भरोसेमंद जीत की आवश्यक टीम का उपयोग करता है।</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Crewcible रैंकिंग चेकबॉक्स परीक्षण</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>रैंकिंग जाँचें: {0} (कठिनाई 3)</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>यह बोर्ड कठिनाई 3 पर खोलता है, रैंकिंग चालू करने की जाँच करता है, फिर रुक जाता है। प्रवेश की पुष्टि नहीं करता और रन शुरू नहीं करता।</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>रैंकिंग चेकबॉक्स की जाँच हो रही है</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>चेकबॉक्स चयनित दिख रहा है। परीक्षण प्रवेश से पहले रोक दिया गया।</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>चेकबॉक्स के चयन की पुष्टि नहीं हुई। परीक्षण प्रवेश से पहले रोक दिया गया।</value></data>
+  <data name="No food" xml:space="preserve"><value>भोजन नहीं</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>प्रवेश से पहले मटेरिया निकालें</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>प्रवेश से पहले और लड़ाइयों के बीच भोजन प्रभाव में 90 सेकंड बचे होने पर उसे नवीनीकृत करें। भोजन न होने पर चेतावनी देकर जारी रखें; चुनी गुणवत्ता न बदलें।</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>हर बोर्ड से पहले ड्यूटी के बाहर ADS से मटेरिया निकालें। चेकबॉक्स परीक्षण सामग्री का उपयोग नहीं करते।</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>सामग्री तैयार हो रही है</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>चुना भोजन उपलब्ध नहीं; जारी है।</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>चुना भोजन उपयोग योग्य नहीं; जारी है।</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>भोजन उपयोग की पुष्टि नहीं हुई; जारी है।</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>चुना भोजन खा रहे हैं।</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>भोजन प्रभाव: {0} सेकंड।</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>मटेरिया निकालना उपलब्ध नहीं; जारी है।</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>प्रवेश से पहले मटेरिया निकाल रहे हैं।</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>मटेरिया निकालने की पुष्टि नहीं हुई; जारी है।</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>मटेरिया निकालना पूरा हुआ।</value></data>
 </root>

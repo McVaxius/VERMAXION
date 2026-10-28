@@ -104,6 +104,8 @@ internal sealed partial class BeastmasterWindow
             var repair = UiText.Beastmaster(service.RepairStatus);
             if (!lines.Contains(repair)) lines.Add(repair);
         }
+        if (!string.IsNullOrWhiteSpace(service.FoodStatus))
+            lines.Add(UiText.Beastmaster(service.FoodStatus));
         if (service.StopAfterNextOutcome) lines.Add(UiText.T("Stopping when the current board ends."));
         var headline = RunHeadline(ready, includeBoard: true);
         if (!lines.Contains(headline)) lines.Add(headline);

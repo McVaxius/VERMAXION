@@ -212,8 +212,9 @@ internal static class BeastmasterWeeklyPolicy
     {
         Goal = BeastmasterRunGoal.FixedRuns, Board = source.Board, RunCount = 1,
         WeeklyBoards = source.WeeklyBoards == null ? null : [..source.WeeklyBoards],
-        CompletionCommand = string.Empty, Degree = source.Degree, TeamMode = source.TeamMode,
+        CompletionCommand = string.Empty, Degree = source.Degree, RankedEntry = source.RankedEntry, TeamMode = source.TeamMode,
         RepairMode = source.RepairMode, RepairThreshold = source.RepairThreshold, CombatProvider = source.CombatProvider,
+        FoodItemId = source.FoodItemId, ExtractMateria = source.ExtractMateria,
         LevelingMode = source.LevelingMode, CustomTeam = [..source.CustomTeam],
         ShopLists = source.ShopLists.Select(list => list.Clone()).ToList(), ShopListIndex = source.ShopListIndex,
         ShopGearOrder = [..source.ShopGearOrder], BeastTierLists = source.BeastTierLists.Select(list => list.Clone()).ToList(),

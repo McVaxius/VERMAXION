@@ -61,7 +61,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private const string AliasCommandName = "/vmx";
     internal const string BeastmasterTaskId = "Run##Beastmaster";
     internal const string BeastmasterWeeklyTaskId = "Run##BeastmasterWeekly";
-    private const string DebugAttemptMarker = "vmx-verminion-client5-20261023-161";
+    private const string DebugAttemptMarker = "vmx-crewcible-checkbox-only-20261027-4";
 #if DEBUG
     // Source-selected bounds for this isolated client7 reload test; no saved setting.
     private const string DebugCollectionStopMilestone = "Cleanup";
@@ -1242,7 +1242,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         Engine.ManualStartBeastmaster(weekly);
     }
 
-    internal bool RunBeastmasterForCurrentCharacter(bool weekly, bool scheduled)
+    internal bool RunBeastmasterForCurrentCharacter(bool weekly, bool scheduled, uint? testBoard = null)
     {
         // An explicit Start resolves the loaded identity now. Background login
         // registration retains its stability wait; neither needs an idle player.
@@ -1271,7 +1271,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         // Resolve settings only after registration has rebound the current profile.
         // Browsing an offline profile never supplies the execution settings.
         BeastmasterWindow.SelectCurrentCharacter();
-        if (BeastmasterOwnsWork && !scheduled)
+        if (BeastmasterOwnsWork && !scheduled && testBoard == null)
         {
             RunBeastmasterTask(weekly);
             return true;
@@ -1279,9 +1279,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         return RunDashboardAction(() =>
         {
             if (scheduled) RunScheduledBeastmasterTask(weekly);
-            else RunBeastmasterTask(weekly);
+            else RunBeastmasterTask(weekly, testBoard);
         });
     }
+
+    internal bool CanStartBeastmasterBoardTest(uint board, out string reason)
+        => CanStartBeastmaster(weekly: false, out reason, testBoard: board);
+
+    internal void RunBeastmasterBoardTest(uint board)
+        => RunBeastmasterForCurrentCharacter(weekly: false, scheduled: false, testBoard: board);
 
     internal bool CanStartBeastmaster(out string reason)
         => CanStartBeastmaster(weekly: false, out reason);
@@ -1289,8 +1295,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     internal bool CanStartBeastmasterWeekly(out string reason)
         => CanStartBeastmaster(weekly: true, out reason);
 
-    private bool CanStartBeastmaster(bool weekly, out string reason)
+    private bool CanStartBeastmaster(bool weekly, out string reason, uint? testBoard = null)
     {
+        if (testBoard is { } board)
+        {
+            if (board is < 1 or > 5)
+            { reason = "Unknown board"; return false; }
+            if (BeastmasterOwnsWork)
+            { reason = "Stop Beastmaster before starting a board test."; return false; }
+        }
         BeastmasterService.RefreshWeeklyStatus(IsCharacterRegistered);
         if (!IsCharacterRegistered || !PlayerState.IsLoaded)
         { reason = "Waiting for the current character to be registered and ready."; return false; }
@@ -1301,7 +1314,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             (!Engine.OwnsLiveWork || Engine.State is VermaxionEngine.EngineState.RunningBeastmaster or VermaxionEngine.EngineState.RunningBeastmasterWeekly))
         { reason = string.Empty; return true; }
         if (!CanStartMainMenuTest(waitForOceanFishing: false, out reason, checkAutoRetainer: false)) return false;
-        if (!weekly) return BeastmasterService.CanStart(out reason);
+        if (testBoard != null && !FFXIVClientStructs.FFXIV.Client.Game.QuestManager.IsQuestComplete(71045))
+        { reason = "Difficulty 3 requires completion of quest 71045."; return false; }
+        if (!weekly)
+        {
+            if (testBoard is not { } selectedBoard) return BeastmasterService.CanStart(out reason);
+            var manual = GetBeastmasterSettings(ConfigManager.GetActiveConfig());
+            return BeastmasterService.CanStartBoardTest(BeastmasterRunSetup.ForBoardTest(manual, selectedBoard), out reason);
+        }
         var config = ConfigManager.GetActiveConfig();
         var shared = GetBeastmasterSettings(config);
         return BeastmasterService.CanStartConfigured(config.Beastmaster.ScheduledSetup!.ApplyTo(shared), true, out reason);
@@ -1313,9 +1333,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     internal void RunBeastmasterWeeklyTask()
         => RunBeastmasterTask(weekly: true);
 
-    private void RunBeastmasterTask(bool weekly)
+    private void RunBeastmasterTask(bool weekly, uint? testBoard = null)
     {
-        if (!CanStartBeastmaster(weekly, out var reason))
+        if (!CanStartBeastmaster(weekly, out var reason, testBoard))
         {
             Log.Information($"[Beastmaster] Start blocked: {reason}");
             ChatGui.Print($"[Vermaxion] Beastmaster: {reason}");
@@ -1328,7 +1348,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             var config = ConfigManager.GetActiveConfig();
             var shared = GetBeastmasterSettings(config);
             var accepted = weekly ? BeastmasterService.StartConfigured(config.Beastmaster.ScheduledSetup!.ApplyTo(shared), true)
-                : BeastmasterService.Start();
+                : testBoard is { } selectedBoard
+                    ? BeastmasterService.StartRankingCheckboxTest(shared, selectedBoard)
+                    : BeastmasterService.Start();
             if (accepted) Engine.RebindBeastmasterRunToCurrentCharacter();
             else if (!BeastmasterService.IsActive) beastmasterOwner = 0;
         }

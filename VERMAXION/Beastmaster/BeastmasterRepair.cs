@@ -26,9 +26,13 @@ internal static class BeastmasterRepairPolicy
         bool statusReadable, bool running, string task, string mode, DateTime? completedAtUtc)
         => requestAccepted && requestedAtUtc != default && statusReadable && running &&
            (completedAtUtc == null || completedAtUtc < requestedAtUtc) &&
-           requestedMode is "self" or "npc-no-inn" or "npc-no-teleport-no-inn" or "npc-yes-inn" &&
+           requestedMode is "self" or "npc-no-inn" or "npc-no-teleport-no-inn" or "npc-yes-inn" or "extract-materia" &&
            string.Equals(requestedMode, mode, StringComparison.Ordinal) &&
-           string.Equals(task, requestedMode == "self" ? "self-repair" : "NPC repair", StringComparison.Ordinal);
+           string.Equals(task, requestedMode == "extract-materia" ? "materia extraction"
+               : requestedMode == "self" ? "self-repair" : "NPC repair", StringComparison.Ordinal);
+
+    internal static bool ShouldRefreshFood(uint selectedUseId, float wellFedSeconds)
+        => selectedUseId != 0 && wellFedSeconds <= 90;
 
     // ADS clears the task/mode on completion. A fresh idle completion receipt is
     // settlement only; callers still verify actual durability before reporting success.

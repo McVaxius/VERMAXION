@@ -18,15 +18,17 @@ internal sealed partial class BeastmasterWindow
     ];
     private static readonly string[] RunDegreeNames = ["Standard", "First Degree", "Second Degree", "Third Degree"];
     private static readonly string[] TeamMethodNames = ["Strongest available", "Train a full team", "Smaller training team", "Train three at a time", "Three strong fighters + trainees", "Custom"];
-    private static string RunBoardName(uint board) => board is >= 1 and <= 5 ? UiText.T(RunBoardNames[board - 1]) : UiText.T("Unknown board");
+    internal static string RunBoardName(uint board) => board is >= 1 and <= 5 ? UiText.T(RunBoardNames[board - 1]) : UiText.T("Unknown board");
     private static int TrainingTarget(BeastmasterSettings settings) => BeastmasterSelection.TrainingTarget(settings);
     private static int BoardCapacity(BeastmasterSettings settings) => BeastmasterSelection.TeamCapacity(BeastmasterService.TerritoryForBoard(settings.Board));
     private static int TeamMethodIndex(BeastmasterSettings settings) => settings.TeamMode switch
     {
         CrucibleTeamMode.Recommended => 0, CrucibleTeamMode.Custom => 5, _ => Math.Clamp((int)settings.LevelingMode, 0, 3) + 1,
     };
-    private static string TeamMethodCaption(BeastmasterSettings settings) => UiText.T(TeamMethodNames[TeamMethodIndex(settings)]);
-    private static int TeamMethodCapacity(BeastmasterSettings settings) => settings.TeamMode switch
+    private static string TeamMethodCaption(BeastmasterSettings settings) => BeastmasterSelection.RequiresClearTeam(settings)
+        ? UiText.T("Reliable-clear team (required)") : UiText.T(TeamMethodNames[TeamMethodIndex(settings)]);
+    private static int TeamMethodCapacity(BeastmasterSettings settings) => BeastmasterSelection.RequiresClearTeam(settings)
+        ? BoardCapacity(settings) : settings.TeamMode switch
     {
         CrucibleTeamMode.Recommended => Math.Min(BoardCapacity(settings), settings.RecommendedTeamCap),
         CrucibleTeamMode.Leveling => settings.LevelingMode switch
@@ -91,6 +93,14 @@ internal sealed partial class BeastmasterWindow
             { settings.Degree = (CrucibleDegree)degree; changed = true; }
             ImGui.EndDisabled();
             if (!degreeUnlocked) UiGui.TextDisabled("Higher degrees require completion of quest 71045. Standard will be used.");
+            if (degreeUnlocked && settings.Degree == CrucibleDegree.Third)
+            {
+                var ranked = settings.RankedEntry;
+                if (UIConstants.Checkbox("Ranked entry", ref ranked))
+                { settings.RankedEntry = ranked; changed = true; }
+                if (ImGui.IsItemHovered())
+                    UiGui.SetTooltip("Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged.");
+            }
             if (settings.Goal == BeastmasterRunGoal.TrainOwned)
             {
                 if (scheduled) UiGui.TextDisabled(UiText.F("Training target: Rank {0}", TrainingTarget(settings)));
@@ -113,25 +123,37 @@ internal sealed partial class BeastmasterWindow
             if (UIConstants.InputText("Completion command (optional)", ref completionCommand, 512))
             { settings.CompletionCommand = completionCommand; changed = true; }
             UiGui.TextDisabled("Leave blank to do nothing. Runs once after the plan completes, outside the duty.");
-            var training = settings.Goal == BeastmasterRunGoal.TrainOwned;
-            var methods = training ? TeamMethodNames.Skip(1).Take(4).ToArray() : TeamMethodNames;
-            var method = training ? Math.Clamp((int)settings.LevelingMode, 0, 3) : TeamMethodIndex(settings);
-            ImGui.SetNextItemWidth(-1);
-            if (UIConstants.Combo("Team method", ref method, methods, methods.Length))
+            if (!BeastmasterSelection.RequiresClearTeam(settings))
             {
-                if (training) method++;
-                settings.TeamMode = method == 0 ? CrucibleTeamMode.Recommended : method == 5 ? CrucibleTeamMode.Custom : CrucibleTeamMode.Leveling;
-                if (method is >= 1 and <= 4) settings.LevelingMode = (CrucibleLevelingMode)(method - 1);
-                changed = true;
+                var training = settings.Goal == BeastmasterRunGoal.TrainOwned;
+                var methods = training ? TeamMethodNames.Skip(1).Take(4).ToArray() : TeamMethodNames;
+                var method = training ? Math.Clamp((int)settings.LevelingMode, 0, 3) : TeamMethodIndex(settings);
+                ImGui.SetNextItemWidth(-1);
+                if (UIConstants.Combo("Team method", ref method, methods, methods.Length))
+                {
+                    if (training) method++;
+                    settings.TeamMode = method == 0 ? CrucibleTeamMode.Recommended : method == 5 ? CrucibleTeamMode.Custom : CrucibleTeamMode.Leveling;
+                    if (method is >= 1 and <= 4) settings.LevelingMode = (CrucibleLevelingMode)(method - 1);
+                    changed = true;
+                }
+                if (settings.TeamMode == CrucibleTeamMode.Recommended)
+                {
+                    var cap = settings.RecommendedTeamCap;
+                    ImGui.SetNextItemWidth(130 * UIConstants.Scale);
+                    if (UIConstants.InputInt("Team cap", ref cap, 1, 3)) { settings.RecommendedTeamCap = cap; changed = true; }
+                    UIConstants.SameLineIfFits("Reset");
+                    if (UIConstants.Button("Reset##BeastmasterTeamCap")) { settings.RecommendedTeamCap = 15; changed = true; }
+                }
             }
-            if (settings.TeamMode == CrucibleTeamMode.Recommended)
-            {
-                var cap = settings.RecommendedTeamCap;
-                ImGui.SetNextItemWidth(130 * UIConstants.Scale);
-                if (UIConstants.InputInt("Team cap", ref cap, 1, 3)) { settings.RecommendedTeamCap = cap; changed = true; }
-                UIConstants.SameLineIfFits("Reset");
-                if (UIConstants.Button("Reset##BeastmasterTeamCap")) { settings.RecommendedTeamCap = 15; changed = true; }
-            }
+        }
+        if (BeastmasterSelection.RequiresClearTeam(settings))
+        {
+            UiGui.TextDisabled("Reliable-clear team (required)");
+            UIConstants.WrappedText(UIConstants.Metadata, "Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply.");
+            if (settings.Goal == BeastmasterRunGoal.TrainOwned)
+                UIConstants.WrappedText(UIConstants.Amber, "Degrees 1–3 require a reliable-clear team. Use Standard for training.");
+            ImGui.PopID();
+            return changed;
         }
         UiGui.TextDisabled(UiText.F("Up to {0} familiars", TeamMethodCapacity(settings)));
         UIConstants.WrappedText(UIConstants.Metadata, TeamMethodExplanation(settings), translate: false);
@@ -259,7 +281,13 @@ internal sealed partial class BeastmasterWindow
         }
         UiGui.TextDisabled("Shared by this character's manual, scheduled and weekly runs.");
         UiGui.TextDisabled("Combat provider edits apply to the next Start; the current run keeps its setup.");
-        Toggle("Fight picks", settings.FightPicks, value => { settings.FightPicks = value; if (ViewingCurrent && plugin.BeastmasterOwnsWork) plugin.BeastmasterService.Settings.FightPicks = value; });
+        if (BeastmasterSelection.RequiresClearTeam(settings))
+        {
+            ImGui.BeginDisabled();
+            Toggle("Fight picks", true, _ => { });
+            ImGui.EndDisabled();
+        }
+        else Toggle("Fight picks", settings.FightPicks, value => { settings.FightPicks = value; if (ViewingCurrent && plugin.BeastmasterOwnsWork) plugin.BeastmasterService.Settings.FightPicks = value; });
         UIConstants.SameLineIfFits("Loot"); Toggle("Loot", settings.Loot, value => { settings.Loot = value; if (ViewingCurrent && plugin.BeastmasterOwnsWork) plugin.BeastmasterService.Settings.Loot = value; });
         UIConstants.SameLineIfFits("Treasure"); Toggle("Treasure", settings.Treasure, value => { settings.Treasure = value; if (ViewingCurrent && plugin.BeastmasterOwnsWork) plugin.BeastmasterService.Settings.Treasure = value; });
         if (changed) SaveSettings();
@@ -292,6 +320,7 @@ internal sealed partial class BeastmasterWindow
 
     private List<uint> PreviewTeam(BeastmasterSettings settings)
     {
+        if (BeastmasterSelection.RequiresClearTeam(settings)) return BeastmasterSelection.ClearRoster(settings.Board);
         var candidates = RecordedCandidates(settings).ToList();
         var cap = TeamMethodCapacity(settings);
         if (settings.Goal == BeastmasterRunGoal.TrainOwned)

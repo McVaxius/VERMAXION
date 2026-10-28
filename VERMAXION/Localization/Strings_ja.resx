@@ -5836,4 +5836,43 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva が読み込まれていません。</value></data>
   <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva は読み込まれていますが、実行時の状態を読み取れませんでした。</value></data>
   <data name=" Cleanup: {0}" xml:space="preserve"><value> クリーンアップ: {0}</value></data>
+  <data name="Ranked entry" xml:space="preserve"><value>ランキングに参加</value></data>
+  <data name="Enable ranking before every difficulty-3 entry. When disabled, leave the game's checkbox unchanged." xml:space="preserve"><value>難易度3への入場前に毎回ランキングを有効にします。無効の場合、ゲーム内のチェックボックスは変更しません。</value></data>
+  <data name="Crewcible difficulty-3 tests" xml:space="preserve"><value>Crewcible 難易度3テスト</value></data>
+  <data name="Test {0} (difficulty 3)" xml:space="preserve"><value>{0}をテスト（難易度3）</value></data>
+  <data name="Uses your manual run count, team, supplies and ranked-entry choice." xml:space="preserve"><value>手動設定の周回数、チーム、補給品、ランキング参加設定を使用します。</value></data>
+  <data name="Stop Beastmaster before starting a board test." xml:space="preserve"><value>盤のテストを開始する前にBeastmasterを停止してください。</value></data>
+  <data name="Difficulty 3 requires completion of quest 71045." xml:space="preserve"><value>難易度3にはクエスト71045のクリアが必要です。</value></data>
+  <data name="Waiting for Crucible difficulty selection." xml:space="preserve"><value>Crewcibleの難易度選択を待っています。</value></data>
+  <data name="Waiting for ranked entry to be confirmed." xml:space="preserve"><value>ランキング参加の確認を待っています。</value></data>
+  <data name="BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included." xml:space="preserve"><value>BossModには移動専用の「VERMAXION - Crewcible」プリセットが必要です。DPSローテーションや無関係な補助機能は含めないでください。</value></data>
+  <data name="BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal." xml:space="preserve"><value>BossModの「VERMAXION - Crewcible」には、Pathfind、回避範囲Any（制限なし）、回避余裕Medium、近接攻撃維持目標2.3が必要です。</value></data>
+  <data name="BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection." xml:space="preserve"><value>BossModへの設定適用後、「VERMAXION - Crewcible」プリセットを確認できませんでした。</value></data>
+  <data name="Reliable-clear team (required)" xml:space="preserve"><value>安定クリア用チーム（必須）</value></data>
+  <data name="Degrees 1–3 use a managed roster and fighting trio. Custom picks, exclusions and kin filters do not apply." xml:space="preserve"><value>難易度1～3では管理された編成と戦闘用の3体を使用します。独自の選択、除外設定、系統フィルターは適用されません。</value></data>
+  <data name="Degrees 1–3 require a reliable-clear team. Use Standard for training." xml:space="preserve"><value>難易度1～3には安定クリア用チームが必要です。育成にはStandardを使用してください。</value></data>
+  <data name="Reliable-clear setup requires these familiar numbers at rank {0} or higher: {1}." xml:space="preserve"><value>安定クリア用の編成には、次の番号の使い魔がランク{0}以上で必要です: {1}。</value></data>
+  <data name="Reliable-clear setup needs three trained survivors, including a healing familiar." xml:space="preserve"><value>安定クリア用の編成には、回復役の使い魔を含む、育成済みで戦闘可能な3体が必要です。</value></data>
+  <data name="Start outside the Crucible so VERMAXION can verify difficulty and register the required team." xml:space="preserve"><value>VERMAXIONが難易度を確認し、必要なチームを登録できるよう、Crucibleの外で開始してください。</value></data>
+  <data name="Uses your manual run count, supplies and ranked-entry choice, with the required reliable-clear team." xml:space="preserve"><value>手動設定の周回数、補給品、ランキング参加設定を使用し、必須の安定クリア用チームを編成します。</value></data>
+  <data name="Crewcible ranking-checkbox tests" xml:space="preserve"><value>Crewcible ランキングチェックボックスのテスト</value></data>
+  <data name="Test ranking: {0} (difficulty 3)" xml:space="preserve"><value>ランキングをテスト: {0}（難易度3）</value></data>
+  <data name="Opens this board at difficulty 3, tests ranking ON, then stops. Never confirms entry or starts a run." xml:space="preserve"><value>この盤を難易度3で開き、ランキングのオンをテストして停止します。入場の確定や周回の開始は行いません。</value></data>
+  <data name="Testing the ranking checkbox" xml:space="preserve"><value>ランキングのチェックボックスをテスト中</value></data>
+  <data name="Checkbox reports checked. Test stopped before entry." xml:space="preserve"><value>チェック済みと報告されました。入場前にテストを停止しました。</value></data>
+  <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>チェック状態を確認できませんでした。入場前にテストを停止しました。</value></data>
+  <data name="No food" xml:space="preserve"><value>食事なし</value></data>
+  <data name="Extract materia before entry" xml:space="preserve"><value>突入前にマテリア精製</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>突入前と戦闘間に食事効果の残りが90秒以下なら更新します。不足時は警告して続行し、選択した品質は変更しません。</value></data>
+  <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>各ボードの突入前にコンテンツ外でADSを使いマテリア精製します。チェックボックステストでは消耗品を使いません。</value></data>
+  <data name="Preparing supplies" xml:space="preserve"><value>消耗品を準備中</value></data>
+  <data name="Selected food unavailable; continuing." xml:space="preserve"><value>選択した食事が不足しています。続行します。</value></data>
+  <data name="Selected food is not usable; continuing." xml:space="preserve"><value>選択した食事を使用できません。続行します。</value></data>
+  <data name="Food was not confirmed; continuing." xml:space="preserve"><value>食事の使用を確認できません。続行します。</value></data>
+  <data name="Eating selected food." xml:space="preserve"><value>選択した食事を使用中。</value></data>
+  <data name="Well Fed: {0}s." xml:space="preserve"><value>食事効果: {0}秒。</value></data>
+  <data name="Materia extraction unavailable; continuing." xml:space="preserve"><value>マテリア精製を利用できません。続行します。</value></data>
+  <data name="Extracting materia before entry." xml:space="preserve"><value>突入前にマテリア精製中。</value></data>
+  <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>マテリア精製を確認できません。続行します。</value></data>
+  <data name="Materia extraction complete." xml:space="preserve"><value>マテリア精製完了。</value></data>
 </root>

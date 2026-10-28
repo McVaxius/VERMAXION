@@ -20,7 +20,7 @@ internal interface IBeastmasterCombat
 // A run-local lease. Only a missing bundled movement preset is added to the preset database.
 internal sealed class BeastmasterCombat : IBeastmasterCombat
 {
-    internal const string PresetName = "passive - melee";
+    internal const string PresetName = "VERMAXION - Crewcible";
     internal const string RotationName = "RotationSolver.RebornRotations.Melee.BST_Reborn";
     internal enum Mode : byte { Off, Auto, TargetOnly, Manual, AutoDuty, Henched, PvP }
     internal readonly record struct Target(ulong InstanceId, bool CanPull);
@@ -234,16 +234,21 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
             throw new InvalidOperationException("Load Rotation Solver Reborn and select its Reborn Beastmaster rotation.");
         var preset = JObject.Parse(provider.ReadPreset());
         var modules = preset["Modules"] as JObject;
-        string[] allowed = ["StayCloseToTarget", "StayWithinLeylines", "GoToPositional", "StayCloseToPartyRole", "NormalMovement"];
+        string[] allowed = ["StayCloseToTarget", "NormalMovement"];
         const string prefix = "BossMod.Autorotation.MiscAI.";
         if ((string?)preset["Name"] != PresetName || modules == null || modules.Count != allowed.Length ||
             modules.Properties().Any(p => !allowed.Contains(p.Name.StartsWith(prefix, StringComparison.Ordinal) ? p.Name[prefix.Length..] : "")))
-            throw new InvalidOperationException("BossMod requires the existing movement-only 'passive - melee' preset; no DPS rotation may be included.");
-        var range = modules[prefix + "StayCloseToTarget"]?.FirstOrDefault(t => (string?)t["Track"] == "range");
-        var destination = modules[prefix + "NormalMovement"]?.FirstOrDefault(t => (string?)t["Track"] == "Destination");
-        if ((string?)range?["Option"] != "2.3" || (string?)destination?["Option"] != "Pathfind")
-            throw new InvalidOperationException("BossMod 'passive - melee' requires range 2.3 and Pathfind movement.");
+            throw new InvalidOperationException("BossMod requires the movement-only 'VERMAXION - Crewcible' preset; no DPS rotation or unrelated utility may be included.");
+        var close = modules[prefix + "StayCloseToTarget"] as JArray;
+        var movement = modules[prefix + "NormalMovement"] as JArray;
+        if (close?.Count != 1 || (string?)close[0]?["Track"] != "range" || (string?)close[0]?["Option"] != "2.3" ||
+            movement?.Count != 3 ||
+            !HasOption("Destination", "Pathfind") || !HasOption("Range", "Any") || !HasOption("ForbiddenZoneCushion", "Medium"))
+            throw new InvalidOperationException("BossMod 'VERMAXION - Crewcible' requires Pathfind, unrestricted dodge range (Any), Medium cushion and the 2.3 melee-uptime goal.");
         return state;
+
+        bool HasOption(string track, string option) => movement!.Count(value => (string?)value["Track"] == track) == 1 &&
+            movement.Any(value => (string?)value["Track"] == track && (string?)value["Option"] == option);
     }
 
     internal static string Describe(Exception ex)
@@ -306,14 +311,11 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
     {
         private const BindingFlags Static = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
         private const BindingFlags Instance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        // Same movement-only preset shipped by FrenRider; never replace a user's existing copy.
+        // The soft melee-uptime goal never caps a safety destination. Preserve other presets.
         private const string DefaultPreset = """
-            {"Name":"passive - melee","Modules":{
+            {"Name":"VERMAXION - Crewcible","Modules":{
               "BossMod.Autorotation.MiscAI.StayCloseToTarget":[{"Track":"range","Option":"2.3"}],
-              "BossMod.Autorotation.MiscAI.StayWithinLeylines":[{"Track":"Use Between The Lines","Option":"Yes"},{"Track":"Use Retrace","Option":"Yes"}],
-              "BossMod.Autorotation.MiscAI.GoToPositional":[{"Track":"Positional","Option":"Rear"}],
-              "BossMod.Autorotation.MiscAI.StayCloseToPartyRole":[{"Track":"range","Option":"20"}],
-              "BossMod.Autorotation.MiscAI.NormalMovement":[{"Track":"ForbiddenZoneCushion","Option":"Medium"},{"Track":"Destination","Option":"Pathfind"},{"Track":"Range","Option":"MaxRange"}]
+              "BossMod.Autorotation.MiscAI.NormalMovement":[{"Track":"ForbiddenZoneCushion","Option":"Medium"},{"Track":"Destination","Option":"Pathfind"},{"Track":"Range","Option":"Any"}]
             }}
             """;
 
@@ -354,7 +356,7 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
                 .InvokeFunc(DefaultPreset, false);
             // Validate the stored preset, rather than assuming creation succeeded.
             return get.InvokeFunc(PresetName)
-                ?? throw new InvalidOperationException("BossMod is missing the existing 'passive - melee' preset.");
+                ?? throw new InvalidOperationException("BossMod could not confirm the 'VERMAXION - Crewcible' preset after injection.");
         }
 
         public Target ReadTarget()
