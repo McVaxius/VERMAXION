@@ -3327,4 +3327,17 @@ Phụ thuộc: {1}</value></data>
   <data name="Wave colour 2" xml:space="preserve"><value>Màu sóng 2</value></data>
   <data name="Wave colour 3" xml:space="preserve"><value>Màu sóng 3</value></data>
   <data name="Reset wave colours" xml:space="preserve"><value>Đặt lại màu sóng</value></data>
+  <data name="Combat provider" xml:space="preserve"><value>Trình cung cấp chiến đấu</value></data>
+  <data name="RSR + BossModReborn" xml:space="preserve"><value>RSR + BossModReborn</value></data>
+  <data name="RSR + Minerva" xml:space="preserve"><value>RSR + Minerva</value></data>
+  <data name="Combat provider edits apply to the next Start; the current run keeps its setup." xml:space="preserve"><value>Thay đổi trình cung cấp chiến đấu áp dụng từ lần khởi chạy tiếp theo; lượt chạy hiện tại giữ nguyên thiết lập.</value></data>
+  <data name="Minerva is owned by another controller." xml:space="preserve"><value>Minerva đang do một bộ điều khiển khác kiểm soát.</value></data>
+  <data name="Minerva ownership was revoked." xml:space="preserve"><value>Quyền kiểm soát Minerva đã bị thu hồi.</value></data>
+  <data name="Minerva movement transition is unconfirmed." xml:space="preserve"><value>Chưa xác nhận được việc chuyển trạng thái di chuyển của Minerva.</value></data>
+  <data name="Minerva original state restoration is unconfirmed." xml:space="preserve"><value>Chưa xác nhận được việc khôi phục trạng thái ban đầu của Minerva.</value></data>
+  <data name="Minerva IPC is unavailable or incompatible." xml:space="preserve"><value>IPC của Minerva không khả dụng hoặc không tương thích.</value></data>
+  <data name="Minerva runtime controls are incompatible." xml:space="preserve"><value>Các chức năng điều khiển lúc chạy của Minerva không tương thích.</value></data>
+  <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva chưa được tải.</value></data>
+  <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva đã được tải nhưng không thể đọc trạng thái lúc chạy.</value></data>
+  <data name=" Cleanup: {0}" xml:space="preserve"><value> Dọn dẹp: {0}</value></data>
 </root>

@@ -206,6 +206,28 @@ namespace VERMAXION.Tests
             Assert.False(combat.OwnsState);
             Assert.Equal("Original movement", provider.Current.Preset);
             Assert.Empty(provider.AiTransitions);
+
+            var original = provider.Current;
+            foreach (var replaceRotation in new[] { true, false })
+            {
+                Assert.True(combat.TryActivate(out error), error);
+                var owned = provider.Current;
+                var replacement = replaceRotation
+                    ? owned with { RotationProvider = new object() }
+                    : owned with { MovementProvider = new object() };
+                provider.Current = replacement;
+                Assert.False(combat.TryRelease(out error));
+                Assert.Contains("unloaded or replaced", error);
+                Assert.True(combat.OwnsState);
+                Assert.False(combat.IsRunning);
+                Assert.Equal(replacement, provider.Current);
+                Assert.Empty(provider.AiTransitions);
+
+                provider.Current = owned;
+                Assert.True(combat.TryRelease(out error), error);
+                Assert.False(combat.OwnsState);
+                Assert.Equal(original, provider.Current);
+            }
         }
 
         [Fact]

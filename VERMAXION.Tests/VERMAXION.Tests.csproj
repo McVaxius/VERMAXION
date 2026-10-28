@@ -36,6 +36,7 @@
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterReadRecovery.cs" Link="BeastmasterReadRecovery.cs" />
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterWeeklyPolicy.cs" Link="BeastmasterWeeklyPolicy.cs" />
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterCombat.cs" Link="BeastmasterCombat.cs" />
+    <Compile Include="..\VERMAXION\Beastmaster\BeastmasterMinervaCombat.cs" Link="BeastmasterMinervaCombat.cs" />
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterRepair.cs" Link="BeastmasterRepair.cs" />
     <Compile Include="..\VERMAXION\Beastmaster\BeastmasterSplashRotation.cs" Link="BeastmasterSplashRotation.cs" />
     <EmbeddedResource Include="..\VERMAXION\Beastmaster\Routes\*.json" />

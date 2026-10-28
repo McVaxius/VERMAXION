@@ -1,3 +1,11 @@
+2026-10-27 - Optional Minerva combat provider (2.2.1.8)
+
+- Add RSR + Minerva as an optional Beastmaster combat provider in Run's shared options, retaining RSR + BossModReborn as the default. Preserve the selection through manual, scheduled and weekly settings; edits apply to the next plan without replacing the current run's provider.
+- Use Minerva's protected movement ownership with the existing RSR Beastmaster rotation. Suspend movement and gaze turning for navigation/pause, retain failed stop confirmations, and restore original Minerva settings plus RSR mode and opaque overrides on release. Preserve unresolved ownership across provider replacement and changed-character restarts.
+- Respect Minerva's forced, preferred, forbidden and ordinary targets without mistaking an empty priority list for a completed fight. Retain movement while attacks are withheld for encounter restrictions. Add translated selector/help and provider statuses across all fifteen catalogs without a Minerva assembly or package dependency.
+- Share the existing RSR runtime helpers and the small run-local lifecycle contract while retaining the existing BossModReborn validation, targeting and restoration policy.
+- Validation: Release build and all 320 Beastmaster regressions pass. All fifteen compiled catalogs and 120 native saved provider selections pass at narrow width, both densities and two scales, retaining active snapshots and other profiles. The local package contains matching plugin/core/adapter DLLs without Minerva or host libraries; game acceptance remains pending.
+
 2026-10-27 - Additional appearance materials (2.2.1.7)
 
 - Add Glassmorphism, Spatial and Cyberpunk alongside Auto, Picker and LCARS across all nine owners, native popups and font-status windows. Preserve existing actions, task/account scopes, native identities and font sizes in both densities.

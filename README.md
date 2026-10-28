@@ -158,6 +158,8 @@ The shared slate theme uses cyan selection/progress, near-white text and heading
 
 Fish collection separates **Targets**, **Characters**, **Supplies** and **Alerts**, with scope/status and collection controls above them. Targets has a viewing-character selector, inspection-based Readiness column and selected-fish panel. Verminion separates **Run**, **Minions & guide**, **Purchases** and **Tournament**, with permanent cleared progress, FULL STOP, Resume and purchase/prize warnings above scrolling. Campaign and mission/weekly controls have separate panels. The registrable editor uses **Item / ID / Action** with an internally scrolling list and a separate **Bulk actions** panel for confirmed clear/default-list operations; **Import/export** retains previews and cancellation. Debug keeps saved reload selection, status and red FULL STOP above its searchable task list.
 
+Beastmaster's Run tab includes a shared **Combat provider** choice for this character's manual, scheduled and weekly runs. **RSR + BossModReborn** remains the default; **RSR + Minerva** requires the API 15 Minerva movement provider from [Kongool/Minerva](https://github.com/Kongool/Minerva) and the same Reborn Beastmaster rotation in RSR. Changes apply at the next Start. Minerva combat owns auto-dodge and gaze turning, suspends both for board navigation or pause, and restores the prior settings on Stop. Another controller's Minerva ownership blocks acquisition. Game acceptance, including RSR's response to encounter restrictions and secondary AoE targets, remains separate from offline verification.
+
 | Command | Description |
 |---------|-------------|
 | `/vermaxion` | Open main window |

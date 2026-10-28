@@ -1054,16 +1054,20 @@ public class MainWindow : Window, IDisposable
             .Select(candidate => candidate.InternalName)
             .ToHashSet(StringComparer.Ordinal);
 
-    private static IReadOnlyList<string> GetTaskDependencies(string task, CharacterConfig config)
+    private IReadOnlyList<string> GetTaskDependencies(string task, CharacterConfig config)
     {
         switch (task)
         {
             case "Beastmaster":
             case "Beastmaster weeklies":
+            {
+                var movementProvider = plugin.GetBeastmasterSettings(config).CombatProvider == BeastmasterCombatProvider.Minerva
+                    ? "Minerva" : "BossModReborn";
                 return Plugin.ClientState.TerritoryType == BeastmasterService.LaudaTerritory ||
                     BeastmasterService.IsCrucibleTerritory(Plugin.ClientState.TerritoryType)
-                    ? ["vnavmesh", "RotationSolver", "BossModReborn"]
-                    : ["vnavmesh", "Lifestream", "RotationSolver", "BossModReborn"];
+                    ? ["vnavmesh", "RotationSolver", movementProvider]
+                    : ["vnavmesh", "Lifestream", "RotationSolver", movementProvider];
+            }
             case "FC Buff Refill":
             case "Vendor Stock":
                 return ["ADS", "Lifestream", "vnavmesh"];

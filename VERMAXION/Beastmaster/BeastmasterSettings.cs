@@ -11,6 +11,7 @@ public enum CrucibleDegree { Standard, First, Second, Third }
 public enum BeastmasterRunGoal { FixedRuns, TrainOwned }
 public enum BeastmasterTaskFrequency { EveryAR, Daily, Weekly, Monthly }
 public enum BeastmasterRepairMode { Disabled, Self, NpcNoInn, NpcNearby, NpcInn }
+public enum BeastmasterCombatProvider { BossModReborn, Minerva }
 
 public sealed class BeastmasterSettings
 {
@@ -23,6 +24,11 @@ public sealed class BeastmasterSettings
     public string CompletionCommand { get; set; } = string.Empty;
     public BeastmasterRepairMode RepairMode { get; set => field = Enum.IsDefined(value) ? value : BeastmasterRepairMode.Self; } = BeastmasterRepairMode.Self;
     public int RepairThreshold { get; set => field = Math.Clamp(value, 0, 100); } = 75;
+    public BeastmasterCombatProvider CombatProvider
+    {
+        get;
+        set => field = Enum.IsDefined(value) ? value : BeastmasterCombatProvider.BossModReborn;
+    }
     public CrucibleDegree Degree { get; set; } = CrucibleDegree.Standard;
     public CrucibleTeamMode TeamMode { get; set; } = CrucibleTeamMode.Recommended;
     public CrucibleLevelingMode LevelingMode { get; set; } = CrucibleLevelingMode.Minus_3;
@@ -46,7 +52,7 @@ public sealed class BeastmasterSettings
     {
         Goal = Goal, Board = Board, TrainingTargetRank = TrainingTargetRank, RunCount = RunCount,
         WeeklyBoards = WeeklyBoards == null ? null : [..WeeklyBoards], CompletionCommand = CompletionCommand,
-        RepairMode = RepairMode, RepairThreshold = RepairThreshold,
+        RepairMode = RepairMode, RepairThreshold = RepairThreshold, CombatProvider = CombatProvider,
         Degree = Degree, TeamMode = TeamMode, LevelingMode = LevelingMode,
         CustomTeam = [..CustomTeam], ShopLists = ShopLists.Select(list => list.Clone()).ToList(),
         ShopListIndex = ShopListIndex, ShopGearOrder = [..ShopGearOrder],

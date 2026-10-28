@@ -5823,4 +5823,17 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Wave colour 2" xml:space="preserve"><value>波2の色</value></data>
   <data name="Wave colour 3" xml:space="preserve"><value>波3の色</value></data>
   <data name="Reset wave colours" xml:space="preserve"><value>波の色をリセット</value></data>
+  <data name="Combat provider" xml:space="preserve"><value>戦闘プロバイダー</value></data>
+  <data name="RSR + BossModReborn" xml:space="preserve"><value>RSR + BossModReborn</value></data>
+  <data name="RSR + Minerva" xml:space="preserve"><value>RSR + Minerva</value></data>
+  <data name="Combat provider edits apply to the next Start; the current run keeps its setup." xml:space="preserve"><value>戦闘プロバイダーの変更は次回の開始時に適用されます。現在の実行では開始時の設定を維持します。</value></data>
+  <data name="Minerva is owned by another controller." xml:space="preserve"><value>Minerva は別のコントローラーによって制御されています。</value></data>
+  <data name="Minerva ownership was revoked." xml:space="preserve"><value>Minerva の制御権が取り消されました。</value></data>
+  <data name="Minerva movement transition is unconfirmed." xml:space="preserve"><value>Minerva の移動状態の切り替えを確認できません。</value></data>
+  <data name="Minerva original state restoration is unconfirmed." xml:space="preserve"><value>Minerva の元の状態への復元を確認できません。</value></data>
+  <data name="Minerva IPC is unavailable or incompatible." xml:space="preserve"><value>Minerva の IPC が利用できないか、互換性がありません。</value></data>
+  <data name="Minerva runtime controls are incompatible." xml:space="preserve"><value>Minerva の実行時の制御機能に互換性がありません。</value></data>
+  <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva が読み込まれていません。</value></data>
+  <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva は読み込まれていますが、実行時の状態を読み取れませんでした。</value></data>
+  <data name=" Cleanup: {0}" xml:space="preserve"><value> クリーンアップ: {0}</value></data>
 </root>

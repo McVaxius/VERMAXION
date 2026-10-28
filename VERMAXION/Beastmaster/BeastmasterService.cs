@@ -23,7 +23,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private readonly VNavmeshIPC navigation;
     private readonly LifestreamIPC travel;
     private readonly CrucibleMenus menus = new();
-    private readonly BeastmasterCombat combat = new();
+    private IBeastmasterCombat combat = new BeastmasterCombat();
+    private BeastmasterCombatProvider combatProvider;
     private BeastmasterSettings? runSettings;
     private BeastmasterCharacterData? runData;
     private BeastmasterSettings? displayedRunSettings;
@@ -172,6 +173,23 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     public bool CanStart(out string reason) => CanStartConfigured(getSettings(), false, out reason);
 
+    private static bool CanStartCombat(BeastmasterSettings settings, out string reason)
+        => settings.CombatProvider == BeastmasterCombatProvider.Minerva
+            ? BeastmasterMinervaCombat.CanStart(out reason)
+            : BeastmasterCombat.CanStart(out reason);
+
+    private bool TryCaptureCombatProvider(BeastmasterSettings settings, out string reason)
+    {
+        if (!combat.TryRelease(out reason)) return false;
+        if (combatProvider != settings.CombatProvider)
+        {
+            combat = settings.CombatProvider == BeastmasterCombatProvider.Minerva
+                ? new BeastmasterMinervaCombat() : new BeastmasterCombat();
+            combatProvider = settings.CombatProvider;
+        }
+        return true;
+    }
+
     public bool CanStartConfigured(BeastmasterSettings settings, bool weekly, out string reason)
     {
         if (CanReinspectCurrent && IsActive)
@@ -197,7 +215,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (!inside && !nativeEntry && !RunContextReady(out reason)) return false;
         if (!Plugin.CommandManager.Commands.ContainsKey("/vnav")) { reason = "vnavmesh is required for board navigation"; return false; }
         if (Svc.Party.Length > 1) { reason = "Leave the party before entering the Crucible"; return false; }
-        if (!BeastmasterCombat.CanStart(out reason)) return false;
+        if (!CanStartCombat(settings, out reason)) return false;
         reason = string.Empty;
         return true;
     }
@@ -209,6 +227,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (CanReinspectCurrent && IsActive) return RestartFromCurrent(settings, manual: true, weekly: weekly);
         if (weekly) return StartWeeklyConfigured(settings);
         if (!CanStartConfigured(settings, false, out var reason)) { status = reason; return false; }
+        if (!TryCaptureCombatProvider(settings, out reason)) { status = "Combat restoration pending: " + reason; return false; }
         runSettings = settings.Clone(); runData = getCharacterData(); owner = Svc.PlayerState.ContentId;
         operatorStopped = false; recoveryAt = default;
         preparedOwned = null;
@@ -270,6 +289,10 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     {
         var changedCharacter = owner != 0 && owner != Svc.PlayerState.ContentId;
         var freshPlan = changedCharacter || manual && State is (RunState.Idle or RunState.Complete or RunState.Failed);
+        // Start also captures a provider when it supersedes a standalone refresh with no run plan.
+        // Same-plan recovery keeps the original provider even after saved settings change.
+        if ((freshPlan || runSettings == null) && !TryCaptureCombatProvider(settings, out var combatReason))
+        { status = "Combat restoration pending: " + combatReason; return false; }
         if (changedCharacter)
         {
             // Explicit Start selects this character's profile. Old entry and board
@@ -278,7 +301,6 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             CancelOwnedRepair();
             StopNavigation();
             if (ownsTravel) travel.TryAbort();
-            combat.TryRelease(out _);
             CancelFastRankScan();
             refreshCleanupPending = false; refreshTraversal = null;
             entryAttempt = null; route = null; menus.Reset();
@@ -705,7 +727,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                         if (!BeastmasterPlayer.IsCombatReady || !NavigationSettled())
                         { if (SuspendCombat()) status = "Waiting for revival"; break; }
                         waitingForRevival = false;
-                        Svc.Log.Information("[Beastmaster] Revived; resuming the current fight with RSR and BMR melee positioning.");
+                        Svc.Log.Information("[Beastmaster] Revived; resuming the current fight with the selected combat provider.");
                     }
                     menus.Update();
                     if (State != RunState.Running) break;
@@ -1039,7 +1061,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (IsActive || IsPaused) Stop();
         CancelOwnedRepair();
         if (EntryPending) Svc.Log.Warning("[Beastmaster] Unloading with an unresolved native entry; no completion was inferred.");
-        if (combat.OwnsState) Svc.Log.Warning("[Beastmaster] Unloading with combat-provider restoration unresolved; check RSR operating mode and BMR preset before another run.");
+        if (combat.OwnsState) Svc.Log.Warning("[Beastmaster] Unloading with combat-provider restoration unresolved; check the selected combat provider before another run.");
         entryWithdrawalHook?.Dispose(); entryWithdrawalHook = null;
         if (entryPromptListener) Svc.AddonLifecycle.UnregisterListener(AddonEvent.PreReceiveEvent, CrucibleUi.YesNo, ObserveEntryPromptEvent);
         if (entryPromptListener) Svc.AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, CrucibleUi.YesNo, ObserveEntryPromptSetup);

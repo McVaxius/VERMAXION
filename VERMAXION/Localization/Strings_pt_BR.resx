@@ -3327,4 +3327,17 @@ Dependências: {1}</value></data>
   <data name="Wave colour 2" xml:space="preserve"><value>Cor da onda 2</value></data>
   <data name="Wave colour 3" xml:space="preserve"><value>Cor da onda 3</value></data>
   <data name="Reset wave colours" xml:space="preserve"><value>Redefinir cores das ondas</value></data>
+  <data name="Combat provider" xml:space="preserve"><value>Provedor de combate</value></data>
+  <data name="RSR + BossModReborn" xml:space="preserve"><value>RSR + BossModReborn</value></data>
+  <data name="RSR + Minerva" xml:space="preserve"><value>RSR + Minerva</value></data>
+  <data name="Combat provider edits apply to the next Start; the current run keeps its setup." xml:space="preserve"><value>As alterações no provedor de combate se aplicam ao próximo início; a execução atual mantém sua configuração.</value></data>
+  <data name="Minerva is owned by another controller." xml:space="preserve"><value>Minerva está sob o controle de outro controlador.</value></data>
+  <data name="Minerva ownership was revoked." xml:space="preserve"><value>O controle de Minerva foi revogado.</value></data>
+  <data name="Minerva movement transition is unconfirmed." xml:space="preserve"><value>A mudança de estado de movimento de Minerva não foi confirmada.</value></data>
+  <data name="Minerva original state restoration is unconfirmed." xml:space="preserve"><value>A restauração do estado original de Minerva não foi confirmada.</value></data>
+  <data name="Minerva IPC is unavailable or incompatible." xml:space="preserve"><value>O IPC de Minerva está indisponível ou é incompatível.</value></data>
+  <data name="Minerva runtime controls are incompatible." xml:space="preserve"><value>Os controles de execução de Minerva são incompatíveis.</value></data>
+  <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva não está carregado.</value></data>
+  <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva está carregado, mas não foi possível ler seu estado de execução.</value></data>
+  <data name=" Cleanup: {0}" xml:space="preserve"><value> Limpeza: {0}</value></data>
 </root>

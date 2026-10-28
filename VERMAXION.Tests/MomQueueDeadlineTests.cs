@@ -520,7 +520,7 @@ namespace VERMAXION.Tests
 // The coordinator, queue cutoff/withdrawal state, JSON contracts, consumer IPC, and accounting are production code.
 namespace Dalamud.Game.ClientState.Conditions
 {
-    public enum ConditionFlag { BetweenAreas, BetweenAreas51, BoundByDuty, BoundByDuty56 }
+    public enum ConditionFlag { BetweenAreas, BetweenAreas51, BoundByDuty, BoundByDuty56, InCombat }
 }
 
 namespace FFXIVClientStructs.FFXIV.Client.Enums
@@ -553,12 +553,24 @@ namespace Dalamud.Plugin.Services
 
 namespace Dalamud.Plugin.Ipc
 {
-    public sealed class ICallGateSubscriber<T>(Func<object?[], object?> invoke)
-    { public T InvokeFunc() => (T)invoke([])!; }
-    public sealed class ICallGateSubscriber<T1, T>(Func<object?[], object?> invoke)
-    { public T InvokeFunc(T1 arg1) => (T)invoke([arg1])!; }
-    public sealed class ICallGateSubscriber<T1, T2, T>(Func<object?[], object?> invoke)
+    public sealed class ICallGateSubscriber<T>(Func<object?[], object?> invoke,
+        Func<bool>? hasFunction = null, Func<bool>? hasAction = null)
     {
+        public bool HasFunction => hasFunction?.Invoke() ?? true;
+        public bool HasAction => hasAction?.Invoke() ?? true;
+        public T InvokeFunc() => (T)invoke([])!;
+        public void InvokeAction() => invoke([]);
+    }
+    public sealed class ICallGateSubscriber<T1, T>(Func<object?[], object?> invoke,
+        Func<bool>? hasFunction = null, Func<bool>? hasAction = null)
+    {
+        public bool HasFunction => hasFunction?.Invoke() ?? true;
+        public bool HasAction => hasAction?.Invoke() ?? true;
+        public T InvokeFunc(T1 arg1) => (T)invoke([arg1])!;
+    }
+    public sealed class ICallGateSubscriber<T1, T2, T>(Func<object?[], object?> invoke, Func<bool>? hasFunction = null)
+    {
+        public bool HasFunction => hasFunction?.Invoke() ?? true;
         public T InvokeFunc(T1 arg1, T2 arg2) => (T)invoke([arg1, arg2])!;
         public void InvokeAction(T1 arg1, T2 arg2) => invoke([arg1, arg2]);
     }

@@ -6179,4 +6179,17 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Wave colour 2" xml:space="preserve"><value>Wellenfarbe 2</value></data>
   <data name="Wave colour 3" xml:space="preserve"><value>Wellenfarbe 3</value></data>
   <data name="Reset wave colours" xml:space="preserve"><value>Wellenfarben zurücksetzen</value></data>
+  <data name="Combat provider" xml:space="preserve"><value>Kampfanbieter</value></data>
+  <data name="RSR + BossModReborn" xml:space="preserve"><value>RSR + BossModReborn</value></data>
+  <data name="RSR + Minerva" xml:space="preserve"><value>RSR + Minerva</value></data>
+  <data name="Combat provider edits apply to the next Start; the current run keeps its setup." xml:space="preserve"><value>Änderungen am Kampfanbieter gelten ab dem nächsten Start; der aktuelle Lauf behält seine Einstellungen.</value></data>
+  <data name="Minerva is owned by another controller." xml:space="preserve"><value>Minerva wird von einer anderen Steuerung verwendet.</value></data>
+  <data name="Minerva ownership was revoked." xml:space="preserve"><value>Die Steuerungsberechtigung für Minerva wurde widerrufen.</value></data>
+  <data name="Minerva movement transition is unconfirmed." xml:space="preserve"><value>Der Wechsel des Minerva-Bewegungszustands ist nicht bestätigt.</value></data>
+  <data name="Minerva original state restoration is unconfirmed." xml:space="preserve"><value>Die Wiederherstellung des ursprünglichen Minerva-Zustands ist nicht bestätigt.</value></data>
+  <data name="Minerva IPC is unavailable or incompatible." xml:space="preserve"><value>Minerva-IPC ist nicht verfügbar oder inkompatibel.</value></data>
+  <data name="Minerva runtime controls are incompatible." xml:space="preserve"><value>Die Laufzeitsteuerung von Minerva ist inkompatibel.</value></data>
+  <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva ist nicht geladen.</value></data>
+  <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva ist geladen, aber der Laufzeitstatus konnte nicht gelesen werden.</value></data>
+  <data name=" Cleanup: {0}" xml:space="preserve"><value> Bereinigung: {0}</value></data>
 </root>

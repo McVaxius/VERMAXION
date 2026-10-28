@@ -5823,4 +5823,17 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Wave colour 2" xml:space="preserve"><value>波纹颜色 2</value></data>
   <data name="Wave colour 3" xml:space="preserve"><value>波纹颜色 3</value></data>
   <data name="Reset wave colours" xml:space="preserve"><value>重置波纹颜色</value></data>
+  <data name="Combat provider" xml:space="preserve"><value>战斗提供程序</value></data>
+  <data name="RSR + BossModReborn" xml:space="preserve"><value>RSR + BossModReborn</value></data>
+  <data name="RSR + Minerva" xml:space="preserve"><value>RSR + Minerva</value></data>
+  <data name="Combat provider edits apply to the next Start; the current run keeps its setup." xml:space="preserve"><value>战斗提供程序的更改将在下次启动时生效；当前运行保留原有设置。</value></data>
+  <data name="Minerva is owned by another controller." xml:space="preserve"><value>Minerva 正由其他控制器控制。</value></data>
+  <data name="Minerva ownership was revoked." xml:space="preserve"><value>Minerva 控制权已被撤销。</value></data>
+  <data name="Minerva movement transition is unconfirmed." xml:space="preserve"><value>尚未确认 Minerva 的移动状态切换。</value></data>
+  <data name="Minerva original state restoration is unconfirmed." xml:space="preserve"><value>尚未确认 Minerva 已恢复原始状态。</value></data>
+  <data name="Minerva IPC is unavailable or incompatible." xml:space="preserve"><value>Minerva IPC 不可用或不兼容。</value></data>
+  <data name="Minerva runtime controls are incompatible." xml:space="preserve"><value>Minerva 的运行时控制功能不兼容。</value></data>
+  <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva 未加载。</value></data>
+  <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva 已加载，但无法读取其运行时状态。</value></data>
+  <data name=" Cleanup: {0}" xml:space="preserve"><value> 清理：{0}</value></data>
 </root>

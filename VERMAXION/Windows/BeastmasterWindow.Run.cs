@@ -247,6 +247,18 @@ internal sealed partial class BeastmasterWindow
     {
         var settings = Settings;
         var changed = false;
+        using (UIConstants.PushSettingsRows())
+        {
+            var provider = (int)settings.CombatProvider;
+            ImGui.SetNextItemWidth(-1);
+            if (UIConstants.Combo("Combat provider", ref provider, ["RSR + BossModReborn", "RSR + Minerva"], 2))
+            {
+                settings.CombatProvider = (BeastmasterCombatProvider)provider;
+                changed = true;
+            }
+        }
+        UiGui.TextDisabled("Shared by this character's manual, scheduled and weekly runs.");
+        UiGui.TextDisabled("Combat provider edits apply to the next Start; the current run keeps its setup.");
         Toggle("Fight picks", settings.FightPicks, value => { settings.FightPicks = value; if (ViewingCurrent && plugin.BeastmasterOwnsWork) plugin.BeastmasterService.Settings.FightPicks = value; });
         UIConstants.SameLineIfFits("Loot"); Toggle("Loot", settings.Loot, value => { settings.Loot = value; if (ViewingCurrent && plugin.BeastmasterOwnsWork) plugin.BeastmasterService.Settings.Loot = value; });
         UIConstants.SameLineIfFits("Treasure"); Toggle("Treasure", settings.Treasure, value => { settings.Treasure = value; if (ViewingCurrent && plugin.BeastmasterOwnsWork) plugin.BeastmasterService.Settings.Treasure = value; });

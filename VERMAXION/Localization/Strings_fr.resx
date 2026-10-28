@@ -6179,4 +6179,17 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Wave colour 2" xml:space="preserve"><value>Couleur de la vague 2</value></data>
   <data name="Wave colour 3" xml:space="preserve"><value>Couleur de la vague 3</value></data>
   <data name="Reset wave colours" xml:space="preserve"><value>Réinitialiser les couleurs des vagues</value></data>
+  <data name="Combat provider" xml:space="preserve"><value>Fournisseur de combat</value></data>
+  <data name="RSR + BossModReborn" xml:space="preserve"><value>RSR + BossModReborn</value></data>
+  <data name="RSR + Minerva" xml:space="preserve"><value>RSR + Minerva</value></data>
+  <data name="Combat provider edits apply to the next Start; the current run keeps its setup." xml:space="preserve"><value>Les modifications du fournisseur de combat s’appliquent au prochain démarrage ; l’exécution en cours conserve sa configuration.</value></data>
+  <data name="Minerva is owned by another controller." xml:space="preserve"><value>Minerva est contrôlé par un autre contrôleur.</value></data>
+  <data name="Minerva ownership was revoked." xml:space="preserve"><value>Le contrôle de Minerva a été révoqué.</value></data>
+  <data name="Minerva movement transition is unconfirmed." xml:space="preserve"><value>Le changement d’état de déplacement de Minerva n’est pas confirmé.</value></data>
+  <data name="Minerva original state restoration is unconfirmed." xml:space="preserve"><value>La restauration de l’état initial de Minerva n’est pas confirmée.</value></data>
+  <data name="Minerva IPC is unavailable or incompatible." xml:space="preserve"><value>L’IPC de Minerva est indisponible ou incompatible.</value></data>
+  <data name="Minerva runtime controls are incompatible." xml:space="preserve"><value>Les commandes d’exécution de Minerva sont incompatibles.</value></data>
+  <data name="Minerva is not loaded." xml:space="preserve"><value>Minerva n’est pas chargé.</value></data>
+  <data name="Minerva is loaded, but its runtime state could not be read." xml:space="preserve"><value>Minerva est chargé, mais son état d’exécution n’a pas pu être lu.</value></data>
+  <data name=" Cleanup: {0}" xml:space="preserve"><value> Nettoyage : {0}</value></data>
 </root>

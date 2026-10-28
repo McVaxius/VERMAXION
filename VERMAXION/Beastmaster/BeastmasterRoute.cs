@@ -139,14 +139,14 @@ internal sealed unsafe class BeastmasterRoute
         var enemies = NearbyEnemies(playerPosition).ToList();
         var target = service.ReadCombatTarget();
         var boss = enemies.FirstOrDefault(e => e.EntityId == target.InstanceId);
-        // BMR normally leaves idle enemies unprioritized. Keep the opening pull,
+        // The default provider can leave idle enemies unprioritized. Keep the opening pull,
         // but never substitute our own target during an active encounter.
         if (boss == null && target.InstanceId == 0 && target.CanPull && !inCombat)
             boss = enemies.OrderBy(e => Vector3.DistanceSquared(e.Position, playerPosition)).FirstOrDefault();
         if (boss == null && (inCombat || enemies.Count > 0))
         {
-            // No eligible target is not a victory. Keep BMR dodging while RSR
-            // and character autoattacks wait for BMR to allow a target again.
+            // No eligible target is not a victory. Keep the selected provider dodging while RSR
+            // and character autoattacks wait for an eligible target again.
             if (!service.StartCombat(allowAttacks: false)) return;
             var ui = UIState.Instance();
             var actionManager = ActionManager.Instance();
@@ -159,7 +159,7 @@ internal sealed unsafe class BeastmasterRoute
         if (boss != null)
         {
             if (Svc.Targets.Target?.EntityId != boss.EntityId) Svc.Targets.Target = boss;
-            // Enable RSR and BMR's approach immediately, including before the
+            // Enable RSR and the selected provider's approach immediately, including before the
             // first pull. Waiting for combat or three yards from its centre can
             // leave an idle enemy unengaged indefinitely.
             if (!service.StartCombat()) return;

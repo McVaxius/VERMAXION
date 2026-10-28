@@ -137,10 +137,31 @@ internal sealed class UiText : IDisposable
 
     internal static string Beastmaster(string english)
     {
+        string[] minervaErrors = ["Minerva is owned by another controller.", "Minerva ownership was revoked.",
+            "Minerva movement transition is unconfirmed.", "Minerva original state restoration is unconfirmed.",
+            "Minerva IPC is unavailable or incompatible.", "Minerva runtime controls are incompatible.",
+            "Minerva is not loaded.", "Minerva is loaded, but its runtime state could not be read."];
+        const string cleanup = " Cleanup: ";
+        var cleanupIndex = english.IndexOf(cleanup, StringComparison.Ordinal);
+        if (cleanupIndex > 0)
+            return Beastmaster(english[..cleanupIndex]) + F(" Cleanup: {0}", Beastmaster(english[(cleanupIndex + cleanup.Length)..]));
+        const string restoration = " Combat restoration pending: ";
+        var restorationIndex = english.IndexOf(restoration, StringComparison.Ordinal);
+        if (restorationIndex > 0)
+            return Beastmaster(english[..restorationIndex]) + " " +
+                F("Combat restoration pending: {0}", Beastmaster(english[(restorationIndex + restoration.Length)..]));
         foreach (var prefix in new[] { "Stopped; combat restoration pending: ", "Combat restoration pending: ",
             "RSR runtime state is incompatible: ", "Recovering in five seconds: " })
             if (english.StartsWith(prefix, StringComparison.Ordinal))
-                return F(prefix + "{0}", T(english[prefix.Length..]));
+            {
+                var detail = english[prefix.Length..];
+                var minervaComposition = minervaErrors.Any(error => detail.StartsWith(error, StringComparison.Ordinal)) ||
+                    detail.Contains(cleanup, StringComparison.Ordinal);
+                return F(prefix + "{0}", minervaComposition ? Beastmaster(detail) : T(detail));
+            }
+        foreach (var first in minervaErrors)
+            if (english.StartsWith(first + " ", StringComparison.Ordinal))
+                return T(first) + " " + Beastmaster(english[(first.Length + 1)..]);
         const string paused = "Paused: ";
         if (english.StartsWith(paused, StringComparison.Ordinal)) return F("Paused: {0}", Beastmaster(english[paused.Length..]));
         var repair = BeastmasterNumbers(english, "Equipped durability ", "%; repair starts below ", "%.");

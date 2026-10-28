@@ -134,7 +134,7 @@ internal sealed unsafe partial class BeastmasterService
         { reason = "Leave the current Crucible duty before starting weekly challenges."; return false; }
         if (!NativeQueueIsIdle()) { reason = "An existing duty queue must settle before starting Beastmaster."; return false; }
         if (!Plugin.CommandManager.Commands.ContainsKey("/vnav")) { reason = "vnavmesh is required for board navigation"; return false; }
-        if (!BeastmasterCombat.CanStart(out reason)) return false;
+        if (!CanStartCombat(settings, out reason)) return false;
         if (!RunContextReady(out reason)) return false;
         if (Svc.Objects.LocalPlayer?.ClassJob.Value.Abbreviation.ExtractText() != "BST")
         { reason = "Crucible requires Beastmaster"; return false; }
@@ -165,6 +165,7 @@ internal sealed unsafe partial class BeastmasterService
     {
         if (!CanStartWeekly(settings, out var reason)) { status = reason; return false; }
         if (!RunContextReady(out reason)) { status = reason; return false; }
+        if (!TryCaptureCombatProvider(settings, out reason)) { status = "Combat restoration pending: " + reason; return false; }
         runSettings = BeastmasterWeeklyPolicy.CopySettings(settings);
         runSettings.Goal = BeastmasterRunGoal.FixedRuns;
         runData = getCharacterData(); owner = Svc.PlayerState.ContentId;

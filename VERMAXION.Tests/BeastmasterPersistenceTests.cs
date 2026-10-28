@@ -9,6 +9,41 @@ namespace VERMAXION.Tests;
 
 public sealed class BeastmasterPersistenceTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CombatProviderSurvivesSavedRunCopiesWithoutChangingLegacyDefaults(bool useNewtonsoft)
+    {
+        BeastmasterSettings Read(string json) => useNewtonsoft
+            ? JsonConvert.DeserializeObject<BeastmasterSettings>(json)!
+            : System.Text.Json.JsonSerializer.Deserialize<BeastmasterSettings>(json)!;
+        string Write(BeastmasterSettings settings) => useNewtonsoft
+            ? JsonConvert.SerializeObject(settings)
+            : System.Text.Json.JsonSerializer.Serialize(settings);
+
+        var source = Read("{\"CombatProvider\":1,\"Board\":3,\"RunCount\":4,\"RepairThreshold\":37}");
+        var snapshots = new[]
+        {
+            source.Clone(), BeastmasterWeeklyPolicy.CopySettings(source),
+            BeastmasterRunSetup.From(source).ApplyTo(source), Read(Write(source)),
+        };
+        source.CombatProvider = BeastmasterCombatProvider.BossModReborn;
+        foreach (var saved in snapshots)
+        {
+            Assert.Equal(BeastmasterCombatProvider.Minerva, saved.CombatProvider);
+            Assert.Equal(3u, saved.Board);
+            Assert.Equal(37, saved.RepairThreshold);
+        }
+
+        foreach (var json in new[] { "{\"Board\":4,\"RunCount\":3}", "{\"CombatProvider\":42,\"Board\":4,\"RunCount\":3}" })
+        {
+            var legacy = Read(json);
+            Assert.Equal(BeastmasterCombatProvider.BossModReborn, legacy.CombatProvider);
+            Assert.Equal(4u, legacy.Board);
+            Assert.Equal(3, legacy.RunCount);
+        }
+    }
+
     [Fact]
     public void PremadePriorityListsMatchTheElevenApprovedOrdersAndFlags()
     {

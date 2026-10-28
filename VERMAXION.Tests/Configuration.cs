@@ -13,6 +13,7 @@ namespace VERMAXION
     {
         public static TestPluginInterface PluginInterface { get; } = new();
         public static TestObjectTable ObjectTable { get; } = new();
+        public static Dalamud.Plugin.Services.ICondition Condition { get; } = new();
     }
 
     internal sealed class TestObjectTable
@@ -31,14 +32,20 @@ namespace VERMAXION
 
         public string? SavedConfiguration { get; private set; }
         public System.Func<string, object?[], object?>? IpcCall { get; set; }
+        public System.Func<string, bool>? IpcHasFunction { get; set; }
+        public System.Func<string, bool>? IpcHasAction { get; set; }
         public System.Collections.Generic.IReadOnlyList<TestInstalledPlugin> InstalledPlugins { get; set; } = [];
 
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T> GetIpcSubscriber<T>(string name)
-            => new(args => IpcCall!(name, args));
+            => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true,
+                () => IpcHasAction?.Invoke(name) ?? true);
+        public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T> GetIpcSubscriber<T1, T>(string name)
+            => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true,
+                () => IpcHasAction?.Invoke(name) ?? true);
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T3, T> GetIpcSubscriber<T1, T2, T3, T>(string name)
             => new(args => IpcCall!(name, args));
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T> GetIpcSubscriber<T1, T2, T>(string name)
-            => new(args => IpcCall!(name, args));
+            => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true);
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T3, T4, T> GetIpcSubscriber<T1, T2, T3, T4, T>(string name)
             => new(args => IpcCall!(name, args));
 

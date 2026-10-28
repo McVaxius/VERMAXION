@@ -373,6 +373,105 @@ public sealed class BeastmasterRouteLifecycleTests
     }
 
     [Fact]
+    public void MinervaReadinessSkipsTheBossModConflictPreflight()
+    {
+        using var host = new HostFixture();
+        var conflictingBossMod = DispatchProxy.Create<host::Dalamud.Plugin.IExposedPlugin, HostProxy>();
+        ((HostProxy)(object)conflictingBossMod).Handler = (method, _) => method.Name switch
+        {
+            "get_IsLoaded" => true,
+            "get_InternalName" => "BossMod",
+            _ => throw new InvalidOperationException("Unexpected plugin inventory read: " + method.Name),
+        };
+        host.InstalledPlugins = [conflictingBossMod];
+        var readiness = ServiceType.GetMethod("CanStartCombat", Static)!;
+        object?[] minerva = [new live::VERMAXION.Beastmaster.BeastmasterSettings
+            { CombatProvider = live::VERMAXION.Beastmaster.BeastmasterCombatProvider.Minerva }, null];
+
+        // The offline host has no RSR runtime. Minerva reaches that boundary
+        // without applying BMR's earlier rejection of a loaded BossMod plugin.
+        Assert.False((bool)readiness.Invoke(null, minerva)!);
+        Assert.Equal("RotationSolver is not loaded.", minerva[1]);
+
+        object?[] bmr = [new live::VERMAXION.Beastmaster.BeastmasterSettings(), null];
+        Assert.False((bool)readiness.Invoke(null, bmr)!);
+        Assert.Contains("Use BossModReborn alone", (string)bmr[1]!);
+        Assert.Empty(host.Commands);
+    }
+
+    [Fact]
+    public void SamePlanRestartRetainsCapturedMinervaWhenTheSavedProviderChanges()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        host.NativePlayerAvailable = false;
+        var selected = new live::VERMAXION.Beastmaster.BeastmasterSettings
+        {
+            Board = 4, RunCount = 7,
+            CombatProvider = live::VERMAXION.Beastmaster.BeastmasterCombatProvider.Minerva,
+        };
+        // Run the real fresh-plan initialization, stopping at the fixture's
+        // existing native-player boundary before any offline duty registration.
+        Assert.True((bool)Invoke(service, "RestartFromCurrent", selected, true, false)!);
+        var captured = Field(service, "combat");
+        var runSettings = Field(service, "runSettings");
+        Assert.Equal("BeastmasterMinervaCombat", captured!.GetType().Name);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+        Set(service, "CurrentRun", 3);
+
+        var changed = new live::VERMAXION.Beastmaster.BeastmasterSettings
+        {
+            Board = 1, RunCount = 1,
+            CombatProvider = live::VERMAXION.Beastmaster.BeastmasterCombatProvider.BossModReborn,
+        };
+        Assert.True((bool)Invoke(service, "RestartFromCurrent", changed, true, false)!);
+
+        Assert.Same(captured, Field(service, "combat"));
+        Assert.Equal(live::VERMAXION.Beastmaster.BeastmasterCombatProvider.Minerva,
+            Read<live::VERMAXION.Beastmaster.BeastmasterCombatProvider>(service, "combatProvider"));
+        Assert.Same(runSettings, Field(service, "runSettings"));
+        Assert.Equal(3, Read<int>(service, "CurrentRun"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FreshRestartCannotReplaceAnUnresolvedProviderOrItsRunOwnership(bool changedCharacter)
+    {
+        using var host = new HostFixture();
+        var service = CreateStationaryRun(host);
+        var captured = Field(service, "combat")!;
+        var runSettings = Field(service, "runSettings");
+        var originalType = captured.GetType().GetField("original", Instance)!.FieldType.GenericTypeArguments.Single();
+        // Represent the existing lease after its provider was unloaded. The real
+        // release path must fail against this fixture's empty plugin inventory.
+        Set(captured, "original", Activator.CreateInstance(originalType));
+        Set(captured, "rotationChanged", true);
+        Assert.True(Read<bool>(captured, "OwnsState"));
+        Set(service, "CurrentRun", 7);
+        Set(service, "resultSeen", true);
+        if (changedCharacter) host.Character = 18;
+        else Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Complete"));
+        var priorState = Field(service, "State");
+        var selected = new live::VERMAXION.Beastmaster.BeastmasterSettings
+            { CombatProvider = live::VERMAXION.Beastmaster.BeastmasterCombatProvider.Minerva };
+
+        Assert.False((bool)Invoke(service, "RestartFromCurrent", selected, true, false)!);
+
+        Assert.Same(captured, Field(service, "combat"));
+        Assert.True(Read<bool>(captured, "OwnsState"));
+        Assert.Equal(live::VERMAXION.Beastmaster.BeastmasterCombatProvider.BossModReborn,
+            Read<live::VERMAXION.Beastmaster.BeastmasterCombatProvider>(service, "combatProvider"));
+        Assert.Same(runSettings, Field(service, "runSettings"));
+        Assert.Equal(17UL, Read<ulong>(service, "owner"));
+        Assert.Equal(priorState, Field(service, "State"));
+        Assert.Equal(7, Read<int>(service, "CurrentRun"));
+        Assert.True(Read<bool>(service, "resultSeen"));
+        Assert.StartsWith("Combat restoration pending: ", Read<string>(service, "status"));
+        Assert.Empty(host.Commands);
+    }
+
+    [Fact]
     public void SecondMasterFirstFightReturnResumesThroughItsBranchAndDispatchesTheNextTile()
     {
         using var host = new HostFixture { Territory = 1343, Position = new(-700, 0, -8) };
@@ -1034,6 +1133,7 @@ public sealed class BeastmasterRouteLifecycleTests
         public readonly HashSet<string> Conditions = [];
         public readonly List<string> Commands = [];
         public readonly List<string> Warnings = [];
+        public host::Dalamud.Plugin.IExposedPlugin[] InstalledPlugins = [];
         public int OkClicks => receivedEvents.Count(entry => entry.Name == "SelectOk");
         public int YesClicks => receivedEvents.Count(entry => entry.Name == "SelectYesno");
         public int TakeAllClicks => receivedEvents.Count(entry => entry.Name == "XBMContentsBooty" && entry.Param == TakeAllParam);
@@ -1063,7 +1163,7 @@ public sealed class BeastmasterRouteLifecycleTests
                     return Default(method.ReturnType);
                 });
                 pluginInterface = Proxy(typeof(host::Dalamud.Plugin.IDalamudPluginInterface), (method, _) =>
-                    method.Name == "get_InstalledPlugins" ? Array.Empty<host::Dalamud.Plugin.IExposedPlugin>() : Default(method.ReturnType));
+                    method.Name == "get_InstalledPlugins" ? InstalledPlugins : Default(method.ReturnType));
                 Replace(typeof(live::VERMAXION.Plugin), "PluginInterface", pluginInterface);
                 Replace(typeof(live::VERMAXION.Plugin), "ObjectTable", objects);
                 Replace(typeof(live::VERMAXION.Plugin), "Condition", conditions);

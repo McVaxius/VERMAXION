@@ -7,13 +7,25 @@ using Newtonsoft.Json.Linq;
 
 namespace VERMAXION.Beastmaster;
 
+internal interface IBeastmasterCombat
+{
+    bool OwnsState { get; }
+    bool IsRunning { get; }
+    bool TryActivate(out string reason, bool allowAttacks = true);
+    bool TrySuspend(out string reason);
+    bool TryRelease(out string reason);
+    BeastmasterCombat.Target ReadTarget();
+}
+
 // A run-local lease. Only a missing bundled movement preset is added to the preset database.
-internal sealed class BeastmasterCombat
+internal sealed class BeastmasterCombat : IBeastmasterCombat
 {
     internal const string PresetName = "passive - melee";
     internal const string RotationName = "RotationSolver.RebornRotations.Melee.BST_Reborn";
     internal enum Mode : byte { Off, Auto, TargetOnly, Manual, AutoDuty, Henched, PvP }
     internal readonly record struct Target(ulong InstanceId, bool CanPull);
+    internal readonly record struct RotationState(object Provider, Mode Mode, string? Rotation,
+        bool ExternalOverrides, object? IpcOverrides, object? TargetingTypeOverride);
     internal readonly record struct State(object RotationProvider, object MovementProvider, Mode Mode,
         string? Rotation, bool ExternalOverrides, bool AiActive, string? Preset, bool ForceDisabled)
     {
@@ -54,6 +66,7 @@ internal sealed class BeastmasterCombat
     public bool TryActivate(out string reason, bool allowAttacks = true) => TryApply(true, out reason, allowAttacks);
     public bool TrySuspend(out string reason) => TryApply(false, out reason);
     internal Target ReadTarget() => provider.ReadTarget();
+    Target IBeastmasterCombat.ReadTarget() => ReadTarget();
 
     private bool TryApply(bool running, out string reason, bool allowAttacks = true)
     {
@@ -233,8 +246,61 @@ internal sealed class BeastmasterCombat
         return state;
     }
 
-    private static string Describe(Exception ex)
+    internal static string Describe(Exception ex)
         => (ex is TargetInvocationException { InnerException: { } inner } ? inner : ex).Message;
+
+    internal static RotationState ReadRotation(object rsr, AssemblyLoadContext? context)
+    {
+        var loadContext = context ?? AssemblyLoadContext.GetLoadContext(rsr.GetType().Assembly);
+        var basic = loadContext?.Assemblies.FirstOrDefault(a => a.GetName().Name == "RotationSolver.Basic")
+            ?? throw new InvalidOperationException("RSR runtime state is unavailable.");
+        var data = basic.GetType("RotationSolver.Basic.DataCenter", true)!;
+        bool Flag(string name) => ReadStatic(data, name) is bool value ? value
+            : throw new InvalidOperationException("RSR runtime state is incompatible: " + name);
+        var state = Flag("State");
+        var manual = Flag("IsManual");
+        var targetOnly = Flag("IsTargetOnly");
+        var autoDuty = Flag("IsAutoDuty");
+        var henched = Flag("IsHenched");
+        var pvp = Flag("IsPvPStateEnabled");
+        var mode = !state ? Mode.Off : pvp ? Mode.PvP : henched ? Mode.Henched : autoDuty ? Mode.AutoDuty
+            : targetOnly ? Mode.TargetOnly : manual ? Mode.Manual : Mode.Auto;
+        if (!state && (manual || targetOnly || autoDuty || henched || pvp) ||
+            state && (mode == Mode.Henched ? !manual || targetOnly || autoDuty || pvp
+                : mode == Mode.Manual ? targetOnly || autoDuty || henched || pvp
+                : manual || (targetOnly ? 1 : 0) + (autoDuty ? 1 : 0) + (pvp ? 1 : 0) > 1))
+            throw new InvalidOperationException("RSR operating-mode flags are inconsistent.");
+        var rotation = ReadStatic(data, "CurrentRotation");
+        var overrides = ReadStatic(data, "IpcOverrides");
+        var targeting = ReadStatic(data, "TargetingTypeOverride");
+        return new(rsr, mode, rotation?.GetType().FullName, overrides != null || targeting != null, overrides, targeting);
+    }
+
+    internal static void SetRotationMode(Mode mode)
+        => Plugin.PluginInterface.GetIpcSubscriber<byte, object>("RotationSolverReborn.ChangeOperatingMode").InvokeAction((byte)mode);
+
+    internal static void RestoreRotationOverrides(object rotationProvider, object? overrides, object? targeting)
+    {
+        var context = AssemblyLoadContext.GetLoadContext(rotationProvider.GetType().Assembly);
+        var data = context?.Assemblies.FirstOrDefault(a => a.GetName().Name == "RotationSolver.Basic")
+            ?.GetType("RotationSolver.Basic.DataCenter", true)
+            ?? throw new InvalidOperationException("RSR runtime state is unavailable.");
+        data.GetProperty("IpcOverrides", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!.SetValue(null, overrides);
+        data.GetProperty("TargetingTypeOverride", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!.SetValue(null, targeting);
+    }
+
+    internal static object ReadPlugin(string internalName, out AssemblyLoadContext? context)
+    {
+        if (!Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == internalName))
+            throw new InvalidOperationException($"{internalName} is not loaded.");
+        if (!DalamudReflector.TryGetDalamudPlugin(internalName, out object instance, out context, true, true) || instance == null)
+            throw new InvalidOperationException($"{internalName} is loaded, but its runtime state could not be read.");
+        return instance;
+    }
+
+    private static object? ReadStatic(Type type, string name)
+        => (type.GetProperty(name, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("RSR runtime state is incompatible: " + name)).GetValue(null);
 
     private sealed class NativeProvider : IProvider
     {
@@ -257,28 +323,7 @@ internal sealed class BeastmasterCombat
                 throw new InvalidOperationException("Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names.");
             var rsr = ReadPlugin("RotationSolver", out var context);
             var bmr = ReadPlugin("BossModReborn", out _);
-            var loadContext = context ?? AssemblyLoadContext.GetLoadContext(rsr.GetType().Assembly);
-            var basic = loadContext?.Assemblies.FirstOrDefault(a => a.GetName().Name == "RotationSolver.Basic")
-                ?? throw new InvalidOperationException("RSR runtime state is unavailable.");
-            var data = basic.GetType("RotationSolver.Basic.DataCenter", true)!;
-            bool Flag(string name) => ReadStatic(data, name) is bool value ? value
-                : throw new InvalidOperationException("RSR runtime state is incompatible: " + name);
-            var state = Flag("State");
-            var manual = Flag("IsManual");
-            var targetOnly = Flag("IsTargetOnly");
-            var autoDuty = Flag("IsAutoDuty");
-            var henched = Flag("IsHenched");
-            var pvp = Flag("IsPvPStateEnabled");
-            var mode = !state ? Mode.Off : pvp ? Mode.PvP : henched ? Mode.Henched : autoDuty ? Mode.AutoDuty
-                : targetOnly ? Mode.TargetOnly : manual ? Mode.Manual : Mode.Auto;
-            if (!state && (manual || targetOnly || autoDuty || henched || pvp) ||
-                state && (mode == Mode.Henched ? !manual || targetOnly || autoDuty || pvp
-                    : mode == Mode.Manual ? targetOnly || autoDuty || henched || pvp
-                    : manual || (targetOnly ? 1 : 0) + (autoDuty ? 1 : 0) + (pvp ? 1 : 0) > 1))
-                throw new InvalidOperationException("RSR operating-mode flags are inconsistent.");
-            var rotation = ReadStatic(data, "CurrentRotation");
-            var overrides = ReadStatic(data, "IpcOverrides");
-            var targeting = ReadStatic(data, "TargetingTypeOverride");
+            var rotation = ReadRotation(rsr, context);
             var aiType = bmr.GetType().Assembly.GetType("BossMod.AI.AIManager", true)!;
             var ai = aiType.GetField("Instance", Static)?.GetValue(null)
                 ?? throw new InvalidOperationException("BossMod AI runtime state is unavailable.");
@@ -293,9 +338,9 @@ internal sealed class BeastmasterCombat
             var force = Plugin.PluginInterface.GetIpcSubscriber<bool>("BossMod.Presets.GetForceDisabled").InvokeFunc();
             if (force && preset != string.Empty)
                 throw new InvalidOperationException("BossMod forced-disabled preset state is inconsistent.");
-            return new State(rsr, bmr, mode, rotation?.GetType().FullName, overrides != null || targeting != null,
+            return new State(rsr, bmr, rotation.Mode, rotation.Rotation, rotation.ExternalOverrides,
                 behaviour.GetValue(ai) != null, preset, force)
-                { AiMasterSlot = masterSlot, IpcOverrides = overrides, TargetingTypeOverride = targeting };
+                { AiMasterSlot = masterSlot, IpcOverrides = rotation.IpcOverrides, TargetingTypeOverride = rotation.TargetingTypeOverride };
         }
 
         public string ReadPreset()
@@ -352,18 +397,13 @@ internal sealed class BeastmasterCombat
         }
 
         public void SetMode(Mode mode)
-            => Plugin.PluginInterface.GetIpcSubscriber<byte, object>("RotationSolverReborn.ChangeOperatingMode").InvokeAction((byte)mode);
+            => SetRotationMode(mode);
 
         public void RestoreRotationOverrides(State saved)
         {
-            var context = AssemblyLoadContext.GetLoadContext(saved.RotationProvider.GetType().Assembly);
-            var data = context?.Assemblies.FirstOrDefault(a => a.GetName().Name == "RotationSolver.Basic")
-                ?.GetType("RotationSolver.Basic.DataCenter", true)
-                ?? throw new InvalidOperationException("RSR runtime state is unavailable.");
             // These are public, run-time overrides. Changing the mode clears them;
             // restore the opaque original values afterward without changing config.
-            data.GetProperty("IpcOverrides", Static)!.SetValue(null, saved.IpcOverrides);
-            data.GetProperty("TargetingTypeOverride", Static)!.SetValue(null, saved.TargetingTypeOverride);
+            BeastmasterCombat.RestoreRotationOverrides(saved.RotationProvider, saved.IpcOverrides, saved.TargetingTypeOverride);
         }
 
         public void SetPreset(string? name, bool forceDisabled)
@@ -387,16 +427,5 @@ internal sealed class BeastmasterCombat
             method.Invoke(ai, enabled ? [masterSlot] : null);
         }
 
-        private static object ReadPlugin(string internalName, out AssemblyLoadContext? context)
-        {
-            if (!Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == internalName))
-                throw new InvalidOperationException($"{internalName} is not loaded.");
-            if (!DalamudReflector.TryGetDalamudPlugin(internalName, out object instance, out context, true, true) || instance == null)
-                throw new InvalidOperationException($"{internalName} is loaded, but its runtime state could not be read.");
-            return instance;
-        }
-
-        private static object? ReadStatic(Type type, string name)
-            => (type.GetProperty(name, Static) ?? throw new InvalidOperationException("RSR runtime state is incompatible: " + name)).GetValue(null);
     }
 }
