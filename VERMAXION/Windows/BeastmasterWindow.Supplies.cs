@@ -365,7 +365,7 @@ internal sealed partial class BeastmasterWindow
             if (UIConstants.Checkbox("Extract materia before entry", ref extract))
             { settings.ExtractMateria = extract; SaveSettings(); }
         }
-        UiGui.TextWrapped("Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted.");
+        UiGui.TextWrapped("Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted.");
         UiGui.TextDisabled("Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies.");
     }
 

@@ -789,6 +789,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                         waitingForRevival = false;
                         Svc.Log.Information("[Beastmaster] Revived; resuming the current fight with the selected combat provider.");
                     }
+                    if (!resultSeen && TryPrepareFood(betweenFights: true)) break;
                     menus.Update();
                     if (State != RunState.Running) break;
                     if (ResultObserved) { FinishRun(); break; }
@@ -951,6 +952,10 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     { fightContext = context; arenaPrepared = false; }
     internal bool PrepareArenaFight()
     {
+        // Native Control reconciles the actual active encounter and resources.
+        // A missing menu context or out-of-combat preparation cannot gate a
+        // battle that is already under way.
+        if (Svc.Condition[ConditionFlag.InCombat]) return true;
         if (rankingCheckboxTest || !BeastmasterSelection.RequiresClearTeam(Settings) || arenaPrepared) return true;
         route?.StopOwnedAutoAttack();
         if (fightContext is not { } fight)
@@ -968,6 +973,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         arenaPrepared = true;
         return true;
     }
+    internal bool EnsureCombatActive() => combat.IsRunning || StartCombat(allowAttacks: false);
     internal bool StartCombat(bool allowAttacks = true)
     {
         if (IsPaused || waitingForRevival || !BeastmasterPlayer.IsCombatReady ||

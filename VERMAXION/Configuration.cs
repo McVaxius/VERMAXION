@@ -81,6 +81,8 @@ public class Configuration : IPluginConfiguration
     public bool KrangleEnabled { get; set; } = false;
     public bool AutoRestoreRetainerCheckingAfterWork { get; set; } = true;
     public bool EnableCharacterSelectStallRecovery { get; set; } = true;
+    private int minimumTeleportGil = 10000;
+    public int MinimumTeleportGil { get => minimumTeleportGil; set => minimumTeleportGil = Math.Max(0, value); }
     public bool LogoutBetweenScheduledOceanFishingVoyages { get; set; } = false;
     public ScheduledOfflineHoldState? ScheduledOfflineHold { get; set; }
     public List<string> FavoriteAutomationIds { get; set; } = new();

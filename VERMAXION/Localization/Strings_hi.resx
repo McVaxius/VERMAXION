@@ -2688,7 +2688,7 @@
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>चेकबॉक्स के चयन की पुष्टि नहीं हुई। परीक्षण प्रवेश से पहले रोक दिया गया।</value></data>
   <data name="No food" xml:space="preserve"><value>भोजन नहीं</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>प्रवेश से पहले मटेरिया निकालें</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>प्रवेश से पहले और लड़ाइयों के बीच भोजन प्रभाव में 90 सेकंड बचे होने पर उसे नवीनीकृत करें। भोजन न होने पर चेतावनी देकर जारी रखें; चुनी गुणवत्ता न बदलें।</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>भोजन प्रभाव में 90 सेकंड या उससे कम समय बचने पर, रन के दौरान भी भोजन उपयोग योग्य होते ही प्रभाव नवीनीकृत होता है। भोजन न होने पर चेतावनी देकर जारी रखें; चुनी हुई गुणवत्ता कभी न बदलें।</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>हर बोर्ड से पहले ड्यूटी के बाहर ADS से मटेरिया निकालें। चेकबॉक्स परीक्षण सामग्री का उपयोग नहीं करते।</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>सामग्री तैयार हो रही है</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>चुना भोजन उपलब्ध नहीं; जारी है।</value></data>

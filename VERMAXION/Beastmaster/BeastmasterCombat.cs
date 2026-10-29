@@ -25,13 +25,13 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
 {
     internal const string IpcPrefix = "BMRVariantLoader.Crewcible.";
     internal const string RotationName = "BMRVariantModulePack.Autorotation.CrewcibleBST";
-    internal readonly record struct Target(ulong InstanceId, bool CanPull);
+    internal readonly record struct Target(ulong InstanceId, bool CanPull, uint DamageItem = 0);
     internal readonly record struct Setup(uint[] Roster, uint[] Trio, uint PreBorrowFamiliar,
         uint BorrowAction, uint FirstActiveFamiliar, uint[] RequiredGear);
     internal readonly record struct State(object Provider, bool Available, bool Ready, string? Owner,
         bool Active, bool AllowAttacks, bool UseBmrMovement, string? Rotation, string? Error,
         bool MovementStopped = true, bool RequiresNativeMovement = false,
-        bool AllowDamageItems = false);
+        bool AllowDamageItems = false, uint DamageItem = 0);
     internal interface IProvider
     {
         State Read();
@@ -58,13 +58,15 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
             try
             {
                 var current = ReadCurrent();
-                return current.Owner == owner && current.Available && current.Ready && current.Active &&
-                    current.AllowAttacks && current.AllowDamageItems && current.Rotation == RotationName &&
-                    string.IsNullOrEmpty(current.Error);
+                return DamageItemsPermitted(current);
             }
             catch { return false; }
         }
     }
+    private bool DamageItemsPermitted(State current) => controllerClaimed && IsRunning &&
+        current.Owner == owner && current.Available && current.Ready && current.Active &&
+        current.AllowAttacks && current.AllowDamageItems && current.Rotation == RotationName &&
+        string.IsNullOrEmpty(current.Error);
     public bool RequiresNativeMovement
     {
         get
@@ -171,7 +173,7 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
     {
         var current = ReadCurrent();
         if (controllerClaimed && current.Owner != owner) throw new InvalidOperationException("Crewcible ownership was revoked.");
-        return provider.ReadTarget();
+        return provider.ReadTarget() with { DamageItem = DamageItemsPermitted(current) ? current.DamageItem : 0 };
     }
     private State ReadCurrent()
     {
@@ -273,7 +275,8 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
                 status.Value<bool?>("AllowAttacks") == true, status.Value<bool?>("UseBmrMovement") == true,
                 status.Value<string>("Rotation"), status.Value<string>("Error"),
                 status.Value<bool>("MovementStopped"), status.Value<bool>("RequiresNativeMovement"),
-                status["AllowDamageItems"]?.Type == JTokenType.Boolean && status.Value<bool>("AllowDamageItems"));
+                status["AllowDamageItems"]?.Type == JTokenType.Boolean && status.Value<bool>("AllowDamageItems"),
+                status["DamageItem"]?.Type == JTokenType.Integer ? status.Value<uint>("DamageItem") : 0);
         }
         public Target ReadTarget()
         {

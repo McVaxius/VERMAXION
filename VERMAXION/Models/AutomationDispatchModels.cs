@@ -105,3 +105,33 @@ public static class AutomationDispatchPlanner
             .Where(id => eligibilityById.TryGetValue(id, out var eligibility) && eligibility.IsRunnable)
             .ToList();
 }
+
+public static class TeleportGilPolicy
+{
+    public static string? GetBlockedReason(long? gil, int minimumGil, bool needsTeleport = true)
+    {
+        if (!needsTeleport || minimumGil <= 0) return null;
+        if (!gil.HasValue) return "Gil balance is unavailable; teleport-dependent work is skipped.";
+        return gil.Value < minimumGil
+            ? $"Teleport-dependent work needs at least {minimumGil:N0} gil; current balance is {gil.Value:N0}."
+            : null;
+    }
+
+    public static TaskEligibility Apply(TaskEligibility eligibility, long? gil, int minimumGil, bool needsTeleport)
+        => eligibility.IsRunnable && GetBlockedReason(gil, minimumGil, needsTeleport) is { } reason
+            ? TaskEligibility.Blocked(reason) : eligibility;
+
+    public static bool CommandNeedsTeleport(string command, uint territory)
+    {
+        var route = command.Trim();
+        if (route.StartsWith("/li ", StringComparison.OrdinalIgnoreCase)) route = route[4..].Trim();
+        if (route.Equals("stop", StringComparison.OrdinalIgnoreCase) ||
+            route.Equals("abort", StringComparison.OrdinalIgnoreCase) ||
+            route.Equals("return", StringComparison.OrdinalIgnoreCase) ||
+            route.Equals("/return", StringComparison.OrdinalIgnoreCase)) return false;
+        if (territory == 144 && (route.Equals("saucer", StringComparison.OrdinalIgnoreCase) ||
+            route.Equals("cactpot", StringComparison.OrdinalIgnoreCase))) return false;
+        if (territory == 129 && route.Equals("limsa", StringComparison.OrdinalIgnoreCase)) return false;
+        return true;
+    }
+}

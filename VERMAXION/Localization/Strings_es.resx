@@ -6219,7 +6219,7 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>No se confirmó la casilla. Prueba detenida antes de entrar.</value></data>
   <data name="No food" xml:space="preserve"><value>Sin comida</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>Extraer materias antes de entrar</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>La comida renueva Bien alimentado a los 90 segundos antes de entrar y entre combates. Si falta, avisa y continúa; nunca cambia la calidad elegida.</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>La comida renueva Bien alimentado cuando quedan 90 segundos o menos y se puede usar, incluso durante los recorridos. Si falta comida, avisa y continúa; nunca sustituye la calidad elegida.</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>La extracción usa ADS fuera de la instancia antes de cada tablero. Las pruebas de casilla no usan suministros.</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>Preparando suministros</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Comida elegida no disponible; continuando.</value></data>

@@ -48,6 +48,24 @@ namespace VERMAXION.Tests
         }
 
         [Fact]
+        public void DamageItemAdviceRequiresTheActualOwnedPermissionAndClearsWithTheNativeWindow()
+        {
+            var provider = new FakeProvider();
+            provider.Current = provider.Current with { AllowDamageItems = true, DamageItem = 139 };
+            var combat = new BeastmasterCombat(provider);
+            Assert.Equal(0u, combat.ReadTarget().DamageItem);
+            Assert.True(combat.TryActivate(out var error), error);
+            Assert.Equal(139u, combat.ReadTarget().DamageItem);
+            provider.Current = provider.Current with { DamageItem = 0 };
+            Assert.Equal(0u, combat.ReadTarget().DamageItem);
+            provider.Current = provider.Current with { DamageItem = 139, AllowDamageItems = false };
+            Assert.Equal(0u, combat.ReadTarget().DamageItem);
+            provider.Current = provider.Current with { AllowDamageItems = true };
+            Assert.True(combat.TrySuspend(out error), error);
+            Assert.Equal(0u, combat.ReadTarget().DamageItem);
+        }
+
+        [Fact]
         public void DamageItemsRequireCurrentOwnedAttackPermissionAndRejectChangedProviders()
         {
             var provider = new FakeProvider();

@@ -40,6 +40,18 @@ public sealed class BeastmasterRepairTests
     public void FoodIsOptionalAndRefreshesAtTheAgreedThreshold(uint selected, float seconds, bool expected)
         => Assert.Equal(expected, BeastmasterRepairPolicy.ShouldRefreshFood(selected, seconds));
 
+    [Fact]
+    public void AutomaticFoodReceiptRequiresSelectedStockConsumptionAndANewBuff()
+    {
+        // A pre-existing or manually renewed hour of food is not an automatic receipt.
+        Assert.False(BeastmasterRepairPolicy.FoodRefreshConfirmed(5, 5, 70, 3600));
+        Assert.False(BeastmasterRepairPolicy.FoodRefreshConfirmed(5, null, 70, 3600));
+        Assert.False(BeastmasterRepairPolicy.FoodRefreshConfirmed(5, 4, 70, 69));
+        Assert.False(BeastmasterRepairPolicy.FoodRefreshConfirmed(0, 0, 0, 1800));
+        Assert.True(BeastmasterRepairPolicy.FoodRefreshConfirmed(5, 4, 70, 1800));
+        Assert.True(BeastmasterRepairPolicy.FoodRefreshConfirmed(5, 4, 0, 1800));
+    }
+
     [Theory]
     [InlineData(1u)]
     [InlineData(2u)]

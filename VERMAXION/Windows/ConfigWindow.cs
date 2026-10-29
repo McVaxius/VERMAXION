@@ -529,6 +529,15 @@ public class ConfigWindow : Window, IDisposable
             if (UIConstants.CollapsingHeading("Automation & Recovery"))
             {
 
+            var minimumTeleportGil = config.MinimumTeleportGil;
+            UIConstants.SetNextItemWidth(GetCompactNumericInputWidth() * 1.5f);
+            if (UIConstants.InputInt("Minimum gil for teleport tasks", ref minimumTeleportGil, 1000, 10000))
+            {
+                config.MinimumTeleportGil = minimumTeleportGil;
+                config.Save();
+            }
+            DrawHelpMarker("Skip work that needs teleport travel below this balance. Local tasks and free travel remain available. Default: 10,000 gil. Set 0 to disable. Purchase reserves still apply.");
+
             var autoRestoreRetainerChecking = config.AutoRestoreRetainerCheckingAfterWork;
             if (UIConstants.Checkbox(
                     UIConstants.ConfigLabels.AutoRestoreRetainerCheckingAfterWork,

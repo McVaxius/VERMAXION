@@ -475,9 +475,11 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.Equal(0, host.PreparationCalls);
 
         host.PlayerStatus = 0;
-        host.PreparationReady = true; // Native retained-fight readiness is checked after protection ends.
+        // An already active battle does not depend on the old menu context or
+        // another out-of-combat preparation request after revival.
+        Set(service, "fightContext", null);
         Invoke(route, "UpdateBattle");
-        Assert.Equal(1, host.PreparationCalls);
+        Assert.Equal(0, host.PreparationCalls);
         Assert.True(Read<bool>(host.CombatState!, "AllowAttacks"));
         Assert.True(host.AutoAttacking);
         Assert.NotNull(host.BattleTarget);
@@ -719,19 +721,43 @@ public sealed class BeastmasterRouteLifecycleTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void RevivalProtectionSkipsFoodBeforeAnyInventoryAccess(bool betweenFights)
+    public void ManuallyAppliedFoodInCombatDoesNotCountAsAutomaticRefresh(bool betweenFights)
     {
         using var host = new HostFixture();
         var service = host.CreateService();
         host.EnableBattle(service);
         Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { FoodItemId = 1 });
         Set(service, "operatorStopped", false);
-        host.PlayerStatus = 418;
+        host.Conditions.Add("InCombat");
+        host.PlayerStatus = 48;
+        host.PlayerStatusRemaining = 3600;
 
         Assert.False((bool)Invoke(service, "TryPrepareFood", betweenFights)!);
         Assert.Equal(default, Read<DateTime>(service, "foodPendingUntil"));
+        Assert.StartsWith("Existing Well Fed:", Read<string>(service, "FoodStatus"));
         Assert.Empty(host.AutoattackCalls);
         Assert.Empty(host.Commands);
+    }
+
+    [Fact]
+    public void UnreadClearRequirementsCannotBecomeAnEmptyGearReservation()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService();
+        var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings
+            { Board = 5, Degree = live::VERMAXION.Beastmaster.CrucibleDegree.Third };
+        Set(service, "runSettings", settings);
+        var menus = Field(service, "menus")!;
+        var requirements = menus.GetType().GetMethod("TryRequiredClearGear", Instance)!;
+        object?[] args = [null];
+        Assert.False((bool)requirements.Invoke(menus, args)!);
+        Assert.Empty((uint[])args[0]!);
+        Assert.StartsWith("Waiting for native clear gear requirements:", Read<string>(menus, "Status"));
+        Assert.Equal(0, host.LootCloseCallbacks);
+        Assert.Empty(host.Commands);
+        settings.Degree = live::VERMAXION.Beastmaster.CrucibleDegree.Standard;
+        Assert.True((bool)requirements.Invoke(menus, args)!);
+        Assert.Empty((uint[])args[0]!);
     }
 
     [Theory]
@@ -1853,6 +1879,10 @@ public sealed class BeastmasterRouteLifecycleTests
                 statuses->Status[0].StatusId = value;
             }
         }
+        public float PlayerStatusRemaining
+        {
+            set => ((NativeGame.StatusManager*)battleStatuses)->Status[0].RemainingTime = value;
+        }
         public readonly List<(Gui.AtkEventType Type, int Param)> RankingInputs = [];
         public bool RankingInputMetadataValid = true;
         public int RankingOwnerNotifications;
@@ -2377,7 +2407,7 @@ public sealed class BeastmasterRouteLifecycleTests
             var targetType = combatType.GetNestedType("Target", BindingFlags.NonPublic)!;
             var rotationName = (string)combatType.GetField("RotationName", Static)!.GetRawConstantValue()!;
             CombatState = Activator.CreateInstance(stateType,
-                [new object(), true, true, null, false, false, true, rotationName, "", true, false, false]);
+                [new object(), true, true, null, false, false, true, rotationName, "", true, false, false, 0u]);
             var provider = Proxy(providerType, (method, args) =>
             {
                 switch (method.Name)
@@ -2385,7 +2415,7 @@ public sealed class BeastmasterRouteLifecycleTests
                     case "CancelRotation": return true;
                     case "Read": return CombatState;
                     case "ReadTarget": return Activator.CreateInstance(targetType,
-                        [HoldOffense ? 0UL : 1001UL, !HoldOffense && TargetCanAttack]);
+                        [HoldOffense ? 0UL : 1001UL, !HoldOffense && TargetCanAttack, 0u]);
                     case "Control":
                         CombatControls++;
                         Set(CombatState!, "Owner", args![0]);

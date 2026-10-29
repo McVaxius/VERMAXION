@@ -34,6 +34,9 @@ internal static class BeastmasterRepairPolicy
     internal static bool ShouldRefreshFood(uint selectedUseId, float wellFedSeconds)
         => selectedUseId != 0 && wellFedSeconds <= 90;
 
+    internal static bool FoodRefreshConfirmed(int priorCount, int? currentCount, float priorRemaining, float remaining)
+        => priorCount > 0 && currentCount is >= 0 && currentCount < priorCount && remaining > priorRemaining;
+
     // ADS clears the task/mode on completion. A fresh idle completion receipt is
     // settlement only; callers still verify actual durability before reporting success.
     internal static bool HasFreshCompletion(DateTime requestedAtUtc, bool readable, bool running, DateTime? completedAtUtc)

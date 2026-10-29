@@ -3,6 +3,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
 using VERMAXION.Models;
+using VERMAXION.Services;
 
 namespace VERMAXION.IPC;
 
@@ -10,14 +11,17 @@ public sealed class LifestreamIPC
 {
     private readonly IPluginLog log;
     private readonly ICommandManager commandManager;
+    private readonly Configuration configuration;
     private readonly ICallGateSubscriber<bool> isBusySubscriber;
     private readonly ICallGateSubscriber<string, object> executeCommandSubscriber;
     private readonly ICallGateSubscriber<uint, bool> aethernetTeleportSubscriber;
 
-    public LifestreamIPC(IDalamudPluginInterface pluginInterface, IPluginLog log, ICommandManager commandManager)
+    public LifestreamIPC(IDalamudPluginInterface pluginInterface, IPluginLog log, ICommandManager commandManager,
+        Configuration configuration)
     {
         this.log = log;
         this.commandManager = commandManager;
+        this.configuration = configuration;
         isBusySubscriber = pluginInterface.GetIpcSubscriber<bool>("Lifestream.IsBusy");
         executeCommandSubscriber = pluginInterface.GetIpcSubscriber<string, object>("Lifestream.ExecuteCommand");
         aethernetTeleportSubscriber = pluginInterface.GetIpcSubscriber<uint, bool>("Lifestream.AethernetTeleportById");
@@ -67,6 +71,12 @@ public sealed class LifestreamIPC
     public bool ExecuteCommand(string command)
     {
         var normalized = command.Trim();
+        if (TeleportGilPolicy.CommandNeedsTeleport(normalized, Plugin.ClientState.TerritoryType) &&
+            GetTeleportBlockedReason() is { } reason)
+        {
+            log.Warning($"[Lifestream] {reason}");
+            return false;
+        }
         var ipcCommand = LifestreamCommandPolicy.NormalizeForIpc(normalized);
         try
         {
@@ -84,6 +94,9 @@ public sealed class LifestreamIPC
             return commandManager.ProcessCommand(slashCommand);
         }
     }
+
+    public string? GetTeleportBlockedReason()
+        => TeleportGilPolicy.GetBlockedReason(GameHelpers.ReadGilBalance(), configuration.MinimumTeleportGil);
 
     public bool TryReadActiveAetheryte(out uint aetheryteId)
     {

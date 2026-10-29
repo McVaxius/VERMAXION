@@ -25,6 +25,8 @@ internal sealed unsafe partial class BeastmasterService
     private DateTime foodPendingUntil;
     private DateTime foodNextAttempt;
     private float foodPriorRemaining;
+    private int foodPriorCount;
+    private uint foodPendingUseId;
     internal string RepairStatus { get; private set; } = string.Empty;
     internal string FoodStatus { get; private set; } = string.Empty;
 
@@ -121,63 +123,74 @@ internal sealed unsafe partial class BeastmasterService
         return true;
     }
 
-    // Called only by pre-entry preparation, a safe board walkway or the actual team window.
-    // A temporary out-of-combat flag after revival is never a food opportunity.
+    // Item readiness decides when food can be used. Only genuine preparation
+    // boundaries may yield progression; combat and revival movement keep running.
     internal bool TryPrepareFood(bool betweenFights = false)
     {
         if (rankingCheckboxTest || operatorStopped || IsPaused || resultSeen || Settings.FoodItemId == 0 ||
-            BeastmasterPlayer.HasStatus(418) || !BeastmasterPlayer.IsValid ||
-            Svc.Condition[ConditionFlag.InCombat] || Svc.Objects.LocalPlayer is not { IsDead: false } ||
-            betweenFights && (!IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
-                !(route?.FoodBoundary == true || CrucibleUi.IsOpen(CrucibleUi.BoardLayout) &&
-                    CrucibleUi.IsOpen(CrucibleUi.TeamWindow))) ||
-            !betweenFights && (IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
-                Svc.Condition[ConditionFlag.BoundByDuty] || Svc.Condition[ConditionFlag.BoundByDuty56] ||
-                EntryPending || !NativeQueueIsIdle() || HasOpenRegistrationScreen) ||
-            CrucibleUi.IsVisible(CrucibleUi.ResultWindow) ||
-            CrucibleUi.IsVisible(CrucibleUi.YesNo)) return false;
+            !BeastmasterPlayer.IsValid || Svc.Objects.LocalPlayer is not { IsDead: false, CurrentHp: > 0 } player)
+            return false;
+        var canYield = !Svc.Condition[ConditionFlag.InCombat] && !BeastmasterPlayer.HasStatus(418) &&
+            (!IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
+                route?.FoodBoundary == true || betweenFights && CrucibleUi.IsOpen(CrucibleUi.BoardLayout) &&
+                    CrucibleUi.IsOpen(CrucibleUi.TeamWindow));
         var now = DateTime.UtcNow;
         var remaining = GameHelpers.GetStatusTimeRemaining(48);
+        if (foodPendingUntil == default && !BeastmasterRepairPolicy.ShouldRefreshFood(Settings.FoodItemId, remaining))
+        {
+            FoodStatus = $"Existing Well Fed: {remaining:F0}s; no automatic refresh needed yet.";
+            return false;
+        }
         if (foodPendingUntil != default)
         {
-            if (remaining > foodPriorRemaining)
-            { foodPendingUntil = default; FoodStatus = $"Well Fed: {remaining:F0}s."; return false; }
-            if (now < foodPendingUntil) return true;
+            var pendingHq = foodPendingUseId >= 1_000_000;
+            var pendingBase = pendingHq ? foodPendingUseId - 1_000_000 : foodPendingUseId;
+            var pendingInventory = foodPendingUseId != 0 && foodPriorCount > 0 ? InventoryManager.Instance() : null;
+            int? count = pendingInventory == null ? null : pendingInventory->GetInventoryItemCount(pendingBase, pendingHq);
+            if (BeastmasterRepairPolicy.FoodRefreshConfirmed(foodPriorCount, count, foodPriorRemaining, remaining))
+            {
+                foodPendingUntil = default;
+                FoodStatus = $"Automatic food refresh confirmed: Well Fed {remaining:F0}s.";
+                Svc.Log.Information($"[Beastmaster] Automatic food refresh confirmed (item {foodPendingUseId}, stock {foodPriorCount}->{count}, Well Fed {foodPriorRemaining:F0}->{remaining:F0}s).");
+                return false;
+            }
+            if (now < foodPendingUntil) return canYield;
             foodPendingUntil = default;
             foodNextAttempt = now.AddSeconds(5);
             FoodStatus = "Food was not confirmed; continuing.";
             return false;
         }
-        if (!BeastmasterRepairPolicy.ShouldRefreshFood(Settings.FoodItemId, remaining) || now < foodNextAttempt)
-            return false;
-        if (!BeastmasterPlayer.IsReady)
-        {
-            FoodStatus = "Selected food is not usable; continuing.";
-            return false;
-        }
+        if (now < foodNextAttempt) return false;
+        var inventory = InventoryManager.Instance();
         var useId = Settings.FoodItemId;
         var hq = useId >= 1_000_000;
         var baseId = hq ? useId - 1_000_000 : useId;
-        var inventory = InventoryManager.Instance();
-        if (inventory == null || inventory->GetInventoryItemCount(baseId, hq) == 0)
+        var available = inventory == null ? 0 : inventory->GetInventoryItemCount(baseId, hq);
+        if (available <= 0)
         { foodNextAttempt = now.AddSeconds(5); FoodStatus = "Selected food unavailable; continuing."; return false; }
         if (!Svc.Data.GetExcelSheet<Item>().TryGetRow(baseId, out var item) ||
             item.ItemUICategory.RowId != 46 || item.ItemAction.ValueNullable is not { } action ||
             action.Data[0] != 48)
         { foodNextAttempt = now.AddSeconds(5); FoodStatus = "Selected food is not usable; continuing."; return false; }
-        var stoppedForFood = ownsNavigation;
-        if (ownsNavigation)
+        if (player.IsCasting || Svc.Condition[ConditionFlag.OccupiedInQuestEvent] ||
+            Svc.Condition[ConditionFlag.OccupiedInCutSceneEvent] || Svc.Condition[ConditionFlag.Occupied33] ||
+            Svc.Condition[ConditionFlag.Occupied39] || GameHelpers.GetItemActionStatus(useId) != 0)
+        { foodNextAttempt = now.AddSeconds(5); FoodStatus = "Selected food is not usable yet; continuing."; return false; }
+        var stoppedForFood = canYield && ownsNavigation;
+        if (stoppedForFood)
         {
             StopNavigation();
             if (ownsNavigation) { FoodStatus = "Preparing supplies"; return true; }
         }
         foodNextAttempt = now.AddSeconds(5);
-        if (GameHelpers.GetItemActionStatus(useId) != 0 || !GameHelpers.UseItem(useId))
+        if (!GameHelpers.UseItem(useId))
         { FoodStatus = "Selected food is not usable; continuing."; return stoppedForFood; }
         foodPriorRemaining = remaining;
+        foodPriorCount = available;
+        foodPendingUseId = useId;
         foodPendingUntil = now.AddSeconds(5);
         FoodStatus = "Eating selected food.";
-        return true;
+        return canYield;
     }
 
     private static bool RepairPlayerReady() => BeastmasterPlayer.IsReady && RegistrationPlayerReady &&

@@ -3367,7 +3367,7 @@ Zależności: {1}</value></data>
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Nie potwierdzono zaznaczenia pola. Test zatrzymano przed wejściem.</value></data>
   <data name="No food" xml:space="preserve"><value>Bez jedzenia</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>Ekstrakcja materii przed wejściem</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Jedzenie odnawia efekt najedzenia przy 90 sekundach przed wejściem i między walkami. Brak wyświetla ostrzeżenie i pozwala kontynuować; jakość nie jest zamieniana.</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Jedzenie odnawia efekt najedzenia przy 90 sekundach lub mniej, gdy tylko jego użycie jest możliwe, również podczas rozgrywki. Brak jedzenia wyświetla ostrzeżenie i pozwala kontynuować; wybrana jakość nigdy nie jest zastępowana.</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>Ekstrakcja używa ADS poza instancją przed każdą planszą. Testy pola wyboru nie zużywają zapasów.</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>Przygotowywanie zapasów</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Brak wybranego jedzenia; kontynuowanie.</value></data>

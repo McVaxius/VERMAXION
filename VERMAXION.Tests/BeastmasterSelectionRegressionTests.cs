@@ -1,16 +1,121 @@
+extern alias live;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using Newtonsoft.Json.Linq;
 using VERMAXION.Beastmaster;
 using Xunit;
+using CrucibleItemData = live::VERMAXION.Beastmaster.CrucibleItemData;
+using CrucibleBoard = live::VERMAXION.Beastmaster.CrucibleBoard;
+using CrucibleBoardStop = live::VERMAXION.Beastmaster.CrucibleBoardStop;
+using CrucibleStopKind = live::VERMAXION.Beastmaster.CrucibleStopKind;
 
 namespace VERMAXION.Tests;
 
 public sealed class BeastmasterSelectionRegressionTests
 {
+    [Fact]
+    public void ThirdBoardShopDecisionRequiresTheActualKitAxeAndReservedWaveItem()
+    {
+        Assert.True(NativeSupply<bool>("Board3NeedsShop", Array.Empty<uint>(), new uint[] { 38 }));
+        Assert.True(NativeSupply<bool>("Board3NeedsShop", new uint[] { 140 }, new uint[] { 37, 44 }));
+        Assert.True(NativeSupply<bool>("Board3NeedsShop", new uint[] { 140 }, new uint[] { 38 }));
+        foreach (var axe in Enumerable.Range(38, 6).Select(id => (uint)id))
+            Assert.False(NativeSupply<bool>("Board3NeedsShop", new uint[] { 140, 128 }, new uint[] { axe }));
+        Assert.False(NativeSupply<bool>("Board3NeedsShop", new uint[] { 140, 139 }, new uint[] { 38 }));
+        Assert.Equal(2u, NativeSupply<IEnumerable<uint>>("ClearShopPriority", 5u, Array.Empty<uint>(), new HashSet<uint>(), new uint[] { 2 }).First());
+        var owned = NativeSupply<IEnumerable<uint>>("ClearShopPriority", 5u, new uint[] { 139 }, new HashSet<uint> { 2, 38 }, new uint[] { 2 }).ToArray();
+        Assert.Equal(140u, owned.First());
+        Assert.DoesNotContain(2u, owned);
+        Assert.DoesNotContain(139u, owned);
+        Assert.DoesNotContain(owned, CrucibleItemData.ElemntalAxes.Contains);
+    }
+
+    [Theory]
+    [InlineData(3u, 128u, false, false, true)]
+    [InlineData(3u, 139u, false, false, true)]
+    [InlineData(3u, 139u, true, false, true)]
+    [InlineData(3u, 139u, true, true, false)]
+    [InlineData(5u, 139u, false, false, true)]
+    [InlineData(5u, 139u, false, true, false)]
+    [InlineData(5u, 128u, false, false, false)]
+    [InlineData(2u, 139u, false, false, false)]
+    public void ClearDamageItemsRemainReservedForTheirDocumentedEncounter(uint board, uint item,
+        bool siren, bool laudaBlades, bool reserved)
+        => Assert.Equal(reserved, NativeSupply<bool>("ReserveDamageItem", board, item, siren, laudaBlades));
+
+    [Theory]
+    [InlineData(true, 0.39f, 2, 0u)]
+    [InlineData(true, 0.39f, 1, 50u)]
+    [InlineData(true, 0.4f, 2, 50u)]
+    [InlineData(false, 0.19f, 2, 0u)]
+    [InlineData(false, 0.2f, 0, 10u)]
+    public void ThirdBoardCampsReserveTheLaterFightFamiliar(bool firstCamp, float hp, int items, uint familiar)
+        => Assert.Equal(familiar, NativeSupply<uint>("Board3RestFamiliar", firstCamp, hp, items));
+
+    [Fact]
+    public void CampsitePolicyUsesTheNativeDirectedRouteRatherThanItsSheetNumber()
+    {
+        var before = new CrucibleBoardStop(10, CrucibleStopKind.Campsite, 0, 0, 0, new(), 0);
+        var siren = new CrucibleBoardStop(20, CrucibleStopKind.Elite, 0, 0, 1, new(), 0) { BattleId = 19 };
+        var after = new CrucibleBoardStop(30, CrucibleStopKind.Campsite, 0, 0, 2, new(), 0);
+        var board = new CrucibleBoard(3, "Synthetic board", [before, siren, after], [new(10, 20), new(20, 30)]);
+        Assert.True(NativeSupply<bool>("BattleReachable", board, before, 19u));
+        Assert.False(NativeSupply<bool>("BattleReachable", board, after, 19u));
+        Assert.False(NativeSupply<bool>("BattleReachable", board, before, 99u));
+    }
+
+    private static T NativeSupply<T>(string name, params object[] args) => (T)typeof(CrucibleItemData)
+        .GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, args)!;
+
+    [Theory]
+    [InlineData(true, true, true, 0, false)]
+    [InlineData(false, true, true, 0, true)]
+    [InlineData(true, false, true, 0, true)]
+    [InlineData(true, true, false, 0, true)]
+    [InlineData(true, true, true, 1, true)] // Rejoin the shop after its purchases.
+    [InlineData(false, false, false, 2, false)] // Retain a treasure visit already taken.
+    public void ThirdBoardEmbeddedSupplyWaitSelectsTheNativeBranchAndRetainsItsCommitment(
+        bool kit, bool axe, bool damage, int rejoin, bool shopExpected)
+    {
+        var actions = Route(1341);
+        var wait = (JObject)actions[29]!;
+        var original = wait["Position"]!.DeepClone();
+        var nextFight = actions[31]!["Position"]!.DeepClone();
+        var earlierShop = new CrucibleBoardStop(5, CrucibleStopKind.Shop, 0, 0, -1, new(-700, -26), 0);
+        var before = new CrucibleBoardStop(10, CrucibleStopKind.Enemy, 0, 0, 0, new(-700, -50), 0) { BattleId = 18 };
+        var treasure = new CrucibleBoardStop(20, CrucibleStopKind.Treasure, 0, -1, 1,
+            new(original.Value<float>("X"), original.Value<float>("Z")), 0);
+        // Deliberately asymmetric: the route must use native map data, not mirror a coordinate.
+        var shop = new CrucibleBoardStop(21, CrucibleStopKind.Shop, 0, 1, 1, new(-693.75f, -59.25f), 0);
+        var siren = new CrucibleBoardStop(30, CrucibleStopKind.Elite, 0, 0, 2, new(-700, -65), 0) { BattleId = 19 };
+        var laterShop = new CrucibleBoardStop(40, CrucibleStopKind.Shop, 0, 0, 3, new(-700, -89), 0);
+        var board = new CrucibleBoard(3, "Synthetic board", [earlierShop, before, treasure, shop, siren, laterShop],
+            [new(5, 10), new(10, 20), new(10, 21), new(20, 30), new(21, 30), new(30, 40)]);
+        var held = new List<uint>();
+        if (kit) held.Add(140);
+        if (damage) held.Add(128);
+        var gear = new HashSet<uint>();
+        if (axe) gear.Add(38);
+        var current = rejoin == 1 ? shop : rejoin == 2 ? treasure : null;
+        var routeType = typeof(live::VERMAXION.Plugin).Assembly.GetType("VERMAXION.Beastmaster.BeastmasterRoute", true)!;
+        routeType.GetMethod("SelectSupplyBranch", BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, [wait, board, current, held.ToArray(), gear]);
+
+        var expected = shopExpected ? shop : treasure;
+        Assert.Equal(expected.Position.X, wait["Position"]!.Value<float>("X"));
+        Assert.Equal(expected.Position.Y, wait["Position"]!.Value<float>("Z"));
+        Assert.Equal(original.Value<float>("Y"), wait["Position"]!.Value<float>("Y"));
+        Assert.True(JToken.DeepEquals(nextFight, actions[31]!["Position"]));
+        if (shopExpected)
+            Assert.Equal(30, BeastmasterSelection.ResumeRoute(actions,
+                new(shop.Position.X, 0, shop.Position.Y)));
+    }
+
     private static List<uint> TestRoster(uint board) => BeastTierList.CreatePremade($"Board {board} - Farming - All difficulties")
         .Take(BeastmasterSelection.TeamCapacity(1338u + board)).Select(entry => entry.ID).ToList();
 

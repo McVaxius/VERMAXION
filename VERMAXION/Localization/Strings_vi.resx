@@ -3367,7 +3367,7 @@ Phụ thuộc: {1}</value></data>
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Chưa xác nhận ô chọn đã được đánh dấu. Đã dừng kiểm thử trước khi vào.</value></data>
   <data name="No food" xml:space="preserve"><value>Không dùng thức ăn</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>Tách materia trước khi vào</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Làm mới hiệu ứng no khi còn 90 giây trước khi vào và giữa các trận. Thiếu thức ăn sẽ cảnh báo rồi tiếp tục; không thay đổi phẩm chất đã chọn.</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Hiệu ứng no được làm mới khi còn 90 giây trở xuống ngay khi có thể dùng thức ăn, kể cả trong lượt chơi. Thiếu thức ăn sẽ cảnh báo rồi tiếp tục; không bao giờ thay thế phẩm chất đã chọn.</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>ADS tách materia ngoài phụ bản trước mỗi bàn. Kiểm tra ô chọn không dùng vật phẩm.</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>Đang chuẩn bị vật phẩm</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Không có thức ăn đã chọn; tiếp tục.</value></data>

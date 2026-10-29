@@ -5863,7 +5863,7 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>未能确认复选框已勾选。测试已在进入前停止。</value></data>
   <data name="No food" xml:space="preserve"><value>不使用食物</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>进入前精制魔晶石</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>进入前和战斗间，食物效果剩余90秒或更少时刷新。缺少食物时警告并继续，绝不替换所选品质。</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>食物效果剩余90秒或更少时，只要可以使用食物就会刷新，包括攻略过程中。缺少食物时警告并继续，绝不替换所选品质。</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>每块棋盘进入前在任务外通过ADS精制魔晶石。勾选框测试不使用补给。</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>准备补给</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>所选食物不足，继续。</value></data>

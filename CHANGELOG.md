@@ -1,3 +1,11 @@
+2026-10-29 - Crewcible recovery, food and route supplies (3.0.0.1 unchanged)
+
+- Keep native combat ownership active during an existing battle, including after revival, without requiring stale entry-menu context or restarting preparation. Preserve operator Stop, protection, target and provider safeguards.
+- Refresh selected food at90 seconds or less whenever native item use is available, including during runs. Keep combat movement active while waiting. Confirm automatic use only from our accepted request, selected-quality stock consumption and increased Well Fed; pre-existing/manual food is reported separately. Update all15 existing translations.
+- Use fresh inventory to choose Board3's supply branch and campsite recovery. Prioritize Potion Kits, useful axes and loaded-edition gear requirements; reserve required gear slots and wait when requirements are unread. Permit duplicate kits while respecting native capacity.
+- Reserve Sand for the native first-wave/blade advice, use the actual owned target and retain native range, splash, stock and safety checks. Keep private encounter strategy in the private BMRV pack.
+- Validation: isolated Debug build and478 targeted checks pass, including8 native Supplies layouts, branch/resume decisions, food/manual-use distinction and unread-gear waiting. Native BMRV integration and live acceptance remain separate; no deployment is claimed.
+
 2026-10-28 - Owned Crewcible combat integration (current version unchanged)
 
 - Resume movement during Sands revival protection before checking fight preparation; keep attacks withheld until the protection actually ends. The native controller reuses confirmed preparation for the same retained encounter instead of requesting out-of-combat preparation during combat.

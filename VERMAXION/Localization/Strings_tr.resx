@@ -3367,7 +3367,7 @@ Bağımlılıklar: {1}</value></data>
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Kutunun işaretlendiği doğrulanamadı. Test girişten önce durduruldu.</value></data>
   <data name="No food" xml:space="preserve"><value>Yiyecek yok</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>Girişten önce materia çıkar</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Girişten önce ve savaşlar arasında Well Fed 90 saniye kaldığında yenilenir. Yiyecek yoksa uyarıp devam eder; seçilen kalite değiştirilmez.</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Well Fed etkisi 90 saniye veya daha az kaldığında, koşu sırasında da yiyecek kullanılabildiği anda yenilenir. Yiyecek yoksa uyarıp devam eder; seçilen kalite asla değiştirilmez.</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>Materia her tahta öncesinde görev dışında ADS ile çıkarılır. Onay kutusu testleri erzak kullanmaz.</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>Erzak hazırlanıyor</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Seçilen yiyecek yok; devam ediliyor.</value></data>

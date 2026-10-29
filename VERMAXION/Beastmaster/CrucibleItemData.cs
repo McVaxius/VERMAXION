@@ -216,6 +216,7 @@ public static class CrucibleItemData
 
     public static readonly uint[] CombatDamageItems =
     [
+        139, // Celestial Sand: Starstorm (47017), radius 18
         128, // Fang of Fire
         129, // Fang of Ice
         130, // Fang of Water
@@ -224,6 +225,47 @@ public static class CrucibleItemData
         133, // Fang of Wind
         134, // Vampiric Fang
     ];
+
+    // The guide's axe/kit branch also assumes the earlier Fang is still held.
+    internal static bool Board3NeedsShop(IEnumerable<uint> heldItems, IEnumerable<uint> ownedGear)
+        => !heldItems.Contains(140u) || !ownedGear.Any(ElemntalAxes.Contains) ||
+            !heldItems.Any(CombatDamageItems.Contains);
+
+    internal static IEnumerable<uint> ClearShopPriority(uint board, IReadOnlyCollection<uint> heldItems, HashSet<uint> ownedGear,
+        IEnumerable<uint>? requiredGear = null)
+    {
+        // Private encounter prerequisites are supplied by the native pack.
+        foreach (var gear in requiredGear ?? [])
+            if (!ownedGear.Contains(gear)) yield return gear;
+        yield return 140;
+        if (!ownedGear.Any(ElemntalAxes.Contains))
+            foreach (var axe in ElemntalAxes) yield return axe;
+        if (board is 3 or 5 && !heldItems.Contains(139u)) yield return 139;
+        foreach (var heal in ShopHealing)
+            if (heal != 140) yield return heal;
+    }
+
+    internal static uint Board3RestFamiliar(bool firstCamp, float playerHP, int damageItems)
+        => firstCamp ? playerHP < 0.4f && damageItems >= 2 ? 0u : 50u
+            : playerHP >= 0.2f ? 10u : 0u;
+
+    internal static bool BattleReachable(CrucibleBoard board, CrucibleBoardStop from, uint battle)
+    {
+        var pending = new Stack<CrucibleBoardStop>();
+        var seen = new HashSet<int>();
+        pending.Push(from);
+        while (pending.TryPop(out var stop))
+        {
+            if (!seen.Add(stop.Id)) continue;
+            if (stop.BattleId == battle) return true;
+            foreach (var next in board.NextStops(stop)) pending.Push(next);
+        }
+        return false;
+    }
+
+    internal static bool ReserveDamageItem(uint board, uint item, bool siren, bool nativeSandWindow)
+        => board == 3 && CombatDamageItems.Contains(item) && !siren ||
+            board is 3 or 5 && item == 139 && !nativeSandWindow;
 
     public static uint[] ShopItems => ShopHealing.Concat(StatusItems.Select(x => x[0])).Concat(CombatDamageItems).Concat(ShopGear).Concat(ShopFeed).Concat(Items.Where(item => item.Type.RowId != 0).Select(item => item.RowId)).Distinct().ToArray();
 

@@ -291,7 +291,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
         // Initialize services
         VNavmeshIPC = new VNavmeshIPC(Log, CommandManager);
-        LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager);
+        LifestreamIPC = new LifestreamIPC(PluginInterface, Log, CommandManager, Configuration);
         ResetDetectionService = new ResetDetectionService(Log);
         YesAlreadyIPC = new YesAlreadyIPC(Log);
         BeastmasterService = new BeastmasterService(

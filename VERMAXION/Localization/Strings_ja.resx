@@ -5863,7 +5863,7 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>チェック状態を確認できませんでした。入場前にテストを停止しました。</value></data>
   <data name="No food" xml:space="preserve"><value>食事なし</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>突入前にマテリア精製</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>突入前と戦闘間に食事効果の残りが90秒以下なら更新します。不足時は警告して続行し、選択した品質は変更しません。</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>食事効果の残りが90秒以下になると、攻略中を含め、使用可能になり次第更新します。食事が不足している場合は警告して続行し、選択した品質の代用品は使いません。</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>各ボードの突入前にコンテンツ外でADSを使いマテリア精製します。チェックボックステストでは消耗品を使いません。</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>消耗品を準備中</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>選択した食事が不足しています。続行します。</value></data>

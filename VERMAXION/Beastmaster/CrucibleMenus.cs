@@ -75,6 +75,18 @@ namespace VERMAXION.Beastmaster
         internal bool LootRejectionPending => this.rejectedLootAddress != 0;
 
         private static BeastmasterSettings Config => BeastmasterRuntime.Settings;
+        private bool TryRequiredClearGear(out uint[] requirements)
+        {
+            requirements = [];
+            if (!BeastmasterSelection.RequiresClearTeam(Config)) return true;
+            if (!BeastmasterCombat.TryReadSetup(Config.Board, 0, out var setup, out var error))
+            {
+                this.Status = $"Waiting for native clear gear requirements: {error}";
+                return false;
+            }
+            requirements = setup.RequiredGear;
+            return true;
+        }
 
         public void Reset()
         {
@@ -648,6 +660,8 @@ namespace VERMAXION.Beastmaster
             
             uint[] items = xbmTreasure.ItemEntriesValid.Select(ie => ie.Id).ToArray();
             HashSet<uint> gear  = xbmTreasure.OwnedEntriesOwned.Select(ie => ie.Id).ToHashSet();
+            if (!this.TryRequiredClearGear(out var requiredGear)) return;
+            var missingGear = requiredGear.Count(row => !gear.Contains(row));
 
             List<ReaderXBMContentsTreasure.TreasureChoice> treasureChoices = xbmTreasure.TreasureChoices;
 
@@ -665,7 +679,8 @@ namespace VERMAXION.Beastmaster
 
                 if(CrucibleItemData.ShopGear.Contains(choice.Item))
                 {
-                    if (gear.Count < GearCap && !gear.Contains(choice.Item) && !CrucibleItemData.BlockedGear(choice.Item, gear))
+                    if (gear.Count < GearCap && !gear.Contains(choice.Item) && !CrucibleItemData.BlockedGear(choice.Item, gear) &&
+                        !(missingGear > 0 && gear.Count >= GearCap - missingGear && !requiredGear.Contains(choice.Item)))
                         choices.Add(choice);
 
                     continue;
@@ -683,7 +698,13 @@ namespace VERMAXION.Beastmaster
                 return;
             }
 
-            ReaderXBMContentsTreasure.TreasureChoice best = choices.OrderBy(x => CrucibleItemData.TreasureRank(x.Item)).ThenBy(x => x.treasureIndex).First();
+            var clearPriorities = BeastmasterSelection.RequiresClearTeam(Config)
+                ? CrucibleItemData.ClearShopPriority(Config.Board, items, gear, requiredGear).ToList() : [];
+            ReaderXBMContentsTreasure.TreasureChoice best = choices.OrderBy(x =>
+            {
+                var rank = clearPriorities.IndexOf(x.Item);
+                return rank >= 0 ? rank : clearPriorities.Count + (long)CrucibleItemData.TreasureRank(x.Item);
+            }).ThenBy(x => x.treasureIndex).First();
 
             Svc.Log.Info($"[Crucible] Treasure: taking {Describe(best)} from {string.Join(" / ", choices.Select(Describe))}");
 
@@ -721,6 +742,20 @@ namespace VERMAXION.Beastmaster
                                 .Take(RestPicks)
                                 .Select(x => x.index)
                                 .ToList();
+                if (BeastmasterSelection.RequiresClearTeam(Config) && Config.Board == 3 && CrucibleBoard.Current() is { } board &&
+                    board.StopPlayerIsOn() is { Kind: CrucibleStopKind.Campsite } camp &&
+                    Svc.Objects.LocalPlayer is { MaxHp: > 0 } player)
+                {
+                    var hud = CrucibleUi.Ready(CrucibleUi.MainHud);
+                    // Missing optional inventory cannot establish two spare AoE
+                    // items; retain the Behemoth recovery in that case.
+                    var damageItems = hud == null ? 0 : new ReaderXBMContentsMainHUD(hud).ItemEntriesValid
+                        .Count(item => CrucibleItemData.CombatDamageItems.Contains(item.Id));
+                    var familiar = CrucibleItemData.Board3RestFamiliar(CrucibleItemData.BattleReachable(board, camp, 19),
+                        (float)player.CurrentHp / player.MaxHp, damageItems);
+                    picks = rows.Where(row => row.Number == familiar && row is { HP: > 0, MaxHP: > 0 } && row.HP < row.MaxHP)
+                        .Select(row => row.index).Take(1).ToList();
+                }
                 string names = string.Join(", ", picks.Select(i => $"{rows[i].Name} {rows[i].HP}/{rows[i].MaxHP}"));
                 this.restPicks = picks;
                 this.restStep = 0;
@@ -804,7 +839,8 @@ namespace VERMAXION.Beastmaster
 
             List<ReaderXBMContentsItemShop.StockEntry> affordable = CrucibleUi.ShopStock(shop).Where(x => !x.Bought && x.Price <= coins && !this.shopTried.Contains(x.Item)).ToList();
 
-            if (this.ChooseBuy(affordable, CrucibleUi.ShopHeldItems(shop), CrucibleUi.ShopOwnedGear(shop)) is not { } buy)
+            if (!this.TryRequiredClearGear(out var requiredGear)) return;
+            if (this.ChooseBuy(affordable, CrucibleUi.ShopHeldItems(shop), CrucibleUi.ShopOwnedGear(shop), requiredGear) is not { } buy)
             {
                 if (TryButton(CrucibleUi.ShopWindow, shop, 40))
                 {
@@ -834,23 +870,35 @@ namespace VERMAXION.Beastmaster
             }
         }
 
-        private ReaderXBMContentsItemShop.StockEntry? ChooseBuy(List<ReaderXBMContentsItemShop.StockEntry> stock, uint[] held, HashSet<uint> ownedGear)
+        private ReaderXBMContentsItemShop.StockEntry? ChooseBuy(List<ReaderXBMContentsItemShop.StockEntry> stock, uint[] held, HashSet<uint> ownedGear,
+            uint[] requiredGear)
         {
             bool itemRoom = held.Length    < ItemCap;
             bool gearRoom = ownedGear.Count < GearCap;
+            var missingGear = requiredGear.Count(row => !ownedGear.Contains(row));
 
             IEnumerable<ReaderXBMContentsItemShop.StockEntry> wanted = stock.Where(x =>
                                                                                    {
                                                                                        CrucibleItemData.CrucibleItemCategory category = CrucibleItemData.GetCategoryOf(x.Item);
                                                                                        return category switch
                                                                                        { 
-                                                                                           CrucibleItemData.CrucibleItemCategory.Gear => gearRoom && !ownedGear.Contains(x.Item) && !CrucibleItemData.BlockedGear(x.Item, ownedGear),
+                                                                                           CrucibleItemData.CrucibleItemCategory.Gear => gearRoom && !ownedGear.Contains(x.Item) && !CrucibleItemData.BlockedGear(x.Item, ownedGear)
+                                                                                               && !(missingGear > 0 && ownedGear.Count >= GearCap - missingGear && !requiredGear.Contains(x.Item)),
                                                                                            CrucibleItemData.CrucibleItemCategory.Feed => !this.fedThisVisit,
                                                                                            _ when CrucibleItemData.CrucibleItemCategory.Item.HasFlag(category) => itemRoom,
                                                                                            _ => false
                                                                                        };
                                                                                    });
 
+            if (BeastmasterSelection.RequiresClearTeam(Config))
+            {
+                var clearWanted = wanted.ToList();
+                var allowed = CrucibleItemData.ShopOrderActive.Select(row => row.ID).ToHashSet();
+                foreach (var row in CrucibleItemData.ClearShopPriority(Config.Board, held, ownedGear, requiredGear))
+                    if (allowed.Contains(row) && (row == 140 || !held.Contains(row)) && clearWanted.FirstOrDefault(entry => entry.Item == row) is { } supply)
+                        return supply;
+                return FirstInStock(clearWanted, CrucibleItemData.ShopOrderActive, held);
+            }
             return FirstInStock(wanted, CrucibleItemData.ShopOrderActive, held);
         }
 
@@ -948,23 +996,34 @@ namespace VERMAXION.Beastmaster
             if (!InArena || !BeastmasterRuntime.Service.AllowCombatDamageItems)
                 return;
 
-            ReaderXBMContentsItemShop.ItemEntry? dmgItem = PickFromItems(CrucibleItemData.CombatDamageItems);
+            List<IBattleNpc> enemies = Svc.Objects.Where(igo => igo is { ObjectKind: ObjectKind.BattleNpc, IsTargetable: true } && igo.IsHostile() && BeastmasterPlayer.BelowDistanceToPlayer(igo.Position, 40f, 20f / 2f)).Cast<IBattleNpc>().Where(ibn => ibn.Health > 0).ToList();
+            var clearTeam = BeastmasterSelection.RequiresClearTeam(Config);
+            // Encounter identity survives a boss temporarily becoming untargetable;
+            // the actual item target still comes from the owned native controller.
+            bool Encounter(uint id) => Svc.Objects.Any(actor => actor is IBattleNpc npc && npc.BaseId == id &&
+                npc.Health > 0 && BeastmasterPlayer.BelowDistanceToPlayer(npc.Position, 40f, 10f));
+            var siren = Config.Board == 3 && Encounter(0x4CA1);
+            var ownedTarget = BeastmasterRuntime.Service.ReadCombatTarget();
+            var nativeSandWindow = ownedTarget.DamageItem == 139;
+            ReaderXBMContentsItemShop.ItemEntry? dmgItem = PickFromItems(CrucibleItemData.CombatDamageItems.Where(item =>
+                !clearTeam || !CrucibleItemData.ReserveDamageItem(Config.Board, item, siren, nativeSandWindow)));
             if (dmgItem == null)
                 return;
 
-            List<IBattleNpc> enemies = Svc.Objects.Where(igo => igo is { ObjectKind: ObjectKind.BattleNpc, IsTargetable: true } && igo.IsHostile() && BeastmasterPlayer.BelowDistanceToPlayer(igo.Position, 40f, 20f / 2f)).Cast<IBattleNpc>().Where(ibn => ibn.Health > 0).ToList();
-            if (enemies.Count < 4)
-                return;
-
+            var requestedSand = dmgItem.Id == 139 && nativeSandWindow;
+            if (enemies.Count < (requestedSand ? 2 : 4)) return;
             IBattleNpc   bossObject = enemies.MaxBy(igo => igo.MaxHp)!;
-            IBattleNpc[] battleNpcs = enemies.Except([bossObject]).ToArray();
+            IBattleNpc[] battleNpcs = requestedSand ? enemies.ToArray()
+                : enemies.Except([bossObject]).ToArray();
 
-            var ownedTarget = BeastmasterRuntime.Service.ReadCombatTarget();
             IBattleNpc? target = ownedTarget.CanPull && ownedTarget.InstanceId != 0
                 ? enemies.FirstOrDefault(enemy => enemy.EntityId == ownedTarget.InstanceId) : null;
 
-            if (target != null && battleNpcs.Count(enemy => Vector2.DistanceSquared(
-                    new(target.Position.X, target.Position.Z), new(enemy.Position.X, enemy.Position.Z)) < 121f) > 2 &&
+            var radius = dmgItem.Id == 139 ? 18f : 11f;
+            if (target != null && (dmgItem.Id != 139 || Vector2.DistanceSquared(
+                    new(target.Position.X, target.Position.Z), new(me.Position.X, me.Position.Z)) <= MathF.Pow(25f + target.HitboxRadius, 2)) &&
+                battleNpcs.Count(enemy => Vector2.DistanceSquared(
+                    new(target.Position.X, target.Position.Z), new(enemy.Position.X, enemy.Position.Z)) < radius * radius) >= (requestedSand ? 2 : 3) &&
                 BeastmasterRuntime.Service.AllowCombatDamageItems)
             {
                 Svc.Targets.Target = target;

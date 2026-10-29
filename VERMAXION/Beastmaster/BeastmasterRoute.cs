@@ -12,6 +12,7 @@ using ECommons.GameFunctions;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Newtonsoft.Json.Linq;
+using VERMAXION.Beastmaster.Readers;
 
 namespace VERMAXION.Beastmaster;
 
@@ -80,6 +81,8 @@ internal sealed unsafe class BeastmasterRoute
         if (recoveringPosition)
         {
             if (BlockingMenu()) return; // Let the existing handlers settle this tile first.
+            if (!Svc.Condition[ConditionFlag.InCombat] && !NearbyEnemies(player.Position).Any())
+                RecoverSupplyBranch();
             var resume = BeastmasterSelection.ResumeRoute(actions, player.Position);
             recoveringArena = resume == null || Svc.Condition[ConditionFlag.InCombat] || NearbyEnemies(player.Position).Any();
             if (recoveringArena) { UpdateBattle(); return; }
@@ -100,6 +103,7 @@ internal sealed unsafe class BeastmasterRoute
         { movementStarted = false; return; }
         if (!started)
         {
+            if (name == "Wait" && !TrySelectSupplyBranch(action)) return;
             started = true; stepSince = DateTime.UtcNow;
             service.SetStatus($"Board route {Step + 1}/{actions.Count}: {name}");
         }
@@ -153,6 +157,9 @@ internal sealed unsafe class BeastmasterRoute
             service.StartCombat(allowAttacks: false);
             return;
         }
+        // Preparation controls the opening. An already active battle must keep
+        // its native action/movement owner alive while assignments reconcile.
+        if (inCombat && !service.EnsureCombatActive()) return;
         if (!service.PrepareArenaFight()) return;
         var playerPosition = Svc.Objects.LocalPlayer!.Position;
         var enemies = NearbyEnemies(playerPosition).ToList();
@@ -245,6 +252,74 @@ internal sealed unsafe class BeastmasterRoute
         CrucibleUi.BoardLayout, CrucibleUi.TeamWindow, CrucibleUi.ShopWindow, CrucibleUi.LootWindow,
         CrucibleUi.TreasureWindow, CrucibleUi.ResultWindow, CrucibleUi.YesNo,
     }.Any(CrucibleUi.IsOpen);
+
+    private static CrucibleBoardStop? SupplyTreasure(JObject action, CrucibleBoard board)
+    {
+        if (board.BoardNumber != 3 || action.Value<string>("Name") != "Wait") return null;
+        var position = Vector(action["Position"]);
+        return board.Stops.FirstOrDefault(stop => stop.Kind == CrucibleStopKind.Treasure &&
+            Vector2.DistanceSquared(stop.Position, new(position.X, position.Z)) < 1 &&
+            CrucibleItemData.BattleReachable(board, stop, 19) && !CrucibleItemData.BattleReachable(board, stop, 18));
+    }
+
+    internal static void SelectSupplyBranch(JObject action, CrucibleBoard board, CrucibleBoardStop? current,
+        uint[] heldItems, HashSet<uint> ownedGear)
+    {
+        if (SupplyTreasure(action, board) is not { } treasure) return;
+        var shops = board.Stops.Where(stop => stop.Kind == CrucibleStopKind.Shop &&
+            CrucibleItemData.BattleReachable(board, stop, 19) && !CrucibleItemData.BattleReachable(board, stop, 18)).ToArray();
+        if (shops.Length != 1)
+            throw new BeastmasterReadUnavailableException(CrucibleUi.MainHud, "The native supply-shop branch is unavailable");
+        // Rejoining a native tile retains the branch already taken, even if
+        // that visit changed inventory. Otherwise decide from this fresh read.
+        var chosen = current?.Id == treasure.Id ? treasure : current?.Id == shops[0].Id ? shops[0] :
+            CrucibleItemData.Board3NeedsShop(heldItems, ownedGear) ? shops[0] : treasure;
+        var original = Vector(action["Position"]);
+        action["Position"] = new JObject { ["X"] = chosen.Position.X, ["Y"] = original.Y, ["Z"] = chosen.Position.Y };
+    }
+
+    private bool TrySelectSupplyBranch(JObject action)
+    {
+        if (service.Settings.Board != 3 || !BeastmasterSelection.RequiresClearTeam(service.Settings) ||
+            Vector(action["Position"]) == Vector3.Zero) return true;
+        try
+        {
+            var board = CrucibleBoard.Current();
+            if (board == null) return WaitForSupplyRead();
+            if (SupplyTreasure(action, board) == null) return true;
+            var hud = CrucibleUi.Ready(CrucibleUi.MainHud);
+            if (hud == null) return WaitForSupplyRead();
+            var inventory = new ReaderXBMContentsMainHUD(hud);
+            SelectSupplyBranch(action, board, board.StopPlayerIsOn(),
+                inventory.ItemEntriesValid.Select(item => item.Id).ToArray(),
+                inventory.OwnedEntriesOwned.Select(gear => gear.Id).ToHashSet());
+            return true;
+        }
+        catch (BeastmasterReadUnavailableException) { return WaitForSupplyRead(); }
+    }
+
+    private void RecoverSupplyBranch()
+    {
+        if (service.Settings.Board != 3 || !BeastmasterSelection.RequiresClearTeam(service.Settings)) return;
+        try
+        {
+            var board = CrucibleBoard.Current();
+            if (board == null) return;
+            if (board.StopPlayerIsOn() is not { Kind: CrucibleStopKind.Shop } current ||
+                !CrucibleItemData.BattleReachable(board, current, 19) || CrucibleItemData.BattleReachable(board, current, 18)) return;
+            // Inventory is irrelevant when recovering the already selected shop.
+            foreach (var action in actions.OfType<JObject>()) SelectSupplyBranch(action, board, current, [], []);
+        }
+        catch (BeastmasterReadUnavailableException) { }
+    }
+
+    private bool WaitForSupplyRead()
+    {
+        service.StopNavigation();
+        movementStarted = false;
+        service.SetStatus("Waiting for native supplies and the shop branch");
+        return false;
+    }
 
     private static bool Condition(JObject condition)
     {

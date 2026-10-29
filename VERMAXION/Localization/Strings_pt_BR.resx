@@ -3367,7 +3367,7 @@ Dependências: {1}</value></data>
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>A caixa não foi confirmada. Teste encerrado antes da entrada.</value></data>
   <data name="No food" xml:space="preserve"><value>Sem comida</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>Extrair matérias antes de entrar</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>A comida renova Bem alimentado aos 90 segundos antes da entrada e entre lutas. Se faltar, avisa e continua; a qualidade escolhida nunca é substituída.</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>A comida renova Bem alimentado quando restam 90 segundos ou menos, assim que pode ser usada, inclusive durante as partidas. Se faltar comida, avisa e continua; a qualidade escolhida nunca é substituída.</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>A extração usa ADS fora da instância antes de cada tabuleiro. Testes da caixa não usam suprimentos.</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>Preparando suprimentos</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Comida escolhida indisponível; continuando.</value></data>

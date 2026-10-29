@@ -31,6 +31,12 @@ public static class GameHelpers
 {
     private const string OceanFishingResultAddonName = "IKDResult";
 
+    public static unsafe long? ReadGilBalance()
+    {
+        var inventory = InventoryManager.Instance();
+        return inventory == null ? null : inventory->GetGil();
+    }
+
     /// <summary>
     /// Interact with a targeted game object via TargetSystem.
     /// </summary>

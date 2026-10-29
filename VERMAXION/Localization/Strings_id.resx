@@ -3367,7 +3367,7 @@ Dependensi: {1}</value></data>
   <data name="Checkbox was not confirmed. Test stopped before entry." xml:space="preserve"><value>Centang kotak belum terkonfirmasi. Uji berhenti sebelum masuk.</value></data>
   <data name="No food" xml:space="preserve"><value>Tanpa makanan</value></data>
   <data name="Extract materia before entry" xml:space="preserve"><value>Ekstrak materia sebelum masuk</value></data>
-  <data name="Food refreshes Well Fed at 90 seconds before entry and between fights. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Makanan memperbarui Well Fed saat tersisa 90 detik sebelum masuk dan di antara pertarungan. Jika habis, peringatan muncul lalu lanjut; kualitas tidak diganti.</value></data>
+  <data name="Food refreshes Well Fed at 90 seconds or less whenever usable, including during runs. Missing food warns and continues; quality is never substituted." xml:space="preserve"><value>Makanan memperbarui Well Fed saat tersisa 90 detik atau kurang segera setelah dapat digunakan, termasuk selama putaran berlangsung. Jika makanan habis, peringatan muncul lalu lanjut; kualitas yang dipilih tidak pernah diganti.</value></data>
   <data name="Materia extraction uses ADS outside the duty before each board. Checkbox tests never use supplies." xml:space="preserve"><value>Ekstraksi memakai ADS di luar duty sebelum setiap papan. Uji kotak centang tidak memakai perbekalan.</value></data>
   <data name="Preparing supplies" xml:space="preserve"><value>Menyiapkan perbekalan</value></data>
   <data name="Selected food unavailable; continuing." xml:space="preserve"><value>Makanan pilihan tidak tersedia; melanjutkan.</value></data>
