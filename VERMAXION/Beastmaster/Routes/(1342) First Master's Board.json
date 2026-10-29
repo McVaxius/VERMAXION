@@ -149,9 +149,9 @@
       "Tag": "None",
       "Name": "MoveTo",
       "Position": {
-        "X": -695.0,
+        "X": -705.0,
         "Y": 0.0,
-        "Z": -16.0
+        "Z": -16.5
       },
       "Arguments": [
         ""
@@ -177,19 +177,19 @@
           "origin": "Location",
           "originId": 0,
           "originLoc": {
-            "X": -695.0,
+            "X": -705.0,
             "Y": 0.0,
             "Z": -16.5
           },
-          "target": "Object",
-          "targetId": 2015483,
+          "target": "Player",
+          "targetId": 0,
           "targetLoc": {
             "X": 0.0,
             "Y": 0.0,
             "Z": 0.0
           },
-          "operatorValue": "<",
-          "distance": 1.0
+          "operatorValue": ">",
+          "distance": 100.0
         }
       ],
       "Note": "",
@@ -212,9 +212,9 @@
           "origin": "Location",
           "originId": 0,
           "originLoc": {
-            "X": -695.0,
+            "X": -705.0,
             "Y": 0.0,
-            "Z": -16.0
+            "Z": -16.5
           },
           "target": "Player",
           "targetId": 0,

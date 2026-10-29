@@ -34,6 +34,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private bool hasRunDisplay;
     private bool completionCommandPending;
     private BeastmasterRoute? route;
+    private BeastmasterFightContext? fightContext;
+    private bool arenaPrepared;
     private ulong owner;
     private DateTime stateSince;
     private DateTime pausedAt;
@@ -188,6 +190,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private bool TryCaptureCombatProvider(BeastmasterSettings settings, out string reason)
     {
+        route?.StopOwnedAutoAttack();
         if (!combat.TryRelease(out reason)) return false;
         if (combatProvider != settings.CombatProvider)
         {
@@ -202,6 +205,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     {
         if (IsActive)
         { reason = "Stop Beastmaster before starting a board test."; return false; }
+        if (!QuestManager.IsQuestComplete(71045))
+        { reason = "Difficulty 3 requires completion of quest 71045."; return false; }
         if (IsCrucibleTerritory(Svc.ClientState.TerritoryType) || Svc.Condition[ConditionFlag.BoundByDuty])
         { reason = "Leave the current duty before starting Beastmaster."; return false; }
         if (!NativeQueueIsIdle() || CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true))
@@ -241,6 +246,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (!Plugin.CommandManager.Commands.ContainsKey("/vnav")) { reason = "vnavmesh is required for board navigation"; return false; }
         if (Svc.Party.Length > 1) { reason = "Leave the party before entering the Crucible"; return false; }
         if (!CanStartCombat(settings, out reason)) return false;
+        if (BeastmasterSelection.RequiresClearTeam(settings) &&
+            !BeastmasterCombat.TryReadSetup(settings.Board, 0, out _, out reason)) return false;
         reason = string.Empty;
         return true;
     }
@@ -636,7 +643,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             if (State == RunState.Running && !resultSeen && !CrucibleUi.IsOpen(CrucibleUi.ResultWindow) &&
                 Svc.Objects.LocalPlayer is { IsDead: true } && !waitingForRevival)
             {
-                StopNavigation(); route?.ResetAfterDeath(); menus.Reset(); waitingForRevival = true;
+                StopNavigation(); route?.ResetAfterDeath(); menus.Reset(); waitingForRevival = true; arenaPrepared = false;
                 Svc.Log.Information("[Beastmaster] Player died; resetting the current fight before revival.");
             }
             if (State is not (RunState.Idle or RunState.Complete or RunState.Failed) &&
@@ -732,7 +739,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                         status = "Waiting for Crucible difficulty selection.";
                         break;
                     }
-                    var rankingReady = true;
+                    var rankingReady = !rankingCheckboxTest;
                     if (effectiveDegree == CrucibleDegree.Third && Settings.RankedEntry)
                     {
                         var alreadySubmitted = rankedEntryClickSubmitted;
@@ -846,7 +853,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         StopNavigation();
         // Same-board continuation retains ownership of pending native questions
         // and attempted purchases; rebuilding the route must not orphan them.
-        if (!preserveMenus) menus.Reset();
+        if (!preserveMenus) { menus.Reset(); fightContext = null; }
+        arenaPrepared = false;
         resultSeen = false; ResultObserved = false; waitingForRevival = false;
         resultRanksObserved = resultRanksUnavailable = false; resultReadStarted = default;
         registrationReadRecovery.Reset(); lastReadFailure = string.Empty;
@@ -937,6 +945,29 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     internal bool CombatReady(out string reason)
         => combat.TrySuspend(out reason);
     internal BeastmasterCombat.Target ReadCombatTarget() => combat.ReadTarget();
+    internal bool AllowCombatDamageItems => State == RunState.Running && !operatorStopped &&
+        !IsPaused && !waitingForRevival && combat.AllowDamageItems;
+    internal void RecordFightContext(BeastmasterFightContext context)
+    { fightContext = context; arenaPrepared = false; }
+    internal bool PrepareArenaFight()
+    {
+        if (rankingCheckboxTest || !BeastmasterSelection.RequiresClearTeam(Settings) || arenaPrepared) return true;
+        route?.StopOwnedAutoAttack();
+        if (fightContext is not { } fight)
+        {
+            SuspendCombat();
+            status = "Waiting for the verified fight context before arena preparation.";
+            return false;
+        }
+        StopNavigation();
+        if (!NavigationSettled()) { status = "Waiting for owned movement to stop before arena preparation."; return false; }
+        if (!combat.TryPrepare(Settings.Board, fight.BattleId, out var ready, out var preparationStatus, out var reason))
+        { Fail(reason); return false; }
+        status = preparationStatus;
+        if (!ready) return false;
+        arenaPrepared = true;
+        return true;
+    }
     internal bool StartCombat(bool allowAttacks = true)
     {
         if (IsPaused || waitingForRevival || !BeastmasterPlayer.IsCombatReady ||
@@ -950,6 +981,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     }
     internal bool SuspendCombat()
     {
+        arenaPrepared = false;
+        route?.StopOwnedAutoAttack();
         if (!combat.OwnsState) return true;
         if (combat.TrySuspend(out var reason)) return true;
         Fail(reason); return false;
@@ -1061,7 +1094,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         {
             // Stop remains callable even when a native observation fails. Keep
             // unresolved ownership for subsequent cleanup and an explicit Start.
-            menus.Reset(); route = null;
+            route?.StopOwnedAutoAttack();
+            menus.Reset(); route = null; fightContext = null; arenaPrepared = false;
             StopNavigation();
             if (ownsTravel) travel.TryAbort();
             combat.TryRelease(out _);
@@ -1093,7 +1127,9 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         entryAttempt?.RequestStop();
         StopNavigation(); if (ownsTravel) travel.TryAbort();
         weeklyActive = false; weeklyAttempted.Clear(); weeklyRunReset = 0; weeklyCreditDeadline = default;
+        route?.StopOwnedAutoAttack();
         IsPaused = false; pausedAt = default; waitingForRevival = false; menus.Reset(); route = null;
+        fightContext = null; arenaPrepared = false;
         var released = combat.TryRelease(out var combatReason);
         preparedOwned = null;
         if (!EntryPending && !combat.OwnsState && !refreshCleanupPending && !repairRequestAccepted) { owner = 0; runData = null; runSettings = null; }

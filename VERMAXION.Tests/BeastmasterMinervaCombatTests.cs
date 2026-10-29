@@ -46,7 +46,7 @@ public sealed class BeastmasterMinervaCombatTests
         var original = provider.Current;
         Assert.False(BeastmasterMinervaCombat.CanStart(provider, out var error));
         Assert.Contains("unavailable", error);
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.False(combat.TrySuspend(out error));
         Assert.False(combat.OwnsState);
         Assert.Equal(original, provider.Current);
@@ -63,7 +63,7 @@ public sealed class BeastmasterMinervaCombatTests
         var provider = new FakeProvider();
         provider.Current = provider.Current with { DodgeEnabled = dodge, FaceGazes = facing };
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TrySuspend(out var error), error);
         Assert.True(combat.OwnsState);
         Assert.False(combat.IsRunning);
@@ -71,14 +71,16 @@ public sealed class BeastmasterMinervaCombatTests
         Assert.False(provider.Current.DodgeEnabled);
         Assert.False(provider.Current.FaceGazes);
         Assert.True(provider.Current.MovementStopped);
-        Assert.Equal(BeastmasterCombat.Mode.Off, provider.Current.Rotation.Mode);
+        Assert.False(provider.Abilities.AllowAttacks);
+        Assert.False(combat.AllowDamageItems);
         Assert.True(combat.TrySuspend(out error), error);
         Assert.Equal(1, provider.Claims);
 
         Assert.True(combat.TryActivate(out error), error);
         Assert.True(provider.Current.DodgeEnabled);
         Assert.True(provider.Current.FaceGazes);
-        Assert.Equal(BeastmasterCombat.Mode.Henched, provider.Current.Rotation.Mode);
+        Assert.True(provider.Abilities.AllowAttacks);
+        Assert.True(combat.AllowDamageItems);
         provider.Current = provider.Current with { Preset = "Changed during the run" };
         Assert.True(combat.TrySuspend(out error), error);
         Assert.True(combat.OwnsState);
@@ -86,8 +88,6 @@ public sealed class BeastmasterMinervaCombatTests
         Assert.False(combat.OwnsState);
         Assert.False(combat.IsRunning);
         Assert.Equal(original, provider.Current);
-        Assert.Same(original.Rotation.IpcOverrides, provider.Current.Rotation.IpcOverrides);
-        Assert.Same(original.Rotation.TargetingTypeOverride, provider.Current.Rotation.TargetingTypeOverride);
         Assert.Equal(1, provider.Claims);
         var writes = provider.Writes.Count;
         Assert.True(combat.TryRelease(out error), error);
@@ -101,13 +101,14 @@ public sealed class BeastmasterMinervaCombatTests
     {
         var provider = new FakeProvider();
         provider.Current = provider.Current with { WithholdAttacks = restricted };
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TryActivate(out var error, allowAttacks), error);
         Assert.True(combat.IsRunning);
         Assert.True(combat.OwnsState);
         Assert.True(provider.Current.DodgeEnabled);
         Assert.True(provider.Current.FaceGazes);
-        Assert.Equal(BeastmasterCombat.Mode.Off, provider.Current.Rotation.Mode);
+        Assert.False(provider.Abilities.AllowAttacks);
+        Assert.False(combat.AllowDamageItems);
         if (restricted)
         {
             Assert.Equal(default, combat.ReadTarget());
@@ -116,9 +117,104 @@ public sealed class BeastmasterMinervaCombatTests
 
         provider.Current = provider.Current with { WithholdAttacks = false };
         Assert.True(combat.TryActivate(out error), error);
-        Assert.Equal(BeastmasterCombat.Mode.Henched, provider.Current.Rotation.Mode);
+        Assert.True(provider.Abilities.AllowAttacks);
+        Assert.True(combat.AllowDamageItems);
         Assert.Equal(provider.Target, combat.ReadTarget());
         Assert.Equal(1, provider.Claims);
+        Assert.True(combat.TryRelease(out error), error);
+    }
+
+    [Fact]
+    public void StagedRouteHandsMovementOverOnlyAfterThePreviousOwnerHasStopped()
+    {
+        var provider = new FakeProvider();
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        Assert.True(combat.TryActivate(out var error), error);
+        Assert.True(provider.Current.DodgeEnabled);
+        Assert.False(provider.Abilities.NativeMovement);
+
+        provider.OwnershipTransitions.Clear();
+        provider.Current = provider.Current with { NativeRoute = true };
+        Assert.True(combat.TryActivate(out error), error);
+        Assert.Equal(new[] { "BMR:stopped", "Minerva:False", "BMR:movement" }, provider.OwnershipTransitions);
+        Assert.False(provider.Current.DodgeEnabled);
+        Assert.True(provider.Current.MovementStopped);
+        Assert.True(provider.Abilities.NativeMovement);
+
+        provider.OwnershipTransitions.Clear();
+        Assert.True(combat.TryActivate(out error, allowAttacks: false), error);
+        Assert.True(combat.TryActivate(out error, allowAttacks: false), error);
+        Assert.Equal(new[] { "BMR:movement", "BMR:movement" }, provider.OwnershipTransitions);
+        Assert.False(provider.Abilities.AllowAttacks);
+        Assert.True(provider.Abilities.NativeMovement);
+
+        provider.OwnershipTransitions.Clear();
+        provider.Current = provider.Current with { NativeRoute = false };
+        Assert.True(combat.TryActivate(out error), error);
+        Assert.Equal(new[] { "BMR:stopped", "Minerva:True", "BMR:actions only" }, provider.OwnershipTransitions);
+        Assert.True(provider.Current.DodgeEnabled);
+        Assert.False(provider.Abilities.NativeMovement);
+        Assert.True(combat.TryRelease(out error), error);
+    }
+
+    [Fact]
+    public void RequiredNativeMovementWithoutWaypointsOrPriorAttackPermissionUsesTheConfirmedHandoff()
+    {
+        var provider = new FakeProvider();
+        provider.Abilities.RequiresNativeMovement = true;
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        Assert.False(provider.Current.NativeRoute);
+        Assert.False(provider.Abilities.AllowAttacks);
+        Assert.True(combat.TryActivate(out var error, allowAttacks: false), error);
+        Assert.Equal(new[] { "BMR:stopped", "Minerva:False", "BMR:movement" }, provider.OwnershipTransitions);
+        Assert.False(provider.Current.DodgeEnabled);
+        Assert.True(provider.Current.MovementStopped);
+        Assert.True(provider.Abilities.NativeMovement);
+        Assert.False(provider.Abilities.AllowAttacks);
+
+        provider.OwnershipTransitions.Clear();
+        Assert.True(combat.TryActivate(out error, allowAttacks: false), error);
+        Assert.Equal(new[] { "BMR:movement" }, provider.OwnershipTransitions);
+        provider.Abilities.RequiresNativeMovement = false;
+        provider.OwnershipTransitions.Clear();
+        Assert.True(combat.TryActivate(out error, allowAttacks: false), error);
+        Assert.Equal(new[] { "BMR:stopped", "Minerva:True", "BMR:actions only" }, provider.OwnershipTransitions);
+        Assert.True(provider.Current.DodgeEnabled);
+        Assert.False(provider.Abilities.NativeMovement);
+        Assert.False(provider.Abilities.AllowAttacks);
+        Assert.True(combat.TryRelease(out error), error);
+    }
+
+    [Fact]
+    public void UnconfirmedStopsNeverEnableTheOtherMovementOwner()
+    {
+        var provider = new FakeProvider();
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        Assert.True(combat.TryActivate(out var error), error);
+        provider.Current = provider.Current with { NativeRoute = true };
+        provider.MovementStopThrows = true;
+        provider.OwnershipTransitions.Clear();
+        Assert.False(combat.TryActivate(out error));
+        Assert.DoesNotContain("BMR:movement", provider.OwnershipTransitions);
+        Assert.False(provider.Abilities.NativeMovement);
+        provider.MovementStopThrows = false;
+        Assert.True(combat.TryRelease(out error), error);
+
+        provider = new FakeProvider();
+        combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        provider.Current = provider.Current with { NativeRoute = true };
+        Assert.True(combat.TryActivate(out error), error);
+        provider.Current = provider.Current with { NativeRoute = false };
+        provider.Abilities.FailSuspension = true;
+        provider.Abilities.FailRelease = true;
+        provider.OwnershipTransitions.Clear();
+        Assert.False(combat.TryActivate(out error));
+        Assert.DoesNotContain("Minerva:True", provider.OwnershipTransitions);
+        Assert.False(provider.Current.DodgeEnabled);
+        Assert.Equal(BeastmasterMinervaCombat.OwnerName, provider.Current.Owner);
+        Assert.True(combat.OwnsState);
+        provider.Abilities.FailSuspension = false;
+        provider.Abilities.FailRelease = false;
         Assert.True(combat.TryRelease(out error), error);
     }
 
@@ -127,7 +223,7 @@ public sealed class BeastmasterMinervaCombatTests
     {
         var provider = new FakeProvider { ClaimThrowsAfterOwnership = true, ReleaseThrowsBeforeMutation = true };
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.False(combat.TrySuspend(out var error));
         Assert.Contains("partial claim", error);
         Assert.Contains("release", error);
@@ -148,7 +244,7 @@ public sealed class BeastmasterMinervaCombatTests
     {
         var provider = new FakeProvider();
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TryActivate(out var error), error);
         provider.ReleaseThrowsBeforeMutation = !afterMutation;
         provider.ReleaseThrowsAfterMutation = afterMutation;
@@ -160,6 +256,8 @@ public sealed class BeastmasterMinervaCombatTests
         Assert.False(combat.OwnsState);
         Assert.Equal(original, provider.Current);
         Assert.Equal(afterMutation ? 1 : 2, provider.Releases);
+        Assert.Equal(1, provider.Abilities.Acquisitions);
+        Assert.Equal(1, provider.Abilities.Releases);
     }
 
     [Fact]
@@ -167,7 +265,7 @@ public sealed class BeastmasterMinervaCombatTests
     {
         var provider = new FakeProvider();
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TryActivate(out var error), error);
         provider.ReleaseThrowsAfterMutation = true;
         Assert.False(combat.TryRelease(out error));
@@ -184,7 +282,7 @@ public sealed class BeastmasterMinervaCombatTests
         Assert.True(combat.TryRelease(out error), error);
         Assert.False(combat.OwnsState);
         Assert.False(combat.IsRunning);
-        Assert.Equal(nextOwner with { Rotation = original.Rotation }, provider.Current);
+        Assert.Equal(nextOwner, provider.Current);
         Assert.DoesNotContain(provider.Writes, write => write is "Claim" or "Release" ||
             write.StartsWith("Movement:", StringComparison.Ordinal) || write.StartsWith("Facing:", StringComparison.Ordinal));
         Assert.Equal(1, provider.Releases);
@@ -195,7 +293,7 @@ public sealed class BeastmasterMinervaCombatTests
     {
         var provider = new FakeProvider();
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TryActivate(out var error), error);
         var owned = provider.Current;
         provider.Writes.Clear();
@@ -214,13 +312,13 @@ public sealed class BeastmasterMinervaCombatTests
     {
         var provider = new FakeProvider();
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TryActivate(out var error), error);
         provider.MovementStopThrows = true;
         Assert.False(combat.TryRelease(out error));
         Assert.True(combat.OwnsState);
         Assert.False(combat.IsRunning);
-        Assert.Equal(BeastmasterCombat.Mode.Off, provider.Current.Rotation.Mode);
+        Assert.False(provider.Abilities.AllowAttacks);
         Assert.Equal(BeastmasterMinervaCombat.OwnerName, provider.Current.Owner);
         provider.MovementStopThrows = false;
         Assert.True(combat.TryRelease(out error), error);
@@ -228,19 +326,77 @@ public sealed class BeastmasterMinervaCombatTests
         Assert.Equal(original, provider.Current);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ReplacedProvidersStayUntouchedUntilTheOriginalProviderReturns(bool replaceRotation)
+    [Fact]
+    public void UnconfirmedNativeReleaseKeepsMinervaStoppedAndLeased()
     {
         var provider = new FakeProvider();
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        Assert.True(combat.TryActivate(out var error), error);
+        provider.Abilities.FailSuspension = true;
+        provider.Abilities.FailRelease = true;
+        Assert.False(combat.TryRelease(out error));
+        Assert.Contains("native release", error);
+        Assert.Equal(BeastmasterMinervaCombat.OwnerName, provider.Current.Owner);
+        Assert.False(provider.Current.DodgeEnabled);
+        Assert.True(provider.Current.MovementStopped);
+        Assert.True(combat.OwnsState);
+        Assert.True(provider.Abilities.OwnsState);
+        provider.Abilities.FailSuspension = false;
+        provider.Abilities.FailRelease = false;
+        Assert.True(combat.TryRelease(out error), error);
+        Assert.False(combat.OwnsState);
+    }
+
+    [Fact]
+    public void RevokedNativeLeaseReachesIdempotentReleaseAfterMinervaStopsWithoutReacquiring()
+    {
+        var provider = new FakeProvider();
+        var original = provider.Current;
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        Assert.True(combat.TryActivate(out var error), error);
+        Assert.Equal(1, provider.Abilities.Acquisitions);
+        provider.Abilities.LeaseRevoked = true;
+        provider.OwnershipTransitions.Clear();
+        Assert.True(combat.TryRelease(out error), error);
+        Assert.Equal(new[] { "Minerva:False", "BMR:released" }, provider.OwnershipTransitions);
+        Assert.Equal(1, provider.Abilities.Acquisitions);
+        Assert.Equal(1, provider.Abilities.Releases);
+        Assert.False(combat.OwnsState);
+        Assert.Equal(original, provider.Current);
+    }
+
+    [Fact]
+    public void RefusedRevokedLeaseReleaseRetainsStoppedMinervaUntilNativeCleanupIsConfirmed()
+    {
+        var provider = new FakeProvider();
+        var original = provider.Current;
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        Assert.True(combat.TryActivate(out var error), error);
+        provider.Abilities.LeaseRevoked = provider.Abilities.FailRelease = true;
+        Assert.False(combat.TryRelease(out error));
+        Assert.True(combat.OwnsState);
+        Assert.Equal(BeastmasterMinervaCombat.OwnerName, provider.Current.Owner);
+        Assert.False(provider.Current.DodgeEnabled);
+        Assert.True(provider.Current.MovementStopped);
+        Assert.Equal(0, provider.Releases);
+        Assert.Equal(1, provider.Abilities.Acquisitions);
+        provider.Abilities.FailRelease = false;
+        Assert.True(combat.TryRelease(out error), error);
+        Assert.Equal(1, provider.Abilities.Acquisitions);
+        Assert.False(combat.OwnsState);
+        Assert.Equal(original, provider.Current);
+    }
+
+    [Fact]
+    public void ReplacedProvidersStayUntouchedUntilTheOriginalProviderReturns()
+    {
+        var provider = new FakeProvider();
+        var original = provider.Current;
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TryActivate(out var error), error);
         var owned = provider.Current;
-        var replacement = replaceRotation
-            ? owned with { Rotation = owned.Rotation with { Provider = new object() } }
-            : owned with { MovementProvider = new object() };
+        var replacement = owned with { MovementProvider = new object() };
         provider.Current = replacement;
         provider.Writes.Clear();
         Assert.False(combat.TryRelease(out error));
@@ -262,7 +418,7 @@ public sealed class BeastmasterMinervaCombatTests
     {
         var provider = new FakeProvider();
         var original = provider.Current;
-        var combat = new BeastmasterMinervaCombat(provider);
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
         Assert.True(combat.TryActivate(out var error), error);
         var revoked = provider.Current with
         {
@@ -274,7 +430,7 @@ public sealed class BeastmasterMinervaCombatTests
         Assert.Contains("revoked", error);
         Assert.False(combat.OwnsState);
         Assert.False(combat.IsRunning);
-        Assert.Equal(revoked with { Rotation = original.Rotation }, provider.Current);
+        Assert.Equal(revoked, provider.Current);
         Assert.DoesNotContain(provider.Writes, write => write is "Claim" or "Release" ||
             write.StartsWith("Movement:", StringComparison.Ordinal) || write.StartsWith("Facing:", StringComparison.Ordinal));
         Assert.Equal(1, provider.Claims);
@@ -284,7 +440,7 @@ public sealed class BeastmasterMinervaCombatTests
     [InlineData("Minerva.IsConnected")]
     [InlineData("Minerva.ReleasePreset")]
     [InlineData("Minerva.SetAutoDodge")]
-    [InlineData("RotationSolverReborn.ChangeOperatingMode")]
+    [InlineData("BMRVariantLoader.Crewcible.Movement.v1")]
     public void MissingNativeEndpointRefusesDispatchBeforeAnyIpcCall(string missing)
     {
         var ipc = Plugin.PluginInterface;
@@ -644,9 +800,11 @@ public sealed class BeastmasterMinervaCombatTests
     private sealed class FakeProvider : BeastmasterMinervaCombat.IProvider
     {
         public BeastmasterMinervaCombat.State Current = new(
-            new(new object(), BeastmasterCombat.Mode.Auto, BeastmasterCombat.RotationName, true, new object(), new object()),
             new object(), Owner: null, DodgeEnabled: true, FaceGazes: false, MovementStopped: true,
             Preset: "Original movement", WithholdAttacks: false);
+        public readonly FakeAbilities Abilities;
+        public readonly List<string> OwnershipTransitions = [];
+        public FakeProvider() => Abilities = new(() => ReadTarget(), OwnershipTransitions);
         public readonly List<string> Writes = [];
         public BeastmasterCombat.Target Target = new(17, true);
         public int Claims, Releases, TargetReads;
@@ -665,6 +823,7 @@ public sealed class BeastmasterMinervaCombatTests
         }
         public void SetMovement(bool enabled)
         {
+            OwnershipTransitions.Add("Minerva:" + enabled);
             Writes.Add("Movement:" + enabled);
             if (!enabled && MovementStopThrows) throw new InvalidOperationException("Synthetic movement stop failure");
             Current = Current with { DodgeEnabled = enabled, FaceGazes = enabled, MovementStopped = !enabled };
@@ -682,25 +841,46 @@ public sealed class BeastmasterMinervaCombatTests
             Current = Current with { Owner = null, DodgeEnabled = saved.DodgeEnabled, Preset = saved.Preset };
             if (ReleaseThrowsAfterMutation) throw new InvalidOperationException("Synthetic post-write release failure");
         }
-        public void SetMode(BeastmasterCombat.Mode mode)
+    }
+
+    private sealed class FakeAbilities(Func<BeastmasterCombat.Target> target, List<string> transitions) : IBeastmasterCombat
+    {
+        public bool OwnsState { get; private set; }
+        public bool IsRunning { get; private set; }
+        public bool RequiresNativeMovement { get; set; }
+        public bool AllowDamageItems => OwnsState && IsRunning && AllowAttacks && !LeaseRevoked;
+        public bool AllowAttacks { get; private set; }
+        public bool NativeMovement { get; private set; }
+        public bool FailSuspension, FailRelease, LeaseRevoked;
+        public int Acquisitions, Releases;
+        public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null)
         {
-            Writes.Add("Rotation:" + mode);
-            Current = Current with
-            {
-                Rotation = Current.Rotation with { Mode = mode, ExternalOverrides = false, IpcOverrides = null, TargetingTypeOverride = null },
-            };
+            NativeMovement = useBmrMovement == true;
+            transitions.Add(NativeMovement ? "BMR:movement" : "BMR:actions only");
+            if (!OwnsState) Acquisitions++;
+            OwnsState = IsRunning = true; AllowAttacks = allowAttacks; reason = ""; return true;
         }
-        public void RestoreRotationOverrides(BeastmasterCombat.RotationState saved)
+        public bool TrySuspend(out string reason)
         {
-            Writes.Add("Overrides");
-            Current = Current with
-            {
-                Rotation = Current.Rotation with
-                {
-                    ExternalOverrides = saved.ExternalOverrides, IpcOverrides = saved.IpcOverrides,
-                    TargetingTypeOverride = saved.TargetingTypeOverride,
-                },
-            };
+            reason = "";
+            if (FailSuspension || LeaseRevoked) { reason = "Synthetic action suspension failure"; return false; }
+            transitions.Add("BMR:stopped");
+            NativeMovement = false;
+            if (!OwnsState) Acquisitions++;
+            OwnsState = true; IsRunning = AllowAttacks = false; return true;
         }
+        public bool TryRelease(out string reason)
+        {
+            reason = "";
+            if (!OwnsState) return true;
+            Releases++;
+            if (FailRelease) { reason = "Synthetic native release unconfirmed"; return false; }
+            transitions.Add("BMR:released");
+            OwnsState = IsRunning = AllowAttacks = NativeMovement = LeaseRevoked = false;
+            return true;
+        }
+        public bool TryPrepare(uint board, uint battle, out bool ready, out string status, out string reason)
+        { OwnsState = IsRunning = true; ready = true; status = "Prepared"; reason = ""; return true; }
+        public BeastmasterCombat.Target ReadTarget() => target();
     }
 }

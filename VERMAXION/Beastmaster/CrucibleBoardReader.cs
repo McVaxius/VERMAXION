@@ -26,6 +26,8 @@ namespace VERMAXION.Beastmaster
                 return null;
 
             Dictionary<int, (CrucibleStopKind Kind, int Number)> kinds = ReadStopKinds(boardNumber);
+            var battles = ReadBattleIds(boardNumber);
+            var randomBattles = ReadRandomBattleIds(boardNumber, battles);
             Dictionary<int, Marker> markers = ReadMarkers(dutyRow.TerritoryType.Value.Map.Value);
             (Dictionary<int, GridSpot> spots, List<CrucibleBoardPath> paths) = ReadStopMap(boardNumber);
 
@@ -47,7 +49,12 @@ namespace VERMAXION.Beastmaster
                 else if (!markers.TryGetValue(id, out marker))
                     return null;
 
-                stops.Add(new CrucibleBoardStop(id, kind, number, spot.X, spot.Y, marker.Position, marker.Icon));
+                stops.Add(new CrucibleBoardStop(id, kind, number, spot.X, spot.Y, marker.Position, marker.Icon)
+                {
+                    BattleId = kind is CrucibleStopKind.Enemy or CrucibleStopKind.Elite or CrucibleStopKind.Boss
+                        ? battles.GetValueOrDefault(number) : 0,
+                    RandomBattleIds = kind == CrucibleStopKind.Random ? randomBattles.GetValueOrDefault(number) : null,
+                });
             }
 
             return new CrucibleBoard(boardNumber, dutyRow.Name.ExtractText(), stops, paths);
@@ -85,6 +92,38 @@ namespace VERMAXION.Beastmaster
             }
 
             return kinds;
+        }
+
+        private static Dictionary<int, uint> ReadBattleIds(uint boardNumber)
+        {
+            if (!GenericHelpers.GetSubrowSheet<XBMContentBattle>().TryGetRow(boardNumber, out SubrowCollection<XBMContentBattle> rows))
+                return [];
+            // Installed Lumina calls this ushort Unknown0; modern EXDSchema names it BattleDetail.
+            return rows.ToDictionary(row => (int)row.SubrowId, row => (uint)row.Unknown0);
+        }
+
+        private static Dictionary<int, uint[]> ReadRandomBattleIds(uint boardNumber, Dictionary<int, uint> battles)
+        {
+            Dictionary<int, uint[]> result = [];
+            if (!GenericHelpers.GetSubrowSheet<XBMContentRandomStageEvent>().TryGetRow(boardNumber,
+                    out SubrowCollection<XBMContentRandomStageEvent> tables)) return result;
+            foreach (var table in tables)
+            {
+                List<uint> candidates = [];
+                if (!GenericHelpers.GetSubrowSheet<XBMRandomStageEvent>().TryGetRow(table.Unknown0,
+                        out SubrowCollection<XBMRandomStageEvent> options))
+                { result[table.SubrowId] = [0]; continue; }
+                foreach (var option in options)
+                {
+                    var kind = (CrucibleStopKind)option.Unknown0;
+                    if (kind is CrucibleStopKind.Enemy or CrucibleStopKind.Elite or CrucibleStopKind.Boss)
+                        candidates.Add(battles.GetValueOrDefault(option.Unknown1));
+                    else if (kind is not (CrucibleStopKind.Campsite or CrucibleStopKind.Treasure or CrucibleStopKind.Shop))
+                        candidates.Add(0); // An unknown option cannot certify a single possible battle.
+                }
+                result[table.SubrowId] = candidates.ToArray();
+            }
+            return result;
         }
 
         private static (Dictionary<int, GridSpot> Spots, List<CrucibleBoardPath> Paths) ReadStopMap(uint boardNumber)

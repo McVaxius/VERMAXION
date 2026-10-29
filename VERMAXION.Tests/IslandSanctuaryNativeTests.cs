@@ -286,6 +286,159 @@ public sealed unsafe class IslandSanctuaryNativeTests
         finally { interfaceProperty.SetValue(null, previousInterface); ImGui.DestroyContext(context); }
     }
 
+    [Theory]
+    [InlineData(false, 1120, 880, 1f)]
+    [InlineData(true, 1120, 880, 1f)]
+    [InlineData(false, 480, 480, 1f)]
+    [InlineData(true, 480, 480, 1f)]
+    [InlineData(false, 1120, 880, 1.5f)]
+    [InlineData(true, 1120, 880, 1.5f)]
+    [InlineData(false, 480, 480, 1.5f)]
+    [InlineData(true, 480, 480, 1.5f)]
+    public void ActualSuppliesCardsKeepBothSectionsVisibleAndNestedControlsReachable(bool compact, int width, int height, float scale)
+    {
+        const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+        var itemsType = Production.GetType("VERMAXION.Beastmaster.CrucibleItemData", true)!;
+        var itemsField = itemsType.GetFields(Static).Single(field => field.FieldType.IsGenericType &&
+            field.FieldType.GetGenericTypeDefinition().FullName == "Lumina.Excel.ExcelSheet`1");
+        var priorItems = itemsField.GetValue(null);
+        var rawType = itemsField.FieldType.Assembly.GetType("Lumina.Excel.RawExcelSheet", true)!;
+        var raw = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(rawType);
+        rawType.GetField("_rowIndexLookupArray", fields)!.SetValue(raw, Array.Empty<int>());
+        rawType.GetField("_rowIndexLookupDict", fields)!.SetValue(raw,
+            System.Collections.Frozen.FrozenDictionary<int, int>.Empty);
+        // Native item rows are unnecessary for layout: the real catalog still
+        // populates its priority rows using its ordinary missing-row captions.
+        itemsField.SetValue(null, Activator.CreateInstance(itemsField.FieldType, raw));
+        var context = ImGui.CreateContext();
+        var textType = Production.GetType("VERMAXION.UiText", true)!;
+        var constructor = textType.GetConstructors(fields)[0];
+        var callbackType = constructor.GetParameters()[1].ParameterType;
+        var callback = Expression.Lambda(callbackType, Expression.Constant(Noop.Instance, typeof(IDisposable)),
+            Expression.Parameter(callbackType.GenericTypeArguments[0])).Compile();
+        using var text = (IDisposable)constructor.Invoke(["en", callback]);
+        using var entered = (IDisposable)textType.GetMethod("Enter", fields)!.Invoke(text, null)!;
+        try
+        {
+            var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings();
+            settings.ShopLists.Add(new live::VERMAXION.Beastmaster.BeastmasterShopList().CompleteList());
+            var account = new live::VERMAXION.Models.AccountConfig();
+            account.DefaultConfig.Beastmaster = new() { ManualSettings = settings };
+            var managerType = Production.GetType("VERMAXION.Services.ConfigManager", true)!;
+            var manager = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(managerType);
+            managerType.GetField("accounts", fields)!.SetValue(manager,
+                new System.Collections.Generic.Dictionary<string, live::VERMAXION.Models.AccountConfig> { ["fixture"] = account });
+            var pluginType = typeof(live::VERMAXION.Plugin);
+            var plugin = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(pluginType);
+            pluginType.GetField("<Configuration>k__BackingField", fields)!.SetValue(plugin, new live::VERMAXION.Configuration());
+            pluginType.GetField("<ConfigManager>k__BackingField", fields)!.SetValue(plugin, manager);
+            var windowType = Production.GetType("VERMAXION.Windows.BeastmasterWindow", true)!;
+            var window = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(windowType);
+            windowType.GetField("plugin", fields)!.SetValue(window, plugin);
+            windowType.GetField("viewedAccountId", fields)!.SetValue(window, "fixture");
+            windowType.GetField("viewingAccountDefault", fields)!.SetValue(window, true);
+            windowType.GetField("suppliesListMessage", fields)!.SetValue(window, "");
+            var draw = windowType.GetMethod("DrawSupplies", fields)!;
+            var constants = Production.GetType("VERMAXION.UIConstants", true)!;
+            var theme = new MaterialTheme(new Vector3(.2f, .6f, .7f), compact ? MaterialDensity.Compact : MaterialDensity.Standard);
+            var io = ImGui.GetIO();
+            io.IniFilename = null; io.LogFilename = null;
+            io.DisplaySize = new(width, height); io.DeltaTime = 1f / 60; io.FontGlobalScale = scale;
+            io.Fonts.AddFontDefault();
+            byte* pixels = null; int atlasWidth = 0, atlasHeight = 0;
+            io.Fonts.GetTexDataAsRGBA32(0, &pixels, &atlasWidth, &atlasHeight);
+            io.Fonts.SetTexID(0, new ImTextureID((nint)1));
+            host::Dalamud.Bindings.ImGui.ImGuiWindowPtr body = default, priority = default, guidance = default, rows = default;
+            void Frame()
+            {
+                ImGui.NewFrame();
+                using (MaterialTheme.Push(theme, scale, MaterialStyleMode.ColorsOnly))
+                {
+                    constants.GetMethod("PushStyle", Static)!.Invoke(null, [compact]);
+                    try
+                    {
+                        ImGui.SetNextWindowPos(Vector2.Zero); ImGui.SetNextWindowSize(new(width, height));
+                        ImGui.Begin("Supplies native", ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoTitleBar);
+                        try
+                        {
+                            // Reserve existing shell space conservatively; only the
+                            // actual Supplies body draws in this offline frame.
+                            ImGui.Dummy(new(0, 150 * scale));
+                            ImGui.BeginChild("BeastmasterBody", Vector2.Zero, false);
+                            try { body = ImGuiP.GetCurrentWindow(); draw.Invoke(window, null); }
+                            finally { ImGui.EndChild(); }
+                        }
+                        finally { ImGui.End(); }
+                    }
+                    finally { constants.GetMethod("PopStyle", Static)!.Invoke(null, null); }
+                }
+                ImGui.Render();
+                var windows = ImGui.GetCurrentContext().Windows;
+                for (var index = 0; index < windows.Size; index++)
+                {
+                    var native = new host::Dalamud.Bindings.ImGui.ImGuiWindowPtr(windows.Data[index]);
+                    var name = System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)native.Name)!;
+                    if (name.Contains("##SuppliesPriorityRows", StringComparison.Ordinal)) rows = native;
+                    else if (name.Contains("##SuppliesPriorityCard", StringComparison.Ordinal)) priority = native;
+                    else if (name.Contains("##SuppliesGuidanceCard", StringComparison.Ordinal)) guidance = native;
+                }
+                Assert.Equal(0, context.Handle->ColorStack.Size);
+                Assert.Equal(0, context.Handle->StyleVarStack.Size);
+            }
+            bool CaptionVisible(host::Dalamud.Bindings.ImGui.ImGuiWindowPtr native, string caption)
+            {
+                caption = caption.Replace(" ", string.Empty);
+                var list = native.DrawList;
+                for (var index = 0; index + caption.Length * 4 <= list.VtxBuffer.Size; index++)
+                {
+                    var matches = true;
+                    for (var character = 0; character < caption.Length; character++)
+                    {
+                        var glyph = ImGui.FindGlyphNoFallback(io.Fonts.Fonts[0], caption[character]);
+                        if (list.VtxBuffer[index + character * 4].Uv != new Vector2(glyph.Handle->U0, glyph.Handle->V0) ||
+                            list.VtxBuffer[index + character * 4 + 2].Uv != new Vector2(glyph.Handle->U1, glyph.Handle->V1))
+                        { matches = false; break; }
+                    }
+                    if (!matches) continue;
+                    var first = list.VtxBuffer[index].Pos;
+                    var last = list.VtxBuffer[index + caption.Length * 4 - 2].Pos;
+                    if (first.Y >= native.InnerClipRect.Min.Y && last.Y <= native.InnerClipRect.Max.Y &&
+                        first.X >= native.InnerClipRect.Min.X && last.X <= native.InnerClipRect.Max.X) return true;
+                }
+                return false;
+            }
+            Frame(); Frame(); Frame();
+            Assert.NotEqual((nint)0, (nint)priority.Handle);
+            Assert.NotEqual((nint)0, (nint)guidance.Handle);
+            Assert.True(priority.Pos.Y < body.InnerClipRect.Max.Y && guidance.Pos.Y < body.InnerClipRect.Max.Y,
+                "Both cards must begin inside the visible body, even at the saved minimum size.");
+            Assert.True(priority.Pos.Y + priority.Size.Y <= body.InnerClipRect.Max.Y + 1 &&
+                guidance.Pos.Y + guidance.Size.Y <= body.InnerClipRect.Max.Y + 1,
+                "Neither card may consume a second full body viewport.");
+            foreach (var caption in new[] { "No food", "Extract materia", "Healing and camps" })
+            {
+                var found = CaptionVisible(guidance, caption);
+                for (var offset = 0f; !found && offset <= guidance.ScrollMax.Y + guidance.Size.Y; offset += 12 * scale)
+                {
+                    guidance.Scroll.Y = Math.Min(offset, guidance.ScrollMax.Y);
+                    Frame();
+                    found = CaptionVisible(guidance, caption);
+                }
+                Assert.True(found, "Actual Supplies control must be reachable through its native card scroll: " + caption);
+            }
+            priority.Scroll.Y = priority.ScrollMax.Y;
+            Frame(); Frame();
+            Assert.NotEqual((nint)0, (nint)rows.Handle);
+            Assert.True(rows.ScrollMax.Y > 0, "The populated priority table must retain its own native scroll.");
+            rows.Scroll.Y = Math.Min(rows.ScrollMax.Y, 40 * scale);
+            Frame();
+            Assert.True(rows.Scroll.Y > 0);
+            Assert.True(settings.ExtractMateria);
+            Assert.Equal(0u, settings.FoodItemId);
+        }
+        finally { itemsField.SetValue(null, priorItems); ImGui.DestroyContext(context); }
+    }
+
     private sealed class Noop : IDisposable
     {
         public static readonly Noop Instance = new();

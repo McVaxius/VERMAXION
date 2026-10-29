@@ -23,6 +23,12 @@ namespace VERMAXION.Beastmaster
 
     public sealed record CrucibleBoardStop(int Id, CrucibleStopKind Kind, int Number, int GridX, int GridY, Vector2 Position, uint Icon)
     {
+        // Number is the board-local sheet index, including valid boss index zero.
+        // A random tile's possibilities are not its observed outcome.
+        public uint BattleId { get; init; }
+        public IReadOnlyList<uint>? RandomBattleIds { get; init; }
+        public BeastmasterFightContext? ResolveFight(bool fightPanelReady)
+            => BeastmasterSelection.ResolveFightBattle(BattleId, RandomBattleIds, fightPanelReady);
         public string Label => this.Number > 0 ? $"{this.Kind} #{this.Number}" : this.Kind.ToString();
     }
 

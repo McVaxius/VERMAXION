@@ -8,13 +8,12 @@ using Dalamud.Plugin.Ipc;
 
 namespace VERMAXION.Beastmaster;
 
-// Minerva owns movement, while the existing Beastmaster rotation still owns abilities.
+// Minerva owns movement; the same native BMR plan/rotation owns abilities in both adapters.
 internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
 {
     internal const string OwnerName = "VERMAXION.Beastmaster";
-    internal readonly record struct State(BeastmasterCombat.RotationState Rotation, object MovementProvider,
-        string? Owner, bool DodgeEnabled, bool FaceGazes, bool MovementStopped, string Preset, bool WithholdAttacks);
-
+    internal readonly record struct State(object MovementProvider, string? Owner, bool DodgeEnabled,
+        bool FaceGazes, bool MovementStopped, string Preset, bool WithholdAttacks, bool NativeRoute = false);
     internal interface IProvider
     {
         State Read();
@@ -23,71 +22,121 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
         void SetMovement(bool enabled);
         void RestoreFacing(bool enabled);
         void Release();
-        void SetMode(BeastmasterCombat.Mode mode);
-        void RestoreRotationOverrides(BeastmasterCombat.RotationState saved);
+    }
+    private readonly IProvider provider;
+    private readonly IBeastmasterCombat abilities;
+    private State? original;
+    private bool movementChanged, releaseRequested, nativeMovementOwned;
+    public bool OwnsState => original.HasValue || abilities.OwnsState;
+    public bool IsRunning { get; private set; }
+    public bool RequiresNativeMovement => abilities.RequiresNativeMovement;
+    public bool AllowDamageItems
+    {
+        get
+        {
+            if (!IsRunning || original == null) return false;
+            try
+            {
+                var current = ReadCurrent();
+                return current.Owner == OwnerName && !current.WithholdAttacks && abilities.AllowDamageItems;
+            }
+            catch { return false; }
+        }
     }
 
-    private readonly IProvider provider;
-    private State? original;
-    private bool rotationChanged, movementChanged, releaseRequested;
-    public bool OwnsState => original.HasValue;
-    public bool IsRunning { get; private set; }
-
-    public BeastmasterMinervaCombat() : this(new NativeProvider()) { }
-    internal BeastmasterMinervaCombat(IProvider provider) => this.provider = provider;
-    public static bool CanStart(out string reason) => CanStart(new NativeProvider(), out reason);
+    public BeastmasterMinervaCombat() : this(new NativeProvider(),
+        new BeastmasterCombat(useBmrMovement: false, releaseOnFailure: false)) { }
+    internal BeastmasterMinervaCombat(IProvider provider, IBeastmasterCombat abilities)
+    { this.provider = provider; this.abilities = abilities; }
+    public static bool CanStart(out string reason)
+        => BeastmasterCombat.CanStart(out reason) && CanStart(new NativeProvider(), out reason);
     internal static bool CanStart(IProvider provider, out string reason)
     {
         try { Validate(provider); reason = string.Empty; return true; }
         catch (Exception ex) { reason = BeastmasterCombat.Describe(ex); return false; }
     }
-
     private static State Validate(IProvider provider)
     {
         var current = provider.Read();
-        if (current.Rotation.Rotation != BeastmasterCombat.RotationName)
-            throw new InvalidOperationException("Load Rotation Solver Reborn and select its Reborn Beastmaster rotation.");
-        if (current.Owner != null)
-            throw new InvalidOperationException("Minerva is owned by another controller.");
+        if (current.Owner != null) throw new InvalidOperationException("Minerva is owned by another controller.");
         return current;
     }
-
-    public bool TryActivate(out string reason, bool allowAttacks = true) => TryApply(true, allowAttacks, out reason);
+    public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null)
+        => TryApply(true, allowAttacks, out reason);
     public bool TrySuspend(out string reason) => TryApply(false, false, out reason);
+    public bool TryPrepare(uint board, uint battle, out bool ready, out string status, out string reason)
+    {
+        ready = false;
+        status = reason = string.Empty;
+        if (!movementChanged && !TrySuspend(out reason)) return false;
+        try
+        {
+            var current = ReadCurrent();
+            RequireOwner(current);
+            if (current.DodgeEnabled || !current.MovementStopped)
+            {
+                provider.SetMovement(false);
+                current = ReadCurrent();
+                RequireOwner(current);
+                if (current.DodgeEnabled || !current.MovementStopped)
+                    throw new InvalidOperationException("Minerva movement transition is unconfirmed.");
+            }
+            if (current.WithholdAttacks)
+            {
+                if (abilities.IsRunning && !abilities.TrySuspend(out reason)) return false;
+                IsRunning = true;
+                status = "Waiting for Minerva's action restriction before arena preparation.";
+                return true;
+            }
+            if (!abilities.TryPrepare(board, battle, out ready, out status, out reason))
+                throw new InvalidOperationException(reason);
+            IsRunning = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            IsRunning = false;
+            reason = BeastmasterCombat.Describe(ex);
+            if (OwnsState && !TryRelease(out var cleanup)) reason += " Cleanup: " + cleanup;
+            return false;
+        }
+    }
     public BeastmasterCombat.Target ReadTarget()
     {
         var current = ReadCurrent();
-        if (original.HasValue && current.Owner != OwnerName)
-            throw new InvalidOperationException("Minerva ownership was revoked.");
-        return current.WithholdAttacks ? default : provider.ReadTarget();
+        if (original.HasValue) RequireOwner(current);
+        return current.WithholdAttacks ? default : abilities.ReadTarget();
     }
-
     private bool TryApply(bool running, bool allowAttacks, out string reason)
     {
         try
         {
             if (original == null) original = Validate(provider);
             var current = ReadCurrent();
-            if (running && current.Rotation.Rotation != BeastmasterCombat.RotationName)
-                throw new InvalidOperationException("RSR Reborn Beastmaster is no longer the current rotation.");
-            // Do not turn abilities on until movement ownership is established.
+            var needsNativeMovement = running && (current.NativeRoute || abilities.RequiresNativeMovement);
+            // Establish the native action owner before changing movement.
+            var actionError = string.Empty;
+            if ((!movementChanged || !running || needsNativeMovement != nativeMovementOwned) &&
+                !abilities.TrySuspend(out actionError)) throw new InvalidOperationException(actionError);
             if (!movementChanged)
             {
-                SetRotation(BeastmasterCombat.Mode.Off);
-                movementChanged = true; // Claim may succeed before its reply or config save fails.
+                movementChanged = true;
                 provider.Claim();
             }
             current = ReadCurrent();
             RequireOwner(current);
-            if (!running || !allowAttacks || current.WithholdAttacks)
-                SetRotation(BeastmasterCombat.Mode.Off);
-            provider.SetMovement(running);
+            var minervaMovement = running && !needsNativeMovement;
+            if (current.DodgeEnabled != minervaMovement || current.FaceGazes != minervaMovement ||
+                !minervaMovement && !current.MovementStopped)
+                provider.SetMovement(minervaMovement);
             current = ReadCurrent();
             RequireOwner(current);
-            if (current.DodgeEnabled != running || current.FaceGazes != running || !running && !current.MovementStopped)
+            if (current.DodgeEnabled != minervaMovement || current.FaceGazes != minervaMovement ||
+                !minervaMovement && !current.MovementStopped)
                 throw new InvalidOperationException("Minerva movement transition is unconfirmed.");
-            SetRotation(running && allowAttacks && !current.WithholdAttacks
-                ? BeastmasterCombat.Mode.Henched : BeastmasterCombat.Mode.Off);
+            if (running && !abilities.TryActivate(out actionError, allowAttacks && !current.WithholdAttacks, needsNativeMovement))
+                throw new InvalidOperationException(actionError);
+            nativeMovementOwned = needsNativeMovement;
             IsRunning = running;
             reason = string.Empty;
             return true;
@@ -100,89 +149,70 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
             return false;
         }
     }
-
     private State ReadCurrent()
     {
         var current = provider.Read();
-        if (original is { } saved && (!ReferenceEquals(saved.Rotation.Provider, current.Rotation.Provider) ||
-            !ReferenceEquals(saved.MovementProvider, current.MovementProvider)))
+        if (original is { } saved && !ReferenceEquals(saved.MovementProvider, current.MovementProvider))
             throw new InvalidOperationException("A combat provider was unloaded or replaced; original ownership is unresolved.");
         return current;
     }
-
     private static void RequireOwner(State current)
     {
         if (current.Owner != OwnerName) throw new InvalidOperationException("Minerva ownership was revoked.");
     }
-
-    private void SetRotation(BeastmasterCombat.Mode mode)
-    {
-        var current = ReadCurrent();
-        rotationChanged = true;
-        if (current.Rotation.Mode == mode && !current.Rotation.ExternalOverrides) return;
-        provider.SetMode(mode);
-        current = ReadCurrent();
-        if (current.Rotation.Mode != mode || current.Rotation.ExternalOverrides)
-            throw new InvalidOperationException("RSR did not confirm the requested Beastmaster operating mode.");
-    }
-
     public bool TryRelease(out string reason)
     {
         IsRunning = false;
         reason = string.Empty;
-        if (original is not { } saved) return true;
-        try
-        {
-            var current = ReadCurrent();
-            if (movementChanged)
-            {
-                if (current.Owner == OwnerName)
-                {
-                    SetRotation(BeastmasterCombat.Mode.Off);
-                    // Clear only Minerva's route before giving the user's prior settings back.
-                    provider.SetMovement(false);
-                    current = ReadCurrent();
-                    RequireOwner(current);
-                    if (current.DodgeEnabled || !current.MovementStopped)
-                        throw new InvalidOperationException("Minerva movement transition is unconfirmed.");
-                    provider.RestoreFacing(saved.FaceGazes);
-                    current = ReadCurrent();
-                    RequireOwner(current);
-                    if (current.FaceGazes != saved.FaceGazes)
-                        throw new InvalidOperationException("Minerva original state restoration is unconfirmed.");
-                    releaseRequested = true;
-                    provider.Release();
-                    current = ReadCurrent();
-                }
-                if (releaseRequested && (current.Owner == OwnerName || current.Owner == null &&
-                    (current.DodgeEnabled != saved.DodgeEnabled || current.FaceGazes != saved.FaceGazes || current.Preset != saved.Preset)))
-                    throw new InvalidOperationException("Minerva original state restoration is unconfirmed.");
-                // An observed revocation is not an unavailable read. Never overwrite a new owner or user choice.
-                movementChanged = releaseRequested = false;
-            }
-        }
-        catch (Exception ex) { reason = BeastmasterCombat.Describe(ex); }
-
-        // A failed movement stop must not turn the original rotation back on while automation is unresolved.
-        if (movementChanged) return false;
-        if (rotationChanged)
+        // Once Minerva has released its own configuration, cleanup must never
+        // reacquire a native lease just to retry its final restoration.
+        if (original == null) return abilities.TryRelease(out reason);
+        // Suppress promptly when possible. A revoked lease cannot be suspended,
+        // but its owner-checked, idempotent Release remains the cleanup authority.
+        if (abilities.OwnsState) abilities.TrySuspend(out reason);
+        if (original is { } saved)
         {
             try
             {
-                ReadCurrent();
-                provider.SetMode(saved.Rotation.Mode);
-                provider.RestoreRotationOverrides(saved.Rotation);
-                var rotation = ReadCurrent().Rotation;
-                if (rotation.Mode != saved.Rotation.Mode || rotation.ExternalOverrides != saved.Rotation.ExternalOverrides ||
-                    !Equals(rotation.IpcOverrides, saved.Rotation.IpcOverrides) ||
-                    !Equals(rotation.TargetingTypeOverride, saved.Rotation.TargetingTypeOverride))
-                    throw new InvalidOperationException("RSR original mode restoration is unconfirmed.");
-                rotationChanged = false;
+                var current = ReadCurrent();
+                if (movementChanged)
+                {
+                    if (current.Owner == OwnerName)
+                    {
+                        provider.SetMovement(false);
+                        current = ReadCurrent();
+                        RequireOwner(current);
+                        if (current.DodgeEnabled || !current.MovementStopped)
+                            throw new InvalidOperationException("Minerva movement transition is unconfirmed.");
+                    }
+                }
+                // Stop Minerva before releasing native actions. Do
+                // not restore Minerva's user settings until native cleanup confirms.
+                if (!abilities.TryRelease(out reason)) return false;
+                current = ReadCurrent();
+                if (movementChanged)
+                {
+                    if (current.Owner == OwnerName)
+                    {
+                        provider.RestoreFacing(saved.FaceGazes);
+                        current = ReadCurrent();
+                        RequireOwner(current);
+                        if (current.FaceGazes != saved.FaceGazes)
+                            throw new InvalidOperationException("Minerva original state restoration is unconfirmed.");
+                        releaseRequested = true;
+                        provider.Release();
+                        current = ReadCurrent();
+                    }
+                    if (releaseRequested && (current.Owner == OwnerName || current.Owner == null &&
+                        (current.DodgeEnabled != saved.DodgeEnabled || current.FaceGazes != saved.FaceGazes || current.Preset != saved.Preset)))
+                        throw new InvalidOperationException("Minerva original state restoration is unconfirmed.");
+                    movementChanged = releaseRequested = nativeMovementOwned = false;
+                }
+                original = null;
             }
-            catch (Exception ex) { reason += (reason.Length == 0 ? "" : " ") + BeastmasterCombat.Describe(ex); }
+            catch (Exception ex) { reason = BeastmasterCombat.Describe(ex); return false; }
         }
-        if (!movementChanged && !rotationChanged) { original = null; return true; }
-        return false;
+        return true;
     }
 
     private sealed class NativeProvider : IProvider
@@ -191,7 +221,6 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
         private object? stoppingBackend;
         public State Read()
         {
-            var rsr = BeastmasterCombat.ReadPlugin("RotationSolver", out var context);
             var minerva = BeastmasterCombat.ReadPlugin("Minerva", out _);
             RequireFunctions();
             if (!Plugin.PluginInterface.GetIpcSubscriber<bool>("Minerva.IsConnected").InvokeFunc())
@@ -223,12 +252,15 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
             var mode = Property(movement, "Mode");
             if (!mode.GetType().IsEnum || !Enum.GetNames(mode.GetType()).Contains("None"))
                 throw new InvalidOperationException("Minerva runtime controls are incompatible.");
-            return new(BeastmasterCombat.ReadRotation(rsr, context), minerva, (string?)ownerProperty.GetValue(presets),
+            var route = Plugin.PluginInterface.GetIpcSubscriber<(bool, float, float, bool)>(BeastmasterCombat.IpcPrefix + "Movement.v1").InvokeFunc();
+            if (route.Item1 && (!float.IsFinite(route.Item2) || !float.IsFinite(route.Item3)))
+                throw new InvalidOperationException("The native staged movement advisory is invalid.");
+            return new(minerva, (string?)ownerProperty.GetValue(presets),
                 dodge, (bool)facing.GetValue(config)!, mode.ToString() == "None" && stoppingBackend == null,
                 Plugin.PluginInterface.GetIpcSubscriber<string>("Minerva.ActivePreset").InvokeFunc(),
                 Plugin.PluginInterface.GetIpcSubscriber<bool>("Minerva.MustNotAct").InvokeFunc() ||
                 Plugin.PluginInterface.GetIpcSubscriber<bool>("Minerva.MustNotMove").InvokeFunc() ||
-                Plugin.PluginInterface.GetIpcSubscriber<bool>("Minerva.MustNotTurn").InvokeFunc());
+                Plugin.PluginInterface.GetIpcSubscriber<bool>("Minerva.MustNotTurn").InvokeFunc(), route.Item1);
         }
 
         private static object Property(object value, string name)
@@ -277,7 +309,7 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
                 !ipc.GetIpcSubscriber<ulong[]>("Minerva.Hints.PriorityTargets").HasFunction ||
                 !ipc.GetIpcSubscriber<ulong[]>("Minerva.Hints.ForbiddenTargets").HasFunction ||
                 !ipc.GetIpcSubscriber<ulong[]>("Minerva.Hints.DeprioritizedTargets").HasFunction ||
-                !ipc.GetIpcSubscriber<byte, object>("RotationSolverReborn.ChangeOperatingMode").HasAction)
+                !ipc.GetIpcSubscriber<(bool, float, float, bool)>(BeastmasterCombat.IpcPrefix + "Movement.v1").HasFunction)
                 throw new InvalidOperationException("Minerva IPC is unavailable or incompatible.");
         }
 
@@ -406,8 +438,5 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
             if (!Plugin.PluginInterface.GetIpcSubscriber<string, bool>("Minerva.ReleasePreset").InvokeFunc(OwnerName))
                 throw new InvalidOperationException("Minerva original state restoration is unconfirmed.");
         }
-        public void SetMode(BeastmasterCombat.Mode mode) => BeastmasterCombat.SetRotationMode(mode);
-        public void RestoreRotationOverrides(BeastmasterCombat.RotationState saved)
-            => BeastmasterCombat.RestoreRotationOverrides(saved.Provider, saved.IpcOverrides, saved.TargetingTypeOverride);
     }
 }

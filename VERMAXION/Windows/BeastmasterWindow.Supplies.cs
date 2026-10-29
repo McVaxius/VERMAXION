@@ -20,7 +20,9 @@ internal sealed partial class BeastmasterWindow
         var scale = MaterialTheme.Metrics.Scale;
         var width = ImGui.GetContentRegionAvail().X;
         var sideBySide = width >= 990 * scale;
-        var height = Math.Max(390 * scale, ImGui.GetContentRegionAvail().Y);
+        var availableHeight = ImGui.GetContentRegionAvail().Y;
+        var height = sideBySide ? availableHeight
+            : Math.Max(scale, (availableHeight - ImGui.GetStyle().ItemSpacing.Y) / 2);
         var listWidth = sideBySide ? (width - ImGui.GetStyle().ItemSpacing.X) * .60f : width;
         using (var list = MaterialSurface.Card("##SuppliesPriorityCard", new Vector2(listWidth / scale, height / scale), true))
             if (list.Visible) DrawSuppliesPriority();

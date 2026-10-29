@@ -608,10 +608,10 @@
         "Z": 0.0
       },
       "Arguments": [
-        "+1"
+        "+12"
       ],
       "Conditions": [],
-      "Note": "Skip the right branch steps (TODO: +12 when configurable)",
+      "Note": "Take the center Drake route for the documented clear setup",
       "Flags": "None"
     },
     {

@@ -574,10 +574,16 @@ namespace Dalamud.Plugin.Ipc
         public T InvokeFunc(T1 arg1, T2 arg2) => (T)invoke([arg1, arg2])!;
         public void InvokeAction(T1 arg1, T2 arg2) => invoke([arg1, arg2]);
     }
-    public sealed class ICallGateSubscriber<T1, T2, T3, T>(Func<object?[], object?> invoke)
-    { public T InvokeFunc(T1 arg1, T2 arg2, T3 arg3) => (T)invoke([arg1, arg2, arg3])!; }
-    public sealed class ICallGateSubscriber<T1, T2, T3, T4, T>(Func<object?[], object?> invoke)
-    { public T InvokeFunc(T1 arg1, T2 arg2, T3 arg3, T4 arg4) => (T)invoke([arg1, arg2, arg3, arg4])!; }
+    public sealed class ICallGateSubscriber<T1, T2, T3, T>(Func<object?[], object?> invoke, Func<bool>? hasFunction = null)
+    {
+        public bool HasFunction => hasFunction?.Invoke() ?? true;
+        public T InvokeFunc(T1 arg1, T2 arg2, T3 arg3) => (T)invoke([arg1, arg2, arg3])!;
+    }
+    public sealed class ICallGateSubscriber<T1, T2, T3, T4, T>(Func<object?[], object?> invoke, Func<bool>? hasFunction = null)
+    {
+        public bool HasFunction => hasFunction?.Invoke() ?? true;
+        public T InvokeFunc(T1 arg1, T2 arg2, T3 arg3, T4 arg4) => (T)invoke([arg1, arg2, arg3, arg4])!;
+    }
 }
 
 namespace Dalamud.Plugin

@@ -506,6 +506,13 @@ namespace VERMAXION.Beastmaster
             }
         }
 
+        private BeastmasterFightContext? ReadPendingFight()
+        {
+            if (CrucibleUi.Ready(CrucibleUi.BoardLayout) == null || CrucibleUi.Ready(CrucibleUi.TeamWindow) == null)
+                return null;
+            return CrucibleBoard.Current()?.StopPlayerIsOn()?.ResolveFight(fightPanelReady: true);
+        }
+
         private bool StartFight(DateTime now)
         {
             AtkUnitBase* layout = CrucibleUi.Ready(CrucibleUi.BoardLayout);
@@ -514,7 +521,21 @@ namespace VERMAXION.Beastmaster
                 return false;
             if (this.WasSubmitted(CrucibleUi.BoardLayout, layout)) return true;
 
-            if (CrucibleUi.IsOpen(CrucibleUi.YesNo) || now < this.fightNext)
+            var requiresClearTeam = BeastmasterSelection.RequiresClearTeam(Config);
+            var fight = requiresClearTeam ? this.ReadPendingFight() : null;
+            if (requiresClearTeam && fight == null)
+            {
+                this.Status = "Waiting for a verified native battle identity before selecting the fight setup.";
+                return true;
+            }
+            BeastmasterCombat.Setup setup = default;
+            if (requiresClearTeam && !BeastmasterCombat.TryReadSetup(Config.Board, fight!.Value.BattleId, out setup, out var setupReason))
+            {
+                this.Status = setupReason;
+                return true;
+            }
+
+            if (CrucibleUi.IsOpen(CrucibleUi.YesNo) || now < this.fightNext || now - this.itemLastUse < ItemGap)
                 return true;
 
             if (BeastmasterRuntime.Service.TryPrepareFood(betweenFights: true)) return true;
@@ -526,11 +547,23 @@ namespace VERMAXION.Beastmaster
             if (team == null || team.Count == 0)
                 return true;
 
-            List<ReaderXBMPetParty.MonsterEntry> alive = CrucibleTeam.FightOrder(team).Take(FightPicks).ToList();
-            if (BeastmasterSelection.RequiresClearTeam(Config) &&
-                !BeastmasterSelection.ClearFightReady(alive.Select(row => row.Number)))
+            List<ReaderXBMPetParty.MonsterEntry> alive = requiresClearTeam
+                ? setup.Trio.Select(number => team.FirstOrDefault(row => row.Number == number && !row.Disabled &&
+                    row.HP > 0 && row.MaxHP > 0 && row.HP <= row.MaxHP && row.Rank >= BeastmasterSelection.TrainingTarget(Config.Board)))
+                    .OfType<ReaderXBMPetParty.MonsterEntry>().ToList()
+                : CrucibleTeam.FightOrder(team).Take(FightPicks).ToList();
+            if (requiresClearTeam && (!BeastmasterSelection.ClearFightReady(alive.Select(row => row.Number)) ||
+                !BeastmasterSelection.TeamMatches(team.Select(row => row.Number).ToArray(), setup.Roster)))
             {
-                this.Status = "Reliable-clear setup needs three trained survivors, including a healing familiar.";
+                this.Status = "The exact native encounter trio and registered roster must be present and trained. A missing or knocked-out required familiar cannot be silently replaced.";
+                return true;
+            }
+            if (BeastmasterSelection.RequiresClearTeam(Config) &&
+                (alive.Any(row => row.MaxHP == 0 || row.HP == 0 || row.HP > row.MaxHP) ||
+                 Svc.Objects.LocalPlayer is not { IsDead: false, MaxHp: > 0 } player ||
+                 !BeastmasterSelection.PlayerReadyForFight(player.CurrentHp, player.MaxHp)))
+            {
+                this.Status = "Fight preparation is waiting for readable, living familiars and player HP.";
                 return true;
             }
             if (alive.Count == 0)
@@ -568,12 +601,30 @@ namespace VERMAXION.Beastmaster
                 return true;
             }
 
+            if (requiresClearTeam && setup.RequiredGear is { Length: > 0 } requiredGear)
+            {
+                var hud = CrucibleUi.Ready(CrucibleUi.MainHud);
+                if (hud == null)
+                {
+                    this.Status = "Waiting for readable native Beast Gear before commencing this fight.";
+                    return true;
+                }
+                var ownedGear = new ReaderXBMContentsMainHUD(hud).OwnedEntriesOwned.Select(entry => entry.Id).ToHashSet();
+                var missingGear = requiredGear.Where(id => !ownedGear.Contains(id)).ToArray();
+                if (missingGear.Length > 0)
+                {
+                    this.Status = "Fight preparation requires owned Beast Gear: " + string.Join(", ", missingGear.Select(CrucibleItemData.NameOf)) + ".";
+                    return true;
+                }
+            }
+
             if (!BeastmasterRuntime.Service.CombatReady(out var combatReason))
             {
                 BeastmasterRuntime.Service.Recover(combatReason);
                 this.Status = combatReason;
                 return true;
             }
+            if (requiresClearTeam) BeastmasterRuntime.Service.RecordFightContext(fight!.Value);
             Screens.StageDetail.Confirm(layout);
             this.fightNext   = now + CommenceRetry;
             this.ExpectConfirmation(CrucibleUi.BoardLayout, layout, now);
@@ -876,12 +927,16 @@ namespace VERMAXION.Beastmaster
             CrucibleBoard?     board = CrucibleBoard.Current();
             CrucibleBoardStop? currentStop   = board?.StopPlayerIsOn();
 
-            bool  InArena  = currentStop == null;
+            bool confirmingFight = CrucibleUi.IsOpen(CrucibleUi.BoardLayout);
+            bool  InArena  = currentStop == null && !confirmingFight;
             bool  fighting = Svc.Condition[ConditionFlag.InCombat];
             float hp       = (float)me.CurrentHp / me.MaxHp;
 
             IEnumerable<CrucibleBoardStop> boardStops = [];
-            if (hp <= (InArena ? FightLow : BoardLow) && (InArena && fighting || !InArena && !board!.HasCampBeforeNextFight(currentStop!, ref boardStops)))
+            // An open fight confirmation commits to this fight, not to a possible camp
+            // after it. Let the existing item cooldown and fresh HP observation finish first.
+            if (hp <= (InArena ? FightLow : BoardLow) && (InArena && fighting ||
+                !InArena && (confirmingFight || !board!.HasCampBeforeNextFight(currentStop!, ref boardStops))))
                 if (Pick(PickFromItems(InArena ? CrucibleItemData.FightHealingItems : CrucibleItemData.BoardHealingItems)))
                     return;
 
@@ -890,7 +945,7 @@ namespace VERMAXION.Beastmaster
                     if (Pick(items.FirstOrDefault(x => x.Id == statusItem[0])))
                         return;
 
-            if (!InArena)
+            if (!InArena || !BeastmasterRuntime.Service.AllowCombatDamageItems)
                 return;
 
             ReaderXBMContentsItemShop.ItemEntry? dmgItem = PickFromItems(CrucibleItemData.CombatDamageItems);
@@ -904,9 +959,13 @@ namespace VERMAXION.Beastmaster
             IBattleNpc   bossObject = enemies.MaxBy(igo => igo.MaxHp)!;
             IBattleNpc[] battleNpcs = enemies.Except([bossObject]).ToArray();
 
-            IBattleNpc? target = battleNpcs.FirstOrDefault(ibn => battleNpcs.Count(ibe => Vector2.DistanceSquared(new(ibn.Position.X, ibn.Position.Z), new(ibe.Position.X, ibe.Position.Z)) < 121f) > 2);
+            var ownedTarget = BeastmasterRuntime.Service.ReadCombatTarget();
+            IBattleNpc? target = ownedTarget.CanPull && ownedTarget.InstanceId != 0
+                ? enemies.FirstOrDefault(enemy => enemy.EntityId == ownedTarget.InstanceId) : null;
 
-            if (target != null)
+            if (target != null && battleNpcs.Count(enemy => Vector2.DistanceSquared(
+                    new(target.Position.X, target.Position.Z), new(enemy.Position.X, enemy.Position.Z)) < 121f) > 2 &&
+                BeastmasterRuntime.Service.AllowCombatDamageItems)
             {
                 Svc.Targets.Target = target;
                 Pick(dmgItem);

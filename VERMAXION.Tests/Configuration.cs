@@ -12,8 +12,15 @@ namespace VERMAXION
     internal static class Plugin
     {
         public static TestPluginInterface PluginInterface { get; } = new();
+        public static TestCommandManager CommandManager { get; } = new();
         public static TestObjectTable ObjectTable { get; } = new();
         public static Dalamud.Plugin.Services.ICondition Condition { get; } = new();
+    }
+
+    internal sealed class TestCommandManager
+    {
+        public System.Func<string, bool>? OnCommand { get; set; }
+        public bool ProcessCommand(string command) => OnCommand?.Invoke(command) ?? false;
     }
 
     internal sealed class TestObjectTable
@@ -43,11 +50,11 @@ namespace VERMAXION
             => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true,
                 () => IpcHasAction?.Invoke(name) ?? true);
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T3, T> GetIpcSubscriber<T1, T2, T3, T>(string name)
-            => new(args => IpcCall!(name, args));
+            => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true);
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T> GetIpcSubscriber<T1, T2, T>(string name)
             => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true);
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T3, T4, T> GetIpcSubscriber<T1, T2, T3, T4, T>(string name)
-            => new(args => IpcCall!(name, args));
+            => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true);
 
         public void SavePluginConfig(Configuration configuration)
             => SavedConfiguration = Newtonsoft.Json.JsonConvert.SerializeObject(configuration);

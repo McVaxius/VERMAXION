@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -10,6 +11,9 @@ namespace VERMAXION.Tests;
 
 public sealed class BeastmasterSelectionRegressionTests
 {
+    private static List<uint> TestRoster(uint board) => BeastTierList.CreatePremade($"Board {board} - Farming - All difficulties")
+        .Take(BeastmasterSelection.TeamCapacity(1338u + board)).Select(entry => entry.ID).ToList();
+
     [Theory]
     [InlineData(1u, 10, 5)]
     [InlineData(2u, 12, 10)]
@@ -27,13 +31,13 @@ public sealed class BeastmasterSelectionRegressionTests
             };
             var candidates = Enumerable.Range(1, 50).Select(number => new BeastmasterCandidate((uint)number,
                 syncRank, 0, 50 - number, Classification: 1, PickBlocked: true, FightBlocked: true)).ToArray();
-            Assert.True(BeastmasterSelection.TryPrepareTeam(settings, candidates, 3, out var team, out var reason), reason);
+            Assert.True(BeastmasterSelection.TryPrepareTeam(settings, candidates, 3, out var team, out var reason, TestRoster(board)), reason);
             Assert.Equal(capacity, team.Count);
             Assert.Equal(capacity, team.Distinct().Count());
             Assert.Equal(new uint[] { 11, 19, 32 }, team.Take(3));
             Assert.Contains(13u, team);
-            var fights = BeastmasterSelection.ClearFightOrder(settings, candidates);
-            Assert.Equal(new uint[] { 13, 11, 19 }, fights.Take(3));
+            var fights = BeastmasterSelection.ClearFightOrder(settings, candidates, TestRoster(settings.Board));
+            Assert.Equal(new uint[] { 11, 19, 32 }, fights.Take(3));
             Assert.Equal(team.Order(), fights.Order());
             Assert.True(BeastmasterSelection.ClearFightReady(fights));
             Assert.Equal(new uint[] { 2, 4, 6 }, settings.CustomTeam);
@@ -51,7 +55,7 @@ public sealed class BeastmasterSelectionRegressionTests
         var settings = new BeastmasterSettings { Board = 3, Degree = CrucibleDegree.Third };
         var candidates = Enumerable.Range(1, 50).Select(number => new BeastmasterCandidate((uint)number,
             number == 19 ? rank : 25, 0, 0)).ToArray();
-        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 14, out var team, out var reason));
+        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 14, out var team, out var reason, TestRoster(settings.Board)));
         Assert.Empty(team);
         Assert.Contains("rank 15", reason);
         Assert.Contains("19.", reason);
@@ -63,40 +67,40 @@ public sealed class BeastmasterSelectionRegressionTests
         var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.First };
         var candidates = Enumerable.Range(1, 50).Where(number => number != 19)
             .Select(number => new BeastmasterCandidate((uint)number, 25, 0, 0)).ToArray();
-        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 10, out _, out var reason));
+        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 10, out _, out var reason, TestRoster(settings.Board)));
         Assert.Contains("19.", reason);
         settings.Goal = BeastmasterRunGoal.TrainOwned;
         settings.TeamMode = CrucibleTeamMode.Leveling;
-        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 10, out _, out reason));
+        Assert.False(BeastmasterSelection.TryPrepareTeam(settings, candidates, 10, out _, out reason, TestRoster(settings.Board)));
         Assert.Contains("Use Standard for training", reason);
         Assert.False(BeastmasterSelection.TryRecoverExcludedTrainees(settings, candidates, 10, out _));
     }
 
     [Fact]
-    public void ClearFightSelectionKeepsHealingSupportAndNeverAddsUnregisteredOrUnderRankedBeasts()
+    public void ClearFightSelectionNeverAddsUnregisteredOrUnderRankedBeastsOrClaimsHealing()
     {
         var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
-        var candidates = BeastmasterSelection.ClearRoster(1).Select(number => new BeastmasterCandidate(number,
+        var candidates = TestRoster(1).Select(number => new BeastmasterCandidate(number,
             5, 0, 0, Alive: number != 19)).Append(new(17, 25, 0, -1)).ToArray(); // Slime is outside this roster.
-        var order = BeastmasterSelection.ClearFightOrder(settings, candidates);
-        Assert.Equal(13u, order[0]); // Geshunpest supplies absorption before ordinary pet cycling.
+        var order = BeastmasterSelection.ClearFightOrder(settings, candidates, TestRoster(settings.Board));
+        Assert.Equal(11u, order[0]); // Keep registered priority until an encounter plan supplies a grounded trio.
         Assert.True(BeastmasterSelection.ClearFightReady(order));
         Assert.DoesNotContain(17u, order);
         order = BeastmasterSelection.ClearFightOrder(settings, candidates.Select(beast => beast.Number == 13
-            ? beast with { Rank = 4 } : beast));
-        Assert.False(BeastmasterSelection.ClearFightReady(order));
+            ? beast with { Rank = 4 } : beast), TestRoster(settings.Board));
+        Assert.True(BeastmasterSelection.ClearFightReady(order)); // Structural validity is not sustain readiness.
         Assert.DoesNotContain(13u, order);
-        Assert.Single(BeastmasterSelection.ClearFightOrder(settings, [new(19, 5, 0, 0)])); // Feeding a single eligible beast remains possible.
+        Assert.Single(BeastmasterSelection.ClearFightOrder(settings, [new(19, 5, 0, 0)], TestRoster(settings.Board))); // Feeding a single eligible beast remains possible.
     }
 
     [Fact]
-    public void ClearFightOrderKeepsBatThirdWhenThePreferredDamageFamiliarIsKnockedOut()
+    public void ClearFightOrderPreservesRegisteredPriorityWhenTheFirstFamiliarIsKnockedOut()
     {
         var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
-        var candidates = BeastmasterSelection.ClearRoster(1).Select(number => new BeastmasterCandidate(number,
+        var candidates = TestRoster(1).Select(number => new BeastmasterCandidate(number,
             5, 0, 0, Alive: number != 11)).ToArray();
-        var order = BeastmasterSelection.ClearFightOrder(settings, candidates);
-        Assert.Equal(new uint[] { 13, 32, 19 }, order.Take(3));
+        var order = BeastmasterSelection.ClearFightOrder(settings, candidates, TestRoster(settings.Board));
+        Assert.Equal(new uint[] { 19, 32, 50 }, order.Take(3));
         Assert.DoesNotContain(11u, order);
         Assert.True(BeastmasterSelection.ClearFightReady(order));
     }
@@ -105,14 +109,61 @@ public sealed class BeastmasterSelectionRegressionTests
     public void SustainOrderRetainsRegisteredFallbackAndSmallFeedingSubsets()
     {
         var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
-        var candidates = BeastmasterSelection.ClearRoster(1).Select(number => new BeastmasterCandidate(number,
+        var candidates = TestRoster(1).Select(number => new BeastmasterCandidate(number,
             5, 0, 0, Alive: number != 13)).ToArray();
-        var fallback = BeastmasterSelection.ClearFightOrder(settings, candidates);
+        var fallback = BeastmasterSelection.ClearFightOrder(settings, candidates, TestRoster(settings.Board));
         Assert.Equal(new uint[] { 11, 19, 32 }, fallback.Take(3));
         Assert.True(BeastmasterSelection.ClearFightReady(fallback));
         Assert.DoesNotContain(13u, fallback);
-        Assert.Equal(new uint[] { 13, 19 }, BeastmasterSelection.ClearFightOrder(settings, [new(19, 5, 0, 0), new(13, 5, 0, 0)]));
-        Assert.Equal(new uint[] { 13 }, BeastmasterSelection.ClearFightOrder(settings, [new(13, 5, 0, 0)]));
+        Assert.Equal(new uint[] { 19, 13 }, BeastmasterSelection.ClearFightOrder(settings, [new(19, 5, 0, 0), new(13, 5, 0, 0)], TestRoster(settings.Board)));
+        Assert.Equal(new uint[] { 13 }, BeastmasterSelection.ClearFightOrder(settings, [new(13, 5, 0, 0)], TestRoster(settings.Board)));
+    }
+
+    [Theory]
+    [InlineData(0u, 0u, false)]
+    [InlineData(0u, 100u, false)]
+    [InlineData(1u, 100u, true)]
+    [InlineData(60u, 100u, true)]
+    [InlineData(61u, 100u, true)]
+    [InlineData(100u, 100u, true)]
+    [InlineData(101u, 100u, false)]
+    [InlineData(677u, 1662u, true)]
+    [InlineData(884u, 1662u, true)]
+    [InlineData(978u, 1662u, true)]
+    [InlineData(1054u, 1662u, true)]
+    public void FightConfirmationRequiresReadableLivingHpWithoutAnUnsupportedPercentageCutoff(uint hp, uint maxHp, bool ready)
+        => Assert.Equal(ready, BeastmasterSelection.PlayerReadyForFight(hp, maxHp));
+
+    [Fact]
+    public void TrioStructureDoesNotPretendOneFamiliarIdProvesHealing()
+    {
+        Assert.True(BeastmasterSelection.ClearFightReady([11, 32, 50]));
+        Assert.True(BeastmasterSelection.ClearFightReady([11, 13, 32]));
+        Assert.False(BeastmasterSelection.ClearFightReady([11, 11, 19]));
+        Assert.False(BeastmasterSelection.ClearFightReady([0, 11, 19]));
+        Assert.False(BeastmasterSelection.ClearFightReady([11, 19]));
+    }
+
+    [Theory]
+    [InlineData(6u)] // Board 1 boss: native board-local index zero resolves to global battle 6.
+    [InlineData(7u)] // Board 2 first fight: local index one resolves to global battle 7.
+    [InlineData(13u)] // Board 2 boss: local index zero resolves to global battle 13.
+    public void FixedFightIdentityRequiresTheNativeFightPanel(uint id)
+    {
+        Assert.Null(BeastmasterSelection.ResolveFightBattle(id, null, false));
+        Assert.Equal(new BeastmasterFightContext(id, false), BeastmasterSelection.ResolveFightBattle(id, null, true));
+    }
+
+    [Fact]
+    public void RandomPossibilitiesBecomeAnIdentityOnlyWithOneKnownBattleAndAnObservedFightPanel()
+    {
+        Assert.Null(BeastmasterSelection.ResolveFightBattle(0, [12], false));
+        Assert.Equal(new BeastmasterFightContext(12, true), BeastmasterSelection.ResolveFightBattle(0, [12], true));
+        Assert.Null(BeastmasterSelection.ResolveFightBattle(0, [12, 13], true));
+        Assert.Null(BeastmasterSelection.ResolveFightBattle(0, [12, 0], true));
+        Assert.Null(BeastmasterSelection.ResolveFightBattle(0, [], true));
+        Assert.Null(BeastmasterSelection.ResolveFightBattle(0, null, true));
+        Assert.Null(BeastmasterSelection.ResolveFightBattle(7, [12], true));
     }
 
     [Theory]

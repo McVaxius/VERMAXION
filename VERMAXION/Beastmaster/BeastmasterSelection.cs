@@ -10,31 +10,36 @@ public readonly record struct BeastmasterCandidate(uint Number, int Rank, float 
     byte Classification = 0, bool PickBlocked = false, bool FightBlocked = false, bool Alive = true);
 
 public enum BeastmasterTeamAddition { Pending, Confirmed, Unexpected }
+public readonly record struct BeastmasterFightContext(uint BattleId, bool RandomOutcome);
 
 public static class BeastmasterSelection
 {
     public static bool RequiresClearTeam(BeastmasterSettings settings) =>
         settings.Degree is CrucibleDegree.First or CrucibleDegree.Second or CrucibleDegree.Third;
 
-    // Registration retains the existing board-specific rosters and trained reserves.
-    // Per-fight ordering promotes sustain; live clears must validate the policy.
-    // Raw rank and a user's editable priority list cannot replace its composition.
+    // The loaded edition owns the board setup. Never substitute a farming or user roster.
     public static List<uint> ClearRoster(uint board)
     {
-        if (board is < 1 or > 5) return [];
-        return BeastTierList.CreatePremade($"Board {board} - Farming - All difficulties")
-            .Take(TeamCapacity(1338u + board)).Select(entry => entry.ID).ToList();
+        return BeastmasterCombat.TryReadSetup(board, 0, out var setup, out _) ? setup.Roster.ToList() : [];
     }
 
     public static bool TryPrepareClearTeam(BeastmasterSettings settings, IEnumerable<BeastmasterCandidate> owned,
-        out List<uint> team, out string reason)
+        out List<uint> team, out string reason, IReadOnlyList<uint>? resolvedRoster = null)
     {
         team = [];
         if (settings.Board is < 1 or > 5)
         { reason = "Select one of the five Crucible boards"; return false; }
         if (settings.Goal == BeastmasterRunGoal.TrainOwned)
         { reason = "Degrees 1–3 require a reliable-clear team. Use Standard for training."; return false; }
-        var required = ClearRoster(settings.Board);
+        if (resolvedRoster == null)
+        {
+            if (!BeastmasterCombat.TryReadSetup(settings.Board, 0, out var setup, out reason)) return false;
+            resolvedRoster = setup.Roster;
+        }
+        var required = resolvedRoster.ToList();
+        if (required.Count != TeamCapacity(1338u + settings.Board) || required.Any(number => number == 0) ||
+            required.Distinct().Count() != required.Count)
+        { reason = "The native clear roster does not match the board capacity."; return false; }
         var candidates = owned.DistinctBy(beast => beast.Number).ToDictionary(beast => beast.Number);
         var rank = TrainingTarget(settings.Board);
         var missing = required.Where(number => !candidates.TryGetValue(number, out var beast) ||
@@ -49,38 +54,38 @@ public static class BeastmasterSelection
         return true;
     }
 
-    public static List<uint> ClearFightOrder(BeastmasterSettings settings, IEnumerable<BeastmasterCandidate> beasts)
+    public static List<uint> ClearFightOrder(BeastmasterSettings settings, IEnumerable<BeastmasterCandidate> beasts,
+        IReadOnlyList<uint>? resolvedRoster = null)
     {
-        var required = ClearRoster(settings.Board);
+        var required = resolvedRoster ?? ClearRoster(settings.Board);
         var rank = TrainingTarget(settings.Board);
         var available = beasts.Where(beast => beast.Alive && beast.Rank >= rank && beast.Rank <= 25)
             .DistinctBy(beast => beast.Number).ToDictionary(beast => beast.Number);
-        var order = required.Where(available.ContainsKey).ToList();
-        // Geshunpest's controlled ability grants 21s of player HP absorption,
-        // including after retreat. Put it before the ordinary early pet cycling.
-        // Bat's healing trick needs 100 familiar TP, so retain it in the third
-        // slot rather than spending its short opening on a controlled ability.
-        if (order.Remove(13u))
-        {
-            order.Insert(0, 13u);
-            if (order.Count >= 3 && order.Remove(19u)) order.Insert(2, 19u);
-            return order;
-        }
-        // Preserve the remaining registered health-generation support if the
-        // absorption familiar is unavailable. Never add an unregistered beast.
-        var healer = new uint[] { 19, 17 }.FirstOrDefault(number => order.Contains(number));
-        if (healer != 0 && order.IndexOf(healer) >= 3)
-        {
-            order.Remove(healer);
-            order.Insert(1, healer);
-        }
-        return order;
+        // Preserve registration priority until a verified encounter plan chooses its trio.
+        // Neither Gesh absorption nor one healer ID establishes sustain readiness.
+        return required.Where(available.ContainsKey).ToList();
     }
 
     public static bool ClearFightReady(IEnumerable<uint> picked)
     {
         var trio = picked.Take(3).ToArray();
-        return trio.Distinct().Count() == 3 && trio.Any(number => number is 19 or 13 or 17);
+        return trio.Length == 3 && trio.All(number => number != 0) && trio.Distinct().Count() == 3;
+    }
+
+    // Board healing runs first when stock is available. A percentage cutoff
+    // cannot recover HP by itself and otherwise strands a living clear team.
+    public static bool PlayerReadyForFight(uint hp, uint maxHp)
+        => maxHp > 0 && hp > 0 && hp <= maxHp;
+
+    public static BeastmasterFightContext? ResolveFightBattle(uint fixedBattleId,
+        IReadOnlyList<uint>? randomBattleIds, bool fightPanelReady)
+    {
+        if (!fightPanelReady) return null;
+        if (fixedBattleId > 0 && randomBattleIds == null) return new(fixedBattleId, false);
+        if (fixedBattleId != 0 || randomBattleIds == null || randomBattleIds.Count == 0 ||
+            randomBattleIds.Any(id => id == 0)) return null;
+        var distinct = randomBattleIds.Distinct().Take(2).ToArray();
+        return distinct.Length == 1 ? new(distinct[0], true) : null;
     }
 
     // null means an arena: handle its current enemies, then locate the tile
@@ -165,9 +170,9 @@ public static class BeastmasterSelection
         readCompleted && freshlyRead != null && owned.All(freshlyRead.Contains) && TrainingComplete(owned, observations, target);
 
     public static bool TryPrepareTeam(BeastmasterSettings settings, IEnumerable<BeastmasterCandidate> owned,
-        int capacity, out List<uint> team, out string reason)
+        int capacity, out List<uint> team, out string reason, IReadOnlyList<uint>? resolvedRoster = null)
     {
-        if (RequiresClearTeam(settings)) return TryPrepareClearTeam(settings, owned, out team, out reason);
+        if (RequiresClearTeam(settings)) return TryPrepareClearTeam(settings, owned, out team, out reason, resolvedRoster);
         var candidates = owned.Where(beast => beast.Number != 0).DistinctBy(beast => beast.Number).ToList();
         var eligible = candidates.Where(beast => settings.ClassificationLock == 0 ||
             beast.Classification == settings.ClassificationLock).ToList();

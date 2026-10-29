@@ -322,9 +322,11 @@ internal static unsafe class CrucibleTeam
     {
         var settings = BeastmasterRuntime.Settings;
         bool leveling = settings.TeamMode == CrucibleTeamMode.Leveling && settings.LevelingMode != CrucibleLevelingMode.Carry_Minus_2;
+        bool clearTeam = BeastmasterSelection.RequiresClearTeam(settings);
         var candidates = team.Select(row => Candidate(row.Number) with
-            { Rank = row.Rank > 0 ? row.Rank : Candidate(row.Number).Rank, Alive = !row.Disabled && (row.MaxHP == 0 || row.HP > 0) }).ToArray();
-        var order = BeastmasterSelection.RequiresClearTeam(settings)
+            { Rank = row.Rank > 0 ? row.Rank : Candidate(row.Number).Rank,
+                Alive = !row.Disabled && (clearTeam ? row.MaxHP > 0 && row.HP > 0 && row.HP <= row.MaxHP : row.MaxHP == 0 || row.HP > 0) }).ToArray();
+        var order = clearTeam
             ? BeastmasterSelection.ClearFightOrder(settings, candidates)
             : BeastmasterSelection.FightOrder(candidates, leveling);
         return order.Select(number => team.First(row => row.Number == number)).ToList();

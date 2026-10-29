@@ -144,50 +144,77 @@ internal sealed unsafe class BeastmasterRoute
     {
         var inCombat = Svc.Condition[ConditionFlag.InCombat];
         if (inCombat) battleObserved = true;
+        // Sands can revive the player inside the same live encounter. Keep
+        // dodging while protection is present; fresh preparation must not gate
+        // movement or consume that protection with an attack.
+        if (BeastmasterPlayer.HasStatus(418))
+        {
+            StopAutoAttack();
+            service.StartCombat(allowAttacks: false);
+            return;
+        }
+        if (!service.PrepareArenaFight()) return;
         var playerPosition = Svc.Objects.LocalPlayer!.Position;
         var enemies = NearbyEnemies(playerPosition).ToList();
         var target = service.ReadCombatTarget();
-        var boss = enemies.FirstOrDefault(e => e.EntityId == target.InstanceId);
+        // The native encounter can intentionally select a neutral mechanic actor
+        // (for example a roundbomb). Its permission is authoritative; nameplate
+        // hostility is only used for fallback discovery and completion observation.
+        var boss = Svc.Objects.OfType<IBattleNpc>().FirstOrDefault(enemy => enemy.EntityId == target.InstanceId &&
+            enemy.IsTargetable && enemy.CurrentHp > 0 && Vector3.DistanceSquared(enemy.Position, playerPosition) < 50 * 50);
         // The default provider can leave idle enemies unprioritized. Keep the opening pull,
         // but never substitute our own target during an active encounter.
         if (boss == null && target.InstanceId == 0 && target.CanPull && !inCombat)
             boss = enemies.OrderBy(e => Vector3.DistanceSquared(e.Position, playerPosition)).FirstOrDefault();
-        if (BeastmasterPlayer.HasStatus(418) || boss == null && (inCombat || enemies.Count > 0))
+        if (boss != null && !target.CanPull ||
+            boss == null && (inCombat || enemies.Count > 0))
         {
-            // Preserve observed revival protection while the selected provider moves out of danger.
             // No eligible target is not a victory either: both holds keep movement
-            // active while withholding RSR abilities and native autoattacks.
-            if (!service.StartCombat(allowAttacks: false)) return;
-            var ui = UIState.Instance();
-            var actionManager = ActionManager.Instance();
-            if (ui != null && actionManager != null && ui->WeaponState.AutoAttackState.IsAutoAttacking)
-                actionManager->UseAction(ActionType.GeneralAction, 1);
-            Svc.Targets.Target = null;
-            autoAttackTarget = 0;
+            // active while withholding owned abilities and native autoattacks.
+            StopAutoAttack();
+            service.StartCombat(allowAttacks: false);
             return;
         }
         if (boss != null)
         {
             if (Svc.Targets.Target?.EntityId != boss.EntityId) Svc.Targets.Target = boss;
-            // Enable RSR and the selected provider's approach immediately, including before the
+            // Enable native BST actions and the selected provider's approach immediately, including before the
             // first pull. Waiting for combat or three yards from its centre can
             // leave an idle enemy unengaged indefinitely.
             if (!service.StartCombat()) return;
-            if (autoAttackTarget != boss.GameObjectId)
+            var ui = UIState.Instance();
+            var actionManager = ActionManager.Instance();
+            // Native suppression can turn AA off without changing the selected actor.
+            // The cached target is not proof that autoattacking is still enabled.
+            if (autoAttackTarget != boss.GameObjectId || ui != null && !ui->WeaponState.AutoAttackState.IsAutoAttacking)
             {
-                var ui = UIState.Instance();
-                var actionManager = ActionManager.Instance();
                 if (ui != null && actionManager != null && (ui->WeaponState.AutoAttackState.IsAutoAttacking ||
                     actionManager->UseAction(ActionType.GeneralAction, 1, boss.GameObjectId)))
                     autoAttackTarget = boss.GameObjectId;
             }
         }
+        else StopAutoAttack();
         if (battleObserved && !inCombat && enemies.Count == 0)
         {
             service.StopNavigation();
             if (recoveringPosition) service.SuspendCombat();
             else Advance();
         }
+    }
+
+    private void StopAutoAttack()
+    {
+        var ui = UIState.Instance();
+        var actionManager = ActionManager.Instance();
+        if (ui != null && actionManager != null && ui->WeaponState.AutoAttackState.IsAutoAttacking)
+            actionManager->UseAction(ActionType.GeneralAction, 1);
+        Svc.Targets.Target = null;
+        autoAttackTarget = 0;
+    }
+
+    internal void StopOwnedAutoAttack()
+    {
+        if (autoAttackTarget != 0) StopAutoAttack();
     }
 
     private static IEnumerable<IBattleNpc> NearbyEnemies(Vector3 playerPosition)
