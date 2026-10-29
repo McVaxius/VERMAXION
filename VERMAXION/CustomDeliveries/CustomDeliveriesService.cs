@@ -32,6 +32,7 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
     {
         this.plugin = plugin;
         Service.Navigation = plugin.VNavmeshIPC;
+        Service.Travel = plugin.LifestreamIPC;
         achievements.AchievementProgress += OnAchievementProgress;
     }
 
@@ -275,6 +276,11 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
             return "No NPC route matches the selected policy, types, eligible jobs and remaining allowances";
         }
         if (route.Npc.CraftData is not { TurnInInstanceId: > 0 }) return "Custom delivery NPC position is unavailable";
+        var missingItems = Game.NumItemsInInventory(route.ItemId, (short)route.MinCollectibility) < route.Count;
+        var needsTeleport = route.Npc.TerritoryId != Service.ClientState.TerritoryType || route.Npc.PendingRankQuestId != 0 ||
+            missingItems && (route.Type is DeliveryTypes.Mining or DeliveryTypes.Botany ||
+                route.Type == DeliveryTypes.Fishing && route.Npc.FishData?.TerritoryTypeId != Service.ClientState.TerritoryType);
+        if (needsTeleport && Service.Travel.GetTeleportBlockedReason() is { } gilReason) return gilReason;
         if (!HasGearset(route.Job)) return $"No saved gearset is available for job {route.Job}";
         if (route.Npc.PendingRankQuestId != 0) return AutoDeliveryQuest.GetBlockedReason();
         if (route.Type == DeliveryTypes.Crafting && Game.NumItemsInInventory(route.ItemId, (short)route.MinCollectibility) < route.Count)

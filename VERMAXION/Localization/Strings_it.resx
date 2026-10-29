@@ -6088,8 +6088,8 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
     <value>Evoca, rinforza, difendi e attacca nella coda giocatori scelta. Le vittorie non sono garantite.</value>
   </data>
-  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
-    <value>Resta passivo fino al risultato: niente evocazioni, attacchi, difesa o resa. La resa avversaria pu? comunque darti la vittoria.</value>
+  <data name="Summon one weak minion at a time and move it periodically on your home side. No attack, defense or forfeit commands; the actual result may still be a win." xml:space="preserve">
+    <value>Evoca un solo minion debole alla volta e muovilo periodicamente sul tuo lato del campo. Nessun ordine di attacco, difesa o resa; il risultato effettivo può comunque essere una vittoria.</value>
   </data>
   <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
     <value>Controlla iscrizione e premi del torneo nel tuo Mondo di origine. Se non puoi entrare, prova a vincere le partite CPU settimanali restanti. Per i tornei, scegli un?attivit? PvP e Battaglia giocatori del torneo.</value>
@@ -6231,4 +6231,8 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Extracting materia before entry." xml:space="preserve"><value>Estrazione materia prima dell&apos;ingresso.</value></data>
   <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Estrazione non confermata; proseguimento.</value></data>
   <data name="Materia extraction complete." xml:space="preserve"><value>Estrazione materia completata.</value></data>
+  <data name="Minimum gil for teleport tasks" xml:space="preserve"><value>Gil minimi per le attività con teletrasporto</value></data>
+  <data name="Skip work that needs teleport travel below this balance. Local tasks and free travel remain available. Default: 10,000 gil. Set 0 to disable. Purchase reserves still apply." xml:space="preserve"><value>Salta le attività che richiedono teletrasporto sotto questo saldo. Le attività locali e i viaggi gratuiti restano disponibili. Predefinito: 10.000 gil. Imposta 0 per disattivare. Le riserve per gli acquisti restano valide.</value></data>
+  <data name="Gil balance is unavailable; teleport-dependent work is skipped." xml:space="preserve"><value>Il saldo in gil non è disponibile; le attività con teletrasporto vengono saltate.</value></data>
+  <data name="Teleport-dependent work needs at least {0} gil; current balance is {1}." xml:space="preserve"><value>Le attività con teletrasporto richiedono almeno {0} gil; il saldo attuale è {1}.</value></data>
 </root>

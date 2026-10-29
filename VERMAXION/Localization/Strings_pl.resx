@@ -3236,8 +3236,8 @@ Zależności: {1}</value></data>
   <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
     <value>Przywo?uj, wzmacniaj, bro? i atakuj w wybranej kolejce graczy. Zwyci?stwo nie jest gwarantowane.</value>
   </data>
-  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
-    <value>Pozosta? bierny do wyniku: bez przywo?a?, atak?w, obrony i poddania. Poddanie przeciwnika nadal mo?e da? zwyci?stwo.</value>
+  <data name="Summon one weak minion at a time and move it periodically on your home side. No attack, defense or forfeit commands; the actual result may still be a win." xml:space="preserve">
+    <value>Przywołuje po jednym słabym minionie i okresowo przemieszcza go po własnej stronie. Bez poleceń ataku, obrony ani poddania; rzeczywistym wynikiem nadal może być zwycięstwo.</value>
   </data>
   <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
     <value>Sprawd? rejestracj? i nagrody turnieju na ?wiecie macierzystym. Je?li wej?cie jest niedost?pne, walcz o wygran? w pozosta?ych tygodniowych meczach CPU. Dla turnieju wybierz aktywno?? PvP i Turniejow? walk? graczy.</value>
@@ -3379,4 +3379,8 @@ Zależności: {1}</value></data>
   <data name="Extracting materia before entry." xml:space="preserve"><value>Ekstrakcja materii przed wejściem.</value></data>
   <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Ekstrakcja niepotwierdzona; kontynuowanie.</value></data>
   <data name="Materia extraction complete." xml:space="preserve"><value>Ekstrakcja materii zakończona.</value></data>
+  <data name="Minimum gil for teleport tasks" xml:space="preserve"><value>Minimum gil dla zadań z teleportacją</value></data>
+  <data name="Skip work that needs teleport travel below this balance. Local tasks and free travel remain available. Default: 10,000 gil. Set 0 to disable. Purchase reserves still apply." xml:space="preserve"><value>Pomijaj zadania wymagające teleportacji poniżej tego salda. Zadania lokalne i darmowe podróże pozostają dostępne. Domyślnie: 10 000 gil. Ustaw 0, aby wyłączyć. Rezerwy na zakupy nadal obowiązują.</value></data>
+  <data name="Gil balance is unavailable; teleport-dependent work is skipped." xml:space="preserve"><value>Saldo gil jest niedostępne; zadania wymagające teleportacji są pomijane.</value></data>
+  <data name="Teleport-dependent work needs at least {0} gil; current balance is {1}." xml:space="preserve"><value>Zadania z teleportacją wymagają co najmniej {0} gil; bieżące saldo wynosi {1}.</value></data>
 </root>

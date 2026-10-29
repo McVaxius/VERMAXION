@@ -93,7 +93,7 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
     {
         if (!state.Available || !state.Ready || state.Rotation != RotationName || !string.IsNullOrEmpty(state.Error))
             throw new InvalidOperationException(string.IsNullOrEmpty(state.Error)
-                ? "The native Crewcible rotation/controller is unavailable or not ready." : state.Error);
+                ? "BMRVariantLoader's native Crewcible rotation/controller is unavailable or not ready. Check that its Crewcible module pack is loaded and compatible with BossModReborn." : state.Error);
         if (state.Owner != null) throw new InvalidOperationException("The native Crewcible controller is already owned.");
     }
 
@@ -103,8 +103,9 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
         try
         {
             if (board is < 1 or > 5) throw new InvalidOperationException("Select one of the five Crucible boards.");
+            RequireNativeController();
             var endpoint = Plugin.PluginInterface.GetIpcSubscriber<uint, uint, string>(IpcPrefix + "Setup.v1");
-            if (!endpoint.HasFunction) throw new InvalidOperationException("The native Crewcible setup catalog is unavailable.");
+            if (!endpoint.HasFunction) throw new InvalidOperationException("BMRVariantLoader is loaded, but its Crewcible setup catalog is unavailable. Update BMRVariantLoader and BossModReborn to compatible versions.");
             var payload = JObject.Parse(endpoint.InvokeFunc(board, battle));
             var error = payload.Value<string>("Error");
             if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
@@ -241,6 +242,15 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
     internal static string Describe(Exception ex)
         => (ex is TargetInvocationException { InnerException: { } inner } ? inner : ex).Message;
 
+    private static void RequireNativeController()
+    {
+        var controller = Plugin.PluginInterface.InstalledPlugins.FirstOrDefault(candidate => candidate.InternalName == "BMRVariantLoader");
+        if (controller == null)
+            throw new InvalidOperationException("Beastmaster requires BMRVariantLoader, which is not installed. Install BMRVariantLoader alongside BossModReborn; BossModReborn alone does not provide the Crewcible controller.");
+        if (!controller.IsLoaded)
+            throw new InvalidOperationException("BMRVariantLoader is installed but not loaded. Enable it and resolve any plugin loading errors before starting Beastmaster.");
+    }
+
     internal static object ReadPlugin(string internalName, out AssemblyLoadContext? context)
     {
         if (!Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == internalName))
@@ -257,19 +267,21 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
             var ipc = Plugin.PluginInterface;
             if (ipc.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "BossMod"))
                 throw new InvalidOperationException("Use BossModReborn alone for Beastmaster; both BossMod providers share IPC names.");
+            RequireNativeController();
             var bmr = ReadPlugin("BossModReborn", out _);
             if (!ipc.GetIpcSubscriber<string>(IpcPrefix + "State.v1").HasFunction ||
                 !ipc.GetIpcSubscriber<string, bool, bool, bool, string>(IpcPrefix + "Control.v1").HasFunction ||
                 !ipc.GetIpcSubscriber<string, string>(IpcPrefix + "Release.v1").HasFunction ||
                 !ipc.GetIpcSubscriber<string, uint, uint, string>(IpcPrefix + "Prepare.v1").HasFunction ||
-                !ipc.GetIpcSubscriber<(ulong, bool)>(IpcPrefix + "Target.v1").HasFunction)
-                throw new InvalidOperationException("The native Crewcible controller IPC is unavailable or incompatible.");
+                !ipc.GetIpcSubscriber<(ulong, bool)>(IpcPrefix + "Target.v1").HasFunction ||
+                !ipc.GetIpcSubscriber<uint, uint, string>(IpcPrefix + "Setup.v1").HasFunction)
+                throw new InvalidOperationException("BMRVariantLoader is loaded, but its native Crewcible controller IPC is unavailable or incompatible. Update BMRVariantLoader and BossModReborn to compatible versions.");
             var status = JObject.Parse(ipc.GetIpcSubscriber<string>(IpcPrefix + "State.v1").InvokeFunc());
             if (new[] { "Available", "Ready", "Active", "AllowAttacks", "UseBmrMovement", "MovementStopped", "RequiresNativeMovement" }
                     .Any(name => status[name]?.Type != JTokenType.Boolean) ||
                 status["Owner"]?.Type is not (JTokenType.String or JTokenType.Null) ||
                 status["Rotation"]?.Type != JTokenType.String)
-                throw new InvalidOperationException("The native Crewcible controller state is incompatible.");
+                throw new InvalidOperationException("BMRVariantLoader's native Crewcible controller state is incompatible. Update BMRVariantLoader and BossModReborn to compatible versions.");
             return new(bmr, status.Value<bool?>("Available") == true, status.Value<bool?>("Ready") == true,
                 status.Value<string>("Owner"), status.Value<bool?>("Active") == true,
                 status.Value<bool?>("AllowAttacks") == true, status.Value<bool?>("UseBmrMovement") == true,

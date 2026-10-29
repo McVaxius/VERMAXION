@@ -586,6 +586,8 @@ public class FCBuffService : IDisposable
                 throw new InvalidOperationException("Free Company changed during the purchase request.");
             if (purchaseOperationId == null)
             {
+                if (plugin.LifestreamIPC.GetTeleportBlockedReason() is { } gilReason)
+                    throw new InvalidOperationException(gilReason);
                 purchaseOperationId = Guid.NewGuid().ToString("N");
                 var accepted = Plugin.PluginInterface.GetIpcSubscriber<string, uint, int, bool>("ADS.StartCompanyActionPurchase")
                     .InvokeFunc(purchaseOperationId, SealSweetenerTwoCompanyActionId, buyMax);

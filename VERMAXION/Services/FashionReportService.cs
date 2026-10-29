@@ -17,6 +17,7 @@ public class FashionReportService : IDisposable
     private readonly IObjectTable objectTable;
     private readonly IPluginLog log;
     private readonly VNavmeshIPC vnavmesh;
+    private readonly LifestreamIPC lifestream;
 
     private FashionReportState state = FashionReportState.Idle;
     private DateTime stateEnteredAt = DateTime.MinValue;
@@ -74,13 +75,14 @@ public class FashionReportService : IDisposable
         IClientState clientState,
         IObjectTable objectTable,
         IPluginLog log,
-        VNavmeshIPC vnavmesh)
+        VNavmeshIPC vnavmesh, LifestreamIPC lifestream)
     {
         this.commandManager = commandManager;
         this.clientState = clientState;
         this.objectTable = objectTable;
         this.log = log;
         this.vnavmesh = vnavmesh;
+        this.lifestream = lifestream;
     }
 
     public void Start()
@@ -124,7 +126,7 @@ public class FashionReportService : IDisposable
                     return;
 
                 log.Information("[FashionReport] Teleporting to Gold Saucer: /li saucer");
-                commandManager.ProcessCommand("/li saucer");
+                if (!lifestream.ExecuteCommand("/li saucer")) { SetState(FashionReportState.Failed); return; }
                 SetState(FashionReportState.WaitingForSaucerZone);
                 break;
 

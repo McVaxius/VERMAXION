@@ -242,7 +242,7 @@ internal sealed class VerminionWindow : Window
             VerminionMode.Participation => "Stay passive and intentionally lose CPU battles after the tutorial. Stop after five completed weekly matches.",
             VerminionMode.MissionRepeat => "Repeat one CPU mission for farming or testing. Run starts a fresh clear count; Resume keeps it. Count successful clears only; defeats retry, stopping after three consecutive losses or the attempt limit.",
             VerminionMode.PvpWin => "Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed.",
-            VerminionMode.PvpThrow => "Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win.",
+            VerminionMode.PvpThrow => "Summon one weak minion at a time and move it periodically on your home side. No attack, defense or forfeit commands; the actual result may still be a win.",
             _ => "Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle.",
         });
         if (VerminionDutyRules.IsPlayerMode(config.VerminionMode))

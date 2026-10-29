@@ -40,6 +40,9 @@ public sealed partial class VerminionService : IDisposable
     private bool playerCheckboxAttempted;
     private bool playerSelectionPrepared;
     private VerminionSummonTracker playerSummons = new();
+    private string? throwSummonName;
+    private HashSet<ulong>? throwSummonBaseline;
+    private ulong throwUnitId;
     private DateTime playerSummonUtc;
     private bool tournamentTabSelected;
     private bool tournamentEntryRequested;
@@ -329,6 +332,7 @@ public sealed partial class VerminionService : IDisposable
         ordinaryBattleObserved = false;
         opening = new();
         playerSummons = new();
+        ResetPlayerThrowActivity();
         playerSummonUtc = DateTime.MinValue;
         stoneUnitOrders.Clear();
         ResetBossStrategy();
@@ -1293,6 +1297,7 @@ public sealed partial class VerminionService : IDisposable
         if (IsPlayerBattle)
         {
             playerSummons = new();
+            ResetPlayerThrowActivity();
             if (battleDuty == (uint)VerminionPlayerQueue.Tournament)
                 BeginTournamentInspection();
             else if (!BeginPlayerFinder()) return;
@@ -1387,11 +1392,6 @@ public sealed partial class VerminionService : IDisposable
     {
         if (activeAdmission.PendingMode != runMode || activeAdmission.RunPlayerDuty != activeAdmission.PendingDuty)
         { Fail("The player admission mode does not match its saved owner; no controls or credit applied."); return; }
-        if (runMode == VerminionMode.PvpThrow)
-        {
-            reason = "PvP Throw: staying passive until the native result";
-            return;
-        }
         if (VerminionGameInteraction.ReadBattlefieldBattalion() == null)
         {
             if (pendingGroupDestination != null || pendingSameTypeSelection != null || pendingTutorialMove)
@@ -1399,7 +1399,8 @@ public sealed partial class VerminionService : IDisposable
             pendingBattlefieldClick = null;
             ReleaseKey();
             VerminionGameInteraction.ReleaseBattlefieldInput(restoreRendering: false);
-            reason = "PvP Try to win: waiting to identify your side";
+            reason = runMode == VerminionMode.PvpThrow
+                ? "PvP Throw: waiting to identify your side" : "PvP Try to win: waiting to identify your side";
             return;
         }
         playerSummons.ObserveUnits(Plugin.ObjectTable
@@ -1417,6 +1418,7 @@ public sealed partial class VerminionService : IDisposable
     private void UpdatePlayerStrategy()
     {
         var progress = configManager.GetActiveConfig().VerminionProgress;
+        if (runMode == VerminionMode.PvpThrow) { UpdatePlayerThrowStrategy(progress); return; }
         if (!VerminionPlayerStrategy.ControlsAllowed(runMode, VerminionGameInteraction.CurrentBattleDutyId(), progress.PendingMode)) return;
         if (VerminionGameInteraction.ReadBattlefieldBattalion() is not { } localBattalion) return;
         var now = DateTime.UtcNow;
@@ -1467,6 +1469,89 @@ public sealed partial class VerminionService : IDisposable
             playerSummons.Requested();
             playerSummonUtc = now.AddSeconds(2);
         }
+    }
+
+    private void UpdatePlayerThrowStrategy(VerminionProgress progress)
+    {
+        if (VerminionGameInteraction.ReadBattlefieldBattalion() is not { } battalion) return;
+        var units = Plugin.ObjectTable.OfType<Dalamud.Game.ClientState.Objects.Types.IBattleNpc>()
+            .Where(candidate => candidate.CurrentHp > 0 && VerminionGameInteraction.IsFriendlyMinion(candidate))
+            .Select(candidate => (Id: candidate.GameObjectId, Name: candidate.Name.TextValue, candidate.Position)).ToArray();
+        var stoneBase = battalion == 0 ? 2006533u : 2006537u;
+        var home = Plugin.ObjectTable.Where(obj => obj.BaseId == stoneBase)
+            .OrderBy(obj => MathF.Abs(obj.Position.X)).FirstOrDefault();
+        VerminionGameInteraction.TryReadSummoningCapacity(out var used, out var capacity);
+        UpdatePlayerThrowActivity(progress, VerminionGameInteraction.CurrentBattleDutyId(), DateTime.UtcNow,
+            home?.Position, units,
+            VerminionGameInteraction.ReadQueuedSummonCount(), used, capacity,
+            VerminionGameInteraction.PlayerPalette().Select(minion => (minion.Id, minion.Name, minion.Cost, minion.Attack, minion.Defense, minion.Arcana)),
+            minion =>
+            {
+                var gate = new[] { 1, 0, 2 }.FirstOrDefault(VerminionGameInteraction.IsSummoningGateAvailable, -1);
+                if (gate < 0) return false;
+                if (!VerminionGameInteraction.IsSummoningGateSelected(gate))
+                { VerminionGameInteraction.TryClickPaletteIcon((uint)(73 + gate)); return false; }
+                return VerminionGameInteraction.TrySummonPaletteSlot(VerminionGameInteraction.FindPaletteMinion(minion));
+            });
+    }
+
+    private void UpdatePlayerThrowActivity(VerminionProgress progress, uint currentDuty, DateTime now,
+        Vector3? home, (ulong Id, string Name, Vector3 Position)[] units, int? queued, int used, int capacity,
+        IEnumerable<(ushort Id, string Name, int Cost, int Attack, int Defense, bool Arcana)> palette, Func<ushort, bool> summon)
+    {
+        if (State != VerminionState.InDuty || !IsPlayerBattle || runMode != VerminionMode.PvpThrow ||
+            currentDuty != battleDuty || progress.PendingMatch == 0 || progress.PendingMode != runMode ||
+            progress.PendingDuty != currentDuty || progress.RunPlayerDuty != currentDuty) return;
+        reason = "PvP Throw: light minion activity without attacks or defense; awaiting the native result";
+        if (home is not { } stone || !float.IsFinite(stone.X) || !float.IsFinite(stone.Z) ||
+            MathF.Abs(stone.X) > 24 || MathF.Abs(stone.Z) is < 1 or > 20) return;
+        if (throwUnitId != 0 && !units.Any(unit => unit.Id == throwUnitId && unit.Name == throwSummonName))
+            ResetPlayerThrowActivity();
+        if (throwUnitId == 0 && throwSummonBaseline is { } baseline)
+        {
+            var receipts = units.Where(unit => unit.Id != 0 && unit.Name == throwSummonName && !baseline.Contains(unit.Id)).ToArray();
+            if (receipts.Length != 1)
+            {
+                // Several same-name arrivals cannot prove which one belongs to our request.
+                foreach (var receipt in receipts) baseline.Add(receipt.Id);
+                return;
+            }
+            throwUnitId = receipts[0].Id;
+            throwSummonBaseline = null;
+        }
+        if (throwUnitId != 0)
+        {
+            var living = units.First(unit => unit.Id == throwUnitId && unit.Name == throwSummonName);
+            if (living.Id == 0 || string.IsNullOrEmpty(living.Name) ||
+                !float.IsFinite(living.Position.X) || !float.IsFinite(living.Position.Z) ||
+                now < nextObjectiveOrderUtc || pendingGroupDestination != null || pendingSameTypeSelection != null || pendingTutorialMove) return;
+            // Stay behind our own stone bank and alternate ground destinations, never enemy objectives.
+            var destination = new Vector3(living.Position.X <= 0 ? 8 : -8, 0,
+                Math.Clamp(stone.Z + MathF.Sign(stone.Z) * 8, -20, 20));
+            TrySelectGroup(destination, living.Name, 1, living.Position, singleUnit: living.Id, preserveExistingOrder: true);
+            nextObjectiveOrderUtc = now.AddSeconds(20);
+            return;
+        }
+        if (reconcilingSummonQueue && queued == 0) reconcilingSummonQueue = false;
+        if (reconcilingSummonQueue || queued != 0 || playerSummons.Pending != 0 || now < playerSummonUtc ||
+            used < 0 || capacity is < 60 or > 240 || used > capacity) return;
+        var minion = palette.Where(candidate => candidate.Id != 0 && !string.IsNullOrEmpty(candidate.Name) && candidate.Cost > 0 &&
+                candidate.Attack >= 0 && candidate.Cost <= capacity - used)
+            .OrderBy(candidate => candidate.Attack).ThenBy(candidate => candidate.Arcana)
+            .ThenBy(candidate => candidate.Cost).ThenBy(candidate => candidate.Defense).ThenBy(candidate => candidate.Id)
+            .FirstOrDefault();
+        if (minion.Id == 0 || !playerSummons.CanRequest(used, capacity, minion.Cost) || !summon(minion.Id)) return;
+        throwSummonName = minion.Name;
+        throwSummonBaseline = units.Select(unit => unit.Id).ToHashSet();
+        playerSummons.Requested();
+        playerSummonUtc = now.AddSeconds(2);
+    }
+
+    private void ResetPlayerThrowActivity()
+    {
+        throwSummonName = null;
+        throwSummonBaseline = null;
+        throwUnitId = 0;
     }
 
     private void PauseCampaignAtLimit()
@@ -2283,7 +2368,7 @@ public sealed partial class VerminionService : IDisposable
                 : hatchlings.OrderBy(obj => obj.Position.X).FirstOrDefault();
             if (first == null)
             {
-                if (IsFinalStageTowerSelection || IsFinalStageIndividualAttack ||
+                if (IsFinalStageTowerSelection || IsFinalStageIndividualAttack || IsPlayerThrowSelection ||
                     (IsBossStage || preserveObscuredGroup) && singleUnitSelection == null)
                 {
                     CancelLostBossGroup();
@@ -2358,6 +2443,7 @@ public sealed partial class VerminionService : IDisposable
                 pendingSameTypeSelection = null;
                 if (selected == null)
                 {
+                    if (IsPlayerThrowSelection) { CancelLostBossGroup(); return; }
                     if (IsFinalStageTowerSelection || IsFinalStageIndividualAttack) { RetryBossGroupSelection(); return; }
                     Fail("The requested individual minion selection could not be verified; no result recorded."); return;
                 }
@@ -2681,12 +2767,14 @@ public sealed partial class VerminionService : IDisposable
     private bool IsFinalStageIndividualAttack => challengeStage == 24 && singleUnitSelection != null &&
         groupAttackTarget != null && !groupSelectionOnly;
 
+    private bool IsPlayerThrowSelection => IsPlayerBattle && runMode == VerminionMode.PvpThrow && singleUnitSelection != null;
+
     private void RetryBossGroupSelection()
     {
         rejectedGroupSelections.Add(groupSelectionAnchor);
         if (rejectedGroupSelections.Count >= 6)
         {
-            if (IsFinalStageTowerSelection || IsFinalStageIndividualAttack ||
+            if (IsFinalStageTowerSelection || IsFinalStageIndividualAttack || IsPlayerThrowSelection ||
                 (IsBossStage || preserveObscuredGroup) && singleUnitSelection == null)
             {
                 CancelLostBossGroup();

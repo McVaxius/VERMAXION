@@ -108,6 +108,16 @@ public static class AutomationDispatchPlanner
 
 public static class TeleportGilPolicy
 {
+    public static bool TaskNeedsTeleport(string taskId, uint territory) => taskId switch
+    {
+        AutomationCatalog.MiniCactpot or AutomationCatalog.JumboCactpot or AutomationCatalog.FashionReport => territory != 144,
+        AutomationCatalog.VerminionQueue => territory is not (144 or 388),
+        AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly => territory != 148,
+        AutomationCatalog.ChocoboRacing or AutomationCatalog.VendorStock or AutomationCatalog.AlliedSociety or
+            AutomationCatalog.LootGoblinMapGather => true,
+        _ => false,
+    };
+
     public static string? GetBlockedReason(long? gil, int minimumGil, bool needsTeleport = true)
     {
         if (!needsTeleport || minimumGil <= 0) return null;
@@ -125,6 +135,8 @@ public static class TeleportGilPolicy
     {
         var route = command.Trim();
         if (route.StartsWith("/li ", StringComparison.OrdinalIgnoreCase)) route = route[4..].Trim();
+        else if (route.Equals("/echo", StringComparison.OrdinalIgnoreCase) ||
+                 route.StartsWith("/echo ", StringComparison.OrdinalIgnoreCase)) return false;
         if (route.Equals("stop", StringComparison.OrdinalIgnoreCase) ||
             route.Equals("abort", StringComparison.OrdinalIgnoreCase) ||
             route.Equals("return", StringComparison.OrdinalIgnoreCase) ||

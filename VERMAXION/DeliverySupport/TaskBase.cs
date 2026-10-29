@@ -157,10 +157,11 @@ public abstract class TaskBase : AutoTask
         CancelToken.ThrowIfCancellationRequested();
         if (Service.ClientState.TerritoryType == territoryId) return;
         await WaitUntil(GameHelpers.IsPlayerAvailable, "Waiting before travel");
+        if (Service.Travel.GetTeleportBlockedReason() is { } gilReason) throw new InvalidOperationException(gilReason);
         if (territoryId == 886)
         {
             // Lifestream already owns travel through Ishgard's special Firmament connection.
-            ErrorIf(!Plugin.CommandManager.ProcessCommand("/li firmament"), "Lifestream could not travel to the Firmament");
+            ErrorIf(!Service.Travel.ExecuteCommand("/li firmament"), "Lifestream could not travel to the Firmament");
         }
         else
         {

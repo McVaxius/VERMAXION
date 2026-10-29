@@ -96,7 +96,8 @@ public sealed class LifestreamIPC
     }
 
     public string? GetTeleportBlockedReason()
-        => TeleportGilPolicy.GetBlockedReason(GameHelpers.ReadGilBalance(), configuration.MinimumTeleportGil);
+        => configuration.MinimumTeleportGil == 0 ? null
+            : TeleportGilPolicy.GetBlockedReason(GameHelpers.ReadGilBalance(), configuration.MinimumTeleportGil);
 
     public bool TryReadActiveAetheryte(out uint aetheryteId)
     {

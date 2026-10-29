@@ -32,6 +32,7 @@ public sealed class AutoGather(DeliveryRoute route) : AutoCommon(route)
 
     private async Task Gather()
     {
+        if (Service.Travel.GetTeleportBlockedReason() is { } gilReason) throw new InvalidOperationException(gilReason);
         var gathering = new WigglyGathering(Route);
         Status = "Gathering with Wiggly Questionable (including travel)";
         using var scope = BeginScope("Gathering");

@@ -3236,8 +3236,8 @@ Phụ thuộc: {1}</value></data>
   <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
     <value>Tri?u h?i, t?ng vi?n, ph?ng th? v? t?n c?ng trong h?ng ch? ?? ch?n. Kh?ng b?o ??m chi?n th?ng.</value>
   </data>
-  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
-    <value>Gi? th? ??ng ??n khi c? k?t qu?: kh?ng tri?u h?i, t?n c?ng, ph?ng th? hay ??u h?ng. ??i th? ??u h?ng v?n c? th? gi?p b?n th?ng.</value>
+  <data name="Summon one weak minion at a time and move it periodically on your home side. No attack, defense or forfeit commands; the actual result may still be a win." xml:space="preserve">
+    <value>Triệu hồi một lính yếu mỗi lần và định kỳ di chuyển nó ở phía sân nhà. Không ra lệnh tấn công, phòng thủ hay đầu hàng; kết quả thực tế vẫn có thể là chiến thắng.</value>
   </data>
   <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
     <value>Ki?m tra ??ng k? v? ph?n th??ng gi?i ??u t?i Th? gi?i g?c. N?u kh?ng th? tham gia, c? g?ng th?ng c?c tr?n CPU h?ng tu?n c?n l?i. ?? ??u gi?i, ch?n ho?t ??ng PvP v? Tr?n ng??i ch?i gi?i ??u.</value>
@@ -3379,4 +3379,8 @@ Phụ thuộc: {1}</value></data>
   <data name="Extracting materia before entry." xml:space="preserve"><value>Đang tách materia trước khi vào.</value></data>
   <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>Chưa xác nhận tách materia; tiếp tục.</value></data>
   <data name="Materia extraction complete." xml:space="preserve"><value>Đã tách materia xong.</value></data>
+  <data name="Minimum gil for teleport tasks" xml:space="preserve"><value>Gil tối thiểu cho tác vụ dịch chuyển</value></data>
+  <data name="Skip work that needs teleport travel below this balance. Local tasks and free travel remain available. Default: 10,000 gil. Set 0 to disable. Purchase reserves still apply." xml:space="preserve"><value>Bỏ qua tác vụ cần dịch chuyển khi số dư dưới mức này. Tác vụ tại chỗ và di chuyển miễn phí vẫn khả dụng. Mặc định: 10.000 gil. Đặt 0 để tắt. Khoản gil dự phòng mua sắm vẫn áp dụng.</value></data>
+  <data name="Gil balance is unavailable; teleport-dependent work is skipped." xml:space="preserve"><value>Không đọc được số dư gil; bỏ qua tác vụ cần dịch chuyển.</value></data>
+  <data name="Teleport-dependent work needs at least {0} gil; current balance is {1}." xml:space="preserve"><value>Tác vụ dịch chuyển cần ít nhất {0} gil; số dư hiện tại là {1}.</value></data>
 </root>

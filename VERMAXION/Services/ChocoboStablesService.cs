@@ -118,7 +118,9 @@ public sealed unsafe class ChocoboStablesService
         if (!forScan && choice.Target == StableTarget.SpecificOther && (string.IsNullOrEmpty(choice.OtherOwner) || string.IsNullOrEmpty(choice.OtherChocobo)))
             return "Scan the selected stable and select one other chocobo first.";
         if (!Enum.IsDefined(choice.Target)) return "Select a supported chocobo target first.";
-        return TryResolveDestination(choice.Destination, out _) ? null : "The selected estate has no available teleport entry. Check ownership, tenancy and estate access.";
+        if (!TryResolveDestination(choice.Destination, out var target))
+            return "The selected estate has no available teleport entry. Check ownership, tenancy and estate access.";
+        return AtDestination(target) ? null : plugin.LifestreamIPC.GetTeleportBlockedReason();
     }
 
     private bool TryResolveDestination(StableDestination choice, out TeleportInfo result)
@@ -164,6 +166,7 @@ public sealed unsafe class ChocoboStablesService
         if (!TryResolveDestination(settings.Destination, out destination)) { Fail("Selected estate is no longer available."); return; }
         if (!GameHelpers.IsPlayerAvailable()) { Fail("Character must be ready and out of combat before stable travel."); return; }
         if (AtDestination()) { Transition(Step.Approach, "Finding the selected estate's stable"); return; }
+        if (plugin.LifestreamIPC.GetTeleportBlockedReason() is { } blocked) { Fail(blocked); return; }
         var telepo = Telepo.Instance();
         if (telepo == null || !telepo->Teleport(destination.AetheryteId, destination.SubIndex)) { Fail("Native estate teleport was rejected."); return; }
         Transition(Step.Travel, "Travelling to the selected estate");

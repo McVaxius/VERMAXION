@@ -33,8 +33,12 @@ public static class GameHelpers
 
     public static unsafe long? ReadGilBalance()
     {
-        var inventory = InventoryManager.Instance();
-        return inventory == null ? null : inventory->GetGil();
+        try
+        {
+            var inventory = InventoryManager.Instance();
+            return inventory == null ? null : inventory->GetGil();
+        }
+        catch (Exception) { return null; }
     }
 
     /// <summary>

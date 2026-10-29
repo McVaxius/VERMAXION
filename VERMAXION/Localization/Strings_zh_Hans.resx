@@ -5732,8 +5732,8 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
     <value>??????????????????????????</value>
   </data>
-  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
-    <value>????????????????????????????????????</value>
+  <data name="Summon one weak minion at a time and move it periodically on your home side. No attack, defense or forfeit commands; the actual result may still be a win." xml:space="preserve">
+    <value>每次召唤一只弱宠物，并定期在己方区域移动。不发出攻击、防守或认输指令；实际结果仍可能是获胜。</value>
   </data>
   <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
     <value>???????????????????????????????CPU?????????????PvP??????????</value>
@@ -5875,4 +5875,8 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Extracting materia before entry." xml:space="preserve"><value>进入前正在精制魔晶石。</value></data>
   <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>未确认魔晶石精制，继续。</value></data>
   <data name="Materia extraction complete." xml:space="preserve"><value>魔晶石精制完成。</value></data>
+  <data name="Minimum gil for teleport tasks" xml:space="preserve"><value>传送任务的最低金币</value></data>
+  <data name="Skip work that needs teleport travel below this balance. Local tasks and free travel remain available. Default: 10,000 gil. Set 0 to disable. Purchase reserves still apply." xml:space="preserve"><value>金币低于此金额时，跳过需要传送的任务。本地任务和免费移动仍可使用。默认：10,000金币。设为0可禁用。购买预留金额仍然适用。</value></data>
+  <data name="Gil balance is unavailable; teleport-dependent work is skipped." xml:space="preserve"><value>无法读取金币数量，已跳过需要传送的任务。</value></data>
+  <data name="Teleport-dependent work needs at least {0} gil; current balance is {1}." xml:space="preserve"><value>传送任务至少需要{0}金币；当前金币为{1}。</value></data>
 </root>

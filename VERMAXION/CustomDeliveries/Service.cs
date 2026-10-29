@@ -8,6 +8,7 @@ namespace VERMAXION.CustomDeliveries;
 internal static class Service
 {
     internal static VNavmeshIPC Navigation { get; set; } = null!;
+    internal static LifestreamIPC Travel { get; set; } = null!;
     public static IPluginLog Log => Plugin.Log;
     public static IDataManager DataManager => Plugin.DataManager;
     public static IGameInteropProvider Hook => Plugin.GameInterop;

@@ -4,6 +4,7 @@ extern alias host;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
@@ -460,36 +461,222 @@ public sealed class VerminionLifecycleTests
             => method?.Name == "get_ContentId" ? ContentId : null;
     }
 
-    [Fact]
-    public void ProductionThrowDispatchNeverTouchesRenderingOrBattleControls()
+    private static (live::VERMAXION.Services.VerminionService Service, live::VERMAXION.Models.VerminionProgress Progress)
+        CreateThrowActivity(uint duty = 199)
     {
         var type = typeof(live::VERMAXION.Services.VerminionService);
         var service = (live::VERMAXION.Services.VerminionService)RuntimeHelpers.GetUninitializedObject(type);
         var mode = live::VERMAXION.Models.VerminionMode.PvpThrow;
-        type.GetField("runMode", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(service, mode);
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        type.GetField("runMode", flags)!.SetValue(service, mode);
+        type.GetField("battleDuty", flags)!.SetValue(service, duty);
+        type.GetField("rejectedGroupSelections", flags)!.SetValue(service, new HashSet<ulong>());
+        var trackerField = type.GetField("playerSummons", flags)!;
+        var tracker = Activator.CreateInstance(trackerField.FieldType, nonPublic: true)!;
+        trackerField.SetValue(service, tracker);
+        tracker.GetType().GetMethod("ObserveUnits")!.Invoke(tracker, [Array.Empty<ulong>()]);
+        type.GetProperty("State")!.SetValue(service, live::VERMAXION.Services.VerminionService.VerminionState.InDuty);
         var progress = new live::VERMAXION.Models.VerminionProgress();
-        progress.EnsureRun(mode, 3);
-        var match = progress.BeginMatch(199);
-        Assert.True(match > 0);
-        var dispatch = type.GetMethod("UpdatePlayerBattle", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        // No plugin, native UI, object table, camera or input services exist in
-        // this instance. Any attempt to use a Win/CPU control fails this test.
-        for (var tick = 0; tick < 10; tick++) dispatch.Invoke(service, [progress]);
-        Assert.Equal("PvP Throw: staying passive until the native result",
-            type.GetField("reason", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service));
-        Assert.False((bool)type.GetField("battlefieldRenderingPrepared", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service)!);
+        progress.EnsureRun(mode, 3, playerDuty: duty);
+        Assert.True(progress.BeginMatch(duty) > 0);
+        return (service, progress);
+    }
+
+    private static void TickThrowActivity(live::VERMAXION.Services.VerminionService service,
+        live::VERMAXION.Models.VerminionProgress progress, uint duty, DateTime now, Vector3? home,
+        (ulong Id, string Name, Vector3 Position)? unit, int? queued, int used, int capacity,
+        (ushort Id, int Cost, int Attack, int Defense, bool Arcana)[] palette, Func<ushort, bool> summon,
+        (ulong Id, string Name, Vector3 Position)[]? observedUnits = null)
+    {
+        var units = observedUnits ?? (unit.HasValue ? [unit.Value] : []);
+        // UpdatePlayerBattle observes the real spawn list before dispatching the strategy.
+        var tracker = service.GetType().GetField("playerSummons", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service)!;
+        tracker.GetType().GetMethod("ObserveUnits")!.Invoke(tracker, [units.Select(value => value.Id).ToArray()]);
+        var namedPalette = palette.Select(value => (value.Id, Name: "Weak minion", value.Cost, value.Attack, value.Defense, value.Arcana)).ToArray();
+        typeof(live::VERMAXION.Services.VerminionService).GetMethod("UpdatePlayerThrowActivity",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(service,
+                [progress, duty, now, home, units, queued, used, capacity, namedPalette, summon]);
+    }
+
+    [Theory]
+    [InlineData(197u)]
+    [InlineData(198u)]
+    [InlineData(199u)]
+    public void ProductionThrowRequestsOneWeakMinionAndStillCreditsOnlyTheObservedResult(uint duty)
+    {
+        var (service, progress) = CreateThrowActivity(duty);
+        var match = progress.PendingMatch;
+        var now = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+        var requests = new List<ushort>();
+        var palette = new (ushort Id, int Cost, int Attack, int Defense, bool Arcana)[]
+        { (1, 10, 30, 10, false), (2, 30, 90, 30, true), (3, 10, 10, 5, false), (0, 10, 0, 0, false) };
+        for (var tick = 0; tick < 10; tick++)
+            TickThrowActivity(service, progress, duty, now.AddSeconds(tick * 10), new(0, 0, 10),
+                null, 0, 0, 240, palette, minion => { requests.Add(minion); return true; });
+        Assert.Equal(new ushort[] { 3 }, requests); // No native spawn receipt: never replay the request.
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var type = service.GetType();
+        var tracker = type.GetField("playerSummons", flags)!.GetValue(service)!;
+        Assert.Equal(1, tracker.GetType().GetProperty("Pending")!.GetValue(tracker));
+        Assert.Null(type.GetField("pendingGroupDestination", flags)!.GetValue(service));
+        Assert.Null(type.GetField("groupAttackTarget", flags)!.GetValue(service));
+        tracker.GetType().GetMethod("ObserveUnits")!.Invoke(tracker, [new ulong[] { 900 }]);
+        TickThrowActivity(service, progress, duty, now.AddSeconds(100), new(0, 0, 10),
+            (900, "Weak minion", new(-8, 0, 18)), 0, 10, 240, palette,
+            _ => throw new InvalidOperationException("An acknowledged living minion must move instead of summoning."));
+        Assert.Equal(0, tracker.GetType().GetProperty("Pending")!.GetValue(tracker));
+        Assert.Equal(new Vector3(8, 0, 18), type.GetField("pendingGroupDestination", flags)!.GetValue(service));
+        Assert.Equal(900UL, type.GetField("singleUnitSelection", flags)!.GetValue(service));
+        Assert.Equal(true, type.GetField("requireExactSingleSelection", flags)!.GetValue(service));
+        Assert.Null(type.GetField("groupAttackTarget", flags)!.GetValue(service));
+        type.GetField("pendingGroupDestination", flags)!.SetValue(service, null);
+        TickThrowActivity(service, progress, duty, now.AddSeconds(101), new(0, 0, 10), null, 0, 0, 240,
+            palette, minion => { requests.Add(minion); return true; }); // Only after the observed minion is gone.
+        Assert.Equal(new ushort[] { 3, 3 }, requests);
         Assert.Equal(match, progress.PendingMatch);
         Assert.Equal(0, progress.RunMatches);
         Assert.Equal(0, progress.RunWins);
         // Reload retains the admitted mode even if an editor now chooses Win.
         var saved = JsonConvert.DeserializeObject<live::VERMAXION.Models.VerminionProgress>(JsonConvert.SerializeObject(progress))!;
-        dispatch.Invoke(service, [saved]);
-        Assert.Equal(mode, saved.PendingMode);
+        Assert.Equal(live::VERMAXION.Models.VerminionMode.PvpThrow, saved.PendingMode);
         Assert.True(saved.RecordResult(match, live::VERMAXION.Models.VerminionBattleOutcome.Victory, DateTime.UtcNow));
         Assert.False(saved.RecordResult(match, live::VERMAXION.Models.VerminionBattleOutcome.Defeat, DateTime.UtcNow));
         Assert.Equal(1, saved.RunMatches);
         Assert.Equal(1, saved.RunWins);
         Assert.Equal(0u, saved.ClearedChallengeMask);
+        TickThrowActivity(service, saved, duty, now.AddMinutes(2), new(0, 0, 10), null, 0, 0, 240,
+            palette, _ => throw new InvalidOperationException("A completed result cannot request more activity."));
+    }
+
+    [Theory]
+    [InlineData(10f)]
+    [InlineData(-10f)]
+    public void ProductionThrowMovesOnItsOwnSideEveryTwentySecondsWithoutAttackOrders(float homeZ)
+    {
+        var (service, progress) = CreateThrowActivity();
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var type = service.GetType();
+        var destination = type.GetField("pendingGroupDestination", flags)!;
+        var now = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+        var home = new Vector3(0, 0, homeZ);
+        TickThrowActivity(service, progress, 199, now.AddSeconds(-1), home, null, 0, 0, 240,
+            [(3, 10, 10, 5, false)], _ => true);
+        Func<ushort, bool> noSummon = _ => throw new InvalidOperationException("A living minion cannot trigger another summon.");
+        TickThrowActivity(service, progress, 199, now, home, (900, "Weak minion", new(-8, 0, homeZ)), 0, 10, 240, [], noSummon);
+        Assert.Equal(new Vector3(8, 0, homeZ + MathF.Sign(homeZ) * 8), destination.GetValue(service));
+        Assert.Null(type.GetField("groupAttackTarget", flags)!.GetValue(service));
+        Assert.Equal(1, type.GetField("groupMinimum", flags)!.GetValue(service));
+        Assert.Equal(900UL, type.GetField("singleUnitSelection", flags)!.GetValue(service));
+        Assert.Equal(now.AddSeconds(20), type.GetField("nextObjectiveOrderUtc", flags)!.GetValue(service));
+        destination.SetValue(service, null); // Native selection/movement finished.
+        TickThrowActivity(service, progress, 199, now.AddSeconds(19.999), home, (900, "Weak minion", new(8, 0, homeZ)), 0, 10, 240, [], noSummon);
+        Assert.Null(destination.GetValue(service));
+        TickThrowActivity(service, progress, 199, now.AddSeconds(20), home, (900, "Weak minion", new(8, 0, homeZ)), 0, 10, 240, [], noSummon);
+        Assert.Equal(new Vector3(-8, 0, homeZ + MathF.Sign(homeZ) * 8), destination.GetValue(service));
+        TickThrowActivity(service, progress, 199, now.AddSeconds(50), home, (900, "Weak minion", new(-8, 0, homeZ)), 0, 10, 240, [], noSummon);
+        Assert.Equal(new Vector3(-8, 0, homeZ + MathF.Sign(homeZ) * 8), destination.GetValue(service));
+        Assert.Null(type.GetField("groupAttackTarget", flags)!.GetValue(service));
+        Assert.Equal(0, progress.RunMatches);
+    }
+
+    [Fact]
+    public void ProductionThrowCommandsOnlyItsNewWeakReceiptAndLeavesPreexistingFriendlyUnitsAlone()
+    {
+        var (service, progress) = CreateThrowActivity();
+        var now = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+        var requests = new List<ushort>();
+        var existing = new (ulong Id, string Name, Vector3 Position)[]
+        { (800, "Strong minion", new(-8, 0, 18)), (801, "Weak minion", new(-8, 0, 18)) };
+        var palette = new (ushort Id, int Cost, int Attack, int Defense, bool Arcana)[] { (3, 10, 10, 5, false) };
+        Func<ushort, bool> summon = id => { requests.Add(id); return true; };
+        TickThrowActivity(service, progress, 199, now, new(0, 0, 10), null, 0, 20, 240, palette, summon, existing);
+        (ulong Id, string Name, Vector3 Position)[] unrelatedArrival =
+            [.. existing, (850, "Strong minion", new(-8, 0, 18))];
+        TickThrowActivity(service, progress, 199, now.AddSeconds(3), new(0, 0, 10), null, 0, 30, 240,
+            palette, summon, unrelatedArrival);
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var type = service.GetType();
+        Assert.Null(type.GetField("pendingGroupDestination", flags)!.GetValue(service));
+        Assert.Null(type.GetField("singleUnitSelection", flags)!.GetValue(service));
+
+        TickThrowActivity(service, progress, 199, now.AddSeconds(4), new(0, 0, 10), null, 0, 40, 240,
+            palette, summon, [.. unrelatedArrival, (900, "Weak minion", new(-8, 0, 18))]);
+
+        Assert.Equal(new ushort[] { 3 }, requests);
+        Assert.Equal(900UL, type.GetField("singleUnitSelection", flags)!.GetValue(service));
+        Assert.Equal(true, type.GetField("requireExactSingleSelection", flags)!.GetValue(service));
+        Assert.Equal(new Vector3(8, 0, 18), type.GetField("pendingGroupDestination", flags)!.GetValue(service));
+        Assert.Null(type.GetField("groupAttackTarget", flags)!.GetValue(service));
+        Assert.Equal(0, progress.RunMatches);
+    }
+
+    [Fact]
+    public void ProductionThrowCannotClaimAnAmbiguousSameNameArrivalLaterAfterOneDisappears()
+    {
+        var (service, progress) = CreateThrowActivity();
+        var now = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+        var requests = 0;
+        var palette = new (ushort Id, int Cost, int Attack, int Defense, bool Arcana)[] { (3, 10, 10, 5, false) };
+        Func<ushort, bool> summon = _ => { requests++; return true; };
+        TickThrowActivity(service, progress, 199, now, new(0, 0, 10), null, 0, 0, 240, palette, summon);
+        TickThrowActivity(service, progress, 199, now.AddSeconds(3), new(0, 0, 10), null, 0, 20, 240,
+            palette, summon, [(900, "Weak minion", new(-8, 0, 18)), (901, "Weak minion", new(-8, 0, 18))]);
+        TickThrowActivity(service, progress, 199, now.AddSeconds(30), new(0, 0, 10), (901, "Weak minion", new(-8, 0, 18)),
+            0, 10, 240, palette, summon);
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        Assert.Equal(1, requests);
+        Assert.Null(service.GetType().GetField("pendingGroupDestination", flags)!.GetValue(service));
+        Assert.Null(service.GetType().GetField("singleUnitSelection", flags)!.GetValue(service));
+        Assert.Equal(0, progress.RunMatches);
+    }
+
+    [Theory]
+    [InlineData(null, 0, 240)]
+    [InlineData(1, 0, 240)]
+    [InlineData(0, 240, 240)]
+    [InlineData(0, 0, 0)]
+    public void ProductionThrowWaitsForReadableQueueAndCapacity(int? queued, int used, int capacity)
+    {
+        var (service, progress) = CreateThrowActivity();
+        TickThrowActivity(service, progress, 199, DateTime.UtcNow, new(0, 0, 10), null, queued, used, capacity,
+            [(1, 10, 10, 5, false)], _ => throw new InvalidOperationException("Unreadable or busy summons must wait."));
+        Assert.Equal(0, progress.RunMatches);
+    }
+
+    [Fact]
+    public void ProductionThrowReservesOnlyAnAcceptedNativeSummon()
+    {
+        var (service, progress) = CreateThrowActivity();
+        var now = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+        var attempts = 0;
+        var accepted = false;
+        Func<ushort, bool> summon = _ => { attempts++; return accepted; };
+        TickThrowActivity(service, progress, 199, now, new(0, 0, 10), null, 0, 0, 240, [(1, 10, 10, 5, false)], summon);
+        accepted = true;
+        TickThrowActivity(service, progress, 199, now.AddSeconds(1), new(0, 0, 10), null, 0, 0, 240, [(1, 10, 10, 5, false)], summon);
+        TickThrowActivity(service, progress, 199, now.AddSeconds(5), new(0, 0, 10), null, 0, 0, 240, [(1, 10, 10, 5, false)], summon);
+        Assert.Equal(2, attempts);
+        Assert.Equal(0, progress.RunMatches);
+    }
+
+    [Theory]
+    [InlineData("foreign-duty")]
+    [InlineData("unowned")]
+    [InlineData("stopped")]
+    [InlineData("winning-mode")]
+    public void ProductionThrowRejectsForeignUnownedStoppedAndWinningRuns(string scenario)
+    {
+        var (service, progress) = CreateThrowActivity();
+        var type = service.GetType();
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        if (scenario == "unowned") progress.AbandonMatch();
+        if (scenario == "stopped") type.GetProperty("State")!.SetValue(service, live::VERMAXION.Services.VerminionService.VerminionState.Idle);
+        if (scenario == "winning-mode") type.GetField("runMode", flags)!.SetValue(service, live::VERMAXION.Models.VerminionMode.PvpWin);
+        TickThrowActivity(service, progress, scenario == "foreign-duty" ? 197u : 199u, DateTime.UtcNow,
+            new(0, 0, 10), null, 0, 0, 240, [(1, 10, 10, 5, false)],
+            _ => throw new InvalidOperationException("An unowned activity must never dispatch."));
+        Assert.Null(type.GetField("pendingGroupDestination", flags)!.GetValue(service));
+        Assert.Equal(0, progress.RunMatches);
     }
 
     [Theory]
@@ -761,11 +948,10 @@ public sealed class VerminionLifecycleTests
     {
         // Start performs native observation before selecting the saved goal.
         // Verify that boundary directly, then exercise the real saved model/results.
-        DirectoryInfo? root = new(AppContext.BaseDirectory);
-        while (root != null && !File.Exists(Path.Combine(root.FullName, "VERMAXION", "Services", "VerminionService.cs")))
-            root = root.Parent;
-        Assert.NotNull(root);
-        var source = File.ReadAllText(Path.Combine(root.FullName, "VERMAXION", "Services", "VerminionService.cs"));
+        var sourcePath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(FixtureSourcePath())!,
+            "..", "VERMAXION", "Services", "VerminionService.cs"));
+        Assert.True(File.Exists(sourcePath), "The production source beside this test fixture must remain available.");
+        var source = File.ReadAllText(sourcePath);
         var start = source.IndexOf("// A saved admission retains its behavior and goal", StringComparison.Ordinal);
         Assert.True(start >= 0);
         var end = source.IndexOf("var pendingQueue =", start, StringComparison.Ordinal);
@@ -845,6 +1031,8 @@ public sealed class VerminionLifecycleTests
                 progress.Summary(mode, 5, week));
         }
     }
+
+    private static string FixtureSourcePath([CallerFilePath] string path = "") => path;
 
     [Theory]
     [InlineData(1)]

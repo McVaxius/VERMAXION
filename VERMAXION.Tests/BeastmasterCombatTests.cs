@@ -133,8 +133,10 @@ namespace VERMAXION.Tests
         {
             var ipc = Plugin.PluginInterface;
             var previousCall = ipc.IpcCall;
+            var previousInventory = ipc.InstalledPlugins;
             try
             {
+                ipc.InstalledPlugins = [new("BMRVariantLoader", true)];
                 uint[] roster = Enumerable.Range(1, 10).Select(value => (uint)value).ToArray();
                 var payload = new JObject
                 {
@@ -172,7 +174,7 @@ namespace VERMAXION.Tests
                 Assert.Equal(roster, selected);
                 Assert.Equal(new uint[] { 40, 41, 42 }, settings.CustomTeam);
             }
-            finally { ipc.IpcCall = previousCall; }
+            finally { ipc.IpcCall = previousCall; ipc.InstalledPlugins = previousInventory; }
         }
 
         [Theory]
@@ -199,7 +201,7 @@ namespace VERMAXION.Tests
                     ["MovementStopped"] = true, ["RequiresNativeMovement"] = false,
                     ["Rotation"] = BeastmasterCombat.RotationName, ["Error"] = "",
                 };
-                ipc.InstalledPlugins = [new("BossModReborn", true), new("RotationSolver", true)];
+                ipc.InstalledPlugins = [new("BossModReborn", true), new("BMRVariantLoader", true), new("RotationSolver", true)];
                 ECommons.Reflection.DalamudReflector.PluginInstances = new Dictionary<string, object?>
                     { ["BossModReborn"] = new object() };
                 ipc.IpcHasFunction = name => name.StartsWith(BeastmasterCombat.IpcPrefix, StringComparison.Ordinal)
@@ -414,12 +416,44 @@ namespace VERMAXION.Tests
         }
 
         [Theory]
+        [InlineData(false, "not installed", "Install")]
+        [InlineData(true, "not loaded", "Enable")]
+        public void MissingNativeControllerGivesActionableErrorsBeforeAnyIpcDispatch(bool installed, string detail, string action)
+        {
+            var ipc = Plugin.PluginInterface;
+            var previousInventory = ipc.InstalledPlugins;
+            var previousCall = ipc.IpcCall;
+            var previousFunctions = ipc.IpcHasFunction;
+            try
+            {
+                ipc.InstalledPlugins = installed
+                    ? [new("BossModReborn", true), new("BMRVariantLoader", false)]
+                    : [new("BossModReborn", true)];
+                ipc.IpcHasFunction = _ => true; // A stale endpoint must not bypass the provider's loaded state.
+                ipc.IpcCall = (_, _) => throw new InvalidOperationException("Unexpected dispatch before dependency validation");
+                Assert.False(BeastmasterCombat.CanStart(out var error));
+                Assert.Contains("BMRVariantLoader", error);
+                Assert.Contains(detail, error);
+                Assert.Contains(action, error);
+                Assert.False(BeastmasterCombat.TryReadSetup(1, 0, out _, out var setupError));
+                Assert.Equal(error, setupError);
+            }
+            finally
+            {
+                ipc.InstalledPlugins = previousInventory;
+                ipc.IpcCall = previousCall;
+                ipc.IpcHasFunction = previousFunctions;
+            }
+        }
+
+        [Theory]
         [InlineData("")]
         [InlineData("State.v1")]
         [InlineData("Control.v1")]
         [InlineData("Release.v1")]
         [InlineData("Target.v1")]
         [InlineData("Prepare.v1")]
+        [InlineData("Setup.v1")]
         public void NativeDiscoveryAndTargetRequireCompleteIpc(string missing)
         {
             var ipc = Plugin.PluginInterface;
@@ -429,7 +463,7 @@ namespace VERMAXION.Tests
             var previousFunctions = ipc.IpcHasFunction;
             try
             {
-                ipc.InstalledPlugins = [new("BossModReborn", true)];
+                ipc.InstalledPlugins = [new("BossModReborn", true), new("BMRVariantLoader", true)];
                 ipc.IpcHasFunction = name => name != BeastmasterCombat.IpcPrefix + missing;
                 ECommons.Reflection.DalamudReflector.PluginInstances = new Dictionary<string, object?> { ["BossModReborn"] = new object() };
                 ipc.IpcCall = (name, _) => name switch
@@ -445,6 +479,8 @@ namespace VERMAXION.Tests
                     ipc.IpcCall = (_, _) => throw new InvalidOperationException("Unexpected dispatch before endpoint validation");
                     Assert.False(BeastmasterCombat.CanStart(provider, out var missingError));
                     Assert.Contains("IPC is unavailable", missingError);
+                    Assert.Contains("BMRVariantLoader", missingError);
+                    Assert.Contains("Update", missingError);
                     return;
                 }
                 Assert.True(BeastmasterCombat.CanStart(provider, out var error), error);

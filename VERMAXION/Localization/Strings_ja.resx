@@ -5732,8 +5732,8 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
     <value>????????????????????????????????????</value>
   </data>
-  <data name="Stay passive until the result: no summons, attacks, defense or forfeit. An opponent's forfeit may still give you a win." xml:space="preserve">
-    <value>???????????????????????????????????????????????????????</value>
+  <data name="Summon one weak minion at a time and move it periodically on your home side. No attack, defense or forfeit commands; the actual result may still be a win." xml:space="preserve">
+    <value>弱いミニオンを1体ずつ召喚し、自陣側で定期的に移動させます。攻撃・防衛・降参の指示は出しません。実際の結果は勝利になる場合もあります。</value>
   </data>
   <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
     <value>????????????????????????????????????CPU??????????????????PvP???????????????????</value>
@@ -5875,4 +5875,8 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Extracting materia before entry." xml:space="preserve"><value>突入前にマテリア精製中。</value></data>
   <data name="Materia extraction unconfirmed; continuing." xml:space="preserve"><value>マテリア精製を確認できません。続行します。</value></data>
   <data name="Materia extraction complete." xml:space="preserve"><value>マテリア精製完了。</value></data>
+  <data name="Minimum gil for teleport tasks" xml:space="preserve"><value>テレポが必要なタスクの最低ギル</value></data>
+  <data name="Skip work that needs teleport travel below this balance. Local tasks and free travel remain available. Default: 10,000 gil. Set 0 to disable. Purchase reserves still apply." xml:space="preserve"><value>所持金がこの額未満の場合、テレポが必要なタスクをスキップします。現地のタスクと無料移動は利用できます。初期値：10,000ギル。0で無効。購入用の確保額は引き続き適用されます。</value></data>
+  <data name="Gil balance is unavailable; teleport-dependent work is skipped." xml:space="preserve"><value>所持ギルを取得できないため、テレポが必要なタスクをスキップします。</value></data>
+  <data name="Teleport-dependent work needs at least {0} gil; current balance is {1}." xml:space="preserve"><value>テレポが必要なタスクには{0}ギル以上が必要です。現在の所持金：{1}ギル。</value></data>
 </root>

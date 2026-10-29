@@ -516,8 +516,29 @@ public class VermaxionEngine
         if (config == null)
             return TaskEligibility.Blocked("No active character configuration is available.");
         return taskBindings.TryGetValue(id, out var binding)
-            ? binding.Eligibility(config)
+            ? ApplyTeleportGilFloor(id, config, binding.Eligibility(config))
             : TaskEligibility.Unsupported($"No runtime binding is registered for '{id}'.");
+    }
+
+    private TaskEligibility ApplyTeleportGilFloor(string id, CharacterConfig config, TaskEligibility eligibility)
+    {
+        if (!eligibility.IsRunnable || configuration.MinimumTeleportGil == 0) return eligibility;
+        var territory = clientState.TerritoryType;
+        var needsTeleport = id switch
+        {
+            PostProcessTaskOrder.VerminionQueue when config.VerminionProgress.PendingMatch != 0 => false,
+            PostProcessTaskOrder.ChocoboRacing when chocoboRaceService.CanReconcileRacingActivity() => false,
+            PostProcessTaskOrder.VendorStock => config.VendorStockGysahlGreensTarget > GameHelpers.GetInventoryItemCount(4868) ||
+                config.VendorStockGrade8DarkMatterTarget > GameHelpers.GetInventoryItemCount(33916),
+            PostProcessTaskOrder.RefillListings => !IsAddonVisible("RetainerList"),
+            PostProcessTaskOrder.AfterArPark => AfterArParkService.TryResolveCommand(config.AfterArParkDestination,
+                config.AfterArParkCustomCommand, out var command, out _) && TeleportGilPolicy.CommandNeedsTeleport(command, territory),
+            PostProcessTaskOrder.NagYourMom or PostProcessTaskOrder.NagYourDad => config.EnableReturnBeforeNag &&
+                config.TryGetReturnBeforeNagCommand(out var returnCommand) && TeleportGilPolicy.CommandNeedsTeleport(returnCommand, territory),
+            _ => TeleportGilPolicy.TaskNeedsTeleport(id, territory),
+        };
+        if (!needsTeleport) return eligibility;
+        return TeleportGilPolicy.Apply(eligibility, GameHelpers.ReadGilBalance(), configuration.MinimumTeleportGil, needsTeleport);
     }
 
     private static TaskEligibility Enabled(bool enabled, string label)
@@ -3269,6 +3290,9 @@ public class VermaxionEngine
     }
 
     private TaskEligibility GetActiveRunEligibility(string taskId, CharacterConfig config)
+        => ApplyTeleportGilFloor(taskId, config, EvaluateActiveRunEligibility(taskId, config));
+
+    private TaskEligibility EvaluateActiveRunEligibility(string taskId, CharacterConfig config)
     {
         if (activeRunScope.BypassSelectedScheduling && activeRunScope.SingleTaskId == taskId &&
             taskId is PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly)
@@ -3331,11 +3355,11 @@ public class VermaxionEngine
         return LifecyclePolicy.BuildRunnableQueue(
             configuration.PostProcessTaskOrder,
             id => configuration.PostProcessTaskPlacement.TryGetValue(id, out var placement) && placement == phase,
-            id => taskBindings.TryGetValue(id, out var binding) && binding.Eligibility(config).IsRunnable);
+            id => taskBindings.TryGetValue(id, out var binding) && ApplyTeleportGilFloor(id, config, binding.Eligibility(config)).IsRunnable);
     }
 
     private bool ShouldRunTask(string id, CharacterConfig config)
-        => taskBindings.TryGetValue(id, out var binding) && binding.Eligibility(config).IsRunnable;
+        => taskBindings.TryGetValue(id, out var binding) && ApplyTeleportGilFloor(id, config, binding.Eligibility(config)).IsRunnable;
 
     private void CompleteRun()
     {
@@ -3538,6 +3562,10 @@ public class VermaxionEngine
                 SetReturnBeforeNagStatus("Waiting for travel and character readiness before return.");
                 return false;
             }
+
+            if (TeleportGilPolicy.CommandNeedsTeleport(command, clientState.TerritoryType) &&
+                lifestreamIPC.GetTeleportBlockedReason() is { } gilReason)
+                return FailReturnBeforeNag(gilReason);
 
             // Capture immediately before dispatch so earlier movement cannot acknowledge this command.
             nagReturnPosition = player!.Position;

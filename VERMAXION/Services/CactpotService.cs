@@ -426,7 +426,7 @@ public class CactpotService : IDisposable
             // ==================== MINI CACTPOT ====================
             case CactpotState.MiniTeleporting:
                 log.Information("[Cactpot] Resetting to the Gold Saucer main aetheryte: /li saucer");
-                commandManager.ProcessCommand("/li saucer");
+                if (!lifestream.ExecuteCommand("/li saucer")) { SetState(CactpotState.Failed); return; }
                 SetState(CactpotState.MiniWaitingForZone);
                 break;
 
@@ -692,7 +692,13 @@ public class CactpotService : IDisposable
                     return;
 
                 log.Information("[Cactpot] Returning home after Mini Cactpot: /li home");
-                commandManager.ProcessCommand("/li home");
+                if (lifestream.GetTeleportBlockedReason() is { } returnBlocker)
+                {
+                    log.Information($"[Cactpot] Skipping return home: {returnBlocker}");
+                    SetState(CactpotState.Complete);
+                    return;
+                }
+                if (!lifestream.ExecuteCommand("/li home")) { SetState(CactpotState.Failed); return; }
                 SetState(CactpotState.MiniWaitingForHome);
                 break;
 
@@ -717,7 +723,7 @@ public class CactpotService : IDisposable
             // ==================== JUMBO CACTPOT BUY ====================
             case CactpotState.JumboLifestreaming:
                 log.Information("[Cactpot] Traveling to the Jumbo Cactpot area: /li Cactpot");
-                commandManager.ProcessCommand("/li Cactpot");
+                if (!lifestream.ExecuteCommand("/li Cactpot")) { SetState(CactpotState.Failed); return; }
                 SetState(CactpotState.JumboWaitingForZone);
                 break;
 
@@ -970,7 +976,7 @@ public class CactpotService : IDisposable
             // ==================== JUMBO CACTPOT CHECK (Saturday) ====================
             case CactpotState.JumboCheckLifestreaming:
                 log.Information("[Cactpot] Traveling to the Jumbo Cactpot area for cashier travel: /li Cactpot");
-                commandManager.ProcessCommand("/li Cactpot");
+                if (!lifestream.ExecuteCommand("/li Cactpot")) { SetState(CactpotState.Failed); return; }
                 SetState(CactpotState.JumboCheckWaitingForZone);
                 break;
 

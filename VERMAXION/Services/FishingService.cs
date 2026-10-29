@@ -327,6 +327,14 @@ public sealed class FishingService
         if (IsActive)
             return;
 
+        if (Plugin.ClientState.TerritoryType is not (129 or 900 or 1163) &&
+            lifestream.GetTeleportBlockedReason() is { } gilReason)
+        {
+            lastError = gilReason;
+            state = FishingState.Failed;
+            return;
+        }
+
         if (!Plugin.PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "ADS"))
         {
             lastError = "ADS is required for Fishing. Install and enable ADS before starting a fishing run.";

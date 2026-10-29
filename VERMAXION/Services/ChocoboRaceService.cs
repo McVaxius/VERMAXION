@@ -27,6 +27,7 @@ public class ChocoboRaceService : IDisposable
     private readonly IPluginLog log;
     private readonly ConfigManager configManager;
     private readonly ChokeAboIpcClient chokeAboIpcClient;
+    private readonly LifestreamIPC lifestream;
     private readonly Func<string?> progressionStartBlock;
 
     // Open the Gold Saucer duty pane through the same CFC anchor used in the older working path,
@@ -127,6 +128,7 @@ public class ChocoboRaceService : IDisposable
         IPluginLog log,
         ConfigManager configManager,
         ChokeAboIpcClient chokeAboIpcClient,
+        LifestreamIPC lifestream,
         Func<string?> progressionStartBlock,
         Func<bool> testAllowanceEnabled,
         Action cancelPendingReload)
@@ -136,6 +138,7 @@ public class ChocoboRaceService : IDisposable
         this.condition = Plugin.Condition;
         this.configManager = configManager;
         this.chokeAboIpcClient = chokeAboIpcClient;
+        this.lifestream = lifestream;
         this.progressionStartBlock = progressionStartBlock;
         this.testAllowanceEnabled = testAllowanceEnabled;
         this.cancelPendingReload = cancelPendingReload;
@@ -739,7 +742,7 @@ public class ChocoboRaceService : IDisposable
 
                 returnHomeOriginTerritory = Plugin.ClientState.TerritoryType;
                 log.Information("[ChocoboRace] Returning home before opening ContentsFinder: /li home");
-                commandManager.ProcessCommand("/li home");
+                if (!lifestream.ExecuteCommand("/li home")) { SetState(ChocoboState.Failed); return; }
                 SetState(ChocoboState.WaitingForHomeReady);
                 return;
 

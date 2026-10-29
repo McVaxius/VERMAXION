@@ -302,11 +302,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log, ConfigManager, LifestreamIPC, VNavmeshIPC);
         CactpotService = new CactpotService(CommandManager, Log, ClientState, ConfigManager, new SaucyMiniCactpotService(Log), VNavmeshIPC, LifestreamIPC);
-        ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient,
+        ChocoboRaceService = new ChocoboRaceService(CommandManager, Log, ConfigManager, ChokeAboIpcClient, LifestreamIPC,
             () => CanStartChocoboProgression(out var reason) ? null : reason,
             () => IsChocoboReloadTestSelected,
             CancelChocoboReloadAttempt);
-        FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC);
+        FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC, LifestreamIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
         StylistIPC = new StylistIPC(PluginInterface, Log);
         EquipmentAutomationRuntime = new NativeEquipmentAutomationRuntime(
@@ -343,7 +343,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         LootGoblinIPCClient = new LootGoblinIPCClient(PluginInterface, Log);
         LootGoblinMapGatherService = new LootGoblinMapGatherService(Log, LootGoblinIPCClient);
         LootGoblinMapGatherManualRunCoordinator = new LootGoblinMapGatherManualRunCoordinator(Log, ConfigManager, LootGoblinMapGatherService);
-        VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC);
+        VendorStockService = new VendorStockService(CommandManager, Log, ConfigManager, VNavmeshIPC, LifestreamIPC);
         WorkshopBellService = new WorkshopBellService(Log, LifestreamIPC, VNavmeshIPC);
         RetainerListingRefillService = new RetainerListingRefillService(
             Log,

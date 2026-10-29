@@ -13,6 +13,7 @@ public sealed class VendorStockService
     private const uint VersatileLureItemId = 29717;
     private readonly IPluginLog log;
     private readonly ConfigManager configManager;
+    private readonly LifestreamIPC lifestream;
     private ulong owner;
     private string? operationId;
     private uint purchasingItem;
@@ -31,10 +32,12 @@ public sealed class VendorStockService
     public bool IsFailed => State == VendorStockState.Failed;
     public string StatusText => reason;
 
-    public VendorStockService(ICommandManager commandManager, IPluginLog log, ConfigManager configManager, VNavmeshIPC vnavmesh)
+    public VendorStockService(ICommandManager commandManager, IPluginLog log, ConfigManager configManager, VNavmeshIPC vnavmesh,
+        LifestreamIPC lifestream)
     {
         this.log = log;
         this.configManager = configManager;
+        this.lifestream = lifestream;
     }
 
     public void Start() => Begin(0, false);
@@ -102,6 +105,7 @@ public sealed class VendorStockService
         if (target <= 0) return false;
         var missing = (long)target - GameHelpers.GetInventoryItemCount(itemId);
         if (missing <= 0) return false;
+        if (lifestream.GetTeleportBlockedReason() is { } gilReason) { Fail(gilReason); return true; }
         if (missing > 9999) { Fail("ADS accepts at most 9,999 additional items per request. Reduce the stock target."); return true; }
         purchasingItem = itemId;
         purchasingQuantity = (int)missing;

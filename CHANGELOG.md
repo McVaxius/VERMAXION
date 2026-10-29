@@ -1,3 +1,16 @@
+2026-10-29 - Teleport floor and PvP Throw activity (unversioned)
+
+- Add a global teleport gil floor, initially 10,000; zero disables it. Check task admission and actual travel dispatch while preserving known local/free routes, pending results and separate purchase reserves. Skip routes with unreadable travel requirements below the floor.
+- Allow Target Pedigree admission below the travel floor only when the existing native predicate confirms an owned race or queue to restore. Keep new race starts and saved pending flags subject to the travel floor.
+- Let an owned PvP Throw match request one weak minion and move only its confirmed actor between home-side ground points. Preserve pre-existing units, native queue/capacity receipts, Stop, intentional losing and actual result accounting; winning combat remains separate.
+- Isolated production/test builds passed with existing warnings, and 409 targeted integration tests passed, including an independent root rerun. Native travel and inactivity-penalty acceptance remain pending. Preserve the other session's commit/version work; no deployment is included.
+
+2026-10-29 - Beastmaster native controller dependency diagnostics (3.0.0.2 unchanged)
+
+- Identify missing or unloaded BMRVariantLoader before native combat/setup dispatch, and give install or enable guidance. A loaded provider must expose the required controller and setup endpoints; missing/incompatible IPC directs users to compatible BMRV/BossModReborn versions.
+- Correct Beastmaster's outdated RSR setup instructions. Both movement providers use the native BMRV rotation; preserve lease ownership, Stop, protection and the single best-effort `/rotation cancel` per acquired lease. Other activities do not acquire a new dependency.
+- Validation: isolated current-version production/test build succeeds; all 473 Beastmaster tests and eight native Supplies layout cases pass, zero failures/skips. Existing package/reader/test-reflector warnings remain. No deployment or live-clear claim.
+
 2026-10-29 - Crewcible recovery, food and route supplies (3.0.0.1 unchanged)
 
 - Keep native combat ownership active during an existing battle, including after revival, without requiring stale entry-menu context or restarting preparation. Preserve operator Stop, protection, target and provider safeguards.
