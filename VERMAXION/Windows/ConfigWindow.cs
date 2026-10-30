@@ -20,6 +20,7 @@ public class ConfigWindow : Window, IDisposable
     private readonly AethertekUI.Dalamud.MaterialSupportLog supportLog = new();
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private bool materialBackdropStylePushed;
+    private readonly AethertekUI.Dalamud.MaterialWindowLock movementLock = new();
     private const string StylistRepositoryUrl = "https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json";
     private readonly Plugin plugin;
     private string editAccountAlias = "";
@@ -162,16 +163,18 @@ public class ConfigWindow : Window, IDisposable
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
-        if (VermaxionPresentation.HasMaterial)
+        if (VermaxionPresentation.HasMaterial || plugin.BackgroundBlurEnabled)
         {
             ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
             materialBackdropStylePushed = true;
         }
-        motion.Prepare(this, reducedMotion: false, roundedCorners: true);
+        motion.Prepare(this, reducedMotion: !plugin.Configuration.UiStylingEnabled, roundedCorners: plugin.Configuration.UiStylingEnabled);
+        movementLock.Apply(this, plugin.Configuration.UiWindowsLocked);
     }
 
     public override void PostDraw()
     {
+        movementLock.Restore(this);
         motion.Restore(this);
         ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
@@ -180,7 +183,7 @@ public class ConfigWindow : Window, IDisposable
     private void BeginMaterialContent()
     {
         ReleaseMaterialBackdropStyle();
-        MaterialSkin.Backdrop();
+        plugin.DrawWindowBackdrop(this);
     }
 
     private void ReleaseMaterialBackdropStyle()
@@ -192,8 +195,9 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        BeginMaterialContent();
         motion.DrawChrome();
+        BeginMaterialContent();
+        using var structuralBackgrounds = AethertekUI.MaterialSkin.StructuralBackgroundStyle();
         UiGui.TitleWithButtons("Vermaxion Configuration", UiText.T("Vermaxion Configuration"), this);
         UIConstants.ApplicationHeading("Settings");
         var appearanceRoot = ImGui.GetID("");
@@ -989,7 +993,7 @@ public class ConfigWindow : Window, IDisposable
                 editAccountPopupVisible = ImGui.BeginPopup("EditAccountPopup");
             if (editAccountPopupVisible)
             {
-                MaterialSkin.Backdrop();
+                plugin.DrawWindowBackdrop(this);
                 UiGui.Text(UIConstants.ConfigLabels.AccountAlias);
                 UIConstants.InputText("##EditAlias", ref editAccountAlias, 64);
                 if (UIConstants.Button(UIConstants.ConfigLabels.Save) && !string.IsNullOrWhiteSpace(editAccountAlias))
@@ -1147,7 +1151,7 @@ public class ConfigWindow : Window, IDisposable
                         characterContextVisible = ImGui.BeginPopupContextItem($"CharContext_{charKey}");
                     if (characterContextVisible)
                     {
-                        MaterialSkin.Backdrop();
+                        plugin.DrawWindowBackdrop(this);
                         if (UiGui.MenuItem("Reset to Default"))
                         {
                             var accountLabel = configManager.GetSelectedAccount()?.AccountAlias ?? "current account";

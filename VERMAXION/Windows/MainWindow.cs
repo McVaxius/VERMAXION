@@ -19,6 +19,7 @@ public class MainWindow : Window, IDisposable
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private bool materialBackdropStylePushed;
+    private readonly AethertekUI.Dalamud.MaterialWindowLock movementLock = new();
     private static readonly string[] RetainerBellSessionAddonNames =
     [
         "RetainerList",
@@ -115,15 +116,17 @@ public class MainWindow : Window, IDisposable
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
-        if (VermaxionPresentation.HasMaterial)
+        if (VermaxionPresentation.HasMaterial || plugin.BackgroundBlurEnabled)
         {
             ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
             materialBackdropStylePushed = true;
         }
-        motion.Prepare(this, reducedMotion: false, roundedCorners: true);
+        motion.Prepare(this, reducedMotion: !plugin.Configuration.UiStylingEnabled, roundedCorners: plugin.Configuration.UiStylingEnabled);
+        movementLock.Apply(this, plugin.Configuration.UiWindowsLocked);
     }
     public override void PostDraw()
     {
+        movementLock.Restore(this);
         motion.Restore(this);
         ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
@@ -132,7 +135,7 @@ public class MainWindow : Window, IDisposable
     private void BeginMaterialContent()
     {
         ReleaseMaterialBackdropStyle();
-        MaterialSkin.Backdrop();
+        plugin.DrawWindowBackdrop(this);
     }
 
     private void ReleaseMaterialBackdropStyle()
@@ -163,8 +166,9 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
-        BeginMaterialContent();
         motion.DrawChrome();
+        BeginMaterialContent();
+        using var structuralBackgrounds = AethertekUI.MaterialSkin.StructuralBackgroundStyle();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(string.Empty);
         var config = plugin.ConfigManager.GetActiveConfig();
         var engine = plugin.Engine;
@@ -788,11 +792,7 @@ public class MainWindow : Window, IDisposable
         var deliveries = plugin.CustomDeliveriesService;
         var deliveryBlocker = deliveries.GetStartBlockedReason(config.CustomDeliveriesSettings);
         var deliveryBusy = IsEquipmentAutomationBusy() || plugin.FishingService.IsActive || plugin.FishingRelogCoordinator.IsActive;
-        var deliveryStatus = deliveries.IsActive || deliveries.IsFailed
-            ? deliveries.StatusText
-            : deliveries.RemainingAllowances == 0
-                ? "Complete: weekly allowances used"
-                : $"Weekly: {deliveries.RemainingAllowances?.ToString() ?? "unknown"} allowances left";
+        var deliveryStatus = GetCustomDeliveryStatus(deliveries);
         AddTaskRow("Custom Deliveries", config.EnableCustomDeliveries, deliveryStatus,
             "Run##CustomDeliveries", () => engine.ManualStartCustomDeliveries(), "OK",
             statusTooltip: deliveryStatus + "\nNPC rank, crafting/gathering/fishing bonuses and verified progress are shown below the task table.",
@@ -1815,6 +1815,12 @@ public class MainWindow : Window, IDisposable
             _ => false,
         };
     }
+
+    internal static string GetCustomDeliveryStatus(CustomDeliveriesService deliveries)
+        => deliveries.IsActive || deliveries.IsFailed ? deliveries.StatusText
+            : deliveries.DataRefreshError is { } error ? error
+            : deliveries.RemainingAllowances == 0 ? "Complete: weekly allowances used"
+            : $"Weekly: {deliveries.RemainingAllowances?.ToString() ?? "unknown"} allowances left";
 
     internal static void DrawCustomDeliveryNpcOverview(Plugin plugin, CustomDeliveriesSettings settings)
     {

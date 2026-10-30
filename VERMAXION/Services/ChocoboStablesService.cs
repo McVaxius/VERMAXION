@@ -40,6 +40,7 @@ public sealed unsafe class ChocoboStablesService
     private DateTime cleanupQuietSince = DateTime.MinValue;
     private int page, feedBefore, broomBefore, rosterPages;
     private StableBird? selected;
+    private StableBird? selectedForReward;
     private StableTrainingBatch? batch;
     private ulong scannedCharacter;
     private StableDestination scannedDestination;
@@ -543,6 +544,7 @@ public sealed unsafe class ChocoboStablesService
 
     private void SelectBird()
     {
+        selectedForReward = null;
         var addon = Own("HousingChocoboList");
         if (addon == null || selected == null || !TryReadPage(addon, out var actual, out var pages, out var rows, out _)) return;
         if (actual != selected.Page) { ClickList(addon, 3, selected.Page); return; }
@@ -560,7 +562,10 @@ public sealed unsafe class ChocoboStablesService
         if (feedBefore < 1)
         { Fail(feedBefore < 0 ? "Krakka Root inventory is unreadable; no training dispatched." : "Insufficient Krakka Roots; remaining birds were not trained."); return; }
         if (selected.Row == PersonalBirdRow ? ClickPersonalBird(addon) : ClickList(addon, 18, selected.Row))
+        {
+            selectedForReward = selected;
             Transition(Step.Inventory, "Selecting one Krakka Root for training");
+        }
     }
 
     private static bool ClickPersonalBird(AtkUnitBase* addon)
@@ -651,6 +656,23 @@ public sealed unsafe class ChocoboStablesService
         Fail("Krakka Root is no longer available in inventory.");
     }
 
+    private bool TryAdmitReward(int stock, out string detail)
+    {
+        // Selection opened the native feed picker. Its roster need not remain visible;
+        // retain only that successful, freshly revalidated click's target for this attempt.
+        var proof = selectedForReward;
+        selectedForReward = null;
+        detail = "Selected chocobo is unavailable; no training dispatched.";
+        if (proof == null || proof != selected || !proof.Trainable
+            || (batch != null && !batch.TryRevalidate([proof], out _))) return false;
+        if (stock != feedBefore)
+        { detail = "Feed stock changed before Reward; no training dispatched."; return false; }
+        // Consume this in-memory attempt before the native callback, including a throwing callback.
+        if (batch != null && !batch.Dispatch(feedBefore)) { detail = batch.Detail; return false; }
+        detail = string.Empty;
+        return true;
+    }
+
     private void Reward()
     {
         var menu = Own("ContextMenu");
@@ -663,18 +685,7 @@ public sealed unsafe class ChocoboStablesService
             var label = value.String.ToString();
             if (label.Equals("Reward", StringComparison.OrdinalIgnoreCase))
             {
-                if (batch != null)
-                {
-                    // Reuse only the visible, loaded native roster. A hidden/stale addon is not proof.
-                    var roster = Own("HousingChocoboList");
-                    if (roster == null || !TryReadPage(roster, out var actual, out var pages, out var rows, out _)
-                        || selected == null || actual != selected.Page || pages != rosterPages
-                        || !batch.TryRevalidate(rows, out var current) || !current!.Trainable)
-                    { Fail("Selected chocobo is unavailable; no training dispatched."); return; }
-                }
-                if (Count(FeedItemId) != feedBefore) { Fail("Feed stock changed before Reward; no training dispatched."); return; }
-                // Consume this in-memory attempt before the native callback, including a throwing callback.
-                if (batch != null && !batch.Dispatch(feedBefore)) { Fail(batch.Detail); return; }
+                if (!TryAdmitReward(Count(FeedItemId), out var detail)) { Fail(detail); return; }
                 Plugin.Log.Information($"[Stables] Dispatching one Krakka Root Reward; feedStock={feedBefore}");
                 Callback.Fire(menu, false, 0, index, 0, 0, 0);
                 Transition(Step.TrainingResult, "Training dispatched; waiting for feed consumption and native cooldown");
@@ -1028,6 +1039,7 @@ public sealed unsafe class ChocoboStablesService
 
     private void Cleanup()
     {
+        selectedForReward = null;
         var questStopped = StopOwnedOnionQuest();
         var purchaseStopped = StopOwnedOnionPurchase();
         StopMovement();

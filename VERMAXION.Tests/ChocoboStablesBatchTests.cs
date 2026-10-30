@@ -222,6 +222,69 @@ public sealed class ChocoboStablesBatchTests
     }
 
     [Fact]
+    public void ProductionRewardRequiresTheSuccessfulSelectionProofWithoutReopeningTheRoster()
+    {
+        var serviceType = typeof(live::VERMAXION.Services.ChocoboStablesService);
+        const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        var first = new live::VERMAXION.Models.StableBird(0, -1, "Fixture first", "Fixture owner", 5, false, "Ready");
+        var second = first with { Row = 0, Name = "Fixture second" };
+        var batchType = serviceType.Assembly.GetType("VERMAXION.Models.StableTrainingBatch", true)!;
+        var admit = serviceType.GetMethod("TryAdmitReward", fields)!;
+        var receipt = batchType.GetMethod("ObserveReceipt")!;
+        var pendingFeed = batchType.GetField("feedBefore", fields)!;
+        void Set(object service, string field, object? value) => serviceType.GetField(field, fields)!.SetValue(service, value);
+        object Batch(live::VERMAXION.Models.StableBird initial) => batchType
+            .GetConstructor([typeof(IReadOnlyList<live::VERMAXION.Models.StableBird>)])!.Invoke([new[] { initial, second }]);
+        bool Admit(object service, int stock) => (bool)admit.Invoke(service, [stock, null])!;
+        live::VERMAXION.Services.ChocoboStablesService Service(object batch)
+        {
+            // No game or UI services: Reward must use the successfully clicked target,
+            // while fresh native roster identity remains mandatory for the later receipt.
+            var service = (live::VERMAXION.Services.ChocoboStablesService)RuntimeHelpers.GetUninitializedObject(serviceType);
+            Set(service, "batch", batch);
+            Set(service, "selected", first);
+            Set(service, "selectedForReward", first);
+            Set(service, "feedBefore", 2);
+            return service;
+        }
+        foreach (var scenario in new[] { "missing proof", "missing target", "changed target", "changed proof", "changed batch target", "changed stock" })
+        {
+            var batch = Batch(scenario == "changed batch target" ? first with { Name = "Fixture replacement" } : first);
+            var service = Service(batch);
+            if (scenario == "missing proof") Set(service, "selectedForReward", null);
+            if (scenario == "missing target") Set(service, "selected", null);
+            if (scenario == "changed target") Set(service, "selected", second);
+            if (scenario == "changed proof") Set(service, "selectedForReward", first with { Row = 1 });
+            Assert.False(Admit(service, scenario == "changed stock" ? 1 : 2));
+            Assert.Null(pendingFeed.GetValue(batch));
+            Assert.Null(serviceType.GetField("selectedForReward", fields)!.GetValue(service));
+            Assert.Equal(0, service.TrainedCount);
+            Assert.Equal(2, service.RemainingCount);
+            Assert.False(service.CanRecordTrainingCompletion);
+        }
+        var validBatch = Batch(first);
+        var valid = Service(validBatch);
+        Assert.True(Admit(valid, 2));
+        Assert.Equal(2, pendingFeed.GetValue(validBatch));
+        Assert.False(Admit(valid, 2)); // Proof is consumed before any native callback can run or throw.
+        Assert.Equal(0, valid.TrainedCount);
+        Assert.False(valid.CanRecordTrainingCompletion);
+        receipt.Invoke(validBatch, [1, new[] { first with { Training = "59m" } }]);
+        Assert.Equal(1, valid.TrainedCount);
+        Assert.Equal(1, valid.RemainingCount);
+        Assert.Null(pendingFeed.GetValue(validBatch));
+        Set(valid, "selected", second);
+        Set(valid, "feedBefore", 1);
+        Assert.False(Admit(valid, 1)); // The previous bird cannot authorize the next bird.
+        Assert.Null(pendingFeed.GetValue(validBatch));
+        Set(valid, "selectedForReward", second);
+        Assert.True(Admit(valid, 1));
+        receipt.Invoke(validBatch, [0, new[] { second with { Training = "59m" } }]);
+        Assert.Equal(2, valid.TrainedCount);
+        Assert.Equal(0, valid.RemainingCount);
+    }
+
+    [Fact]
     public void ProductionServiceCannotPersistOneVerifiedBirdAsACompletedBatch()
     {
         var serviceType = typeof(live::VERMAXION.Services.ChocoboStablesService);

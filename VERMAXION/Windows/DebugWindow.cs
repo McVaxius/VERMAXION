@@ -11,6 +11,7 @@ internal sealed class DebugWindow : Window
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private bool materialBackdropStylePushed;
+    private readonly AethertekUI.Dalamud.MaterialWindowLock movementLock = new();
     private readonly Plugin plugin;
     private string taskSearch = string.Empty;
 
@@ -29,16 +30,18 @@ internal sealed class DebugWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
-        if (VermaxionPresentation.HasMaterial)
+        if (VermaxionPresentation.HasMaterial || plugin.BackgroundBlurEnabled)
         {
             ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
             materialBackdropStylePushed = true;
         }
-        motion.Prepare(this, reducedMotion: false, roundedCorners: true);
+        motion.Prepare(this, reducedMotion: !plugin.Configuration.UiStylingEnabled, roundedCorners: plugin.Configuration.UiStylingEnabled);
+        movementLock.Apply(this, plugin.Configuration.UiWindowsLocked);
     }
 
     public override void PostDraw()
     {
+        movementLock.Restore(this);
         motion.Restore(this);
         ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
@@ -47,7 +50,7 @@ internal sealed class DebugWindow : Window
     private void BeginMaterialContent()
     {
         ReleaseMaterialBackdropStyle();
-        AethertekUI.MaterialSkin.Backdrop();
+        plugin.DrawWindowBackdrop(this);
     }
 
     private void ReleaseMaterialBackdropStyle()
@@ -59,8 +62,9 @@ internal sealed class DebugWindow : Window
 
     public override void Draw()
     {
-        BeginMaterialContent();
         motion.DrawChrome();
+        BeginMaterialContent();
+        using var structuralBackgrounds = AethertekUI.MaterialSkin.StructuralBackgroundStyle();
         if (AethertekUI.MaterialTheme.Current.IsLcars) AethertekUI.MaterialLcars.Header(UiText.T(WindowName.Split("##", 2)[0]));
         UiGui.TitleWithButtons("Vermaxion Debug", UiText.T("Vermaxion Debug"), this);
         UIConstants.Heading("Reload task selection", plugin.Configuration.CompactUi);

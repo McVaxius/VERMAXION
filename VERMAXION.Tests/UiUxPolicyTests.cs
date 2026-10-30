@@ -1,3 +1,5 @@
+extern alias live;
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -8,6 +10,38 @@ namespace VERMAXION.Tests;
 
 public sealed class UiUxPolicyTests
 {
+    [Fact]
+    public void AppearanceCommandsAndSaveReloadPreserveIndependentGlassChoices()
+    {
+        var config = Newtonsoft.Json.JsonConvert.DeserializeObject<live::VERMAXION.Configuration>("{}")!;
+        Assert.True(config.UiStylingEnabled);
+        Assert.False(config.UiWindowsLocked);
+        Assert.Equal(75, config.UiColors.BackgroundBlurPercent);
+        foreach (var mode in System.Enum.GetValues<AethertekUI.MaterialColorMode>())
+            Assert.Equal(mode == AethertekUI.MaterialColorMode.Glassmorphism, config.UiColors.HasBackgroundBlur(mode));
+        var command = typeof(live::VERMAXION.Plugin).GetMethod("ApplyAppearanceCommand",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        bool Apply(string args) => (bool)command.Invoke(null, new object[] { config, args })!;
+        Assert.True(Apply(" STYLE OFF "));
+        Assert.False(config.UiStylingEnabled);
+        Assert.True(Apply("lock"));
+        config.UiColors = config.UiColors with { Mode = AethertekUI.MaterialColorMode.Glassmorphism,
+            GlassBackground = AethertekUI.MaterialGlassBackground.Image, GlassImagePath = "chosen.png",
+            GlassLights = AethertekUI.MaterialGlassLights.PointerGlow, GlassLight1Rgb = 0x123456,
+            GlassWave2Rgb = 0xABCDEF, GlassBackgroundRgb = 0x345678, BackgroundBlurPercent = 82 };
+        var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<live::VERMAXION.Configuration>(
+            Newtonsoft.Json.JsonConvert.SerializeObject(config))!;
+        Assert.False(restored.UiStylingEnabled);
+        Assert.True(restored.UiWindowsLocked);
+        Assert.Equal(config.UiColors, restored.UiColors);
+        Assert.True(Apply("style"));
+        Assert.True(config.UiStylingEnabled);
+        Assert.True(Apply("unlock"));
+        Assert.False(config.UiWindowsLocked);
+        Assert.False(Apply("on"));
+        Assert.False(Apply("ui"));
+    }
+
     [Fact]
     public void AppearanceSaveReloadPreservesCustomTaskOrderWithoutAppendingDefaults()
     {

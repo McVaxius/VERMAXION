@@ -59,6 +59,7 @@ public static class UIConstants
     public static void PushStyle(bool compact)
     {
         Compact = compact;
+        if (MaterialTheme.Current.IsNative) return;
         var scale = ImGuiHelpers.GlobalScale;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(compact ? 8 : 16, compact ? 6 : 12) * scale);
         ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2((compact ? 6 : 10) * scale, System.Math.Max(0, ((compact ? 30f : 36f) * scale - ImGui.GetFontSize()) / 2f)));
@@ -126,6 +127,7 @@ public static class UIConstants
 
     public static void PopStyle()
     {
+        if (MaterialTheme.Current.IsNative) return;
         ImGui.PopStyleColor(49);
         ImGui.PopStyleVar(13);
     }
@@ -207,7 +209,7 @@ public static class UIConstants
         ImGui.TableSetupColumn("##Panel", ImGuiTableColumnFlags.WidthStretch, 1f);
         ImGui.TableNextRow();
         ImGui.TableNextColumn();
-        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, MaterialTheme.Current.IsLcars || VermaxionPresentation.HasMaterial ? 0 : ImGui.GetColorU32(Panel));
+        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, MaterialTheme.Current.IsLcars || VermaxionPresentation.HasMaterial ? 0 : ImGui.GetColorU32(MaterialSkin.BackgroundFill(Panel)));
         if (title != null) Heading(title, true);
         return true;
     }

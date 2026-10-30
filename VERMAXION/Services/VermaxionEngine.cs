@@ -739,7 +739,8 @@ public class VermaxionEngine
         if (!ignoreSchedulingFlag && !config.EnableCustomDeliveries)
             return TaskEligibility.Disabled("Custom Deliveries is disabled for this character.");
         if (!customDeliveriesService.RemainingAllowances.HasValue)
-            return TaskEligibility.Blocked("Custom-delivery allowances are unknown until current-character data is available.");
+            return TaskEligibility.Blocked(customDeliveriesService.DataRefreshError
+                ?? "Custom-delivery allowances are unknown until current-character data is available.");
         if (customDeliveriesService.RemainingAllowances == 0)
             return TaskEligibility.NotDue("The character has used all weekly custom-delivery allowances.");
         return customDeliveriesService.GetStartBlockedReason(config.CustomDeliveriesSettings) is { } reason

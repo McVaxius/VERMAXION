@@ -13,6 +13,7 @@ internal sealed class FishCollectionWindow : Window
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private bool materialBackdropStylePushed;
+    private readonly AethertekUI.Dalamud.MaterialWindowLock movementLock = new();
     private readonly Plugin plugin;
     private string search = "", foodSearch = "", characterKey = "";
     private bool missingOnly = true, eligibleOnly;
@@ -30,15 +31,17 @@ internal sealed class FishCollectionWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
-        if (VermaxionPresentation.HasMaterial)
+        if (VermaxionPresentation.HasMaterial || plugin.BackgroundBlurEnabled)
         {
             ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
             materialBackdropStylePushed = true;
         }
-        motion.Prepare(this, reducedMotion: false, roundedCorners: true);
+        motion.Prepare(this, reducedMotion: !plugin.Configuration.UiStylingEnabled, roundedCorners: plugin.Configuration.UiStylingEnabled);
+        movementLock.Apply(this, plugin.Configuration.UiWindowsLocked);
     }
     public override void PostDraw()
     {
+        movementLock.Restore(this);
         motion.Restore(this);
         ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
@@ -47,7 +50,7 @@ internal sealed class FishCollectionWindow : Window
     private void BeginMaterialContent()
     {
         ReleaseMaterialBackdropStyle();
-        MaterialSkin.Backdrop();
+        plugin.DrawWindowBackdrop(this);
     }
 
     private void ReleaseMaterialBackdropStyle()
@@ -59,8 +62,9 @@ internal sealed class FishCollectionWindow : Window
 
     public override void Draw()
     {
-        BeginMaterialContent();
         motion.DrawChrome();
+        BeginMaterialContent();
+        using var structuralBackgrounds = AethertekUI.MaterialSkin.StructuralBackgroundStyle();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T("Fish collection"));
         UiGui.TitleWithButtons("Big and fabled fish collection", UiText.T("Big and fabled fish collection"), this);
         var service = plugin.FishCollection;

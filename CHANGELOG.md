@@ -1,3 +1,16 @@
+2026-10-29 - Shared appearance controls and Glasswork backgrounds (3.0.0.4)
+
+- Add native styling and movement/resize lock controls in titlebars, Window appearance and /vmx or /vermaxion commands: style, style on, style off, lock and unlock (styling aliases are also accepted). Preserve existing native identities, profile storage, fonts and opacity/fade.
+- Use the shared Glasswork renderer for selected structural backgrounds, with per-style blur preferences and 75% Frost enabled initially for Glassmorphism. Add Waves, all three Lights effects, Image mode and a native image picker; retain foreground and status fills.
+- Preserve the actual popup owner's normal/faded glass opacity, including collapsed and reopened windows; keep one final foreground opacity application.
+- Expose screenshot pause, initially off, in Colour and Transparency. Ship the adapter's Glasswork runtime libraries and MIT notice. Isolated verification and game visual acceptance are separate; no client deployment.
+
+2026-10-29 - Delivery failure visibility and stables selection proof (included in 3.0.0.4)
+
+- Surface the already captured idle custom-delivery refresh error in the task status, Run blocker and engine eligibility instead of hiding it behind unknown allowances. Retain all admission guards, generic unknown-data status when no exception exists, and current-character reset behavior; clear stale detail after a successful refresh. Translate the diagnostic prefix in all fifteen catalogs. This corrects error visibility, not the unconfirmed native cause of the reported blocked deliveries.
+- Carry the freshly revalidated chocobo through the native feed picker using a single-use proof recorded only after a successful selection click. Reject missing or changed targets/proofs and changed feed stock before Reward; retain one-root plus same-bird cooldown receipts. Remove the unsupported requirement for the roster to stay visible during Reward. The supplied log isolates that preflight failure but does not identify its exact native subpredicate; live training acceptance remains pending.
+- Validation: isolated production compilation succeeds with existing warnings. The combined functional checks pass 58 cases, and the final UI/status/stables selection run passes 54 cases. Native training acceptance and the specific manual custom-delivery blocker remain unverified.
+
 2026-10-29 - Teleport floor and PvP Throw activity (unversioned)
 
 - Add a global teleport gil floor, initially 10,000; zero disables it. Check task admission and actual travel dispatch while preserving known local/free routes, pending results and separate purchase reserves. Skip routes with unreadable travel requirements below the floor.

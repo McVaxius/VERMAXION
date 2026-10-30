@@ -7,9 +7,9 @@
     <PlatformTarget>x64</PlatformTarget>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>3.0.0.3</Version>
-    <FileVersion>3.0.0.3</FileVersion>
-    <AssemblyVersion>3.0.0.3</AssemblyVersion>
+    <Version>3.0.0.4</Version>
+    <FileVersion>3.0.0.4</FileVersion>
+    <AssemblyVersion>3.0.0.4</AssemblyVersion>
     <PackageProjectUrl>https://github.com/McVaxius/VERMAXION</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
@@ -25,6 +25,10 @@
     <EmbeddedResource Update="Localization\Strings_*.resx" WithCulture="false" />
     <PackageReference Include="ECommons" Version="3.2.0.17" />
     <PackageReference Include="PInvoke.User32" Version="0.7.0" />
+    <Reference Include="TerraFX.Interop.Windows">
+      <HintPath>$(DalamudLibPath)/TerraFX.Interop.Windows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <None Include="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Resources\fish-collection.json" />
     <EmbeddedResource Include="Resources\ocean-collection-presets.json" />
@@ -45,6 +49,10 @@
       <PluginFiles Include="$(TargetPath)" />
       <PluginFiles Include="$(TargetDir)AethertekUI.dll" />
       <PluginFiles Include="$(TargetDir)AethertekUI.Dalamud.dll" />
+      <PluginFiles Include="$(TargetDir)Glasswork.dll" />
+      <PluginFiles Include="$(TargetDir)Glasswork.Glass.dll" />
+      <PluginFiles Include="$(TargetDir)Glasswork.Backend.dll" />
+      <PluginFiles Include="$(TargetDir)Notices\Glasswork.MIT.txt" />
       <PluginFiles Include="$(ProjectDir)$(AssemblyName).json" />
       <PluginFiles Include="images\icon.png" />
       <PluginFiles Include="images\carrying chest of gold.png" />

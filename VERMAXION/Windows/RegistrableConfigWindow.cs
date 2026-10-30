@@ -21,12 +21,14 @@ public class RegistrableConfigWindow : Window
 {
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private bool materialBackdropStylePushed;
+    private readonly AethertekUI.Dalamud.MaterialWindowLock movementLock = new();
     private static readonly IReadOnlyList<uint> DefaultItems = [6001, 6006, 6269, 6994, 7553, 7844, 7845, 7846];
     private readonly IPluginLog log;
     private readonly RegistrableConfigManager configManager;
     private readonly ConfigManager characterConfigManager;
     private readonly IDataManager dataManager;
     private readonly Configuration configuration;
+    private readonly Plugin plugin;
     private string itemIdSearch = string.Empty;
     private string itemNameSearch = string.Empty;
     private List<RegistrableItem> allGameItems = new List<RegistrableItem>();
@@ -42,14 +44,15 @@ public class RegistrableConfigWindow : Window
     private string importPreviewAccountId = string.Empty;
     private string importPreviewScopeKey = string.Empty;
 
-    public RegistrableConfigWindow(IPluginLog log, RegistrableConfigManager configManager, ConfigManager characterConfigManager, IDataManager dataManager, Configuration configuration)
+    public RegistrableConfigWindow(IPluginLog log, RegistrableConfigManager configManager, ConfigManager characterConfigManager, IDataManager dataManager, Plugin plugin)
         : base("Register Registrables Configuration", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         this.log = log;
         this.configManager = configManager;
         this.characterConfigManager = characterConfigManager;
         this.dataManager = dataManager;
-        this.configuration = configuration;
+        this.plugin = plugin;
+        configuration = plugin.Configuration;
         SizeConstraints = new WindowSizeConstraints
         {
             MinimumSize = new Vector2(520, 480),
@@ -167,16 +170,18 @@ public class RegistrableConfigWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(configuration.CompactUi);
-        if (VermaxionPresentation.HasMaterial)
+        if (VermaxionPresentation.HasMaterial || plugin.BackgroundBlurEnabled)
         {
             ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
             materialBackdropStylePushed = true;
         }
-        motion.Prepare(this, reducedMotion: false, roundedCorners: true);
+        motion.Prepare(this, reducedMotion: !plugin.Configuration.UiStylingEnabled, roundedCorners: plugin.Configuration.UiStylingEnabled);
+        movementLock.Apply(this, plugin.Configuration.UiWindowsLocked);
     }
 
     public override void PostDraw()
     {
+        movementLock.Restore(this);
         motion.Restore(this);
         ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
@@ -185,7 +190,7 @@ public class RegistrableConfigWindow : Window
     private void BeginMaterialContent()
     {
         ReleaseMaterialBackdropStyle();
-        MaterialSkin.Backdrop();
+        plugin.DrawWindowBackdrop(this);
     }
 
     private void ReleaseMaterialBackdropStyle()
@@ -197,8 +202,9 @@ public class RegistrableConfigWindow : Window
 
     public override void Draw()
     {
-        BeginMaterialContent();
         motion.DrawChrome();
+        BeginMaterialContent();
+        using var structuralBackgrounds = AethertekUI.MaterialSkin.StructuralBackgroundStyle();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T(WindowName.Split("##", 2)[0]));
         UiGui.TitleWithButtons("Register Registrables Configuration", UiText.T("Register Registrables Configuration"), this);
         DrawHeader();

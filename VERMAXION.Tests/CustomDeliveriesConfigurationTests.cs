@@ -1,4 +1,10 @@
+extern alias live;
+
 using System;
+using System.Globalization;
+using System.Reflection;
+using System.Resources;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using VERMAXION.CustomDeliveries;
 using VERMAXION.Models;
@@ -8,6 +14,64 @@ namespace VERMAXION.Tests;
 
 public sealed class CustomDeliveriesConfigurationTests
 {
+    [Fact]
+    public void IdleRefreshFailureRemainsBlockedAndReachesDisplayedStatusAndEngineReason()
+    {
+        const BindingFlags instance = BindingFlags.Instance | BindingFlags.NonPublic;
+        var serviceType = typeof(live::VERMAXION.CustomDeliveries.CustomDeliveriesService);
+        var service = (live::VERMAXION.CustomDeliveries.CustomDeliveriesService)RuntimeHelpers.GetUninitializedObject(serviceType);
+        serviceType.GetField("status", instance)!.SetValue(service, "Idle");
+        var refresh = serviceType.GetMethod("TryRefreshData", instance, null, [typeof(Action)], null)!;
+        var displayed = typeof(live::VERMAXION.Windows.MainWindow).GetMethod("GetCustomDeliveryStatus",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        var engineType = typeof(live::VERMAXION.Services.VermaxionEngine);
+        var engine = RuntimeHelpers.GetUninitializedObject(engineType);
+        engineType.GetField("customDeliveriesService", instance)!.SetValue(engine, service);
+        var evaluate = engineType.GetMethod("EvaluateCustomDeliveries", instance, null,
+            [typeof(live::VERMAXION.Models.CharacterConfig), typeof(bool)], null)!;
+        var config = new live::VERMAXION.Models.CharacterConfig { EnableCustomDeliveries = true };
+        var settings = config.CustomDeliveriesSettings;
+
+        Assert.Null(service.DataRefreshError);
+        Assert.Equal("Weekly: unknown allowances left", displayed.Invoke(null, [service]));
+        Assert.Equal("Custom delivery data is unavailable for the current character", service.GetStartBlockedReason(settings));
+
+        const string detail = "Fixture requested-item row is unavailable";
+        Action failure = () => throw new InvalidOperationException(detail);
+        Assert.Equal(false, refresh.Invoke(service, [failure]));
+        const string expected = "Custom delivery data unavailable: " + detail;
+        Assert.False(service.IsActive);
+        Assert.False(service.IsFailed); // An idle refresh failure must not manufacture an active task failure.
+        Assert.Null(service.RemainingAllowances);
+        Assert.Equal(expected, service.DataRefreshError);
+        Assert.Equal(expected, service.GetStartBlockedReason(settings));
+        Assert.Equal(expected, displayed.Invoke(null, [service]));
+        var eligibility = (live::VERMAXION.Models.TaskEligibility)evaluate.Invoke(engine, [config, false])!;
+        Assert.False(eligibility.IsRunnable);
+        Assert.Equal(expected, eligibility.Reason);
+
+        config.EnableCustomDeliveries = false;
+        eligibility = (live::VERMAXION.Models.TaskEligibility)evaluate.Invoke(engine, [config, false])!;
+        Assert.Equal(live::VERMAXION.Models.TaskEligibilityStatus.Disabled, eligibility.Status);
+        eligibility = (live::VERMAXION.Models.TaskEligibility)evaluate.Invoke(engine, [config, true])!;
+        Assert.Equal(live::VERMAXION.Models.TaskEligibilityStatus.Blocked, eligibility.Status);
+        Assert.Equal(expected, eligibility.Reason);
+
+        foreach (var language in new[] { "en", "de", "es", "fr", "hi", "id", "it", "ja", "ko", "pl", "pt_BR", "ru", "tr", "vi", "zh_Hans" })
+        {
+            var resources = new ResourceManager("VERMAXION.Localization.Strings_" + language, serviceType.Assembly);
+            var template = resources.GetString("Custom delivery data unavailable: {0}", CultureInfo.InvariantCulture);
+            resources.ReleaseAllResources();
+            Assert.False(string.IsNullOrWhiteSpace(template), language);
+            Assert.Contains("{0}", template!);
+        }
+
+        Assert.Equal(true, refresh.Invoke(service, [(Action)(() => { })]));
+        Assert.Null(service.DataRefreshError); // A later successful refresh must not leave a stale exception on unknown data.
+        Assert.Equal("Weekly: unknown allowances left", displayed.Invoke(null, [service]));
+        Assert.Equal("Custom delivery data is unavailable for the current character", service.GetStartBlockedReason(settings));
+    }
+
     [Fact]
     public void RankQuestBoundaryStopsProductionUntilQuestCompletion()
     {

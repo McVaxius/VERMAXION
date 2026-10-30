@@ -1,4 +1,6 @@
 using AethertekUI;
+using AethertekUI.Dalamud;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using System.Numerics;
@@ -90,6 +92,10 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     private int checkedFontGeneration = -1;
     private int checkedHindiGeneration = -1;
     private bool fontIssueLogged;
+    private MaterialGlassRenderer? backgroundGlass;
+    private readonly FileDialogManager glassImagePicker = new();
+    internal bool BackgroundBlurEnabled => Configuration.UiStylingEnabled &&
+        Configuration.UiColors.HasBackgroundBlur(Configuration.UiColors.Mode);
 
     private const string ExpectedDebugPluginPath = @"A:\ff14\xivlauncher7\FishCollectionClient7Verification\VERMAXION\VERMAXION.dll";
 
@@ -423,7 +429,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         IslandSanctuaryWindow = new IslandSanctuaryWindow(this);
         BeastmasterWindow = new BeastmasterWindow(this);
         BeastmasterMiniWindow = new BeastmasterMiniWindow(this);
-        RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager, Configuration);
+        RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager, this);
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(FishCollectionWindow);
@@ -442,15 +448,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         // Commands
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open the Vermaxion main window."
+            HelpMessage = "Open the Vermaxion main window; style [on|off], lock or unlock."
         });
         CommandManager.AddHandler(AliasCommandName, new CommandInfo(OnAliasCommand)
         {
-            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|inspect|v|b|beast|is], /vmx b mini, or /vmx to open UI."
+            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|inspect|v|b|beast|is], /vmx b mini, style [on|off], lock, unlock, or /vmx to open UI."
         });
 
         // Events
         PluginInterface.UiBuilder.Draw += DrawUi;
+        PluginInterface.UiBuilder.ResizeBuffers += ReleaseBackgroundGlassResources;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
@@ -472,7 +479,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         foreach (var owner in WindowSystem.Windows.OfType<Dalamud.Interface.Windowing.Window>())
         {
             if ((owner.Flags & ImGuiWindowFlags.NoTitleBar) != 0) continue;
-            if (!appearanceTitleBars.ContainsKey(owner)) appearanceTitleBars.Add(owner, AethertekUI.Dalamud.MaterialAppearanceTitleBar.Register(owner,
+            if (!appearanceTitleBars.ContainsKey(owner))
+            {
+                var actions = AethertekUI.Dalamud.MaterialAppearanceTitleBar.Register(owner,
                 () => new(UiText.T("Language"), UiText.T("Compact mode"), UiText.T("Transparency"), UiText.T("Color")),
                 DrawLanguageSelector,
                 () => { Configuration.CompactUi = !Configuration.CompactUi; Configuration.Save(); },
@@ -487,7 +496,14 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                     UiText.T(Configuration.KrangleEnabled ? "On" : "Off") + "\n" + UiText.T(UIConstants.Tooltips.KrangleNames),
                 () => owner is MainWindow
                     ? new(Configuration.UiLanguageVisibleOnMainWindow, Configuration.UiCompactVisibleOnMainWindow, Configuration.UiTransparencyVisibleOnMainWindow, true)
-                    : new(true, true, true, true)));
+                    : new(true, true, true, true));
+                actions.RegisterWindowControls(
+                    () => { Configuration.UiStylingEnabled = !Configuration.UiStylingEnabled; Configuration.Save(); },
+                    () => UiText.T(Configuration.UiStylingEnabled ? "Use native UI" : "Use styled UI"),
+                    () => { Configuration.UiWindowsLocked = !Configuration.UiWindowsLocked; Configuration.Save(); },
+                    () => UiText.T(Configuration.UiWindowsLocked ? "Unlock windows" : "Lock windows"));
+                appearanceTitleBars.Add(owner, actions);
+            }
             appearanceTitleBars[owner].SetLcarsIcons(uiTheme.IsLcars);
             if (!soundTitleButtons.TryGetValue(owner, out var speaker))
             {
@@ -520,7 +536,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 ? BeastmasterWindow.RunTitlebarStatus(owner, ref title) : status;
             UiGui.ImageTitleWithStatus(owner, title, OriginalIcon, ownerStatus);
         }
-        foreach (var actions in appearanceTitleBars.Values) actions.DrawPopups();
+        foreach (var (owner, actions) in appearanceTitleBars)
+        {
+            SetWindowBackgroundOpacity(owner);
+            actions.DrawPopups();
+        }
     }
 
     private MaterialTitlebarStatus? TitlebarStatus()
@@ -563,9 +583,20 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 Animation = UiText.T("Animation"), AnimationSpeed = UiText.T("Animation speed (0.1–10x; default 1x)"),
                 WaveColors = UiText.T("Wave colours"), GlassWave1 = UiText.T("Wave colour 1"),
                 GlassWave2 = UiText.T("Wave colour 2"), GlassWave3 = UiText.T("Wave colour 3"), ResetWaveColors = UiText.T("Reset wave colours"),
+                BackgroundMode = UiText.T("Background mode"), Waves = UiText.T("Waves"), Lights = UiText.T("Lights"), Image = UiText.T("Image"),
+                LightEffect = UiText.T("Light effect"), AmbientGlows = UiText.T("Ambient glows"),
+                SweepingBeams = UiText.T("Sweeping beams"), PointerGlow = UiText.T("Mouse-following glow"),
+                LightColors = UiText.T("Light colours"), GlassLight1 = UiText.T("Light colour 1"),
+                GlassLight2 = UiText.T("Light colour 2"), GlassLight3 = UiText.T("Light colour 3"), ResetLightColors = UiText.T("Reset light colours"),
+                ImageFile = UiText.T("Image file"), BrowseImage = UiText.T("Browse..."), LoadImage = UiText.T("Load image"),
+                ImageHelp = UiText.T("The image fills the window. Blur (%) applies to the image."),
+                BackgroundBlur = UiText.T("Background blur"), BlurPercent = UiText.T("Blur (%)"),
             },
             new MaterialColorSettings(), MaterialColorSettings.Rgb(VermaxionPresentation.ReferenceAccent),
+            BrowseBackgroundImage,
             Configuration.CompactUi ? 298 : 316);
+        if (backgroundGlass?.ImageProblem is { } problem) UiGui.TextWrapped(problem);
+        DrawScreenshotPause(id + "-screenshots");
         if (!changed) return false;
         Configuration.UiColors = colorDraft;
         if (!LcarsActive) uiSounds?.Stop();
@@ -579,16 +610,68 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (DrawColourEditor("titlebar-colour")) Configuration.Save();
     }
 
+    private void BrowseBackgroundImage()
+        => glassImagePicker.OpenFileDialog(UiText.T("Choose background image") + "###VermaxionBackgroundImagePicker",
+            UiText.T("Images") + "{.png,.jpg,.jpeg,.bmp,.gif,.webp,.tif,.tiff,.dds,.tga},.*",
+            (accepted, path) =>
+            {
+                if (!accepted || path == Configuration.UiColors.GlassImagePath) return;
+                Configuration.UiColors = colorDraft = Configuration.UiColors with { GlassImagePath = path };
+                Configuration.Save();
+            });
+
+    private void DrawScreenshotPause(string id)
+    {
+        if (colorDraft.Mode == MaterialColorMode.Glassmorphism && colorDraft.GlassBackground == MaterialGlassBackground.Image)
+        { UiGui.TextWrapped("Image backgrounds remain visible to screenshots."); return; }
+        var paused = backgroundGlass?.ScreenshotsPaused == true;
+        ImGui.BeginDisabled(!paused && backgroundGlass?.CanPauseForScreenshots != true);
+        try
+        {
+            if (UiGui.Checkbox("Pause backdrop for screenshots###" + id, ref paused))
+                backgroundGlass?.TrySetScreenshotsPaused(paused);
+        }
+        finally { ImGui.EndDisabled(); }
+    }
+
+    private void ReleaseBackgroundGlassResources() => backgroundGlass?.ReleaseResources();
+
+    private void SetWindowBackgroundOpacity(Window owner)
+    {
+        if (backgroundGlass == null) return;
+        var nativeOwner = ImGuiP.FindWindowByName(owner.WindowName);
+        backgroundGlass.Opacity = !Configuration.UiTransparencyEnabled ? 1 :
+            !nativeOwner.IsNull && !nativeOwner.Appearing && windowOpacities.TryGetValue(owner, out var opacity)
+                ? opacity.CurrentOpacity : Configuration.UiWindowOpacityPercent / 100f;
+    }
+
+    internal void DrawWindowBackdrop(Window window)
+    {
+        SetWindowBackgroundOpacity(window);
+        MaterialSkin.Backdrop();
+    }
 
     private void DrawUi()
     {
+        try { DrawUiFrame(); }
+        catch
+        {
+            backgroundGlass?.EndFrame(false);
+            throw;
+        }
+    }
+
+    private void DrawUiFrame()
+    {
         ApplyAppearance();
-        if(!WindowSystem.Windows.Any(window => window.IsOpen)) return;
+        glassImagePicker.Draw();
+        if(!WindowSystem.Windows.Any(window => window.IsOpen)) { backgroundGlass?.EndFrame(false); return; }
         using var text = uiText.Enter();
         shapedText ??= new(TextureProvider);
         using var shaped = shapedText.Push();
         if(!uiFonts.Ready)
         {
+            backgroundGlass?.EndFrame(false);
             if(!fontIssueLogged && uiFonts.LoadException is { } error) { Log.Error(error,"[VERMAXION] Required UI fonts failed to load.");fontIssueLogged=true; }
             // Do not silently present temporary host fonts as the finished UI.
             DrawFontStatus(uiFonts.LoadException is null);
@@ -614,37 +697,56 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 uiFonts.CheckGlyphs(uiText.RequiredText);
                 checkedFontGeneration=generation;
             }
-            catch(Exception ex) { if(!fontIssueLogged) { Log.Error(ex,"[VERMAXION] Required UI glyph coverage failed.");fontIssueLogged=true; } DrawFontStatus(false);return; }
+            catch(Exception ex) { backgroundGlass?.EndFrame(false); if(!fontIssueLogged) { Log.Error(ex,"[VERMAXION] Required UI glyph coverage failed.");fontIssueLogged=true; } DrawFontStatus(false);return; }
         }
-        using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale, MaterialStyleMode.ColorsOnly);
-        using var body = uiFonts.Push(UiFontRole.Body);
-        PrepareAppearanceTitleBars();
-        foreach (var actions in appearanceTitleBars.Values) actions.RefreshVisibility();
-        WindowSystem.Draw();
-        DrawAppearanceTitleBarPopups();
-        foreach (var window in WindowSystem.Windows)
+        var useGlass = BackgroundBlurEnabled;
+        var useImage = Configuration.UiStylingEnabled && colorDraft.Mode == MaterialColorMode.Glassmorphism &&
+            colorDraft.GlassBackground == MaterialGlassBackground.Image;
+        if (useGlass || useImage) backgroundGlass ??= new(PluginInterface, Log);
+        backgroundGlass?.ConfigureImage(TextureProvider, useImage, colorDraft.GlassImagePath);
+        backgroundGlass?.BeginFrame();
+        var completed = false;
+        try
         {
-            if (!windowOpacities.TryGetValue(window, out var opacity))
-                windowOpacities.Add(window, opacity = new());
-            ApplyWindowOpacity(opacity, window.WindowName);
+            using var background = MaterialSkin.PushBackgroundRenderer(useGlass || useImage ? backgroundGlass : null,
+                useGlass, colorDraft.BackgroundBlurPercent / 100f);
+            using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale,
+                Configuration.UiStylingEnabled ? MaterialStyleMode.ColorsOnly : MaterialStyleMode.Native);
+            using var body = uiFonts.Push(UiFontRole.Body);
+            PrepareAppearanceTitleBars();
+            foreach (var actions in appearanceTitleBars.Values) actions.RefreshVisibility();
+            foreach (var window in WindowSystem.Windows) window.AllowBackgroundBlur = false;
+            WindowSystem.Draw();
+            DrawAppearanceTitleBarPopups();
+            foreach (var window in WindowSystem.Windows)
+            {
+                if (!windowOpacities.TryGetValue(window, out var opacity))
+                    windowOpacities.Add(window, opacity = new());
+                ApplyWindowOpacity(opacity, window.WindowName);
+            }
+            completed = true;
         }
+        finally { backgroundGlass?.EndFrame((useGlass || useImage) && completed); }
     }
 
     private void DrawFontStatus(bool loading)
     {
-        using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale, MaterialStyleMode.ColorsOnly);
+        using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale,
+            Configuration.UiStylingEnabled ? MaterialStyleMode.ColorsOnly : MaterialStyleMode.Native);
         using var chrome = MaterialWindowChrome.Push();
         Dalamud.Bindings.ImGui.ImGui.SetNextWindowSize(new System.Numerics.Vector2(460f*ImGuiHelpers.GlobalScale,0f));
-        fontStatusFold.PreDraw("VERMAXION##FontStatus", null, null, false, fontStatusDecorations.Prepare);
+        fontStatusFold.PreDraw("VERMAXION##FontStatus", null, null, !Configuration.UiStylingEnabled,
+            Configuration.UiStylingEnabled ? fontStatusDecorations.Prepare : null);
         bool visible;
         using (MaterialSkin.BackdropStyle())
-            visible = Dalamud.Bindings.ImGui.ImGui.Begin("VERMAXION##FontStatus",Dalamud.Bindings.ImGui.ImGuiWindowFlags.AlwaysAutoResize);
+            visible = Dalamud.Bindings.ImGui.ImGui.Begin("VERMAXION##FontStatus", ImGuiWindowFlags.AlwaysAutoResize |
+                (Configuration.UiWindowsLocked ? ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize : ImGuiWindowFlags.None));
         try
         {
             if (visible)
             {
                 MaterialSkin.Backdrop();
-                fontStatusDecorations.Paint();
+                if (Configuration.UiStylingEnabled) fontStatusDecorations.Paint();
                 if (uiTheme.IsLcars) MaterialLcars.Header("VERMAXION");
                 if (appliedLanguage == "hi")
                 {
@@ -657,7 +759,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         finally
         {
             Dalamud.Bindings.ImGui.ImGui.End();
-            fontStatusDecorations.Paint();
+            if (Configuration.UiStylingEnabled) fontStatusDecorations.Paint();
             fontStatusFold.PostDraw();
             ApplyWindowOpacity(fontStatusOpacity, "VERMAXION##FontStatus");
         }
@@ -678,7 +780,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             checkedHindiGeneration = -1;
             fontIssueLogged=false;
         }
-        var savedColors = Configuration.UiColors ?? new MaterialColorSettings();
+        var savedColors = Configuration.UiColors ??= new MaterialColorSettings();
         if (savedColors != appliedSavedColors)
         {
             colorDraft = savedColors;
@@ -703,7 +805,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         }
     }
 
-    private bool LcarsActive => Configuration.UiColors?.Mode == MaterialColorMode.Lcars;
+    private bool LcarsActive => Configuration.UiStylingEnabled && Configuration.UiColors?.Mode == MaterialColorMode.Lcars;
 
     private void PlayUiSound(MaterialUiSoundCue cue)
     {
@@ -796,6 +898,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     public void Dispose()
     {
+        PluginInterface.UiBuilder.ResizeBuffers -= ReleaseBackgroundGlassResources;
+        backgroundGlass?.Dispose();
         uiSounds?.Dispose();
         if (BeastmasterOwnsWork) StopBeastmaster();
         BeastmasterService.Dispose();
@@ -2087,7 +2191,31 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void OnCommand(string command, string args)
     {
+        if (TryAppearanceCommand(args)) return;
         MainWindow.Toggle();
+    }
+
+    private bool TryAppearanceCommand(string args)
+    {
+        if (!ApplyAppearanceCommand(Configuration, args)) return false;
+        Configuration.Save();
+        return true;
+    }
+
+    internal static bool ApplyAppearanceCommand(Configuration configuration, string args)
+    {
+        switch (args.Trim().ToLowerInvariant())
+        {
+            case "lock": configuration.UiWindowsLocked = true; return true;
+            case "unlock": configuration.UiWindowsLocked = false; return true;
+            case "style":
+            case "styling": configuration.UiStylingEnabled = !configuration.UiStylingEnabled; return true;
+            case "style on":
+            case "styling on": configuration.UiStylingEnabled = true; return true;
+            case "style off":
+            case "styling off": configuration.UiStylingEnabled = false; return true;
+            default: return false;
+        }
     }
 
     private void InspectClient()
@@ -2157,6 +2285,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void OnAliasCommand(string command, string args)
     {
+        if (TryAppearanceCommand(args)) return;
         var arg = args.Trim().ToLowerInvariant();
         switch (arg)
         {
@@ -4058,6 +4187,25 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         DrawLcarsSounds();
         var config = Configuration;
         var changed = false;
+        var styling = config.UiStylingEnabled;
+        if (UiGui.Checkbox("UI styling###UiStylingEnabled", ref styling))
+        { config.UiStylingEnabled = styling; changed = true; }
+        var locked = config.UiWindowsLocked;
+        if (UiGui.Checkbox("Lock window movement and resizing###UiWindowsLocked", ref locked))
+        { config.UiWindowsLocked = locked; changed = true; }
+        var blur = config.UiColors.HasBackgroundBlur(config.UiColors.Mode);
+        if (UiGui.Checkbox("Background blur###UiBackgroundBlur", ref blur))
+        { config.UiColors = colorDraft = config.UiColors.WithBackgroundBlur(config.UiColors.Mode, blur); changed = true; }
+        ImGui.BeginDisabled(!blur);
+        try
+        {
+            var percent = config.UiColors.BackgroundBlurPercent;
+            ImGui.SetNextItemWidth(180 * MaterialTheme.Metrics.Scale);
+            if (UiGui.SliderInt("Blur (%)###UiBackgroundBlurPercent", ref percent, 0, 100))
+            { config.UiColors = colorDraft = config.UiColors with { BackgroundBlurPercent = percent }; changed = true; }
+        }
+        finally { ImGui.EndDisabled(); }
+        DrawScreenshotPause("transparency-screenshots");
         var showStatus = config.UiShowTitlebarStatus;
         if (UiGui.Checkbox("Show titlebar status###UiShowTitlebarStatus", ref showStatus))
         { config.UiShowTitlebarStatus = showStatus; changed = true; }

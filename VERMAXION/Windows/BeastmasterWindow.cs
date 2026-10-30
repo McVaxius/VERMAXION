@@ -16,6 +16,7 @@ internal sealed partial class BeastmasterWindow : Window
     private const int SplashCount = BeastmasterSplashRotation.Count;
     private readonly AethertekUI.Dalamud.MaterialWindowMotion motion = new();
     private bool materialBackdropStylePushed;
+    private readonly AethertekUI.Dalamud.MaterialWindowLock movementLock = new();
     private readonly Plugin plugin;
     private readonly BeastmasterSplashRotation splashes = new();
     private string viewedAccountId = "";
@@ -120,16 +121,18 @@ internal sealed partial class BeastmasterWindow : Window
     public override void PreDraw()
     {
         UIConstants.PushStyle(plugin.Configuration.CompactUi);
-        if (VermaxionPresentation.HasMaterial)
+        if (VermaxionPresentation.HasMaterial || plugin.BackgroundBlurEnabled)
         {
             ImGui.PushStyleColor(ImGuiCol.WindowBg, Vector4.Zero);
             materialBackdropStylePushed = true;
         }
-        motion.Prepare(this, reducedMotion: false, roundedCorners: true);
+        motion.Prepare(this, reducedMotion: !plugin.Configuration.UiStylingEnabled, roundedCorners: plugin.Configuration.UiStylingEnabled);
+        movementLock.Apply(this, plugin.Configuration.UiWindowsLocked);
     }
 
     public override void PostDraw()
     {
+        movementLock.Restore(this);
         motion.Restore(this);
         ReleaseMaterialBackdropStyle();
         UIConstants.PopStyle();
@@ -138,7 +141,7 @@ internal sealed partial class BeastmasterWindow : Window
     private void BeginMaterialContent()
     {
         ReleaseMaterialBackdropStyle();
-        MaterialSkin.Backdrop();
+        plugin.DrawWindowBackdrop(this);
     }
 
     private void ReleaseMaterialBackdropStyle()
@@ -150,8 +153,9 @@ internal sealed partial class BeastmasterWindow : Window
 
     public override void Draw()
     {
-        BeginMaterialContent();
         motion.DrawChrome();
+        BeginMaterialContent();
+        using var structuralBackgrounds = AethertekUI.MaterialSkin.StructuralBackgroundStyle();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T("Beastmaster"));
         if (ViewedConfig == null && plugin.IsCharacterRegistered) SelectCurrentCharacter();
         DrawShellBanner();

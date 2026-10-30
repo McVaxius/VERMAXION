@@ -15,6 +15,7 @@ namespace VERMAXION.CustomDeliveries;
 // VSatisfy's data refresh and native automation now belong to VERMAXION's framework lifecycle.
 public sealed unsafe class CustomDeliveriesService : IDisposable
 {
+    private const string DataRefreshErrorPrefix = "Custom delivery data unavailable: ";
     private readonly Plugin plugin;
     private readonly Achievements achievements = new();
     private readonly Automation automation = new();
@@ -38,6 +39,8 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
 
     public IReadOnlyList<NPCInfo> Npcs => npcs;
     public int? RemainingAllowances { get; private set; }
+    public string? DataRefreshError => RemainingAllowances == null && status.StartsWith(DataRefreshErrorPrefix, StringComparison.Ordinal)
+        ? status : null;
     public bool IsActive => active || FishingCleanupPending?.Invoke() == true;
     public bool IsComplete { get; private set; }
     public bool IsFailed { get; private set; }
@@ -65,6 +68,7 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
                 foreach (var npc in npcs) npc.ClearAchievement();
             }
             RemainingAllowances = null;
+            if (status.StartsWith(DataRefreshErrorPrefix, StringComparison.Ordinal)) status = "Idle";
             return;
         }
         if (loadedCharacter != character)
@@ -80,14 +84,21 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
         TryRefreshData();
     }
 
-    private bool TryRefreshData()
+    private bool TryRefreshData() => TryRefreshData(RefreshData);
+
+    private bool TryRefreshData(Action refresh)
     {
-        try { RefreshData(); return true; }
+        try
+        {
+            refresh();
+            if (status.StartsWith(DataRefreshErrorPrefix, StringComparison.Ordinal)) status = "Idle";
+            return true;
+        }
         catch (Exception ex)
         {
             RemainingAllowances = null;
             if (active) Fail($"Custom delivery data could not be refreshed: {ex.Message}");
-            else if (!IsFailed) status = $"Custom delivery data unavailable: {ex.Message}";
+            else if (!IsFailed) status = DataRefreshErrorPrefix + ex.Message;
             return false;
         }
     }
@@ -266,7 +277,7 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
     public string? GetStartBlockedReason(CustomDeliveriesSettings settings)
     {
         if (FishingCleanupPending?.Invoke() == true) return StatusText;
-        if (RemainingAllowances == null) return "Custom delivery data is unavailable for the current character";
+        if (RemainingAllowances == null) return DataRefreshError ?? "Custom delivery data is unavailable for the current character";
         if (RemainingAllowances == 0) return null;
         var route = SelectRoute(settings);
         if (route == null)
