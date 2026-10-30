@@ -3718,20 +3718,6 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public void FullStop(bool preparingDebugTask = false)
     {
         StopBeastmaster();
-        if (!preparingDebugTask && Configuration.Enabled)
-        {
-            Configuration.Enabled = false;
-            try { Configuration.Save(); }
-            catch (Exception ex) { Log.Error(ex, "[FULL STOP] Could not save disabled automation; continuing Stop cleanup."); }
-            Log.Information("[FULL STOP] Global automation disabled until explicitly enabled.");
-        }
-
-        var timerAccount = ConfigManager.GetCurrentAccount();
-        if (timerAccount?.RetainerlessTimerEnabled == true)
-        {
-            timerAccount.RetainerlessTimerEnabled = false;
-            ConfigManager.SaveCurrentAccount();
-        }
         retainerlessTimerDueUtc = null;
         retainerlessTimerRunPendingCompletion = false;
 #if DEBUG

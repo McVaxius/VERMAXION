@@ -198,6 +198,12 @@ internal static class BeastmasterWeeklyPolicy
     internal static BeastmasterWeeklyObjective? Next(IEnumerable<BeastmasterWeeklyObjective> objectives, ISet<uint> attempted)
         => objectives.FirstOrDefault(row => row.State == BeastmasterWeeklyState.Unfinished && !attempted.Contains(row.Board));
 
+    internal static void SelectBoard(BeastmasterSettings settings, uint board)
+    {
+        settings.Board = board;
+        settings.Degree = CrucibleDegree.Standard;
+    }
+
     internal static IReadOnlyList<BeastmasterWeeklyObjective> SelectedObjectives(BeastmasterSettings settings,
         IEnumerable<BeastmasterWeeklyObjective> objectives)
         => objectives.Where(row => row.Board is >= 1 and <= 5 &&
@@ -212,7 +218,7 @@ internal static class BeastmasterWeeklyPolicy
     {
         Goal = BeastmasterRunGoal.FixedRuns, Board = source.Board, RunCount = 1,
         WeeklyBoards = source.WeeklyBoards == null ? null : [..source.WeeklyBoards],
-        CompletionCommand = string.Empty, Degree = source.Degree, RankedEntry = source.RankedEntry, TeamMode = source.TeamMode,
+        CompletionCommand = string.Empty, Degree = CrucibleDegree.Standard, RankedEntry = source.RankedEntry, TeamMode = source.TeamMode,
         RepairMode = source.RepairMode, RepairThreshold = source.RepairThreshold, CombatProvider = source.CombatProvider,
         FoodItemId = source.FoodItemId, ExtractMateria = source.ExtractMateria,
         LevelingMode = source.LevelingMode, CustomTeam = [..source.CustomTeam],

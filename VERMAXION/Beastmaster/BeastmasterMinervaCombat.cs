@@ -61,9 +61,9 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
         if (current.Owner != null) throw new InvalidOperationException("Minerva is owned by another controller.");
         return current;
     }
-    public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null)
-        => TryApply(true, allowAttacks, out reason);
-    public bool TrySuspend(out string reason) => TryApply(false, false, out reason);
+    public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null, bool useScriptedFamiliars = true)
+        => TryApply(true, allowAttacks, useScriptedFamiliars, out reason);
+    public bool TrySuspend(out string reason) => TryApply(false, false, false, out reason);
     public bool TryPrepare(uint board, uint battle, out bool ready, out string status, out string reason)
     {
         ready = false;
@@ -107,7 +107,7 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
         if (original.HasValue) RequireOwner(current);
         return current.WithholdAttacks ? default : abilities.ReadTarget();
     }
-    private bool TryApply(bool running, bool allowAttacks, out string reason)
+    private bool TryApply(bool running, bool allowAttacks, bool useScriptedFamiliars, out string reason)
     {
         try
         {
@@ -134,7 +134,7 @@ internal sealed class BeastmasterMinervaCombat : IBeastmasterCombat
             if (current.DodgeEnabled != minervaMovement || current.FaceGazes != minervaMovement ||
                 !minervaMovement && !current.MovementStopped)
                 throw new InvalidOperationException("Minerva movement transition is unconfirmed.");
-            if (running && !abilities.TryActivate(out actionError, allowAttacks && !current.WithholdAttacks, needsNativeMovement))
+            if (running && !abilities.TryActivate(out actionError, allowAttacks && !current.WithholdAttacks, needsNativeMovement, useScriptedFamiliars))
                 throw new InvalidOperationException(actionError);
             nativeMovementOwned = needsNativeMovement;
             IsRunning = running;

@@ -55,6 +55,8 @@ namespace VERMAXION
             => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true);
         public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T3, T4, T> GetIpcSubscriber<T1, T2, T3, T4, T>(string name)
             => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true);
+        public Dalamud.Plugin.Ipc.ICallGateSubscriber<T1, T2, T3, T4, T5, T> GetIpcSubscriber<T1, T2, T3, T4, T5, T>(string name)
+            => new(args => IpcCall!(name, args), () => IpcHasFunction?.Invoke(name) ?? true);
 
         public void SavePluginConfig(Configuration configuration)
             => SavedConfiguration = Newtonsoft.Json.JsonConvert.SerializeObject(configuration);

@@ -87,6 +87,7 @@ internal sealed partial class BeastmasterWindow
             profile.BeastmasterWeeklyLastCompleted = profile.BeastmasterWeeklyNextReset = DateTime.MinValue;
             changed = true;
         }
+        UiGui.TextDisabled(UiText.T("Degree") + ": " + UiText.T("Standard"));
         changed |= DrawWeeklyBoardSelection();
         if (changed) SaveSettings();
         UiGui.TextDisabled("Independent of the ordinary task's enablement, training goal and board-run allowance.");
@@ -118,7 +119,6 @@ internal sealed partial class BeastmasterWindow
         else UiGui.TextDisabled("Weekly Challenge Log status is available for the playing character. Saved scheduling settings remain editable.");
         ImGui.Separator();
         UiGui.TextDisabled("Runs missing selected boards. Locked or gear-blocked entries remain unfinished.");
-        UiGui.TextDisabled("Uses the saved scheduled team method, difficulty and shared supplies.");
         DrawScheduleTiming(profile.BeastmasterWeeklyLastCompleted, profile.BeastmasterWeeklyNextReset);
         ImGui.BeginDisabled(ViewingCurrent && (plugin.Engine.IsRunning || !plugin.CanStartScheduledBeastmaster(weekly: true, out _)));
         if (UIConstants.Button("Run weeklies now##BeastmasterWeekly")) RunForViewedProfile(weekly: true, scheduled: true);

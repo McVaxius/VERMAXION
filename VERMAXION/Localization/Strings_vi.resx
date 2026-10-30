@@ -1975,7 +1975,7 @@ Phụ thuộc: {1}</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist đã kết thúc với bộ trang bị {0}; kết quả trang bị chưa được xác minh.</value></data>
   <data name="Run due tasks on a timer" xml:space="preserve"><value>Chạy tác vụ đến hạn bằng bộ hẹn giờ</value></data>
   <data name="Timer interval (minutes)" xml:space="preserve"><value>Khoảng hẹn giờ (phút)</value></data>
-  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Chỉ áp dụng cho tài khoản đang chạy và nhân vật đang đăng nhập. Khi rảnh, chạy các tác vụ đã bật và đến hạn ở cả hai giai đoạn. FULL STOP tắt bộ hẹn giờ.</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP clears pending timer work." xml:space="preserve"><value>Chỉ áp dụng cho tài khoản đang chạy và nhân vật đang đăng nhập. Khi rảnh, chạy các tác vụ đã bật và đến hạn ở cả hai giai đoạn. FULL STOP xóa công việc đang chờ của bộ hẹn giờ.</value></data>
   <data name="Timer character session ended" xml:space="preserve"><value>Phiên nhân vật của bộ hẹn giờ đã kết thúc</value></data>
   <data name="Copy / ZIP Dalamud log" xml:space="preserve">
     <value>Sao chép / nén ZIP nhật ký Dalamud</value>

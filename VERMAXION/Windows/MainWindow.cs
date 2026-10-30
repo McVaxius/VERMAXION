@@ -307,7 +307,7 @@ public class MainWindow : Window, IDisposable
             plugin.ConfigManager.SaveCurrentAccount();
         }
         if (ImGui.IsItemHovered())
-            UiGui.SetTooltip("For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer.");
+            UiGui.SetTooltip("For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP clears pending timer work.");
         var timerInterval = account?.RetainerlessTimerIntervalMinutes ?? 30;
         ImGui.SetNextItemWidth(120 * scale);
         if (UIConstants.InputInt("Timer interval (minutes)", ref timerInterval, 1, 10) && account != null)

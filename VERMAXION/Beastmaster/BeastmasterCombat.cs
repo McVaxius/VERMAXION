@@ -13,7 +13,7 @@ internal interface IBeastmasterCombat
     bool IsRunning { get; }
     bool RequiresNativeMovement { get; }
     bool AllowDamageItems { get; }
-    bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null);
+    bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null, bool useScriptedFamiliars = true);
     bool TrySuspend(out string reason);
     bool TryRelease(out string reason);
     bool TryPrepare(uint board, uint battle, out bool ready, out string status, out string reason);
@@ -25,18 +25,18 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
 {
     internal const string IpcPrefix = "BMRVariantLoader.Crewcible.";
     internal const string RotationName = "BMRVariantModulePack.Autorotation.CrewcibleBST";
-    internal readonly record struct Target(ulong InstanceId, bool CanPull, uint DamageItem = 0);
+    internal readonly record struct Target(ulong InstanceId, bool CanPull, uint DamageItem = 0, uint ProtectionItem = 0);
     internal readonly record struct Setup(uint[] Roster, uint[] Trio, uint PreBorrowFamiliar,
         uint BorrowAction, uint FirstActiveFamiliar, uint[] RequiredGear);
     internal readonly record struct State(object Provider, bool Available, bool Ready, string? Owner,
         bool Active, bool AllowAttacks, bool UseBmrMovement, string? Rotation, string? Error,
         bool MovementStopped = true, bool RequiresNativeMovement = false,
-        bool AllowDamageItems = false, uint DamageItem = 0);
+        bool AllowDamageItems = false, uint DamageItem = 0, uint ProtectionItem = 0, bool UseScriptedFamiliars = true);
     internal interface IProvider
     {
         State Read();
         Target ReadTarget();
-        string Control(string owner, bool active, bool allowAttacks, bool useBmrMovement);
+        string Control(string owner, bool active, bool allowAttacks, bool useBmrMovement, bool useScriptedFamiliars = true);
         string Release(string owner);
         string Prepare(string owner, uint board, uint battle);
         bool CancelRotation();
@@ -137,9 +137,9 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
         catch (Exception ex) { reason = Describe(ex); return false; }
     }
 
-    public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null)
-        => TryApply(true, allowAttacks, useBmrMovement ?? this.useBmrMovement, out reason);
-    public bool TrySuspend(out string reason) => TryApply(false, false, false, out reason);
+    public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null, bool useScriptedFamiliars = true)
+        => TryApply(true, allowAttacks, useBmrMovement ?? this.useBmrMovement, useScriptedFamiliars, out reason);
+    public bool TrySuspend(out string reason) => TryApply(false, false, false, null, out reason);
     public bool TryPrepare(uint board, uint battle, out bool ready, out string status, out string reason)
     {
         ready = false;
@@ -156,7 +156,9 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
                 throw new InvalidOperationException("The native arena preparation response is incompatible.");
             var error = response.Value<string>("Error");
             if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
-            if (ReadCurrent().Owner != owner) throw new InvalidOperationException("Crewcible preparation ownership was not confirmed.");
+            var prepared = ReadCurrent();
+            if (prepared.Owner != owner || !prepared.UseScriptedFamiliars)
+                throw new InvalidOperationException("Crewcible preparation ownership or familiar mode was not confirmed.");
             ready = response.Value<bool>("Ready");
             status = response.Value<string>("Status")!;
             IsRunning = true; // Pending prep owns the pipeline; ordinary suspension would cancel its request.
@@ -174,7 +176,13 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
     {
         var current = ReadCurrent();
         if (controllerClaimed && current.Owner != owner) throw new InvalidOperationException("Crewcible ownership was revoked.");
-        return provider.ReadTarget() with { DamageItem = DamageItemsPermitted(current) ? current.DamageItem : 0 };
+        var protectionPermitted = controllerClaimed && IsRunning && current.Owner == owner && current.Available && current.Ready &&
+            current.Active && current.Rotation == RotationName && string.IsNullOrEmpty(current.Error);
+        return provider.ReadTarget() with
+        {
+            DamageItem = DamageItemsPermitted(current) ? current.DamageItem : 0,
+            ProtectionItem = protectionPermitted && current.ProtectionItem == 137 ? 137u : 0,
+        };
     }
     private State ReadCurrent()
     {
@@ -183,7 +191,7 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
             throw new InvalidOperationException("A combat provider was unloaded or replaced; original ownership is unresolved.");
         return current;
     }
-    private bool TryApply(bool active, bool allowAttacks, bool nativeMovement, out string reason)
+    private bool TryApply(bool active, bool allowAttacks, bool nativeMovement, bool? useScriptedFamiliars, out string reason)
     {
         try
         {
@@ -198,12 +206,15 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
             var current = ReadCurrent();
             if (controllerClaimed && current.Owner != owner)
                 throw new InvalidOperationException("Crewcible ownership was revoked.");
+            // Suspension must retain an already prepared ranked encounter.
+            var scriptedFamiliars = useScriptedFamiliars ?? current.UseScriptedFamiliars;
             controllerClaimed = true; // An IPC call may mutate state before its reply fails.
-            var error = provider.Control(owner, active, active && allowAttacks, nativeMovement);
+            var error = provider.Control(owner, active, active && allowAttacks, nativeMovement, scriptedFamiliars);
             if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
             current = ReadCurrent();
             if (current.Owner != owner || current.Active != active || current.AllowAttacks != (active && allowAttacks) ||
-                current.UseBmrMovement != nativeMovement || (!active || !nativeMovement) && !current.MovementStopped)
+                current.UseBmrMovement != nativeMovement || current.UseScriptedFamiliars != scriptedFamiliars ||
+                (!active || !nativeMovement) && !current.MovementStopped)
                 throw new InvalidOperationException("Native Crewcible control transition was not confirmed.");
             IsRunning = active;
             reason = string.Empty;
@@ -270,14 +281,14 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
             RequireNativeController();
             var bmr = ReadPlugin("BossModReborn", out _);
             if (!ipc.GetIpcSubscriber<string>(IpcPrefix + "State.v1").HasFunction ||
-                !ipc.GetIpcSubscriber<string, bool, bool, bool, string>(IpcPrefix + "Control.v1").HasFunction ||
+                !ipc.GetIpcSubscriber<string, bool, bool, bool, bool, string>(IpcPrefix + "Control.v2").HasFunction ||
                 !ipc.GetIpcSubscriber<string, string>(IpcPrefix + "Release.v1").HasFunction ||
                 !ipc.GetIpcSubscriber<string, uint, uint, string>(IpcPrefix + "Prepare.v1").HasFunction ||
                 !ipc.GetIpcSubscriber<(ulong, bool)>(IpcPrefix + "Target.v1").HasFunction ||
                 !ipc.GetIpcSubscriber<uint, uint, string>(IpcPrefix + "Setup.v1").HasFunction)
                 throw new InvalidOperationException("BMRVariantLoader is loaded, but its native Crewcible controller IPC is unavailable or incompatible. Update BMRVariantLoader and BossModReborn to compatible versions.");
             var status = JObject.Parse(ipc.GetIpcSubscriber<string>(IpcPrefix + "State.v1").InvokeFunc());
-            if (new[] { "Available", "Ready", "Active", "AllowAttacks", "UseBmrMovement", "MovementStopped", "RequiresNativeMovement" }
+            if (new[] { "Available", "Ready", "Active", "AllowAttacks", "UseBmrMovement", "UseScriptedFamiliars", "MovementStopped", "RequiresNativeMovement" }
                     .Any(name => status[name]?.Type != JTokenType.Boolean) ||
                 status["Owner"]?.Type is not (JTokenType.String or JTokenType.Null) ||
                 status["Rotation"]?.Type != JTokenType.String)
@@ -288,16 +299,18 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
                 status.Value<string>("Rotation"), status.Value<string>("Error"),
                 status.Value<bool>("MovementStopped"), status.Value<bool>("RequiresNativeMovement"),
                 status["AllowDamageItems"]?.Type == JTokenType.Boolean && status.Value<bool>("AllowDamageItems"),
-                status["DamageItem"]?.Type == JTokenType.Integer ? status.Value<uint>("DamageItem") : 0);
+                status["DamageItem"]?.Type == JTokenType.Integer ? status.Value<uint>("DamageItem") : 0,
+                status["ProtectionItem"]?.Type == JTokenType.Integer ? status.Value<uint>("ProtectionItem") : 0,
+                status.Value<bool>("UseScriptedFamiliars"));
         }
         public Target ReadTarget()
         {
             var target = Plugin.PluginInterface.GetIpcSubscriber<(ulong, bool)>(IpcPrefix + "Target.v1").InvokeFunc();
             return new(target.Item1, target.Item2);
         }
-        public string Control(string owner, bool active, bool allowAttacks, bool useBmrMovement)
-            => Plugin.PluginInterface.GetIpcSubscriber<string, bool, bool, bool, string>(IpcPrefix + "Control.v1")
-                .InvokeFunc(owner, active, allowAttacks, useBmrMovement);
+        public string Control(string owner, bool active, bool allowAttacks, bool useBmrMovement, bool useScriptedFamiliars = true)
+            => Plugin.PluginInterface.GetIpcSubscriber<string, bool, bool, bool, bool, string>(IpcPrefix + "Control.v2")
+                .InvokeFunc(owner, active, allowAttacks, useBmrMovement, useScriptedFamiliars);
         public string Release(string owner)
             => Plugin.PluginInterface.GetIpcSubscriber<string, string>(IpcPrefix + "Release.v1").InvokeFunc(owner);
         public string Prepare(string owner, uint board, uint battle)

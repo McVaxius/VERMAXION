@@ -356,10 +356,10 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         IsPaused = false; pausedAt = default;
         owner = Svc.PlayerState.ContentId;
         runData = getCharacterData();
-        runSettings ??= settings.Clone();
+        runSettings ??= weekly ? BeastmasterWeeklyPolicy.CopySettings(settings) : settings.Clone();
         if (freshPlan)
         {
-            runSettings = settings.Clone(); CurrentRun = 1;
+            runSettings = weekly ? BeastmasterWeeklyPolicy.CopySettings(settings) : settings.Clone(); CurrentRun = 1;
             BoardRunCompleted = ResultObserved = resultSeen = false;
             resultRanksObserved = resultRanksUnavailable = false;
             resultReadStarted = default;
@@ -376,6 +376,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             RequestFastRankScan();
             RememberRunDisplay(weekly);
         }
+        if (weeklyActive) runSettings.Degree = CrucibleDegree.Standard;
         if (CurrentRun < 1 && !weeklyActive) CurrentRun = 1;
         if (!changedCharacter && (IsRefreshing || refreshCleanupPending))
         {
@@ -731,7 +732,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                     if (!NativeQueueIsIdle()) { Fail("An existing duty queue must settle before starting Beastmaster."); break; }
                     if (entryDegreeLayout != (nint)layout)
                     { entryDegreeLayout = (nint)layout; entryDegreeSelected = false; rankedEntryClickSubmitted = false; rankedEntryCheckedUpdates = 0; }
-                    var effectiveDegree = QuestManager.IsQuestComplete(71045) ? Settings.Degree : CrucibleDegree.Standard;
+                    var effectiveDegree = !weeklyActive && QuestManager.IsQuestComplete(71045) ? Settings.Degree : CrucibleDegree.Standard;
                     if (!entryDegreeSelected)
                     {
                         if (QuestManager.IsQuestComplete(71045)) CrucibleUi.Screens.StageDetail.SetDegree(layout, effectiveDegree);
@@ -982,7 +983,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         { SuspendCombat(); return false; }
         StopNavigation();
         if (!NavigationSettled()) { status = "Waiting for owned movement to stop"; return false; }
-        if (combat.TryActivate(out var reason, allowAttacks)) return true;
+        if (combat.TryActivate(out var reason, allowAttacks,
+            useScriptedFamiliars: BeastmasterSelection.RequiresClearTeam(Settings))) return true;
         Fail(reason); return false;
     }
     internal bool SuspendCombat()
@@ -1208,6 +1210,6 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         entryWithdrawalHook?.Dispose(); entryWithdrawalHook = null;
         if (entryPromptListener) Svc.AddonLifecycle.UnregisterListener(AddonEvent.PreReceiveEvent, CrucibleUi.YesNo, ObserveEntryPromptEvent);
         if (entryPromptListener) Svc.AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, CrucibleUi.YesNo, ObserveEntryPromptSetup);
-        InstanceContentCrucible.Dispose(); disposed = true;
+        disposed = true;
     }
 }

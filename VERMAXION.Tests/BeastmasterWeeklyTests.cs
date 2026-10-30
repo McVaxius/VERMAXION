@@ -462,4 +462,57 @@ public sealed class BeastmasterWeeklyTests
         Assert.True(saved.ShopLists[0].Order[0].Blocked);
         Assert.False(saved.BeastTierLists[0][0].PickBlock);
     }
+
+    [Theory]
+    [InlineData(CrucibleDegree.First)]
+    [InlineData(CrucibleDegree.Second)]
+    [InlineData(CrucibleDegree.Third)]
+    public void WeeklyCreationAndEveryBoardTransitionUseStandardWithoutChangingManualChoices(CrucibleDegree savedDegree)
+    {
+        var manual = new BeastmasterSettings
+        {
+            Board = 5, Degree = savedDegree, RankedEntry = true, Goal = BeastmasterRunGoal.TrainOwned,
+            RunCount = 12, CompletionCommand = "/vmx off", TeamMode = CrucibleTeamMode.Leveling,
+            WeeklyBoards = [1, 2, 3, 4, 5], CustomTeam = [13, 20, 27],
+        };
+        var scheduledSetup = BeastmasterRunSetup.From(manual);
+        var scheduled = scheduledSetup.ApplyTo(manual);
+        foreach (var source in new[] { manual, scheduled })
+        {
+            var weekly = BeastmasterWeeklyPolicy.CopySettings(source);
+            Assert.Equal(CrucibleDegree.Standard, weekly.Degree);
+            Assert.Equal(BeastmasterRunGoal.FixedRuns, weekly.Goal);
+            Assert.Equal(1, weekly.RunCount);
+            Assert.Empty(weekly.CompletionCommand);
+            // Selection order and observed-attempt receipts remain the existing
+            // policy's responsibility; a difficulty override cannot reorder them.
+            uint[] order = [3, 1, 5, 2, 4];
+            var rows = order.Select(board => new BeastmasterWeeklyObjective(board, 88 + board,
+                "", "", BeastmasterWeeklyState.Unfinished, "", 0, 0)).ToArray();
+            var attempted = new HashSet<uint>();
+            var generated = new List<uint>();
+            while (BeastmasterWeeklyPolicy.Next(BeastmasterWeeklyPolicy.SelectedObjectives(weekly, rows), attempted) is { } next)
+            {
+                // A previously saved nonzero choice must not survive any
+                // subsequent weekly board creation either.
+                weekly.Degree = savedDegree;
+                BeastmasterWeeklyPolicy.SelectBoard(weekly, next.Board);
+                Assert.Equal(CrucibleDegree.Standard, weekly.Degree);
+                Assert.Equal(1, weekly.RunCount);
+                generated.Add(weekly.Board);
+                attempted.Add(next.Board);
+            }
+            Assert.Equal(order, generated);
+            Assert.True(attempted.SetEquals(order));
+            Assert.True(source.WeeklyBoards!.SetEquals(order));
+            Assert.Equal(savedDegree, source.Degree);
+            Assert.Equal(12, source.RunCount);
+            Assert.Equal(5u, source.Board);
+            Assert.Equal(BeastmasterRunGoal.TrainOwned, source.Goal);
+            Assert.Equal("/vmx off", source.CompletionCommand);
+            Assert.Equal(new uint[] { 13, 20, 27 }, source.CustomTeam);
+        }
+        Assert.Equal(savedDegree, scheduledSetup.Degree);
+        Assert.Equal(12, scheduledSetup.RunCount);
+    }
 }

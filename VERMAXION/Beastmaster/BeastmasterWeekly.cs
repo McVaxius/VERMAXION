@@ -241,7 +241,7 @@ internal sealed unsafe partial class BeastmasterService
             Stop(); Transition(RunState.Complete, text);
             return;
         }
-        runSettings!.Board = next.Board;
+        BeastmasterWeeklyPolicy.SelectBoard(runSettings!, next.Board);
         weeklyAttempted.Add(next.Board);
         weeklyEnteredBoard = 0;
         CurrentRun++; boardStep = 0; ResultObserved = resultSeen = false;

@@ -1,7 +1,5 @@
-// Adapted from erdelf/AutoDuty, commit 7e0ede4be688980d217faf6889ffdac53e18e30f.
-using System;
-using Dalamud.Hooking;
 using ECommons.DalamudServices;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 
@@ -9,21 +7,38 @@ namespace VERMAXION.Beastmaster;
 
 internal static unsafe class InstanceContentCrucible
 {
-    private delegate void UseItemDelegate(InstanceContentDirector* director, uint slot, int beastId);
-    private static Hook<UseItemDelegate>? hook;
-
-    internal static void UseItem(uint slot, int beastId)
+    // The void native call dispatches a request; it does not confirm its effect.
+    internal static bool TryUseItem(uint slot, uint itemId, int beastId, out int itemCount)
     {
-        var director = EventFramework.Instance()->GetInstanceContentDirector();
-        if (director == null || !BeastmasterService.IsCrucibleTerritory(Svc.ClientState.TerritoryType)) return;
-        if (hook == null)
-        {
-            hook = Svc.Hook.HookFromSignature<UseItemDelegate>("E8 ?? ?? ?? ?? 83 7F 44 00 48 8D 57 44", InvokeOriginal);
-            hook.Enable();
-        }
-        hook.Original(director, slot, beastId);
+        itemCount = 0;
+        var crucible = Current();
+        var actions = ActionManager.Instance();
+        if (crucible == null || actions == null || actions->CastSpellId != 0 || actions->AnimationLock > 0 || actions->ActionQueued)
+            return false;
+        if (slot >= crucible->Inventory.Length || itemId == 0 || crucible->Inventory[(int)slot].ItemId != itemId)
+            return false;
+        foreach (ref readonly var entry in crucible->Inventory)
+            if (entry.ItemId == itemId) ++itemCount;
+        crucible->UseItem(slot, beastId);
+        return true;
     }
 
-    private static void InvokeOriginal(InstanceContentDirector* director, uint slot, int beastId) => hook!.Original(director, slot, beastId);
-    internal static void Dispose() { hook?.Dispose(); hook = null; }
+    internal static int? ItemCount(uint itemId)
+    {
+        var crucible = Current();
+        if (crucible == null) return null;
+        var count = 0;
+        foreach (ref readonly var entry in crucible->Inventory)
+            if (entry.ItemId == itemId) ++count;
+        return count;
+    }
+
+    private static InstanceContentCrucibleOfTheUnbroken* Current()
+    {
+        var framework = EventFramework.Instance();
+        var director = framework == null ? null : framework->GetInstanceContentDirector();
+        return director != null && director->InstanceContentType == InstanceContentType.CrucibleOfTheUnbroken &&
+            BeastmasterService.IsCrucibleTerritory(Svc.ClientState.TerritoryType)
+            ? (InstanceContentCrucibleOfTheUnbroken*)director : null;
+    }
 }

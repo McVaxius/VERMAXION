@@ -1,3 +1,9 @@
+2026-10-30 - Full Stop and weekly Normal-run fixes (3.0.0.5)
+
+- Stop current services, navigation and pending work without changing the saved master automation or retainerless-timer enable settings. Preserve existing task-specific stop/cleanup behavior.
+- Always select Standard difficulty for weekly board clears, including saved nonstandard setups, restart and every subsequent board. Keep manual difficulty and other saved preferences unchanged.
+- Explicitly select adaptive Standard familiar control or scripted ranked preparation for every combat activation. Require BMRVariantLoader 2.1.0.4 or later and its compatible controller acknowledgement so Standard runs do not wait for preparation that they never request; preserve suspension and ownership guards.
+
 2026-10-29 - Shared appearance controls and Glasswork backgrounds (3.0.0.4)
 
 - Add native styling and movement/resize lock controls in titlebars, Window appearance and /vmx or /vermaxion commands: style, style on, style off, lock and unlock (styling aliases are also accepted). Preserve existing native identities, profile storage, fonts and opacity/fade.
@@ -10,6 +16,13 @@
 - Surface the already captured idle custom-delivery refresh error in the task status, Run blocker and engine eligibility instead of hiding it behind unknown allowances. Retain all admission guards, generic unknown-data status when no exception exists, and current-character reset behavior; clear stale detail after a successful refresh. Translate the diagnostic prefix in all fifteen catalogs. This corrects error visibility, not the unconfirmed native cause of the reported blocked deliveries.
 - Carry the freshly revalidated chocobo through the native feed picker using a single-use proof recorded only after a successful selection click. Reject missing or changed targets/proofs and changed feed stock before Reward; retain one-root plus same-bird cooldown receipts. Remove the unsupported requirement for the roster to stay visible during Reward. The supplied log isolates that preflight failure but does not identify its exact native subpredicate; live training acceptance remains pending.
 - Validation: isolated production compilation succeeds with existing warnings. The combined functional checks pass 58 cases, and the final UI/status/stables selection run passes 54 cases. Native training acceptance and the specific manual custom-delivery blocker remain unverified.
+
+2026-10-29 - Crewcible native item dispatch and optional protection (3.0.0.3 unchanged)
+
+- Dispatch held Crucible items through the installed ClientStructs API with actual director, territory, inventory-slot, casting, animation-lock and queued-action checks. Remove the redundant custom signature hook. Refused local requests leave the existing item interval available.
+- Accept optional Tome137 advice only from the owned active ready BMRV lease. During its actual unprotected later-buster window, prioritize an actually held usable Tome over reactive low-HP items; older providers safely omit this advice.
+- Describe dispatch as a request and report consumption only after observing native inventory reduction. Reset the one pending observation with the existing menu state. Keep the existing item poll/request intervals, revival safeguards and single rotation-cancel behavior.
+- Isolated production/test builds succeed and all 476 Beastmaster tests pass, including native slot/readiness rejection, optional-provider compatibility, actual menu priority and observed consumption. Existing package/reader/test-reflector warnings remain. No deployment or live-clear claim.
 
 2026-10-29 - Teleport floor and PvP Throw activity (unversioned)
 

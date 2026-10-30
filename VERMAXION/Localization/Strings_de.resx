@@ -4827,7 +4827,7 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist ist für Ausrüstungsset {0} fertig; das Ausrüstungsergebnis ist nicht bestätigt.</value></data>
   <data name="Run due tasks on a timer" xml:space="preserve"><value>Fällige Aufgaben zeitgesteuert ausführen</value></data>
   <data name="Timer interval (minutes)" xml:space="preserve"><value>Timerintervall (Minuten)</value></data>
-  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Nur für dieses aktive Konto und den angemeldeten Charakter. Führt aktivierte, fällige Aufgaben beider Phasen im Leerlauf aus. FULL STOP deaktiviert den Timer.</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP clears pending timer work." xml:space="preserve"><value>Nur für dieses aktive Konto und den angemeldeten Charakter. Führt aktivierte, fällige Aufgaben beider Phasen im Leerlauf aus. FULL STOP löscht ausstehende Timer-Aufgaben.</value></data>
   <data name="Timer character session ended" xml:space="preserve"><value>Die Charaktersitzung des Timers wurde beendet</value></data>
   <data name="Copy / ZIP Dalamud log" xml:space="preserve">
     <value>Dalamud-Protokoll kopieren / zippen</value>

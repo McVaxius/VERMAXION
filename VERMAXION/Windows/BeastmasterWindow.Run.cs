@@ -254,6 +254,7 @@ internal sealed partial class BeastmasterWindow
         ImGui.BeginDisabled(ViewingCurrent && !ready);
         if (UIConstants.Button("Run weekly challenges##BeastmasterWeekly")) RunForViewedProfile(weekly: true, scheduled: false);
         ImGui.EndDisabled();
+        UiGui.TextDisabled(UiText.T("Degree") + ": " + UiText.T("Standard"));
         if (ViewingCurrent)
         {
             var rows = plugin.BeastmasterService.SelectedWeeklyObjectives;

@@ -1975,7 +1975,7 @@ Dependensi: {1}</value></data>
   <data name="Stylist finished for gearset {0}; equipment result unverified." xml:space="preserve"><value>Stylist selesai untuk set perlengkapan {0}; hasil perlengkapan belum diverifikasi.</value></data>
   <data name="Run due tasks on a timer" xml:space="preserve"><value>Jalankan tugas yang jatuh tempo dengan timer</value></data>
   <data name="Timer interval (minutes)" xml:space="preserve"><value>Interval timer (menit)</value></data>
-  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP disables the timer." xml:space="preserve"><value>Hanya untuk akun yang sedang berjalan dan karakter yang masuk. Saat tidak ada aktivitas, menjalankan tugas aktif yang jatuh tempo dari kedua tahap. FULL STOP menonaktifkan timer.</value></data>
+  <data name="For this runtime account and logged-in character only. Runs enabled, due tasks in both phases when idle. FULL STOP clears pending timer work." xml:space="preserve"><value>Hanya untuk akun yang sedang berjalan dan karakter yang masuk. Saat tidak ada aktivitas, menjalankan tugas aktif yang jatuh tempo dari kedua tahap. FULL STOP menghapus pekerjaan timer yang tertunda.</value></data>
   <data name="Timer character session ended" xml:space="preserve"><value>Sesi karakter timer telah berakhir</value></data>
   <data name="Copy / ZIP Dalamud log" xml:space="preserve">
     <value>Salin / ZIP log Dalamud</value>

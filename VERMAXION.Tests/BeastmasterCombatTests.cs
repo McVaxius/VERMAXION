@@ -48,6 +48,106 @@ namespace VERMAXION.Tests
         }
 
         [Fact]
+        public void FamiliarModeIsAcknowledgedOnEveryActivationAndRetainedDuringSuspension()
+        {
+            var provider = new FakeProvider();
+            var combat = new BeastmasterCombat(provider);
+            foreach (var scripted in new[] { false, true, false })
+            {
+                Assert.True(combat.TryActivate(out var error, allowAttacks: false, useScriptedFamiliars: scripted), error);
+                var owner = provider.Current.Owner;
+                Assert.Equal(scripted, provider.Current.UseScriptedFamiliars);
+                Assert.True(combat.TryActivate(out error, useScriptedFamiliars: scripted), error);
+                Assert.True(provider.Current.AllowAttacks);
+                Assert.Equal(scripted, provider.Current.UseScriptedFamiliars);
+                Assert.Equal(owner, provider.Current.Owner);
+                Assert.True(combat.TrySuspend(out error), error);
+                Assert.False(provider.Current.Active);
+                Assert.Equal(scripted, provider.Current.UseScriptedFamiliars);
+            }
+            Assert.Equal(1, provider.Cancellations);
+            Assert.True(combat.TryRelease(out var released), released);
+            Assert.True(combat.TryActivate(out released, useScriptedFamiliars: true), released);
+            Assert.True(provider.Current.UseScriptedFamiliars);
+            Assert.Equal(2, provider.Cancellations);
+            Assert.True(combat.TryRelease(out released), released);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void UnacknowledgedFamiliarModeCannotActivateAndReleasesTheLease(bool scripted)
+        {
+            var provider = new FakeProvider { UnconfirmedFamiliarMode = true };
+            provider.Current = provider.Current with { UseScriptedFamiliars = !scripted };
+            var combat = new BeastmasterCombat(provider);
+            Assert.False(combat.TryActivate(out var error, useScriptedFamiliars: scripted));
+            Assert.Contains("transition was not confirmed", error);
+            Assert.False(combat.IsRunning);
+            Assert.False(combat.OwnsState);
+            Assert.Null(provider.Current.Owner);
+            Assert.Equal(1, provider.Releases);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void StrictPreparationMustConfirmScriptedModeAfterAGenericActivation(bool acknowledged)
+        {
+            var provider = new FakeProvider();
+            var combat = new BeastmasterCombat(provider);
+            Assert.True(combat.TryActivate(out var error, useScriptedFamiliars: false), error);
+            provider.UnconfirmedFamiliarMode = !acknowledged;
+            Assert.Equal(acknowledged, combat.TryPrepare(4, 22, out _, out _, out error));
+            if (acknowledged)
+            {
+                Assert.True(provider.Current.UseScriptedFamiliars);
+                Assert.True(combat.TrySuspend(out error), error);
+                Assert.True(provider.Current.UseScriptedFamiliars);
+                Assert.True(combat.TryRelease(out error), error);
+            }
+            else
+            {
+                Assert.Contains("familiar mode was not confirmed", error);
+                Assert.Null(provider.Current.Owner);
+                Assert.False(combat.OwnsState);
+            }
+        }
+
+        [Fact]
+        public void ProtectionAdviceRequiresOwnedReadyActiveLeaseAndOnlyAdvertisesTome()
+        {
+            var provider = new FakeProvider();
+            provider.Current = provider.Current with { ProtectionItem = 137 };
+            var combat = new BeastmasterCombat(provider);
+            Assert.Equal(0u, combat.ReadTarget().ProtectionItem);
+            Assert.True(combat.TryActivate(out var error), error);
+            var permitted = provider.Current;
+            Assert.Equal(137u, combat.ReadTarget().ProtectionItem);
+            // Protection does not require permission to attack or spend damage items.
+            provider.Current = permitted with { AllowAttacks = false, AllowDamageItems = false };
+            Assert.Equal(137u, combat.ReadTarget().ProtectionItem);
+            foreach (var rejected in new[]
+            {
+                permitted with { Available = false }, permitted with { Ready = false },
+                permitted with { Active = false }, permitted with { Rotation = "other" },
+                permitted with { Error = "not ready" }, permitted with { ProtectionItem = 139 },
+                permitted with { ProtectionItem = 0 },
+            })
+            {
+                provider.Current = rejected;
+                Assert.Equal(0u, combat.ReadTarget().ProtectionItem);
+            }
+            provider.Current = permitted with { Owner = "Other controller" };
+            Assert.Throws<InvalidOperationException>(() => combat.ReadTarget());
+            provider.Current = permitted;
+            Assert.True(combat.TrySuspend(out error), error);
+            Assert.Equal(0u, combat.ReadTarget().ProtectionItem);
+            Assert.True(combat.TryRelease(out error), error);
+            Assert.Equal(0u, combat.ReadTarget().ProtectionItem);
+        }
+
+        [Fact]
         public void DamageItemAdviceRequiresTheActualOwnedPermissionAndClearsWithTheNativeWindow()
         {
             var provider = new FakeProvider();
@@ -197,7 +297,7 @@ namespace VERMAXION.Tests
                 var state = new JObject
                 {
                     ["Available"] = true, ["Ready"] = true, ["Owner"] = null,
-                    ["Active"] = false, ["AllowAttacks"] = false, ["UseBmrMovement"] = false,
+                    ["Active"] = false, ["AllowAttacks"] = false, ["UseBmrMovement"] = false, ["UseScriptedFamiliars"] = true,
                     ["MovementStopped"] = true, ["RequiresNativeMovement"] = false,
                     ["Rotation"] = BeastmasterCombat.RotationName, ["Error"] = "",
                 };
@@ -212,11 +312,12 @@ namespace VERMAXION.Tests
                     switch (name)
                     {
                         case BeastmasterCombat.IpcPrefix + "State.v1": return state.ToString();
-                        case BeastmasterCombat.IpcPrefix + "Control.v1":
+                        case BeastmasterCombat.IpcPrefix + "Control.v2":
                             state["Owner"] = (string)args[0]!;
                             state["Active"] = (bool)args[1]!;
                             state["AllowAttacks"] = (bool)args[2]!;
                             state["UseBmrMovement"] = (bool)args[3]!;
+                            state["UseScriptedFamiliars"] = (bool)args[4]!;
                             state["MovementStopped"] = !(bool)args[1]! || !(bool)args[3]!;
                             return "";
                         case BeastmasterCombat.IpcPrefix + "Prepare.v1":
@@ -245,9 +346,12 @@ namespace VERMAXION.Tests
                 Assert.Empty(commands);
                 Assert.True(combat.TryPrepare(1, 2, out _, out _, out error), error);
                 Assert.True(combat.TryPrepare(1, 2, out _, out _, out error), error);
-                Assert.True(combat.TryActivate(out error, allowAttacks: false), error);
+                Assert.True(combat.TryActivate(out error, allowAttacks: false, useScriptedFamiliars: false), error);
+                Assert.False(state.Value<bool>("UseScriptedFamiliars"));
                 Assert.True(combat.TrySuspend(out error), error);
+                Assert.False(state.Value<bool>("UseScriptedFamiliars"));
                 Assert.True(combat.TryActivate(out error), error);
+                Assert.True(state.Value<bool>("UseScriptedFamiliars"));
                 Assert.True(combat.TryRelease(out error), error);
                 Assert.True(combat.TryRelease(out error), error);
                 Assert.Equal(new[] { "/rotation cancel" }, commands);
@@ -449,7 +553,7 @@ namespace VERMAXION.Tests
         [Theory]
         [InlineData("")]
         [InlineData("State.v1")]
-        [InlineData("Control.v1")]
+        [InlineData("Control.v2")]
         [InlineData("Release.v1")]
         [InlineData("Target.v1")]
         [InlineData("Prepare.v1")]
@@ -468,7 +572,7 @@ namespace VERMAXION.Tests
                 ECommons.Reflection.DalamudReflector.PluginInstances = new Dictionary<string, object?> { ["BossModReborn"] = new object() };
                 ipc.IpcCall = (name, _) => name switch
                 {
-                    BeastmasterCombat.IpcPrefix + "State.v1" => "{\"Available\":true,\"Ready\":true,\"Owner\":null,\"Active\":false,\"AllowAttacks\":false,\"UseBmrMovement\":false,\"MovementStopped\":true,\"RequiresNativeMovement\":true,\"Rotation\":\"" + BeastmasterCombat.RotationName + "\",\"Error\":\"\"}",
+                    BeastmasterCombat.IpcPrefix + "State.v1" => "{\"Available\":true,\"Ready\":true,\"Owner\":null,\"Active\":false,\"AllowAttacks\":false,\"UseBmrMovement\":false,\"UseScriptedFamiliars\":true,\"MovementStopped\":true,\"RequiresNativeMovement\":true,\"Rotation\":\"" + BeastmasterCombat.RotationName + "\",\"Error\":\"\"}",
                     BeastmasterCombat.IpcPrefix + "Target.v1" => (17UL, true),
                     _ => throw new InvalidOperationException("Unexpected write " + name),
                 };
@@ -488,10 +592,35 @@ namespace VERMAXION.Tests
                 Assert.False(state.Active);
                 Assert.False(state.AllowAttacks);
                 Assert.False(state.UseBmrMovement);
+                Assert.True(state.UseScriptedFamiliars);
                 Assert.True(state.RequiresNativeMovement);
                 Assert.False(state.AllowDamageItems); // Older providers omit the optional permission.
+                Assert.Equal(0u, state.ProtectionItem);
                 Assert.True(new BeastmasterCombat(provider).RequiresNativeMovement);
                 Assert.Equal(new BeastmasterCombat.Target(17, true), provider.ReadTarget());
+                var readLegacy = ipc.IpcCall;
+                ipc.IpcCall = (name, args) =>
+                {
+                    var response = readLegacy(name, args);
+                    if (name != BeastmasterCombat.IpcPrefix + "State.v1") return response;
+                    var payload = JObject.Parse((string)response!); payload["ProtectionItem"] = 137u;
+                    return payload.ToString(Newtonsoft.Json.Formatting.None);
+                };
+                Assert.Equal(137u, provider.Read().ProtectionItem);
+                foreach (var invalidMode in new JToken?[] { null, JValue.CreateNull(), new JValue("false") })
+                {
+                    ipc.IpcCall = (name, args) =>
+                    {
+                        var response = readLegacy(name, args);
+                        if (name != BeastmasterCombat.IpcPrefix + "State.v1") return response;
+                        var payload = JObject.Parse((string)response!);
+                        if (invalidMode == null) payload.Remove("UseScriptedFamiliars");
+                        else payload["UseScriptedFamiliars"] = invalidMode;
+                        return payload.ToString(Newtonsoft.Json.Formatting.None);
+                    };
+                    Assert.False(BeastmasterCombat.CanStart(provider, out var incompatible));
+                    Assert.Contains("state is incompatible", incompatible);
+                }
             }
             finally
             {
@@ -510,14 +639,15 @@ namespace VERMAXION.Tests
             public int Controls, Releases, Cancellations;
             public int Preparations;
             public bool PreparationReady;
-            public bool FailAfterControl, FailRelease, ReadUnavailable, UnconfirmedMovementStop;
+            public bool FailAfterControl, FailRelease, ReadUnavailable, UnconfirmedMovementStop, UnconfirmedFamiliarMode;
             public BeastmasterCombat.State Read() => ReadUnavailable ? throw new InvalidOperationException("Provider unavailable") : Current;
             public BeastmasterCombat.Target ReadTarget() => Target;
-            public string Control(string owner, bool active, bool allowAttacks, bool useBmrMovement)
+            public string Control(string owner, bool active, bool allowAttacks, bool useBmrMovement, bool useScriptedFamiliars = true)
             {
                 Controls++;
                 if (Current.Owner != null && Current.Owner != owner) return "Controller already owned";
                 Current = Current with { Owner = owner, Active = active, AllowAttacks = allowAttacks, UseBmrMovement = useBmrMovement,
+                    UseScriptedFamiliars = UnconfirmedFamiliarMode ? Current.UseScriptedFamiliars : useScriptedFamiliars,
                     MovementStopped = (!active || !useBmrMovement) && !UnconfirmedMovementStop };
                 if (FailAfterControl) { FailAfterControl = false; throw new InvalidOperationException("Synthetic post-write failure"); }
                 return "";
@@ -534,6 +664,7 @@ namespace VERMAXION.Tests
             {
                 Assert.Equal(Current.Owner, owner);
                 Preparations++;
+                if (!UnconfirmedFamiliarMode) Current = Current with { UseScriptedFamiliars = true };
                 return new JObject { ["Ready"] = PreparationReady, ["Status"] = "Preparing", ["Error"] = "" }.ToString();
             }
             public bool CancelRotation()

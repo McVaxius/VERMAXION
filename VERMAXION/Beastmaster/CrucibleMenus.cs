@@ -59,6 +59,7 @@ namespace VERMAXION.Beastmaster
 
         private DateTime itemNext;
         private DateTime itemLastUse = DateTime.MinValue;
+        private (uint Id, int Count, string Name)? requestedItem;
         private DateTime itemMenuFrom = DateTime.MinValue;
 
         private readonly Dictionary<string, BeastmasterReadRecovery> readRecovery = [];
@@ -97,6 +98,7 @@ namespace VERMAXION.Beastmaster
             this.restPicks    = null;
             this.feedFrom     = DateTime.MinValue;
             this.itemMenuFrom = DateTime.MinValue;
+            this.requestedItem = null;
             this.ResetShopVisit();
             this.readRecovery.Clear();
             this.submittedWindows.Clear();
@@ -959,7 +961,7 @@ namespace VERMAXION.Beastmaster
 
             this.itemNext = now + TimeSpan.FromMilliseconds(250);
 
-            if (!Config.Items || now - this.itemLastUse < ItemGap ||
+            if (!Config.Items ||
                 Svc.Objects.LocalPlayer is not { IsDead: false, MaxHp: > 0 } me || BeastmasterPlayer.HasStatus(418))
                 return;
 
@@ -971,6 +973,12 @@ namespace VERMAXION.Beastmaster
 
             var blocked = CrucibleItemData.ShopOrder.Where(e => e.Blocked).Select(e => e.ID).ToHashSet();
             List<ReaderXBMContentsItemShop.ItemEntry> items = reader.ItemEntries.Where(e => !blocked.Contains(e.Id)).ToList();
+            if (this.requestedItem is { } requested && InstanceContentCrucible.ItemCount(requested.Id) is { } remaining && remaining < requested.Count)
+            {
+                Svc.Log.Info($"[Crucible] Items: native inventory confirms consumption of {requested.Name}");
+                this.requestedItem = null;
+            }
+            if (now - this.itemLastUse < ItemGap) return;
 
             CrucibleBoard?     board = CrucibleBoard.Current();
             CrucibleBoardStop? currentStop   = board?.StopPlayerIsOn();
@@ -979,6 +987,11 @@ namespace VERMAXION.Beastmaster
             bool  InArena  = currentStop == null && !confirmingFight;
             bool  fighting = Svc.Condition[ConditionFlag.InCombat];
             float hp       = (float)me.CurrentHp / me.MaxHp;
+
+            var ownedTarget = InArena && fighting ? BeastmasterRuntime.Service.ReadCombatTarget() : default;
+            if (ownedTarget.ProtectionItem == 137 && !BeastmasterPlayer.HasStatus(4849) &&
+                Pick(PickFromItems([137u])))
+                return;
 
             IEnumerable<CrucibleBoardStop> boardStops = [];
             // An open fight confirmation commits to this fight, not to a possible camp
@@ -1003,7 +1016,6 @@ namespace VERMAXION.Beastmaster
             bool Encounter(uint id) => Svc.Objects.Any(actor => actor is IBattleNpc npc && npc.BaseId == id &&
                 npc.Health > 0 && BeastmasterPlayer.BelowDistanceToPlayer(npc.Position, 40f, 10f));
             var siren = Config.Board == 3 && Encounter(0x4CA1);
-            var ownedTarget = BeastmasterRuntime.Service.ReadCombatTarget();
             var nativeSandWindow = ownedTarget.DamageItem == 139;
             ReaderXBMContentsItemShop.ItemEntry? dmgItem = PickFromItems(CrucibleItemData.CombatDamageItems.Where(item =>
                 !clearTeam || !CrucibleItemData.ReserveDamageItem(Config.Board, item, siren, nativeSandWindow)));
@@ -1054,12 +1066,14 @@ namespace VERMAXION.Beastmaster
 
                 int slot = reader.GetItemIndex(pick);
 
-                InstanceContentCrucible.UseItem((uint) slot, 0);
+                if (!InstanceContentCrucible.TryUseItem((uint)slot, pick.Id, 0, out var count))
+                    return false;
 
                 this.itemLastUse = now;
+                this.requestedItem = (pick.Id, count, pick.Name);
 
-                this.Status       = $"Using {pick.Name} at {hp:P0}";
-                Svc.Log.Info($"[Crucible] Items: using {pick.Name} (slot {slot}) at {hp:P0} {(InArena ? "in a fight" : "on the board")}");
+                this.Status       = $"Requesting {pick.Name} at {hp:P0}";
+                Svc.Log.Info($"[Crucible] Items: requesting {pick.Name} (slot {slot}) at {hp:P0} {(InArena ? "in a fight" : "on the board")}");
 
                 return true;
             }

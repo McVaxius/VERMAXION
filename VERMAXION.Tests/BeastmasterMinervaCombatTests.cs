@@ -54,6 +54,32 @@ public sealed class BeastmasterMinervaCombatTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EveryActivationForwardsTheFamiliarModeThroughHoldsAndMovementHandoffs(bool scripted)
+    {
+        var provider = new FakeProvider();
+        var combat = new BeastmasterMinervaCombat(provider, provider.Abilities);
+        foreach (var mode in new[] { scripted, !scripted, scripted })
+        {
+            provider.Current = provider.Current with { WithholdAttacks = true };
+            Assert.True(combat.TryActivate(out var error, useScriptedFamiliars: mode), error);
+            Assert.Equal(mode, provider.Abilities.UseScriptedFamiliars);
+            Assert.False(provider.Abilities.AllowAttacks);
+            provider.Current = provider.Current with { WithholdAttacks = false, NativeRoute = true };
+            Assert.True(combat.TryActivate(out error, useScriptedFamiliars: mode), error);
+            Assert.Equal(mode, provider.Abilities.UseScriptedFamiliars);
+            Assert.True(provider.Abilities.AllowAttacks);
+            Assert.True(provider.Abilities.NativeMovement);
+            Assert.True(combat.TrySuspend(out error), error);
+            Assert.Equal(mode, provider.Abilities.UseScriptedFamiliars);
+            provider.Current = provider.Current with { NativeRoute = false };
+        }
+        Assert.Equal(1, provider.Claims);
+        Assert.True(combat.TryRelease(out var released), released);
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -851,10 +877,12 @@ public sealed class BeastmasterMinervaCombatTests
         public bool AllowDamageItems => OwnsState && IsRunning && AllowAttacks && !LeaseRevoked;
         public bool AllowAttacks { get; private set; }
         public bool NativeMovement { get; private set; }
+        public bool UseScriptedFamiliars { get; private set; } = true;
         public bool FailSuspension, FailRelease, LeaseRevoked;
         public int Acquisitions, Releases;
-        public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null)
+        public bool TryActivate(out string reason, bool allowAttacks = true, bool? useBmrMovement = null, bool useScriptedFamiliars = true)
         {
+            UseScriptedFamiliars = useScriptedFamiliars;
             NativeMovement = useBmrMovement == true;
             transitions.Add(NativeMovement ? "BMR:movement" : "BMR:actions only");
             if (!OwnsState) Acquisitions++;

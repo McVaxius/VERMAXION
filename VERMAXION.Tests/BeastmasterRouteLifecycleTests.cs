@@ -13,6 +13,8 @@ using System.Runtime.InteropServices;
 using Gui = host::FFXIVClientStructs.FFXIV.Component.GUI;
 using NativeGame = host::FFXIVClientStructs.FFXIV.Client.Game;
 using NativeGameUi = host::FFXIVClientStructs.FFXIV.Client.Game.UI;
+using NativeEvent = host::FFXIVClientStructs.FFXIV.Client.Game.Event;
+using NativeInstance = host::FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using NativeUi = host::FFXIVClientStructs.FFXIV.Client.UI;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -492,6 +494,71 @@ public sealed class BeastmasterRouteLifecycleTests
     }
 
     [Fact]
+    public void NativeCrucibleItemRequestRequiresMatchingSlotAndReadyActionsAndReportsConsumptionSeparately()
+    {
+        using var host = new HostFixture();
+        var service = host.CreateService(); host.EnableBattle(service); host.EnableCrucibleItems();
+        var native = Production.GetType("VERMAXION.Beastmaster.InstanceContentCrucible", true)!;
+        bool Request(uint slot, uint item, out int count)
+        {
+            object?[] args = [slot, item, 0, 0];
+            var accepted = (bool)native.GetMethod("TryUseItem", Static)!.Invoke(null, args)!;
+            count = (int)args[3]!; return accepted;
+        }
+        int? Count() => (int?)native.GetMethod("ItemCount", Static)!.Invoke(null, [137u]);
+        host.ItemSlot(2, 137); host.ItemSlot(5, 137);
+        Assert.Equal(2, Count());
+        Assert.False(Request(1, 137, out _)); // HUD slot shifted before dispatch.
+        Assert.False(Request(uint.MaxValue, 137, out _));
+        Assert.False(Request(2, 0, out _));
+        host.ItemActionState(123, 0, false); Assert.False(Request(2, 137, out _));
+        host.ItemActionState(0, 0.1f, false); Assert.False(Request(2, 137, out _));
+        host.ItemActionState(0, 0, true); Assert.False(Request(2, 137, out _));
+        host.ItemActionState(0, 0, false);
+        host.Territory = 148; Assert.False(Request(2, 137, out _)); Assert.Null(Count());
+        host.Territory = 1339; host.CrucibleDirectorValid = false;
+        Assert.False(Request(2, 137, out _)); Assert.Null(Count());
+        host.CrucibleDirectorValid = true;
+        Assert.Empty(host.ItemRequests);
+        Assert.True(Request(2, 137, out var count)); Assert.Equal(2, count);
+        Assert.Equal(new[] { (2u, 0) }, host.ItemRequests);
+        Assert.Equal(2, Count()); // The void native dispatch is not an effect receipt.
+        host.ItemSlot(2, 0); Assert.Equal(1, Count());
+    }
+
+    [Fact]
+    public void ActualItemMenuPrioritizesOwnedProtectionAndOnlyAcknowledgesObservedConsumption()
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        var service = host.CreateService(); host.EnableBattle(service); host.EnableCrucibleItems();
+        host.UseBoard(new live::VERMAXION.Beastmaster.CrucibleBoard(1, "Fixture arena", [], []));
+        host.Conditions.Add("InCombat"); host.PlayerCurrentHp = 20;
+        Assert.True((bool)Invoke(Field(service, "combat")!, "TryActivate", new object?[] { null, true, null, false })!);
+        Set(host.CombatState!, "ProtectionItem", 137u);
+        host.AddItemHud(137, 140); host.ItemSlot(0, 137); host.ItemSlot(1, 140);
+        var menus = Field(service, "menus")!; var now = DateTime.UtcNow;
+        host.ItemActionState(123, 0, false);
+        Invoke(menus, "UpdateItems", now);
+        Assert.Empty(host.ItemRequests);
+        Assert.Equal(DateTime.MinValue, Read<DateTime>(menus, "itemLastUse"));
+        host.ItemActionState(0, 0, false);
+        Invoke(menus, "UpdateItems", now.AddMilliseconds(251));
+        Assert.Equal(new[] { (0u, 0) }, host.ItemRequests); // Tome before low-HP potion.
+        Assert.NotNull(Field(menus, "requestedItem"));
+        Assert.DoesNotContain(host.Information, message => message.Contains("confirms consumption"));
+        Invoke(menus, "UpdateItems", now.AddMilliseconds(502));
+        Assert.NotNull(Field(menus, "requestedItem")); // Dispatch alone cannot acknowledge it.
+        host.ItemSlot(0, 0);
+        Invoke(menus, "UpdateItems", now.AddMilliseconds(753));
+        Assert.Null(Field(menus, "requestedItem"));
+        Assert.Single(host.Information, message => message.Contains("confirms consumption"));
+        Assert.Single(host.ItemRequests); // Observation runs during the existing request interval.
+        Invoke(menus, "Reset");
+        Assert.Null(Field(menus, "requestedItem"));
+    }
+
+    [Fact]
     public void RevivalProtectionDefersEphemeralItemsBeforeReadingTheirNativeHud()
     {
         using var host = new HostFixture();
@@ -537,6 +604,106 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.NotNull(host.BattleTarget);
         Assert.True(Read<bool>(host.CombatState!, "AllowAttacks"));
         Assert.Equal(1001UL, Read<ulong>(route, "autoAttackTarget"));
+    }
+
+    [Theory]
+    [InlineData(1u)]
+    [InlineData(2u)]
+    [InlineData(3u)]
+    [InlineData(4u)]
+    [InlineData(5u)]
+    public void EveryStandardBoardOpensAndContinuesAutomaticallyWithGenericFamiliars(uint board)
+    {
+        using var host = new HostFixture { Territory = 1338 + board, Position = new(120, 0, -420), PreparationReady = false };
+        var service = host.CreateService();
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = board });
+        host.EnableBattle(service);
+        for (var encounter = 0; encounter < 2; ++encounter)
+        {
+            var route = CreateRoute(service, host.Territory, resume: encounter > 0);
+            Set(service, "route", route);
+            // The first tick acquires generic control; a fresh native encounter
+            // initially advertises the strict preparation hold.
+            Invoke(route, "UpdateBattle");
+            Invoke(route, "UpdateBattle");
+            Assert.True(host.AutoAttacking);
+            Assert.True(Read<bool>(host.CombatState!, "AllowAttacks"));
+            Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+            Assert.Equal(1001UL, Read<ulong>(route, "autoAttackTarget"));
+            Assert.Equal(0, host.PreparationCalls);
+
+            host.Conditions.Add("InCombat");
+            host.HoldOffense = true;
+            Invoke(route, "UpdateBattle");
+            Assert.False(host.AutoAttacking);
+            Assert.False(Read<bool>(host.CombatState!, "AllowAttacks"));
+            host.HoldOffense = false;
+            Invoke(route, "UpdateBattle");
+            Assert.True(host.AutoAttacking);
+            Assert.True((bool)Invoke(service, "SuspendCombat")!);
+            Assert.False(host.AutoAttacking);
+            Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+            host.Conditions.Remove("InCombat");
+        }
+        Assert.All(host.CombatActivations, activation => Assert.False(activation.Scripted));
+        Assert.True((bool)Invoke(Field(service, "combat")!, "TryRelease", new object?[] { null })!);
+        Assert.Null(Field(host.CombatState!, "Owner"));
+    }
+
+    [Theory]
+    [InlineData(1u)]
+    [InlineData(2u)]
+    [InlineData(3u)]
+    [InlineData(4u)]
+    [InlineData(5u)]
+    public void FamiliarModeTransitionsDoNotLeakBetweenStandardAndStrictRunsOnAnyBoard(uint board)
+    {
+        using var host = new HostFixture { Territory = 1338 + board, Position = new(120, 0, -420), PreparationReady = false };
+        var service = host.CreateService();
+        var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = board };
+        Set(service, "runSettings", settings);
+        host.EnableBattle(service);
+        var route = CreateRoute(service, host.Territory);
+        Set(service, "route", route);
+        Invoke(route, "UpdateBattle");
+        Invoke(route, "UpdateBattle");
+        Assert.True(host.AutoAttacking);
+        var owner = Field(host.CombatState!, "Owner");
+        foreach (var degree in new[] { live::VERMAXION.Beastmaster.CrucibleDegree.First,
+            live::VERMAXION.Beastmaster.CrucibleDegree.Second, live::VERMAXION.Beastmaster.CrucibleDegree.Third })
+        {
+            Assert.True((bool)Invoke(service, "SuspendCombat")!);
+            settings.Degree = degree;
+            Invoke(service, "RecordFightContext", new live::VERMAXION.Beastmaster.BeastmasterFightContext(2, false));
+            host.PreparationReady = false;
+            Invoke(route, "UpdateBattle");
+            Assert.False(host.AutoAttacking);
+            Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+            var controls = host.CombatControls;
+            Invoke(route, "UpdateBattle");
+            Assert.Equal(controls, host.CombatControls);
+            Assert.False(host.AutoAttacking);
+            host.PreparationReady = true;
+            Invoke(route, "UpdateBattle");
+            Assert.True(host.AutoAttacking);
+            Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+            Assert.True((bool)Invoke(service, "SuspendCombat")!);
+            Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+
+            settings.Degree = live::VERMAXION.Beastmaster.CrucibleDegree.Standard;
+            Set(service, "fightContext", null);
+            Set(service, "arenaPrepared", false);
+            host.PreparationReady = false;
+            var preparations = host.PreparationCalls;
+            Invoke(route, "UpdateBattle");
+            Invoke(route, "UpdateBattle");
+            Assert.True(host.AutoAttacking);
+            Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+            Assert.Equal(preparations, host.PreparationCalls);
+            Assert.Equal(owner, Field(host.CombatState!, "Owner"));
+        }
+        Assert.True((bool)Invoke(service, "SuspendCombat")!);
+        Assert.True((bool)Invoke(Field(service, "combat")!, "TryRelease", new object?[] { null })!);
     }
 
     [Fact]
@@ -997,6 +1164,44 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.False(Read<bool>(route, "movementStarted"));
         Assert.Equal(0, Read<int>(route, "Step"));
         Assert.Contains("/vnav stop", host.Commands);
+    }
+
+    [Theory]
+    [InlineData(live::VERMAXION.Beastmaster.CrucibleDegree.First)]
+    [InlineData(live::VERMAXION.Beastmaster.CrucibleDegree.Second)]
+    [InlineData(live::VERMAXION.Beastmaster.CrucibleDegree.Third)]
+    public void ResumingWeeklyWorkUsesStandardWhileManualWorkRetainsItsDifficultyAndReceipts(
+        live::VERMAXION.Beastmaster.CrucibleDegree savedDegree)
+    {
+        using var host = new HostFixture();
+        host.NativePlayerAvailable = false;
+        var saved = new live::VERMAXION.Beastmaster.BeastmasterSettings
+            { Board = 3, Degree = savedDegree, RunCount = 12, WeeklyBoards = [1, 2, 3, 4, 5] };
+        foreach (var weekly in new[] { false, true })
+        {
+            var service = host.CreateService();
+            var run = saved.Clone();
+            Set(service, "runSettings", run);
+            Set(service, "owner", 17UL);
+            Set(service, "weeklyActive", weekly);
+            Set(service, "CurrentRun", 3);
+            Set(service, "weeklyEnteredBoard", 3u);
+            Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+            var attempted = (HashSet<uint>)Field(service, "weeklyAttempted")!;
+            attempted.UnionWith([1u, 2u, 3u]);
+            // Stop at the existing native-player boundary after same-plan
+            // initialization. No duty registration or client is involved.
+            Invoke(service, "RestartFromCurrent", saved, true, weekly);
+            Assert.Same(run, Field(service, "runSettings"));
+            Assert.Equal(weekly ? live::VERMAXION.Beastmaster.CrucibleDegree.Standard : savedDegree, run.Degree);
+            Assert.Equal(12, run.RunCount);
+            Assert.Equal(3, Read<int>(service, "CurrentRun"));
+            Assert.Equal(3u, Read<uint>(service, "weeklyEnteredBoard"));
+            Assert.True(attempted.SetEquals([1u, 2u, 3u]));
+            Assert.Equal(savedDegree, saved.Degree);
+            Assert.Equal(12, saved.RunCount);
+            Assert.True(saved.WeeklyBoards!.SetEquals([1u, 2u, 3u, 4u, 5u]));
+        }
     }
 
     [Fact]
@@ -1853,6 +2058,34 @@ public sealed class BeastmasterRouteLifecycleTests
         private readonly Dictionary<nint, Gui.ComponentType> nativeComponentTypes = [];
         private nint rankingCheckbox;
         private nint battleUi, battleStatuses;
+        private nint itemDirector, itemActions;
+        public readonly List<(uint Slot, int Beast)> ItemRequests = [];
+        public bool CrucibleDirectorValid
+        {
+            set => ((NativeInstance.InstanceContentCrucibleOfTheUnbroken*)itemDirector)->InstanceContentDirector.InstanceContentType =
+                value ? NativeInstance.InstanceContentType.CrucibleOfTheUnbroken : default;
+        }
+        public void ItemSlot(int slot, ushort id) => ((NativeInstance.InstanceContentCrucibleOfTheUnbroken*)itemDirector)->Inventory[slot].ItemId = id;
+        public void ItemActionState(uint cast, float animationLock, bool queued)
+        {
+            var actions = (NativeGame.ActionManager*)itemActions;
+            actions->CastSpellId = cast; actions->AnimationLock = animationLock; actions->ActionQueued = queued;
+        }
+        public void EnableCrucibleItems()
+        {
+            var director = Allocate<NativeInstance.InstanceContentCrucibleOfTheUnbroken>(); itemDirector = (nint)director;
+            CrucibleDirectorValid = true;
+            var framework = Allocate<NativeEvent.EventFramework>();
+            var frameworkSlot = AllocatePointers(1); frameworkSlot[0] = (nint)framework;
+            ReplaceNativeAddress(typeof(NativeEvent.EventFramework), "Instance", (nint)frameworkSlot);
+            ReplaceNativeAddress(typeof(NativeEvent.EventFramework), "GetInstanceContentDirector",
+                CallbackPointer(new NativeGetter(_ => itemDirector)));
+            ReplaceNativeAddress(typeof(NativeInstance.InstanceContentCrucibleOfTheUnbroken), "UseItem",
+                CallbackPointer(new NativeUseCrucibleItem((_, slot, beast) => ItemRequests.Add((slot, beast)))));
+            var actions = Allocate<NativeGame.ActionManager>(); itemActions = (nint)actions;
+            ReplaceNativeAddress(typeof(NativeGame.ActionManager), "Instance", itemActions);
+        }
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void NativeUseCrucibleItem(nint self, uint slot, int beast);
         private object? playerStatuses;
         public object? CombatState { get; private set; }
         public object? BattleTarget { get; private set; }
@@ -1864,6 +2097,7 @@ public sealed class BeastmasterRouteLifecycleTests
         public bool TargetCanAttack = true, EnemyHostile = true;
         public bool PreparationReady = true;
         public int PreparationCalls, CombatControls;
+        public readonly List<(bool Attacks, bool Scripted)> CombatActivations = [];
         public int MainHudReads;
         public bool AutoAttacking
         {
@@ -1900,6 +2134,7 @@ public sealed class BeastmasterRouteLifecycleTests
         public readonly HashSet<string> Conditions = [];
         public readonly List<string> Commands = [];
         public readonly List<string> Warnings = [];
+        public readonly List<string> Information = [];
         public host::Dalamud.Plugin.IExposedPlugin[] InstalledPlugins = [];
         public int OkClicks => receivedEvents.Count(entry => entry.Name == "SelectOk");
         public int YesClicks => receivedEvents.Count(entry => entry.Name == "SelectYesno");
@@ -1935,6 +2170,7 @@ public sealed class BeastmasterRouteLifecycleTests
                 log = Proxy(typeof(host::Dalamud.Plugin.Services.IPluginLog), (method, args) =>
                 {
                     if (method.Name == "Warning" && args?.FirstOrDefault() is string message) Warnings.Add(message);
+                    if (method.Name == "Info" && args?.FirstOrDefault() is string info) Information.Add(info);
                     return Default(method.ReturnType);
                 });
                 pluginInterface = Proxy(typeof(host::Dalamud.Plugin.IDalamudPluginInterface), (method, _) =>
@@ -2212,6 +2448,35 @@ public sealed class BeastmasterRouteLifecycleTests
             InitializeAddon(addon, name);
             return (nint)addon;
         }
+        public void AddItemHud(params ushort[] items)
+        {
+            // Match the existing native Supplies fixture's empty sheet; this
+            // menu test supplies its item rows through the actual HUD instead.
+            var data = Production.GetType("VERMAXION.Beastmaster.CrucibleItemData", true)!;
+            var sheet = data.GetFields(Static).Single(field => field.FieldType.IsGenericType &&
+                field.FieldType.GetGenericTypeDefinition().FullName == "Lumina.Excel.ExcelSheet`1");
+            var previous = sheet.GetValue(null);
+            var rawType = sheet.FieldType.Assembly.GetType("Lumina.Excel.RawExcelSheet", true)!;
+            var raw = RuntimeHelpers.GetUninitializedObject(rawType);
+            rawType.GetField("_rowIndexLookupArray", Instance)!.SetValue(raw, Array.Empty<int>());
+            rawType.GetField("_rowIndexLookupDict", Instance)!.SetValue(raw, System.Collections.Frozen.FrozenDictionary<int, int>.Empty);
+            sheet.SetValue(null, Activator.CreateInstance(sheet.FieldType, raw));
+            restore.Add(() => sheet.SetValue(null, previous));
+            var hud = Allocate<Gui.AtkUnitBase>(); InitializeAddon(hud, "XBMContentsMainHUD");
+            var values = (Gui.AtkValue*)AllocateBytes(60 * sizeof(Gui.AtkValue));
+            hud->AtkValues = values; hud->AtkValuesCount = 60;
+            var bytes = System.Text.Encoding.UTF8.GetBytes("Synthetic item\0");
+            var name = AllocateBytes(bytes.Length); Marshal.Copy(bytes, 0, name, bytes.Length);
+            for (var index = 0; index < items.Length; ++index)
+            {
+                var row = values + 9 + 5 * index;
+                row[0].Type = Gui.AtkValueType.Bool; row[0].Bool = true;
+                row[1].Type = Gui.AtkValueType.Bool; row[1].Bool = true;
+                row[2].Type = Gui.AtkValueType.UInt;
+                row[3].Type = Gui.AtkValueType.UInt; row[3].UInt = items[index];
+                row[4].Type = Gui.AtkValueType.String; row[4].String = (byte*)name;
+            }
+        }
         public void UseBoard(live::VERMAXION.Beastmaster.CrucibleBoard board)
         {
             Replace(svc, "DutyState", Proxy(typeof(host::Dalamud.Plugin.Services.IDutyState),
@@ -2407,24 +2672,30 @@ public sealed class BeastmasterRouteLifecycleTests
             var targetType = combatType.GetNestedType("Target", BindingFlags.NonPublic)!;
             var rotationName = (string)combatType.GetField("RotationName", Static)!.GetRawConstantValue()!;
             CombatState = Activator.CreateInstance(stateType,
-                [new object(), true, true, null, false, false, true, rotationName, "", true, false, false, 0u]);
+                [new object(), true, true, null, false, false, true, rotationName, "", true, false, false, 0u, 0u, true]);
             var provider = Proxy(providerType, (method, args) =>
             {
                 switch (method.Name)
                 {
                     case "CancelRotation": return true;
                     case "Read": return CombatState;
-                    case "ReadTarget": return Activator.CreateInstance(targetType,
-                        [HoldOffense ? 0UL : 1001UL, !HoldOffense && TargetCanAttack, 0u]);
+                    case "ReadTarget":
+                        var hold = HoldOffense || !Conditions.Contains("InCombat") &&
+                            Read<bool>(CombatState!, "UseScriptedFamiliars") && !PreparationReady;
+                        return Activator.CreateInstance(targetType,
+                            [hold ? 0UL : 1001UL, !hold && TargetCanAttack, 0u, 0u]);
                     case "Control":
                         CombatControls++;
                         Set(CombatState!, "Owner", args![0]);
                         Set(CombatState!, "Active", args[1]);
                         Set(CombatState!, "AllowAttacks", args[2]);
                         Set(CombatState!, "UseBmrMovement", args[3]);
+                        Set(CombatState!, "UseScriptedFamiliars", args[4]);
+                        if ((bool)args[1]!) CombatActivations.Add(((bool)args[2]!, (bool)args[4]!));
                         return "";
                     case "Prepare":
                         PreparationCalls++;
+                        Set(CombatState!, "UseScriptedFamiliars", true);
                         return PreparationReady ? "{\"Ready\":true,\"Status\":\"Prepared\",\"Error\":\"\"}"
                             : "{\"Ready\":false,\"Status\":\"Preparing\",\"Error\":\"\"}";
                     case "Release":
