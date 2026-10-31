@@ -332,6 +332,19 @@ internal static unsafe class CrucibleTeam
         return order.Select(number => team.First(row => row.Number == number)).ToList();
     }
 
+    public static List<ReaderXBMPetParty.MonsterEntry> RemainingFinalFightOrder(
+        List<ReaderXBMPetParty.MonsterEntry> team, BeastmasterFightContext fight, IReadOnlyList<uint> planned)
+    {
+        var pets = Svc.Data.GetExcelSheet<XBMPet>();
+        var candidates = team.Select(row => new BeastmasterCandidate(row.Number, row.Rank, 0, 0,
+            Alive: !row.Disabled, HP: row.HP, MaxHP: row.MaxHP,
+            AreaDamage: pets.TryGetRow(row.Number, out var sheet) && sheet.Pet.ValueNullable is { } pet &&
+                pet.Abilities.Any(ability => ability.ValueNullable is { CanTargetHostile: true, CastType: > 1, EffectRange: > 0 }),
+            AttackPower: Math.Max(row.Strength, row.Intelligence)));
+        return BeastmasterSelection.RemainingFinalFightOrder(BeastmasterRuntime.Settings, fight, candidates, planned)
+            .Select(number => team.First(row => row.Number == number)).ToList();
+    }
+
     public static void UpdateCache()
     {
         DateTime now = DateTime.UtcNow;

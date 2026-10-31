@@ -79,7 +79,7 @@ internal sealed class VerminionWindow : Window
         ImGui.PopStyleColor();
         if (UIConstants.FullStopButton()) plugin.FullStop();
         ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
-        if (config.VerminionPaused || progress.RunMode != null)
+        if (progress.RunMode != null)
         {
             UIConstants.SameLineIfFits(progress.CampaignRequested || progress.RunIsCampaign ? "Resume CPU campaign" : "Resume");
             if (UIConstants.Button(progress.CampaignRequested || progress.RunIsCampaign ? "Resume CPU campaign" : "Resume")) plugin.RunDashboardAction(service.ResumeTask);
@@ -88,7 +88,6 @@ internal sealed class VerminionWindow : Window
         var stageAttempts = progress.CampaignStage == progress.NextUnclearedChallenge ? progress.CampaignStageAttempts : 0;
         var status = UiText.Verminion(service.StatusText, VerminionService.ProgressSummary(config));
         if (!loggedIn) status += "\n" + UiText.T("Log in and wait for character registration to configure or run Verminion.");
-        if (config.VerminionPaused) status += "\n" + UiText.T("Paused. Explicit Resume is required, including after a reload.");
         status += "\n" + UiText.F($"Next stage attempts: {stageAttempts}/3 · Losses: {progress.ConsecutiveLosses} · Weekly: {progress.WeeklyMatches}/5 matches; {progress.WeeklyWins} wins.");
         if (progress.RunMode == VerminionMode.MissionRepeat && !progress.RunIsCampaign)
             status += "\n" + UiText.F($"Mission {progress.RunMission}: {progress.RunWins}/{progress.RunRepeatCount} clears; attempts {progress.RunAttempts}/{progress.RunAttemptLimit}.");

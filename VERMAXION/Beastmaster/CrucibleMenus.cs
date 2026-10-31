@@ -566,8 +566,13 @@ namespace VERMAXION.Beastmaster
                     row.HP > 0 && row.MaxHP > 0 && row.HP <= row.MaxHP && row.Rank >= BeastmasterSelection.TrainingTarget(Config.Board)))
                     .OfType<ReaderXBMPetParty.MonsterEntry>().ToList()
                 : CrucibleTeam.FightOrder(team).Take(FightPicks).ToList();
-            if (requiresClearTeam && (!BeastmasterSelection.ClearFightReady(alive.Select(row => row.Number)) ||
-                !BeastmasterSelection.TeamMatches(team.Select(row => row.Number).ToArray(), setup.Roster)))
+            var exactTeamReady = !requiresClearTeam || BeastmasterSelection.ClearFightReady(alive.Select(row => row.Number)) &&
+                BeastmasterSelection.TeamMatches(team.Select(row => row.Number).ToArray(), setup.Roster);
+            var useRemainingTeam = requiresClearTeam && !exactTeamReady &&
+                BeastmasterSelection.AllowsRemainingTeam(Config, fight!.Value);
+            if (useRemainingTeam)
+                alive = CrucibleTeam.RemainingFinalFightOrder(team, fight!.Value, setup.Trio);
+            if (!exactTeamReady && !useRemainingTeam)
             {
                 this.Status = "The exact native encounter trio and registered roster must be present and trained. A missing or knocked-out required familiar cannot be silently replaced.";
                 return true;
@@ -580,7 +585,7 @@ namespace VERMAXION.Beastmaster
                 this.Status = "Fight preparation is waiting for readable, living familiars and player HP.";
                 return true;
             }
-            if (alive.Count == 0)
+            if (alive.Count == 0 && !useRemainingTeam)
             {
                 this.Status = "Every familiar is knocked out";
                 return true;
@@ -638,12 +643,17 @@ namespace VERMAXION.Beastmaster
                 this.Status = combatReason;
                 return true;
             }
-            if (requiresClearTeam) BeastmasterRuntime.Service.RecordFightContext(fight!.Value);
+            if (requiresClearTeam)
+                BeastmasterRuntime.Service.RecordFightContext(fight!.Value with { UseRemainingTeam = useRemainingTeam });
             Screens.StageDetail.Confirm(layout);
             this.fightNext   = now + CommenceRetry;
             this.ExpectConfirmation(CrucibleUi.BoardLayout, layout, now);
             Svc.Log.Debug("Crucible: Commencing the battle");
-            this.Status = "Commencing the battle";
+            this.Status = useRemainingTeam
+                ? "Commencing with remaining beasts: " + string.Join(", ", alive.Select(row => row.Name.TextValue))
+                : "Commencing the battle";
+            if (useRemainingTeam) Svc.Log.Information("[Crewcible] Pas remaining-team attempt: " +
+                string.Join(", ", alive.Select(row => $"{row.Number} {row.HP}/{row.MaxHP} rank {row.Rank}")));
             return true;
         }
 
@@ -663,7 +673,6 @@ namespace VERMAXION.Beastmaster
             uint[] items = xbmTreasure.ItemEntriesValid.Select(ie => ie.Id).ToArray();
             HashSet<uint> gear  = xbmTreasure.OwnedEntriesOwned.Select(ie => ie.Id).ToHashSet();
             if (!this.TryRequiredClearGear(out var requiredGear)) return;
-            var missingGear = requiredGear.Count(row => !gear.Contains(row));
 
             List<ReaderXBMContentsTreasure.TreasureChoice> treasureChoices = xbmTreasure.TreasureChoices;
 
@@ -682,7 +691,8 @@ namespace VERMAXION.Beastmaster
                 if(CrucibleItemData.ShopGear.Contains(choice.Item))
                 {
                     if (gear.Count < GearCap && !gear.Contains(choice.Item) && !CrucibleItemData.BlockedGear(choice.Item, gear) &&
-                        !(missingGear > 0 && gear.Count >= GearCap - missingGear && !requiredGear.Contains(choice.Item)))
+                        (!BeastmasterSelection.RequiresClearTeam(Config) ||
+                            gear.Count < GearCap - CrucibleItemData.ReservedClearGearSlots(choice.Item, gear, requiredGear)))
                         choices.Add(choice);
 
                     continue;
@@ -877,7 +887,6 @@ namespace VERMAXION.Beastmaster
         {
             bool itemRoom = held.Length    < ItemCap;
             bool gearRoom = ownedGear.Count < GearCap;
-            var missingGear = requiredGear.Count(row => !ownedGear.Contains(row));
 
             IEnumerable<ReaderXBMContentsItemShop.StockEntry> wanted = stock.Where(x =>
                                                                                    {
@@ -885,7 +894,8 @@ namespace VERMAXION.Beastmaster
                                                                                        return category switch
                                                                                        { 
                                                                                            CrucibleItemData.CrucibleItemCategory.Gear => gearRoom && !ownedGear.Contains(x.Item) && !CrucibleItemData.BlockedGear(x.Item, ownedGear)
-                                                                                               && !(missingGear > 0 && ownedGear.Count >= GearCap - missingGear && !requiredGear.Contains(x.Item)),
+                                                                                               && (!BeastmasterSelection.RequiresClearTeam(Config) ||
+                                                                                                   ownedGear.Count < GearCap - CrucibleItemData.ReservedClearGearSlots(x.Item, ownedGear, requiredGear)),
                                                                                            CrucibleItemData.CrucibleItemCategory.Feed => !this.fedThisVisit,
                                                                                            _ when CrucibleItemData.CrucibleItemCategory.Item.HasFlag(category) => itemRoom,
                                                                                            _ => false

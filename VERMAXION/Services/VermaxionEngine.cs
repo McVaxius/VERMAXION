@@ -679,8 +679,6 @@ public class VermaxionEngine
     private static TaskEligibility EvaluateVerminion(CharacterConfig config)
         => !config.EnableVerminionQueue
             ? TaskEligibility.Disabled("Verminion is disabled for this character.")
-            : config.VerminionPaused
-            ? TaskEligibility.Blocked("Verminion is paused; use Resume.")
             : VerminionService.WeeklyGoalReached(config)
                 ? TaskEligibility.NotDue("The selected Verminion goal is complete.")
                 : TaskEligibility.Runnable();
@@ -1574,7 +1572,7 @@ public class VermaxionEngine
             case EngineState.RunningVerminion:
                 activeConfig = GetLiveActiveConfig();
                 if (verminionService.IsActive || verminionService.IsComplete || verminionService.IsFailed ||
-                    activeConfig!.EnableVerminionQueue && !activeConfig.VerminionPaused && !VerminionService.WeeklyGoalReached(activeConfig))
+                    activeConfig!.EnableVerminionQueue && !VerminionService.WeeklyGoalReached(activeConfig))
                 {
                     if (!verminionService.IsActive && !verminionService.IsComplete && !verminionService.IsFailed)
                     {

@@ -298,13 +298,12 @@ public sealed unsafe class CustomDeliveriesService : IDisposable
         {
             if (!Service.PluginInterface.GetIpcSubscriber<ushort, int, object>("Artisan.CraftItem").HasAction
                 || !Service.PluginInterface.GetIpcSubscriber<bool, object>("Artisan.SetEnduranceStatus").HasAction
+                || !Service.PluginInterface.GetIpcSubscriber<bool, object>("Artisan.SetStopRequest").HasAction
                 || !Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.IsBusy").HasFunction
                 || !Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetStopRequest").HasFunction)
                 return "Artisan crafting integration is unavailable";
             if (Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.IsBusy").InvokeFunc())
                 return "Artisan is already running another crafting request";
-            if (Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetStopRequest").InvokeFunc())
-                return "Artisan has an active stop request";
             if (route.Npc.CraftData.VendorInstanceId == 0 || route.Npc.CraftData.VendorShopId == 0)
                 return "Custom delivery ingredient vendor data is unavailable";
         }

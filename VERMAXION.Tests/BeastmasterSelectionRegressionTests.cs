@@ -19,6 +19,94 @@ namespace VERMAXION.Tests;
 public sealed class BeastmasterSelectionRegressionTests
 {
     [Fact]
+    public void PasReplacesAKnockedOutBehemothWithAHealthyAreaAttackerAndAlwaysFillsAvailableSlots()
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
+        var fight = new BeastmasterFightContext(6, false);
+        uint[] planned = [10, 50, 32];
+        BeastmasterCandidate[] beasts =
+        [
+            new(10, 5, 0, 99, HP: 100, MaxHP: 100),
+            new(50, 5, 0, 0, Alive: false, HP: 0, MaxHP: 100),
+            new(32, 5, 0, 99, HP: 100, MaxHP: 100),
+            new(9, 5, 0, 99, FightBlocked: true, HP: 400, MaxHP: 600, AreaDamage: true, AttackPower: 50),
+            new(44, 5, 0, 0, HP: 800, MaxHP: 800, AttackPower: 100),
+            new(2, 1, 0, 0, HP: 100, MaxHP: 100, AreaDamage: true, AttackPower: 500),
+        ];
+        Assert.Equal(new uint[] { 10, 32, 9 }, BeastmasterSelection.RemainingFinalFightOrder(settings, fight, beasts, planned));
+
+        // Every combination of losses keeps every usable planned member and
+        // fills all three horns whenever three native beasts are still usable.
+        for (var mask = 0; mask < 1 << beasts.Length; ++mask)
+        {
+            var remaining = beasts.Select((beast, index) => beast with
+                { Alive = (mask & 1 << index) != 0, HP = (mask & 1 << index) != 0 ? beast.MaxHP : 0 }).ToArray();
+            var picked = BeastmasterSelection.RemainingFinalFightOrder(settings, fight, remaining, planned);
+            Assert.Equal(Math.Min(3, remaining.Count(beast => beast.Alive)), picked.Count);
+            Assert.Equal(picked.Count, picked.Distinct().Count());
+            Assert.All(picked, number => Assert.Contains(remaining, beast => beast.Number == number && beast.Alive));
+            Assert.All(planned.Where(number => remaining.Any(beast => beast.Number == number && beast.Alive)),
+                number => Assert.Contains(number, picked));
+            if (planned.All(number => remaining.Any(beast => beast.Number == number && beast.Alive)))
+                Assert.Equal(planned, picked);
+        }
+    }
+
+    [Fact]
+    public void RemainingTeamAndAdaptiveControlAreRestrictedToFirstBoardThirdDegreePas()
+    {
+        uint[] planned = [10, 50, 32];
+        BeastmasterCandidate[] beasts =
+        [new(10, 5, 0, 0, HP: 100, MaxHP: 100), new(32, 5, 0, 0, HP: 100, MaxHP: 100),
+         new(9, 5, 0, 0, HP: 100, MaxHP: 100, AreaDamage: true)];
+        foreach (var board in Enumerable.Range(1, 5))
+            foreach (var degree in Enum.GetValues<CrucibleDegree>())
+                foreach (var battle in Enumerable.Range(1, 7))
+                {
+                    var settings = new BeastmasterSettings { Board = (uint)board, Degree = degree };
+                    var fight = new BeastmasterFightContext((uint)battle, false) { UseRemainingTeam = true };
+                    var allowed = board == 1 && degree == CrucibleDegree.Third && battle == 6;
+                    Assert.Equal(allowed, BeastmasterSelection.AllowsRemainingTeam(settings, fight));
+                    Assert.Equal(allowed ? new uint[] { 10, 32, 9 } : new uint[] { 10, 32 },
+                        BeastmasterSelection.RemainingFinalFightOrder(settings, fight, beasts, planned));
+                    Assert.Equal(BeastmasterSelection.RequiresClearTeam(settings) && !allowed,
+                        BeastmasterSelection.UsesScriptedFight(settings, fight));
+                    Assert.Equal(BeastmasterSelection.RequiresClearTeam(settings),
+                        BeastmasterSelection.UsesScriptedFight(settings, fight with { UseRemainingTeam = false }));
+                    Assert.False(BeastmasterSelection.UsesScriptedFight(settings, null));
+                }
+    }
+
+    [Fact]
+    public void PasRemainingTeamRejectsUnreadableOrDeadRowsWithoutInventingThreeSurvivors()
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
+        BeastmasterCandidate[] beasts =
+        [new(10, 5, 0, 0, HP: 1, MaxHP: 100), new(50, 5, 0, 0, HP: 0, MaxHP: 100),
+         new(32, 5, 0, 0, HP: 100, MaxHP: 0), new(9, 5, 0, 0, HP: 101, MaxHP: 100),
+         new(44, 5, 0, 0, Alive: false, HP: 100, MaxHP: 100), new(0, 5, 0, 0, HP: 100, MaxHP: 100)];
+        Assert.Equal(new uint[] { 10 }, BeastmasterSelection.RemainingFinalFightOrder(settings,
+            new(6, false), beasts.Concat(beasts), new uint[] { 10, 50, 32 }));
+    }
+
+    [Fact]
+    public void ClearGearSelectionPrioritizesAnAxeAndKeepsItsLastSlotWithoutBlockingRequiredGear()
+    {
+        var priority = NativeSupply<IEnumerable<uint>>("ClearShopPriority", 1u, Array.Empty<uint>(), new HashSet<uint>(), Array.Empty<uint>()).ToArray();
+        Assert.True(Array.IndexOf(priority, 43u) < Array.IndexOf(priority, 140u));
+        var nine = Enumerable.Range(3, 9).Select(id => (uint)id).ToHashSet();
+        Assert.Equal(1, NativeSupply<int>("ReservedClearGearSlots", 22u, nine, Array.Empty<uint>()));
+        Assert.Equal(0, NativeSupply<int>("ReservedClearGearSlots", 43u, nine, Array.Empty<uint>()));
+        Assert.Equal(2, NativeSupply<int>("ReservedClearGearSlots", 22u, nine, new uint[] { 2 }));
+        Assert.Equal(0, NativeSupply<int>("ReservedClearGearSlots", 2u, nine, new uint[] { 2 }));
+        Assert.Equal(1, NativeSupply<int>("ReservedClearGearSlots", 43u, nine, new uint[] { 2 }));
+        nine.Add(38);
+        Assert.Equal(0, NativeSupply<int>("ReservedClearGearSlots", 22u, nine, Array.Empty<uint>()));
+        Assert.Equal(1, NativeSupply<int>("ReservedClearGearSlots", 22u, nine, new uint[] { 2 }));
+        Assert.Equal(1, NativeSupply<int>("ReservedClearGearSlots", 22u, new HashSet<uint>(), new uint[] { 43 }));
+    }
+
+    [Fact]
     public void ThirdBoardShopDecisionRequiresTheActualKitAxeAndReservedWaveItem()
     {
         Assert.True(NativeSupply<bool>("Board3NeedsShop", Array.Empty<uint>(), new uint[] { 38 }));

@@ -1593,12 +1593,16 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             SetDebugTaskStatus("Chocobo progression is paused; explicit Resume is required before reload continuation.");
             return;
         }
-        if (taskId == AutomationCatalog.VerminionQueue && ConfigManager.GetActiveConfig().VerminionPaused)
+        if (taskId == AutomationCatalog.VerminionQueue &&
+            ConfigManager.GetActiveConfig().VerminionProgress is { } verminionProgress &&
+            (verminionProgress.WinningRunLimitReached ||
+                (verminionProgress.CampaignRequested || verminionProgress.RunIsCampaign) &&
+                verminionProgress.CampaignStageLimitReached(verminionProgress.NextUnclearedChallenge)))
         {
             var progress = ConfigManager.GetActiveConfig().VerminionProgress;
             Log.Information($"[Verminion] Paused reload observation: duty={VerminionGameInteraction.CurrentBattleDutyId()}; result={VerminionGameInteraction.ReadBattleOutcome()}; pending={progress.PendingMatch}; matches={progress.WeeklyMatches}; wins={progress.WeeklyWins}; no admission or credit.");
             VerminionGameInteraction.CaptureBattle("paused reload observation");
-            SetDebugTaskStatus("Verminion is paused; explicit Run/Resume is required before reload continuation.");
+            SetDebugTaskStatus("Verminion reached its attempt limit; explicit Run/Resume is required before reload continuation.");
             return;
         }
         try
@@ -3774,6 +3778,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             verminionStopActorKey = $"{stopName}@{stopWorld}";
         }
         VerminionService.Reset(registeredVerminionStop, verminionStopContentId, verminionStopActorKey);
+        if (!preparingDebugTask && PlayerState.ContentId != 0 && !string.IsNullOrEmpty(ConfigManager.CurrentCharacterKey))
+        {
+            ConfigManager.GetActiveConfig().VerminionPaused = false;
+            ConfigManager.SaveCurrentAccount();
+        }
         CactpotService.Reset();
         ChocoboRaceService.Reset();
         FashionReportService.Reset();

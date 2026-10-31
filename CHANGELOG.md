@@ -1,3 +1,23 @@
+2026-10-30 - Custom delivery startup and Verminion Full Stop (3.0.0.5 unchanged)
+
+- Start delivery crafts through Artisan's IPC by clearing an idle stop request, verifying it cleared and submitting the exact recipe quantity once. Keep busy and cancellation checks; eligibility checks do not change Artisan.
+- Cancel current Verminion work on Full Stop without leaving weekly automation paused. Ignore old saved stop flags for scheduling, preserve completed goals and unresolved purchases/admissions, and retain explicit review of exhausted attempt limits.
+- Isolated Debug build and all 195 targeted custom-delivery/Verminion tests pass. No client deployment or live verification.
+
+2026-10-30 - First Board difficulty3 final-fight continuation (3.0.0.5 unchanged)
+
+- When Pas de Seul's documented trio is unavailable, retain its usable members and fill all three slots from the remaining living native team whenever possible. Prefer trained area attackers for lost Behemoth coverage, then native rank, health and attack stats. Do not use a smaller team while three usable beasts remain.
+- Carry the selected remaining-team mode through the existing fight context and Continue/revival path. Use BMRV's existing adaptive familiar controller for that changed team without waiting for the missing beast's scripted preparation; preserve native mechanics and action permissions.
+- Limit remaining-team replacement to First Board, difficulty3, Pas de Seul. Earlier fights' normal setups, other difficulties, other boards and available documented trios retain their existing behavior. No BMRV encounter, CD plan, persistent setting or BAT change.
+- Allow normal Start to adopt an already-entered Crucible on every board and difficulty after reload. Use the actual entered board for catalog checks, avoid new-entry queue checks inside the duty, and use existing adaptive control when the old fight context is absent. The next fight menu restores its normal documented setup. Pending new entries still retain their outside-duty registration checks.
+- Verification:515 Beastmaster cases pass, including all64 survivor combinations, public Start admission/readiness, context-free adoption in/out of combat on all five boards, production resume/revival control and subsequent scripted preparation. The unchanged `Z:\vmx.bat` build succeeds with zero errors/five existing package/reader warnings. A live substituted-team Pas clear remains unverified.
+
+2026-10-30 - Reliable-clear elemental axe acquisition (3.0.0.5 unchanged)
+
+- Prefer an offered, affordable missing elemental axe before optional healing supplies in Degrees1-3. Keep actual stock, user item blocks, duplicate prevention and inventory capacity checks.
+- Reserve a Beast Gear slot for an axe in both shop and treasure choices. Required native route gear remains first priority and can use the last slot when both cannot fit. Missing stock still lets the existing visit finish; no item is assumed or awaited indefinitely.
+- Isolated production/test builds succeed and all500 Beastmaster tests pass, including axe priority and last-slot/prerequisite cases. Existing package/reader/test-reflector warnings remain. No client deployment or live clear is claimed.
+
 2026-10-30 - Full Stop and weekly Normal-run fixes (3.0.0.5)
 
 - Stop current services, navigation and pending work without changing the saved master automation or retainerless-timer enable settings. Preserve existing task-specific stop/cleanup behavior.

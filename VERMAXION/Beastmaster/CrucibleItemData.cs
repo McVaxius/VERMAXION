@@ -237,12 +237,22 @@ public static class CrucibleItemData
         // Private encounter prerequisites are supplied by the native pack.
         foreach (var gear in requiredGear ?? [])
             if (!ownedGear.Contains(gear)) yield return gear;
-        yield return 140;
         if (!ownedGear.Any(ElemntalAxes.Contains))
             foreach (var axe in ElemntalAxes) yield return axe;
+        yield return 140;
         if (board is 3 or 5 && !heldItems.Contains(139u)) yield return 139;
         foreach (var heal in ShopHealing)
             if (heal != 140) yield return heal;
+    }
+
+    internal static int ReservedClearGearSlots(uint candidate, HashSet<uint> ownedGear, uint[] requiredGear)
+    {
+        var missing = requiredGear.Where(row => row != candidate && !ownedGear.Contains(row)).ToHashSet();
+        // Required private-route gear still wins when an already crowded bag
+        // cannot fit both it and an axe. Optional gear must leave the axe slot.
+        var reserveAxe = !requiredGear.Contains(candidate) && !ElemntalAxes.Contains(candidate) &&
+            !ownedGear.Any(ElemntalAxes.Contains) && !missing.Any(ElemntalAxes.Contains);
+        return missing.Count + (reserveAxe ? 1 : 0);
     }
 
     internal static uint Board3RestFamiliar(bool firstCamp, float playerHP, int damageItems)

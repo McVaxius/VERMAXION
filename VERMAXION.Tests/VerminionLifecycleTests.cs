@@ -2557,7 +2557,7 @@ public sealed class VerminionLifecycleTests
     }
 
     [Fact]
-    public void FullStopPauseSurvivesReloadAndCloneWithoutPausingAnotherCharacter()
+    public void LegacyPauseStateStillRoundTripsWithoutChangingAnotherCharacter()
     {
         var stopped = new CharacterConfig { EnableVerminionQueue = true, VerminionPaused = true };
         var reloaded = JsonConvert.DeserializeObject<CharacterConfig>(JsonConvert.SerializeObject(stopped))!;
@@ -2571,6 +2571,32 @@ public sealed class VerminionLifecycleTests
         Assert.True(reloaded.VerminionPaused);
         reloaded.ResetVerminionState();
         Assert.True(reloaded.VerminionPaused);
+    }
+
+    [Fact]
+    public void LegacyFullStopFlagDoesNotBlockScheduledWeeklyWorkOrBypassCompletion()
+    {
+        var config = JsonConvert.DeserializeObject<live::VERMAXION.Models.CharacterConfig>(
+            "{\"EnableVerminionQueue\":true,\"VerminionPaused\":true}")!;
+        var evaluate = typeof(live::VERMAXION.Services.VermaxionEngine).GetMethod("EvaluateVerminion",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        live::VERMAXION.Models.TaskEligibility Eligibility() =>
+            (live::VERMAXION.Models.TaskEligibility)evaluate.Invoke(null, [config])!;
+
+        Assert.True(Eligibility().IsRunnable);
+        Assert.True(config.VerminionPaused); // Eligibility reads state without mutating the profile.
+        config.EnableVerminionQueue = false;
+        Assert.Equal(live::VERMAXION.Models.TaskEligibilityStatus.Disabled, Eligibility().Status);
+        config.EnableVerminionQueue = true;
+        config.VerminionProgress.ObserveWeek(
+            live::VERMAXION.Services.ResetDetectionService.GetLastWeeklyReset(DateTime.UtcNow));
+        config.VerminionProgress.WeeklyMatches = 5;
+        config.VerminionProgress.WeeklyWins = 3;
+        Assert.Equal(live::VERMAXION.Models.TaskEligibilityStatus.NotDue, Eligibility().Status);
+        Assert.Equal(5, config.VerminionProgress.WeeklyMatches);
+        Assert.Equal(3, config.VerminionProgress.WeeklyWins);
+        config.VerminionProgress.WeekStartUtc = config.VerminionProgress.WeekStartUtc.AddDays(-7);
+        Assert.True(Eligibility().IsRunnable);
     }
 
     [Fact]

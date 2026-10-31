@@ -772,12 +772,13 @@ public class MainWindow : Window, IDisposable
                 : "Issues the configured /li route once and waits for Lifestream/player settlement.");
 
         // --- Weekly Tasks ---
+        var resumeVerminion = config.VerminionProgress.RunMode != null && !VerminionService.WeeklyGoalReached(config);
         AddTaskRow("Verminion", config.EnableVerminionQueue,
-            config.VerminionPaused ? $"Paused — use Resume | {VerminionService.ProgressSummary(config)}" : plugin.VerminionService.State != VerminionService.VerminionState.Idle
+            plugin.VerminionService.State != VerminionService.VerminionState.Idle
                 ? plugin.VerminionService.StatusText
                 : (VerminionService.WeeklyGoalReached(config) ? "Complete: " : string.Empty) + VerminionService.ProgressSummary(config),
-            config.VerminionPaused ? "Resume##Verm" : "Run##Verm",
-            () => { if (config.VerminionPaused) plugin.VerminionService.ResumeTask(); else plugin.VerminionService.RunTask(); }, "WIP",
+            resumeVerminion ? "Resume##Verm" : "Run##Verm",
+            () => { if (resumeVerminion) plugin.VerminionService.ResumeTask(); else plugin.VerminionService.RunTask(); }, "WIP",
             buttonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
             buttonTooltip: "Runs the selected weekly CPU goal; Resume continues the paused goal. Current strategy, progress and blockers appear here.",
             secondaryButtonLabel: "CPU campaign##Verminion", secondaryOnClick: () => plugin.VerminionService.RunChallenges(),

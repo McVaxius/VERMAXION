@@ -707,6 +707,112 @@ public sealed class BeastmasterRouteLifecycleTests
     }
 
     [Fact]
+    public void PublicStartInsideEveryBoardUsesReadinessInsteadOfRejectingHigherDegreeAdoption()
+    {
+        using var host = new HostFixture();
+        host.Conditions.Add("BetweenAreas");
+        var service = host.CreateService();
+        foreach (var board in Enumerable.Range(1, 5))
+            foreach (var degree in new[] { live::VERMAXION.Beastmaster.CrucibleDegree.First,
+                live::VERMAXION.Beastmaster.CrucibleDegree.Second, live::VERMAXION.Beastmaster.CrucibleDegree.Third })
+            {
+                host.Territory = 1338u + (uint)board;
+                var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings { Board = (uint)board, Degree = degree };
+                object?[] check = [settings, false, null];
+                Assert.False((bool)Invoke(service, "CanStartConfigured", check)!);
+                Assert.Equal("Wait until the current character is ready", check[2]);
+                Assert.False((bool)Invoke(service, "StartConfigured", settings, false)!);
+                Assert.Equal("Wait until the current character is ready", Read<string>(service, "StatusText"));
+            }
+    }
+
+    [Theory]
+    [InlineData(1u, false)] [InlineData(1u, true)]
+    [InlineData(2u, false)] [InlineData(2u, true)]
+    [InlineData(3u, false)] [InlineData(3u, true)]
+    [InlineData(4u, false)] [InlineData(4u, true)]
+    [InlineData(5u, false)] [InlineData(5u, true)]
+    public void FreshInsideBoardAdoptionWithoutOldFightContextEngagesInAndOutOfCombat(uint board, bool inCombat)
+    {
+        using var host = new HostFixture { Territory = 1338 + board, Position = new(120, 0, -420), PreparationReady = false };
+        var service = host.CreateService();
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings
+            { Board = board, Degree = live::VERMAXION.Beastmaster.CrucibleDegree.Third });
+        host.EnableBattle(service);
+        if (inCombat) host.Conditions.Add("InCombat");
+        Invoke(service, "BeginRoute", true, false);
+        Assert.Null(Field(service, "fightContext"));
+        var route = Field(service, "route")!;
+        Invoke(route, "UpdateBattle"); Invoke(route, "UpdateBattle");
+        Assert.True(host.AutoAttacking);
+        Assert.True(Read<bool>(host.CombatState!, "Active"));
+        Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.Equal(0, host.PreparationCalls);
+        Assert.True((bool)Invoke(service, "SuspendCombat")!);
+        Invoke(service, "RecordFightContext", new live::VERMAXION.Beastmaster.BeastmasterFightContext(2, false));
+        host.Conditions.Clear();
+        Invoke(route, "UpdateBattle");
+        Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.Equal(1, host.PreparationCalls);
+        Assert.False(host.AutoAttacking);
+        Assert.True((bool)Invoke(Field(service, "combat")!, "TryRelease", new object?[] { null })!);
+    }
+
+    [Fact]
+    public void PasRemainingTeamContinuesTheExistingBoardWithoutStrictPreparationAndSurvivesRevival()
+    {
+        using var host = new HostFixture { Territory = 1339, Position = new(520, 0, -419), PreparationReady = false };
+        var service = host.CreateService();
+        Set(service, "runSettings", new live::VERMAXION.Beastmaster.BeastmasterSettings
+            { Board = 1, Degree = live::VERMAXION.Beastmaster.CrucibleDegree.Third });
+        host.EnableBattle(service);
+        var fight = new live::VERMAXION.Beastmaster.BeastmasterFightContext(6, false) { UseRemainingTeam = true };
+        Invoke(service, "RecordFightContext", fight);
+        Set(service, "CurrentRun", 3);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+
+        // This is the same BeginRoute branch used by Continue/stationary resume.
+        // It retains the selected final fight and the current run ordinal.
+        Invoke(service, "BeginRoute", true, true);
+        Assert.Equal(fight, Field(service, "fightContext"));
+        Assert.Equal(3, Read<int>(service, "CurrentRun"));
+        var route = Field(service, "route")!;
+        Invoke(route, "UpdateBattle"); Invoke(route, "UpdateBattle");
+        Assert.Equal(0, host.PreparationCalls);
+        Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.True(host.AutoAttacking);
+
+        host.Conditions.Add("InCombat"); host.PlayerStatus = 418;
+        Invoke(route, "UpdateBattle");
+        Assert.False(host.AutoAttacking);
+        Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.True(Read<bool>(host.CombatState!, "UseBmrMovement"));
+        host.PlayerStatus = 0;
+        Invoke(route, "UpdateBattle");
+        Assert.True(host.AutoAttacking);
+        Assert.Equal(0, host.PreparationCalls);
+
+        Assert.True((bool)Invoke(service, "SuspendCombat")!);
+        host.Conditions.Clear();
+        Invoke(service, "BeginRoute", true, true);
+        Assert.Equal(fight, Field(service, "fightContext"));
+        route = Field(service, "route")!;
+        Invoke(route, "UpdateBattle"); Invoke(route, "UpdateBattle");
+        Assert.True(host.AutoAttacking);
+        Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.Equal(0, host.PreparationCalls);
+
+        // A later ordinary fight returns to its documented preparation path.
+        Assert.True((bool)Invoke(service, "SuspendCombat")!);
+        Invoke(service, "RecordFightContext", new live::VERMAXION.Beastmaster.BeastmasterFightContext(2, false));
+        Invoke(route, "UpdateBattle");
+        Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.False(host.AutoAttacking);
+        Assert.Equal(1, host.PreparationCalls);
+        Assert.True((bool)Invoke(Field(service, "combat")!, "TryRelease", new object?[] { null })!);
+    }
+
+    [Fact]
     public void ArenaPreparationPrecedesTargetAndAutoattackWithoutCancellingItsPendingRequest()
     {
         using var host = new HostFixture { Position = new(120, 0, -420), PreparationReady = false };

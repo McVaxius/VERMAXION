@@ -7,15 +7,52 @@ using Newtonsoft.Json.Linq;
 namespace VERMAXION.Beastmaster;
 
 public readonly record struct BeastmasterCandidate(uint Number, int Rank, float Experience, int Tier,
-    byte Classification = 0, bool PickBlocked = false, bool FightBlocked = false, bool Alive = true);
+    byte Classification = 0, bool PickBlocked = false, bool FightBlocked = false, bool Alive = true,
+    uint HP = 0, uint MaxHP = 0, bool AreaDamage = false, int AttackPower = 0);
 
 public enum BeastmasterTeamAddition { Pending, Confirmed, Unexpected }
-public readonly record struct BeastmasterFightContext(uint BattleId, bool RandomOutcome);
+public readonly record struct BeastmasterFightContext(uint BattleId, bool RandomOutcome)
+{
+    public bool UseRemainingTeam { get; init; }
+}
 
 public static class BeastmasterSelection
 {
     public static bool RequiresClearTeam(BeastmasterSettings settings) =>
         settings.Degree is CrucibleDegree.First or CrucibleDegree.Second or CrucibleDegree.Third;
+
+    public static bool AllowsRemainingTeam(BeastmasterSettings settings, BeastmasterFightContext fight) =>
+        settings.Board == 1 && settings.Degree == CrucibleDegree.Third && fight.BattleId == 6;
+
+    // Fresh adoption after a reload has no previous menu/preparation context.
+    // The next actual fight menu restores its documented strategy normally.
+    public static bool UsesScriptedFight(BeastmasterSettings settings, BeastmasterFightContext? fight) =>
+        RequiresClearTeam(settings) && fight is { } current &&
+        !(current.UseRemainingTeam && AllowsRemainingTeam(settings, current));
+
+    public static List<uint> RemainingFinalFightOrder(BeastmasterSettings settings, BeastmasterFightContext fight,
+        IEnumerable<BeastmasterCandidate> beasts, IReadOnlyList<uint> planned)
+    {
+        var living = beasts.Where(beast => beast.Number > 0 && beast.Alive && beast.MaxHP > 0 &&
+            beast.HP > 0 && beast.HP <= beast.MaxHP).DistinctBy(beast => beast.Number).ToDictionary(beast => beast.Number);
+        var selected = planned.Distinct().Where(living.ContainsKey).Take(3).ToList();
+        if (!AllowsRemainingTeam(settings, fight)) return selected;
+
+        // Keep the guide's surviving members. Replace missing Meteor coverage
+        // with a real native area attack when possible, then prefer trained,
+        // healthy beasts and their observed attack stats over user tier lists.
+        var needsAreaDamage = planned.Contains(50u) && !living.ContainsKey(50u);
+        selected.AddRange(living.Values.Where(beast => !selected.Contains(beast.Number))
+            .OrderByDescending(beast => beast.Rank >= TrainingTarget(settings.Board))
+            .ThenByDescending(beast => needsAreaDamage && beast.AreaDamage)
+            .ThenByDescending(beast => beast.Rank)
+            .ThenByDescending(beast => (double)beast.HP / beast.MaxHP)
+            .ThenByDescending(beast => beast.AttackPower)
+            .ThenByDescending(beast => beast.HP)
+            .ThenBy(beast => beast.Number)
+            .Take(3 - selected.Count).Select(beast => beast.Number));
+        return selected;
+    }
 
     // The loaded edition owns the board setup. Never substitute a farming or user roster.
     public static List<uint> ClearRoster(uint board)

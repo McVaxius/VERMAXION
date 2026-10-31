@@ -15,6 +15,7 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
     private readonly ICallGateSubscriber<ushort, int, object> _artisanCraft = Service.PluginInterface.GetIpcSubscriber<ushort, int, object>("Artisan.CraftItem");
     private readonly ICallGateSubscriber<bool> _artisanBusy = Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.IsBusy");
     private readonly ICallGateSubscriber<bool> _artisanStopRequested = Service.PluginInterface.GetIpcSubscriber<bool>("Artisan.GetStopRequest");
+    private readonly ICallGateSubscriber<bool, object> _artisanSetStopRequest = Service.PluginInterface.GetIpcSubscriber<bool, object>("Artisan.SetStopRequest");
     private readonly ICallGateSubscriber<bool, object> _artisanSetEndurance = Service.PluginInterface.GetIpcSubscriber<bool, object>("Artisan.SetEnduranceStatus");
 
     protected override async Task Execute()
@@ -84,10 +85,7 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
         using var scope = BeginScope("Craft");
         if (CraftTurnin.GetRecipe(itemId, Route.Job) is { RowId: var rowId } && rowId != 0)
         {
-            ErrorIf(ArtisanIsBusy(), "Artisan is already running another crafting request");
-            ErrorIf(_artisanStopRequested.InvokeFunc(), "Artisan has an active stop request");
-            using var stopOwnedCrafting = new OnDispose(() => _artisanSetEndurance.InvokeAction(false));
-            ArtisanCraft((ushort)rowId, count);
+            using var stopOwnedCrafting = ArtisanCraft((ushort)rowId, count);
             await WaitWhile(() => !ArtisanIsBusy(), "WaitStart");
             await WaitWhile(ArtisanIsBusy, "WaitProgress");
             await WaitWhile(() => Service.Conditions[ConditionFlag.Crafting]
@@ -103,10 +101,27 @@ public sealed class AutoCraft(DeliveryRoute route) : AutoCommon(route)
             Error($"Failed to find recipe for {itemId}");
     }
 
-    private void ArtisanCraft(ushort recipe, int count)
+    private IDisposable ArtisanCraft(ushort recipe, int count)
     {
-        Service.Log.Information($"[CustomDeliveries][Crafting] Artisan request: recipe={recipe}; toProduce={count}; plannedTurnins={Route.Count}");
-        _artisanCraft.InvokeAction(recipe, count);
+        CancelToken.ThrowIfCancellationRequested();
+        ErrorIf(ArtisanIsBusy(), "Artisan is already running another crafting request");
+        _artisanSetStopRequest.InvokeAction(false);
+        ErrorIf(_artisanStopRequested.InvokeFunc(), "Artisan did not clear its stop request");
+        CancelToken.ThrowIfCancellationRequested();
+        ErrorIf(ArtisanIsBusy(), "Artisan is already running another crafting request");
+        CancelToken.ThrowIfCancellationRequested();
+        var stopOwnedCrafting = new OnDispose(() => _artisanSetEndurance.InvokeAction(false));
+        try
+        {
+            Service.Log.Information($"[CustomDeliveries][Crafting] Artisan request: recipe={recipe}; toProduce={count}; plannedTurnins={Route.Count}");
+            _artisanCraft.InvokeAction(recipe, count);
+            return stopOwnedCrafting;
+        }
+        catch
+        {
+            stopOwnedCrafting.Dispose();
+            throw;
+        }
     }
     private bool ArtisanIsBusy() => _artisanBusy.InvokeFunc();
 

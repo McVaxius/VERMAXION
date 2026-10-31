@@ -1,6 +1,8 @@
 extern alias live;
+extern alias host;
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Resources;
@@ -14,6 +16,102 @@ namespace VERMAXION.Tests;
 
 public sealed class CustomDeliveriesConfigurationTests
 {
+    [Theory]
+    [InlineData("stopped")]
+    [InlineData("ready")]
+    [InlineData("busy")]
+    [InlineData("stop-refused")]
+    [InlineData("cancelled")]
+    [InlineData("cancel-during-restart")]
+    [InlineData("busy-after-restart")]
+    [InlineData("dispatch-failure")]
+    public void ArtisanRestartDispatchesOnlyTheRequestedIdleUncancelledCraftAndRetainsOwnedCleanup(string scenario)
+    {
+        var calls = new List<string>();
+        var busy = scenario == "busy";
+        var stopped = scenario != "ready";
+        var dispatches = 0;
+        var cleanup = 0;
+        live::VERMAXION.CustomDeliveries.AutoCraft? task = null;
+        object Proxy(Type type, Func<MethodInfo, object?[]?, object?> handler)
+        {
+            var proxy = DispatchProxy.Create(type, typeof(QuestionableIntegrationTests.HostProxy));
+            ((QuestionableIntegrationTests.HostProxy)proxy).Handler = handler;
+            return proxy;
+        }
+        var ipc = Proxy(typeof(host::Dalamud.Plugin.IDalamudPluginInterface), (method, args) =>
+        {
+            Assert.Equal("GetIpcSubscriber", method.Name);
+            var name = Assert.IsType<string>(args![0]);
+            return Proxy(method.ReturnType, (call, values) =>
+            {
+                calls.Add(name);
+                switch (name)
+                {
+                    case "Artisan.IsBusy": return busy;
+                    case "Artisan.GetStopRequest": return stopped;
+                    case "Artisan.SetStopRequest":
+                        Assert.False(Assert.IsType<bool>(values![0]));
+                        if (scenario != "stop-refused") stopped = false;
+                        if (scenario == "cancel-during-restart") task!.Cancel();
+                        if (scenario == "busy-after-restart") busy = true;
+                        return null;
+                    case "Artisan.CraftItem":
+                        Assert.Equal((ushort)123, Assert.IsType<ushort>(values![0]));
+                        Assert.Equal(2, Assert.IsType<int>(values[1]));
+                        dispatches++;
+                        if (scenario == "dispatch-failure") throw new InvalidOperationException("Fixture dispatch failed");
+                        return null;
+                    case "Artisan.SetEnduranceStatus":
+                        Assert.False(Assert.IsType<bool>(values![0]));
+                        cleanup++;
+                        return null;
+                    default: throw new InvalidOperationException("Unexpected IPC " + name);
+                }
+            });
+        });
+        const BindingFlags flags = BindingFlags.Static | BindingFlags.NonPublic;
+        var pluginInterface = typeof(live::VERMAXION.Plugin).GetProperty("PluginInterface", flags)!;
+        var log = typeof(live::VERMAXION.Plugin).GetProperty("Log", flags)!;
+        var previousInterface = pluginInterface.GetValue(null);
+        var previousLog = log.GetValue(null);
+        try
+        {
+            pluginInterface.SetValue(null, ipc);
+            log.SetValue(null, DispatchProxy.Create<host::Dalamud.Plugin.Services.IPluginLog, VerminionLifecycleTests.SilentHostLog>());
+            var route = new live::VERMAXION.CustomDeliveries.DeliveryRoute(null!,
+                live::VERMAXION.CustomDeliveries.DeliveryTypes.Crafting, 8, 0, 456, 3, 100, 200);
+            task = new(route);
+            if (scenario == "cancelled") task.Cancel();
+            var start = task.GetType().GetMethod("ArtisanCraft", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            if (scenario is "stopped" or "ready")
+            {
+                var lease = Assert.IsAssignableFrom<IDisposable>(start.Invoke(task, [(ushort)123, 2]));
+                Assert.Equal(1, dispatches);
+                Assert.Equal(0, cleanup);
+                Assert.Equal(new[] { "Artisan.IsBusy", "Artisan.SetStopRequest", "Artisan.GetStopRequest", "Artisan.IsBusy", "Artisan.CraftItem" }, calls);
+                lease.Dispose();
+                lease.Dispose();
+                Assert.Equal(1, cleanup);
+            }
+            else
+            {
+                var error = Assert.Throws<TargetInvocationException>(() => start.Invoke(task, [(ushort)123, 2]));
+                if (scenario is "cancelled" or "cancel-during-restart") Assert.IsType<OperationCanceledException>(error.InnerException);
+                else Assert.IsType<InvalidOperationException>(error.InnerException);
+                Assert.Equal(scenario == "dispatch-failure" ? 1 : 0, dispatches);
+                Assert.Equal(scenario == "dispatch-failure" ? 1 : 0, cleanup);
+                if (scenario == "busy") Assert.Equal(new[] { "Artisan.IsBusy" }, calls);
+                if (scenario == "cancelled") Assert.Empty(calls);
+            }
+        }
+        finally
+        {
+            pluginInterface.SetValue(null, previousInterface);
+            log.SetValue(null, previousLog);
+        }
+    }
+
     [Fact]
     public void IdleRefreshFailureRemainsBlockedAndReachesDisplayedStatusAndEngineReason()
     {

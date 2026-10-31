@@ -213,10 +213,10 @@ public sealed partial class VerminionService : IDisposable
         manualRun = manual;
         if (HasQuestAcquisition)
         { reason = "Questionable acquisition owns the handoff; wait for it or use FULL STOP."; return; }
-        if (configManager.GetActiveConfig().VerminionPaused)
-        { Fail("Paused by FULL STOP; use Run/Resume."); return; }
         owner = Plugin.PlayerState.ContentId;
         if (owner == 0) { Fail("No current character."); return; }
+        // A previous stop cancels its run; it cannot veto a new scheduled run.
+        configManager.GetActiveConfig().VerminionPaused = false;
         ownerAccount = configManager.CurrentAccountId;
         ownerCharacter = configManager.CurrentCharacterKey;
         VerminionGameInteraction.CaptureSetup();
@@ -473,7 +473,8 @@ public sealed partial class VerminionService : IDisposable
         if (!resume && !clearChallenges && (config.VerminionMode == VerminionMode.MissionRepeat || VerminionDutyRules.IsPlayerMode(config.VerminionMode)))
             progress.EnsureRun(config.VerminionMode, config.VerminionRepeatCount, restart: true, mission: config.VerminionMission,
                 playerDuty: (uint)config.VerminionPlayerQueue);
-        if (config.VerminionPaused)
+        if (config.VerminionPaused || resume && (progress.WinningRunLimitReached ||
+            clearChallenges && progress.CampaignStageLimitReached(progress.NextUnclearedChallenge)))
         {
             progress.RestartAttemptBudget();
             if (clearChallenges) progress.CampaignStageAttempts = 0;

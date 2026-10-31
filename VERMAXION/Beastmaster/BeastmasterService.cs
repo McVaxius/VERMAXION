@@ -222,11 +222,11 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (disposed) { reason = "Beastmaster service is disposed"; return false; }
         if (IsActive) { reason = "A Beastmaster run or its cleanup is already active"; return false; }
         var inside = IsCrucibleTerritory(Svc.ClientState.TerritoryType);
-        var nativeEntry = QueueMatches(new BeastmasterEntryAttempt(Svc.PlayerState.ContentId, settings.Board)) ||
-            CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true);
-        // Higher-degree fresh adoption cannot prove the required registered roster.
-        // Active, owned continuations are handled above by CanReinspectCurrent.
-        if (BeastmasterSelection.RequiresClearTeam(settings) && (inside || nativeEntry))
+        var nativeEntry = !inside && (QueueMatches(new BeastmasterEntryAttempt(Svc.PlayerState.ContentId, settings.Board)) ||
+            CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true));
+        // A live duty can be adopted after a reload or during manual testing.
+        // A pending higher-degree entry still requires its registration context.
+        if (BeastmasterSelection.RequiresClearTeam(settings) && !inside && nativeEntry)
         { reason = "Start outside the Crucible so VERMAXION can verify difficulty and register the required team."; return false; }
         var registration = HasOpenRegistrationScreen;
         if (!(registration ? RegistrationInteractionReady : inside || nativeEntry ? BeastmasterPlayer.IsValid : BeastmasterPlayer.IsReady) ||
@@ -247,7 +247,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (Svc.Party.Length > 1) { reason = "Leave the party before entering the Crucible"; return false; }
         if (!CanStartCombat(settings, out reason)) return false;
         if (BeastmasterSelection.RequiresClearTeam(settings) &&
-            !BeastmasterCombat.TryReadSetup(settings.Board, 0, out _, out reason)) return false;
+            !BeastmasterCombat.TryReadSetup(inside ? Svc.ClientState.TerritoryType - 1338u : settings.Board, 0, out _, out reason)) return false;
         reason = string.Empty;
         return true;
     }
@@ -957,7 +957,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         // A missing menu context or out-of-combat preparation cannot gate a
         // battle that is already under way.
         if (Svc.Condition[ConditionFlag.InCombat]) return true;
-        if (rankingCheckboxTest || !BeastmasterSelection.RequiresClearTeam(Settings) || arenaPrepared) return true;
+        if (rankingCheckboxTest || !BeastmasterSelection.UsesScriptedFight(Settings, fightContext) || arenaPrepared) return true;
         route?.StopOwnedAutoAttack();
         if (fightContext is not { } fight)
         {
@@ -984,7 +984,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         StopNavigation();
         if (!NavigationSettled()) { status = "Waiting for owned movement to stop"; return false; }
         if (combat.TryActivate(out var reason, allowAttacks,
-            useScriptedFamiliars: BeastmasterSelection.RequiresClearTeam(Settings))) return true;
+            useScriptedFamiliars: BeastmasterSelection.UsesScriptedFight(Settings, fightContext))) return true;
         Fail(reason); return false;
     }
     internal bool SuspendCombat()
