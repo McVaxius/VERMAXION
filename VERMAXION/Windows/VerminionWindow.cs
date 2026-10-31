@@ -177,6 +177,17 @@ internal sealed class VerminionWindow : Window
     {
         var service = plugin.VerminionService;
         var progress = config.VerminionProgress;
+        if (UIConstants.BeginPanel("VerminionQuickStart", "Verminion quick start"))
+        {
+            UiGui.TextWrapped("Basics: destroy the enemy Arcana Stones and protect your own. Play Stage 1: Tutorial before other goals.");
+            UiGui.TextWrapped("Setup: register at least three minions, prepare palette slots, and finish current travel, queues and other automation.");
+            UiGui.TextWrapped(UiText.F("Open {0}, choose the CPU campaign or an activity, and press its run button. {1} only previews; opening this window starts nothing.", UiText.T("Run"), UiText.T("Preview challenge")));
+            UiGui.TextWrapped(UiText.F("{0} continues saved work with unchanged goal settings; a new run resets replay/player counts. {1} cancels current work without disabling the global master.", UiText.T("Resume"), UiText.T("FULL STOP")));
+            UiGui.TextWrapped(UiText.F("Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs.", UiText.T("Purchases"), UiText.T("Tournament")));
+            UiGui.TextWrapped("If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying.");
+            UiGui.TextWrapped("Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance.");
+            UIConstants.EndPanel();
+        }
         ImGui.BeginDisabled(!loggedIn);
         if (UIConstants.Button("Check planned minions")) showPlannedMinions = true;
         ImGui.EndDisabled();

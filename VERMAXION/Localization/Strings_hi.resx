@@ -2567,10 +2567,10 @@
     <value>?????????? ???????? ?? ??? ??? ?????, ??????? ?? ??? ???? ?????? ???? ?? ?????? ???????? ??? ????? ???</value>
   </data>
   <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>????????? CPU ????? ?? ?????: {0}/5 ???; {1} ???; {2} ??? ???</value>
+    <value>साप्ताहिक CPU, जीतने के लिए लड़ें: {0}/5 मैच; {1} जीत; {2} मैच बाकी</value>
   </data>
   <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>????????? CPU ????????? / ???????? ???: {0}/5 ???; {1} ???; {2} ??? ???</value>
+    <value>साप्ताहिक CPU, निष्क्रिय रहें / जानबूझकर हारें: {0}/5 मैच; {1} जीत; {2} मैच बाकी</value>
   </data>
   <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
     <value>????????? CPU ????? ?? ????? ?? ??? ?????? ????</value>
@@ -2739,4 +2739,12 @@
   <data name="Image could not be loaded." xml:space="preserve"><value>छवि लोड नहीं हो सकी।</value></data>
   <data name="Image backgrounds remain visible to screenshots." xml:space="preserve"><value>छवि पृष्ठभूमि स्क्रीनशॉट में दिखाई देती है।</value></data>
   <data name="Pause backdrop for screenshots" xml:space="preserve"><value>स्क्रीनशॉट के लिए पृष्ठभूमि रोकें</value></data>
+  <data name="Verminion quick start" xml:space="preserve"><value>Verminion की त्वरित शुरुआत</value></data>
+  <data name="Basics: destroy the enemy Arcana Stones and protect your own. Play Stage 1: Tutorial before other goals." xml:space="preserve"><value>मूल बातें: दुश्मन के Arcana Stones नष्ट करें और अपने पत्थरों की रक्षा करें। पहले चरण 1 का ट्यूटोरियल खेलें।</value></data>
+  <data name="Setup: register at least three minions, prepare palette slots, and finish current travel, queues and other automation." xml:space="preserve"><value>तैयारी: कम से कम तीन मिनियन पंजीकृत करें, पैलेट में जगह बनाएँ और चल रही यात्रा, कतार तथा अन्य स्वचालन पूरे करें।</value></data>
+  <data name="Open {0}, choose the CPU campaign or an activity, and press its run button. {1} only previews; opening this window starts nothing." xml:space="preserve"><value>{0} खोलें, CPU अभियान या गतिविधि चुनें और उसका चलाने वाला बटन दबाएँ। {1} केवल पूर्वावलोकन है; यह विंडो खोलने से मैच शुरू नहीं होता।</value></data>
+  <data name="{0} continues saved work with unchanged goal settings; a new run resets replay/player counts. {1} cancels current work without disabling the global master." xml:space="preserve"><value>{0} लक्ष्य की सेटिंग अपरिवर्तित होने पर सहेजी गई प्रगति जारी रखता है; नया रन दोहराव या खिलाड़ी मैचों की गिनती रीसेट करता है। {1} वैश्विक मुख्य स्विच बंद किए बिना मौजूदा काम रद्द करता है।</value></data>
+  <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>मिनियन, धन, यात्रा, खोज उपकरण या कतार की बाधाओं के लिए ऊपर की स्थिति पढ़ें। {0} और {1} के अलग टैब हैं।</value></data>
+  <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>यदि उपलब्ध रन बटन कुछ नहीं करता, तो दोबारा प्रयास करने से पहले मौजूदा लॉग में YesAlready को रोकने की विफलता जाँचें।</value></data>
+  <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>खिलाड़ी कतारों के लिए Unrestricted Party बंद होना चाहिए; टूर्नामेंट हेतु Home World, पंजीकरण और बचे हुए मैच भी आवश्यक हैं।</value></data>
 </root>

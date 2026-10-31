@@ -3246,10 +3246,10 @@ Zależności: {1}</value></data>
     <value>Turnieje wymagaj? ?wiata macierzystego, rejestracji i pozosta?ych pr?b. Ten wyb?r rozgrywa rzeczywiste mecze.</value>
   </data>
   <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>Tygodniowe CPU z walk? o wygran?: {0}/5 mecz?w; {1} zwyci?stw; zosta?o {2} mecz?w</value>
+    <value>Tygodniowe CPU z walką o wygraną: {0}/5 meczów; {1} zwycięstw; zostało {2} meczów</value>
   </data>
   <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>Tygodniowe CPU bierne / celowo przegrane: {0}/5 mecz?w; {1} zwyci?stw; zosta?o {2} mecz?w</value>
+    <value>Tygodniowe CPU bierne / celowo przegrane: {0}/5 meczów; {1} zwycięstw; zostało {2} meczów</value>
   </data>
   <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
     <value>Tygodniowy cel mecz?w CPU z walk? o wygran? uko?czony</value>
@@ -3418,4 +3418,12 @@ Zależności: {1}</value></data>
   <data name="Image could not be loaded." xml:space="preserve"><value>Nie można wczytać obrazu.</value></data>
   <data name="Image backgrounds remain visible to screenshots." xml:space="preserve"><value>Tła z obrazem są widoczne na zrzutach ekranu.</value></data>
   <data name="Pause backdrop for screenshots" xml:space="preserve"><value>Wstrzymaj tło na czas zrzutów ekranu</value></data>
+  <data name="Verminion quick start" xml:space="preserve"><value>Szybki start Verminion</value></data>
+  <data name="Basics: destroy the enemy Arcana Stones and protect your own. Play Stage 1: Tutorial before other goals." xml:space="preserve"><value>Podstawy: niszcz kamienie Arcana przeciwnika i chroń własne. Najpierw rozegraj etap 1: samouczek.</value></data>
+  <data name="Setup: register at least three minions, prepare palette slots, and finish current travel, queues and other automation." xml:space="preserve"><value>Przygotowanie: zarejestruj co najmniej trzy miniony, przygotuj miejsca w palecie i zakończ podróż, kolejki oraz inne automatyzacje.</value></data>
+  <data name="Open {0}, choose the CPU campaign or an activity, and press its run button. {1} only previews; opening this window starts nothing." xml:space="preserve"><value>Otwórz {0}, wybierz kampanię CPU lub aktywność i naciśnij jej przycisk uruchomienia. {1} to tylko podgląd; samo otwarcie okna niczego nie uruchamia.</value></data>
+  <data name="{0} continues saved work with unchanged goal settings; a new run resets replay/player counts. {1} cancels current work without disabling the global master." xml:space="preserve"><value>{0} kontynuuje zapisany postęp przy niezmienionych ustawieniach celu; nowe uruchomienie zeruje liczniki powtórek lub walk z graczami. {1} anuluje bieżącą pracę bez wyłączania przełącznika głównego.</value></data>
+  <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>Sprawdź stan u góry: brakujące miniony, środki, podróż, narzędzia zadań i ograniczenia kolejki. {0} i {1} mają osobne karty.</value></data>
+  <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>Jeśli dostępny przycisk uruchomienia nie reaguje, przed kolejną próbą sprawdź istniejący dziennik pod kątem błędu wstrzymania YesAlready.</value></data>
+  <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>Kolejki graczy wymagają wyłączenia Unrestricted Party; turniej wymaga też świata macierzystego, rejestracji i pozostałych walk.</value></data>
 </root>

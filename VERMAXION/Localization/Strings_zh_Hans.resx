@@ -5742,10 +5742,10 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
     <value>?????????????????????????????????????</value>
   </data>
   <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>??CPU??????{0}/5??{1}????{2}?</value>
+    <value>每周CPU对战，争取获胜：已完成{0}/5场；{1}胜；剩余{2}场</value>
   </data>
   <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>??CPU???????????{0}/5??{1}????{2}?</value>
+    <value>每周CPU对战，保持被动／故意输掉：已完成{0}/5场；{1}胜；剩余{2}场</value>
   </data>
   <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
     <value>??CPU?????????????</value>
@@ -5914,4 +5914,12 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Image could not be loaded." xml:space="preserve"><value>无法加载图片。</value></data>
   <data name="Image backgrounds remain visible to screenshots." xml:space="preserve"><value>图片背景仍会显示在截图中。</value></data>
   <data name="Pause backdrop for screenshots" xml:space="preserve"><value>暂停背景以便截图</value></data>
+  <data name="Verminion quick start" xml:space="preserve"><value>Verminion 快速入门</value></data>
+  <data name="Basics: destroy the enemy Arcana Stones and protect your own. Play Stage 1: Tutorial before other goals." xml:space="preserve"><value>基本玩法：摧毁敌方秘石并保护己方秘石。请先完成第1关教程。</value></data>
+  <data name="Setup: register at least three minions, prepare palette slots, and finish current travel, queues and other automation." xml:space="preserve"><value>准备：登记至少三种宠物，准备好面板栏位，并结束当前传送、排队和其他自动化任务。</value></data>
+  <data name="Open {0}, choose the CPU campaign or an activity, and press its run button. {1} only previews; opening this window starts nothing." xml:space="preserve"><value>打开{0}，选择CPU挑战流程或一项活动，再点击对应的运行按钮。{1}仅显示预览；打开窗口不会开始比赛。</value></data>
+  <data name="{0} continues saved work with unchanged goal settings; a new run resets replay/player counts. {1} cancels current work without disabling the global master." xml:space="preserve"><value>{0}会在目标设置不变时继续已保存的进度；重新运行会重置重复挑战或玩家比赛的计数。{1}会取消当前任务，但不会关闭全局总开关。</value></data>
+  <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>请查看顶部状态，确认缺少的宠物、资金、移动、任务工具或排队限制。{0}和{1}各有独立分页。</value></data>
+  <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>若可用的运行按钮没有反应，请先查看现有日志中是否有YesAlready暂停失败，再重试。</value></data>
+  <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>玩家比赛需要关闭解除人数限制；锦标赛还要求位于所属服务器、完成报名并有剩余比赛次数。</value></data>
 </root>

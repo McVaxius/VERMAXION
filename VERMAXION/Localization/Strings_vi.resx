@@ -3246,10 +3246,10 @@ Phụ thuộc: {1}</value></data>
     <value>Tr?n gi?i ??u y?u c?u Th? gi?i g?c, ??ng k? v? l??t ??u c?n l?i. L?a ch?n n?y ch?i c?c tr?n th?c t?.</value>
   </data>
   <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>CPU h?ng tu?n c? g?ng th?ng: {0}/5 tr?n; {1} th?ng; c?n {2} tr?n</value>
+    <value>CPU hằng tuần cố gắng thắng: {0}/5 trận; {1} thắng; còn {2} trận</value>
   </data>
   <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>CPU h?ng tu?n th? ??ng / c? ? thua: {0}/5 tr?n; {1} th?ng; c?n {2} tr?n</value>
+    <value>CPU hằng tuần thụ động / cố ý thua: {0}/5 trận; {1} thắng; còn {2} trận</value>
   </data>
   <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
     <value>Ho?n t?t m?c ti?u tr?n CPU h?ng tu?n c? g?ng th?ng</value>
@@ -3418,4 +3418,12 @@ Phụ thuộc: {1}</value></data>
   <data name="Image could not be loaded." xml:space="preserve"><value>Không thể tải hình ảnh.</value></data>
   <data name="Image backgrounds remain visible to screenshots." xml:space="preserve"><value>Nền hình ảnh vẫn hiển thị trong ảnh chụp màn hình.</value></data>
   <data name="Pause backdrop for screenshots" xml:space="preserve"><value>Tạm dừng nền để chụp ảnh màn hình</value></data>
+  <data name="Verminion quick start" xml:space="preserve"><value>Bắt đầu nhanh Verminion</value></data>
+  <data name="Basics: destroy the enemy Arcana Stones and protect your own. Play Stage 1: Tutorial before other goals." xml:space="preserve"><value>Cơ bản: phá các đá Arcana của đối thủ và bảo vệ đá của bạn. Hãy chơi màn 1: hướng dẫn trước.</value></data>
+  <data name="Setup: register at least three minions, prepare palette slots, and finish current travel, queues and other automation." xml:space="preserve"><value>Chuẩn bị: đăng ký ít nhất ba minion, chuẩn bị ô trên bảng chọn và kết thúc di chuyển, hàng chờ cùng các tác vụ tự động khác.</value></data>
+  <data name="Open {0}, choose the CPU campaign or an activity, and press its run button. {1} only previews; opening this window starts nothing." xml:space="preserve"><value>Mở {0}, chọn chiến dịch CPU hoặc hoạt động rồi nhấn nút chạy tương ứng. {1} chỉ xem trước; mở cửa sổ này không bắt đầu trận.</value></data>
+  <data name="{0} continues saved work with unchanged goal settings; a new run resets replay/player counts. {1} cancels current work without disabling the global master." xml:space="preserve"><value>{0} tiếp tục tiến độ đã lưu khi thiết lập mục tiêu không đổi; chạy mới đặt lại số lần chơi lại hoặc đấu người. {1} hủy công việc hiện tại mà không tắt công tắc tổng.</value></data>
+  <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>Xem trạng thái phía trên để biết thiếu minion, tiền, di chuyển, công cụ nhiệm vụ hoặc giới hạn hàng chờ. {0} và {1} có thẻ riêng.</value></data>
+  <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>Nếu nút chạy đang khả dụng không phản hồi, hãy kiểm tra lỗi tạm dừng YesAlready trong nhật ký hiện có trước khi thử lại.</value></data>
+  <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>Đấu người yêu cầu tắt Unrestricted Party; giải đấu còn cần Home World, đăng ký và lượt đấu còn lại.</value></data>
 </root>

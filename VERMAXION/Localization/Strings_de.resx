@@ -6053,16 +6053,16 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Selection" xml:space="preserve"><value>Auswahl</value></data>
   <data name="Status" xml:space="preserve"><value>Status</value></data>
   <data name="Run weekly CPU - fight to win" xml:space="preserve">
-    <value>W?chentliche CPU-K?mpfe starten - auf Sieg spielen</value>
+    <value>Wöchentliche CPU-Kämpfe starten - auf Sieg spielen</value>
   </data>
   <data name="Run weekly CPU - stay passive / intentionally lose" xml:space="preserve">
-    <value>W?chentliche CPU-K?mpfe starten - passiv bleiben / absichtlich verlieren</value>
+    <value>Wöchentliche CPU-Kämpfe starten - passiv bleiben / absichtlich verlieren</value>
   </data>
   <data name="Weekly CPU - fight to win (5 matches)" xml:space="preserve">
-    <value>W?chentliche CPU-K?mpfe - auf Sieg spielen (5 K?mpfe)</value>
+    <value>Wöchentliche CPU-Kämpfe - auf Sieg spielen (5 Kämpfe)</value>
   </data>
   <data name="Weekly CPU - stay passive / intentionally lose (5 matches)" xml:space="preserve">
-    <value>W?chentliche CPU-K?mpfe - passiv bleiben / absichtlich verlieren (5 K?mpfe)</value>
+    <value>Wöchentliche CPU-Kämpfe - passiv bleiben / absichtlich verlieren (5 Kämpfe)</value>
   </data>
   <data name="PvP - stay passive / throw" xml:space="preserve">
     <value>PvP - passiv bleiben / absichtlich verlieren</value>
@@ -6080,40 +6080,40 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
     <value>Turnier-Spielerkampf</value>
   </data>
   <data name="Summon and fight to win. Stop after five completed weekly CPU matches; only actual victories count as wins." xml:space="preserve">
-    <value>Begleiter beschw?ren und auf Sieg spielen. Nach f?nf abgeschlossenen w?chentlichen CPU-K?mpfen stoppen; nur tats?chliche Siege z?hlen als Siege.</value>
+    <value>Begleiter beschwören und auf Sieg spielen. Nach fünf abgeschlossenen wöchentlichen CPU-Kämpfen stoppen; nur tatsächliche Siege zählen als Siege.</value>
   </data>
   <data name="Stay passive and intentionally lose CPU battles after the tutorial. Stop after five completed weekly matches." xml:space="preserve">
-    <value>Nach dem Tutorial passiv bleiben und CPU-K?mpfe absichtlich verlieren. Nach f?nf abgeschlossenen w?chentlichen K?mpfen stoppen.</value>
+    <value>Nach dem Tutorial passiv bleiben und CPU-Kämpfe absichtlich verlieren. Nach fünf abgeschlossenen wöchentlichen Kämpfen stoppen.</value>
   </data>
   <data name="Summon, reinforce, defend and attack in the selected player queue. Wins are not guaranteed." xml:space="preserve">
-    <value>In der gew?hlten Spieler-Warteschlange beschw?ren, verst?rken, verteidigen und angreifen. Siege sind nicht garantiert.</value>
+    <value>In der gewählten Spieler-Warteschlange beschwören, verstärken, verteidigen und angreifen. Siege sind nicht garantiert.</value>
   </data>
   <data name="Summon one weak minion at a time and move it periodically on your home side. No attack, defense or forfeit commands; the actual result may still be a win." xml:space="preserve">
     <value>Beschwört jeweils einen schwachen Begleiter und bewegt ihn regelmäßig auf der eigenen Seite. Keine Angriffs-, Verteidigungs- oder Aufgabe-Befehle; das tatsächliche Ergebnis kann dennoch ein Sieg sein.</value>
   </data>
   <data name="Check tournament registration and prizes on your Home World. If entry is unavailable, fight remaining weekly CPU matches. For tournament battles, choose a PvP activity and Tournament player battle." xml:space="preserve">
-    <value>Turnieranmeldung und Preise auf deiner Stammwelt pr?fen. Ist die Teilnahme nicht m?glich, die ?brigen w?chentlichen CPU-K?mpfe auf Sieg spielen. F?r Turnierk?mpfe eine PvP-Aktivit?t und Turnier-Spielerkampf w?hlen.</value>
+    <value>Turnieranmeldung und Preise auf deiner Stammwelt prüfen. Ist die Teilnahme nicht möglich, die übrigen wöchentlichen CPU-Kämpfe auf Sieg spielen. Für Turnierkämpfe eine PvP-Aktivität und Turnier-Spielerkampf wählen.</value>
   </data>
   <data name="Tournament battles require your Home World, registration and remaining allowance. This selection plays actual matches." xml:space="preserve">
-    <value>Turnierk?mpfe erfordern die Stammwelt, eine Anmeldung und verbleibende Teilnahmen. Diese Auswahl spielt tats?chliche K?mpfe.</value>
+    <value>Turnierkämpfe erfordern die Stammwelt, eine Anmeldung und verbleibende Teilnahmen. Diese Auswahl spielt tatsächliche Kämpfe.</value>
   </data>
   <data name="Weekly CPU fight to win: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>W?chentliche CPU-K?mpfe auf Sieg: {0}/5 K?mpfe; {1} Siege; {2} K?mpfe ?brig</value>
+    <value>Wöchentliche CPU-Kämpfe auf Sieg: {0}/5 Kämpfe; {1} Siege; {2} Kämpfe übrig</value>
   </data>
   <data name="Weekly CPU stay passive / intentionally lose: {0}/5 matches; {1} wins; {2} matches remaining" xml:space="preserve">
-    <value>W?chentliche CPU-K?mpfe passiv / absichtlich verlieren: {0}/5 K?mpfe; {1} Siege; {2} K?mpfe ?brig</value>
+    <value>Wöchentliche CPU-Kämpfe passiv / absichtlich verlieren: {0}/5 Kämpfe; {1} Siege; {2} Kämpfe übrig</value>
   </data>
   <data name="Weekly CPU fight-to-win match goal complete" xml:space="preserve">
-    <value>W?chentliches CPU-Kampfziel mit Siegversuch abgeschlossen</value>
+    <value>Wöchentliches CPU-Kampfziel mit Siegversuch abgeschlossen</value>
   </data>
   <data name="Weekly CPU passive / intentional-loss match goal complete" xml:space="preserve">
-    <value>W?chentliches passives CPU-Kampfziel mit absichtlichen Niederlagen abgeschlossen</value>
+    <value>Wöchentliches passives CPU-Kampfziel mit absichtlichen Niederlagen abgeschlossen</value>
   </data>
   <data name="Selecting {0} player matchmaking; any matched opponent" xml:space="preserve">
-    <value>Spielersuche f?r {0} ausw?hlen; beliebiger Gegner</value>
+    <value>Spielersuche für {0} auswählen; beliebiger Gegner</value>
   </data>
   <data name="Queued for {0} player matchmaking; waiting for any opponent" xml:space="preserve">
-    <value>F?r {0}-Spielersuche angemeldet; auf einen Gegner warten</value>
+    <value>Für {0}-Spielersuche angemeldet; auf einen Gegner warten</value>
   </data>
   <data name="Missing minions needed for the selected run are purchased automatically. Owned minions and inventory items are used first." xml:space="preserve">
     <value>Fehlende Begleiter für den ausgewählten Lauf werden automatisch gekauft. Bereits freigeschaltete Begleiter und Gegenstände im Inventar werden zuerst verwendet.</value>
@@ -6270,4 +6270,12 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Image could not be loaded." xml:space="preserve"><value>Bild konnte nicht geladen werden.</value></data>
   <data name="Image backgrounds remain visible to screenshots." xml:space="preserve"><value>Bildhintergründe bleiben auf Screenshots sichtbar.</value></data>
   <data name="Pause backdrop for screenshots" xml:space="preserve"><value>Hintergrund für Screenshots anhalten</value></data>
+  <data name="Verminion quick start" xml:space="preserve"><value>Verminion-Schnellstart</value></data>
+  <data name="Basics: destroy the enemy Arcana Stones and protect your own. Play Stage 1: Tutorial before other goals." xml:space="preserve"><value>Grundlagen: Zerstöre die gegnerischen Arkanasteine und schütze deine eigenen. Spiele zuerst Stufe 1: Tutorial.</value></data>
+  <data name="Setup: register at least three minions, prepare palette slots, and finish current travel, queues and other automation." xml:space="preserve"><value>Vorbereitung: Registriere mindestens drei Begleiter, bereite Plätze auf der Palette vor und beende Reisen, Warteschlangen und andere Automatisierungen.</value></data>
+  <data name="Open {0}, choose the CPU campaign or an activity, and press its run button. {1} only previews; opening this window starts nothing." xml:space="preserve"><value>Öffne {0}, wähle die CPU-Kampagne oder eine Aktivität und drücke deren Startknopf. {1} zeigt nur eine Vorschau; das Öffnen dieses Fensters startet nichts.</value></data>
+  <data name="{0} continues saved work with unchanged goal settings; a new run resets replay/player counts. {1} cancels current work without disabling the global master." xml:space="preserve"><value>{0} setzt gespeicherte Arbeit bei unveränderten Zieleinstellungen fort; ein neuer Lauf setzt Wiederholungs- und Spielerkampfzähler zurück. {1} beendet aktuelle Arbeit, ohne den globalen Hauptschalter auszuschalten.</value></data>
+  <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>Der Status oben nennt fehlende Begleiter, Geld, Reise-, Questanbieter- oder Warteschlangenprobleme. {0} und {1} haben eigene Registerkarten.</value></data>
+  <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>Wenn ein verfügbarer Startknopf nichts bewirkt, prüfe vor einem neuen Versuch im vorhandenen Log, ob YesAlready nicht pausiert werden konnte.</value></data>
+  <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>Für Spielerkämpfe muss Unbeschränkte Gruppe aus sein; Turniere erfordern außerdem Stammwelt, Anmeldung und verbleibende Kämpfe.</value></data>
 </root>

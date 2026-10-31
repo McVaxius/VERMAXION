@@ -53,7 +53,7 @@ Main's **Run due tasks on a timer** is saved for the current runtime account and
 
 - **FC Buff Refill** — Seal Sweetener II stock reconciliation and purchasing on an every-AR, daily, weekly, or monthly schedule, with per-character VERMAXION activation disabled by default
 - **Retainer Equipping** — Upgrade AutoRetainer-enabled combat retainers by compatible average item level and gatherers by Perception
-- **Lord of Verminion** — a permanent CPU campaign, mission replays, explicit weekly CPU **fight to win** or **stay passive / intentionally lose**, tournament/prize checks, and independent **Non-RP / RP / Tournament** player queues with **PvP - Try to win** or **PvP - stay passive / throw**.
+- **Lord of Verminion** — a permanent CPU campaign, mission replays, explicit weekly CPU **fight to win** or **stay passive / intentionally lose**, tournament/prize checks, and independent **Non-RP / RP / Tournament** player queues with **PvP - Try to win** or **PvP - stay passive / throw**. Start with the [Verminion and VMX guide](#verminion-and-vmx-guide) below.
 
 Manual campaign, mission and player runs do not open or require the weekly Challenge Log. Weekly CPU fight-to-win summons and uses the existing CPU strategy; the passive choice waits for natural defeats without combat orders after the required tutorial. Both weekly choices target five completed matches, with wins credited only from observed victories. New profiles default to fighting; existing saved passive settings remain passive and are labeled explicitly.
 
@@ -145,6 +145,64 @@ Ocean Fishing does not require Questionable. It does not manage AutoHook presets
 The task dashboard distinguishes `Ready`, `Missing`, and `Needs setup`. Mini Cactpot, Jumbo Cactpot, and Fashion Report accept either enabled TextAdvance or XA Slave's enabled Skip Dialogue setting; required Saucy readiness also verifies that its Mini Cactpot configuration is accessible. Mini Cactpot uses Lifestream's `/li saucer` route and vnavmesh rather than Teleporter. Fishing reports whether AutoHook `AutoOceanFish` matches the selected provider. FC Buff Refill and Fishing require ADS and block startup when it is not loaded. Fishing also blocks run acquisition if the required AutoHook synchronization cannot be completed.
 
 Character-select recovery never opens, navigates, or backs out of character select. Its automatic timer arms only while `CharaSelect` is visible and resets as soon as it is hidden. Both the automatic and manual paths require only that visible addon, then invoke `_CharaSelectListMenu` callbacks `29, 0` and `21, 0` before accepting the resulting OK confirmation. The dashboard's Advanced diagnostics shows the global state, live `m:ss` countdown, and any blocking reason.
+
+## Verminion and VMX guide
+
+### Learn the game first
+
+Lord of Verminion is a real-time minion strategy game. Destroy the opponent's Arcana Stones while protecting your own. Unlock the Gold Saucer, visit Minion Square in Chocobo Square, and register at least three minions. Arrange them on the Verminion hotbar under **Character → Gold Saucer → Verminion**. Start with **Stage 1: Tutorial**; clearing Stage 2 opens further battle access.
+
+Choose minions on the hotbar and a summoning gate. Summoning costs limit your force; more units are not always the best counter. On keyboard/mouse, click or drag to select units, then right-click a destination. Monsters counter critters, critters counter poppets, and poppets counter monsters; gadgets have no type advantage. Check each minion's structure strengths and special action rather than treating every minion alike.
+
+The [official Lord of Verminion guide](https://na.finalfantasyxiv.com/lodestone/playguide/contentsguide/goldsaucer/lovm/) explains the full battlefield, controls, structures and tournaments, including gamepad controls. The instructions below describe VMX's current tool rather than replacing the game's tutorial.
+
+### Prepare the current character
+
+1. Log in, open `/vmx`, and wait for the current character to be registered. Open **Lord of Verminion** from the dashboard. The window is independent of **Run All**; opening it or changing a preview starts nothing.
+2. Finish or stop other automation, existing duty queues and travel. VMX requires readable, idle Lifestream/navigation and cannot take over a character owned by another active task or quest acquisition. Its manual Run actions also need to obtain their normal YesAlready pause. The global automatic-task master can stay off for a deliberate manual run.
+3. Open **Minions & guide → Check planned minions** to inspect ownership. Minion items in inventory are not registered until used. The check covers the planned campaign roster; it does not mean every later-stage minion is required before your first match. **Preview challenge** and **Follow next stage** show a plan; they do not select a mission to run.
+4. Resolve missing minions and palette slots shown by the tool. VMX uses registered minions and owned inventory items first, and can request missing supported vendor minions through ADS for the selected run. Keep ADS loaded for those purchases, sufficient currency, room in inventory/palette, and your configured gil reserve. Entry minions cost 2,400 gil each; Zu Hatchling costs 10,000 MGP. Purchase history is not an extra spending budget. Teleport costs and the global travel gil floor remain separate.
+5. Resolve any displayed unlock/provider requirement before retrying. Ordinary supported unfinished unlocks use the configured Questionable or WigglyQuest provider. Special quest-minion **Acquire** actions require WigglyQuest specifically, including its native priority/stop controls, plus the configured duty providers. These can be long quest chains. VMX stays paused for an owned quest handoff, then **Resume** registers the reward and continues. Do not start unrelated quest automation at the same time.
+
+### Pick the goal, then press its Run button
+
+The **Run** tab contains two separate panels. Choose the action that matches your goal:
+
+| Goal | Control | What it does |
+| --- | --- | --- |
+| Learn/clear the permanent CPU campaign | **Complete or continue 24 CPU challenges** | Starts at the first unfinished stage and keeps cleared stages across weekly resets. The challenge preview slider does not change this starting point. |
+| Repeat a particular cleared mission | **Activity → Win selected mission - repeat clears** | Set the mission number and number of clears, then press **Run mission …**. The count is successful clears; defeats do not satisfy it. Mission 1 is the tutorial and earns no weekly participation. Locked missions need their preceding campaign clears. |
+| Complete the weekly CPU match goal | **Weekly CPU - fight to win (5 matches)** | Fights using the CPU strategy for five completed weekly matches. A completed match and a victory are different counters. |
+| Complete weekly CPU matches passively | **Weekly CPU - stay passive / intentionally lose (5 matches)** | Intentionally stays passive after the required tutorial. Choose it only if you want that behavior; it does not attempt the normal winning strategy. |
+| Play against player-queue opponents | **PvP - Try to win** or **PvP - stay passive / throw** | Choose Non-RP, RP or Tournament and the match count, then press **Run player matches**. These runs do not clear CPU challenges or pair your accounts. |
+| Run tournament checks/prizes and the existing CPU fallback | **Tournament checks / prizes**, then **Check tournament / prizes** | Can register or claim prizes on the Home World. When the tournament entry period is closed or its match allowance is exhausted, it can continue the remaining weekly CPU matches. Unreadable eligibility or unverified registration stops the action. This is separate from selecting Tournament as a player-battle queue. |
+
+For player queues, turn **Unrestricted Party** off in Duty Finder first; VMX leaves that game setting under your control. Tournament battles additionally need your Home World, active registration and remaining native allowance. **Try to win** is an attempted strategy, not a guaranteed outcome. **Throw** sends minimal home-side activity without attack/defence/forfeit commands; it can still receive a win if the opponent forfeits. Only observed native results count.
+
+For a first VMX run, use the permanent CPU campaign and watch the window's status progress from preparation/travel to admission and the match. Starting the weekly or PvP goal is not a substitute for clearing required tutorials. VMX may stop on a missing minion, unsupported native reader or exhausted attempt limit; read that reason before choosing **Resume**.
+
+### Understand progress, Resume and FULL STOP
+
+- **Run** begins the selected replay/player count again. **Resume** continues the saved run when offered and the goal settings are unchanged; changing the activity, mission, count or player queue can reset that goal's accounting. Use **Resume CPU campaign** for a saved campaign. Permanent campaign clears stay recorded independently of those temporary counts.
+- The window's top status explains the current preparation, queue, match or failure. Permanent progress, next-stage attempts, weekly matches/wins and replay clear counts describe different goals. A dispatched command or joined queue does not count as a win.
+- **FULL STOP** cancels the current owned work and pending automatic actions; it does not turn the global automation master off. Completed campaign stages and unresolved purchase/prize evidence are retained. A coherent saved admission is canceled and cleared, including a matching native queue. After reload, use the offered **Resume** or **FULL STOP** to resolve the saved work instead of submitting duplicate actions.
+- **Purchases** shows the existing acquisition settings/history. An unresolved item/currency reservation must be reconciled before further purchases. Stop/reload does not erase it or make a second purchase safe.
+- **Tournament** shows the last observed registration/prize information. Use **Tournament checks / prizes** to refresh and act; a weekly CPU completion is not proof that a tournament reward was claimed.
+
+### If it appears to do nothing
+
+| What you see | What to check |
+| --- | --- |
+| You opened the window, changed Activity or moved Preview challenge | Those only configure or preview. Press the appropriate Run button on the **Run** tab. |
+| Run/Resume is disabled | Wait for character registration, then finish/stop the active engine task, Verminion run, DAD handoff or quest acquisition shown by the tool. |
+| You click an available Run button but no new status appears | The manual action can be refused if VMX cannot pause YesAlready. Check the existing Dalamud log for the `[Dashboard] Run action blocked` message and resolve that provider readiness before retrying; repeated clicks do not remove the blocker. |
+| Character, queue or travel is busy/unavailable | Finish the existing queue/interaction or travel, and check Lifestream/navigation readiness. |
+| Entry requires three minions or palette preparation fails | Register your owned minion items, free/add palette slots, and check the stated funds/reserve and ADS readiness for required purchases. |
+| Missing quest minion or unlock provider | Read **Minions & guide** for that stage and configure its stated quest/duty providers. Explicit Acquire actions can leave the selected run paused for **Resume**. |
+| Player Join is refused | Check Unrestricted Party, queue eligibility and, for tournaments, Home World/registration/allowance. |
+| Attempt limit, unsupported reader or unresolved purchase/prize | Review the exact status and saved evidence before resuming. Do not reset progress or repeatedly re-run purchases to hide the condition. |
+
+This guide does not establish a live fix for a reported no-start case or guarantee battle results. Its steps describe the existing controls and readiness checks.
 
 ## Commands
 

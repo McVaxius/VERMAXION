@@ -1,3 +1,10 @@
+2026-10-31 - Verminion and VMX getting-started guide (unversioned)
+
+- Add a quick start to the existing Minions & guide tab in all fifteen languages, covering the basic objective, prerequisites, deliberate Run actions, preview-only controls, Resume/Full Stop and common blocked-start reasons.
+- Add a linked README walkthrough for the CPU campaign, mission replay, weekly and player goals, tournament/prize actions and their existing CPU fallback. Explain the WigglyQuest acquisition requirement, unchanged-goal Resume accounting and the distinction between canceled admissions and retained purchase/prize uncertainty.
+- Keep the existing automation, scheduling, acquisition and result-accounting behavior. This is guidance for the current tool, including manual operation with the automatic-task master off.
+- Restore damaged characters in the existing Verminion weekly summaries across affected languages, plus German player/tournament captions exposed by the guide's native checks.
+
 2026-10-30 - Pas lineup-specific backup plans (3.0.0.5 unchanged)
 
 - For Board1, difficulty3, final fight only, evaluate complete remaining teams using native rank, poison, HP, defensive Borrow, healing and add-damage capabilities. Keep three beasts whenever three usable entries remain; the complete documented trio still takes precedence.
