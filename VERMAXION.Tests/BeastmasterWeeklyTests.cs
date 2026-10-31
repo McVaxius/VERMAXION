@@ -464,6 +464,7 @@ public sealed class BeastmasterWeeklyTests
     }
 
     [Theory]
+    [InlineData(CrucibleDegree.Standard)]
     [InlineData(CrucibleDegree.First)]
     [InlineData(CrucibleDegree.Second)]
     [InlineData(CrucibleDegree.Third)]
@@ -473,12 +474,13 @@ public sealed class BeastmasterWeeklyTests
         {
             Board = 5, Degree = savedDegree, RankedEntry = true, Goal = BeastmasterRunGoal.TrainOwned,
             RunCount = 12, CompletionCommand = "/vmx off", TeamMode = CrucibleTeamMode.Leveling,
-            WeeklyBoards = [1, 2, 3, 4, 5], CustomTeam = [13, 20, 27],
+            WeeklyBoards = [1, 2, 3, 4, 5], CustomTeam = [13, 20, 27], TrainingTargetRank = 25,
         };
         var scheduledSetup = BeastmasterRunSetup.From(manual);
         var scheduled = scheduledSetup.ApplyTo(manual);
         foreach (var source in new[] { manual, scheduled })
         {
+            var before = System.Text.Json.JsonSerializer.Serialize(source);
             var weekly = BeastmasterWeeklyPolicy.CopySettings(source);
             Assert.Equal(CrucibleDegree.Standard, weekly.Degree);
             Assert.Equal(BeastmasterRunGoal.FixedRuns, weekly.Goal);
@@ -498,6 +500,7 @@ public sealed class BeastmasterWeeklyTests
                 weekly.Degree = savedDegree;
                 BeastmasterWeeklyPolicy.SelectBoard(weekly, next.Board);
                 Assert.Equal(CrucibleDegree.Standard, weekly.Degree);
+                Assert.Equal((int)next.Board * 5, BeastmasterSelection.TrainingTarget(weekly));
                 Assert.Equal(1, weekly.RunCount);
                 generated.Add(weekly.Board);
                 attempted.Add(next.Board);
@@ -511,6 +514,7 @@ public sealed class BeastmasterWeeklyTests
             Assert.Equal(BeastmasterRunGoal.TrainOwned, source.Goal);
             Assert.Equal("/vmx off", source.CompletionCommand);
             Assert.Equal(new uint[] { 13, 20, 27 }, source.CustomTeam);
+            Assert.Equal(before, System.Text.Json.JsonSerializer.Serialize(source));
         }
         Assert.Equal(savedDegree, scheduledSetup.Degree);
         Assert.Equal(12, scheduledSetup.RunCount);

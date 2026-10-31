@@ -932,6 +932,9 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     internal bool MoveTo(Vector3 position)
     {
         if (!SuspendCombat()) return false;
+        // A finished command is no longer an active path, even if a redundant
+        // Stop was rejected. Only readable path and query state can release it.
+        if (ownsNavigation && NavigationSettled()) ownsNavigation = false;
         if (!ownsNavigation)
         {
             if (!navigation.TryGetNavReady(out var ready) || !ready) return false;

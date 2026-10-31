@@ -1,3 +1,8 @@
+2026-10-31 - Crucible continuation and navigation recovery (I715, unversioned)
+
+- Release stale movement ownership when native navigation positively confirms both path and pathfinding are idle, allowing Continue and stationary recovery to submit the current waypoint again.
+- Preserve the existing twelve-second ground-recovery window when a computed path has not produced arrival. Stop owned navigation after confirmed arrival, and recognize arrival promptly while an early retry is suppressed. Keep the thirty-second watchdog, movement thresholds, Pause/Stop, menus, settings snapshots, run accounting and training targets.
+
 2026-10-31 - Verminion and VMX getting-started guide (unversioned)
 
 - Add a quick start to the existing Minions & guide tab in all fifteen languages, covering the basic objective, prerequisites, deliberate Run actions, preview-only controls, Resume/Full Stop and common blocked-start reasons.

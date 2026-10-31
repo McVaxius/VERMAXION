@@ -440,6 +440,291 @@ public sealed class BeastmasterRouteLifecycleTests
     }
 
     [Theory]
+    [InlineData(4u, 7, true)]
+    [InlineData(4u, 7, false)]
+    [InlineData(1u, 1, true)]
+    [InlineData(1u, 1, false)]
+    public void I715SettledNavigationDoesNotStrandReattachedStandardBoard(uint board, int waypoint, bool stationary)
+    {
+        using var host = new HostFixture { Territory = 1338 + board };
+        host.EnableBeastmasterJob();
+        host.Conditions.Add("BoundByDuty");
+        var service = host.CreateService();
+        host.EnemyHp = 0;
+        host.EnableBattle(service);
+        var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings
+        {
+            Board = board, Degree = live::VERMAXION.Beastmaster.CrucibleDegree.Standard,
+            Goal = live::VERMAXION.Beastmaster.BeastmasterRunGoal.TrainOwned,
+            TeamMode = live::VERMAXION.Beastmaster.CrucibleTeamMode.Leveling,
+            LevelingMode = live::VERMAXION.Beastmaster.CrucibleLevelingMode.Full,
+            TrainingTargetRank = 25, RunCount = 12,
+        };
+        Set(service, "runSettings", settings);
+        Set(service, "owner", 17UL); Set(service, "operatorStopped", false);
+        Set(service, "CurrentRun", 7);
+        Set(service, "StopAfterNextOutcome", true);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+        var oldRoute = CreateRoute(service, host.Territory);
+        Set(oldRoute, "Step", waypoint);
+        Set(service, "route", oldRoute);
+        var action = ((JArray)Field(oldRoute, "actions")!)[waypoint]!;
+        Assert.Equal("MoveTo", action.Value<string>("Name"));
+        var destination = new Vector3(action["Position"]!.Value<float>("X"),
+            action["Position"]!.Value<float>("Y"), action["Position"]!.Value<float>("Z"));
+        if (board == 4) Assert.Equal(new Vector3(-705, 0, -16.5f), destination);
+        host.Position = destination + new Vector3(0, 0, 4);
+
+        // The old accepted command has ended without displacement. Native status
+        // independently confirms no path/query, but a redundant Stop is rejected.
+        Set(service, "ownsNavigation", true);
+        host.StopAccepted = false;
+        if (stationary)
+        {
+            Set(service, "stationaryPosition", host.Position);
+            Set(service, "stationarySince", DateTime.UtcNow.AddSeconds(-31));
+            Invoke(service, "Update");
+            Assert.Single(host.Warnings, message => message.Contains("Stationary for 30 seconds", StringComparison.Ordinal));
+        }
+        else Assert.True((bool)Invoke(service, "StartConfigured", settings, false)!);
+
+        Assert.True(Field(service, "State")!.ToString() == "Running",
+            $"Reattachment state: {Field(service, "State")}; status: {Read<string>(service, "StatusText")}");
+        var resumed = Field(service, "route")!;
+        Assert.NotSame(oldRoute, resumed);
+        Invoke(service, "Update");
+        Assert.Equal(waypoint, Read<int>(resumed, "Step"));
+        Assert.Single(host.MovementCommands);
+        Assert.Same(settings, Field(service, "runSettings"));
+        Assert.Equal(7, Read<int>(service, "CurrentRun"));
+        Assert.Equal(25, settings.TrainingTargetRank);
+        Assert.True(Read<bool>(service, "StopAfterNextOutcome"));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+
+        // A submitted command without movement must not consume its waypoint.
+        AgeMovement(resumed);
+        Invoke(service, "Update");
+        Assert.Equal(waypoint, Read<int>(resumed, "Step"));
+        host.Position = destination;
+        AgeMovement(resumed);
+        Invoke(service, "Update");
+        Assert.Equal(waypoint + 1, Read<int>(resumed, "Step"));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+    }
+
+    [Fact]
+    public void I715UnconsumedMasterMovePreservesGroundRecoveryUntilDisplacementOrItsExistingStallDeadline()
+    {
+        using var host = new HostFixture();
+        host.EnableBeastmasterJob();
+        var service = CreateStationaryRun(host);
+        host.EnemyHp = 0; host.EnableBattle(service);
+        var settings = (live::VERMAXION.Beastmaster.BeastmasterSettings)Field(service, "runSettings")!;
+        settings.Goal = live::VERMAXION.Beastmaster.BeastmasterRunGoal.TrainOwned;
+        settings.TeamMode = live::VERMAXION.Beastmaster.CrucibleTeamMode.Leveling;
+        settings.LevelingMode = live::VERMAXION.Beastmaster.CrucibleLevelingMode.Full;
+        settings.TrainingTargetRank = 25;
+        var route = CreateRoute(service, 1342);
+        Set(route, "Step", 7); Set(service, "route", route);
+        host.Position = new(-699.93744f, 0, -8.134799f);
+        var origin = host.Position;
+        var destination = new Vector3(-705, 0, -16.5f);
+        var navigation = Field(service, "navigation")!;
+        var recovery = Field(navigation, "groundRecovery")!;
+
+        Invoke(service, "Update");
+        Assert.Equal("/vnav moveto -705.00 0.00 -16.50", Assert.Single(host.MovementCommands));
+        var firstProgressAt = Read<DateTime>(recovery, "lastProgressAt");
+        Assert.NotEqual(DateTime.MinValue, firstProgressAt);
+
+        // A settled computation does not establish actual displacement.
+        // Half a second without arrival must retain existing recovery history.
+        AgeMovement(route);
+        Invoke(service, "Update");
+        Assert.Equal(origin, host.Position);
+        Assert.Equal(7, Read<int>(route, "Step"));
+        Assert.DoesNotContain("/vnav stop", host.Commands);
+        Assert.Equal(firstProgressAt, Read<DateTime>(recovery, "lastProgressAt"));
+        Assert.Equal(destination, Read<Vector3?>(recovery, "destination"));
+
+        // Exercise the existing tracker through the real navigation wrapper;
+        // only its observation clock is aged, without waiting or adding retries.
+        var beforeDeadline = DateTime.UtcNow.AddSeconds(-11);
+        Set(recovery, "lastProgressAt", beforeDeadline);
+        AgeMovement(route); Invoke(service, "Update");
+        Assert.Single(host.MovementCommands);
+        Assert.DoesNotContain("/vnav stop", host.Commands);
+        Assert.Equal(beforeDeadline, Read<DateTime>(recovery, "lastProgressAt"));
+
+        Set(recovery, "lastProgressAt", DateTime.UtcNow.AddSeconds(-12.1));
+        for (var tick = 0; tick < 2 && host.MovementCommands.Count == 1; ++tick)
+        {
+            AgeMovement(route);
+            Invoke(service, "Update");
+        }
+        Assert.Equal(2, host.MovementCommands.Count);
+        Assert.All(host.MovementCommands, command => Assert.Equal("/vnav moveto -705.00 0.00 -16.50", command));
+        Assert.Contains(host.Warnings, message => message.Contains("without a recovery jump", StringComparison.Ordinal));
+        Assert.DoesNotContain("/vnav stop", host.Commands);
+        Assert.Equal(origin, host.Position);
+        Assert.Equal(7, Read<int>(route, "Step"));
+
+        host.Position = destination;
+        AgeMovement(route); Invoke(service, "Update");
+        Assert.Equal(8, Read<int>(route, "Step"));
+        Assert.Contains("/vnav stop", host.Commands);
+        Assert.Null(Field(recovery, "destination"));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        Assert.False(Read<bool>(service, "ResultObserved"));
+        Assert.Equal(25, settings.TrainingTargetRank);
+    }
+
+    [Fact]
+    public void I715ArrivalDuringRetrySuppressionAdvancesWithoutAnotherMovementRequest()
+    {
+        using var host = new HostFixture();
+        host.EnableBeastmasterJob();
+        var service = CreateStationaryRun(host);
+        host.EnemyHp = 0; host.EnableBattle(service);
+        var route = CreateRoute(service, 1342);
+        Set(route, "Step", 7); Set(service, "route", route);
+        host.Position = new(-699.93744f, 0, -8.134799f);
+        var destination = new Vector3(-705, 0, -16.5f);
+
+        Invoke(service, "Update");
+        Assert.Single(host.MovementCommands);
+        AgeMovement(route); Invoke(service, "Update");
+        Assert.Equal(7, Read<int>(route, "Step"));
+        Invoke(service, "Update"); // The existing tracker suppresses an early retry.
+        Assert.Single(host.MovementCommands);
+        Assert.False(Read<bool>(route, "movementStarted"));
+
+        host.Position = destination;
+        Invoke(service, "Update");
+        Assert.Equal(8, Read<int>(route, "Step"));
+        Assert.Single(host.MovementCommands);
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        Assert.False(Read<bool>(service, "ResultObserved"));
+    }
+
+    [Theory]
+    [InlineData("not ready", false)] [InlineData("not ready", true)]
+    [InlineData("pending", false)] [InlineData("pending", true)]
+    [InlineData("running", false)] [InlineData("running", true)]
+    [InlineData("unreadable", false)] [InlineData("unreadable", true)]
+    public void I715ReattachmentWaitsForReadableSettledNavigationAndActualArrival(string guard, bool stopAccepted)
+    {
+        using var host = new HostFixture();
+        host.EnableBeastmasterJob();
+        var service = CreateStationaryRun(host);
+        host.EnemyHp = 0;
+        host.EnableBattle(service);
+        var oldRoute = CreateRoute(service, 1342);
+        Set(oldRoute, "Step", 7); Set(service, "route", oldRoute);
+        var destination = new Vector3(-705, 0, -16.5f);
+        host.Position = destination + new Vector3(0, 0, 4);
+        Set(service, "ownsNavigation", guard != "not ready");
+        host.StopAccepted = stopAccepted;
+        host.NavigationReady = guard != "not ready";
+        host.Pathfinding = guard == "pending";
+        host.PathRunning = guard == "running";
+        host.NavigationUnavailable = guard == "unreadable";
+
+        Assert.True((bool)Invoke(service, "StartConfigured", Field(service, "runSettings")!, false)!);
+        Assert.True(Field(service, "State")!.ToString() == "Running", Read<string>(service, "StatusText"));
+        var resumed = Field(service, "route")!;
+        for (var tick = 0; tick < 2; ++tick)
+        {
+            AgeMovement(resumed);
+            Invoke(service, "Update");
+            Assert.Equal(7, Read<int>(resumed, "Step"));
+            Assert.Empty(host.MovementCommands);
+        }
+
+        host.NavigationReady = true; host.NavigationUnavailable = false;
+        host.Pathfinding = host.PathRunning = false;
+        for (var tick = 0; tick < 3 && host.MovementCommands.Count == 0; ++tick)
+        {
+            AgeMovement(resumed);
+            Invoke(service, "Update");
+        }
+        Assert.Equal("/vnav moveto -705.00 0.00 -16.50", Assert.Single(host.MovementCommands));
+        Assert.Equal(7, Read<int>(resumed, "Step"));
+
+        host.Pathfinding = true;
+        AgeMovement(resumed); Invoke(service, "Update");
+        Assert.Equal(7, Read<int>(resumed, "Step"));
+        host.Pathfinding = false; host.PathRunning = true;
+        AgeMovement(resumed); Invoke(service, "Update");
+        Assert.Equal(7, Read<int>(resumed, "Step"));
+        host.PathRunning = false;
+        AgeMovement(resumed); Invoke(service, "Update");
+        Assert.Equal(7, Read<int>(resumed, "Step")); // Settled still does not mean displaced.
+
+        host.Position = destination;
+        for (var tick = 0; tick < 2 && Read<int>(resumed, "Step") == 7; ++tick)
+        {
+            AgeMovement(resumed);
+            Invoke(service, "Update");
+        }
+        Assert.Equal(8, Read<int>(resumed, "Step"));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        Assert.False(Read<bool>(service, "ResultObserved"));
+    }
+
+    [Fact]
+    public void I715ReattachmentRetainsNativeMenuUntilItClosesBeforeMoving()
+    {
+        using var host = new HostFixture();
+        host.EnableBeastmasterJob(); host.EnableNativeUi();
+        var service = CreateStationaryRun(host);
+        host.EnemyHp = 0; host.EnableBattle(service);
+        var oldRoute = CreateRoute(service, 1342);
+        Set(oldRoute, "Step", 7); Set(service, "route", oldRoute);
+        host.Position = new(-705, 0, -12.5f);
+        var question = host.AddRegistrationWindow("SelectYesno");
+
+        Assert.True((bool)Invoke(service, "StartConfigured", Field(service, "runSettings")!, false)!);
+        var resumed = Field(service, "route")!;
+        Invoke(service, "Update");
+        Assert.True(host.IsAddonVisible(question));
+        Assert.Empty(host.MovementCommands);
+        Assert.Equal(0, host.YesClicks);
+        Assert.Equal(0, host.ChallengeCallbacks);
+
+        host.ShowAddon(question, false);
+        Invoke(service, "Update");
+        Assert.Equal(7, Read<int>(resumed, "Step"));
+        Assert.Equal("/vnav moveto -705.00 0.00 -16.50", Assert.Single(host.MovementCommands));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+    }
+
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void I715PauseAndStopSuppressStationaryContinuation(bool pause)
+    {
+        using var host = new HostFixture();
+        host.EnableBeastmasterJob();
+        var service = CreateStationaryRun(host);
+        host.EnemyHp = 0; host.EnableBattle(service);
+        var route = CreateRoute(service, 1342);
+        Set(route, "Step", 7); Set(service, "route", route);
+        host.Position = new(-705, 0, -12.5f);
+        Invoke(service, pause ? "Pause" : "Stop");
+        Set(service, "stationaryPosition", host.Position);
+        Set(service, "stationarySince", DateTime.UtcNow.AddSeconds(-31));
+        Invoke(service, "Update"); Invoke(service, "Update");
+
+        Assert.Empty(host.MovementCommands);
+        Assert.Empty(host.Warnings);
+        Assert.Equal(7, Read<int>(route, "Step"));
+        Assert.False(Read<bool>(service, "BoardRunCompleted"));
+        Assert.False(Read<bool>(service, "ResultObserved"));
+        Assert.Equal(pause ? "Running" : "Idle", Field(service, "State")!.ToString());
+        Assert.Equal(pause, Read<bool>(service, "IsPaused"));
+    }
+
+    [Theory]
     [InlineData(1339u)]
     [InlineData(1340u)]
     [InlineData(1341u)]
@@ -713,7 +998,8 @@ public sealed class BeastmasterRouteLifecycleTests
         host.Conditions.Add("BetweenAreas");
         var service = host.CreateService();
         foreach (var board in Enumerable.Range(1, 5))
-            foreach (var degree in new[] { live::VERMAXION.Beastmaster.CrucibleDegree.First,
+            foreach (var degree in new[] { live::VERMAXION.Beastmaster.CrucibleDegree.Standard,
+                live::VERMAXION.Beastmaster.CrucibleDegree.First,
                 live::VERMAXION.Beastmaster.CrucibleDegree.Second, live::VERMAXION.Beastmaster.CrucibleDegree.Third })
             {
                 host.Territory = 1338u + (uint)board;
@@ -1154,7 +1440,7 @@ public sealed class BeastmasterRouteLifecycleTests
     }
 
     [Fact]
-    public void CancelledEntranceMoveStaysPendingAndReissuesUntilActualArrival()
+    public void CancelledEntranceMoveWaitsForExistingRecoveryOrActualArrival()
     {
         using var host = new HostFixture();
         var service = host.CreateService();
@@ -1173,7 +1459,8 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.False(Read<bool>(route, "movementStarted"));
         Invoke(route, "Update");
         Assert.Equal(1, Read<int>(route, "Step"));
-        Assert.Equal(2, host.MovementCommands.Count);
+        Assert.Single(host.MovementCommands); // Retain the existing stall window instead of rapid reissue.
+        Assert.DoesNotContain("/vnav stop", host.Commands);
 
         host.Position = destination;
         AgeMovement(route);
@@ -2155,6 +2442,7 @@ public sealed class BeastmasterRouteLifecycleTests
         private readonly List<Action> restore = [];
         private readonly Type svc = Assembly.Load("ECommons").GetType("ECommons.DalamudServices.Svc", true)!;
         private readonly object player;
+        private object? playerJob;
         private readonly object navigation;
         private readonly object pluginInterface;
         private readonly object log;
@@ -2243,6 +2531,8 @@ public sealed class BeastmasterRouteLifecycleTests
         public bool LoggedIn = true, PlayerLoaded = true, PlayerDead;
         public ulong Character = 17;
         public bool Pathfinding;
+        public bool PathRunning = false, NavigationUnavailable = false;
+        public bool NavigationReady = true, StopAccepted = true;
         public readonly HashSet<string> Conditions = [];
         public readonly List<string> Commands = [];
         public readonly List<string> Warnings = [];
@@ -2269,7 +2559,9 @@ public sealed class BeastmasterRouteLifecycleTests
                 {
                     "get_Position" => Position, "get_IsDead" => PlayerDead, "get_IsCasting" => false,
                     "get_CurrentHp" => PlayerCurrentHp, "get_MaxHp" => PlayerMaximumHp,
-                    "get_StatusList" => playerStatuses, _ => Default(method.ReturnType),
+                    "get_StatusList" => playerStatuses,
+                    "get_ClassJob" => playerJob ?? Default(method.ReturnType),
+                    _ => Default(method.ReturnType),
                 });
                 var objects = Proxy(typeof(host::Dalamud.Plugin.Services.IObjectTable), (method, _) => method.Name switch
                 {
@@ -2358,6 +2650,34 @@ public sealed class BeastmasterRouteLifecycleTests
             NativePlayerAvailable = true;
         }
         public bool NativePlayerAvailable { set => Marshal.WriteIntPtr(nativePlayerSlot, value ? (nint)1 : 0); }
+
+        public void EnableBeastmasterJob()
+        {
+            // Fabricate only one current-schema ClassJob row. Its abbreviation
+            // lets the actual service reattach rather than exit at the BST check.
+            var lumina = Assembly.Load("Lumina");
+            var rawType = lumina.GetType("Lumina.Excel.RawExcelSheet", true)!;
+            var pageType = lumina.GetType("Lumina.Excel.ExcelPage", true)!;
+            var module = RuntimeHelpers.GetUninitializedObject(lumina.GetType("Lumina.Excel.ExcelModule", true)!);
+            var raw = RuntimeHelpers.GetUninitializedObject(rawType);
+            var bytes = new byte[112];
+            System.Text.Encoding.UTF8.GetBytes("BST\0").CopyTo(bytes, 108);
+            var page = Activator.CreateInstance(pageType, Instance, null, [raw, bytes, (ushort)108], null)!;
+            var pages = Array.CreateInstance(pageType, 1); pages.SetValue(page, 0);
+            Set(raw, "_pages", pages);
+            var lookupType = rawType.GetNestedType("RowOffsetLookup", BindingFlags.Public | BindingFlags.NonPublic)!;
+            var lookups = Array.CreateInstance(lookupType, 1);
+            lookups.SetValue(Activator.CreateInstance(lookupType, [1u, 0u, (ushort)0, (ushort)1]), 0);
+            Set(raw, "_rowOffsetLookupTable", lookups);
+            Set(raw, "_rowIndexLookupArray", new[] { 0 });
+            Set(raw, "_rowIndexLookupArrayOffset", 1u);
+            var playerType = typeof(host::Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter);
+            var referenceType = playerType.GetInterfaces().Prepend(playerType)
+                .Select(type => type.GetProperty("ClassJob")).First(property => property != null)!.PropertyType;
+            var sheetType = lumina.GetType("Lumina.Excel.ExcelSheet`1", true)!.MakeGenericType(referenceType.GenericTypeArguments);
+            playerJob = Activator.CreateInstance(referenceType, [module, 1u, null])!;
+            Set(playerJob, "_sheet", Activator.CreateInstance(sheetType, raw)!);
+        }
 
         // Existing generated native-address seams point only at allocations and
         // callbacks owned by this fixture. No game process or client is involved.
@@ -2845,14 +3165,22 @@ public sealed class BeastmasterRouteLifecycleTests
             {
                 if (method.Name != "ProcessCommand") return Default(method.ReturnType);
                 Commands.Add((string)args![0]!);
-                return true;
+                return (string)args[0]! != "/vnav stop" || StopAccepted;
             }));
             foreach (var name in new[] { "pathIsRunningSubscriber", "pathfindInProgressSubscriber", "navIsReadySubscriber" })
             {
                 var field = navType.GetField(name, Instance)!;
-                field.SetValue(instance, Proxy(field.FieldType, (method, _) => method.Name == "InvokeFunc"
-                    ? name == "navIsReadySubscriber" || name == "pathfindInProgressSubscriber" && Pathfinding
-                    : Default(method.ReturnType)));
+                field.SetValue(instance, Proxy(field.FieldType, (method, _) =>
+                {
+                    if (method.Name != "InvokeFunc") return Default(method.ReturnType);
+                    if (NavigationUnavailable) throw new InvalidOperationException("Synthetic navigation status unavailable");
+                    return name switch
+                    {
+                        "navIsReadySubscriber" => NavigationReady,
+                        "pathIsRunningSubscriber" => PathRunning,
+                        _ => Pathfinding,
+                    };
+                }));
             }
             return instance;
         }

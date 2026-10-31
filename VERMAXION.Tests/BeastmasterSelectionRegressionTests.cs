@@ -257,6 +257,39 @@ public sealed class BeastmasterSelectionRegressionTests
     }
 
     [Theory]
+    [InlineData(1u, 10)]
+    [InlineData(2u, 12)]
+    [InlineData(3u, 14)]
+    [InlineData(4u, 12)]
+    [InlineData(5u, 15)]
+    public void StandardFullTeamTrainingUsesExplicitRank25AndAdaptiveRosterOnEveryBoard(uint board, int capacity)
+    {
+        var saved = new BeastmasterSettings
+        {
+            Board = board, Degree = CrucibleDegree.Standard, Goal = BeastmasterRunGoal.TrainOwned,
+            TeamMode = CrucibleTeamMode.Leveling, LevelingMode = CrucibleLevelingMode.Full,
+            TrainingTargetRank = 25, RunCount = 4, ClassificationLock = 1,
+            CombatProvider = BeastmasterCombatProvider.Minerva,
+        };
+        var before = JToken.FromObject(saved);
+        var run = saved.Clone();
+        var owned = Enumerable.Range(1, capacity).Select(number =>
+            new BeastmasterCandidate((uint)number, 12, 0, number, Classification: 1))
+            .Append(new(49, 1, 0, 0, Classification: 1, PickBlocked: true))
+            .Append(new(50, 1, 0, 0, Classification: 2)).ToArray();
+
+        // This deliberately lacks the strict clear roster. Standard training
+        // must use eligible owned familiars, including on a master board.
+        Assert.True(BeastmasterSelection.TryPrepareTeam(run, owned, capacity, out var team, out var reason), reason);
+        Assert.Equal(Enumerable.Range(1, capacity).Select(number => (uint)number), team.Order());
+        Assert.True(BeastmasterSelection.CanEnterBoard(team));
+        Assert.False(BeastmasterSelection.UsesScriptedFight(run, new(1, false)));
+        Assert.Equal(25, BeastmasterSelection.TrainingTarget(run));
+        Assert.True(JToken.DeepEquals(before, JToken.FromObject(saved)));
+        Assert.True(JToken.DeepEquals(before, JToken.FromObject(run)));
+    }
+
+    [Theory]
     [InlineData(0)] // Unread.
     [InlineData(14)] // Below Board 3's rank sync.
     [InlineData(26)] // Invalid.

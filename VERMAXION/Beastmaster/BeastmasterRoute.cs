@@ -236,15 +236,24 @@ internal sealed unsafe class BeastmasterRoute
         { service.StopNavigation(); movementStarted = false; return false; }
         if (!movementStarted)
         {
+            // Arrival can occur while the existing tracker is suppressing a retry.
+            if (BeastmasterPlayer.BelowDistanceToPlayer(position, 0.5f, 1f) && service.NavigationSettled())
+            {
+                if (!service.SuspendCombat()) return false;
+                service.StopNavigation();
+                return true;
+            }
             if (!service.MoveTo(position)) return false;
             movementStarted = true;
             movementSince = DateTime.UtcNow;
             return false;
         }
         if (DateTime.UtcNow - movementSince < TimeSpan.FromMilliseconds(500) || !service.NavigationSettled()) return false;
-        service.StopNavigation();
         movementStarted = false;
-        return BeastmasterPlayer.BelowDistanceToPlayer(position, 0.5f, 1f);
+        // Settled navigation alone must not reset the ground-recovery window.
+        if (!BeastmasterPlayer.BelowDistanceToPlayer(position, 0.5f, 1f)) return false;
+        service.StopNavigation();
+        return true;
     }
 
     private static bool BlockingMenu() => new[]

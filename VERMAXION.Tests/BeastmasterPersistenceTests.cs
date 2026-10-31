@@ -67,18 +67,56 @@ public sealed class BeastmasterPersistenceTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RankedEntryPreferenceSurvivesRunAndWeeklyCopies(bool ranked)
+    [InlineData(CrucibleDegree.Standard, false)]
+    [InlineData(CrucibleDegree.Standard, true)]
+    [InlineData(CrucibleDegree.First, false)]
+    [InlineData(CrucibleDegree.First, true)]
+    [InlineData(CrucibleDegree.Second, false)]
+    [InlineData(CrucibleDegree.Second, true)]
+    [InlineData(CrucibleDegree.Third, false)]
+    [InlineData(CrucibleDegree.Third, true)]
+    public void RankedEntryPreferenceSurvivesRunAndWeeklyCopies(CrucibleDegree degree, bool ranked)
     {
-        var source = new BeastmasterSettings { Degree = CrucibleDegree.Third, RankedEntry = ranked };
+        var source = new BeastmasterSettings
+        {
+            Board = 4, Degree = degree, RankedEntry = ranked, TrainingTargetRank = 25,
+            RunCount = 4, CustomTeam = [13, 20, 27], CombatProvider = BeastmasterCombatProvider.Minerva,
+        };
+        var manual = source.Clone();
         var setup = BeastmasterRunSetup.From(source).Clone();
-        Assert.Equal(ranked, source.Clone().RankedEntry);
+        var shared = source.Clone();
+        shared.RankedEntry = !ranked;
+        shared.Degree = degree == CrucibleDegree.Standard ? CrucibleDegree.Third : CrucibleDegree.Standard;
+        shared.TrainingTargetRank = 7;
+        var scheduled = setup.ApplyTo(shared);
+        var weekly = BeastmasterWeeklyPolicy.CopySettings(source);
+
+        Assert.Equal(ranked, manual.RankedEntry);
         Assert.Equal(ranked, setup.RankedEntry);
-        Assert.Equal(ranked, setup.ApplyTo(new BeastmasterSettings { RankedEntry = !ranked }).RankedEntry);
-        Assert.Equal(ranked, BeastmasterWeeklyPolicy.CopySettings(source).RankedEntry);
-        source.Degree = CrucibleDegree.First;
-        Assert.Equal(ranked, source.Clone().RankedEntry);
+        Assert.Equal(ranked, scheduled.RankedEntry);
+        Assert.Equal(ranked, weekly.RankedEntry);
+        Assert.Equal(degree, manual.Degree);
+        Assert.Equal(degree, scheduled.Degree);
+        Assert.Equal(CrucibleDegree.Standard, weekly.Degree);
+        Assert.Equal(25, BeastmasterSelection.TrainingTarget(manual));
+        Assert.Equal(20, BeastmasterSelection.TrainingTarget(scheduled));
+        Assert.Equal(20, BeastmasterSelection.TrainingTarget(weekly));
+
+        source.RankedEntry = !ranked;
+        source.Degree = shared.Degree;
+        source.TrainingTargetRank = 7;
+        source.CustomTeam.Clear();
+        shared.CustomTeam.Clear();
+        foreach (var snapshot in new[] { manual, scheduled, weekly })
+        {
+            Assert.Equal(ranked, snapshot.RankedEntry);
+            Assert.Equal(new uint[] { 13, 20, 27 }, snapshot.CustomTeam);
+            Assert.Equal(BeastmasterCombatProvider.Minerva, snapshot.CombatProvider);
+        }
+        Assert.Equal(degree, setup.Degree);
+        Assert.Equal(4, manual.RunCount);
+        Assert.Equal(4, scheduled.RunCount);
+        Assert.Equal(1, weekly.RunCount);
     }
 
     [Theory]
