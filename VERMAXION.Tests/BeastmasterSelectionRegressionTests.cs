@@ -33,10 +33,10 @@ public sealed class BeastmasterSelectionRegressionTests
             new(44, 5, 0, 0, HP: 800, MaxHP: 800, AttackPower: 100),
             new(2, 1, 0, 0, HP: 100, MaxHP: 100, AreaDamage: true, AttackPower: 500),
         ];
-        Assert.Equal(new uint[] { 10, 32, 9 }, BeastmasterSelection.RemainingFinalFightOrder(settings, fight, beasts, planned));
+        Assert.Equal(new uint[] { 10, 9, 44 }, BeastmasterSelection.RemainingFinalFightOrder(settings, fight, beasts, planned));
 
-        // Every combination of losses keeps every usable planned member and
-        // fills all three horns whenever three native beasts are still usable.
+        // Every combination fills all three horns whenever possible, without
+        // retaining a weaker planned survivor at the expense of the whole team.
         for (var mask = 0; mask < 1 << beasts.Length; ++mask)
         {
             var remaining = beasts.Select((beast, index) => beast with
@@ -45,15 +45,13 @@ public sealed class BeastmasterSelectionRegressionTests
             Assert.Equal(Math.Min(3, remaining.Count(beast => beast.Alive)), picked.Count);
             Assert.Equal(picked.Count, picked.Distinct().Count());
             Assert.All(picked, number => Assert.Contains(remaining, beast => beast.Number == number && beast.Alive));
-            Assert.All(planned.Where(number => remaining.Any(beast => beast.Number == number && beast.Alive)),
-                number => Assert.Contains(number, picked));
             if (planned.All(number => remaining.Any(beast => beast.Number == number && beast.Alive)))
                 Assert.Equal(planned, picked);
         }
     }
 
     [Fact]
-    public void RemainingTeamAndAdaptiveControlAreRestrictedToFirstBoardThirdDegreePas()
+    public void RemainingTeamIsScopedToPasAndKnownLineupsUseScriptedControl()
     {
         uint[] planned = [10, 50, 32];
         BeastmasterCandidate[] beasts =
@@ -69,12 +67,31 @@ public sealed class BeastmasterSelectionRegressionTests
                     Assert.Equal(allowed, BeastmasterSelection.AllowsRemainingTeam(settings, fight));
                     Assert.Equal(allowed ? new uint[] { 10, 32, 9 } : new uint[] { 10, 32 },
                         BeastmasterSelection.RemainingFinalFightOrder(settings, fight, beasts, planned));
-                    Assert.Equal(BeastmasterSelection.RequiresClearTeam(settings) && !allowed,
+                    Assert.Equal(BeastmasterSelection.RequiresClearTeam(settings),
                         BeastmasterSelection.UsesScriptedFight(settings, fight));
                     Assert.Equal(BeastmasterSelection.RequiresClearTeam(settings),
                         BeastmasterSelection.UsesScriptedFight(settings, fight with { UseRemainingTeam = false }));
                     Assert.False(BeastmasterSelection.UsesScriptedFight(settings, null));
                 }
+    }
+
+    [Fact]
+    public void PasEvaluatesCompleteTeamsForHealingDefensiveBorrowAndSelfCentredAddBurst()
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
+        BeastmasterCandidate[] beasts =
+        [
+            new(10, 5, 0, 99, Classification: 2, HP: 500, MaxHP: 500, OffensiveSpecial: true),
+            new(32, 5, 0, 0, Classification: 3, HP: 600, MaxHP: 600, OffensiveSpecial: true),
+            new(5, 5, 0, 0, Classification: 1, HP: 300, MaxHP: 600, AreaDamage: true, OffensiveSpecial: true),
+            new(13, 5, 0, 99, Classification: 8, HP: 500, MaxHP: 500, Healing: true),
+            new(33, 5, 0, 99, Classification: 1, HP: 500, MaxHP: 500,
+                AreaDamage: true, AreaSpecial: true, OffensiveSpecial: true),
+        ];
+        Assert.Equal(new uint[] { 10, 13, 33 }, BeastmasterSelection.RemainingFinalFightOrder(settings,
+            new(6, false), beasts, new uint[] { 10, 50, 32 }));
+        Assert.Equal(new uint[] { 10, 32, 5 }, BeastmasterSelection.RemainingFinalFightOrder(settings,
+            new(6, false), beasts.Take(3), new uint[] { 10, 50, 32 }));
     }
 
     [Fact]

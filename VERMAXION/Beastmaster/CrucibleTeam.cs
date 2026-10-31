@@ -333,15 +333,20 @@ internal static unsafe class CrucibleTeam
     }
 
     public static List<ReaderXBMPetParty.MonsterEntry> RemainingFinalFightOrder(
-        List<ReaderXBMPetParty.MonsterEntry> team, BeastmasterFightContext fight, IReadOnlyList<uint> planned)
+        List<ReaderXBMPetParty.MonsterEntry> team, BeastmasterFightContext fight, BeastmasterCombat.Setup setup)
     {
         var pets = Svc.Data.GetExcelSheet<XBMPet>();
-        var candidates = team.Select(row => new BeastmasterCandidate(row.Number, row.Rank, 0, 0,
-            Alive: !row.Disabled, HP: row.HP, MaxHP: row.MaxHP,
-            AreaDamage: pets.TryGetRow(row.Number, out var sheet) && sheet.Pet.ValueNullable is { } pet &&
-                pet.Abilities.Any(ability => ability.ValueNullable is { CanTargetHostile: true, CastType: > 1, EffectRange: > 0 }),
-            AttackPower: Math.Max(row.Strength, row.Intelligence)));
-        return BeastmasterSelection.RemainingFinalFightOrder(BeastmasterRuntime.Settings, fight, candidates, planned)
+        var roles = (setup.FamiliarRoles ?? []).ToDictionary(role => role.Number);
+        var candidates = team.Select(row =>
+        {
+            var role = roles.GetValueOrDefault(row.Number);
+            return new BeastmasterCandidate(row.Number, row.Rank, 0, 0,
+                Classification: role.Number != 0 ? role.Classification : pets.TryGetRow(row.Number, out var sheet) ? sheet.Classification : (byte)0,
+                Alive: !row.Disabled, HP: row.HP, MaxHP: row.MaxHP, AreaDamage: role.AreaDamage,
+                AttackPower: Math.Max(row.Strength, row.Intelligence), AreaSpecial: role.AreaSpecial,
+                Healing: role.Healing, OffensiveSpecial: role.OffensiveSpecial, Poisoned: row.Poison);
+        });
+        return BeastmasterSelection.RemainingFinalFightOrder(BeastmasterRuntime.Settings, fight, candidates, setup.Trio)
             .Select(number => team.First(row => row.Number == number)).ToList();
     }
 

@@ -27,7 +27,9 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
     internal const string RotationName = "BMRVariantModulePack.Autorotation.CrewcibleBST";
     internal readonly record struct Target(ulong InstanceId, bool CanPull, uint DamageItem = 0, uint ProtectionItem = 0);
     internal readonly record struct Setup(uint[] Roster, uint[] Trio, uint PreBorrowFamiliar,
-        uint BorrowAction, uint FirstActiveFamiliar, uint[] RequiredGear);
+        uint BorrowAction, uint FirstActiveFamiliar, uint[] RequiredGear, FamiliarRole[]? FamiliarRoles = null);
+    internal readonly record struct FamiliarRole(uint Number, byte Classification, bool AreaDamage,
+        bool AreaSpecial, bool Healing, bool OffensiveSpecial);
     internal readonly record struct State(object Provider, bool Available, bool Ready, string? Owner,
         bool Active, bool AllowAttacks, bool UseBmrMovement, string? Rotation, string? Error,
         bool MovementStopped = true, bool RequiresNativeMovement = false,
@@ -130,7 +132,10 @@ internal sealed class BeastmasterCombat : IBeastmasterCombat
             if (borrow != 0 && !trio.Contains(borrow) || (borrow == 0) != (action == 0) ||
                 battle != 0 && first == 0 || first != 0 && !trio.Contains(first))
                 throw new InvalidOperationException("The native encounter preparation does not match its registered setup.");
-            setup = new(roster, trio, borrow, action, first, requiredGear);
+            var roles = payload["FamiliarRoles"] is JArray roleRows ? roleRows.Select(value => new FamiliarRole(
+                value.Value<uint>("Number"), value.Value<byte>("Classification"), value.Value<bool>("AreaDamage"),
+                value.Value<bool>("AreaSpecial"), value.Value<bool>("Healing"), value.Value<bool>("OffensiveSpecial"))).ToArray() : [];
+            setup = new(roster, trio, borrow, action, first, requiredGear, roles);
             reason = string.Empty;
             return true;
         }

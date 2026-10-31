@@ -1,3 +1,9 @@
+2026-10-30 - Pas lineup-specific backup plans (3.0.0.5 unchanged)
+
+- For Board1, difficulty3, final fight only, evaluate complete remaining teams using native rank, poison, HP, defensive Borrow, healing and add-damage capabilities. Keep three beasts whenever three usable entries remain; the complete documented trio still takes precedence.
+- Read familiar roles from BMRV's native setup, including self-centred damaging specials. A known backup uses scripted preparation and its actual lineup's native CD plan, replacing the earlier generic adaptive mode. Preserve the existing context-free inside-duty resume behavior.
+- Verification: all 516 Beastmaster tests pass, covering survivor combinations, complete-team capability choices and preparation/resume/revival. The matching BMRV Public/VIP packs pass 3,750 native checks. Both unchanged user build BATs complete successfully; VMX retains its five existing package/reader warnings. Live backup-clear acceptance remains pending.
+
 2026-10-30 - Custom delivery startup and Verminion Full Stop (3.0.0.5 unchanged)
 
 - Start delivery crafts through Artisan's IPC by clearing an idle stop request, verifying it cleared and submitting the exact recipe quantity once. Keep busy and cancellation checks; eligibility checks do not change Artisan.

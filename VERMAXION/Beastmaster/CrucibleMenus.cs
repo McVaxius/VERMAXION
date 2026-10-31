@@ -571,7 +571,7 @@ namespace VERMAXION.Beastmaster
             var useRemainingTeam = requiresClearTeam && !exactTeamReady &&
                 BeastmasterSelection.AllowsRemainingTeam(Config, fight!.Value);
             if (useRemainingTeam)
-                alive = CrucibleTeam.RemainingFinalFightOrder(team, fight!.Value, setup.Trio);
+                alive = CrucibleTeam.RemainingFinalFightOrder(team, fight!.Value, setup);
             if (!exactTeamReady && !useRemainingTeam)
             {
                 this.Status = "The exact native encounter trio and registered roster must be present and trained. A missing or knocked-out required familiar cannot be silently replaced.";

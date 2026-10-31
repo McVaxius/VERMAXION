@@ -8,7 +8,8 @@ namespace VERMAXION.Beastmaster;
 
 public readonly record struct BeastmasterCandidate(uint Number, int Rank, float Experience, int Tier,
     byte Classification = 0, bool PickBlocked = false, bool FightBlocked = false, bool Alive = true,
-    uint HP = 0, uint MaxHP = 0, bool AreaDamage = false, int AttackPower = 0);
+    uint HP = 0, uint MaxHP = 0, bool AreaDamage = false, int AttackPower = 0,
+    bool AreaSpecial = false, bool Healing = false, bool OffensiveSpecial = false, bool Poisoned = false);
 
 public enum BeastmasterTeamAddition { Pending, Confirmed, Unexpected }
 public readonly record struct BeastmasterFightContext(uint BattleId, bool RandomOutcome)
@@ -27,8 +28,7 @@ public static class BeastmasterSelection
     // Fresh adoption after a reload has no previous menu/preparation context.
     // The next actual fight menu restores its documented strategy normally.
     public static bool UsesScriptedFight(BeastmasterSettings settings, BeastmasterFightContext? fight) =>
-        RequiresClearTeam(settings) && fight is { } current &&
-        !(current.UseRemainingTeam && AllowsRemainingTeam(settings, current));
+        RequiresClearTeam(settings) && fight != null;
 
     public static List<uint> RemainingFinalFightOrder(BeastmasterSettings settings, BeastmasterFightContext fight,
         IEnumerable<BeastmasterCandidate> beasts, IReadOnlyList<uint> planned)
@@ -38,20 +38,26 @@ public static class BeastmasterSelection
         var selected = planned.Distinct().Where(living.ContainsKey).Take(3).ToList();
         if (!AllowsRemainingTeam(settings, fight)) return selected;
 
-        // Keep the guide's surviving members. Replace missing Meteor coverage
-        // with a real native area attack when possible, then prefer trained,
-        // healthy beasts and their observed attack stats over user tier lists.
-        var needsAreaDamage = planned.Contains(50u) && !living.ContainsKey(50u);
-        selected.AddRange(living.Values.Where(beast => !selected.Contains(beast.Number))
-            .OrderByDescending(beast => beast.Rank >= TrainingTarget(settings.Board))
-            .ThenByDescending(beast => needsAreaDamage && beast.AreaDamage)
-            .ThenByDescending(beast => beast.Rank)
-            .ThenByDescending(beast => (double)beast.HP / beast.MaxHP)
-            .ThenByDescending(beast => beast.AttackPower)
-            .ThenByDescending(beast => beast.HP)
-            .ThenBy(beast => beast.Number)
-            .Take(3 - selected.Count).Select(beast => beast.Number));
-        return selected;
+        if (selected.Count == 3) return selected;
+        var available = living.Values.OrderBy(beast => beast.Number).ToArray();
+        var priority = planned.Distinct().Select((number, index) => (number, index)).ToDictionary(value => value.number, value => value.index);
+        List<uint> Ordered(IEnumerable<BeastmasterCandidate> team) => team
+            .OrderBy(beast => priority.GetValueOrDefault(beast.Number, planned.Count + (int)beast.Number))
+            .Select(beast => beast.Number).ToList();
+        if (available.Length <= 3) return Ordered(available);
+        var teams = new List<BeastmasterCandidate[]>();
+        for (var i = 0; i < available.Length - 2; ++i)
+            for (var j = i + 1; j < available.Length - 1; ++j)
+                for (var k = j + 1; k < available.Length; ++k)
+                    teams.Add([available[i], available[j], available[k]]);
+        // Evaluate whole lineups: one beast can cover both defensive Borrow
+        // and a self-centred damaging special. User tier lists are not proof.
+        var best = teams.OrderByDescending(team => (
+            team.Count(beast => beast.Rank >= TrainingTarget(settings.Board)), team.Count(beast => !beast.Poisoned),
+            team.Any(beast => beast.Classification is 1 or 2 or 6), team.Any(beast => beast.Healing),
+            team.Any(beast => beast.AreaSpecial), team.Any(beast => beast.AreaDamage), team.Any(beast => beast.Number == 10),
+            team.Sum(beast => (double)beast.HP / beast.MaxHP), team.Sum(beast => beast.Rank), team.Sum(beast => beast.AttackPower))).First();
+        return Ordered(best);
     }
 
     // The loaded edition owns the board setup. Never substitute a farming or user roster.

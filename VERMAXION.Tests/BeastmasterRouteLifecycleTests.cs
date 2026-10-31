@@ -759,7 +759,7 @@ public sealed class BeastmasterRouteLifecycleTests
     }
 
     [Fact]
-    public void PasRemainingTeamContinuesTheExistingBoardWithoutStrictPreparationAndSurvivesRevival()
+    public void PasRemainingTeamPreparesItsMatchingPlanAndSurvivesRevival()
     {
         using var host = new HostFixture { Territory = 1339, Position = new(520, 0, -419), PreparationReady = false };
         var service = host.CreateService();
@@ -777,20 +777,24 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.Equal(fight, Field(service, "fightContext"));
         Assert.Equal(3, Read<int>(service, "CurrentRun"));
         var route = Field(service, "route")!;
+        Invoke(route, "UpdateBattle");
+        Assert.Equal(1, host.PreparationCalls);
+        Assert.False(host.AutoAttacking);
+        Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        host.PreparationReady = true;
         Invoke(route, "UpdateBattle"); Invoke(route, "UpdateBattle");
-        Assert.Equal(0, host.PreparationCalls);
-        Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
         Assert.True(host.AutoAttacking);
+        var preparedCalls = host.PreparationCalls;
 
         host.Conditions.Add("InCombat"); host.PlayerStatus = 418;
         Invoke(route, "UpdateBattle");
         Assert.False(host.AutoAttacking);
-        Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
         Assert.True(Read<bool>(host.CombatState!, "UseBmrMovement"));
         host.PlayerStatus = 0;
         Invoke(route, "UpdateBattle");
         Assert.True(host.AutoAttacking);
-        Assert.Equal(0, host.PreparationCalls);
+        Assert.Equal(preparedCalls, host.PreparationCalls);
 
         Assert.True((bool)Invoke(service, "SuspendCombat")!);
         host.Conditions.Clear();
@@ -799,16 +803,18 @@ public sealed class BeastmasterRouteLifecycleTests
         route = Field(service, "route")!;
         Invoke(route, "UpdateBattle"); Invoke(route, "UpdateBattle");
         Assert.True(host.AutoAttacking);
-        Assert.False(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
-        Assert.Equal(0, host.PreparationCalls);
+        Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
+        Assert.True(host.PreparationCalls >= preparedCalls);
 
         // A later ordinary fight returns to its documented preparation path.
         Assert.True((bool)Invoke(service, "SuspendCombat")!);
+        host.PreparationReady = false;
+        preparedCalls = host.PreparationCalls;
         Invoke(service, "RecordFightContext", new live::VERMAXION.Beastmaster.BeastmasterFightContext(2, false));
         Invoke(route, "UpdateBattle");
         Assert.True(Read<bool>(host.CombatState!, "UseScriptedFamiliars"));
         Assert.False(host.AutoAttacking);
-        Assert.Equal(1, host.PreparationCalls);
+        Assert.Equal(preparedCalls + 1, host.PreparationCalls);
         Assert.True((bool)Invoke(Field(service, "combat")!, "TryRelease", new object?[] { null })!);
     }
 
