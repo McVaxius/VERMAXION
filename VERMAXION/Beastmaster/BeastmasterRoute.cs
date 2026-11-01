@@ -13,6 +13,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Newtonsoft.Json.Linq;
 using VERMAXION.Beastmaster.Readers;
+using VERMAXION.Models;
 
 namespace VERMAXION.Beastmaster;
 
@@ -27,6 +28,9 @@ internal sealed unsafe class BeastmasterRoute
     private bool battleObserved;
     private DateTime stepSince;
     private DateTime movementSince;
+    private readonly GroundNavigationRecoveryTracker movementProgress = new();
+    private bool movementRecoveryPending;
+    private DateTime nextMovementRecoveryStop;
     private ulong autoAttackTarget;
     private bool recoveringPosition;
     private bool recoveringArena;
@@ -54,7 +58,7 @@ internal sealed unsafe class BeastmasterRoute
             BeastmasterSelection.ResumeRoute(actions, player.Position) == null;
     }
 
-    internal void Pause() { started = false; movementStarted = false; }
+    internal void Pause() { started = false; movementStarted = false; ResetMovementRecovery(); }
 
     // The service stops owned movement before calling this once for a death/revival.
     // Re-read the same action without treating the lost battle target as a victory.
@@ -75,12 +79,12 @@ internal sealed unsafe class BeastmasterRoute
 
     internal void Update()
     {
-        if (Svc.Objects.LocalPlayer is not { IsDead: false } player) return;
+        if (Svc.Objects.LocalPlayer is not { IsDead: false } player) { ResetMovementRecovery(); return; }
         ObserveArena();
         if (Step >= actions.Count && !recoveringPosition) return;
         if (recoveringPosition)
         {
-            if (BlockingMenu()) return; // Let the existing handlers settle this tile first.
+            if (BlockingMenu()) { ResetMovementRecovery(); return; } // Let the existing handlers settle this tile first.
             if (!Svc.Condition[ConditionFlag.InCombat] && !NearbyEnemies(player.Position).Any())
                 RecoverSupplyBranch();
             var resume = BeastmasterSelection.ResumeRoute(actions, player.Position);
@@ -96,11 +100,11 @@ internal sealed unsafe class BeastmasterRoute
         var action = (JObject)actions[Step]!;
         var name = action.Value<string>("Name") ?? "";
         if (!started && ((JArray?)action["Conditions"] ?? []).Any(c => !Condition((JObject)c))) { Advance(); return; }
-        if (BlockingMenu()) return;
+        if (BlockingMenu()) { ResetMovementRecovery(); return; }
         // Refresh on the board before its occupied team menu opens. Arena
         // observation and recovery above always take priority over supplies.
         if (FoodBoundary && service.TryPrepareFood(betweenFights: true))
-        { movementStarted = false; return; }
+        { movementStarted = false; ResetMovementRecovery(); return; }
         if (!started)
         {
             if (name == "Wait" && !TrySelectSupplyBranch(action)) return;
@@ -230,10 +234,23 @@ internal sealed unsafe class BeastmasterRoute
 
     private bool Approach(Vector3 position)
     {
-        if (Svc.Condition[ConditionFlag.InCombat] || !BeastmasterPlayer.IsReady ||
+        if (Svc.Condition[ConditionFlag.InCombat] || !BeastmasterPlayer.IsReady || BlockingMenu() ||
             Svc.Condition[ConditionFlag.SufferingStatusAffliction2] ||
             Svc.Condition[ConditionFlag.SufferingStatusAffliction63])
-        { service.StopNavigation(); movementStarted = false; return false; }
+        { service.StopNavigation(); movementStarted = false; ResetMovementRecovery(); return false; }
+        var now = DateTime.UtcNow;
+        if (movementRecoveryPending)
+        {
+            // /vnav stop does not cancel an in-flight pathfind. Retain ownership
+            // and stop again after it settles; never queue a replacement on top.
+            if (now < nextMovementRecoveryStop) return false;
+            nextMovementRecoveryStop = now.AddMilliseconds(500);
+            service.StopNavigation();
+            if (!service.NavigationSettled()) return false;
+            movementStarted = false;
+            ResetMovementRecovery();
+            return false; // Reissue the same unfinished action on the next tick.
+        }
         if (!movementStarted)
         {
             // Arrival can occur while the existing tracker is suppressing a retry.
@@ -241,19 +258,45 @@ internal sealed unsafe class BeastmasterRoute
             {
                 if (!service.SuspendCombat()) return false;
                 service.StopNavigation();
+                ResetMovementRecovery();
                 return true;
             }
             if (!service.MoveTo(position)) return false;
             movementStarted = true;
-            movementSince = DateTime.UtcNow;
+            movementSince = now;
+            movementProgress.Reset();
+            movementProgress.Evaluate(position, false, Svc.Objects.LocalPlayer?.Position, now, horizontalProgressOnly: true);
             return false;
         }
-        if (DateTime.UtcNow - movementSince < TimeSpan.FromMilliseconds(500) || !service.NavigationSettled()) return false;
+        if (now - movementSince < TimeSpan.FromMilliseconds(500)) return false;
+        if (!service.NavigationSettled())
+        {
+            // A running path is not proof of movement. Drive the existing 12s /
+            // 0.5y progress policy while waiting, ignoring vertical and tiny jitter.
+            if (movementProgress.Evaluate(position, false, Svc.Objects.LocalPlayer?.Position, now,
+                    horizontalProgressOnly: true) == GroundNavigationRecoveryAction.Recover)
+            {
+                movementRecoveryPending = true;
+                nextMovementRecoveryStop = default;
+                Svc.Log.Warning($"[Crewcible] Board navigation made no horizontal progress for {GroundNavigationRecoveryTracker.StallTimeout.TotalSeconds:F0}s; " +
+                    $"territory={Svc.ClientState.TerritoryType}; step={Step + 1}/{actions.Count}; " +
+                    $"position={Svc.Objects.LocalPlayer?.Position}; destination={position}. Stopping owned navigation before retrying the same step.");
+            }
+            return false;
+        }
         movementStarted = false;
-        // Settled navigation alone must not reset the ground-recovery window.
+        ResetMovementRecovery();
+        // Settled navigation alone must not reset the shared ground-recovery window.
         if (!BeastmasterPlayer.BelowDistanceToPlayer(position, 0.5f, 1f)) return false;
         service.StopNavigation();
         return true;
+    }
+
+    private void ResetMovementRecovery()
+    {
+        movementProgress.Reset();
+        movementRecoveryPending = false;
+        nextMovementRecoveryStop = default;
     }
 
     private static bool BlockingMenu() => new[]
@@ -326,6 +369,7 @@ internal sealed unsafe class BeastmasterRoute
     {
         service.StopNavigation();
         movementStarted = false;
+        ResetMovementRecovery();
         service.SetStatus("Waiting for native supplies and the shop branch");
         return false;
     }
@@ -356,5 +400,5 @@ internal sealed unsafe class BeastmasterRoute
 
     private static Vector3 Vector(JToken? token) => token == null ? Vector3.Zero : new(token.Value<float>("X"), token.Value<float>("Y"), token.Value<float>("Z"));
     private void Advance() { Step++; ResetStep(); }
-    private void ResetStep() { started = false; movementStarted = false; positioned = false; battleObserved = false; autoAttackTarget = 0; }
+    private void ResetStep() { started = false; movementStarted = false; positioned = false; battleObserved = false; autoAttackTarget = 0; ResetMovementRecovery(); }
 }
