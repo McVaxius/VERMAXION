@@ -1,3 +1,8 @@
+2026-11-01 - Crucible active-path recovery (I723, unversioned)
+
+- Detect twelve seconds without meaningful horizontal progress while an owned board path remains active. Stop through the existing ownership boundary, wait for readable idle path and query state, and retry the same unfinished action.
+- Preserve arrival checks, route accounting, readiness and lifecycle cleanup, and the existing thirty-second stationary fallback. No jumps, skipped actions or board restarts.
+
 2026-10-31 - Crucible continuation and navigation recovery (I715, unversioned)
 
 - Release stale movement ownership when native navigation positively confirms both path and pathfinding are idle, allowing Continue and stationary recovery to submit the current waypoint again.
