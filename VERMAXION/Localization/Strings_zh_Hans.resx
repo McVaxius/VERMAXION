@@ -5922,4 +5922,25 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>请查看顶部状态，确认缺少的宠物、资金、移动、任务工具或排队限制。{0}和{1}各有独立分页。</value></data>
   <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>若可用的运行按钮没有反应，请先查看现有日志中是否有YesAlready暂停失败，再重试。</value></data>
   <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>玩家比赛需要关闭解除人数限制；锦标赛还要求位于所属服务器、完成报名并有剩余比赛次数。</value></data>
+  <data name="Open coffers" xml:space="preserve"><value>打开宝箱</value></data>
+  <data name="Open coffer stack" xml:space="preserve"><value>打开整组宝箱</value></data>
+  <data name="Open stack" xml:space="preserve"><value>打开整组</value></data>
+  <data name="Opens one selected stack; keeps at least one bag slot free." xml:space="preserve"><value>打开所选的一组宝箱，并至少保留一个背包空位。</value></data>
+  <data name="No coffers in inventory." xml:space="preserve"><value>背包中没有宝箱。</value></data>
+  <data name="Coffers opened: {0}/{1}" xml:space="preserve"><value>已打开宝箱：{0}/{1}</value></data>
+  <data name="Coffers are idle." xml:space="preserve"><value>宝箱开启处于空闲状态。</value></data>
+  <data name="Opening coffers." xml:space="preserve"><value>正在打开宝箱。</value></data>
+  <data name="Waiting for coffer consumption." xml:space="preserve"><value>正在等待确认宝箱消耗。</value></data>
+  <data name="Coffer stack completed." xml:space="preserve"><value>已打开所选整组宝箱。</value></data>
+  <data name="Coffer opening stopped." xml:space="preserve"><value>已停止打开宝箱。</value></data>
+  <data name="Coffer inventory is unavailable." xml:space="preserve"><value>无法读取宝箱背包信息。</value></data>
+  <data name="Selected item is not a supported coffer." xml:space="preserve"><value>所选物品不是支持的宝箱。</value></data>
+  <data name="Selected coffer stack is unavailable." xml:space="preserve"><value>无法使用所选宝箱组。</value></data>
+  <data name="Keep at least one free inventory slot." xml:space="preserve"><value>请至少保留一个背包空位。</value></data>
+  <data name="Coffer use was not confirmed; check inventory before starting again." xml:space="preserve"><value>未能确认宝箱使用；重新开始前请检查背包。</value></data>
+  <data name="Coffer inventory changed." xml:space="preserve"><value>宝箱背包数量已改变。</value></data>
+  <data name="Coffer item use is unavailable." xml:space="preserve"><value>当前无法使用宝箱。</value></data>
+  <data name="Coffer item use was rejected." xml:space="preserve"><value>宝箱使用被拒绝。</value></data>
+  <data name="Coffer character changed." xml:space="preserve"><value>打开宝箱的角色已改变。</value></data>
+  <data name="Another automation or activity owns the character." xml:space="preserve"><value>其他自动化或活动正在控制角色。</value></data>
 </root>

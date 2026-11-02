@@ -2747,4 +2747,25 @@
   <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>मिनियन, धन, यात्रा, खोज उपकरण या कतार की बाधाओं के लिए ऊपर की स्थिति पढ़ें। {0} और {1} के अलग टैब हैं।</value></data>
   <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>यदि उपलब्ध रन बटन कुछ नहीं करता, तो दोबारा प्रयास करने से पहले मौजूदा लॉग में YesAlready को रोकने की विफलता जाँचें।</value></data>
   <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>खिलाड़ी कतारों के लिए Unrestricted Party बंद होना चाहिए; टूर्नामेंट हेतु Home World, पंजीकरण और बचे हुए मैच भी आवश्यक हैं।</value></data>
+  <data name="Open coffers" xml:space="preserve"><value>संदूक खोलें</value></data>
+  <data name="Open coffer stack" xml:space="preserve"><value>संदूकों का ढेर खोलें</value></data>
+  <data name="Open stack" xml:space="preserve"><value>ढेर खोलें</value></data>
+  <data name="Opens one selected stack; keeps at least one bag slot free." xml:space="preserve"><value>चुना हुआ ढेर खोलता है और थैले में कम से कम एक स्थान खाली रखता है।</value></data>
+  <data name="No coffers in inventory." xml:space="preserve"><value>इन्वेंटरी में कोई संदूक नहीं है।</value></data>
+  <data name="Coffers opened: {0}/{1}" xml:space="preserve"><value>खोले गए संदूक: {0}/{1}</value></data>
+  <data name="Coffers are idle." xml:space="preserve"><value>संदूक खोलना निष्क्रिय है।</value></data>
+  <data name="Opening coffers." xml:space="preserve"><value>संदूक खोले जा रहे हैं।</value></data>
+  <data name="Waiting for coffer consumption." xml:space="preserve"><value>संदूक खर्च होने की पुष्टि की प्रतीक्षा है।</value></data>
+  <data name="Coffer stack completed." xml:space="preserve"><value>संदूकों का ढेर पूरा हो गया।</value></data>
+  <data name="Coffer opening stopped." xml:space="preserve"><value>संदूक खोलना रोक दिया गया।</value></data>
+  <data name="Coffer inventory is unavailable." xml:space="preserve"><value>संदूक की इन्वेंटरी उपलब्ध नहीं है।</value></data>
+  <data name="Selected item is not a supported coffer." xml:space="preserve"><value>चुनी हुई वस्तु समर्थित संदूक नहीं है।</value></data>
+  <data name="Selected coffer stack is unavailable." xml:space="preserve"><value>चुना हुआ संदूक का ढेर उपलब्ध नहीं है।</value></data>
+  <data name="Keep at least one free inventory slot." xml:space="preserve"><value>इन्वेंटरी में कम से कम एक स्थान खाली रखें।</value></data>
+  <data name="Coffer use was not confirmed; check inventory before starting again." xml:space="preserve"><value>संदूक का उपयोग पुष्ट नहीं हुआ; फिर शुरू करने से पहले इन्वेंटरी जाँचें।</value></data>
+  <data name="Coffer inventory changed." xml:space="preserve"><value>संदूक की इन्वेंटरी बदल गई।</value></data>
+  <data name="Coffer item use is unavailable." xml:space="preserve"><value>अभी संदूक का उपयोग उपलब्ध नहीं है।</value></data>
+  <data name="Coffer item use was rejected." xml:space="preserve"><value>संदूक का उपयोग अस्वीकार कर दिया गया।</value></data>
+  <data name="Coffer character changed." xml:space="preserve"><value>संदूक खोलने वाला पात्र बदल गया।</value></data>
+  <data name="Another automation or activity owns the character." xml:space="preserve"><value>कोई अन्य स्वचालन या गतिविधि पात्र को नियंत्रित कर रही है।</value></data>
 </root>

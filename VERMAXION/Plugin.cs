@@ -31,7 +31,7 @@ using VERMAXION.Beastmaster;
 
 namespace VERMAXION;
 
-public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledOfflineHoldRuntime
+public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledOfflineHoldRuntime
 {
     private readonly System.Collections.Generic.Dictionary<Dalamud.Interface.Windowing.IWindow, AethertekUI.MaterialWindowOpacity> windowOpacities = new();
     private readonly AethertekUI.MaterialWindowOpacity fontStatusOpacity = new();
@@ -50,6 +50,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     [PluginService] internal static ITargetManager TargetManager { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IGameInventory GameInventory { get; private set; } = null!;
+    [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
 
     internal Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap OriginalIcon
@@ -117,6 +118,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     public ChocoboStablesService ChocoboStablesService { get; init; }
     private DeliveryFishing DeliveryFishing { get; init; }
     public RegisterRegistrablesService RegisterRegistrablesService { get; init; }
+    public CofferOpeningService CofferOpening { get; private set; } = null!;
+    internal NativeCofferInventory CofferInventory { get; private set; } = null!;
+    private CofferOpeningIpcProvider cofferIpc = null!;
     public VendorStockService VendorStockService { get; init; }
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
     public RetainerEquippingService RetainerEquippingService { get; init; }
@@ -168,6 +172,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
     internal DebugWindow DebugWindow { get; init; }
     internal VerminionWindow VerminionWindow { get; init; }
     internal IslandSanctuaryWindow IslandSanctuaryWindow { get; init; }
+    internal CofferOpeningWindow CofferOpeningWindow { get; private set; } = null!;
     internal BeastmasterWindow BeastmasterWindow { get; init; }
     internal BeastmasterMiniWindow BeastmasterMiniWindow { get; init; }
     public RegistrableConfigWindow RegistrableConfigWindow { get; init; }
@@ -314,6 +319,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             CancelChocoboReloadAttempt);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC, LifestreamIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
+        CofferInventory = new(this);
+        CofferOpening = new(CofferInventory.Observe, GameHelpers.UseItem);
         StylistIPC = new StylistIPC(PluginInterface, Log);
         EquipmentAutomationRuntime = new NativeEquipmentAutomationRuntime(
             DataManager,
@@ -407,12 +414,15 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter, this);
         Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
+            : CofferOpening?.IsActive == true ? "Stop coffer opening before starting another task."
             : BeastmasterOwnsWork ? "Beastmaster owns the character."
             : VerminionService.HasQuestAcquisition ? "Questionable minion acquisition blocks new VERMAXION work."
             : DeliveryFishing.IsCleanupPending ? CustomDeliveriesService.StatusText
             : ChocoboStablesService.IsCleanupPending ? "Stable menu cleanup is still settling."
             : null;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
+        cofferIpc = new(PluginInterface, CofferOpening, itemId => StartCoffers(itemId),
+            action => Framework.RunOnFrameworkThread(action));
         DadHandoffIpcProvider = new DadHandoffIpcProvider(
             PluginInterface,
             Log,
@@ -427,6 +437,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         DebugWindow = new DebugWindow(this);
         VerminionWindow = new VerminionWindow(this);
         IslandSanctuaryWindow = new IslandSanctuaryWindow(this);
+        CofferOpeningWindow = new(this);
         BeastmasterWindow = new BeastmasterWindow(this);
         BeastmasterMiniWindow = new BeastmasterMiniWindow(this);
         RegistrableConfigWindow = new RegistrableConfigWindow(Log, RegistrableConfigManager, ConfigManager, DataManager, this);
@@ -436,6 +447,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         WindowSystem.AddWindow(DebugWindow);
         WindowSystem.AddWindow(VerminionWindow);
         WindowSystem.AddWindow(IslandSanctuaryWindow);
+        WindowSystem.AddWindow(CofferOpeningWindow);
         WindowSystem.AddWindow(BeastmasterWindow);
         WindowSystem.AddWindow(BeastmasterMiniWindow);
         WindowSystem.AddWindow(RegistrableConfigWindow);
@@ -452,10 +464,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         });
         CommandManager.AddHandler(AliasCommandName, new CommandInfo(OnAliasCommand)
         {
-            HelpMessage = "Vermaxion: /vmx [on|off|run|stop|config|debug|inspect|v|b|beast|is], /vmx b mini, style [on|off], lock, unlock, or /vmx to open UI."
+            HelpMessage = "Vermaxion: /vmx [on|off|run|reg|stop|config|debug|inspect|v|b|beast|is], /vmx b mini, style [on|off], lock, unlock, or /vmx to open UI."
         });
 
         // Events
+        ContextMenu.OnMenuOpened += OnCofferMenuOpened;
         PluginInterface.UiBuilder.Draw += DrawUi;
         PluginInterface.UiBuilder.ResizeBuffers += ReleaseBackgroundGlassResources;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
@@ -898,6 +911,9 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     public void Dispose()
     {
+        ContextMenu.OnMenuOpened -= OnCofferMenuOpened;
+        cofferIpc.Dispose();
+        CofferOpening.Dispose();
         PluginInterface.UiBuilder.ResizeBuffers -= ReleaseBackgroundGlassResources;
         backgroundGlass?.Dispose();
         uiSounds?.Dispose();
@@ -1110,11 +1126,20 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         if (HighestCombatJobService.IsActive)
             return (true, "HighestCombatJob", HighestCombatJobService.StatusText);
 
+        if (CofferOpening?.IsActive == true)
+            return (true, "CofferOpening", CofferOpening.Status.Summary);
+
         return (false, "Idle", "VERMAXION is idle.");
     }
 
     internal bool RunDashboardAction(Action action)
     {
+        if (action == (Action)OpenCofferUtility) { action(); return true; }
+        if (CofferOpening?.IsActive == true)
+        {
+            ChatGui.Print("[Vermaxion] Stop coffer opening before starting another task.");
+            return false;
+        }
         if (BeastmasterOwnsWork)
         {
             ChatGui.Print("[Vermaxion] Beastmaster owns the character. Stop it before starting another task.");
@@ -2132,6 +2157,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void OnCharacterChanged(string oldCharacterKey, string newCharacterKey)
     {
+        CofferOpening?.Stop();
         Log.Information($"[Plugin] Character changed: '{oldCharacterKey}' -> '{newCharacterKey}'");
         
         // Reset all services to prevent state persistence between characters
@@ -2304,6 +2330,11 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 break;
 
             case "run":
+                if (CofferOpening?.IsActive == true)
+                {
+                    ChatGui.Print("[Vermaxion] Stop coffer opening before starting another task.");
+                    break;
+                }
                 if (Engine.ManualStart())
                 {
                     ChatGui.Print("[Vermaxion] Manual run started");
@@ -2312,6 +2343,20 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
                 {
                     ChatGui.Print("[Vermaxion] Already running");
                 }
+                break;
+
+            case "reg":
+                var registrationBlocker = !ClientState.IsLoggedIn || !IsCharacterRegistered || !PlayerState.IsLoaded
+                    ? "Waiting for the current character to be registered and ready."
+                    : DadHandoffBlocksNewWork ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
+                    : OfflineLogoutBlocksOrdinaryAutomation ? "An offline logout hold is active."
+                    : RegisterRegistrablesService.GetManualStartBlockedReason();
+                if (registrationBlocker == null && BuildAutomationStatus() is { IsBusy: true } registrationOwner)
+                    registrationBlocker = registrationOwner.Summary;
+                if (registrationBlocker != null)
+                    ChatGui.Print($"[Vermaxion] {registrationBlocker}");
+                else
+                    RunDashboardAction(RegisterRegistrablesService.StartManual);
                 break;
 
             case "stop":
@@ -3424,6 +3469,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
 
     private void OnFrameworkUpdate(IFramework fw)
     {
+        CofferOpening.Update();
         // Reassert our owned entry if the shared list changes. Shopping deliberately releases it.
         if (YesAlreadyIPC.IsPaused)
             YesAlreadyIPC.Pause();
@@ -3807,6 +3853,7 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         CurrentJobEquipmentService.Reset();
         AlliedSocietyService.Reset();
         AfterArParkService.Reset();
+        CofferOpening?.Stop();
         Log.Information(FishCollection.IsActive ? "[FULL STOP] Other services reset; collection cleanup retained" : "[FULL STOP] All services reset");
 
         // Stop VNavmesh navigation
@@ -4007,7 +4054,8 @@ public sealed class Plugin : IDalamudPlugin, IFishingStartupRuntime, IScheduledO
         => Math.Clamp(Configuration.FishingMaxFisherLevel, 1, 100);
 
     bool IFishingStartupRuntime.CanInitiateStartup
-        => ClientState.IsLoggedIn &&
+        => CofferOpening?.IsActive != true &&
+           ClientState.IsLoggedIn &&
            ObjectTable.LocalPlayer != null &&
            !Condition[ConditionFlag.BetweenAreas] &&
            !Condition[ConditionFlag.BetweenAreas51] &&

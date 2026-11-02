@@ -204,6 +204,20 @@ For a first VMX run, use the permanent CPU campaign and watch the window's statu
 
 This guide does not establish a live fix for a reported no-start case or guarantee battle results. Its steps describe the existing controls and readiness checks.
 
+## Manual coffer opening
+
+Open **Open coffers** from the dashboard, choose an eligible stack and select **Open stack**, or use **Open coffer stack** in that stack's ordinary inventory context menu. Native item-action 388 coffers are supported, including Keybound, venture and materiel containers. This utility runs only the selected quantity on the current character and has no scheduling setting. It preserves at least one empty bag slot, waits for each coffer's consumption before another use, and stops on conflicting work, character changes, unavailable inventory or an unconfirmed use. After an uncertain result, check the inventory before explicitly starting again. Its Stop button and FULL STOP stop local opening; they cannot undo an item already submitted to the game.
+
+The local IPC contract is version 1. Mutations return `Task<string>` containing a JSON reply; await the task so its framework-thread result is observed.
+
+| Channel | Subscriber signature | Result |
+| --- | --- | --- |
+| `VERMAXION.Coffers.Start` | `GetIpcSubscriber<uint, Task<string>>` | Open the first carried stack of the supplied eligible item ID. Reply includes `accepted`, an `operationToken` only on acceptance, `reason` and `status`. |
+| `VERMAXION.Coffers.Stop` | `GetIpcSubscriber<string, Task<string>>` | Stop only the active request matching the initiating caller's token. Foreign and stale tokens are rejected. |
+| `VERMAXION.Coffers.GetStatus` | `GetIpcSubscriber<string>` | Read `version`, `runId`, `itemId`, `state`, `summary`, `requested`, `opened` and `isActive`. No character/account identity or stop token is exposed. |
+
+States are `Idle`, `Running`, `WaitingForReceipt`, `Completed`, `Stopped` and `Blocked`. Duplicate starts never replace the active request. Requests and ownership exist only in memory; unload unregisters the providers and rejects already-queued mutations. Normal current-character readiness and automation ownership checks apply even when global scheduling is off.
+
 ## Commands
 
 The dashboard keeps account/character scope, engine status, FULL STOP and run controls above the scrolling task area. **Overview** shows due and blocked tasks; **All Tasks** includes scheduled work and manual utilities; **Favorites** shows starred tasks. Search filters the selected view by task or required plugin. Advanced controls are collapsed.
@@ -230,6 +244,7 @@ Beastmaster requires both **BossModReborn** and **BMRVariantLoader**, with its C
 | `/vmx` | Open main window |
 | `/vmx on/off` | Enable/disable the global automation master |
 | `/vmx run` | Manual trigger |
+| `/vmx reg` | Run Register Registrables once using the current character's selected inventory/personal-list source, independently of scheduled enablement |
 | `/vmx cancel` | Cancel current run |
 | `/vmx config` | Open config window |
 | `/vmx is` | Open Island Sanctuary Run/Settings; execution remains TBD |

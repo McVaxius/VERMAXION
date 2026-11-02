@@ -5922,4 +5922,25 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>상단 상태에서 부족한 꼬마친구, 자금, 이동, 퀘스트 도구 및 참가 제한을 확인하세요. {0}과 {1}에는 별도 탭이 있습니다.</value></data>
   <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>활성화된 실행 버튼이 반응하지 않으면 다시 시도하기 전에 기존 로그에서 YesAlready 일시 정지 실패를 확인하세요.</value></data>
   <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>대인전 참가 시 인원수 제한 해제를 꺼야 합니다. 대회에는 홈 월드, 참가 등록 및 남은 대전 횟수도 필요합니다.</value></data>
+  <data name="Open coffers" xml:space="preserve"><value>상자 열기</value></data>
+  <data name="Open coffer stack" xml:space="preserve"><value>상자 묶음 열기</value></data>
+  <data name="Open stack" xml:space="preserve"><value>묶음 열기</value></data>
+  <data name="Opens one selected stack; keeps at least one bag slot free." xml:space="preserve"><value>선택한 묶음을 열고 소지품 빈칸을 최소 한 칸 남깁니다.</value></data>
+  <data name="No coffers in inventory." xml:space="preserve"><value>소지품에 상자가 없습니다.</value></data>
+  <data name="Coffers opened: {0}/{1}" xml:space="preserve"><value>연 상자: {0}/{1}</value></data>
+  <data name="Coffers are idle." xml:space="preserve"><value>상자 열기가 대기 중입니다.</value></data>
+  <data name="Opening coffers." xml:space="preserve"><value>상자를 여는 중입니다.</value></data>
+  <data name="Waiting for coffer consumption." xml:space="preserve"><value>상자 소모 확인을 기다리는 중입니다.</value></data>
+  <data name="Coffer stack completed." xml:space="preserve"><value>상자 묶음을 모두 열었습니다.</value></data>
+  <data name="Coffer opening stopped." xml:space="preserve"><value>상자 열기를 중지했습니다.</value></data>
+  <data name="Coffer inventory is unavailable." xml:space="preserve"><value>상자 소지품 정보를 사용할 수 없습니다.</value></data>
+  <data name="Selected item is not a supported coffer." xml:space="preserve"><value>선택한 아이템은 지원되는 상자가 아닙니다.</value></data>
+  <data name="Selected coffer stack is unavailable." xml:space="preserve"><value>선택한 상자 묶음을 사용할 수 없습니다.</value></data>
+  <data name="Keep at least one free inventory slot." xml:space="preserve"><value>소지품 빈칸을 최소 한 칸 남겨 주세요.</value></data>
+  <data name="Coffer use was not confirmed; check inventory before starting again." xml:space="preserve"><value>상자 사용이 확인되지 않았습니다. 다시 시작하기 전에 소지품을 확인하세요.</value></data>
+  <data name="Coffer inventory changed." xml:space="preserve"><value>상자 소지품이 변경되었습니다.</value></data>
+  <data name="Coffer item use is unavailable." xml:space="preserve"><value>지금은 상자를 사용할 수 없습니다.</value></data>
+  <data name="Coffer item use was rejected." xml:space="preserve"><value>상자 사용이 거부되었습니다.</value></data>
+  <data name="Coffer character changed." xml:space="preserve"><value>상자를 여는 캐릭터가 변경되었습니다.</value></data>
+  <data name="Another automation or activity owns the character." xml:space="preserve"><value>다른 자동화 또는 활동이 캐릭터를 사용 중입니다.</value></data>
 </root>

@@ -1,3 +1,13 @@
+2026-11-01 - Manual coffer opening (I719, unversioned)
+
+- Add a manual coffer utility and ordinary inventory context action for native action-388 coffers. Open only the selected stack quantity, retain at least one free bag slot, and confirm each consumption before submitting another use.
+- Share the same current-character admission and lifecycle checks across the UI/context action and framework-dispatched start/owned-stop/status IPC. Preserve FULL STOP, conflicting automation, logout and unload cleanup; keep request tokens in memory and out of public status.
+- Add the utility's labels and status messages in all fifteen languages. No scheduled task, saved configuration or inventory disposal pipeline is added.
+
+2026-11-01 - Register Registrables command (I716, unversioned)
+
+- Add `/vmx reg` as a manual Register Registrables action using the current character's selected inventory or personal-list source and existing blocked-start feedback. Preserve scheduling, global enablement and the normal dashboard ownership/cleanup path.
+
 2026-11-01 - Crucible active-path recovery (I723, unversioned)
 
 - Detect twelve seconds without meaningful horizontal progress while an owned board path remains active. Stop through the existing ownership boundary, wait for readable idle path and query state, and retry the same unfinished action.

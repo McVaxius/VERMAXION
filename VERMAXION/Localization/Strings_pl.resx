@@ -3426,4 +3426,25 @@ Zależności: {1}</value></data>
   <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>Sprawdź stan u góry: brakujące miniony, środki, podróż, narzędzia zadań i ograniczenia kolejki. {0} i {1} mają osobne karty.</value></data>
   <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>Jeśli dostępny przycisk uruchomienia nie reaguje, przed kolejną próbą sprawdź istniejący dziennik pod kątem błędu wstrzymania YesAlready.</value></data>
   <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>Kolejki graczy wymagają wyłączenia Unrestricted Party; turniej wymaga też świata macierzystego, rejestracji i pozostałych walk.</value></data>
+  <data name="Open coffers" xml:space="preserve"><value>Otwórz skrzynie</value></data>
+  <data name="Open coffer stack" xml:space="preserve"><value>Otwórz stos skrzyń</value></data>
+  <data name="Open stack" xml:space="preserve"><value>Otwórz stos</value></data>
+  <data name="Opens one selected stack; keeps at least one bag slot free." xml:space="preserve"><value>Otwiera wybrany stos, pozostawiając co najmniej jedno wolne miejsce w ekwipunku.</value></data>
+  <data name="No coffers in inventory." xml:space="preserve"><value>Brak skrzyń w ekwipunku.</value></data>
+  <data name="Coffers opened: {0}/{1}" xml:space="preserve"><value>Otwarte skrzynie: {0}/{1}</value></data>
+  <data name="Coffers are idle." xml:space="preserve"><value>Otwieranie skrzyń jest bezczynne.</value></data>
+  <data name="Opening coffers." xml:space="preserve"><value>Otwieranie skrzyń.</value></data>
+  <data name="Waiting for coffer consumption." xml:space="preserve"><value>Oczekiwanie na potwierdzenie zużycia skrzyni.</value></data>
+  <data name="Coffer stack completed." xml:space="preserve"><value>Stos skrzyń został otwarty.</value></data>
+  <data name="Coffer opening stopped." xml:space="preserve"><value>Otwieranie skrzyń zatrzymano.</value></data>
+  <data name="Coffer inventory is unavailable." xml:space="preserve"><value>Ekwipunek skrzyń jest niedostępny.</value></data>
+  <data name="Selected item is not a supported coffer." xml:space="preserve"><value>Wybrany przedmiot nie jest obsługiwaną skrzynią.</value></data>
+  <data name="Selected coffer stack is unavailable." xml:space="preserve"><value>Wybrany stos skrzyń jest niedostępny.</value></data>
+  <data name="Keep at least one free inventory slot." xml:space="preserve"><value>Pozostaw co najmniej jedno wolne miejsce w ekwipunku.</value></data>
+  <data name="Coffer use was not confirmed; check inventory before starting again." xml:space="preserve"><value>Nie potwierdzono użycia skrzyni; sprawdź ekwipunek przed ponownym uruchomieniem.</value></data>
+  <data name="Coffer inventory changed." xml:space="preserve"><value>Ekwipunek skrzyń uległ zmianie.</value></data>
+  <data name="Coffer item use is unavailable." xml:space="preserve"><value>Nie można teraz używać skrzyń.</value></data>
+  <data name="Coffer item use was rejected." xml:space="preserve"><value>Użycie skrzyni zostało odrzucone.</value></data>
+  <data name="Coffer character changed." xml:space="preserve"><value>Zmieniono postać otwierającą skrzynie.</value></data>
+  <data name="Another automation or activity owns the character." xml:space="preserve"><value>Postacią steruje inna automatyzacja lub aktywność.</value></data>
 </root>

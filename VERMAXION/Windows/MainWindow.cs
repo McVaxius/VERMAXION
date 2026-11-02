@@ -919,6 +919,8 @@ public class MainWindow : Window, IDisposable
                 : beastmasterWeeklyReady ? "Clear each selected eligible Beastmaster challenge once." : beastmasterWeeklyBlocker);
 
         // --- Utility Tasks ---
+        AddTaskRow("Open coffers", true, plugin.CofferOpening.Status.Summary,
+            "Open##CofferUtility", plugin.OpenCofferUtility, "OK");
         var collectionBlocker = plugin.FishCollection.GetStartBlockedReason();
         AddTaskRow("Fish collection", true, plugin.FishCollection.Status,
             "Run##FishCollection", () => plugin.FishCollection.Start(), "OK",

@@ -3426,4 +3426,25 @@ Bağımlılıklar: {1}</value></data>
   <data name="Read the top status for missing minions, funds, travel, quest providers or queue restrictions. {0} and {1} have separate tabs." xml:space="preserve"><value>Eksik minyon, para, yolculuk, görev araçları veya kuyruk kısıtları için üstteki durumu okuyun. {0} ve {1} ayrı sekmelerdedir.</value></data>
   <data name="If an available run button does nothing, check the existing log for a YesAlready pause failure before retrying." xml:space="preserve"><value>Kullanılabilir çalıştırma düğmesi tepki vermiyorsa yeniden denemeden önce mevcut günlükte YesAlready duraklatma hatası arayın.</value></data>
   <data name="Player queues require Unrestricted Party off; Tournament also needs your Home World, registration and remaining allowance." xml:space="preserve"><value>Oyuncu kuyrukları için Unrestricted Party kapalı olmalıdır; turnuva ayrıca Ana Dünya, kayıt ve kalan maç hakkı gerektirir.</value></data>
+  <data name="Open coffers" xml:space="preserve"><value>Sandıkları aç</value></data>
+  <data name="Open coffer stack" xml:space="preserve"><value>Sandık yığınını aç</value></data>
+  <data name="Open stack" xml:space="preserve"><value>Yığını aç</value></data>
+  <data name="Opens one selected stack; keeps at least one bag slot free." xml:space="preserve"><value>Seçili yığını açar ve en az bir envanter yuvasını boş bırakır.</value></data>
+  <data name="No coffers in inventory." xml:space="preserve"><value>Envanterde sandık yok.</value></data>
+  <data name="Coffers opened: {0}/{1}" xml:space="preserve"><value>Açılan sandıklar: {0}/{1}</value></data>
+  <data name="Coffers are idle." xml:space="preserve"><value>Sandık açma boşta.</value></data>
+  <data name="Opening coffers." xml:space="preserve"><value>Sandıklar açılıyor.</value></data>
+  <data name="Waiting for coffer consumption." xml:space="preserve"><value>Sandığın tüketildiğinin onaylanması bekleniyor.</value></data>
+  <data name="Coffer stack completed." xml:space="preserve"><value>Sandık yığını tamamlandı.</value></data>
+  <data name="Coffer opening stopped." xml:space="preserve"><value>Sandık açma durduruldu.</value></data>
+  <data name="Coffer inventory is unavailable." xml:space="preserve"><value>Sandık envanterine erişilemiyor.</value></data>
+  <data name="Selected item is not a supported coffer." xml:space="preserve"><value>Seçili eşya desteklenen bir sandık değil.</value></data>
+  <data name="Selected coffer stack is unavailable." xml:space="preserve"><value>Seçili sandık yığını kullanılamıyor.</value></data>
+  <data name="Keep at least one free inventory slot." xml:space="preserve"><value>En az bir envanter yuvasını boş bırakın.</value></data>
+  <data name="Coffer use was not confirmed; check inventory before starting again." xml:space="preserve"><value>Sandık kullanımı doğrulanamadı; yeniden başlamadan önce envanteri kontrol edin.</value></data>
+  <data name="Coffer inventory changed." xml:space="preserve"><value>Sandık envanteri değişti.</value></data>
+  <data name="Coffer item use is unavailable." xml:space="preserve"><value>Sandık şu anda kullanılamıyor.</value></data>
+  <data name="Coffer item use was rejected." xml:space="preserve"><value>Sandık kullanımı reddedildi.</value></data>
+  <data name="Coffer character changed." xml:space="preserve"><value>Sandığı açan karakter değişti.</value></data>
+  <data name="Another automation or activity owns the character." xml:space="preserve"><value>Başka bir otomasyon veya etkinlik karakteri kontrol ediyor.</value></data>
 </root>
