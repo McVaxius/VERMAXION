@@ -180,6 +180,12 @@ public enum FishingRepairMode
     Self = 1,
     NpcNoInn = 2,
     NpcNoTeleportNoInn = 3,
+    NpcWithInn = 4,
+}
+
+public enum RepairCity
+{
+    Automatic, Uldah, Gridania, Limsa, Ishgard, Crystarium, Sharlayan, Tuliyollal,
 }
 
 public static class FishingDefaults
@@ -1540,7 +1546,8 @@ public readonly record struct FishingOperationSettings(
     FishingReturnDestination ReturnDestination,
     string ReturnCommand,
     FishingRepairMode RepairMode,
-    int RepairThresholdPercent);
+    int RepairThresholdPercent,
+    RepairCity RepairCity = RepairCity.Automatic);
 
 public readonly record struct FishingCharacterCandidate(
     string CharacterKey,
@@ -2866,16 +2873,30 @@ public sealed record FishingRepairDecision(bool ShouldRepair, string AdsMode, st
 
 public static class FishingRepairPolicy
 {
+    public static bool IsCityModeAdvertised(string mode, string? capabilitiesJson)
+    {
+        if (string.IsNullOrWhiteSpace(capabilitiesJson)) return false;
+        try
+        {
+            using var document = JsonDocument.Parse(capabilitiesJson);
+            return document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("repairModes", out var modes) && modes.ValueKind == JsonValueKind.Array &&
+                modes.EnumerateArray().Any(value => value.ValueKind == JsonValueKind.String && value.GetString() == mode);
+        }
+        catch (JsonException) { return false; }
+    }
+
     public static FishingRepairDecision Evaluate(
         FishingRepairMode mode,
         int thresholdPercent,
         bool durabilityKnown,
-        int lowestDurabilityPercent)
+        int lowestDurabilityPercent,
+        RepairCity city = RepairCity.Automatic)
     {
         if (mode == FishingRepairMode.Disabled || thresholdPercent <= 0)
             return new FishingRepairDecision(false, string.Empty, "Repair disabled.");
 
-        var adsMode = ToAdsMode(mode);
+        var adsMode = ToAdsMode(mode, city);
         if (string.IsNullOrWhiteSpace(adsMode))
             return new FishingRepairDecision(false, string.Empty, "Repair mode is invalid.");
 
@@ -2890,14 +2911,28 @@ public static class FishingRepairPolicy
         return new FishingRepairDecision(false, adsMode, $"Durability {durability}% is above threshold {threshold}%.");
     }
 
-    public static string ToAdsMode(FishingRepairMode mode)
-        => mode switch
+    public static string ToAdsMode(FishingRepairMode mode, RepairCity city = RepairCity.Automatic)
+        => ApplyCity(mode switch
         {
             FishingRepairMode.Self => "self",
             FishingRepairMode.NpcNoInn => "npc-no-inn",
             FishingRepairMode.NpcNoTeleportNoInn => "npc-no-teleport-no-inn",
+            FishingRepairMode.NpcWithInn => "npc-yes-inn",
+            _ => string.Empty,
+        }, city);
+
+    public static string ApplyCity(string mode, RepairCity city)
+    {
+        if (mode is not ("npc-no-inn" or "npc-yes-inn")) return mode;
+        var token = city switch
+        {
+            RepairCity.Uldah => "uldah", RepairCity.Gridania => "gridania", RepairCity.Limsa => "limsa",
+            RepairCity.Ishgard => "ishgard", RepairCity.Crystarium => "crystarium",
+            RepairCity.Sharlayan => "sharlayan", RepairCity.Tuliyollal => "tuliyollal",
             _ => string.Empty,
         };
+        return token.Length == 0 ? mode : $"{mode}-{token}";
+    }
 }
 
 public static class FishingOperationPolicy
@@ -2915,7 +2950,8 @@ public static class FishingOperationPolicy
             settings.RepairMode,
             settings.RepairThresholdPercent,
             durabilityKnown,
-            lowestDurabilityPercent);
+            lowestDurabilityPercent,
+            settings.RepairCity);
 
     public static string ResolveReturnCommand(FishingOperationSettings settings)
     {

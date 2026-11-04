@@ -4325,7 +4325,8 @@ public sealed class FishingService
             activeConfig.FishingReturnDestination,
             activeConfig.FishingReturnCommand,
             activeConfig.FishingRepairMode,
-            activeConfig.FishingRepairThresholdPercent);
+            activeConfig.FishingRepairThresholdPercent,
+            activeConfig.FishingRepairCity);
     }
 
     private void Fail(string message, FishingAttemptFailureKind kind = FishingAttemptFailureKind.Stop)

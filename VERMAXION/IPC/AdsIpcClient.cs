@@ -3,6 +3,7 @@ using System.Text.Json;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
+using VERMAXION.Models;
 
 namespace VERMAXION.IPC;
 
@@ -55,6 +56,7 @@ public sealed class AdsIpcClient
 {
     private readonly IPluginLog log;
     private readonly ICallGateSubscriber<string, bool> startRepairSubscriber;
+    private readonly ICallGateSubscriber<string> getCapabilitiesJsonSubscriber;
     private readonly ICallGateSubscriber<bool> startExtractMateriaSubscriber;
     private readonly ICallGateSubscriber<string> getExtractMateriaStatusSubscriber;
     private readonly ICallGateSubscriber<string> getStatusJsonSubscriber;
@@ -75,6 +77,7 @@ public sealed class AdsIpcClient
     {
         this.log = log;
         startRepairSubscriber = pluginInterface.GetIpcSubscriber<string, bool>("ADS.StartRepair");
+        getCapabilitiesJsonSubscriber = pluginInterface.GetIpcSubscriber<string>("ADS.GetCapabilitiesJson");
         startExtractMateriaSubscriber = pluginInterface.GetIpcSubscriber<bool>("ADS.StartExtractMateria");
         getExtractMateriaStatusSubscriber = pluginInterface.GetIpcSubscriber<string>("ADS.GetExtractMateriaStatusJson");
         getStatusJsonSubscriber = pluginInterface.GetIpcSubscriber<string>("ADS.GetStatusJson");
@@ -244,6 +247,12 @@ public sealed class AdsIpcClient
         failure = string.Empty;
         try
         {
+            if (mode.StartsWith("npc-no-inn-", StringComparison.Ordinal) &&
+                !FishingRepairPolicy.IsCityModeAdvertised(mode, getCapabilitiesJsonSubscriber.InvokeFunc()))
+            {
+                failure = $"ADS does not advertise repair mode '{mode}'; update ADS before using this city route.";
+                return false;
+            }
             if (startRepairSubscriber.InvokeFunc(mode))
                 return true;
 

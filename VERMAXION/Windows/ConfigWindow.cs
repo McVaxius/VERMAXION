@@ -1743,6 +1743,21 @@ public class ConfigWindow : Window, IDisposable
                         (source, target) => target.FishingRepairMode = source.FishingRepairMode);
                     DrawHelpMarker("ADS repair mode for this character before fishing starts. Disabled skips gear repair.");
 
+                    if (cc.FishingRepairMode is FishingRepairMode.NpcNoInn or FishingRepairMode.NpcWithInn)
+                    {
+                        string[] cities = ["Automatic", "Ul'dah", "Gridania", "Limsa Lominsa", "Ishgard", "Crystarium", "Old Sharlayan", "Tuliyollal"];
+                        var city = Math.Clamp((int)cc.FishingRepairCity, 0, cities.Length - 1);
+                        ImGui.SetNextItemWidth(-1);
+                        if (UIConstants.Combo("Fishing repair city", ref city, cities, cities.Length))
+                        {
+                            cc.FishingRepairCity = (RepairCity)city;
+                            changed = true;
+                        }
+                        DrawDefaultOverrideButton(isDefault, configManager, "FishingRepairCity", "Fishing repair city",
+                            (source, target) => target.FishingRepairCity = source.FishingRepairCity);
+                        DrawHelpMarker("ADS checks city access and uses an eligible starter-city fallback when needed.");
+                    }
+
                     var repairThreshold = cc.FishingRepairThresholdPercent;
                     UIConstants.SetNextItemWidth(GetCompactNumericInputWidth());
                     if (UIConstants.InputInt("Fishing repair threshold %", ref repairThreshold))
@@ -4422,6 +4437,7 @@ public class ConfigWindow : Window, IDisposable
             FishingRepairMode.Self => "ADS self repair",
             FishingRepairMode.NpcNoInn => "ADS NPC no-inn",
             FishingRepairMode.NpcNoTeleportNoInn => "ADS NPC no-teleport/no-inn",
+            FishingRepairMode.NpcWithInn => "ADS NPC with inn",
             _ => "Disabled",
         };
 

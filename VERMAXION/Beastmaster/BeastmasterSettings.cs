@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using VERMAXION.Models;
 
 namespace VERMAXION.Beastmaster;
 
@@ -24,6 +25,7 @@ public sealed class BeastmasterSettings
     public string CompletionCommand { get; set; } = string.Empty;
     public BeastmasterRepairMode RepairMode { get; set => field = Enum.IsDefined(value) ? value : BeastmasterRepairMode.Self; } = BeastmasterRepairMode.Self;
     public int RepairThreshold { get; set => field = Math.Clamp(value, 0, 100); } = 75;
+    public RepairCity RepairCity { get; set => field = Enum.IsDefined(value) ? value : RepairCity.Automatic; }
     public BeastmasterCombatProvider CombatProvider
     {
         get;
@@ -56,7 +58,7 @@ public sealed class BeastmasterSettings
     {
         Goal = Goal, Board = Board, TrainingTargetRank = TrainingTargetRank, RunCount = RunCount,
         WeeklyBoards = WeeklyBoards == null ? null : [..WeeklyBoards], CompletionCommand = CompletionCommand,
-        RepairMode = RepairMode, RepairThreshold = RepairThreshold, CombatProvider = CombatProvider,
+        RepairMode = RepairMode, RepairThreshold = RepairThreshold, RepairCity = RepairCity, CombatProvider = CombatProvider,
         FoodItemId = FoodItemId, ExtractMateria = ExtractMateria,
         Degree = Degree, RankedEntry = RankedEntry, TeamMode = TeamMode, LevelingMode = LevelingMode,
         CustomTeam = [..CustomTeam], ShopLists = ShopLists.Select(list => list.Clone()).ToList(),

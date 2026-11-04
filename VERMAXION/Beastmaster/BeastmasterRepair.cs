@@ -1,17 +1,19 @@
 using System;
+using VERMAXION.Models;
 
 namespace VERMAXION.Beastmaster;
 
 internal static class BeastmasterRepairPolicy
 {
-    internal static string ToAdsMode(BeastmasterRepairMode mode) => mode switch
+    internal static string ToAdsMode(BeastmasterRepairMode mode, RepairCity city = RepairCity.Automatic)
+        => FishingRepairPolicy.ApplyCity(mode switch
     {
         BeastmasterRepairMode.Self => "self",
         BeastmasterRepairMode.NpcNoInn => "npc-no-inn",
         BeastmasterRepairMode.NpcNearby => "npc-no-teleport-no-inn",
         BeastmasterRepairMode.NpcInn => "npc-yes-inn",
         _ => string.Empty,
-    };
+    }, city);
 
     internal static bool ShouldRepair(BeastmasterRepairMode mode, int threshold, int? lowestDurabilityPercent)
         => ToAdsMode(mode).Length > 0 && Math.Clamp(threshold, 0, 100) > 0 &&
@@ -26,10 +28,19 @@ internal static class BeastmasterRepairPolicy
         bool statusReadable, bool running, string task, string mode, DateTime? completedAtUtc)
         => requestAccepted && requestedAtUtc != default && statusReadable && running &&
            (completedAtUtc == null || completedAtUtc < requestedAtUtc) &&
-           requestedMode is "self" or "npc-no-inn" or "npc-no-teleport-no-inn" or "npc-yes-inn" or "extract-materia" &&
+           IsOwnedMode(requestedMode) &&
            string.Equals(requestedMode, mode, StringComparison.Ordinal) &&
            string.Equals(task, requestedMode == "extract-materia" ? "materia extraction"
                : requestedMode == "self" ? "self-repair" : "NPC repair", StringComparison.Ordinal);
+
+    private static bool IsOwnedMode(string mode)
+    {
+        if (mode is "self" or "npc-no-inn" or "npc-no-teleport-no-inn" or "npc-yes-inn" or "extract-materia") return true;
+        foreach (var city in Enum.GetValues<RepairCity>())
+            if (mode == FishingRepairPolicy.ApplyCity("npc-no-inn", city) ||
+                mode == FishingRepairPolicy.ApplyCity("npc-yes-inn", city)) return true;
+        return false;
+    }
 
     internal static bool ShouldRefreshFood(uint selectedUseId, float wellFedSeconds)
         => selectedUseId != 0 && wellFedSeconds <= 90;

@@ -1,3 +1,8 @@
+2026-11-04 - 3.0.0.10 - ADS repair destination selection (I734-I737)
+
+- Offer Automatic and all seven cities for both NPC repair modes in fishing and Beastmaster settings. Preserve existing mode values, self/local behavior and saved defaults.
+- Carry repair cities through manual, scheduled and weekly runs, character clones and copied defaults. Require the exact ADS capability before city-specific no-inn dispatch; unavailable support stops with update guidance.
+
 2026-11-01 - Manual coffer opening (I719, unversioned)
 
 - Add a manual coffer utility and ordinary inventory context action for native action-388 coffers. Open only the selected stack quantity, retain at least one free bag slot, and confirm each consumption before submitting another use.

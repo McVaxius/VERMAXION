@@ -9,6 +9,52 @@ namespace VERMAXION.Tests;
 public sealed class BeastmasterRepairTests
 {
     [Theory]
+    [InlineData(RepairCity.Uldah, "uldah")]
+    [InlineData(RepairCity.Gridania, "gridania")]
+    [InlineData(RepairCity.Limsa, "limsa")]
+    [InlineData(RepairCity.Ishgard, "ishgard")]
+    [InlineData(RepairCity.Crystarium, "crystarium")]
+    [InlineData(RepairCity.Sharlayan, "sharlayan")]
+    [InlineData(RepairCity.Tuliyollal, "tuliyollal")]
+    public void BothNpcModesRetainCityAcrossSavedSettingsAndOwnedCancellation(RepairCity city, string token)
+    {
+        var selected = new BeastmasterSettings { RepairMode = BeastmasterRepairMode.NpcNoInn, RepairCity = city };
+        foreach (var copy in new[] { selected.Clone(), BeastmasterRunSetup.From(selected).ApplyTo(selected),
+            BeastmasterWeeklyPolicy.CopySettings(selected),
+            JsonConvert.DeserializeObject<BeastmasterSettings>(JsonConvert.SerializeObject(selected))!,
+            System.Text.Json.JsonSerializer.Deserialize<BeastmasterSettings>(System.Text.Json.JsonSerializer.Serialize(selected))! })
+        {
+            Assert.Equal(city, copy.RepairCity);
+            Assert.Equal($"npc-no-inn-{token}", BeastmasterRepairPolicy.ToAdsMode(copy.RepairMode, copy.RepairCity));
+        }
+        foreach (var inn in new[] { false, true })
+        {
+            var expected = $"npc-{(inn ? "yes-inn" : "no-inn")}-{token}";
+            Assert.Equal(expected, BeastmasterRepairPolicy.ToAdsMode(inn ? BeastmasterRepairMode.NpcInn : BeastmasterRepairMode.NpcNoInn, city));
+            var fishing = new FishingOperationSettings(22, FishingReturnDestination.Inn, "", inn ? FishingRepairMode.NpcWithInn : FishingRepairMode.NpcNoInn, 50, city);
+            Assert.Equal(expected, FishingOperationPolicy.EvaluateRepair(fishing, true, 10).AdsMode);
+            var now = new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc);
+            Assert.True(BeastmasterRepairPolicy.CanCancelOwnedRequest(true, now, expected, true, true, "NPC repair", expected, null));
+            Assert.False(BeastmasterRepairPolicy.CanCancelOwnedRequest(true, now, expected, true, true, "NPC repair", "npc-no-inn", null));
+        }
+        Assert.Equal("self", BeastmasterRepairPolicy.ToAdsMode(BeastmasterRepairMode.Self, city));
+        Assert.Equal("npc-no-teleport-no-inn", BeastmasterRepairPolicy.ToAdsMode(BeastmasterRepairMode.NpcNearby, city));
+        Assert.Equal("self", FishingRepairPolicy.ToAdsMode(FishingRepairMode.Self, city));
+        Assert.Equal("npc-no-teleport-no-inn", FishingRepairPolicy.ToAdsMode(FishingRepairMode.NpcNoTeleportNoInn, city));
+        var character = new CharacterConfig { FishingRepairCity = city };
+        Assert.Equal(city, character.Clone().FishingRepairCity);
+    }
+
+    [Theory]
+    [InlineData("{\"repairModes\":[\"npc-no-inn-limsa\"]}", true)]
+    [InlineData("{\"repairModes\":[\"npc-no-inn-gridania\"]}", false)]
+    [InlineData("{\"repairModes\":true}", false)]
+    [InlineData("{}", false)]
+    [InlineData("broken json", false)]
+    public void CityRepairCapabilityRequiresExactAdvertisedMode(string capabilities, bool advertised)
+        => Assert.Equal(advertised, FishingRepairPolicy.IsCityModeAdvertised("npc-no-inn-limsa", capabilities));
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void SuppliesDefaultExtractionOnAndPersistExactFoodQuality(bool useNewtonsoft)

@@ -1,5 +1,6 @@
 using Dalamud.Bindings.ImGui;
 using VERMAXION.Beastmaster;
+using VERMAXION.Models;
 
 namespace VERMAXION.Windows;
 
@@ -24,6 +25,17 @@ internal sealed partial class BeastmasterWindow
             {
                 settings.RepairMode = (BeastmasterRepairMode)mode;
                 SaveSettings();
+            }
+            if (settings.RepairMode is BeastmasterRepairMode.NpcNoInn or BeastmasterRepairMode.NpcInn)
+            {
+                string[] cities = ["Automatic", "Ul'dah", "Gridania", "Limsa Lominsa", "Ishgard", "Crystarium", "Old Sharlayan", "Tuliyollal"];
+                var city = (int)settings.RepairCity;
+                ImGui.SetNextItemWidth(-1);
+                if (UIConstants.Combo("Repair city", ref city, cities, cities.Length))
+                {
+                    settings.RepairCity = (RepairCity)city;
+                    SaveSettings();
+                }
             }
             var threshold = settings.RepairThreshold;
             ImGui.SetNextItemWidth(130 * UIConstants.Scale);

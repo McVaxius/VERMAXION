@@ -624,6 +624,7 @@ public class ConfigManager
         target.FishingReturnDestination = source.FishingReturnDestination;
         target.FishingReturnCommand = source.FishingReturnCommand;
         target.FishingRepairMode = source.FishingRepairMode;
+        target.FishingRepairCity = source.FishingRepairCity;
         target.FishingRepairThresholdPercent = source.FishingRepairThresholdPercent;
         target.FishingDiscardAfterVoyage = source.FishingDiscardAfterVoyage;
         target.FishingSellAfterVoyage = source.FishingSellAfterVoyage;
@@ -635,6 +636,7 @@ public class ConfigManager
         target.FishingReturnDestination = source.ReturnDestination;
         target.FishingReturnCommand = source.ReturnCommand;
         target.FishingRepairMode = source.RepairMode;
+        target.FishingRepairCity = source.RepairCity;
         target.FishingRepairThresholdPercent = Math.Clamp(source.RepairThresholdPercent, 0, 100);
     }
 

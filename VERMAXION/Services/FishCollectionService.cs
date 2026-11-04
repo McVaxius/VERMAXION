@@ -412,7 +412,8 @@ internal sealed unsafe class FishCollectionService : IDisposable
         {
             if (!GameHelpers.TryGetLowestEquippedGearConditionPercent(out var durability)) throw new InvalidOperationException("Equipped durability is unavailable.");
             var settings = new FishingOperationSettings(CurrentConfig.FishingLureRestockTarget, CurrentConfig.FishingReturnDestination,
-                CurrentConfig.FishingReturnCommand, CurrentConfig.FishingRepairMode, CurrentConfig.FishingRepairThresholdPercent);
+                CurrentConfig.FishingReturnCommand, CurrentConfig.FishingRepairMode, CurrentConfig.FishingRepairThresholdPercent,
+                CurrentConfig.FishingRepairCity);
             var decision = FishingOperationPolicy.EvaluateRepair(settings, true, durability);
             if (decision.ShouldRepair)
             {

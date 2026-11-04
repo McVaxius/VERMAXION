@@ -73,6 +73,7 @@ public class CharacterConfig
     public FishingReturnDestination FishingReturnDestination { get; set; } = FishingDefaults.ReturnDestination;
     public string FishingReturnCommand { get; set; } = FishingDefaults.ReturnCommand;
     public FishingRepairMode FishingRepairMode { get; set; } = FishingDefaults.RepairMode;
+    public RepairCity FishingRepairCity { get; set; } = RepairCity.Automatic;
     public int FishingRepairThresholdPercent { get; set; } = FishingDefaults.RepairThresholdPercent;
     public bool FishingDiscardAfterVoyage { get; set; } = false;
     public bool FishingSellAfterVoyage { get; set; } = false;
@@ -462,6 +463,7 @@ public class CharacterConfig
             FishingReturnDestination = FishingReturnDestination,
             FishingReturnCommand = FishingReturnCommand,
             FishingRepairMode = FishingRepairMode,
+            FishingRepairCity = FishingRepairCity,
             FishingRepairThresholdPercent = FishingRepairThresholdPercent,
             FishingDiscardAfterVoyage = FishingDiscardAfterVoyage,
             FishingSellAfterVoyage = FishingSellAfterVoyage,

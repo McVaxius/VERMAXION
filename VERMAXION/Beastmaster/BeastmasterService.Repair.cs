@@ -60,7 +60,7 @@ internal sealed unsafe partial class BeastmasterService
             !NativeQueueIsIdle() || IsCrucibleTerritory(Svc.ClientState.TerritoryType) ||
             Svc.Condition[ConditionFlag.BoundByDuty] || Svc.Condition[ConditionFlag.BoundByDuty56] ||
             CrucibleUi.IsVisible(CrucibleUi.ResultWindow) || CrucibleUi.IsVisible(CrucibleUi.YesNo)) return false;
-        var mode = BeastmasterRepairPolicy.ToAdsMode(Settings.RepairMode);
+        var mode = BeastmasterRepairPolicy.ToAdsMode(Settings.RepairMode, Settings.RepairCity);
         if (mode.Length == 0) { RepairStatus = "Repair disabled."; return false; }
         if (Settings.RepairThreshold == 0)
         { RepairStatus = "Repair threshold is 0%; automatic repair is disabled."; return false; }
