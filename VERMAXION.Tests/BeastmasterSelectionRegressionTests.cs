@@ -18,6 +18,26 @@ namespace VERMAXION.Tests;
 
 public sealed class BeastmasterSelectionRegressionTests
 {
+    [Theory]
+    [InlineData(true, 5, 100u, 13u)]
+    [InlineData(false, 5, 0u, 32u)]
+    [InlineData(true, 4, 100u, 32u)]
+    [InlineData(true, 26, 100u, 32u)]
+    [InlineData(true, 5, 101u, 32u)]
+    public void PasPrefersEligibleGeshAndUsesRegisteredColibriOtherwise(bool alive, int rank, uint hp, uint bridge)
+    {
+        var settings = new BeastmasterSettings { Board = 1, Degree = CrucibleDegree.Third };
+        BeastmasterCandidate[] beasts =
+        [
+            new(10, 5, 0, 0, HP: 100, MaxHP: 100),
+            new(50, 5, 0, 0, HP: 100, MaxHP: 100),
+            new(13, rank, 0, 0, Alive: alive, HP: hp, MaxHP: 100),
+            new(32, 5, 0, 0, HP: 100, MaxHP: 100),
+        ];
+        Assert.Equal(new uint[] { 10, 50, bridge }, BeastmasterSelection.RemainingFinalFightOrder(
+            settings, new BeastmasterFightContext(6, false), beasts, new uint[] { 10, 50, 13 }));
+    }
+
     [Fact]
     public void PasReplacesAKnockedOutBehemothWithAHealthyAreaAttackerAndAlwaysFillsAvailableSlots()
     {
@@ -158,7 +178,9 @@ public sealed class BeastmasterSelectionRegressionTests
     [InlineData(true, 0.39f, 1, 50u)]
     [InlineData(true, 0.4f, 2, 50u)]
     [InlineData(false, 0.19f, 2, 0u)]
-    [InlineData(false, 0.2f, 0, 10u)]
+    [InlineData(false, 0.2f, 0, 0u)]
+    [InlineData(false, 0.99f, 0, 0u)]
+    [InlineData(false, 1f, 0, 13u)]
     public void ThirdBoardCampsReserveTheLaterFightFamiliar(bool firstCamp, float hp, int items, uint familiar)
         => Assert.Equal(familiar, NativeSupply<uint>("Board3RestFamiliar", firstCamp, hp, items));
 

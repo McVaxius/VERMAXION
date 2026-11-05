@@ -38,6 +38,13 @@ public static class BeastmasterSelection
         var selected = planned.Distinct().Where(living.ContainsKey).Take(3).ToList();
         if (!AllowsRemainingTeam(settings, fight)) return selected;
 
+        // The approved Pas trio prefers Gesh. Colibri is the existing
+        // registered replacement when Gesh cannot join the final battle.
+        if (planned.SequenceEqual(new uint[] { 10, 50, 13 }) &&
+            (!living.TryGetValue(13, out var gesh) || gesh.Rank < TrainingTarget(settings.Board) || gesh.Rank > 25) &&
+            new uint[] { 10, 50, 32 }.All(number => living.TryGetValue(number, out var beast) &&
+                beast.Rank >= TrainingTarget(settings.Board) && beast.Rank <= 25))
+            return [10, 50, 32];
         if (selected.Count == 3) return selected;
         var available = living.Values.OrderBy(beast => beast.Number).ToArray();
         var priority = planned.Distinct().Select((number, index) => (number, index)).ToDictionary(value => value.number, value => value.index);

@@ -735,7 +735,9 @@ namespace VERMAXION.Beastmaster
         private void Rest(AtkUnitBase* party, DateTime now)
         {
             if (this.WasSubmitted(CrucibleUi.TeamWindow, party)) return;
-            if (!Config.Rest)
+            var clearTeam = BeastmasterSelection.RequiresClearTeam(Config);
+            var managedRest = clearTeam && Config.Board is 2 or 3 or 4 or 5;
+            if (!Config.Rest && !managedRest)
             {
                 Screens.PetParty.RestReturn(party);
                 this.Submitted(CrucibleUi.TeamWindow, party);
@@ -743,30 +745,38 @@ namespace VERMAXION.Beastmaster
                 return;
             }
 
+            if (CrucibleUi.Team() is not { Count: > 0 } rows)
+                throw new BeastmasterReadUnavailableException(CrucibleUi.TeamWindow, "Campsite familiar rows are unavailable");
+
             if (this.restPicks == null)
             {
-                if (CrucibleUi.Team() is not { Count: > 0 } rows)
-                    throw new BeastmasterReadUnavailableException(CrucibleUi.TeamWindow, "Campsite familiar rows are unavailable");
-
                 // Picking nobody gives a 90% heal
                 var picks = rows.Where(x => x is { MaxHP: > 0, HP: > 0 } && (float)x.HP / x.MaxHP < RestBelow)
                                 .OrderBy(x => (float)x.HP / x.MaxHP)
                                 .Take(RestPicks)
                                 .Select(x => x.index)
                                 .ToList();
-                if (BeastmasterSelection.RequiresClearTeam(Config) && Config.Board == 3 && CrucibleBoard.Current() is { } board &&
-                    board.StopPlayerIsOn() is { Kind: CrucibleStopKind.Campsite } camp &&
-                    Svc.Objects.LocalPlayer is { MaxHp: > 0 } player)
+                // These selected routes recover the player without selecting
+                // any familiars. This uses the native campsite's 90% heal.
+                if (clearTeam && Config.Board is 2 or 4 or 5)
+                    picks = [];
+                else if (clearTeam && Config.Board == 3)
                 {
-                    var hud = CrucibleUi.Ready(CrucibleUi.MainHud);
-                    // Missing optional inventory cannot establish two spare AoE
-                    // items; retain the Behemoth recovery in that case.
-                    var damageItems = hud == null ? 0 : new ReaderXBMContentsMainHUD(hud).ItemEntriesValid
-                        .Count(item => CrucibleItemData.CombatDamageItems.Contains(item.Id));
-                    var familiar = CrucibleItemData.Board3RestFamiliar(CrucibleItemData.BattleReachable(board, camp, 19),
-                        (float)player.CurrentHp / player.MaxHp, damageItems);
-                    picks = rows.Where(row => row.Number == familiar && row is { HP: > 0, MaxHP: > 0 } && row.HP < row.MaxHP)
-                        .Select(row => row.index).Take(1).ToList();
+                    picks = [];
+                    if (CrucibleBoard.Current() is { } board &&
+                        board.StopPlayerIsOn() is { Kind: CrucibleStopKind.Campsite } camp &&
+                        Svc.Objects.LocalPlayer is { IsDead: false, MaxHp: > 0 } player && player.CurrentHp <= player.MaxHp)
+                    {
+                        var hud = CrucibleUi.Ready(CrucibleUi.MainHud);
+                        // Preserve the existing first-camp Behemoth policy.
+                        var damageItems = hud == null ? 0 : new ReaderXBMContentsMainHUD(hud).ItemEntriesValid
+                            .Count(item => CrucibleItemData.CombatDamageItems.Contains(item.Id));
+                        var familiar = CrucibleItemData.Board3RestFamiliar(CrucibleItemData.BattleReachable(board, camp, 19),
+                            (float)player.CurrentHp / player.MaxHp, damageItems);
+                        picks = rows.Where(row => row.Number == familiar && !row.Disabled &&
+                                row is { HP: > 0, MaxHP: > 0 } && row.HP < row.MaxHP)
+                            .Select(row => row.index).Take(1).ToList();
+                    }
                 }
                 string names = string.Join(", ", picks.Select(i => $"{rows[i].Name} {rows[i].HP}/{rows[i].MaxHP}"));
                 this.restPicks = picks;
@@ -774,7 +784,25 @@ namespace VERMAXION.Beastmaster
                 Svc.Log.Info($"[Crucible] Campsite: resting with {(names.Length > 0 ? names : "no familiars (90% self heal)")}");
             }
 
-            if (this.restStep < this.restPicks.Count)
+            // Recheck the actual player budget before submitting Gesh recovery.
+            if (clearTeam && Config.Board == 3 && this.restPicks.Any(index => rows[index].Number == 13) &&
+                (Svc.Objects.LocalPlayer is not { IsDead: false, MaxHp: > 0 } currentPlayer ||
+                    currentPlayer.CurrentHp != currentPlayer.MaxHp))
+                this.restPicks.Clear();
+
+            if (managedRest)
+            {
+                var selected = rows.Where(row => row.SelectionIndex < FightPicks).ToArray();
+                var unwanted = selected.FirstOrDefault(row => !this.restPicks.Contains(row.index));
+                var missing = this.restPicks.FirstOrDefault(index => selected.All(row => row.index != index), -1);
+                if (unwanted != null || missing >= 0)
+                {
+                    Screens.PetParty.Pick(party, unwanted?.index ?? missing);
+                    EzThrottler.Throttle("CrucibleMenus", 400);
+                    return;
+                }
+            }
+            else if (this.restStep < this.restPicks.Count)
             {
                 Screens.PetParty.Pick(party, this.restPicks[this.restStep]);
                 this.restStep++;

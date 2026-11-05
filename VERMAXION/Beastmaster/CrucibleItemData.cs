@@ -234,7 +234,7 @@ public static class CrucibleItemData
     internal static IEnumerable<uint> ClearShopPriority(uint board, IReadOnlyCollection<uint> heldItems, HashSet<uint> ownedGear,
         IEnumerable<uint>? requiredGear = null)
     {
-        // Private encounter prerequisites are supplied by the native pack.
+        // Encounter prerequisites are supplied by the native pack.
         foreach (var gear in requiredGear ?? [])
             if (!ownedGear.Contains(gear)) yield return gear;
         if (!ownedGear.Any(ElemntalAxes.Contains))
@@ -248,7 +248,7 @@ public static class CrucibleItemData
     internal static int ReservedClearGearSlots(uint candidate, HashSet<uint> ownedGear, uint[] requiredGear)
     {
         var missing = requiredGear.Where(row => row != candidate && !ownedGear.Contains(row)).ToHashSet();
-        // Required private-route gear still wins when an already crowded bag
+        // Required route gear still wins when an already crowded bag
         // cannot fit both it and an axe. Optional gear must leave the axe slot.
         var reserveAxe = !requiredGear.Contains(candidate) && !ElemntalAxes.Contains(candidate) &&
             !ownedGear.Any(ElemntalAxes.Contains) && !missing.Any(ElemntalAxes.Contains);
@@ -257,7 +257,9 @@ public static class CrucibleItemData
 
     internal static uint Board3RestFamiliar(bool firstCamp, float playerHP, int damageItems)
         => firstCamp ? playerHP < 0.4f && damageItems >= 2 ? 0u : 50u
-            : playerHP >= 0.2f ? 10u : 0u;
+            // Spend the final camp on Gesh only when player recovery has
+            // no current benefit; remaining encounter budgets are unproved.
+            : playerHP == 1f ? 13u : 0u;
 
     internal static bool BattleReachable(CrucibleBoard board, CrucibleBoardStop from, uint battle)
     {
