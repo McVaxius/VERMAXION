@@ -524,7 +524,8 @@ namespace VERMAXION.Beastmaster
         {
             if (CrucibleUi.Ready(CrucibleUi.BoardLayout) == null || CrucibleUi.Ready(CrucibleUi.TeamWindow) == null)
                 return null;
-            return CrucibleBoard.Current()?.StopPlayerIsOn()?.ResolveFight(fightPanelReady: true);
+            var board = CrucibleBoard.Current();
+            return board != null && board.BoardNumber == Config.Board ? board.StopPlayerIsOn()?.ResolveFight(fightPanelReady: true) : null;
         }
 
         private bool StartFight(DateTime now)
@@ -568,14 +569,17 @@ namespace VERMAXION.Beastmaster
                 : CrucibleTeam.FightOrder(team).Take(FightPicks).ToList();
             var exactTeamReady = !requiresClearTeam || BeastmasterSelection.ClearFightReady(alive.Select(row => row.Number)) &&
                 BeastmasterSelection.TeamMatches(team.Select(row => row.Number).ToArray(), setup.Roster);
-            var useRemainingTeam = requiresClearTeam && !exactTeamReady &&
-                BeastmasterSelection.AllowsRemainingTeam(Config, fight!.Value);
+            var useRemainingTeam = requiresClearTeam && !exactTeamReady;
             if (useRemainingTeam)
-                alive = CrucibleTeam.RemainingFinalFightOrder(team, fight!.Value, setup);
-            if (!exactTeamReady && !useRemainingTeam)
             {
-                this.Status = "The exact native encounter trio and registered roster must be present and trained. A missing or knocked-out required familiar cannot be silently replaced.";
-                return true;
+                alive = CrucibleTeam.RemainingFinalFightOrder(team, fight!.Value, setup);
+                var familiarRoles = setup.FamiliarRoles;
+                if (familiarRoles is not { Length: > 0 } ||
+                    alive.Any(row => !familiarRoles.Any(role => role.Number == row.Number)))
+                {
+                    this.Status = "Update GMC before using this replacement team; its familiar capability metadata is missing or incomplete.";
+                    return true;
+                }
             }
             if (BeastmasterSelection.RequiresClearTeam(Config) &&
                 (alive.Any(row => row.MaxHP == 0 || row.HP == 0 || row.HP > row.MaxHP) ||
@@ -652,7 +656,7 @@ namespace VERMAXION.Beastmaster
             this.Status = useRemainingTeam
                 ? "Commencing with remaining beasts: " + string.Join(", ", alive.Select(row => row.Name.TextValue))
                 : "Commencing the battle";
-            if (useRemainingTeam) Svc.Log.Information("[Crewcible] Pas remaining-team attempt: " +
+            if (useRemainingTeam) Svc.Log.Information("[Crewcible] Remaining-team attempt: " +
                 string.Join(", ", alive.Select(row => $"{row.Number} {row.HP}/{row.MaxHP} rank {row.Rank}")));
             return true;
         }

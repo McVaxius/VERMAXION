@@ -22,9 +22,6 @@ public static class BeastmasterSelection
     public static bool RequiresClearTeam(BeastmasterSettings settings) =>
         settings.Degree is CrucibleDegree.First or CrucibleDegree.Second or CrucibleDegree.Third;
 
-    public static bool AllowsRemainingTeam(BeastmasterSettings settings, BeastmasterFightContext fight) =>
-        settings.Board == 1 && settings.Degree == CrucibleDegree.Third && fight.BattleId == 6;
-
     // Fresh adoption after a reload has no previous menu/preparation context.
     // The next actual fight menu restores its documented strategy normally.
     public static bool UsesScriptedFight(BeastmasterSettings settings, BeastmasterFightContext? fight) =>
@@ -36,11 +33,10 @@ public static class BeastmasterSelection
         var living = beasts.Where(beast => beast.Number > 0 && beast.Alive && beast.MaxHP > 0 &&
             beast.HP > 0 && beast.HP <= beast.MaxHP).DistinctBy(beast => beast.Number).ToDictionary(beast => beast.Number);
         var selected = planned.Distinct().Where(living.ContainsKey).Take(3).ToList();
-        if (!AllowsRemainingTeam(settings, fight)) return selected;
 
         // The approved Pas trio prefers Gesh. Colibri is the existing
         // registered replacement when Gesh cannot join the final battle.
-        if (planned.SequenceEqual(new uint[] { 10, 50, 13 }) &&
+        if (settings.Board == 1 && fight.BattleId == 6 && planned.SequenceEqual(new uint[] { 10, 50, 13 }) &&
             (!living.TryGetValue(13, out var gesh) || gesh.Rank < TrainingTarget(settings.Board) || gesh.Rank > 25) &&
             new uint[] { 10, 50, 32 }.All(number => living.TryGetValue(number, out var beast) &&
                 beast.Rank >= TrainingTarget(settings.Board) && beast.Rank <= 25))
@@ -59,7 +55,8 @@ public static class BeastmasterSelection
                     teams.Add([available[i], available[j], available[k]]);
         // Evaluate whole lineups: one beast can cover both defensive Borrow
         // and a self-centred damaging special. User tier lists are not proof.
-        var best = teams.OrderByDescending(team => (
+        var best = teams.Where(team => selected.All(number => team.Any(beast => beast.Number == number)))
+            .OrderByDescending(team => (
             team.Count(beast => beast.Rank >= TrainingTarget(settings.Board)), team.Count(beast => !beast.Poisoned),
             team.Any(beast => beast.Classification is 1 or 2 or 6), team.Any(beast => beast.Healing),
             team.Any(beast => beast.AreaSpecial), team.Any(beast => beast.AreaDamage), team.Any(beast => beast.Number == 10),

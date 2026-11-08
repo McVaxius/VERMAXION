@@ -1,3 +1,11 @@
+2026-11-08 - 3.0.0.12 - Crucible replacement teams
+
+- Recover with the best remaining registered lineup across all five boards in Degrees 1-3 after native encounter-catalog verification. Retain eligible planned survivors and fill vacant horns with the best remaining beasts. Preserve Standard selection, manual controls and existing ownership/KO rules.
+- Require the observed native board to match the configured board before selecting a clear-fight setup.
+- Keep replacement-team fights at their menu with update guidance when the loaded GMC setup lacks board capability metadata or does not describe a selected beast. This also preserves player-only attempts on supported GMC builds.
+
+Validation: 119 focused selection regression cases passed with no failures or skips; the versioned Release build completed. Existing dependency/compiler warnings remain.
+
 2026-11-04 - 3.0.0.10 - ADS repair destination selection (I734-I737)
 
 - Offer Automatic and all seven cities for both NPC repair modes in fishing and Beastmaster settings. Preserve existing mode values, self/local behavior and saved defaults.
