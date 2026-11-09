@@ -1,3 +1,8 @@
+2026-11-09 - 3.0.0.13 - Shared UI library update
+
+- Update shared text controls and glass rendering to the reviewed AethertekUI 0.3.1 baseline.
+- The shared-library rollout to other existing plugins is in progress.
+
 2026-11-08 - 3.0.0.12 - Crucible replacement teams
 
 - Recover with the best remaining registered lineup across all five boards in Degrees 1-3 after native encounter-catalog verification. Retain eligible planned survivors and fill vacant horns with the best remaining beasts. Preserve Standard selection, manual controls and existing ownership/KO rules.
