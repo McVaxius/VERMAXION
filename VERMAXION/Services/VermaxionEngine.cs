@@ -198,6 +198,10 @@ public class VermaxionEngine
     private readonly Plugin plugin;
     private BeastmasterTaskFrequency beastmasterRunFrequency;
     private ulong beastmasterRunOwner;
+    private GearsetSnapshot? beastmasterGearset;
+    private readonly GearsetConfirmationWindow beastmasterGearsetConfirmation = new();
+    private DateTime beastmasterGearsetRequestedAt;
+    private string beastmasterGearsetError = string.Empty;
 
     private EngineState state = EngineState.Idle;
     private RunTaskPhaseFilter activePhaseFilter = RunTaskPhaseFilter.All;
@@ -995,7 +999,8 @@ public class VermaxionEngine
 
     internal void RebindBeastmasterRunToCurrentCharacter()
     {
-        if (!currentTaskOwnedWorkStarted || state is not (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly) ||
+        if (!currentTaskOwnedWorkStarted || beastmasterGearset != null ||
+            state is not (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly) ||
             !Plugin.PlayerState.IsLoaded || Plugin.PlayerState.ContentId == 0) return;
         if (beastmasterRunOwner != Plugin.PlayerState.ContentId)
         {
@@ -1184,7 +1189,8 @@ public class VermaxionEngine
                  currentTaskOwnedWorkStarted && state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly) &&
                  !Plugin.PlayerState.IsLoaded))
             {
-                if (currentTaskOwnedWorkStarted && state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
+                if (currentTaskOwnedWorkStarted && beastmasterGearset == null &&
+                    state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
                 {
                     StatusText = "Waiting for the current character to be ready";
                     ResetWatchdog();
@@ -1192,7 +1198,8 @@ public class VermaxionEngine
                 }
                 CancelForSettling("Timer character session ended");
             }
-            if (currentTaskOwnedWorkStarted && state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
+            if (currentTaskOwnedWorkStarted && beastmasterGearset == null &&
+                state is (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
             {
                 var service = plugin.BeastmasterService;
                 // The independently updated service owns its existing recovery delay.
@@ -2310,15 +2317,66 @@ public class VermaxionEngine
         var expectedState = weekly ? EngineState.RunningBeastmasterWeekly : EngineState.RunningBeastmaster;
         var label = weekly ? "Beastmaster weeklies" : "Beastmaster";
         var service = plugin.BeastmasterService;
-        if (!currentTaskOwnedWorkStarted)
+        if (!currentTaskOwnedWorkStarted || beastmasterGearset != null)
         {
-            var config = GetLiveActiveConfig();
-            if (!GetActiveRunEligibility(TaskIdByState[expectedState], config).IsRunnable)
+            if (beastmasterGearset != null)
             {
+                if (beastmasterRunOwner == 0 || equipmentRuntime.CharacterContentId != beastmasterRunOwner)
+                {
+                    FailScheduledBeastmasterPreparation(expectedState, "Character changed while equipping the Beastmaster gearset.");
+                    return;
+                }
+                beastmasterGearsetConfirmation.Poll(equipmentRuntime);
+                if (!equipmentRuntime.IsGearsetEquipped(beastmasterGearset.GearsetId, beastmasterGearset.ClassJobId))
+                {
+                    if (equipmentRuntime.UtcNow - beastmasterGearsetRequestedAt >= TimeSpan.FromSeconds(15))
+                        FailScheduledBeastmasterPreparation(expectedState,
+                            $"Beastmaster gearset {beastmasterGearset.GearsetId} did not become active within 15 seconds. {beastmasterGearsetError}".Trim());
+                    else
+                        StatusText = $"Waiting for Beastmaster gearset {beastmasterGearset.GearsetId}. {beastmasterGearsetError}".Trim();
+                    return;
+                }
+                beastmasterGearsetConfirmation.Reset();
+            }
+            var config = GetLiveActiveConfig();
+            var eligibility = GetActiveRunEligibility(TaskIdByState[expectedState], config);
+            if (!eligibility.IsRunnable)
+            {
+                if (beastmasterGearset != null && eligibility.Status == TaskEligibilityStatus.Blocked)
+                {
+                    FailScheduledBeastmasterPreparation(expectedState, eligibility.Reason);
+                    return;
+                }
                 AdvanceToNextTask(expectedState);
                 return;
             }
             if (ShouldHoldNonDutyTaskStart(label)) return;
+            if (!plugin.TryGetScheduledBeastmasterGearset(out var gearset, out var preparationReason))
+            {
+                FailScheduledBeastmasterPreparation(expectedState, preparationReason);
+                return;
+            }
+            if (gearset != null)
+            {
+                if (beastmasterGearset != null)
+                {
+                    if (equipmentRuntime.UtcNow - beastmasterGearsetRequestedAt >= TimeSpan.FromSeconds(15))
+                        FailScheduledBeastmasterPreparation(expectedState, "The equipped Beastmaster job could not be verified before Crewcible start.");
+                    else
+                        StatusText = "Waiting for the equipped Beastmaster job to become available.";
+                    return;
+                }
+                // One owned request, using the same confirmation window as other equipment tasks.
+                beastmasterGearset = gearset;
+                beastmasterRunOwner = equipmentRuntime.CharacterContentId;
+                beastmasterGearsetRequestedAt = equipmentRuntime.UtcNow;
+                MarkCurrentTaskWorkStarted();
+                beastmasterGearsetError = equipmentRuntime.TryEquipGearset(gearset.GearsetId, out var error)
+                    ? string.Empty : error;
+                beastmasterGearsetConfirmation.Open(equipmentRuntime.UtcNow);
+                StatusText = $"Equipping Beastmaster gearset {gearset.GearsetId}. {beastmasterGearsetError}".Trim();
+                return;
+            }
             if (!plugin.StartScheduledBeastmaster(weekly, out var reason))
             {
                 runHadFailure = true;
@@ -2328,6 +2386,7 @@ public class VermaxionEngine
             }
             beastmasterRunFrequency = weekly ? config.BeastmasterWeeklyFrequency : config.BeastmasterFrequency;
             beastmasterRunOwner = Plugin.PlayerState.ContentId;
+            ResetScheduledBeastmasterPreparation();
             MarkCurrentTaskWorkStarted();
             return;
         }
@@ -2600,11 +2659,30 @@ public class VermaxionEngine
         return null;
     }
 
+    private void FailScheduledBeastmasterPreparation(EngineState currentTask, string reason)
+    {
+        runHadFailure = true;
+        StatusText = reason;
+        log.Warning($"[Engine] Scheduled Crewcible could not prepare Beastmaster: {reason}");
+        AdvanceToNextTask(currentTask);
+    }
+
+    private void ResetScheduledBeastmasterPreparation()
+    {
+        beastmasterGearset = null;
+        beastmasterGearsetRequestedAt = DateTime.MinValue;
+        beastmasterGearsetError = string.Empty;
+        beastmasterGearsetConfirmation.Reset();
+    }
+
     private void AdvanceToNextTask(EngineState currentTask)
     {
         // No scheduled command may leak into the manual completion path after ownership ends.
         if (currentTask is EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly)
+        {
+            ResetScheduledBeastmasterPreparation();
             plugin.BeastmasterService.DiscardCompletionCommand();
+        }
         if (!currentTaskOwnedWorkStarted)
         {
             log.Information($"[Engine] {currentTask} did not start owned work; advancing without settling");
@@ -2661,6 +2739,7 @@ public class VermaxionEngine
 
     private void ResetTaskServices()
     {
+        ResetScheduledBeastmasterPreparation();
         foreach (var reset in taskBindings.Values.Select(binding => binding.Reset).Distinct())
             reset();
         fcBuffInventoryService.Reset();
@@ -2669,6 +2748,7 @@ public class VermaxionEngine
 
     private void CancelTaskServices()
     {
+        ResetScheduledBeastmasterPreparation();
         ResetReturnBeforeNag(cancelTravel: true);
         foreach (var cancel in taskBindings.Values.Select(binding => binding.Cancel).Distinct())
             cancel();
@@ -2742,7 +2822,8 @@ public class VermaxionEngine
 
     private bool RecoverOwnedBeastmaster(string reason)
     {
-        if (!currentTaskOwnedWorkStarted || state is not (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
+        if (!currentTaskOwnedWorkStarted || beastmasterGearset != null ||
+            state is not (EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly))
             return false;
         var service = plugin.BeastmasterService;
         try
@@ -3396,6 +3477,7 @@ public class VermaxionEngine
 
     private void ResetRunTracking()
     {
+        ResetScheduledBeastmasterPreparation();
         retainerSuppressionRequired = false;
         retainerlessTimerRun = false;
         retainerlessTimerCharacterId = 0;

@@ -1340,9 +1340,39 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         { reason = "Waiting for the current character to be registered and ready."; return false; }
         if (DadHandoffBlocksNewWork || IsFishingRunActive || VerminionService.HasQuestAcquisition)
         { reason = "Another automation owns the character."; return false; }
+        if (!TryGetScheduledBeastmasterGearset(out var gearset, out reason)) return false;
+        if (gearset != null)
+        {
+            if (BeastmasterService.IsActive || BeastmasterService.IsPaused)
+            { reason = "A Beastmaster run or its cleanup is already active"; return false; }
+            // Current-job level, equipment and weekly eligibility are checked after equipping BST.
+            return true;
+        }
         var config = ConfigManager.GetActiveConfig();
         var shared = GetBeastmasterSettings(config);
         return BeastmasterService.CanStartConfigured(config.Beastmaster.ScheduledSetup!.ApplyTo(shared), weekly, out reason);
+    }
+
+    internal bool TryGetScheduledBeastmasterGearset(out GearsetSnapshot? gearset, out string reason)
+    {
+        gearset = null;
+        reason = string.Empty;
+        var player = ObjectTable.LocalPlayer;
+        if (player == null)
+        { reason = "Waiting for the current character to be registered and ready."; return false; }
+        // Already-equipped BST retains normal admission without needing a saved gearset.
+        if (player.ClassJob.Value.Abbreviation.ToString() == "BST") return true;
+        var beastmaster = EquipmentAutomationRuntime.GetUnlockedJobs()
+            .FirstOrDefault(job => job.Abbreviation == "BST" && job.Level > 0);
+        if (beastmaster == null)
+        { reason = "Scheduled Crewcible requires Beastmaster to be unlocked."; return false; }
+        gearset = EquipmentAutomationRuntime.GetValidGearsets()
+            .Where(saved => saved.ClassJobId == beastmaster.ClassJobId && saved.Level > 0)
+            .OrderBy(saved => saved.GearsetId)
+            .FirstOrDefault();
+        if (gearset == null)
+        { reason = "Scheduled Crewcible requires a usable saved Beastmaster gearset."; return false; }
+        return true;
     }
 
     internal bool StartScheduledBeastmaster(bool weekly, out string reason)

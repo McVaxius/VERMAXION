@@ -1,3 +1,9 @@
+2026-11-10 - 3.0.0.14 - Scheduled Crewcible job preparation
+
+- Equip an existing usable Beastmaster gearset before scheduled daily or weekly Crewcible work, verify the switch and recheck entry requirements. Leave Beastmaster equipped afterwards.
+- Show a clear blocked or failed task reason when Beastmaster or its saved gearset is unavailable, or the switch cannot be confirmed. Continue the remaining scheduled tasks without recording Crewcible completion.
+- Preserve normal admission for characters already on Beastmaster, including those without a saved Beastmaster gearset.
+
 2026-11-09 - 3.0.0.13 - Shared UI library update
 
 - Update shared text controls and glass rendering to the reviewed AethertekUI 0.3.1 baseline.

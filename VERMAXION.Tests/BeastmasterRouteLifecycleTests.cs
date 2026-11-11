@@ -991,6 +991,164 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.True((bool)Invoke(Field(service, "combat")!, "TryRelease", new object?[] { null })!);
     }
 
+    [Theory]
+    [InlineData(false, "timeout")] [InlineData(true, "timeout")]
+    [InlineData(false, "character")] [InlineData(true, "character")]
+    [InlineData(false, "verified")] [InlineData(true, "verified")]
+    public void ScheduledCrewciblePreparesAnExistingBstGearsetAndContinuesAfterSwitchFailure(bool weekly, string outcome)
+    {
+        using var host = new HostFixture { Territory = 144 };
+        host.EnableIdleDutyQueue();
+        host.EnableBeastmasterJob(false);
+        var services = (Type)Field(host, "svc")!;
+        var now = new DateTime(2026, 11, 10, 12, 0, 0, DateTimeKind.Utc);
+        var equipped = false;
+        var character = host.Character;
+        var equipRequests = 0;
+        var confirmations = 0;
+        var unlocked = true;
+        var gearsets = new List<live::VERMAXION.Models.GearsetSnapshot>
+        {
+            new(8, 1, true, true, 100, "BST eight", [1u]),
+            new(3, 1, true, true, 100, "BST three", [1u]),
+            new(1, 2, true, true, 100, "Other job", [2u]),
+        };
+        var runtime = DispatchProxy.Create<live::VERMAXION.Models.IEquipmentAutomationRuntime, HostProxy>();
+        ((HostProxy)(object)runtime).Handler = (method, args) =>
+        {
+            switch (method.Name)
+            {
+                case "get_UtcNow": return now;
+                case "get_CharacterContentId": return character;
+                case "GetUnlockedJobs": return unlocked
+                    ? new live::VERMAXION.Models.UnlockedJobSnapshot[] { new(1, true, true, 100, "Beastmaster", "BST") }
+                    : Array.Empty<live::VERMAXION.Models.UnlockedJobSnapshot>();
+                case "GetValidGearsets": return gearsets;
+                case "TryEquipGearset":
+                    equipRequests++;
+                    Assert.Equal(3, args![0]);
+                    args[1] = "Synthetic equip rejection";
+                    return false;
+                case "TryConfirmGearsetChangePrompt": confirmations++; return false;
+                case "IsGearsetEquipped": return equipped && (int)args![0]! == 3 && (uint)args[1]! == 1;
+                default: return method.ReturnType == typeof(void) || !method.ReturnType.IsValueType
+                    ? null : Activator.CreateInstance(method.ReturnType);
+            }
+        };
+        var profile = new live::VERMAXION.Models.CharacterConfig
+        {
+            Enabled = true, EnableBeastmaster = true, EnableBeastmasterWeekly = true, EnableMinionRoulette = true,
+        };
+        var manager = (live::VERMAXION.Services.ConfigManager)RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Services.ConfigManager));
+        manager.CurrentAccountId = "scheduled-bst";
+        Set(manager, "accounts", new Dictionary<string, live::VERMAXION.Models.AccountConfig>
+        {
+            [manager.CurrentAccountId] = new() { AccountId = manager.CurrentAccountId, DefaultConfig = profile },
+        });
+        var plugin = (live::VERMAXION.Plugin)RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Plugin));
+        Set(plugin, "Configuration", new live::VERMAXION.Configuration { MinimumTeleportGil = 0 });
+        Set(plugin, "ConfigManager", manager);
+        Set(plugin, "EquipmentAutomationRuntime", runtime);
+        Set(plugin, "BeastmasterService", host.CreateService());
+        Set(plugin, "characterRegistrationCompletedThisLogin", true);
+        foreach (var name in new[] { "FishingRunLifecycle", "FishingService", "FishingRelogCoordinator", "FishingStartupCoordinator", "VerminionService" })
+            Set(plugin, name, RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Plugin).GetProperty(name, Instance)!.PropertyType));
+        Set(Field(plugin, "VerminionService")!, "configManager", manager);
+        Invoke(host, "Replace", typeof(live::VERMAXION.Plugin), "PlayerState", services.GetProperty("PlayerState", Static)!.GetValue(null));
+
+        object?[] admission = [weekly, null];
+        Assert.True((bool)Invoke(plugin, "CanStartScheduledBeastmaster", admission)!);
+        object?[] select = [null, null];
+        Assert.True((bool)Invoke(plugin, "TryGetScheduledBeastmasterGearset", select)!);
+        Assert.Equal(3, ((live::VERMAXION.Models.GearsetSnapshot)select[0]!).GearsetId);
+        unlocked = false;
+        Assert.False((bool)Invoke(plugin, "TryGetScheduledBeastmasterGearset", select)!);
+        Assert.Contains("unlocked", (string)select[1]!);
+        unlocked = true;
+        gearsets.Clear();
+        Assert.False((bool)Invoke(plugin, "CanStartScheduledBeastmaster", admission)!);
+        Assert.Contains("usable saved Beastmaster gearset", (string)admission[1]!);
+        unlocked = false;
+        host.EnableBeastmasterJob();
+        Assert.True((bool)Invoke(plugin, "TryGetScheduledBeastmasterGearset", select)!);
+        Assert.Null(select[0]); // Already BST needs no saved gearset or unlocked-job snapshot.
+        host.Conditions.Add("BetweenAreas");
+        Assert.False((bool)Invoke(plugin, "CanStartScheduledBeastmaster", admission)!);
+        Assert.Equal("Wait until the current character is ready", admission[1]);
+        host.Conditions.Clear();
+        host.EnableBeastmasterJob(false);
+        unlocked = true;
+        gearsets.Add(new(3, 1, true, true, 100, "BST three", [1u]));
+
+        var engineType = typeof(live::VERMAXION.Services.VermaxionEngine);
+        var engine = (live::VERMAXION.Services.VermaxionEngine)RuntimeHelpers.GetUninitializedObject(engineType);
+        Set(engine, "plugin", plugin);
+        Set(engine, "configManager", manager);
+        Set(engine, "configuration", Field(plugin, "Configuration"));
+        Set(engine, "equipmentRuntime", runtime);
+        Set(engine, "clientState", services.GetProperty("ClientState", Static)!.GetValue(null));
+        Set(engine, "log", Field(host, "log"));
+        Set(engine, "vNavmeshIPC", Field(host, "navigation"));
+        Set(engine, "yesAlreadyIPC", new live::VERMAXION.IPC.YesAlreadyIPC((host::Dalamud.Plugin.Services.IPluginLog)Field(host, "log")!));
+        Set(engine, "workshopBellService", RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Services.WorkshopBellService)));
+        Set(engine, "lootGoblinMapGatherService", RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Services.LootGoblinMapGatherService)));
+        Set(engine, "activeRunScope", live::VERMAXION.Models.AutomationRunScope.Full);
+        Set(engine, "beastmasterGearsetConfirmation", Activator.CreateInstance(Production.GetType("VERMAXION.Models.GearsetConfirmationWindow", true)!, true));
+        var task = weekly ? live::VERMAXION.Services.VermaxionEngine.EngineState.RunningBeastmasterWeekly
+            : live::VERMAXION.Services.VermaxionEngine.EngineState.RunningBeastmaster;
+        var next = live::VERMAXION.Services.VermaxionEngine.EngineState.RunningMinionRoulette;
+        Set(engine, "state", task);
+        Set(engine, "runQueue", new List<live::VERMAXION.Services.VermaxionEngine.EngineState> { task, next });
+        Set(engine, "runQueueIndex", 0);
+        var bindingType = engineType.GetNestedType("EngineTaskBinding", BindingFlags.NonPublic)!;
+        var bindings = (System.Collections.IDictionary)Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(typeof(string), bindingType))!;
+        void Bind(string id, live::VERMAXION.Services.VermaxionEngine.EngineState state,
+            Func<live::VERMAXION.Models.CharacterConfig, live::VERMAXION.Models.TaskEligibility> eligibility)
+            => bindings.Add(id, Activator.CreateInstance(bindingType, Instance, null,
+                [id, state, eligibility, new Action(() => { }), new Action(() => { }), new Action(() => { }), new Action(() => { }),
+                 new Func<string>(() => "synthetic status"), new Func<string>(() => "synthetic progress")], null));
+        Bind(weekly ? live::VERMAXION.PostProcessTaskOrder.BeastmasterWeekly : live::VERMAXION.PostProcessTaskOrder.Beastmaster,
+            task, config => (live::VERMAXION.Models.TaskEligibility)Invoke(engine, "EvaluateBeastmaster", config, weekly, false)!);
+        Bind(live::VERMAXION.PostProcessTaskOrder.MinionRoulette, next, _ => live::VERMAXION.Models.TaskEligibility.Runnable());
+        Set(engine, "taskBindings", bindings);
+
+        Invoke(engine, "TickScheduledBeastmaster", weekly);
+        Assert.Equal(1, equipRequests);
+        Assert.True(Read<bool>(engine, "currentTaskOwnedWorkStarted"));
+        Assert.Equal(3, Read<live::VERMAXION.Models.GearsetSnapshot>(engine, "beastmasterGearset").GearsetId);
+        Invoke(engine, "TickScheduledBeastmaster", weekly);
+        Assert.Equal(1, confirmations);
+        Assert.Equal(task, Read<live::VERMAXION.Services.VermaxionEngine.EngineState>(engine, "state"));
+        Assert.False((bool)Invoke(engine, "RecoverOwnedBeastmaster", "synthetic interruption")!);
+        if (outcome == "character") character++;
+        else if (outcome == "verified")
+        {
+            equipped = true;
+            host.EnableBeastmasterJob();
+            host.Conditions.Add("BetweenAreas");
+        }
+        else now = now.AddSeconds(16);
+        Invoke(engine, "TickScheduledBeastmaster", weekly);
+        Assert.True(Read<bool>(engine, "runHadFailure"));
+        Assert.Equal(live::VERMAXION.Services.VermaxionEngine.EngineState.SettlingTask,
+            Read<live::VERMAXION.Services.VermaxionEngine.EngineState>(engine, "state"));
+        Assert.Null(Field(engine, "beastmasterGearset"));
+        Assert.False(Read<bool>(engine, "currentTaskOwnedWorkStarted"));
+        Assert.Equal(1, equipRequests);
+        var failure = outcome switch
+        {
+            "character" => "Character changed",
+            "verified" => "Wait until the current character is ready",
+            _ => "Synthetic equip rejection",
+        };
+        Assert.Contains(host.Warnings, message => message.Contains(failure, StringComparison.Ordinal));
+        Assert.Equal(default, profile.BeastmasterLastCompleted);
+        Assert.Equal(default, profile.BeastmasterWeeklyLastCompleted);
+        Invoke(engine, "DispatchNextQueuedTask", true);
+        Assert.Equal(next, Read<live::VERMAXION.Services.VermaxionEngine.EngineState>(engine, "state"));
+        Assert.Equal(1, Read<int>(engine, "runQueueIndex"));
+    }
+
     [Fact]
     public void PublicStartInsideEveryBoardUsesReadinessInsteadOfRejectingHigherDegreeAdoption()
     {
@@ -1141,6 +1299,7 @@ public sealed class BeastmasterRouteLifecycleTests
         using var host = new HostFixture();
         host.EnableNativeUi();
         var service = host.CreateService();
+        Read<live::VERMAXION.Beastmaster.BeastmasterSettings>(service, "Settings").Board = 2;
         var menus = Field(service, "menus")!;
         var stop = new live::VERMAXION.Beastmaster.CrucibleBoardStop(10,
             live::VERMAXION.Beastmaster.CrucibleStopKind.Random, 0, 0, 0, Vector2.Zero, 0)
@@ -2651,7 +2810,14 @@ public sealed class BeastmasterRouteLifecycleTests
         }
         public bool NativePlayerAvailable { set => Marshal.WriteIntPtr(nativePlayerSlot, value ? (nint)1 : 0); }
 
-        public void EnableBeastmasterJob()
+        public void EnableIdleDutyQueue()
+        {
+            var finder = Allocate<NativeGameUi.ContentsFinder>();
+            finder->QueueInfo.QueueState = host::FFXIVClientStructs.FFXIV.Client.Enums.ContentsFinderQueueState.None;
+            ReplaceNativeAddress(typeof(NativeGameUi.ContentsFinder), "Instance", (nint)finder);
+        }
+
+        public void EnableBeastmasterJob(bool beastmaster = true)
         {
             // Fabricate only one current-schema ClassJob row. Its abbreviation
             // lets the actual service reattach rather than exit at the BST check.
@@ -2661,7 +2827,7 @@ public sealed class BeastmasterRouteLifecycleTests
             var module = RuntimeHelpers.GetUninitializedObject(lumina.GetType("Lumina.Excel.ExcelModule", true)!);
             var raw = RuntimeHelpers.GetUninitializedObject(rawType);
             var bytes = new byte[112];
-            System.Text.Encoding.UTF8.GetBytes("BST\0").CopyTo(bytes, 108);
+            System.Text.Encoding.UTF8.GetBytes(beastmaster ? "BST\0" : "WHM\0").CopyTo(bytes, 108);
             var page = Activator.CreateInstance(pageType, Instance, null, [raw, bytes, (ushort)108], null)!;
             var pages = Array.CreateInstance(pageType, 1); pages.SetValue(page, 0);
             Set(raw, "_pages", pages);
