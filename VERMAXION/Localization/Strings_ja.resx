@@ -5943,4 +5943,35 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>宝箱の使用が拒否されました。</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>宝箱を開封するキャラクターが変更されました。</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>別の自動操作またはアクティビティがキャラクターを使用しています。</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Crewcible報酬通貨の目標</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>レジェンダリー評価のアチーブメント</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>報酬通貨</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>報酬を選択</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>アチーブメントを選択</value></data>
+  <data name="Achievement" xml:space="preserve"><value>アチーブメント</value></data>
+  <data name="Target amount" xml:space="preserve"><value>目標数</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>目標は今回の獲得数ではなく、現在所持している報酬通貨の数です。</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>目標は選択したアチーブメントの累計進捗です。</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>盤面クリア後に確認します。盤面数の上限は引き続き適用されます。進捗不明をゼロとは判定しません。</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>選択した盤面だけを繰り返します。この目標で盤面を自動変更することはありません。</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>周回目標の進捗を確認中</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>周回目標の進捗は未確認です。</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>目標 {0}/{1}</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>周回目標を達成しました。</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>盤面数の上限に到達しました。目標は未達成です。</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>盤面数の上限に到達しました。進捗は未確認です。</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>最新のアチーブメント進捗を待機中です。</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>目標数を1以上にしてください。</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Crewcibleの報酬通貨を選択してください。</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>レジェンダリー評価のアチーブメントを選択してください。</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>目標数がこのアチーブメントの総進捗を超えています。</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>レジェンダリー評価のアチーブメントに対応する盤面を選択してください。</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>色あせた不屈の残滓</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>輝く不屈の残滓</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>不屈 I（不敗の第一盤面）</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>不屈 II（不敗の第二盤面）</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>不屈 III（不敗の第三盤面）</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>伝説は死なず I（達人の第一盤面）</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>伝説は死なず II（達人の第二盤面）</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucibleマスター（全五盤面）</value></data>
 </root>

@@ -12,6 +12,11 @@ public readonly record struct BeastmasterCandidate(uint Number, int Rank, float 
     bool AreaSpecial = false, bool Healing = false, bool OffensiveSpecial = false, bool Poisoned = false);
 
 public enum BeastmasterTeamAddition { Pending, Confirmed, Unexpected }
+public enum BeastmasterGoalReadState { Unknown, Pending, Observed }
+public readonly record struct BeastmasterGoalProgress(BeastmasterGoalReadState State,
+    uint Current = 0, uint Maximum = 0, uint AchievementId = 0);
+public readonly record struct BeastmasterRewardItem(uint Id, string Name);
+public readonly record struct BeastmasterLegendaryAchievement(uint Id, string Name, uint Maximum, uint Board = 0);
 public readonly record struct BeastmasterFightContext(uint BattleId, bool RandomOutcome)
 {
     public bool UseRemainingTeam { get; init; }
@@ -19,6 +24,61 @@ public readonly record struct BeastmasterFightContext(uint BattleId, bool Random
 
 public static class BeastmasterSelection
 {
+    // Permanent exchange rewards, not the coins spent inside a board.
+    // XIVAPI a72e645591e5bf8b Item rows; the official Beastmaster guide confirms their reward role.
+    public static readonly System.Collections.Generic.IReadOnlyList<BeastmasterRewardItem> RewardItems =
+        Array.AsReadOnly<BeastmasterRewardItem>([new(51734, "Faded Remnant of Resilience"), new(51735, "Bright Remnant of Resilience")]);
+
+    // These are Legendary BOARD RANK achievements, not enemy kill counters.
+    // Same pinned Achievement rows: Type 1 / Data[0]=1, or Type 26 / Data[0]=5.
+    public static readonly System.Collections.Generic.IReadOnlyList<BeastmasterLegendaryAchievement> LegendaryAchievements =
+        Array.AsReadOnly<BeastmasterLegendaryAchievement>([
+            new(4044, "Unbreakable I (First Board of the Unbroken)", 1, 1),
+            new(4046, "Unbreakable II (Second Board of the Unbroken)", 1, 2),
+            new(4048, "Unbreakable III (Third Board of the Unbroken)", 1, 3),
+            new(4050, "Legends Never Die I (First Master's Board)", 1, 4),
+            new(4052, "Legends Never Die II (Second Master's Board)", 1, 5),
+            new(4054, "Crucible Master (all five boards)", 5),
+        ]);
+
+    public static bool TryGetLegendaryAchievement(uint id, out BeastmasterLegendaryAchievement achievement)
+    {
+        achievement = LegendaryAchievements.FirstOrDefault(entry => entry.Id == id);
+        return achievement.Id != 0;
+    }
+
+    public static bool ValidGoalTarget(BeastmasterSettings settings, out string reason, uint? activeBoard = null)
+    {
+        reason = string.Empty;
+        if (!IsTargetGoal(settings)) return true;
+        if (settings.GoalTargetAmount == 0)
+        { reason = "Choose a positive farming target amount."; return false; }
+        if (settings.Goal == BeastmasterRunGoal.CurrencyTarget)
+        {
+            if (RewardItems.Any(item => item.Id == settings.GoalRewardItemId)) return true;
+            reason = "Select a Crewcible reward currency.";
+            return false;
+        }
+        if (!TryGetLegendaryAchievement(settings.GoalAchievementId, out var achievement))
+        { reason = "Select a Legendary board-rank achievement."; return false; }
+        if (settings.GoalTargetAmount > achievement.Maximum)
+        { reason = "The target exceeds this achievement's total progress."; return false; }
+        if (achievement.Board != 0 && achievement.Board != (activeBoard ?? settings.Board))
+        { reason = "Select the board named by the Legendary achievement."; return false; }
+        return true;
+    }
+
+    public static bool IsTargetGoal(BeastmasterSettings settings) =>
+        settings.Goal is BeastmasterRunGoal.CurrencyTarget or BeastmasterRunGoal.LegendaryAchievement;
+
+    public static bool GoalTargetReached(BeastmasterSettings settings, BeastmasterGoalProgress progress) =>
+        IsTargetGoal(settings) && settings.GoalTargetAmount > 0 && progress.State == BeastmasterGoalReadState.Observed &&
+        progress.Current >= settings.GoalTargetAmount &&
+        (settings.Goal != BeastmasterRunGoal.LegendaryAchievement ||
+            TryGetLegendaryAchievement(settings.GoalAchievementId, out var achievement) &&
+            progress.AchievementId == settings.GoalAchievementId && progress.Maximum == achievement.Maximum &&
+            progress.Maximum > 0 && progress.Current <= progress.Maximum && settings.GoalTargetAmount <= progress.Maximum);
+
     public static bool RequiresClearTeam(BeastmasterSettings settings) =>
         settings.Degree is CrucibleDegree.First or CrucibleDegree.Second or CrucibleDegree.Third;
 

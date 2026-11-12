@@ -35,6 +35,229 @@ public sealed class BeastmasterRouteLifecycleTests
     private static readonly Type ServiceType = Production.GetType("VERMAXION.Beastmaster.BeastmasterService", true)!;
     private static readonly Type RouteType = Production.GetType("VERMAXION.Beastmaster.BeastmasterRoute", true)!;
 
+    [Theory]
+    [InlineData(1u, 51734u, 0, true, false)]
+    [InlineData(2u, 51734u, 9, true, false)]
+    [InlineData(3u, 51735u, 10, true, true)]
+    [InlineData(4u, 51735u, 11, true, true)]
+    [InlineData(5u, 51735u, 0, false, false)]
+    [InlineData(1u, 51734u, -1, true, false)]
+    public void FarmingCurrencyUsesTheRealCompletedBoardBoundaryAndRetainsExistingBoardTeamAndLootChoices(
+        uint board, uint rewardId, int held, bool loaded, bool reached)
+    {
+        using var host = new HostFixture();
+        var service = PrepareFarmingBoundary(host, live::VERMAXION.Beastmaster.BeastmasterRunGoal.CurrencyTarget, board, reached ? 3 : 1);
+        var settings = Read<live::VERMAXION.Beastmaster.BeastmasterSettings>(service, "Settings");
+        settings.GoalRewardItemId = rewardId;
+        host.EnableGoalReaders();
+        host.CurrencyLoaded = loaded;
+        host.CurrencyAmount = held;
+        Invoke(service, "FinishRun");
+        Assert.Equal("Complete", Field(service, "State")!.ToString());
+        Assert.Equal(1, Read<int>(service, "CurrentRun"));
+        Assert.True(Read<bool>(service, "BoardRunCompleted"));
+        Assert.Equal(reached ? "Farming target reached." : loaded && held >= 0
+            ? "Board allowance complete; farming target not reached."
+            : "Board allowance complete; farming progress is unconfirmed.", Read<string>(service, "StatusText"));
+        var progress = Read<live::VERMAXION.Beastmaster.BeastmasterGoalProgress>(service, "DisplayGoalProgress");
+        Assert.Equal(loaded && held >= 0 ? live::VERMAXION.Beastmaster.BeastmasterGoalReadState.Observed
+            : live::VERMAXION.Beastmaster.BeastmasterGoalReadState.Unknown, progress.State);
+        if (loaded && held >= 0) Assert.Equal((uint)held, progress.Current);
+        Assert.Equal(loaded ? 1 : 0, host.CurrencyReads);
+        Assert.True(host.CurrencyReadFlagsValid);
+        if (loaded) Assert.Equal(rewardId, host.LastCurrencyItemId);
+        Assert.Equal(0, host.AchievementRequests);
+        Assert.Equal(board, settings.Board);
+        Assert.Equal(new uint[] { 13, 20, 27 }, settings.CustomTeam);
+        Assert.False(settings.Loot);
+        Assert.False(settings.Treasure);
+        Assert.False(settings.Shop);
+        Assert.Empty(host.OpenedBoards);
+    }
+
+    [Theory]
+    [InlineData(0u, false)]
+    [InlineData(2u, true)]
+    [InlineData(3u, true)]
+    public void FarmingAchievementRequiresOwnNativeRequestThenExactLoadedProgress(uint current, bool reached)
+    {
+        using var host = new HostFixture();
+        var service = PrepareFarmingBoundary(host, live::VERMAXION.Beastmaster.BeastmasterRunGoal.LegendaryAchievement, 2, 1);
+        host.EnableGoalReaders();
+        var entry = live::VERMAXION.Beastmaster.BeastmasterSelection.LegendaryAchievements.First(achievement => achievement.Maximum >= 3);
+        var settings = Read<live::VERMAXION.Beastmaster.BeastmasterSettings>(service, "Settings");
+        settings.GoalAchievementId = entry.Id;
+        Invoke(service, "FinishRun");
+        Assert.Equal(1, host.AchievementRequests);
+        Assert.Equal(entry.Id, host.LastAchievementRequest);
+        Assert.Equal("Leaving", Field(service, "State")!.ToString());
+        Assert.Equal(live::VERMAXION.Beastmaster.BeastmasterGoalReadState.Pending,
+            Read<live::VERMAXION.Beastmaster.BeastmasterGoalProgress>(service, "DisplayGoalProgress").State);
+        Invoke(service, "FinishRun");
+        Assert.Equal(1, host.AchievementRequests);
+        host.SetGoalAchievement(2, entry.Id, current, entry.Maximum);
+        Invoke(service, "FinishRun");
+        Assert.Equal("Complete", Field(service, "State")!.ToString());
+        Assert.Equal(reached ? "Farming target reached." : "Board allowance complete; farming target not reached.",
+            Read<string>(service, "StatusText"));
+        Assert.Equal(live::VERMAXION.Beastmaster.BeastmasterGoalReadState.Observed,
+            Read<live::VERMAXION.Beastmaster.BeastmasterGoalProgress>(service, "DisplayGoalProgress").State);
+        Assert.Equal(1, host.AchievementRequests);
+    }
+
+    [Theory]
+    [InlineData("foreign requested")]
+    [InlineData("old same-ID loaded")]
+    [InlineData("wrong requested ID")]
+    [InlineData("wrong loaded ID")]
+    [InlineData("zero maximum")]
+    [InlineData("current beyond maximum")]
+    [InlineData("target beyond maximum")]
+    [InlineData("replaced request")]
+    public void FarmingAchievementRejectsUnownedStaleAndMalformedNativeProgress(string obstruction)
+    {
+        using var host = new HostFixture();
+        var service = PrepareFarmingBoundary(host, live::VERMAXION.Beastmaster.BeastmasterRunGoal.LegendaryAchievement, 3, 1);
+        host.EnableGoalReaders();
+        var entry = live::VERMAXION.Beastmaster.BeastmasterSelection.LegendaryAchievements.First(achievement => achievement.Maximum >= 3);
+        Read<live::VERMAXION.Beastmaster.BeastmasterSettings>(service, "Settings").GoalAchievementId = entry.Id;
+        if (obstruction == "foreign requested") host.SetGoalAchievement(1, entry.Id + 1, 7, 100);
+        if (obstruction == "wrong requested ID") host.GoalRequestedIdOverride = entry.Id + 1;
+        if (obstruction == "old same-ID loaded")
+        {
+            host.SetGoalAchievement(2, entry.Id, 2, entry.Maximum);
+            host.AchievementRequestEntersPending = false;
+        }
+        Invoke(service, "FinishRun");
+        if (obstruction is not ("foreign requested" or "old same-ID loaded" or "wrong requested ID"))
+        {
+            host.SetGoalAchievement(obstruction == "replaced request" ? 1 : 2,
+                obstruction is "wrong loaded ID" or "replaced request" ? entry.Id + 1 : entry.Id,
+                obstruction == "current beyond maximum" ? entry.Maximum + 1 : 2,
+                obstruction == "zero maximum" ? 0 : obstruction == "target beyond maximum" ? 1 : entry.Maximum);
+            Invoke(service, "FinishRun");
+        }
+        Assert.Equal("Complete", Field(service, "State")!.ToString());
+        Assert.Equal("Board allowance complete; farming progress is unconfirmed.", Read<string>(service, "StatusText"));
+        Assert.Equal(live::VERMAXION.Beastmaster.BeastmasterGoalReadState.Unknown,
+            Read<live::VERMAXION.Beastmaster.BeastmasterGoalProgress>(service, "DisplayGoalProgress").State);
+        Assert.Equal(obstruction == "foreign requested" ? 0 : 1, host.AchievementRequests);
+        if (obstruction == "foreign requested") Assert.Equal((1, entry.Id + 1, 7u, 100u), host.GoalAchievement);
+    }
+
+    [Theory]
+    [InlineData("character")]
+    [InlineData("character round trip")]
+    [InlineData("identity gap")]
+    [InlineData("run")]
+    [InlineData("board")]
+    [InlineData("target")]
+    [InlineData("settings reference")]
+    [InlineData("native context")]
+    public void FarmingAchievementCannotCompleteAReplacedBoardOrOwnerContext(string replacement)
+    {
+        using var host = new HostFixture();
+        var service = PrepareFarmingBoundary(host, live::VERMAXION.Beastmaster.BeastmasterRunGoal.LegendaryAchievement, 4, 1);
+        host.EnableGoalReaders();
+        var settings = Read<live::VERMAXION.Beastmaster.BeastmasterSettings>(service, "Settings");
+        var entry = live::VERMAXION.Beastmaster.BeastmasterSelection.LegendaryAchievements.First(achievement => achievement.Maximum >= 3);
+        settings.GoalAchievementId = entry.Id;
+        Invoke(service, "FinishRun");
+        host.SetGoalAchievement(2, entry.Id, 2, entry.Maximum);
+        switch (replacement)
+        {
+            case "character": host.Character++; break;
+            case "character round trip": host.Character++; Invoke(service, "Update"); host.Character--; break;
+            case "identity gap": host.PlayerLoaded = false; Invoke(service, "Update"); host.PlayerLoaded = true; break;
+            case "run": Set(service, "CurrentRun", 2); break;
+            case "board": settings.Board = 5; break;
+            case "target": settings.GoalTargetAmount = 1; break;
+            case "settings reference": Set(service, "runSettings", settings.Clone()); break;
+            case "native context": host.ReplaceGoalUi(); host.SetGoalAchievement(2, entry.Id, 2, entry.Maximum); break;
+        }
+        Assert.True((bool)Invoke(service, "ReadTargetGoalAfterBoard")!);
+        Assert.True((bool)Invoke(service, "ReadTargetGoalAfterBoard")!);
+        Assert.Equal(live::VERMAXION.Beastmaster.BeastmasterGoalReadState.Unknown,
+            Read<live::VERMAXION.Beastmaster.BeastmasterGoalProgress>(service, "goalProgress").State);
+        Assert.Equal(1, host.AchievementRequests);
+        Assert.Equal("Leaving", Field(service, "State")!.ToString());
+    }
+
+    [Fact]
+    public void ManualStopAfterBoardPrecedesFarmingProgressRequests()
+    {
+        using var host = new HostFixture();
+        var service = PrepareFarmingBoundary(host, live::VERMAXION.Beastmaster.BeastmasterRunGoal.LegendaryAchievement, 5, 3);
+        host.EnableGoalReaders();
+        Set(service, "StopAfterNextOutcome", true);
+        Invoke(service, "FinishRun");
+        Assert.Equal(0, host.AchievementRequests);
+        Assert.Equal(0, host.CurrencyReads);
+        Assert.Equal("Idle", Field(service, "State")!.ToString());
+        Assert.Equal("Stopped after a clear; left the Crucible.", Read<string>(service, "StatusText"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LegendaryGoalCannotAdoptADifferentLiveBoardBeforeOrDuringARun(bool active)
+    {
+        using var host = new HostFixture { Territory = 1340 };
+        host.EnableNativeUi();
+        host.EnableBeastmasterJob();
+        var service = host.CreateService();
+        var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings
+        { Goal = live::VERMAXION.Beastmaster.BeastmasterRunGoal.LegendaryAchievement,
+          GoalAchievementId = 4044, GoalTargetAmount = 1, Board = 1 };
+        if (active)
+        {
+            Set(service, "runSettings", settings);
+            Set(service, "owner", host.Character);
+            Set(service, "CurrentRun", 3);
+            Set(service, "operatorStopped", false);
+            Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Running"));
+            Assert.False((bool)Invoke(service, "RestartFromCurrent", settings, true, false)!);
+            Assert.Same(settings, Field(service, "runSettings"));
+            Assert.Equal(1u, settings.Board);
+            Assert.Equal(3, Read<int>(service, "CurrentRun"));
+            Assert.Equal("Running", Field(service, "State")!.ToString());
+        }
+        else
+        {
+            object?[] arguments = [settings, false, null];
+            Assert.False((bool)Invoke(service, "CanStartConfigured", arguments)!);
+            Assert.Equal("Select the board named by the Legendary achievement.", arguments[2]);
+            Assert.Null(Field(service, "runSettings"));
+        }
+        Assert.Empty(host.OpenedBoards);
+    }
+
+    private static object PrepareFarmingBoundary(HostFixture host,
+        live::VERMAXION.Beastmaster.BeastmasterRunGoal goal, uint board, int allowance)
+    {
+        host.Territory = 148;
+        host.EnableNativeUi();
+        host.EnableIdleDutyQueue();
+        var service = host.CreateService();
+        host.EnableBattle(service);
+        var settings = new live::VERMAXION.Beastmaster.BeastmasterSettings
+        {
+            Goal = goal, GoalTargetAmount = goal == live::VERMAXION.Beastmaster.BeastmasterRunGoal.CurrencyTarget ? 10u : 2u,
+            GoalRewardItemId = 51734, Board = board, RunCount = allowance,
+            TeamMode = live::VERMAXION.Beastmaster.CrucibleTeamMode.Custom, CustomTeam = [13, 20, 27],
+            Loot = false, Treasure = false, Shop = false,
+        };
+        Set(service, "runSettings", settings);
+        Set(service, "owner", host.Character);
+        Set(service, "operatorStopped", false);
+        Set(service, "CurrentRun", 1);
+        Set(service, "resultSeen", true);
+        Set(service, "resultRanksObserved", true);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "Leaving"));
+        Invoke(service, "RememberRunDisplay", false);
+        return service;
+    }
+
     [Fact]
     public void CheckboxTestsSwitchAcrossAllFiveBoardsWithoutRegisteringTeamsOrEntering()
     {
@@ -3184,6 +3407,82 @@ public sealed class BeastmasterRouteLifecycleTests
         public void SetHigherDegreesUnlocked(bool unlocked)
             => ReplaceNativeAddress(typeof(NativeGame.QuestManager), "IsQuestComplete",
                 CallbackPointer(new NativeGame.QuestManager.Delegates.IsQuestComplete(_ => unlocked)));
+
+        private nint goalInventoryBags;
+        public int CurrencyAmount, CurrencyReads, AchievementRequests;
+        public uint LastCurrencyItemId, LastAchievementRequest, GoalRequestedIdOverride;
+        public bool CurrencyReadFlagsValid = true, AchievementRequestEntersPending = true;
+        public bool CurrencyLoaded
+        {
+            set
+            {
+                for (var index = 0; index < 4; index++)
+                    ((NativeGame.InventoryContainer*)goalInventoryBags)[index].IsLoaded = value;
+            }
+        }
+        public (int State, uint Id, uint Current, uint Maximum) GoalAchievement
+        {
+            get
+            {
+                ref var achievement = ref ((NativeGameUi.UIState*)battleUi)->Achievement;
+                return ((int)achievement.ProgressRequestState, achievement.ProgressAchievementId,
+                    achievement.ProgressCurrent, achievement.ProgressMax);
+            }
+        }
+        public void SetGoalAchievement(int state, uint id, uint current, uint maximum)
+        {
+            ref var achievement = ref ((NativeGameUi.UIState*)battleUi)->Achievement;
+            achievement.ProgressRequestState = (NativeGameUi.Achievement.AchievementState)state;
+            achievement.ProgressAchievementId = id;
+            achievement.ProgressCurrent = current;
+            achievement.ProgressMax = maximum;
+        }
+        public void ReplaceGoalUi()
+        {
+            battleUi = (nint)Allocate<NativeGameUi.UIState>();
+            ((NativeGameUi.UIState*)battleUi)->PlayerState.IsLoaded = true;
+            ReplaceNativeAddress(typeof(NativeGameUi.UIState), "Instance", battleUi);
+        }
+        public void EnableGoalReaders()
+        {
+            ((NativeGameUi.UIState*)battleUi)->PlayerState.IsLoaded = true;
+            // Existing generated-address seams invoke only these fixture-owned
+            // callbacks and allocations. No game process or catalog is opened.
+            var inventory = Allocate<NativeGame.InventoryManager>();
+            goalInventoryBags = AllocateBytes(4 * sizeof(NativeGame.InventoryContainer));
+            ReplaceNativeAddress(typeof(NativeGame.InventoryManager), "Instance", (nint)inventory);
+            ReplaceNativeAddress(typeof(NativeGame.InventoryManager), "GetInventoryContainer",
+                CallbackPointer(new NativeGoalContainer((_, kind) =>
+                {
+                    var index = kind switch
+                    {
+                        NativeGame.InventoryType.Inventory1 => 0, NativeGame.InventoryType.Inventory2 => 1,
+                        NativeGame.InventoryType.Inventory3 => 2, NativeGame.InventoryType.Inventory4 => 3, _ => -1,
+                    };
+                    return index < 0 ? 0 : goalInventoryBags + index * sizeof(NativeGame.InventoryContainer);
+                })));
+            ReplaceNativeAddress(typeof(NativeGame.InventoryManager), "GetInventoryItemCount",
+                CallbackPointer(new NativeGoalItemCount((_, id, hq, equipped, armory, collectability) =>
+                {
+                    CurrencyReads++;
+                    LastCurrencyItemId = id;
+                    CurrencyReadFlagsValid &= hq == 0 && equipped == 0 && armory == 0 && collectability == 0;
+                    return CurrencyAmount;
+                })));
+            ReplaceNativeAddress(typeof(NativeGameUi.Achievement), "RequestAchievementProgress",
+                CallbackPointer(new NativeGoalAchievementRequest((_, id) =>
+                {
+                    AchievementRequests++;
+                    LastAchievementRequest = id;
+                    if (AchievementRequestEntersPending) SetGoalAchievement(1, GoalRequestedIdOverride == 0 ? id : GoalRequestedIdOverride, 0, 0);
+                })));
+        }
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate nint NativeGoalContainer(nint self, NativeGame.InventoryType kind);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int NativeGoalItemCount(nint self, uint id, byte hq, byte equipped, byte armory, short collectability);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void NativeGoalAchievementRequest(nint self, uint id);
 
         private void ReplaceNativeAddress(Type type, string name, nint pointer)
         {

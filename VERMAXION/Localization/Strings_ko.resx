@@ -5943,4 +5943,35 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>상자 사용이 거부되었습니다.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>상자를 여는 캐릭터가 변경되었습니다.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>다른 자동화 또는 활동이 캐릭터를 사용 중입니다.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Crewcible 보상 화폐 목표</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>전설 등급 업적</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>보상 화폐</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>보상 선택</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>업적 선택</value></data>
+  <data name="Achievement" xml:space="preserve"><value>업적</value></data>
+  <data name="Target amount" xml:space="preserve"><value>목표 수량</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>목표는 이번 반복에서 번 수량이 아닌 현재 보유한 보상 화폐 수량입니다.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>목표는 선택한 업적의 누적 진행도입니다.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>각 보드 완료 후 확인하며 보드 횟수 제한은 유지됩니다. 알 수 없는 진행도를 0으로 간주하지 않습니다.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>선택한 보드만 반복하며 이 목표는 보드를 자동 변경하지 않습니다.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>목표 진행도 확인 중</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>진행도가 확인되지 않았습니다.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>목표 {0}/{1}</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>목표를 달성했습니다.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>보드 횟수 제한에 도달했으며 목표는 미달성입니다.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>보드 횟수 제한에 도달했으며 진행도는 미확인입니다.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>최신 업적 진행도를 기다리는 중입니다.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>목표 수량을 1 이상으로 선택하세요.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Crewcible 보상 화폐를 선택하세요.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>전설 등급 업적을 선택하세요.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>목표가 이 업적의 전체 진행도를 초과합니다.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>전설 등급 업적에 명시된 보드를 선택하세요.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>빛바랜 회복력의 잔재</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>빛나는 회복력의 잔재</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>불굴 I (불패의 첫 번째 보드)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>불굴 II (불패의 두 번째 보드)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>불굴 III (불패의 세 번째 보드)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>전설은 죽지 않는다 I (첫 번째 달인 보드)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>전설은 죽지 않는다 II (두 번째 달인 보드)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible 달인 (보드 다섯 개 전체)</value></data>
 </root>

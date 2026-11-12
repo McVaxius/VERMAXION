@@ -6299,4 +6299,35 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>Se rechazó el uso del cofre.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>Cambió el personaje que abría cofres.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Otra automatización o actividad controla al personaje.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Objetivo de moneda de Crewcible</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Logro de rango Legendario</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Moneda de recompensa</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Elegir recompensa</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Elegir logro</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Logro</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Cantidad objetivo</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>El objetivo es el saldo de moneda de recompensa que tienes, no lo ganado en esta serie.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>El objetivo es el progreso total del logro seleccionado.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Se comprueba tras cada tablero completado; sigue vigente el límite de tableros. El progreso desconocido nunca cuenta como cero.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Solo se repite el tablero seleccionado; este objetivo no cambia de tablero.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>Comprobando progreso</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>El progreso no está confirmado.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} objetivo</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Objetivo alcanzado.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Límite de tableros alcanzado; objetivo no alcanzado.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Límite de tableros alcanzado; progreso sin confirmar.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>Esperando progreso reciente del logro.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Elige una cantidad objetivo positiva.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Selecciona una moneda de recompensa de Crewcible.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Selecciona un logro de rango Legendario.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>El objetivo supera el progreso total de este logro.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Selecciona el tablero indicado por el logro Legendario.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Vestigio de resiliencia desvaído</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Vestigio de resiliencia brillante</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Inquebrantable I (primer tablero de los invictos)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Inquebrantable II (segundo tablero de los invictos)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Inquebrantable III (tercer tablero de los invictos)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Las leyendas nunca mueren I (primer tablero de maestro)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Las leyendas nunca mueren II (segundo tablero de maestro)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Maestro del Crucible (los cinco tableros)</value></data>
 </root>

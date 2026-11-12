@@ -3447,4 +3447,35 @@ Zależności: {1}</value></data>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>Użycie skrzyni zostało odrzucone.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>Zmieniono postać otwierającą skrzynie.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Postacią steruje inna automatyzacja lub aktywność.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Cel waluty Crewcible</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Osiągnięcie rangi Legendarnej</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Waluta nagrody</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Wybierz nagrodę</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Wybierz osiągnięcie</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Osiągnięcie</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Docelowa ilość</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>Celem jest posiadana ilość waluty nagrody, a nie zysk z tej serii.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>Celem jest całkowity postęp wybranego osiągnięcia.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Sprawdzenie po każdej ukończonej planszy; limit plansz nadal obowiązuje. Nieznany postęp nigdy nie oznacza zera.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Powtarzana jest tylko wybrana plansza; ten cel nie zmienia plansz.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>Sprawdzanie postępu</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>Postęp nie jest potwierdzony.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} celu</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Cel osiągnięty.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Osiągnięto limit plansz; cel nieosiągnięty.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Osiągnięto limit plansz; postęp niepotwierdzony.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>Oczekiwanie na aktualny postęp osiągnięcia.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Wybierz dodatnią ilość docelową.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Wybierz walutę nagrody Crewcible.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Wybierz osiągnięcie rangi Legendarnej.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>Cel przekracza całkowity postęp tego osiągnięcia.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Wybierz planszę wskazaną w osiągnięciu rangi Legendarnej.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Wyblakła pozostałość odporności</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Lśniąca pozostałość odporności</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Niezłomny I (pierwsza plansza niepokonanych)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Niezłomny II (druga plansza niepokonanych)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Niezłomny III (trzecia plansza niepokonanych)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Legendy nie umierają I (pierwsza plansza mistrza)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Legendy nie umierają II (druga plansza mistrza)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Mistrz Crucible (wszystkie pięć plansz)</value></data>
 </root>

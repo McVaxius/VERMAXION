@@ -9,6 +9,122 @@ namespace VERMAXION.Tests;
 
 public sealed class BeastmasterPersistenceTests
 {
+    [Fact]
+    public void FarmingCatalogSeparatesPermanentRewardsAndLegendaryBoardRankCriteria()
+    {
+        Assert.Equal(new uint[] { 51734, 51735 }, BeastmasterSelection.RewardItems.Select(item => item.Id));
+        Assert.Equal(new uint[] { 4044, 4046, 4048, 4050, 4052, 4054 },
+            BeastmasterSelection.LegendaryAchievements.Select(entry => entry.Id));
+        foreach (var entry in BeastmasterSelection.LegendaryAchievements)
+        {
+            var settings = new BeastmasterSettings
+            {
+                Goal = BeastmasterRunGoal.LegendaryAchievement, GoalAchievementId = entry.Id,
+                GoalTargetAmount = entry.Maximum, Board = entry.Board == 0 ? 1 : entry.Board,
+            };
+            Assert.True(BeastmasterSelection.ValidGoalTarget(settings, out _));
+            Assert.True(BeastmasterSelection.GoalTargetReached(settings,
+                new(BeastmasterGoalReadState.Observed, entry.Maximum, entry.Maximum, entry.Id)));
+            Assert.False(BeastmasterSelection.GoalTargetReached(settings,
+                new(BeastmasterGoalReadState.Pending, entry.Maximum, entry.Maximum, entry.Id)));
+            Assert.False(BeastmasterSelection.GoalTargetReached(settings,
+                new(BeastmasterGoalReadState.Unknown, entry.Maximum, entry.Maximum, entry.Id)));
+            settings.GoalTargetAmount = entry.Maximum + 1;
+            Assert.False(BeastmasterSelection.ValidGoalTarget(settings, out _));
+            settings.GoalTargetAmount = 0;
+            Assert.False(BeastmasterSelection.ValidGoalTarget(settings, out _));
+            settings.GoalTargetAmount = entry.Maximum;
+            if (entry.Board != 0)
+            {
+                settings.Board = entry.Board == 1 ? 2u : 1u;
+                Assert.False(BeastmasterSelection.ValidGoalTarget(settings, out _));
+            }
+        }
+        Assert.False(BeastmasterSelection.ValidGoalTarget(new()
+            { Goal = BeastmasterRunGoal.CurrencyTarget, GoalTargetAmount = 1, GoalRewardItemId = 999 }, out _));
+        Assert.False(BeastmasterSelection.ValidGoalTarget(new()
+            { Goal = BeastmasterRunGoal.LegendaryAchievement, GoalTargetAmount = 1, GoalAchievementId = 999 }, out _));
+    }
+
+    [Theory]
+    [InlineData(true, BeastmasterRunGoal.CurrencyTarget)]
+    [InlineData(false, BeastmasterRunGoal.CurrencyTarget)]
+    [InlineData(true, BeastmasterRunGoal.LegendaryAchievement)]
+    [InlineData(false, BeastmasterRunGoal.LegendaryAchievement)]
+    public void FarmingTargetsRoundTripAndRemainSeparateFromSharedAndWeeklyRunChoices(bool useNewtonsoft, BeastmasterRunGoal goal)
+    {
+        BeastmasterCharacterData Read(string json) => useNewtonsoft
+            ? JsonConvert.DeserializeObject<BeastmasterCharacterData>(json)!
+            : System.Text.Json.JsonSerializer.Deserialize<BeastmasterCharacterData>(json)!;
+        string Write(BeastmasterCharacterData data) => useNewtonsoft
+            ? JsonConvert.SerializeObject(data) : System.Text.Json.JsonSerializer.Serialize(data);
+        var manual = new BeastmasterSettings
+        {
+            Goal = goal, GoalTargetAmount = 57, GoalRewardItemId = 51734, GoalAchievementId = 123,
+            Board = 4, RunCount = 8, Loot = false, Treasure = false,
+            TeamMode = CrucibleTeamMode.Custom, CustomTeam = [13, 20, 27],
+        };
+        var scheduled = BeastmasterRunSetup.From(manual).Clone();
+        scheduled.GoalTargetAmount = 91;
+        scheduled.GoalRewardItemId = 51735;
+        scheduled.GoalAchievementId = 456;
+        var restored = Read(Write(new() { ManualSettings = manual.Clone(), ScheduledSetup = scheduled }));
+        var shared = manual.Clone();
+        shared.Goal = BeastmasterRunGoal.FixedRuns;
+        shared.GoalTargetAmount = 999;
+        shared.GoalRewardItemId = 999;
+        shared.GoalAchievementId = 999;
+        var activeManual = restored.ManualSettings!.Clone();
+        var activeScheduled = restored.ScheduledSetup!.ApplyTo(shared);
+        Assert.Equal(goal, activeManual.Goal);
+        Assert.Equal(57u, activeManual.GoalTargetAmount);
+        Assert.Equal(51734u, activeManual.GoalRewardItemId);
+        Assert.Equal(123u, activeManual.GoalAchievementId);
+        Assert.Equal(goal, activeScheduled.Goal);
+        Assert.Equal(91u, activeScheduled.GoalTargetAmount);
+        Assert.Equal(51735u, activeScheduled.GoalRewardItemId);
+        Assert.Equal(456u, activeScheduled.GoalAchievementId);
+        restored.ManualSettings.GoalTargetAmount = 1;
+        restored.ScheduledSetup.GoalAchievementId = 1;
+        Assert.Equal(57u, activeManual.GoalTargetAmount);
+        Assert.Equal(456u, activeScheduled.GoalAchievementId);
+        foreach (var active in new[] { activeManual, activeScheduled })
+        {
+            Assert.Equal(4u, active.Board);
+            Assert.Equal(8, active.RunCount);
+            Assert.False(active.Loot);
+            Assert.False(active.Treasure);
+            Assert.Equal(new uint[] { 13, 20, 27 }, active.CustomTeam);
+        }
+        var weekly = BeastmasterWeeklyPolicy.CopySettings(activeManual);
+        Assert.Equal(BeastmasterRunGoal.FixedRuns, weekly.Goal);
+        Assert.Equal(1, weekly.RunCount);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AbsentFarmingFieldsPreserveBothLegacyGoalOrdinals(bool useNewtonsoft)
+    {
+        foreach (var ordinal in new[] { 0, 1 })
+        {
+            var json = "{\"Goal\":" + ordinal + ",\"Board\":3,\"RunCount\":5}";
+            var settings = useNewtonsoft ? JsonConvert.DeserializeObject<BeastmasterSettings>(json)!
+                : System.Text.Json.JsonSerializer.Deserialize<BeastmasterSettings>(json)!;
+            var setup = useNewtonsoft ? JsonConvert.DeserializeObject<BeastmasterRunSetup>(json)!
+                : System.Text.Json.JsonSerializer.Deserialize<BeastmasterRunSetup>(json)!;
+            foreach (var restored in new[] { settings, setup.ApplyTo(new()) })
+            {
+                Assert.Equal((BeastmasterRunGoal)ordinal, restored.Goal);
+                Assert.Equal(0u, restored.GoalTargetAmount);
+                Assert.Equal(0u, restored.GoalRewardItemId);
+                Assert.Equal(0u, restored.GoalAchievementId);
+                Assert.Equal(3u, restored.Board);
+                Assert.Equal(5, restored.RunCount);
+            }
+        }
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

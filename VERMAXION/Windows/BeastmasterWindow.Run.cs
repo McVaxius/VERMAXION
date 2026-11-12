@@ -75,11 +75,58 @@ internal sealed partial class BeastmasterWindow
         {
             var goal = (int)settings.Goal;
             ImGui.SetNextItemWidth(-1);
-            if (UIConstants.Combo("Goal", ref goal, ["Fixed board runs", "Train owned familiars"], 2))
+            if (UIConstants.Combo("Goal", ref goal,
+                ["Fixed board runs", "Train owned familiars", "Crewcible currency target", "Legendary board-rank achievement"], 4))
             {
                 settings.Goal = (BeastmasterRunGoal)goal;
                 if (settings.Goal == BeastmasterRunGoal.TrainOwned) settings.TeamMode = CrucibleTeamMode.Leveling;
+                if (BeastmasterSelection.IsTargetGoal(settings) && settings.GoalTargetAmount == 0) settings.GoalTargetAmount = 1;
                 changed = true;
+            }
+            if (settings.Goal == BeastmasterRunGoal.CurrencyTarget)
+            {
+                var preview = BeastmasterSelection.RewardItems.FirstOrDefault(item => item.Id == settings.GoalRewardItemId).Name;
+                ImGui.SetNextItemWidth(-1);
+                if (UIConstants.BeginCombo("Reward currency", preview == null ? UiText.T("Select a reward") : UiText.T(preview)))
+                {
+                    foreach (var item in BeastmasterSelection.RewardItems)
+                        if (UiGui.Selectable("##FarmingReward" + item.Id, settings.GoalRewardItemId == item.Id, UiText.T(item.Name)))
+                        { settings.GoalRewardItemId = item.Id; changed = true; }
+                    ImGui.EndCombo();
+                }
+            }
+            if (settings.Goal == BeastmasterRunGoal.LegendaryAchievement)
+            {
+                var entries = BeastmasterSelection.LegendaryAchievements;
+                var preview = BeastmasterSelection.TryGetLegendaryAchievement(settings.GoalAchievementId, out var selected)
+                    ? UiText.T(selected.Name) : UiText.T("Select an achievement");
+                ImGui.SetNextItemWidth(-1);
+                if (UIConstants.BeginCombo("Achievement", preview))
+                {
+                    foreach (var entry in entries)
+                        if (UiGui.Selectable("##FarmingAchievement" + entry.Id, settings.GoalAchievementId == entry.Id, UiText.T(entry.Name)))
+                        {
+                            settings.GoalAchievementId = entry.Id;
+                            settings.GoalTargetAmount = Math.Clamp(settings.GoalTargetAmount, 1u, entry.Maximum);
+                            changed = true;
+                        }
+                    ImGui.EndCombo();
+                }
+                UiGui.TextDisabled("Only the selected board repeats; this goal does not rotate boards.");
+            }
+            if (BeastmasterSelection.IsTargetGoal(settings))
+            {
+                var maximum = settings.Goal == BeastmasterRunGoal.LegendaryAchievement &&
+                    BeastmasterSelection.TryGetLegendaryAchievement(settings.GoalAchievementId, out var entry)
+                        ? (int)Math.Min(entry.Maximum, (uint)int.MaxValue) : int.MaxValue;
+                var amount = (int)Math.Min(settings.GoalTargetAmount, (uint)int.MaxValue);
+                ImGui.SetNextItemWidth(130 * UIConstants.Scale);
+                if (UIConstants.InputInt("Target amount", ref amount, 1, 10))
+                { settings.GoalTargetAmount = (uint)Math.Clamp(amount, 1, maximum); changed = true; }
+                UiGui.TextDisabled(settings.Goal == BeastmasterRunGoal.CurrencyTarget
+                    ? "Target is the held reward-currency balance, not this run's earnings."
+                    : "Target is total progress for the selected achievement.");
+                UiGui.TextDisabled("Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero.");
             }
             var board = settings.Board is >= 1 and <= 5 ? (int)settings.Board - 1 : -1;
             ImGui.SetNextItemWidth(-1);

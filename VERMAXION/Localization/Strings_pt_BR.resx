@@ -3447,4 +3447,35 @@ Dependências: {1}</value></data>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>O uso do cofre foi recusado.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>O personagem que abria cofres mudou.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Outra automação ou atividade está controlando o personagem.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Meta de moeda do Crewcible</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Conquista de classificação Lendária</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Moeda de recompensa</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Selecionar recompensa</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Selecionar conquista</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Conquista</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Quantidade desejada</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>A meta é o saldo de moeda de recompensa em posse, não os ganhos desta sequência.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>A meta é o progresso total da conquista selecionada.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Verifica após cada tabuleiro concluído; o limite de tabuleiros continua válido. Progresso desconhecido nunca conta como zero.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Apenas o tabuleiro selecionado se repete; esta meta não alterna tabuleiros.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>Verificando progresso</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>O progresso não está confirmado.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} da meta</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Meta alcançada.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Limite de tabuleiros alcançado; meta não atingida.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Limite de tabuleiros alcançado; progresso não confirmado.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>Aguardando progresso atualizado da conquista.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Escolha uma quantidade desejada positiva.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Selecione uma moeda de recompensa do Crewcible.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Selecione uma conquista de classificação Lendária.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>A meta excede o progresso total desta conquista.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Selecione o tabuleiro indicado na conquista Lendária.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Vestígio desbotado de resiliência</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Vestígio brilhante de resiliência</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Inabalável I (primeiro tabuleiro dos invictos)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Inabalável II (segundo tabuleiro dos invictos)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Inabalável III (terceiro tabuleiro dos invictos)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Lendas nunca morrem I (primeiro tabuleiro do mestre)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Lendas nunca morrem II (segundo tabuleiro do mestre)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Mestre do Crucible (todos os cinco tabuleiros)</value></data>
 </root>

@@ -3447,4 +3447,35 @@ Bağımlılıklar: {1}</value></data>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>Sandık kullanımı reddedildi.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>Sandığı açan karakter değişti.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Başka bir otomasyon veya etkinlik karakteri kontrol ediyor.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Crewcible para birimi hedefi</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Efsanevi derece başarımı</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Ödül para birimi</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Ödül seçin</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Başarım seçin</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Başarım</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Hedef miktar</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>Hedef, bu seride kazanılan değil elde tutulan ödül para birimi bakiyesidir.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>Hedef, seçilen başarımın toplam ilerlemesidir.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Her tamamlanan tahtadan sonra denetlenir; tahta sınırı geçerlidir. Bilinmeyen ilerleme asla sıfır sayılmaz.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Yalnızca seçilen tahta tekrarlanır; bu hedef tahtaları değiştirmez.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>İlerleme denetleniyor</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>İlerleme doğrulanmadı.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} hedef</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Hedefe ulaşıldı.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Tahta sınırına ulaşıldı; hedefe ulaşılamadı.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Tahta sınırına ulaşıldı; ilerleme doğrulanmadı.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>Güncel başarım ilerlemesi bekleniyor.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Pozitif bir hedef miktar seçin.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Bir Crewcible ödül para birimi seçin.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Bir Efsanevi derece başarımı seçin.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>Hedef, bu başarımın toplam ilerlemesini aşıyor.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Efsanevi başarımda belirtilen tahtayı seçin.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Solmuş Direnç Kalıntısı</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Parlak Direnç Kalıntısı</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Kırılmaz I (Yenilmezlerin Birinci Tahtası)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Kırılmaz II (Yenilmezlerin İkinci Tahtası)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Kırılmaz III (Yenilmezlerin Üçüncü Tahtası)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Efsaneler Ölmez I (Birinci Usta Tahtası)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Efsaneler Ölmez II (İkinci Usta Tahtası)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible Ustası (beş tahtanın tamamı)</value></data>
 </root>

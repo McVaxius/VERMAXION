@@ -6299,4 +6299,35 @@ Krakka Root : {2} ; Magicked Stable Broom : {3} ; Thavnairian Onion : {4}</value
   <data name="Coffer item use was rejected." xml:space="preserve"><value>L'utilisation du coffre a été refusée.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>Le personnage ouvrant les coffres a changé.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Une autre automatisation ou activité contrôle le personnage.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Objectif de monnaie Crewcible</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Haut fait de rang Légendaire</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Monnaie de récompense</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Choisir une récompense</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Choisir un haut fait</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Haut fait</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Quantité cible</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>La cible est le solde de monnaie de récompense détenu, pas les gains de cette série.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>La cible est la progression totale du haut fait sélectionné.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Vérification après chaque plateau terminé ; la limite de plateaux reste applicable. Une progression inconnue ne vaut jamais zéro.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Seul le plateau sélectionné est répété ; cet objectif ne change pas de plateau.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>Vérification de la progression</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>La progression n’est pas confirmée.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} cible</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Objectif atteint.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Limite de plateaux atteinte ; objectif non atteint.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Limite de plateaux atteinte ; progression non confirmée.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>En attente d’une progression récente du haut fait.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Choisissez une quantité cible positive.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Sélectionnez une monnaie de récompense Crewcible.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Sélectionnez un haut fait de rang Légendaire.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>La cible dépasse la progression totale de ce haut fait.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Sélectionnez le plateau indiqué par le haut fait Légendaire.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Vestige de résilience terni</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Vestige de résilience lumineux</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Incassable I (premier plateau des invaincus)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Incassable II (deuxième plateau des invaincus)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Incassable III (troisième plateau des invaincus)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Les légendes ne meurent jamais I (premier plateau de maître)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Les légendes ne meurent jamais II (deuxième plateau de maître)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Maître du Crucible (les cinq plateaux)</value></data>
 </root>

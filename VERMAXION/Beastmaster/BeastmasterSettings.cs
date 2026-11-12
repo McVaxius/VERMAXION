@@ -9,7 +9,7 @@ namespace VERMAXION.Beastmaster;
 public enum CrucibleTeamMode { Recommended, Leveling, Custom }
 public enum CrucibleLevelingMode { Full, Minus_3, Only_3, Carry_Minus_2 }
 public enum CrucibleDegree { Standard, First, Second, Third }
-public enum BeastmasterRunGoal { FixedRuns, TrainOwned }
+public enum BeastmasterRunGoal { FixedRuns = 0, TrainOwned = 1, CurrencyTarget = 2, LegendaryAchievement = 3 }
 public enum BeastmasterTaskFrequency { EveryAR, Daily, Weekly, Monthly }
 public enum BeastmasterRepairMode { Disabled, Self, NpcNoInn, NpcNearby, NpcInn }
 public enum BeastmasterCombatProvider { BossModReborn, Minerva }
@@ -17,6 +17,9 @@ public enum BeastmasterCombatProvider { BossModReborn, Minerva }
 public sealed class BeastmasterSettings
 {
     public BeastmasterRunGoal Goal { get; set; }
+    public uint GoalTargetAmount { get; set; }
+    public uint GoalRewardItemId { get; set; }
+    public uint GoalAchievementId { get; set; }
     public uint Board { get; set; } = 1;
     // Zero retains the board default for existing settings and scheduled runs.
     public int TrainingTargetRank { get; set => field = Math.Clamp(value, 0, 25); }
@@ -56,7 +59,8 @@ public sealed class BeastmasterSettings
 
     public BeastmasterSettings Clone() => new()
     {
-        Goal = Goal, Board = Board, TrainingTargetRank = TrainingTargetRank, RunCount = RunCount,
+        Goal = Goal, GoalTargetAmount = GoalTargetAmount, GoalRewardItemId = GoalRewardItemId, GoalAchievementId = GoalAchievementId,
+        Board = Board, TrainingTargetRank = TrainingTargetRank, RunCount = RunCount,
         WeeklyBoards = WeeklyBoards == null ? null : [..WeeklyBoards], CompletionCommand = CompletionCommand,
         RepairMode = RepairMode, RepairThreshold = RepairThreshold, RepairCity = RepairCity, CombatProvider = CombatProvider,
         FoodItemId = FoodItemId, ExtractMateria = ExtractMateria,

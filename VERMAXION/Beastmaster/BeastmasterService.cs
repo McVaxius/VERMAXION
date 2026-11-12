@@ -11,6 +11,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using VERMAXION.IPC;
 using Action = System.Action;
+using NativeAchievement = FFXIVClientStructs.FFXIV.Client.Game.UI.Achievement;
 
 namespace VERMAXION.Beastmaster;
 
@@ -33,6 +34,13 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private bool displayedWeekly;
     private bool hasRunDisplay;
     private bool completionCommandPending;
+    private BeastmasterGoalProgress goalProgress;
+    private BeastmasterSettings? goalReadSettings;
+    private ulong goalReadOwner;
+    private uint goalReadBoard, goalReadAchievement, goalReadTarget, goalReadRewardItem;
+    private int goalReadRun;
+    private BeastmasterRunGoal goalReadKind;
+    private nint goalReadNativeContext;
     private BeastmasterRoute? route;
     private BeastmasterFightContext? fightContext;
     private bool arenaPrepared;
@@ -84,6 +92,10 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     internal uint DisplayBoard => HasRunDisplay ? displayedRunSettings!.Board : Settings.Board;
     internal int DisplayTrainingTarget => BeastmasterSelection.TrainingTarget(HasRunDisplay ? displayedRunSettings! : Settings);
     internal BeastmasterRunGoal DisplayGoal => HasRunDisplay ? displayedRunSettings!.Goal : Settings.Goal;
+    internal uint DisplayGoalTarget => HasRunDisplay ? displayedRunSettings!.GoalTargetAmount : Settings.GoalTargetAmount;
+    internal uint DisplayGoalRewardItem => HasRunDisplay ? displayedRunSettings!.GoalRewardItemId : Settings.GoalRewardItemId;
+    internal uint DisplayGoalAchievement => HasRunDisplay ? displayedRunSettings!.GoalAchievementId : Settings.GoalAchievementId;
+    internal BeastmasterGoalProgress DisplayGoalProgress => HasRunDisplay ? goalProgress : default;
     internal bool DisplayWeekly => HasRunDisplay && displayedWeekly;
     internal int DisplayCompletedRuns => HasRunDisplay
         ? BeastmasterSelection.CompletedBoardRuns(CurrentRun, resultSeen, DisplayRunLimit) : 0;
@@ -96,6 +108,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         RunState.SettingTeam => "Preparing team",
         RunState.Confirming when rankingCheckboxTest => "Testing the ranking checkbox",
         RunState.Confirming or RunState.WaitingDuty => "Waiting to enter the Crucible",
+        RunState.Running or RunState.Leaving when goalProgress.State == BeastmasterGoalReadState.Pending => "Checking farming progress",
         RunState.Running => resultSeen ? "Finishing board" : waitingForRevival ? "Waiting for revival"
             : Svc.Condition[ConditionFlag.InCombat] ? "Fighting" : "Following the Crucible board",
         RunState.Leaving => "Leaving the completed board",
@@ -112,6 +125,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private void RememberRunDisplay(bool weekly)
     {
+        ResetGoalRead(clearProgress: true);
         StopAfterNextOutcome = false;
         completionCommandPending = false;
         displayedRunSettings = runSettings;
@@ -237,6 +251,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         if (!inside && !nativeEntry && !NativeQueueIsIdle())
         { reason = "An existing duty queue must settle before starting Beastmaster."; return false; }
         if (!inside && settings.Board is < 1 or > 5) { reason = "Select one of the five Crucible boards"; return false; }
+        if (!BeastmasterSelection.ValidGoalTarget(settings, out reason,
+                inside ? Svc.ClientState.TerritoryType - 1338u : settings.Board)) return false;
         if (BeastmasterSelection.RequiresClearTeam(settings) && settings.Goal == BeastmasterRunGoal.TrainOwned)
         { reason = "Degrees 1–3 require a reliable-clear team. Use Standard for training."; return false; }
         if (settings.Goal == BeastmasterRunGoal.TrainOwned && settings.TeamMode != CrucibleTeamMode.Leveling)
@@ -330,6 +346,10 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     {
         var changedCharacter = owner != 0 && owner != Svc.PlayerState.ContentId;
         var freshPlan = changedCharacter || manual && State is (RunState.Idle or RunState.Complete or RunState.Failed);
+        if (!(freshPlan ? weekly : weeklyActive) &&
+            !BeastmasterSelection.ValidGoalTarget(freshPlan || runSettings == null ? settings : runSettings, out var goalReason,
+                IsCrucibleTerritory(Svc.ClientState.TerritoryType) ? Svc.ClientState.TerritoryType - 1338u : null))
+        { status = goalReason; return false; }
         // Start also captures a provider when it supersedes a standalone refresh with no run plan.
         // Same-plan recovery keeps the original provider even after saved settings change.
         if ((freshPlan || runSettings == null) && !TryCaptureCombatProvider(settings, out var combatReason))
@@ -502,7 +522,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         // Native registration can request ownership. Rank discovery uses the
         // original missing-only Lauda scan, never an automatic full refresh.
         if (preparedOwned == null) PrepareRunOwnership(out _);
-        if (afterBoard) { CurrentRun++; resultSeen = false; ResultObserved = false; }
+        if (afterBoard) { ResetGoalRead(); CurrentRun++; resultSeen = false; ResultObserved = false; }
         BeginRegistration();
     }
 
@@ -580,6 +600,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private bool CompleteOrdinary(string text)
     {
         if (!OutsideCompletionReady(owner)) return false;
+        ResetGoalRead();
         StopAfterNextOutcome = false;
         if (resultRanksUnavailable) text += "\nCompleted board; beast ranks and EXP remain unconfirmed.";
         completionCommandPending = !displayedWeekly && displayedRunSettings != null &&
@@ -617,7 +638,13 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         // character also waits for explicit Start; neither cancels the old plan.
         if (owner != 0 && (!Svc.ClientState.IsLoggedIn || !Svc.PlayerState.IsLoaded ||
                 Svc.PlayerState.ContentId == 0 || Svc.PlayerState.ContentId != owner))
-        { stationarySince = default; return; }
+        {
+            // Retain the old plan, but never accept a pending native response
+            // across a loss or change of its observed character identity.
+            if (goalProgress.State == BeastmasterGoalReadState.Pending) goalProgress = default;
+            stationarySince = default;
+            return;
+        }
         if (State is not (RunState.Idle or RunState.Complete or RunState.Failed) && owner == 0)
         { stationarySince = default; return; }
         try
@@ -882,7 +909,13 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
             return;
         }
         if (weeklyActive) { BeginWeeklyCreditVerification(); return; }
+        if (!ReadTargetGoalAfterBoard()) return;
         Save(); StopNavigation(); menus.Reset(); route = null;
+        if (BeastmasterSelection.GoalTargetReached(Settings, goalProgress))
+        {
+            CompleteOrdinary("Farming target reached.");
+            return;
+        }
         if (Settings.Goal == BeastmasterRunGoal.TrainOwned && TrainingRanksMeetTarget() &&
             !IsCrucibleTerritory(Svc.ClientState.TerritoryType))
         {
@@ -898,10 +931,112 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         }
         else
         {
-            CompleteOrdinary(Settings.Goal == BeastmasterRunGoal.TrainOwned
+            CompleteOrdinary(BeastmasterSelection.IsTargetGoal(Settings)
+                ? goalProgress.State == BeastmasterGoalReadState.Observed
+                    ? "Board allowance complete; farming target not reached."
+                    : "Board allowance complete; farming progress is unconfirmed."
+                : Settings.Goal == BeastmasterRunGoal.TrainOwned
                 ? "Training allowance complete; unfinished beasts will be checked at the next trigger."
                 : "Crucible run complete");
         }
+    }
+
+    private void ResetGoalRead(bool clearProgress = false)
+    {
+        goalReadSettings = null;
+        goalReadOwner = 0;
+        goalReadBoard = goalReadAchievement = goalReadTarget = goalReadRewardItem = 0;
+        goalReadRun = 0;
+        goalReadNativeContext = 0;
+        if (clearProgress || goalProgress.State == BeastmasterGoalReadState.Pending) goalProgress = default;
+    }
+
+    private bool GoalReadContextCurrent() => !disposed && !operatorStopped && !IsPaused &&
+        owner != 0 && CanObserveCharacter && ReferenceEquals(goalReadSettings, runSettings) &&
+        goalReadOwner == owner && goalReadRun == CurrentRun && goalReadBoard == Settings.Board &&
+        goalReadKind == Settings.Goal && goalReadTarget == Settings.GoalTargetAmount &&
+        goalReadRewardItem == Settings.GoalRewardItemId &&
+        goalReadAchievement == Settings.GoalAchievementId && BoardRunCompleted && resultSeen &&
+        OutsideCompletionReady(owner);
+
+    // One observation transaction per completed board. A busy foreign request is
+    // left alone, and an unconfirmed result never becomes a zero or a target hit.
+    private bool ReadTargetGoalAfterBoard()
+    {
+        if (!BeastmasterSelection.IsTargetGoal(Settings)) return true;
+        if (goalReadSettings != null)
+        {
+            if (!GoalReadContextCurrent()) { goalProgress = default; return true; }
+            if (goalProgress.State != BeastmasterGoalReadState.Pending) return true;
+            var current = UIState.Instance();
+            if (current == null || (nint)current != goalReadNativeContext || !current->PlayerState.IsLoaded)
+            { goalProgress = default; return true; }
+            ref var achievement = ref current->Achievement;
+            if (achievement.ProgressRequestState == NativeAchievement.AchievementState.Requested)
+            {
+                if (achievement.ProgressAchievementId == goalReadAchievement) return false;
+                goalProgress = default;
+                return true;
+            }
+            goalProgress = achievement.ProgressRequestState == NativeAchievement.AchievementState.Loaded &&
+                achievement.ProgressAchievementId == goalReadAchievement &&
+                BeastmasterSelection.TryGetLegendaryAchievement(goalReadAchievement, out var definition) &&
+                achievement.ProgressMax == definition.Maximum && achievement.ProgressMax > 0 &&
+                achievement.ProgressCurrent <= achievement.ProgressMax && goalReadTarget <= achievement.ProgressMax
+                    ? new(BeastmasterGoalReadState.Observed, achievement.ProgressCurrent, achievement.ProgressMax, goalReadAchievement)
+                    : default;
+            return true;
+        }
+
+        goalProgress = default;
+        if (runSettings == null || owner == 0 || disposed || operatorStopped || IsPaused ||
+            !CanObserveCharacter || !BoardRunCompleted || !resultSeen || !OutsideCompletionReady(owner)) return true;
+        goalReadSettings = runSettings;
+        goalReadOwner = owner;
+        goalReadRun = CurrentRun;
+        goalReadBoard = Settings.Board;
+        goalReadKind = Settings.Goal;
+        goalReadTarget = Settings.GoalTargetAmount;
+        goalReadRewardItem = Settings.GoalRewardItemId;
+        goalReadAchievement = Settings.GoalAchievementId;
+        if (Settings.Goal == BeastmasterRunGoal.CurrencyTarget)
+        {
+            if (TryReadGoalCurrency(goalReadRewardItem, out var amount)) goalProgress = new(BeastmasterGoalReadState.Observed, amount);
+            return true;
+        }
+
+        var ui = UIState.Instance();
+        if (!BeastmasterSelection.TryGetLegendaryAchievement(goalReadAchievement, out _) || ui == null || !ui->PlayerState.IsLoaded ||
+            ui->Achievement.ProgressRequestState == NativeAchievement.AchievementState.Requested) return true;
+        goalReadNativeContext = (nint)ui;
+        ui->Achievement.RequestAchievementProgress(goalReadAchievement);
+        // Loaded data that was present before this call is never sufficient.
+        // The native request must first expose its actual Requested transition.
+        if (GoalReadContextCurrent() && UIState.Instance() == ui &&
+            ui->Achievement.ProgressRequestState == NativeAchievement.AchievementState.Requested &&
+            ui->Achievement.ProgressAchievementId == goalReadAchievement)
+        {
+            goalProgress = new(BeastmasterGoalReadState.Pending, AchievementId: goalReadAchievement);
+            status = "Waiting for fresh farming achievement progress.";
+            return false;
+        }
+        return true;
+    }
+
+    private static bool TryReadGoalCurrency(uint itemId, out uint amount)
+    {
+        amount = 0;
+        var inventory = InventoryManager.Instance();
+        if (inventory == null || !BeastmasterSelection.RewardItems.Any(item => item.Id == itemId)) return false;
+        foreach (var kind in new[] { InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4 })
+        {
+            var bag = inventory->GetInventoryContainer(kind);
+            if (bag == null || !bag->IsLoaded) return false;
+        }
+        var count = inventory->GetInventoryItemCount(itemId, false, false, false);
+        if (count < 0) return false;
+        amount = (uint)count;
+        return true;
     }
 
     internal void Save() { if (owner == 0 || Svc.PlayerState.ContentId == owner) save(); }
@@ -1095,6 +1230,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     }
     public void Stop()
     {
+        ResetGoalRead();
         StopAfterNextOutcome = false;
         DiscardCompletionCommand();
         operatorStopped = true; recoveryAt = default;

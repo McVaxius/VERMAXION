@@ -4,6 +4,9 @@ namespace VERMAXION.Beastmaster;
 public sealed class BeastmasterRunSetup
 {
     public BeastmasterRunGoal Goal { get; set; }
+    public uint GoalTargetAmount { get; set; }
+    public uint GoalRewardItemId { get; set; }
+    public uint GoalAchievementId { get; set; }
     public uint Board { get; set; } = 1;
     public int RunCount { get; set; } = 1;
     public string CompletionCommand { get; set; } = string.Empty;
@@ -16,7 +19,9 @@ public sealed class BeastmasterRunSetup
 
     public static BeastmasterRunSetup From(BeastmasterSettings settings) => new()
     {
-        Goal = settings.Goal, Board = settings.Board, RunCount = settings.RunCount,
+        Goal = settings.Goal, GoalTargetAmount = settings.GoalTargetAmount,
+        GoalRewardItemId = settings.GoalRewardItemId, GoalAchievementId = settings.GoalAchievementId,
+        Board = settings.Board, RunCount = settings.RunCount,
         CompletionCommand = settings.CompletionCommand, Degree = settings.Degree, RankedEntry = settings.RankedEntry,
         TeamMode = settings.TeamMode, LevelingMode = settings.LevelingMode,
         RecommendedTeamCap = settings.RecommendedTeamCap, ClassificationLock = settings.ClassificationLock,
@@ -25,7 +30,9 @@ public sealed class BeastmasterRunSetup
     public BeastmasterSettings ApplyTo(BeastmasterSettings shared)
     {
         var settings = shared.Clone();
-        settings.Goal = Goal; settings.Board = Board; settings.RunCount = RunCount;
+        settings.Goal = Goal; settings.GoalTargetAmount = GoalTargetAmount; settings.GoalAchievementId = GoalAchievementId;
+        settings.GoalRewardItemId = GoalRewardItemId;
+        settings.Board = Board; settings.RunCount = RunCount;
         settings.TrainingTargetRank = 0;
         settings.CompletionCommand = CompletionCommand; settings.Degree = Degree; settings.RankedEntry = RankedEntry;
         settings.TeamMode = TeamMode; settings.LevelingMode = LevelingMode;

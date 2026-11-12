@@ -82,6 +82,20 @@ internal sealed partial class BeastmasterWindow
                     ? UiText.F("{0}/{1} complete", rows.Count(row => row.State == BeastmasterWeeklyState.Complete), rows.Count)
                     : UiText.T("Weekly Challenge Log data is unavailable.");
         }
+        if (service.DisplayGoal is BeastmasterRunGoal.CurrencyTarget or BeastmasterRunGoal.LegendaryAchievement)
+        {
+            var name = service.DisplayGoal == BeastmasterRunGoal.CurrencyTarget
+                ? UiText.T(BeastmasterSelection.RewardItems.FirstOrDefault(item => item.Id == service.DisplayGoalRewardItem).Name ?? "Reward currency")
+                : BeastmasterSelection.TryGetLegendaryAchievement(service.DisplayGoalAchievement, out var achievement)
+                    ? UiText.T(achievement.Name) : UiText.T("Legendary board-rank achievement");
+            var progress = service.DisplayGoalProgress;
+            return name + ": " + (progress.State switch
+            {
+                BeastmasterGoalReadState.Observed => UiText.F("{0}/{1} target", progress.Current, service.DisplayGoalTarget),
+                BeastmasterGoalReadState.Pending => UiText.T("Checking farming progress"),
+                _ => UiText.T("Farming progress is unconfirmed."),
+            });
+        }
         if (service.DisplayGoal != BeastmasterRunGoal.TrainOwned) return string.Empty;
         var data = service.CharacterData;
         var owned = service.PreparedOwned ?? data.Owned;

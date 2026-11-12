@@ -3447,4 +3447,35 @@ Dependensi: {1}</value></data>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>Penggunaan peti ditolak.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>Karakter pembuka peti berubah.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Otomatisasi atau aktivitas lain sedang mengendalikan karakter.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Target mata uang Crewcible</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Pencapaian peringkat Legendaris</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Mata uang hadiah</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Pilih hadiah</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Pilih pencapaian</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Pencapaian</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Jumlah target</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>Target adalah saldo mata uang hadiah yang dimiliki, bukan hasil seri ini.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>Target adalah total progres pencapaian yang dipilih.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Diperiksa setelah setiap papan selesai; batas papan tetap berlaku. Progres tidak diketahui tidak pernah dihitung nol.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Hanya papan yang dipilih yang diulang; target ini tidak berganti papan.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>Memeriksa progres</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>Progres belum dikonfirmasi.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} target</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Target tercapai.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Batas papan tercapai; target belum tercapai.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Batas papan tercapai; progres belum dikonfirmasi.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>Menunggu progres pencapaian terbaru.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Pilih jumlah target positif.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Pilih mata uang hadiah Crewcible.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Pilih pencapaian peringkat Legendaris.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>Target melebihi total progres pencapaian ini.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Pilih papan yang disebut dalam pencapaian Legendaris.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Sisa Ketahanan Pudar</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Sisa Ketahanan Cemerlang</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Tak Terpatahkan I (Papan Pertama Kaum Tak Terkalahkan)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Tak Terpatahkan II (Papan Kedua Kaum Tak Terkalahkan)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Tak Terpatahkan III (Papan Ketiga Kaum Tak Terkalahkan)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Legenda Tak Pernah Mati I (Papan Master Pertama)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Legenda Tak Pernah Mati II (Papan Master Kedua)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Master Crucible (kelima papan)</value></data>
 </root>

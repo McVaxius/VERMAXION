@@ -1,3 +1,9 @@
+2026-11-12 - 3.0.0.15 - Crewcible farming goals
+
+- Add saved currency and Legendary board-rank achievement goals to manual and scheduled Beastmaster setups, with selectable rewards and target amounts. Currency targets use the held Faded or Bright Remnant of Resilience balance; achievement targets use permanent rank progress.
+- Check progress after each completed board. Keep unavailable progress unconfirmed, retain the existing board allowance, and distinguish an exhausted allowance from reaching the target. Preserve manual Stop, team and loot choices, all five routes, and Standard weekly clears.
+- Show targets and progress in all fifteen languages. Legendary goals repeat only the selected board; the all-five-board achievement does not automatically rotate boards.
+
 2026-11-10 - 3.0.0.14 - Scheduled Crewcible job preparation
 
 - Equip an existing usable Beastmaster gearset before scheduled daily or weekly Crewcible work, verify the switch and recheck entry requirements. Leave Beastmaster equipped afterwards.

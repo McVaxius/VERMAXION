@@ -3447,4 +3447,35 @@ Phụ thuộc: {1}</value></data>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>Yêu cầu dùng rương bị từ chối.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>Nhân vật mở rương đã thay đổi.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Một tự động hóa hoặc hoạt động khác đang điều khiển nhân vật.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Mục tiêu tiền thưởng Crewcible</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Thành tựu hạng Huyền Thoại</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Tiền thưởng</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Chọn phần thưởng</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Chọn thành tựu</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Thành tựu</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Số lượng mục tiêu</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>Mục tiêu là số dư tiền thưởng đang có, không phải số kiếm được trong lượt này.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>Mục tiêu là tổng tiến độ của thành tựu đã chọn.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Kiểm tra sau mỗi bàn hoàn thành; giới hạn số bàn vẫn áp dụng. Tiến độ chưa rõ không bao giờ được tính là không.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Chỉ lặp lại bàn đã chọn; mục tiêu này không tự đổi bàn.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>Đang kiểm tra tiến độ</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>Tiến độ chưa được xác nhận.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} mục tiêu</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Đã đạt mục tiêu.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Đã hết số bàn; chưa đạt mục tiêu.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Đã hết số bàn; tiến độ chưa được xác nhận.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>Đang chờ tiến độ thành tựu mới.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Chọn số lượng mục tiêu lớn hơn không.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Chọn tiền thưởng Crewcible.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Chọn thành tựu hạng Huyền Thoại.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>Mục tiêu vượt quá tổng tiến độ của thành tựu này.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Chọn bàn được nêu trong thành tựu Huyền Thoại.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Tàn tích kiên cường phai mờ</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Tàn tích kiên cường rực sáng</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Bất khuất I (bàn thứ nhất của những kẻ bất bại)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Bất khuất II (bàn thứ hai của những kẻ bất bại)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Bất khuất III (bàn thứ ba của những kẻ bất bại)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Huyền thoại bất diệt I (bàn bậc thầy thứ nhất)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Huyền thoại bất diệt II (bàn bậc thầy thứ hai)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Bậc thầy Crucible (cả năm bàn)</value></data>
 </root>

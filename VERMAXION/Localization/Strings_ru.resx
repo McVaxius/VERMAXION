@@ -6299,4 +6299,35 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Coffer item use was rejected." xml:space="preserve"><value>Использование сундука отклонено.</value></data>
   <data name="Coffer character changed." xml:space="preserve"><value>Персонаж для открытия сундуков изменился.</value></data>
   <data name="Another automation or activity owns the character." xml:space="preserve"><value>Персонажем управляет другая автоматизация или активность.</value></data>
+  <data name="Crewcible currency target" xml:space="preserve"><value>Цель по валюте Crewcible</value></data>
+  <data name="Legendary board-rank achievement" xml:space="preserve"><value>Достижение легендарного ранга</value></data>
+  <data name="Reward currency" xml:space="preserve"><value>Валюта наград</value></data>
+  <data name="Select a reward" xml:space="preserve"><value>Выберите награду</value></data>
+  <data name="Select an achievement" xml:space="preserve"><value>Выберите достижение</value></data>
+  <data name="Achievement" xml:space="preserve"><value>Достижение</value></data>
+  <data name="Target amount" xml:space="preserve"><value>Целевое количество</value></data>
+  <data name="Target is the held reward-currency balance, not this run&apos;s earnings." xml:space="preserve"><value>Цель — имеющийся запас валюты наград, а не заработок за эту серию.</value></data>
+  <data name="Target is total progress for the selected achievement." xml:space="preserve"><value>Цель — общий прогресс выбранного достижения.</value></data>
+  <data name="Checks after each completed board; the board allowance still applies. Unknown progress never counts as zero." xml:space="preserve"><value>Проверка после каждой завершённой доски; лимит досок сохраняется. Неизвестный прогресс никогда не считается нулём.</value></data>
+  <data name="Only the selected board repeats; this goal does not rotate boards." xml:space="preserve"><value>Повторяется только выбранная доска; эта цель не переключает доски.</value></data>
+  <data name="Checking farming progress" xml:space="preserve"><value>Проверка прогресса</value></data>
+  <data name="Farming progress is unconfirmed." xml:space="preserve"><value>Прогресс не подтверждён.</value></data>
+  <data name="{0}/{1} target" xml:space="preserve"><value>{0}/{1} цели</value></data>
+  <data name="Farming target reached." xml:space="preserve"><value>Цель достигнута.</value></data>
+  <data name="Board allowance complete; farming target not reached." xml:space="preserve"><value>Лимит досок достигнут; цель не достигнута.</value></data>
+  <data name="Board allowance complete; farming progress is unconfirmed." xml:space="preserve"><value>Лимит досок достигнут; прогресс не подтверждён.</value></data>
+  <data name="Waiting for fresh farming achievement progress." xml:space="preserve"><value>Ожидание свежего прогресса достижения.</value></data>
+  <data name="Choose a positive farming target amount." xml:space="preserve"><value>Выберите положительное целевое количество.</value></data>
+  <data name="Select a Crewcible reward currency." xml:space="preserve"><value>Выберите валюту наград Crewcible.</value></data>
+  <data name="Select a Legendary board-rank achievement." xml:space="preserve"><value>Выберите достижение легендарного ранга.</value></data>
+  <data name="The target exceeds this achievement&apos;s total progress." xml:space="preserve"><value>Цель превышает общий прогресс этого достижения.</value></data>
+  <data name="Select the board named by the Legendary achievement." xml:space="preserve"><value>Выберите доску, указанную в достижении легендарного ранга.</value></data>
+  <data name="Faded Remnant of Resilience" xml:space="preserve"><value>Потускневший осколок стойкости</value></data>
+  <data name="Bright Remnant of Resilience" xml:space="preserve"><value>Сияющий осколок стойкости</value></data>
+  <data name="Unbreakable I (First Board of the Unbroken)" xml:space="preserve"><value>Несокрушимый I (первая доска непобеждённых)</value></data>
+  <data name="Unbreakable II (Second Board of the Unbroken)" xml:space="preserve"><value>Несокрушимый II (вторая доска непобеждённых)</value></data>
+  <data name="Unbreakable III (Third Board of the Unbroken)" xml:space="preserve"><value>Несокрушимый III (третья доска непобеждённых)</value></data>
+  <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Легенды не умирают I (первая доска мастера)</value></data>
+  <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Легенды не умирают II (вторая доска мастера)</value></data>
+  <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Мастер Crucible (все пять досок)</value></data>
 </root>
