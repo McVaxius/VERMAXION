@@ -6330,4 +6330,6 @@ Dependencies: {1}</value>
   <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Legends Never Die I (First Master&apos;s Board)</value></data>
   <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Legends Never Die II (Second Master&apos;s Board)</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible Master (all five boards)</value></data>
+  <data name="Highlight contrast" xml:space="preserve"><value>Highlight contrast</value></data>
+  <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Makes controls and selection states more distinct.</value></data>
 </root>

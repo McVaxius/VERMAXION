@@ -42,6 +42,8 @@ public class Configuration : IPluginConfiguration
     public uint UiAccentRgb { get; set; } = 0x00C6DF;
     public AethertekUI.MaterialColorSettings UiColors { get; set; } = new();
     public bool UiStylingEnabled { get; set; } = true;
+    private int uiHighlightContrastPercent = 50;
+    public int UiHighlightContrastPercent { get => uiHighlightContrastPercent; set => uiHighlightContrastPercent = Math.Clamp(value, 0, 100); }
     public bool UiWindowsLocked { get; set; }
     public bool UiLcarsSoundsMuted { get; set; } = true;
 

@@ -3478,4 +3478,6 @@ Phụ thuộc: {1}</value></data>
   <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Huyền thoại bất diệt I (bàn bậc thầy thứ nhất)</value></data>
   <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Huyền thoại bất diệt II (bàn bậc thầy thứ hai)</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Bậc thầy Crucible (cả năm bàn)</value></data>
+  <data name="Highlight contrast" xml:space="preserve"><value>Độ tương phản tô sáng</value></data>
+  <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Giúp phân biệt rõ hơn các điều khiển và trạng thái được chọn.</value></data>
 </root>

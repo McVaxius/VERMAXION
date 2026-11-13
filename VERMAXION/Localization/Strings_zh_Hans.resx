@@ -5974,4 +5974,6 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>传奇永存 I（大师第一棋盘）</value></data>
   <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>传奇永存 II（大师第二棋盘）</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible大师（全部五个棋盘）</value></data>
+  <data name="Highlight contrast" xml:space="preserve"><value>高亮对比度</value></data>
+  <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>让控件与选中状态更容易区分。</value></data>
 </root>

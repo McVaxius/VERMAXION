@@ -1,3 +1,8 @@
+2026-11-12 - 3.0.0.16 - Highlight contrast
+
+- Add Highlight contrast (0–100%) to Appearance and Colour, defaulting to 50% when absent. Preserve saved zero and custom values.
+- Use AethertekUI 0.3.2 for clearer controls and selection states while retaining palettes, native styling, opacity, language and existing plugin behavior.
+
 2026-11-12 - 3.0.0.15 - Crewcible farming goals
 
 - Add saved currency and Legendary board-rank achievement goals to manual and scheduled Beastmaster setups, with selectable rewards and target amounts. Currency targets use the held Faded or Bright Remnant of Resilience balance; achievement targets use permanent rank progress.

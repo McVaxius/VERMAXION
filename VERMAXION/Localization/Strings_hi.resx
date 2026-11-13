@@ -2799,4 +2799,6 @@
   <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>किंवदंतियाँ अमर हैं I (पहला मास्टर बोर्ड)</value></data>
   <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>किंवदंतियाँ अमर हैं II (दूसरा मास्टर बोर्ड)</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible मास्टर (सभी पाँच बोर्ड)</value></data>
+  <data name="Highlight contrast" xml:space="preserve"><value>हाइलाइट कंट्रास्ट</value></data>
+  <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>नियंत्रणों और चयन स्थितियों को अधिक स्पष्ट बनाता है।</value></data>
 </root>

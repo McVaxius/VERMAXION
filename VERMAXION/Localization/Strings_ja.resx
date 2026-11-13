@@ -5974,4 +5974,6 @@ Krakka Root: {2}；Magicked Stable Broom: {3}；Thavnairian Onion: {4}</value>
   <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>伝説は死なず I（達人の第一盤面）</value></data>
   <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>伝説は死なず II（達人の第二盤面）</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucibleマスター（全五盤面）</value></data>
+  <data name="Highlight contrast" xml:space="preserve"><value>ハイライトのコントラスト</value></data>
+  <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>コントロールと選択状態を見分けやすくします。</value></data>
 </root>

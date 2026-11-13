@@ -6330,4 +6330,6 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Легенды не умирают I (первая доска мастера)</value></data>
   <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Легенды не умирают II (вторая доска мастера)</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Мастер Crucible (все пять досок)</value></data>
+  <data name="Highlight contrast" xml:space="preserve"><value>Контраст выделения</value></data>
+  <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Делает элементы управления и состояния выбора более различимыми.</value></data>
 </root>

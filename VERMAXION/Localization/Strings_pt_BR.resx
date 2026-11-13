@@ -3478,4 +3478,6 @@ Dependências: {1}</value></data>
   <data name="Legends Never Die I (First Master&apos;s Board)" xml:space="preserve"><value>Lendas nunca morrem I (primeiro tabuleiro do mestre)</value></data>
   <data name="Legends Never Die II (Second Master&apos;s Board)" xml:space="preserve"><value>Lendas nunca morrem II (segundo tabuleiro do mestre)</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Mestre do Crucible (todos os cinco tabuleiros)</value></data>
+  <data name="Highlight contrast" xml:space="preserve"><value>Contraste de destaque</value></data>
+  <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Torna os controles e os estados de seleção mais distintos.</value></data>
 </root>
