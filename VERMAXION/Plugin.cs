@@ -116,6 +116,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     public FashionReportService FashionReportService { get; init; }
     public CustomDeliveriesService CustomDeliveriesService { get; init; }
     public ChocoboStablesService ChocoboStablesService { get; init; }
+    public IslandSanctuaryRun IslandSanctuaryRun { get; init; }
     private DeliveryFishing DeliveryFishing { get; init; }
     public RegisterRegistrablesService RegisterRegistrablesService { get; init; }
     public CofferOpeningService CofferOpening { get; private set; } = null!;
@@ -402,6 +403,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
         // Engine - orchestrates all tasks
         ChocoboStablesService = new ChocoboStablesService(this);
+        var calypso = new CalypsoIPCClient(PluginInterface);
+        IslandSanctuaryRun = new IslandSanctuaryRun(calypso.ReadStatus, calypso.RunTask, calypso.Stop);
         Engine = new VermaxionEngine(
             Log, Configuration, ConfigManager, ResetDetectionService,
             FCBuffService, FCBuffInventoryService, VerminionService,
@@ -418,6 +421,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             : BeastmasterOwnsWork ? "Beastmaster owns the character."
             : VerminionService.HasQuestAcquisition ? "Questionable minion acquisition blocks new VERMAXION work."
             : DeliveryFishing.IsCleanupPending ? CustomDeliveriesService.StatusText
+            : IslandSanctuaryRun.IsCleanupPending ? IslandSanctuaryRun.StatusText
+            : IslandSanctuaryRun.ProviderStatus is { Busy: true } ? "Calypso is busy with other work; no request was sent."
             : ChocoboStablesService.IsCleanupPending ? "Stable menu cleanup is still settling."
             : null;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
@@ -936,6 +941,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         BeastmasterService.Dispose();
         Engine.CancelNagYourMomSeriesRankTest();
         ChocoboRaceService.Dispose();
+        IslandSanctuaryRun.Cancel();
         ChokeAboIpcClient.SuspendTargetCycle(PlayerState.ContentId);
         DadHandoffIpcProvider.Dispose();
         AutomationStatusIpcProvider.Dispose();
@@ -1130,6 +1136,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             return (true, "CustomDeliveries", CustomDeliveriesService.StatusText);
         if (ChocoboStablesService.IsActive)
             return (true, "ChocoboStables", ChocoboStablesService.StatusText);
+        if (IslandSanctuaryRun.IsActive || IslandSanctuaryRun.IsCleanupPending)
+            return (true, "IslandSanctuary", IslandSanctuaryRun.StatusText);
         if (ChocoboRaceService.IsActive)
             return (true, ChocoboRaceService.State.ToString(), ChocoboRaceService.StatusText);
         if (CurrentJobEquipmentService.IsActive)
@@ -3566,6 +3574,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         DeliveryFishing.Update();
         CustomDeliveriesService.Update();
         ChocoboStablesService.Update();
+        IslandSanctuaryRun.Refresh(DateTime.UtcNow);
         if (characterRegistrationCompletedThisLogin)
             MainWindow.UpdateCustomDeliveryVisibility();
         ProcessPendingDebugTask();

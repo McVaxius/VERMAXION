@@ -3480,4 +3480,163 @@ Dependensi: {1}</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Master Crucible (kelima papan)</value></data>
   <data name="Highlight contrast" xml:space="preserve"><value>Kontras sorotan</value></data>
   <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Membuat kontrol dan status pilihan lebih mudah dibedakan.</value></data>
+  <data name="{0}/2 supported chores selected." xml:space="preserve">
+    <value>{0}/2 tugas yang didukung dipilih.</value>
+  </data>
+  <data name="A selected Calypso task has reached its three-failure daily cap." xml:space="preserve">
+    <value>Salah satu tugas Calypso yang dipilih telah mencapai batas tiga kegagalan per hari.</value>
+  </data>
+  <data name="A selected Island task is locked or switched off in Calypso." xml:space="preserve">
+    <value>Salah satu tugas pulau yang dipilih terkunci atau dimatikan di Calypso.</value>
+  </data>
+  <data name="A selected task is blocked in Calypso. Check its task details." xml:space="preserve">
+    <value>Salah satu tugas yang dipilih diblokir di Calypso. Periksa detail tugasnya.</value>
+  </data>
+  <data name="A selected task is disabled in Calypso." xml:space="preserve">
+    <value>Salah satu tugas yang dipilih dinonaktifkan di Calypso.</value>
+  </data>
+  <data name="Agenda cycle: {0} · Exports cycle: {1}" xml:space="preserve">
+    <value>Siklus agenda: {0} · Siklus ekspor: {1}</value>
+  </data>
+  <data name="Already on island" xml:space="preserve">
+    <value>Sudah berada di pulau</value>
+  </data>
+  <data name="At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan." xml:space="preserve">
+    <value>Pada kunjungan bengkel yang sama, baca permintaan dan siapkan agenda sesuai aturan Calypso. Mode Suggest hanya menyiapkan rencana.</value>
+  </data>
+  <data name="Cadence follows Calypso's Island cycle. Manual Run can bypass cadence." xml:space="preserve">
+    <value>Frekuensi mengikuti siklus pulau Calypso. Menjalankan secara manual dapat mengabaikan frekuensi ini.</value>
+  </data>
+  <data name="Calypso changed to other work; Island ownership was released." xml:space="preserve">
+    <value>Calypso beralih ke pekerjaan lain; kendali rutinitas pulau telah dilepas.</value>
+  </data>
+  <data name="Calypso does not expose a selected Island task." xml:space="preserve">
+    <value>Calypso tidak menyediakan salah satu tugas pulau yang dipilih.</value>
+  </data>
+  <data name="Calypso has no matching current-character status." xml:space="preserve">
+    <value>Calypso tidak memiliki status yang cocok dengan karakter saat ini.</value>
+  </data>
+  <data name="Calypso is already running. Stop it there before starting an Island routine." xml:space="preserve">
+    <value>Calypso sudah berjalan. Hentikan di Calypso sebelum memulai rutinitas pulau.</value>
+  </data>
+  <data name="Calypso is busy with other work; no request was sent." xml:space="preserve">
+    <value>Calypso sibuk dengan pekerjaan lain; tidak ada permintaan yang dikirim.</value>
+  </data>
+  <data name="Calypso is ready." xml:space="preserve">
+    <value>Calypso siap.</value>
+  </data>
+  <data name="Calypso is running." xml:space="preserve">
+    <value>Calypso sedang berjalan.</value>
+  </data>
+  <data name="Calypso is unavailable or incompatible." xml:space="preserve">
+    <value>Calypso tidak tersedia atau tidak kompatibel.</value>
+  </data>
+  <data name="Calypso rejected the task; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso menolak tugas; penyelesaian belum dikonfirmasi.</value>
+  </data>
+  <data name="Calypso returned an invalid Island cycle." xml:space="preserve">
+    <value>Calypso mengembalikan siklus pulau yang tidak valid.</value>
+  </data>
+  <data name="Calypso returned an unsupported task state." xml:space="preserve">
+    <value>Calypso mengembalikan status tugas yang tidak didukung.</value>
+  </data>
+  <data name="Calypso stop is unconfirmed; waiting for provider status." xml:space="preserve">
+    <value>Penghentian Calypso belum dikonfirmasi; menunggu status penyedia.</value>
+  </data>
+  <data name="Calypso stopped without a confirmed task result." xml:space="preserve">
+    <value>Calypso berhenti tanpa hasil tugas yang terkonfirmasi.</value>
+  </data>
+  <data name="Calypso task failed or its settings changed; completion is unconfirmed." xml:space="preserve">
+    <value>Tugas Calypso gagal atau pengaturannya berubah; penyelesaian belum dikonfirmasi.</value>
+  </data>
+  <data name="Capability" xml:space="preserve">
+    <value>Dukungan</value>
+  </data>
+  <data name="Character automation" xml:space="preserve">
+    <value>Otomatisasi karakter</value>
+  </data>
+  <data name="Chore" xml:space="preserve">
+    <value>Tugas</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>Terkonfirmasi</value>
+  </data>
+  <data name="Do not run Calypso separately while this routine is active." xml:space="preserve">
+    <value>Jangan jalankan Calypso secara terpisah selama rutinitas ini aktif.</value>
+  </data>
+  <data name="Enable Calypso with IPC 1 and status schema 1." xml:space="preserve">
+    <value>Aktifkan Calypso dengan IPC 1 dan skema status 1.</value>
+  </data>
+  <data name="Enter your island first. Calypso has no travel-only IPC." xml:space="preserve">
+    <value>Masuk ke pulau Anda terlebih dahulu. Calypso tidak memiliki IPC khusus perjalanan.</value>
+  </data>
+  <data name="Enter your island first. Island travel is unavailable." xml:space="preserve">
+    <value>Masuk ke pulau Anda terlebih dahulu. Perjalanan ke pulau tidak tersedia.</value>
+  </data>
+  <data name="Island chores · Activity provider: Calypso" xml:space="preserve">
+    <value>Tugas pulau · Penyedia aktivitas: Calypso</value>
+  </data>
+  <data name="Island routine" xml:space="preserve">
+    <value>Rutinitas pulau</value>
+  </data>
+  <data name="Island routine is manual only." xml:space="preserve">
+    <value>Rutinitas pulau hanya dapat dijalankan secara manual.</value>
+  </data>
+  <data name="Island routine not started." xml:space="preserve">
+    <value>Rutinitas pulau belum dimulai.</value>
+  </data>
+  <data name="Island routine stopped; unfinished chores remain unconfirmed." xml:space="preserve">
+    <value>Rutinitas pulau dihentikan; tugas yang belum selesai tetap belum dikonfirmasi.</value>
+  </data>
+  <data name="Island status, character or cycle changed; completion is unconfirmed." xml:space="preserve">
+    <value>Status pulau, karakter, atau siklus berubah; penyelesaian belum dikonfirmasi.</value>
+  </data>
+  <data name="Not confirmed" xml:space="preserve">
+    <value>Belum dikonfirmasi</value>
+  </data>
+  <data name="Planned only" xml:space="preserve">
+    <value>Hanya direncanakan</value>
+  </data>
+  <data name="Ready for selected supported Island chores." xml:space="preserve">
+    <value>Siap menjalankan tugas pulau yang dipilih dan didukung.</value>
+  </data>
+  <data name="Run and Stop use the active character only." xml:space="preserve">
+    <value>Jalankan dan Hentikan hanya berlaku untuk karakter aktif.</value>
+  </data>
+  <data name="Running selected Calypso task." xml:space="preserve">
+    <value>Menjalankan tugas Calypso yang dipilih.</value>
+  </data>
+  <data name="Select workshop agenda or exports. The other five chores are unavailable stubs." xml:space="preserve">
+    <value>Pilih agenda bengkel atau ekspor. Lima tugas lainnya masih berupa kerangka yang belum tersedia.</value>
+  </data>
+  <data name="Selected Calypso task is not ready; no request was sent." xml:space="preserve">
+    <value>Tugas Calypso yang dipilih belum siap; tidak ada permintaan yang dikirim.</value>
+  </data>
+  <data name="Selected Calypso task is unavailable, disabled or at its failure cap." xml:space="preserve">
+    <value>Tugas Calypso yang dipilih tidak tersedia, dinonaktifkan, atau telah mencapai batas kegagalan.</value>
+  </data>
+  <data name="Selected supported chores are confirmed for this Island cadence." xml:space="preserve">
+    <value>Tugas yang dipilih dan didukung telah dikonfirmasi untuk frekuensi kunjungan pulau ini.</value>
+  </data>
+  <data name="Selected supported chores confirmed. Unavailable chores were not run or credited." xml:space="preserve">
+    <value>Tugas yang dipilih dan didukung telah dikonfirmasi. Tugas yang tidak tersedia tidak dijalankan atau dihitung selesai.</value>
+  </data>
+  <data name="Starting supported Island chores." xml:space="preserve">
+    <value>Memulai tugas pulau yang didukung.</value>
+  </data>
+  <data name="Supported chores confirmed. Workshop agenda is planned only; it was not applied." xml:space="preserve">
+    <value>Tugas yang didukung telah dikonfirmasi. Agenda bengkel hanya direncanakan; belum diterapkan.</value>
+  </data>
+  <data name="The saved Island cadence is invalid." xml:space="preserve">
+    <value>Frekuensi kunjungan pulau yang tersimpan tidak valid.</value>
+  </data>
+  <data name="Travel unavailable" xml:space="preserve">
+    <value>Perjalanan tidak tersedia</value>
+  </data>
+  <data name="Workshop agenda and exports are supported. Other chores and island travel are unavailable." xml:space="preserve">
+    <value>Agenda bengkel dan ekspor didukung. Tugas lain dan perjalanan ke pulau tidak tersedia.</value>
+  </data>
+  <data name="No matching Island completion receipt." xml:space="preserve">
+    <value>Tidak ada bukti penyelesaian tugas pulau yang cocok.</value>
+  </data>
 </root>

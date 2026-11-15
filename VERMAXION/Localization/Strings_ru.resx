@@ -6332,4 +6332,163 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Мастер Crucible (все пять досок)</value></data>
   <data name="Highlight contrast" xml:space="preserve"><value>Контраст выделения</value></data>
   <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Делает элементы управления и состояния выбора более различимыми.</value></data>
+  <data name="{0}/2 supported chores selected." xml:space="preserve">
+    <value>Выбрано поддерживаемых задач: {0}/2.</value>
+  </data>
+  <data name="A selected Calypso task has reached its three-failure daily cap." xml:space="preserve">
+    <value>Выбранная задача Calypso достигла дневного лимита в три сбоя.</value>
+  </data>
+  <data name="A selected Island task is locked or switched off in Calypso." xml:space="preserve">
+    <value>Выбранная островная задача заблокирована или отключена в Calypso.</value>
+  </data>
+  <data name="A selected task is blocked in Calypso. Check its task details." xml:space="preserve">
+    <value>Выбранная задача заблокирована в Calypso. Проверьте её сведения.</value>
+  </data>
+  <data name="A selected task is disabled in Calypso." xml:space="preserve">
+    <value>Выбранная задача отключена в Calypso.</value>
+  </data>
+  <data name="Agenda cycle: {0} · Exports cycle: {1}" xml:space="preserve">
+    <value>Цикл плана: {0} · Цикл экспорта: {1}</value>
+  </data>
+  <data name="Already on island" xml:space="preserve">
+    <value>Уже на острове</value>
+  </data>
+  <data name="At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan." xml:space="preserve">
+    <value>При том же посещении мастерской проверьте спрос и подготовьте план по правилам Calypso. Режим Suggest только составляет план.</value>
+  </data>
+  <data name="Cadence follows Calypso's Island cycle. Manual Run can bypass cadence." xml:space="preserve">
+    <value>Частота следует островному циклу Calypso. Ручной запуск может обойти это ограничение.</value>
+  </data>
+  <data name="Calypso changed to other work; Island ownership was released." xml:space="preserve">
+    <value>Calypso переключился на другую работу; управление островной процедурой освобождено.</value>
+  </data>
+  <data name="Calypso does not expose a selected Island task." xml:space="preserve">
+    <value>Calypso не предоставляет выбранную островную задачу.</value>
+  </data>
+  <data name="Calypso has no matching current-character status." xml:space="preserve">
+    <value>В Calypso нет подходящего статуса текущего персонажа.</value>
+  </data>
+  <data name="Calypso is already running. Stop it there before starting an Island routine." xml:space="preserve">
+    <value>Calypso уже работает. Остановите его там перед запуском островной процедуры.</value>
+  </data>
+  <data name="Calypso is busy with other work; no request was sent." xml:space="preserve">
+    <value>Calypso занят другой работой; запрос не отправлен.</value>
+  </data>
+  <data name="Calypso is ready." xml:space="preserve">
+    <value>Calypso готов.</value>
+  </data>
+  <data name="Calypso is running." xml:space="preserve">
+    <value>Calypso работает.</value>
+  </data>
+  <data name="Calypso is unavailable or incompatible." xml:space="preserve">
+    <value>Calypso недоступен или несовместим.</value>
+  </data>
+  <data name="Calypso rejected the task; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso отклонил задачу; завершение не подтверждено.</value>
+  </data>
+  <data name="Calypso returned an invalid Island cycle." xml:space="preserve">
+    <value>Calypso вернул недопустимый островной цикл.</value>
+  </data>
+  <data name="Calypso returned an unsupported task state." xml:space="preserve">
+    <value>Calypso вернул неподдерживаемое состояние задачи.</value>
+  </data>
+  <data name="Calypso stop is unconfirmed; waiting for provider status." xml:space="preserve">
+    <value>Остановка Calypso не подтверждена; ожидание статуса поставщика.</value>
+  </data>
+  <data name="Calypso stopped without a confirmed task result." xml:space="preserve">
+    <value>Calypso остановился без подтверждённого результата задачи.</value>
+  </data>
+  <data name="Calypso task failed or its settings changed; completion is unconfirmed." xml:space="preserve">
+    <value>Задача Calypso завершилась сбоем или её настройки изменились; завершение не подтверждено.</value>
+  </data>
+  <data name="Capability" xml:space="preserve">
+    <value>Поддержка</value>
+  </data>
+  <data name="Character automation" xml:space="preserve">
+    <value>Автоматизация персонажа</value>
+  </data>
+  <data name="Chore" xml:space="preserve">
+    <value>Задача</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>Подтверждено</value>
+  </data>
+  <data name="Do not run Calypso separately while this routine is active." xml:space="preserve">
+    <value>Не запускайте Calypso отдельно, пока эта процедура активна.</value>
+  </data>
+  <data name="Enable Calypso with IPC 1 and status schema 1." xml:space="preserve">
+    <value>Включите Calypso с IPC 1 и схемой статуса 1.</value>
+  </data>
+  <data name="Enter your island first. Calypso has no travel-only IPC." xml:space="preserve">
+    <value>Сначала войдите на свой остров. У Calypso нет IPC только для перемещения.</value>
+  </data>
+  <data name="Enter your island first. Island travel is unavailable." xml:space="preserve">
+    <value>Сначала войдите на свой остров. Перемещение на остров недоступно.</value>
+  </data>
+  <data name="Island chores · Activity provider: Calypso" xml:space="preserve">
+    <value>Островные задачи · Поставщик активности: Calypso</value>
+  </data>
+  <data name="Island routine" xml:space="preserve">
+    <value>Островная процедура</value>
+  </data>
+  <data name="Island routine is manual only." xml:space="preserve">
+    <value>Островная процедура запускается только вручную.</value>
+  </data>
+  <data name="Island routine not started." xml:space="preserve">
+    <value>Островная процедура не запущена.</value>
+  </data>
+  <data name="Island routine stopped; unfinished chores remain unconfirmed." xml:space="preserve">
+    <value>Островная процедура остановлена; незавершённые задачи остаются неподтверждёнными.</value>
+  </data>
+  <data name="Island status, character or cycle changed; completion is unconfirmed." xml:space="preserve">
+    <value>Статус острова, персонаж или цикл изменились; завершение не подтверждено.</value>
+  </data>
+  <data name="Not confirmed" xml:space="preserve">
+    <value>Не подтверждено</value>
+  </data>
+  <data name="Planned only" xml:space="preserve">
+    <value>Только запланировано</value>
+  </data>
+  <data name="Ready for selected supported Island chores." xml:space="preserve">
+    <value>Всё готово к выбранным поддерживаемым островным задачам.</value>
+  </data>
+  <data name="Run and Stop use the active character only." xml:space="preserve">
+    <value>Запуск и Стоп действуют только для активного персонажа.</value>
+  </data>
+  <data name="Running selected Calypso task." xml:space="preserve">
+    <value>Выполняется выбранная задача Calypso.</value>
+  </data>
+  <data name="Select workshop agenda or exports. The other five chores are unavailable stubs." xml:space="preserve">
+    <value>Выберите план мастерской или экспорт. Остальные пять задач — недоступные заготовки.</value>
+  </data>
+  <data name="Selected Calypso task is not ready; no request was sent." xml:space="preserve">
+    <value>Выбранная задача Calypso не готова; запрос не отправлен.</value>
+  </data>
+  <data name="Selected Calypso task is unavailable, disabled or at its failure cap." xml:space="preserve">
+    <value>Выбранная задача Calypso недоступна, отключена или достигла лимита сбоев.</value>
+  </data>
+  <data name="Selected supported chores are confirmed for this Island cadence." xml:space="preserve">
+    <value>Выбранные поддерживаемые задачи подтверждены для этой частоты посещения острова.</value>
+  </data>
+  <data name="Selected supported chores confirmed. Unavailable chores were not run or credited." xml:space="preserve">
+    <value>Выбранные поддерживаемые задачи подтверждены. Недоступные задачи не выполнялись и не засчитывались.</value>
+  </data>
+  <data name="Starting supported Island chores." xml:space="preserve">
+    <value>Запуск поддерживаемых островных задач.</value>
+  </data>
+  <data name="Supported chores confirmed. Workshop agenda is planned only; it was not applied." xml:space="preserve">
+    <value>Поддерживаемые задачи подтверждены. План мастерской только составлен; он не применён.</value>
+  </data>
+  <data name="The saved Island cadence is invalid." xml:space="preserve">
+    <value>Сохранённая частота посещения острова недопустима.</value>
+  </data>
+  <data name="Travel unavailable" xml:space="preserve">
+    <value>Перемещение недоступно</value>
+  </data>
+  <data name="Workshop agenda and exports are supported. Other chores and island travel are unavailable." xml:space="preserve">
+    <value>План мастерской и экспорт поддерживаются. Другие задачи и перемещение на остров недоступны.</value>
+  </data>
+  <data name="No matching Island completion receipt." xml:space="preserve">
+    <value>Нет соответствующего подтверждения завершения островной задачи.</value>
+  </data>
 </root>

@@ -20,6 +20,8 @@ public sealed class IslandSanctuarySettings
 
     public IslandSanctuarySettings Clone() => (IslandSanctuarySettings)MemberwiseClone();
 
+    public static bool IsSupported(IslandChore chore) => chore is IslandChore.Agenda or IslandChore.Exports;
+
     public bool IsSelected(IslandChore chore) => chore switch
     {
         IslandChore.Income => Income, IslandChore.Agenda => Agenda,
@@ -49,9 +51,9 @@ public sealed record IslandRoutineStep(int Stage, IslandChore? Chore, string Lab
 {
     public static readonly IReadOnlyList<IslandRoutineStep> Route = Array.AsReadOnly<IslandRoutineStep>(
     [
-        new(1, null, "Visit island", "Required first. Island entry remains TBD.", "TBD"),
+        new(1, null, "Visit island", "Enter your island first. Island travel is unavailable.", "TBD"),
         new(2, IslandChore.Income, "Workshop income", "Collect earned cowries during the workshop visit.", "TBD"),
-        new(2, IslandChore.Agenda, "Workshop agenda", "At the same workshop stop, use Calypso's plan. Full-week coverage is TBD.", "Partial"),
+        new(2, IslandChore.Agenda, "Workshop agenda", "At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan.", "Partial"),
         new(3, IslandChore.Granary, "Granary mammets", "Collect expedition yields and send the mammets back out.", "TBD"),
         new(4, IslandChore.Exports, "Main building: sell excess stock", "Enter the main building and sell under Calypso's reserve rules.", "Existing"),
         new(5, IslandChore.Pasture, "Pasture care", "Collect leavings and care for the animals.", "TBD"),

@@ -30,6 +30,7 @@ public static class PostProcessTaskOrder
     public const string FashionReport = AutomationCatalog.FashionReport;
     public const string CustomDeliveries = AutomationCatalog.CustomDeliveries;
     public const string ChocoboStables = AutomationCatalog.ChocoboStables;
+    public const string IslandSanctuary = AutomationCatalog.IslandSanctuary;
     public const string ChocoboRacing = AutomationCatalog.ChocoboRacing;
     public const string Beastmaster = AutomationCatalog.Beastmaster;
     public const string BeastmasterWeekly = AutomationCatalog.BeastmasterWeekly;
@@ -59,6 +60,7 @@ public static class PostProcessTaskOrder
         RetainerEquipping,
         CustomDeliveries,
         ChocoboStables,
+        IslandSanctuary,
         Beastmaster,
         BeastmasterWeekly,
     ];
@@ -82,6 +84,7 @@ public static class PostProcessTaskOrder
         FashionReport,
         CustomDeliveries,
         ChocoboStables,
+        IslandSanctuary,
         ChocoboRacing,
         Beastmaster,
         BeastmasterWeekly,

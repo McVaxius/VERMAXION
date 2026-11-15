@@ -139,7 +139,7 @@ public static class AutomationCatalog
         new(NagYourMomRivalWings, nameof(CharacterConfig.EnableNagYourMomRivalWings), "Rival Wings route", AutomationCadence.Daily, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
         Engine(NagYourDad, nameof(CharacterConfig.EnableNagYourDad), "nag your dad", AutomationCadence.Scheduled),
         new(ReturnBeforeNag, nameof(CharacterConfig.EnableReturnBeforeNag), "Return before mom / dad", AutomationCadence.EveryRun, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.ChildOption),
-        new(IslandSanctuary, nameof(CharacterConfig.EnableIslandSanctuary), "Island Sanctuary", AutomationCadence.ConfigOnly, AutomationMaturity.Wip, PostProcessTaskPhase.AfterAR, AutomationOwner.ConfigOnlyWip),
+        Engine(IslandSanctuary, nameof(CharacterConfig.EnableIslandSanctuary), "Island Sanctuary", AutomationCadence.Scheduled, maturity: AutomationMaturity.Wip),
         new(EvercoldAdventurerActivity, nameof(CharacterConfig.EnableEvercoldAdventurerActivity), "Adventurer Activity (Evercold)", AutomationCadence.ConfigOnly, AutomationMaturity.Wip, PostProcessTaskPhase.AfterAR, AutomationOwner.ConfigOnlyWip),
         new(MiscCommands, nameof(CharacterConfig.EnableMiscCmd), "Misc Commands", AutomationCadence.EveryRun, AutomationMaturity.Stable, PostProcessTaskPhase.AfterAR, AutomationOwner.RunHook),
         Engine(LootGoblinMapGather, nameof(CharacterConfig.EnableLootGoblinMapGather), "LootGoblin Map Gather", AutomationCadence.Daily),

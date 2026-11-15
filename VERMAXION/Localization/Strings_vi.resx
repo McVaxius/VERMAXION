@@ -3480,4 +3480,163 @@ Phụ thuộc: {1}</value></data>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Bậc thầy Crucible (cả năm bàn)</value></data>
   <data name="Highlight contrast" xml:space="preserve"><value>Độ tương phản tô sáng</value></data>
   <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Giúp phân biệt rõ hơn các điều khiển và trạng thái được chọn.</value></data>
+  <data name="{0}/2 supported chores selected." xml:space="preserve">
+    <value>Đã chọn {0}/2 công việc được hỗ trợ.</value>
+  </data>
+  <data name="A selected Calypso task has reached its three-failure daily cap." xml:space="preserve">
+    <value>Một tác vụ Calypso đã chọn đã đạt giới hạn ba lần thất bại mỗi ngày.</value>
+  </data>
+  <data name="A selected Island task is locked or switched off in Calypso." xml:space="preserve">
+    <value>Một tác vụ đảo đã chọn bị khóa hoặc tắt trong Calypso.</value>
+  </data>
+  <data name="A selected task is blocked in Calypso. Check its task details." xml:space="preserve">
+    <value>Một tác vụ đã chọn bị chặn trong Calypso. Hãy kiểm tra chi tiết tác vụ.</value>
+  </data>
+  <data name="A selected task is disabled in Calypso." xml:space="preserve">
+    <value>Một tác vụ đã chọn bị tắt trong Calypso.</value>
+  </data>
+  <data name="Agenda cycle: {0} · Exports cycle: {1}" xml:space="preserve">
+    <value>Chu kỳ lịch xưởng: {0} · Chu kỳ xuất khẩu: {1}</value>
+  </data>
+  <data name="Already on island" xml:space="preserve">
+    <value>Đã ở trên đảo</value>
+  </data>
+  <data name="At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan." xml:space="preserve">
+    <value>Trong cùng lần ghé xưởng, đọc nhu cầu và chuẩn bị lịch sản xuất theo quy tắc Calypso. Chế độ Suggest chỉ lập kế hoạch.</value>
+  </data>
+  <data name="Cadence follows Calypso's Island cycle. Manual Run can bypass cadence." xml:space="preserve">
+    <value>Tần suất theo chu kỳ đảo của Calypso. Chạy thủ công có thể bỏ qua tần suất này.</value>
+  </data>
+  <data name="Calypso changed to other work; Island ownership was released." xml:space="preserve">
+    <value>Calypso đã chuyển sang việc khác; quyền điều khiển quy trình đảo đã được nhả.</value>
+  </data>
+  <data name="Calypso does not expose a selected Island task." xml:space="preserve">
+    <value>Calypso không cung cấp một tác vụ đảo đã chọn.</value>
+  </data>
+  <data name="Calypso has no matching current-character status." xml:space="preserve">
+    <value>Calypso không có trạng thái khớp với nhân vật hiện tại.</value>
+  </data>
+  <data name="Calypso is already running. Stop it there before starting an Island routine." xml:space="preserve">
+    <value>Calypso đang chạy. Hãy dừng trong Calypso trước khi bắt đầu quy trình đảo.</value>
+  </data>
+  <data name="Calypso is busy with other work; no request was sent." xml:space="preserve">
+    <value>Calypso đang bận việc khác; chưa gửi yêu cầu nào.</value>
+  </data>
+  <data name="Calypso is ready." xml:space="preserve">
+    <value>Calypso đã sẵn sàng.</value>
+  </data>
+  <data name="Calypso is running." xml:space="preserve">
+    <value>Calypso đang chạy.</value>
+  </data>
+  <data name="Calypso is unavailable or incompatible." xml:space="preserve">
+    <value>Calypso không khả dụng hoặc không tương thích.</value>
+  </data>
+  <data name="Calypso rejected the task; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso từ chối tác vụ; chưa xác nhận hoàn tất.</value>
+  </data>
+  <data name="Calypso returned an invalid Island cycle." xml:space="preserve">
+    <value>Calypso trả về chu kỳ đảo không hợp lệ.</value>
+  </data>
+  <data name="Calypso returned an unsupported task state." xml:space="preserve">
+    <value>Calypso trả về trạng thái tác vụ không được hỗ trợ.</value>
+  </data>
+  <data name="Calypso stop is unconfirmed; waiting for provider status." xml:space="preserve">
+    <value>Chưa xác nhận Calypso đã dừng; đang chờ trạng thái từ bên cung cấp.</value>
+  </data>
+  <data name="Calypso stopped without a confirmed task result." xml:space="preserve">
+    <value>Calypso đã dừng mà không có kết quả tác vụ được xác nhận.</value>
+  </data>
+  <data name="Calypso task failed or its settings changed; completion is unconfirmed." xml:space="preserve">
+    <value>Tác vụ Calypso thất bại hoặc cài đặt đã thay đổi; chưa xác nhận hoàn tất.</value>
+  </data>
+  <data name="Capability" xml:space="preserve">
+    <value>Mức hỗ trợ</value>
+  </data>
+  <data name="Character automation" xml:space="preserve">
+    <value>Tự động hóa nhân vật</value>
+  </data>
+  <data name="Chore" xml:space="preserve">
+    <value>Công việc</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>Đã xác nhận</value>
+  </data>
+  <data name="Do not run Calypso separately while this routine is active." xml:space="preserve">
+    <value>Không chạy Calypso riêng khi quy trình này đang hoạt động.</value>
+  </data>
+  <data name="Enable Calypso with IPC 1 and status schema 1." xml:space="preserve">
+    <value>Bật Calypso với IPC 1 và lược đồ trạng thái 1.</value>
+  </data>
+  <data name="Enter your island first. Calypso has no travel-only IPC." xml:space="preserve">
+    <value>Hãy vào đảo của bạn trước. Calypso không có IPC chỉ dành cho di chuyển.</value>
+  </data>
+  <data name="Enter your island first. Island travel is unavailable." xml:space="preserve">
+    <value>Hãy vào đảo của bạn trước. Chưa hỗ trợ di chuyển đến đảo.</value>
+  </data>
+  <data name="Island chores · Activity provider: Calypso" xml:space="preserve">
+    <value>Công việc trên đảo · Bên cung cấp hoạt động: Calypso</value>
+  </data>
+  <data name="Island routine" xml:space="preserve">
+    <value>Quy trình đảo</value>
+  </data>
+  <data name="Island routine is manual only." xml:space="preserve">
+    <value>Quy trình đảo chỉ chạy thủ công.</value>
+  </data>
+  <data name="Island routine not started." xml:space="preserve">
+    <value>Chưa bắt đầu quy trình đảo.</value>
+  </data>
+  <data name="Island routine stopped; unfinished chores remain unconfirmed." xml:space="preserve">
+    <value>Đã dừng quy trình đảo; công việc chưa xong vẫn chưa được xác nhận.</value>
+  </data>
+  <data name="Island status, character or cycle changed; completion is unconfirmed." xml:space="preserve">
+    <value>Trạng thái đảo, nhân vật hoặc chu kỳ đã thay đổi; chưa xác nhận hoàn tất.</value>
+  </data>
+  <data name="Not confirmed" xml:space="preserve">
+    <value>Chưa xác nhận</value>
+  </data>
+  <data name="Planned only" xml:space="preserve">
+    <value>Chỉ lập kế hoạch</value>
+  </data>
+  <data name="Ready for selected supported Island chores." xml:space="preserve">
+    <value>Sẵn sàng thực hiện các công việc đảo đã chọn và được hỗ trợ.</value>
+  </data>
+  <data name="Run and Stop use the active character only." xml:space="preserve">
+    <value>Chạy và Dừng chỉ áp dụng cho nhân vật đang hoạt động.</value>
+  </data>
+  <data name="Running selected Calypso task." xml:space="preserve">
+    <value>Đang chạy tác vụ Calypso đã chọn.</value>
+  </data>
+  <data name="Select workshop agenda or exports. The other five chores are unavailable stubs." xml:space="preserve">
+    <value>Chọn lịch sản xuất xưởng hoặc xuất khẩu. Năm công việc còn lại mới là khung chưa triển khai nên chưa khả dụng.</value>
+  </data>
+  <data name="Selected Calypso task is not ready; no request was sent." xml:space="preserve">
+    <value>Tác vụ Calypso đã chọn chưa sẵn sàng; chưa gửi yêu cầu nào.</value>
+  </data>
+  <data name="Selected Calypso task is unavailable, disabled or at its failure cap." xml:space="preserve">
+    <value>Tác vụ Calypso đã chọn không khả dụng, bị tắt hoặc đã đạt giới hạn thất bại.</value>
+  </data>
+  <data name="Selected supported chores are confirmed for this Island cadence." xml:space="preserve">
+    <value>Các công việc đã chọn và được hỗ trợ đã được xác nhận cho tần suất ghé đảo này.</value>
+  </data>
+  <data name="Selected supported chores confirmed. Unavailable chores were not run or credited." xml:space="preserve">
+    <value>Đã xác nhận các công việc đã chọn và được hỗ trợ. Công việc không khả dụng không được chạy hay tính là hoàn tất.</value>
+  </data>
+  <data name="Starting supported Island chores." xml:space="preserve">
+    <value>Đang bắt đầu các công việc đảo được hỗ trợ.</value>
+  </data>
+  <data name="Supported chores confirmed. Workshop agenda is planned only; it was not applied." xml:space="preserve">
+    <value>Đã xác nhận các công việc được hỗ trợ. Lịch sản xuất xưởng chỉ được lập kế hoạch, chưa được áp dụng.</value>
+  </data>
+  <data name="The saved Island cadence is invalid." xml:space="preserve">
+    <value>Tần suất ghé đảo đã lưu không hợp lệ.</value>
+  </data>
+  <data name="Travel unavailable" xml:space="preserve">
+    <value>Chưa hỗ trợ di chuyển</value>
+  </data>
+  <data name="Workshop agenda and exports are supported. Other chores and island travel are unavailable." xml:space="preserve">
+    <value>Hỗ trợ lịch sản xuất xưởng và xuất khẩu. Chưa hỗ trợ các công việc khác và di chuyển đến đảo.</value>
+  </data>
+  <data name="No matching Island completion receipt." xml:space="preserve">
+    <value>Không có xác nhận hoàn thành công việc trên đảo tương ứng.</value>
+  </data>
 </root>

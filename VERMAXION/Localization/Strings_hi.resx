@@ -2801,4 +2801,163 @@
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible मास्टर (सभी पाँच बोर्ड)</value></data>
   <data name="Highlight contrast" xml:space="preserve"><value>हाइलाइट कंट्रास्ट</value></data>
   <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>नियंत्रणों और चयन स्थितियों को अधिक स्पष्ट बनाता है।</value></data>
+  <data name="{0}/2 supported chores selected." xml:space="preserve">
+    <value>{0}/2 समर्थित काम चुने गए।</value>
+  </data>
+  <data name="A selected Calypso task has reached its three-failure daily cap." xml:space="preserve">
+    <value>चुना गया एक Calypso कार्य प्रतिदिन तीन विफलताओं की सीमा तक पहुँच गया है।</value>
+  </data>
+  <data name="A selected Island task is locked or switched off in Calypso." xml:space="preserve">
+    <value>चुना गया एक द्वीप कार्य Calypso में लॉक या बंद है।</value>
+  </data>
+  <data name="A selected task is blocked in Calypso. Check its task details." xml:space="preserve">
+    <value>चुना गया एक कार्य Calypso में अवरुद्ध है। उसका विवरण देखें।</value>
+  </data>
+  <data name="A selected task is disabled in Calypso." xml:space="preserve">
+    <value>चुना गया एक कार्य Calypso में अक्षम है।</value>
+  </data>
+  <data name="Agenda cycle: {0} · Exports cycle: {1}" xml:space="preserve">
+    <value>कार्यसूची चक्र: {0} · निर्यात चक्र: {1}</value>
+  </data>
+  <data name="Already on island" xml:space="preserve">
+    <value>पहले से द्वीप पर</value>
+  </data>
+  <data name="At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan." xml:space="preserve">
+    <value>कार्यशाला के उसी भ्रमण में माँग पढ़ें और Calypso के नियमों के अनुसार कार्यसूची तैयार करें। Suggest मोड केवल योजना तैयार करता है।</value>
+  </data>
+  <data name="Cadence follows Calypso's Island cycle. Manual Run can bypass cadence." xml:space="preserve">
+    <value>भ्रमण आवृत्ति Calypso के द्वीप चक्र के अनुसार है। मैनुअल रूप से चलाने पर इस आवृत्ति को अनदेखा किया जा सकता है।</value>
+  </data>
+  <data name="Calypso changed to other work; Island ownership was released." xml:space="preserve">
+    <value>Calypso दूसरे काम पर चला गया; द्वीप दिनचर्या का नियंत्रण छोड़ दिया गया।</value>
+  </data>
+  <data name="Calypso does not expose a selected Island task." xml:space="preserve">
+    <value>Calypso चुना गया एक द्वीप कार्य उपलब्ध नहीं कराता।</value>
+  </data>
+  <data name="Calypso has no matching current-character status." xml:space="preserve">
+    <value>Calypso में वर्तमान पात्र से मेल खाती स्थिति नहीं है।</value>
+  </data>
+  <data name="Calypso is already running. Stop it there before starting an Island routine." xml:space="preserve">
+    <value>Calypso पहले से चल रहा है। द्वीप दिनचर्या शुरू करने से पहले उसे Calypso में रोकें।</value>
+  </data>
+  <data name="Calypso is busy with other work; no request was sent." xml:space="preserve">
+    <value>Calypso दूसरे काम में व्यस्त है; कोई अनुरोध नहीं भेजा गया।</value>
+  </data>
+  <data name="Calypso is ready." xml:space="preserve">
+    <value>Calypso तैयार है।</value>
+  </data>
+  <data name="Calypso is running." xml:space="preserve">
+    <value>Calypso चल रहा है।</value>
+  </data>
+  <data name="Calypso is unavailable or incompatible." xml:space="preserve">
+    <value>Calypso अनुपलब्ध या असंगत है।</value>
+  </data>
+  <data name="Calypso rejected the task; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso ने कार्य अस्वीकार कर दिया; पूरा होने की पुष्टि नहीं हुई।</value>
+  </data>
+  <data name="Calypso returned an invalid Island cycle." xml:space="preserve">
+    <value>Calypso ने अमान्य द्वीप चक्र लौटाया।</value>
+  </data>
+  <data name="Calypso returned an unsupported task state." xml:space="preserve">
+    <value>Calypso ने असमर्थित कार्य स्थिति लौटाई।</value>
+  </data>
+  <data name="Calypso stop is unconfirmed; waiting for provider status." xml:space="preserve">
+    <value>Calypso के रुकने की पुष्टि नहीं हुई; प्रदाता की स्थिति की प्रतीक्षा है।</value>
+  </data>
+  <data name="Calypso stopped without a confirmed task result." xml:space="preserve">
+    <value>Calypso बिना पुष्ट कार्य परिणाम के रुक गया।</value>
+  </data>
+  <data name="Calypso task failed or its settings changed; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso कार्य विफल हुआ या उसकी सेटिंग बदली गई; पूरा होने की पुष्टि नहीं हुई।</value>
+  </data>
+  <data name="Capability" xml:space="preserve">
+    <value>समर्थन</value>
+  </data>
+  <data name="Character automation" xml:space="preserve">
+    <value>पात्र स्वचालन</value>
+  </data>
+  <data name="Chore" xml:space="preserve">
+    <value>काम</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>पुष्ट</value>
+  </data>
+  <data name="Do not run Calypso separately while this routine is active." xml:space="preserve">
+    <value>इस दिनचर्या के सक्रिय रहते Calypso को अलग से न चलाएँ।</value>
+  </data>
+  <data name="Enable Calypso with IPC 1 and status schema 1." xml:space="preserve">
+    <value>IPC 1 और स्थिति स्कीमा 1 वाला Calypso सक्षम करें।</value>
+  </data>
+  <data name="Enter your island first. Calypso has no travel-only IPC." xml:space="preserve">
+    <value>पहले अपने द्वीप में प्रवेश करें। Calypso में केवल यात्रा के लिए IPC नहीं है।</value>
+  </data>
+  <data name="Enter your island first. Island travel is unavailable." xml:space="preserve">
+    <value>पहले अपने द्वीप में प्रवेश करें। द्वीप की यात्रा उपलब्ध नहीं है।</value>
+  </data>
+  <data name="Island chores · Activity provider: Calypso" xml:space="preserve">
+    <value>द्वीप के काम · गतिविधि प्रदाता: Calypso</value>
+  </data>
+  <data name="Island routine" xml:space="preserve">
+    <value>द्वीप दिनचर्या</value>
+  </data>
+  <data name="Island routine is manual only." xml:space="preserve">
+    <value>द्वीप दिनचर्या केवल मैनुअल रूप से चलाई जा सकती है।</value>
+  </data>
+  <data name="Island routine not started." xml:space="preserve">
+    <value>द्वीप दिनचर्या शुरू नहीं हुई है।</value>
+  </data>
+  <data name="Island routine stopped; unfinished chores remain unconfirmed." xml:space="preserve">
+    <value>द्वीप दिनचर्या रोक दी गई; अधूरे काम अपुष्ट बने रहेंगे।</value>
+  </data>
+  <data name="Island status, character or cycle changed; completion is unconfirmed." xml:space="preserve">
+    <value>द्वीप की स्थिति, पात्र या चक्र बदल गया; पूरा होने की पुष्टि नहीं हुई।</value>
+  </data>
+  <data name="Not confirmed" xml:space="preserve">
+    <value>अपुष्ट</value>
+  </data>
+  <data name="Planned only" xml:space="preserve">
+    <value>केवल योजना बनी</value>
+  </data>
+  <data name="Ready for selected supported Island chores." xml:space="preserve">
+    <value>चुने गए समर्थित द्वीप के कामों के लिए तैयार।</value>
+  </data>
+  <data name="Run and Stop use the active character only." xml:space="preserve">
+    <value>चलाएँ और रोकें केवल सक्रिय पात्र पर लागू होते हैं।</value>
+  </data>
+  <data name="Running selected Calypso task." xml:space="preserve">
+    <value>चुना गया Calypso कार्य चल रहा है।</value>
+  </data>
+  <data name="Select workshop agenda or exports. The other five chores are unavailable stubs." xml:space="preserve">
+    <value>कार्यशाला कार्यसूची या निर्यात चुनें। बाकी पाँच काम अभी लागू नहीं हुए हैं और उपलब्ध नहीं हैं।</value>
+  </data>
+  <data name="Selected Calypso task is not ready; no request was sent." xml:space="preserve">
+    <value>चुना गया Calypso कार्य तैयार नहीं है; कोई अनुरोध नहीं भेजा गया।</value>
+  </data>
+  <data name="Selected Calypso task is unavailable, disabled or at its failure cap." xml:space="preserve">
+    <value>चुना गया Calypso कार्य अनुपलब्ध, अक्षम या विफलता सीमा पर है।</value>
+  </data>
+  <data name="Selected supported chores are confirmed for this Island cadence." xml:space="preserve">
+    <value>चुने गए समर्थित काम इस द्वीप भ्रमण आवृत्ति के लिए पुष्ट हैं।</value>
+  </data>
+  <data name="Selected supported chores confirmed. Unavailable chores were not run or credited." xml:space="preserve">
+    <value>चुने गए समर्थित काम पुष्ट हैं। अनुपलब्ध काम न चलाए गए, न पूरे माने गए।</value>
+  </data>
+  <data name="Starting supported Island chores." xml:space="preserve">
+    <value>समर्थित द्वीप के काम शुरू हो रहे हैं।</value>
+  </data>
+  <data name="Supported chores confirmed. Workshop agenda is planned only; it was not applied." xml:space="preserve">
+    <value>समर्थित काम पुष्ट हैं। कार्यशाला कार्यसूची की केवल योजना बनी है; उसे लागू नहीं किया गया।</value>
+  </data>
+  <data name="The saved Island cadence is invalid." xml:space="preserve">
+    <value>सहेजी गई द्वीप भ्रमण आवृत्ति अमान्य है।</value>
+  </data>
+  <data name="Travel unavailable" xml:space="preserve">
+    <value>यात्रा अनुपलब्ध</value>
+  </data>
+  <data name="Workshop agenda and exports are supported. Other chores and island travel are unavailable." xml:space="preserve">
+    <value>कार्यशाला कार्यसूची और निर्यात समर्थित हैं। दूसरे काम और द्वीप की यात्रा उपलब्ध नहीं हैं।</value>
+  </data>
+  <data name="No matching Island completion receipt." xml:space="preserve">
+    <value>द्वीप के कार्य के पूरा होने की कोई मेल खाती पुष्टि नहीं है।</value>
+  </data>
 </root>

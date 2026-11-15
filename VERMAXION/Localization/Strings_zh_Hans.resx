@@ -5976,4 +5976,163 @@ Krakka Root：{2}；Magicked Stable Broom：{3}；Thavnairian Onion：{4}</value
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible大师（全部五个棋盘）</value></data>
   <data name="Highlight contrast" xml:space="preserve"><value>高亮对比度</value></data>
   <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>让控件与选中状态更容易区分。</value></data>
+  <data name="{0}/2 supported chores selected." xml:space="preserve">
+    <value>已选择{0}/2项受支持事务。</value>
+  </data>
+  <data name="A selected Calypso task has reached its three-failure daily cap." xml:space="preserve">
+    <value>所选Calypso任务已达到每日失败3次的上限。</value>
+  </data>
+  <data name="A selected Island task is locked or switched off in Calypso." xml:space="preserve">
+    <value>所选无人岛任务在Calypso中已锁定或关闭。</value>
+  </data>
+  <data name="A selected task is blocked in Calypso. Check its task details." xml:space="preserve">
+    <value>所选任务在Calypso中被阻止。请查看任务详情。</value>
+  </data>
+  <data name="A selected task is disabled in Calypso." xml:space="preserve">
+    <value>所选任务在Calypso中已禁用。</value>
+  </data>
+  <data name="Agenda cycle: {0} · Exports cycle: {1}" xml:space="preserve">
+    <value>日程周期：{0} · 出口周期：{1}</value>
+  </data>
+  <data name="Already on island" xml:space="preserve">
+    <value>已在无人岛上</value>
+  </data>
+  <data name="At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan." xml:space="preserve">
+    <value>在同一次工房访问中查看需求，并按Calypso策略准备日程。Suggest模式只制定计划。</value>
+  </data>
+  <data name="Cadence follows Calypso's Island cycle. Manual Run can bypass cadence." xml:space="preserve">
+    <value>访问频率遵循Calypso的无人岛周期。手动运行可忽略此频率。</value>
+  </data>
+  <data name="Calypso changed to other work; Island ownership was released." xml:space="preserve">
+    <value>Calypso已切换到其他工作；已释放无人岛例程的控制权。</value>
+  </data>
+  <data name="Calypso does not expose a selected Island task." xml:space="preserve">
+    <value>Calypso未提供某个所选无人岛任务。</value>
+  </data>
+  <data name="Calypso has no matching current-character status." xml:space="preserve">
+    <value>Calypso没有与当前角色匹配的状态。</value>
+  </data>
+  <data name="Calypso is already running. Stop it there before starting an Island routine." xml:space="preserve">
+    <value>Calypso已在运行。启动无人岛例程前，请先在Calypso中停止。</value>
+  </data>
+  <data name="Calypso is busy with other work; no request was sent." xml:space="preserve">
+    <value>Calypso正忙于其他工作；未发送请求。</value>
+  </data>
+  <data name="Calypso is ready." xml:space="preserve">
+    <value>Calypso已就绪。</value>
+  </data>
+  <data name="Calypso is running." xml:space="preserve">
+    <value>Calypso正在运行。</value>
+  </data>
+  <data name="Calypso is unavailable or incompatible." xml:space="preserve">
+    <value>Calypso不可用或不兼容。</value>
+  </data>
+  <data name="Calypso rejected the task; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso拒绝了任务；完成情况未确认。</value>
+  </data>
+  <data name="Calypso returned an invalid Island cycle." xml:space="preserve">
+    <value>Calypso返回了无效的无人岛周期。</value>
+  </data>
+  <data name="Calypso returned an unsupported task state." xml:space="preserve">
+    <value>Calypso返回了不支持的任务状态。</value>
+  </data>
+  <data name="Calypso stop is unconfirmed; waiting for provider status." xml:space="preserve">
+    <value>尚未确认Calypso已停止；正在等待提供方状态。</value>
+  </data>
+  <data name="Calypso stopped without a confirmed task result." xml:space="preserve">
+    <value>Calypso已停止，但没有已确认的任务结果。</value>
+  </data>
+  <data name="Calypso task failed or its settings changed; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso任务失败或设置已更改；完成情况未确认。</value>
+  </data>
+  <data name="Capability" xml:space="preserve">
+    <value>支持情况</value>
+  </data>
+  <data name="Character automation" xml:space="preserve">
+    <value>角色自动化</value>
+  </data>
+  <data name="Chore" xml:space="preserve">
+    <value>事务</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>已确认</value>
+  </data>
+  <data name="Do not run Calypso separately while this routine is active." xml:space="preserve">
+    <value>此例程运行期间，请勿单独运行Calypso。</value>
+  </data>
+  <data name="Enable Calypso with IPC 1 and status schema 1." xml:space="preserve">
+    <value>请启用支持IPC 1和状态架构1的Calypso。</value>
+  </data>
+  <data name="Enter your island first. Calypso has no travel-only IPC." xml:space="preserve">
+    <value>请先进入自己的无人岛。Calypso没有仅用于移动的IPC。</value>
+  </data>
+  <data name="Enter your island first. Island travel is unavailable." xml:space="preserve">
+    <value>请先进入自己的无人岛。暂不支持前往无人岛。</value>
+  </data>
+  <data name="Island chores · Activity provider: Calypso" xml:space="preserve">
+    <value>无人岛事务 · 活动提供方：Calypso</value>
+  </data>
+  <data name="Island routine" xml:space="preserve">
+    <value>无人岛例程</value>
+  </data>
+  <data name="Island routine is manual only." xml:space="preserve">
+    <value>无人岛例程仅限手动运行。</value>
+  </data>
+  <data name="Island routine not started." xml:space="preserve">
+    <value>无人岛例程尚未启动。</value>
+  </data>
+  <data name="Island routine stopped; unfinished chores remain unconfirmed." xml:space="preserve">
+    <value>无人岛例程已停止；未完成的事务仍未确认。</value>
+  </data>
+  <data name="Island status, character or cycle changed; completion is unconfirmed." xml:space="preserve">
+    <value>无人岛状态、角色或周期已更改；完成情况未确认。</value>
+  </data>
+  <data name="Not confirmed" xml:space="preserve">
+    <value>未确认</value>
+  </data>
+  <data name="Planned only" xml:space="preserve">
+    <value>仅规划</value>
+  </data>
+  <data name="Ready for selected supported Island chores." xml:space="preserve">
+    <value>已准备好执行所选受支持的无人岛事务。</value>
+  </data>
+  <data name="Run and Stop use the active character only." xml:space="preserve">
+    <value>运行和停止仅适用于当前角色。</value>
+  </data>
+  <data name="Running selected Calypso task." xml:space="preserve">
+    <value>正在运行所选Calypso任务。</value>
+  </data>
+  <data name="Select workshop agenda or exports. The other five chores are unavailable stubs." xml:space="preserve">
+    <value>请选择工房日程或出口。其他五项事务尚未实现，暂不可用。</value>
+  </data>
+  <data name="Selected Calypso task is not ready; no request was sent." xml:space="preserve">
+    <value>所选Calypso任务尚未就绪；未发送请求。</value>
+  </data>
+  <data name="Selected Calypso task is unavailable, disabled or at its failure cap." xml:space="preserve">
+    <value>所选Calypso任务不可用、已禁用或已达到失败上限。</value>
+  </data>
+  <data name="Selected supported chores are confirmed for this Island cadence." xml:space="preserve">
+    <value>所选受支持事务在此无人岛访问频率下已确认。</value>
+  </data>
+  <data name="Selected supported chores confirmed. Unavailable chores were not run or credited." xml:space="preserve">
+    <value>所选受支持事务已确认。未支持的事务未执行，也未计为完成。</value>
+  </data>
+  <data name="Starting supported Island chores." xml:space="preserve">
+    <value>正在启动受支持的无人岛事务。</value>
+  </data>
+  <data name="Supported chores confirmed. Workshop agenda is planned only; it was not applied." xml:space="preserve">
+    <value>支持的事务已确认。工房日程仅作了规划，尚未应用。</value>
+  </data>
+  <data name="The saved Island cadence is invalid." xml:space="preserve">
+    <value>保存的无人岛访问频率无效。</value>
+  </data>
+  <data name="Travel unavailable" xml:space="preserve">
+    <value>移动不可用</value>
+  </data>
+  <data name="Workshop agenda and exports are supported. Other chores and island travel are unavailable." xml:space="preserve">
+    <value>支持工房日程和出口。其他事务及前往无人岛的移动暂不可用。</value>
+  </data>
+  <data name="No matching Island completion receipt." xml:space="preserve">
+    <value>没有匹配的无人岛任务完成记录。</value>
+  </data>
 </root>

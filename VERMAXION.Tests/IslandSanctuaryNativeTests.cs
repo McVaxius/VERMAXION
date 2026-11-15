@@ -32,7 +32,7 @@ public sealed unsafe class IslandSanctuaryNativeTests
     [InlineData(true, 1060, true)]
     [InlineData(false, 520, true)]
     [InlineData(true, 520, true)]
-    public void ActualNativeViewsKeepSettingsEditableAndExecutionDisabled(bool compact, int width, bool lcars)
+    public void ActualNativeViewsKeepSettingsEditableAndUnboundExecutionDisabled(bool compact, int width, bool lcars)
     {
         var context = ImGui.CreateContext();
         var textType = Production.GetType("VERMAXION.UiText", true)!;
@@ -72,10 +72,10 @@ public sealed unsafe class IslandSanctuaryNativeTests
                     ImGui.PushID("IslandSettingsCards"); ImGui.PushID("IslandCharacter");
                     enableId = ImGui.GetID("Enable Island routine");
                     ImGui.PopID(); ImGui.PopID();
-                    view.GetMethod("DrawProviderStatus", Static)!.Invoke(null, null);
-                    if (run) view.GetMethod("DrawRun", Static)!.Invoke(null, [config]);
+                    view.GetMethod("DrawProviderStatus", Static)!.Invoke(null, [null]);
+                    if (run) view.GetMethod("DrawRun", Static)!.Invoke(null, [config, null]);
                     else changed = (bool)settings.Invoke(null, [config])!;
-                    view.GetMethod("DrawActions", Static)!.Invoke(null, null);
+                    view.GetMethod("DrawActions", Static)!.Invoke(null, [null, false]);
                     var bounds = ImGuiP.GetCurrentWindow().InnerRect;
                     Assert.True(ImGuiP.GetCurrentWindow().ContentSize.X <= bounds.Max.X - bounds.Min.X + 1,
                         "Native Island content must fit the visible width.");
@@ -253,8 +253,11 @@ public sealed unsafe class IslandSanctuaryNativeTests
             Assert.Equal(picker with { Mode = MaterialColorMode.Lcars }, configuration.UiColors);
             Assert.True(configuration.UiLcarsSoundsMuted);
             Assert.Equal(original, main.TitleBarButtons.Take(original.Length));
-            Assert.Equal(original.Length + 4, main.TitleBarButtons.Count);
-            Assert.Equal(6, utility.TitleBarButtons.Count);
+            // Existing styling and movement-lock controls remain beside appearance and sound actions.
+            Assert.Equal(original.Length + 6, main.TitleBarButtons.Count);
+            Assert.Equal(8, utility.TitleBarButtons.Count);
+            Assert.Contains(main.TitleBarButtons, button => button.Icon == host::Dalamud.Interface.FontAwesomeIcon.Moon);
+            Assert.Contains(main.TitleBarButtons, button => button.Icon == host::Dalamud.Interface.FontAwesomeIcon.Lock);
             var speaker = main.TitleBarButtons.Single(button => button.Icon == host::Dalamud.Interface.FontAwesomeIcon.VolumeMute);
             feedback.Clear(); Click("Preview sound"); Assert.Empty(feedback);
             speaker.Click(host::Dalamud.Bindings.ImGui.ImGuiMouseButton.Right);
@@ -270,8 +273,8 @@ public sealed unsafe class IslandSanctuaryNativeTests
             Assert.Equal(4, saves);
             Assert.Equal(picker with { Mode = MaterialColorMode.Auto }, configuration.UiColors);
             Assert.DoesNotContain(speaker, main.TitleBarButtons);
-            Assert.Equal(original.Length + 3, main.TitleBarButtons.Count);
-            Assert.Equal(5, utility.TitleBarButtons.Count);
+            Assert.Equal(original.Length + 5, main.TitleBarButtons.Count);
+            Assert.Equal(7, utility.TitleBarButtons.Count);
             drawQuick = true; Frame(); Frame();
             Click("LCARS"); Frame();
             Assert.Equal(picker with { Mode = MaterialColorMode.Lcars }, configuration.UiColors);

@@ -61,6 +61,8 @@ public class CharacterConfig
     public string ReturnBeforeNagCommand { get; set; } = "/li fc";
     public bool EnableIslandSanctuary { get; set; }
     public IslandSanctuarySettings IslandSanctuary { get; set; } = new();
+    public string IslandAgendaConfirmedCycle { get; set; } = "";
+    public string IslandExportsConfirmedCycle { get; set; } = "";
     public bool EnableEvercoldAdventurerActivity { get; set; } = false;
     public bool EnableMiscCmd { get; set; } = true;
     public bool EnableLootGoblinMapGather { get; set; } = false;
@@ -450,6 +452,8 @@ public class CharacterConfig
             ReturnBeforeNagCommand = ReturnBeforeNagCommand,
             EnableIslandSanctuary = EnableIslandSanctuary,
             IslandSanctuary = IslandSanctuary.Clone(),
+            IslandAgendaConfirmedCycle = IslandAgendaConfirmedCycle,
+            IslandExportsConfirmedCycle = IslandExportsConfirmedCycle,
             EnableEvercoldAdventurerActivity = EnableEvercoldAdventurerActivity,
             EnableMiscCmd = EnableMiscCmd,
             EnableLootGoblinMapGather = EnableLootGoblinMapGather,

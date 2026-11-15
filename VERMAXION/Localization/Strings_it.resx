@@ -6332,4 +6332,163 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Maestro del Crucible (tutti e cinque i tabelloni)</value></data>
   <data name="Highlight contrast" xml:space="preserve"><value>Contrasto delle evidenziazioni</value></data>
   <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>Rende più distinti i controlli e gli stati di selezione.</value></data>
+  <data name="{0}/2 supported chores selected." xml:space="preserve">
+    <value>{0}/2 attività supportate selezionate.</value>
+  </data>
+  <data name="A selected Calypso task has reached its three-failure daily cap." xml:space="preserve">
+    <value>Un'attività Calypso selezionata ha raggiunto il limite giornaliero di tre errori.</value>
+  </data>
+  <data name="A selected Island task is locked or switched off in Calypso." xml:space="preserve">
+    <value>Un'attività dell'isola selezionata è bloccata o disattivata in Calypso.</value>
+  </data>
+  <data name="A selected task is blocked in Calypso. Check its task details." xml:space="preserve">
+    <value>Un'attività selezionata è bloccata in Calypso. Controlla i dettagli.</value>
+  </data>
+  <data name="A selected task is disabled in Calypso." xml:space="preserve">
+    <value>Un'attività selezionata è disattivata in Calypso.</value>
+  </data>
+  <data name="Agenda cycle: {0} · Exports cycle: {1}" xml:space="preserve">
+    <value>Ciclo del programma: {0} · Ciclo delle esportazioni: {1}</value>
+  </data>
+  <data name="Already on island" xml:space="preserve">
+    <value>Già sull'isola</value>
+  </data>
+  <data name="At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan." xml:space="preserve">
+    <value>Durante la stessa visita all'officina, leggi la domanda e prepara il programma secondo le regole di Calypso. La modalità Suggest prepara solo un piano.</value>
+  </data>
+  <data name="Cadence follows Calypso's Island cycle. Manual Run can bypass cadence." xml:space="preserve">
+    <value>La frequenza segue il ciclo dell'isola di Calypso. L'esecuzione manuale può ignorare questa frequenza.</value>
+  </data>
+  <data name="Calypso changed to other work; Island ownership was released." xml:space="preserve">
+    <value>Calypso è passato ad altre attività; il controllo della routine dell'isola è stato rilasciato.</value>
+  </data>
+  <data name="Calypso does not expose a selected Island task." xml:space="preserve">
+    <value>Calypso non espone un'attività dell'isola selezionata.</value>
+  </data>
+  <data name="Calypso has no matching current-character status." xml:space="preserve">
+    <value>Calypso non dispone di uno stato corrispondente al personaggio attuale.</value>
+  </data>
+  <data name="Calypso is already running. Stop it there before starting an Island routine." xml:space="preserve">
+    <value>Calypso è già in esecuzione. Fermalo da lì prima di avviare una routine dell'isola.</value>
+  </data>
+  <data name="Calypso is busy with other work; no request was sent." xml:space="preserve">
+    <value>Calypso è occupato con altre attività; non è stata inviata alcuna richiesta.</value>
+  </data>
+  <data name="Calypso is ready." xml:space="preserve">
+    <value>Calypso è pronto.</value>
+  </data>
+  <data name="Calypso is running." xml:space="preserve">
+    <value>Calypso è in esecuzione.</value>
+  </data>
+  <data name="Calypso is unavailable or incompatible." xml:space="preserve">
+    <value>Calypso non è disponibile o è incompatibile.</value>
+  </data>
+  <data name="Calypso rejected the task; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso ha rifiutato l'attività; il completamento non è confermato.</value>
+  </data>
+  <data name="Calypso returned an invalid Island cycle." xml:space="preserve">
+    <value>Calypso ha restituito un ciclo dell'isola non valido.</value>
+  </data>
+  <data name="Calypso returned an unsupported task state." xml:space="preserve">
+    <value>Calypso ha restituito uno stato dell'attività non supportato.</value>
+  </data>
+  <data name="Calypso stop is unconfirmed; waiting for provider status." xml:space="preserve">
+    <value>L'arresto di Calypso non è confermato; in attesa dello stato del fornitore.</value>
+  </data>
+  <data name="Calypso stopped without a confirmed task result." xml:space="preserve">
+    <value>Calypso si è fermato senza un risultato dell'attività confermato.</value>
+  </data>
+  <data name="Calypso task failed or its settings changed; completion is unconfirmed." xml:space="preserve">
+    <value>L'attività Calypso è fallita o le sue impostazioni sono cambiate; il completamento non è confermato.</value>
+  </data>
+  <data name="Capability" xml:space="preserve">
+    <value>Supporto</value>
+  </data>
+  <data name="Character automation" xml:space="preserve">
+    <value>Automazione del personaggio</value>
+  </data>
+  <data name="Chore" xml:space="preserve">
+    <value>Attività</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>Confermato</value>
+  </data>
+  <data name="Do not run Calypso separately while this routine is active." xml:space="preserve">
+    <value>Non eseguire Calypso separatamente mentre questa routine è attiva.</value>
+  </data>
+  <data name="Enable Calypso with IPC 1 and status schema 1." xml:space="preserve">
+    <value>Abilita Calypso con IPC 1 e schema di stato 1.</value>
+  </data>
+  <data name="Enter your island first. Calypso has no travel-only IPC." xml:space="preserve">
+    <value>Entra prima nella tua isola. Calypso non ha un IPC dedicato al solo viaggio.</value>
+  </data>
+  <data name="Enter your island first. Island travel is unavailable." xml:space="preserve">
+    <value>Entra prima nella tua isola. Il viaggio verso l'isola non è disponibile.</value>
+  </data>
+  <data name="Island chores · Activity provider: Calypso" xml:space="preserve">
+    <value>Attività dell'isola · Fornitore dell'attività: Calypso</value>
+  </data>
+  <data name="Island routine" xml:space="preserve">
+    <value>Routine dell'isola</value>
+  </data>
+  <data name="Island routine is manual only." xml:space="preserve">
+    <value>La routine dell'isola è solo manuale.</value>
+  </data>
+  <data name="Island routine not started." xml:space="preserve">
+    <value>La routine dell'isola non è stata avviata.</value>
+  </data>
+  <data name="Island routine stopped; unfinished chores remain unconfirmed." xml:space="preserve">
+    <value>Routine dell'isola interrotta; le attività incompiute restano non confermate.</value>
+  </data>
+  <data name="Island status, character or cycle changed; completion is unconfirmed." xml:space="preserve">
+    <value>Lo stato dell'isola, il personaggio o il ciclo è cambiato; il completamento non è confermato.</value>
+  </data>
+  <data name="Not confirmed" xml:space="preserve">
+    <value>Non confermato</value>
+  </data>
+  <data name="Planned only" xml:space="preserve">
+    <value>Solo pianificato</value>
+  </data>
+  <data name="Ready for selected supported Island chores." xml:space="preserve">
+    <value>Pronto per le attività dell'isola selezionate e supportate.</value>
+  </data>
+  <data name="Run and Stop use the active character only." xml:space="preserve">
+    <value>Esegui e Interrompi si applicano solo al personaggio attivo.</value>
+  </data>
+  <data name="Running selected Calypso task." xml:space="preserve">
+    <value>Esecuzione dell'attività Calypso selezionata.</value>
+  </data>
+  <data name="Select workshop agenda or exports. The other five chores are unavailable stubs." xml:space="preserve">
+    <value>Seleziona il programma dell'officina o le esportazioni. Le altre cinque attività non sono ancora implementate e non sono disponibili.</value>
+  </data>
+  <data name="Selected Calypso task is not ready; no request was sent." xml:space="preserve">
+    <value>L'attività Calypso selezionata non è pronta; non è stata inviata alcuna richiesta.</value>
+  </data>
+  <data name="Selected Calypso task is unavailable, disabled or at its failure cap." xml:space="preserve">
+    <value>L'attività Calypso selezionata non è disponibile, è disattivata o ha raggiunto il limite di errori.</value>
+  </data>
+  <data name="Selected supported chores are confirmed for this Island cadence." xml:space="preserve">
+    <value>Le attività selezionate e supportate sono confermate per questa frequenza dell'isola.</value>
+  </data>
+  <data name="Selected supported chores confirmed. Unavailable chores were not run or credited." xml:space="preserve">
+    <value>Attività selezionate e supportate confermate. Le attività non disponibili non sono state eseguite né conteggiate come completate.</value>
+  </data>
+  <data name="Starting supported Island chores." xml:space="preserve">
+    <value>Avvio delle attività dell'isola supportate.</value>
+  </data>
+  <data name="Supported chores confirmed. Workshop agenda is planned only; it was not applied." xml:space="preserve">
+    <value>Attività supportate confermate. Il programma dell'officina è solo pianificato; non è stato applicato.</value>
+  </data>
+  <data name="The saved Island cadence is invalid." xml:space="preserve">
+    <value>La frequenza dell'isola salvata non è valida.</value>
+  </data>
+  <data name="Travel unavailable" xml:space="preserve">
+    <value>Viaggio non disponibile</value>
+  </data>
+  <data name="Workshop agenda and exports are supported. Other chores and island travel are unavailable." xml:space="preserve">
+    <value>Il programma dell'officina e le esportazioni sono supportati. Le altre attività e il viaggio verso l'isola non sono disponibili.</value>
+  </data>
+  <data name="No matching Island completion receipt." xml:space="preserve">
+    <value>Nessuna conferma corrispondente del completamento dell'attività sull'isola.</value>
+  </data>
 </root>

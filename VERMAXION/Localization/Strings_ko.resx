@@ -5976,4 +5976,163 @@ Krakka Root: {2}; Magicked Stable Broom: {3}; Thavnairian Onion: {4}</value>
   <data name="Crucible Master (all five boards)" xml:space="preserve"><value>Crucible 달인 (보드 다섯 개 전체)</value></data>
   <data name="Highlight contrast" xml:space="preserve"><value>강조 대비</value></data>
   <data name="Makes controls and selection states more distinct." xml:space="preserve"><value>컨트롤과 선택 상태를 더 뚜렷하게 표시합니다.</value></data>
+  <data name="{0}/2 supported chores selected." xml:space="preserve">
+    <value>지원되는 작업 {0}/2개 선택됨.</value>
+  </data>
+  <data name="A selected Calypso task has reached its three-failure daily cap." xml:space="preserve">
+    <value>선택한 Calypso 작업이 하루 실패 한도인 3회에 도달했습니다.</value>
+  </data>
+  <data name="A selected Island task is locked or switched off in Calypso." xml:space="preserve">
+    <value>선택한 무인도 작업이 Calypso에서 잠겨 있거나 꺼져 있습니다.</value>
+  </data>
+  <data name="A selected task is blocked in Calypso. Check its task details." xml:space="preserve">
+    <value>선택한 작업이 Calypso에서 차단되었습니다. 작업 세부 정보를 확인하세요.</value>
+  </data>
+  <data name="A selected task is disabled in Calypso." xml:space="preserve">
+    <value>선택한 작업이 Calypso에서 비활성화되어 있습니다.</value>
+  </data>
+  <data name="Agenda cycle: {0} · Exports cycle: {1}" xml:space="preserve">
+    <value>일정 주기: {0} · 수출 주기: {1}</value>
+  </data>
+  <data name="Already on island" xml:space="preserve">
+    <value>이미 무인도에 있음</value>
+  </data>
+  <data name="At the same workshop stop, read demand and prepare the agenda under Calypso policy. Suggest mode only prepares a plan." xml:space="preserve">
+    <value>같은 공방 방문 중 수요를 확인하고 Calypso 규칙에 따라 일정을 준비합니다. Suggest 모드는 계획만 준비합니다.</value>
+  </data>
+  <data name="Cadence follows Calypso's Island cycle. Manual Run can bypass cadence." xml:space="preserve">
+    <value>방문 주기는 Calypso의 무인도 주기를 따릅니다. 수동 실행은 이 주기를 무시할 수 있습니다.</value>
+  </data>
+  <data name="Calypso changed to other work; Island ownership was released." xml:space="preserve">
+    <value>Calypso가 다른 작업으로 전환되어 무인도 루틴의 제어권을 해제했습니다.</value>
+  </data>
+  <data name="Calypso does not expose a selected Island task." xml:space="preserve">
+    <value>Calypso가 선택한 무인도 작업을 제공하지 않습니다.</value>
+  </data>
+  <data name="Calypso has no matching current-character status." xml:space="preserve">
+    <value>Calypso에 현재 캐릭터와 일치하는 상태가 없습니다.</value>
+  </data>
+  <data name="Calypso is already running. Stop it there before starting an Island routine." xml:space="preserve">
+    <value>Calypso가 이미 실행 중입니다. 무인도 루틴을 시작하기 전에 Calypso에서 중지하세요.</value>
+  </data>
+  <data name="Calypso is busy with other work; no request was sent." xml:space="preserve">
+    <value>Calypso가 다른 작업을 수행 중이므로 요청을 보내지 않았습니다.</value>
+  </data>
+  <data name="Calypso is ready." xml:space="preserve">
+    <value>Calypso가 준비되었습니다.</value>
+  </data>
+  <data name="Calypso is running." xml:space="preserve">
+    <value>Calypso가 실행 중입니다.</value>
+  </data>
+  <data name="Calypso is unavailable or incompatible." xml:space="preserve">
+    <value>Calypso를 사용할 수 없거나 호환되지 않습니다.</value>
+  </data>
+  <data name="Calypso rejected the task; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso가 작업을 거부했습니다. 완료는 확인되지 않았습니다.</value>
+  </data>
+  <data name="Calypso returned an invalid Island cycle." xml:space="preserve">
+    <value>Calypso가 잘못된 무인도 주기를 반환했습니다.</value>
+  </data>
+  <data name="Calypso returned an unsupported task state." xml:space="preserve">
+    <value>Calypso가 지원하지 않는 작업 상태를 반환했습니다.</value>
+  </data>
+  <data name="Calypso stop is unconfirmed; waiting for provider status." xml:space="preserve">
+    <value>Calypso 중지가 확인되지 않았습니다. 제공자 상태를 기다리는 중입니다.</value>
+  </data>
+  <data name="Calypso stopped without a confirmed task result." xml:space="preserve">
+    <value>작업 결과가 확인되지 않은 채 Calypso가 중지되었습니다.</value>
+  </data>
+  <data name="Calypso task failed or its settings changed; completion is unconfirmed." xml:space="preserve">
+    <value>Calypso 작업이 실패했거나 설정이 변경되었습니다. 완료는 확인되지 않았습니다.</value>
+  </data>
+  <data name="Capability" xml:space="preserve">
+    <value>지원 수준</value>
+  </data>
+  <data name="Character automation" xml:space="preserve">
+    <value>캐릭터 자동화</value>
+  </data>
+  <data name="Chore" xml:space="preserve">
+    <value>작업</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>확인됨</value>
+  </data>
+  <data name="Do not run Calypso separately while this routine is active." xml:space="preserve">
+    <value>이 루틴이 실행 중일 때 Calypso를 별도로 실행하지 마세요.</value>
+  </data>
+  <data name="Enable Calypso with IPC 1 and status schema 1." xml:space="preserve">
+    <value>IPC 1 및 상태 스키마 1을 지원하는 Calypso를 활성화하세요.</value>
+  </data>
+  <data name="Enter your island first. Calypso has no travel-only IPC." xml:space="preserve">
+    <value>먼저 자신의 무인도에 입장하세요. Calypso에는 이동 전용 IPC가 없습니다.</value>
+  </data>
+  <data name="Enter your island first. Island travel is unavailable." xml:space="preserve">
+    <value>먼저 자신의 무인도에 입장하세요. 무인도 이동은 지원되지 않습니다.</value>
+  </data>
+  <data name="Island chores · Activity provider: Calypso" xml:space="preserve">
+    <value>무인도 작업 · 활동 제공자: Calypso</value>
+  </data>
+  <data name="Island routine" xml:space="preserve">
+    <value>무인도 루틴</value>
+  </data>
+  <data name="Island routine is manual only." xml:space="preserve">
+    <value>무인도 루틴은 수동으로만 실행할 수 있습니다.</value>
+  </data>
+  <data name="Island routine not started." xml:space="preserve">
+    <value>무인도 루틴을 시작하지 않았습니다.</value>
+  </data>
+  <data name="Island routine stopped; unfinished chores remain unconfirmed." xml:space="preserve">
+    <value>무인도 루틴이 중지되었습니다. 미완료 작업은 확인되지 않은 상태로 남습니다.</value>
+  </data>
+  <data name="Island status, character or cycle changed; completion is unconfirmed." xml:space="preserve">
+    <value>무인도 상태, 캐릭터 또는 주기가 변경되었습니다. 완료는 확인되지 않았습니다.</value>
+  </data>
+  <data name="Not confirmed" xml:space="preserve">
+    <value>확인 안 됨</value>
+  </data>
+  <data name="Planned only" xml:space="preserve">
+    <value>계획만 수립됨</value>
+  </data>
+  <data name="Ready for selected supported Island chores." xml:space="preserve">
+    <value>선택한 지원 무인도 작업을 실행할 준비가 되었습니다.</value>
+  </data>
+  <data name="Run and Stop use the active character only." xml:space="preserve">
+    <value>실행과 중지는 활성 캐릭터에만 적용됩니다.</value>
+  </data>
+  <data name="Running selected Calypso task." xml:space="preserve">
+    <value>선택한 Calypso 작업을 실행 중입니다.</value>
+  </data>
+  <data name="Select workshop agenda or exports. The other five chores are unavailable stubs." xml:space="preserve">
+    <value>공방 일정 또는 수출을 선택하세요. 나머지 5개 작업은 아직 구현되지 않아 사용할 수 없습니다.</value>
+  </data>
+  <data name="Selected Calypso task is not ready; no request was sent." xml:space="preserve">
+    <value>선택한 Calypso 작업이 준비되지 않아 요청을 보내지 않았습니다.</value>
+  </data>
+  <data name="Selected Calypso task is unavailable, disabled or at its failure cap." xml:space="preserve">
+    <value>선택한 Calypso 작업을 사용할 수 없거나 비활성화되었거나 실패 한도에 도달했습니다.</value>
+  </data>
+  <data name="Selected supported chores are confirmed for this Island cadence." xml:space="preserve">
+    <value>선택한 지원 작업은 이 무인도 방문 주기에 대해 확인되었습니다.</value>
+  </data>
+  <data name="Selected supported chores confirmed. Unavailable chores were not run or credited." xml:space="preserve">
+    <value>선택한 지원 작업이 확인되었습니다. 지원되지 않는 작업은 실행되거나 완료로 인정되지 않았습니다.</value>
+  </data>
+  <data name="Starting supported Island chores." xml:space="preserve">
+    <value>지원되는 무인도 작업을 시작합니다.</value>
+  </data>
+  <data name="Supported chores confirmed. Workshop agenda is planned only; it was not applied." xml:space="preserve">
+    <value>지원되는 작업이 확인되었습니다. 공방 일정은 계획만 수립되었으며 적용되지 않았습니다.</value>
+  </data>
+  <data name="The saved Island cadence is invalid." xml:space="preserve">
+    <value>저장된 무인도 방문 주기가 잘못되었습니다.</value>
+  </data>
+  <data name="Travel unavailable" xml:space="preserve">
+    <value>이동 지원 안 됨</value>
+  </data>
+  <data name="Workshop agenda and exports are supported. Other chores and island travel are unavailable." xml:space="preserve">
+    <value>공방 일정과 수출을 지원합니다. 다른 작업과 무인도 이동은 지원되지 않습니다.</value>
+  </data>
+  <data name="No matching Island completion receipt." xml:space="preserve">
+    <value>일치하는 무인도 작업 완료 결과가 없습니다.</value>
+  </data>
 </root>

@@ -889,8 +889,8 @@ public class MainWindow : Window, IDisposable
                     activeConfig.NagYourDadSelectionDisplayName);
                 Plugin.ChatGui.Print($"[Vermaxion] {result.StatusText}");
             }, "OK");
-        AddTaskRow("Island Sanctuary", config.EnableIslandSanctuary, IslandSanctuaryView.Unavailable,
-            "Open##IslandSanctuary", () => plugin.IslandSanctuaryWindow.Open(), "WIP");
+        AddTaskRow("Island Sanctuary", config.EnableIslandSanctuary, plugin.IslandSanctuaryRun.StatusText,
+            "Run##IslandSanctuary", () => plugin.Engine.ManualStartIslandSanctuary(), "WIP");
         AddTaskRow("Adventurer Activity (Evercold)", config.EnableEvercoldAdventurerActivity,
             GetEvercoldAdventurerActivityStatus(config),
             "Stub##EvercoldActivity", () =>
@@ -980,8 +980,8 @@ public class MainWindow : Window, IDisposable
                 onClick,
                 maturity,
                 statusTooltip,
-                feature?.Id == AutomationCatalog.IslandSanctuary ? false : buttonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
-                feature?.Id == AutomationCatalog.IslandSanctuary ? null : ownershipBlocker ?? buttonTooltip,
+                buttonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                ownershipBlocker ?? buttonTooltip,
                 secondaryButtonLabel,
                 secondaryOnClick,
                 secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
@@ -1318,8 +1318,7 @@ public class MainWindow : Window, IDisposable
         ImGui.BeginDisabled(row.ButtonDisabled);
         if (UIConstants.Button(row.ButtonLabel, new Vector2(runWidth, controlHeight)))
         {
-            if (row.Feature?.Id == AutomationCatalog.IslandSanctuary) row.OnClick();
-            else plugin.RunDashboardAction(row.OnClick);
+            plugin.RunDashboardAction(row.OnClick);
         }
         ImGui.EndDisabled();
         if (!string.IsNullOrWhiteSpace(row.ButtonTooltip) && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

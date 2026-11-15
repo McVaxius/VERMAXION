@@ -89,7 +89,7 @@ internal sealed class IslandSanctuaryWindow : Window
         using var structuralBackgrounds = AethertekUI.MaterialSkin.StructuralBackgroundStyle();
         if (MaterialTheme.Current.IsLcars) MaterialLcars.Header(UiText.T(WindowName.Split("##", 2)[0]));
         UIConstants.Heading("Island Sanctuary", plugin.Configuration.CompactUi);
-        UiGui.TextWrapped("Cowrie routine · Activity provider: Calypso · TBD");
+        UiGui.TextWrapped("Island chores · Activity provider: Calypso");
         DrawProfilePicker();
         var accountId = viewedAccountId;
         if (!plugin.ConfigManager.Accounts.TryGetValue(accountId, out var account))
@@ -98,6 +98,9 @@ internal sealed class IslandSanctuaryWindow : Window
             return;
         }
         var config = string.IsNullOrEmpty(viewedCharacterKey) ? account.DefaultConfig : account.Characters.GetValueOrDefault(viewedCharacterKey);
+        var activeProfile = !string.IsNullOrEmpty(viewedCharacterKey) && viewedAccountId == plugin.ConfigManager.CurrentAccountId &&
+            viewedCharacterKey == plugin.ConfigManager.CurrentCharacterKey;
+        var runtime = activeProfile ? plugin.IslandSanctuaryRun : null;
         if (config == null) return;
         using (MaterialText.PushLineHeight(new[] { UiText.T("Run"), UiText.T("Settings") }))
         {
@@ -113,15 +116,15 @@ internal sealed class IslandSanctuaryWindow : Window
         var bodyHeight = Math.Max(80 * UIConstants.Scale, ImGui.GetContentRegionAvail().Y - 95 * UIConstants.Scale);
         if (ImGui.BeginChild("IslandBody", new(0, bodyHeight), false))
         {
-            IslandSanctuaryView.DrawProviderStatus();
+            IslandSanctuaryView.DrawProviderStatus(plugin.IslandSanctuaryRun.ProviderStatus);
             if (activeTab == 1)
             {
                 if (IslandSanctuaryView.DrawSettings(config)) plugin.ConfigManager.SaveAccount(accountId);
             }
-            else IslandSanctuaryView.DrawRun(config);
+            else IslandSanctuaryView.DrawRun(config, runtime);
         }
         ImGui.EndChild();
-        IslandSanctuaryView.DrawActions();
+        IslandSanctuaryView.DrawActions(plugin, activeProfile);
     }
 
     private string Identity(string value) => plugin.Configuration.KrangleEnabled ? KrangleService.KrangleName(value) : value;
@@ -152,9 +155,11 @@ internal sealed class IslandSanctuaryWindow : Window
 // Rendering saved preferences is independent of provider and gameplay services.
 internal static class IslandSanctuaryView
 {
-    internal const string Unavailable = "Calypso integration TBD. Run, Stop and Open Calypso are unavailable. No schedule is created.";
+    internal const string Unavailable = "Workshop agenda and exports are supported. Other chores and island travel are unavailable.";
 
-    internal static void DrawProviderStatus() => UIConstants.Status("IslandProvider", Unavailable, UIConstants.Amber);
+    internal static void DrawProviderStatus(VERMAXION.IPC.CalypsoIslandStatus? status = null)
+        => UIConstants.Status("IslandProvider", status == null ? "Calypso is unavailable or incompatible."
+            : status.Busy ? "Calypso is running." : "Calypso is ready.", status == null ? UIConstants.Amber : UIConstants.Metadata);
 
     internal static bool DrawSettings(CharacterConfig config)
     {
@@ -163,7 +168,7 @@ internal static class IslandSanctuaryView
         if (ImGui.BeginTable("IslandSettingsCards", columns, ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchSame))
         {
             ImGui.TableNextColumn();
-            if (UIConstants.BeginPanel("IslandCharacter", "This character"))
+            if (UIConstants.BeginPanel("IslandCharacter", "Character automation"))
             {
                 var enabled = config.EnableIslandSanctuary;
                 if (UIConstants.Checkbox("Enable Island routine", ref enabled)) { config.EnableIslandSanctuary = enabled; changed = true; }
@@ -172,23 +177,22 @@ internal static class IslandSanctuaryView
                 UIConstants.SetNextItemWidth(-1);
                 if (UIConstants.Combo("Visit cadence", ref cadence, "Weekly\0Daily\0Manual only\0"))
                 { config.IslandSanctuary.Cadence = (IslandVisitCadence)cadence; changed = true; }
-                UiGui.TextWrapped("Saved preference only. Coverage and reset timing remain TBD; no visit is scheduled.");
-                UiGui.TextWrapped("Next visit: TBD");
+                UiGui.TextWrapped("Cadence follows Calypso's Island cycle. Manual Run can bypass cadence.");
+                UiGui.TextWrapped("Enter your island first. Island travel is unavailable.");
                 UIConstants.EndPanel();
             }
             ImGui.TableNextColumn();
             if (UIConstants.BeginPanel("IslandPolicies", "Policies live in Calypso"))
             {
                 UiGui.TextWrapped("Choose the chores here. Configure their detailed rules in Calypso.");
-                foreach (var policy in new[] { "Agenda & overwrite", "Expedition assignments", "Crop & pasture care", "Material reserves", "Seed stock & spending", "Cowrie limits" })
-                    UiGui.BulletText(policy);
+                UiGui.TextWrapped("Do not run Calypso separately while this routine is active.");
                 UIConstants.EndPanel();
             }
             ImGui.EndTable();
         }
-        if (UIConstants.BeginPanel("IslandRoutineSettings", "Proposed routine"))
+        if (UIConstants.BeginPanel("IslandRoutineSettings", "Island routine"))
         {
-            UiGui.TextWrapped("Both workshop actions share one visit. Refill seeds only when low. All execution remains TBD.");
+            UiGui.TextWrapped(Unavailable);
             if (ImGui.BeginTable("IslandRoutineList", 2, ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.BordersInnerH))
             {
                 var capabilityWidth = new[] { "TBD", "Partial", "Existing" }.Max(label => MaterialText.Measure(UiText.T(label)).X);
@@ -204,50 +208,72 @@ internal static class IslandSanctuaryView
                         ImGui.AlignTextToFramePadding();
                         UiGui.TextUnformatted(step.Stage + " ·");
                         ImGui.SameLine();
+                        ImGui.BeginDisabled(!IslandSanctuarySettings.IsSupported(chore));
                         if (UIConstants.Checkbox(step.Label, ref selected)) { config.IslandSanctuary.SetSelected(chore, selected); changed = true; }
+                        ImGui.EndDisabled();
                     }
                     else UiGui.TextWrapped(step.Stage + " · " + UiText.T(step.Label));
+                    ImGui.BeginDisabled(step.Chore is not { } detailChore || !IslandSanctuarySettings.IsSupported(detailChore));
                     UiGui.TextWrapped(step.Detail);
+                    ImGui.EndDisabled();
                     ImGui.PopID();
                     ImGui.TableNextColumn();
                     UiGui.TextColored(UIConstants.Metadata, step.Capability);
                 }
                 ImGui.EndTable();
             }
-            UiGui.TextWrapped(UiText.F("{0}/7 chores selected. Execution TBD.", IslandRoutineStep.Route.Count(step => step.Chore is { } chore && config.IslandSanctuary.IsSelected(chore))));
+            var selectedSupported = Enum.GetValues<IslandChore>().Count(chore =>
+                IslandSanctuarySettings.IsSupported(chore) && config.IslandSanctuary.IsSelected(chore));
+            UiGui.TextWrapped(UiText.F("{0}/2 supported chores selected.", selectedSupported));
             UIConstants.EndPanel();
         }
         return changed;
     }
 
-    internal static void DrawRun(CharacterConfig config)
+    internal static void DrawRun(CharacterConfig config, IslandSanctuaryRun? run = null)
     {
-        if (UIConstants.BeginPanel("IslandConstruction", "Construction splash / artwork TBD"))
+        if (UIConstants.BeginPanel("IslandRun", "Island routine"))
         {
-            UiGui.TextWrapped("Meteor watching mammets build. Reserved area only; no artwork supplied.");
-            ImGui.Dummy(new(0, (UIConstants.Compact ? 20 : 44) * UIConstants.Scale));
-            UIConstants.EndPanel();
-        }
-        if (UIConstants.BeginPanel("IslandRun", "Routine not started"))
-        {
-            UiGui.TextWrapped(config.EnableIslandSanctuary ? "Island routine selected. Execution remains TBD." : "Island routine off");
-            UiGui.TextWrapped("Last completed: Unknown · Next visit: TBD · Chores confirmed: Unknown");
+            UiGui.TextWrapped(run?.StatusText ?? "Island routine not started.");
+            UiGui.TextWrapped(UiText.F("Agenda cycle: {0} · Exports cycle: {1}",
+                string.IsNullOrEmpty(config.IslandAgendaConfirmedCycle) ? UiText.T("Not confirmed") : config.IslandAgendaConfirmedCycle,
+                string.IsNullOrEmpty(config.IslandExportsConfirmedCycle) ? UiText.T("Not confirmed") : config.IslandExportsConfirmedCycle));
             if (ImGui.BeginTable("IslandRunList", 3, ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.BordersInnerH))
             {
-                var selectionWidth = new[] { "Required first", "Only if low", "Selected", "Not selected" }.Max(label => MaterialText.Measure(UiText.T(label)).X);
                 ImGui.TableSetupColumn("Task", ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableSetupColumn("Selection", ImGuiTableColumnFlags.WidthFixed, selectionWidth + 12 * UIConstants.Scale);
-                ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, Math.Max(60 * UIConstants.Scale, MaterialText.Measure(UiText.T("Status")).X));
+                ImGui.TableSetupColumn("Selection", ImGuiTableColumnFlags.WidthFixed, 110 * UIConstants.Scale);
+                ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthStretch);
                 UiGui.TableHeadersRow();
                 foreach (var step in IslandRoutineStep.Route)
                 {
                     ImGui.TableNextRow(); ImGui.TableNextColumn();
+                    var supported = step.Chore is { } chore && IslandSanctuarySettings.IsSupported(chore);
+                    ImGui.BeginDisabled(!supported);
                     UiGui.TextWrapped(step.Stage + " · " + UiText.T(step.Label));
+                    ImGui.EndDisabled();
                     ImGui.TableNextColumn();
-                    UiGui.TextDisabled(step.Chore is not { } chore ? "Required first" : config.IslandSanctuary.IsSelected(chore)
-                        ? chore == IslandChore.Seeds ? "Only if low" : "Selected" : "Not selected");
+                    UiGui.TextDisabled(step.Chore == null ? "Required first" : !supported ? "Unavailable" :
+                        config.IslandSanctuary.IsSelected(step.Chore.Value) ? "Selected" : "Not selected");
                     ImGui.TableNextColumn();
-                    UiGui.TextDisabled("TBD");
+                    var status = run?.ProviderStatus;
+                    if (step.Chore == null)
+                        UiGui.TextDisabled(status?.InSanctuary == true ? "Already on island" : "Travel unavailable");
+                    else if (!supported)
+                        UiGui.TextDisabled("TBD");
+                    else
+                    {
+                        var task = status?.Task(step.Chore == IslandChore.Agenda ? "workshop.agenda" : "exports.sell");
+                        var receiptCycle = step.Chore == IslandChore.Agenda
+                            ? config.IslandAgendaConfirmedCycle : config.IslandExportsConfirmedCycle;
+                        var confirmed = status != null && VERMAXION.IPC.CalypsoIslandStatus.ValidCycle(status.Cycle) &&
+                            (receiptCycle == status.Cycle ||
+                             run != null && run.ConfirmedCycle == status.Cycle &&
+                             string.Equals(run.OwnerCharacter, status.Character, StringComparison.OrdinalIgnoreCase) &&
+                             run.ConfirmedChores.Contains(step.Chore.Value));
+                        UiGui.TextWrapped(confirmed
+                            ? task?.Reason == "planned today (suggest only)" ? "Planned only" : "Confirmed"
+                            : task?.State == "ready" ? "Ready" : task?.State == "running" ? "Running" : "Not confirmed");
+                    }
                 }
                 ImGui.EndTable();
             }
@@ -256,19 +282,29 @@ internal static class IslandSanctuaryView
         }
     }
 
-    internal static void DrawActions()
+    internal static void DrawActions(Plugin? plugin = null, bool activeProfile = false)
     {
         ImGui.Separator();
-        ImGui.BeginDisabled();
-        var run = UiText.T("Run") + " · " + UiText.T("TBD");
-        var stop = UiText.T("Stop") + " · " + UiText.T("TBD");
-        var open = UiText.T("Open Calypso") + " · " + UiText.T("TBD");
-        UIConstants.ButtonWithCaption("Run##Island", run);
-        UIConstants.SameLineIfFits(stop);
-        UIConstants.ButtonWithCaption("Stop##Island", stop);
-        UIConstants.SameLineIfFits(open);
-        UIConstants.ButtonWithCaption("Open Calypso##Island", open);
+        var island = plugin?.IslandSanctuaryRun;
+        var eligible = plugin != null && activeProfile && !plugin.Engine.IsRunning &&
+            !plugin.DadHandoffBlocksNewWork && !plugin.BeastmasterOwnsWork &&
+            island!.Eligibility(plugin.ConfigManager.GetActiveConfig(), plugin.ConfigManager.CurrentCharacterKey, manual: true).IsRunnable;
+        ImGui.BeginDisabled(!eligible);
+        if (UIConstants.ButtonWithCaption("Run##Island", UiText.T("Run")) && eligible)
+            plugin!.RunDashboardAction(() => plugin.Engine.ManualStartIslandSanctuary());
         ImGui.EndDisabled();
-        UiGui.TextWrapped(Unavailable);
+        UIConstants.SameLineIfFits(UiText.T("Stop"));
+        var canStop = plugin != null && activeProfile && island?.IsActive == true &&
+            plugin.Engine.State == VermaxionEngine.EngineState.RunningIslandSanctuary;
+        ImGui.BeginDisabled(!canStop);
+        if (UIConstants.ButtonWithCaption("Stop##Island", UiText.T("Stop")) && canStop) plugin!.Engine.Cancel();
+        ImGui.EndDisabled();
+        UIConstants.SameLineIfFits(UiText.T("Open Calypso"));
+        ImGui.BeginDisabled();
+        UIConstants.ButtonWithCaption("Open Calypso##Island", UiText.T("Open Calypso") + " · " + UiText.T("TBD"));
+        ImGui.EndDisabled();
+        if (!activeProfile) UiGui.TextWrapped("Run and Stop use the active character only.");
+        else if (plugin != null && !eligible && !island!.IsActive)
+            UiGui.TextWrapped(island.Eligibility(plugin.ConfigManager.GetActiveConfig(), plugin.ConfigManager.CurrentCharacterKey, manual: true).Reason);
     }
 }

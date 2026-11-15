@@ -1,3 +1,8 @@
+2026-11-15 - 3.0.0.18 - Calypso Island chores
+
+- **Added Calypso Island chores:** Run workshop demand reading and agenda preparation, then selected exports, from Island Sanctuary or the existing task queue while already on the island.
+- **Added Island completion tracking:** Follow Calypso's daily or weekly cycle per character and confirm supported results before recording them. Suggest mode remains a plan only; island travel and the other five chores remain visible, unavailable options.
+
 2026-11-15 - 3.0.0.17 - AutoRetainer IPC integration
 
 - **Updated AutoRetainer integration:** Use existing IPC for AutoRetainer character-selection data, venture readiness and gil-withdrawal settings.

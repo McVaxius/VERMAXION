@@ -146,6 +146,7 @@ public class VermaxionEngine
         [PostProcessTaskOrder.FashionReport] = EngineState.RunningFashionReport,
         [PostProcessTaskOrder.CustomDeliveries] = EngineState.RunningCustomDeliveries,
         [PostProcessTaskOrder.ChocoboStables] = EngineState.RunningChocoboStables,
+        [PostProcessTaskOrder.IslandSanctuary] = EngineState.RunningIslandSanctuary,
         [PostProcessTaskOrder.ChocoboRacing] = EngineState.RunningChocoboRacing,
         [PostProcessTaskOrder.Beastmaster] = EngineState.RunningBeastmaster,
         [PostProcessTaskOrder.BeastmasterWeekly] = EngineState.RunningBeastmasterWeekly,
@@ -301,6 +302,7 @@ public class VermaxionEngine
         SignalingARDone,
         Complete,
         Error,
+        RunningIslandSanctuary,
     }
 
     private enum RunTaskPhaseFilter
@@ -494,6 +496,10 @@ public class VermaxionEngine
                 customDeliveriesService.Cancel, watchdogProgress: () => customDeliveriesService.WatchdogProgress),
             Bind(PostProcessTaskOrder.ChocoboStables, EvaluateChocoboStables, () => { },
                 chocoboStablesService.Reset, () => chocoboStablesService.StatusText, chocoboStablesService.Cancel),
+            Bind(PostProcessTaskOrder.IslandSanctuary, config => EvaluateIslandSanctuary(config),
+                () => plugin.IslandSanctuaryRun.Update(configManager.CurrentCharacterKey),
+                plugin.IslandSanctuaryRun.Reset, () => plugin.IslandSanctuaryRun.StatusText,
+                plugin.IslandSanctuaryRun.Cancel, watchdogProgress: () => plugin.IslandSanctuaryRun.WatchdogProgress),
             Bind(PostProcessTaskOrder.ChocoboRacing, EvaluateChocoboRacing, chocoboRaceService.Update,
                 chocoboRaceService.Reset, () => chocoboRaceService.StatusText),
             Bind(PostProcessTaskOrder.Beastmaster, config => EvaluateBeastmaster(config, false), () => { },
@@ -535,6 +541,7 @@ public class VermaxionEngine
             PostProcessTaskOrder.VendorStock => config.VendorStockGysahlGreensTarget > GameHelpers.GetInventoryItemCount(4868) ||
                 config.VendorStockGrade8DarkMatterTarget > GameHelpers.GetInventoryItemCount(33916),
             PostProcessTaskOrder.RefillListings => !IsAddonVisible("RetainerList"),
+            PostProcessTaskOrder.IslandSanctuary => false,
             PostProcessTaskOrder.AfterArPark => AfterArParkService.TryResolveCommand(config.AfterArParkDestination,
                 config.AfterArParkCustomCommand, out var command, out _) && TeleportGilPolicy.CommandNeedsTeleport(command, territory),
             PostProcessTaskOrder.NagYourMom or PostProcessTaskOrder.NagYourDad => config.EnableReturnBeforeNag &&
@@ -544,6 +551,9 @@ public class VermaxionEngine
         if (!needsTeleport) return eligibility;
         return TeleportGilPolicy.Apply(eligibility, GameHelpers.ReadGilBalance(), configuration.MinimumTeleportGil, needsTeleport);
     }
+
+    private TaskEligibility EvaluateIslandSanctuary(CharacterConfig config, bool manual = false)
+        => plugin.IslandSanctuaryRun.Eligibility(config, configManager.CurrentCharacterKey, manual);
 
     private static TaskEligibility Enabled(bool enabled, string label)
         => enabled ? TaskEligibility.Runnable() : TaskEligibility.Disabled($"{label} is disabled for this character.");
@@ -987,6 +997,11 @@ public class VermaxionEngine
             automatedRun: false, "manual Refill Listings",
             AutomationRunScope.SingleTask(PostProcessTaskOrder.RefillListings));
 
+    public bool ManualStartIslandSanctuary()
+        => TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false,
+            automatedRun: false, "manual Island Sanctuary",
+            AutomationRunScope.SingleTask(PostProcessTaskOrder.IslandSanctuary));
+
     public bool ManualStartCustomDeliveries()
         => TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false,
             automatedRun: false, "manual Custom Deliveries",
@@ -1079,7 +1094,7 @@ public class VermaxionEngine
         retainerlessTimerCharacterId = timerOwnedRun ? Plugin.PlayerState.ContentId : 0;
         retainerlessTimerAccountId = timerOwnedRun ? configManager.CurrentAccountId : string.Empty;
         retainerSuppressionRequired = timerOwnedRun || automatedRun && runScope.SingleTaskId != null ||
-            runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables or
+            runScope.SingleTaskId is PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.CustomDeliveries or PostProcessTaskOrder.ChocoboStables or PostProcessTaskOrder.IslandSanctuary or
                 PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly;
         suppressionReleasedForHandoff = false;
         retainerCleanupPending = false;
@@ -1916,6 +1931,57 @@ public class VermaxionEngine
                 }
                 AdvanceToNextTask(EngineState.RunningChocoboStables);
                 break;
+
+            case EngineState.RunningIslandSanctuary:
+            {
+                var island = plugin.IslandSanctuaryRun;
+                var config = GetLiveActiveConfig();
+                var manual = activeRunScope.SingleTaskId == PostProcessTaskOrder.IslandSanctuary && activeRunScope.BypassSelectedScheduling;
+                if (!manual && !config.EnableIslandSanctuary)
+                {
+                    island.Cancel();
+                    AdvanceToNextTask(EngineState.RunningIslandSanctuary);
+                    break;
+                }
+                if (!currentTaskOwnedWorkStarted)
+                {
+                    if (!GetActiveRunEligibility(PostProcessTaskOrder.IslandSanctuary, config).IsRunnable)
+                    { AdvanceToNextTask(EngineState.RunningIslandSanctuary); break; }
+                    MarkCurrentTaskWorkStarted();
+                    island.Start(config, configManager.CurrentCharacterKey, manual);
+                }
+                else
+                    taskBindings[PostProcessTaskOrder.IslandSanctuary].Tick();
+                StatusText = island.StatusText;
+                // Credit only this runtime character, and only supported, provider-confirmed chores.
+                // Default settings copies deliberately never copy these cycle receipts.
+                if (string.Equals(island.OwnerCharacter, configManager.CurrentCharacterKey, StringComparison.OrdinalIgnoreCase) &&
+                    CalypsoIslandStatus.ValidCycle(island.ConfirmedCycle))
+                {
+                    var agenda = island.ConfirmedChores.Contains(IslandChore.Agenda);
+                    var exports = island.ConfirmedChores.Contains(IslandChore.Exports);
+                    if (agenda && config.IslandAgendaConfirmedCycle != island.ConfirmedCycle ||
+                        exports && config.IslandExportsConfirmedCycle != island.ConfirmedCycle)
+                        PersistCurrentCharacterConfig(current =>
+                        {
+                            if (agenda) current.IslandAgendaConfirmedCycle = island.ConfirmedCycle;
+                            if (exports) current.IslandExportsConfirmedCycle = island.ConfirmedCycle;
+                        }, "provider-confirmed Island chores");
+                }
+                if (island.IsActive) break;
+                if (island.IsFailed)
+                {
+                    runHadFailure = true;
+                    log.Warning($"[Engine] Island routine failed: {island.StatusText}");
+                }
+                if (activeRunScope.SingleTaskId == PostProcessTaskOrder.IslandSanctuary)
+                {
+                    pendingRunOutcome = island.IsFailed ? RunOutcome.PartialFailure : RunOutcome.Succeeded;
+                    pendingRunSummary = island.StatusText;
+                }
+                AdvanceToNextTask(EngineState.RunningIslandSanctuary);
+                break;
+            }
 
             case EngineState.RunningBeastmaster:
             case EngineState.RunningBeastmasterWeekly:
@@ -3024,6 +3090,8 @@ public class VermaxionEngine
 
     private string? GetServiceOwnedHandoffBlocker()
     {
+        if (plugin.IslandSanctuaryRun.IsActive || plugin.IslandSanctuaryRun.IsCleanupPending)
+            return plugin.IslandSanctuaryRun.StatusText;
         if (plugin.BeastmasterService.IsActive || plugin.BeastmasterService.IsPaused)
             return $"Beastmaster service active ({plugin.BeastmasterService.StatusText})";
         if (retainerCleanupPending)
@@ -3080,6 +3148,9 @@ public class VermaxionEngine
 
     private string? GetExternalHandoffBlocker(bool requireActiveSession = true)
     {
+        if (!plugin.IslandSanctuaryRun.IsActive && !plugin.IslandSanctuaryRun.IsCleanupPending &&
+            plugin.IslandSanctuaryRun.ProviderStatus is { Busy: true })
+            return "Calypso is busy with other work; no request was sent.";
         var resultAddon = GameHelpers.GetIKDResultAddonSnapshot();
         return ExternalHandoffPolicy.GetBlocker(new ExternalHandoffSnapshot(
             clientState.TerritoryType,
@@ -3346,7 +3417,7 @@ public class VermaxionEngine
                 continue;
             }
 
-            if (nextState is EngineState.RunningRetainerListingRefill or EngineState.RunningCustomDeliveries or EngineState.RunningChocoboStables or
+            if (nextState is EngineState.RunningRetainerListingRefill or EngineState.RunningCustomDeliveries or EngineState.RunningChocoboStables or EngineState.RunningIslandSanctuary or
                 EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly)
                 retainerSuppressionRequired = true;
             if (nextState != EngineState.RunningRetainerListingRefill)
@@ -3374,6 +3445,8 @@ public class VermaxionEngine
 
     private TaskEligibility EvaluateActiveRunEligibility(string taskId, CharacterConfig config)
     {
+        if (activeRunScope.BypassSelectedScheduling && activeRunScope.SingleTaskId == PostProcessTaskOrder.IslandSanctuary && taskId == PostProcessTaskOrder.IslandSanctuary)
+            return EvaluateIslandSanctuary(config, manual: true);
         if (activeRunScope.BypassSelectedScheduling && activeRunScope.SingleTaskId == taskId &&
             taskId is PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly)
             return EvaluateBeastmaster(config, taskId == PostProcessTaskOrder.BeastmasterWeekly, ignoreScheduling: true);
@@ -3545,6 +3618,7 @@ public class VermaxionEngine
             EngineState.RunningFashionReport => "Fashion Report",
             EngineState.RunningCustomDeliveries => "Custom Deliveries",
             EngineState.RunningChocoboStables => "Chocobo Stables",
+            EngineState.RunningIslandSanctuary => "Island Sanctuary",
             EngineState.RunningChocoboRacing => "Chocobo Racing",
             EngineState.RunningBeastmaster => "Beastmaster",
             EngineState.RunningBeastmasterWeekly => "Beastmaster weeklies",

@@ -34,7 +34,7 @@ jobs:
         with:
           repository: McVaxius/aethertekUI
           # Publish compatible library APIs before consumer changes.
-          ref: 1f26dbfa27ebff286dc74d07cb32840606d116d2
+          ref: 0c1b0e488183b51507b2715eff8dc5b957d4829a
           path: aethertekUI
           # Repository-specific read-only SSH deploy key; no expiration.
           ssh-key: ${{ secrets.AETHERTEKUI_DEPLOY_KEY }}
@@ -106,11 +106,40 @@ jobs:
             echo "version=${version}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Read Canonical Release Notes
+        id: release_notes
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["RELEASE_VERSION"].removeprefix("v")
+          lines = Path("CHANGELOG.md").read_text(encoding="utf-8-sig").splitlines(keepends=True)
+          heading = re.compile(r"^\d{4}-\d{2}-\d{2} - " + re.escape(version) + r"(?: - |$)")
+          matches = [index for index, line in enumerate(lines) if heading.match(line)]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected one dated canonical changelog entry for {version}.")
+          start = matches[0]
+          end = next((index for index in range(start + 1, len(lines))
+                      if re.match(r"^(?:\d{4}-\d{2}-\d{2}|Unreleased) - ", lines[index])), len(lines))
+          body = "".join(lines[start:end]).strip()
+          if not any(line.startswith("- ") for line in lines[start + 1:end]):
+              raise SystemExit(f"Canonical changelog entry for {version} has no release bullets.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("body<<VERMAXION_RELEASE_BODY\n" + body + "\nVERMAXION_RELEASE_BODY\n")
+          PY
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: Release ${{ steps.get_version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.body }}
+          generate_release_notes: false
           draft: false
           prerelease: false
           files: |

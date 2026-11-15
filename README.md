@@ -87,7 +87,13 @@ Choke-abo performs verified retirement, owned-parent or permit covering, offspri
 - **Misc Commands hook:** Runs once at the beginning of an applicable After-AR or manual engine run, including when it is the only work. It never arms a Before-AR pass by itself.
 - **Fishing coordinator:** Ocean Fishing retains its preemptive startup window and account/relog coordinator. Configuration → Global → Fishing includes the disabled-by-default `Watch Ocean Fishing windows` checkbox that can invoke that same coordinator without AR pre/post processing. It is intentionally not reorderable through the engine task list.
 - **Manual utility:** Retainer Bell remains an explicit manual utility rather than a character enable flag.
-- **Configuration-only WIP:** Adventurer Activity (Evercold) and Island Sanctuary are outside runtime dispatch. `/vmx is` opens the Island Run/Settings window. Its per-character opt-in defaults off; Weekly is the default saved cadence, with Daily/Manual and seven selected chores. Settings remain editable offline and without Calypso, including account defaults. Run, Stop and Open Calypso are disabled/TBD; no visits are scheduled, executed or credited. Detailed Island policies remain Calypso-owned.
+- **Island Sanctuary:** `/vmx is` opens Island Run/Settings. Existing Calypso IPC 1/status schema 1 supports Workshop agenda (demand reading before agenda preparation) and Exports. Enter your island first: arrival has no travel-only IPC. Income, Granary, Pasture, Crops and Seeds remain visible, greyed-out unavailable options; they are never run or credited.
+  - Each character opts in separately, off by default. Weekly remains the default cadence; Daily and Manual are available. Daily/weekly due checks use Calypso's own Island `week.day` cycle, not VERMAXION's other daily/weekly reset times. Manual Run bypasses the saved cadence while retaining provider, character and ownership checks.
+  - Detailed workshop/overwrite, material-reserve and selling policies remain Calypso-owned. VERMAXION starts only the selected single tasks; it never starts Calypso's daily loop or changes those policies. Suggest mode confirms a prepared plan, not an applied agenda.
+  - Every credited chore requires matching structured Done evidence and its successful single-task result, with unchanged failure count, character and cycle. An already-completed demand reading may be skipped without crediting the agenda. Accepted starts, idle state, Stop and arbitrary result text do not count. Agenda and Exports receipts persist separately, including partial success.
+  - Do not run Calypso separately while this routine is active. Calypso supplies no request/history token, so an external operation on the same character, task and cycle cannot be perfectly distinguished. Cancellation stops only an identifiable VMX-owned single task; an unconfirmed owned Stop keeps cleanup blocked without retrying.
+  - Settings remain editable offline and for other/default profiles; Run and Stop operate only on the active character. Open Calypso remains unavailable because this contract supplies no window-opening IPC.
+- **Configuration-only WIP:** Adventurer Activity (Evercold) remains outside runtime dispatch.
 
 The main and configuration windows show exact blocked prerequisites, such as an empty Register Registrables list when automatic inventory discovery is disabled, rather than collapsing them into a generic no-work result. If the catalog, task order definitions, and runtime bindings ever disagree, VERMAXION rejects the run visibly and safely releases its AutoRetainer ownership instead of partially dispatching.
 
@@ -251,7 +257,7 @@ Beastmaster requires both **BossModReborn** and **BMRVariantLoader**, with its C
 | `/vmx reg` | Run Register Registrables once using the current character's selected inventory/personal-list source, independently of scheduled enablement |
 | `/vmx cancel` | Cancel current run |
 | `/vmx config` | Open config window |
-| `/vmx is` | Open Island Sanctuary Run/Settings; execution remains TBD |
+| `/vmx is` | Open Island Sanctuary Run/Settings for supported Calypso chores |
 | `/vmx b` or `/vmx beast` | Open Beastmaster run setup, beasts and supplies |
 | `/vmx b mini` or `/vmx beast mini` | Open the Beastmaster mini monitor with the same run controls |
 | `/vmx chocobo settings` | Open Chocobo Racing settings in the selected editing scope |

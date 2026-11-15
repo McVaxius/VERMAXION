@@ -75,7 +75,7 @@ public sealed class AutomationCatalogTests
         var engineIds = AutomationCatalog.EngineTasks.Select(feature => feature.Id).ToList();
         var validation = AutomationCatalog.ValidateRuntimeRegistry(engineIds, PostProcessTaskOrder.DefaultOrder);
 
-        Assert.Equal(24, engineIds.Count);
+        Assert.Equal(25, engineIds.Count);
         Assert.True(validation.IsValid, validation.Message);
     }
 

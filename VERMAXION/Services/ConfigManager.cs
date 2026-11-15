@@ -188,6 +188,8 @@ public class ConfigManager
         }
 
         accountForChar.Characters[charKey] = accountForChar.DefaultConfig.Clone();
+        accountForChar.Characters[charKey].IslandAgendaConfirmedCycle = "";
+        accountForChar.Characters[charKey].IslandExportsConfirmedCycle = "";
         accountForChar.Characters[charKey].ResetFCBuffState();
         accountForChar.Characters[charKey].JumboCactpotUnclaimedTickets = 0;
         accountForChar.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
@@ -287,12 +289,16 @@ public class ConfigManager
             var beastmaster = account.Characters[charKey].Beastmaster;
             var verminionProgress = account.Characters[charKey].VerminionProgress;
             var verminionPaused = account.Characters[charKey].VerminionPaused;
+            var islandAgendaCycle = account.Characters[charKey].IslandAgendaConfirmedCycle;
+            var islandExportsCycle = account.Characters[charKey].IslandExportsConfirmedCycle;
             account.Characters[charKey] = account.DefaultConfig.Clone();
             account.Characters[charKey].Beastmaster = beastmaster ?? new();
             account.Characters[charKey].CopyBeastmasterSettingsFrom(account.DefaultConfig);
             // Settings reset must not erase spending/reservations or another run's pause.
             account.Characters[charKey].VerminionProgress = verminionProgress.Clone();
             account.Characters[charKey].VerminionPaused = verminionPaused;
+            account.Characters[charKey].IslandAgendaConfirmedCycle = islandAgendaCycle;
+            account.Characters[charKey].IslandExportsConfirmedCycle = islandExportsCycle;
             account.Characters[charKey].ResetFCBuffState();
             account.Characters[charKey].JumboCactpotUnclaimedTickets = 0;
             account.Characters[charKey].JumboCactpotPayoutAvailableAt = DateTime.MinValue;
