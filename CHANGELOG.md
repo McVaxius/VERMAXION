@@ -1,3 +1,8 @@
+2026-11-15 - 3.0.0.17 - AutoRetainer IPC integration
+
+- **Updated AutoRetainer integration:** Use existing IPC for character selection, inn parking, venture readiness and gil-withdrawal settings.
+- **Updated AutoRetainer status:** Read MultiMode state through its existing IPC.
+
 2026-11-12 - 3.0.0.16 - Highlight contrast
 
 - Add Highlight contrast (0–100%) to Appearance and Colour, defaulting to 50% when absent. Preserve saved zero and custom values.

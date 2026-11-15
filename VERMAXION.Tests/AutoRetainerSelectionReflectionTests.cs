@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Reflection;
 using VERMAXION.IPC;
 using Xunit;
 
@@ -7,128 +7,49 @@ namespace VERMAXION.Tests
 {
     public sealed class AutoRetainerSelectionReflectionTests
     {
-        private const ulong ContentId = 0x4000174C2E9539;
-
-        public AutoRetainerSelectionReflectionTests()
-        {
-            AutoRetainer.AutoRetainer.C.OfflineData.Clear();
-            AutoRetainer.Modules.OfflineDataManager.Reset();
-        }
+        public AutoRetainerSelectionReflectionTests() => AutoRetainer.Modules.OfflineDataManager.Reset();
 
         [Fact]
-        public void ReadsWritesVerifiesAndPersistsArbitraryCharacterSelection()
+        public void ResolvesTheExistingStaticTwoBooleanSaveOverload()
         {
-            var current = new AutoRetainer.FakeOfflineCharacterData
-            {
-                CID = ContentId,
-                Enabled = true,
-            };
-            var previous = new AutoRetainer.FakeOfflineCharacterData
-            {
-                CID = ContentId + 1,
-                Enabled = false,
-            };
-            AutoRetainer.AutoRetainer.C.OfflineData.Add(current);
-            AutoRetainer.AutoRetainer.C.OfflineData.Add(previous);
-            var plugin = new AutoRetainer.AutoRetainer();
+            Assert.True(AutoRetainerSelectionReflection.TryResolveSaveMethod(
+                new AutoRetainer.AutoRetainer(), out var save, out var error), error);
 
-            var before = AutoRetainerSelectionReflection.Read(plugin, previous.CID);
-            var write = AutoRetainerSelectionReflection.Write(plugin, previous.CID, enabled: true);
-            var after = AutoRetainerSelectionReflection.Read(plugin, previous.CID);
+            Assert.True(save.IsStatic);
+            Assert.Equal(new[] { typeof(bool), typeof(bool) },
+                Array.ConvertAll(save.GetParameters(), parameter => parameter.ParameterType));
+            save.Invoke(null, [false, true]);
 
-            Assert.True(before.Success);
-            Assert.False(before.Enabled);
-            Assert.True(write.Success);
-            Assert.True(write.Enabled);
-            Assert.True(write.SaveInvoked);
-            Assert.True(after.Success);
-            Assert.True(after.Enabled);
-            Assert.True(current.Enabled);
             Assert.Equal(1, AutoRetainer.Modules.OfflineDataManager.WriteCount);
             Assert.False(AutoRetainer.Modules.OfflineDataManager.LastWriteGatherables);
             Assert.True(AutoRetainer.Modules.OfflineDataManager.LastSaveConfig);
         }
 
         [Fact]
-        public void SaveExceptionReturnsFailureAfterVerifiedInMemoryWrite()
+        public void MissingSaveTypeFailsBeforeAnyNativeInvocation()
         {
-            var current = new AutoRetainer.FakeOfflineCharacterData
-            {
-                CID = ContentId,
-                Enabled = false,
-            };
-            AutoRetainer.AutoRetainer.C.OfflineData.Add(current);
-            AutoRetainer.Modules.OfflineDataManager.ThrowOnWrite = true;
-
-            var result = AutoRetainerSelectionReflection.Write(
-                new AutoRetainer.AutoRetainer(),
-                ContentId,
-                enabled: true);
-
-            Assert.False(result.Success);
-            Assert.True(result.Enabled);
-            Assert.True(result.SaveInvoked);
-            Assert.True(current.Enabled);
-            Assert.Contains("save failed", result.Error, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public void MissingCharacterAndMissingPluginTypeFailClosed()
-        {
-            var missingCharacter = AutoRetainerSelectionReflection.Read(
-                new AutoRetainer.AutoRetainer(),
-                ContentId);
-            var missingPluginType = AutoRetainerSelectionReflection.Read(new object(), ContentId);
-
-            Assert.False(missingCharacter.Success);
-            Assert.Contains(ContentId.ToString("X16"), missingCharacter.Error, StringComparison.Ordinal);
-            Assert.False(missingPluginType.Success);
-            Assert.Contains("AutoRetainer.AutoRetainer", missingPluginType.Error, StringComparison.Ordinal);
-        }
-
-        [Fact]
-        public void UnwritableEnabledMemberFailsBeforePersistence()
-        {
-            var current = new AutoRetainer.FakeReadOnlyOfflineCharacterData(ContentId, enabled: false);
-            AutoRetainer.AutoRetainer.C.OfflineData.Add(current);
-
-            var result = AutoRetainerSelectionReflection.Write(
-                new AutoRetainer.AutoRetainer(),
-                ContentId,
-                enabled: true);
-
-            Assert.False(result.Success);
-            Assert.False(current.Enabled);
-            Assert.False(result.SaveInvoked);
+            Assert.False(AutoRetainerSelectionReflection.TryResolveSaveMethod(new object(), out _, out var error));
+            Assert.Contains("OfflineDataManager", error);
             Assert.Equal(0, AutoRetainer.Modules.OfflineDataManager.WriteCount);
-            Assert.Contains("writable Boolean", result.Error, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void NativeSaveFailureRemainsObservable()
+        {
+            AutoRetainer.Modules.OfflineDataManager.ThrowOnWrite = true;
+            Assert.True(AutoRetainerSelectionReflection.TryResolveSaveMethod(
+                new AutoRetainer.AutoRetainer(), out var save, out _));
+
+            var failure = Assert.Throws<TargetInvocationException>(() => save.Invoke(null, [false, true]));
+            Assert.Contains("save failed", failure.GetBaseException().Message);
+            Assert.Equal(1, AutoRetainer.Modules.OfflineDataManager.WriteCount);
         }
     }
 }
 
 namespace AutoRetainer
 {
-    internal sealed class AutoRetainer
-    {
-        internal static FakeConfig C { get; } = new();
-    }
-
-    internal sealed class FakeConfig
-    {
-        public List<object> OfflineData { get; } = [];
-    }
-
-    internal sealed class FakeOfflineCharacterData
-    {
-        public ulong CID { get; set; }
-        public bool Enabled { get; set; }
-    }
-
-    internal sealed class FakeReadOnlyOfflineCharacterData(ulong cid, bool enabled)
-    {
-        public ulong CID { get; } = cid;
-        public bool Enabled { get; } = enabled;
-    }
+    internal sealed class AutoRetainer { }
 }
 
 namespace AutoRetainer.Modules
@@ -148,6 +69,9 @@ namespace AutoRetainer.Modules
             if (ThrowOnWrite)
                 throw new InvalidOperationException("save failed");
         }
+
+        internal static void WriteOfflineData(int unrelated, int overload)
+            => throw new InvalidOperationException("Wrong save overload");
 
         public static void Reset()
         {

@@ -8,6 +8,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
 using ECommons.Reflection;
+using Newtonsoft.Json.Linq;
 using VERMAXION.Models;
 
 namespace VERMAXION.IPC;
@@ -15,7 +16,6 @@ namespace VERMAXION.IPC;
 public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
 {
     private const string AutoRetainerInternalName = "AutoRetainer";
-    private const string MultiModeTypeName = "AutoRetainer.Modules.Multi.MultiMode";
 
     private readonly IPluginLog log;
     private readonly IDalamudPluginInterface pluginInterface;
@@ -109,11 +109,66 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
             if (!TryGetLoadedAutoRetainer(out var autoRetainerPlugin, out var error))
                 return AutoRetainerSelectionWriteResult.Failed(error);
 
-            return AutoRetainerSelectionReflection.Write(autoRetainerPlugin, contentId, enabled);
+            var saveAvailable = AutoRetainerSelectionReflection.TryResolveSaveMethod(autoRetainerPlugin, out var save, out error);
+            return WriteCharacterSelection(contentId, enabled, saveAvailable ? save : null, error);
         }
         catch (Exception ex)
         {
             return AutoRetainerSelectionWriteResult.Failed(ex.Message);
+        }
+    }
+
+    private JObject ReadCompleteCharacter(ulong contentId)
+    {
+        if (contentId == 0)
+            throw new InvalidOperationException("The local content ID was zero.");
+        var character = pluginInterface.GetIpcSubscriber<ulong, JObject>("AutoRetainer.GetOfflineCharacterData").InvokeFunc(contentId);
+        if (character == null || character.Value<ulong?>("CID") != contentId)
+            throw new InvalidOperationException("AutoRetainer returned no matching character snapshot.");
+        if (character["Enabled"]?.Type != JTokenType.Boolean)
+            throw new InvalidOperationException("AutoRetainer character selection is unavailable.");
+        return character;
+    }
+
+    private void WriteCompleteCharacter(JObject character)
+        => pluginInterface.GetIpcSubscriber<JObject, object>("AutoRetainer.WriteOfflineCharacterData").InvokeAction(character);
+
+    private AutoRetainerSelectionWriteResult WriteCharacterSelection(ulong contentId, bool enabled, MethodInfo? save, string saveError)
+    {
+        try
+        {
+            // This detached complete payload is read, changed and returned in
+            // this synchronous call. Never write the partial read-only DTO back.
+            var character = ReadCompleteCharacter(contentId);
+            if (save == null)
+                return AutoRetainerSelectionWriteResult.Failed(saveError, character.Value<bool>("Enabled"));
+            character["Enabled"] = enabled;
+            WriteCompleteCharacter(character);
+            var verified = ReadCharacterSelection(contentId);
+            if (!verified.Success || verified.Enabled != enabled)
+                return AutoRetainerSelectionWriteResult.Failed(
+                    verified.Success ? "Enabled did not retain the requested value." : verified.Error,
+                    verified.Enabled);
+            try
+            {
+                save.Invoke(null, [false, true]);
+            }
+            catch (Exception ex)
+            {
+                return AutoRetainerSelectionWriteResult.Failed(
+                    $"OfflineDataManager.WriteOfflineData(false, true) failed: {ex.GetBaseException().Message}",
+                    verified.Enabled, saveInvoked: true);
+            }
+            var final = ReadCharacterSelection(contentId);
+            return final.Success && final.Enabled == enabled
+                ? AutoRetainerSelectionWriteResult.Verified(final.Enabled)
+                : AutoRetainerSelectionWriteResult.Failed(
+                    final.Success ? "The selection did not retain the requested value after saving." : final.Error,
+                    final.Success ? final.Enabled : verified.Enabled, saveInvoked: true);
+        }
+        catch (Exception ex)
+        {
+            return AutoRetainerSelectionWriteResult.Failed(ex.GetBaseException().Message);
         }
     }
 
@@ -190,55 +245,43 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         try
         {
             if (!TryGetLoadedAutoRetainer(out var plugin, out var error) ||
-                !TryGetAutoRetainerConfig(plugin, out var config, out error))
+                !AutoRetainerSelectionReflection.TryResolveSaveMethod(plugin, out var save, out error))
                 throw new InvalidOperationException(error);
-
-            var character = (ReadMember(config, "OfflineData") as IEnumerable)?.Cast<object>()
-                .FirstOrDefault(value => ReadUInt64(value, "CID") == contentId);
-            if (character == null || ReadMember(character, "RetainerData") is not IEnumerable retainers)
-                throw new InvalidOperationException("AutoRetainer retainer data for the current character was not readable.");
-
-            const BindingFlags staticMembers = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-            const BindingFlags instanceMembers = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-            var assembly = plugin.GetType().Assembly;
-            var getAdditionalData = assembly.GetType("AutoRetainer.Helpers.Utils")?.GetMethod(
-                "GetAdditionalData", staticMembers, null, [typeof(ulong), typeof(string)], null);
-            var save = assembly.GetType("AutoRetainer.Modules.OfflineDataManager")?.GetMethod(
-                "WriteOfflineData", staticMembers, null, [typeof(bool), typeof(bool)], null);
-            var withdraw = getAdditionalData?.ReturnType.GetField("WithdrawGil", instanceMembers);
-            var deposit = getAdditionalData?.ReturnType.GetField("Deposit", instanceMembers);
-            if (getAdditionalData == null || save == null ||
-                withdraw == null || withdraw.FieldType != typeof(bool) || withdraw.IsInitOnly ||
-                deposit == null || deposit.FieldType != typeof(bool) || deposit.IsInitOnly)
-                throw new InvalidOperationException("AutoRetainer gil-withdrawal settings or save method were not available.");
-
-            var changed = 0;
-            foreach (var retainer in retainers.Cast<object>())
-            {
-                var name = ReadString(retainer, "Name");
-                if (string.IsNullOrEmpty(name))
-                    continue;
-
-                var additional = getAdditionalData.Invoke(null, [contentId, name]);
-                if (additional == null)
-                    throw new InvalidOperationException("AutoRetainer additional retainer data was not available.");
-                if (withdraw.GetValue(additional) is true && deposit.GetValue(additional) is false)
-                    continue;
-
-                withdraw.SetValue(additional, true);
-                deposit.SetValue(additional, false);
-                changed++;
-            }
-
-            if (changed > 0)
-            {
-                save.Invoke(null, [false, true]);
-                log.Information($"[Listings] Enabled AutoRetainer gil withdrawal for {changed} retainer(s) on the current character; withdrawal percentages preserved.");
-            }
+            ConfigureRetainerGilWithdrawal(contentId, save);
         }
         catch (Exception ex)
         {
             log.Warning($"[Listings] Could not enable AutoRetainer gil withdrawal: {ex.GetBaseException().Message}");
+        }
+    }
+
+    private void ConfigureRetainerGilWithdrawal(ulong contentId, MethodInfo save)
+    {
+        var retainers = ReadCharacterSnapshot(contentId).RetainerData
+            ?? throw new InvalidOperationException("AutoRetainer retainer data for the current character was not readable.");
+        var changed = 0;
+        foreach (var retainer in retainers)
+        {
+            var name = retainer?.Name;
+            if (string.IsNullOrEmpty(name))
+                continue;
+            var additional = pluginInterface.GetIpcSubscriber<ulong, string, JObject>(
+                "AutoRetainer.GetAdditionalRetainerData").InvokeFunc(contentId, name);
+            if (additional == null || additional["WithdrawGil"]?.Type != JTokenType.Boolean ||
+                additional["Deposit"]?.Type != JTokenType.Boolean)
+                throw new InvalidOperationException("AutoRetainer gil-withdrawal settings were not readable.");
+            if (additional.Value<bool>("WithdrawGil") && !additional.Value<bool>("Deposit"))
+                continue;
+            additional["WithdrawGil"] = true;
+            additional["Deposit"] = false;
+            pluginInterface.GetIpcSubscriber<ulong, string, JObject, object>(
+                "AutoRetainer.WriteAdditionalRetainerData").InvokeAction(contentId, name, additional);
+            changed++;
+        }
+        if (changed > 0)
+        {
+            save.Invoke(null, [false, true]);
+            log.Information($"[Listings] Enabled AutoRetainer gil withdrawal for {changed} retainer(s) on the current character; withdrawal percentages preserved.");
         }
     }
 
@@ -341,33 +384,6 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         }
     }
 
-    private static object? ReadMember(object owner, string name)
-    {
-        var type = owner.GetType();
-        var field = type.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (field != null)
-            return field.GetValue(owner);
-        return type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?.GetValue(owner);
-    }
-
-    private static string ReadString(object owner, string name) =>
-        ReadMember(owner, name)?.ToString() ?? string.Empty;
-
-    private static bool ReadBool(object owner, string name) =>
-        ReadMember(owner, name) is bool value && value;
-
-    private static ulong ReadUInt64(object owner, string name)
-    {
-        var value = ReadMember(owner, name);
-        return value == null ? 0 : Convert.ToUInt64(value);
-    }
-
-    private static long ReadInt64(object owner, string name, long fallback = 0)
-    {
-        var value = ReadMember(owner, name);
-        return value == null ? fallback : Convert.ToInt64(value);
-    }
 
     public SuppressionReadResult ReadSuppression()
     {
@@ -413,39 +429,16 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         }
         catch (Exception ipcException)
         {
-            log.Warning($"[AR] GetMultiModeEnabled IPC failed; trying local reflection fallback: {ipcException.Message}");
+            log.Warning($"[AR] GetMultiModeEnabled IPC failed; trying existing PluginState.GetMultiModeStatus IPC: {ipcException.Message}");
         }
-
         try
         {
-            if (!DalamudReflector.TryGetDalamudPlugin(
-                    AutoRetainerInternalName,
-                    out var autoRetainerPlugin,
-                    out AssemblyLoadContext? _,
-                    true,
-                    true) ||
-                autoRetainerPlugin == null)
-            {
-                return AutoRetainerMultiModeReadResult.Failed("AutoRetainer was not loaded.");
-            }
-
-            var multiModeType = autoRetainerPlugin.GetType().Assembly.GetType(MultiModeTypeName);
-            if (multiModeType == null)
-                return AutoRetainerMultiModeReadResult.Failed($"{MultiModeTypeName} was not available.");
-
-            var enabledField = multiModeType.GetField("Enabled", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            if (enabledField?.GetValue(null) is bool fieldValue)
-                return AutoRetainerMultiModeReadResult.Known(fieldValue);
-
-            var enabledProperty = multiModeType.GetProperty("Enabled", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            if (enabledProperty?.GetValue(null) is bool propertyValue)
-                return AutoRetainerMultiModeReadResult.Known(propertyValue);
-
-            return AutoRetainerMultiModeReadResult.Failed("MultiMode.Enabled field/property was not readable.");
+            return AutoRetainerMultiModeReadResult.Known(
+                pluginInterface.GetIpcSubscriber<bool>("AutoRetainer.PluginState.GetMultiModeStatus").InvokeFunc());
         }
         catch (Exception ex)
         {
-            log.Warning($"[AR] MultiMode.Enabled reflection failed: {ex.Message}");
+            log.Warning($"[AR] MultiMode state IPC failed: {ex.Message}");
             return AutoRetainerMultiModeReadResult.Failed(ex.Message);
         }
     }
@@ -545,52 +538,29 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         error = string.Empty;
         try
         {
-            if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
-                !TryGetAutoRetainerConfig(plugin, out var config, out error))
-            {
-                return false;
-            }
-
-            // VentureEndsAt is standard unix seconds (matches DateTimeOffset.UtcNow), so no need to read
-            // AutoRetainer's clock. Floor the lead so a mis-passed value can't set a past/near-now time.
             var target = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + Math.Max(10, leadSeconds);
-
-            if (ReadMember(config, "OfflineData") is not IEnumerable offline)
+            var offline = pluginInterface.GetIpcSubscriber<List<OfflineCharacterSnapshot?>?>(
+                "AutoRetainer.GetConfig.OfflineData").InvokeFunc();
+            if (offline == null)
+                throw new InvalidOperationException("AutoRetainer OfflineData was not readable.");
+            foreach (var candidate in offline)
             {
-                error = "AutoRetainer OfflineData was not readable.";
-                return false;
-            }
-
-            foreach (var character in offline.Cast<object>())
-            {
-                if (character == null || !ReadBool(character, "Enabled"))
+                if (candidate?.Enabled is not true || candidate.CID is not { } contentId)
                     continue;
-                if (ReadMember(character, "RetainerData") is not IEnumerable retainers)
+                var character = ReadCompleteCharacter(contentId);
+                if (!character.Value<bool>("Enabled") || character["RetainerData"] is not JArray retainers)
                     continue;
-                // Prefer a retainer with a live venture — AR's readiness checks key off HasVenture, so
-                // writing VentureEndsAt on a venture-less retainer may not be honored.
-                var retainerList = retainers.Cast<object>().Where(r => r != null).ToList();
-                var retainer = retainerList.FirstOrDefault(r => ReadBool(r!, "HasVenture")) ?? retainerList.FirstOrDefault();
+                var retainer = retainers.OfType<JObject>().FirstOrDefault(row => row.Value<bool?>("HasVenture") is true)
+                    ?? retainers.OfType<JObject>().FirstOrDefault();
                 if (retainer == null)
                     continue;
-
-                var type = retainer.GetType();
-                var field = type.GetField("VentureEndsAt", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (field != null && field.FieldType == typeof(long))
-                {
-                    field.SetValue(retainer, target);
-                    who = ReadString(character, "Name");
-                    return true;
-                }
-                var property = type.GetProperty("VentureEndsAt", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (property != null && property.CanWrite && property.PropertyType == typeof(long))
-                {
-                    property.SetValue(retainer, target);
-                    who = ReadString(character, "Name");
-                    return true;
-                }
+                if (retainer["VentureEndsAt"]?.Type != JTokenType.Integer)
+                    throw new InvalidOperationException("AutoRetainer retainer venture time was not readable.");
+                retainer["VentureEndsAt"] = target;
+                WriteCompleteCharacter(character);
+                who = character.Value<string>("Name") ?? string.Empty;
+                return true;
             }
-
             error = "no enabled character with a writable retainer venture was found.";
             return false;
         }
@@ -610,41 +580,13 @@ public sealed class AutoRetainerIPC : IAutoRetainerSelectionAccessor
         error = string.Empty;
         try
         {
-            if (!TryGetLoadedAutoRetainer(out var plugin, out error) ||
-                !TryGetAutoRetainerConfig(plugin, out var config, out error))
-            {
-                return false;
-            }
-            if (ReadMember(config, "OfflineData") is not IEnumerable offline)
-            {
-                error = "AutoRetainer OfflineData was not readable.";
-                return false;
-            }
-            var character = offline.Cast<object?>()
-                .FirstOrDefault(value => value != null && ReadUInt64(value, "CID") == contentId);
-            if (character == null)
-            {
-                error = $"no OfflineData entry for content id {contentId:X}.";
-                return false;
-            }
-            who = ReadString(character, "Name");
-            if (ReadBool(character, "Enabled"))
-                return true; // already enabled — idempotent success
-            var type = character.GetType();
-            var field = type.GetField("Enabled", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (field != null && field.FieldType == typeof(bool))
-            {
-                field.SetValue(character, true);
+            var character = ReadCompleteCharacter(contentId);
+            who = character.Value<string>("Name") ?? string.Empty;
+            if (character.Value<bool>("Enabled"))
                 return true;
-            }
-            var property = type.GetProperty("Enabled", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (property != null && property.CanWrite && property.PropertyType == typeof(bool))
-            {
-                property.SetValue(character, true);
-                return true;
-            }
-            error = "Enabled member was not writable.";
-            return false;
+            character["Enabled"] = true;
+            WriteCompleteCharacter(character);
+            return true;
         }
         catch (Exception ex)
         {
