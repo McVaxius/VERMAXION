@@ -6,7 +6,7 @@ The main window uses the approved regular and compact presentation, with an opti
 
 Main's titlebar opens Settings, toggles Enabled, runs all eligible tasks, cancels the current run or invokes FULL STOP through the existing actions and readiness checks. The packaged plugin icon appears in Main branding and its titlebar, including when collapsed.
 
-Managed Segoe UI fonts borrow Windows' text and symbol faces and Dalamud's selected-locale Noto CJK coverage. No Windows font files are distributed. Readiness and required-glyph checks remain explicit, including the DTR tooltip's black-circle symbol.
+Managed UI fonts use bundled Selawik text faces with Dalamud's selected-locale Noto CJK and game-symbol coverage. No Windows font files are distributed. Readiness and required-glyph checks remain explicit, including the DTR tooltip's black-circle symbol.
 
 Settings → Characters shows accounts and saved characters in a dedicated left pane. Select `(Default Config)` or a character there, then choose the task in the separate Settings picker above its editor. Narrow windows use a labeled character picker. The editing account stays separate from the active automation account, so browsing profiles keeps runtime work and runtime saves on the logged-in scope.
 

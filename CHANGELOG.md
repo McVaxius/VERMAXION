@@ -1,3 +1,7 @@
+2026-11-17 - 3.0.0.19 - Bundled UI fonts
+
+- **Fixed UI fonts:** Use bundled Selawik instead of Windows Segoe files, preserving font sizes, language merges, readiness checks and missing-glyph errors.
+
 2026-11-15 - 3.0.0.18 - Calypso Island chores
 
 - **Added Calypso Island chores:** Run workshop demand reading and agenda preparation, then selected exports, from Island Sanctuary or the existing task queue while already on the island.

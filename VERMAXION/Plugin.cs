@@ -805,7 +805,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             uiFonts?.Dispose();
             uiText?.Dispose();
             uiText=new(language,role=>uiFonts!.Push(role));
-            uiFonts=new(PluginInterface.UiBuilder.FontAtlas,uiText.GlyphRanges(),language);
+            uiFonts=new(PluginInterface.UiBuilder.FontAtlas,uiText.GlyphRanges(),language,
+                PluginInterface.AssemblyLocation.DirectoryName!);
             languageOptions=new(UiText.Languages.Select(l=>new MaterialOption<string>(l.Code,l.Code,l.Name)).ToArray());
             appliedLanguage=language;
             checkedFontGeneration=-1;

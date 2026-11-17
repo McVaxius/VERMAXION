@@ -1,5 +1,6 @@
 using System.Numerics;
 using AethertekUI;
+using AethertekUI.Dalamud;
 using Dalamud.Bindings.ImGui;
 
 namespace VERMAXION;
@@ -12,7 +13,8 @@ internal static class VermaxionPresentation
     internal const float MainHeader = 48, MainStatus = 76, MainAction = 50, MainGap = 16, MainRow = 38;
     internal const uint ReferenceAccent = 0x00C6DF;
     internal static readonly float[] FontSizes = [16, 16, 38, 20, 22, 18, 26];
-    internal static readonly string[] FontFiles = ["segoeui.ttf", "seguisb.ttf", "segoeuib.ttf", "seguisb.ttf", "seguisb.ttf", "seguisb.ttf", "segoeuib.ttf"];
+    internal static readonly MaterialFontWeight[] FontWeights = [MaterialFontWeight.Regular, MaterialFontWeight.Semibold,
+        MaterialFontWeight.Bold, MaterialFontWeight.Semibold, MaterialFontWeight.Semibold, MaterialFontWeight.Semibold, MaterialFontWeight.Bold];
     internal static float AtlasHeight(UiFontRole role) => FontSizes[(int)role] * 4 / 3;
     internal static bool HasMaterial => MaterialTheme.Current.IsGlassmorphism || MaterialTheme.Current.IsSpatial || MaterialTheme.Current.IsCyberpunk;
     internal static Vector4 Rgb(uint rgb) => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, 1);
