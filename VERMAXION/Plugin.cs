@@ -3765,6 +3765,12 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         combatProviderWasBlocked = CombatProviderBlocker != null;
         if (!newlyBlocked) return;
 
+        if (pendingDebugDispatchTaskId != null)
+        {
+            pendingDebugDispatchTaskId = null;
+            SetDebugTaskStatus($"Cancelled for this reload. {CombatProviderBlocker}");
+        }
+
         CofferOpening.Stop();
         ChocoboRaceService.SuspendOwnedTargetCycle(PlayerState.ContentId, DateTime.UtcNow);
 
