@@ -57,6 +57,8 @@ public class ChocoboRaceService : IDisposable
     private readonly Action cancelPendingReload;
     private bool targetReadyForBatch;
     private DateTime nextTargetStatusPollAt = DateTime.MinValue;
+    // The native lease can outlive a local yield or reset.
+    private DateTime targetCycleLeaseUntilUtc;
     private string targetCycleStatusReason = string.Empty;
     private DateTime allowanceSaveUtc;
     private ulong progressionContentId;
@@ -190,7 +192,10 @@ public class ChocoboRaceService : IDisposable
         targetCycleEnabledForBatch = true;
         if (activeConfig.ChocoboProgressionPaused && !collectAndPauseForBatch)
             return Defer("Chocobo progression is paused; use Resume.");
-        progressionContentId = Plugin.PlayerState.ContentId;
+        var contentId = Plugin.PlayerState.ContentId;
+        if (progressionContentId != contentId)
+            targetCycleLeaseUntilUtc = default;
+        progressionContentId = contentId;
         progressionAccount = configManager.CurrentAccountId;
         progressionCharacter = configManager.CurrentCharacterKey;
         queueCancellationRequested = false;
@@ -310,6 +315,15 @@ public class ChocoboRaceService : IDisposable
         targetReadyForBatch = false;
         nextTargetStatusPollAt = DateTime.MinValue;
         targetCycleStatusReason = string.Empty;
+    }
+
+    internal void SuspendOwnedTargetCycle(ulong contentId, DateTime nowUtc)
+    {
+        if (contentId == 0 || contentId != progressionContentId || nowUtc >= targetCycleLeaseUntilUtc) return;
+        targetCycleLeaseUntilUtc = default;
+        var result = chokeAboIpcClient.SuspendTargetCycle(contentId);
+        if (!result.Succeeded)
+            log.Warning($"[ChocoboRace] Choke-abo suspension could not be confirmed: {result.Error}");
     }
 
     public void Dispose()
@@ -1236,10 +1250,25 @@ public class ChocoboRaceService : IDisposable
 
     private ChokeAboTargetCycleCallResult RequestTargetCycle(CharacterConfig config)
     {
-        var result = chokeAboIpcClient.EnsureTargetCycle(Plugin.PlayerState.ContentId, config, resume: resumeTargetCycle,
+        var requestedAt = DateTime.UtcNow;
+        var result = chokeAboIpcClient.EnsureTargetCycle(progressionContentId, config, resume: resumeTargetCycle,
             startNewBatch: startNewProductionBatch, collectAndPause: collectAndPauseForBatch,
             enforceTestAllowance: testAllowanceEnabled());
-        if (result.Succeeded) { resumeTargetCycle = false; startNewProductionBatch = false; }
+        if (result.Succeeded)
+        {
+            resumeTargetCycle = false;
+            startNewProductionBatch = false;
+            if (result.Status is { ContentId: var contentId, Phase: ChokeAboTargetCyclePhase.Planning
+                    or ChokeAboTargetCyclePhase.PurchasingFeed or ChokeAboTargetCyclePhase.Feeding
+                    or ChokeAboTargetCyclePhase.RetirementPendingCapture or ChokeAboTargetCyclePhase.CoveringPendingCapture
+                    or ChokeAboTargetCyclePhase.CoveringWait or ChokeAboTargetCyclePhase.AdoptionPendingCapture
+                    or ChokeAboTargetCyclePhase.RegistrationPendingCapture or ChokeAboTargetCyclePhase.PurchasingSupplies }
+                && contentId == progressionContentId)
+            {
+                // Choke-abo V3 expires an accepted request ten seconds after the ensure call.
+                targetCycleLeaseUntilUtc = requestedAt.AddSeconds(10);
+            }
+        }
         return result;
     }
 

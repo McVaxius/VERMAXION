@@ -1,6 +1,7 @@
 Unreleased
 
 - Require a ready GodMod or God Mod Companion with BossModReborn for automation. Show the dependency blocker in the dashboard and automation status, and stop active work if the dependency becomes unavailable.
+- Suspend active Choke-abo work delegated by VERMAXION if the combat provider becomes unavailable.
 
 2026-11-17 - 3.0.0.19 - Bundled UI fonts
 

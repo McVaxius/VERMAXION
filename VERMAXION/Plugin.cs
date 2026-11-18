@@ -3765,6 +3765,9 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         combatProviderWasBlocked = CombatProviderBlocker != null;
         if (!newlyBlocked) return;
 
+        CofferOpening.Stop();
+        ChocoboRaceService.SuspendOwnedTargetCycle(PlayerState.ContentId, DateTime.UtcNow);
+
         if (manualMomRequestId != null && MomIPCClient.TryGetStatus(out var momRun) &&
             (momRun.RequestId != manualMomRequestId || momRun.Status is not (MomRunStatus.Queued or MomRunStatus.Running)))
             manualMomRequestId = null;

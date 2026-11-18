@@ -1,4 +1,10 @@
+extern alias live;
+extern alias host;
+
 using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using VERMAXION.Models;
 using Xunit;
@@ -8,6 +14,73 @@ namespace VERMAXION.Tests;
 public sealed class ChokeAboTargetCycleTests
 {
     private const ulong ContentId = 1234567890123456789UL;
+
+    [Fact]
+    public void ProviderLossSuspendsOnlyMatchingRecentAcceptedTargetWork()
+    {
+        const string suspendChannel = "ChokeAbo.Breeding.SuspendTargetCycle.V3";
+        var calls = new List<(string Channel, ulong Owner)>();
+        var phase = "Blocked";
+        var responseOwner = ContentId;
+        var ipc = DispatchProxy.Create<host::Dalamud.Plugin.IDalamudPluginInterface, QuestionableIntegrationTests.HostProxy>();
+        ((QuestionableIntegrationTests.HostProxy)(object)ipc).Handler = (method, args) =>
+        {
+            Assert.Equal("GetIpcSubscriber", method.Name);
+            var channel = Assert.IsType<string>(args![0]);
+            var proxy = (QuestionableIntegrationTests.HostProxy)DispatchProxy.Create(method.ReturnType, typeof(QuestionableIntegrationTests.HostProxy));
+            proxy.Handler = (call, values) =>
+            {
+                if (call.Name == "get_HasFunction") return false; // Use the ordinary V3 Ensure route.
+                Assert.Equal("InvokeFunc", call.Name);
+                using var request = JsonDocument.Parse(Assert.IsType<string>(values![0]));
+                calls.Add((channel, request.RootElement.GetProperty("contentId").GetUInt64()));
+                return JsonSerializer.Serialize(new
+                {
+                    version = 3, contentId = responseOwner, phase = channel == suspendChannel ? "Paused" : phase,
+                    shouldBlockRacing = true, targetReady = false, gameActionInProgress = channel != suspendChannel && phase == "Planning",
+                    reason = "Fixture target cycle", nextCoveringEligibilityUtc = (string?)null,
+                    pedigree = 0, racingRank = 0, progressionComplete = false,
+                });
+            };
+            return proxy;
+        };
+        const BindingFlags privateInstance = BindingFlags.Instance | BindingFlags.NonPublic;
+        var serviceType = typeof(live::VERMAXION.Services.ChocoboRaceService);
+        var service = RuntimeHelpers.GetUninitializedObject(serviceType);
+        serviceType.GetField("chokeAboIpcClient", privateInstance)!.SetValue(service, new live::VERMAXION.IPC.ChokeAboIpcClient(ipc));
+        serviceType.GetField("progressionContentId", privateInstance)!.SetValue(service, ContentId);
+        serviceType.GetField("testAllowanceEnabled", privateInstance)!.SetValue(service, (Func<bool>)(() => false));
+        var requestTarget = serviceType.GetMethod("RequestTargetCycle", privateInstance)!;
+        var suspend = serviceType.GetMethod("SuspendOwnedTargetCycle", privateInstance)!;
+        var config = live::VERMAXION.Models.CharacterConfig.CreateNew();
+        config.ChocoboProgressionPaused = false;
+        void Request() => requestTarget.Invoke(service, [config]);
+        void Suspend(ulong owner, DateTime now) => suspend.Invoke(service, [owner, now]);
+
+        Suspend(ContentId, DateTime.UtcNow);
+        Request(); // A structured rejection cannot establish ownership.
+        Suspend(ContentId, DateTime.UtcNow);
+        phase = "Planning";
+        responseOwner = ContentId + 1;
+        Request();
+        Suspend(ContentId, DateTime.UtcNow);
+        Assert.DoesNotContain(calls, call => call.Channel == suspendChannel);
+
+        responseOwner = ContentId;
+        Request();
+        Suspend(ContentId + 1, DateTime.UtcNow);
+        Suspend(ContentId, DateTime.UtcNow.AddSeconds(11));
+        Assert.DoesNotContain(calls, call => call.Channel == suspendChannel);
+
+        Request();
+        Suspend(ContentId, DateTime.UtcNow);
+        Suspend(ContentId, DateTime.UtcNow);
+        var stopped = Assert.Single(calls.Where(call => call.Channel == suspendChannel));
+        Assert.Equal(ContentId, stopped.Owner);
+        Assert.All(calls.Where(call => call.Channel != suspendChannel),
+            call => Assert.Equal(("ChokeAbo.Breeding.EnsureTargetCycle.V3", ContentId), call));
+        Assert.False(config.ChocoboProgressionPaused);
+    }
 
     [Fact]
     public void OffspringWorkflowsCarryIndependentQuantitiesAndRequireTypedCompletion()
