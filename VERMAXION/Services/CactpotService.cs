@@ -78,6 +78,7 @@ public class CactpotService : IDisposable
     private DateTime lastJumboTargetAttempt = DateTime.MinValue;
     private DateTime lastJumboConfirmationAttemptAt = DateTime.MinValue;
     private DateTime lastJumboNavigationStopAttempt = DateTime.MinValue;
+    private bool navigationRequested;
     private DateTime jumboTravelSettledSince = DateTime.MinValue;
     private DateTime lastJumboCleanupAttempt = DateTime.MinValue;
     private DateTime jumboCleanupQuietSince = DateTime.MinValue;
@@ -372,8 +373,13 @@ public class CactpotService : IDisposable
         StartJumboCactpot();
     }
 
-    public void Reset()
+    public void Reset() => Reset(stopOwnedNavigation: false);
+
+    internal void Reset(bool stopOwnedNavigation)
     {
+        if (stopOwnedNavigation && navigationRequested)
+            vnavmesh.Stop();
+        navigationRequested = false;
         jumboRouteTest = false;
         jumboApproachRoute.Reset();
         FinishMiniCactpotRun("reset");
@@ -1427,6 +1433,9 @@ public class CactpotService : IDisposable
                 : CactpotState.JumboClosingWindows;
         }
 
+        if (navigationRequested && newState is CactpotState.Complete or CactpotState.Failed or CactpotState.MiniComplete)
+            StopMiniNavigation();
+
         log.Information($"[Cactpot] {state} -> {newState}");
 
         if (newState == CactpotState.MiniTargeting)
@@ -1920,13 +1929,17 @@ public class CactpotService : IDisposable
     private void StopMiniNavigation()
     {
         vnavmesh.Stop();
+        navigationRequested = false;
     }
 
     private void IssueMiniNavigation(Vector3 destination, string destinationLabel)
     {
         lastMiniNavigationAttempt = DateTime.UtcNow;
         if (vnavmesh.PathfindAndMoveTo(destination))
+        {
+            navigationRequested = true;
             log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
+        }
     }
 
     private bool RetryMiniNavigationIfNeeded(Vector3 destination, string destinationLabel)
@@ -1977,6 +1990,7 @@ public class CactpotService : IDisposable
 
         lastJumboNavigationStopAttempt = now;
         vnavmesh.Stop();
+        navigationRequested = false;
     }
 
     private void TickJumboCleanup(CactpotState settlingState)
@@ -2149,7 +2163,10 @@ public class CactpotService : IDisposable
         lastJumboNavigationAttempt = DateTime.UtcNow;
         lastJumboNavigationStopAttempt = DateTime.MinValue;
         if (vnavmesh.PathfindAndMoveTo(destination, allowRecoveryJump: false))
+        {
+            navigationRequested = true;
             log.Debug($"[Cactpot] Issued vnav movement toward {destinationLabel}");
+        }
     }
 
     private bool TickJumboClearingPoints(Vector3 npcPosition, string npcName, double elapsed)

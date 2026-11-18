@@ -286,4 +286,65 @@ public sealed class RetainerListingRecoveryTests
         Assert.True(handoff.IndexOf("ReleaseSuppressionIfOwned()") < handoff.IndexOf("arService.FinishPostProcess()"));
         Assert.Contains("suppressionReleasedForHandoff = true", handoff);
     }
+
+    [Fact]
+    public void ProductionProviderLossRetiresOnlyTrackedNavigation()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        string Read(string path) => File.ReadAllText(Path.Combine(root, "VERMAXION", path));
+        string Method(string source, string start, string next)
+        {
+            var begin = source.IndexOf(start, StringComparison.Ordinal);
+            Assert.True(begin >= 0, start);
+            var end = source.IndexOf(next, begin + start.Length, StringComparison.Ordinal);
+            Assert.True(end > begin, next);
+            return source[begin..end];
+        }
+
+        var plugin = Read("Plugin.cs");
+        var fullStop = Method(plugin, "private void FullStop(", "private void ProcessRetainerlessTimer(");
+        Assert.Contains("if (FCBuffInventoryService.IsActive)", plugin);
+        Assert.Contains("FullStop(preparingDebugTask: false, dependencyLoss: CombatProviderBlocker)", plugin);
+        Assert.Contains("if (dependencyLoss == null && !FishCollection.IsActive)", fullStop);
+        Assert.Contains("FishingService.Reset(releaseRun: true, ownedNavigationOnly: dependencyLoss != null)", fullStop);
+        Assert.Contains("RetainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null)", fullStop);
+        Assert.Contains("WorkshopBellService.Reset(ownedNavigationOnly: dependencyLoss != null)", fullStop);
+
+        var engine = Read("Services/VermaxionEngine.cs");
+        var forceStop = Method(engine, "public void ForceStop(", "private void StopTargetProgression(");
+        Assert.Contains("if (dependencyLoss == null) vNavmeshIPC.Stop();", forceStop);
+        Assert.Contains("retainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null)", forceStop);
+        var cancel = Method(engine, "private void CancelTaskServices(", "private bool TickTaskWatchdog(");
+        Assert.Contains("ResetReturnBeforeNag(cancelTravel: true, stopNavigation: !onlyOwnedExternalWork)", cancel);
+        Assert.Contains("retainerListingRefillService.Cancel(ownedNavigationOnly: true)", cancel);
+        Assert.Contains("workshopBellService.Reset(ownedNavigationOnly: onlyOwnedExternalWork)", cancel);
+
+        foreach (var name in new[] { "RetainerListingRefillService", "WorkshopBellService" })
+        {
+            var service = Read($"Services/{name}.cs");
+            Assert.Contains("navigationRequested |= vnavmesh.PathfindAndMoveTo(position)", service);
+            Assert.Contains("StopNavigation(ownedNavigationOnly)", service);
+            Assert.Contains("if (!ownedNavigationOnly || navigationRequested)", service);
+            Assert.Contains("navigationRequested = false;", service);
+        }
+
+        var fishing = Read("Services/FishingService.cs");
+        Assert.Contains("Reset(releaseRun, ownedNavigationOnly: !releaseRun)", fishing);
+        Assert.Contains("ownedNavigationOnly ? startupNavigationOwned || voyageNavigationRequested : !inFishingDuty", fishing);
+        Assert.Contains("if (startupNavigationOwned || voyageNavigationRequested) StopNavigation();", fishing);
+        Assert.Contains("voyageNavigationRequested |= vnavmesh.PathfindAndMoveTo(position)", fishing);
+
+        var delivery = Read("DeliverySupport/TaskBase.cs");
+        Assert.Contains("if (followingPath) navigation.Stop();", delivery);
+        var dispatch = delivery.IndexOf("navigation.FollowDeliveryPath(points);", StringComparison.Ordinal);
+        Assert.True(dispatch >= 0 && delivery.IndexOf("followingPath = true;", StringComparison.Ordinal) > dispatch);
+
+        foreach (var name in new[] { "CactpotService", "FashionReportService" })
+        {
+            var service = Read($"Services/{name}.cs");
+            Assert.Contains("if (stopOwnedNavigation && navigationRequested)", service);
+            Assert.Contains("navigationRequested = true;", service);
+        }
+        Assert.Contains("moving |= plugin.VNavmeshIPC.PathfindAndMoveTo(approach)", Read("Services/ChocoboStablesService.cs"));
+    }
 }

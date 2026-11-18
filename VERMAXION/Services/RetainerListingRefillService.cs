@@ -104,6 +104,7 @@ public sealed class RetainerListingRefillService
     private DateTime stateEnteredAt = DateTime.MinValue;
     private DateTime nextActionAt = DateTime.MinValue;
     private DateTime lastNavigationCommandAt = DateTime.MinValue;
+    private bool navigationRequested;
     private DateTime lastRetainerCloseAttemptAt = DateTime.MinValue;
     private DateTime lastCloseSignatureLoggedAt = DateTime.MinValue;
     private DateTime lastSelectStringDiagnosticAt = DateTime.MinValue;
@@ -230,15 +231,19 @@ public sealed class RetainerListingRefillService
         SetState(RefillState.SelectingRetainer, "Selecting retainer...");
     }
 
-    public void Reset() => Reset(preserveRetainerSession: false);
+    public void Reset() => Reset(ownedNavigationOnly: false);
+
+    internal void Reset(bool ownedNavigationOnly) => Reset(preserveRetainerSession: false, ownedNavigationOnly);
 
     // Cancellation stops the refill, but handoff still owns its dialogue and UI cleanup.
-    internal void Cancel() => Reset(preserveRetainerSession: true);
+    internal void Cancel() => Cancel(ownedNavigationOnly: false);
 
-    private void Reset(bool preserveRetainerSession)
+    internal void Cancel(bool ownedNavigationOnly) => Reset(preserveRetainerSession: true, ownedNavigationOnly);
+
+    private void Reset(bool preserveRetainerSession, bool ownedNavigationOnly)
     {
-        vnavmesh.Stop();
-        workshopBellService.Reset();
+        StopNavigation(ownedNavigationOnly);
+        workshopBellService.Reset(ownedNavigationOnly);
         state = RefillState.Idle;
         stateEnteredAt = DateTime.MinValue;
         nextActionAt = DateTime.MinValue;
@@ -451,7 +456,7 @@ public sealed class RetainerListingRefillService
             return;
         }
 
-        vnavmesh.Stop();
+        StopNavigation();
         SetState(RefillState.InteractingBell, "Opening retainer bell...");
     }
 
@@ -478,7 +483,7 @@ public sealed class RetainerListingRefillService
                 return;
             }
 
-            vnavmesh.Stop();
+            StopNavigation();
             Svc.Targets.Target = bell;
             if (GameHelpers.InteractWithObject(bell))
             {
@@ -880,7 +885,7 @@ public sealed class RetainerListingRefillService
         LogWithdrawalDiagnostics("inventory-cutoff");
         var status = $"Main inventory free slots {freeSlots} <= minimum {minFreeInventorySlots}. Refill from listings complete for current cycle.";
         log.Information($"[Listings] {status} context={context}, {detail}");
-        vnavmesh.Stop();
+        StopNavigation();
         workshopBellService.Reset();
 
         if (!HasPendingRetainerUi)
@@ -1605,11 +1610,18 @@ public sealed class RetainerListingRefillService
         if ((DateTime.UtcNow - lastNavigationCommandAt).TotalSeconds >= 2)
         {
             lastNavigationCommandAt = DateTime.UtcNow;
-            vnavmesh.PathfindAndMoveTo(position);
+            navigationRequested |= vnavmesh.PathfindAndMoveTo(position);
         }
 
         StatusText = status;
         nextActionAt = DateTime.UtcNow.AddSeconds(1);
+    }
+
+    private void StopNavigation(bool ownedNavigationOnly = false)
+    {
+        if (!ownedNavigationOnly || navigationRequested)
+            vnavmesh.Stop();
+        navigationRequested = false;
     }
 
     private int FindSellItemsMenuIndex()
@@ -2237,6 +2249,7 @@ public sealed class RetainerListingRefillService
         log.Warning($"[Listings] {message}");
         // The bell helper is no longer ticked once failure starts closing the retainer UI.
         workshopBellService.Reset();
+        navigationRequested = false;
         if (!closeRetainerUi)
         {
             SetState(RefillState.Failed, message);

@@ -295,7 +295,7 @@ public sealed unsafe class ChocoboStablesService
             // Estate teleport landings can be outside the plot boundary. Enter the yard
             // before interacting; the exact selected plot remains mandatory for every callback.
             if (plugin.VNavmeshIPC.TryFindReachablePointNear(obj.Position, AtDestination() ? 3 : 1, out var approach))
-            { moving = true; plugin.VNavmeshIPC.PathfindAndMoveTo(approach); }
+                moving |= plugin.VNavmeshIPC.PathfindAndMoveTo(approach);
             StatusText = $"Approaching stable ({distance:F1} yalms)";
             return;
         }

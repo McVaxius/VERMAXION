@@ -82,6 +82,7 @@ public sealed class FishingService
     private int startupTravelAttempt;
     private bool limsaTravelOwned;
     private bool startupNavigationOwned;
+    private bool voyageNavigationRequested;
     private DateTime lastNavigationCommandAt = DateTime.MinValue;
     private DateTime lastInteractionAttemptAt = DateTime.MinValue;
     private DateTime departureWaitStartedAt = DateTime.MinValue;
@@ -228,7 +229,7 @@ public sealed class FishingService
         if (activeRunMode != FishingRunMode.Collection) return;
         collectionStopping = true;
         if (limsaTravelOwned || aethernetTeleportOwned || returnCommandSent) lifestream.TryAbort();
-        if (startupNavigationOwned || currentRailDestination.HasValue) vnavmesh.Stop();
+        if (startupNavigationOwned || voyageNavigationRequested) StopNavigation();
     }
     internal OceanFishingRoutePreference? CollectionRoute { get; set; }
     public bool QueueRegistrationObserved => queueRegistrationObserved;
@@ -313,7 +314,7 @@ public sealed class FishingService
         inventoryRecoveryReturnPosition = player.Position;
         inventoryRecoveryReturnRotation = player.Rotation;
         inventoryRecoveryReturnStartedAt = DateTime.MinValue;
-        vnavmesh.Stop();
+        StopNavigation();
         cleanupCommands = [FishingCleanupCommand.Sell];
         cleanupCommandIndex = 0;
         cleanupCommandSent = false;
@@ -374,6 +375,7 @@ public sealed class FishingService
         startupTravelAttempt = 1;
         limsaTravelOwned = false;
         startupNavigationOwned = false;
+        voyageNavigationRequested = false;
         lastNavigationCommandAt = DateTime.MinValue;
         lastInteractionAttemptAt = DateTime.MinValue;
         departureWaitStartedAt = DateTime.MinValue;
@@ -424,7 +426,11 @@ public sealed class FishingService
         Start();
     }
 
+    // Collection cleanup keeps the run and has already waited for navigation to settle.
     public void Reset(bool releaseRun = true)
+        => Reset(releaseRun, ownedNavigationOnly: !releaseRun);
+
+    internal void Reset(bool releaseRun, bool ownedNavigationOnly)
     {
         inventorySaleFailedThisVoyage = false;
         npcSaleFailure = string.Empty;
@@ -433,12 +439,13 @@ public sealed class FishingService
         collectionSaleCancellationSent = false;
         CancelOwnedNpcSale();
         vendorStockService.Reset();
-        if (OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider) &&
-            CurrentRailDestination.HasValue &&
-            IsOceanFishingDutyActive())
+        var inFishingDuty = IsOceanFishingDutyActive();
+        if ((!ownedNavigationOnly || voyageNavigationRequested) &&
+            OceanFishingProviderPolicy.VermaxionOwnsInDutyFishing(activeProvider) &&
+            CurrentRailDestination.HasValue && inFishingDuty)
             StopFishingNavigationAndFaceOutward("fishing service reset");
-        else if (!IsOceanFishingDutyActive())
-            vnavmesh.Stop();
+        else if (ownedNavigationOnly ? startupNavigationOwned || voyageNavigationRequested : !inFishingDuty)
+            StopNavigation();
 
         state = FishingState.Idle;
         stateEnteredAt = DateTime.MinValue;
@@ -454,6 +461,7 @@ public sealed class FishingService
         startupTravelAttempt = 0;
         limsaTravelOwned = false;
         startupNavigationOwned = false;
+        voyageNavigationRequested = false;
         lastNavigationCommandAt = DateTime.MinValue;
         lastInteractionAttemptAt = DateTime.MinValue;
         departureWaitStartedAt = DateTime.MinValue;
@@ -646,7 +654,7 @@ public sealed class FishingService
                 RecordCleanupFeedback(npcSaleFailure);
                 npcSaleFailure = string.Empty;
             }
-            vnavmesh.Stop();
+            StopNavigation();
             inventoryRecoveryActive = false;
             inventoryRecoveryReturnPosition = null;
             cleanupCommands = Array.Empty<FishingCleanupCommand>();
@@ -982,7 +990,7 @@ public sealed class FishingService
         if (limsaTravelOwned || aethernetTeleportOwned)
             CommandHelper.SendCommand("/lifestream cancel");
         if (startupNavigationOwned)
-            vnavmesh.Stop();
+            StopNavigation();
 
         limsaTravelOwned = false;
         startupNavigationOwned = false;
@@ -1477,8 +1485,7 @@ public sealed class FishingService
                     return true;
                 }
 
-                vnavmesh.Stop();
-                startupNavigationOwned = false;
+                StopNavigation();
                 aethernetAttunementAttempted = true;
                 aethernetAttunementStartedAt = DateTime.UtcNow;
                 Plugin.TargetManager.Target = shard;
@@ -1507,8 +1514,7 @@ public sealed class FishingService
             aethernetAttempted = true;
             if (lifestream.AethernetTeleportById(ArcanistsGuildAethernetId))
             {
-                vnavmesh.Stop();
-                startupNavigationOwned = false;
+                StopNavigation();
                 aethernetTeleportOwned = true;
                 aethernetIdleStartedAt = DateTime.MinValue;
                 log.Information(
@@ -1596,16 +1602,14 @@ public sealed class FishingService
 
         if (registrar != null && OceanFishingRegistrarPolicy.IsWithinInteractionRange(distance))
         {
-            vnavmesh.Stop();
-            startupNavigationOwned = false;
+            StopNavigation();
             SetState(FishingState.InteractingRegistrar);
             return;
         }
 
         if (registrar == null && OceanFishingRegistrarPolicy.IsWithinInteractionRange(distance))
         {
-            vnavmesh.Stop();
-            startupNavigationOwned = false;
+            StopNavigation();
             statusDetail = "Waiting for Dryskthota to load";
             return;
         }
@@ -1810,7 +1814,7 @@ public sealed class FishingService
                 $"retaining lifecycle locks through {graceDeadlineUtc:u}");
         }
 
-        vnavmesh.Stop();
+        StopNavigation();
         SetState(FishingState.WaitingForQueueRecognitionGrace);
     }
 
@@ -1999,7 +2003,7 @@ public sealed class FishingService
                 "Fishing/Gathering acknowledgement, remain gated until " +
                 $"distance, {destination.ArrivalClearance:F1}y clearance, stopped-path settlement, " +
                 "and outward character facing are verified");
-            vnavmesh.PathfindAndMoveTo(position);
+            voyageNavigationRequested |= vnavmesh.PathfindAndMoveTo(position);
         }
     }
 
@@ -2783,7 +2787,7 @@ public sealed class FishingService
         var localPlayer = Plugin.ObjectTable.LocalPlayer;
         if (localPlayer == null || localPlayer.Address == nint.Zero)
         {
-            vnavmesh.Stop();
+            StopNavigation();
             currentRailDestination = null;
             nextRailSampleAt = now + RailSampleRetryInterval;
             statusDetail = "Waiting for local player before sampling an Ocean Fishing rail point";
@@ -2796,7 +2800,7 @@ public sealed class FishingService
             assignedSpot = ResolveAssignedSpot(now, RosterKey(localPlayer));
             if (assignedSpot < 0 && now < rosterDeadline)
             {
-                vnavmesh.Stop();
+                StopNavigation();
                 nextRailSampleAt = now + RailSampleRetryInterval;
                 statusDetail = "Waiting for the passenger roster to settle before claiming a fishing spot";
                 return false;
@@ -2839,7 +2843,7 @@ public sealed class FishingService
         }
         if (!sampled)
         {
-            vnavmesh.Stop();
+            StopNavigation();
             currentRailDestination = null;
             railSampleExclusionDestination = excludedDestination;
             nextRailSampleAt = now + RailSampleRetryInterval;
@@ -3069,7 +3073,7 @@ public sealed class FishingService
         }
 
         var previousDestination = CurrentRailDestination;
-        vnavmesh.Stop();
+        StopNavigation();
         if (!voyageState.AdvanceDestination(nowUtc))
         {
             // Give up rather than keep resampling forever (endless resampling is visible deck-running on a
@@ -3148,7 +3152,7 @@ public sealed class FishingService
             !timersPaused &&
             !voyageState.DestinationArrived)
         {
-            vnavmesh.Stop();
+            StopNavigation();
             lastNavigationCommandAt = now;
             GameHelpers.TrySetLocalPlayerRotation(destination.Rotation);
             voyageState.MarkArrived(nowUtc);
@@ -3173,7 +3177,7 @@ public sealed class FishingService
                  now - lastNavigationCommandAt >= NavigationStopRetryInterval))
             {
                 lastNavigationCommandAt = now;
-                vnavmesh.Stop();
+                StopNavigation();
             }
         }
 
@@ -3209,7 +3213,7 @@ public sealed class FishingService
         if (!placement.ShouldResample)
             return false;
 
-        vnavmesh.Stop();
+        StopNavigation();
         if (Plugin.Condition[GatheringCondition] ||
             Plugin.Condition[FishingCondition] ||
             AreFishingRecoveryTimersPaused())
@@ -3291,9 +3295,16 @@ public sealed class FishingService
             .Select(gameObject => gameObject.Position)
             .ToArray();
 
-    private void StopFishingNavigationAndFaceOutward(string reason)
+    private void StopNavigation()
     {
         vnavmesh.Stop();
+        startupNavigationOwned = false;
+        voyageNavigationRequested = false;
+    }
+
+    private void StopFishingNavigationAndFaceOutward(string reason)
+    {
+        StopNavigation();
         if (!Plugin.Condition[GatheringCondition] && !Plugin.Condition[FishingCondition] &&
             CurrentRailDestination is { } destination)
             GameHelpers.TrySetLocalPlayerRotation(destination.Rotation);
@@ -3349,7 +3360,7 @@ public sealed class FishingService
                 // stops the body, so the settle position IS the closest castable stand.
                 var dir = new Vector3(MathF.Sin(destination.Rotation), 0f, MathF.Cos(destination.Rotation));
                 var target = destination.Position + dir * 4f;
-                vnavmesh.PathfindAndMoveTo(target);
+                voyageNavigationRequested |= vnavmesh.PathfindAndMoveTo(target);
                 fencePushPhase = FencePushPhase.Pushing;
                 fencePushIssuedAt = nowUtc.UtcDateTime;
                 fencePushLastPosition = player.Position;
@@ -3374,7 +3385,7 @@ public sealed class FishingService
                 var movedFromStart = Vector3.Distance(player.Position, fencePushStartPosition) >= 0.2f;
                 if ((fencePushStableTicks >= 2 && movedFromStart) || timedOut)
                 {
-                    vnavmesh.Stop();
+                    StopNavigation();
                     // The settled spot becomes the destination, so arrival/facing gates pass and the normal
                     // cast machinery fires from the fence. Navmesh clamps ~1.5y inboard of the true deck edge
                     // and can't walk past the mesh, so optionally register the last stretch out with a direct
@@ -4084,7 +4095,7 @@ public sealed class FishingService
         if (alreadyFishing || distance <= BoatFishingPositionTolerance ||
             now - inventoryRecoveryReturnStartedAt >= TimeSpan.FromSeconds(60))
         {
-            vnavmesh.Stop();
+            StopNavigation();
             if (!alreadyFishing)
                 GameHelpers.TrySetLocalPlayerRotation(inventoryRecoveryReturnRotation);
             inventoryRecoveryActive = false;
@@ -4102,7 +4113,7 @@ public sealed class FishingService
             now - lastNavigationCommandAt >= TimeSpan.FromSeconds(2))
         {
             lastNavigationCommandAt = now;
-            vnavmesh.PathfindAndMoveTo(position);
+            voyageNavigationRequested |= vnavmesh.PathfindAndMoveTo(position);
         }
         statusDetail = $"Returning to saved fishing position ({distance:F1}y)";
     }
@@ -4217,7 +4228,7 @@ public sealed class FishingService
     {
         if (ObserveNativeFishing(DateTime.UtcNow))
             return;
-        vnavmesh.Stop();
+        StopNavigation();
         // Stand still, facing the sea, before anything else — the failure mode of the whole abandon path is
         // a stationary rail-facing character, never a running one. That alone ends the "sussy" behaviour.
         StopFishingNavigationAndFaceOutward("abandoning stuck voyage");
@@ -4344,8 +4355,8 @@ public sealed class FishingService
             CurrentRailDestination.HasValue &&
             IsOceanFishingDutyActive())
             StopFishingNavigationAndFaceOutward("terminal voyage failure");
-        else if (!IsOceanFishingDutyActive())
-            vnavmesh.Stop();
+        else if (voyageNavigationRequested || !IsOceanFishingDutyActive())
+            StopNavigation();
         SetState(FishingState.Failed);
         if (activeRunMode != FishingRunMode.Collection) runLifecycle.Cleanup(message);
     }

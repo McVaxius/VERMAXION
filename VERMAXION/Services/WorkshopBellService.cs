@@ -39,6 +39,7 @@ public sealed class WorkshopBellService
     private DateTime routeStartedAt = DateTime.MinValue;
     private DateTime nextActionAt = DateTime.MinValue;
     private DateTime lastNavigationCommandAt = DateTime.MinValue;
+    private bool navigationRequested;
     private DateTime lastBusyWaitLogAt = DateTime.MinValue;
     private bool bellInteracted;
     private bool busyWaitLogged;
@@ -80,9 +81,11 @@ public sealed class WorkshopBellService
         Update();
     }
 
-    public void Reset()
+    public void Reset() => Reset(ownedNavigationOnly: false);
+
+    internal void Reset(bool ownedNavigationOnly)
     {
-        vnavmesh.Stop();
+        StopNavigation(ownedNavigationOnly);
         controlBlocker = null;
         state = BellRouteState.Idle;
         stateEnteredAt = DateTime.MinValue;
@@ -230,7 +233,7 @@ public sealed class WorkshopBellService
             return;
         }
 
-        vnavmesh.Stop();
+        StopNavigation();
         SetState(BellRouteState.InteractingBell, "Opening retainer bell...");
     }
 
@@ -264,7 +267,7 @@ public sealed class WorkshopBellService
                 return;
             }
 
-            vnavmesh.Stop();
+            StopNavigation();
             Svc.Targets.Target = bell;
             if (GameHelpers.InteractWithObject(bell))
             {
@@ -339,7 +342,7 @@ public sealed class WorkshopBellService
         if ((DateTime.UtcNow - lastNavigationCommandAt).TotalSeconds >= 2)
         {
             lastNavigationCommandAt = DateTime.UtcNow;
-            vnavmesh.PathfindAndMoveTo(position);
+            navigationRequested |= vnavmesh.PathfindAndMoveTo(position);
         }
 
         StatusText = status;
@@ -348,6 +351,8 @@ public sealed class WorkshopBellService
 
     private void SetState(BellRouteState newState, string status)
     {
+        if (newState == BellRouteState.Complete && navigationRequested)
+            StopNavigation();
         log.Debug($"[WorkshopBell] State: {state} -> {newState}");
         state = newState;
         stateEnteredAt = DateTime.UtcNow;
@@ -360,9 +365,16 @@ public sealed class WorkshopBellService
     {
         LastError = error;
         StatusText = error;
-        vnavmesh.Stop();
+        StopNavigation();
         SetState(BellRouteState.Failed, error);
         log.Warning($"[WorkshopBell] {error}");
+    }
+
+    private void StopNavigation(bool ownedNavigationOnly = false)
+    {
+        if (!ownedNavigationOnly || navigationRequested)
+            vnavmesh.Stop();
+        navigationRequested = false;
     }
 
     private static string GetLifestreamCommand(RefillFromListingsRoute route)

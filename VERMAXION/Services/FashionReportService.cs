@@ -42,6 +42,7 @@ public class FashionReportService : IDisposable
     private const double PostJudgingSettleTimeoutSeconds = 30.0;
 
     private DateTime lastNavigationAttempt = DateTime.MinValue;
+    private bool navigationRequested;
     private DateTime lastTargetAttempt = DateTime.MinValue;
     private DateTime lastDialogueAdvanceTime = DateTime.MinValue;
     private DateTime lastFashionCheckCloseTime = DateTime.MinValue;
@@ -99,8 +100,13 @@ public class FashionReportService : IDisposable
         SetState(FashionReportState.TeleportingToSaucer);
     }
 
-    public void Reset()
+    public void Reset() => Reset(stopOwnedNavigation: false);
+
+    internal void Reset(bool stopOwnedNavigation)
     {
+        if (stopOwnedNavigation && navigationRequested)
+            StopNavigation();
+        navigationRequested = false;
         state = FashionReportState.Idle;
         stateEnteredAt = DateTime.MinValue;
         currentAttempt = 0;
@@ -466,13 +472,17 @@ public class FashionReportService : IDisposable
     private void StopNavigation()
     {
         vnavmesh.Stop();
+        navigationRequested = false;
     }
 
     private void IssueNavigation(Vector3 destination, string destinationLabel)
     {
         lastNavigationAttempt = DateTime.UtcNow;
         if (vnavmesh.PathfindAndMoveTo(destination))
+        {
+            navigationRequested = true;
             log.Debug($"[FashionReport] Issued vnav movement toward {destinationLabel}");
+        }
     }
 
     private bool RetryNavigationIfNeeded(Vector3 destination, string destinationLabel)
@@ -582,6 +592,9 @@ public class FashionReportService : IDisposable
     {
         if (state == newState)
             return;
+
+        if (navigationRequested && newState is FashionReportState.Complete or FashionReportState.Failed)
+            StopNavigation();
 
         log.Information($"[FashionReport] {state} -> {newState} (Retry {Math.Max(currentAttempt, 1)}/{MaxRetries}, Judging {completedJudgings}/{RequiredJudgings})");
         state = newState;

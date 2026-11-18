@@ -1151,9 +1151,9 @@ public class VermaxionEngine
         }
         lootGoblinMapGatherService.Cancel();
         CancelTaskServices(onlyOwnedExternalWork: dependencyLoss != null);
-        vNavmeshIPC.Stop();
+        if (dependencyLoss == null) vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort(preserveVerminionResult: preserveVerminionResult);
-        retainerListingRefillService.Reset();
+        retainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null);
         if (arService.IsProcessing)
             arService.FinishPostProcess(force: true, mode: dependencyLoss == null
                 ? ARPostProcessFinishMode.Normal : ARPostProcessFinishMode.ReleaseOnly);
@@ -2820,15 +2820,23 @@ public class VermaxionEngine
     private void CancelTaskServices(bool onlyOwnedExternalWork = false)
     {
         ResetScheduledBeastmasterPreparation();
-        ResetReturnBeforeNag(cancelTravel: true);
+        ResetReturnBeforeNag(cancelTravel: true, stopNavigation: !onlyOwnedExternalWork);
+        if (onlyOwnedExternalWork)
+        {
+            retainerListingRefillService.Cancel(ownedNavigationOnly: true);
+            cactpotService.Reset(stopOwnedNavigation: true);
+            fashionReportService.Reset(stopOwnedNavigation: true);
+        }
         foreach (var cancel in taskBindings.Values
                      .Where(binding => !onlyOwnedExternalWork ||
                          (binding.Id != PostProcessTaskOrder.NagYourMom || nagYourMomRequestIssued) &&
+                         binding.Id is not (PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.MiniCactpot
+                             or PostProcessTaskOrder.JumboCactpot or PostProcessTaskOrder.FashionReport) &&
                          binding.Id is not (PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly))
                      .Select(binding => binding.Cancel).Distinct())
             cancel();
         fcBuffInventoryService.Reset();
-        workshopBellService.Reset();
+        workshopBellService.Reset(ownedNavigationOnly: onlyOwnedExternalWork);
     }
 
     private bool TickTaskWatchdog()
@@ -3786,12 +3794,12 @@ public class VermaxionEngine
         return false;
     }
 
-    private void ResetReturnBeforeNag(bool cancelTravel = false)
+    private void ResetReturnBeforeNag(bool cancelTravel = false, bool stopNavigation = true)
     {
         if (cancelTravel && nagReturnCommandIssued)
         {
             CommandHelper.SendCommand("/lifestream cancel");
-            vNavmeshIPC.Stop();
+            if (stopNavigation) vNavmeshIPC.Stop();
         }
         nagReturnStartedAt = DateTime.MinValue;
         nagReturnSettledSince = DateTime.MinValue;

@@ -55,7 +55,8 @@ public abstract class TaskBase : AutoTask
         if (Service.Objects.LocalPlayer is { } projectedPlayer && Vector3.Distance(projectedPlayer.Position, arrival) <= config.Tolerance)
             return;
         var territory = Service.ClientState.TerritoryType;
-        using var stop = new OnDispose(() => navigation.Stop());
+        var followingPath = false;
+        using var stop = new OnDispose(() => { if (followingPath) navigation.Stop(); });
         Service.Log.Information($"[CustomDeliveries][Movement] Destination: requested={position}; resolved={target}; arrival={arrival}; tolerance={config.Tolerance}");
         navigation.Stop();
         await WaitUntil(() => navigation.TryGetPathfindInProgress(out var pending) && !pending,
@@ -116,6 +117,7 @@ public abstract class TaskBase : AutoTask
                         // FrenRider/ADS/LootGoblin stop the old route before repathing.
                         // Reuse the existing 12-second tracker; a jump is not XZ progress.
                         navigation.Stop();
+                        followingPath = false;
                         if (action == GroundNavigationRecoveryAction.Recover)
                             GameHelpers.SendJump();
                         await Repath();
@@ -125,6 +127,7 @@ public abstract class TaskBase : AutoTask
             await NextFrame();
         }
         navigation.Stop();
+        followingPath = false;
         await NextFrame();
 
         TimeSpan? RemainingApproachTimeout() => approachTimeout.HasValue
@@ -148,6 +151,7 @@ public abstract class TaskBase : AutoTask
             var points = path.GetAwaiter().GetResult();
             ErrorIf(points.Count == 0, $"Navigation returned an empty path to {target}");
             navigation.FollowDeliveryPath(points);
+            followingPath = true;
             Service.Log.Information($"[CustomDeliveries][Movement] Pathfinding completed: target={target}; waypoints={points.Count}; following path");
         }
     }

@@ -2312,7 +2312,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             FashionReportService.Reset();
             VendorStockService.Reset();
             var preserveFishingRun = FishCollection.IsActive || FishingRelogCoordinator.IsActive || FishingStartupCoordinator.HasPendingRelogContinuation;
-            FishingService.Reset(releaseRun: !preserveFishingRun);
+            FishingService.Reset(releaseRun: !preserveFishingRun, ownedNavigationOnly: false);
             if (FishingRelogCoordinator.IsActive)
                 FishingRelogCoordinator.NotifyCharacterChanged(newCharacterKey);
             else
@@ -4043,21 +4043,21 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             ConfigManager.GetActiveConfig().VerminionPaused = false;
             ConfigManager.SaveCurrentAccount();
         }
-        CactpotService.Reset();
+        CactpotService.Reset(stopOwnedNavigation: dependencyLoss != null);
         ChocoboRaceService.Reset();
-        FashionReportService.Reset();
+        FashionReportService.Reset(stopOwnedNavigation: dependencyLoss != null);
         CustomDeliveriesService.Reset();
         ChocoboStablesService.Reset();
         VendorStockService.Reset();
         if (!FishCollection.IsActive)
         {
-            FishingService.Reset();
+            FishingService.Reset(releaseRun: true, ownedNavigationOnly: dependencyLoss != null);
             FishingRelogCoordinator.Reset();
         }
         CharacterSelectStallRecovery.Reset();
         if (!FishCollection.IsActive) FishingRunLifecycle.ForceCleanup(reason);
-        RetainerListingRefillService.Reset();
-        WorkshopBellService.Reset();
+        RetainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null);
+        WorkshopBellService.Reset(ownedNavigationOnly: dependencyLoss != null);
         RegisterRegistrablesService.Reset();
         LootGoblinMapGatherManualRunCoordinator.Reset();
         MinionRouletteService.Reset();
@@ -4070,9 +4070,13 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         CofferOpening?.Stop();
         Log.Information(FishCollection.IsActive ? "[FULL STOP] Other services reset; collection cleanup retained" : "[FULL STOP] All services reset");
 
-        // Stop VNavmesh navigation
-        if (!FishCollection.IsActive) VNavmeshIPC.Stop();
-        Log.Information(FishCollection.IsActive ? "[FULL STOP] Owned VNavmesh cancellation requested by collection" : "[FULL STOP] VNavmesh stopped");
+        if (dependencyLoss == null && !FishCollection.IsActive)
+        {
+            VNavmeshIPC.Stop();
+            Log.Information("[FULL STOP] VNavmesh stopped");
+        }
+        else if (FishCollection.IsActive)
+            Log.Information("[FULL STOP] Owned VNavmesh cancellation requested by collection");
 
         // Unpause YesAlready
         if (!FishCollection.IsActive && !BeastmasterOwnsWork) YesAlreadyIPC.Unpause();
