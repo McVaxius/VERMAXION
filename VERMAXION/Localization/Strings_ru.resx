@@ -2194,11 +2194,11 @@
   <data name="Account: " xml:space="preserve">
     <value>Аккаунт: </value>
   </data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve">
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve">
     <value>Режим отображения DTR:
 Только текст: 'VMX: Вкл./Выкл.'
-Значок+текст: '⚫ VMX'
-Только значок: '⚫'</value>
+Значок+текст: '● VMX'
+Только значок: '●'</value>
   </data>
   <data name="Show/hide the DTR bar entry (server info bar)." xml:space="preserve">
     <value>Показать/скрыть запись DTR (панель информации о сервере).</value>

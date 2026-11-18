@@ -1083,11 +1083,11 @@ Status detail: {0}</value>
   <data name="DTR Mode" xml:space="preserve">
     <value>DTR Mode</value>
   </data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve">
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve">
     <value>DTR bar display mode:
 Text Only: 'VMX: On/Off'
-Icon+Text: '⚫ VMX'
-Icon Only: '⚫'</value>
+Icon+Text: '● VMX'
+Icon Only: '●'</value>
   </data>
   <data name="DadAuraFarmerModule - Internal Dad module lane for commendation and Astrope routing" xml:space="preserve">
     <value>DadAuraFarmerModule - Internal Dad module lane for commendation and Astrope routing</value>

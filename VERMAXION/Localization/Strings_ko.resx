@@ -2194,11 +2194,11 @@
   <data name="Account: " xml:space="preserve">
     <value>계정: </value>
   </data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve">
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve">
     <value>DTR 표시 모드:
 텍스트만: 'VMX: 켜짐/꺼짐'
-아이콘+텍스트: '⚫ VMX'
-아이콘만: '⚫'</value>
+아이콘+텍스트: '● VMX'
+아이콘만: '●'</value>
   </data>
   <data name="Show/hide the DTR bar entry (server info bar)." xml:space="preserve">
     <value>DTR 항목(서버 정보 표시줄)을 표시하거나 숨깁니다.</value>

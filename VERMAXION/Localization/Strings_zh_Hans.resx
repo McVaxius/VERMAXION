@@ -2194,11 +2194,11 @@
   <data name="Account: " xml:space="preserve">
     <value>账号： </value>
   </data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve">
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve">
     <value>DTR显示模式：
 仅文本：'VMX：开启/关闭'
-图标+文本：'⚫ VMX'
-仅图标：'⚫'</value>
+图标+文本：'● VMX'
+仅图标：'●'</value>
   </data>
   <data name="Show/hide the DTR bar entry (server info bar)." xml:space="preserve">
     <value>显示或隐藏DTR条目（服务器信息栏）。</value>

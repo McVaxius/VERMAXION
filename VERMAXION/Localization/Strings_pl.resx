@@ -375,10 +375,10 @@ Szczegóły stanu: {0}</value></data>
   <data name="DTR Bar Entry" xml:space="preserve"><value>Wpis paska DTR</value></data>
   <data name="DTR Icons (max 3 characters)" xml:space="preserve"><value>Ikony DTR (maks. 3 znaki)</value></data>
   <data name="DTR Mode" xml:space="preserve"><value>Tryb DTR</value></data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve"><value>Tryb wyświetlania paska DTR:
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve"><value>Tryb wyświetlania paska DTR:
 Tylko tekst: 'VMX: On/Off'
-Ikona+tekst: '⚫ VMX'
-Tylko ikona: '⚫'</value></data>
+Ikona+tekst: '● VMX'
+Tylko ikona: '●'</value></data>
   <data name="DadAuraFarmerModule - Internal Dad module lane for commendation and Astrope routing" xml:space="preserve"><value>DadAuraFarmerModule - Wewnętrzny tor modułu Dad do tras pochwał i Astrope</value></data>
   <data name="DadLanPartyModule - Internal Dad module lane for premade duty and Daily MSQ routing" xml:space="preserve"><value>DadLanPartyModule - Wewnętrzny tor modułu Dad do zadań ustalonej drużyny i codziennego MSQ</value></data>
   <data name="Daily" xml:space="preserve"><value>Codziennie</value></data>

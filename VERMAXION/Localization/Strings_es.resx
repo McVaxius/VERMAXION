@@ -2197,11 +2197,11 @@
   <data name="Account: " xml:space="preserve">
     <value>Cuenta: </value>
   </data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve">
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve">
     <value>Modo de visualización DTR:
 Solo texto: 'VMX: Activado/Desactivado'
-Icono+texto: '⚫ VMX'
-Solo icono: '⚫'</value>
+Icono+texto: '● VMX'
+Solo icono: '●'</value>
   </data>
   <data name="Customize the glyphs used for enabled/disabled icon modes." xml:space="preserve">
     <value>Personalizar los símbolos usados en los modos de icono activado/desactivado.</value>

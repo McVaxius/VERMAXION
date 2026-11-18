@@ -2197,11 +2197,11 @@
   <data name="Travel owns the character." xml:space="preserve">
     <value>Il viaggio controlla il personaggio.</value>
   </data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve">
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve">
     <value>Modalità di visualizzazione DTR:
 Solo testo: 'VMX: Attivo/Disattivo'
-Icona+testo: '⚫ VMX'
-Solo icona: '⚫'</value>
+Icona+testo: '● VMX'
+Solo icona: '●'</value>
   </data>
   <data name="Default icon. Enter Unicode like \uE03C or paste glyphs directly" xml:space="preserve">
     <value>Icona predefinita. Inserisci Unicode come \uE03C o incolla direttamente i glifi</value>

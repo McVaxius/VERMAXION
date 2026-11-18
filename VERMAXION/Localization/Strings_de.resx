@@ -2200,11 +2200,11 @@
   <data name="Account: " xml:space="preserve">
     <value>Konto: </value>
   </data>
-  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '⚫ VMX'&#10;Icon Only: '⚫'" xml:space="preserve">
+  <data name="DTR bar display mode:&#10;Text Only: 'VMX: On/Off'&#10;Icon+Text: '● VMX'&#10;Icon Only: '●'" xml:space="preserve">
     <value>DTR-Anzeigemodus:
 Nur Text: 'VMX: Ein/Aus'
-Symbol+Text: '⚫ VMX'
-Nur Symbol: '⚫'</value>
+Symbol+Text: '● VMX'
+Nur Symbol: '●'</value>
   </data>
   <data name="Customize the glyphs used for enabled/disabled icon modes." xml:space="preserve">
     <value>Symbole für den aktivierten/deaktivierten Symbolmodus anpassen.</value>

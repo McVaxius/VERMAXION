@@ -362,7 +362,7 @@
   <data name="DTR Bar Entry" xml:space="preserve"><value>DTR बार प्रविष्टि</value></data>
   <data name="DTR Icons (max 3 characters)" xml:space="preserve"><value>DTR आइकन (अधिकतम 3 अक्षर)</value></data>
   <data name="DTR Mode" xml:space="preserve"><value>DTR मोड</value></data>
-  <data name="DTR bar display mode:&#xA;Text Only: 'VMX: On/Off'&#xA;Icon+Text: '⚫ VMX'&#xA;Icon Only: '⚫'" xml:space="preserve"><value>DTR बार प्रदर्शन मोड:&#xA;केवल टेक्स्ट: 'VMX: On/Off'&#xA;आइकन+टेक्स्ट: '⚫ VMX'&#xA;केवल आइकन: '⚫'</value></data>
+  <data name="DTR bar display mode:&#xA;Text Only: 'VMX: On/Off'&#xA;Icon+Text: '● VMX'&#xA;Icon Only: '●'" xml:space="preserve"><value>DTR बार प्रदर्शन मोड:&#xA;केवल टेक्स्ट: 'VMX: On/Off'&#xA;आइकन+टेक्स्ट: '● VMX'&#xA;केवल आइकन: '●'</value></data>
   <data name="DadAuraFarmerModule - Internal Dad module lane for commendation and Astrope routing" xml:space="preserve"><value>DadAuraFarmerModule - commendation और Astrope मार्गों के लिए आंतरिक Dad मॉड्यूल क्रम</value></data>
   <data name="DadLanPartyModule - Internal Dad module lane for premade duty and Daily MSQ routing" xml:space="preserve"><value>DadLanPartyModule - पहले से बनी पार्टी की ड्यूटी और Daily MSQ मार्गों के लिए आंतरिक Dad मॉड्यूल क्रम</value></data>
   <data name="Daily" xml:space="preserve"><value>दैनिक</value></data>

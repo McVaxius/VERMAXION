@@ -495,7 +495,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();
             UiGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-                UiGui.SetTooltip("DTR bar display mode:\nText Only: 'VMX: On/Off'\nIcon+Text: '⚫ VMX'\nIcon Only: '⚫'");
+                UiGui.SetTooltip("DTR bar display mode:\nText Only: 'VMX: On/Off'\nIcon+Text: '● VMX'\nIcon Only: '●'");
 
             ImGui.Spacing();
             UiGui.Text("DTR Icons (max 3 characters)");
