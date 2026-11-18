@@ -285,9 +285,11 @@ internal static class IslandSanctuaryView
     internal static void DrawActions(Plugin? plugin = null, bool activeProfile = false)
     {
         ImGui.Separator();
+        if (plugin?.CombatProviderBlocker is { } blocker)
+            UIConstants.WrappedText(UIConstants.Amber, blocker);
         var island = plugin?.IslandSanctuaryRun;
         var eligible = plugin != null && activeProfile && !plugin.Engine.IsRunning &&
-            !plugin.DadHandoffBlocksNewWork && !plugin.BeastmasterOwnsWork &&
+            plugin.CombatProviderBlocker == null && !plugin.DadHandoffBlocksNewWork && !plugin.BeastmasterOwnsWork &&
             island!.Eligibility(plugin.ConfigManager.GetActiveConfig(), plugin.ConfigManager.CurrentCharacterKey, manual: true).IsRunnable;
         ImGui.BeginDisabled(!eligible);
         if (UIConstants.ButtonWithCaption("Run##Island", UiText.T("Run")) && eligible)

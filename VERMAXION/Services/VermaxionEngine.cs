@@ -1138,24 +1138,29 @@ public class VermaxionEngine
         CancelForSettling("Stopped");
     }
 
-    public void ForceStop(bool preserveVerminionResult = false)
+    public void ForceStop(bool preserveVerminionResult = false, string? dependencyLoss = null)
     {
-        StopTargetProgression();
+        if (dependencyLoss == null)
+            StopTargetProgression();
         CancelNagYourMomSeriesRankTest();
         log.Warning("[Engine] Full Stop force-releasing ownership");
-        momIPCClient.CancelActiveRun();
-        dadIPCClient.CancelActiveRun();
+        if (dependencyLoss == null)
+        {
+            momIPCClient.CancelActiveRun();
+            dadIPCClient.CancelActiveRun();
+        }
         lootGoblinMapGatherService.Cancel();
-        CancelTaskServices();
+        CancelTaskServices(onlyOwnedExternalWork: dependencyLoss != null);
         vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort(preserveVerminionResult: preserveVerminionResult);
         retainerListingRefillService.Reset();
         if (arService.IsProcessing)
-            arService.FinishPostProcess(force: true);
+            arService.FinishPostProcess(force: true, mode: dependencyLoss == null
+                ? ARPostProcessFinishMode.Normal : ARPostProcessFinishMode.ReleaseOnly);
         yesAlreadyIPC.Unpause();
         autoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         ResetHandoffTracking();
-        RecordRunCompletion(RunOutcome.ForceStopped, "Full Stop force-released ownership");
+        RecordRunCompletion(RunOutcome.ForceStopped, dependencyLoss ?? "Full Stop force-released ownership");
         ResetRunTracking();
         SetState(EngineState.Idle);
     }
@@ -2812,11 +2817,15 @@ public class VermaxionEngine
         workshopBellService.Reset();
     }
 
-    private void CancelTaskServices()
+    private void CancelTaskServices(bool onlyOwnedExternalWork = false)
     {
         ResetScheduledBeastmasterPreparation();
         ResetReturnBeforeNag(cancelTravel: true);
-        foreach (var cancel in taskBindings.Values.Select(binding => binding.Cancel).Distinct())
+        foreach (var cancel in taskBindings.Values
+                     .Where(binding => !onlyOwnedExternalWork ||
+                         (binding.Id != PostProcessTaskOrder.NagYourMom || nagYourMomRequestIssued) &&
+                         binding.Id is not (PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly))
+                     .Select(binding => binding.Cancel).Distinct())
             cancel();
         fcBuffInventoryService.Reset();
         workshopBellService.Reset();

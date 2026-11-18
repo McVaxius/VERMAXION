@@ -78,7 +78,8 @@ internal sealed class VerminionWindow : Window
         ImGui.ProgressBar(cleared / 24f, new Vector2(-1, 20f * UIConstants.Scale), string.Empty);
         ImGui.PopStyleColor();
         if (UIConstants.FullStopButton()) plugin.FullStop();
-        ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition || plugin.DadHandoffBlocksNewWork);
+        ImGui.BeginDisabled(!loggedIn || plugin.Engine.IsRunning || service.IsActive || service.HasQuestAcquisition ||
+            plugin.DadHandoffBlocksNewWork || plugin.CombatProviderBlocker != null);
         if (progress.RunMode != null)
         {
             UIConstants.SameLineIfFits(progress.CampaignRequested || progress.RunIsCampaign ? "Resume CPU campaign" : "Resume");
@@ -87,6 +88,7 @@ internal sealed class VerminionWindow : Window
         ImGui.EndDisabled();
         var stageAttempts = progress.CampaignStage == progress.NextUnclearedChallenge ? progress.CampaignStageAttempts : 0;
         var status = UiText.Verminion(service.StatusText, VerminionService.ProgressSummary(config));
+        if (plugin.CombatProviderBlocker is { } blocker) status += "\n" + UiText.T(blocker);
         if (!loggedIn) status += "\n" + UiText.T("Log in and wait for character registration to configure or run Verminion.");
         status += "\n" + UiText.F($"Next stage attempts: {stageAttempts}/3 · Losses: {progress.ConsecutiveLosses} · Weekly: {progress.WeeklyMatches}/5 matches; {progress.WeeklyWins} wins.");
         if (progress.RunMode == VerminionMode.MissionRepeat && !progress.RunIsCampaign)

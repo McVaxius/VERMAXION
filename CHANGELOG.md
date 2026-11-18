@@ -1,3 +1,7 @@
+Unreleased
+
+- Require a ready GodMod or God Mod Companion with BossModReborn for automation. Show the dependency blocker in the dashboard and automation status, and stop active work if the dependency becomes unavailable.
+
 2026-11-17 - 3.0.0.19 - Bundled UI fonts
 
 - **Fixed UI fonts:** Use bundled Selawik instead of Windows Segoe files, preserving font sizes, language merges, readiness checks and missing-glyph errors.

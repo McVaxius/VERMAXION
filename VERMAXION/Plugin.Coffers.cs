@@ -15,6 +15,7 @@ public sealed partial class Plugin
 
     internal string? CofferOpeningBlocker()
     {
+        if (!CanStartWithCombatProvider(out var reason)) return reason;
         if (!ClientState.IsLoggedIn || !PlayerState.IsLoaded || !IsCharacterRegistered)
             return "Waiting for the current character to be registered and ready.";
         if (DadHandoffBlocksNewWork || OfflineLogoutBlocksOrdinaryAutomation ||

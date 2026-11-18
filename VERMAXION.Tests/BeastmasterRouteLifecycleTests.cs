@@ -1269,6 +1269,7 @@ public sealed class BeastmasterRouteLifecycleTests
             [manager.CurrentAccountId] = new() { AccountId = manager.CurrentAccountId, DefaultConfig = profile },
         });
         var plugin = (live::VERMAXION.Plugin)RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Plugin));
+        Set(plugin, "combatProviderDependency", TaskDependencyPolicyTests.CreateReadyCombatProvider());
         Set(plugin, "Configuration", new live::VERMAXION.Configuration { MinimumTeleportGil = 0 });
         Set(plugin, "ConfigManager", manager);
         Set(plugin, "EquipmentAutomationRuntime", runtime);

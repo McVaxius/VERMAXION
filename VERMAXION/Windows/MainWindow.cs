@@ -74,9 +74,9 @@ public class MainWindow : Window, IDisposable
         {
             Icon = FontAwesomeIcon.Play, Priority = -20, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) RunAll(); },
-            ShowTooltip = () => UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Run All")
+            ShowTooltip = () => UiGui.SetTooltip(plugin.CombatProviderBlocker ?? (plugin.CrewcibleOwnsStatus ? UiText.T("Run All")
                 : UiText.T("Run All") + "\n" + UiText.T(plugin.Engine.StatusText)
-                    + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker)),
+                    + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker))),
         });
         TitleBarButtons.Add(new()
         {
@@ -291,6 +291,8 @@ public class MainWindow : Window, IDisposable
             DrawFramedControls("MainActionsFrame", "Actions", DrawControls);
         }
         else DrawControls();
+        if (plugin.CombatProviderBlocker is { } dependencyBlocker)
+            UIConstants.WrappedText(UIConstants.Amber, dependencyBlocker);
         var watchFishingWindows=plugin.Configuration.OceanFishingWindowWatchEnabled;
         if(UIConstants.Checkbox("Watch Ocean Fishing windows",ref watchFishingWindows))
         {
@@ -341,12 +343,14 @@ public class MainWindow : Window, IDisposable
             }
             if (ImGui.IsItemHovered()) UiGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
             ImGui.TableNextColumn(); UiGui.TextDisabled("Runtime");
-            UiGui.TextColored(engine.RegistryReady ? UIConstants.Mint : UIConstants.Amber,
-                engine.RegistryReady ? plugin.CrewcibleOwnsStatus ? UiText.T("Ready")
+            var runtimeReady = engine.RegistryReady && plugin.CombatProviderBlocker == null;
+            UiGui.TextColored(runtimeReady ? UIConstants.Mint : UIConstants.Amber,
+                runtimeReady ? plugin.CrewcibleOwnsStatus ? UiText.T("Ready")
                     : UiText.F("Ready / {0}", UiText.T(engine.State.ToString())) : "Blocked");
             UiGui.TextDisabled(UiText.F("{0} pending", engine.GetPendingTaskCount()));
-            if (ImGui.IsItemHovered()) UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T(engine.RegistryDiagnostic)
-                : string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker)));
+            if (ImGui.IsItemHovered()) UiGui.SetTooltip(plugin.CombatProviderBlocker ??
+                (plugin.CrewcibleOwnsStatus ? UiText.T(engine.RegistryDiagnostic)
+                : string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker))));
         }
 
         void DrawFramedControls(string id, string title, Action draw)
@@ -381,7 +385,7 @@ public class MainWindow : Window, IDisposable
             if (UIConstants.FullStopButton(new Vector2(widths[0], actionHeight), previousWidth)) plugin.FullStop();
             UIConstants.SameLineIfFits("Run All", widths[1]);
 
-            ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
+            ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork || plugin.CombatProviderBlocker != null);
             if (UIConstants.Button("Run All", new Vector2(widths[1], actionHeight), true, previousWidth))
                 RunAll();
             ImGui.EndDisabled();
@@ -512,7 +516,7 @@ public class MainWindow : Window, IDisposable
             if (UIConstants.Button("Test Chocobo Rank"))
             {
                 Plugin.Log.Information("[UI] Testing racing chocobo rank from GoldSaucerInfo node 21");
-                plugin.ChocoboRaceService.RequestGoldSaucerRankTest();
+                plugin.RunDashboardAction(plugin.ChocoboRaceService.RequestGoldSaucerRankTest);
             }
             if (ImGui.IsItemHovered())
                 UiGui.SetTooltip("Opens /goldsaucer and reads GoldSaucerInfo node 21, the fallback used when RaceChocoboManager is not loaded.");
@@ -641,12 +645,12 @@ public class MainWindow : Window, IDisposable
                     plugin.Configuration.EnableCharacterSelectStallRecovery);
                 UiGui.TextWrapped(
                     UiText.F($"Character-select recovery: {UiText.T(plugin.Configuration.EnableCharacterSelectStallRecovery ? "On" : "Off")} - {UiText.T(characterSelectRecovery.StatusText)}"));
-                var characterSelectBlockedReason = characterSelectEligibility.CanAttempt
+                var characterSelectBlockedReason = plugin.CombatProviderBlocker ?? (characterSelectEligibility.CanAttempt
                     ? characterSelectRecovery.LastBlockedReason
-                    : characterSelectEligibility.Reason;
+                    : characterSelectEligibility.Reason);
                 if (!string.IsNullOrWhiteSpace(characterSelectBlockedReason))
                     UiGui.TextWrapped(UiText.F("Character-select recovery blocker: {0}", UiText.T(characterSelectBlockedReason)));
-                ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt);
+                ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt || plugin.CombatProviderBlocker != null);
                 if (UIConstants.Button("Load first character now"))
                     plugin.QueueCharacterSelectRecoveryAttempt();
                 ImGui.EndDisabled();
@@ -873,6 +877,7 @@ public class MainWindow : Window, IDisposable
                 }
                 var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route,
                     queueDeadlineUtc: deadlineUtc);
+                plugin.TrackManualMomRun(result);
                 Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
             }, "OK",
             secondaryButtonLabel: "Test Series Rank##MomSeriesRank",
@@ -887,6 +892,7 @@ public class MainWindow : Window, IDisposable
                     activeConfig.NagYourDadSelectionKind,
                     activeConfig.NagYourDadSelectionId,
                     activeConfig.NagYourDadSelectionDisplayName);
+                plugin.TrackManualDadSelection(result);
                 Plugin.ChatGui.Print($"[Vermaxion] {result.StatusText}");
             }, "OK");
         AddTaskRow("Island Sanctuary", config.EnableIslandSanctuary, plugin.IslandSanctuaryRun.StatusText,
@@ -953,7 +959,9 @@ public class MainWindow : Window, IDisposable
             string? tertiaryButtonTooltip = null)
         {
             var feature = GetDisplayedFeature(task);
-            var eligibility = GetDashboardEligibility(feature, enabled, buttonDisabled, buttonTooltip, status);
+            var providerBlocker = onClick == (Action)plugin.OpenCofferUtility ? null : plugin.CombatProviderBlocker;
+            var eligibility = GetDashboardEligibility(feature, enabled, buttonDisabled || providerBlocker != null,
+                providerBlocker ?? buttonTooltip, status);
             var completed = feature?.Id == AutomationCatalog.BeastmasterWeekly
                 ? plugin.BeastmasterService.SelectedWeeklyComplete
                 : IsCompletedStatus(status);
@@ -961,7 +969,7 @@ public class MainWindow : Window, IDisposable
                 ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
                 : null;
             var beastmasterOwnsOtherWork = plugin.BeastmasterOwnsWork && task is not ("Beastmaster" or "Beastmaster weeklies");
-            var ownershipBlocker = beastmasterOwnsOtherWork ? "Beastmaster owns the character." : dadHandoffBlocker;
+            var ownershipBlocker = providerBlocker ?? (beastmasterOwnsOtherWork ? "Beastmaster owns the character." : dadHandoffBlocker);
             var row = new TaskRowDescriptor(
                 feature,
                 task,
@@ -980,15 +988,15 @@ public class MainWindow : Window, IDisposable
                 onClick,
                 maturity,
                 statusTooltip,
-                buttonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                buttonDisabled || ownershipBlocker != null,
                 ownershipBlocker ?? buttonTooltip,
                 secondaryButtonLabel,
                 secondaryOnClick,
-                secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                secondaryButtonDisabled || ownershipBlocker != null,
                 ownershipBlocker ?? secondaryButtonTooltip,
                 tertiaryButtonLabel,
                 tertiaryOnClick,
-                tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                tertiaryButtonDisabled || ownershipBlocker != null,
                 ownershipBlocker ?? tertiaryButtonTooltip);
             rows.Add(row);
         }
