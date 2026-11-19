@@ -70,8 +70,6 @@ internal sealed class FishCollectionWindow : Window
         var service = plugin.FishCollection;
         var settings = plugin.Configuration.FishCollection;
         var supplyNames = service.Supplies.Supplies.Select(supply => supply.Name).ToArray();
-        var blocker = plugin.CombatProviderBlocker;
-        if (blocker != null) UIConstants.WrappedText(UIConstants.Amber, blocker);
         var account = plugin.ConfigManager.GetCurrentAccount();
         if (account == null) { UiGui.TextWrapped("Select and register the current account first."); return; }
         UIConstants.Heading("Fish collection", plugin.Configuration.CompactUi);
@@ -79,11 +77,7 @@ internal sealed class FishCollectionWindow : Window
         {
         UiGui.TextWrapped(UiText.F("Account: {0}", string.IsNullOrWhiteSpace(account.AccountAlias) ? account.AccountId : account.AccountAlias));
         if (!service.IsActive)
-        {
-            ImGui.BeginDisabled(blocker != null);
-            if (UIConstants.Button("Start collection")) service.Start();
-            ImGui.EndDisabled();
-        }
+        { if (UIConstants.Button("Start collection")) service.Start(); }
         else
         { if (UIConstants.Button("Stop collection")) service.Stop(); }
         UIConstants.SameLineIfFits("Acknowledge alert");

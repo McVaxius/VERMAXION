@@ -232,6 +232,7 @@ public class VermaxionEngine
     private DateTime handoffQuietSince = DateTime.MinValue;
     private DateTime handoffBlockerLastLoggedAt = DateTime.MinValue;
     private DateTime handoffMovementStopLastIssuedAt = DateTime.MinValue;
+    private EngineState? ownedCleanupHandoffTask;
     private string handoffBlockerReason = string.Empty;
     private DateTime handoffBlockerSince = DateTime.MinValue;
     private DateTime handoffBlockerLastWarningAt = DateTime.MinValue;
@@ -627,6 +628,8 @@ public class VermaxionEngine
             return TaskEligibility.Disabled("Allied Society is disabled for this character.");
         if (!ResetDetectionService.TaskNeedsRun(config.AlliedSocietyLastCompleted, config.AlliedSocietyNextReset))
             return TaskEligibility.NotDue($"Allied Society is not due until {config.AlliedSocietyNextReset:u}.");
+        if (alliedSocietyService.GetCombatProviderBlocker?.Invoke() is { } blocker)
+            return TaskEligibility.Blocked(blocker);
 
         var gearsets = equipmentRuntime.GetValidGearsets();
         var selected = config.AlliedSocietyGearsetSelection switch
@@ -1138,29 +1141,24 @@ public class VermaxionEngine
         CancelForSettling("Stopped");
     }
 
-    public void ForceStop(bool preserveVerminionResult = false, string? dependencyLoss = null)
+    public void ForceStop(bool preserveVerminionResult = false)
     {
-        if (dependencyLoss == null)
-            StopTargetProgression();
+        StopTargetProgression();
         CancelNagYourMomSeriesRankTest();
         log.Warning("[Engine] Full Stop force-releasing ownership");
-        if (dependencyLoss == null)
-        {
-            momIPCClient.CancelActiveRun();
-            dadIPCClient.CancelActiveRun();
-        }
+        momIPCClient.CancelActiveRun();
+        dadIPCClient.CancelActiveRun();
         lootGoblinMapGatherService.Cancel();
-        CancelTaskServices(onlyOwnedExternalWork: dependencyLoss != null);
-        if (dependencyLoss == null) vNavmeshIPC.Stop();
+        CancelTaskServices();
+        vNavmeshIPC.Stop();
         TryCloseOwnedUiBestEffort(preserveVerminionResult: preserveVerminionResult);
-        retainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null);
+        retainerListingRefillService.Reset();
         if (arService.IsProcessing)
-            arService.FinishPostProcess(force: true, mode: dependencyLoss == null
-                ? ARPostProcessFinishMode.Normal : ARPostProcessFinishMode.ReleaseOnly);
+            arService.FinishPostProcess(force: true);
         yesAlreadyIPC.Unpause();
         autoRetainerIPC.ReleaseSuppressionIfOwned(force: true);
         ResetHandoffTracking();
-        RecordRunCompletion(RunOutcome.ForceStopped, dependencyLoss ?? "Full Stop force-released ownership");
+        RecordRunCompletion(RunOutcome.ForceStopped, "Full Stop force-released ownership");
         ResetRunTracking();
         SetState(EngineState.Idle);
     }
@@ -1506,8 +1504,10 @@ public class VermaxionEngine
                 {
                     runHadFailure = true;
                     log.Warning($"[Engine] Allied Society failed and remains unstamped: {alliedSocietyService.StatusText}");
-                    alliedSocietyService.Reset();
-                    AdvanceToNextTask(EngineState.RunningAlliedSociety);
+                    var providerLost = alliedSocietyService.StoppedForCombatProviderLoss;
+                    if (!providerLost || !alliedSocietyService.OwnsRotation)
+                        alliedSocietyService.Reset();
+                    AdvanceToNextTask(EngineState.RunningAlliedSociety, onlyOwnedCleanup: providerLost);
                 }
                 break;
 
@@ -2392,6 +2392,11 @@ public class VermaxionEngine
         {
             if (beastmasterGearset != null)
             {
+                if (plugin.ReadCombatProviderBlocker(TaskIdByState[expectedState]) is { } blocker)
+                {
+                    FailScheduledBeastmasterPreparation(expectedState, blocker);
+                    return;
+                }
                 if (beastmasterRunOwner == 0 || equipmentRuntime.CharacterContentId != beastmasterRunOwner)
                 {
                     FailScheduledBeastmasterPreparation(expectedState, "Character changed while equipping the Beastmaster gearset.");
@@ -2418,7 +2423,7 @@ public class VermaxionEngine
                     FailScheduledBeastmasterPreparation(expectedState, eligibility.Reason);
                     return;
                 }
-                AdvanceToNextTask(expectedState);
+                AdvanceToNextTask(expectedState, onlyOwnedCleanup: true);
                 return;
             }
             if (ShouldHoldNonDutyTaskStart(label)) return;
@@ -2437,6 +2442,11 @@ public class VermaxionEngine
                         StatusText = "Waiting for the equipped Beastmaster job to become available.";
                     return;
                 }
+                if (plugin.ReadCombatProviderBlocker(TaskIdByState[expectedState]) is { } blocker)
+                {
+                    FailScheduledBeastmasterPreparation(expectedState, blocker);
+                    return;
+                }
                 // One owned request, using the same confirmation window as other equipment tasks.
                 beastmasterGearset = gearset;
                 beastmasterRunOwner = equipmentRuntime.CharacterContentId;
@@ -2452,7 +2462,7 @@ public class VermaxionEngine
             {
                 runHadFailure = true;
                 log.Warning($"[Engine] {label} could not start: {reason}");
-                AdvanceToNextTask(expectedState);
+                AdvanceToNextTask(expectedState, onlyOwnedCleanup: true);
                 return;
             }
             beastmasterRunFrequency = weekly ? config.BeastmasterWeeklyFrequency : config.BeastmasterFrequency;
@@ -2530,7 +2540,7 @@ public class VermaxionEngine
             runHadFailure = true;
             log.Warning($"[Engine] {label} did not complete; cadence remains unstamped: {service.StatusText}");
         }
-        AdvanceToNextTask(expectedState);
+        AdvanceToNextTask(expectedState, service.StoppedForCombatProviderLoss);
     }
 
     private void TickSimpleRegisteredTask(
@@ -2735,7 +2745,7 @@ public class VermaxionEngine
         runHadFailure = true;
         StatusText = reason;
         log.Warning($"[Engine] Scheduled Crewcible could not prepare Beastmaster: {reason}");
-        AdvanceToNextTask(currentTask);
+        AdvanceToNextTask(currentTask, onlyOwnedCleanup: true);
     }
 
     private void ResetScheduledBeastmasterPreparation()
@@ -2746,7 +2756,7 @@ public class VermaxionEngine
         beastmasterGearsetConfirmation.Reset();
     }
 
-    private void AdvanceToNextTask(EngineState currentTask)
+    private void AdvanceToNextTask(EngineState currentTask, bool onlyOwnedCleanup = false)
     {
         // No scheduled command may leak into the manual completion path after ownership ends.
         if (currentTask is EngineState.RunningBeastmaster or EngineState.RunningBeastmasterWeekly)
@@ -2754,6 +2764,8 @@ public class VermaxionEngine
             ResetScheduledBeastmasterPreparation();
             plugin.BeastmasterService.DiscardCompletionCommand();
         }
+        if (onlyOwnedCleanup)
+            ownedCleanupHandoffTask = currentTask;
         if (!currentTaskOwnedWorkStarted)
         {
             log.Information($"[Engine] {currentTask} did not start owned work; advancing without settling");
@@ -2786,6 +2798,7 @@ public class VermaxionEngine
 
     private void CancelForSettling(string status)
     {
+        ownedCleanupHandoffTask = null;
         CancelNagYourMomSeriesRankTest();
         momIPCClient.CancelActiveRun();
         if (activeDadExecution != null)
@@ -2803,6 +2816,7 @@ public class VermaxionEngine
 
     private void MarkCurrentTaskWorkStarted()
     {
+        ownedCleanupHandoffTask = null;
         currentTaskOwnedWorkStarted = true;
         runOwnedWorkStarted = true;
         RecordWatchdogProgress("owned work started");
@@ -2817,26 +2831,14 @@ public class VermaxionEngine
         workshopBellService.Reset();
     }
 
-    private void CancelTaskServices(bool onlyOwnedExternalWork = false)
+    private void CancelTaskServices()
     {
         ResetScheduledBeastmasterPreparation();
-        ResetReturnBeforeNag(cancelTravel: true, stopNavigation: !onlyOwnedExternalWork);
-        if (onlyOwnedExternalWork)
-        {
-            retainerListingRefillService.Cancel(ownedNavigationOnly: true);
-            cactpotService.Reset(stopOwnedNavigation: true);
-            fashionReportService.Reset(stopOwnedNavigation: true);
-        }
-        foreach (var cancel in taskBindings.Values
-                     .Where(binding => !onlyOwnedExternalWork ||
-                         (binding.Id != PostProcessTaskOrder.NagYourMom || nagYourMomRequestIssued) &&
-                         binding.Id is not (PostProcessTaskOrder.RefillListings or PostProcessTaskOrder.MiniCactpot
-                             or PostProcessTaskOrder.JumboCactpot or PostProcessTaskOrder.FashionReport) &&
-                         binding.Id is not (PostProcessTaskOrder.Beastmaster or PostProcessTaskOrder.BeastmasterWeekly))
-                     .Select(binding => binding.Cancel).Distinct())
+        ResetReturnBeforeNag(cancelTravel: true);
+        foreach (var cancel in taskBindings.Values.Select(binding => binding.Cancel).Distinct())
             cancel();
         fcBuffInventoryService.Reset();
-        workshopBellService.Reset(ownedNavigationOnly: onlyOwnedExternalWork);
+        workshopBellService.Reset();
     }
 
     private bool TickTaskWatchdog()
@@ -3026,7 +3028,7 @@ public class VermaxionEngine
 
     private bool TickHandoffSettling(string phase, bool finalHandoff = false)
     {
-        StopMovementForHandoff();
+        TickHandoffCleanup();
         yesAlreadyIPC.Pause();
 
         if (retainerUiOwned && (retainerCleanupPending || retainerListingRefillService.HasPendingRetainerUi))
@@ -3307,8 +3309,11 @@ public class VermaxionEngine
         handoffBlockerLastWarningAt = DateTime.MinValue;
     }
 
-    private void StopMovementForHandoff()
+    private void TickHandoffCleanup()
     {
+        if (ownedCleanupHandoffTask != null)
+            return;
+
         var now = DateTime.UtcNow;
         if (handoffMovementStopLastIssuedAt != DateTime.MinValue &&
             now - handoffMovementStopLastIssuedAt < TimeSpan.FromSeconds(1))
@@ -3581,6 +3586,7 @@ public class VermaxionEngine
         runQueueIndex = -1;
         currentTaskOwnedWorkStarted = false;
         runOwnedWorkStarted = false;
+        ownedCleanupHandoffTask = null;
         runHadFailure = false;
         pendingRunOutcome = RunOutcome.None;
         pendingRunSummary = string.Empty;
@@ -3670,7 +3676,8 @@ public class VermaxionEngine
         if (newState is EngineState.SettlingTask or EngineState.SettlingFinalHandoff)
         {
             ResetHandoffTracking();
-            StopMovementForHandoff();
+            if (ownedCleanupHandoffTask == null)
+                TickHandoffCleanup();
             yesAlreadyIPC.Pause();
         }
     }
@@ -3794,12 +3801,12 @@ public class VermaxionEngine
         return false;
     }
 
-    private void ResetReturnBeforeNag(bool cancelTravel = false, bool stopNavigation = true)
+    private void ResetReturnBeforeNag(bool cancelTravel = false)
     {
         if (cancelTravel && nagReturnCommandIssued)
         {
             CommandHelper.SendCommand("/lifestream cancel");
-            if (stopNavigation) vNavmeshIPC.Stop();
+            vNavmeshIPC.Stop();
         }
         nagReturnStartedAt = DateTime.MinValue;
         nagReturnSettledSince = DateTime.MinValue;

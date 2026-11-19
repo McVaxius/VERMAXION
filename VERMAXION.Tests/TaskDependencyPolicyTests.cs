@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using VERMAXION.Models;
 using Xunit;
+using AutomationCatalog = live::VERMAXION.AutomationCatalog;
 
 namespace VERMAXION.Tests;
 
@@ -48,43 +49,156 @@ public sealed class TaskDependencyPolicyTests
         const string companion = "BMRVariantLoader.Suite.IsReady.v1";
         var dependency = CreateCombatProvider(out var inventory);
         var blocker = dependency.GetType().GetMethod("GetBlocker")!;
-        string? ReadBlocker() => (string?)blocker.Invoke(dependency, null);
+        string? ReadBlocker(string taskId = live::VERMAXION.AutomationCatalog.AlliedSociety)
+            => (string?)blocker.Invoke(dependency, [taskId]);
         void Load(params string[] names) => inventory.Plugins = names.Select(name => InventoryPlugin.Create(name, true)).ToArray();
 
-        Load("GodMod");
-        Assert.Contains("GodMod is loaded", ReadBlocker());
-        inventory.Functions[native] = () => false;
-        Assert.Null(ReadBlocker());
-        inventory.Functions[native] = () => throw new InvalidOperationException("Incompatible IPC");
-        Assert.Contains("GodMod is loaded", ReadBlocker());
-        inventory.Functions[native] = () => true;
-        Load("GodMod", "BossModReborn");
-        Assert.Contains("Multiple BossMod hosts", ReadBlocker());
-        Load("GodMod", "BossMod");
-        Assert.Contains("Multiple BossMod hosts", ReadBlocker());
-        Load("BossModReborn", "BossMod", "BMRVariantLoader");
-        Assert.Contains("Multiple BossMod hosts", ReadBlocker());
+        string[] restricted =
+        [
+            AutomationCatalog.AlliedSociety,
+            AutomationCatalog.Beastmaster,
+            "Run##BeastmasterWeekly",
+        ];
+        void ExpectBlocker(string expected)
+        {
+            foreach (var task in restricted) Assert.Contains(expected, ReadBlocker(task));
+        }
+        void ExpectAdmitted()
+        {
+            foreach (var task in restricted) Assert.Null(ReadBlocker(task));
+        }
 
-        inventory.Functions[companion] = () => true;
+        ExpectBlocker("Enable God Mod Companion");
+        Assert.Null(ReadBlocker(AutomationCatalog.ChocoboRacing));
+        Assert.Null(ReadBlocker(AutomationCatalog.VerminionQueue));
+
+        inventory.Functions[native] = () => false;
+        Load("GodMod");
+        ExpectBlocker("Enable God Mod Companion");
+        Load("GodMod", "BMRVariantLoader");
+        ExpectAdmitted();
+        inventory.Functions[native] = () => throw new InvalidOperationException("Incompatible IPC");
+        ExpectBlocker("GodMod is loaded");
+        inventory.Functions[native] = () => true;
+        Load("GodMod", "BossModReborn", "BMRVariantLoader");
+        ExpectBlocker("Multiple BossMod hosts");
+        Load("GodMod", "BossMod", "BMRVariantLoader");
+        ExpectBlocker("Multiple BossMod hosts");
+        Load("BossModReborn", "BossMod", "BMRVariantLoader");
+        ExpectBlocker("Multiple BossMod hosts");
+
         Load("BossModReborn");
-        Assert.Contains("Enable God Mod Companion", ReadBlocker());
+        ExpectBlocker("Enable God Mod Companion");
         Load("BMRVariantLoader");
-        Assert.Contains("Enable a supported BossModReborn", ReadBlocker());
+        ExpectBlocker("Enable GodMod or BossModReborn");
         Load("BossModReborn", "BMRVariantLoader");
-        Assert.Null(ReadBlocker());
+        inventory.Functions[companion] = () => true;
+        ExpectAdmitted();
         inventory.Functions[companion] = () => false;
-        Assert.Contains("God Mod Companion is not ready", ReadBlocker());
+        ExpectBlocker("God Mod Companion is not ready");
         inventory.Functions.Remove(companion);
-        Assert.Contains("God Mod Companion is not ready", ReadBlocker());
-        inventory.Plugins = [InventoryPlugin.Create("GodMod", false)];
-        Assert.Contains("Enable GodMod", ReadBlocker());
+        ExpectBlocker("God Mod Companion is not ready");
+        inventory.Plugins = [InventoryPlugin.Create("BMRVariantLoader", false), InventoryPlugin.Create("GodMod", true)];
+        ExpectBlocker("Enable God Mod Companion");
     }
 
-    internal static object CreateReadyCombatProvider()
+    [Fact]
+    public void UnrelatedCatalogTasksDoNotProbeCombatProviders()
+    {
+        var dependency = CreateCombatProvider(out var inventory);
+        var readBlocker = dependency.GetType().GetMethod("GetBlocker")!
+            .CreateDelegate<Func<string?, string?>>(dependency);
+
+        foreach (var feature in AutomationCatalog.Features)
+        {
+            if (feature.Id is AutomationCatalog.AlliedSociety or AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly)
+                continue;
+
+            Assert.Null(readBlocker(feature.Id));
+        }
+
+        Assert.Null(readBlocker(null));
+        Assert.Equal(0, inventory.ProviderProbes);
+    }
+
+    [Fact]
+    public void AlliedSocietyProviderLossCancelsBeforeGearsetConfirmationOrRotation()
+    {
+        var dependency = CreateCombatProvider(out var inventory);
+        inventory.Plugins = [InventoryPlugin.Create("GodMod", true), InventoryPlugin.Create("BMRVariantLoader", true)];
+        inventory.Functions["BossMod.Presets.GetForceDisabled"] = () => false;
+        var readBlocker = dependency.GetType().GetMethod("GetBlocker")!
+            .CreateDelegate<Func<string?, string?>>(dependency);
+
+        var gearset = new live::VERMAXION.Models.GearsetSnapshot(5, 21, true, true, 100, "Test gearset", [1]);
+        var equipRequests = 0;
+        var confirmationRequests = 0;
+        var rotationIdentityReads = 0;
+        var equipment = Proxy<live::VERMAXION.Models.IEquipmentAutomationRuntime>((method, args) =>
+        {
+            switch (method.Name)
+            {
+                case "get_UtcNow": return new DateTime(2026, 11, 18, 12, 0, 0, DateTimeKind.Utc);
+                case "get_CharacterContentId": return 17UL;
+                case "GetValidGearsets": return new[] { gearset };
+                case "IsGearsetEquipped": return false;
+                case "TryEquipGearset":
+                    Assert.Equal(gearset.GearsetId, args![0]);
+                    equipRequests++;
+                    args[1] = string.Empty;
+                    return true;
+                case "TryConfirmGearsetChangePrompt":
+                    confirmationRequests++;
+                    return true;
+                default: throw new InvalidOperationException(method.Name);
+            }
+        });
+        var client = Proxy<host::Dalamud.Plugin.Services.IClientState>((method, _) => method.Name == "get_IsLoggedIn");
+        var player = Proxy<host::Dalamud.Plugin.Services.IPlayerState>((method, _) => method.Name == "get_IsLoaded");
+        var objects = Proxy<host::Dalamud.Plugin.Services.IObjectTable>((_, _) => { rotationIdentityReads++; return null; });
+        var log = Proxy<host::Dalamud.Plugin.Services.IPluginLog>((_, _) => null);
+        var service = new live::VERMAXION.Services.AlliedSocietyService(equipment, client, player, objects, log,
+            new live::VERMAXION.IPC.QuestionableCompanionAlliedSocietyBridge());
+        service.GetType().GetProperty("GetCombatProviderBlocker", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(service, (Func<string?>)(() => readBlocker(live::VERMAXION.AutomationCatalog.AlliedSociety)));
+
+        service.Start(new live::VERMAXION.Models.CharacterConfig
+        {
+            AlliedSocietyGearsetSelection = live::VERMAXION.Models.AlliedSocietyGearsetSelection.SavedGearset,
+            AlliedSocietyGearsetId = gearset.GearsetId,
+        });
+        service.Update();
+        Assert.Equal(live::VERMAXION.Services.AlliedSocietyService.RunState.ConfirmingGearset, service.State);
+        Assert.Equal(1, equipRequests);
+
+        inventory.Plugins = [];
+        service.Update();
+        Assert.Equal(live::VERMAXION.Services.AlliedSocietyService.RunState.Cancelled, service.State);
+        Assert.True(service.IsFailed);
+        Assert.False(service.IsActive);
+        Assert.Contains("Enable God Mod Companion", service.StatusText);
+
+        inventory.Plugins = [InventoryPlugin.Create("GodMod", true)];
+        service.Update();
+        Assert.Equal(live::VERMAXION.Services.AlliedSocietyService.RunState.Cancelled, service.State);
+        Assert.False(service.OwnsRotation);
+        Assert.Equal(1, equipRequests);
+        Assert.Equal(0, confirmationRequests);
+        Assert.Equal(0, rotationIdentityReads);
+
+        static T Proxy<T>(Func<MethodInfo, object?[]?, object?> handler) where T : class
+        {
+            var proxy = DispatchProxy.Create<T, BeastmasterRouteLifecycleTests.HostProxy>();
+            ((BeastmasterRouteLifecycleTests.HostProxy)(object)proxy).Handler = handler;
+            return proxy;
+        }
+    }
+
+    internal static object CreateReadyCombatProvider(Func<bool>? isCompanionReady = null)
     {
         var dependency = CreateCombatProvider(out var inventory);
         inventory.Plugins = [InventoryPlugin.Create("BossModReborn", true), InventoryPlugin.Create("BMRVariantLoader", true)];
-        inventory.Functions["BMRVariantLoader.Suite.IsReady.v1"] = () => true;
+        inventory.Functions["BMRVariantLoader.Suite.IsReady.v1"] = isCompanionReady ?? (() => true);
         return dependency;
     }
 
@@ -217,16 +331,29 @@ public sealed class TaskDependencyPolicyTests
     {
         public host::Dalamud.Plugin.IExposedPlugin[] Plugins { get; set; } = [];
         public Dictionary<string, Func<bool>> Functions { get; } = [];
+        internal int ProviderProbes { get; private set; }
 
         protected override object? Invoke(MethodInfo? method, object?[]? args)
         {
-            if (method?.Name == "get_InstalledPlugins") return Plugins;
+            if (method?.Name == "get_InstalledPlugins")
+            {
+                ProviderProbes++;
+                return Plugins;
+            }
             if (method?.Name == "GetIpcSubscriber" && args is [string channel])
             {
                 var ipc = DispatchProxy.Create<host::Dalamud.Plugin.Ipc.ICallGateSubscriber<bool>, BooleanIpc>();
                 var subscriber = (BooleanIpc)(object)ipc;
-                subscriber.HasFunction = () => Functions.ContainsKey(channel);
-                subscriber.Read = () => Functions[channel]();
+                subscriber.HasFunction = () =>
+                {
+                    ProviderProbes++;
+                    return Functions.ContainsKey(channel);
+                };
+                subscriber.Read = () =>
+                {
+                    ProviderProbes++;
+                    return Functions[channel]();
+                };
                 return ipc;
             }
             throw new InvalidOperationException("Unexpected plugin-interface access.");

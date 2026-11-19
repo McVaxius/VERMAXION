@@ -1,3 +1,10 @@
+2026-11-19 - 3.0.0.21 - Combat provider scope
+
+- Allied Society (Beast Tribe) and daily and weekly Crewcible require God Mod Companion and either GodMod or BossModReborn.
+- Crewcible uses the native controller supplied by God Mod Companion and the existing gearset switch.
+- Other VERMAXION features can run without these plugins.
+- If the provider becomes unavailable during an Allied Society or Crewcible run, stop the owned work and let the scheduled queue continue after cleanup.
+
 2026-11-18 - 3.0.0.20 - Combat provider readiness and DTR tooltip
 
 - Require a ready GodMod or God Mod Companion with BossModReborn for automation. Show the dependency blocker in the dashboard and automation status, and stop active work if the dependency becomes unavailable.

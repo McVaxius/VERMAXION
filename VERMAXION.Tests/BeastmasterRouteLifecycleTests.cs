@@ -1218,6 +1218,7 @@ public sealed class BeastmasterRouteLifecycleTests
     [InlineData(false, "timeout")] [InlineData(true, "timeout")]
     [InlineData(false, "character")] [InlineData(true, "character")]
     [InlineData(false, "verified")] [InlineData(true, "verified")]
+    [InlineData(false, "provider")] [InlineData(true, "late provider")]
     public void ScheduledCrewciblePreparesAnExistingBstGearsetAndContinuesAfterSwitchFailure(bool weekly, string outcome)
     {
         using var host = new HostFixture { Territory = 144 };
@@ -1229,6 +1230,7 @@ public sealed class BeastmasterRouteLifecycleTests
         var character = host.Character;
         var equipRequests = 0;
         var confirmations = 0;
+        var companionReady = true;
         var unlocked = true;
         var gearsets = new List<live::VERMAXION.Models.GearsetSnapshot>
         {
@@ -1253,7 +1255,9 @@ public sealed class BeastmasterRouteLifecycleTests
                     args[1] = "Synthetic equip rejection";
                     return false;
                 case "TryConfirmGearsetChangePrompt": confirmations++; return false;
-                case "IsGearsetEquipped": return equipped && (int)args![0]! == 3 && (uint)args[1]! == 1;
+                case "IsGearsetEquipped":
+                    if (equipped && outcome == "late provider") companionReady = false;
+                    return equipped && (int)args![0]! == 3 && (uint)args[1]! == 1;
                 default: return method.ReturnType == typeof(void) || !method.ReturnType.IsValueType
                     ? null : Activator.CreateInstance(method.ReturnType);
             }
@@ -1269,7 +1273,7 @@ public sealed class BeastmasterRouteLifecycleTests
             [manager.CurrentAccountId] = new() { AccountId = manager.CurrentAccountId, DefaultConfig = profile },
         });
         var plugin = (live::VERMAXION.Plugin)RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Plugin));
-        Set(plugin, "combatProviderDependency", TaskDependencyPolicyTests.CreateReadyCombatProvider());
+        Set(plugin, "combatProviderDependency", TaskDependencyPolicyTests.CreateReadyCombatProvider(() => companionReady));
         Set(plugin, "Configuration", new live::VERMAXION.Configuration { MinimumTeleportGil = 0 });
         Set(plugin, "ConfigManager", manager);
         Set(plugin, "EquipmentAutomationRuntime", runtime);
@@ -1310,6 +1314,8 @@ public sealed class BeastmasterRouteLifecycleTests
         Set(engine, "configManager", manager);
         Set(engine, "configuration", Field(plugin, "Configuration"));
         Set(engine, "equipmentRuntime", runtime);
+        Set(engine, "alliedSocietyService", new live::VERMAXION.Services.AlliedSocietyService(runtime, null!, null!, null!,
+            Read<host::Dalamud.Plugin.Services.IPluginLog>(host, "log"), new live::VERMAXION.IPC.QuestionableCompanionAlliedSocietyBridge()));
         Set(engine, "clientState", services.GetProperty("ClientState", Static)!.GetValue(null));
         Set(engine, "log", Field(host, "log"));
         Set(engine, "vNavmeshIPC", Field(host, "navigation"));
@@ -1345,6 +1351,8 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.Equal(task, Read<live::VERMAXION.Services.VermaxionEngine.EngineState>(engine, "state"));
         Assert.False((bool)Invoke(engine, "RecoverOwnedBeastmaster", "synthetic interruption")!);
         if (outcome == "character") character++;
+        else if (outcome == "provider") companionReady = false;
+        else if (outcome == "late provider") equipped = true;
         else if (outcome == "verified")
         {
             equipped = true;
@@ -1363,14 +1371,98 @@ public sealed class BeastmasterRouteLifecycleTests
         {
             "character" => "Character changed",
             "verified" => "Wait until the current character is ready",
+            "provider" or "late provider" => "God Mod Companion is not ready",
             _ => "Synthetic equip rejection",
         };
         Assert.Contains(host.Warnings, message => message.Contains(failure, StringComparison.Ordinal));
         Assert.Equal(default, profile.BeastmasterLastCompleted);
         Assert.Equal(default, profile.BeastmasterWeeklyLastCompleted);
+        Assert.DoesNotContain("/vnav stop", host.Commands);
+        Invoke(engine, "TickHandoffCleanup");
+        Assert.DoesNotContain("/vnav stop", host.Commands);
         Invoke(engine, "DispatchNextQueuedTask", true);
         Assert.Equal(next, Read<live::VERMAXION.Services.VermaxionEngine.EngineState>(engine, "state"));
         Assert.Equal(1, Read<int>(engine, "runQueueIndex"));
+    }
+
+    [Theory]
+    [InlineData("scheduled")]
+    [InlineData("manual")]
+    public void AlliedSocietyProviderLossDoesNotRetryAnUnconfirmedStop(string route)
+    {
+        using var host = new HostFixture();
+        var now = new DateTime(2026, 11, 18, 12, 0, 0, DateTimeKind.Utc);
+        var log = Read<host::Dalamud.Plugin.Services.IPluginLog>(host, "log");
+        var equipment = DispatchProxy.Create<live::VERMAXION.Models.IEquipmentAutomationRuntime, HostProxy>();
+        ((HostProxy)(object)equipment).Handler = (method, _) => method.Name == "get_UtcNow"
+            ? now : throw new InvalidOperationException(method.Name);
+        var bridge = new live::VERMAXION.IPC.QuestionableCompanionAlliedSocietyBridge();
+        var owned = new AlliedSocietyRotation();
+        Set(bridge, "ownedService", owned);
+        Set(bridge, "stopMethod", typeof(AlliedSocietyRotation).GetMethod(nameof(AlliedSocietyRotation.Stop)));
+        var allied = new live::VERMAXION.Services.AlliedSocietyService(equipment, null!, null!, null!, log, bridge);
+        const string providerLoss = "Synthetic Allied Society combat provider is unavailable.";
+        Set(allied, "GetCombatProviderBlocker", (Func<string?>)(() => providerLoss));
+        Set(allied, "State", live::VERMAXION.Services.AlliedSocietyService.RunState.MonitoringRotation);
+        Set(allied, "startingContentId", host.Character);
+        Set(allied, "selectedGearset", new live::VERMAXION.Models.GearsetSnapshot(5, 21, true, true, 100, "Test gearset", [1]));
+
+        var engine = (live::VERMAXION.Services.VermaxionEngine)RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Services.VermaxionEngine));
+        var profile = new live::VERMAXION.Models.CharacterConfig { EnableAlliedSociety = true };
+        Set(engine, "activeConfig", profile);
+        Set(engine, "alliedSocietyService", allied);
+        Set(engine, "log", log);
+        Set(engine, "vNavmeshIPC", Field(host, "navigation"));
+        Set(engine, "yesAlreadyIPC", new live::VERMAXION.IPC.YesAlreadyIPC(log));
+        Set(engine, "workshopBellService", RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Services.WorkshopBellService)));
+        Set(engine, "lootGoblinMapGatherService", RuntimeHelpers.GetUninitializedObject(typeof(live::VERMAXION.Services.LootGoblinMapGatherService)));
+        Set(engine, "state", live::VERMAXION.Services.VermaxionEngine.EngineState.RunningAlliedSociety);
+        Set(engine, "currentTaskOwnedWorkStarted", true);
+
+        var bindingType = engine.GetType().GetNestedType("EngineTaskBinding", BindingFlags.NonPublic)!;
+        var bindings = (System.Collections.IDictionary)Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(typeof(string), bindingType))!;
+        var id = live::VERMAXION.PostProcessTaskOrder.AlliedSociety;
+        bindings.Add(id, Activator.CreateInstance(bindingType, Instance, null,
+            [id, engine.State, new Func<live::VERMAXION.Models.CharacterConfig, live::VERMAXION.Models.TaskEligibility>(_ => live::VERMAXION.Models.TaskEligibility.Runnable()),
+             new Action(allied.Update), new Action(allied.Reset), new Action(() => { }), new Action(() => { }),
+             new Func<string>(() => allied.StatusText), new Func<string>(() => allied.StatusText)], null));
+        Set(engine, "taskBindings", bindings);
+
+        var scheduled = route != "manual";
+        if (scheduled)
+        {
+            Invoke(engine, "UpdateCore");
+            Assert.Equal(live::VERMAXION.Services.VermaxionEngine.EngineState.SettlingTask, engine.State);
+        }
+        else
+            allied.Update();
+
+        Assert.True(allied.OwnsRotation);
+        Assert.Equal(providerLoss, allied.StatusText);
+        Assert.Equal(host.Character, Read<ulong>(allied, "startingContentId"));
+
+        Assert.Equal(1, owned.StopCalls);
+        now = now.AddSeconds(2);
+        if (scheduled) Invoke(engine, "TickHandoffCleanup");
+        else allied.Update();
+
+        Assert.Equal(1, owned.StopCalls);
+        Assert.True(allied.OwnsRotation);
+        Assert.False(allied.IsActive);
+        Assert.Equal(providerLoss, allied.StatusText);
+        Assert.Equal(default, profile.AlliedSocietyLastCompleted);
+        Assert.DoesNotContain("/vnav stop", host.Commands);
+    }
+
+    private sealed class AlliedSocietyRotation
+    {
+        public int StopCalls { get; private set; }
+
+        public void Stop()
+        {
+            if (++StopCalls <= 2)
+                throw new InvalidOperationException("Synthetic StopRotation failure.");
+        }
     }
 
     [Fact]
@@ -1928,6 +2020,74 @@ public sealed class BeastmasterRouteLifecycleTests
         Assert.True(Read<bool>(route, "AllowsCombat"));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProviderLossStopsOwnedCrewcibleMovementWithoutAdoptingAnUnownedPrompt(bool deferUntilOwnerReturns)
+    {
+        using var host = new HostFixture();
+        host.EnableNativeUi();
+        host.EnableIdleDutyQueue();
+        var service = host.CreateService();
+        var route = CreateRoute(service, 1339);
+        var destination = RoutePosition(route, "MoveTo", 0);
+        host.Position = destination + new Vector3(0, 0, 8);
+        Assert.False(Approach(route, destination));
+        Assert.True(Read<bool>(service, "ownsNavigation"));
+        Assert.Single(host.MovementCommands);
+
+        host.Territory = 148;
+        var prompt = host.AddYesNo();
+        Set(service, "owner", host.Character);
+        Set(service, "State", Enum.Parse(ServiceType.GetNestedType("RunState", BindingFlags.NonPublic)!, "OpeningBoard"));
+        const string missingProvider = "Synthetic Crewcible provider is unavailable.";
+        string? blocker = missingProvider;
+        Set(service, "GetCombatProviderBlocker", (Func<string?>)(() => blocker));
+        var promptReads = host.YesNoReads;
+
+        if (deferUntilOwnerReturns)
+        {
+            var owningCharacter = host.Character;
+            host.PlayerLoaded = false;
+            Invoke(service, "Update");
+            Assert.Equal("OpeningBoard", Field(service, "State")!.ToString());
+            Assert.True(Read<bool>(service, "ownsNavigation"));
+            Assert.DoesNotContain("/vnav stop", host.Commands);
+
+            blocker = null;
+            host.PlayerLoaded = true;
+            host.Character++;
+            Invoke(service, "Update");
+            Assert.Equal(owningCharacter, Read<ulong>(service, "owner"));
+            Assert.DoesNotContain("/vnav stop", host.Commands);
+            Assert.Equal(promptReads, host.YesNoReads);
+
+            host.Character = owningCharacter;
+            Assert.False((bool)Invoke(service, "StartConfigured", new live::VERMAXION.Beastmaster.BeastmasterSettings(), false)!);
+            Assert.DoesNotContain("/vnav stop", host.Commands);
+            Assert.Equal(promptReads, host.YesNoReads);
+        }
+
+        Invoke(service, "Update");
+
+        Assert.Equal("Idle", Field(service, "State")!.ToString());
+        Assert.False(Read<bool>(service, "ownsNavigation"));
+        Assert.Contains(missingProvider, Read<string>(service, "StatusText"));
+        Assert.Null(Field(service, "entryAttempt"));
+        Assert.Equal(promptReads, host.YesNoReads);
+        Assert.True(host.IsAddonVisible(prompt));
+        Assert.Single(host.Commands.Where(command => command == "/vnav stop"));
+
+        blocker = null;
+        Invoke(service, "Update");
+
+        Assert.Equal("Idle", Field(service, "State")!.ToString());
+        Assert.Null(Field(service, "entryAttempt"));
+        Assert.Equal(0, host.ChallengeCallbacks);
+        Assert.Single(host.MovementCommands);
+        Assert.Single(host.Commands.Where(command => command == "/vnav stop"));
+    }
+
     [Fact]
     public void PauseStopsOwnedMovementWithoutAdvancingThePendingWaypoint()
     {
@@ -2067,11 +2227,11 @@ public sealed class BeastmasterRouteLifecycleTests
         // Both movement choices now use the native BMR action owner. A conflicting
         // BossMod provider must fail before any IPC or movement is dispatched.
         Assert.False((bool)readiness.Invoke(null, minerva)!);
-        Assert.Contains("Use BossModReborn alone", (string)minerva[1]!);
+        Assert.Contains("Multiple BossMod hosts", (string)minerva[1]!);
 
         object?[] bmr = [new live::VERMAXION.Beastmaster.BeastmasterSettings(), null];
         Assert.False((bool)readiness.Invoke(null, bmr)!);
-        Assert.Contains("Use BossModReborn alone", (string)bmr[1]!);
+        Assert.Contains("Multiple BossMod hosts", (string)bmr[1]!);
         Assert.Empty(host.Commands);
     }
 
@@ -2882,6 +3042,7 @@ public sealed class BeastmasterRouteLifecycleTests
         public int PreparationCalls, CombatControls;
         public readonly List<(bool Attacks, bool Scripted)> CombatActivations = [];
         public int MainHudReads;
+        public int YesNoReads;
         public bool AutoAttacking
         {
             get => ((NativeGameUi.UIState*)battleUi)->WeaponState.AutoAttackState.IsAutoAttacking;
@@ -2973,6 +3134,7 @@ public sealed class BeastmasterRouteLifecycleTests
                     if (method.Name != "GetAddonByName" || args?.FirstOrDefault() is not string name)
                         return Default(method.ReturnType);
                     if (name == "XBMContentsMainHUD") MainHudReads++;
+                    if (name == "SelectYesno") YesNoReads++;
                     return new host::Dalamud.Game.NativeWrapper.AtkUnitBasePtr(addons.GetValueOrDefault(name));
                 });
                 Replace(svc, "GameGui", gameGui);

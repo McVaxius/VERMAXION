@@ -288,7 +288,7 @@ public sealed class RetainerListingRecoveryTests
     }
 
     [Fact]
-    public void ProductionProviderLossRetiresOnlyTrackedNavigation()
+    public void ProductionProviderLossStopsOnlyScopedOwnedWork()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
         string Read(string path) => File.ReadAllText(Path.Combine(root, "VERMAXION", path));
@@ -302,22 +302,28 @@ public sealed class RetainerListingRecoveryTests
         }
 
         var plugin = Read("Plugin.cs");
-        var fullStop = Method(plugin, "private void FullStop(", "private void ProcessRetainerlessTimer(");
+        var fullStop = Method(plugin, "public void FullStop(", "private void ProcessRetainerlessTimer(");
         Assert.Contains("if (FCBuffInventoryService.IsActive)", plugin);
-        Assert.Contains("FullStop(preparingDebugTask: false, dependencyLoss: CombatProviderBlocker)", plugin);
-        Assert.Contains("if (dependencyLoss == null && !FishCollection.IsActive)", fullStop);
-        Assert.Contains("FishingService.Reset(releaseRun: true, ownedNavigationOnly: dependencyLoss != null)", fullStop);
-        Assert.Contains("RetainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null)", fullStop);
-        Assert.Contains("WorkshopBellService.Reset(ownedNavigationOnly: dependencyLoss != null)", fullStop);
+        Assert.DoesNotContain("dependencyLoss", plugin);
+        Assert.Contains("VNavmeshIPC.Stop();", fullStop);
+        var reload = Method(plugin, "private void ProcessPendingDebugTask(", "internal string? GetDebugTaskBlockedReason(");
+        Assert.Contains("ReadCombatProviderBlocker(pendingDebugDispatchTaskId ?? pendingDebugTaskId)", reload);
+
+        var allied = Read("Services/AlliedSocietyService.cs");
+        var alliedUpdate = Method(allied, "public void Update(", "public void Cancel(");
+        Assert.Contains("Cancel(blocker)", alliedUpdate);
+        Assert.Contains("if (bridge.OwnsRun && !bridge.TryStopOwned", allied);
+
+        var crewcible = Read("Beastmaster/BeastmasterService.cs");
+        var crewcibleUpdate = Method(crewcible, "public void Update(", "private void Fail(");
+        Assert.Contains("RunState.Refreshing or RunState.Complete", crewcibleUpdate);
+        Assert.Contains("StopRun(inspectCurrentEntry: false);", crewcibleUpdate);
+        Assert.Contains("if (CompletionCommandPending && GetCombatProviderBlocker?.Invoke()", crewcibleUpdate);
+        Assert.Contains("if (inspectCurrentEntry && !rankingCheckboxTest", crewcible);
 
         var engine = Read("Services/VermaxionEngine.cs");
-        var forceStop = Method(engine, "public void ForceStop(", "private void StopTargetProgression(");
-        Assert.Contains("if (dependencyLoss == null) vNavmeshIPC.Stop();", forceStop);
-        Assert.Contains("retainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null)", forceStop);
-        var cancel = Method(engine, "private void CancelTaskServices(", "private bool TickTaskWatchdog(");
-        Assert.Contains("ResetReturnBeforeNag(cancelTravel: true, stopNavigation: !onlyOwnedExternalWork)", cancel);
-        Assert.Contains("retainerListingRefillService.Cancel(ownedNavigationOnly: true)", cancel);
-        Assert.Contains("workshopBellService.Reset(ownedNavigationOnly: onlyOwnedExternalWork)", cancel);
+        var scheduled = Method(engine, "private void TickScheduledBeastmaster(", "private void TickSimpleRegisteredTask(");
+        Assert.Contains("FailScheduledBeastmasterPreparation(expectedState, blocker)", scheduled);
 
         foreach (var name in new[] { "RetainerListingRefillService", "WorkshopBellService" })
         {

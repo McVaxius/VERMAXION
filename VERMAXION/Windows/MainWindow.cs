@@ -74,9 +74,9 @@ public class MainWindow : Window, IDisposable
         {
             Icon = FontAwesomeIcon.Play, Priority = -20, IconOffset = new(2, 1),
             Click = button => { if (button == ImGuiMouseButton.Left) RunAll(); },
-            ShowTooltip = () => UiGui.SetTooltip(plugin.CombatProviderBlocker ?? (plugin.CrewcibleOwnsStatus ? UiText.T("Run All")
+            ShowTooltip = () => UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T("Run All")
                 : UiText.T("Run All") + "\n" + UiText.T(plugin.Engine.StatusText)
-                    + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker))),
+                    + "\n" + UiText.T(plugin.Engine.ActiveHandoffBlocker)),
         });
         TitleBarButtons.Add(new()
         {
@@ -291,8 +291,6 @@ public class MainWindow : Window, IDisposable
             DrawFramedControls("MainActionsFrame", "Actions", DrawControls);
         }
         else DrawControls();
-        if (plugin.CombatProviderBlocker is { } dependencyBlocker)
-            UIConstants.WrappedText(UIConstants.Amber, dependencyBlocker);
         var watchFishingWindows=plugin.Configuration.OceanFishingWindowWatchEnabled;
         if(UIConstants.Checkbox("Watch Ocean Fishing windows",ref watchFishingWindows))
         {
@@ -343,14 +341,12 @@ public class MainWindow : Window, IDisposable
             }
             if (ImGui.IsItemHovered()) UiGui.SetTooltip(UIConstants.Tooltips.KrangleNames);
             ImGui.TableNextColumn(); UiGui.TextDisabled("Runtime");
-            var runtimeReady = engine.RegistryReady && plugin.CombatProviderBlocker == null;
-            UiGui.TextColored(runtimeReady ? UIConstants.Mint : UIConstants.Amber,
-                runtimeReady ? plugin.CrewcibleOwnsStatus ? UiText.T("Ready")
+            UiGui.TextColored(engine.RegistryReady ? UIConstants.Mint : UIConstants.Amber,
+                engine.RegistryReady ? plugin.CrewcibleOwnsStatus ? UiText.T("Ready")
                     : UiText.F("Ready / {0}", UiText.T(engine.State.ToString())) : "Blocked");
             UiGui.TextDisabled(UiText.F("{0} pending", engine.GetPendingTaskCount()));
-            if (ImGui.IsItemHovered()) UiGui.SetTooltip(plugin.CombatProviderBlocker ??
-                (plugin.CrewcibleOwnsStatus ? UiText.T(engine.RegistryDiagnostic)
-                : string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker))));
+            if (ImGui.IsItemHovered()) UiGui.SetTooltip(plugin.CrewcibleOwnsStatus ? UiText.T(engine.RegistryDiagnostic)
+                : string.Join("\n", UiText.T(engine.StatusText), UiText.T(engine.RegistryDiagnostic), UiText.T(engine.ActiveHandoffBlocker)));
         }
 
         void DrawFramedControls(string id, string title, Action draw)
@@ -385,7 +381,7 @@ public class MainWindow : Window, IDisposable
             if (UIConstants.FullStopButton(new Vector2(widths[0], actionHeight), previousWidth)) plugin.FullStop();
             UIConstants.SameLineIfFits("Run All", widths[1]);
 
-            ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork || plugin.CombatProviderBlocker != null);
+            ImGui.BeginDisabled(engine.IsRunning || plugin.DadHandoffBlocksNewWork);
             if (UIConstants.Button("Run All", new Vector2(widths[1], actionHeight), true, previousWidth))
                 RunAll();
             ImGui.EndDisabled();
@@ -645,12 +641,12 @@ public class MainWindow : Window, IDisposable
                     plugin.Configuration.EnableCharacterSelectStallRecovery);
                 UiGui.TextWrapped(
                     UiText.F($"Character-select recovery: {UiText.T(plugin.Configuration.EnableCharacterSelectStallRecovery ? "On" : "Off")} - {UiText.T(characterSelectRecovery.StatusText)}"));
-                var characterSelectBlockedReason = plugin.CombatProviderBlocker ?? (characterSelectEligibility.CanAttempt
+                var characterSelectBlockedReason = characterSelectEligibility.CanAttempt
                     ? characterSelectRecovery.LastBlockedReason
-                    : characterSelectEligibility.Reason);
+                    : characterSelectEligibility.Reason;
                 if (!string.IsNullOrWhiteSpace(characterSelectBlockedReason))
                     UiGui.TextWrapped(UiText.F("Character-select recovery blocker: {0}", UiText.T(characterSelectBlockedReason)));
-                ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt || plugin.CombatProviderBlocker != null);
+                ImGui.BeginDisabled(!characterSelectEligibility.CanAttempt);
                 if (UIConstants.Button("Load first character now"))
                     plugin.QueueCharacterSelectRecoveryAttempt();
                 ImGui.EndDisabled();
@@ -877,7 +873,6 @@ public class MainWindow : Window, IDisposable
                 }
                 var result = plugin.MomIPCClient.StartRun(remainingRuns, config.NagYourMomJob, route == MomRunRoutes.CasualCc && config.NagYourMomStopAtSeriesRank25, route,
                     queueDeadlineUtc: deadlineUtc);
-                plugin.TrackManualMomRun(result);
                 Plugin.ChatGui.Print($"[Vermaxion] mom {result.Status}: {result.Summary} route={result.Route} runs={result.CompletedRunCount}/{result.RequestedRunCount}");
             }, "OK",
             secondaryButtonLabel: "Test Series Rank##MomSeriesRank",
@@ -959,7 +954,7 @@ public class MainWindow : Window, IDisposable
             string? tertiaryButtonTooltip = null)
         {
             var feature = GetDisplayedFeature(task);
-            var providerBlocker = onClick == (Action)plugin.OpenCofferUtility ? null : plugin.CombatProviderBlocker;
+            var providerBlocker = plugin.ReadCombatProviderBlocker(feature?.Id);
             var eligibility = GetDashboardEligibility(feature, enabled, buttonDisabled || providerBlocker != null,
                 providerBlocker ?? buttonTooltip, status);
             var completed = feature?.Id == AutomationCatalog.BeastmasterWeekly
@@ -969,7 +964,7 @@ public class MainWindow : Window, IDisposable
                 ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
                 : null;
             var beastmasterOwnsOtherWork = plugin.BeastmasterOwnsWork && task is not ("Beastmaster" or "Beastmaster weeklies");
-            var ownershipBlocker = providerBlocker ?? (beastmasterOwnsOtherWork ? "Beastmaster owns the character." : dadHandoffBlocker);
+            var ownershipBlocker = beastmasterOwnsOtherWork ? "Beastmaster owns the character." : dadHandoffBlocker;
             var row = new TaskRowDescriptor(
                 feature,
                 task,
@@ -984,19 +979,20 @@ public class MainWindow : Window, IDisposable
                 GetNextEligibleAt(feature?.Id, plugin.ConfigManager.GetActiveConfig()),
                 GetTaskSettingsSection(feature?.Id),
                 GetTaskDependencies(task, plugin.ConfigManager.GetActiveConfig()),
+                providerBlocker,
                 buttonLabel,
                 onClick,
                 maturity,
                 statusTooltip,
-                buttonDisabled || ownershipBlocker != null,
-                ownershipBlocker ?? buttonTooltip,
+                buttonDisabled || providerBlocker != null || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
+                ownershipBlocker ?? providerBlocker ?? buttonTooltip,
                 secondaryButtonLabel,
                 secondaryOnClick,
-                secondaryButtonDisabled || ownershipBlocker != null,
+                secondaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
                 ownershipBlocker ?? secondaryButtonTooltip,
                 tertiaryButtonLabel,
                 tertiaryOnClick,
-                tertiaryButtonDisabled || ownershipBlocker != null,
+                tertiaryButtonDisabled || plugin.DadHandoffBlocksNewWork || beastmasterOwnsOtherWork,
                 ownershipBlocker ?? tertiaryButtonTooltip);
             rows.Add(row);
         }
@@ -1088,12 +1084,14 @@ public class MainWindow : Window, IDisposable
             case "Beastmaster":
             case "Beastmaster weeklies":
             {
-                var movementProvider = plugin.GetBeastmasterSettings(config).CombatProvider == BeastmasterCombatProvider.Minerva
-                    ? "Minerva" : "BossModReborn";
-                return Plugin.ClientState.TerritoryType == BeastmasterService.LaudaTerritory ||
-                    BeastmasterService.IsCrucibleTerritory(Plugin.ClientState.TerritoryType)
-                    ? ["vnavmesh", "RotationSolver", movementProvider]
-                    : ["vnavmesh", "Lifestream", "RotationSolver", movementProvider];
+                var dependencies = new List<string> { "vnavmesh" };
+                var territory = Plugin.ClientState.TerritoryType;
+                if (territory != BeastmasterService.LaudaTerritory && !BeastmasterService.IsCrucibleTerritory(territory))
+                    dependencies.Add("Lifestream");
+                dependencies.Add("RotationSolver");
+                if (plugin.GetBeastmasterSettings(config).CombatProvider == BeastmasterCombatProvider.Minerva)
+                    dependencies.Add("Minerva");
+                return dependencies;
             }
             case "FC Buff Refill":
             case "Vendor Stock":
@@ -1373,6 +1371,14 @@ public class MainWindow : Window, IDisposable
         var checks = row.Dependencies
             .Select(name => BuildDependencyCheck(row.Task, name, loadedPluginInternalNames))
             .ToList();
+
+        if (row.Feature?.Id is AutomationCatalog.AlliedSociety or AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly)
+        {
+            const string provider = "God Mod Companion and either GodMod or BossModReborn";
+            checks.Add(row.CombatProviderBlocker is { } blocker
+                ? new TaskDependencyCheck(provider, TaskDependencyState.NeedsSetup, blocker)
+                : new TaskDependencyCheck(provider, TaskDependencyState.Ready, "Combat provider is ready."));
+        }
 
         if (row.Task is "Mini Cactpot" or "Jumbo Cactpot" or "Fashion Report")
         {
@@ -1665,6 +1671,7 @@ public class MainWindow : Window, IDisposable
         DateTime? NextEligibleAtUtc,
         ConfigurationSection? SettingsSection,
         IReadOnlyList<string> Dependencies,
+        string? CombatProviderBlocker,
         string ButtonLabel,
         Action OnClick,
         string Maturity,

@@ -321,7 +321,7 @@ internal sealed partial class BeastmasterWindow
         {
             var provider = (int)settings.CombatProvider;
             ImGui.SetNextItemWidth(-1);
-            if (UIConstants.Combo("Combat provider", ref provider, ["Native BST + BossModReborn", "Native BST + Minerva"], 2))
+            if (UIConstants.Combo("Combat provider", ref provider, ["Native BST + Provider movement", "Native BST + Minerva"], 2))
             {
                 settings.CombatProvider = (BeastmasterCombatProvider)provider;
                 changed = true;

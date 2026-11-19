@@ -9,8 +9,12 @@ internal sealed class CombatProviderDependency(IDalamudPluginInterface pluginInt
     private readonly ICallGateSubscriber<bool> godMod = pluginInterface.GetIpcSubscriber<bool>("BossMod.Presets.GetForceDisabled");
     private readonly ICallGateSubscriber<bool> companion = pluginInterface.GetIpcSubscriber<bool>("BMRVariantLoader.Suite.IsReady.v1");
 
-    public string? GetBlocker()
+    public string? GetBlocker(string? taskId)
     {
+        var task = AutomationCatalog.ResolveDebugTaskId(taskId);
+        var isCrewcible = task is AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly;
+        if (!isCrewcible && task != AutomationCatalog.AlliedSociety) return null;
+
         var godModLoaded = false;
         var rebornLoaded = false;
         var bossModLoaded = false;
@@ -28,17 +32,15 @@ internal sealed class CombatProviderDependency(IDalamudPluginInterface pluginInt
         }
 
         if (godModLoaded && (rebornLoaded || bossModLoaded) || rebornLoaded && bossModLoaded)
-            return "Multiple BossMod hosts are loaded. Enable only GodMod or only BossModReborn with God Mod Companion.";
+            return "Multiple BossMod hosts are loaded. Enable only GodMod or only BossModReborn.";
+        if (!companionLoaded)
+            return "Enable God Mod Companion for Allied Society and Crewcible.";
         if (godModLoaded)
             return Read(godMod).HasValue ? null : "GodMod is loaded but its preset IPC is unavailable. Update or reload GodMod.";
-        if (rebornLoaded && companionLoaded)
-            return Read(companion) == true ? null : "God Mod Companion is not ready on BossModReborn. Check that both plugins are compatible and enabled.";
         if (rebornLoaded)
-            return "Enable God Mod Companion alongside BossModReborn, or switch to GodMod.";
-        if (companionLoaded)
-            return "Enable a supported BossModReborn host for God Mod Companion, or switch to GodMod.";
+            return Read(companion) == true ? null : "God Mod Companion is not ready on BossModReborn. Check that both plugins are compatible and enabled.";
 
-        return "Enable GodMod or God Mod Companion with a supported BossModReborn host.";
+        return "Enable GodMod or BossModReborn alongside God Mod Companion.";
     }
 
     private static bool? Read(ICallGateSubscriber<bool> subscriber)

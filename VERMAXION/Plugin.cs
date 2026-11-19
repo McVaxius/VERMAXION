@@ -167,9 +167,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     public DadHandoffIpcProvider DadHandoffIpcProvider { get; private set; } = null!;
     public bool DadHandoffBlocksNewWork => DadHandoffIpcProvider?.BlocksNewWork == true;
     private readonly CombatProviderDependency combatProviderDependency;
-    private bool combatProviderWasBlocked;
-    internal string? CombatProviderBlocker { get; private set; }
-    private string? manualMomRequestId;
     private readonly List<DadSelectionExecution> manualDadSelections = [];
     private bool idleInnTravelRequested;
 
@@ -259,7 +256,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         ECommonsMain.Init(PluginInterface, this);
         LogPluginAssemblyDetails();
         combatProviderDependency = new(PluginInterface);
-        CombatProviderBlocker = combatProviderDependency.GetBlocker();
 
         var storedConfiguration = PluginInterface.GetPluginConfig() as Configuration;
         var setupWizardDecision = SetupWizardMigrationPolicy.Decide(
@@ -317,7 +313,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         BeastmasterService = new BeastmasterService(
             () => GetBeastmasterSettings(ConfigManager.GetActiveConfig()),
             () => ConfigManager.GetActiveConfig().Beastmaster ??= new(),
-            SaveBeastmasterConfiguration, VNavmeshIPC, LifestreamIPC, AdsIpcClient);
+            SaveBeastmasterConfiguration, VNavmeshIPC, LifestreamIPC, AdsIpcClient)
+        { GetCombatProviderBlocker = () => ReadCombatProviderBlocker(AutomationCatalog.Beastmaster) };
         FCBuffService = new FCBuffService(CommandManager, Log, ClientState, Condition, ObjectTable, TargetManager, ConfigManager, YesAlreadyIPC, this);
         FCBuffInventoryService = new FCBuffInventoryService(CommandManager, Log, GameGui);
         VerminionService = new VerminionService(CommandManager, Condition, Log, ConfigManager, LifestreamIPC, VNavmeshIPC);
@@ -358,7 +355,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             PlayerState,
             ObjectTable,
             Log,
-            alliedSocietyBridge);
+            alliedSocietyBridge)
+        { GetCombatProviderBlocker = () => ReadCombatProviderBlocker(AutomationCatalog.AlliedSociety) };
         AfterArParkService = new AfterArParkService(Log, ClientState, LifestreamIPC);
         MomIPCClient = new MomIPCClient(PluginInterface, Log);
         DadIPCClient = new DadIPCClient(PluginInterface, Log);
@@ -388,8 +386,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             Log,
             OnARCharacterReady,
             ArmBeforeArSuppressionFromPostprocess,
-            () => Configuration.Enabled && combatProviderDependency.GetBlocker() == null &&
-                !DadHandoffBlocksNewWork && !OfflineLogoutBlocksOrdinaryAutomation &&
+            () => Configuration.Enabled && !DadHandoffBlocksNewWork && !OfflineLogoutBlocksOrdinaryAutomation &&
                 !VerminionService.HasQuestAcquisition && !BeastmasterOwnsWork);
         FishingRelogCoordinator = new FishingRelogCoordinator(Log, ARPostProcessService, AutoRetainerIPC, ConfigManager);
         CharacterSelectStallRecovery = new CharacterSelectStallRecoveryService(Log);
@@ -424,7 +421,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             MinionRouletteService, EquipmentAutomationRuntime,
             RetainerListingRefillService, RetainerEquippingService, WorkshopBellService, ARPostProcessService, YesAlreadyIPC,
             ClientState, MomIPCClient, DadIPCClient, LootGoblinMapGatherService, AutoRetainerIPC, VNavmeshIPC, LifestreamIPC, IncidentWriter, this);
-        Engine.StartBlocker = () => combatProviderDependency.GetBlocker() ?? (DadHandoffBlocksNewWork
+        Engine.StartBlocker = () => DadHandoffBlocksNewWork
             ? "A granted or pending DAD handoff reservation blocks new VERMAXION work."
             : CofferOpening?.IsActive == true ? "Stop coffer opening before starting another task."
             : BeastmasterOwnsWork ? "Beastmaster owns the character."
@@ -433,7 +430,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             : IslandSanctuaryRun.IsCleanupPending ? IslandSanctuaryRun.StatusText
             : IslandSanctuaryRun.ProviderStatus is { Busy: true } ? "Calypso is busy with other work; no request was sent."
             : ChocoboStablesService.IsCleanupPending ? "Stable menu cleanup is still settling."
-            : null);
+            : null;
         AutomationStatusIpcProvider = new AutomationStatusIpcProvider(PluginInterface, BuildAutomationStatus);
         cofferIpc = new(PluginInterface, CofferOpening, itemId => StartCoffers(itemId),
             action => Framework.RunOnFrameworkThread(action));
@@ -1162,19 +1159,12 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         if (CofferOpening?.IsActive == true)
             return (true, "CofferOpening", CofferOpening.Status.Summary);
 
-        if (CombatProviderBlocker is { } blocker)
-            return (false, "DependencyUnavailable", blocker);
         return (false, "Idle", "VERMAXION is idle.");
     }
 
     internal bool RunDashboardAction(Action action)
     {
         if (action == (Action)OpenCofferUtility) { action(); return true; }
-        if (!CanStartWithCombatProvider(out var blocker))
-        {
-            ChatGui.Print($"[Vermaxion] {blocker}");
-            return false;
-        }
         if (CofferOpening?.IsActive == true)
         {
             ChatGui.Print("[Vermaxion] Stop coffer opening before starting another task.");
@@ -1225,19 +1215,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         return true;
     }
 
-    internal bool CanStartWithCombatProvider(out string reason)
-    {
-        var blocker = combatProviderDependency.GetBlocker();
-        reason = blocker ?? string.Empty;
-        return blocker == null;
-    }
-
-    internal void TrackManualMomRun(MomRunResult result)
-    {
-        if (result.Status is (MomRunStatus.Queued or MomRunStatus.Running) &&
-            !string.IsNullOrEmpty(result.RequestId))
-            manualMomRequestId = result.RequestId;
-    }
+    internal string? ReadCombatProviderBlocker(string? taskId) => combatProviderDependency.GetBlocker(taskId);
 
     internal void TrackManualDadSelection(DadSelectionExecution execution)
     {
@@ -1248,7 +1226,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     internal string? VerminionQuestHandoffBlocker()
     {
-        if (CombatProviderBlocker is { } blocker) return blocker;
         // Local duty ownership is independent of DAD's network coordinator.
         try
         {
@@ -1263,11 +1240,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     internal void AcquireVerminionMinion(ushort minionId)
     {
-        if (!CanStartWithCombatProvider(out var dependencyBlocker))
-        {
-            ChatGui.Print($"[Vermaxion] {dependencyBlocker}");
-            return;
-        }
         // No parent engine/manual task or AR suppression may survive the handoff.
         // Do not make the ownership IPC lie to admit a child duty.
         if (characterRegistrationCompletedThisLogin && ClientState.IsLoggedIn && PlayerState.IsLoaded &&
@@ -1402,8 +1374,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     internal bool CanStartScheduledBeastmaster(bool weekly, out string reason)
     {
+        if (ReadCombatProviderBlocker(AutomationCatalog.Beastmaster) is { } blocker) { reason = blocker; return false; }
         BeastmasterService.RefreshWeeklyStatus(IsCharacterRegistered);
-        if (!CanStartWithCombatProvider(out reason)) return false;
         if (!IsCharacterRegistered || !PlayerState.IsLoaded)
         { reason = "Waiting for the current character to be registered and ready."; return false; }
         if (DadHandoffBlocksNewWork || IsFishingRunActive || VerminionService.HasQuestAcquisition)
@@ -1471,9 +1443,9 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     internal bool RunBeastmasterForCurrentCharacter(bool weekly, bool scheduled, uint? testBoard = null)
     {
-        if (!CanStartWithCombatProvider(out var blocker))
+        if (ReadCombatProviderBlocker(AutomationCatalog.Beastmaster) is { } blocker)
         {
-            ChatGui.Print($"[Vermaxion] {blocker}");
+            ChatGui.Print($"[Vermaxion] Crewcible: {blocker}");
             return false;
         }
         // An explicit Start resolves the loaded identity now. Background login
@@ -1529,7 +1501,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private bool CanStartBeastmaster(bool weekly, out string reason, uint? testBoard = null)
     {
-        if (!CanStartWithCombatProvider(out reason)) return false;
+        if (ReadCombatProviderBlocker(AutomationCatalog.Beastmaster) is { } blocker) { reason = blocker; return false; }
         if (testBoard is { } board)
         {
             if (board is < 1 or > 5)
@@ -1612,7 +1584,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         if (BeastmasterService.IsActive || BeastmasterService.IsPaused ||
             (IsCharacterRegistered && PlayerState.IsLoaded))
             BeastmasterService.Update();
-        if (CombatProviderBlocker == null && !Engine.OwnsBeastmasterTask && BeastmasterService.CompletionCommandPending &&
+        if (!Engine.OwnsBeastmasterTask && BeastmasterService.CompletionCommandPending &&
             BeastmasterService.CanFinalizeOrdinaryCompletion)
         {
             if (ConfigManager.TrySaveAccount(ConfigManager.CurrentAccountId))
@@ -1659,10 +1631,11 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 #if DEBUG
         ProcessCollectionDebugStop();
 #endif
-        if (CombatProviderBlocker is { } blocker)
+        if (ReadCombatProviderBlocker(pendingDebugDispatchTaskId ?? pendingDebugTaskId) is { } blocker)
         {
-            if (pendingDebugTaskId != null || pendingDebugDispatchTaskId != null)
-                SetDebugTaskStatus($"Blocked: {blocker}");
+            pendingDebugTaskId = null;
+            pendingDebugDispatchTaskId = null;
+            SetDebugTaskStatus($"Blocked for this reload: {blocker}");
             return;
         }
         if (pendingDebugDispatchTaskId != null)
@@ -1758,7 +1731,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     internal string? GetDebugTaskBlockedReason(string? taskId, string? dashboardReason)
     {
-        if (CombatProviderBlocker != null) return CombatProviderBlocker;
+        if (ReadCombatProviderBlocker(taskId) is { } blocker) return blocker;
         if (taskId is not (BeastmasterTaskId or BeastmasterWeeklyTaskId)) return dashboardReason;
         return CanStartBeastmaster(taskId == BeastmasterWeeklyTaskId, out var reason) ? null : reason;
     }
@@ -1881,13 +1854,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     private void OnARCharacterReady(string pluginName)
     {
         Log.Information($"[Plugin] AR signaled character ready for postprocess");
-        if (!CanStartWithCombatProvider(out var blocker))
-        {
-            pendingFishingPostprocessHandoff = false;
-            FinishReleaseOnlyPostprocess(blocker);
-            ReleaseOwnedSuppressionAfterSkippedPostprocess(blocker);
-            return;
-        }
         if (IsScheduledOfflineHoldActive)
         {
             const string reason = "Scheduled Ocean Fishing wake owns this bootstrap login";
@@ -1923,9 +1889,9 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
         pendingFishingPostprocessHandoff = false;
 
-        var postprocessBlocker = CombatProviderBlocker ?? (!Configuration.Enabled ? "Global automation is disabled" : null);
-        if (postprocessBlocker is { } reason)
+        if (!Configuration.Enabled)
         {
+            const string reason = "Global automation is disabled";
             Engine.RecordSkippedOpportunity($"Postprocess skipped: {reason}");
             FinishReleaseOnlyPostprocess(reason);
             ReleaseOwnedSuppressionAfterSkippedPostprocess(reason);
@@ -1954,11 +1920,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     public void RunFishingStartupManual()
     {
-        if (!CanStartWithCombatProvider(out var blocker))
-        {
-            ChatGui.Print($"[Vermaxion] Fishing startup: {blocker}");
-            return;
-        }
         FishingStartupCoordinator.ResetCurrentWindow(DateTimeOffset.UtcNow, clearPendingRelogContinuation: false);
         var result = RunFishingStartupTrigger(FishingStartupTrigger.Manual);
         ChatGui.Print($"[Vermaxion] Fishing startup: {result.Reason}");
@@ -1966,11 +1927,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     public void RunFishingStartupTest()
     {
-        if (!CanStartWithCombatProvider(out var blocker))
-        {
-            ChatGui.Print($"[Vermaxion] Test fishing startup: {blocker}");
-            return;
-        }
         var result = FishingStartupCoordinator.StartTest(DateTimeOffset.UtcNow);
         if (result.Started)
             Log.Information(FishingStartupDiagnostics.FormatStarted(result));
@@ -1981,11 +1937,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     public void RunFishingGearsetTest()
     {
-        if (!CanStartWithCombatProvider(out var blocker))
-        {
-            ChatGui.Print($"[Vermaxion] {blocker}");
-            return;
-        }
         if (DadHandoffBlocksNewWork || BeastmasterOwnsWork || Engine.IsRunning || IsFishingRunActive)
         {
             const string message = "Fisher gearset test is unavailable while DAD handoff, engine, fishing, or relog work is active.";
@@ -2003,7 +1954,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private bool CanStartMainMenuTest(bool waitForOceanFishing, out string reason, bool checkAutoRetainer)
     {
-        if (!CanStartWithCombatProvider(out reason)) return false;
         if (VerminionService.HasQuestAcquisition)
         { reason = "Questionable owns minion acquisition."; return false; }
         if (!ClientState.IsLoggedIn)
@@ -2149,9 +2099,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         FishingStartupTrigger trigger,
         int? preWindowOffsetMinutes = null)
     {
-        if (!CanStartWithCombatProvider(out var blocker))
-            return new FishingStartupResult(trigger, FishingRunMode.Scheduled, FishingStartupAction.Waiting, false,
-                null, FishingSelectionResult.None(blocker), blocker);
         if (FishCollection.IsActive)
             return new FishingStartupResult(trigger, FishingRunMode.Collection, FishingStartupAction.Waiting, false,
                 null, FishingSelectionResult.None("Fish collection owns this run"), "Fish collection owns this run");
@@ -2467,11 +2414,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
                 break;
 
             case "run":
-                if (!CanStartWithCombatProvider(out var runBlocker))
-                {
-                    ChatGui.Print($"[Vermaxion] {runBlocker}");
-                    break;
-                }
                 if (CofferOpening?.IsActive == true)
                 {
                     ChatGui.Print("[Vermaxion] Stop coffer opening before starting another task.");
@@ -2660,8 +2602,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private void BeginBeforeArLoginPendingFromPluginLoad()
     {
-        if (CombatProviderBlocker is { } blocker)
-        { SkipBeforeArForLogin(blocker); return; }
         // This also runs before services are constructed; character registration
         // rechecks the saved handoff before any Before-AR work may start.
         if (VerminionService?.HasQuestAcquisition == true)
@@ -2704,8 +2644,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private void BeginBeforeArLoginPending(string reason)
     {
-        if (CombatProviderBlocker is { } blocker)
-        { SkipBeforeArForLogin(blocker); return; }
         if (VerminionService?.HasQuestAcquisition == true)
         { SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
         if (BeastmasterOwnsWork)
@@ -2779,8 +2717,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private void ArmBeforeArSuppressionFromPostprocess()
     {
-        if (!CanStartWithCombatProvider(out var blocker))
-        { SkipBeforeArForLogin(blocker); return; }
         if (VerminionService.HasQuestAcquisition || BeastmasterOwnsWork) return;
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
@@ -2871,9 +2807,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         { if (pendingBeforeArLogin) SkipBeforeArForLogin("Questionable owns minion acquisition"); return; }
         if (!pendingBeforeArLogin)
             return;
-
-        if (CombatProviderBlocker is { } blocker)
-        { SkipBeforeArForLogin(blocker); return; }
 
         if (OfflineLogoutBlocksOrdinaryAutomation)
         {
@@ -3620,7 +3553,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private void OnFrameworkUpdate(IFramework fw)
     {
-        UpdateCombatProviderDependency();
+        if (idleInnTravelRequested && LifestreamIPC.TryReadBusy(out var travelling) && !travelling)
+            idleInnTravelRequested = false;
         CofferOpening.Update();
         // Reassert our owned entry if the shared list changes. Shopping deliberately releases it.
         if (YesAlreadyIPC.IsPaused)
@@ -3687,7 +3621,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
         CharacterSelectStallRecovery.Update(
             DateTime.UtcNow,
-            CombatProviderBlocker == null && Configuration.EnableCharacterSelectStallRecovery && !OfflineLogoutBlocksOrdinaryAutomation,
+            Configuration.EnableCharacterSelectStallRecovery && !OfflineLogoutBlocksOrdinaryAutomation,
             Configuration.Enabled &&
             Configuration.EnableCharacterSelectStallRecovery &&
             !OfflineLogoutBlocksOrdinaryAutomation,
@@ -3697,17 +3631,14 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         ProcessBeforeArSuppressionRecovery();
         FishingRunLifecycle.Update();
         ScheduledOfflineHoldCoordinator.Update(DateTimeOffset.UtcNow);
-        if (CombatProviderBlocker == null)
-        {
-            ProcessFishingRecovery();
-            if (Configuration.Enabled &&
-                Configuration.OceanFishingWindowWatchEnabled &&
-                !OfflineLogoutBlocksOrdinaryAutomation)
-                RunFishingStartupTrigger(FishingStartupTrigger.WindowWatch);
-            ProcessStuckDetectionSuppression();
-            ProcessFishingFakeReady();
-            ProcessIdleInnPark();
-        }
+        ProcessFishingRecovery();
+        if (Configuration.Enabled &&
+            Configuration.OceanFishingWindowWatchEnabled &&
+            !OfflineLogoutBlocksOrdinaryAutomation)
+            RunFishingStartupTrigger(FishingStartupTrigger.WindowWatch);
+        ProcessStuckDetectionSuppression();
+        ProcessFishingFakeReady();
+        ProcessIdleInnPark();
         ProcessBeforeArArmedStallGuard();
         ProcessReleaseOnlyPostprocessFinishPending();
         ProcessBeforeArReleasePending();
@@ -3754,36 +3685,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         }
 
         ReleaseDashboardRunYesAlreadyPauseIfIdle();
-    }
-
-    private void UpdateCombatProviderDependency()
-    {
-        CombatProviderBlocker = combatProviderDependency.GetBlocker();
-        if (idleInnTravelRequested && LifestreamIPC.TryReadBusy(out var travelling) && !travelling)
-            idleInnTravelRequested = false;
-        var newlyBlocked = CombatProviderBlocker != null && !combatProviderWasBlocked;
-        combatProviderWasBlocked = CombatProviderBlocker != null;
-        if (!newlyBlocked) return;
-
-        if (pendingDebugDispatchTaskId != null)
-        {
-            pendingDebugDispatchTaskId = null;
-            SetDebugTaskStatus($"Cancelled for this reload. {CombatProviderBlocker}");
-        }
-
-        CofferOpening.Stop();
-        ChocoboRaceService.SuspendOwnedTargetCycle(PlayerState.ContentId, DateTime.UtcNow);
-
-        if (manualMomRequestId != null && MomIPCClient.TryGetStatus(out var momRun) &&
-            (momRun.RequestId != manualMomRequestId || momRun.Status is not (MomRunStatus.Queued or MomRunStatus.Running)))
-            manualMomRequestId = null;
-        manualDadSelections.RemoveAll(selection => DadIPCClient.PollSelection(selection).IsTerminal);
-
-        if (BuildAutomationStatus().IsBusy || pendingBeforeArLogin ||
-            FishingStartupCoordinator.HasRecoveryPending || ScheduledOfflineHoldCoordinator.IsActive ||
-            VerminionService.HasQuestAcquisition || CharacterSelectStallRecovery.IsAwaitingLoginConfirmation ||
-            idleInnTravelRequested || manualMomRequestId != null || manualDadSelections.Count > 0)
-            FullStop(preparingDebugTask: false, dependencyLoss: CombatProviderBlocker);
     }
 
     private void ProcessRetainerCollectOnlyRecovery()
@@ -3843,14 +3744,13 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         if (!Configuration.DtrBarEnabled) return;
 
         var config = ConfigManager.GetActiveConfig();
-        var isEnabled = Configuration.Enabled && (config?.Enabled ?? false) && CombatProviderBlocker == null;
+        var isEnabled = Configuration.Enabled && (config?.Enabled ?? false);
         
         // DTR modes: 0=text-only, 1=icon+text, 2=icon-only
         var iconEnabled = string.IsNullOrEmpty(Configuration.DtrIconEnabled) ? "\uE03C" : Configuration.DtrIconEnabled;
         var iconDisabled = string.IsNullOrEmpty(Configuration.DtrIconDisabled) ? "\uE03D" : Configuration.DtrIconDisabled;
         var glyph = isEnabled ? iconEnabled : iconDisabled;
         var operationalStatus = GetDtrOperationalStatus() is { } status ? DtrText(status) : null;
-        var tooltipStatus = CombatProviderBlocker ?? operationalStatus;
 
         string statusText;
         string tooltipText;
@@ -3859,16 +3759,16 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         {
             case 1: // icon+text
                 statusText = $"{glyph} VMX";
-                tooltipText = tooltipStatus != null
-                    ? DtrFormat("Vermaxion: {0}", tooltipStatus)
+                tooltipText = operationalStatus != null
+                    ? DtrFormat("Vermaxion: {0}", operationalStatus)
                     : isEnabled
                         ? DtrText("Vermaxion ready - waiting for AR postprocess")
                         : DtrText("Vermaxion disabled");
                 break;
             case 2: // icon-only
                 statusText = glyph;
-                tooltipText = tooltipStatus != null
-                    ? DtrFormat("Vermaxion: {0}", tooltipStatus)
+                tooltipText = operationalStatus != null
+                    ? DtrFormat("Vermaxion: {0}", operationalStatus)
                     : isEnabled
                         ? DtrText("Vermaxion ready")
                         : DtrText("Vermaxion disabled");
@@ -3880,10 +3780,10 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
                 }
                 else
                 {
-                    statusText = DtrText(CombatProviderBlocker != null ? "VMX: Blocked" : isEnabled ? "VMX: Ready" : "VMX: Off");
+                    statusText = DtrText(isEnabled ? "VMX: Ready" : "VMX: Off");
                 }
-                tooltipText = tooltipStatus != null
-                    ? DtrFormat("Vermaxion: {0}", tooltipStatus)
+                tooltipText = operationalStatus != null
+                    ? DtrFormat("Vermaxion: {0}", operationalStatus)
                     : isEnabled
                         ? DtrText("Vermaxion ready - waiting for AR postprocess")
                         : DtrText("Vermaxion disabled");
@@ -3953,13 +3853,9 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     /// FULL STOP - Immediately halts ALL plugin operations, services, and navigation.
     /// </summary>
     public void FullStop(bool preparingDebugTask = false)
-        => FullStop(preparingDebugTask, dependencyLoss: null);
-
-    private void FullStop(bool preparingDebugTask, string? dependencyLoss)
     {
-        var reason = dependencyLoss ?? "Full Stop";
-        if (dependencyLoss == null || BeastmasterOwnsWork || BeastmasterService.CompletionCommandPending)
-            StopBeastmaster();
+        const string reason = "Full Stop";
+        StopBeastmaster();
         retainerlessTimerDueUtc = null;
         retainerlessTimerRunPendingCompletion = false;
 #if DEBUG
@@ -3975,13 +3871,12 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
         Log.Information("[FULL STOP] ========== STOPPING ALL OPERATIONS ==========");
         FishCollection.Stop(reason);
-        if (dependencyLoss == null && !preparingDebugTask && PlayerState.ContentId != 0 && !string.IsNullOrEmpty(ConfigManager.CurrentCharacterKey))
+        if (!preparingDebugTask && PlayerState.ContentId != 0 && !string.IsNullOrEmpty(ConfigManager.CurrentCharacterKey))
         {
             ConfigManager.GetActiveConfig().VerminionPaused = true;
             ConfigManager.SaveCurrentAccount();
         }
-        if (dependencyLoss == null)
-            PauseCurrentTargetCycleBestEffort("VERMAXION Full Stop");
+        PauseCurrentTargetCycleBestEffort("VERMAXION Full Stop");
 
         ScheduledOfflineHoldCoordinator.Cancel(reason, DateTimeOffset.UtcNow);
         FisherGearsetTestService.Cancel();
@@ -3994,27 +3889,22 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         LootGoblinMapGatherManualRunCoordinator.Cancel();
         Log.Information("[FULL STOP] LootGoblin map gather cancel requested");
 
-        if (idleInnTravelRequested || dependencyLoss != null && AfterArParkService.IsActive && LifestreamIPC.IsBusy())
+        if (idleInnTravelRequested)
         {
             LifestreamIPC.TryAbort();
             idleInnTravelRequested = false;
         }
-        if (!FishCollection.IsActive && (dependencyLoss == null || Engine.OwnsActiveWork))
+        if (!FishCollection.IsActive)
         {
             Engine.ForceStop(preserveVerminionResult: preparingDebugTask &&
-                Configuration.DebugTaskId == AutomationCatalog.VerminionQueue, dependencyLoss: dependencyLoss);
+                Configuration.DebugTaskId == AutomationCatalog.VerminionQueue);
             Log.Information("[FULL STOP] Engine force-stopped");
         }
-        else if (FishCollection.IsActive)
+        else
             Log.Information("[FULL STOP] Engine cleanup retained by collection");
 
-        if (dependencyLoss == null || manualMomRequestId != null && MomIPCClient.TryGetStatus(out var momRun) &&
-            momRun.RequestId == manualMomRequestId && momRun.Status is (MomRunStatus.Queued or MomRunStatus.Running))
-        {
-            MomIPCClient.CancelActiveRun();
-            Log.Information("[FULL STOP] mom IPC cancel requested");
-        }
-        manualMomRequestId = null;
+        MomIPCClient.CancelActiveRun();
+        Log.Information("[FULL STOP] mom IPC cancel requested");
         foreach (var selection in manualDadSelections)
             if (!DadIPCClient.PollSelection(selection).IsTerminal)
                 DadIPCClient.CancelSelection(selection);
@@ -4038,26 +3928,26 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             verminionStopActorKey = $"{stopName}@{stopWorld}";
         }
         VerminionService.Reset(registeredVerminionStop, verminionStopContentId, verminionStopActorKey);
-        if (dependencyLoss == null && !preparingDebugTask && PlayerState.ContentId != 0 && !string.IsNullOrEmpty(ConfigManager.CurrentCharacterKey))
+        if (!preparingDebugTask && PlayerState.ContentId != 0 && !string.IsNullOrEmpty(ConfigManager.CurrentCharacterKey))
         {
             ConfigManager.GetActiveConfig().VerminionPaused = false;
             ConfigManager.SaveCurrentAccount();
         }
-        CactpotService.Reset(stopOwnedNavigation: dependencyLoss != null);
+        CactpotService.Reset();
         ChocoboRaceService.Reset();
-        FashionReportService.Reset(stopOwnedNavigation: dependencyLoss != null);
+        FashionReportService.Reset();
         CustomDeliveriesService.Reset();
         ChocoboStablesService.Reset();
         VendorStockService.Reset();
         if (!FishCollection.IsActive)
         {
-            FishingService.Reset(releaseRun: true, ownedNavigationOnly: dependencyLoss != null);
+            FishingService.Reset(releaseRun: true, ownedNavigationOnly: false);
             FishingRelogCoordinator.Reset();
         }
         CharacterSelectStallRecovery.Reset();
         if (!FishCollection.IsActive) FishingRunLifecycle.ForceCleanup(reason);
-        RetainerListingRefillService.Reset(ownedNavigationOnly: dependencyLoss != null);
-        WorkshopBellService.Reset(ownedNavigationOnly: dependencyLoss != null);
+        RetainerListingRefillService.Reset();
+        WorkshopBellService.Reset();
         RegisterRegistrablesService.Reset();
         LootGoblinMapGatherManualRunCoordinator.Reset();
         MinionRouletteService.Reset();
@@ -4070,12 +3960,12 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         CofferOpening?.Stop();
         Log.Information(FishCollection.IsActive ? "[FULL STOP] Other services reset; collection cleanup retained" : "[FULL STOP] All services reset");
 
-        if (dependencyLoss == null && !FishCollection.IsActive)
+        if (!FishCollection.IsActive)
         {
             VNavmeshIPC.Stop();
             Log.Information("[FULL STOP] VNavmesh stopped");
         }
-        else if (FishCollection.IsActive)
+        else
             Log.Information("[FULL STOP] Owned VNavmesh cancellation requested by collection");
 
         // Unpause YesAlready
@@ -4091,8 +3981,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         ClearBeforeArArmedTracking();
         pendingBeforeArLogin = false;
         SetBeforeArGate(BeforeArGateState.Idle, reason);
-        if (dependencyLoss != null && (ARPostProcessService.IsRequested || ARPostProcessService.IsProcessing))
-            ARPostProcessService.FinishPostProcess(force: true, mode: ARPostProcessFinishMode.ReleaseOnly);
         Log.Information(BeastmasterOwnsWork ? "[FULL STOP] AutoRetainer suppression retained through Beastmaster cleanup"
             : FishCollection.IsActive ? "[FULL STOP] AutoRetainer suppression retained through collection cleanup" : "[FULL STOP] AutoRetainer suppression released if owned");
 
@@ -4101,7 +3989,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             : FishCollection.IsActive
             ? "[FULL STOP] Collection stopped; retaining ownership until external work and cleanup settle"
             : "[FULL STOP] ========== ALL OPERATIONS HALTED ==========");
-        ChatGui.Print(dependencyLoss != null ? $"[Vermaxion] Automation stopped. {dependencyLoss}" : BeastmasterOwnsWork
+        ChatGui.Print(BeastmasterOwnsWork
             ? "[Vermaxion] FULL STOP - Beastmaster stopped; owned external work and cleanup remain pending."
             : FishCollection.IsActive
             ? "[Vermaxion] FULL STOP - Collection stopped; owned external work and cleanup remain pending."
@@ -4215,7 +4103,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private bool CanStartAutomaticDueWork()
     {
-        if (CombatProviderBlocker != null || !Configuration.Enabled || !IsCharacterRegistered || !PlayerState.IsLoaded ||
+        if (!Configuration.Enabled || !IsCharacterRegistered || !PlayerState.IsLoaded ||
             OfflineLogoutBlocksOrdinaryAutomation || !GameHelpers.IsPlayerAvailable() ||
             DadHandoffBlocksNewWork || VerminionService.HasQuestAcquisition ||
             Engine.OwnsLiveWork || IsFishingRunActive || FishingStartupCoordinator.HasRecoveryPending ||
@@ -4251,7 +4139,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private void ProcessChocoboContinuation()
     {
-        if (CombatProviderBlocker != null) return;
         if (DateTime.UtcNow < nextChocoboContinuationUtc) return;
         nextChocoboContinuationUtc = DateTime.UtcNow.AddSeconds(5);
         if (!Configuration.Enabled || !characterRegistrationCompletedThisLogin || ChocoboRaceService.IsActive ||
@@ -4266,13 +4153,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     public void ToggleMainUi() => MainWindow.Toggle();
 
     public void QueueCharacterSelectRecoveryAttempt()
-        => Framework.RunOnFrameworkThread(() =>
-        {
-            if (CanStartWithCombatProvider(out var reason))
-                CharacterSelectStallRecovery.QueueManualAttempt();
-            else
-                ChatGui.Print($"[Vermaxion] {reason}");
-        });
+        => Framework.RunOnFrameworkThread(CharacterSelectStallRecovery.QueueManualAttempt);
 
     int IFishingStartupRuntime.PreWindowOffsetMinutes
         => Configuration.OceanFishingPreWindowOffsetMinutes;
@@ -4281,7 +4162,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         => Math.Clamp(Configuration.FishingMaxFisherLevel, 1, 100);
 
     bool IFishingStartupRuntime.CanInitiateStartup
-        => CombatProviderBlocker == null && CofferOpening?.IsActive != true &&
+        => CofferOpening?.IsActive != true &&
            ClientState.IsLoggedIn &&
            ObjectTable.LocalPlayer != null &&
            !Condition[ConditionFlag.BetweenAreas] &&
@@ -4318,11 +4199,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         DateTimeOffset registrationStartUtc,
         DateTimeOffset registrationDeadlineUtc)
     {
-        if (!CanStartWithCombatProvider(out var blocker))
-        {
-            FishingRunLifecycle.ReportBeginFailure(blocker);
-            return false;
-        }
         if (!PluginInterface.InstalledPlugins.Any(candidate => candidate.IsLoaded && candidate.InternalName == "ADS"))
         {
             const string adsRequired = "ADS is required for Fishing. Install and enable ADS before starting a fishing run.";

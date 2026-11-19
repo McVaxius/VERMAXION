@@ -71,6 +71,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     private bool waitingForRevival;
     private bool disposed;
     private bool operatorStopped = true;
+    private string? pendingCombatProviderLoss;
     internal bool StopAfterNextOutcome { get; private set; }
     private RunState recoveryState;
     private DateTime recoveryAt;
@@ -80,6 +81,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     public RunState State { get; private set; }
     public bool IsPaused { get; private set; }
+    internal bool StoppedForCombatProviderLoss { get; private set; }
     public bool IsActive => State is not (RunState.Idle or RunState.Complete or RunState.Failed) || ownsNavigation || ownsTravel || EntryPending || combat.OwnsState || refreshCleanupPending || repairRequestAccepted;
     public string Status => EntryPending && entryAttempt!.StopRequested
         ? "Stopping Crucible entry."
@@ -147,6 +149,8 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         (owner == 0 || owner == Svc.PlayerState.ContentId);
     private System.Collections.Generic.HashSet<uint>? preparedOwned;
     internal System.Collections.Generic.IReadOnlyCollection<uint>? PreparedOwned => preparedOwned;
+
+    internal Func<string?>? GetCombatProviderBlocker { get; init; }
 
     public BeastmasterService(Func<BeastmasterSettings> settings, Func<BeastmasterCharacterData> characterData,
         Action save, VNavmeshIPC navigation, LifestreamIPC travel, AdsIpcClient ads)
@@ -277,9 +281,15 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private bool StartConfiguredCore(BeastmasterSettings settings, bool weekly, bool rankingCheckboxTest)
     {
+        if (GetCombatProviderBlocker?.Invoke() is { } blocker) { status = blocker; return false; }
         if (rankingCheckboxTest && (weekly || !CanStartBoardTest(settings, out _))) return false;
         if (CanReinspectCurrent && IsActive) return RestartFromCurrent(settings, manual: true, weekly: weekly);
-        if (weekly) return StartWeeklyConfigured(settings);
+        if (weekly)
+        {
+            var started = StartWeeklyConfigured(settings);
+            if (started) StoppedForCombatProviderLoss = false;
+            return started;
+        }
         if (!CanStartConfigured(settings, false, out var reason)) { status = reason; return false; }
         if (!TryCaptureCombatProvider(settings, out reason)) { status = "Combat restoration pending: " + reason; return false; }
         this.rankingCheckboxTest = rankingCheckboxTest;
@@ -287,6 +297,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         foodPendingUntil = default;
         runSettings = settings.Clone(); runData = getCharacterData(); owner = Svc.PlayerState.ContentId;
         operatorStopped = false; recoveryAt = default;
+        StoppedForCombatProviderLoss = false;
         preparedOwned = null;
         if (IsCrucibleTerritory(Svc.ClientState.TerritoryType))
         {
@@ -344,8 +355,11 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private bool RestartFromCurrent(BeastmasterSettings settings, bool manual = false, bool weekly = false)
     {
+        if (GetCombatProviderBlocker?.Invoke() is { } blocker) { status = blocker; return false; }
         var changedCharacter = owner != 0 && owner != Svc.PlayerState.ContentId;
         var freshPlan = changedCharacter || manual && State is (RunState.Idle or RunState.Complete or RunState.Failed);
+        if (!(manual && freshPlan) && pendingCombatProviderLoss is { } pendingLoss)
+        { status = pendingLoss; return false; }
         if (!(freshPlan ? weekly : weeklyActive) &&
             !BeastmasterSelection.ValidGoalTarget(freshPlan || runSettings == null ? settings : runSettings, out var goalReason,
                 IsCrucibleTerritory(Svc.ClientState.TerritoryType) ? Svc.ClientState.TerritoryType - 1338u : null))
@@ -374,12 +388,15 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         operatorStopped = false;
         if (manual) recoveryAt = default;
         IsPaused = false; pausedAt = default;
-        owner = Svc.PlayerState.ContentId;
         runData = getCharacterData();
-        runSettings ??= weekly ? BeastmasterWeeklyPolicy.CopySettings(settings) : settings.Clone();
+        if (freshPlan || runSettings == null)
+            runSettings = weekly ? BeastmasterWeeklyPolicy.CopySettings(settings) : settings.Clone();
+        owner = Svc.PlayerState.ContentId;
         if (freshPlan)
         {
-            runSettings = weekly ? BeastmasterWeeklyPolicy.CopySettings(settings) : settings.Clone(); CurrentRun = 1;
+            pendingCombatProviderLoss = null;
+            StoppedForCombatProviderLoss = false;
+            CurrentRun = 1;
             BoardRunCompleted = ResultObserved = resultSeen = false;
             resultRanksObserved = resultRanksUnavailable = false;
             resultReadStarted = default;
@@ -634,21 +651,29 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     public void Update()
     {
         if (disposed) return;
-        // Missing identity is a temporary observation gap. A different loaded
-        // character also waits for explicit Start; neither cancels the old plan.
-        if (owner != 0 && (!Svc.ClientState.IsLoggedIn || !Svc.PlayerState.IsLoaded ||
-                Svc.PlayerState.ContentId == 0 || Svc.PlayerState.ContentId != owner))
+        if (CompletionCommandPending && GetCombatProviderBlocker?.Invoke() is { } completionBlocker)
+            DiscardCompletionCommand($"Completion command skipped: {completionBlocker}");
+        var waitingForOwner = owner != 0 && !CanObserveCharacter;
+        if (waitingForOwner)
         {
-            // Retain the old plan, but never accept a pending native response
-            // across a loss or change of its observed character identity.
+            // Native responses and stationary time belong to the previous observation.
             if (goalProgress.State == BeastmasterGoalReadState.Pending) goalProgress = default;
             stationarySince = default;
-            return;
         }
         if (State is not (RunState.Idle or RunState.Complete or RunState.Failed) && owner == 0)
         { stationarySince = default; return; }
         try
         {
+            if (owner != 0 && State is not (RunState.Idle or RunState.Refreshing or RunState.Complete or RunState.Failed) &&
+                (pendingCombatProviderLoss ??= GetCombatProviderBlocker?.Invoke()) is { } blocker)
+            {
+                if (waitingForOwner) return;
+                StopRun(inspectCurrentEntry: false);
+                StoppedForCombatProviderLoss = true;
+                status = blocker + "\n" + status;
+                return;
+            }
+            if (waitingForOwner) return;
             if (ShouldResumeStationaryRun(DateTime.UtcNow))
             {
                 Svc.Log.Warning("[Crewcible] Stationary for 30 seconds outside combat; resuming the current board.");
@@ -833,6 +858,10 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
                     VerifyWeeklyCredit();
                     break;
             }
+        }
+        catch (Exception) when (waitingForOwner)
+        {
+            // An unavailable provider observation cannot authorize native cleanup.
         }
         catch (BeastmasterReadUnavailableException ex)
         {
@@ -1198,6 +1227,7 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
 
     private void Transition(RunState state, string text)
     {
+        if (state == RunState.Idle) pendingCombatProviderLoss = null;
         stationarySince = default;
         entryDegreeLayout = 0; entryDegreeSelected = false; rankedEntryClickSubmitted = false; rankedEntryCheckedUpdates = 0;
         State = state; status = text; stateSince = DateTime.UtcNow;
@@ -1230,13 +1260,19 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
     }
     public void Stop()
     {
+        StoppedForCombatProviderLoss = false;
+        StopRun(inspectCurrentEntry: true);
+    }
+
+    private void StopRun(bool inspectCurrentEntry)
+    {
         ResetGoalRead();
         StopAfterNextOutcome = false;
         DiscardCompletionCommand();
         operatorStopped = true; recoveryAt = default;
         IsPaused = false; pausedAt = default;
         entryAttempt?.RequestStop();
-        try { StopCore(); }
+        try { StopCore(inspectCurrentEntry); }
         catch (Exception ex)
         {
             // Stop remains callable even when a native observation fails. Keep
@@ -1252,13 +1288,14 @@ internal sealed unsafe partial class BeastmasterService : IDisposable
         }
     }
 
-    private void StopCore()
+    private void StopCore(bool inspectCurrentEntry)
     {
         operatorStopped = true; recoveryAt = default;
         CloseWeeklyChallengeLog();
         CancelOwnedRepair();
         if (CanReinspectCurrent && owner != 0 && owner == Svc.PlayerState.ContentId) runData = getCharacterData();
-        if (!rankingCheckboxTest && CanObserveCharacter && BeastmasterPlayer.IsValid && !IsCrucibleTerritory(Svc.ClientState.TerritoryType) && entryAttempt == null)
+        if (inspectCurrentEntry && !rankingCheckboxTest && CanObserveCharacter && BeastmasterPlayer.IsValid &&
+            !IsCrucibleTerritory(Svc.ClientState.TerritoryType) && entryAttempt == null)
         {
             var observed = new BeastmasterEntryAttempt(Svc.PlayerState.ContentId, Settings.Board);
             if (QueueMatches(observed) || CrucibleUi.TryPrompt(17787, out _, finalLineOnly: true))

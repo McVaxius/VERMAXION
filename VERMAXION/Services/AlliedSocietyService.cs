@@ -51,15 +51,24 @@ public sealed class AlliedSocietyService
         this.bridge = bridge;
     }
 
+    internal Func<string?>? GetCombatProviderBlocker { get; init; }
+
     public RunState State { get; private set; } = RunState.Idle;
     public bool IsActive => State is not (RunState.Idle or RunState.Complete or RunState.Failed or RunState.Cancelled);
     public bool IsComplete => State == RunState.Complete;
     public bool IsFailed => State is RunState.Failed or RunState.Cancelled;
     public bool OwnsRotation => bridge.OwnsRun;
+    internal bool StoppedForCombatProviderLoss { get; private set; }
     public string StatusText { get; private set; } = "Idle";
 
     public void Start(CharacterConfig config)
     {
+        if (GetCombatProviderBlocker?.Invoke() is { } blocker)
+        {
+            StoppedForCombatProviderLoss = true;
+            Fail(blocker);
+            return;
+        }
         Reset();
         if (bridge.OwnsRun)
         {
@@ -100,6 +109,12 @@ public sealed class AlliedSocietyService
         if (!IsActive || selectedGearset == null)
             return;
 
+        if (GetCombatProviderBlocker?.Invoke() is { } blocker)
+        {
+            StoppedForCombatProviderLoss = true;
+            Cancel(blocker);
+            return;
+        }
         if (equipment.CharacterContentId != startingContentId)
         {
             Cancel("Character changed during the owned Allied Society run.");
@@ -184,6 +199,8 @@ public sealed class AlliedSocietyService
         if (!IsActive && !bridge.OwnsRun)
             return;
 
+        if (StoppedForCombatProviderLoss && IsFailed)
+            reason = StatusText;
         if (bridge.OwnsRun && !bridge.TryStopOwned(out var stopError))
             log.Warning($"[AlliedSociety] Owned StopRotation failed during cancellation: {stopError}");
         SetState(RunState.Cancelled, reason);
@@ -193,6 +210,7 @@ public sealed class AlliedSocietyService
     {
         if (bridge.OwnsRun)
             bridge.TryStopOwned(out _);
+        StoppedForCombatProviderLoss = false;
         selectedGearset = null;
         stateEnteredAt = DateTime.MinValue;
         startingContentId = 0;
