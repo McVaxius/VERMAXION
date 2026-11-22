@@ -779,15 +779,18 @@ public class MainWindow : Window, IDisposable
                 : "Issues the configured /li route once and waits for Lifestream/player settlement.");
 
         // --- Weekly Tasks ---
-        var resumeVerminion = config.VerminionProgress.RunMode != null && !VerminionService.WeeklyGoalReached(config);
+        var verminionProgress = config.VerminionProgress;
+        var savedCampaign = verminionProgress.CampaignRequested || verminionProgress.RunIsCampaign;
+        var weeklyVerminionComplete = VerminionService.WeeklyGoalReached(config);
+        var resumeVerminion = verminionProgress.RunMode != null && !savedCampaign && !weeklyVerminionComplete;
         AddTaskRow("Verminion", config.EnableVerminionQueue,
             plugin.VerminionService.State != VerminionService.VerminionState.Idle
                 ? plugin.VerminionService.StatusText
-                : (VerminionService.WeeklyGoalReached(config) ? "Complete: " : string.Empty) + VerminionService.ProgressSummary(config),
+                : (weeklyVerminionComplete && !savedCampaign ? "Complete: " : string.Empty) + VerminionService.ProgressSummary(config),
             resumeVerminion ? "Resume##Verm" : "Run##Verm",
             () => { if (resumeVerminion) plugin.VerminionService.ResumeTask(); else plugin.VerminionService.RunTask(); }, "WIP",
             buttonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
-            buttonTooltip: "Runs the selected weekly CPU goal; Resume continues the paused goal. Current strategy, progress and blockers appear here.",
+            buttonTooltip: "Runs the configured Verminion goal; Resume continues its saved run. Use CPU campaign to continue the permanent challenges.",
             secondaryButtonLabel: "CPU campaign##Verminion", secondaryOnClick: () => plugin.VerminionService.RunChallenges(),
             secondaryButtonDisabled: engine.IsRunning || plugin.VerminionService.IsActive,
             secondaryButtonTooltip: "Permanent campaign: completes unfinished challenges in order. Cleared stages stay complete across weekly resets; the normal stage attempt limit applies.");
@@ -1594,7 +1597,7 @@ public class MainWindow : Window, IDisposable
             ? "\n" + UiText.F("Status detail: {0}", statusText(row.StatusTooltip))
             : string.Empty;
 
-        return string.Join("\n",
+        var tooltip = string.Join("\n",
             UiText.T(row.Task),
             UiText.F("Enabled: {0}", UiText.T(row.Enabled ? "On" : "Off")),
             UiText.F("Dashboard state: {0}", UiText.T(AutomationDashboardPolicy.GetStateLabel(row.Section))),
@@ -1607,6 +1610,22 @@ public class MainWindow : Window, IDisposable
             UiText.F("Next eligible (local): {0}", UiText.T(nextLocal)),
             UiText.F("Next eligible (UTC): {0}", UiText.T(nextUtc)),
             UiText.F("Disabled action reason: {0}", statusText(disabledActionReason)));
+
+        // These task routes are handled by the registered /vmx command.
+        var command = row.Feature?.Id switch
+        {
+            AutomationCatalog.RegisterRegistrables => UiText.F("Run once: {0}", "/vmx reg"),
+            AutomationCatalog.VerminionQueue => UiText.F("Open Verminion: {0}", "/vmx v"),
+            AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly => UiText.F("Open Beastmaster: {0}", "/vmx beast"),
+            AutomationCatalog.IslandSanctuary => UiText.F("Open Island Sanctuary: {0}", "/vmx is"),
+            AutomationCatalog.ChocoboRacing => string.Join("\n",
+                UiText.F("Resume progression: {0}", "/vmx chocobo resume"),
+                UiText.F("Pause progression: {0}", "/vmx chocobo pause"),
+                UiText.F("Open settings: {0}", "/vmx chocobo settings")),
+            _ when row.ButtonLabel == ChocoboRaceService.CollectAndPauseTaskId => UiText.F("Collect and pause: {0}", "/vmx chocobo collect"),
+            _ => null,
+        };
+        return command != null ? $"{tooltip}\n{command}" : tooltip;
     }
 
     private static Vector4 GetSectionColor(AutomationDashboardSection section)

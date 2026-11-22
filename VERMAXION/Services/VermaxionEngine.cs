@@ -1636,9 +1636,12 @@ public class VermaxionEngine
                 {
                     if (!verminionService.IsActive && !verminionService.IsComplete && !verminionService.IsFailed)
                     {
-                        // Clean slate before starting Verminion
-                        log.Information("[Engine] Clean slate: clearing open UI before Verminion");
-                        ResetInteractionState();
+                        // Let Verminion reconcile a saved admission before closing any native UI.
+                        if (activeConfig!.VerminionProgress.PendingMatch == 0)
+                        {
+                            log.Information("[Engine] Clean slate: clearing open UI before Verminion");
+                            ResetInteractionState();
+                        }
 
                         MarkCurrentTaskWorkStarted();
                         verminionService.Start();

@@ -954,7 +954,7 @@ public sealed class VerminionLifecycleTests
         var source = File.ReadAllText(sourcePath);
         var start = source.IndexOf("// A saved admission retains its behavior and goal", StringComparison.Ordinal);
         Assert.True(start >= 0);
-        var end = source.IndexOf("var pendingQueue =", start, StringComparison.Ordinal);
+        var end = source.IndexOf("if (!campaign && VerminionDutyRules.IsPlayerMode(runMode)", start, StringComparison.Ordinal);
         Assert.True(end > start);
         var selection = source[start..end];
         Assert.Contains("VerminionDutyRules.IsCpu(progress.PendingDuty)", selection);
@@ -2200,7 +2200,7 @@ public sealed class VerminionLifecycleTests
 
         var campaign = new VerminionProgress { CampaignRequested = true };
         campaign.ObserveParticipation(week, 5);
-        Assert.False(campaign.WeeklyGoalReached(VerminionMode.Participation, 2, week));
+        Assert.True(campaign.WeeklyGoalReached(VerminionMode.Participation, 2, week));
         campaign.ObserveAvailableChallenges(3);
         Assert.Equal(3, campaign.NextUnclearedChallenge);
         for (var attempt = 0; attempt < 3; ++attempt)
@@ -2215,6 +2215,34 @@ public sealed class VerminionLifecycleTests
         Assert.Equal(0, campaign.WeeklyWins);
         campaign.RecordChallengeClear(3);
         Assert.False(campaign.CampaignStageLimitReached(3)); // Closure failure cannot pause an already verified clear.
+    }
+
+    [Fact]
+    public void ReloadedStageNineCampaignKeepsItsAdmissionAndClearsSeparateFromWeeklyEligibility()
+    {
+        var week = new DateTime(2026, 11, 17, 8, 0, 0, DateTimeKind.Utc);
+        var config = new CharacterConfig { VerminionMode = VerminionMode.Participation, VerminionRepeatCount = 5 };
+        var progress = config.VerminionProgress;
+        progress.ObserveParticipation(week, 4);
+        progress.ObserveAvailableChallenges(9);
+        progress.EnsureRun(VerminionMode.WeeklyWin, 5);
+        progress.CampaignRequested = progress.RunIsCampaign = true;
+        var admission = progress.BeginMatch(560);
+        Assert.True(admission > 0);
+
+        config = JsonConvert.DeserializeObject<CharacterConfig>(JsonConvert.SerializeObject(config))!;
+        progress = config.VerminionProgress;
+        Assert.Equal(VerminionMode.WeeklyWin, progress.PendingMode);
+        Assert.Equal(VerminionMode.Participation, config.VerminionMode);
+        Assert.False(progress.WeeklyGoalReached(config.VerminionMode, config.VerminionRepeatCount, week));
+        Assert.True(progress.RecordResult(admission, VerminionBattleOutcome.Defeat, week));
+        Assert.True(progress.WeeklyGoalReached(config.VerminionMode, config.VerminionRepeatCount, week));
+        Assert.Equal(5, progress.WeeklyMatches);
+        Assert.Equal(0, progress.WeeklyWins);
+        Assert.True(progress.CampaignRequested);
+        Assert.Equal(255u, progress.ClearedChallengeMask);
+        Assert.Equal(9, progress.NextUnclearedChallenge);
+        Assert.Equal(1, progress.CampaignStageAttempts);
     }
 
     [Fact]

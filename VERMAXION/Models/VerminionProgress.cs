@@ -483,7 +483,7 @@ public sealed class VerminionProgress
     // Tournament opportunities and reward claims are independent of weekly matches.
     public bool WeeklyGoalReached(VerminionMode mode, int repeatCount, DateTime weekStartUtc,
         bool tournamentEntryUnavailableThisRun = false, int mission = 2, uint playerDuty = VerminionDutyRules.PlayerDuty) =>
-        !CampaignRequested && (mode == VerminionMode.MissionRepeat || VerminionDutyRules.IsPlayerMode(mode)
+        PendingMatch == 0 && (mode == VerminionMode.MissionRepeat || VerminionDutyRules.IsPlayerMode(mode)
             || WeekStartUtc == weekStartUtc) &&
         (mode != VerminionMode.CpuRewards || tournamentEntryUnavailableThisRun) && Remaining(mode, repeatCount, mission, playerDuty) == 0;
 

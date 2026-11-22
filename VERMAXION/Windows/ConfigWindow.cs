@@ -307,12 +307,14 @@ public class ConfigWindow : Window, IDisposable
         UiGui.BulletText("Retainer Bell — manual utility; not part of ordered automation");
         DrawCatalogCategory(AutomationOwner.ConfigOnlyWip, "Configuration-only WIP");
 
-        var blockers = AutomationCatalog.EngineTasks
-            .Select(feature => (feature, eligibility: plugin.Engine.GetTaskEligibility(feature.Id)))
-            .Where(item => item.eligibility.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
-            .ToList();
-        if (blockers.Count > 0 && UIConstants.CollapsingHeading("Current prerequisite blockers"))
+        if (UIConstants.CollapsingHeading("Current prerequisite blockers"))
         {
+            var blockers = AutomationCatalog.EngineTasks
+                .Select(feature => (feature, eligibility: plugin.Engine.GetTaskEligibility(feature.Id)))
+                .Where(item => item.eligibility.Status is TaskEligibilityStatus.Blocked or TaskEligibilityStatus.Unsupported)
+                .ToList();
+            if (blockers.Count == 0)
+                UiGui.TextDisabled("No current prerequisite blockers.");
             foreach (var item in blockers)
                 UiGui.BulletText($"{UiText.T(item.feature.Label)}: {UiText.T(item.eligibility.Reason)}");
         }
@@ -811,18 +813,6 @@ public class ConfigWindow : Window, IDisposable
         var configManager = plugin.ConfigManager;
         var config = plugin.Configuration;
 
-        var sectionLabels = new[]
-        {
-            UIConstants.ConfigLabels.EveryARPostProcess,
-            UIConstants.ConfigLabels.WeeklyTasks,
-            UIConstants.ConfigLabels.DailyTasks,
-            UIConstants.ConfigLabels.VariableTimeTasks,
-            UIConstants.ConfigLabels.WipTasks,
-        };
-        var matches = AutomationCatalog.Features.Where(feature => IsTaskNavigationEntry(feature) &&
-            (string.IsNullOrWhiteSpace(taskSearch) || feature.Label.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase) ||
-             UiText.T(feature.Label).Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase) ||
-             feature.Id.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase))).ToList();
         {
             UIConstants.Heading("Settings", config.CompactUi);
             UIConstants.SetNextItemWidth(-1f);
@@ -830,6 +820,20 @@ public class ConfigWindow : Window, IDisposable
             {
                 UIConstants.SetNextItemWidth(-1f);
                 UiGui.InputTextWithHint("##TaskSearch", "Find settings...", ref taskSearch, 128);
+
+                var sectionLabels = new[]
+                {
+                    UIConstants.ConfigLabels.EveryARPostProcess,
+                    UIConstants.ConfigLabels.WeeklyTasks,
+                    UIConstants.ConfigLabels.DailyTasks,
+                    UIConstants.ConfigLabels.VariableTimeTasks,
+                    UIConstants.ConfigLabels.WipTasks,
+                };
+                var matches = AutomationCatalog.Features.Where(feature => IsTaskNavigationEntry(feature) &&
+                    (string.IsNullOrWhiteSpace(taskSearch) || feature.Label.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                     UiText.T(feature.Label).Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                     feature.Id.Contains(taskSearch.Trim(), StringComparison.OrdinalIgnoreCase))).ToList();
+
                 foreach (var section in Enum.GetValues<ConfigurationSection>())
                 {
                     UIConstants.Heading(sectionLabels[(int)section], true);
@@ -1350,9 +1354,7 @@ public class ConfigWindow : Window, IDisposable
                             FCBuffRecoveryPolicy.MaxPurchaseAttempts))
                     {
                         cc.FCBuffPurchaseAttempts = attempts;
-                        changed = true;
-                        // Save immediately on slider change
-                        configManager.SaveSelectedAccount();
+                        changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "FCBuffPurchaseAttempts", UIConstants.ConfigLabels.MaxPurchaseAttempts,
                         (source, target) => target.FCBuffPurchaseAttempts = source.FCBuffPurchaseAttempts);
@@ -1363,9 +1365,7 @@ public class ConfigWindow : Window, IDisposable
                     if (UIConstants.InputInt(UIConstants.ConfigLabels.MinFCPoints, ref minPoints))
                     {
                         cc.FCBuffMinPoints = Math.Max(0, minPoints);
-                        changed = true;
-                        // Save immediately on input change
-                        configManager.SaveSelectedAccount();
+                        changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "FCBuffMinPoints", UIConstants.ConfigLabels.MinFCPoints,
                         (source, target) => target.FCBuffMinPoints = source.FCBuffMinPoints);
@@ -1376,9 +1376,7 @@ public class ConfigWindow : Window, IDisposable
                     if (UIConstants.InputInt(UIConstants.ConfigLabels.MinGil, ref minGil))
                     {
                         cc.FCBuffMinGil = Math.Max(0, minGil);
-                        changed = true;
-                        // Save immediately on input change
-                        configManager.SaveSelectedAccount();
+                        changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "FCBuffMinGil", UIConstants.ConfigLabels.MinGil,
                         (source, target) => target.FCBuffMinGil = source.FCBuffMinGil);
@@ -1612,8 +1610,7 @@ public class ConfigWindow : Window, IDisposable
                     if (UIConstants.InputInt("Gysahl Greens target", ref gysahlTarget))
                     {
                         cc.VendorStockGysahlGreensTarget = Math.Max(0, gysahlTarget);
-                        changed = true;
-                        configManager.SaveSelectedAccount();
+                        changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "VendorStockGysahlGreensTarget", "Gysahl Greens target",
                         (source, target) => target.VendorStockGysahlGreensTarget = source.VendorStockGysahlGreensTarget);
@@ -1623,8 +1620,7 @@ public class ConfigWindow : Window, IDisposable
                     if (UIConstants.InputInt("Grade 8 Dark Matter target", ref darkMatterTarget))
                     {
                         cc.VendorStockGrade8DarkMatterTarget = Math.Max(0, darkMatterTarget);
-                        changed = true;
-                        configManager.SaveSelectedAccount();
+                        changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "VendorStockGrade8DarkMatterTarget", "Grade 8 Dark Matter target",
                         (source, target) => target.VendorStockGrade8DarkMatterTarget = source.VendorStockGrade8DarkMatterTarget);
@@ -2317,9 +2313,7 @@ public class ConfigWindow : Window, IDisposable
                         // Clamp between 1 and 69420
                         races = Math.Clamp(races, 1, 69420);
                         cc.ChocoboRacesPerDay = races;
-                        changed = true;
-                        // Save immediately on change
-                        configManager.SaveSelectedAccount();
+                        changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                     }
                     DrawDefaultOverrideButton(isDefault, configManager, "ChocoboRacesPerDay", UIConstants.ConfigLabels.RacesPerDay,
                         (source, target) => target.ChocoboRacesPerDay = source.ChocoboRacesPerDay);
@@ -2711,8 +2705,7 @@ public class ConfigWindow : Window, IDisposable
                         if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourMomRunsPerDay, ref momRunsPerDay))
                         {
                             cc.NagYourMomRunsPerDay = Math.Max(0, momRunsPerDay);
-                            changed = true;
-                            configManager.SaveSelectedAccount();
+                            changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                         }
                         DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRunsPerDay", UIConstants.ConfigLabels.NagYourMomRunsPerDay,
                             (source, target) => target.NagYourMomRunsPerDay = source.NagYourMomRunsPerDay);
@@ -2750,8 +2743,7 @@ public class ConfigWindow : Window, IDisposable
                         if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourMomFrontlineRunsPerDay, ref frontlineRuns))
                         {
                             cc.NagYourMomFrontlineRunsPerDay = Math.Max(0, frontlineRuns);
-                            changed = true;
-                            configManager.SaveSelectedAccount();
+                            changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                         }
                         DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomFrontlineRunsPerDay", UIConstants.ConfigLabels.NagYourMomFrontlineRunsPerDay,
                             (source, target) => target.NagYourMomFrontlineRunsPerDay = source.NagYourMomFrontlineRunsPerDay);
@@ -2789,8 +2781,7 @@ public class ConfigWindow : Window, IDisposable
                         if (UIConstants.InputInt(UIConstants.ConfigLabels.NagYourMomRivalWingsRunsPerDay, ref rivalWingsRuns))
                         {
                             cc.NagYourMomRivalWingsRunsPerDay = Math.Max(0, rivalWingsRuns);
-                            changed = true;
-                            configManager.SaveSelectedAccount();
+                            changed = !configManager.TrySaveAccount(configManager.SelectedAccountId);
                         }
                         DrawDefaultOverrideButton(isDefault, configManager, "NagYourMomRivalWingsRunsPerDay", UIConstants.ConfigLabels.NagYourMomRivalWingsRunsPerDay,
                             (source, target) => target.NagYourMomRivalWingsRunsPerDay = source.NagYourMomRivalWingsRunsPerDay);

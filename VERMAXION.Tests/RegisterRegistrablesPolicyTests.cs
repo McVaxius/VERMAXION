@@ -252,6 +252,16 @@ public sealed class RegisterRegistrablesPolicyTests
                 attempts: 3));
     }
 
+    [Theory]
+    [InlineData(3, 2, true)]
+    [InlineData(1, 0, true)]
+    [InlineData(3, 3, false)]
+    [InlineData(3, 4, false)]
+    [InlineData(0, 0, false)]
+    [InlineData(1, -1, false)]
+    public void GiftOpeningRequiresADecreaseFromTheAcceptedUseQuantity(int before, int remaining, bool expected)
+        => Assert.Equal(expected, RegistrableRegistrationPolicy.IsConsumptionVerified(before, remaining));
+
     [Fact]
     public void UnreadablePostUseRegistrationStateFailsClosed()
     {

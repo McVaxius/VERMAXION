@@ -1,3 +1,11 @@
+2026-11-22 - 3.0.0.23 - Wrapped Gifts, Verminion and Settings
+
+- **Added Wrapped Gift support.** Register Registrables opens eligible gifts from main inventory outside duties.
+- **Added dashboard command tooltips.** Hover over a task to see its slash command when one is available.
+- **Fixed Verminion weekly runs.** Start a weekly goal while a CPU campaign is unfinished. An active match finishes first, and cleared campaign stages are preserved.
+- **Improved Settings responsiveness.** Task Order checks prerequisite blockers when expanded, and the task picker searches as you type while open.
+- **Fixed duplicate settings saves.** FC Buff, Vendor Stock, Chocobo Racing and Nag Your Mom save once per edit when the first save succeeds.
+
 2026-11-22 - 3.0.0.22 - Silver Chocobo Feathers
 
 - **Added Silver Chocobo Feathers** as an optional task in Character Settings. Choose the highest gear tier or the highest tier an unlocked job can equip.

@@ -156,6 +156,9 @@ public static class RegistrableRegistrationPolicy
             _ => RegistrablePreUseDecision.Use,
         };
 
+    public static bool IsConsumptionVerified(int quantityBeforeUse, int remainingQuantity)
+        => remainingQuantity >= 0 && remainingQuantity < quantityBeforeUse;
+
     public static RegistrablePostUseDecision EvaluateAfterUse(
         TimeSpan elapsed,
         RegistrableUnlockState unlockState,

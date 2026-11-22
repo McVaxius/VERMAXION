@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
@@ -10,11 +11,13 @@ using VERMAXION.Models;
 namespace VERMAXION.Services;
 
 /// <summary>
-/// Registers direct registrables discovered from one ordered snapshot of the
-/// four main inventory bags, or configured personal items when selected.
+/// Registers direct unlocks and opens eligible Wrapped Gifts from the
+/// main inventory or the selected personal item list.
 /// </summary>
 public class RegisterRegistrablesService : IDisposable
 {
+    private const uint WrappedGiftItemId = 51268;
+
     private static readonly InventoryType[] MainInventoryTypes =
     [
         InventoryType.Inventory1,
@@ -35,6 +38,8 @@ public class RegisterRegistrablesService : IDisposable
     private int currentItemAttempts;
     private int exhaustedItemCount;
     private int verifiedItemCount;
+    private int openedGiftCount;
+    private int giftQuantityBeforeUse;
     private int skippedItemCount;
     private string? failureReason;
     private List<QueuedRegistrable> foundItems = [];
@@ -66,7 +71,9 @@ public class RegisterRegistrablesService : IDisposable
         RegisterState.ProcessingItems => $"Processing item {Math.Min(currentItemIndex + 1, foundItems.Count)}/{foundItems.Count}",
         RegisterState.WaitingForNextItem => $"Verifying item {currentItemIndex + 1}/{foundItems.Count}, attempt {currentItemAttempts}/{RegistrableRetryPolicy.MaxAttemptsPerItem}",
         RegisterState.Complete when foundItems.Count == 0 => "No eligible items found",
-        RegisterState.Complete => $"Complete: {verifiedItemCount} registrations verified, {skippedItemCount} skipped, {exhaustedItemCount} exhausted",
+        RegisterState.Complete => $"Complete: {verifiedItemCount} registrations verified"
+            + (openedGiftCount > 0 ? $", {openedGiftCount} gifts opened" : string.Empty)
+            + $", {skippedItemCount} skipped, {exhaustedItemCount} exhausted",
         RegisterState.Failed => $"Failed: {failureReason}",
         _ => currentState.ToString(),
     };
@@ -140,6 +147,8 @@ public class RegisterRegistrablesService : IDisposable
         currentItemAttempts = 0;
         exhaustedItemCount = 0;
         verifiedItemCount = 0;
+        openedGiftCount = 0;
+        giftQuantityBeforeUse = 0;
         skippedItemCount = 0;
         failureReason = null;
         SetState(RegisterState.ScanningInventory);
@@ -156,6 +165,8 @@ public class RegisterRegistrablesService : IDisposable
         currentItemAttempts = 0;
         exhaustedItemCount = 0;
         verifiedItemCount = 0;
+        openedGiftCount = 0;
+        giftQuantityBeforeUse = 0;
         skippedItemCount = 0;
         failureReason = null;
         foundItems.Clear();
@@ -252,6 +263,13 @@ public class RegisterRegistrablesService : IDisposable
             if (quantity <= 0)
                 continue;
 
+            if (itemId == WrappedGiftItemId)
+            {
+                if (CanOpenWrappedGifts())
+                    QueueItem(itemId, quantity, "Wrapped Gift");
+                continue;
+            }
+
             var source = "personal list";
             if (automaticInventoryModeForRun)
             {
@@ -279,19 +297,24 @@ public class RegisterRegistrablesService : IDisposable
                 continue;
             }
 
-            var itemName = GameHelpers.GetItemName(itemId);
-            foundItems.Add(new QueuedRegistrable(itemId, itemName, quantity, source));
-            log.Information($"[RegisterRegistrables] Queued {itemName} x{quantity} (ID: {itemId}, source: {source})");
+            QueueItem(itemId, quantity, source);
         }
 
         if (foundItems.Count == 0)
         {
-            log.Information("[RegisterRegistrables] No locked registrable items found in inventory");
+            log.Information("[RegisterRegistrables] No eligible items found in inventory");
             SetState(RegisterState.Complete);
             return;
         }
 
         log.Information($"[RegisterRegistrables] Fixed queue contains {foundItems.Count} item(s)");
+    }
+
+    private void QueueItem(uint itemId, int quantity, string source)
+    {
+        var itemName = GameHelpers.GetItemName(itemId);
+        foundItems.Add(new QueuedRegistrable(itemId, itemName, quantity, source));
+        log.Information($"[RegisterRegistrables] Queued {itemName} x{quantity} (ID: {itemId}, source: {source})");
     }
 
     private bool ProcessCurrentItem()
@@ -300,6 +323,9 @@ public class RegisterRegistrablesService : IDisposable
             return false;
 
         var item = foundItems[currentItemIndex];
+        if (item.ItemId == WrappedGiftItemId)
+            return ProcessWrappedGift(item);
+
         var unlockState = ReadUnlockState(item.ItemId, out var unlockError);
         if (unlockState == RegistrableUnlockState.Unreadable)
         {
@@ -330,6 +356,44 @@ public class RegisterRegistrablesService : IDisposable
                 return false;
         }
 
+        return RequestUse(item);
+    }
+
+    private bool ProcessWrappedGift(QueuedRegistrable item)
+    {
+        if (!CanOpenWrappedGifts())
+        {
+            skippedItemCount++;
+            AdvanceCurrentItem($"{item.ItemName} requires a ready character outside a duty");
+            return false;
+        }
+
+        if (!TryReadMainInventoryQuantity(item.ItemId, out var quantity, out var error))
+        {
+            FailRun($"inventory state became unreadable before using {item.ItemName}: {error}");
+            return false;
+        }
+
+        if (quantity > 0)
+            return RequestUse(item, quantity);
+
+        skippedItemCount++;
+        AdvanceCurrentItem($"{item.ItemName} is no longer present");
+        return false;
+    }
+
+    private static unsafe bool CanOpenWrappedGifts()
+    {
+        var game = GameMain.Instance();
+        return Plugin.PlayerState.IsLoaded && game != null && game->CurrentContentFinderConditionId == 0
+            && !Plugin.DutyState.IsDutyStarted
+            && !Plugin.Condition[ConditionFlag.BoundByDuty]
+            && !Plugin.Condition[ConditionFlag.BoundByDuty56]
+            && !Plugin.Condition[ConditionFlag.BoundByDuty95];
+    }
+
+    private bool RequestUse(QueuedRegistrable item, int giftQuantity = 0)
+    {
         if (!GameHelpers.IsPlayerAvailable())
         {
             log.Warning("[RegisterRegistrables] Player not available (casting/occupied), waiting...");
@@ -338,6 +402,7 @@ public class RegisterRegistrablesService : IDisposable
 
         currentItemAttempts++;
         var result = GameHelpers.UseItem(item.ItemId);
+        giftQuantityBeforeUse = result ? giftQuantity : 0;
         if (result)
             log.Information($"[RegisterRegistrables] Use requested for {item.ItemName}");
         else
@@ -355,6 +420,12 @@ public class RegisterRegistrablesService : IDisposable
         }
 
         var item = foundItems[currentItemIndex];
+        if (item.ItemId == WrappedGiftItemId)
+        {
+            VerifyWrappedGiftAfterUse(item);
+            return;
+        }
+
         var unlockState = ReadUnlockState(item.ItemId, out var unlockError);
         var currentQuantity = item.SnapshotQuantity;
         if (unlockState == RegistrableUnlockState.Locked &&
@@ -396,11 +467,46 @@ public class RegisterRegistrablesService : IDisposable
         }
     }
 
+    private void VerifyWrappedGiftAfterUse(QueuedRegistrable item)
+    {
+        if (!TryReadMainInventoryQuantity(item.ItemId, out var quantity, out var error))
+        {
+            FailRun($"inventory state became unreadable while verifying {item.ItemName}: {error}");
+            return;
+        }
+
+        if (RegistrableRegistrationPolicy.IsConsumptionVerified(giftQuantityBeforeUse, quantity))
+        {
+            openedGiftCount++;
+            currentItemAttempts = 0;
+            log.Information($"[RegisterRegistrables] {item.ItemName} opening verified, {quantity} remaining");
+            if (quantity == 0)
+                AdvanceCurrentItem($"{item.ItemName} stack opened");
+        }
+        else if (quantity <= 0)
+        {
+            skippedItemCount++;
+            AdvanceCurrentItem($"{item.ItemName} is no longer present and no opening was verified");
+        }
+        else if (RegistrableRetryPolicy.ShouldExhaust(currentItemAttempts, quantity))
+        {
+            exhaustedItemCount++;
+            AdvanceCurrentItem($"{item.ItemName} count did not decrease after {currentItemAttempts} attempts");
+        }
+        else
+        {
+            log.Warning($"[RegisterRegistrables] {item.ItemName} count did not decrease, retrying attempt {currentItemAttempts + 1}/{RegistrableRetryPolicy.MaxAttemptsPerItem}");
+        }
+
+        SetState(RegisterState.ProcessingItems);
+    }
+
     private void AdvanceCurrentItem(string reason)
     {
         log.Information($"[RegisterRegistrables] {reason}; moving to next queue item");
         currentItemIndex++;
         currentItemAttempts = 0;
+        giftQuantityBeforeUse = 0;
     }
 
     private void FailRun(string reason)
