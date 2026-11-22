@@ -1,3 +1,8 @@
+2026-11-22 - 3.0.0.22 - Silver Chocobo Feathers
+
+- **Added Silver Chocobo Feathers** as an optional task in Character Settings. Choose the highest gear tier or the highest tier an unlocked job can equip.
+- **Added consecutive exchanges** that spend five feathers per distinct two-piece bundle and close the shop after the last purchase. Requires ADS 2.0.0.30 or newer.
+
 2026-11-19 - 3.0.0.21 - Combat provider scope
 
 - Allied Society (Beast Tribe) and daily and weekly Crewcible require God Mod Companion and either GodMod or BossModReborn.

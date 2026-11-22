@@ -18,6 +18,7 @@ public static class PostProcessTaskOrder
     public const string AfterArPark = AutomationCatalog.AfterArPark;
     public const string FCBuffRefill = AutomationCatalog.FCBuffRefill;
     public const string VendorStock = AutomationCatalog.VendorStock;
+    public const string SilverChocoboFeathers = AutomationCatalog.SilverChocoboFeathers;
     public const string RegisterRegistrables = AutomationCatalog.RegisterRegistrables;
     public const string GearUpdater = AutomationCatalog.GearUpdater;
     public const string HighestCombatJob = AutomationCatalog.HighestCombatJob;
@@ -71,6 +72,7 @@ public static class PostProcessTaskOrder
         RetainerEquipping,
         FCBuffRefill,
         VendorStock,
+        SilverChocoboFeathers,
         RegisterRegistrables,
         GearUpdater,
         HighestCombatJob,

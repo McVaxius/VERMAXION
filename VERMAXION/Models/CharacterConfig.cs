@@ -5,6 +5,12 @@ using VERMAXION.CustomDeliveries;
 
 namespace VERMAXION.Models;
 
+public enum SilverChocoboFeatherMode
+{
+    Best,
+    BestWeCanEquip,
+}
+
 [Serializable]
 public class CharacterConfig
 {
@@ -49,6 +55,8 @@ public class CharacterConfig
     public bool EnableRegisterRegistrables { get; set; } = false;
     public bool RegisterUnregisteredItemsFromInventory { get; set; } = true;
     public bool EnableVendorStock { get; set; } = false;
+    public bool EnableSilverChocoboFeathers { get; set; }
+    public SilverChocoboFeatherMode SilverChocoboFeatherMode { get; set; } = SilverChocoboFeatherMode.Best;
     public bool EnableRefillFromListings { get; set; } = false;
     public bool EnableAfterArPark { get; set; } = false;
     public bool EnableAlliedSociety { get; set; } = false;
@@ -440,6 +448,8 @@ public class CharacterConfig
             EnableRegisterRegistrables = EnableRegisterRegistrables,
             RegisterUnregisteredItemsFromInventory = RegisterUnregisteredItemsFromInventory,
             EnableVendorStock = EnableVendorStock,
+            EnableSilverChocoboFeathers = EnableSilverChocoboFeathers,
+            SilverChocoboFeatherMode = SilverChocoboFeatherMode,
             EnableRefillFromListings = EnableRefillFromListings,
             EnableAfterArPark = EnableAfterArPark,
             EnableAlliedSociety = EnableAlliedSociety,

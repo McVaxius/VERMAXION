@@ -549,6 +549,8 @@ public class ConfigManager
         target.EnableRegisterRegistrables = source.EnableRegisterRegistrables;
         target.RegisterUnregisteredItemsFromInventory = source.RegisterUnregisteredItemsFromInventory;
         target.EnableVendorStock = source.EnableVendorStock;
+        target.EnableSilverChocoboFeathers = source.EnableSilverChocoboFeathers;
+        target.SilverChocoboFeatherMode = source.SilverChocoboFeatherMode;
         target.EnableRefillFromListings = source.EnableRefillFromListings;
         target.EnableAfterArPark = source.EnableAfterArPark;
         target.EnableAlliedSociety = source.EnableAlliedSociety;

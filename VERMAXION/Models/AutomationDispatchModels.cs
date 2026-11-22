@@ -112,6 +112,7 @@ public static class TeleportGilPolicy
     {
         AutomationCatalog.MiniCactpot or AutomationCatalog.JumboCactpot or AutomationCatalog.FashionReport => territory != 144,
         AutomationCatalog.VerminionQueue => territory is not (144 or 388),
+        AutomationCatalog.SilverChocoboFeathers => territory is not (128 or 131 or 133),
         AutomationCatalog.Beastmaster or AutomationCatalog.BeastmasterWeekly => territory != 148,
         AutomationCatalog.ChocoboRacing or AutomationCatalog.VendorStock or AutomationCatalog.AlliedSociety or
             AutomationCatalog.LootGoblinMapGather => true,

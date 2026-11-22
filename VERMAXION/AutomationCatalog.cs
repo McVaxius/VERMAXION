@@ -88,6 +88,7 @@ public static class AutomationCatalog
     public const string ChocoboStables = "chocobo_stables";
     public const string RegisterRegistrables = "register_registrables";
     public const string VendorStock = "vendor_stock";
+    public const string SilverChocoboFeathers = "silver_chocobo_feathers";
     public const string RefillListings = "refill_listings";
     public const string RetainerEquipping = "retainer_equipping";
     public const string AlliedSociety = "allied_society";
@@ -123,6 +124,7 @@ public static class AutomationCatalog
         Engine(ChocoboStables, nameof(CharacterConfig.EnableChocoboStables), "Chocobo Stables", AutomationCadence.Scheduled),
         Engine(RegisterRegistrables, nameof(CharacterConfig.EnableRegisterRegistrables), "Register Registrables", AutomationCadence.EveryRun),
         Engine(VendorStock, nameof(CharacterConfig.EnableVendorStock), "Vendor Stock", AutomationCadence.EveryRun),
+        Engine(SilverChocoboFeathers, nameof(CharacterConfig.EnableSilverChocoboFeathers), "Silver Chocobo Feathers", AutomationCadence.EveryRun),
         Engine(RefillListings, nameof(CharacterConfig.EnableRefillFromListings), "Refill Listings", AutomationCadence.Scheduled, PostProcessTaskPhase.BeforeAR),
         Engine(
             RetainerEquipping,

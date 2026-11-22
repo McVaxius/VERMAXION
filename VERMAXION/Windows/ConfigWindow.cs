@@ -1559,6 +1559,36 @@ public class ConfigWindow : Window, IDisposable
                 }
             }
 
+            if (selectedAutomationId == AutomationCatalog.SilverChocoboFeathers)
+            {
+                var featherExchangeEnabled = cc.EnableSilverChocoboFeathers;
+                if (UIConstants.Checkbox("Exchange Silver Chocobo Feathers", ref featherExchangeEnabled))
+                {
+                    cc.EnableSilverChocoboFeathers = featherExchangeEnabled;
+                    changed = true;
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "SilverChocoboFeathers", "Silver Chocobo Feathers",
+                    (source, target) => target.EnableSilverChocoboFeathers = source.EnableSilverChocoboFeathers);
+
+                var mode = cc.SilverChocoboFeatherMode;
+                if (UIConstants.BeginCombo("Gear tier", mode == SilverChocoboFeatherMode.BestWeCanEquip ? "Best we can equip" : "Best"))
+                {
+                    if (UIConstants.WrappedSelectable("Best", mode == SilverChocoboFeatherMode.Best))
+                    {
+                        cc.SilverChocoboFeatherMode = SilverChocoboFeatherMode.Best;
+                        changed = true;
+                    }
+                    if (UIConstants.WrappedSelectable("Best we can equip", mode == SilverChocoboFeatherMode.BestWeCanEquip))
+                    {
+                        cc.SilverChocoboFeatherMode = SilverChocoboFeatherMode.BestWeCanEquip;
+                        changed = true;
+                    }
+                    ImGui.EndCombo();
+                }
+                DrawDefaultOverrideButton(isDefault, configManager, "SilverChocoboFeatherMode", "Gear tier",
+                    (source, target) => target.SilverChocoboFeatherMode = source.SilverChocoboFeatherMode);
+            }
+
             if (selectedAutomationId == AutomationCatalog.VendorStock)
             {
                 var vendorStock = cc.EnableVendorStock;

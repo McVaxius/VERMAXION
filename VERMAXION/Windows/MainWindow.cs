@@ -688,6 +688,13 @@ public class MainWindow : Window, IDisposable
             "Run##FCBuff", () => plugin.FCBuffService.RunTask(), "OK");
         AddTaskRow("Vendor Stock", config.EnableVendorStock, GetVendorStockStatus(config),
             "Run##Vendor", () => plugin.VendorStockService.RunTask(), "OK");
+        var featherEligibility = engine.GetTaskEligibility(AutomationCatalog.SilverChocoboFeathers);
+        var featherExchanges = plugin.SilverChocoboFeatherService;
+        AddTaskRow("Silver Chocobo Feathers", config.EnableSilverChocoboFeathers,
+            config.EnableSilverChocoboFeathers ? featherExchanges.StatusText : "Off",
+            "Run##SilverChocoboFeathers", () => engine.ManualStartSilverChocoboFeathers(), "OK",
+            buttonDisabled: engine.IsRunning || !featherEligibility.IsRunnable,
+            buttonTooltip: engine.IsRunning ? "An automation run is already active." : featherEligibility.Reason);
         var fishingButtonsDisabled = engine.IsRunning ||
                                      plugin.IsFishingRunActive ||
                                      plugin.FisherGearsetTestService.IsActive;
@@ -1640,6 +1647,7 @@ public class MainWindow : Window, IDisposable
             AutomationCatalog.CurrentJobEquipment or
             AutomationCatalog.AfterArPark or
             AutomationCatalog.VendorStock or
+            AutomationCatalog.SilverChocoboFeathers or
             AutomationCatalog.Fishing or
             AutomationCatalog.RetainerEquipping => ConfigurationSection.EveryAr,
             AutomationCatalog.VerminionQueue or

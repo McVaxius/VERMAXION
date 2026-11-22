@@ -132,6 +132,7 @@ public class VermaxionEngine
         [PostProcessTaskOrder.RetainerEquipping] = EngineState.RunningRetainerEquipping,
         [PostProcessTaskOrder.FCBuffRefill] = EngineState.RunningFCBuff,
         [PostProcessTaskOrder.VendorStock] = EngineState.RunningVendorStock,
+        [PostProcessTaskOrder.SilverChocoboFeathers] = EngineState.RunningSilverChocoboFeathers,
         [PostProcessTaskOrder.RegisterRegistrables] = EngineState.RunningRegisterRegistrables,
         [PostProcessTaskOrder.GearUpdater] = EngineState.RunningGearUpdater,
         [PostProcessTaskOrder.HighestCombatJob] = EngineState.RunningHighestCombatJob,
@@ -304,6 +305,7 @@ public class VermaxionEngine
         Complete,
         Error,
         RunningIslandSanctuary,
+        RunningSilverChocoboFeathers,
     }
 
     private enum RunTaskPhaseFilter
@@ -456,6 +458,7 @@ public class VermaxionEngine
                 watchdogProgress ?? status);
 
         Action stopBeastmaster = plugin.StopBeastmaster;
+        var featherExchanges = plugin.SilverChocoboFeatherService;
         var bindings = new[]
         {
             Bind(PostProcessTaskOrder.RefillListings, EvaluateRefillListings, retainerListingRefillService.Update,
@@ -468,6 +471,8 @@ public class VermaxionEngine
                 () => fcBuffService.StatusText),
             Bind(PostProcessTaskOrder.VendorStock, EvaluateVendorStock, vendorStockService.Update, vendorStockService.Reset,
                 () => vendorStockService.StatusText),
+            Bind(PostProcessTaskOrder.SilverChocoboFeathers, featherExchanges.GetEligibility, featherExchanges.Update, featherExchanges.Cancel,
+                () => featherExchanges.StatusText),
             Bind(PostProcessTaskOrder.RegisterRegistrables, EvaluateRegisterRegistrables, registerRegistrablesService.Update,
                 registerRegistrablesService.Reset, () => registerRegistrablesService.State.ToString()),
             Bind(PostProcessTaskOrder.GearUpdater, EvaluateGearUpdater, gearUpdaterService.Update, gearUpdaterService.Reset,
@@ -995,6 +1000,11 @@ public class VermaxionEngine
             AutomationRunScope.SingleTask(PostProcessTaskOrder.RetainerEquipping));
     }
 
+    internal bool ManualStartSilverChocoboFeathers()
+        => TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: true, requireWorldReady: true,
+            automatedRun: false, "manual Silver Chocobo Feathers",
+            AutomationRunScope.SingleTask(PostProcessTaskOrder.SilverChocoboFeathers));
+
     internal bool ManualStartRefillListings()
         => TryBeginRun(RunTaskPhaseFilter.All, requireEnabled: false, requireWorldReady: false,
             automatedRun: false, "manual Refill Listings",
@@ -1407,6 +1417,29 @@ public class VermaxionEngine
                     AdvanceToNextTask(EngineState.RunningVendorStock);
                 }
                 break;
+
+            case EngineState.RunningSilverChocoboFeathers:
+            {
+                var featherExchanges = plugin.SilverChocoboFeatherService;
+                if (!currentTaskOwnedWorkStarted)
+                {
+                    featherExchanges.Start(GetLiveActiveConfig());
+                    if (featherExchanges.IsRunning)
+                    {
+                        MarkCurrentTaskWorkStarted();
+                        break;
+                    }
+                }
+                else
+                {
+                    taskBindings[PostProcessTaskOrder.SilverChocoboFeathers].Tick();
+                    if (featherExchanges.IsRunning) break;
+                }
+
+                runHadFailure |= featherExchanges.IsFailed;
+                AdvanceToNextTask(EngineState.RunningSilverChocoboFeathers);
+                break;
+            }
 
             case EngineState.RunningRegisterRegistrables:
                 if (activeConfig!.EnableRegisterRegistrables)
@@ -3123,6 +3156,8 @@ public class VermaxionEngine
             return "FC Buff Inventory service active";
         if (vendorStockService.IsActive)
             return "Vendor Stock service active";
+        if (plugin.SilverChocoboFeatherService.HasOwnedExchange)
+            return plugin.SilverChocoboFeatherService.StatusText;
         if (fishingService.IsActive)
             return $"Fishing service active ({fishingService.StatusText})";
         if (registerRegistrablesService.IsActive)
@@ -3625,6 +3660,7 @@ public class VermaxionEngine
             EngineState.CheckingResets => "Checking resets",
             EngineState.RunningFCBuff => "FC Buff Refill",
             EngineState.RunningVendorStock => "Vendor Stock",
+            EngineState.RunningSilverChocoboFeathers => "Silver Chocobo Feathers",
             EngineState.RunningRegisterRegistrables => "Register Registrables",
             EngineState.RunningGearUpdater => "Gear Updater",
             EngineState.RunningHighestCombatJob => "Highest Combat Job",

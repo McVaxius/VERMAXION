@@ -123,6 +123,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     internal NativeCofferInventory CofferInventory { get; private set; } = null!;
     private CofferOpeningIpcProvider cofferIpc = null!;
     public VendorStockService VendorStockService { get; init; }
+    internal SilverChocoboFeatherService SilverChocoboFeatherService { get; }
     public RetainerListingRefillService RetainerListingRefillService { get; init; }
     public RetainerEquippingService RetainerEquippingService { get; init; }
     public ARPostProcessService ARPostProcessService { get; init; }
@@ -325,6 +326,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
             CancelChocoboReloadAttempt);
         FashionReportService = new FashionReportService(CommandManager, ClientState, ObjectTable, Log, VNavmeshIPC, LifestreamIPC);
         RegisterRegistrablesService = new RegisterRegistrablesService(Log, ConfigManager, DataManager);
+        SilverChocoboFeatherService = new SilverChocoboFeatherService(this);
         CofferInventory = new(this);
         CofferOpening = new(CofferInventory.Observe, GameHelpers.UseItem);
         StylistIPC = new StylistIPC(PluginInterface, Log);
@@ -3553,6 +3555,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
 
     private void OnFrameworkUpdate(IFramework fw)
     {
+        SilverChocoboFeatherService.ObserveCleanup();
         if (idleInnTravelRequested && LifestreamIPC.TryReadBusy(out var travelling) && !travelling)
             idleInnTravelRequested = false;
         CofferOpening.Update();

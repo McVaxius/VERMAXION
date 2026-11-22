@@ -35,6 +35,7 @@ public sealed class AdsShopPurchaseStatusSnapshot
     public bool Running { get; init; }
     public bool Done { get; init; }
     public bool? Succeeded { get; init; }
+    public bool ShopHeldOpen { get; init; }
     public string Phase { get; init; } = string.Empty;
     public uint ItemId { get; init; }
     public string OperationId { get; init; } = string.Empty;
@@ -127,13 +128,13 @@ public sealed class AdsIpcClient
     }
 
     public bool StartCurrencyShopPurchase(string operationId, uint itemId, int quantity,
-        string currencyKind, uint currencyItemId, long maximumCurrencySpend, out string failure)
+        string currencyKind, uint currencyItemId, long maximumCurrencySpend, out string failure, bool keepShopOpen = false)
     {
         failure = string.Empty;
         try
         {
             if (startCurrencyShopPurchaseSubscriber.InvokeFunc(JsonSerializer.Serialize(new
-                { operationId, itemId, quantity, currencyKind, currencyItemId, maximumCurrencySpend })))
+                { operationId, itemId, quantity, currencyKind, currencyItemId, maximumCurrencySpend, keepShopOpen })))
             { lastShopRefreshUtc = DateTime.MinValue; CurrentShopPurchase = AdsShopPurchaseStatusSnapshot.Empty; return true; }
             failure = RefreshShopPurchase(true).LastStartError;
         }
@@ -194,6 +195,7 @@ public sealed class AdsIpcClient
                 Running = GetBool(root, "running"),
                 Done = GetBool(root, "done"),
                 Succeeded = GetNullableBool(root, "succeeded"),
+                ShopHeldOpen = GetBool(root, "shopHeldOpen"),
                 Phase = GetString(root, "phase"),
                 ItemId = (uint)Math.Max(0, GetInt(root, "itemId")),
                 OperationId = GetString(root, "operationId"),
