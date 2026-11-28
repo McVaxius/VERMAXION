@@ -1,3 +1,8 @@
+2026-11-28 - 3.0.0.24 - UI memory
+
+- Load interface fonts and glass resources when needed and release them when the interface closes.
+- Keep all appearance modes, translations, and unattended tasks available.
+
 2026-11-22 - 3.0.0.23 - Wrapped Gifts, Verminion and Settings
 
 - **Added Wrapped Gift support.** Register Registrables opens eligible gifts from main inventory outside duties.

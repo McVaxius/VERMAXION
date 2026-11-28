@@ -74,7 +74,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     private bool debugCollectionStopArmed, debugCollectionStopPending;
 #endif
     private DateTime nextChocoboContinuationUtc;
-    private VermaxionFonts uiFonts = null!;
+    private VermaxionFonts? uiFonts;
     private UiText uiText = null!;
     private AethertekUI.Dalamud.MaterialTextHost? shapedText;
     private MaterialTheme uiTheme = null!;
@@ -705,36 +705,42 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
     {
         ApplyAppearance();
         glassImagePicker.Draw();
-        if(!WindowSystem.Windows.Any(window => window.IsOpen)) { backgroundGlass?.EndFrame(false); return; }
+        if (!WindowSystem.Windows.Any(window => window.IsOpen))
+        {
+            ReleaseWindowResources();
+            return;
+        }
+
+        var fonts = uiFonts ??= CreateWindowFonts();
         using var text = uiText.Enter();
         shapedText ??= new(TextureProvider);
         using var shaped = shapedText.Push();
-        if(!uiFonts.Ready)
+        if(!fonts.Ready)
         {
             backgroundGlass?.EndFrame(false);
-            if(!fontIssueLogged && uiFonts.LoadException is { } error) { Log.Error(error,"[VERMAXION] Required UI fonts failed to load.");fontIssueLogged=true; }
+            if(!fontIssueLogged && fonts.LoadException is { } error) { Log.Error(error,"[VERMAXION] Required UI fonts failed to load.");fontIssueLogged=true; }
             // Do not silently present temporary host fonts as the finished UI.
-            DrawFontStatus(uiFonts.LoadException is null);
+            DrawFontStatus(fonts.LoadException is null);
             return;
         }
-        if (checkedHindiGeneration != uiFonts.Generation)
+        if (checkedHindiGeneration != fonts.Generation)
         {
-            var generation = uiFonts.Generation;
+            var generation = fonts.Generation;
             var hindiAvailable = true;
-            foreach (var size in VermaxionPresentation.FontSizes)
+            foreach (var size in fonts.Sizes)
                 hindiAvailable &= shapedText.Renderer.TryCheckGlyphs(["हिन्दी"], size * ImGuiHelpers.GlobalScale, out _);
             languageOptions.Replace(UiText.Languages.Select(l => new MaterialOption<string>(l.Code, l.Code,
                 l.Code == "hi" && !hindiAvailable ? "Hindi (unavailable)" : l.Name, l.Code == "hi" && !hindiAvailable)).ToArray());
             checkedHindiGeneration = generation;
         }
-        if(checkedFontGeneration!=uiFonts.Generation)
+        if(checkedFontGeneration!=fonts.Generation)
         {
             try
             {
-                var generation=uiFonts.Generation;
-                foreach (var size in VermaxionPresentation.FontSizes)
+                var generation=fonts.Generation;
+                foreach (var size in fonts.Sizes)
                     shapedText.Renderer.CheckGlyphs(uiText.RequiredText, size * ImGuiHelpers.GlobalScale);
-                uiFonts.CheckGlyphs(uiText.RequiredText);
+                fonts.CheckGlyphs(uiText.RequiredText);
                 checkedFontGeneration=generation;
             }
             catch(Exception ex) { backgroundGlass?.EndFrame(false); if(!fontIssueLogged) { Log.Error(ex,"[VERMAXION] Required UI glyph coverage failed.");fontIssueLogged=true; } DrawFontStatus(false);return; }
@@ -742,9 +748,16 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         var useGlass = BackgroundBlurEnabled;
         var useImage = Configuration.UiStylingEnabled && colorDraft.Mode == MaterialColorMode.Glassmorphism &&
             colorDraft.GlassBackground == MaterialGlassBackground.Image;
-        if (useGlass || useImage) backgroundGlass ??= new(PluginInterface, Log);
-        backgroundGlass?.ConfigureImage(TextureProvider, useImage, colorDraft.GlassImagePath);
-        backgroundGlass?.BeginFrame();
+        if (useGlass || useImage)
+        {
+            backgroundGlass ??= new(PluginInterface, Log);
+            backgroundGlass.BeginFrame(useGlass, useImage);
+            backgroundGlass.ConfigureImage(TextureProvider, useImage, colorDraft.GlassImagePath);
+        }
+        else
+        {
+            DisposeBackgroundGlass();
+        }
         var completed = false;
         try
         {
@@ -752,7 +765,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
                 useGlass, colorDraft.BackgroundBlurPercent / 100f);
             using var theme = MaterialTheme.Push(uiTheme, ImGuiHelpers.GlobalScale,
                 Configuration.UiStylingEnabled ? MaterialStyleMode.ColorsOnly : MaterialStyleMode.Native);
-            using var body = uiFonts.Push(UiFontRole.Body);
+            using var body = fonts.Push(UiFontRole.Body);
             PrepareAppearanceTitleBars();
             foreach (var actions in appearanceTitleBars.Values) actions.RefreshVisibility();
             foreach (var window in WindowSystem.Windows) window.AllowBackgroundBlur = false;
@@ -805,21 +818,48 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         }
     }
 
+    private VermaxionFonts CreateWindowFonts()
+    {
+        var ranges = uiText.GlyphRanges();
+        var atlas = PluginInterface.UiBuilder.CreateFontAtlas(FontAtlasAutoRebuildMode.OnNewFrame, true, "VERMAXION UI");
+        return new VermaxionFonts(atlas, ranges, appliedLanguage, PluginInterface.AssemblyLocation.DirectoryName!);
+    }
+
+    private void ReleaseWindowFonts()
+    {
+        uiFonts?.Dispose();
+        uiFonts = null;
+        shapedText?.Dispose();
+        shapedText = null;
+        checkedFontGeneration = -1;
+        checkedHindiGeneration = -1;
+        fontIssueLogged = false;
+    }
+
+    private void DisposeBackgroundGlass()
+    {
+        backgroundGlass?.Dispose();
+        backgroundGlass = null;
+    }
+
+    private void ReleaseWindowResources()
+    {
+        ReleaseWindowFonts();
+        DisposeBackgroundGlass();
+        uiSounds?.Dispose();
+        uiSounds = null;
+    }
+
     private void ApplyAppearance()
     {
         var language=UiText.Languages.Any(l=>l.Code==Configuration.UiLanguage)?Configuration.UiLanguage:"en";
         if(language!=appliedLanguage)
         {
-            uiFonts?.Dispose();
+            ReleaseWindowFonts();
             uiText?.Dispose();
-            uiText=new(language,role=>uiFonts!.Push(role));
-            uiFonts=new(PluginInterface.UiBuilder.FontAtlas,uiText.GlyphRanges(),language,
-                PluginInterface.AssemblyLocation.DirectoryName!);
-            languageOptions=new(UiText.Languages.Select(l=>new MaterialOption<string>(l.Code,l.Code,l.Name)).ToArray());
-            appliedLanguage=language;
-            checkedFontGeneration=-1;
-            checkedHindiGeneration = -1;
-            fontIssueLogged=false;
+            uiText = new(language, role => uiFonts!.Push(role));
+            languageOptions = new(UiText.Languages.Select(l => new MaterialOption<string>(l.Code, l.Code, l.Name)).ToArray());
+            appliedLanguage = language;
         }
         var savedColors = Configuration.UiColors ??= new MaterialColorSettings();
         if (savedColors != appliedSavedColors)
@@ -944,8 +984,6 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         cofferIpc.Dispose();
         CofferOpening.Dispose();
         PluginInterface.UiBuilder.ResizeBuffers -= ReleaseBackgroundGlassResources;
-        backgroundGlass?.Dispose();
-        uiSounds?.Dispose();
         if (BeastmasterOwnsWork) StopBeastmaster();
         BeastmasterService.Dispose();
         Engine.CancelNagYourMomSeriesRankTest();
@@ -971,9 +1009,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         WindowSystem.RemoveAllWindows();
         ConfigWindow.Dispose();
         MainWindow.Dispose();
-        uiFonts.Dispose();
+        ReleaseWindowResources();
         uiText.Dispose();
-        shapedText?.Dispose();
 
         ARPostProcessService.Dispose();
         FCBuffService.Dispose();
@@ -2345,8 +2382,8 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
                 Engine.State, Engine.IsRunning, Engine.GetPendingTaskCount(), Engine.StatusText,
                 Configuration.DebugTaskId ?? "none", DebugTaskStatus);
             Log.Information("[VMX Inspect] UI: language={Language}; compact={Compact}; fontsReady={Ready}; fontGeneration={Generation}; checkedGlyphGeneration={CheckedGeneration}; checkedHindiGeneration={HindiGeneration}; fontError={FontError}",
-                appliedLanguage, Configuration.CompactUi, uiFonts.Ready, uiFonts.Generation,
-                checkedFontGeneration, checkedHindiGeneration, uiFonts.LoadException?.Message ?? "none");
+                appliedLanguage, Configuration.CompactUi, uiFonts?.Ready == true, uiFonts?.Generation ?? -1,
+                checkedFontGeneration, checkedHindiGeneration, uiFonts?.LoadException?.Message ?? "none");
             foreach (var window in WindowSystem.Windows.OfType<Window>())
                 Log.Information("[VMX Inspect] Window: name={Name}; open={Open}; position={Position}; size={Size}; constraints={Constraints}",
                     window.WindowName, window.IsOpen, window.Position?.ToString() ?? "automatic",
