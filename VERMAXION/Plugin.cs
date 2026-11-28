@@ -717,7 +717,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
         using var shaped = shapedText.Push();
         if(!fonts.Ready)
         {
-            backgroundGlass?.EndFrame(false);
+            DisposeBackgroundGlass();
             if(!fontIssueLogged && fonts.LoadException is { } error) { Log.Error(error,"[VERMAXION] Required UI fonts failed to load.");fontIssueLogged=true; }
             // Do not silently present temporary host fonts as the finished UI.
             DrawFontStatus(fonts.LoadException is null);
@@ -743,7 +743,7 @@ public sealed partial class Plugin : IDalamudPlugin, IFishingStartupRuntime, ISc
                 fonts.CheckGlyphs(uiText.RequiredText);
                 checkedFontGeneration=generation;
             }
-            catch(Exception ex) { backgroundGlass?.EndFrame(false); if(!fontIssueLogged) { Log.Error(ex,"[VERMAXION] Required UI glyph coverage failed.");fontIssueLogged=true; } DrawFontStatus(false);return; }
+            catch(Exception ex) { DisposeBackgroundGlass(); if(!fontIssueLogged) { Log.Error(ex,"[VERMAXION] Required UI glyph coverage failed.");fontIssueLogged=true; } DrawFontStatus(false);return; }
         }
         var useGlass = BackgroundBlurEnabled;
         var useImage = Configuration.UiStylingEnabled && colorDraft.Mode == MaterialColorMode.Glassmorphism &&

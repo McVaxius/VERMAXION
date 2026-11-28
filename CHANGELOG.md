@@ -1,3 +1,7 @@
+2026-11-28 - 3.0.0.25 - Backdrop memory
+
+- Release the previous backdrop while interface fonts reload. The selected backdrop returns when the window is ready.
+
 2026-11-28 - 3.0.0.24 - UI memory
 
 - Load interface fonts and glass resources when needed and release them when the interface closes.
